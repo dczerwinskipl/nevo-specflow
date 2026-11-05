@@ -54,12 +54,18 @@ export {
   type StartTaskInput,
 } from './operations/start';
 export type { StepContext } from './operations/step-context';
+export {
+  setTaskStatus,
+  type SetTaskStatusInput,
+  type SetTaskStatusResult,
+} from './operations/task-status';
 export type { FinishInput, Handoff } from './progression/progression';
 export {
   EXECUTION_DIRECTORY,
   createFilesystemWorkflowStore,
   type FilesystemWorkflowStoreOptions,
 } from './state/filesystem-store';
+export { TASK_STATUSES } from './state/model';
 export type {
   AttemptOutcome,
   AttemptRecord,
@@ -67,11 +73,12 @@ export type {
   ReturnRecord,
   RunPosition,
   SpecificationExecutionRecord,
-  TaskBlock,
   TaskRecord,
+  TaskStatus,
+  TaskStatusChange,
   WorkflowPin,
   WorkflowRun,
   WorkflowSubject,
 } from './state/model';
 export type { ExecutionChange, ExecutionSnapshot, Versioned, WorkflowStore } from './state/store';
-export type { TaskProposal, TaskReadiness } from './tasks/tasks';
+export type { TaskDecision, TaskDecisionStatus, TaskProposal, TaskReadiness } from './tasks/tasks';

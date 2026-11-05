@@ -67,6 +67,13 @@ export const workflowFile = (): WorkflowDefinitionFile => ({
           continuation: 'auto',
           session: 'reuse',
         },
+        {
+          id: 'escalated',
+          result: 'needs-spec-change',
+          to: { step: 'implement' },
+          feedback: 'required',
+          escalate: true,
+        },
       ],
     },
   ],
@@ -116,6 +123,22 @@ export const invalidWorkflowFiles: [string, () => Json][] = [
       withStep({
         ...workflowFile().steps[0],
         transitions: [{ id: 'done', to: { step: 'review' }, effects: ['delete-tasks'] }],
+      }),
+  ],
+  [
+    'a removed effect',
+    () =>
+      withStep({
+        ...workflowFile().steps[0],
+        transitions: [{ id: 'done', to: { step: 'review' }, effects: ['block-pending-tasks'] }],
+      }),
+  ],
+  [
+    'an escalation marker that is not a boolean',
+    () =>
+      withStep({
+        ...workflowFile().steps[0],
+        transitions: [{ id: 'done', to: { step: 'review' }, escalate: 'specification' }],
       }),
   ],
   [

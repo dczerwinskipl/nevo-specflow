@@ -25,7 +25,8 @@ This is a requirements list, not a design. Each item names the Engine operation 
 ## Reads
 
 - **R1.** Show the execution of a Specification: its run (step, attempt, position), every Task with its
-  type, workflow, position, readiness (ready / blocked / waiting for dependencies) and handoff, and the
+  type, workflow, status (`draft` / `ready` / `on-hold` / `cancelled`, with its last change), position,
+  readiness (ready / not ready because of the status / waiting for dependencies) and handoff, and the
   open attention items. Only current attention is shown: an item that no longer matches its subject's
   position (for example after a branch switch) is never returned. The read is serialized with the
   mutations, so it never shows a change half-applied. Maps to `inspectExecution`.
@@ -45,7 +46,10 @@ This is a requirements list, not a design. Each item names the Engine operation 
   attempt started in a Session requires the same provider and Session id as that attempt's executor,
   otherwise `WORKFLOW_EXECUTOR_NOT_ALLOWED`. The executor identity comes from the authenticated caller
   or the Session binding, never from the payload.
-- **C2.** Finish an attempt with `result`, `feedback`, `artifacts` and, for producing steps, `tasks`.
+- **C2.** Finish an attempt with `result`, `feedback`, `artifacts`, for producing steps `tasks` (the
+  complete list of draft Tasks: listed drafts are created or revised, unlisted drafts cancelled), and
+  for Specification steps optional `taskDecisions` (`{taskId, status: ready | on-hold | cancelled,
+reason?}`; one decision that is not allowed rejects the whole finish).
   The caller must name the attempt (step + attempt number). Every finish carries its executor, of the
   step's kind: an agent never finishes a human step, and a person never finishes an agent step. An
   active agent attempt started in a Session is finished only by that Session (same provider and
@@ -54,6 +58,14 @@ This is a requirements list, not a design. Each item names the Engine operation 
   explicit operation (plan 06, F17), not a finish.
 - **C3.** Return to a declared step with feedback. Only a step the run has already reached (it has an
   attempt of it) is allowed, otherwise `WORKFLOW_RETURN_NOT_ALLOWED`.
+- **C3a.** Set the status of a Task as the owner: approve a draft, hold, resume or cancel, with an
+  optional reason. Maps to `setTaskStatus` (human executor only, otherwise
+  `WORKFLOW_EXECUTOR_NOT_ALLOWED`). Allowed: `draft → ready | cancelled`, `ready → on-hold | cancelled`,
+  `on-hold → ready | cancelled`; `cancelled` is final, a Task whose run ended keeps its status, and a
+  running Task may go on hold (its current step finishes, the next start is refused) but is not
+  cancelled. Anything else is `WORKFLOW_INPUT_INVALID`. The same change settles the Specification:
+  cancelling the last open Task completes its wait step, resuming an escalated Task removes the
+  `task-escalated` item.
 - **C4.** Quick start from an attention item:
   - prefill the provider and model from `suggestion`;
   - when `blocker` or the reason is `model-missing` / `provider-not-chosen`, let the owner choose them;

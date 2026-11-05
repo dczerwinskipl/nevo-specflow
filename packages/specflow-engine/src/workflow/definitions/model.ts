@@ -26,6 +26,8 @@ export interface WorkflowTransition {
   readonly session: 'fresh' | 'reuse';
   readonly feedback: 'required' | 'optional';
   readonly effects: readonly WorkflowEffect[];
+  /** Task workflows only: the finish puts the Task on hold and escalates to the Specification. */
+  readonly escalate: boolean;
 }
 
 interface StepCommon {

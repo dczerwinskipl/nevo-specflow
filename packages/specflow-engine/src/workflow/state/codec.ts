@@ -21,7 +21,7 @@ import {
   TASK_SUMMARY_MAX,
   TASK_TITLE_MAX,
 } from '../limits';
-import type { SpecificationExecutionRecord, TaskRecord } from './model';
+import { TASK_STATUSES, type SpecificationExecutionRecord, type TaskRecord } from './model';
 
 /**
  * Text format of the stored execution state. The canonical records are YAML (they are reviewed and
@@ -129,7 +129,14 @@ const TaskFileSchema = closed({
   type: id(),
   dependsOn: Type.Array(TaskIdSchema, { maxItems: TASK_DEPENDENCIES_MAX }),
   origin: closed({ step: id(), attempt: Type.Integer({ minimum: 1 }) }),
-  blocked: optional(closed({ reason: Type.Literal('specification-returned'), at: timestamp() })),
+  status: Type.Union(TASK_STATUSES.map((status) => Type.Literal(status))),
+  statusChange: optional(
+    closed({
+      source: Type.Union([Type.Literal('decision'), Type.Literal('escalation')]),
+      at: timestamp(),
+      reason: optional(text(FEEDBACK_MAX)),
+    }),
+  ),
   run: RunSchema,
 });
 
@@ -145,6 +152,7 @@ const AttentionFileSchema = closed({
       subject: SubjectSchema,
       step: id(),
       reason: Type.Union(ATTENTION_REASONS.map((reason) => Type.Literal(reason))),
+      taskId: optional(TaskIdSchema),
       archetype: optional(id()),
       provider: optional(id()),
       blocker: optional(Type.Union(ATTENTION_REASONS.map((reason) => Type.Literal(reason)))),

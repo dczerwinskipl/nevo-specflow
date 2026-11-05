@@ -48,7 +48,7 @@ code was copied: the language and the infrastructure differ. Models and rules we
 | `change.workflow.definition` for every Task of a change                                                                                               | Task type per Task, Specification archetype restricts types                                 | **Rewritten**                                            |
 | `change.yaml` as main state                                                                                                                           | `.execution/specification.yaml` + `.execution/tasks/<id>.yaml`                              | **Rewritten**, per-Task files                            |
 | Spec-level workflow                                                                                                                                   | Did not exist                                                                               | **New** (requirements → … → wait for Tasks → acceptance) |
-| Returns from any position, Task blocking                                                                                                              | Did not exist (only `fail` loops)                                                           | **New**                                                  |
+| Returns from any position, Task status decisions                                                                                                      | Did not exist (only `fail` loops)                                                           | **New**                                                  |
 | Attention for missing model/provider                                                                                                                  | Did not exist (turn-level `requiresAttention` only)                                         | **New**                                                  |
 | Gates (`command/markdown/human`), `inspect` vs `verify`                                                                                               | Not yet                                                                                     | **To port** (F03)                                        |
 | Commit/push finalize, clean-worktree precondition                                                                                                     | Not yet                                                                                     | **To redesign** on Engine-owned commits (F04)            |
@@ -62,10 +62,12 @@ code was copied: the language and the infrastructure differ. Models and rules we
   JSON Schemas); `specification-archetype.execution`. The kinds are registered in the default registry
   and installable as seeds.
 - **W2 Seeds.**
-  - `specification-standard`: requirements (interactive), specification, solution, breakdown,
-    breakdown-review, create-tasks, implementation (wait), then acceptance (human). Returns to
-    requirements, specification, solution and breakdown block the pending Tasks.
-  - `task-standard` and `task-ui` (implement, then review; a `fail` goes back to implement).
+  - `specification-standard`: requirements (interactive), specification, solution, breakdown
+    (drafts the Tasks), breakdown-review (its `pass` approves the drafts), implementation (wait),
+    then acceptance (human). Returns to requirements, specification, solution and breakdown change no
+    Task (W13).
+  - `task-standard` and `task-ui` (implement, then review; a `fail` goes back to implement, a
+    `needs-spec-change` escalates to the Specification, W13).
   - Task types `implementation` and `ui-implementation`.
   - Agent archetypes: spec-writer, solution-designer, task-planner, implementer, implementer-ui,
     reviewer. Codex models are intentionally not chosen, so the first review shows the attention flow.
@@ -130,6 +132,28 @@ code was copied: the language and the infrastructure differ. Models and rules we
   registration of the workflow definition kinds from a composition root (F18, review architecture
   note). Known limit: an attempt history over the record byte budget is refused only when the change
   is serialized, not by an earlier input check (F19).
+
+- **W13 Task lifecycle in the provisional storage** (owner decisions from
+  [Task resource, lifecycle and context](../../task-resource-and-context.md); the Task stays one
+  `.execution/tasks/<id>.yaml` record):
+  - the effects `block-pending-tasks` / `unblock-tasks` and `TaskRecord.blocked` are removed; a
+    Specification return changes no Task status;
+  - a required Task `status` (`draft`, `ready`, `on-hold`, `cancelled`) with an optional
+    `statusChange {source: decision | escalation, at, reason?}`; only a `ready` Task starts or returns
+    (`WORKFLOW_TASK_BLOCKED` names the status);
+  - a producing step's `tasks` are the complete list of draft Tasks: new ids are created as `draft`,
+    listed drafts are revised, unlisted drafts are cancelled, and a non-draft id rejects the finish;
+    the declared effect `approve-draft-tasks` makes every draft `ready`, and the seed's `create-tasks`
+    step is gone;
+  - explicit decisions: `taskDecisions` in the finish of any Specification step and the owner
+    operation `setTaskStatus`, with the transitions `draft → ready | cancelled`,
+    `ready → on-hold | cancelled`, `on-hold → ready | cancelled`; `cancelled` is final, a Task whose
+    run ended keeps its status, a running Task may go on hold but is not cancelled;
+  - escalation: a Task transition with `escalate: true` (feedback required, a step target) puts the
+    Task on hold with the feedback as its reason and gives the Specification the attention item
+    `task-escalated` naming the Task; it wins over `tasks-stuck`;
+  - the wait step completes when every Task is terminal or cancelled; the step context of a
+    Specification step lists every Task with its status and last status change.
 
 ## 3. Follow-ups
 
@@ -200,12 +224,10 @@ the check and the write. Writer admission closes it.
 
 ### F06 — Revising and cancelling Tasks
 
-- After a return, a breakdown should be able to revise or abandon Tasks that have not started. Today
-  it can only add new ones.
-- Add a `tasks` finish input with `update` / `abandon` entries, and an owner `abandonTask`. An
-  abandoned Task becomes terminal `abandoned`.
-- Also allow editing the dependencies of Tasks that have not started.
-- A wait step that has only abandoned Tasks still completes. Define the acceptance semantics when
+- Revising draft Tasks and cancelling Tasks are done (W13). Still open: revising a `ready` Task that
+  never started (today it is cancelled and replaced by a new Task), and editing the dependencies of
+  Tasks that are not drafts.
+- A wait step that has only abandoned or cancelled Tasks still completes. Define the acceptance semantics when
   Tasks were abandoned: whether acceptance warns, lists them, or requires an owner confirmation
   (review R12 of PR #120).
 
@@ -318,26 +340,25 @@ that no sequence of valid operations reaches the budget.
 ### F20 — Task resource, lifecycle and context
 
 The Task record of this kernel is provisional. `.execution/tasks/<id>.yaml` holds the Task's metadata
-(title, summary, type, dependencies, block) together with its run, and a Task has no document to work
-on. The effects `block-pending-tasks` and `unblock-tasks` are provisional too: they are to be replaced
-by explicit hold and cancel decisions of the spec writer or the owner.
+(title, summary, type, dependencies, status) together with its run, and a Task has no document to work
+on. The Task lifecycle (status, explicit decisions, approval, escalation) is done in this storage
+(W13); F20 now covers only the storage and the context.
 
 - **Goal:** one workflow-managed subject contract for Specifications and Tasks; one folder per Task
-  (`tasks/<id>/task.yaml`, `task.md`, extra files) with an ordered Task index; a Task preparation
-  status (`draft`, `ready`, `on-hold`, `cancelled`) separate from the workflow position; escalation
-  from a Task to its Specification; an explicit typed context list per subject.
-- The Task execution record then keeps only the run, the block effects and `TaskRecord.blocked` are
-  removed, and `materializeTasks` writes Task folders and index entries. A follow-up ADR amends
-  ADR 0015 and ADR 0019. This largely replaces F06.
+  (`tasks/<id>/task.yaml`, `task.md`, extra files) with an ordered Task index (`tasks/index.yaml`);
+  an explicit typed context list per subject.
+- The Task execution record then keeps only the run, the status and the Task metadata move to
+  `task.yaml`, and `materializeTasks` writes Task folders and index entries. A follow-up ADR amends
+  ADR 0015 and ADR 0019.
 - Options, recommendations, open questions and slices:
   [Tasks as workflow-managed resources, and context building](../../task-resource-and-context.md).
 
 ## 4. What is missing (summary)
 
 Runtime orchestration (F01), the agent completion transport (F02), gates (F03), commits (F04),
-writer admission (F05), Task revision and cancel (F06), re-pinning (F07), parallel worktrees (F08),
+writer admission (F05), revising ready Tasks and acceptance after cancelled Tasks (F06), re-pinning (F07), parallel worktrees (F08),
 API and UI (F09), the Antigravity driver (F10), caching (F11), running selected Tasks (F12), Session cancel on
 return (F13), status projection (F14), model availability (F15), idempotent finish retries (F16), owner
 takeover of an agent step (F17), kind registration from a composition root (F18), a bounded run
-history (F19), and the Task resource with its lifecycle and context, which replaces the provisional
-Task record and the block effects (F20).
+history (F19), and the Task resource (folders, index, `task.md`) and context, which replaces the
+provisional Task record (F20).

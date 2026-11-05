@@ -43,14 +43,22 @@ export const ATTENTION_REASONS = [
   'session-unavailable',
   /**
    * The Specification waits for its Tasks, but no open Task can progress without the owner: each
-   * is blocked, depends on an abandoned Task, or waits only for such Tasks.
+   * is a draft or on hold, depends on an abandoned or cancelled Task, or waits only for such Tasks.
    */
   'tasks-stuck',
+  /**
+   * A Task escalated to the Specification (the item names it): it is on hold until the spec writer
+   * or the owner decides. Wins over `tasks-stuck`.
+   */
+  'task-escalated',
 ] as const;
 export type AttentionReason = (typeof ATTENTION_REASONS)[number];
 
 /** Why an agent launch cannot be resolved from the definitions. */
-export type LaunchBlocker = Exclude<AttentionReason, 'owner-action' | 'human-step' | 'tasks-stuck'>;
+export type LaunchBlocker = Exclude<
+  AttentionReason,
+  'owner-action' | 'human-step' | 'tasks-stuck' | 'task-escalated'
+>;
 
 export type LaunchResolution =
   | { readonly kind: 'launch'; readonly launch: AgentLaunch }
@@ -122,12 +130,15 @@ export function resolveAgentLaunch(
 }
 
 export type ContinuationDecision =
-  | { readonly kind: 'none'; readonly reason: 'terminal' | 'waiting-for-tasks' }
+  /** `on-hold`: the Task's status does not allow its next step to start. */
+  | { readonly kind: 'none'; readonly reason: 'terminal' | 'waiting-for-tasks' | 'on-hold' }
   | { readonly kind: 'continue'; readonly step: string; readonly launch: AgentLaunch }
   | {
       readonly kind: 'attention';
       readonly step: string;
       readonly reason: AttentionReason;
+      /** For `task-escalated`: the Task that escalated. */
+      readonly taskId?: string;
       readonly archetype?: string;
       readonly provider?: string;
       /** What an owner start would launch, to prefill a quick start; absent when unresolved. */

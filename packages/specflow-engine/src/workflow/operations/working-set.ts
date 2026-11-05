@@ -80,6 +80,18 @@ export class ExecutionWorkingSet {
     this.attentionSet.set(key, item);
   }
 
+  /** The subject's item as this change would leave it. */
+  attention(subject: WorkflowSubject): AttentionItem | undefined {
+    const key = subjectKey(subject);
+    if (this.attentionSet.has(key)) {
+      return this.attentionSet.get(key);
+    }
+
+    return this.attentionClear.has(key)
+      ? undefined
+      : this.snapshot.attention.find((item) => subjectKey(item.subject) === key);
+  }
+
   clearAttention(subject: WorkflowSubject): void {
     const key = subjectKey(subject);
     this.attentionSet.delete(key);

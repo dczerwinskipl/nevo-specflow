@@ -32,6 +32,12 @@ steps:
         to: { step: implement }
         feedback: required
         continuation: auto
+      - id: escalated
+        result: needs-spec-change
+        label: The Specification needs a change
+        to: { step: implement }
+        feedback: required
+        escalate: true
 returns:
   - step: implement
     label: Back to implementation

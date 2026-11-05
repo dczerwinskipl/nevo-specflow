@@ -8,15 +8,15 @@ import {
   type FinishingSession,
 } from '../continuation/resolve';
 import { applyFinish, applyStart, planFinish, planStart } from '../progression/progression';
-import { allTasksTerminal, applyTaskEffects, tasksStuck } from '../tasks/tasks';
-import type { WorkflowSubject } from '../state/model';
+import { allTasksClosed, applyTaskEffects, isTaskEscalated, tasksStuck } from '../tasks/tasks';
+import type { TaskRecord, WorkflowSubject } from '../state/model';
 import { pinnedDefinitionIfUnchanged } from './loaded-execution';
 import type { ExecutionWorkingSet } from './working-set';
 
 /**
- * What happens to a subject right after its position moved (a finish or a return): Task effects,
- * entering and settling a wait step, and the continuation decision with its attention item. All of
- * it lands in the same working set, so it becomes durable in one change.
+ * What happens to a subject right after its position moved (a finish or a return) or a Task status
+ * changed: Task effects, entering and settling a wait step, and the continuation decision with its
+ * attention item. All of it lands in the same working set, so it becomes durable in one change.
  */
 
 export interface AdvanceContext {
@@ -26,15 +26,20 @@ export interface AdvanceContext {
 }
 
 /**
- * Apply Task effects. A Task that becomes blocked loses its attention item: it cannot be started
- * until it is unblocked.
+ * Store a Task whose status may have changed. A Task that is not `ready` loses its attention item:
+ * none of its steps can start until a decision makes it `ready` again.
  */
+export function updateTask(context: AdvanceContext, task: TaskRecord): void {
+  context.set.setTask(task);
+  if (task.status !== 'ready') {
+    context.set.clearAttention({ kind: 'task', specId: task.specId, taskId: task.taskId });
+  }
+}
+
+/** Apply the declared Task effects of a Specification transition or return. */
 export function applyEffects(context: AdvanceContext, effects: readonly WorkflowEffect[]): void {
-  for (const task of applyTaskEffects(context.set.tasks(), effects, context.at)) {
-    context.set.setTask(task);
-    if (task.blocked) {
-      context.set.clearAttention({ kind: 'task', specId: task.specId, taskId: task.taskId });
-    }
+  for (const task of applyTaskEffects(context.set.tasks(), effects)) {
+    updateTask(context, task);
   }
 }
 
@@ -54,6 +59,7 @@ export function recordDecision(
     subject,
     step: decision.step,
     reason: decision.reason,
+    ...(decision.taskId !== undefined ? { taskId: decision.taskId } : {}),
     ...(decision.archetype !== undefined ? { archetype: decision.archetype } : {}),
     ...(decision.provider !== undefined ? { provider: decision.provider } : {}),
     ...(decision.blocker !== undefined ? { blocker: decision.blocker } : {}),
@@ -65,7 +71,7 @@ export function recordDecision(
 /**
  * Decide what follows the subject's current position. A wait step has no work and no executor, so
  * entering it is part of the transition that leads there; it completes as soon as every Task is
- * terminal, which can be immediately.
+ * closed, which can be immediately.
  */
 export function advance(
   context: AdvanceContext,
@@ -96,14 +102,31 @@ export function advance(
   return decision;
 }
 
+/** The attention item of an escalation: names the first escalated Task (in Task id order). */
+function escalation(context: AdvanceContext, step: string): ContinuationDecision | undefined {
+  const escalated = context.set
+    .tasks()
+    .filter(isTaskEscalated)
+    .map((task) => task.taskId)
+    .sort()[0];
+
+  return escalated === undefined
+    ? undefined
+    : { kind: 'attention', step, reason: 'task-escalated', taskId: escalated };
+}
+
 /**
- * Complete the Specification's active wait step when every Task is terminal (also when there is no
- * Task). Returns the Specification's decision, or `undefined` when the Specification is not waiting.
+ * Complete the Specification's active wait step when every Task is closed: terminal or cancelled
+ * (also when there is no Task). Returns the Specification's decision, or `undefined` when the
+ * Specification is not waiting.
  *
- * It runs inside a Task's finish and never fails it. A Specification that is not active, or is
- * active on another step (for example a new breakdown after a return), is left alone. So is one
- * whose pinned workflow changed: the Task's finish succeeds and the next Specification operation
- * fails with `WORKFLOW_DEFINITION_CHANGED`. Tasks that can no longer progress become `tasks-stuck`.
+ * It runs inside a Task's finish or a Task status change and never fails it. A Specification that is
+ * not active on its wait step (for example one returned to its breakdown) is left alone, its own
+ * item included: an escalation is recorded only on the wait step, and entering the wait step later
+ * records it. So is one whose pinned workflow changed: the Task's change succeeds and the next
+ * Specification operation fails with `WORKFLOW_DEFINITION_CHANGED`. While Tasks are open, an
+ * escalated Task gives `task-escalated`, otherwise Tasks that can no longer progress give
+ * `tasks-stuck`.
  */
 export function settleWait(context: AdvanceContext): ContinuationDecision | undefined {
   const subject: WorkflowSubject = {
@@ -122,21 +145,15 @@ export function settleWait(context: AdvanceContext): ContinuationDecision | unde
   }
 
   const tasks = context.set.tasks();
-  if (!allTasksTerminal(tasks)) {
-    if (tasksStuck(tasks)) {
-      const decision: ContinuationDecision = {
-        kind: 'attention',
-        step: position.step,
-        reason: 'tasks-stuck',
-      };
-      recordDecision(context, subject, decision);
+  if (!allTasksClosed(tasks)) {
+    const decision: ContinuationDecision =
+      escalation(context, position.step) ??
+      (tasksStuck(tasks)
+        ? { kind: 'attention', step: position.step, reason: 'tasks-stuck' }
+        : { kind: 'none', reason: 'waiting-for-tasks' });
+    recordDecision(context, subject, decision);
 
-      return decision;
-    }
-
-    recordDecision(context, subject, { kind: 'none', reason: 'waiting-for-tasks' });
-
-    return { kind: 'none', reason: 'waiting-for-tasks' };
+    return decision;
   }
 
   const plan = planFinish(run, definition, position, {});

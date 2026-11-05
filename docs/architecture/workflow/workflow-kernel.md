@@ -11,7 +11,9 @@ read_when:
 summary: >
   One deterministic workflow core drives both a Specification and each of its Tasks. Entry points
   only select the subject. Workflows, agent archetypes (preferred provider and a model per provider)
-  and task types are project definitions. Each Task has its own type and workflow. The Engine decides
+  and task types are project definitions. Each Task has its own type, workflow and preparation status
+  (draft, ready, on-hold, cancelled), changed only by explicit decisions, a declared approval effect
+  or its own escalation to the Specification. The Engine decides
   continuations; anything it cannot carry out becomes a local attention item. Canonical state lives in
   the Specification's `.execution/` folder; journals and attention are local.
 related:
@@ -36,8 +38,9 @@ The core is subject-neutral. A **subject** is either the Specification or one of
 ```text
 startSpecificationExecution(specId, archetype, executor) ─┐
 startTaskExecution(specId, taskId, executor)              ─┴─▶ start(subject) ─▶ progression state machine
-finishStep(subject, step, attempt, input, executor)         ─▶ finish ─▶ effects ─▶ continuation ─▶ attention
+finishStep(subject, step, attempt, input, executor)         ─▶ finish ─▶ Tasks, decisions, effects, escalation ─▶ continuation ─▶ attention
 returnToStep(subject, step, feedback)                       ─▶ return ─▶ effects ─▶ continuation ─▶ attention
+setTaskStatus(specId, taskId, status, reason, executor)     ─▶ decision ─▶ settle the Specification
 inspectExecution(specId)                                    ─▶ read-only view
 ```
 
@@ -45,12 +48,8 @@ The entry points differ in only two ways:
 
 - **Starting a Specification** creates the Specification run the first time. It reads the execution
   binding of the Specification archetype and pins that workflow.
-- **Starting a Task** checks that the Task is ready: not blocked, and every dependency completed.
-
-Readiness of a Task is derived from the Task and its direct dependencies only: `blocked`,
-`dependencies {waitingFor}` (a direct dependency has not completed) or `ready`. Starting a Task whose
-direct dependency ended `abandoned` fails with `WORKFLOW_DEPENDENCY_UNSATISFIED` naming that
-dependency.
+- **Starting a Task** checks that the Task is ready: its status is `ready`, and every dependency
+  completed (see "Tasks").
 
 Everything else is shared.
 
@@ -59,12 +58,12 @@ Everything else is shared.
 Each kind of definition is a directory under `.nevo/definitions/`. The product ships seeds of each kind
 in `packages/specflow-engine/definitions/`.
 
-| Kind                      | Holds                                                                                                                                                                                                                                                                                                                                                       |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `workflow`                | `subject: specification \| task`, `entryStep`, `steps[]`, `returns[]`. A step is `work` (fields `executor: agent \| human`, `archetype`, `interaction`, optional `produces: tasks`) or `wait-for-tasks`. A transition has `result?`, `to: {step} \| {terminal}`, `continuation: auto \| owner-action`, `session: fresh \| reuse`, `feedback` and `effects`. |
-| `agent-archetype`         | Who works on a step: an optional agent `profile`, `instructions`, `preferredProvider`, and `providers[]` with an optional `model` and `effort` each. An entry without a model means "known provider, model not chosen yet".                                                                                                                                 |
-| `task-type`               | What a Task is (`description`, `useWhen`, `instructions`) and the Task `workflow` it runs.                                                                                                                                                                                                                                                                  |
-| `specification-archetype` | Gains an optional `execution: {workflow, taskTypes?}`. `taskTypes` defaults to `['*']`, meaning every task type is allowed. Resolved when execution starts.                                                                                                                                                                                                 |
+| Kind                      | Holds                                                                                                                                                                                                                                                                                                                                                                                        |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `workflow`                | `subject: specification \| task`, `entryStep`, `steps[]`, `returns[]`. A step is `work` (fields `executor: agent \| human`, `archetype`, `interaction`, optional `produces: tasks`) or `wait-for-tasks`. A transition has `result?`, `to: {step} \| {terminal}`, `continuation: auto \| owner-action`, `session: fresh \| reuse`, `feedback`, `effects` and, in a Task workflow, `escalate`. |
+| `agent-archetype`         | Who works on a step: an optional agent `profile`, `instructions`, `preferredProvider`, and `providers[]` with an optional `model` and `effort` each. An entry without a model means "known provider, model not chosen yet".                                                                                                                                                                  |
+| `task-type`               | What a Task is (`description`, `useWhen`, `instructions`) and the Task `workflow` it runs.                                                                                                                                                                                                                                                                                                   |
+| `specification-archetype` | Gains an optional `execution: {workflow, taskTypes?}`. `taskTypes` defaults to `['*']`, meaning every task type is allowed. Resolved when execution starts.                                                                                                                                                                                                                                  |
 
 A workflow and a Specification archetype are separate definitions. The archetype only refers to a
 workflow.
@@ -90,6 +89,8 @@ never loads:
 - a step has either one unconditional transition or transitions with distinct results only;
 - an agent step names an archetype, and a human step names none;
 - only a Specification workflow can produce Tasks, wait for Tasks or have Task effects;
+- only a Task workflow escalates, and an escalating transition has `feedback: required` and a step
+  target;
 - `session: reuse` can only lead to an agent step;
 - a wait step has exactly one unconditional transition, without `feedback: required` or
   `session: reuse` (the Engine settles a wait without owner input or a Session), and it does not lead
@@ -146,38 +147,117 @@ step over to the owner (owner takeover) is not supported; it would be an explici
 
 ## Tasks
 
-> **Provisional.** The Task record below (metadata and run in one `.execution/tasks/<id>.yaml` file,
-> no Task document) and the effects `block-pending-tasks` / `unblock-tasks` are provisional. The
-> draft [Task resource, lifecycle and context](../../ideas/specflow-engine/task-resource-and-context.md)
-> proposes a Task folder with its own manifest and documents, a Task preparation status and explicit
-> hold and cancel decisions instead (plan 06, F20). Until an ADR accepts it, this section is current.
+> **Provisional storage.** The Task record below (metadata, status and run in one
+> `.execution/tasks/<id>.yaml` file, no Task document) is provisional. The draft
+> [Task resource, lifecycle and context](../../ideas/specflow-engine/task-resource-and-context.md)
+> proposes a Task folder with its own manifest and documents, a Task index and a context list
+> (plan 06, F20). The lifecycle described here (status, decisions, approval, escalation) is current.
+
+### Creating and revising Tasks
 
 A step with `produces: tasks` must finish with `input.tasks[]`. Each entry is
 `{id, title, summary?, type, dependsOn?}`. Every Task:
 
 - gets its own type and pins its own workflow (`task-type.workflow`);
 - must have a type that the Specification allows;
-- must not create a dependency cycle;
+- must not create a dependency cycle, and must not depend on a cancelled Task;
 - has an id of lowercase letters, digits and dashes (at most 64 characters). The id is a file name, so
   the id pattern excludes Windows device names (`con`, `prn`, `aux`, `nul`, `com1` to `com9`, `lpt1`
   to `lpt9`);
 - has a title of at most 200 characters, a summary of at most 4 000 and at most 100 dependencies.
 
-One finish creates at most 100 Tasks, and a Specification has at most 200. A proposal that breaks a
-rule rejects the whole finish with `WORKFLOW_INPUT_INVALID`, and nothing is stored.
+The list is the **complete set of the Specification's draft Tasks** after the finish
+(`materializeTasks`):
 
-The finish lists only **new** Tasks. Existing Tasks are never redefined (revising and cancelling Tasks
-is follow-up F06), and a proposal with an existing id rejects the whole finish. The step context of
-such a step lists:
+- an entry with a new id creates a Task with status `draft`;
+- an entry with the id of an existing `draft` replaces its definition (title, summary, type,
+  dependencies, origin and a fresh run: a draft never ran);
+- an entry with the id of a Task that is no longer a draft rejects the whole finish; its status is
+  changed by a decision, never by redefining it;
+- an existing `draft` that is not listed becomes `cancelled` (reason "Left out of the breakdown.").
+  A Task outside the list that depends on it is not refused: it can no longer start, and the wait
+  reports `tasks-stuck` (see "Wait step"), like any other cancelled dependency.
 
-- the allowed task types, so the planner chooses among them;
-- the existing Tasks (`existingTasks`: id, title, type, position state, blocked, readiness kind), so
-  new Tasks can depend on them and avoid their ids.
+One finish lists at most 100 Tasks, and a Specification has at most 200. A list that breaks a rule
+rejects the whole finish with `WORKFLOW_INPUT_INVALID`, and nothing is stored. Before anything is
+planned, the Engine checks the shape of the finish input (`result`, `feedback`, `artifacts`, `tasks`,
+`taskDecisions`) and of a `setTaskStatus` decision (`input-schema.ts`): a value of the wrong type is
+`WORKFLOW_INPUT_INVALID`. A breakdown may also
+draft no Task at all.
 
-A breakdown may also create no Task at all.
+### Status
+
+Each Task has a preparation status, separate from its run position (`TaskRecord.status`, with the
+last explicit change in `statusChange {source: decision | escalation, at, reason?}`):
+
+| Status      | Meaning                                                                        |
+| ----------- | ------------------------------------------------------------------------------ |
+| `draft`     | Created by a producing step and not approved yet. It never ran.                |
+| `ready`     | Approved. It starts once its dependencies completed.                           |
+| `on-hold`   | Kept, but no step of it starts until a decision makes it `ready` again.        |
+| `cancelled` | Will not be done. Final: a cancelled Task is replaced by a new Task if needed. |
+
+There is no `completed` status: completion is the run reaching `terminal {completed}`. The status
+changes only by:
+
+- the declared effect **`approve-draft-tasks`** on a Specification transition or return: every
+  `draft` becomes `ready`. The seed declares it on the `pass` of `breakdown-review`;
+- **explicit decisions** `{taskId, status, reason?}`: `input.taskDecisions[]` in the finish of any
+  Specification work step (the spec writer), applied after `tasks` and before the transition's
+  effects, and the owner operation `setTaskStatus(dependencies, {specId, taskId, status, reason?,
+executor})`, which requires a human executor (`WORKFLOW_EXECUTOR_NOT_ALLOWED` otherwise) and runs
+  under the same serialization. Allowed: `draft → ready | cancelled`, `ready → on-hold | cancelled`,
+  `on-hold → ready | cancelled`. A Task whose run ended keeps its status, and a running Task may go on
+  hold (its current step finishes normally, the next start is refused) but is not cancelled. The
+  status is preparation and completion is the run: a Task put on hold while running whose run then
+  ends keeps the status `on-hold`.
+  Anything else is `WORKFLOW_INPUT_INVALID`; in a finish, one refused decision rejects the whole
+  finish;
+- the Task's own **escalation** (below).
+
+A Task that is not `ready` loses its attention item. After a status change, `setTaskStatus` settles
+the Specification in the same change (see "Wait step").
+
+### Readiness and the step context
+
+Readiness of a Task is derived from the Task and its direct dependencies only: `status {status}` (not
+`ready`), `dependencies {waitingFor}` (a direct dependency has not completed) or `ready`. Starting a
+step of a Task that is not ready fails with `WORKFLOW_TASK_BLOCKED` naming the status, and starting a
+Task whose direct dependency ended `abandoned` or was cancelled fails with
+`WORKFLOW_DEPENDENCY_UNSATISFIED` naming that dependency. Only a `ready` Task can be returned. A Task
+that is not `ready` after its own finish gets the continuation `none {on-hold}` and no attention item.
+
+The step context of a producing step lists the allowed task types, so the planner chooses among
+them. The step context of every Specification work step lists the existing Tasks (`existingTasks`:
+id, title, summary, type, dependencies, status, last status change, position state and readiness
+kind), so the spec writer sees drafts, holds and escalations and new Tasks can depend on existing
+ones.
 
 The step context also exposes the bound archetype (profile and instructions), the Task's type
 instructions and the step instructions. Together these are the custom instructions per step.
+
+### Escalation
+
+A Task workflow transition may declare `escalate: true`. It needs `feedback: required` and a step
+target (checked at load time). Finishing with it:
+
+- is accepted like any finish; the run goes to `ready {step}`, so the handoff of that step keeps the
+  feedback;
+- sets the Task `on-hold` with `statusChange {source: escalation, reason: feedback}`. A Task already
+  on hold (held while its step ran) gets the same: the escalation replaces its earlier
+  `statusChange`;
+- gives the Specification the attention item `task-escalated` only while the Specification is
+  active on its wait step. A Specification at any other position (for example `ready` at its
+  breakdown after a return, with an `owner-action` item, or active on a work step) keeps its item;
+  entering the wait step later records the escalation.
+
+The item and `FinishStepResult.specification` name the first escalated Task in id order
+(`taskId`), which may differ from the Task that is finishing when another Task is still escalated.
+
+The seeds `task-standard` and `task-ui` declare the result `needs-spec-change` on `review`, with
+escalation, back to `implement`. Resuming the Task (`on-hold → ready`) continues at `implement` with
+the escalation feedback in the handoff, and removes the `task-escalated` item once no Task is
+escalated any more.
 
 ## Returns ("back to the table")
 
@@ -187,29 +267,30 @@ has already reached (it has an attempt of that step), never ahead; otherwise it 
 `WORKFLOW_RETURN_NOT_ALLOWED`. When the owner returns:
 
 - an active attempt ends with the outcome `returned`;
-- the return's effects apply in the same change;
+- the return's declared effects apply in the same change;
 - the step that follows always waits for the owner.
 
-**Effects.** There are two:
+**A return changes no Task status.** There are no automatic Task effects on a return. If Tasks should
+be held or cancelled while the Specification is reworked, the spec writer step that follows decides it
+with `taskDecisions` (its context lists every Task with its status), or the owner uses
+`setTaskStatus`. Running Tasks are never interrupted by the Engine.
 
-- `block-pending-tasks` blocks Tasks that have never had an attempt: `not-started`, or `ready` after a
-  return of the Task itself. Running Tasks are never interrupted.
-- `unblock-tasks` removes the block. The seed workflow declares it on the transition after `create-tasks`.
-
-A Task that is blocked can neither start nor return (`WORKFLOW_TASK_BLOCKED`). Blocking removes the
-Task's attention item.
+**Effects.** There is one, `approve-draft-tasks` (see "Status"). Only a Specification workflow
+declares effects. Only a `ready` Task can return (`WORKFLOW_TASK_BLOCKED` otherwise).
 
 ## Wait step
 
 A wait step has no work and no executor, so entering it is part of the transition that leads to it. The
-Engine completes the wait step itself when every Task is terminal, in the same change as the finish of
-the last Task. With zero Tasks, the wait step completes as soon as it is entered. Nobody starts or
+Engine completes the wait step itself when every Task is **closed** (its run is terminal, or it is
+`cancelled`), in the same change as the finish of the last Task or the `setTaskStatus` that cancels the
+last open Task. A `draft`, `on-hold` or `ready` Task that has not finished keeps it waiting. With zero
+Tasks, the wait step completes as soon as it is entered. Nobody starts or
 resumes a wait step: a start whose next step is a wait step is refused with
 `WORKFLOW_POSITION_INVALID` before anything changes, so its attention item (for example `tasks-stuck`)
 is kept.
 `FinishStepResult.specification` then says what the Specification does next.
 
-Settling the wait runs inside a Task's finish and never makes that finish fail:
+Settling the wait runs inside a Task's finish or a Task status change and never makes it fail:
 
 - A Specification that is not active is left alone. So is one whose pinned workflow is no longer the
   loaded definition: the Task finish succeeds, and the next Specification operation fails with
@@ -217,11 +298,15 @@ Settling the wait runs inside a Task's finish and never makes that finish fail:
 - Otherwise the Engine settles only when the active step is a wait step. A Specification active on
   another step (for example a new breakdown after a return while a running Task finishes) is left
   alone.
-- If Tasks are still open but none of them is `ready`, the Specification gets the attention item
-  `tasks-stuck`. The dependency graph is acyclic by construction, so this is exactly the case when
-  every open Task is blocked or waits, directly or through other open Tasks, for an abandoned or
-  blocked Task. The owner resolves it with a return (for example to the breakdown), which replaces the
-  item like any start or return.
+- If a Task is escalated (on hold by its own escalation), the Specification gets `task-escalated`
+  naming the first escalated Task (in id order). There is at most one item per subject, and the
+  escalation wins over `tasks-stuck` because it names the cause.
+- Otherwise, if Tasks are still open but none can progress (none is running, and none is `ready` with
+  its dependencies completed), the Specification gets the attention item `tasks-stuck`. The dependency
+  graph is acyclic by construction, so this is exactly the case when every open Task is a draft, on
+  hold, or waits, directly or through other open Tasks, for such a Task or for an abandoned or
+  cancelled one. The owner resolves it with a decision (`setTaskStatus`) or a return (for example to
+  the breakdown), which replaces the item like any start or return.
 
 ## Continuation and attention
 
@@ -230,7 +315,8 @@ After every finish or return, `resolveContinuation` (a pure function) decides on
 - `continue {step, launch}`, where `launch` is `{archetype, provider, model, effort?, session: fresh |
 reuse(sessionId)}`;
 - `attention {step, reason, …}`;
-- `none` (the run is terminal or waiting for Tasks).
+- `none` (the run is terminal, waiting for Tasks, or the Task is not `ready` after its finish:
+  `on-hold`).
 
 How a launch is resolved:
 
@@ -250,19 +336,21 @@ item. The reasons are:
 | `session-unavailable` | The transition reuses the Session, but the finishing executor had none.    |
 | `archetype-missing`   | The step's archetype is not defined, or its file is invalid.               |
 | `tasks-stuck`         | The Specification waits, but no open Task can progress without the owner.  |
+| `task-escalated`      | A Task escalated to the Specification (`taskId`). Wins over `tasks-stuck`. |
 
 Attention is never a question to the agent. The agent's finish succeeds, and the attention item is
 recorded for the subject. There is at most one item per subject. **Any start of that subject removes
 it**, whether the start comes from a quick screen, a manual start or an automatic continuation, since
 they all use the same start operation. The item also goes when the run ends.
 
-**Only current attention counts.** Attention is local while the runs are Git-tracked, so a checkout (a
-branch switch, a pull) can change a run under an item that was recorded for another state. An item
-counts only while it matches its subject's position (`operations/attention.ts`, `isAttentionCurrent`):
-the step it names is the subject's `ready` step, or, for `tasks-stuck`, the Specification's active wait
-step. `inspectExecution` never shows an item that no longer matches, and the next mutation of the
-Specification removes every such item. `inspectExecution` runs inside the same serialization as the
-mutations, so it never sees a change half-applied.
+**Only current attention counts.** Attention is local while the runs are Git-tracked, so a checkout
+(a branch switch, a pull) can change a run under an item that was recorded for another state. An
+item counts only while it matches its subject's position (`operations/attention.ts`,
+`isAttentionCurrent`): the step it names is the subject's `ready` step; for `tasks-stuck` and
+`task-escalated`, the Specification's active wait step. `inspectExecution` never shows an item that
+no longer matches, and the next mutation of the Specification removes every such item.
+`inspectExecution` runs inside the same serialization as the mutations, so it never sees a change
+half-applied.
 
 "Remember my choice" is `rememberArchetypeModel`: it writes the model, and optionally the preferred
 provider, into the agent archetype file, keeping its comments. Its read-edit-write runs under the
@@ -284,12 +372,12 @@ proceed.
 
 ## State and storage
 
-| What                                      | Where                                                  | Tracked |
-| ----------------------------------------- | ------------------------------------------------------ | ------- |
-| Specification run                         | `<specification>/.execution/specification.yaml`        | Git     |
-| Task records (type, deps, block, own run) | `<specification>/.execution/tasks/<taskId>.yaml`       | Git     |
-| Attention items                           | `<stateRoot>/engine/workflow/attention/<specId>.json`  | local   |
-| Change journal                            | `<stateRoot>/engine/operations/workflow/<specId>.json` | local   |
+| What                                   | Where                                                  | Tracked |
+| -------------------------------------- | ------------------------------------------------------ | ------- |
+| Specification run                      | `<specification>/.execution/specification.yaml`        | Git     |
+| Task records (type, deps, status, run) | `<specification>/.execution/tasks/<taskId>.yaml`       | Git     |
+| Attention items                        | `<stateRoot>/engine/workflow/attention/<specId>.json`  | local   |
+| Change journal                         | `<stateRoot>/engine/operations/workflow/<specId>.json` | local   |
 
 - **Location.** `.execution/` starts with a dot, so the document tree never lists it. It moves with
   the Specification when the Specification is archived.
@@ -355,6 +443,7 @@ are ordinary working-tree changes of the Specification's checkout.
 | To add                        | Change                                                                                                                                                    |
 | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | A Task effect                 | Add a value to `WORKFLOW_EFFECTS` (contracts) and a case to `applyTaskEffects`.                                                                           |
+| A Task status change          | Extend `ALLOWED_DECISIONS` in `tasks/tasks.ts`; the store invariants for statuses live in `state/validate.ts`.                                            |
 | An attention reason           | Add it to `ATTENTION_REASONS` and give `resolveAgentLaunch` / `resolveContinuation` the rule that produces it.                                            |
 | A step kind (e.g. gate)       | Add a union member in the contracts schema and in `definitions/model.ts`, then a rule in `workflow-rules.ts` and handling in `progression` and `advance`. |
 | Gates and finalize actions    | Planned as step fields checked by `planFinish` before the change is built (F03, F04).                                                                     |

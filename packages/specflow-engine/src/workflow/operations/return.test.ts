@@ -24,7 +24,7 @@ beforeAll(async () => {
 });
 
 describe('return to an earlier step', () => {
-  it('blocks Tasks that have not started and resumes them after the new breakdown', async () => {
+  it('changes no Task status; the new breakdown drafts and decides explicitly', async () => {
     const dependencies = memoryDependencies(catalogue);
     await specificationWithTasks(dependencies);
     await startTaskExecution(dependencies, { specId: SPEC, taskId: 'api', executor: claude });
@@ -36,17 +36,11 @@ describe('return to an earlier step', () => {
     });
 
     expect(returned.continuation).toMatchObject({ kind: 'attention', reason: 'owner-action' });
-    const blocked = (await inspectExecution(dependencies, SPEC)).tasks;
-    expect(blocked.map((entry) => [entry.record.taskId, entry.readiness.kind])).toEqual([
+    const after = (await inspectExecution(dependencies, SPEC)).tasks;
+    expect(after.map((entry) => [entry.record.taskId, entry.record.status])).toEqual([
       ['api', 'ready'],
-      ['screen', 'blocked'],
+      ['screen', 'ready'],
     ]);
-    await expect(
-      startTaskExecution(dependencies, { specId: SPEC, taskId: 'screen', executor: claude }),
-    ).rejects.toMatchObject({ code: 'WORKFLOW_TASK_BLOCKED' });
-    await expect(
-      returnToStep(dependencies, { subject: task('screen'), step: 'implement', feedback: 'x' }),
-    ).rejects.toMatchObject({ code: 'WORKFLOW_TASK_BLOCKED' });
 
     const started = await startSpecification(dependencies);
     expect(started).toMatchObject({
@@ -55,25 +49,59 @@ describe('return to an earlier step', () => {
         handoff: { kind: 'return', feedback: 'Add an audit Task.' },
       },
     });
-    await finishStep(dependencies, {
+    const drafted = await finishStep(dependencies, {
       subject: specification,
       step: 'breakdown',
       attempt: 2,
-      input: {},
+      input: {
+        tasks: [{ id: 'audit', title: 'Audit', type: 'implementation', dependsOn: ['api'] }],
+        taskDecisions: [{ taskId: 'screen', status: 'on-hold', reason: 'Wait for the audit.' }],
+      },
       executor: claude,
     });
+    expect(drafted.createdTasks).toEqual(['audit']);
     await work(dependencies, specification, { result: 'pass' });
-    const created = await work(dependencies, specification, {
-      tasks: [{ id: 'audit', title: 'Audit', type: 'implementation', dependsOn: ['api'] }],
-    });
 
-    expect(created.createdTasks).toEqual(['audit']);
     const resumed = (await inspectExecution(dependencies, SPEC)).tasks;
-    expect(resumed.map((entry) => [entry.record.taskId, entry.readiness.kind])).toEqual([
-      ['api', 'ready'],
-      ['audit', 'dependencies'],
-      ['screen', 'dependencies'],
+    expect(
+      resumed.map((entry) => [entry.record.taskId, entry.record.status, entry.readiness.kind]),
+    ).toEqual([
+      ['api', 'ready', 'ready'],
+      ['audit', 'ready', 'dependencies'],
+      ['screen', 'on-hold', 'status'],
     ]);
+    expect(resumed[2]?.record.statusChange).toMatchObject({
+      source: 'decision',
+      reason: 'Wait for the audit.',
+    });
+    await expect(
+      returnToStep(dependencies, { subject: task('screen'), step: 'implement', feedback: 'x' }),
+    ).rejects.toMatchObject({ code: 'WORKFLOW_TASK_BLOCKED' });
+  });
+
+  it('rejects the whole finish when one Task decision is not allowed', async () => {
+    const dependencies = memoryDependencies(catalogue);
+    await specificationWithTasks(dependencies);
+    await returnToStep(dependencies, { subject: specification, step: 'breakdown', feedback: 'x' });
+    await startSpecification(dependencies);
+    const applied = dependencies.store.applied.length;
+
+    await expect(
+      finishStep(dependencies, {
+        subject: specification,
+        step: 'breakdown',
+        attempt: 2,
+        input: {
+          tasks: [],
+          taskDecisions: [
+            { taskId: 'api', status: 'cancelled' },
+            { taskId: 'screen', status: 'ready' },
+          ],
+        },
+        executor: claude,
+      }),
+    ).rejects.toMatchObject({ code: 'WORKFLOW_INPUT_INVALID' });
+    expect(dependencies.store.applied).toHaveLength(applied);
   });
 
   it('refuses an undeclared return and a return of a finished run', async () => {

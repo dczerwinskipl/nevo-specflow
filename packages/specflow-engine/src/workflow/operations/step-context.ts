@@ -5,6 +5,8 @@ import { isTaskTypeAllowed, taskReadiness, type TaskReadiness } from '../tasks/t
 import type {
   RunPosition,
   TaskRecord,
+  TaskStatus,
+  TaskStatusChange,
   TaskTypes,
   WorkflowPin,
   WorkflowRun,
@@ -55,15 +57,20 @@ export interface StepContext {
   /** For a step that produces Tasks: the task types the planner may use. */
   readonly taskTypes?: readonly Pick<TaskType, 'id' | 'title' | 'description' | 'useWhen'>[];
   /**
-   * For a step that produces Tasks: the Tasks that already exist. The finish lists only new Tasks
-   * (an existing id rejects the whole finish); a new Task may depend on these.
+   * For a Specification work step: the Tasks that already exist, with their status and its last
+   * change (for example an escalation and its feedback). A step that produces Tasks lists the
+   * complete set of draft Tasks in its finish (a listed draft is revised, an unlisted one cancelled);
+   * any Specification step may decide the status of these Tasks with `taskDecisions`.
    */
   readonly existingTasks?: readonly {
     readonly id: string;
     readonly title: string;
+    readonly summary?: string;
     readonly type: string;
+    readonly dependsOn: readonly string[];
+    readonly status: TaskStatus;
+    readonly statusChange?: TaskStatusChange;
     readonly state: RunPosition['state'];
-    readonly blocked: boolean;
     readonly readiness: TaskReadiness['kind'];
   }[];
 }
@@ -151,12 +158,19 @@ export function compileStepContext(input: StepContextInput): StepContext {
             .taskTypes()
             .filter((candidate) => isTaskTypeAllowed(input.allowedTaskTypes, candidate.id))
             .map(({ id, title, description, useWhen }) => ({ id, title, description, useWhen })),
+        }
+      : {}),
+    ...(step.kind === 'work' && input.subject.kind === 'specification'
+      ? {
           existingTasks: input.tasks.map((existing) => ({
             id: existing.taskId,
             title: existing.title,
+            ...(existing.summary !== undefined ? { summary: existing.summary } : {}),
             type: existing.type,
+            dependsOn: existing.dependsOn,
+            status: existing.status,
+            ...(existing.statusChange ? { statusChange: existing.statusChange } : {}),
             state: existing.run.position.state,
-            blocked: existing.blocked !== undefined,
             readiness: taskReadiness(existing, input.tasks).kind,
           })),
         }

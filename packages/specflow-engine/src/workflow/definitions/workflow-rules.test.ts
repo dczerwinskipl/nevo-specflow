@@ -127,12 +127,63 @@ describe('checkWorkflow', () => {
       'Task effects in a Task workflow',
       () => ({
         ...base(),
-        returns: [{ step: 'implement', feedback: 'required', effects: ['block-pending-tasks'] }],
+        returns: [{ step: 'implement', feedback: 'required', effects: ['approve-draft-tasks'] }],
       }),
       '/returns/0/effects',
     ],
+    [
+      'an escalation in a Specification workflow',
+      () =>
+        withSteps(
+          [implement, { ...review, transitions: [{ ...review.transitions[1]!, escalate: true }] }],
+          { subject: 'specification' },
+        ),
+      '/steps/1/transitions/0/escalate',
+    ],
+    [
+      'an escalation without required feedback',
+      () =>
+        withSteps([
+          implement,
+          {
+            ...review,
+            transitions: [{ ...review.transitions[1]!, feedback: 'optional', escalate: true }],
+          },
+        ]),
+      '/steps/1/transitions/0/escalate',
+    ],
+    [
+      'an escalation that ends the Task',
+      () =>
+        withSteps([
+          implement,
+          {
+            ...review,
+            transitions: [
+              { ...review.transitions[0]!, feedback: 'required', escalate: true },
+              review.transitions[1]!,
+            ],
+          },
+        ]),
+      '/steps/1/transitions/0/escalate',
+    ],
   ])('rejects %s', (_name, build, location) => {
     expect(checkWorkflow(build()).map((issue) => issue.location)).toContain(location);
+  });
+
+  it('accepts an escalation with feedback to a step of a Task workflow', () => {
+    const escalation = {
+      ...review.transitions[1]!,
+      id: 'escalated',
+      result: 'spec',
+      escalate: true,
+    };
+
+    expect(
+      checkWorkflow(
+        withSteps([implement, { ...review, transitions: [...review.transitions, escalation] }]),
+      ),
+    ).toEqual([]);
   });
 
   it('allows a single wait step that leads to work in a Specification workflow', () => {

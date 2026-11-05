@@ -200,16 +200,15 @@
                         "anyOf": [
                           {
                             "type": "string",
-                            "const": "block-pending-tasks"
-                          },
-                          {
-                            "type": "string",
-                            "const": "unblock-tasks"
+                            "const": "approve-draft-tasks"
                           }
                         ]
                       },
                       "uniqueItems": true,
-                      "maxItems": 2
+                      "maxItems": 1
+                    },
+                    "escalate": {
+                      "type": "boolean"
                     }
                   },
                   "additionalProperties": false
@@ -389,16 +388,15 @@
                         "anyOf": [
                           {
                             "type": "string",
-                            "const": "block-pending-tasks"
-                          },
-                          {
-                            "type": "string",
-                            "const": "unblock-tasks"
+                            "const": "approve-draft-tasks"
                           }
                         ]
                       },
                       "uniqueItems": true,
-                      "maxItems": 2
+                      "maxItems": 1
+                    },
+                    "escalate": {
+                      "type": "boolean"
                     }
                   },
                   "additionalProperties": false
@@ -453,16 +451,12 @@
               "anyOf": [
                 {
                   "type": "string",
-                  "const": "block-pending-tasks"
-                },
-                {
-                  "type": "string",
-                  "const": "unblock-tasks"
+                  "const": "approve-draft-tasks"
                 }
               ]
             },
             "uniqueItems": true,
-            "maxItems": 2
+            "maxItems": 1
           }
         },
         "additionalProperties": false

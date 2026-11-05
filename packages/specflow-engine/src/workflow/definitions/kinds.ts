@@ -67,6 +67,7 @@ function parseTransition(file: WorkflowTransitionFile): WorkflowTransition {
     session: file.session ?? 'fresh',
     feedback: file.feedback ?? 'optional',
     effects: file.effects ?? [],
+    escalate: file.escalate ?? false,
   };
 }
 

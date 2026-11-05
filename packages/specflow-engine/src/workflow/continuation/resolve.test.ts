@@ -33,6 +33,7 @@ const transition = (overrides: Partial<WorkflowTransition> = {}): WorkflowTransi
   session: 'fresh',
   feedback: 'optional',
   effects: [],
+  escalate: false,
   ...overrides,
 });
 

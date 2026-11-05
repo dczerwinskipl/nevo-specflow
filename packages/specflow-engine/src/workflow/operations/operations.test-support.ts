@@ -119,29 +119,35 @@ export async function work(
   });
 }
 
-/** Runs the Specification up to the wait step with two Tasks: `api`, then `screen` depending on it. */
-export async function specificationWithTasks(dependencies: Dependencies) {
-  await work(dependencies, specification); // requirements
-  await work(dependencies, specification); // specification
-  await work(dependencies, specification); // solution
-  await work(dependencies, specification); // breakdown
-  await work(dependencies, specification, { result: 'pass' }, agent('codex', 'session-r', 'x'));
+/** The two Tasks of {@link specificationWithTasks}: `api`, then `screen` depending on it. */
+export const TWO_TASKS = [
+  { id: 'api', title: 'API', type: 'implementation' },
+  { id: 'screen', title: 'Screen', type: 'ui-implementation', dependsOn: ['api'] },
+] as const;
 
-  return work(dependencies, specification, {
-    tasks: [
-      { id: 'api', title: 'API', type: 'implementation' },
-      { id: 'screen', title: 'Screen', type: 'ui-implementation', dependsOn: ['api'] },
-    ],
+/**
+ * Runs the Specification up to the wait step: the breakdown drafts {@link TWO_TASKS} and the
+ * review's pass approves them. Returns the finish of the review.
+ */
+export async function specificationWithTasks(dependencies: Dependencies) {
+  await runToBreakdown(dependencies);
+  await finishStep(dependencies, {
+    subject: specification,
+    step: 'breakdown',
+    attempt: 1,
+    input: { tasks: TWO_TASKS },
+    executor: claude,
   });
+
+  return work(dependencies, specification, { result: 'pass' }, agent('codex', 'session-r', 'x'));
 }
 
-/** Runs the Specification until `create-tasks` is active (worked by {@link claude}). */
-export async function runToCreateTasks(dependencies: Dependencies) {
-  for (let index = 0; index < 4; index += 1) {
+/** Runs the Specification until `breakdown` is active (worked by {@link claude}). */
+export async function runToBreakdown(dependencies: Dependencies) {
+  for (let index = 0; index < 3; index += 1) {
     await work(dependencies, specification);
   }
 
-  await work(dependencies, specification, { result: 'pass' });
   const started = await startSpecification(dependencies);
   if (started.kind === 'terminal') {
     throw new Error('Unexpected end.');

@@ -3,7 +3,7 @@ schemaVersion: 1
 id: specification-standard
 version: 1
 title: Standard Specification
-description: Requirements with the owner, Specification, solution design, breakdown with review, Task creation, then waiting for the Tasks and owner acceptance.
+description: Requirements with the owner, Specification, solution design, a breakdown into draft Tasks with a review that approves them, then waiting for the Tasks and owner acceptance.
 subject: specification
 entryStep: requirements
 steps:
@@ -45,7 +45,8 @@ steps:
     title: Break the solution down
     executor: agent
     archetype: task-planner
-    purpose: Propose the Tasks, each with its task type, dependencies and verification.
+    purpose: Draft the Tasks, each with its task type, dependencies and verification; the finish input lists every draft Task.
+    produces: tasks
     transitions:
       - id: proposed
         to: { step: breakdown-review }
@@ -55,28 +56,17 @@ steps:
     title: Review the breakdown
     executor: agent
     archetype: reviewer
-    purpose: Check that the Specification, the solution and the proposed Tasks are complete and consistent.
+    purpose: Check that the Specification, the solution and the draft Tasks are complete and consistent.
     transitions:
       - id: approved
         result: pass
-        to: { step: create-tasks }
-        continuation: auto
+        to: { step: implementation }
+        effects: [approve-draft-tasks]
       - id: changes-requested
         result: fail
         to: { step: breakdown }
         feedback: required
         continuation: auto
-  - id: create-tasks
-    kind: work
-    title: Create the Tasks
-    executor: agent
-    archetype: task-planner
-    purpose: Create the reviewed Tasks; the finish input lists them with their task types.
-    produces: tasks
-    transitions:
-      - id: created
-        to: { step: implementation }
-        effects: [unblock-tasks]
   - id: implementation
     kind: wait-for-tasks
     title: Implementation
@@ -95,13 +85,9 @@ steps:
 returns:
   - step: requirements
     label: Back to requirements
-    effects: [block-pending-tasks]
   - step: specification
     label: Back to the Specification
-    effects: [block-pending-tasks]
   - step: solution
     label: Back to the solution
-    effects: [block-pending-tasks]
   - step: breakdown
     label: Add or change Tasks
-    effects: [block-pending-tasks]

@@ -56,9 +56,13 @@ Current. The decisions below were taken by the product owner on 2026-11-05.
 5. **Review is an ordinary step.** It can appear anywhere, even after every step, and is selected by
    its results (`pass` / `fail`).
 6. **The owner can always go back.** `returns[]` declares steps the owner may return to from any
-   non-terminal position, including while the Specification waits for its Tasks. A return can apply
-   Task effects (block the Tasks that have not started). Running Tasks are never interrupted by the
-   Engine.
+   non-terminal position, including while the Specification waits for its Tasks. A return changes no
+   Task by itself: the automatic effects that blocked and unblocked Tasks on a return were removed.
+   Each Task has a preparation status (`draft`, `ready`, `on-hold`, `cancelled`), and only explicit
+   decisions change it: the spec writer's `taskDecisions` in the finish of a Specification step, the
+   owner's `setTaskStatus`, the declared effect `approve-draft-tasks`, and the Task's own escalation.
+   Running Tasks are never interrupted by the Engine. (Amended on 2026-11-05 by the owner, from the
+   recommendations of `ideas.specflow-engine.task-resource-and-context`.)
 7. **Transitions may continue automatically.** A transition with `continuation: auto` lets the Runtime
    start the next step without the owner, but only when the Engine resolves a complete launch:
    - `session: reuse` uses the finishing Session's provider and the archetype's model for that

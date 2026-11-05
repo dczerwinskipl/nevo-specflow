@@ -108,10 +108,26 @@ export interface SpecificationExecutionRecord {
   readonly run: WorkflowRun;
 }
 
-/** Set on a Task that has not started yet when the Specification returned to an earlier step. */
-export interface TaskBlock {
-  readonly reason: 'specification-returned';
+/**
+ * Preparation status of a Task: whether it may be worked on, separate from its run position.
+ * - `draft`: created by a step that produces Tasks and not approved yet; it never ran;
+ * - `ready`: approved; it can start once its dependencies completed;
+ * - `on-hold`: kept, but no step of it starts until a decision makes it `ready` again;
+ * - `cancelled`: will not be done; final.
+ *
+ * Only explicit decisions (the spec writer's finish input, the owner's `setTaskStatus`), the declared
+ * effect `approve-draft-tasks` and the Task's own escalation change it; a Specification return never
+ * does. There is no `completed`: completion is the run reaching `terminal`.
+ */
+export const TASK_STATUSES = ['draft', 'ready', 'on-hold', 'cancelled'] as const;
+export type TaskStatus = (typeof TASK_STATUSES)[number];
+
+/** The last explicit status change of a Task: a decision or the Task's own escalation. */
+export interface TaskStatusChange {
+  readonly source: 'decision' | 'escalation';
   readonly at: string;
+  /** The decision's reason, or the escalation feedback. */
+  readonly reason?: string;
 }
 
 export interface TaskRecord {
@@ -121,9 +137,10 @@ export interface TaskRecord {
   readonly summary?: string;
   readonly type: string;
   readonly dependsOn: readonly string[];
-  /** The Specification attempt that created the Task. */
+  /** The Specification attempt that created (or last revised) the Task. */
   readonly origin: { readonly step: string; readonly attempt: number };
-  readonly blocked?: TaskBlock;
+  readonly status: TaskStatus;
+  readonly statusChange?: TaskStatusChange;
   readonly run: WorkflowRun;
 }
 

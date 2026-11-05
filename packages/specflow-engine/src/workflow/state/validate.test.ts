@@ -114,6 +114,36 @@ describe('validateExecutionSnapshot', () => {
       },
     ],
     [
+      'a draft Task that ran',
+      {
+        tasks: [
+          {
+            ...task('api'),
+            status: 'draft',
+            run: { ...task('api').run, position: { state: 'ready', step: 'implement' } },
+          } satisfies TaskRecord,
+        ],
+        attention: [],
+      },
+    ],
+    [
+      'a cancelled Task with an active step',
+      {
+        tasks: [
+          {
+            ...task('api'),
+            status: 'cancelled',
+            run: {
+              ...task('api').run,
+              position: { state: 'active', step: 'implement', attempt: 1 },
+              attempts: [open(1, 1, 'implement')],
+            },
+          } satisfies TaskRecord,
+        ],
+        attention: [],
+      },
+    ],
+    [
       'two attention items for one subject',
       {
         ...withRun({}),

@@ -32,7 +32,8 @@ export const task = (taskId: string, title = taskId, specId = SPEC): TaskRecord 
   title,
   type: 'implementation',
   dependsOn: [],
-  origin: { step: 'create-tasks', attempt: 1 },
+  origin: { step: 'breakdown', attempt: 1 },
+  status: 'ready',
   run: {
     workflow: { id: 'task-standard', version: 1, revision: 'b'.repeat(64) },
     position: { state: 'not-started' },
@@ -150,6 +151,19 @@ export function describeWorkflowStoreContract(name: string, create: () => Workfl
         }),
       ],
       [
+        'a Task with an unknown status',
+        () => ({
+          tasks: [
+            {
+              taskId: 'api',
+              expected: null,
+              next: { ...task('api'), status: 'blocked' } as unknown as TaskRecord,
+            },
+          ],
+          attention: noAttention,
+        }),
+      ],
+      [
         'a Task write naming another Task',
         () => ({
           tasks: [{ taskId: 'api', expected: null, next: task('web') }],
@@ -236,6 +250,27 @@ export function describeWorkflowStoreContract(name: string, create: () => Workfl
         code: 'WORKFLOW_INPUT_INVALID',
       });
       expect(await store.read(SPEC)).toEqual({ tasks: [], attention: [] });
+    });
+
+    it('keeps a Task status with its last change', async () => {
+      const store = create();
+      const held: TaskRecord = {
+        ...task('api'),
+        status: 'on-hold',
+        statusChange: { source: 'escalation', at: '2026-11-05T10:00:00.000Z', reason: 'Unclear.' },
+      };
+      await store.apply(SPEC, {
+        tasks: [
+          { taskId: 'api', expected: null, next: held },
+          { taskId: 'web', expected: null, next: { ...task('web'), status: 'draft' } },
+        ],
+        attention: noAttention,
+      });
+
+      expect((await store.read(SPEC)).tasks.map((entry) => entry.value)).toEqual([
+        held,
+        { ...task('web'), status: 'draft' },
+      ]);
     });
 
     it('keeps one attention item per subject: set replaces, clear removes', async () => {

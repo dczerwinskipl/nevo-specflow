@@ -11,7 +11,7 @@ import {
   memoryDependencies,
   owner,
   positionOf,
-  runToCreateTasks,
+  runToBreakdown,
   seedExecutionCatalogue,
   specification,
   startSpecification,
@@ -64,7 +64,7 @@ describe('continuation after a finished step', () => {
     await work(dependencies, specification);
     await work(dependencies, specification);
     await work(dependencies, specification);
-    const result = await work(dependencies, specification); // breakdown -> review by codex
+    const result = await work(dependencies, specification, { tasks: [] }); // breakdown -> review by codex
 
     expect(result.continuation).toMatchObject({
       kind: 'attention',
@@ -85,10 +85,11 @@ describe('continuation after a finished step', () => {
 
   it('hands the review feedback to the next attempt of the reviewed step', async () => {
     const dependencies = memoryDependencies(catalogue);
-    for (let index = 0; index < 4; index += 1) {
+    for (let index = 0; index < 3; index += 1) {
       await work(dependencies, specification);
     }
 
+    await work(dependencies, specification, { tasks: [] });
     await expect(work(dependencies, specification, { result: 'fail' })).rejects.toMatchObject({
       code: 'WORKFLOW_INPUT_INVALID',
     });
@@ -227,13 +228,13 @@ describe('fail closed', () => {
 
   it('rejects a Task proposal over the stored limits before anything is stored', async () => {
     const dependencies = memoryDependencies(catalogue);
-    await runToCreateTasks(dependencies);
+    await runToBreakdown(dependencies);
     const applied = dependencies.store.applied.length;
 
     await expect(
       finishStep(dependencies, {
         subject: specification,
-        step: 'create-tasks',
+        step: 'breakdown',
         attempt: 1,
         input: { tasks: [{ id: 'api', title: 'x'.repeat(201), type: 'implementation' }] },
         executor: claude,

@@ -23,10 +23,11 @@ export interface ReturnToStepResult {
 /**
  * "Back to the table": move a run to a declared step it has already reached (earlier work, never a
  * step ahead) from any non-terminal position, also while the Specification waits for its Tasks. The
- * return's effects (by default none; typically blocking Tasks that have not started) apply in the
- * same change. A return is an owner action, so what follows always waits for the owner.
+ * return's declared effects (by default none) apply in the same change; a return never changes a
+ * Task's status by itself. A return is an owner action, so what follows always waits for the owner.
  *
- * A blocked Task is refused: it waits for the Specification, not for its owner.
+ * Only a `ready` Task returns: a Task on hold or cancelled cannot start, so its return would leave it
+ * waiting for an owner start that is refused.
  *
  * An attempt that was active ends as `returned`; stopping a Session still working on it is the
  * Runtime's responsibility.
@@ -39,10 +40,10 @@ export function returnToStep(
     const { subject } = request;
     const snapshot = await dependencies.store.read(subject.specId);
     const loaded = loadSubject(dependencies.catalogue, snapshot, subject);
-    if (loaded.task?.blocked) {
+    if (loaded.task && loaded.task.status !== 'ready') {
       throw new WorkflowError(
         'WORKFLOW_TASK_BLOCKED',
-        `The Task "${loaded.task.taskId}" is blocked until the Specification is ready again.`,
+        `The Task "${loaded.task.taskId}" is ${loaded.task.status}; only a ready Task can return.`,
       );
     }
 

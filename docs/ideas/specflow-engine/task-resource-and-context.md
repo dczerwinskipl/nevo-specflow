@@ -29,11 +29,30 @@ related:
 
 # Tasks as workflow-managed resources, and context building
 
-**Status: draft.** This records the owner's ideas for later implementation. Nothing here is decided
-or implemented. The current behaviour is described in
-[Workflow kernel](../../architecture/workflow/workflow-kernel.md); where this document differs, the
-kernel document is right until an ADR accepts the change. Each section ends with a recommendation;
-the [open questions](#open-questions) need an owner answer before the ADR is written.
+**Status: draft.** This records the owner's ideas for later implementation. The current behaviour is
+described in [Workflow kernel](../../architecture/workflow/workflow-kernel.md); where this document
+differs, the kernel document is right until an ADR accepts the change. Each section ends with a
+recommendation; the [open questions](#open-questions) need an owner answer before the ADR is written.
+
+**Implemented: the lifecycle slice** (plan 06, W13), inside the provisional storage (the Task is still
+one `.execution/tasks/<id>.yaml` record; folders, the index, `task.md` and context remain F20). It
+follows sections 5 and 6 with these simplifications:
+
+- the status lives on the Task record as `status` plus `statusChange {source: decision | escalation,
+at, reason?}` instead of a `hold` object;
+- any Specification work step may carry `taskDecisions[]` (`{taskId, status, reason?}`), without a
+  `manages: tasks` marker;
+- a producing step's `tasks` are the complete list of draft Tasks: listed drafts are revised,
+  unlisted drafts are cancelled, a non-draft id rejects the finish;
+- `approve-draft-tasks` approves every draft, not only those of the reviewed attempt (drafts come only
+  from producing steps, so these are the same in the seed);
+- a running Task may go on hold (its current step finishes, the next start is refused); it still
+  cannot be cancelled;
+- the escalation marker is `escalate: true`; the Specification gets `task-escalated` only while it
+  is active on its wait step (entering the wait step records it; at any other position the
+  Specification keeps its own item), and it names one Task (the first in id order);
+- leaving out a draft that another Task depends on is not refused: the dependent Task can no longer
+  start, which the wait reports as `tasks-stuck`.
 
 ## 1. Context: Specification and Task today
 
@@ -402,20 +421,25 @@ ran the attempt.
   `cancelled`), or does its `status` become a projection of the run (F14)? The contract needs one
   answer per kind.
 - **Q3.** Does a Task keep `summary` next to `task.md`, or is the title plus `task.md` enough?
-- **Q4.** Is `cancelled` final, or may the owner reopen a cancelled Task that never started?
-- **Q5.** On a Specification return, should the return dialog offer "hold all Tasks that have not
+- **Q4 (decided, W13).** `cancelled` is final; a new Task replaces a cancelled one if needed.
+- **Q5 (decided, W13).** Only explicit decisions: a return changes no Task, and the spec writer step
+  (`taskDecisions`) or the owner (`setTaskStatus`) decides. Original question: on a Specification
+  return, should the return dialog offer "hold all Tasks that have not
   started" as an explicit choice, or should only the spec writer step decide?
 - **Q6.** After an escalation, does the owner return the Specification to an existing step, or does
   the seed workflow gain a dedicated "revise Tasks" spec writer step reachable from the wait step?
 - **Q7.** Attention priority when an escalation and `tasks-stuck` coincide (recommended:
-  `task-escalated`), and whether several escalations are listed in one item.
+  `task-escalated`, which the kernel does today), and whether several escalations are listed in one
+  item (today the item names one Task).
 - **Q8.** Default Task context: `task.md` plus Task documents plus the Specification `overview`, or
   every Specification document?
 - **Q9.** Do legacy `allowed_paths` / `forbidden_paths` come back as a Task scope (with enforcement by
   gates, F03), or stay out?
 - **Q10.** Manual deletion of a Task that has attempts: fail closed for the whole Specification
   (recommended, simple) or only for that Task?
-- **Q11.** Approval after review: option (a) declared effect, (b) reviewer decisions, or (c) keep
+- **Q11 (decided, W13).** Option (a), the declared effect `approve-draft-tasks`; `taskDecisions`
+  stay available to every Specification step. Original question: approval after review: option (a)
+  declared effect, (b) reviewer decisions, or (c) keep
   `create-tasks`?
 - **Q12.** Context evidence: accept option (b) (digest tracked, full list local)?
 

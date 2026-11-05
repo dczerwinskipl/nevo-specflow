@@ -6,8 +6,8 @@ import { findTask } from './loaded-execution';
 /**
  * Attention items are local while the runs are Git-tracked, so a checkout can change a run (a branch
  * switch, a pull) under an item that was recorded for another state. An item counts only while it
- * still describes its subject's position: the step it names is the subject's `ready` step, or, for
- * `tasks-stuck`, the Specification's active wait step. Pure.
+ * still describes its subject's position: the step it names is the subject's `ready` step; for
+ * `tasks-stuck` and `task-escalated`, the Specification's active wait step. Pure.
  */
 export function isAttentionCurrent(item: AttentionItem, run: WorkflowRun | undefined): boolean {
   const position = run?.position;
@@ -15,7 +15,7 @@ export function isAttentionCurrent(item: AttentionItem, run: WorkflowRun | undef
     return false;
   }
 
-  if (item.reason === 'tasks-stuck') {
+  if (item.reason === 'task-escalated' || item.reason === 'tasks-stuck') {
     return (
       item.subject.kind === 'specification' &&
       position.state === 'active' &&

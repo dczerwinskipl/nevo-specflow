@@ -5,11 +5,13 @@ import { finishStep } from './finish';
 import { inspectExecution } from './inspect';
 import {
   SPEC,
+  TWO_TASKS,
+  agent,
   claude,
   memoryDependencies,
   owner,
   positionOf,
-  runToCreateTasks,
+  runToBreakdown,
   seedExecutionCatalogue,
   specification,
   specificationWithTasks,
@@ -27,30 +29,101 @@ beforeAll(async () => {
 });
 
 describe('Tasks of a Specification', () => {
-  it('creates Tasks with their own types and workflows and waits for them', async () => {
+  it('drafts Tasks with their own types and workflows, approves them on review and waits', async () => {
     const dependencies = memoryDependencies(catalogue);
-    const result = await specificationWithTasks(dependencies);
+    await runToBreakdown(dependencies);
+    const drafted = await finishStep(dependencies, {
+      subject: specification,
+      step: 'breakdown',
+      attempt: 1,
+      input: { tasks: TWO_TASKS },
+      executor: claude,
+    });
 
-    expect(result.createdTasks).toEqual(['api', 'screen']);
-    expect(result.continuation).toEqual({ kind: 'none', reason: 'waiting-for-tasks' });
+    expect(drafted.createdTasks).toEqual(['api', 'screen']);
+    const before = (await inspectExecution(dependencies, SPEC)).tasks;
+    expect(before.map((entry) => [entry.record.status, entry.readiness.kind])).toEqual([
+      ['draft', 'status'],
+      ['draft', 'status'],
+    ]);
+    await expect(
+      startTaskExecution(dependencies, { specId: SPEC, taskId: 'api', executor: claude }),
+    ).rejects.toMatchObject({
+      code: 'WORKFLOW_TASK_BLOCKED',
+      message: expect.stringContaining('draft') as unknown,
+    });
+
+    const reviewed = await work(
+      dependencies,
+      specification,
+      { result: 'pass' },
+      agent('codex', 'session-r', 'x'),
+    );
+
+    expect(reviewed.continuation).toEqual({ kind: 'none', reason: 'waiting-for-tasks' });
     expect(await positionOf(dependencies, specification)).toEqual({
       state: 'active',
       step: 'implementation',
       attempt: 1,
     });
     const tasks = (await inspectExecution(dependencies, SPEC)).tasks;
-    expect(tasks.map((entry) => [entry.record.taskId, entry.record.run.workflow.id])).toEqual([
-      ['api', 'task-standard'],
-      ['screen', 'task-ui'],
+    expect(
+      tasks.map((entry) => [
+        entry.record.taskId,
+        entry.record.status,
+        entry.record.run.workflow.id,
+      ]),
+    ).toEqual([
+      ['api', 'ready', 'task-standard'],
+      ['screen', 'ready', 'task-ui'],
     ]);
     expect(tasks.map((entry) => entry.readiness.kind)).toEqual(['ready', 'dependencies']);
   });
 
+  it('lets a failed review send the breakdown back to revise its drafts', async () => {
+    const dependencies = memoryDependencies(catalogue);
+    await runToBreakdown(dependencies);
+    await finishStep(dependencies, {
+      subject: specification,
+      step: 'breakdown',
+      attempt: 1,
+      input: { tasks: TWO_TASKS },
+      executor: claude,
+    });
+    await work(dependencies, specification, { result: 'fail', feedback: 'Merge the screen.' });
+    const started = await startSpecification(dependencies);
+
+    expect(started).toMatchObject({
+      context: {
+        step: { id: 'breakdown', produces: 'tasks' },
+        existingTasks: [
+          { id: 'api', status: 'draft', readiness: 'status' },
+          { id: 'screen', status: 'draft', readiness: 'status' },
+        ],
+      },
+    });
+    const revised = await finishStep(dependencies, {
+      subject: specification,
+      step: 'breakdown',
+      attempt: 2,
+      input: { tasks: [{ id: 'api', title: 'API and screen', type: 'implementation' }] },
+      executor: claude,
+    });
+    expect(revised.createdTasks).toEqual([]);
+    await work(dependencies, specification, { result: 'pass' });
+
+    const tasks = (await inspectExecution(dependencies, SPEC)).tasks.map((entry) => entry.record);
+    expect(tasks).toMatchObject([
+      { taskId: 'api', title: 'API and screen', status: 'ready', origin: { attempt: 2 } },
+      { taskId: 'screen', status: 'cancelled' },
+    ]);
+  });
+
   it('gives the planner the allowed task types', async () => {
     const dependencies = memoryDependencies(catalogue);
-    const context = await runToCreateTasks(dependencies);
+    const context = await runToBreakdown(dependencies);
 
-    expect(context.step).toMatchObject({ id: 'create-tasks', produces: 'tasks' });
+    expect(context.step).toMatchObject({ id: 'breakdown', produces: 'tasks' });
     expect(context.taskTypes?.map((type) => type.id)).toEqual([
       'implementation',
       'ui-implementation',
@@ -111,7 +184,7 @@ describe('Tasks of a Specification', () => {
         archetype: 'architecture',
         executor: claude,
       });
-    for (let index = 0; index < 5; index += 1) {
+    for (let index = 0; index < 3; index += 1) {
       const started = await start();
       if (started.kind === 'terminal') {
         throw new Error('Unexpected end.');
@@ -121,7 +194,7 @@ describe('Tasks of a Specification', () => {
         subject: specification,
         step: started.context.step.id,
         attempt: started.context.attempt,
-        input: started.context.step.id === 'breakdown-review' ? { result: 'pass' } : {},
+        input: {},
         executor: claude,
       });
     }
@@ -130,7 +203,7 @@ describe('Tasks of a Specification', () => {
     await expect(
       finishStep(dependencies, {
         subject: specification,
-        step: 'create-tasks',
+        step: 'breakdown',
         attempt: 1,
         input: { tasks: [{ id: 'screen', title: 'Screen', type: 'ui-implementation' }] },
         executor: claude,
@@ -160,14 +233,15 @@ describe('ready Tasks', () => {
 describe('waiting for Tasks', () => {
   it('completes the wait step at once when the breakdown creates no Task', async () => {
     const dependencies = memoryDependencies(catalogue);
-    await runToCreateTasks(dependencies);
-    const result = await finishStep(dependencies, {
+    await runToBreakdown(dependencies);
+    await finishStep(dependencies, {
       subject: specification,
-      step: 'create-tasks',
+      step: 'breakdown',
       attempt: 1,
       input: { tasks: [] },
       executor: claude,
     });
+    const result = await work(dependencies, specification, { result: 'pass' });
 
     expect(result.continuation).toEqual({
       kind: 'attention',
@@ -206,6 +280,7 @@ describe('waiting for Tasks', () => {
                       session: 'fresh',
                       feedback: 'optional',
                       effects: [],
+                      escalate: false,
                     },
                   ],
                 }
@@ -305,7 +380,7 @@ describe('waiting for Tasks', () => {
     expect(attention.filter((item) => item.subject.kind === 'specification')).toEqual([]);
   });
 
-  it('shows the planner the Tasks that already exist', async () => {
+  it('shows the planner the Tasks that already exist, with their status', async () => {
     const dependencies = memoryDependencies(catalogue);
     await specificationWithTasks(dependencies);
     await returnToStep(dependencies, {
@@ -313,29 +388,29 @@ describe('waiting for Tasks', () => {
       step: 'breakdown',
       feedback: 'Add an audit Task.',
     });
-    await work(dependencies, specification); // breakdown
-    await work(dependencies, specification, { result: 'pass' });
     const started = await startSpecification(dependencies);
 
     expect(started).toMatchObject({
       context: {
-        step: { id: 'create-tasks' },
+        step: { id: 'breakdown' },
         existingTasks: [
           {
             id: 'api',
             title: 'API',
             type: 'implementation',
+            dependsOn: [],
+            status: 'ready',
             state: 'not-started',
-            blocked: true,
-            readiness: 'blocked',
+            readiness: 'ready',
           },
           {
             id: 'screen',
             title: 'Screen',
             type: 'ui-implementation',
+            dependsOn: ['api'],
+            status: 'ready',
             state: 'not-started',
-            blocked: true,
-            readiness: 'blocked',
+            readiness: 'dependencies',
           },
         ],
       },

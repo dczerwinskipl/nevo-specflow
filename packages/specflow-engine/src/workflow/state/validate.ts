@@ -111,6 +111,17 @@ export function validateExecutionSnapshot(specId: string, state: ExecutionState)
 
     taskIds.add(task.taskId);
     validateRun(task.run, `the Task "${task.taskId}"`);
+    // A draft is revised by replacing it, which is only sound while it never ran.
+    if (
+      task.status === 'draft' &&
+      (task.run.position.state !== 'not-started' || task.run.attempts.length > 0)
+    ) {
+      corrupt(`holds the draft Task "${task.taskId}" with a run`);
+    }
+
+    if (task.status === 'cancelled' && task.run.position.state === 'active') {
+      corrupt(`holds the cancelled Task "${task.taskId}" with an active step`);
+    }
   }
 
   const subjects = new Set<string>();

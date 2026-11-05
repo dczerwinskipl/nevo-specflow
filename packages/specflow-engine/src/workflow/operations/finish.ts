@@ -1,15 +1,21 @@
 import type { ContinuationDecision, FinishingSession } from '../continuation/resolve';
 import { WorkflowError } from '../errors';
+import { assertFinishInputShape } from '../input-schema';
 import { assertExecutorAllowed } from '../progression/executor';
 import { applyFinish, planFinish, type FinishInput } from '../progression/progression';
-import { materializeTasks, type TaskProposal } from '../tasks/tasks';
+import {
+  applyTaskDecisions,
+  materializeTasks,
+  type TaskDecision,
+  type TaskProposal,
+} from '../tasks/tasks';
 import {
   activeAttempt,
   type ExecutorRecord,
   type RunPosition,
   type WorkflowSubject,
 } from '../state/model';
-import { advance, applyEffects, settleWait, type AdvanceContext } from './advance';
+import { advance, applyEffects, settleWait, updateTask, type AdvanceContext } from './advance';
 import { isoNow, loadSubject, type WorkflowDependencies } from './loaded-execution';
 import { ExecutionWorkingSet } from './working-set';
 
@@ -19,8 +25,16 @@ export interface FinishStepInput {
   readonly step: string;
   readonly attempt: number;
   readonly input: FinishInput & {
-    /** Required by, and only allowed for, a step that produces Tasks. */
+    /**
+     * Required by, and only allowed for, a step that produces Tasks: the complete list of the
+     * Specification's draft Tasks after this finish (`materializeTasks`).
+     */
     readonly tasks?: readonly TaskProposal[];
+    /**
+     * Only for a Specification step: explicit status decisions on its Tasks, applied after `tasks`
+     * and before the transition's effects. One decision that is not allowed rejects the finish.
+     */
+    readonly taskDecisions?: readonly TaskDecision[];
   };
   /**
    * Who finished, from trusted Runtime/CLI context (never an agent-supplied value). Its kind must be
@@ -35,7 +49,10 @@ export interface FinishStepResult {
   readonly position: RunPosition;
   readonly continuation: ContinuationDecision;
   readonly createdTasks: readonly string[];
-  /** When a Task's end completed the Specification's wait step: what the Specification does next. */
+  /**
+   * After a Task's finish, what the Specification's attention became: what it does next when the
+   * finish completed its wait step, `tasks-stuck`, or `task-escalated`.
+   */
   readonly specification?: ContinuationDecision;
 }
 
@@ -54,12 +71,17 @@ function finishingSession(executor: ExecutorRecord): FinishingSession | undefine
  * Finish the active attempt of a subject and decide what follows. Finish never starts the next step
  * (except entering a wait step, which has no work); it records whether the Runtime may continue on
  * its own or the owner has to act.
+ *
+ * A Task transition that escalates puts the Task on hold with the feedback as its reason and gives
+ * the Specification the attention item `task-escalated`; the finish itself succeeds. A Task that is
+ * not `ready` after its finish gets no continuation (`none {on-hold}`) and no attention item.
  */
 export function finishStep(
   dependencies: WorkflowDependencies,
   request: FinishStepInput,
 ): Promise<FinishStepResult> {
   return dependencies.serialize(async () => {
+    assertFinishInputShape(request.input);
     const { subject } = request;
     const snapshot = await dependencies.store.read(subject.specId);
     const loaded = loadSubject(dependencies.catalogue, snapshot, subject);
@@ -83,6 +105,13 @@ export function finishStep(
       );
     }
 
+    if (subject.kind === 'task' && request.input.taskDecisions !== undefined) {
+      throw new WorkflowError(
+        'WORKFLOW_INPUT_INVALID',
+        'Only a Specification step decides the status of Tasks.',
+      );
+    }
+
     const context: AdvanceContext = {
       set: new ExecutionWorkingSet(snapshot),
       catalogue: dependencies.catalogue,
@@ -92,17 +121,43 @@ export function finishStep(
       subject,
       applyFinish(loaded.run, plan, request.input, context.at, request.executor),
     );
-    const createdTasks = produces ? createTasks(context, request, plan.attempt) : [];
+    const createdTasks = produces ? draftTasks(context, request, plan.attempt) : [];
+    for (const task of applyTaskDecisions(
+      context.set.tasks(),
+      request.input.taskDecisions ?? [],
+      context.at,
+    )) {
+      updateTask(context, task);
+    }
+
     applyEffects(context, plan.transition.effects);
-    const continuation = advance(
-      context,
-      subject,
-      loaded.definition,
-      plan.transition,
-      finishingSession(request.executor),
-    );
-    const specification =
-      subject.kind === 'task' && plan.next.state === 'terminal' ? settleWait(context) : undefined;
+    if (subject.kind === 'task' && plan.transition.escalate) {
+      const feedback = request.input.feedback?.trim();
+      updateTask(context, {
+        ...context.set.task(subject.taskId),
+        status: 'on-hold',
+        statusChange: {
+          source: 'escalation',
+          at: context.at,
+          ...(feedback ? { reason: feedback } : {}),
+        },
+      });
+    }
+
+    const held =
+      subject.kind === 'task' &&
+      plan.next.state !== 'terminal' &&
+      context.set.task(subject.taskId).status !== 'ready';
+    const continuation: ContinuationDecision = held
+      ? { kind: 'none', reason: 'on-hold' }
+      : advance(
+          context,
+          subject,
+          loaded.definition,
+          plan.transition,
+          finishingSession(request.executor),
+        );
+    const specification = subject.kind === 'task' ? settleWait(context) : undefined;
     await dependencies.store.apply(subject.specId, context.set.change());
 
     return {
@@ -116,9 +171,13 @@ export function finishStep(
   });
 }
 
-function createTasks(context: AdvanceContext, request: FinishStepInput, attempt: number): string[] {
+function draftTasks(
+  context: AdvanceContext,
+  request: FinishStepInput,
+  attempt: number,
+): readonly string[] {
   const specification = context.set.specification();
-  const created = materializeTasks({
+  const drafted = materializeTasks({
     specId: specification.specId,
     proposals: request.input.tasks ?? [],
     existing: context.set.tasks(),
@@ -126,10 +185,11 @@ function createTasks(context: AdvanceContext, request: FinishStepInput, attempt:
     taskType: (id) => context.catalogue.taskType(id),
     workflow: (id) => context.catalogue.workflow(id),
     origin: { step: request.step, attempt },
+    at: context.at,
   });
-  for (const task of created) {
-    context.set.setTask(task);
+  for (const task of drafted.changed) {
+    updateTask(context, task);
   }
 
-  return created.map((task) => task.taskId);
+  return drafted.created;
 }

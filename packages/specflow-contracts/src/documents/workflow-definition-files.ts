@@ -31,10 +31,11 @@ const title = () => Type.String({ minLength: 1, maxLength: 200 });
 const localId = () => catalogueId();
 
 /**
- * Effects a transition or a return applies to the Specification's Tasks in the same durable change.
- * Closed today; a new effect is a new variant here and an Engine handler.
+ * Effects a Specification transition or return applies to the Specification's Tasks in the same
+ * durable change. `approve-draft-tasks` makes every `draft` Task `ready` (typically on the pass of a
+ * breakdown review). Closed today; a new effect is a new variant here and an Engine handler.
  */
-export const WORKFLOW_EFFECTS = ['block-pending-tasks', 'unblock-tasks'] as const;
+export const WORKFLOW_EFFECTS = ['approve-draft-tasks'] as const;
 export type WorkflowEffect = (typeof WORKFLOW_EFFECTS)[number];
 
 const effects = () =>
@@ -70,6 +71,12 @@ export const WorkflowTransitionFileSchema = Type.Object(
     /** Default `optional`. */
     feedback: Type.Optional(Type.Union([Type.Literal('required'), Type.Literal('optional')])),
     effects: effects(),
+    /**
+     * Task workflows only: finishing with this transition escalates to the Specification. The Task
+     * goes `on-hold` with the feedback as its reason, and the Specification gets the attention item
+     * `task-escalated`. Requires `feedback: required` and a step target (checked by the Engine).
+     */
+    escalate: Type.Optional(Type.Boolean()),
   },
   { additionalProperties: false },
 );

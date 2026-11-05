@@ -4,10 +4,9 @@ import { resolveSpecificationExecution } from '../definitions/catalogue';
 import { WorkflowError } from '../errors';
 import { assertExecutorAllowed } from '../progression/executor';
 import { applyStart, newRun, planStart } from '../progression/progression';
-import { taskReadiness } from '../tasks/tasks';
+import { isTaskClosed, taskReadiness } from '../tasks/tasks';
 import {
   activeAttempt,
-  isTerminal,
   subjectKey,
   type ExecutorRecord,
   type SpecificationExecutionRecord,
@@ -139,16 +138,16 @@ function assertTaskReady(snapshot: ExecutionSnapshot, loaded: LoadedSubject): vo
 
   const tasks = snapshot.tasks.map((entry) => entry.value);
   const readiness = taskReadiness(loaded.task, tasks);
-  if (readiness.kind === 'blocked') {
+  if (readiness.kind === 'status') {
     throw new WorkflowError(
       'WORKFLOW_TASK_BLOCKED',
-      `The Task "${loaded.task.taskId}" is blocked until the Specification is ready again.`,
+      `The Task "${loaded.task.taskId}" is ${readiness.status}; only a ready Task can start.`,
     );
   }
 
   if (readiness.kind === 'dependencies') {
     const abandoned = tasks
-      .filter((task) => readiness.waitingFor.includes(task.taskId) && isTerminal(task.run))
+      .filter((task) => readiness.waitingFor.includes(task.taskId) && isTaskClosed(task))
       .map((task) => task.taskId);
 
     throw new WorkflowError(

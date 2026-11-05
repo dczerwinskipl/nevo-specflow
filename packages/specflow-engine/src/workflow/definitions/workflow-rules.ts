@@ -65,6 +65,25 @@ function transitionIssues(
       );
     }
 
+    if (transition.escalate && workflow.subject !== 'task') {
+      issues.push(
+        invalid(`${location}/escalate`, 'Only a Task workflow escalates to its Specification.'),
+      );
+    }
+
+    // The escalated Task waits on hold at the target step, with the feedback as its reason.
+    if (
+      transition.escalate &&
+      (transition.feedback !== 'required' || transition.target.kind !== 'step')
+    ) {
+      issues.push(
+        invalid(
+          `${location}/escalate`,
+          'An escalating transition requires feedback and leads to a step.',
+        ),
+      );
+    }
+
     const targetStep = transition.target.kind === 'step' ? transition.target.step : undefined;
     if (transition.session === 'reuse' && targetStep !== undefined) {
       const target = workflow.steps.find((candidate) => candidate.id === targetStep);

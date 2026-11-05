@@ -3,6 +3,7 @@ import { ANY_TASK_TYPE, type WorkflowEffect } from '@nevo/specflow-contracts/doc
 import type { TaskType, WorkflowDefinition } from '../definitions/model';
 import { WorkflowError } from '../errors';
 import {
+  FEEDBACK_MAX,
   TASKS_PER_FINISH_MAX,
   TASKS_PER_SPECIFICATION_MAX,
   TASK_DEPENDENCIES_MAX,
@@ -11,12 +12,13 @@ import {
   isValidTaskId,
 } from '../limits';
 import { newRun } from '../progression/progression';
-import type { TaskRecord, TaskTypes } from '../state/model';
+import type { TaskRecord, TaskStatus, TaskTypes } from '../state/model';
 
 /**
- * Tasks of a Specification: created from the structured finish input of a step that `produces: tasks`
- * (the planner names each Task's own type), blocked and unblocked by Specification effects, and gated
- * by their dependencies. Pure.
+ * Tasks of a Specification: drafted from the structured finish input of a step that `produces: tasks`
+ * (the planner names each Task's own type), approved by the declared effect `approve-draft-tasks`,
+ * held, resumed and cancelled only by explicit decisions or the Task's own escalation, and gated by
+ * their dependencies. Pure.
  */
 
 export interface TaskProposal {
@@ -35,7 +37,18 @@ export interface MaterializeTasksInput {
   readonly taskType: (id: string) => TaskType | undefined;
   readonly workflow: (id: string) => WorkflowDefinition | undefined;
   readonly origin: { readonly step: string; readonly attempt: number };
+  readonly at: string;
 }
+
+export interface MaterializedTasks {
+  /** Every Task record the finish writes: new and revised drafts, and the drafts it cancels. */
+  readonly changed: readonly TaskRecord[];
+  /** Ids of the Tasks that did not exist before. */
+  readonly created: readonly string[];
+}
+
+/** The reason recorded on a draft that a later finish of a producing step no longer lists. */
+export const LEFT_OUT_OF_BREAKDOWN = 'Left out of the breakdown.';
 
 function invalid(message: string): never {
   throw new WorkflowError('WORKFLOW_INPUT_INVALID', message);
@@ -45,24 +58,39 @@ export function isTaskTypeAllowed(allowed: TaskTypes, type: string): boolean {
   return allowed[0] === ANY_TASK_TYPE || (allowed as readonly string[]).includes(type);
 }
 
-/** New Task records for the proposals; existing Tasks are never redefined by a later breakdown. */
-export function materializeTasks(input: MaterializeTasksInput): TaskRecord[] {
+/**
+ * The draft Tasks after a finish of a step that produces Tasks. The proposals are the complete list
+ * of the Specification's draft Tasks:
+ *
+ * - a proposal with a new id creates a `draft`;
+ * - a proposal with the id of an existing `draft` replaces its definition (a draft never ran);
+ * - a proposal with the id of a Task that is no longer a draft rejects the whole finish (its status
+ *   is changed by a decision, never by redefining it);
+ * - an existing `draft` that is not listed is `cancelled`.
+ *
+ * A dependency of a proposal names a Task that is not cancelled. A Task outside the list that depends
+ * on a draft the finish cancels is not refused: it can no longer start, which the Specification's
+ * wait reports as `tasks-stuck`.
+ */
+export function materializeTasks(input: MaterializeTasksInput): MaterializedTasks {
   if (input.proposals.length > TASKS_PER_FINISH_MAX) {
-    invalid(`At most ${TASKS_PER_FINISH_MAX} Tasks can be created by one step.`);
+    invalid(`At most ${TASKS_PER_FINISH_MAX} Tasks can be drafted by one step.`);
   }
 
-  if (input.existing.length + input.proposals.length > TASKS_PER_SPECIFICATION_MAX) {
-    invalid(`A Specification has at most ${TASKS_PER_SPECIFICATION_MAX} Tasks.`);
-  }
-
-  const known = new Map(input.existing.map((task) => [task.taskId, task.dependsOn] as const));
+  const existing = new Map(input.existing.map((task) => [task.taskId, task] as const));
+  const listed = new Set<string>();
   for (const proposal of input.proposals) {
     if (!isValidTaskId(proposal.id)) {
       invalid(`The Task id "${proposal.id.slice(0, 80)}" is not a valid id.`);
     }
 
-    if (known.has(proposal.id)) {
-      invalid(`The Task "${proposal.id}" already exists.`);
+    if (listed.has(proposal.id)) {
+      invalid(`The Task "${proposal.id}" is listed twice.`);
+    }
+
+    const status = existing.get(proposal.id)?.status;
+    if (status !== undefined && status !== 'draft') {
+      invalid(`The Task "${proposal.id}" is ${status}, not a draft; decide its status instead.`);
     }
 
     const title = proposal.title.trim();
@@ -78,10 +106,35 @@ export function materializeTasks(input: MaterializeTasksInput): TaskRecord[] {
       invalid(`The Task "${proposal.id}" has more than ${TASK_DEPENDENCIES_MAX} dependencies.`);
     }
 
-    known.set(proposal.id, proposal.dependsOn ?? []);
+    listed.add(proposal.id);
   }
 
-  const created = input.proposals.map((proposal): TaskRecord => {
+  const created = input.proposals.filter((proposal) => !existing.has(proposal.id));
+  if (input.existing.length + created.length > TASKS_PER_SPECIFICATION_MAX) {
+    invalid(`A Specification has at most ${TASKS_PER_SPECIFICATION_MAX} Tasks.`);
+  }
+
+  const leftOut = input.existing.filter(
+    (task) => task.status === 'draft' && !listed.has(task.taskId),
+  );
+  const cancelled = new Set([
+    ...input.existing.filter((task) => task.status === 'cancelled').map((task) => task.taskId),
+    ...leftOut.map((task) => task.taskId),
+  ]);
+  const graph = new Map<string, readonly string[]>();
+  for (const task of input.existing) {
+    if (listed.has(task.taskId)) {
+      continue;
+    }
+
+    graph.set(task.taskId, task.dependsOn);
+  }
+
+  for (const proposal of input.proposals) {
+    graph.set(proposal.id, proposal.dependsOn ?? []);
+  }
+
+  const drafts = input.proposals.map((proposal): TaskRecord => {
     if (!isTaskTypeAllowed(input.allowedTypes, proposal.type)) {
       invalid(`The Specification does not allow Tasks of type "${proposal.type}".`);
     }
@@ -96,8 +149,10 @@ export function materializeTasks(input: MaterializeTasksInput): TaskRecord[] {
     }
 
     for (const dependency of proposal.dependsOn ?? []) {
-      if (dependency === proposal.id || !known.has(dependency)) {
-        invalid(`The Task "${proposal.id}" depends on an unknown Task "${dependency}".`);
+      if (dependency === proposal.id || !graph.has(dependency) || cancelled.has(dependency)) {
+        invalid(
+          `The Task "${proposal.id}" depends on an unknown or cancelled Task "${dependency}".`,
+        );
       }
     }
 
@@ -109,12 +164,23 @@ export function materializeTasks(input: MaterializeTasksInput): TaskRecord[] {
       type: type.id,
       dependsOn: [...new Set(proposal.dependsOn ?? [])],
       origin: input.origin,
+      status: 'draft',
       run: newRun(workflow),
     };
   });
-  assertAcyclic(known);
+  assertAcyclic(graph);
 
-  return created;
+  return {
+    changed: [
+      ...drafts,
+      ...leftOut.map((task): TaskRecord => ({
+        ...task,
+        status: 'cancelled',
+        statusChange: { source: 'decision', at: input.at, reason: LEFT_OUT_OF_BREAKDOWN },
+      })),
+    ],
+    created: created.map((proposal) => proposal.id),
+  };
 }
 
 function assertAcyclic(graph: ReadonlyMap<string, readonly string[]>): void {
@@ -142,49 +208,121 @@ function assertAcyclic(graph: ReadonlyMap<string, readonly string[]>): void {
   }
 }
 
+/** A status a decision may set; `draft` is only ever the status of a new Task. */
+export type TaskDecisionStatus = Exclude<TaskStatus, 'draft'>;
+
+/** An explicit status decision of the spec writer (finish input) or the owner (`setTaskStatus`). */
+export interface TaskDecision {
+  readonly taskId: string;
+  readonly status: TaskDecisionStatus;
+  readonly reason?: string;
+}
+
+/** The status changes a decision may make; `cancelled` is final. */
+const ALLOWED_DECISIONS: Readonly<Record<TaskStatus, readonly string[]>> = {
+  draft: ['ready', 'cancelled'],
+  ready: ['on-hold', 'cancelled'],
+  'on-hold': ['ready', 'cancelled'],
+  cancelled: [],
+};
+
 /**
- * Apply Specification effects to the Tasks; returns only the Tasks that changed. Blocking touches
- * only Tasks that have never had an attempt (`not-started`, or `ready` after a return of the Task
- * itself): work in progress is never interrupted by the Engine.
+ * The Task after a decision, or a refusal (`WORKFLOW_INPUT_INVALID`) when the change is not allowed:
+ * a Task whose run ended keeps its status, and a running Task may go on hold (its current step
+ * finishes; the next start is refused) but is not cancelled.
  */
-export function applyTaskEffects(
+export function decideTaskStatus(task: TaskRecord, decision: TaskDecision, at: string): TaskRecord {
+  const reason = decision.reason?.trim();
+  if ((reason?.length ?? 0) > FEEDBACK_MAX) {
+    invalid(`The reason for the Task "${task.taskId}" is longer than ${FEEDBACK_MAX}.`);
+  }
+
+  if (task.run.position.state === 'terminal') {
+    invalid(`The Task "${task.taskId}" has ended; its status can no longer change.`);
+  }
+
+  if (!ALLOWED_DECISIONS[task.status].includes(decision.status)) {
+    invalid(
+      `The Task "${task.taskId}" cannot go from ${task.status} to ${String(decision.status).slice(0, 40)}.`,
+    );
+  }
+
+  if (decision.status === 'cancelled' && task.run.position.state === 'active') {
+    invalid(`The Task "${task.taskId}" is running; it cannot be cancelled now.`);
+  }
+
+  return {
+    ...task,
+    status: decision.status,
+    statusChange: { source: 'decision', at, ...(reason ? { reason } : {}) },
+  };
+}
+
+/** Apply a list of decisions as a whole; one decision that is not allowed rejects all of them. */
+export function applyTaskDecisions(
   tasks: readonly TaskRecord[],
-  effects: readonly WorkflowEffect[],
+  decisions: readonly TaskDecision[],
   at: string,
 ): TaskRecord[] {
-  const changed = new Map<string, TaskRecord>();
-  const current = (task: TaskRecord) => changed.get(task.taskId) ?? task;
-  for (const effect of effects) {
-    for (const original of tasks) {
-      const task = current(original);
-      if (
-        effect === 'block-pending-tasks' &&
-        !task.blocked &&
-        task.run.position.state !== 'terminal' &&
-        task.run.attempts.length === 0
-      ) {
-        changed.set(task.taskId, { ...task, blocked: { reason: 'specification-returned', at } });
-      }
+  if (decisions.length > TASKS_PER_SPECIFICATION_MAX) {
+    invalid(`At most ${TASKS_PER_SPECIFICATION_MAX} Task decisions can be made at once.`);
+  }
 
-      if (effect === 'unblock-tasks' && task.blocked) {
-        const { blocked: _blocked, ...rest } = task;
-        changed.set(task.taskId, rest);
-      }
+  const byId = new Map(tasks.map((task) => [task.taskId, task] as const));
+  const changed = new Map<string, TaskRecord>();
+  for (const decision of decisions) {
+    const task = byId.get(decision.taskId);
+    if (!task) {
+      invalid(`Unknown Task "${String(decision.taskId).slice(0, 80)}".`);
     }
+
+    if (changed.has(task.taskId)) {
+      invalid(`The Task "${task.taskId}" has two decisions.`);
+    }
+
+    changed.set(task.taskId, decideTaskStatus(task, decision, at));
   }
 
   return [...changed.values()];
 }
 
+/**
+ * Apply Specification effects to the Tasks; returns only the Tasks that changed.
+ * `approve-draft-tasks` makes every `draft` Task `ready`.
+ */
+export function applyTaskEffects(
+  tasks: readonly TaskRecord[],
+  effects: readonly WorkflowEffect[],
+): TaskRecord[] {
+  if (!effects.includes('approve-draft-tasks')) {
+    return [];
+  }
+
+  return tasks
+    .filter((task) => task.status === 'draft')
+    .map((task): TaskRecord => ({ ...task, status: 'ready' }));
+}
+
+/** The Task is on hold because one of its steps escalated to the Specification. */
+export function isTaskEscalated(task: TaskRecord): boolean {
+  return task.status === 'on-hold' && task.statusChange?.source === 'escalation';
+}
+
+/** A closed Task no longer keeps the Specification waiting: its run ended, or it was cancelled. */
+export function isTaskClosed(task: TaskRecord): boolean {
+  return task.run.position.state === 'terminal' || task.status === 'cancelled';
+}
+
 export type TaskReadiness =
   | { readonly kind: 'ready' }
-  | { readonly kind: 'blocked' }
+  /** The status does not allow a start: `draft`, `on-hold` or `cancelled`. */
+  | { readonly kind: 'status'; readonly status: Exclude<TaskStatus, 'ready'> }
   | { readonly kind: 'dependencies'; readonly waitingFor: readonly string[] };
 
-/** A Task may start when it is not blocked and every direct dependency completed. */
+/** A Task may start when it is `ready` and every direct dependency completed. */
 export function taskReadiness(task: TaskRecord, tasks: readonly TaskRecord[]): TaskReadiness {
-  if (task.blocked) {
-    return { kind: 'blocked' };
+  if (task.status !== 'ready') {
+    return { kind: 'status', status: task.status };
   }
 
   const byId = new Map(tasks.map((candidate) => [candidate.taskId, candidate] as const));
@@ -197,19 +335,24 @@ export function taskReadiness(task: TaskRecord, tasks: readonly TaskRecord[]): T
   return waitingFor.length > 0 ? { kind: 'dependencies', waitingFor } : { kind: 'ready' };
 }
 
-/** The Specification's wait step is satisfied when every Task is terminal (also when there is none). */
-export function allTasksTerminal(tasks: readonly TaskRecord[]): boolean {
-  return tasks.every((task) => task.run.position.state === 'terminal');
+/** The Specification's wait step is satisfied when every Task is closed (also when there is none). */
+export function allTasksClosed(tasks: readonly TaskRecord[]): boolean {
+  return tasks.every(isTaskClosed);
 }
 
 /**
- * True when Tasks are still open but none of them is ready, so the Specification's wait step would
- * wait forever without anyone being told. The dependency graph is acyclic by construction, so a
- * chain of open Tasks always ends in one that is ready unless it is blocked or depends on an
- * abandoned Task.
+ * True when Tasks are still open but none of them can progress: none is running and none can start
+ * (`ready` with its dependencies completed), so the Specification's wait step would wait forever
+ * without anyone being told. Every open Task is then a draft, on hold, or waits (directly or through
+ * other open Tasks) for one of them or for an abandoned or cancelled Task.
  */
 export function tasksStuck(tasks: readonly TaskRecord[]): boolean {
-  const open = tasks.filter((task) => task.run.position.state !== 'terminal');
+  const open = tasks.filter((task) => !isTaskClosed(task));
 
-  return open.length > 0 && open.every((task) => taskReadiness(task, tasks).kind !== 'ready');
+  return (
+    open.length > 0 &&
+    open.every(
+      (task) => task.run.position.state !== 'active' && taskReadiness(task, tasks).kind !== 'ready',
+    )
+  );
 }

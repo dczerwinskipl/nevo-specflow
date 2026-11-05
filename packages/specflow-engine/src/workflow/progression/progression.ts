@@ -26,7 +26,7 @@ import {
  * the pinned definition and either returns the next run or throws a {@link WorkflowError}.
  *
  * Start activates, finish completes and never starts the next step, and a return moves the run back
- * to a declared step from any non-terminal position.
+ * to a declared step it has already reached, from any non-terminal position.
  */
 
 export function workflowRevision(definition: WorkflowDefinition): string {
@@ -276,6 +276,14 @@ export function planReturn(
     throw new WorkflowError(
       'WORKFLOW_RETURN_NOT_ALLOWED',
       `The workflow "${definition.id}" declares no return to "${to}".`,
+    );
+  }
+
+  // A return goes back to work the run has done, never ahead to a step it has not reached.
+  if (!run.attempts.some((record) => record.step === to)) {
+    throw new WorkflowError(
+      'WORKFLOW_RETURN_NOT_ALLOWED',
+      `The run has not reached "${to}" yet, so it cannot return there.`,
     );
   }
 

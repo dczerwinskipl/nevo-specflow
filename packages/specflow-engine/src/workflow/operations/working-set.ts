@@ -8,6 +8,7 @@ import {
   type WorkflowSubject,
 } from '../state/model';
 import type { ExecutionChange, ExecutionSnapshot } from '../state/store';
+import { staleAttentionKeys } from './attention';
 
 /**
  * The records one operation reads and rewrites, collected into a single {@link ExecutionChange}.
@@ -87,6 +88,19 @@ export class ExecutionWorkingSet {
     }
   }
 
+  /** The cleared items and every other stored item the planned state no longer matches. */
+  private attentionToClear(): string[] {
+    const stale = staleAttentionKeys(
+      this.snapshot.attention.filter((item) => !this.attentionSet.has(subjectKey(item.subject))),
+      (subject) =>
+        subject.kind === 'specification'
+          ? this.specificationRecord?.run
+          : this.taskRecords.get(subject.taskId)?.run,
+    );
+
+    return [...new Set([...this.attentionClear, ...stale])];
+  }
+
   change(): ExecutionChange {
     const revisions = new Map(
       this.snapshot.tasks.map((entry) => [entry.value.taskId, entry.revision] as const),
@@ -107,7 +121,7 @@ export class ExecutionWorkingSet {
         expected: revisions.get(taskId) ?? null,
         next: this.task(taskId),
       })),
-      attention: { set: [...this.attentionSet.values()], clear: [...this.attentionClear] },
+      attention: { set: [...this.attentionSet.values()], clear: this.attentionToClear() },
     };
   }
 }

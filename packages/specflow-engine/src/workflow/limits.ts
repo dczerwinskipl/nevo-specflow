@@ -1,7 +1,9 @@
 /**
- * Size limits of the stored execution state. The codec checks them on every read and write, and the
- * operations reject agent input that breaks them before anything is planned, so a finish can never
- * persist a record that later fails to read. Single source for both.
+ * Size limits of the stored execution state, single source for the codec and the operations' input
+ * checks. The operations reject agent input over a field limit before anything is planned. The byte
+ * budgets (`RECORD_BYTES_MAX`, `ATTENTION_BYTES_MAX`) are enforced when a change is serialized: a
+ * change that would produce a file over its budget is refused (`WORKFLOW_INPUT_INVALID`) and nothing
+ * is stored. A stored file over its budget fails a read as `WORKFLOW_STATE_CORRUPT`.
  */
 
 /**
@@ -30,3 +32,14 @@ export const ARTIFACT_MAX = 1000;
 /** Plain size bounds of a run's history, checked when a record is written. */
 export const ATTEMPTS_MAX = 1000;
 export const RETURNS_MAX = 1000;
+
+/**
+ * Byte budgets of the stored files. The codec refuses a change that would serialize a record or the
+ * attention list over its budget, and the store checks the size of a file before it reads it, so a
+ * hand-made or foreign file cannot make a read load an unbounded amount of data.
+ */
+export const RECORD_BYTES_MAX = 256 * 1024;
+export const ATTENTION_BYTES_MAX = 1024 * 1024;
+/** A change journal holds at most every record and the attention list once, JSON-escaped. */
+export const JOURNAL_BYTES_MAX =
+  2 * ((TASKS_PER_SPECIFICATION_MAX + 1) * RECORD_BYTES_MAX + ATTENTION_BYTES_MAX);

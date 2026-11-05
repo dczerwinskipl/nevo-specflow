@@ -11,8 +11,10 @@ import {
   ARTIFACTS_MAX,
   ARTIFACT_MAX,
   ATTEMPTS_MAX,
+  ATTENTION_BYTES_MAX,
   ATTENTION_ITEMS_MAX,
   FEEDBACK_MAX,
+  RECORD_BYTES_MAX,
   RETURNS_MAX,
   TASK_DEPENDENCIES_MAX,
   TASK_ID_PATTERN_SOURCE,
@@ -26,7 +28,9 @@ import type { SpecificationExecutionRecord, TaskRecord } from './model';
  * committed with the Specification); attention items are local JSON. Every read validates the full
  * shape, so a hand-edited or truncated file fails closed instead of being interpreted, and every
  * write validates the text it produces the same way, so a record that would not read back is never
- * stored. The limits come from `../limits`, shared with the operations' input checks.
+ * stored. The limits come from `../limits`, shared with the operations' input checks. A change that
+ * would serialize a record or the attention list over its byte budget is refused as invalid input
+ * before anything is stored; a stored file over the budget fails a read as corrupt.
  */
 
 export const EXECUTION_STATE_VERSION = 1;
@@ -174,7 +178,15 @@ function decode(schema: TSchema, value: unknown, what: string): unknown {
   return value;
 }
 
+/** The byte bound of a stored file (`../limits`) on read. */
+function withinBytes(source: string, max: number, what: string): void {
+  if (Buffer.byteLength(source, 'utf8') > max) {
+    corrupt(what);
+  }
+}
+
 function parseYaml(source: string, what: string): unknown {
+  withinBytes(source, RECORD_BYTES_MAX, what);
   try {
     return parse(source, { maxAliasCount: 0 }) as unknown;
   } catch {
@@ -190,8 +202,23 @@ function withoutVersion<T>(value: unknown): T {
 
 const yamlOf = (value: unknown) => stringify(value, { lineWidth: 0 });
 
-/** The text to store, checked exactly as a later read checks it; nothing invalid is ever written. */
-function checkedText(text: string, read: (source: string) => unknown, what: string): string {
+/**
+ * The text to store, checked exactly as a later read checks it; nothing invalid is ever written. A
+ * text over its byte budget is a refusal of the change, not corrupt state.
+ */
+function checkedText(
+  text: string,
+  maxBytes: number,
+  read: (source: string) => unknown,
+  what: string,
+): string {
+  if (Buffer.byteLength(text, 'utf8') > maxBytes) {
+    throw new WorkflowError(
+      'WORKFLOW_INPUT_INVALID',
+      `The ${what} would exceed its stored size limit of ${String(maxBytes)} bytes.`,
+    );
+  }
+
   try {
     read(text);
   } catch (error) {
@@ -208,6 +235,7 @@ function checkedText(text: string, read: (source: string) => unknown, what: stri
 export function serializeSpecificationRecord(record: SpecificationExecutionRecord): string {
   return checkedText(
     yamlOf({ version: EXECUTION_STATE_VERSION, ...record }),
+    RECORD_BYTES_MAX,
     parseSpecificationRecord,
     'Specification run',
   );
@@ -222,6 +250,7 @@ export function parseSpecificationRecord(source: string): SpecificationExecution
 export function serializeTaskRecord(record: TaskRecord): string {
   return checkedText(
     yamlOf({ version: EXECUTION_STATE_VERSION, ...record }),
+    RECORD_BYTES_MAX,
     parseTaskRecord,
     'Task',
   );
@@ -234,12 +263,14 @@ export function parseTaskRecord(source: string): TaskRecord {
 export function serializeAttention(items: readonly AttentionItem[]): string {
   return checkedText(
     `${JSON.stringify({ version: EXECUTION_STATE_VERSION, items }, null, 2)}\n`,
+    ATTENTION_BYTES_MAX,
     parseAttention,
     'attention list',
   );
 }
 
 export function parseAttention(source: string): AttentionItem[] {
+  withinBytes(source, ATTENTION_BYTES_MAX, 'attention list');
   let value: unknown;
   try {
     value = JSON.parse(source);

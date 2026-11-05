@@ -1,13 +1,16 @@
-import { mkdir, readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { sha256Hex } from '../../hash';
-import { writeJsonAtomically, writeTextAtomically } from '../../project/fs/atomic-json';
-import { removeFileWindowsSafe } from '../../project/fs/windows-safe-fs';
 import { isValidSpecificationId } from '../../specs/model';
 import type { AttentionItem } from '../attention/model';
 import { WorkflowError } from '../errors';
-import { isValidTaskId } from '../limits';
+import {
+  ATTENTION_BYTES_MAX,
+  isValidTaskId,
+  JOURNAL_BYTES_MAX,
+  RECORD_BYTES_MAX,
+  TASKS_PER_SPECIFICATION_MAX,
+} from '../limits';
 import {
   parseAttention,
   parseSpecificationRecord,
@@ -16,8 +19,27 @@ import {
   serializeSpecificationRecord,
   serializeTaskRecord,
 } from './codec';
-import { subjectKey } from './model';
+import {
+  holdsPlannedRevision,
+  parseJournal,
+  pendingJournal,
+  revisionOf,
+  serializeJournal,
+  type Journal,
+  type JournalWrite,
+} from './journal';
+import { subjectKey, type TaskRecord } from './model';
+import {
+  listFolder,
+  readRecordFile,
+  readRecordFiles,
+  removeRecordFile,
+  removeStageFiles,
+  writeRecordFile,
+  type RecordFolder,
+} from './record-files';
 import type { ExecutionChange, ExecutionSnapshot, Versioned, WorkflowStore } from './store';
+import { stateOfSnapshot, validateExecutionSnapshot } from './validate';
 
 /**
  * Filesystem {@link WorkflowStore}.
@@ -26,30 +48,39 @@ import type { ExecutionChange, ExecutionSnapshot, Versioned, WorkflowStore } fro
  *   `<specification>/.execution/tasks/<taskId>.yaml`. The leading dot keeps the folder out of the
  *   Specification's document tree; it moves with the Specification on archive.
  * - Local: `<stateRoot>/engine/workflow/attention/<specId>.json` and the change journal
- *   `<stateRoot>/engine/operations/workflow/<specId>.json`.
+ *   `<stateRoot>/engine/operations/workflow/<specId>.json` (`./journal.ts`).
  *
- * A change is first written whole to the journal, then to its files, then the journal is removed.
+ * A change is first written whole to the journal, then to its files; then the journal is removed.
  * Reads overlay a pending journal and the next change finishes it, so a crash between the files
- * never exposes half a change. Every journal target records the revision it replaces: a pending
- * journal is only honoured while each target still holds that revision or already the new text, so
- * state changed outside the Engine (a branch switch, a hand edit) is never overwritten by a replay:
- * every read fails closed with `WORKFLOW_STATE_CONFLICT`, naming the journal file the owner deletes
- * by hand to keep the records as they are.
+ * never exposes half a change. A pending journal is only honoured while each target still
+ * holds the revision it was planned against or already the new text, and every target is checked
+ * again right before it is published, so state changed outside the Engine (a branch switch, a hand
+ * edit) is not overwritten: the change and every later read fail closed with
+ * `WORKFLOW_STATE_CONFLICT`, naming the journal file the owner deletes by hand to keep the records
+ * as they are. A conflict found in the middle of publishing leaves the journal pending; deleting it
+ * by hand then keeps a partly applied change (only a concurrent external writer can cause it).
  *
- * Every record is checked against the codec while the change is built, before the journal is
- * written, so an invalid record is never stored. Stage files of an interrupted atomic write
- * (`.<name>.<uuid>.tmp`) are ignored by reads; the next change removes those in `.execution/`.
+ * Precondition: callers serialize the reads and changes of one Specification. The store does not
+ * lock; the operations hold the project control lock (cross-process) around every read and change,
+ * so a read never sees a change in the middle of being published.
+ *
+ * Every read and every change checks the identity of the records (a Task file holds the Task it is
+ * named after, every record belongs to the Specification), their coherence
+ * ({@link validateExecutionSnapshot}), the folders and files (`./record-files.ts`: no links, size
+ * bounds) and the number of Tasks; a change is checked whole before its journal is written, so an
+ * invalid record is never stored.
  *
  * In `.execution/tasks/` only `<name>.yaml` files that are not dot-files are records; every other
  * name (editor swap files, `Thumbs.db`, `desktop.ini`, `.gitkeep`, merge leftovers) is ignored. A
- * record name that is not a valid Task id still fails closed.
+ * record name that is not a valid Task id still fails closed. Stage files of an interrupted atomic
+ * write of a known record (`.<record>.<uuid>.tmp`) are ignored by reads and removed by the next
+ * change; other dot-files are left alone.
  */
 
 export const EXECUTION_DIRECTORY = '.execution';
 const SPECIFICATION_FILE = 'specification.yaml';
 const TASKS_DIRECTORY = 'tasks';
 const TASK_FILE_SUFFIX = '.yaml';
-const JOURNAL_VERSION = 1;
 
 export interface FilesystemWorkflowStoreOptions {
   /** `<home>/.nevo/local/state` of the Project Home. */
@@ -58,53 +89,25 @@ export interface FilesystemWorkflowStoreOptions {
   readonly specificationDirectory: (specId: string) => Promise<string>;
 }
 
-/** `expected`: sha256 of the text the write replaces, `null` when the file did not exist. */
-type JournalWrite = { readonly text: string; readonly expected: string | null } & (
-  | { readonly target: 'specification' }
-  | { readonly target: 'task'; readonly taskId: string }
-  | { readonly target: 'attention' }
-);
-
-interface Journal {
-  readonly version: number;
-  readonly specId: string;
-  readonly writes: readonly JournalWrite[];
+interface Texts {
+  readonly specification: string | undefined;
+  readonly tasks: ReadonlyMap<string, string>;
+  readonly attention: string | undefined;
 }
 
-/**
- * Stage file of `writeTextAtomically` (`.<name>.<uuid>.tmp`). A crash between its creation and the
- * rename leaves it behind; it is never a record (precedent: `isStrayJournalTempName`).
- */
-const STAGE_FILE = /^\..+\.[0-9a-f-]{36}\.tmp$/iu;
-
-const revisionOf = (text: string | undefined) => (text === undefined ? null : sha256Hex(text));
-
-function isAbsent(error: unknown): boolean {
-  return (error as NodeJS.ErrnoException).code === 'ENOENT';
+interface LoadedState {
+  readonly folders: Folders;
+  /** The current texts: the files with a pending journal laid over them. */
+  readonly texts: Texts;
+  readonly journal: Journal | undefined;
+  readonly snapshot: ExecutionSnapshot;
 }
 
-async function readOptional(path: string): Promise<string | undefined> {
-  try {
-    return await readFile(path, 'utf8');
-  } catch (error) {
-    if (isAbsent(error)) {
-      return undefined;
-    }
-
-    throw error;
-  }
-}
-
-async function listNames(directory: string): Promise<string[]> {
-  try {
-    return await readdir(directory);
-  } catch (error) {
-    if (isAbsent(error)) {
-      return [];
-    }
-
-    throw error;
-  }
+interface Folders {
+  readonly execution: RecordFolder;
+  readonly tasks: RecordFolder;
+  readonly attention: RecordFolder;
+  readonly journal: RecordFolder;
 }
 
 function assertSpecId(specId: string): void {
@@ -113,93 +116,150 @@ function assertSpecId(specId: string): void {
   }
 }
 
+const taskFileName = (taskId: string) => `${taskId}${TASK_FILE_SUFFIX}`;
+const isTaskFileName = (name: string) =>
+  name.endsWith(TASK_FILE_SUFFIX) && isValidTaskId(name.slice(0, -TASK_FILE_SUFFIX.length));
+
 function versioned<T>(text: string, parse: (source: string) => T): Versioned<T> {
   return { value: parse(text), revision: sha256Hex(text) };
+}
+
+function currentText(texts: Texts, write: JournalWrite): string | undefined {
+  return write.target === 'specification'
+    ? texts.specification
+    : write.target === 'task'
+      ? texts.tasks.get(write.taskId)
+      : texts.attention;
 }
 
 export function createFilesystemWorkflowStore(
   options: FilesystemWorkflowStoreOptions,
 ): WorkflowStore {
-  const attentionDirectory = join(options.stateRoot, 'engine', 'workflow', 'attention');
-  const journalDirectory = join(options.stateRoot, 'engine', 'operations', 'workflow');
-  const attentionPath = (specId: string) => join(attentionDirectory, `${specId}.json`);
-  const journalPath = (specId: string) => join(journalDirectory, `${specId}.json`);
-  const executionDirectory = async (specId: string) =>
-    join(await options.specificationDirectory(specId), EXECUTION_DIRECTORY);
+  return createStore(options, () => Promise.resolve());
+}
 
-  async function readJournal(specId: string): Promise<Journal | undefined> {
-    const text = await readOptional(journalPath(specId));
-    if (text === undefined) {
-      return undefined;
-    }
+/**
+ * Tests only, not exported from the package: {@link createFilesystemWorkflowStore} that runs
+ * `beforePublishTarget` before each target is published, so a test can interleave another writer.
+ */
+export function createFilesystemWorkflowStoreForTest(
+  options: FilesystemWorkflowStoreOptions,
+  beforePublishTarget: (write: JournalWrite) => Promise<void>,
+): WorkflowStore {
+  return createStore(options, beforePublishTarget);
+}
 
-    try {
-      const journal = JSON.parse(text) as Journal;
-      if (
-        journal.version === JOURNAL_VERSION &&
-        journal.specId === specId &&
-        Array.isArray(journal.writes) &&
-        journal.writes.every(isJournalWrite)
-      ) {
-        return journal;
-      }
-    } catch {
-      // Reported below: an unreadable journal is never skipped silently.
-    }
+function createStore(
+  options: FilesystemWorkflowStoreOptions,
+  beforePublishTarget: (write: JournalWrite) => Promise<void>,
+): WorkflowStore {
+  const stateFolder = (...segments: string[]): RecordFolder => ({
+    root: options.stateRoot,
+    segments,
+  });
+  /** The attention list and the journal of a Specification share its local file name. */
+  const stateFileName = (specId: string) => `${specId}.json`;
 
-    throw new WorkflowError('WORKFLOW_STATE_CORRUPT', 'The workflow change journal is not valid.');
+  async function foldersOf(specId: string): Promise<Folders> {
+    const root = await options.specificationDirectory(specId);
+
+    return {
+      execution: { root, segments: [EXECUTION_DIRECTORY] },
+      tasks: { root, segments: [EXECUTION_DIRECTORY, TASKS_DIRECTORY] },
+      attention: stateFolder('engine', 'workflow', 'attention'),
+      journal: stateFolder('engine', 'operations', 'workflow'),
+    };
   }
 
   /** The files as they are, without a pending journal. */
-  async function readFiles(specId: string) {
-    const directory = await executionDirectory(specId);
+  async function readFiles(specId: string, folders: Folders): Promise<Texts> {
     const tasks = new Map<string, string>();
-    for (const name of (await listNames(join(directory, TASKS_DIRECTORY))).sort()) {
-      // Stage files are dot-files too.
-      if (name.startsWith('.') || !name.endsWith(TASK_FILE_SUFFIX)) {
-        continue;
-      }
-
-      const taskId = name.slice(0, -TASK_FILE_SUFFIX.length);
-      if (!isValidTaskId(taskId)) {
+    // Stage files are dot-files too.
+    const names = (await listFolder(folders.tasks))
+      .filter((name) => !name.startsWith('.') && name.endsWith(TASK_FILE_SUFFIX))
+      .sort();
+    for (const name of names) {
+      if (!isTaskFileName(name)) {
         throw new WorkflowError(
           'WORKFLOW_STATE_CORRUPT',
           `Unexpected file "${name}" among the Tasks.`,
         );
       }
-
-      const text = await readOptional(join(directory, TASKS_DIRECTORY, name));
-      if (text !== undefined) {
-        tasks.set(taskId, text);
-      }
     }
 
-    return {
-      directory,
-      specification: await readOptional(join(directory, SPECIFICATION_FILE)),
-      tasks,
-      attention: await readOptional(attentionPath(specId)),
-    };
-  }
-
-  /**
-   * The current state: the files with a pending journal laid over them. A journal whose targets no
-   * longer hold the revision it was planned against (nor its new text) fails closed.
-   */
-  async function readTexts(specId: string) {
-    const files = await readFiles(specId);
-    const journal = await readJournal(specId);
-    const tasks = new Map(files.tasks);
-    let specification = files.specification;
-    let attention = files.attention;
-    if (journal && !replayable(files, journal)) {
+    if (names.length > TASKS_PER_SPECIFICATION_MAX) {
       throw new WorkflowError(
-        'WORKFLOW_STATE_CONFLICT',
-        `The execution state changed outside the Engine while a change was pending, so the pending change is not applied. Delete the local journal "${journalPath(specId)}" to keep the records as they are.`,
+        'WORKFLOW_STATE_CORRUPT',
+        'The Specification holds more Task records than it may have.',
       );
     }
 
-    for (const write of journal?.writes ?? []) {
+    for (const [name, text] of await readRecordFiles(folders.tasks, names, RECORD_BYTES_MAX)) {
+      tasks.set(name.slice(0, -TASK_FILE_SUFFIX.length), text);
+    }
+
+    return {
+      specification: await readRecordFile(folders.execution, SPECIFICATION_FILE, RECORD_BYTES_MAX),
+      tasks,
+      attention: await readRecordFile(
+        folders.attention,
+        stateFileName(specId),
+        ATTENTION_BYTES_MAX,
+      ),
+    };
+  }
+
+  const readJournalText = (specId: string, folders: Folders) =>
+    readRecordFile(folders.journal, stateFileName(specId), JOURNAL_BYTES_MAX);
+
+  function conflictWithJournal(specId: string, folders: Folders): WorkflowError {
+    return new WorkflowError(
+      'WORKFLOW_STATE_CONFLICT',
+      `The execution state changed outside the Engine while a change was pending, so the pending change is not applied. Delete the local journal "${join(options.stateRoot, ...folders.journal.segments, stateFileName(specId))}" to keep the records as they are.`,
+    );
+  }
+
+  function snapshotOf(specId: string, texts: Texts): ExecutionSnapshot {
+    const tasks = [...texts.tasks]
+      .sort(([left], [right]) => (left < right ? -1 : 1))
+      .map(([taskId, text]) => {
+        const entry = versioned(text, parseTaskRecord);
+        if (entry.value.taskId !== taskId) {
+          throw new WorkflowError(
+            'WORKFLOW_STATE_CORRUPT',
+            `The Task record "${taskFileName(taskId)}" holds another Task.`,
+          );
+        }
+
+        return entry;
+      });
+    const snapshot: ExecutionSnapshot = {
+      ...(texts.specification !== undefined
+        ? { specification: versioned(texts.specification, parseSpecificationRecord) }
+        : {}),
+      tasks,
+      attention: texts.attention !== undefined ? parseAttention(texts.attention) : [],
+    };
+    validateExecutionSnapshot(specId, stateOfSnapshot(snapshot));
+
+    return snapshot;
+  }
+
+  /** The current state: the files with a pending journal laid over them. */
+  async function load(specId: string): Promise<LoadedState> {
+    const folders = await foldersOf(specId);
+    const journalText = await readJournalText(specId, folders);
+    const journal = journalText === undefined ? undefined : parseJournal(journalText, specId);
+    const files = await readFiles(specId, folders);
+    const writes = journal?.writes ?? [];
+    if (!writes.every((write) => holdsPlannedRevision(currentText(files, write), write))) {
+      throw conflictWithJournal(specId, folders);
+    }
+
+    const tasks = new Map(files.tasks);
+    let specification = files.specification;
+    let attention = files.attention;
+    for (const write of writes) {
       if (write.target === 'specification') {
         specification = write.text;
       } else if (write.target === 'task') {
@@ -209,170 +269,119 @@ export function createFilesystemWorkflowStore(
       }
     }
 
-    return {
-      directory: files.directory,
-      specification,
-      tasks: new Map([...tasks].sort(([left], [right]) => (left < right ? -1 : 1))),
+    const texts = { specification, tasks, attention };
+
+    return { folders, texts, journal, snapshot: snapshotOf(specId, texts) };
+  }
+
+  /** Publish the journal's writes, each only while its target still holds the planned revision. */
+  async function publish(specId: string, folders: Folders, journal: Journal): Promise<void> {
+    for (const write of journal.writes) {
+      await beforePublishTarget(write);
+      const [folder, name, maxBytes] =
+        write.target === 'specification'
+          ? [folders.execution, SPECIFICATION_FILE, RECORD_BYTES_MAX]
+          : write.target === 'task'
+            ? [folders.tasks, taskFileName(write.taskId), RECORD_BYTES_MAX]
+            : [folders.attention, stateFileName(specId), ATTENTION_BYTES_MAX];
+      if (!holdsPlannedRevision(await readRecordFile(folder, name, maxBytes), write)) {
+        throw conflictWithJournal(specId, folders);
+      }
+
+      await writeRecordFile(folder, name, write.text);
+    }
+
+    await removeRecordFile(folders.journal, stateFileName(specId));
+  }
+
+  async function apply(specId: string, change: ExecutionChange): Promise<void> {
+    const current = await load(specId);
+    const { folders, texts } = current;
+    await removeStageFiles(folders.execution, (name) => name === SPECIFICATION_FILE);
+    await removeStageFiles(folders.tasks, isTaskFileName);
+    if (current.journal) {
+      await publish(specId, folders, current.journal);
+    }
+
+    const conflicts =
+      (change.specification !== undefined &&
+        revisionOf(texts.specification) !== change.specification.expected) ||
+      change.tasks.some((write) => revisionOf(texts.tasks.get(write.taskId)) !== write.expected);
+    if (conflicts) {
+      throw new WorkflowError('WORKFLOW_STATE_CONFLICT', 'The execution state changed meanwhile.');
+    }
+
+    for (const write of change.tasks) {
+      if (!isValidTaskId(write.taskId) || write.next.taskId !== write.taskId) {
+        throw new WorkflowError('WORKFLOW_STATE_CORRUPT', 'A Task write names another Task.');
+      }
+    }
+
+    const changesAttention = change.attention.set.length > 0 || change.attention.clear.length > 0;
+    const attention = nextAttention(current.snapshot.attention, change);
+    const tasks = new Map<string, TaskRecord>(
+      current.snapshot.tasks.map((entry) => [entry.value.taskId, entry.value]),
+    );
+    for (const write of change.tasks) {
+      tasks.set(write.taskId, write.next);
+    }
+
+    const specification = change.specification?.next ?? current.snapshot.specification?.value;
+    validateExecutionSnapshot(specId, {
+      ...(specification ? { specification } : {}),
+      tasks: [...tasks.values()],
       attention,
-      journal,
-    };
-  }
-
-  /**
-   * Remove stage files a crashed atomic write left behind in `.execution/` (the Git-tracked folder).
-   * Runs inside the control lock.
-   */
-  async function removeStageFiles(directory: string): Promise<void> {
-    for (const folder of [directory, join(directory, TASKS_DIRECTORY)]) {
-      for (const name of (await listNames(folder)).filter((entry) => STAGE_FILE.test(entry))) {
-        await removeFileWindowsSafe(join(folder, name)).catch((error: unknown) => {
-          if (!isAbsent(error)) {
-            throw error;
-          }
-        });
-      }
-    }
-  }
-
-  async function publish(specId: string, directory: string, writes: readonly JournalWrite[]) {
-    for (const write of writes) {
-      if (write.target === 'specification') {
-        await mkdir(directory, { recursive: true });
-        await writeTextAtomically(join(directory, SPECIFICATION_FILE), write.text);
-      } else if (write.target === 'task') {
-        await mkdir(join(directory, TASKS_DIRECTORY), { recursive: true });
-        await writeTextAtomically(
-          join(directory, TASKS_DIRECTORY, `${write.taskId}${TASK_FILE_SUFFIX}`),
-          write.text,
-        );
-      } else {
-        await mkdir(attentionDirectory, { recursive: true });
-        await writeTextAtomically(attentionPath(specId), write.text);
-      }
-    }
-
-    await removeFileWindowsSafe(journalPath(specId)).catch((error: unknown) => {
-      if (!isAbsent(error)) {
-        throw error;
-      }
     });
+
+    // Serializing validates each record against the codec: nothing is written when one fails.
+    const writes: JournalWrite[] = [
+      ...(change.specification
+        ? [
+            {
+              target: 'specification' as const,
+              text: serializeSpecificationRecord(change.specification.next),
+              expected: revisionOf(texts.specification),
+            },
+          ]
+        : []),
+      ...change.tasks.map((write) => ({
+        target: 'task' as const,
+        taskId: write.taskId,
+        text: serializeTaskRecord(write.next),
+        expected: revisionOf(texts.tasks.get(write.taskId)),
+      })),
+      ...(changesAttention
+        ? [
+            {
+              target: 'attention' as const,
+              text: serializeAttention(attention),
+              expected: revisionOf(texts.attention),
+            },
+          ]
+        : []),
+    ];
+    if (writes.length === 0) {
+      return;
+    }
+
+    const journal = pendingJournal(specId, writes);
+    await writeRecordFile(folders.journal, stateFileName(specId), serializeJournal(journal));
+    await publish(specId, folders, journal);
   }
 
   return {
     async read(specId): Promise<ExecutionSnapshot> {
       assertSpecId(specId);
-      const texts = await readTexts(specId);
 
-      return {
-        ...(texts.specification !== undefined
-          ? { specification: versioned(texts.specification, parseSpecificationRecord) }
-          : {}),
-        tasks: [...texts.tasks.values()].map((text) => versioned(text, parseTaskRecord)),
-        attention: texts.attention !== undefined ? parseAttention(texts.attention) : [],
-      };
+      return (await load(specId)).snapshot;
     },
 
-    async apply(specId, change: ExecutionChange): Promise<void> {
+    async apply(specId, change): Promise<void> {
       assertSpecId(specId);
-      const texts = await readTexts(specId);
-      await removeStageFiles(texts.directory);
-      if (texts.journal) {
-        await publish(specId, texts.directory, texts.journal.writes);
-      }
 
-      const conflicts =
-        (change.specification !== undefined &&
-          revisionOf(texts.specification) !== change.specification.expected) ||
-        change.tasks.some((write) => revisionOf(texts.tasks.get(write.taskId)) !== write.expected);
-      if (conflicts) {
-        throw new WorkflowError(
-          'WORKFLOW_STATE_CONFLICT',
-          'The execution state changed meanwhile.',
-        );
-      }
-
-      // Serializing validates each record against the codec: nothing is written when one fails.
-      const writes: JournalWrite[] = [
-        ...(change.specification
-          ? [
-              {
-                target: 'specification' as const,
-                text: serializeSpecificationRecord(change.specification.next),
-                expected: revisionOf(texts.specification),
-              },
-            ]
-          : []),
-        ...change.tasks.map((write) => {
-          if (!isValidTaskId(write.taskId) || write.next.taskId !== write.taskId) {
-            throw new WorkflowError('WORKFLOW_STATE_CORRUPT', 'A Task write names another Task.');
-          }
-
-          return {
-            target: 'task' as const,
-            taskId: write.taskId,
-            text: serializeTaskRecord(write.next),
-            expected: revisionOf(texts.tasks.get(write.taskId)),
-          };
-        }),
-      ];
-      if (change.attention.set.length > 0 || change.attention.clear.length > 0) {
-        const current = texts.attention !== undefined ? parseAttention(texts.attention) : [];
-        writes.push({
-          target: 'attention',
-          text: serializeAttention(nextAttention(current, change)),
-          expected: revisionOf(texts.attention),
-        });
-      }
-
-      if (writes.length === 0) {
-        return;
-      }
-
-      await mkdir(journalDirectory, { recursive: true });
-      await writeJsonAtomically(journalPath(specId), { version: JOURNAL_VERSION, specId, writes });
-      await publish(specId, texts.directory, writes);
+      await apply(specId, change);
     },
   };
-}
-
-/** Each target still holds the revision the journal was planned against, or already its new text. */
-function replayable(
-  files: {
-    readonly specification: string | undefined;
-    readonly tasks: ReadonlyMap<string, string>;
-    readonly attention: string | undefined;
-  },
-  journal: Journal,
-): boolean {
-  return journal.writes.every((write) => {
-    const current =
-      write.target === 'specification'
-        ? files.specification
-        : write.target === 'task'
-          ? files.tasks.get(write.taskId)
-          : files.attention;
-
-    return current === write.text || revisionOf(current) === write.expected;
-  });
-}
-
-function isJournalWrite(value: unknown): value is JournalWrite {
-  if (typeof value !== 'object' || value === null) {
-    return false;
-  }
-
-  const write = value as Record<string, unknown>;
-  const expected =
-    write.expected === null ||
-    (typeof write.expected === 'string' && /^[0-9a-f]{64}$/u.test(write.expected));
-
-  return (
-    typeof write.text === 'string' &&
-    expected &&
-    (write.target === 'specification' ||
-      write.target === 'attention' ||
-      (write.target === 'task' && typeof write.taskId === 'string' && isValidTaskId(write.taskId)))
-  );
 }
 
 function nextAttention(

@@ -34,11 +34,11 @@ lives in `packages/specflow-engine/src/workflow/`. It is exported through `src/w
 The core is subject-neutral. A **subject** is either the Specification or one of its Tasks:
 
 ```text
-startSpecificationExecution(specId, archetype)  ─┐
-startTaskExecution(specId, taskId)               ─┴─▶ start(subject) ─▶ progression state machine
-finishStep(subject, step, attempt, input)          ─▶ finish ─▶ effects ─▶ continuation ─▶ attention
-returnToStep(subject, step, feedback)              ─▶ return ─▶ effects ─▶ continuation ─▶ attention
-inspectExecution(specId)                           ─▶ read-only view
+startSpecificationExecution(specId, archetype, executor) ─┐
+startTaskExecution(specId, taskId, executor)              ─┴─▶ start(subject) ─▶ progression state machine
+finishStep(subject, step, attempt, input, executor)         ─▶ finish ─▶ effects ─▶ continuation ─▶ attention
+returnToStep(subject, step, feedback)                       ─▶ return ─▶ effects ─▶ continuation ─▶ attention
+inspectExecution(specId)                                    ─▶ read-only view
 ```
 
 The entry points differ in only two ways:
@@ -124,6 +124,25 @@ Readiness, lanes and statuses are derived from these, never stored.
   `workflow/limits.ts`, the single source for these checks and for the codec.
 - **History size.** The codec bounds a run to 1 000 attempts and 1 000 return records. That is a plain
   size bound checked by write-side validation, not a workflow rule; no run is expected to reach it.
+  A record file is also bounded to 256 KiB (see the budgets under "State and storage"). Known limit: a
+  history that grows over that byte budget is refused only when the change is serialized
+  (`WORKFLOW_INPUT_INVALID`, nothing is stored); no operation checks it earlier, and bounding the run
+  history is a follow-up (plan 06, F16).
+
+## Executors
+
+Every start of a work step (including a start that resumes the active attempt) and every finish names
+its executor, from trusted Runtime or CLI context, never from agent-supplied input
+(`progression/executor.ts`). The rules, shared by start and finish:
+
+- An executor is required, and its kind must be the step's `executor`: an agent never starts or
+  finishes a human step, and a person never starts or finishes an agent step.
+- An active agent attempt started in a Session (its executor carries a `sessionId`) can be resumed
+  and finished only by the same provider and Session id.
+
+Breaking a rule fails with `WORKFLOW_EXECUTOR_NOT_ALLOWED` before anything changes. Handing an agent
+step over to the owner (owner takeover) is not supported; it would be an explicit operation of its own
+(plan 06, F17), not a finish.
 
 ## Tasks
 
@@ -157,7 +176,9 @@ instructions and the step instructions. Together these are the custom instructio
 ## Returns ("back to the table")
 
 `returns[]` declares the steps the owner may move the run back to from any non-terminal position. This
-includes a Specification that is waiting for its Tasks. When the owner returns:
+includes a Specification that is waiting for its Tasks. A return goes only to a declared step the run
+has already reached (it has an attempt of that step), never ahead; otherwise it fails with
+`WORKFLOW_RETURN_NOT_ALLOWED`. When the owner returns:
 
 - an active attempt ends with the outcome `returned`;
 - the return's effects apply in the same change;
@@ -227,8 +248,21 @@ item. The reasons are:
 Attention is never a question to the agent. The agent's finish succeeds, and the attention item is
 recorded for the subject. There is at most one item per subject. **Any start of that subject removes
 it**, whether the start comes from a quick screen, a manual start or an automatic continuation, since
-they all use the same start operation. "Remember my choice" is `rememberArchetypeModel`: it writes the
-model, and optionally the preferred provider, into the agent archetype file, keeping its comments.
+they all use the same start operation. The item also goes when the run ends.
+
+**Only current attention counts.** Attention is local while the runs are Git-tracked, so a checkout (a
+branch switch, a pull) can change a run under an item that was recorded for another state. An item
+counts only while it matches its subject's position (`operations/attention.ts`, `isAttentionCurrent`):
+the step it names is the subject's `ready` step, or, for `tasks-stuck`, the Specification's active wait
+step. `inspectExecution` never shows an item that no longer matches, and the next mutation of the
+Specification removes every such item. `inspectExecution` runs inside the same serialization as the
+mutations, so it never sees a change half-applied.
+
+"Remember my choice" is `rememberArchetypeModel`: it writes the model, and optionally the preferred
+provider, into the agent archetype file, keeping its comments. Its read-edit-write runs under the
+project control lock. `openWorkflow` returns a snapshot of the
+definition catalogue: after a definition edit, including `rememberArchetypeModel`, call `openWorkflow`
+again to see it.
 
 The Engine only decides. Starting or continuing a Session from a `continue` decision is the Runtime's
 job (plan 06, F01).
@@ -256,24 +290,54 @@ proceed.
 - **Revisions.** Every record is validated on read (`state/codec.ts`), and a hand-edited or truncated
   file fails closed. Writes are compare-and-swap on content revisions (`WORKFLOW_STATE_CONFLICT`).
 - **Atomic change.** One operation produces one `ExecutionChange`. The store writes it whole to the
-  journal, then writes the files, then removes the journal. A read overlays a pending journal, and the
-  next write finishes it.
+  journal (`state/journal.ts`), then writes the files, then deletes the journal. A read overlays a
+  pending journal, and the next change finishes it.
+- **Consistent reads.** The store does not lock. Its precondition is that callers serialize the reads
+  and changes of one Specification; the operations do it with the project control lock, which is
+  cross-process. So a read never sees a change in the middle of being published.
 - **Write-side validation.** Every record, and the attention list, is validated against the same
   codec while the change is built, before the journal is written. A record that would not read back
-  fails with `WORKFLOW_STATE_CORRUPT`, and nothing is written. The attention list holds at most one
+  fails with `WORKFLOW_STATE_CORRUPT`, one over its byte budget with `WORKFLOW_INPUT_INVALID`, and
+  nothing is written. The attention list holds at most one
   item per subject, so its limit is the Task limit plus one.
-- **Replay check.** Each journal target records the sha256 of the text it replaces, or that the file
-  did not exist. A pending journal is used only while every target still holds that revision or
-  already the new text. Otherwise the state changed outside the Engine (a branch switch, a hand edit),
-  and reads and writes fail closed with `WORKFLOW_STATE_CONFLICT`. The error names the local journal
-  file; the owner deletes it by hand to keep the records as they are on disk.
-- **Stage files.** An atomic write that crashed leaves a `.<name>.<uuid>.tmp` file. Reads skip
-  dot-files, and the next change removes stage files in `.execution/` and `.execution/tasks/`.
+- **Identity and coherence.** Every read, and the state a change would produce, is checked before it
+  is used or stored: a Task file holds the Task its name says, every record belongs to the
+  Specification (`specId`), Task ids are unique, and `validateExecutionSnapshot` (`state/validate.ts`)
+  checks the invariants the operations rely on (one open attempt for an active step and none
+  otherwise, attempt numbers without gaps, an ordered history, at most one attention item per subject,
+  attention only for subjects with a record). A failure is `WORKFLOW_STATE_CORRUPT`.
+- **Plain files only.** `.execution/`, `.execution/tasks/`, the attention and journal folders and every
+  record file must be a plain directory or a regular file at its expected physical path
+  (`state/record-files.ts`). A symlink, a junction or a path that resolves elsewhere fails with
+  `WORKFLOW_STATE_CORRUPT` before anything is read, written or removed.
+- **Budgets.** A Specification holds at most `TASKS_PER_SPECIFICATION_MAX` (200) Task files, a record
+  file at most `RECORD_BYTES_MAX` (256 KiB), the attention list at most `ATTENTION_BYTES_MAX` (1 MiB)
+  and the journal at most `JOURNAL_BYTES_MAX` (`workflow/limits.ts`). A file's size is checked before
+  it is read; a stored file over its budget fails the read with `WORKFLOW_STATE_CORRUPT`. The record
+  and attention budgets are enforced when a change is serialized (`state/codec.ts`): a change over
+  one is refused with `WORKFLOW_INPUT_INVALID`, and nothing is stored. The journal budget is checked
+  when the journal is serialized (`state/journal.ts`); records within their budgets always fit it.
+- **Replay and publish check.** Each journal target records the sha256 of the text it replaces, or
+  that the file did not exist. A pending journal is used only while every target still holds that
+  revision or already the new text, and each target is checked again right before it is published,
+  both when a pending journal is replayed and for a fresh change. A target that changed means the
+  state changed outside the Engine (a branch switch, a hand edit): the change fails with
+  `WORKFLOW_STATE_CONFLICT`, the journal stays pending, and reads fail the same way. The error names
+  the local journal file; the owner deletes it by hand to keep the records as they are on disk. A
+  conflict found in the middle of publishing also leaves the journal pending, and deleting it then may
+  keep a partly applied change; only a concurrent external writer can cause that (F05). This
+  narrows, but does not close, the window against a concurrent external writer such as Git between the
+  check and the write; full protection needs writer admission (plan 06, F05).
+- **Stage files.** An atomic write that crashed leaves a `.<record>.<uuid>.tmp` file. Reads skip
+  dot-files, and the next change removes only the stage files of known record names
+  (`specification.yaml` in `.execution/`, valid Task file names in `.execution/tasks/`); every other
+  dot-file is left alone.
 - **Other files among the Tasks.** In `.execution/tasks/`, only names that end in `.yaml` and do not
   start with a dot are Task records. Every other name (`.gitkeep`, `Thumbs.db`, `desktop.ini`, swap and
   `.orig` files) is ignored. A record whose name is not a valid Task id fails closed with
   `WORKFLOW_STATE_CORRUPT`.
-- **Serialization.** All mutations run inside `withProjectControlLock`.
+- **Serialization.** All mutations, `inspectExecution` and `rememberArchetypeModel` run inside
+  `withProjectControlLock`.
 - **Per-Task files.** Each Task has its own file, so parallel Task worktrees can later merge without
   conflicts (follow-up F08).
 

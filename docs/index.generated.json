@@ -3997,7 +3997,7 @@
       "status": "draft",
       "file": "docs/ideas/specflow-engine/execution-plans/06-workflow-kernel/README.md",
       "read_when": [
-        "continuing the workflow kernel work (follow-ups F01–F16)",
+        "continuing the workflow kernel work (follow-ups F01–F19)",
         "comparing the legacy nevo workflow engine with this one",
         "planning Runtime, CLI or UI work on Specification or Task execution"
       ],

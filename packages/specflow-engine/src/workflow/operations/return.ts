@@ -8,7 +8,7 @@ import { ExecutionWorkingSet } from './working-set';
 
 export interface ReturnToStepInput {
   readonly subject: WorkflowSubject;
-  /** A step the workflow declares as a return target. */
+  /** A step the workflow declares as a return target and the run has already reached. */
   readonly step: string;
   /** What changed; carried to the step as its handoff. */
   readonly feedback?: string;
@@ -21,10 +21,10 @@ export interface ReturnToStepResult {
 }
 
 /**
- * "Back to the table": move a run to a declared earlier step from any non-terminal position, also
- * while the Specification waits for its Tasks. The return's effects (by default none; typically
- * blocking Tasks that have not started) apply in the same change. A return is an owner action, so
- * what follows always waits for the owner.
+ * "Back to the table": move a run to a declared step it has already reached (earlier work, never a
+ * step ahead) from any non-terminal position, also while the Specification waits for its Tasks. The
+ * return's effects (by default none; typically blocking Tasks that have not started) apply in the
+ * same change. A return is an owner action, so what follows always waits for the owner.
  *
  * A blocked Task is refused: it waits for the Specification, not for its owner.
  *

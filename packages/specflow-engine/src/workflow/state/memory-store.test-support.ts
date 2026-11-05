@@ -7,6 +7,7 @@ import { WorkflowError } from '../errors';
 import { serializeAttention, serializeSpecificationRecord, serializeTaskRecord } from './codec';
 import { subjectKey, type SpecificationExecutionRecord, type TaskRecord } from './model';
 import type { ExecutionChange, ExecutionSnapshot, Versioned, WorkflowStore } from './store';
+import { stateOfSnapshot, validateExecutionSnapshot } from './validate';
 
 interface SpecState {
   specification?: Versioned<SpecificationExecutionRecord>;
@@ -19,9 +20,13 @@ const versioned = <T>(value: T): Versioned<T> => ({
   revision: sha256Hex(canonicalJson(value)),
 });
 
+/** Run `operation` so that a failure rejects, as the filesystem store's do. */
+const settled = <T>(operation: () => T): Promise<T> => Promise.resolve().then(operation);
+
 /**
- * An in-memory {@link WorkflowStore} with the same revision checks and the same codec validation
- * before any write as the filesystem store.
+ * An in-memory {@link WorkflowStore} with the same revision, identity, coherence
+ * ({@link validateExecutionSnapshot}) and codec checks before any write as the filesystem store; the
+ * shared contract is `./store-contract.test-support.ts`.
  */
 export function createMemoryWorkflowStore(): WorkflowStore & {
   readonly applied: ExecutionChange[];
@@ -48,67 +53,84 @@ export function createMemoryWorkflowStore(): WorkflowStore & {
 
   return {
     applied,
-    read(specId): Promise<ExecutionSnapshot> {
-      const state = stateOf(specId);
-
-      return Promise.resolve(
-        structuredClone({
+    read: (specId) =>
+      settled(() => {
+        const state = stateOf(specId);
+        const snapshot: ExecutionSnapshot = structuredClone({
           ...(state.specification ? { specification: state.specification } : {}),
           tasks: [...state.tasks.values()].sort((left, right) =>
             left.value.taskId < right.value.taskId ? -1 : 1,
           ),
           attention: [...state.attention.values()],
-        }),
-      );
-    },
-    apply(specId, change): Promise<void> {
-      const state = stateOf(specId);
-      if (change.specification) {
-        check(state.specification, change.specification.expected);
-      }
+        });
+        validateExecutionSnapshot(specId, stateOfSnapshot(snapshot));
 
-      for (const write of change.tasks) {
-        check(state.tasks.get(write.taskId), write.expected);
-      }
+        return snapshot;
+      }),
+    apply: (specId, change) =>
+      settled(() => {
+        const state = stateOf(specId);
+        if (change.specification) {
+          check(state.specification, change.specification.expected);
+        }
 
-      if (change.specification) {
-        serializeSpecificationRecord(change.specification.next);
-      }
+        for (const write of change.tasks) {
+          check(state.tasks.get(write.taskId), write.expected);
+          if (write.next.taskId !== write.taskId) {
+            throw new WorkflowError('WORKFLOW_STATE_CORRUPT', 'A Task write names another Task.');
+          }
+        }
 
-      for (const write of change.tasks) {
-        serializeTaskRecord(write.next);
-      }
+        const replaced = new Set([
+          ...change.attention.clear,
+          ...change.attention.set.map((item) => subjectKey(item.subject)),
+        ]);
+        const attention = [
+          ...[...state.attention.values()].filter(
+            (item) => !replaced.has(subjectKey(item.subject)),
+          ),
+          ...change.attention.set,
+        ];
+        const tasks = new Map([...state.tasks].map(([taskId, entry]) => [taskId, entry.value]));
+        for (const write of change.tasks) {
+          tasks.set(write.taskId, write.next);
+        }
 
-      const replaced = new Set([
-        ...change.attention.clear,
-        ...change.attention.set.map((item) => subjectKey(item.subject)),
-      ]);
-      serializeAttention([
-        ...[...state.attention.values()].filter((item) => !replaced.has(subjectKey(item.subject))),
-        ...change.attention.set,
-      ]);
+        const specification = change.specification?.next ?? state.specification?.value;
+        validateExecutionSnapshot(specId, {
+          ...(specification ? { specification } : {}),
+          tasks: [...tasks.values()],
+          attention,
+        });
+        if (change.specification) {
+          serializeSpecificationRecord(change.specification.next);
+        }
 
-      if (change.specification) {
-        state.specification = versioned(change.specification.next);
-      }
+        for (const write of change.tasks) {
+          serializeTaskRecord(write.next);
+        }
 
-      for (const write of change.tasks) {
-        state.tasks.set(write.taskId, versioned(write.next));
-      }
+        serializeAttention(attention);
 
-      for (const key of change.attention.clear) {
-        state.attention.delete(key);
-      }
+        if (change.specification) {
+          state.specification = versioned(change.specification.next);
+        }
 
-      for (const item of change.attention.set) {
-        state.attention.set(subjectKey(item.subject), structuredClone(item));
-      }
+        for (const write of change.tasks) {
+          state.tasks.set(write.taskId, versioned(write.next));
+        }
 
-      if (!isDeepStrictEqual(change, { tasks: [], attention: { set: [], clear: [] } })) {
-        applied.push(structuredClone(change));
-      }
+        for (const key of change.attention.clear) {
+          state.attention.delete(key);
+        }
 
-      return Promise.resolve();
-    },
+        for (const item of change.attention.set) {
+          state.attention.set(subjectKey(item.subject), structuredClone(item));
+        }
+
+        if (!isDeepStrictEqual(change, { tasks: [], attention: { set: [], clear: [] } })) {
+          applied.push(structuredClone(change));
+        }
+      }),
   };
 }

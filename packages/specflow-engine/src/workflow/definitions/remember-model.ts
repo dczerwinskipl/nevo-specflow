@@ -74,13 +74,33 @@ export function setArchetypeProviderModel(source: string, choice: ArchetypeModel
 export interface RememberModelDependencies {
   readonly source: DefinitionSource;
   readonly writer: DefinitionWriter;
+  /** Runs the read-edit-write as one unit (the project control lock in production). */
+  readonly serialize: <T>(operation: () => Promise<T>) => Promise<T>;
+}
+
+async function readArchetype(
+  dependencies: RememberModelDependencies,
+  path: string,
+  archetypeId: string,
+): Promise<Buffer> {
+  const read = await dependencies.source.read(path, DEFINITION_FILE_MAX_BYTES);
+  if (read.state !== 'ok') {
+    throw new WorkflowError(
+      'WORKFLOW_NOT_CONFIGURED',
+      `The agent archetype "${archetypeId}" cannot be read (${read.state}).`,
+    );
+  }
+
+  return read.bytes;
 }
 
 /**
  * Write the choice into `.nevo/definitions/agent-archetype/<id>.yaml`. The file changes like any
  * owner edit of a definition: it is not committed here, and a run already pinned is unaffected.
+ *
+ * Two choices never lose each other: the read-edit-write runs inside `serialize`.
  */
-export async function rememberArchetypeModel(
+export function rememberArchetypeModel(
   dependencies: RememberModelDependencies,
   archetypeId: string,
   choice: ArchetypeModelChoice,
@@ -90,14 +110,11 @@ export async function rememberArchetypeModel(
   }
 
   const path = `${AGENT_ARCHETYPE_KIND}/${archetypeId}.yaml`;
-  const read = await dependencies.source.read(path, DEFINITION_FILE_MAX_BYTES);
-  if (read.state !== 'ok') {
-    throw new WorkflowError(
-      'WORKFLOW_NOT_CONFIGURED',
-      `The agent archetype "${archetypeId}" cannot be read (${read.state}).`,
-    );
-  }
 
-  const next = setArchetypeProviderModel(read.bytes.toString('utf8'), choice);
-  await dependencies.writer.writeAtomic(path, new TextEncoder().encode(next));
+  return dependencies.serialize(async () => {
+    const bytes = await readArchetype(dependencies, path, archetypeId);
+    const next = setArchetypeProviderModel(bytes.toString('utf8'), choice);
+
+    await dependencies.writer.writeAtomic(path, new TextEncoder().encode(next));
+  });
 }

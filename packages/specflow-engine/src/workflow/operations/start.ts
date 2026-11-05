@@ -2,9 +2,11 @@ import { ANY_TASK_TYPE } from '@nevo/specflow-contracts/documents';
 
 import { resolveSpecificationExecution } from '../definitions/catalogue';
 import { WorkflowError } from '../errors';
+import { assertExecutorAllowed } from '../progression/executor';
 import { applyStart, newRun, planStart } from '../progression/progression';
 import { taskReadiness } from '../tasks/tasks';
 import {
+  activeAttempt,
   isTerminal,
   subjectKey,
   type ExecutorRecord,
@@ -12,6 +14,7 @@ import {
   type WorkflowSubject,
 } from '../state/model';
 import type { ExecutionChange, ExecutionSnapshot } from '../state/store';
+import { runOf, staleAttentionKeys } from './attention';
 import {
   isoNow,
   loadSubject,
@@ -29,8 +32,11 @@ export type StartResult =
   | { readonly kind: 'terminal'; readonly subject: WorkflowSubject };
 
 export interface StartOptions {
-  /** Who works on the attempt, from trusted Runtime/CLI context. */
-  readonly executor?: ExecutorRecord;
+  /**
+   * Who works on the attempt, from trusted Runtime/CLI context. Its kind must be the step's; the
+   * Session of an agent attempt is the only one that can resume or finish it.
+   */
+  readonly executor: ExecutorRecord;
 }
 
 /**
@@ -56,20 +62,21 @@ async function startSubject(
     throw new WorkflowError('WORKFLOW_POSITION_INVALID', 'A wait step is entered by the Engine.');
   }
 
+  // A resume continues the active attempt: only its own Session may resume an agent attempt.
+  assertExecutorAllowed(plan.step, options.executor, activeAttempt(loaded.run));
   if (plan.kind === 'activate') {
-    assertExecutorAllowed(plan.step, options.executor);
     assertTaskReady(snapshot, loaded);
   }
 
   const at = isoNow(dependencies);
-  const run = applyStart(loaded.run, plan, {
-    at,
-    ...(options.executor ? { executor: options.executor } : {}),
-  });
+  const run = applyStart(loaded.run, plan, { at, executor: options.executor });
+  // The started subject's item goes; so does any item another subject's state no longer matches.
   const key = subjectKey(subject);
-  const clearsAttention = snapshot.attention.some((item) => subjectKey(item.subject) === key);
-  const change = changeFor(snapshot, loaded, run, seed, clearsAttention ? [key] : []);
-  if (run !== loaded.run || seed || clearsAttention) {
+  const clear = staleAttentionKeys(snapshot.attention, (other) =>
+    subjectKey(other) === key ? undefined : runOf(snapshot, other),
+  );
+  const change = changeFor(snapshot, loaded, run, seed, clear);
+  if (run !== loaded.run || seed || clear.length > 0) {
     await dependencies.store.apply(subject.specId, change);
   }
 
@@ -123,15 +130,6 @@ function changeFor(
     tasks: [],
     attention,
   };
-}
-
-function assertExecutorAllowed(
-  step: { readonly kind: string; readonly executor?: 'agent' | 'human' },
-  executor: ExecutorRecord | undefined,
-): void {
-  if (step.executor === 'human' && executor?.kind === 'agent') {
-    throw new WorkflowError('WORKFLOW_EXECUTOR_NOT_ALLOWED', 'An agent cannot do a human step.');
-  }
 }
 
 function assertTaskReady(snapshot: ExecutionSnapshot, loaded: LoadedSubject): void {

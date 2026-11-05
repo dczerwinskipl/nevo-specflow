@@ -7,7 +7,7 @@ scope: specflow
 areas: [workflow, runtime, testing]
 tags: [execution-plan, workflow, continuation, attention, archetypes]
 read_when:
-  - continuing the workflow kernel work (follow-ups F01–F16)
+  - continuing the workflow kernel work (follow-ups F01–F19)
   - comparing the legacy nevo workflow engine with this one
   - planning Runtime, CLI or UI work on Specification or Task execution
 summary: >
@@ -105,6 +105,30 @@ code was copied: the language and the infrastructure differ. Models and rules we
     `WORKFLOW_DEFINITION_CHANGED`;
   - stage-file cleanup in the local attention and journal folders (only `.execution/` is cleaned)
     and the second Windows device-name check (the Task id pattern already excludes those names).
+- **W12 External review of PR #120.** Findings R01–R13. Fixed in the kernel PR:
+  - executors: every start (a resume included) and finish of a work step needs an executor of the
+    step's kind, and an active agent attempt started in a Session is resumed and finished only by
+    that Session (`progression/executor.ts`, `WORKFLOW_EXECUTOR_NOT_ALLOWED`);
+  - a return goes only to a declared step the run has already reached (`WORKFLOW_RETURN_NOT_ALLOWED`);
+  - attention counts only while it matches its subject's position (`operations/attention.ts`):
+    `inspectExecution` hides stale items, the next mutation removes them, and `inspectExecution` is
+    serialized with the mutations;
+  - `rememberArchetypeModel` runs its read-edit-write under the project control lock;
+    `openWorkflow` is documented as a catalogue snapshot;
+  - the store: callers serialize the reads and changes of a Specification (the project control lock,
+    cross-process), the journal is deleted once published, every target is checked again right
+    before it is published, identity and coherence checks
+    (`state/validate.ts`) run on every read and on the state a change would produce, folders and
+    record files must be plain (`state/record-files.ts`), Task count and byte budgets are enforced on
+    read (`WORKFLOW_STATE_CORRUPT`) and when a change is serialized (`WORKFLOW_INPUT_INVALID`), and
+    only stage files of known records are removed.
+
+  Deferred: owner takeover of an agent step (F17), writer admission against a concurrent external
+  writer such as Git (F05, with concrete acceptance criteria now), an idempotent finish retry (F16),
+  revising and cancelling Tasks and acceptance after abandoned Tasks (F06, review R12), and the
+  registration of the workflow definition kinds from a composition root (F18, review architecture
+  note). Known limit: an attempt history over the record byte budget is refused only when the change
+  is serialized, not by an earlier input check (F19).
 
 ## 3. Follow-ups
 
@@ -157,10 +181,21 @@ a second progression algorithm.
 
 ### F05 — Workspace admission for writable steps
 
+The store re-checks every target right before it publishes, which narrows but does not close the
+window in which a concurrent external writer (Git: checkout, pull, merge) changes a record between
+the check and the write. Writer admission closes it.
+
 - An agent step that writes calls `admitWorkspaceExecution` before dispatch and settles it after the
   Turn (`src/execution`). Read-only steps (review) skip the writer claim only when the provider enforces
   read-only.
 - Plan 03 T05/T06 define the recovery.
+- **Acceptance criteria:**
+  - a writable step admits a workspace execution claim before it is dispatched and settles the claim
+    after it ends (finish, return or failure);
+  - an external Git writer that runs while a journal is pending is either excluded by the claim or
+    detected and refused (`WORKFLOW_STATE_CONFLICT`); a record is never overwritten with a change
+    planned against another revision;
+  - tests run a competing writer process against a pending journal and prove both outcomes.
 
 ### F06 — Revising and cancelling Tasks
 
@@ -168,8 +203,10 @@ a second progression algorithm.
   it can only add new ones.
 - Add a `tasks` finish input with `update` / `abandon` entries, and an owner `abandonTask`. An
   abandoned Task becomes terminal `abandoned`.
-- A wait step that has only abandoned Tasks still completes; decide whether acceptance should then
-  warn.
+- Also allow editing the dependencies of Tasks that have not started.
+- A wait step that has only abandoned Tasks still completes. Define the acceptance semantics when
+  Tasks were abandoned: whether acceptance warns, lists them, or requires an owner confirmation
+  (review R12 of PR #120).
 
 ### F07 — Re-pinning and definition snapshots
 
@@ -242,9 +279,46 @@ input, should instead return the recorded result (transition, position and conti
 without changing anything. The check compares the attempt's stored outcome with the request; a
 different input for a finished attempt stays a mismatch.
 
+- **Acceptance criteria:**
+  - a repeated finish of the same attempt with the same input, after a publish that failed, returns
+    the recorded result instead of `WORKFLOW_ATTEMPT_MISMATCH`, and changes nothing;
+  - a repeated finish of that attempt with a different input is refused;
+  - tests inject a failure after the journal is written and retry the finish.
+
+### F17 — Owner takeover of an agent step (explicit operation)
+
+Today only an executor of the step's kind can start or finish it, and an active agent attempt started
+in a Session is resumed and finished only by that Session (`WORKFLOW_EXECUTOR_NOT_ALLOWED`). If the owner should be
+able to take over an agent step (for example after the Session died), that is an explicit operation
+that records the takeover, ends or transfers the agent attempt, and lets the Runtime stop the Session
+(see F13). It is never a plain human finish of an agent step.
+
+### F18 — Register workflow definition kinds from a composition root
+
+`specs/definitions/kinds/index.ts` imports `workflow/definitions/kinds` to register `workflow`,
+`agent-archetype` and `task-type` in the default registry, so the generic definitions module depends
+on the workflow module. Register the workflow kinds from a composition root instead, keeping the
+definitions module independent of the workflow capability.
+
+### F19 — Bound run history so a long run cannot reach the record byte budget
+
+A run's attempts and returns are stored in its record, which is bounded to `RECORD_BYTES_MAX`. Each
+attempt may carry up to 16 384 characters of feedback and 100 artifacts, so a long run with many
+returns can grow its record over the budget. The change is then refused when it is serialized
+(`WORKFLOW_INPUT_INVALID`) and the run cannot progress. Bound the history instead (for example by
+moving the feedback of ended attempts out of the record, or capping what an ended attempt keeps), so
+that no sequence of valid operations reaches the budget.
+
+- **Acceptance criteria:**
+  - a run with the maximum number of attempts, each with maximal input, still serializes within
+    `RECORD_BYTES_MAX`;
+  - the handoff of the latest attempt is unchanged.
+
 ## 4. What is missing (summary)
 
 Runtime orchestration (F01), the agent completion transport (F02), gates (F03), commits (F04),
 writer admission (F05), Task revision and cancel (F06), re-pinning (F07), parallel worktrees (F08),
 API and UI (F09), the Antigravity driver (F10), caching (F11), running selected Tasks (F12), Session cancel on
-return (F13), status projection (F14), model availability (F15) and idempotent finish retries (F16).
+return (F13), status projection (F14), model availability (F15), idempotent finish retries (F16), owner
+takeover of an agent step (F17), kind registration from a composition root (F18) and a bounded run
+history (F19).

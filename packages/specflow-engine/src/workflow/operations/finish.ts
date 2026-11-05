@@ -1,8 +1,14 @@
 import type { ContinuationDecision, FinishingSession } from '../continuation/resolve';
 import { WorkflowError } from '../errors';
+import { assertExecutorAllowed } from '../progression/executor';
 import { applyFinish, planFinish, type FinishInput } from '../progression/progression';
 import { materializeTasks, type TaskProposal } from '../tasks/tasks';
-import type { ExecutorRecord, RunPosition, WorkflowSubject } from '../state/model';
+import {
+  activeAttempt,
+  type ExecutorRecord,
+  type RunPosition,
+  type WorkflowSubject,
+} from '../state/model';
 import { advance, applyEffects, settleWait, type AdvanceContext } from './advance';
 import { isoNow, loadSubject, type WorkflowDependencies } from './loaded-execution';
 import { ExecutionWorkingSet } from './working-set';
@@ -16,8 +22,11 @@ export interface FinishStepInput {
     /** Required by, and only allowed for, a step that produces Tasks. */
     readonly tasks?: readonly TaskProposal[];
   };
-  /** Who finished, from trusted Runtime/CLI context (never an agent-supplied value). */
-  readonly executor?: ExecutorRecord;
+  /**
+   * Who finished, from trusted Runtime/CLI context (never an agent-supplied value). Its kind must be
+   * the step's, and an agent attempt started in a Session is finished by that Session only.
+   */
+  readonly executor: ExecutorRecord;
 }
 
 export interface FinishStepResult {
@@ -30,8 +39,8 @@ export interface FinishStepResult {
   readonly specification?: ContinuationDecision;
 }
 
-function finishingSession(executor: ExecutorRecord | undefined): FinishingSession | undefined {
-  if (executor?.kind !== 'agent') {
+function finishingSession(executor: ExecutorRecord): FinishingSession | undefined {
+  if (executor.kind !== 'agent') {
     return undefined;
   }
 
@@ -62,12 +71,7 @@ export function finishStep(
       );
     }
 
-    if (plan.step.executor === 'human' && request.executor?.kind === 'agent') {
-      throw new WorkflowError(
-        'WORKFLOW_EXECUTOR_NOT_ALLOWED',
-        'An agent cannot finish a human step.',
-      );
-    }
+    assertExecutorAllowed(plan.step, request.executor, activeAttempt(loaded.run));
 
     const produces = plan.step.produces === 'tasks';
     if (produces !== (request.input.tasks !== undefined)) {

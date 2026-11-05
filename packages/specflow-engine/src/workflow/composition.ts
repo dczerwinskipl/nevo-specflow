@@ -41,7 +41,10 @@ async function specificationDirectory(engine: SpecFlowEngine, specId: string): P
   );
 }
 
-/** Load the execution catalogue now; a definition edit is seen by the next call. */
+/**
+ * Load the execution catalogue now. The returned dependencies hold that snapshot of the definitions:
+ * after a definition edit (including `rememberArchetypeModel`) call `openWorkflow` again to see it.
+ */
 export async function openWorkflow(engine: SpecFlowEngine): Promise<WorkflowDependencies> {
   const loaded = await loadDefinitions(
     createFilesystemDefinitionSource(definitionsRoot(engine)),
@@ -59,9 +62,11 @@ export async function openWorkflow(engine: SpecFlowEngine): Promise<WorkflowDepe
   };
 }
 
+/** Archetype edits ("remember this choice"), serialized by the same project control lock. */
 export function openArchetypeEditing(engine: SpecFlowEngine): RememberModelDependencies {
   return {
     source: createFilesystemDefinitionSource(definitionsRoot(engine)),
     writer: createFilesystemDefinitionWriter(engine.context.project.homeRoot),
+    serialize: (operation) => withProjectControlLock(engine.context, operation),
   };
 }

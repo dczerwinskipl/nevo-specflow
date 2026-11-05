@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { setArchetypeProviderModel } from './remember-model';
+import { MemoryDefinitionSource } from '../../specs/definitions/test-support';
+import { rememberArchetypeModel, setArchetypeProviderModel } from './remember-model';
 
 const SOURCE = `kind: agent-archetype
 schemaVersion: 1
@@ -41,5 +42,37 @@ describe('setArchetypeProviderModel', () => {
     expect(() =>
       setArchetypeProviderModel('kind: agent-archetype\n', { provider: 'codex', model: 'x' }),
     ).toThrow(expect.objectContaining({ code: 'WORKFLOW_INPUT_INVALID' }));
+  });
+});
+
+describe('rememberArchetypeModel', () => {
+  const PATH = 'agent-archetype/reviewer.yaml';
+
+  function serialized() {
+    let queue = Promise.resolve();
+
+    return <T>(operation: () => Promise<T>): Promise<T> => {
+      const result = queue.then(operation);
+      queue = result.then(
+        () => undefined,
+        () => undefined,
+      );
+
+      return result;
+    };
+  }
+
+  it('keeps both of two concurrent choices', async () => {
+    const files = new MemoryDefinitionSource({ [PATH]: SOURCE });
+    const dependencies = { source: files, writer: files, serialize: serialized() };
+
+    await Promise.all([
+      rememberArchetypeModel(dependencies, 'reviewer', { provider: 'codex', model: 'gpt-x' }),
+      rememberArchetypeModel(dependencies, 'reviewer', { provider: 'antigravity', model: 'g-x' }),
+    ]);
+
+    const text = files.text(PATH) ?? '';
+    expect(text).toContain('  - provider: codex\n    model: gpt-x\n');
+    expect(text).toContain('  - provider: antigravity\n    model: g-x\n');
   });
 });

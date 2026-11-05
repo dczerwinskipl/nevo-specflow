@@ -19,7 +19,10 @@ export const WORKFLOW_ERROR_CODES = [
   /** The finish result selects no transition or the input breaks the step contract. */
   'WORKFLOW_INPUT_INVALID',
   'WORKFLOW_RETURN_NOT_ALLOWED',
-  /** The executor may not do this step (an agent never finishes a human step). */
+  /**
+   * The executor may not do this step: none was named, its kind is not the step's, or it is not the
+   * Session that works on the agent attempt it finishes.
+   */
   'WORKFLOW_EXECUTOR_NOT_ALLOWED',
   /** Stored state does not match the expected revision (a concurrent writer). */
   'WORKFLOW_STATE_CONFLICT',

@@ -9,12 +9,15 @@ import {
   AppWorkspace,
   AppWorkspaceProvider,
   WorkspaceHeader,
+  useRegisterPinnedSecondaryTab,
   useSecondaryNavigation,
 } from '@nevo/ui';
 import { StoryLocalization } from '../../../i18n/StoryLocalization';
 import type { ManagedSessionsApi } from './api';
 import { createSessionFeed } from './feed';
 import { createWorkInspector } from './WorkInspector';
+import { availablePaged } from './usePagedHistory';
+import { initialPagedState } from './workInspectorStore';
 
 // jsdom never computes real layout, so every element's `scrollTop` would otherwise default to
 // (and stay) 0 — indistinguishable from "scrolled to the top". Left alone, that would make the
@@ -595,10 +598,12 @@ function pagedApi(options: PagedApiOptions) {
   return { api, calls, release: () => release(), setDown: (value: boolean) => (down = value) };
 }
 
-function TurnsHost({ api }: { api: ManagedSessionsApi }) {
+function TurnsHost({ api, pinned = false }: { api: ManagedSessionsApi; pinned?: boolean }) {
   const feed = useMemo(() => createSessionFeed(api, sessionId, 'work-test'), [api]);
   const workStack = useMemo(() => createWorkInspector(api, feed, 'work-test'), [api, feed]);
   const navigation = useSecondaryNavigation();
+  // A pinned tab makes the Secondary a split with root tabs: the workspace then hosts the detail header.
+  useRegisterPinnedSecondaryTab(pinned ? { title: 'Context' } : null);
 
   return (
     <AppWorkspace split="primary">
@@ -613,18 +618,23 @@ function TurnsHost({ api }: { api: ManagedSessionsApi }) {
           </button>
         ))}
       </AppWorkspace.Primary>
+      {pinned ? (
+        <AppWorkspace.Secondary header={<WorkspaceHeader title="Context" />}>
+          <div>Pinned context content</div>
+        </AppWorkspace.Secondary>
+      ) : null}
     </AppWorkspace>
   );
 }
 
-function mountTurns(api: ManagedSessionsApi) {
+function mountTurns(api: ManagedSessionsApi, options: { pinned?: boolean } = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <StoryLocalization locale="en">
       <QueryClientProvider client={client}>
         <AppWorkspaceProvider>
           <AppShell navigation={<div>Nav</div>}>
-            <TurnsHost api={api} />
+            <TurnsHost api={api} pinned={options.pinned} />
           </AppShell>
         </AppWorkspaceProvider>
       </QueryClientProvider>
@@ -965,5 +975,92 @@ describe('WorkInspector failed tail refresh keeps loaded history', () => {
     expect(await screen.findByText(refreshFailed)).toBeTruthy();
     expect(screen.getByText('Action 1')).toBeTruthy();
     expect(screen.getByText('Action 2')).toBeTruthy();
+  });
+
+  it('N07: the detail header keeps naming the Work while the retained actions are shown after a cache loss and a failed refetch', async () => {
+    const tool = work({
+      kind: 'tool',
+      title: { text: 'Run a batch', complete: true },
+      actionCount: 2,
+    });
+    const action = (ordinal: number) => ({
+      actionId: `action-${ordinal}`,
+      ordinal,
+      revision: 1,
+      state: 'completed' as const,
+      title: { text: `Action ${ordinal}`, complete: true },
+      createdAt: '2026-10-30T10:00:00Z',
+      updatedAt: '2026-10-30T10:00:00Z',
+    });
+    let down = false;
+    const { api: workApi } = pagedApi({
+      turns: { [turnId]: [[tool]], [otherTurnId]: [toolItems('Elsewhere', 1)] },
+    });
+    const api = {
+      ...workApi,
+      actions: (_sessionId: string, workId: string) =>
+        down
+          ? Promise.reject(new Error('API unavailable'))
+          : Promise.resolve({
+              sessionId,
+              eventSeq: 1,
+              workId,
+              items: [action(1), action(2)],
+              history: { hasOlder: false },
+            }),
+    } as unknown as ManagedSessionsApi;
+    // A split-capable width, so the Secondary is a split with root tabs and hosts the detail header.
+    const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+      width: 1400,
+      height: 56,
+      x: 0,
+      y: 0,
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      toJSON: () => ({}),
+    });
+    const client = mountTurns(api, { pinned: true });
+    await openTurn('Open Turn 1');
+    fireEvent.click((await screen.findByText('Run a batch')).closest('button')!);
+    await screen.findByText('Action 1');
+    const headings = () => screen.queryAllByRole('heading', { level: 2, name: 'Run a batch' });
+    const shownBefore = headings().length;
+    expect(shownBefore).toBe(1);
+
+    await openTurn('Open Turn 2');
+    await screen.findByText('Elsewhere 0');
+    client.clear();
+    down = true;
+    await openTurn('Open Turn 1');
+
+    expect(await screen.findByText(refreshFailed)).toBeTruthy();
+    expect(screen.getByText('Action 1')).toBeTruthy();
+    expect(headings()).toHaveLength(shownBefore);
+    rect.mockRestore();
+  });
+});
+
+describe('availablePaged', () => {
+  const merge = (stored: readonly string[], tail: readonly string[]) => [
+    ...new Set([...stored, ...tail]),
+  ];
+
+  it('N07: the stored pages and their cursor stay available when the tail window is gone', () => {
+    const stored = {
+      ...initialPagedState<string>(),
+      items: ['a'],
+      cursor: { hasOlder: true, before: 'x' },
+    };
+
+    expect(availablePaged(stored, undefined, merge)).toEqual({ items: ['a'], hasOlder: true });
+    expect(
+      availablePaged(
+        initialPagedState<string>(),
+        { items: ['b'], history: { hasOlder: true } },
+        merge,
+      ),
+    ).toEqual({ items: ['b'], hasOlder: true });
   });
 });

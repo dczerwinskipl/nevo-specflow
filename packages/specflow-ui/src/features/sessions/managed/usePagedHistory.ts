@@ -62,6 +62,21 @@ function useAutoLoadOlder({
   return maybeLoadOlder;
 }
 
+/** What the view can show of a paged object: the stored pages merged with the tail window when it
+ * is loaded, and whether older history remains behind them. The one definition for every reader
+ * of the object (the screen and its declared header), so they never disagree when the tail is
+ * missing (query cache cleared, refetch failed) but the store still holds the pages. */
+export function availablePaged<TItem>(
+  state: PagedState<TItem>,
+  tail: PagePart<TItem> | undefined,
+  merge: Merge<TItem>,
+) {
+  return {
+    items: merge(state.items, tail?.items ?? []),
+    hasOlder: (state.cursor ?? tail?.history)?.hasOlder ?? false,
+  };
+}
+
 /**
  * The paging pattern shared by the Work and Actions screens: the tail window (a react-query page)
  * plus older pages loaded on scroll, merged during render from the view store — never copied into
@@ -91,8 +106,10 @@ export function usePagedHistory<TItem, S extends PagedState<TItem>, TPage extend
   const state = useViewState(store);
   const scroller = useRef<HTMLDivElement>(null);
   const anchor = useRef<{ height: number; top: number } | undefined>(undefined);
-  const items = useMemo(() => merge(state.items, tail?.items ?? []), [merge, state.items, tail]);
-  const history = state.cursor ?? tail?.history;
+  const { items, hasOlder } = useMemo(
+    () => availablePaged(state, tail, merge),
+    [merge, state, tail],
+  );
 
   useLayoutEffect(() => {
     const node = scroller.current;
@@ -127,12 +144,12 @@ export function usePagedHistory<TItem, S extends PagedState<TItem>, TPage extend
 
   const maybeLoadOlder = useAutoLoadOlder({
     scroller,
-    hasOlder: history?.hasOlder ?? false,
+    hasOlder,
     busy: state.busy,
     error: state.error,
     loadOlder,
     itemsVersion: items,
   });
 
-  return { state, items, scroller, loadOlder, maybeLoadOlder };
+  return { state, items, hasOlder, scroller, loadOlder, maybeLoadOlder };
 }

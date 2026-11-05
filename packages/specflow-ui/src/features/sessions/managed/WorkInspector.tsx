@@ -31,7 +31,7 @@ import { translateNow } from '../../../i18n/message';
 import type { ManagedSessionsApi } from './api';
 import type { SessionFeed } from './feed';
 import { ReadableText } from './MessageText';
-import { usePagedHistory } from './usePagedHistory';
+import { availablePaged, usePagedHistory } from './usePagedHistory';
 import {
   absorbPage,
   absorbWorkPage,
@@ -795,16 +795,16 @@ function isSingleAction(count: number, hasOlder: boolean) {
  * breadcrumbs) the screen shows the same identity at the top of its own content.
  */
 function ActionsHeader({ data, params }: { data: Data; params: ActionsParams }) {
-  const { data: page } = useActionsQuery(data, params);
-  if (!page) {
-    return null;
+  const query = useActionsQuery(data, params);
+  const stored = useViewState(data.actionsView(params.workId));
+  // The same available data as the screen below: the stored pages stay when the tail is gone.
+  const { items, hasOlder } = availablePaged(stored, query.data, mergeToolActions);
+
+  if (isSingleAction(items.length, hasOlder)) {
+    return <SingleToolActionHeader item={items[0]!} />;
   }
 
-  if (isSingleAction(page.items.length, page.history.hasOlder)) {
-    return <SingleToolActionHeader item={page.items[0]!} />;
-  }
-
-  return page.items.length > 0 ? (
+  return items.length > 0 ? (
     <Typography as="h2" variant="title-sm" className="text-content-primary">
       {params.workTitle}
     </Typography>
@@ -818,7 +818,7 @@ function Actions({ data, params }: { data: Data; params: ActionsParams }) {
   const query = useActionsQuery(data, params);
   useWorkRefresh(data.feed, data.turnId, query.refetch);
 
-  const { state, items, scroller, loadOlder, maybeLoadOlder } = usePagedHistory({
+  const { state, items, hasOlder, scroller, loadOlder, maybeLoadOlder } = usePagedHistory({
     store: view,
     merge: mergeToolActions,
     tail: query.data,
@@ -827,7 +827,6 @@ function Actions({ data, params }: { data: Data; params: ActionsParams }) {
   });
   const olderBusy = state.busy;
   const olderError = state.error;
-  const hasOlder = (state.cursor ?? query.data?.history)?.hasOlder ?? false;
   const loadGate = useLoadGate(query, state.items.length > 0);
   const single = isSingleAction(items.length, hasOlder);
 

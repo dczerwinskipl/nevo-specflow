@@ -5796,7 +5796,7 @@
         "reviewing finished SpecFlow UI screens for visual, flow or mobile problems",
         "cleaning up Storybook default stories and fixture data"
       ],
-      "summary": "Screenshot-backed UX audit of the finished SpecFlow UI screens on main after the Full Session redesign. Lists desktop space and layout-jump problems, navigator and flow problems, mobile problems and Storybook data noise, each with a suggested direction, followed by the review decisions and a phased delivery order. Non-authoritative input for the next navigation and layout iteration.",
+      "summary": "Screenshot-backed UX audit of the finished SpecFlow UI screens on main after the Full Session redesign. Lists desktop space and layout-jump problems, navigator and flow problems, mobile problems and Storybook data noise, each with a suggested direction, followed by the proposed decisions after review and a phased delivery order. Non-authoritative input for the next navigation and layout iteration.",
       "related": [
         "ideas.specflow-ui",
         "ideas.specflow-ui.navigation-route-model",

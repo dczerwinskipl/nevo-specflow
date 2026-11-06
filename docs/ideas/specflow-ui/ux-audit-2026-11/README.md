@@ -20,8 +20,8 @@ read_when:
 summary: >
   Screenshot-backed UX audit of the finished SpecFlow UI screens on main after the Full Session
   redesign. Lists desktop space and layout-jump problems, navigator and flow problems, mobile
-  problems and Storybook data noise, each with a suggested direction, followed by the review
-  decisions and a phased delivery order. Non-authoritative input for the next navigation and
+  problems and Storybook data noise, each with a suggested direction, followed by the proposed
+  decisions after review and a phased delivery order. Non-authoritative input for the next navigation and
   layout iteration.
 related:
   - ideas.specflow-ui
@@ -36,8 +36,12 @@ This audit reviews the **finished** SpecFlow UI screens. Known placeholders such
 _Planned areas_ list in Session Context are out of scope.
 
 Sections 1 to 4 record **observations** and the auditor's first **proposals**. Proposals are not
-decisions. The [Review decisions](#review-decisions) section records what was accepted, changed or
-rejected after review. Where a proposal conflicts with an accepted contract, the contract wins.
+decisions. The [Proposed decisions after review](#proposed-decisions-after-review) section records
+what the review proposes to accept, change or drop. Those are still proposals until the owner
+approves them. Where a proposal conflicts with an accepted contract, the contract wins.
+
+This document is an audit and a planning input. It is not a source of authoritative contracts:
+anything it plans that needs a contract, such as Session ownership, gets its own design document.
 
 ## Method and evidence
 
@@ -111,7 +115,8 @@ half of the screen.
 until the content needs more space.
 
 > **Conflicts with an accepted contract.** The 50/50 default for a second independent root tab is
-> part of the accepted Session Chat V10 split. The observation stands; the proposal was rejected.
+> part of the accepted Session Chat V10 split. The observation stands; the review proposes to
+> drop this proposal.
 
 ### 1.5 Documents use four columns
 
@@ -197,7 +202,7 @@ Session.
 with an agent fits the same shell: name and archetype in the start card, Context on the right.
 This would also remove one of the width changes from section 1.1.
 
-> **Rejected in review.** The creation process stays as it is. The width change is solved by the
+> **Review proposes to reject.** The creation process stays as it is. The width change is solved by the
 > fixed shell geometry instead; the form itself may be improved without changing the process.
 
 ### 2.7 The Session start card has two calls to action
@@ -222,7 +227,7 @@ the screen has two text inputs. The Composer meanwhile shows the stop control.
 
 **Suggestion.** Answer through the main Composer with the question attached as context.
 
-> **Changed in review.** Session Chat V10 requires a structured interaction to appear as an
+> **Review proposes a change.** Session Chat V10 requires a structured interaction to appear as an
 > actual user decision, not handled by the general Composer. The structured answer stays. The
 > problem to solve is two competing active inputs, for example by replacing the normal Composer
 > with the answer field while the question is pending.
@@ -302,26 +307,30 @@ chaotic and every screen seems to carry a warning.
 Move edge cases and scroll regression stories to a separate group. This matches the direction of
 the Storybook rework proposal in #113.
 
-## Review decisions
+## Proposed decisions after review
 
-The first proposals were reviewed on 2026-11-05. The review kept the product structure and the
-accepted Workspace V2 and Session Chat V10 behaviour, and split the work into small, independent
-pull requests instead of one redesign.
+The first proposals were reviewed on 2026-11-05 and 2026-11-06. The review keeps the product
+structure and the accepted Workspace V2 and Session Chat V10 behaviour, and splits the work into
+small, independent pull requests instead of one redesign.
 
-### Decisions per proposal
+**None of these decisions is owner-approved yet.** The owner approves each row explicitly before
+it becomes implementation scope. The navigator direction and the handling of agent questions need
+that approval most.
 
-| Proposal              | Decision         | What to do                                                                                                                                                         |
-| --------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Shell geometry        | Implement        | Fixed App Shell geometry with maximum widths only inside views. Not a small CSS change: it affects breakpoints and Workspace width measurement.                    |
-| Navigator             | Implement partly | Keep quick access to Sessions and the current hierarchy. Add a durable Specification context, shorter names and better counts.                                     |
-| Creation shape        | Reject           | Do not move Create Specification into the Session shell. Improve the form without changing the process. Do not preselect a model.                                  |
-| Secondary space       | Split            | Solve the empty Activity history separately. Keep the accepted dynamic V10 split in Full Session.                                                                  |
-| Conversation width    | Implement        | One reading width for answers, comments and Work summaries, consistent with the Composer.                                                                          |
-| Mobile header         | Implement        | A consistent header with name, state and access to Context, built from existing Design System primitives.                                                          |
-| Question and Composer | Redesign the UX  | Keep the structured interaction but avoid two competing active inputs. Consider replacing the normal Composer with the answer field while the question is pending. |
-| Demo                  | Implement        | Remove the false success message and the broken calls to action. Decide separately whether demo simulates Sessions.                                                |
-| Storybook             | Implement        | Within the #113 rework: Default stories, fixture language and tree organisation.                                                                                   |
-| Small issues          | Implement partly | Remove developer copy, duplicated identifiers and unlabelled values. Check attention roll-up against the real Runtime first.                                       |
+### Proposed decision per audit proposal
+
+| Proposal              | Proposed decision | What to do                                                                                                                                                         |
+| --------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Shell geometry        | Implement         | Fixed App Shell geometry with maximum widths only inside views. Not a small CSS change: it affects breakpoints and Workspace width measurement.                    |
+| Navigator             | Implement partly  | Keep quick access to Sessions and the current hierarchy. Add a durable Specification context, shorter names and better counts.                                     |
+| Creation shape        | Reject            | Do not move Create Specification into the Session shell. Improve the form without changing the process. Do not preselect a model.                                  |
+| Secondary space       | Split             | Solve the empty Activity history separately. Keep the accepted dynamic V10 split in Full Session.                                                                  |
+| Conversation width    | Implement         | One reading width for answers, comments and Work summaries, consistent with the Composer.                                                                          |
+| Mobile header         | Implement         | A consistent header with name, state and access to Context, built from existing Design System primitives.                                                          |
+| Question and Composer | Redesign the UX   | Keep the structured interaction but avoid two competing active inputs. Consider replacing the normal Composer with the answer field while the question is pending. |
+| Demo                  | Implement         | Remove the false success message and the broken calls to action. Decide separately whether demo simulates Sessions.                                                |
+| Storybook             | Implement         | Within the #113 rework: Default stories, fixture language and tree organisation.                                                                                   |
+| Small issues          | Implement partly  | Remove developer copy, duplicated identifiers and unlabelled values. Check attention roll-up against the real Runtime first.                                       |
 
 ### Navigator direction
 
@@ -348,27 +357,35 @@ Documents
 The structure above illustrates the direction. It is not an accepted mock and does not propose new
 Design System components.
 
-### Delivery order
+### Proposed delivery order
 
 1. **PR A: App Shell.** Fixed position of the navigation and the Workspace, with independent content
    widths per view. Verify at 1600, 1280 and 390 px without regressions in splits and scrolling.
-2. **PR B: Session ownership and navigator.** First the contract for the Session-to-Specification
-   association, then one context resolver, then the navigator presentation. This crosses Runtime
-   and UI. It must include:
-   - a durable, authoritative Session-to-Specification association where one exists;
-   - one resolver used by the navigator, Session Context and return links;
-   - correct handling of independent Sessions, loading, not found and missing permission;
-   - tests for a direct URL, reload, switching Sessions and switching Specifications.
-
+2. **Session ownership design.** A separate design document, accepted before any implementation
+   handoff. Adding a `specificationId` to the Session DTO is not enough. The design decides:
+   - the meaning of the Session-to-Specification association and who sets it;
+   - how it is stored and how long it lasts;
+   - authorization when the reader may see the Session but not the Specification, or the reverse;
+   - Sessions that belong to no Specification;
+   - loading, not found and missing permission states.
+3. **PR B: Session ownership and navigator.** Implements the accepted design: the contract, one
+   resolver used by the navigator, Session Context and return links, then the navigator
+   presentation. Tests cover a direct URL, reload, switching Sessions and switching Specifications.
    A local cache of the last opened Specification is not an acceptable solution.
-
-3. **PR C: Session UX and responsive.** Conversation width, mobile headers, access to Context and the
-   empty Activity history. Do not change the root tab contract or the Back rules.
-4. **PR D: UI cleanup and demo.** Copy, naming, task counts, messages and fixture consistency.
+4. **Session UX, as three independent changes.** Each one is small because the Session screen has
+   complex scrolling and responsive behaviour. None of them changes the root tab contract or the
+   Back rules.
+   - **PR C1: Conversation width.** One reading width for answers, comments, Work summaries and the
+     Composer.
+   - **PR C2: Mobile Session header.** Name, state and owning Specification with access to Context.
+   - **PR C3: Empty Activity history.** Collapse or replace the empty Secondary on the Specification
+     Overview.
+5. **PR D: UI cleanup and demo.** Copy, naming, task counts, messages and fixture consistency.
    Storybook follows #113 and is not mixed with the navigator work.
 
-PR A is independent and can start immediately. The Session ownership contract for PR B can be
-specified in parallel.
+The review found no blocker for PR A. The Session ownership design can be written in parallel.
+PR C1, C2 and C3 do not depend on each other or on PR B; C2 shows the owning Specification only
+once PR B exists.
 
 ### Verification rule for geometry changes
 

@@ -147,7 +147,7 @@ journey strips compare it with `main` and A2.
 | D       | The jump moves to the right edge, and a void of about 1190 px makes the screen lopsided.                                                | [D, Specs Overview, 2560](images/shell-geometry/D-overview-2560.png)              |
 | E       | The preview repeats values visible beside it; at 1600 the form collapses to one wide column; at 2560 a 570 px panel is about 70% empty. | [E vs A2, Create, 1600](images/shell-geometry/compare-AE-create-manual-1600.png)  |
 
-### Recommended variant at full size
+### First-round recommendation (A2) at full size
 
 | Screen                                    | Screenshot                                                                          |
 | ----------------------------------------- | ----------------------------------------------------------------------------------- |
@@ -209,7 +209,10 @@ removes the current 55 px jump on Create. A2 keeps a single-column form; E narro
 The last row is existing `main` behaviour, not a regression. It differs from the narrow-layout Back
 intent of the route model and is recorded in the mobile findings of the audit.
 
-## 5. Recommendation: A2 (proposal)
+## 5. First-round recommendation: A2 (proposal)
+
+> **Superseded in part.** A follow-up review found A2 incomplete. Section 6 completes it as A3,
+> and section 7 lists the current decisions.
 
 A2 makes the existing distinction explicit and consistent instead of incidental:
 
@@ -246,29 +249,180 @@ the right of the form edge.
 - **Verification.** Before-and-after captures of the whole journey at 1280, 1600, 1920, 2560 and
   390 px, and transition tests, not single-screen stories.
 
-## 6. Decisions for the owner
+## 6. Completing A2: the real Create and Specification Overview
 
-1. **Direction.** Choose A2, or another variant.
-2. **The remaining jump.** Accept one navigation jump at the Specification boundary. It is 275 px at
-   1920 and 595 px at 2560, larger than in A because the Focused width shrank from 1280 to 1100.
-   The alternative is a 1280 px Focused width used only on screens of 2200 px and wider.
-3. **Snap threshold.** Accept the 240 px threshold and the empty strip of about 230 px it leaves on
-   the right of Focused screens at 1600, or let Focused screens fill the width below about 1700 px.
-4. **Breadcrumb alignment.** On centred Workspace pages the breadcrumb stays at the pane edge while
-   the title starts about 310 px further right at 2560. Documents already behaves this way. Align
-   both or accept it.
-5. **Create arrangement.** Approve the two-column grouping of the existing Create sections; the
-   creation workflow itself does not change.
-6. **Design System rule.** Approve amending the Bounded workspace rule as described above.
-7. **Create Session principle.** Confirm that Create Specification stays a Focused screen. The review
-   rejected variant E, which gives Create the Specification workspace geometry and a preview panel.
+A follow-up review found that A2 was judged on incomplete evidence. This iteration closes those gaps.
+It treats shell geometry, the Create composition and the Specification Overview composition as
+three separate decisions.
 
-## 7. Reproduce
+### What the follow-up review asked for, and what the code shows
+
+| Request                                            | Finding in code and docs                                                                                                                                                                                                        |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Render the real project Create, not only the demo  | The project Create (`CreateProjectForm`) has Name, an optional **Goal**, Archetype with its documents, and the full Git workspace section. It has **no method choice and no agent section**; that exists only in the demo flow. |
+| Respect the accepted one-column rule               | The demo contract says the form is "single column on every width" and forbids a summary on the right. A two-column Create changes that rule and must change the contract text, not only CSS.                                    |
+| Keep the progress page narrow                      | The project contract gives the progress page "the same content width and alignment as the form (about 880 px, `content-form`, centred)".                                                                                        |
+| Do not centre Specification Overview like Markdown | A2 centred an operational page of tasks, sessions and documents, and left a large empty Activity history panel beside it.                                                                                                       |
+
+A2 rendered with the real project form confirms the gap: the single column grows to 1100 px and the
+name and goal fields stretch to about 1030 px, the "widened container, same arrangement" pattern.
+
+![Project Create at 1920 px: main, A2 and A3](images/shell-geometry/compare-it3-project-create-1920.png)
+
+### Variant A3: A2 completed
+
+- **Create, two columns from a 992 px form column.** Left: name, goal, archetype and its documents.
+  Right: where the Specification is created. In the demo agent flow the right column holds the
+  agent first, then the workspace, the same order as the single column. Below 992 px the form
+  stays one column: at 1280 px, at 200% zoom and on mobile.
+- **Keyboard order follows reading order.** Tab moves through the whole left column, then the right
+  column, then the Create button.
+- **Footer aligned with the form.** The Create button ends on the form edge at every width.
+- **Progress page.** The outer frame keeps the Create width, so nothing moves on submit; the progress
+  content stays at `content-form`, left-aligned with the form.
+- **Specification Overview, operational layout.** On panes of at least 1408 px the existing sections
+  sit in two columns: summary, attention and tasks on the left; continue session and documents on
+  the right. Content starts at the pane edge, aligned with the breadcrumb. Narrower panes keep the
+  current single column and its order.
+
+**A3h** is A3 plus one change: on viewports of at least 2200 px Activity history becomes the last
+section of the right column instead of a separate Secondary panel. A Task preview still opens in
+the Secondary.
+
+![A3 project Create states at 1920 px](images/shell-geometry/compare-it3-project-states-1920.png)
+
+![A3 project Create at 1280, 1366, 1440 and 1600 px](images/shell-geometry/compare-it3-project-breakpoints.png)
+
+![A3 project Create at 200% zoom and 390 px](images/shell-geometry/compare-it3-project-narrow.png)
+
+![Demo Create with an agent at 1920 px: main, A2 and A3](images/shell-geometry/compare-it3-demo-create-1920.png)
+
+![Specification Overview at 1920 px: A2, A3 and A3h](images/shell-geometry/compare-it3-spec-overview-1920.png)
+
+![Specification Overview at 2560 px: A2, A3 and A3h](images/shell-geometry/compare-it3-spec-overview-2560.png)
+
+Full size: [A2 project Create, 1920](images/shell-geometry/A2-project-create-1920.png),
+[A3 project Create, 1920](images/shell-geometry/A3-project-create-1920.png),
+[A3 project Create, whole form, 1920](images/shell-geometry/A3-project-create-full-1920.png),
+[A3 Specification Overview, 2560](images/shell-geometry/A3-spec-overview-2560.png),
+[A3h Specification Overview, 2560](images/shell-geometry/A3h-spec-overview-2560.png).
+
+![Journey at 2560 px: main, A2, A3 and A3h](images/shell-geometry/compare-it3-journey-2560.png)
+
+![Journey at 1920 px: main, A2, A3 and A3h](images/shell-geometry/compare-it3-journey-1920.png)
+
+### Verification in this iteration
+
+| Check                | Result                                                                                                                                                                              |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Real project Runtime | `nevo-specflow start` on a scratch Git project with installed definitions; three Specifications created through the form, each with a new worktree                                  |
+| Viewports            | 1280, 1366, 1440, 1600, 1920, 2560, 390 and 200% zoom                                                                                                                               |
+| Create states        | Initial without archetype, filled, whole form, Git settings expanded, options loading, options failed; progress in progress, succeeded and refused (protected branch, invalid path) |
+| Frame continuity     | Specs Overview and Create share the same frame at every width; the navigation does not move between them                                                                            |
+| Mobile               | Every demo screen at 390 px is byte-identical to `main` except Specification Overview in A3h, which differs only in hash                                                            |
+| Interactions         | Task preview, closing it, Session splitter and mobile Back behave as in `main` in A3 and A3h                                                                                        |
+| Type check and lint  | Clean for the prototype                                                                                                                                                             |
+
+**Limits.**
+
+- The project Runtime does not serve the Specification Overview projection yet, so a newly created
+  Specification shows "unavailable" after Create. Specification Overview was judged on demo data.
+- A server-side name error could not be produced: the server accepts any title and generates a
+  branch name, so the inline name error and its scroll and focus behaviour were not seen.
+- Refused and succeeded progress states come from Storybook, which has no snap rule, so at 1600 px
+  its navigation is centred while the app snaps it to the left edge.
+
+### Progress page and the whole form
+
+![Create progress page at 1920 px: main above, A3 below](images/shell-geometry/compare-it3-progress-1920.png)
+
+![Project Create, whole form at 1920 px: main and A3](images/shell-geometry/compare-it3-project-full-1920.png)
+
+### Independent review of this iteration
+
+A fresh reviewer, who had not built the layouts, judged A3 and A3h against the accepted contracts
+and the layout rules. The reviewer's findings were fixed in A3 and re-rendered:
+
+| Reviewer finding                                                                                                      | Fix in A3                                                                                                              |
+| --------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| The method-choice step and the progress page used a frame 10 px narrower, so at 1600 px the choice step jumped 120 px | Every Create state uses the same 1102 px frame; the navigation stays put from Specs Overview through the progress page |
+| Branch and path values wrapped mid-word in the narrower right column                                                  | Value-only rows (branch name, worktree folder) stay on one line and truncate, with the full path in a tooltip          |
+| The progress divider ran past the 880 px column                                                                       | The whole progress content, dividers included, stays at `content-form`                                                 |
+| The Specification Overview side column started with a stray rule above the attention block                            | The summary spans both columns; the side column starts level with the attention block                                  |
+
+| Variant | Verdict                                    | Reason                                                                                                                                                                                              |
+| ------- | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A3      | **Accept with fixes**, fixes applied above | Two-column Create fits the whole real form on one screen at 2560 px, states and Tab order are sound, no regression at 1280 or 390                                                                   |
+| A3h     | **Reject as shown**                        | Task rows stretch to about 1730 px, the action menu sits about 1350 px from its title, and the history location depends on the viewport. It trades a dead Secondary for dead space inside the rows. |
+
+**Still open after the fixes:**
+
+- **The Git commit row repeats the branch name inside a sentence.** It still wraps long branch names
+  mid-word, and `main` does the same with long names. This is a copy decision rather than a layout
+  one: the row could refer to the branch shown above it.
+- **The recent Session moves out of the main reading column on wide Specification Overview panes.**
+  The workspace spec warns against deriving hierarchy from unused space, so the owner decides
+  whether that move is acceptable.
+- **The empty Activity history Secondary remains.** It is audit finding 1.2 and a separate decision.
+
+### Contract changes A3 would require
+
+These are proposals. Nothing below has been applied to the accepted documents.
+
+| Document                                                                             | Current text                                                                                                                                       | Proposed change                                                                                                                                                                                             |
+| ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `docs/ideas/specflow-ui/screens/specification-creation-ui-spec.md` (demo Create)     | "The form is Name, Workflow, first Session (AI only), Branch and worktree, single column on every width."                                          | One column below a 992 px form column; above it two columns, what is created on the left and who starts it and where on the right, in the same order. The ban on a Secondary or summary on the right stays. |
+| `docs/product/specflow/specification-creation.md` (project Create and progress page) | The progress page "has the same content width and alignment as the form (one focused column of about 880 px, the `content-form` width, centred …)" | The progress page shares the Create frame, so nothing moves on submit, and keeps its content at `content-form`, left-aligned with the form.                                                                 |
+| `docs/design-system/principles/layout-and-containment.md` (Bounded workspace rule)   | Each bounded page uses its own width token on `AppContent`.                                                                                        | Focused screens share one frame token; Specification Overview leaves the bounded mode.                                                                                                                      |
+
+Activity history placement is not fixed by an accepted product document; only the implementation
+puts it in the Secondary. Adopting A3h is therefore a product decision rather than a contract
+change.
+
+## 7. Decisions for the owner
+
+The current proposal is **A3**. Every item is still a proposal until approved.
+
+1. **Direction.** Adopt A3 as three separate decisions: shell geometry, Create composition and
+   Specification Overview composition. A3h is not recommended.
+2. **The remaining jump.** Accept one navigation jump at the Specification boundary: 275 px at 1920
+   and 595 px at 2560. The alternative is a 1280 px Focused frame used only on screens of 2200 px and
+   wider.
+3. **Snap threshold.** Accept the 240 px threshold and the strip of about 230 px it leaves on the
+   right of Focused screens at 1600, or let Focused screens fill the width below about 1700 px.
+4. **Two-column Create.** Approve two columns from a 992 px form column, with the order kept as it is
+   in one column, and amend the Create contracts as listed above.
+5. **Progress page.** Approve keeping its content at `content-form`, left-aligned in the shared
+   frame, and amend the project Create contract.
+6. **Specification Overview.** Approve the operational two-column arrangement on panes of at least
+   1408 px, aligned with the breadcrumb, including the recent Session moving to the side column.
+7. **Activity history.** Keep it in the Secondary and decide its empty state separately (finding
+   1.2), or revisit A3h with a capped task column.
+8. **Commit row copy.** Decide whether the Git commit row refers to the branch shown above instead of
+   repeating it.
+9. **Design System rule.** Approve amending the Bounded workspace rule: one shared Focused frame,
+   Specification Overview no longer bounded.
+10. **Create Session principle.** Confirm that Create Specification stays a Focused screen. The review
+    rejected variant E, which also conflicts with the accepted rule against a summary on the right.
+
+### What A3 would need in production
+
+- **Nevo UI.** A Focused frame capability and a snap rule in `AppShell`, instead of the prototype's
+  pixel classes and per-screen measurement.
+- **SpecFlow UI.** Both Create forms use a container-query two-column arrangement; value-only Git
+  rows truncate with a tooltip; the progress page keeps `content-form` inside the frame;
+  Specification Overview composes its existing sections in two columns on wide panes.
+- **Docs.** The contract amendments listed above, applied together with the code.
+- **No change** to Documents, Session, the 50/50 split, root tabs, Back behaviour or mobile.
+- **Verification.** The same journey captures at 1280, 1366, 1440, 1600, 1920, 2560, 390 px and 200%
+  zoom, plus transition and keyboard checks, on both the demo and a real project Runtime.
+
+## 8. Reproduce
 
 1. Check out `proto/app-shell-geometry`.
 2. Run the demo Runtime as described in the audit's
    [verification guide](README.md#reproduce-the-environment), and the UI with Vite on port 5173.
-3. Set `localStorage['proto.layout']` to `A`, `A2`, `B`, `C`, `D` or `E`, then reload. Without the key
+3. Set `localStorage['proto.layout']` to `A`, `A2`, `A3`, `A3h`, `B`, `C`, `D` or `E`, then reload. Without the key
    the app behaves exactly like `main`.
 
 **Limits of the evidence.**

@@ -107,7 +107,9 @@ export function createSessionsFeature(
               createHash('sha256').update(options.storage!.projectId).digest('base64url'),
             ),
             executable: antigravity.executable,
-            managedWrites: effects !== undefined,
+            // Engine admission records authority. Antigravity also needs a
+            // verified filesystem boundary at the point of native access.
+            managedWrites: false,
           }),
         );
       }

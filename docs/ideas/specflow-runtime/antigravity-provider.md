@@ -26,6 +26,10 @@ The adapter uses the existing Session driver, Engine execution admission and
 settlement, SQLite lifecycle and HTTP/SSE/history contracts. It introduces no
 second lifecycle authority, credential broker or global MCP installation.
 
+Production Runtime currently enables discovery only. Managed Agent and Plan
+remain unavailable until filesystem isolation is verified at native access time
+for both command execution and native file tools.
+
 ## Native context and transcript
 
 The installed CLI emits `init` before a user frame. Runtime validates the account,
@@ -247,9 +251,11 @@ Additional tools in a compatible minor do not disable the installation. There
 is no per-hash security certification or mandatory negative-control run on every
 update. Unpaid initialization, configured hooks, actual native hook execution
 and OS containment remain distinct evidence; readiness is not a sandbox proof.
-Native enforcement relies on the supported CLI contract, with observed failures
-blocking the affected operation. Known unsupported API/version ranges can be
-rejected; an unlisted compatible build remains provisional and executable.
+An unlisted compatible build remains eligible for provisional discovery. Managed
+execution requires verified filesystem isolation in addition to protocol
+compatibility. The native acceptance check did not establish this isolation for
+either command execution or native file writes, so production admission is
+disabled for both managed modes.
 
 Manual no-input verification of the updated inventory checks succeeded on
 2026-10-31: the real local CLI reported the required native file/command/MCP APIs

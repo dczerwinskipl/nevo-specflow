@@ -188,7 +188,9 @@ export function createAntigravityDriver(
             classification: compatibility.classification,
             protocolProfile: 'antigravity-stream-json-v1',
           },
-          ...(!admission.allowed ? { reason: 'Managed workspace execution is unavailable.' } : {}),
+          ...(!admission.allowed
+            ? { reason: 'Managed Antigravity requires verified workspace isolation.' }
+            : {}),
         };
         if (admission.allowed) {
           delete descriptor.reason;

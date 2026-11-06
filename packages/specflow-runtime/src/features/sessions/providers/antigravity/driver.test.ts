@@ -146,12 +146,29 @@ describe('Antigravity driver discovery and admission', () => {
     expect(test.probe).toHaveBeenCalledOnce();
   });
 
-  it('does not advertise a writable mode without Engine admission', async () => {
+  it('keeps discovery available without authorizing native workspace execution', async () => {
     const test = await fixture(false);
-    expect(await test.refresh()).toMatchObject({ readiness: 'unavailable' });
-    await expect(
-      test.driver.validate({ providerId: 'antigravity', mode: 'workspace-write' }),
-    ).rejects.toMatchObject({ code: 'PROVIDER_UNAVAILABLE' });
+    expect(await test.refresh()).toMatchObject({
+      readiness: 'unavailable',
+      reason: 'Managed Antigravity requires verified workspace isolation.',
+      compatibility: { classification: 'provisional' },
+      providerModes: [
+        { modeId: 'accept-edits', readiness: 'unavailable' },
+        { modeId: 'plan', readiness: 'unavailable' },
+      ],
+    });
+    expect(test.driver.supportsManagedWrites).toBe(false);
+    for (const providerModeId of ['accept-edits', 'plan']) {
+      await expect(
+        test.driver.validate({
+          providerId: 'antigravity',
+          mode: 'workspace-write',
+          providerModeId,
+        }),
+      ).rejects.toMatchObject({ code: 'PROVIDER_UNAVAILABLE' });
+    }
+
+    expect(test.probe).toHaveBeenCalledOnce();
   });
 
   it('reuses account affinity after token rotation and rechecks a switched account', async () => {
@@ -214,7 +231,11 @@ describe('Antigravity driver discovery and admission', () => {
   });
 });
 
-async function invocationFixture(resume = false, beforeResult?: Promise<void>) {
+async function invocationFixture(
+  resume = false,
+  beforeResult?: Promise<void>,
+  managedWrites = true,
+) {
   const order: string[] = [];
   const writes: string[] = [];
   const nativeId = 'controlled-native-conversation';
@@ -302,7 +323,7 @@ async function invocationFixture(resume = false, beforeResult?: Promise<void>) {
       });
     },
   );
-  const test = await fixture(true, launch);
+  const test = await fixture(managedWrites, launch);
   await test.refresh();
   const facts: DriverFact[] = [];
   const invocationId = randomUUID();
@@ -366,6 +387,14 @@ async function invocationFixture(resume = false, beforeResult?: Promise<void>) {
 }
 
 describe('controlled Antigravity driver invocation composition', () => {
+  it('rejects start before launching the CLI even with a matching Engine admission', async () => {
+    const test = await invocationFixture(false, undefined, false);
+    expect(test.start).toThrow(expect.objectContaining({ code: 'CAPABILITY_UNSUPPORTED' }));
+    expect(test.launch).not.toHaveBeenCalled();
+    expect(test.invocation.beforeDispatch).not.toHaveBeenCalled();
+    expect(test.facts).toEqual([]);
+  });
+
   it('keeps a rotated cached login available when a dispatched older login later reports authentication failure', async () => {
     const resultGate = Promise.withResolvers<void>();
     let emitFromOperation: EmitFact | undefined;

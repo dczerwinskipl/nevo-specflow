@@ -1,4 +1,4 @@
-import type { WorkflowEffect } from '@nevo/specflow-contracts/documents';
+import type { WaitTrigger, WorkflowEffect } from '@nevo/specflow-contracts/documents';
 
 /**
  * Resolved execution definitions: workflows, agent archetypes and task types, as the kind registry
@@ -28,6 +28,11 @@ export interface WorkflowTransition {
   readonly effects: readonly WorkflowEffect[];
   /** Task workflows only: the finish puts the Task on hold and escalates to the Specification. */
   readonly escalate: boolean;
+  /**
+   * Wait steps only: the Task event that takes the transition. Every wait-step transition has one
+   * (`tasks-finished` when the file names none); a work-step transition has none.
+   */
+  readonly on?: WaitTrigger;
 }
 
 interface StepCommon {

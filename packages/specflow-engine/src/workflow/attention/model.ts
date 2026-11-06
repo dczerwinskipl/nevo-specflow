@@ -13,8 +13,8 @@ export interface AttentionItem {
   readonly subject: WorkflowSubject;
   readonly step: string;
   readonly reason: AttentionReason;
-  /** For `task-escalated`: the Task that escalated. */
-  readonly taskId?: string;
+  /** For `task-escalated`: every escalated Task, in id order. */
+  readonly taskIds?: readonly string[];
   readonly archetype?: string;
   readonly provider?: string;
   readonly blocker?: LaunchBlocker;

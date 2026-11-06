@@ -20,6 +20,7 @@ import {
   TASK_ID_PATTERN_SOURCE,
   TASK_SUMMARY_MAX,
   TASK_TITLE_MAX,
+  TASKS_PER_SPECIFICATION_MAX,
 } from '../limits';
 import { TASK_STATUSES, type SpecificationExecutionRecord, type TaskRecord } from './model';
 
@@ -152,7 +153,13 @@ const AttentionFileSchema = closed({
       subject: SubjectSchema,
       step: id(),
       reason: Type.Union(ATTENTION_REASONS.map((reason) => Type.Literal(reason))),
-      taskId: optional(TaskIdSchema),
+      taskIds: optional(
+        Type.Array(TaskIdSchema, {
+          minItems: 1,
+          maxItems: TASKS_PER_SPECIFICATION_MAX,
+          uniqueItems: true,
+        }),
+      ),
       archetype: optional(id()),
       provider: optional(id()),
       blocker: optional(Type.Union(ATTENTION_REASONS.map((reason) => Type.Literal(reason)))),

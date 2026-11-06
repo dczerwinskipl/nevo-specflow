@@ -4,7 +4,8 @@ import { createDefaultDefinitionRegistry } from '../../specs/definitions/kinds';
 import { loadDefinitions } from '../../specs/definitions/loader';
 import { MemoryDefinitionSource } from '../../specs/definitions/test-support';
 import { resolveExecutionCatalogue, type ExecutionCatalogue } from '../definitions/catalogue';
-import { finishStep } from './finish';
+import { FEEDBACK_MAX } from '../limits';
+import { finishStep, type FinishStepInput } from './finish';
 import { inspectExecution } from './inspect';
 import {
   SPEC,
@@ -29,6 +30,22 @@ import { startTaskExecution } from './start';
 import { setTaskStatus, type SetTaskStatusInput } from './task-status';
 
 let catalogue: ExecutionCatalogue;
+
+/** The seed catalogue with the Specification workflow edited; the edit must change it. */
+async function seedCatalogueWith(edit: (workflow: string) => string): Promise<ExecutionCatalogue> {
+  const files = await seedDefinitionFiles();
+  const path = 'workflow/specification-standard.yaml';
+  const edited = edit(files[path] ?? '');
+  if (edited === files[path]) {
+    throw new Error('The edit did not change the seed workflow.');
+  }
+
+  files[path] = edited;
+
+  return resolveExecutionCatalogue(
+    await loadDefinitions(new MemoryDefinitionSource(files), createDefaultDefinitionRegistry()),
+  );
+}
 
 beforeAll(async () => {
   catalogue = await seedExecutionCatalogue();
@@ -143,28 +160,52 @@ describe('setTaskStatus', () => {
     ]);
   });
 
-  it('clears tasks-stuck when the owner approves a draft the wait was stuck on', async () => {
-    const files = await seedDefinitionFiles();
-    files['workflow/specification-standard.yaml'] = files[
-      'workflow/specification-standard.yaml'
-    ]!.replace('        effects: [approve-draft-tasks]', '');
-    const loaded = await loadDefinitions(
-      new MemoryDefinitionSource(files),
-      createDefaultDefinitionRegistry(),
+  it('refuses to enter the wait step while a Task is draft, and enters it once each is decided', async () => {
+    const dependencies = memoryDependencies(
+      await seedCatalogueWith((text) => text.replace('        effects: [approve-draft-tasks]', '')),
     );
-    const dependencies = memoryDependencies(resolveExecutionCatalogue(loaded));
-    const reviewed = await specificationWithTasks(dependencies);
-    expect(reviewed.continuation).toEqual({
-      kind: 'attention',
-      step: 'implementation',
-      reason: 'tasks-stuck',
+    await runToBreakdown(dependencies);
+    await finishStep(dependencies, {
+      subject: specification,
+      step: 'breakdown',
+      attempt: 1,
+      input: { tasks: TWO_TASKS },
+      executor: claude,
     });
+    const reviewer = agent('codex', 'session-r', 'x');
+    const review = (taskDecisions: FinishStepInput['input']['taskDecisions']) =>
+      finishStep(dependencies, {
+        subject: specification,
+        step: 'breakdown-review',
+        attempt: 1,
+        input: { result: 'pass', ...(taskDecisions ? { taskDecisions } : {}) },
+        executor: reviewer,
+      });
+    await startSpecification(dependencies, reviewer);
+    const before = await inspectExecution(dependencies, SPEC);
 
-    const approved = await decide(dependencies, 'api', 'ready');
+    await expect(review(undefined)).rejects.toMatchObject({
+      code: 'WORKFLOW_INPUT_INVALID',
+      message: 'Cannot enter the wait step "implementation": Tasks still draft: api, screen.',
+    });
+    await expect(review([{ taskId: 'api', status: 'ready' }])).rejects.toMatchObject({
+      code: 'WORKFLOW_INPUT_INVALID',
+      message: expect.stringContaining('Tasks still draft: screen.') as unknown,
+    });
+    // Nothing was written: the review attempt stays active and the Tasks stay draft.
+    expect(await inspectExecution(dependencies, SPEC)).toEqual(before);
 
-    expect(approved.specification).toBeUndefined();
-    expect((await inspectExecution(dependencies, SPEC)).attention).toEqual([]);
-    await expect(startTask(dependencies, 'api')).resolves.toMatchObject({ kind: 'started' });
+    const reviewed = await review([
+      { taskId: 'api', status: 'ready' },
+      { taskId: 'screen', status: 'cancelled' },
+    ]);
+
+    expect(reviewed.continuation).toEqual({ kind: 'none', reason: 'waiting-for-tasks' });
+    expect(await positionOf(dependencies, specification)).toEqual({
+      state: 'active',
+      step: 'implementation',
+      attempt: 1,
+    });
   });
 
   it('applies the review decisions before the approval of the remaining drafts', async () => {
@@ -268,13 +309,37 @@ describe('setTaskStatus', () => {
 });
 
 describe('escalation to the Specification', () => {
-  const escalate = (dependencies: Dependencies, feedback?: string) =>
-    work(dependencies, task('api'), {
+  const escalate = (dependencies: Dependencies, feedback?: string, taskId = 'api') =>
+    work(dependencies, task(taskId), {
       result: 'needs-spec-change',
       ...(feedback !== undefined ? { feedback } : {}),
     });
 
-  it('holds the Task, gives the Specification task-escalated and resumes with the feedback', async () => {
+  /** The seed Specification workflow without its `task-escalated` transition. */
+  const withoutEscalationTransition = () =>
+    seedCatalogueWith((text) => text.replace(/ {6}- id: task-escalated\r?\n(?: {8}.*\r?\n)+/u, ''));
+
+  /** Two independent Tasks, approved and waited for, each with its implement step done. */
+  const waitForIndependentTasks = async (dependencies: Dependencies) => {
+    await runToBreakdown(dependencies);
+    await finishStep(dependencies, {
+      subject: specification,
+      step: 'breakdown',
+      attempt: 1,
+      input: {
+        tasks: [
+          { id: 'api', title: 'API', type: 'implementation' },
+          { id: 'web', title: 'Web', type: 'implementation' },
+        ],
+      },
+      executor: claude,
+    });
+    await work(dependencies, specification, { result: 'pass' }, agent('codex', 'session-r', 'x'));
+    await work(dependencies, task('api'));
+    await work(dependencies, task('web'));
+  };
+
+  it('holds the Task and moves the waiting Specification to the breakdown with the feedback', async () => {
     const dependencies = memoryDependencies(catalogue);
     await specificationWithTasks(dependencies);
     await work(dependencies, task('api'));
@@ -283,17 +348,15 @@ describe('escalation to the Specification', () => {
 
     expect(escalated.position).toEqual({ state: 'ready', step: 'implement' });
     expect(escalated.continuation).toEqual({ kind: 'none', reason: 'on-hold' });
-    // Both Tasks are stuck behind the held one, but the escalation names the cause.
-    expect(escalated.specification).toEqual({
+    expect(escalated.specification).toMatchObject({
       kind: 'attention',
-      step: 'implementation',
-      reason: 'task-escalated',
-      taskId: 'api',
+      step: 'breakdown',
+      reason: 'owner-action',
     });
-    const inspection = await inspectExecution(dependencies, SPEC);
-    expect(inspection.attention).toMatchObject([
-      { subject: specification, reason: 'task-escalated', taskId: 'api' },
-    ]);
+    expect(await positionOf(dependencies, specification)).toEqual({
+      state: 'ready',
+      step: 'breakdown',
+    });
     expect(await statusOf(dependencies, 'api')).toMatchObject({
       status: 'on-hold',
       statusChange: {
@@ -304,9 +367,19 @@ describe('escalation to the Specification', () => {
     await expect(startTask(dependencies, 'api')).rejects.toMatchObject({
       code: 'WORKFLOW_TASK_BLOCKED',
     });
+    await expect(startSpecification(dependencies)).resolves.toMatchObject({
+      context: {
+        step: { id: 'breakdown' },
+        handoff: {
+          kind: 'transition',
+          from: { step: 'implementation', attempt: 1 },
+          transition: 'task-escalated',
+          feedback: escalatedFeedback('api'),
+        },
+      },
+    });
 
     await decide(dependencies, 'api', 'ready', 'The overview is fixed.');
-    expect((await inspectExecution(dependencies, SPEC)).attention).toEqual([]);
     await expect(startTask(dependencies, 'api')).resolves.toMatchObject({
       context: {
         step: { id: 'implement' },
@@ -317,6 +390,123 @@ describe('escalation to the Specification', () => {
         },
       },
     });
+  });
+
+  /** The handoff feedback of the `task-escalated` transition for these escalated Tasks. */
+  const escalatedFeedback = (ids: string) =>
+    `Escalated Tasks: ${ids}. Each Task's escalation feedback is in its status change.`;
+
+  it('names the escalated Tasks in the handoff and shows each reason in the breakdown context', async () => {
+    const dependencies = memoryDependencies(catalogue);
+    await waitForIndependentTasks(dependencies);
+    const apiReason = 'a'.repeat(FEEDBACK_MAX);
+    const webReason = 'w'.repeat(FEEDBACK_MAX);
+    await escalate(dependencies, apiReason, 'api');
+    // The Specification left the wait with the first escalation, so this one only holds the Task.
+    expect((await escalate(dependencies, webReason, 'web')).specification).toBeUndefined();
+
+    await expect(startSpecification(dependencies)).resolves.toMatchObject({
+      context: {
+        step: { id: 'breakdown' },
+        handoff: { transition: 'task-escalated', feedback: escalatedFeedback('api') },
+        existingTasks: [
+          { id: 'api', statusChange: { source: 'escalation', reason: apiReason } },
+          { id: 'web', statusChange: { source: 'escalation', reason: webReason } },
+        ],
+      },
+    });
+  });
+
+  it('refuses to enter the wait step while a Task is draft or escalated, before anything is stored', async () => {
+    const dependencies = memoryDependencies(
+      await seedCatalogueWith((text) => text.replace('        effects: [approve-draft-tasks]', '')),
+    );
+    await runToBreakdown(dependencies);
+    await finishStep(dependencies, {
+      subject: specification,
+      step: 'breakdown',
+      attempt: 1,
+      input: { tasks: TWO_TASKS },
+      executor: claude,
+    });
+    await work(
+      dependencies,
+      specification,
+      {
+        result: 'pass',
+        taskDecisions: [
+          { taskId: 'api', status: 'ready' },
+          { taskId: 'screen', status: 'ready' },
+        ],
+      },
+      agent('codex', 'session-r', 'x'),
+    );
+    await work(dependencies, task('api'));
+    await escalate(dependencies, 'Split the API Task.');
+    await startSpecification(dependencies);
+    await finishStep(dependencies, {
+      subject: specification,
+      step: 'breakdown',
+      attempt: 2,
+      input: { tasks: [{ id: 'extra', title: 'Extra', type: 'implementation' }] },
+      executor: claude,
+    });
+    await startSpecification(dependencies);
+    const before = await inspectExecution(dependencies, SPEC);
+
+    await expect(
+      finishStep(dependencies, {
+        subject: specification,
+        step: 'breakdown-review',
+        attempt: 2,
+        input: { result: 'pass' },
+        executor: claude,
+      }),
+    ).rejects.toMatchObject({
+      code: 'WORKFLOW_INPUT_INVALID',
+      message:
+        'Cannot enter the wait step "implementation": Tasks still draft: extra; Tasks escalated: api.',
+    });
+    expect(await inspectExecution(dependencies, SPEC)).toEqual(before);
+  });
+
+  it('keeps waiting with one task-escalated item listing every escalated Task without the transition', async () => {
+    const dependencies = memoryDependencies(await withoutEscalationTransition());
+    await waitForIndependentTasks(dependencies);
+
+    // Each feedback fits the stored limit; together they do not, and need not.
+    const first = await escalate(dependencies, 'w'.repeat(FEEDBACK_MAX), 'web');
+    expect(first.specification).toEqual({
+      kind: 'attention',
+      step: 'implementation',
+      reason: 'task-escalated',
+      taskIds: ['web'],
+    });
+    const second = await escalate(dependencies, 'a'.repeat(FEEDBACK_MAX), 'api');
+
+    expect(second.specification).toEqual({
+      kind: 'attention',
+      step: 'implementation',
+      reason: 'task-escalated',
+      taskIds: ['api', 'web'],
+    });
+    expect(await positionOf(dependencies, specification)).toMatchObject({
+      state: 'active',
+      step: 'implementation',
+    });
+    expect((await inspectExecution(dependencies, SPEC)).attention).toMatchObject([
+      { subject: specification, reason: 'task-escalated', taskIds: ['api', 'web'] },
+    ]);
+
+    const resumed = await decide(dependencies, 'api', 'ready');
+    expect(resumed.specification).toEqual({
+      kind: 'attention',
+      step: 'implementation',
+      reason: 'task-escalated',
+      taskIds: ['web'],
+    });
+    await decide(dependencies, 'web', 'ready');
+    expect((await inspectExecution(dependencies, SPEC)).attention).toEqual([]);
   });
 
   it('requires feedback', async () => {
@@ -375,8 +565,8 @@ describe('escalation to the Specification', () => {
     expect((await inspectExecution(dependencies, SPEC)).attention).toEqual([]);
   });
 
-  it('records no item while a Specification step is worked on, and records it on the wait', async () => {
-    const dependencies = memoryDependencies(catalogue);
+  it('records no item while a Specification step is worked on, and refuses the wait while escalated', async () => {
+    const dependencies = memoryDependencies(await withoutEscalationTransition());
     await specificationWithTasks(dependencies);
     await work(dependencies, task('api'));
     await returnToStep(dependencies, { subject: specification, step: 'breakdown', feedback: 'x' });
@@ -393,12 +583,9 @@ describe('escalation to the Specification', () => {
       input: { tasks: [] },
       executor: claude,
     });
-    const reviewed = await work(dependencies, specification, { result: 'pass' });
-    expect(reviewed.continuation).toEqual({
-      kind: 'attention',
-      step: 'implementation',
-      reason: 'task-escalated',
-      taskId: 'api',
+    await expect(work(dependencies, specification, { result: 'pass' })).rejects.toMatchObject({
+      code: 'WORKFLOW_INPUT_INVALID',
+      message: 'Cannot enter the wait step "implementation": Tasks escalated: api.',
     });
   });
 });

@@ -64,8 +64,9 @@ reason?}`; one decision that is not allowed rejects the whole finish).
   `on-hold → ready | cancelled`; `cancelled` is final, a Task whose run ended keeps its status, and a
   running Task may go on hold (its current step finishes, the next start is refused) but is not
   cancelled. Anything else is `WORKFLOW_INPUT_INVALID`. The same change settles the Specification:
-  cancelling the last open Task completes its wait step, resuming an escalated Task removes the
-  `task-escalated` item.
+  cancelling the last open Task completes its wait step; with no declared `task-escalated`
+  transition, the `task-escalated` item lists every escalated Task (`taskIds`) and goes once none
+  is escalated any more.
 - **C4.** Quick start from an attention item:
   - prefill the provider and model from `suggestion`;
   - when `blocker` or the reason is `model-missing` / `provider-not-chosen`, let the owner choose them;

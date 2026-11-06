@@ -384,19 +384,23 @@ Minimal schema idea: a transition of a `wait-for-tasks` step gains a trigger `on
     - id: task-escalated
       on: task-escalated
       to: { step: breakdown }
-      feedback: required # filled by the Engine with every escalated Task and its feedback
+      feedback: required # filled by the Engine with the ids of the escalated Tasks
 ```
 
 - **Load-time checks:** `on` exists only on wait-step transitions (a work step keeps `result`); at
-  most one transition per trigger; `tasks-finished` is required; a `task-escalated` transition targets
+  most one transition per trigger; `tasks-finished` is required (a transition without `on` counts
+  as `tasks-finished`, W14); a `task-escalated` transition targets
   a step, not a terminal, and needs `feedback: required`. `continuation` and `effects` work as on any
   transition (the seed keeps `owner-action`, so the owner sees the move before the spec writer runs).
 - **Taking it:** in the same change as the escalating Task's finish, when the Specification is active
   on the wait step, the Engine ends the wait attempt with the `task-escalated` transition; the next
-  step's handoff carries the feedback of **every** escalated Task. When the Specification is elsewhere
-  (for example back at `breakdown` after a return), nothing happens then; entering the wait step later
-  takes the escalation transition at once if a Task is still escalated, as a wait with zero Tasks
-  completes at once. The draft guard is checked first; an escalated Task is `on-hold`, not `draft`.
+  step's handoff feedback is a bounded Engine text naming **every** escalated Task (`Escalated Tasks:
+<ids>. Each Task's escalation feedback is in its status change.`), and each reason is in that
+  Task's `statusChange` in the step's `existingTasks`. When the Specification is elsewhere (for
+  example back at `breakdown` after a return), nothing happens then, and it cannot enter the wait
+  step again while a Task is still escalated: the guard refuses entering a wait step while a Task is
+  `draft` or on hold by its own escalation (`WORKFLOW_INPUT_INVALID`, naming both), so the spec
+  writer or the owner resolves each escalation (resume or cancel) first.
 - **Without the transition** (a workflow that declares none) the kernel keeps today's behaviour: the
   wait step stays active with the attention item `task-escalated`, and the owner returns or decides.
 - **Generalisation.** The same trigger mechanism is how a future Specification `execute` or
@@ -407,8 +411,8 @@ Minimal schema idea: a transition of a `wait-for-tasks` step gains a trigger `on
 
 At most one attention item exists per subject. If a Specification has both an escalation and a stuck
 wait, `task-escalated` wins because it names the cause (Q7, decided). The item lists **all** escalated
-Tasks (`taskIds`, in id order), not only the first; this is a kernel change from today's item and
-`FinishStepResult.specification`, which name the first escalated Task. The item is removed once no
+Tasks (`taskIds`, in id order), not only the first, in the item and in
+`FinishStepResult.specification` (implemented in W14). The item is removed once no
 Task is escalated any more, as today.
 
 One worktree and one thread for now: escalations and decisions happen in the Specification's checkout.
@@ -585,15 +589,17 @@ decisions, approval after review, escalation with `escalate: true`, the `task-es
 already implemented in the provisional storage (W13); `removeTask` and the storage remain.
 
 1. **ADR 0020 and the architecture update** (owner decisions Q1 to Q12). Documentation only.
-2. **Kernel follow-ups to W13**, in the current provisional storage (they need no Task folders):
-   - the draft guard: entering a `wait-for-tasks` step is refused while a non-cancelled Task is
-     `draft` (`WORKFLOW_INPUT_INVALID`, dedicated message naming the drafts, checked after decisions
-     and effects, before anything is written);
+2. **Kernel follow-ups to W13** (implemented, plan 06 W14; a wait-step transition without `on`
+   counts as `tasks-finished`), in the current provisional storage (they need no Task folders):
+   - the draft and escalation guard: entering a `wait-for-tasks` step is refused while a Task is
+     `draft` or on hold by its own escalation (`WORKFLOW_INPUT_INVALID`, dedicated message naming
+     the draft and the escalated Tasks, checked after decisions and effects, before anything is
+     written);
    - one `task-escalated` item (and `FinishStepResult.specification`) listing every escalated Task
      instead of the first;
    - the explicit escalation transition: `on: tasks-finished | task-escalated` on wait-step
-     transitions, its load-time checks, taking it in the escalating finish or on entering the wait
-     step, and the seed `specification-standard` declaring `task-escalated` to `breakdown`.
+     transitions, its load-time checks, taking it in the escalating finish with a bounded handoff
+     text naming the escalated Tasks, and the seed `specification-standard` declaring `task-escalated` to `breakdown`.
 
    Depends on 1 (the kernel document and ADR 0019 change with it).
 
@@ -618,7 +624,7 @@ already implemented in the provisional storage (W13); `removeTask` and the stora
   Specification `overview` (or its explicit entries) in order, with hashes; the attempt record holds
   the digest and the full list stays local;
 - a Task escalation puts it on hold and moves the Specification along its declared `task-escalated`
-  transition with every escalated Task in the handoff; without that transition, one `task-escalated`
+  transition with the escalated Tasks named in the handoff (each reason in its `statusChange`); without that transition, one `task-escalated`
   item lists every escalated Task and wins over `tasks-stuck`; a spec writer decision resumes the
   Task at the named step with the feedback in the handoff;
 - a Specification return changes no Task status;

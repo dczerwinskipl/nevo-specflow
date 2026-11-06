@@ -51,7 +51,8 @@ export interface FinishStepResult {
   readonly createdTasks: readonly string[];
   /**
    * After a Task's finish, what the Specification's attention became: what it does next when the
-   * finish completed its wait step, `tasks-stuck`, or `task-escalated`.
+   * finish completed its wait step or took its `task-escalated` transition, `tasks-stuck`, or
+   * `task-escalated` (listing every escalated Task).
    */
   readonly specification?: ContinuationDecision;
 }
@@ -72,8 +73,10 @@ function finishingSession(executor: ExecutorRecord): FinishingSession | undefine
  * (except entering a wait step, which has no work); it records whether the Runtime may continue on
  * its own or the owner has to act.
  *
- * A Task transition that escalates puts the Task on hold with the feedback as its reason and gives
- * the Specification the attention item `task-escalated`; the finish itself succeeds. A Task that is
+ * A Task transition that escalates puts the Task on hold with the feedback as its reason; a
+ * Specification waiting for its Tasks takes its `task-escalated` transition, or gets the attention
+ * item `task-escalated` when it declares none. The finish itself succeeds. A Specification finish
+ * that would enter a wait step while a Task is `draft` or escalated is refused (`advance`). A Task that is
  * not `ready` after its finish gets no continuation (`none {on-hold}`) and no attention item.
  */
 export function finishStep(
@@ -86,13 +89,6 @@ export function finishStep(
     const snapshot = await dependencies.store.read(subject.specId);
     const loaded = loadSubject(dependencies.catalogue, snapshot, subject);
     const plan = planFinish(loaded.run, loaded.definition, request, request.input);
-    if (plan.step.kind === 'wait-for-tasks') {
-      throw new WorkflowError(
-        'WORKFLOW_POSITION_INVALID',
-        'A wait step is completed by the Engine.',
-      );
-    }
-
     assertExecutorAllowed(plan.step, request.executor, activeAttempt(loaded.run));
 
     const produces = plan.step.produces === 'tasks';

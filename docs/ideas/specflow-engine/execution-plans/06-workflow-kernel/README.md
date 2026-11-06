@@ -155,6 +155,22 @@ code was copied: the language and the infrastructure differ. Models and rules we
   - the wait step completes when every Task is terminal or cancelled; the step context of a
     Specification step lists every Task with its status and last status change.
 
+- **W14 Kernel follow-ups to W13** (slice 2 of
+  [Task resource, lifecycle and context](../../task-resource-and-context.md), still in the provisional
+  storage):
+  - draft and escalation guard: a change that would enter a wait step while a Task is `draft` or on
+    hold by its own escalation is refused with `WORKFLOW_INPUT_INVALID` naming the draft and the
+    escalated Tasks, checked after `tasks`, `taskDecisions` and effects, before anything is written;
+  - the `task-escalated` attention item and `FinishStepResult.specification` list every escalated
+    Task (`taskIds`, id order) instead of the first;
+  - wait-step transitions carry a trigger `on: tasks-finished | task-escalated` (a transition without
+    `on` counts as `tasks-finished`); a `task-escalated` transition is taken in the escalating finish
+    while the Specification is active on the wait step, with a bounded Engine handoff text naming the
+    escalated Tasks (`Escalated Tasks: <ids>. Each Task's escalation feedback is in its status
+change.`); each reason stays in the Task's `statusChange`, listed in the next step's
+    `existingTasks`. Without the transition the wait keeps today's `task-escalated` item. The seed `specification-standard` declares
+    `task-escalated` to `breakdown` (owner action).
+
 ## 3. Follow-ups
 
 Each follow-up is independent unless it says otherwise. All of them reuse the operations; none adds
@@ -351,10 +367,8 @@ on. The Task lifecycle (status, explicit decisions, approval, escalation) is don
   `task.yaml`, and `materializeTasks` writes Task folders and index entries. A follow-up ADR amends
   ADR 0015 and ADR 0019.
 - The owner decided every open question (2026-11-05). The preparation status stays Task-only, the
-  Specification reports only completed / ready to merge from its run (F14). Three kernel follow-ups
-  to W13 that need no Task folders: entering the wait step is refused while a non-cancelled Task is
-  `draft`; one `task-escalated` item lists every escalated Task; the wait step declares an explicit
-  `task-escalated` transition (seed: to `breakdown`). A started Task whose folder is deleted by hand
+  Specification reports only completed / ready to merge from its run (F14). The three kernel
+  follow-ups to W13 that need no Task folders are done (W14). A started Task whose folder is deleted by hand
   breaks only that Task.
 - Options, decisions and slices:
   [Tasks as workflow-managed resources, and context building](../../task-resource-and-context.md).

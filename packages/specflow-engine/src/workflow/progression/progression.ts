@@ -1,3 +1,5 @@
+import type { WaitTrigger } from '@nevo/specflow-contracts/documents';
+
 import { sha256Hex } from '../../hash';
 import { canonicalJson } from '../../specs/definitions/resolved-catalogue';
 import {
@@ -6,6 +8,7 @@ import {
   type WorkflowReturn,
   type WorkflowStep,
   type WorkflowTransition,
+  type WorkStep,
 } from '../definitions/model';
 import { WorkflowError } from '../errors';
 import { ARTIFACTS_MAX, ARTIFACT_MAX, FEEDBACK_MAX } from '../limits';
@@ -126,8 +129,8 @@ export interface FinishInput {
   readonly artifacts?: readonly string[];
 }
 
-export interface FinishPlan {
-  readonly step: WorkflowStep;
+export interface FinishPlan<TStep extends WorkflowStep = WorkflowStep> {
+  readonly step: TStep;
   readonly attempt: number;
   readonly transition: WorkflowTransition;
   readonly next: RunPosition;
@@ -191,7 +194,7 @@ export function planFinish(
   definition: WorkflowDefinition,
   attempt: { readonly step: string; readonly attempt: number },
   input: FinishInput,
-): FinishPlan {
+): FinishPlan<WorkStep> {
   const position = run.position;
   if (position.state !== 'active') {
     throw new WorkflowError('WORKFLOW_POSITION_INVALID', 'No step is active.');
@@ -206,7 +209,19 @@ export function planFinish(
 
   assertFinishInput(input);
   const step = stepOf(definition, position.step);
-  const transition = selectTransition(step, input.result);
+  if (step.kind === 'wait-for-tasks') {
+    throw new WorkflowError('WORKFLOW_POSITION_INVALID', 'A wait step is completed by the Engine.');
+  }
+
+  return planTransition(step, position.attempt, selectTransition(step, input.result), input);
+}
+
+function planTransition<TStep extends WorkflowStep>(
+  step: TStep,
+  attempt: number,
+  transition: WorkflowTransition,
+  input: FinishInput,
+): FinishPlan<TStep> {
   if (transition.feedback === 'required' && !input.feedback?.trim()) {
     throw new WorkflowError(
       'WORKFLOW_INPUT_INVALID',
@@ -216,13 +231,40 @@ export function planFinish(
 
   return {
     step,
-    attempt: position.attempt,
+    attempt,
     transition,
     next:
       transition.target.kind === 'step'
         ? { state: 'ready', step: transition.target.step }
         : { state: 'terminal', outcome: transition.target.outcome },
   };
+}
+
+/**
+ * The Engine completes the active wait step on a Task event. `undefined` when the step declares no
+ * transition for it (only possible for `task-escalated`). The feedback is the Engine's (the
+ * escalated Tasks by id).
+ */
+export function planWaitFinish(
+  run: WorkflowRun,
+  definition: WorkflowDefinition,
+  on: WaitTrigger,
+  input: FinishInput,
+): FinishPlan | undefined {
+  const position = run.position;
+  if (position.state !== 'active') {
+    throw new WorkflowError('WORKFLOW_POSITION_INVALID', 'No step is active.');
+  }
+
+  const step = stepOf(definition, position.step);
+  const transition = step.transitions.find((candidate) => candidate.on === on);
+  if (!transition) {
+    return undefined;
+  }
+
+  assertFinishInput(input);
+
+  return planTransition(step, position.attempt, transition, input);
 }
 
 export function applyFinish(

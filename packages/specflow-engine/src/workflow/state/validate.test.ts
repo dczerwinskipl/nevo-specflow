@@ -34,7 +34,11 @@ describe('validateExecutionSnapshot', () => {
         ...withRun({ position: active, attempts: [endedAttempt(1), open(2, 3)] }),
         tasks: [task('api'), task('web')],
         attention: [
-          attention({ kind: 'specification', specId: SPEC }),
+          {
+            ...attention({ kind: 'specification', specId: SPEC }),
+            reason: 'task-escalated',
+            taskIds: ['api', 'web'],
+          },
           attention({ kind: 'task', specId: SPEC, taskId: 'web' }),
         ],
       }),
@@ -164,6 +168,22 @@ describe('validateExecutionSnapshot', () => {
     [
       'attention for another Specification',
       { ...withRun({}), attention: [attention({ kind: 'specification', specId: OTHER_SPEC })] },
+    ],
+    [
+      'a task-escalated item without its Tasks',
+      {
+        ...withRun({}),
+        attention: [
+          { ...attention({ kind: 'specification', specId: SPEC }), reason: 'task-escalated' },
+        ],
+      },
+    ],
+    [
+      'escalated Tasks on another reason',
+      {
+        ...withRun({}),
+        attention: [{ ...attention({ kind: 'specification', specId: SPEC }), taskIds: ['api'] }],
+      },
     ],
   ])('refuses %s', (_name, state) => {
     expect(() => validateExecutionSnapshot(SPEC, state)).toThrow(

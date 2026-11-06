@@ -21,7 +21,7 @@ function transitionIssues(
   const ids = new Set<string>();
   const results = new Set<string>();
   const unconditional = step.transitions.filter((transition) => transition.result === undefined);
-  if (unconditional.length > 0 && step.transitions.length > 1) {
+  if (step.kind === 'work' && unconditional.length > 0 && step.transitions.length > 1) {
     issues.push(
       invalid(
         `${at}/transitions`,
@@ -101,6 +101,70 @@ function transitionIssues(
   return issues;
 }
 
+/**
+ * The Engine settles a wait step itself, so each transition is selected by a Task event (`on`), not
+ * by a result: exactly one `tasks-finished` and at most one `task-escalated`. It settles without a
+ * Session and enters the next step in the same change, so no transition reuses the Session or leads
+ * to another wait step. `tasks-finished` takes no owner input; `task-escalated` carries the Engine's
+ * feedback (every escalated Task with its feedback) to a step.
+ */
+function waitStepIssues(
+  workflow: WorkflowDefinition,
+  step: WorkflowStep,
+  at: string,
+): DefinitionIssue[] {
+  const issues: DefinitionIssue[] = [];
+  const triggers = new Set<string>();
+  step.transitions.forEach((transition, index) => {
+    const location = `${at}/transitions/${index}`;
+    const target = transition.target.kind === 'step' ? transition.target.step : undefined;
+    const next = workflow.steps.find((candidate) => candidate.id === target);
+    if (
+      transition.result !== undefined ||
+      transition.session === 'reuse' ||
+      next?.kind === 'wait-for-tasks'
+    ) {
+      issues.push(
+        invalid(
+          location,
+          'A wait-step transition has no result and no reused Session, and it does not lead to another wait step.',
+        ),
+      );
+    }
+
+    const trigger = transition.on ?? 'tasks-finished';
+    if (triggers.has(trigger)) {
+      issues.push(invalid(`${location}/on`, `Two transitions are taken on "${trigger}".`));
+    }
+
+    triggers.add(trigger);
+    if (trigger === 'tasks-finished' && transition.feedback === 'required') {
+      issues.push(
+        invalid(`${location}/feedback`, 'The transition taken on tasks-finished has no feedback.'),
+      );
+    }
+
+    if (
+      trigger === 'task-escalated' &&
+      (transition.feedback !== 'required' || transition.target.kind !== 'step')
+    ) {
+      issues.push(
+        invalid(
+          `${location}/on`,
+          'The transition taken on task-escalated requires feedback and leads to a step.',
+        ),
+      );
+    }
+  });
+  if (!triggers.has('tasks-finished')) {
+    issues.push(
+      invalid(`${at}/transitions`, 'A wait step has a transition taken on tasks-finished.'),
+    );
+  }
+
+  return issues;
+}
+
 function stepIssues(
   workflow: WorkflowDefinition,
   step: WorkflowStep,
@@ -111,31 +175,17 @@ function stepIssues(
       return [invalid(`${at}/kind`, 'Only a Specification workflow can wait for Tasks.')];
     }
 
-    // The Engine completes a wait step itself, so it has nothing to choose between and must lead
-    // somewhere that is not another wait (entering and leaving waits happen inside one change).
-    // It settles the wait without owner input or a Session, so the transition cannot ask for either.
-    const [only] = step.transitions;
-    const target = only?.target.kind === 'step' ? only.target.step : undefined;
-    const next = workflow.steps.find((candidate) => candidate.id === target);
-    if (
-      step.transitions.length !== 1 ||
-      only?.result !== undefined ||
-      only?.feedback === 'required' ||
-      only?.session === 'reuse' ||
-      next?.kind === 'wait-for-tasks'
-    ) {
-      return [
-        invalid(
-          `${at}/transitions`,
-          'A wait step has exactly one transition without a result, feedback or a reused Session, and it does not lead to another wait step.',
-        ),
-      ];
-    }
-
-    return [];
+    return waitStepIssues(workflow, step, at);
   }
 
   const issues: DefinitionIssue[] = [];
+  step.transitions.forEach((transition, index) => {
+    if (transition.on !== undefined) {
+      issues.push(
+        invalid(`${at}/transitions/${index}/on`, 'Only a wait-step transition has a trigger.'),
+      );
+    }
+  });
   if (step.executor === 'agent' && step.archetype === undefined) {
     issues.push(invalid(`${at}/archetype`, 'An agent step names its preferred agent archetype.'));
   }

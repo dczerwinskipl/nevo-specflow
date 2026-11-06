@@ -142,6 +142,17 @@ export const invalidWorkflowFiles: [string, () => Json][] = [
       }),
   ],
   [
+    'an unknown wait trigger',
+    () =>
+      withStep({
+        id: 'wait',
+        kind: 'wait-for-tasks',
+        title: 'Wait',
+        purpose: 'Wait.',
+        transitions: [{ id: 'done', on: 'task-started', to: { terminal: 'completed' } }],
+      }),
+  ],
+  [
     'an executor on a wait step',
     () =>
       withStep({

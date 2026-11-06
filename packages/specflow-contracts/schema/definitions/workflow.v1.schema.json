@@ -209,6 +209,18 @@
                     },
                     "escalate": {
                       "type": "boolean"
+                    },
+                    "on": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "const": "tasks-finished"
+                        },
+                        {
+                          "type": "string",
+                          "const": "task-escalated"
+                        }
+                      ]
                     }
                   },
                   "additionalProperties": false
@@ -397,6 +409,18 @@
                     },
                     "escalate": {
                       "type": "boolean"
+                    },
+                    "on": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "const": "tasks-finished"
+                        },
+                        {
+                          "type": "string",
+                          "const": "task-escalated"
+                        }
+                      ]
                     }
                   },
                   "additionalProperties": false

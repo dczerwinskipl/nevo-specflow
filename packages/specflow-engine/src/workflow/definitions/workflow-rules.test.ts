@@ -186,48 +186,106 @@ describe('checkWorkflow', () => {
     ).toEqual([]);
   });
 
-  it('allows a single wait step that leads to work in a Specification workflow', () => {
-    const wait: WorkflowStep = {
-      kind: 'wait-for-tasks',
-      id: 'wait',
-      title: 'Wait',
-      purpose: 'Wait.',
-      transitions: [{ ...implement.transitions[0]!, target: { kind: 'step', step: 'implement' } }],
+  describe('wait steps', () => {
+    type Transition = WorkflowStep['transitions'][number];
+    const finished: Transition = {
+      ...implement.transitions[0]!,
+      id: 'finished',
+      target: { kind: 'step', step: 'implement' },
     };
-    expect(
-      checkWorkflow(withSteps([implement, review, wait], { subject: 'specification' })),
-    ).toEqual([]);
-    expect(
-      checkWorkflow(
-        withSteps([implement, review, { ...wait, transitions: review.transitions }], {
-          subject: 'specification',
-        }),
-      ).map((issue) => issue.location),
-    ).toContain('/steps/2/transitions');
-  });
-
-  it('rejects a wait transition that asks for feedback or reuses the Session', () => {
-    const wait = (transition: Partial<WorkflowStep['transitions'][number]>): WorkflowStep => ({
+    const escalated: Transition = {
+      ...finished,
+      id: 'escalated',
+      on: 'task-escalated',
+      feedback: 'required',
+    };
+    const waitWith = (...transitions: Transition[]): WorkflowStep => ({
       kind: 'wait-for-tasks',
       id: 'wait',
       title: 'Wait',
       purpose: 'Wait.',
-      transitions: [
-        {
-          ...implement.transitions[0]!,
-          target: { kind: 'step', step: 'implement' },
-          ...transition,
-        },
-      ],
+      transitions,
+    });
+    const locations = (wait: WorkflowStep) =>
+      checkWorkflow(withSteps([implement, review, wait], { subject: 'specification' })).map(
+        (issue) => issue.location,
+      );
+
+    it('allows a tasks-finished transition, with or without its trigger, and a task-escalated one', () => {
+      expect(locations(waitWith(finished))).toEqual([]);
+      expect(locations(waitWith({ ...finished, on: 'tasks-finished' }, escalated))).toEqual([]);
+      expect(locations(waitWith(escalated, finished))).toEqual([]);
     });
 
-    for (const transition of [{ feedback: 'required' }, { session: 'reuse' }] as const) {
+    it.each<[string, Transition[], string]>([
+      ['a result', [{ ...finished, result: 'pass' }], '/steps/2/transitions/0'],
+      ['a reused Session', [{ ...finished, session: 'reuse' }], '/steps/2/transitions/0'],
+      [
+        'feedback on tasks-finished',
+        [{ ...finished, feedback: 'required' }],
+        '/steps/2/transitions/0/feedback',
+      ],
+      ['no tasks-finished transition', [escalated], '/steps/2/transitions'],
+      [
+        'two transitions on one trigger',
+        [finished, escalated, { ...escalated, id: 'again' }],
+        '/steps/2/transitions/2/on',
+      ],
+      [
+        'a task-escalated transition without required feedback',
+        [finished, { ...escalated, feedback: 'optional' }],
+        '/steps/2/transitions/1/on',
+      ],
+      [
+        'a task-escalated transition to a terminal',
+        [finished, { ...escalated, target: { kind: 'terminal', outcome: 'abandoned' } }],
+        '/steps/2/transitions/1/on',
+      ],
+    ])('rejects %s', (_name, transitions, location) => {
+      expect(locations(waitWith(...transitions))).toContain(location);
+    });
+
+    it('rejects a wait transition to another wait step', () => {
+      const other = { ...waitWith(finished), id: 'other' };
+      const wait = waitWith({ ...finished, target: { kind: 'step', step: 'other' } });
+
       expect(
         checkWorkflow(
-          withSteps([implement, review, wait(transition)], { subject: 'specification' }),
+          withSteps([implement, review, wait, other], { subject: 'specification' }),
         ).map((issue) => issue.location),
-      ).toContain('/steps/2/transitions');
-    }
+      ).toContain('/steps/2/transitions/0');
+    });
+
+    it('rejects a trigger on a work-step transition', () => {
+      expect(
+        checkWorkflow(
+          withSteps([
+            { ...implement, transitions: [{ ...implement.transitions[0]!, on: 'tasks-finished' }] },
+            review,
+          ]),
+        ).map((issue) => issue.location),
+      ).toEqual(['/steps/0/transitions/0/on']);
+    });
+
+    it('defaults the trigger of a wait-step transition read from a file', () => {
+      const parsed = parseWorkflowFile({
+        ...workflowFile(),
+        subject: 'specification',
+        steps: [
+          ...workflowFile().steps,
+          {
+            id: 'wait',
+            kind: 'wait-for-tasks',
+            title: 'Wait',
+            purpose: 'Wait.',
+            transitions: [{ id: 'finished', to: { step: 'implement' } }],
+          },
+        ],
+      });
+
+      expect(parsed.steps[2]?.transitions[0]?.on).toBe('tasks-finished');
+      expect(parsed.steps[0]?.transitions[0]?.on).toBeUndefined();
+    });
   });
 
   it('rejects an entry step that is a wait step', () => {

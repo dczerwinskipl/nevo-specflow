@@ -70,10 +70,17 @@ steps:
   - id: implementation
     kind: wait-for-tasks
     title: Implementation
-    purpose: Wait until every Task is finished.
+    purpose: Wait until every Task is finished. A Task that escalates sends the Specification back to the breakdown.
     transitions:
       - id: tasks-finished
+        on: tasks-finished
         to: { step: acceptance }
+      - id: task-escalated
+        on: task-escalated
+        label: A Task needs a Specification change
+        to: { step: breakdown }
+        feedback: required
+        continuation: owner-action
   - id: acceptance
     kind: work
     title: Acceptance

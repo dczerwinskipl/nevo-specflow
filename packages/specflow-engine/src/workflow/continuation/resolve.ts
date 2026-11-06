@@ -137,8 +137,8 @@ export type ContinuationDecision =
       readonly kind: 'attention';
       readonly step: string;
       readonly reason: AttentionReason;
-      /** For `task-escalated`: the Task that escalated. */
-      readonly taskId?: string;
+      /** For `task-escalated`: every escalated Task, in id order. */
+      readonly taskIds?: readonly string[];
       readonly archetype?: string;
       readonly provider?: string;
       /** What an owner start would launch, to prefill a quick start; absent when unresolved. */

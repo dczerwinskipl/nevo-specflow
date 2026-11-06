@@ -68,6 +68,7 @@ function parseTransition(file: WorkflowTransitionFile): WorkflowTransition {
     feedback: file.feedback ?? 'optional',
     effects: file.effects ?? [],
     escalate: file.escalate ?? false,
+    ...(file.on !== undefined ? { on: file.on } : {}),
   };
 }
 
@@ -80,7 +81,15 @@ function parseStep(file: WorkflowDefinitionFile['steps'][number]): WorkflowStep 
     transitions: file.transitions.map(parseTransition),
   };
   if (file.kind === 'wait-for-tasks') {
-    return { ...common, kind: 'wait-for-tasks' };
+    // A wait-step transition without a trigger is the one taken when the Tasks are finished.
+    return {
+      ...common,
+      kind: 'wait-for-tasks',
+      transitions: common.transitions.map((transition) => ({
+        ...transition,
+        on: transition.on ?? 'tasks-finished',
+      })),
+    };
   }
 
   return {

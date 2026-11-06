@@ -46,6 +46,10 @@ const effects = () =>
     }),
   );
 
+/** The Task events a wait-step transition can be taken on (`on`). */
+export const WAIT_TRIGGERS = ['tasks-finished', 'task-escalated'] as const;
+export type WaitTrigger = (typeof WAIT_TRIGGERS)[number];
+
 export const WorkflowTransitionTargetFileSchema = Type.Union([
   Type.Object({ step: localId() }, { additionalProperties: false }),
   Type.Object(
@@ -77,6 +81,14 @@ export const WorkflowTransitionFileSchema = Type.Object(
      * `task-escalated`. Requires `feedback: required` and a step target (checked by the Engine).
      */
     escalate: Type.Optional(Type.Boolean()),
+    /**
+     * Wait steps only: the Task event that takes this transition. `tasks-finished` (the default for
+     * a wait-step transition without `on`) when every Task is closed; `task-escalated` when a Task
+     * escalated to the Specification (needs a step target and `feedback: required`, filled by the
+     * Engine). A wait step has exactly one `tasks-finished` transition and at most one per trigger
+     * (checked by the Engine).
+     */
+    on: Type.Optional(Type.Union(WAIT_TRIGGERS.map((trigger) => Type.Literal(trigger)))),
   },
   { additionalProperties: false },
 );

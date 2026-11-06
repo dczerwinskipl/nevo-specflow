@@ -132,6 +132,10 @@ export function validateExecutionSnapshot(specId: string, state: ExecutionState)
     }
 
     subjects.add(key);
+    if ((item.reason === 'task-escalated') !== (item.taskIds !== undefined)) {
+      corrupt(`holds a ${item.reason} item for ${key} with the wrong escalated Tasks`);
+    }
+
     const exists =
       item.subject.specId === specId &&
       (item.subject.kind === 'specification'

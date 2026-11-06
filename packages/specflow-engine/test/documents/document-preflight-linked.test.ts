@@ -4,15 +4,15 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
-import { SLOW_GIT_TEST_TIMEOUT_MS } from '../support/platform';
+import { useSlowGitTestTimeouts } from '../support/platform';
 
 import type { ResolvedProjectHome } from '../../src/project/home/home';
 import { readPreflightSignature } from '../../src/specs/documents/write/preflight-cache';
 import { git } from '../support/git-project';
 
-vi.setConfig({ testTimeout: SLOW_GIT_TEST_TIMEOUT_MS });
+useSlowGitTestTimeouts();
 
 const bases: string[] = [];
 afterEach(async () => {

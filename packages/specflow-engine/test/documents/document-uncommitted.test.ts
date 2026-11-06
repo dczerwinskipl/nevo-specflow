@@ -6,9 +6,9 @@ import { randomUUID } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
-import { SLOW_GIT_TEST_TIMEOUT_MS, onPosix } from '../support/platform';
+import { onPosix, useSlowGitTestTimeouts } from '../support/platform';
 
 import { sha256Hex } from '../../src/hash';
 import { applyDocumentChange, resumeDocumentChange } from '../../src/specs/documents/api';
@@ -53,7 +53,7 @@ import {
 import { findDocumentChangeJournal } from '../../src/specs/documents/write/journal-store';
 import { git } from '../support/git-project';
 
-vi.setConfig({ testTimeout: SLOW_GIT_TEST_TIMEOUT_MS });
+useSlowGitTestTimeouts();
 
 afterEach(removeTrackedRoots);
 

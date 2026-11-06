@@ -1,3 +1,4 @@
+import { isA3Family } from '../../../../app/layoutPrototype';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
@@ -240,52 +241,114 @@ export function CreateProjectForm({
           subheading={t('create.subheading.withArchetype')}
         />
         <Separator />
-        <div className="grid gap-4">
-          <Field invalid={nameRefused}>
-            <Field.Label>{t('create.nameLabel')}</Field.Label>
-            <TextInput
-              ref={nameRef}
-              value={title}
-              maxLength={createTitleMaxLength}
-              disabled={locked}
-              onChange={(event) => {
-                setUnprepared(false);
-                setNameRefused(false);
-                setTitle(event.target.value);
-              }}
-              placeholder={t('create.namePlaceholder')}
+        {isA3Family ? (
+          // PROTOTYPE (A3): what is created (name, goal, archetype and its documents) beside where
+          // it is created. DOM order is the reading and Tab order: left column, then right.
+          <div className="@container/create">
+            <div className="grid gap-8 @min-[62rem]/create:grid-cols-2 @min-[62rem]/create:gap-x-16">
+              <div className="@container grid content-start gap-8">
+                <div className="grid gap-4">
+                  <Field invalid={nameRefused}>
+                    <Field.Label>{t('create.nameLabel')}</Field.Label>
+                    <TextInput
+                      ref={nameRef}
+                      value={title}
+                      maxLength={createTitleMaxLength}
+                      disabled={locked}
+                      onChange={(event) => {
+                        setUnprepared(false);
+                        setNameRefused(false);
+                        setTitle(event.target.value);
+                      }}
+                      placeholder={t('create.namePlaceholder')}
+                    />
+                    {nameRefused && (
+                      <Field.Error>{t('create.errors.nameInvalid.field')}</Field.Error>
+                    )}
+                  </Field>
+                  <Field>
+                    <Field.Label>{t('create.project.goalLabel')}</Field.Label>
+                    <TextArea
+                      value={goal}
+                      maxLength={createGoalMaxLength}
+                      disabled={locked}
+                      onChange={(event) => setGoal(event.target.value)}
+                      placeholder={t('create.project.goalPlaceholder')}
+                    />
+                    <Field.Description>{t('create.project.goalHelp')}</Field.Description>
+                  </Field>
+                </div>
+                <Separator />
+                <ArchetypeSection
+                  state={archetypeState}
+                  choice={archetypeChoice}
+                  locked={locked}
+                  onChange={setArchetypeChoice}
+                />
+              </div>
+              <div className="@container grid content-start gap-8">
+                <CreateWorkspaceSection
+                  headingId={gitHeadingId}
+                  createOptions={createOptions}
+                  place={place}
+                  locked={locked}
+                  title={title}
+                  onRefresh={refreshOptions}
+                  onAnnounce={announce}
+                />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="grid gap-4">
+              <Field invalid={nameRefused}>
+                <Field.Label>{t('create.nameLabel')}</Field.Label>
+                <TextInput
+                  ref={nameRef}
+                  value={title}
+                  maxLength={createTitleMaxLength}
+                  disabled={locked}
+                  onChange={(event) => {
+                    setUnprepared(false);
+                    setNameRefused(false);
+                    setTitle(event.target.value);
+                  }}
+                  placeholder={t('create.namePlaceholder')}
+                />
+                {nameRefused && <Field.Error>{t('create.errors.nameInvalid.field')}</Field.Error>}
+              </Field>
+              <Field>
+                <Field.Label>{t('create.project.goalLabel')}</Field.Label>
+                <TextArea
+                  value={goal}
+                  maxLength={createGoalMaxLength}
+                  disabled={locked}
+                  onChange={(event) => setGoal(event.target.value)}
+                  placeholder={t('create.project.goalPlaceholder')}
+                />
+                <Field.Description>{t('create.project.goalHelp')}</Field.Description>
+              </Field>
+            </div>
+            <Separator />
+            <ArchetypeSection
+              state={archetypeState}
+              choice={archetypeChoice}
+              locked={locked}
+              onChange={setArchetypeChoice}
             />
-            {nameRefused && <Field.Error>{t('create.errors.nameInvalid.field')}</Field.Error>}
-          </Field>
-          <Field>
-            <Field.Label>{t('create.project.goalLabel')}</Field.Label>
-            <TextArea
-              value={goal}
-              maxLength={createGoalMaxLength}
-              disabled={locked}
-              onChange={(event) => setGoal(event.target.value)}
-              placeholder={t('create.project.goalPlaceholder')}
+            <Separator />
+            <CreateWorkspaceSection
+              headingId={gitHeadingId}
+              createOptions={createOptions}
+              place={place}
+              locked={locked}
+              title={title}
+              onRefresh={refreshOptions}
+              onAnnounce={announce}
             />
-            <Field.Description>{t('create.project.goalHelp')}</Field.Description>
-          </Field>
-        </div>
-        <Separator />
-        <ArchetypeSection
-          state={archetypeState}
-          choice={archetypeChoice}
-          locked={locked}
-          onChange={setArchetypeChoice}
-        />
-        <Separator />
-        <CreateWorkspaceSection
-          headingId={gitHeadingId}
-          createOptions={createOptions}
-          place={place}
-          locked={locked}
-          title={title}
-          onRefresh={refreshOptions}
-          onAnnounce={announce}
-        />
+          </>
+        )}
         {unprepared && (
           <Alert role="alert" tone="attention" title={t('create.errors.failed.title')}>
             <p>{t('create.errors.failed.body')}</p>

@@ -1,11 +1,11 @@
-import { layoutPrototype } from '../../../app/layoutPrototype';
+import { layoutPrototype, isA3Family } from '../../../app/layoutPrototype';
 import { RefreshStatus } from '../../../app/loading/RefreshStatus';
 import {
   ApplicationLocationIdentity,
   ApplicationContextLine,
 } from '../../../app/navigation/ApplicationLocation';
 import { WorkspaceRouteLeaveGuard } from '../../../app/navigation/WorkspaceRouteLeaveGuard';
-import { useCallback, useMemo, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { SpecificationStandaloneBack } from './SpecificationStandaloneBack';
 import {
   Alert,
@@ -62,6 +62,24 @@ export interface SpecificationWorkspaceProps {
   readonly refreshing?: boolean;
 }
 
+function usePrototypeWideViewport() {
+  const query = '(min-width: 2200px)';
+  const [wide, setWide] = useState(() => globalThis.matchMedia?.(query).matches ?? false);
+  useEffect(() => {
+    const list = globalThis.matchMedia?.(query);
+    if (!list) {
+      return;
+    }
+
+    const update = () => setWide(list.matches);
+    list.addEventListener('change', update);
+
+    return () => list.removeEventListener('change', update);
+  }, []);
+
+  return wide;
+}
+
 export function SpecificationWorkspace(props: SpecificationWorkspaceProps) {
   return (
     <AppWorkspaceProvider scopeKey={props.specId}>
@@ -93,6 +111,7 @@ function SpecificationWorkspaceInner({
   refreshFailed,
   refreshing = false,
 }: SpecificationWorkspaceProps) {
+  const wideViewport = usePrototypeWideViewport();
   const { t } = useTranslation();
   const secondaryNavigation = useSecondaryNavigation();
   const { supportsSplit } = useWorkspaceCapabilities();
@@ -218,6 +237,35 @@ function SpecificationWorkspaceInner({
     ],
   );
 
+  // PROTOTYPE (A3h): on a wide viewport Activity history is the last section of the side column.
+  const historyInPage = layoutPrototype === 'A3h' && wideViewport;
+  const activityHistory = (
+    <ActivityHistory
+      showHeading={false}
+      events={data.activityEvents}
+      availability={data.sectionAvailability?.activity ?? 'available'}
+      unavailableReason={data.sectionUnavailableReason?.activity}
+      onRetry={onRefresh ? () => void onRefresh() : undefined}
+      onOpenTask={handlePreviewTask}
+      onOpenSession={onOpenSession}
+      onOpenDoc={(docId) => handleOpenDoc(docId, 'work')}
+    />
+  );
+  const inPageHistory = (
+    <div className="border-t border-border-default py-4">
+      <ActivityHistory
+        showHeading
+        events={data.activityEvents}
+        availability={data.sectionAvailability?.activity ?? 'available'}
+        unavailableReason={data.sectionUnavailableReason?.activity}
+        onRetry={onRefresh ? () => void onRefresh() : undefined}
+        onOpenTask={handlePreviewTask}
+        onOpenSession={onOpenSession}
+        onOpenDoc={(docId) => handleOpenDoc(docId, 'work')}
+      />
+    </div>
+  );
+
   return (
     <SpecificationSecondaryDataContext.Provider value={secondaryContextValue}>
       <WorkspaceProvider runtime={runtime}>
@@ -226,6 +274,7 @@ function SpecificationWorkspaceInner({
           fit={
             layoutPrototype === 'A' ||
             layoutPrototype === 'A2' ||
+            isA3Family ||
             layoutPrototype === 'E' ||
             layoutPrototype === 'B'
               ? 'available'
@@ -290,9 +339,11 @@ function SpecificationWorkspaceInner({
           >
             <AppContent
               className={
-                layoutPrototype === 'A2' || layoutPrototype === 'E'
-                  ? 'mx-auto w-content-standard max-w-full'
-                  : 'w-content-standard max-w-full'
+                isA3Family
+                  ? 'w-full'
+                  : layoutPrototype === 'A2' || layoutPrototype === 'E'
+                    ? 'mx-auto w-content-standard max-w-full'
+                    : 'w-content-standard max-w-full'
               }
             >
               <AppWorkspaceBody scroll="area" contentClassName="py-6">
@@ -315,7 +366,11 @@ function SpecificationWorkspaceInner({
                       onBack={onBack}
                     />
                     <ApplicationContextLine specId={specId} view="overview" />
-                    <WorkView specId={specId} data={data} />
+                    <WorkView
+                      specId={specId}
+                      data={data}
+                      aside={historyInPage ? inPageHistory : undefined}
+                    />
                   </div>
                 </AppContentContainer>
               </AppWorkspaceBody>
@@ -323,24 +378,17 @@ function SpecificationWorkspaceInner({
           </AppWorkspace.Primary>
 
           {/* Declarative base Secondary: Activity History shown on split-capable layouts */}
-          <AppWorkspace.Secondary
-            header={<WorkspaceHeader as="h2" title={t('specification.activityHistory')} />}
-          >
-            <AppContent>
-              <AppWorkspaceBody padding="none" scroll="area">
-                <ActivityHistory
-                  showHeading={false}
-                  events={data.activityEvents}
-                  availability={data.sectionAvailability?.activity ?? 'available'}
-                  unavailableReason={data.sectionUnavailableReason?.activity}
-                  onRetry={onRefresh ? () => void onRefresh() : undefined}
-                  onOpenTask={handlePreviewTask}
-                  onOpenSession={onOpenSession}
-                  onOpenDoc={(docId) => handleOpenDoc(docId, 'work')}
-                />
-              </AppWorkspaceBody>
-            </AppContent>
-          </AppWorkspace.Secondary>
+          {historyInPage ? null : (
+            <AppWorkspace.Secondary
+              header={<WorkspaceHeader as="h2" title={t('specification.activityHistory')} />}
+            >
+              <AppContent>
+                <AppWorkspaceBody padding="none" scroll="area">
+                  {activityHistory}
+                </AppWorkspaceBody>
+              </AppContent>
+            </AppWorkspace.Secondary>
+          )}
         </AppWorkspace>
 
         {/* Explicit Dialogs */}

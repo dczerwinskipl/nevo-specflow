@@ -1,6 +1,11 @@
 import type { FormHTMLAttributes, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { layoutPrototype, createColumnWidthClass } from '../../../app/layoutPrototype';
+import {
+  layoutPrototype,
+  createColumnWidthClass,
+  progressAlign,
+  isA3Family,
+} from '../../../app/layoutPrototype';
 import {
   AppContent,
   AppContentContainer,
@@ -26,6 +31,7 @@ export function CreateShell({
   footer,
   children,
   preview,
+  contentWidth,
 }: {
   specId?: string;
   /** Names the page in the header and the breadcrumb; the default is the Create form's. */
@@ -44,6 +50,8 @@ export function CreateShell({
   children: ReactNode;
   /** PROTOTYPE (variant E): the Secondary preview of what the form will create. */
   preview?: ReactNode;
+  /** PROTOTYPE (A3): keep this page's content at `content-form` inside the shared frame. */
+  contentWidth?: 'form';
 }) {
   const { t } = useTranslation();
   const workspaceLabels = useWorkspaceLabels();
@@ -54,7 +62,11 @@ export function CreateShell({
   // its button stays aligned with the content.
   const column = cn(
     'mx-auto max-w-full px-4 sm:px-6',
-    layoutPrototype === 'A' || layoutPrototype === 'A2' || layoutPrototype === 'C'
+    layoutPrototype === 'A' ||
+      layoutPrototype === 'A2' ||
+      layoutPrototype === 'A3' ||
+      layoutPrototype === 'A3h' ||
+      layoutPrototype === 'C'
       ? createColumnWidthClass[layoutPrototype]
       : layoutPrototype === 'B'
         ? 'w-full sm:px-8'
@@ -73,7 +85,12 @@ export function CreateShell({
       >
         <div className={cn(column, 'py-4 sm:py-6')}>
           <AppContentContainer
-            className={containerClassName}
+            className={cn(
+              containerClassName,
+              isA3Family && contentWidth === 'form'
+                ? cn('max-w-content-form', progressAlign === 'center' && 'mx-auto')
+                : undefined,
+            )}
             size={layoutPrototype === 'base' || layoutPrototype === 'D' ? undefined : 'full'}
           >
             {children}
@@ -86,7 +103,14 @@ export function CreateShell({
               the two bars line up across the shell; taller only when the hint and the button stack
               on a narrow screen. */}
           <Separator />
-          <div className="flex min-h-shell-footer shrink-0 items-center py-shell-footer-padding">
+          <div
+            className={cn(
+              'flex min-h-shell-footer shrink-0 items-center py-shell-footer-padding',
+              // PROTOTYPE (A3): the same both-edge gutter as the scrolling body keeps the button
+              // aligned with the form edge.
+              isA3Family && 'overflow-hidden [scrollbar-gutter:stable_both-edges]',
+            )}
+          >
             <div className={column}>
               <AppContentContainer
                 size={layoutPrototype === 'base' || layoutPrototype === 'D' ? undefined : 'full'}

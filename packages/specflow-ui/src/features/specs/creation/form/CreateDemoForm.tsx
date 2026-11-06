@@ -353,7 +353,7 @@ export function CreateDemoForm({
           // documents) sits beside "who and where" (agent, workspace). Same sections, same order
           // in the narrow single column.
           <div className="@container/create">
-            <div className="grid gap-8 @5xl/create:grid-cols-2 @5xl/create:gap-x-16">
+            <div className="grid gap-8 @min-[62rem]/create:grid-cols-2 @min-[62rem]/create:gap-x-16">
               {[sections.slice(0, 2), sections.slice(2)].map((group, column) => (
                 <div key={column} className="@container grid content-start gap-8">
                   {group.flatMap((section, index) => [

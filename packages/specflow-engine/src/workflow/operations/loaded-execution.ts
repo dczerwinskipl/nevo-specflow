@@ -1,0 +1,113 @@
+import type { ExecutionCatalogue } from '../definitions/catalogue';
+import type { WorkflowDefinition } from '../definitions/model';
+import { WorkflowError } from '../errors';
+import { assertPinned, pinOf } from '../progression/progression';
+import {
+  subjectKey,
+  type TaskRecord,
+  type WorkflowRun,
+  type WorkflowSubject,
+} from '../state/model';
+import type { ExecutionSnapshot, Versioned, WorkflowStore } from '../state/store';
+
+/**
+ * Dependencies of the workflow operations. Every mutation runs inside `serialize` (the project control
+ * lock in production) and reads, plans and applies one change there, so the plan is never computed
+ * against state another writer is changing.
+ */
+export interface WorkflowDependencies {
+  readonly store: WorkflowStore;
+  readonly catalogue: ExecutionCatalogue;
+  readonly now: () => Date;
+  readonly serialize: <T>(operation: () => Promise<T>) => Promise<T>;
+}
+
+/** One subject of a snapshot with the definition its run is pinned to. */
+export interface LoadedSubject {
+  readonly subject: WorkflowSubject;
+  readonly run: WorkflowRun;
+  readonly revision: string;
+  readonly definition: WorkflowDefinition;
+  readonly task?: TaskRecord;
+}
+
+export function pinnedDefinition(
+  catalogue: ExecutionCatalogue,
+  run: WorkflowRun,
+): WorkflowDefinition {
+  const definition = catalogue.workflow(run.workflow.id);
+  if (!definition) {
+    throw new WorkflowError(
+      'WORKFLOW_DEFINITION_CHANGED',
+      `The workflow "${run.workflow.id}" the run is pinned to is not defined any more.`,
+    );
+  }
+
+  assertPinned(run, definition);
+
+  return definition;
+}
+
+/** The pinned definition, or `undefined` when it is missing or changed (never throws). */
+export function pinnedDefinitionIfUnchanged(
+  catalogue: ExecutionCatalogue,
+  run: WorkflowRun,
+): WorkflowDefinition | undefined {
+  const definition = catalogue.workflow(run.workflow.id);
+  if (!definition) {
+    return undefined;
+  }
+
+  const pin = pinOf(definition);
+
+  return pin.id === run.workflow.id && pin.revision === run.workflow.revision
+    ? definition
+    : undefined;
+}
+
+export function findTask(
+  snapshot: ExecutionSnapshot,
+  taskId: string,
+): Versioned<TaskRecord> | undefined {
+  return snapshot.tasks.find((entry) => entry.value.taskId === taskId);
+}
+
+export function loadSubject(
+  catalogue: ExecutionCatalogue,
+  snapshot: ExecutionSnapshot,
+  subject: WorkflowSubject,
+): LoadedSubject {
+  const specification = snapshot.specification;
+  if (!specification) {
+    throw new WorkflowError(
+      'WORKFLOW_SPECIFICATION_NOT_STARTED',
+      `The Specification "${subject.specId}" has no execution yet.`,
+    );
+  }
+
+  if (subject.kind === 'specification') {
+    return {
+      subject,
+      run: specification.value.run,
+      revision: specification.revision,
+      definition: pinnedDefinition(catalogue, specification.value.run),
+    };
+  }
+
+  const task = findTask(snapshot, subject.taskId);
+  if (!task) {
+    throw new WorkflowError('WORKFLOW_SUBJECT_NOT_FOUND', `Unknown ${subjectKey(subject)}.`);
+  }
+
+  return {
+    subject,
+    run: task.value.run,
+    revision: task.revision,
+    definition: pinnedDefinition(catalogue, task.value.run),
+    task: task.value,
+  };
+}
+
+export function isoNow(dependencies: WorkflowDependencies): string {
+  return dependencies.now().toISOString();
+}

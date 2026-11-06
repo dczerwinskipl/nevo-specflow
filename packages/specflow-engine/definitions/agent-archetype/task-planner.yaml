@@ -1,0 +1,12 @@
+kind: agent-archetype
+schemaVersion: 1
+id: task-planner
+title: Task planner
+description: Breaks a designed solution into cohesive, dependency-complete Tasks, each with its own task type.
+profile: nevo-agents:task-planner
+preferredProvider: claude
+providers:
+  - provider: claude
+    model: claude-opus-5-5
+  - provider: codex
+  - provider: antigravity

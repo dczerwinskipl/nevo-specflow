@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:nevo:specflow:definition:agent-archetype:1",
+  "title": "Nevo SpecFlow agent archetype definition",
+  "description": "One agent archetype with its preferred provider and a model per provider (kind agent-archetype, schemaVersion 1).",
+  "type": "object",
+  "required": [
+    "kind",
+    "schemaVersion",
+    "id",
+    "title",
+    "description",
+    "providers"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "kind": {
+      "type": "string",
+      "const": "agent-archetype"
+    },
+    "schemaVersion": {
+      "type": "number",
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,31}$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000,
+      "description": "Limit: 1000 UTF-8 bytes. This schema bounds characters only; the exact byte check is applied by the Engine."
+    },
+    "profile": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "instructions": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 16384,
+      "description": "Limit: 16384 UTF-8 bytes. This schema bounds characters only; the exact byte check is applied by the Engine."
+    },
+    "preferredProvider": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,31}$"
+    },
+    "providers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "provider"
+        ],
+        "properties": {
+          "provider": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,31}$"
+          },
+          "model": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "effort": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          }
+        },
+        "additionalProperties": false
+      },
+      "maxItems": 16
+    }
+  },
+  "additionalProperties": false
+}

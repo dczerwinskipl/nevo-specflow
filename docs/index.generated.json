@@ -923,6 +923,27 @@
       ]
     },
     {
+      "id": "architecture.workflow.workflow-kernel",
+      "type": "architecture",
+      "title": "Workflow kernel — Specification and Task execution",
+      "status": "current",
+      "file": "docs/architecture/workflow/workflow-kernel.md",
+      "read_when": [
+        "changing workflow, agent archetype or task type definitions",
+        "implementing start, finish, return, continuation or attention behaviour",
+        "wiring the Runtime, CLI or UI to Specification or Task execution",
+        "adding a step kind, an effect, an attention reason or a new subject"
+      ],
+      "summary": "One deterministic workflow core drives both a Specification and each of its Tasks. Entry points only select the subject. Workflows, agent archetypes (preferred provider and a model per provider) and task types are project definitions. Each Task has its own type, workflow and preparation status (draft, ready, on-hold, cancelled), changed only by explicit decisions, a declared approval effect or its own escalation to the Specification. The Engine decides continuations; anything it cannot carry out becomes a local attention item. Canonical state lives in the Specification's `.execution/` folder; journals and attention are local.",
+      "related": [
+        "architecture.workflow.deterministic-workflow",
+        "adr.0019-workflow-kernel-and-automatic-continuation",
+        "adr.0017-definitions-as-project-data",
+        "architecture.runtime.specflow-engine",
+        "ideas.specflow-engine.plan-06"
+      ]
+    },
+    {
       "id": "design-system.figma.code-to-figma-projection",
       "type": "architecture",
       "title": "Code-to-Figma projection boundary",
@@ -2014,6 +2035,23 @@
         "architecture.runtime.configuration",
         "architecture.runtime.specification-documents",
         "reference.api.specification-documents"
+      ]
+    },
+    {
+      "id": "adr.0019-workflow-kernel-and-automatic-continuation",
+      "type": "adr",
+      "title": "One workflow kernel for Specifications and Tasks, per-Task types, agent archetypes and automatic continuation",
+      "status": "current",
+      "file": "docs/architecture/decisions/0019-workflow-kernel-and-automatic-continuation.md",
+      "read_when": [],
+      "summary": "Specifications and Tasks run through one deterministic workflow core and differ only in their entry points. Every Task has its own type and workflow, and the Specification archetype only restricts the types. Each step names a preferred agent archetype, which holds a preferred provider and a model per provider. A transition may continue automatically. When the Engine cannot resolve the next launch, it records a local attention item instead of asking the agent. Canonical execution state is Git-tracked in the Specification's .execution/ folder.",
+      "related": [
+        "architecture.workflow.workflow-kernel",
+        "architecture.workflow.deterministic-workflow",
+        "adr.0017-definitions-as-project-data",
+        "adr.0015-specification-manifest-as-document-registry",
+        "ideas.specflow-engine.plan-05",
+        "ideas.specflow-engine.plan-06"
       ]
     },
     {
@@ -3953,6 +3991,41 @@
       ]
     },
     {
+      "id": "ideas.specflow-engine.plan-06",
+      "type": "engineering",
+      "title": "Execution plan 06 — Workflow kernel for Specifications and Tasks",
+      "status": "draft",
+      "file": "docs/ideas/specflow-engine/execution-plans/06-workflow-kernel/README.md",
+      "read_when": [
+        "continuing the workflow kernel work (follow-ups F01–F20)",
+        "comparing the legacy nevo workflow engine with this one",
+        "planning Runtime, CLI or UI work on Specification or Task execution"
+      ],
+      "summary": "Analysis of the legacy nevo deterministic workflow (what was reused and what was rewritten), what the first kernel PR implements, and the ordered follow-ups with their design constraints, so each can be picked up independently.",
+      "related": [
+        "architecture.workflow.workflow-kernel",
+        "architecture.workflow.deterministic-workflow",
+        "adr.0019-workflow-kernel-and-automatic-continuation",
+        "ideas.specflow-engine.plan-03",
+        "ideas.specflow-engine.plan-05",
+        "ideas.specflow-engine.workflow-api-requirements",
+        "ideas.specflow-engine.task-resource-and-context"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "workflow",
+        "runtime",
+        "testing"
+      ],
+      "tags": [
+        "execution-plan",
+        "workflow",
+        "continuation",
+        "attention",
+        "archetypes"
+      ]
+    },
+    {
       "id": "ideas.specflow-engine.specification-close-decisions",
       "type": "engineering",
       "title": "Proposed Specification and worktree closure decisions",
@@ -4008,6 +4081,42 @@
       ]
     },
     {
+      "id": "ideas.specflow-engine.task-resource-and-context",
+      "type": "engineering",
+      "title": "Tasks as workflow-managed resources, Task lifecycle and context building (draft)",
+      "status": "draft",
+      "file": "docs/ideas/specflow-engine/task-resource-and-context.md",
+      "read_when": [
+        "replacing the provisional Task record of the workflow kernel",
+        "designing Task folders, the Task index, Task statuses or Task escalation",
+        "designing how the context of a Specification or Task step is built",
+        "writing the ADR that makes Tasks a resource with their own documents"
+      ],
+      "summary": "Owner ideas and decisions (open questions answered on 2026-11-05), not yet an ADR: one workflow-managed subject contract for Specifications and Tasks, one folder per Task with a manifest, a main document and the Task index as registry, a Task-only preparation status (draft, ready, on-hold, cancelled) separate from the workflow position, a guard that keeps draft Tasks out of implementation, explicit hold and cancel decisions, escalation from a Task to its Specification through a declared Specification transition, and an explicit typed context list per subject. Options, decisions and implementation slices.",
+      "related": [
+        "architecture.workflow.workflow-kernel",
+        "adr.0015-specification-manifest-as-document-registry",
+        "adr.0017-definitions-as-project-data",
+        "adr.0019-workflow-kernel-and-automatic-continuation",
+        "ideas.specflow-engine.plan-06",
+        "ideas.specflow-engine.workflow-api-requirements"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "workflow",
+        "runtime",
+        "ai"
+      ],
+      "tags": [
+        "draft",
+        "tasks",
+        "lifecycle",
+        "context",
+        "escalation",
+        "manifest"
+      ]
+    },
+    {
       "id": "ideas.specflow-engine.test-plan",
       "type": "engineering",
       "title": "Engine workspace integration test plan",
@@ -4042,6 +4151,35 @@
         "worktree",
         "concurrency",
         "recovery"
+      ]
+    },
+    {
+      "id": "ideas.specflow-engine.workflow-api-requirements",
+      "type": "engineering",
+      "title": "Draft requirements for the workflow API (not a design)",
+      "status": "draft",
+      "file": "docs/ideas/specflow-engine/workflow-api-requirements.md",
+      "read_when": [
+        "designing the Runtime HTTP API, CLI or MCP surface of Specification and Task execution",
+        "designing the attention quick-start screen"
+      ],
+      "summary": "What a workflow API must allow, collected while the kernel was built. No endpoints, payloads or status codes are designed here on purpose: requirements may still change and the design follows them.",
+      "related": [
+        "architecture.workflow.workflow-kernel",
+        "ideas.specflow-engine.plan-06",
+        "adr.0019-workflow-kernel-and-automatic-continuation"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "workflow",
+        "runtime",
+        "server"
+      ],
+      "tags": [
+        "requirements",
+        "draft",
+        "workflow",
+        "attention"
       ]
     },
     {

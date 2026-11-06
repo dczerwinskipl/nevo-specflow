@@ -2,6 +2,12 @@ import { Compile } from 'typebox/compile';
 import { Value } from 'typebox/value';
 import { describe, expect, it } from 'vitest';
 
+import agentArchetypeSchema from '../../schema/definitions/agent-archetype.v1.schema.json';
+import agentArchetypeSchemaText from '../../schema/definitions/agent-archetype.v1.schema.json?raw';
+import taskTypeSchema from '../../schema/definitions/task-type.v1.schema.json';
+import taskTypeSchemaText from '../../schema/definitions/task-type.v1.schema.json?raw';
+import workflowSchema from '../../schema/definitions/workflow.v1.schema.json';
+import workflowSchemaText from '../../schema/definitions/workflow.v1.schema.json?raw';
 import documentTypeSchema from '../../schema/definitions/document-type.v1.schema.json';
 import documentTypeSchemaText from '../../schema/definitions/document-type.v1.schema.json?raw';
 import archetypeSchema from '../../schema/definitions/specification-archetype.v1.schema.json';
@@ -19,6 +25,19 @@ import {
   type SpecificationArchetypeDefinitionFile,
 } from './definition-files';
 import { DEFINITION_SHORT_TEXT_MAX_BYTES, DEFINITION_TEMPLATE_MAX_BYTES } from './definition';
+import {
+  AgentArchetypeDefinitionFileSchema,
+  TaskTypeDefinitionFileSchema,
+  WorkflowDefinitionFileSchema,
+} from './workflow-definition-files';
+import {
+  agentArchetypeFile,
+  invalidAgentArchetypeFiles,
+  invalidTaskTypeFiles,
+  invalidWorkflowFiles,
+  taskTypeFile,
+  workflowFile,
+} from './workflow-definition-files.test-support';
 
 /** The examples of `docs/reference/api/specification-documents.md` ("Definition files"). */
 const documentType = (): DocumentTypeDefinitionFile => ({
@@ -129,6 +148,14 @@ const invalidArchetypes: [string, () => Json][] = [
 
 const CASES = [
   {
+    kind: 'agent-archetype',
+    schema: AgentArchetypeDefinitionFileSchema,
+    valid: () => agentArchetypeFile() as Json,
+    invalid: invalidAgentArchetypeFiles,
+    committed: agentArchetypeSchema,
+    committedText: agentArchetypeSchemaText,
+  },
+  {
     kind: 'document-type',
     schema: DocumentTypeDefinitionFileSchema,
     valid: () => documentType() as Json,
@@ -143,6 +170,22 @@ const CASES = [
     invalid: invalidArchetypes,
     committed: archetypeSchema,
     committedText: archetypeSchemaText,
+  },
+  {
+    kind: 'task-type',
+    schema: TaskTypeDefinitionFileSchema,
+    valid: () => taskTypeFile() as Json,
+    invalid: invalidTaskTypeFiles,
+    committed: taskTypeSchema,
+    committedText: taskTypeSchemaText,
+  },
+  {
+    kind: 'workflow',
+    schema: WorkflowDefinitionFileSchema,
+    valid: () => workflowFile() as Json,
+    invalid: invalidWorkflowFiles,
+    committed: workflowSchema,
+    committedText: workflowSchemaText,
   },
 ] as const;
 

@@ -10,6 +10,7 @@ export * from './operations';
 export * from './tree';
 export * from './uncommitted';
 export * from './vocabulary';
+export * from './workflow-definition-files';
 
 export const SpecificationDocumentParamsSchema = Type.Object(
   { specId: IdSchema, documentId: IdSchema },

@@ -63,12 +63,18 @@ describe('definition kind registry', () => {
     expect(registry.loadOrder().map((kind) => kind.kind)).toEqual(['zeta', 'alpha', 'beta']);
   });
 
-  it('lists the shipped kinds with the document types first', () => {
+  it('lists the shipped kinds with every dependency before its dependents', () => {
     expect(
       createDefaultDefinitionRegistry()
         .loadOrder()
         .map((kind) => kind.kind),
-    ).toEqual(['document-type', 'specification-archetype']);
+    ).toEqual([
+      'agent-archetype',
+      'document-type',
+      'workflow',
+      'task-type',
+      'specification-archetype',
+    ]);
   });
 
   it('refuses a duplicate kind, an invalid name, a missing dependency and a cycle', () => {

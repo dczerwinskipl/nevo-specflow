@@ -107,3 +107,5 @@ templates:
       ## Sources
 
       ## Findings
+execution:
+  workflow: specification-standard

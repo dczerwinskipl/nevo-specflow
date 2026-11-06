@@ -5826,7 +5826,7 @@
         "changing AppWorkspace fit, the bounded workspace rule or the shell centring behaviour",
         "reviewing navigation continuity between consecutive SpecFlow screens on wide desktops"
       ],
-      "summary": "Screenshot-backed comparison of App Shell layout prototypes for the shell-width problem found in the November 2026 UX audit. Five variants were rendered at five viewports and reviewed independently. Recommends variant A2 (explicit Focused and Workspace modes with one shared Focused width) as a proposal and lists the decisions the owner still has to make.",
+      "summary": "Screenshot-backed comparison of App Shell layout prototypes for the shell-width problem found in the November 2026 UX audit. Six variants, including Create Specification in the Specification workspace geometry, were rendered at five viewports, checked for interaction regressions and reviewed independently. Recommends variant A2 (explicit Focused and Workspace modes with one shared Focused width) as a proposal and lists the decisions the owner still has to make.",
       "related": [
         "ideas.specflow-ui.ux-audit-2026-11",
         "design-system.principles.layout-and-containment",

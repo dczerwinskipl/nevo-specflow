@@ -17,8 +17,9 @@ read_when:
   - reviewing navigation continuity between consecutive SpecFlow screens on wide desktops
 summary: >
   Screenshot-backed comparison of App Shell layout prototypes for the shell-width problem found in
-  the November 2026 UX audit. Five variants were rendered at five viewports and reviewed
-  independently. Recommends variant A2 (explicit Focused and Workspace modes with one shared
+  the November 2026 UX audit. Six variants, including Create Specification in the Specification
+  workspace geometry, were rendered at five viewports, checked for interaction regressions and
+  reviewed independently. Recommends variant A2 (explicit Focused and Workspace modes with one shared
   Focused width) as a proposal and lists the decisions the owner still has to make.
 related:
   - ideas.specflow-ui.ux-audit-2026-11
@@ -68,13 +69,14 @@ Mobile is not affected: it always uses the full width with a navigation drawer.
 All variants were built on `main` in an isolated worktree, using only existing Nevo UI components
 and tokens, and switched at runtime. Branch: `proto/app-shell-geometry` (not for merge).
 
-| Variant                          | What changes                                                                                                                                                                                                    | How extra width is used                                                                                    |
-| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| **A** Focused + Workspace modes  | Specs Overview and Create share one bounded width of 1280 px. Specification Overview, Documents and Session fill the width.                                                                                     | Create's existing sections go into two columns: name, archetype and documents beside agent and workspace.  |
-| **A2** A after the visual review | Shared Focused width is the existing `content-standard`. Specification Overview fills the width with its column centred in the pane. A centred shell snaps to the left edge when less than 240 px would remain. | Same two-column Create. Specification Overview keeps a readable column, balanced against Activity history. |
-| **B** One full-width shell       | Every screen fills the width; the navigation never moves.                                                                                                                                                       | The list stretches; Create uses two columns across the full width.                                         |
-| **C** Shared page frame          | Specs Overview, Create and Specification Overview share the Specification Overview's bounded width of about 1575 px. Documents and Session fill the width.                                                      | Two-column Create inside the larger frame.                                                                 |
-| **D** Left-anchored shell        | Current widths, but the shell is anchored to the left edge instead of centred.                                                                                                                                  | None; the leftover width becomes background on the right.                                                  |
+| Variant                                     | What changes                                                                                                                                                                                                                                  | How extra width is used                                                                                                               |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| **A** Focused + Workspace modes             | Specs Overview and Create share one bounded width of 1280 px. Specification Overview, Documents and Session fill the width.                                                                                                                   | Create's existing sections go into two columns: name, archetype and documents beside agent and workspace.                             |
+| **A2** A after the visual review            | Shared Focused width is the existing `content-standard`. Specification Overview fills the width with its column centred in the pane. A centred shell snaps to the left edge when less than 240 px would remain.                               | Same two-column Create. Specification Overview keeps a readable column, balanced against Activity history.                            |
+| **B** One full-width shell                  | Every screen fills the width; the navigation never moves.                                                                                                                                                                                     | The list stretches; Create uses two columns across the full width.                                                                    |
+| **C** Shared page frame                     | Specs Overview, Create and Specification Overview share the Specification Overview's bounded width of about 1575 px. Documents and Session fill the width.                                                                                    | Two-column Create inside the larger frame.                                                                                            |
+| **D** Left-anchored shell                   | Current widths, but the shell is anchored to the left edge instead of centred.                                                                                                                                                                | None; the leftover width becomes background on the right.                                                                             |
+| **E** Create in the Specification workspace | A2, except Create uses the Specification workspace geometry, following the Create Session principle: the form sits in the same centred column the Specification Overview uses after creation, and a side panel previews what will be created. | The side panel shows name, archetype, document filenames, first-session agent and workspace place, all values the form already holds. |
 
 No variant adds panels, content or features. Only existing elements were rearranged.
 
@@ -99,6 +101,7 @@ the red line marks the left edge of the navigation.
 | B       | always 0              | always 0               | always 0                |
 | C       | 0 · 0 · 0 · 0 · 0     | 39 · 39 · 69 · 0 · 0   | 359 · 359 · 359 · 0 · 0 |
 | D       | always 0              | always 0               | always 0                |
+| E       | 0 · 0 · 0 · 0 · 0     | 275 · 0 · 0 · 0 · 0    | 595 · 0 · 0 · 0 · 0     |
 
 ### Create Specification with an agent
 
@@ -116,15 +119,33 @@ the red line marks the left edge of the navigation.
 
 ![Specification Overview at 2560 px, all variants](images/shell-geometry/compare-spec-overview-2560.png)
 
+### Create in the Specification workspace (variant E)
+
+Variant E tests the Create Session principle without moving Create into the Session shell. The
+journey strips compare it with `main` and A2.
+
+![Journey at 1920 px: main, A2 and E](images/shell-geometry/compare-journey-AE-1920.png)
+
+![Journey at 2560 px: main, A2 and E](images/shell-geometry/compare-journey-AE-2560.png)
+
+![Create with an agent at 1920 px: main, A2 and E](images/shell-geometry/compare-AE-create-agent-1920.png)
+
+![Create with an agent at 2560 px: main, A2 and E](images/shell-geometry/compare-AE-create-agent-2560.png)
+
+![Create manually at 1600 px: E falls back to one wide column](images/shell-geometry/compare-AE-create-manual-1600.png)
+
+![Method choice at 1920 px: the panel in E holds only a placeholder](images/shell-geometry/compare-AE-create-choice-1920.png)
+
 ### Failure modes seen at full size
 
-| Variant | Problem                                                                                              | Screenshot                                                                        |
-| ------- | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| B       | The list stretches: titles start near x≈293 and the status column near x≈2140.                       | [B, Specs Overview, 2560](images/shell-geometry/B-overview-2560.png)              |
-| B       | A widened container with stretched controls: the name field and model select are about 1070 px wide. | [B, Create, 2560](images/shell-geometry/B-create-agent-2560.png)                  |
-| A, B    | Specification Overview keeps a 1100 px column on the left and leaves a dead band of about 630 px.    | [A, Specification Overview, 2560](images/shell-geometry/A-spec-overview-2560.png) |
-| C       | Tiles squeezed three across a 720 px column; descriptions wrap to five lines.                        | [C, Create, 2560](images/shell-geometry/C-create-agent-2560.png)                  |
-| D       | The jump moves to the right edge, and a void of about 1190 px makes the screen lopsided.             | [D, Specs Overview, 2560](images/shell-geometry/D-overview-2560.png)              |
+| Variant | Problem                                                                                                                                 | Screenshot                                                                        |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| B       | The list stretches: titles start near x≈293 and the status column near x≈2140.                                                          | [B, Specs Overview, 2560](images/shell-geometry/B-overview-2560.png)              |
+| B       | A widened container with stretched controls: the name field and model select are about 1070 px wide.                                    | [B, Create, 2560](images/shell-geometry/B-create-agent-2560.png)                  |
+| A, B    | Specification Overview keeps a 1100 px column on the left and leaves a dead band of about 630 px.                                       | [A, Specification Overview, 2560](images/shell-geometry/A-spec-overview-2560.png) |
+| C       | Tiles squeezed three across a 720 px column; descriptions wrap to five lines.                                                           | [C, Create, 2560](images/shell-geometry/C-create-agent-2560.png)                  |
+| D       | The jump moves to the right edge, and a void of about 1190 px makes the screen lopsided.                                                | [D, Specs Overview, 2560](images/shell-geometry/D-overview-2560.png)              |
+| E       | The preview repeats values visible beside it; at 1600 the form collapses to one wide column; at 2560 a 570 px panel is about 70% empty. | [E vs A2, Create, 1600](images/shell-geometry/compare-AE-create-manual-1600.png)  |
 
 ### Recommended variant at full size
 
@@ -145,24 +166,48 @@ were fixed during that loop:
 - In the narrow columns, tiles stayed three across and text broke almost letter by letter.
 - The two-column form stayed centred inside the inner content container, leaving side bands.
 
-An independent reviewer who did not build the layouts then judged the screenshots against the
-layout and containment rules and the criteria of this review. The reviewer ran two rounds.
+Independent reviewers who did not build the layouts then judged the screenshots against the
+layout and containment rules and the criteria of this review. One reviewer ran two rounds, first
+over A, B, C and D, then over A2. A second, fresh reviewer compared A2 and E with `main` without
+seeing the earlier conclusions.
 
-| Variant | Reviewer verdict                 | Main reason                                                                                                                 |
-| ------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| main    | Reject                           | Three navigation jumps at 1920 and 2560; a 902 px form centred in a dark viewport.                                          |
-| A       | Accept with fixes                | One jump at the context boundary, but a dead band on Specification Overview, a wider list gap and a 25 px twitch at 1600.   |
-| A2      | **Accept with fixes**            | Fixes the dead band, the list gap and the choice cards; keeps 1280 and 390 unchanged.                                       |
-| B       | Reject                           | Perfect continuity paid for with broken content: stretched list columns and controls.                                       |
-| C       | Accept with fixes, weaker than A | Squeezed tiles, and its one jump falls between Overview and Documents, two sibling views users switch between all the time. |
-| D       | Reject                           | Navigation is stable, but the right edge jumps instead and the screen reads as stuck to one side.                           |
+| Variant | Reviewer verdict                 | Main reason                                                                                                                                                                           |
+| ------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| main    | Reject                           | Three navigation jumps at 1920 and 2560; a 902 px form centred in a dark viewport.                                                                                                    |
+| A       | Accept with fixes                | One jump at the context boundary, but a dead band on Specification Overview, a wider list gap and a 25 px twitch at 1600.                                                             |
+| A2      | **Accept with fixes**            | Fixes the dead band, the list gap and the choice cards; keeps 1280 and 390 unchanged.                                                                                                 |
+| B       | Reject                           | Perfect continuity paid for with broken content: stretched list columns and controls.                                                                                                 |
+| C       | Accept with fixes, weaker than A | Squeezed tiles, and its one jump falls between Overview and Documents, two sibling views users switch between all the time.                                                           |
+| D       | Reject                           | Navigation is stable, but the right edge jumps instead and the screen reads as stuck to one side.                                                                                     |
+| E       | Reject as specified              | The preview only mirrors the form, the panel on the choice step is filler, and the jump moves to Specs Overview → Create, where the navigator moves while its content stays the same. |
 
 The first draft of this review favoured C. The reviewer's argument about where the jump falls
-changed that recommendation.
+changed that recommendation. The second reviewer reached A2 independently.
+
+**Why the Create Session principle does not carry over.** The Context panel of Create Session holds
+real context that the start form does not show. A Create Specification panel can only mirror the
+form, because everything it could show is chosen in that same form. If the owner still prefers the
+continuity of E, the reviewer's minimum changes are: no panel on the choice step, no fields already
+visible, content edges matching Specification Overview, and two columns kept at 1600. After those
+cuts the panel would be almost empty.
 
 **Regression check.** At 390 px every screen is byte-identical to `main` in every variant except
 Specification Overview, which differs only in hash with no visible change. At 1280 px every variant
-removes the current 55 px jump on Create and keeps a single-column form.
+removes the current 55 px jump on Create. A2 keeps a single-column form; E narrows it to about
+606 px to fit its panel.
+
+**Interaction check.** The same scripted interactions gave identical results in `main`, A2 and E:
+
+| Interaction                                                        | Result in main, A2 and E                            |
+| ------------------------------------------------------------------ | --------------------------------------------------- |
+| Open a Task from Specification Overview at 2560                    | Task preview replaces Activity history in Secondary |
+| Close the Task preview                                             | Activity history returns                            |
+| Drag the Session splitter at 1920                                  | The split moves by the dragged distance             |
+| Splitter on Specification Overview                                 | None, as in `main`                                  |
+| Mobile: open a Task from Specification Overview, then browser Back | Back leaves the Specification for the Specs list    |
+
+The last row is existing `main` behaviour, not a regression. It differs from the narrow-layout Back
+intent of the route model and is recorded in the mobile findings of the audit.
 
 ## 5. Recommendation: A2 (proposal)
 
@@ -183,6 +228,9 @@ A2 makes the existing distinction explicit and consistent instead of incidental:
   pane, the same way Documents centres its reading column.
 - **Small leftovers do not centre.** When centring would leave less than 240 px, the shell stays at
   the left edge, which removes small twitches like the one at 1600.
+
+A2 still needs one fix before implementation: at 1280 the Create footer button sits about 10 px to
+the right of the form edge.
 
 ### What A2 would need in production
 
@@ -205,20 +253,22 @@ A2 makes the existing distinction explicit and consistent instead of incidental:
    1920 and 595 px at 2560, larger than in A because the Focused width shrank from 1280 to 1100.
    The alternative is a 1280 px Focused width used only on screens of 2200 px and wider.
 3. **Snap threshold.** Accept the 240 px threshold and the empty strip of about 230 px it leaves on
-   the right of Focused screens at 1600.
+   the right of Focused screens at 1600, or let Focused screens fill the width below about 1700 px.
 4. **Breadcrumb alignment.** On centred Workspace pages the breadcrumb stays at the pane edge while
    the title starts about 310 px further right at 2560. Documents already behaves this way. Align
    both or accept it.
 5. **Create arrangement.** Approve the two-column grouping of the existing Create sections; the
    creation workflow itself does not change.
 6. **Design System rule.** Approve amending the Bounded workspace rule as described above.
+7. **Create Session principle.** Confirm that Create Specification stays a Focused screen. The review
+   rejected variant E, which gives Create the Specification workspace geometry and a preview panel.
 
 ## 7. Reproduce
 
 1. Check out `proto/app-shell-geometry`.
 2. Run the demo Runtime as described in the audit's
    [verification guide](README.md#reproduce-the-environment), and the UI with Vite on port 5173.
-3. Set `localStorage['proto.layout']` to `A`, `A2`, `B`, `C` or `D`, then reload. Without the key
+3. Set `localStorage['proto.layout']` to `A`, `A2`, `B`, `C`, `D` or `E`, then reload. Without the key
    the app behaves exactly like `main`.
 
 **Limits of the evidence.**

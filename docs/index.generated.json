@@ -5816,6 +5816,35 @@
       ]
     },
     {
+      "id": "ideas.specflow-ui.ux-audit-2026-11.shell-geometry",
+      "type": "product",
+      "title": "App Shell geometry and space use, rendered layout proposals",
+      "status": "draft",
+      "file": "docs/ideas/specflow-ui/ux-audit-2026-11/shell-geometry.md",
+      "read_when": [
+        "choosing the App Shell geometry or the width of Specs Overview, Create Specification or Specification Overview",
+        "changing AppWorkspace fit, the bounded workspace rule or the shell centring behaviour",
+        "reviewing navigation continuity between consecutive SpecFlow screens on wide desktops"
+      ],
+      "summary": "Screenshot-backed comparison of App Shell layout prototypes for the shell-width problem found in the November 2026 UX audit. Five variants were rendered at five viewports and reviewed independently. Recommends variant A2 (explicit Focused and Workspace modes with one shared Focused width) as a proposal and lists the decisions the owner still has to make.",
+      "related": [
+        "ideas.specflow-ui.ux-audit-2026-11",
+        "design-system.principles.layout-and-containment",
+        "design-system.implementation.react.workspace-dynamic-split",
+        "ideas.specflow-ui.navigation-route-model"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui"
+      ],
+      "tags": [
+        "ux-audit",
+        "layout",
+        "app-shell",
+        "responsive"
+      ]
+    },
+    {
       "id": "product.shared.localization",
       "type": "product",
       "title": "Localization",

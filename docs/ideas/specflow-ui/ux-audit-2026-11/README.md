@@ -84,6 +84,11 @@ Full-size captures: [Specs list](images/desktop-specs-overview-1600.png),
 Narrow only the column _inside_ the panel, for forms and the Specs list. The panel then never
 moves; only its content column changes.
 
+> **Superseded by rendered proposals.** Prototypes showed that a fully pinned, full-width shell
+> moves the problem into the content. See
+> [App Shell geometry and space use](shell-geometry.md) for five rendered variants, an independent
+> visual review and the recommended proposal.
+
 ### 1.2 Empty Activity history occupies a fixed side band
 
 The Specification Overview keeps a Secondary _Activity history_ column even when it only shows
@@ -319,18 +324,18 @@ that approval most.
 
 ### Proposed decision per audit proposal
 
-| Proposal              | Proposed decision | What to do                                                                                                                                                         |
-| --------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Shell geometry        | Implement         | Fixed App Shell geometry with maximum widths only inside views. Not a small CSS change: it affects breakpoints and Workspace width measurement.                    |
-| Navigator             | Implement partly  | Keep quick access to Sessions and the current hierarchy. Add a durable Specification context, shorter names and better counts.                                     |
-| Creation shape        | Reject            | Do not move Create Specification into the Session shell. Improve the form without changing the process. Do not preselect a model.                                  |
-| Secondary space       | Split             | Solve the empty Activity history separately. Keep the accepted dynamic V10 split in Full Session.                                                                  |
-| Conversation width    | Implement         | One reading width for answers, comments and Work summaries, consistent with the Composer.                                                                          |
-| Mobile header         | Implement         | A consistent header with name, state and access to Context, built from existing Design System primitives.                                                          |
-| Question and Composer | Redesign the UX   | Keep the structured interaction but avoid two competing active inputs. Consider replacing the normal Composer with the answer field while the question is pending. |
-| Demo                  | Implement         | Remove the false success message and the broken calls to action. Decide separately whether demo simulates Sessions.                                                |
-| Storybook             | Implement         | Within the #113 rework: Default stories, fixture language and tree organisation.                                                                                   |
-| Small issues          | Implement partly  | Remove developer copy, duplicated identifiers and unlabelled values. Check attention roll-up against the real Runtime first.                                       |
+| Proposal              | Proposed decision             | What to do                                                                                                                                                              |
+| --------------------- | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Shell geometry        | Decide from rendered evidence | See [App Shell geometry and space use](shell-geometry.md). The rendered review proposes variant A2: explicit Focused and Workspace modes with one shared Focused width. |
+| Navigator             | Implement partly              | Keep quick access to Sessions and the current hierarchy. Add a durable Specification context, shorter names and better counts.                                          |
+| Creation shape        | Reject                        | Do not move Create Specification into the Session shell. Improve the form without changing the process. Do not preselect a model.                                       |
+| Secondary space       | Split                         | Solve the empty Activity history separately. Keep the accepted dynamic V10 split in Full Session.                                                                       |
+| Conversation width    | Implement                     | One reading width for answers, comments and Work summaries, consistent with the Composer.                                                                               |
+| Mobile header         | Implement                     | A consistent header with name, state and access to Context, built from existing Design System primitives.                                                               |
+| Question and Composer | Redesign the UX               | Keep the structured interaction but avoid two competing active inputs. Consider replacing the normal Composer with the answer field while the question is pending.      |
+| Demo                  | Implement                     | Remove the false success message and the broken calls to action. Decide separately whether demo simulates Sessions.                                                     |
+| Storybook             | Implement                     | Within the #113 rework: Default stories, fixture language and tree organisation.                                                                                        |
+| Small issues          | Implement partly              | Remove developer copy, duplicated identifiers and unlabelled values. Check attention roll-up against the real Runtime first.                                            |
 
 ### Navigator direction
 
@@ -359,8 +364,9 @@ Design System components.
 
 ### Proposed delivery order
 
-1. **PR A: App Shell.** Fixed position of the navigation and the Workspace, with independent content
-   widths per view. Verify at 1600, 1280 and 390 px without regressions in splits and scrolling.
+1. **PR A: App Shell.** Implement the direction the owner chooses in
+   [App Shell geometry and space use](shell-geometry.md); the review proposes variant A2. Verify the
+   whole journey at 1280, 1600, 1920, 2560 and 390 px without regressions in splits and scrolling.
 2. **Session ownership design.** A separate design document, accepted before any implementation
    handoff. Adding a `specificationId` to the Session DTO is not enough. The design decides:
    - the meaning of the Session-to-Specification association and who sets it;
@@ -383,7 +389,7 @@ Design System components.
 5. **PR D: UI cleanup and demo.** Copy, naming, task counts, messages and fixture consistency.
    Storybook follows #113 and is not mixed with the navigator work.
 
-The review found no blocker for PR A. The Session ownership design can be written in parallel.
+PR A waits for the owner's choice of layout direction. The Session ownership design can be written in parallel.
 PR C1, C2 and C3 do not depend on each other or on PR B; C2 shows the owning Specification only
 once PR B exists.
 

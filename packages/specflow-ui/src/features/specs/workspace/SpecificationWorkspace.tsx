@@ -223,7 +223,11 @@ function SpecificationWorkspaceInner({
       <WorkspaceProvider runtime={runtime}>
         <AppWorkspace
           split="primary"
-          fit={layoutPrototype === 'A' || layoutPrototype === 'B' ? 'available' : 'bounded'}
+          fit={
+            layoutPrototype === 'A' || layoutPrototype === 'A2' || layoutPrototype === 'B'
+              ? 'available'
+              : 'bounded'
+          }
           labels={{
             backToPrimary: t('navigation.back'),
             closeSecondary: t('navigation.closeSecondary'),
@@ -281,7 +285,13 @@ function SpecificationWorkspaceInner({
               />
             }
           >
-            <AppContent className="w-content-standard max-w-full">
+            <AppContent
+              className={
+                layoutPrototype === 'A2'
+                  ? 'mx-auto w-content-standard max-w-full'
+                  : 'w-content-standard max-w-full'
+              }
+            >
               <AppWorkspaceBody scroll="area" contentClassName="py-6">
                 <AppContentContainer align="start" size="full" className="grid gap-6">
                   {refreshFailed ? (

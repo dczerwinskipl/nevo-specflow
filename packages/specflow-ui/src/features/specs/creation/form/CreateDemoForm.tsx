@@ -323,7 +323,7 @@ export function CreateDemoForm({
           heading={t('create.heading.specification')}
           subheading={t('create.subheading.withArchetype')}
         />
-        {layoutPrototype === 'A' || layoutPrototype === 'B' || layoutPrototype === 'C' ? (
+        {layoutPrototype !== 'base' && layoutPrototype !== 'D' ? (
           // PROTOTYPE: when the column is wide enough, "what is created" (name, archetype and its
           // documents) sits beside "who and where" (agent, workspace). Same sections, same order
           // in the narrow single column.

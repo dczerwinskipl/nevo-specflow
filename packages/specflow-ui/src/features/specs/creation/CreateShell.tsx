@@ -49,7 +49,7 @@ export function CreateShell({
   // its button stays aligned with the content.
   const column = cn(
     'mx-auto max-w-full px-4 sm:px-6',
-    layoutPrototype === 'A' || layoutPrototype === 'C'
+    layoutPrototype === 'A' || layoutPrototype === 'A2' || layoutPrototype === 'C'
       ? createColumnWidthClass[layoutPrototype]
       : layoutPrototype === 'B'
         ? 'w-full sm:px-8'

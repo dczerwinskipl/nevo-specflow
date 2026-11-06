@@ -44,6 +44,9 @@ import { CreateWorkspaceSection } from './CreateWorkspaceSection';
 import { buildCreateSlug, buildCreateTarget } from '../workspace/model/createRequest';
 import { requestChoiceSnapshot } from '../workspace/model/workspaceChoice';
 import { useWorkspacePlace } from '../workspace/useWorkspacePlace';
+import { CreatePreviewPanel } from './CreatePreviewPanel.prototype';
+import { alwaysTemplates, optionalTemplates } from '../options/archetypeChoice';
+import { defaultTile } from '../workspace/model/workspaceTiles';
 
 export interface CreateDemoFormProps {
   catalogue: DemoCatalogue;
@@ -185,9 +188,30 @@ export function CreateDemoForm({
   };
 
   const leaveDialog = <CreateLeaveDialog guard={leaveGuard} />;
+  // PROTOTYPE (variant E): the preview uses only values the form already holds.
+  const previewDocuments = archetype
+    ? [
+        ...alwaysTemplates(archetype),
+        ...optionalTemplates(archetype).filter((template) =>
+          optionalDocumentIds.includes(template.id),
+        ),
+      ].map((template) => template.filename)
+    : undefined;
+  const previewTile = method
+    ? (place.choice.tile ?? (workspaceOptions ? defaultTile(workspaceOptions) : null))
+    : undefined;
+  const preview = (
+    <CreatePreviewPanel
+      title={title}
+      archetype={method ? archetype : undefined}
+      documents={method ? previewDocuments : undefined}
+      agent={method === 'ai' ? agent : undefined}
+      tile={previewTile}
+    />
+  );
   if (!method) {
     return (
-      <CreateShell>
+      <CreateShell preview={preview}>
         <CreateMethodChoice onChoose={setMethod} />
         {leaveDialog}
       </CreateShell>
@@ -285,6 +309,7 @@ export function CreateDemoForm({
 
   return (
     <CreateShell
+      preview={preview}
       form={{
         onSubmit: (event) => {
           event.preventDefault();

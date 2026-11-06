@@ -13,7 +13,7 @@ import { NavigationTransitionProvider } from './navigation/NavigationTransition'
 function usePrototypeSnapLeft() {
   const [snap, setSnap] = useState(false);
   useEffect(() => {
-    if (layoutPrototype !== 'A2') {
+    if (layoutPrototype !== 'A2' && layoutPrototype !== 'E') {
       return;
     }
 

@@ -1858,5 +1858,19 @@
   "sessionNaming": {
     "pending": "Nadawanie nazwy…",
     "provisionalTitle": "Nowa sesja"
+  },
+  "createPreviewPrototype": {
+    "panelTitle": "Podgląd specyfikacji",
+    "specification": "Specyfikacja",
+    "namePending": "Nazwa pojawi się po jej wpisaniu",
+    "archetype": "Archetyp",
+    "documents": "Dokumenty do utworzenia",
+    "firstSession": "Pierwsza sesja",
+    "modelPending": "model nie wybrany",
+    "place": "Miejsce pracy",
+    "choosePrompt": "Wybierz sposób pracy. Podgląd pokaże, co powstanie.",
+    "tileNew": "Nowe środowisko pracy",
+    "tileMain": "Bieżący katalog",
+    "tileExisting": "Istniejące środowisko pracy"
   }
 }

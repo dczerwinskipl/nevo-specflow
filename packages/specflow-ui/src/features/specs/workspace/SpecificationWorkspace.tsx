@@ -224,7 +224,10 @@ function SpecificationWorkspaceInner({
         <AppWorkspace
           split="primary"
           fit={
-            layoutPrototype === 'A' || layoutPrototype === 'A2' || layoutPrototype === 'B'
+            layoutPrototype === 'A' ||
+            layoutPrototype === 'A2' ||
+            layoutPrototype === 'E' ||
+            layoutPrototype === 'B'
               ? 'available'
               : 'bounded'
           }
@@ -287,7 +290,7 @@ function SpecificationWorkspaceInner({
           >
             <AppContent
               className={
-                layoutPrototype === 'A2'
+                layoutPrototype === 'A2' || layoutPrototype === 'E'
                   ? 'mx-auto w-content-standard max-w-full'
                   : 'w-content-standard max-w-full'
               }

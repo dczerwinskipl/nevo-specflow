@@ -1858,5 +1858,19 @@
   "sessionNaming": {
     "pending": "Naming…",
     "provisionalTitle": "New session"
+  },
+  "createPreviewPrototype": {
+    "panelTitle": "Specification preview",
+    "specification": "Specification",
+    "namePending": "The name appears once you type it",
+    "archetype": "Archetype",
+    "documents": "Documents to create",
+    "firstSession": "First session",
+    "modelPending": "no model chosen",
+    "place": "Workspace",
+    "choosePrompt": "Choose how to work. The preview shows what will be created.",
+    "tileNew": "New workspace",
+    "tileMain": "Current directory",
+    "tileExisting": "Existing workspace"
   }
 }

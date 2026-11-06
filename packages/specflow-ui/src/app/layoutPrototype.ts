@@ -6,18 +6,25 @@
  * - `A2`: A after the independent visual review: the Focused width is the existing
  *   `content-standard` (Specs Overview unchanged, Create adopts it), the Specification Overview
  *   column is centred in its full-width pane, and a small leftover margin snaps the shell left.
+ * - `E`: A2, but Create Specification uses the Specification workspace geometry: its form sits in
+ *   the same centred column and a Secondary previews what will be created (Create Session principle).
  * - `B`: one full-width shell; content is constrained or rearranged inside the workspace.
  * - `C`: one shared page frame for Specs Overview, Create and Specification Overview (the
  *   Specification Overview's own bounded width); tool screens stay full width.
  * - `D`: current widths, but the shell is anchored to the left edge instead of centred.
  */
-export type LayoutPrototype = 'base' | 'A' | 'A2' | 'B' | 'C' | 'D';
+export type LayoutPrototype = 'base' | 'A' | 'A2' | 'B' | 'C' | 'D' | 'E';
 
 export const layoutPrototype: LayoutPrototype = (() => {
   try {
     const value = globalThis.localStorage?.getItem('proto.layout');
 
-    return value === 'A' || value === 'A2' || value === 'B' || value === 'C' || value === 'D'
+    return value === 'A' ||
+      value === 'A2' ||
+      value === 'B' ||
+      value === 'C' ||
+      value === 'D' ||
+      value === 'E'
       ? value
       : 'base';
   } catch {
@@ -43,3 +50,6 @@ export const createColumnWidthClass = {
 
 /** A2 snap rule: below this leftover width a centred shell is anchored left instead. */
 export const snapLeftBelowPx = 240;
+
+/** Variants that share A2's Focused/Workspace behaviour outside Create. */
+export const isA2Family = layoutPrototype === 'A2' || layoutPrototype === 'E';

@@ -7,6 +7,7 @@ import {
   AppWorkspace,
   AppWorkspaceBody,
   Separator,
+  WorkspaceHeader,
   cn,
 } from '@nevo/ui';
 import { useWorkspaceLabels } from '../../../app/navigation/useWorkspaceLabels';
@@ -24,6 +25,7 @@ export function CreateShell({
   form,
   footer,
   children,
+  preview,
 }: {
   specId?: string;
   /** Names the page in the header and the breadcrumb; the default is the Create form's. */
@@ -40,9 +42,12 @@ export function CreateShell({
    */
   footer?: ReactNode;
   children: ReactNode;
+  /** PROTOTYPE (variant E): the Secondary preview of what the form will create. */
+  preview?: ReactNode;
 }) {
   const { t } = useTranslation();
   const workspaceLabels = useWorkspaceLabels();
+  const withPreview = layoutPrototype === 'E' && Boolean(preview);
   // The scroll area spans the whole pane and the form column is centred INSIDE it (the column must not wrap the
   // scroller, which would leave unscrollable side bands and put the scrollbar at the column's
   // edge instead of the pane's). The footer centres the same column, so
@@ -53,7 +58,9 @@ export function CreateShell({
       ? createColumnWidthClass[layoutPrototype]
       : layoutPrototype === 'B'
         ? 'w-full sm:px-8'
-        : 'w-content-form',
+        : layoutPrototype === 'E'
+          ? 'w-content-standard'
+          : 'w-content-form',
   );
   const body = (
     <>
@@ -95,7 +102,8 @@ export function CreateShell({
 
   return (
     <AppWorkspace
-      fit={layoutPrototype === 'B' ? 'available' : 'bounded'}
+      fit={layoutPrototype === 'B' || withPreview ? 'available' : 'bounded'}
+      split={withPreview ? 'primary' : undefined}
       labels={workspaceLabels}
       scroll="content"
     >
@@ -116,6 +124,17 @@ export function CreateShell({
           )}
         </AppContent>
       </AppWorkspace.Primary>
+      {withPreview ? (
+        <AppWorkspace.Secondary
+          header={<WorkspaceHeader as="h2" title={t('createPreviewPrototype.panelTitle')} />}
+        >
+          <AppContent>
+            <AppWorkspaceBody padding="none" scroll="area">
+              {preview}
+            </AppWorkspaceBody>
+          </AppContent>
+        </AppWorkspace.Secondary>
+      ) : null}
     </AppWorkspace>
   );
 }

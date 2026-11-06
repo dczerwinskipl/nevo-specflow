@@ -5,9 +5,9 @@ import { randomUUID } from 'node:crypto';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
-import { SLOW_GIT_TEST_TIMEOUT_MS } from '../support/platform';
+import { useSlowGitTestTimeouts } from '../support/platform';
 
 import { sha256Hex } from '../../src/hash';
 import type { CommitPort } from '../../src/version-control/commits/port';
@@ -48,7 +48,7 @@ import {
 import { commitStaged, git } from '../support/git-project';
 
 // Real Git on a slow runner: the seconds of Linux are minutes there.
-vi.setConfig({ testTimeout: SLOW_GIT_TEST_TIMEOUT_MS });
+useSlowGitTestTimeouts();
 
 afterEach(removeTrackedRoots);
 
@@ -171,21 +171,24 @@ describe('Close flushes document commits first', () => {
     const gate = new Promise<void>((resolve) => {
       release.open = resolve;
     });
+    let reach: () => void = () => undefined;
     const reached = new Promise<void>((resolve) => {
-      void runQueueOnce(
-        project.engine,
-        isolatedQueue({
-          hooks: {
-            beforeCommit: async () => {
-              resolve();
-              await gate;
-            },
-          },
-        }),
-        undefined,
-        { flush: true },
-      ).catch(() => undefined);
+      reach = resolve;
     });
+    // The other executor: its commit is held at the gate while the flush waits for it.
+    const holder = runQueueOnce(
+      project.engine,
+      isolatedQueue({
+        hooks: {
+          beforeCommit: async () => {
+            reach();
+            await gate;
+          },
+        },
+      }),
+      undefined,
+      { flush: true },
+    );
     await reached;
 
     const clock = manualClock();
@@ -205,7 +208,9 @@ describe('Close flushes document commits first', () => {
       code: 'DOCUMENT_COMMITS_PENDING',
       details: { cause: 'commit-pending' },
     });
+    // Released only so the test can end: the held commit and its Git processes finish first.
     release.open?.();
+    expect(await holder).toMatchObject({ status: 'committed' });
   });
 });
 
@@ -217,21 +222,24 @@ describe('flushDocumentCommits', () => {
     const gate = new Promise<void>((resolve) => {
       release.open = resolve;
     });
+    let reach: () => void = () => undefined;
     const reached = new Promise<void>((resolve) => {
-      void runQueueOnce(
-        project.engine,
-        isolatedQueue({
-          hooks: {
-            beforeCommit: async () => {
-              resolve();
-              await gate;
-            },
-          },
-        }),
-        undefined,
-        { flush: true },
-      ).catch(() => undefined);
+      reach = resolve;
     });
+    // The other executor: its commit is held at the gate while the flush waits for it.
+    const holder = runQueueOnce(
+      project.engine,
+      isolatedQueue({
+        hooks: {
+          beforeCommit: async () => {
+            reach();
+            await gate;
+          },
+        },
+      }),
+      undefined,
+      { flush: true },
+    );
     await reached;
 
     const clock = manualClock();
@@ -253,7 +261,9 @@ describe('flushDocumentCommits', () => {
     expect(outcome.timedOut).toBe(true);
     expect(outcome.remaining?.cause).toBe('commit-pending');
     expect(slept.reduce((sum, ms) => sum + ms, 0)).toBe(DOCUMENT_FLUSH_WAIT_CAP_MS);
+    // Released only so the test can end: the held commit and its Git processes finish first.
     release.open?.();
+    expect(await holder).toMatchObject({ status: 'committed' });
   });
 
   it('runs no Git for a project with Git turned off: nothing is ever queued', async () => {

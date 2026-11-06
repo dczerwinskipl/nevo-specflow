@@ -31,7 +31,9 @@ export function InteractionPrompt({
         <Alert tone="attention" title={t('managedSession.unsupportedQuestion')} />
       ) : interaction.kind === 'permission' ? (
         <>
-          <p className="break-words text-body-sm">{interaction.actionSummary}</p>
+          <p className="whitespace-pre-wrap break-words text-body-sm">
+            {interaction.actionSummary}
+          </p>
           <div className="flex gap-2">
             <Button disabled={busy} onClick={() => onRespond('', undefined, true)}>
               {t('managedSession.allow')}

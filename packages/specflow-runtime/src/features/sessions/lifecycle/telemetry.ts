@@ -440,12 +440,10 @@ export function createSessionTelemetryService(
     }
   }
 
-  async function publishExpiry(sessionId: string, isWatching: () => boolean) {
+  async function retryExpiry<T>(run: () => Promise<T>, isWatching: () => boolean) {
     for (let attempt = 1; attempt <= MAX_EXPIRY_ATTEMPTS && isWatching(); attempt++) {
       try {
-        await store.call({ op: 'telemetry-expire', sessionId });
-
-        return;
+        return await run();
       } catch (error) {
         if (
           !(error instanceof SessionError) ||
@@ -482,10 +480,10 @@ export function createSessionTelemetryService(
         }
 
         watch.dirty = false;
-        const deadline = await store.call<number | undefined>({
-          op: 'telemetry-expiry-deadline',
-          sessionId,
-        });
+        const deadline = await retryExpiry(
+          () => store.call<number | undefined>({ op: 'telemetry-expiry-deadline', sessionId }),
+          isWatching,
+        );
         if (!isWatching()) {
           continue;
         }
@@ -493,7 +491,11 @@ export function createSessionTelemetryService(
         clearTimeout(watch.expiry);
         if (deadline !== undefined) {
           watch.expiry = setTimeout(
-            () => void publishExpiry(sessionId, isWatching).catch(() => undefined),
+            () =>
+              void retryExpiry(
+                () => store.call({ op: 'telemetry-expire', sessionId }),
+                isWatching,
+              ).catch(() => undefined),
             Math.max(1, deadline - Date.now()),
           );
           watch.expiry.unref();

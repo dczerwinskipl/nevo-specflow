@@ -186,6 +186,20 @@ describe('Session telemetry refresh lifecycle', () => {
     unwatch();
   });
 
+  it('recovers a busy deadline read without waiting for another Session event', async () => {
+    const f = fixture();
+    f.deadline
+      .mockRejectedValueOnce(new SessionError('SESSION_STORE_BUSY', 'Controlled pressure.'))
+      .mockResolvedValueOnce(Date.now() - 1);
+    const unwatch = f.service.watch(randomUUID());
+    try {
+      await vi.waitFor(() => expect(f.expire).toHaveBeenCalledOnce(), { timeout: 3000 });
+      expect(f.deadline).toHaveBeenCalledTimes(2);
+    } finally {
+      unwatch();
+    }
+  });
+
   it('retires previous account observations on a confirmed external switch without rebinding or querying limits', async () => {
     const f = fixture();
     f.binding.mockResolvedValue({

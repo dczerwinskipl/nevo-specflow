@@ -54,6 +54,8 @@ export function initializeSessionSchema(db: DatabaseSync, get: StoreDatabase['ge
     CREATE TABLE IF NOT EXISTS telemetry_baselines(session TEXT NOT NULL,metric TEXT NOT NULL,data TEXT NOT NULL,PRIMARY KEY(session,metric));
     CREATE TABLE IF NOT EXISTS telemetry_refresh_requests(session TEXT NOT NULL,actor TEXT NOT NULL,id TEXT NOT NULL,hash TEXT NOT NULL,at INTEGER NOT NULL,data TEXT NOT NULL,PRIMARY KEY(session,actor,id));
     CREATE INDEX IF NOT EXISTS telemetry_refresh_age ON telemetry_refresh_requests(at);
+    CREATE TABLE IF NOT EXISTS telemetry_publications(session TEXT PRIMARY KEY,due INTEGER NOT NULL);
+    CREATE INDEX IF NOT EXISTS telemetry_publications_due ON telemetry_publications(due,session);
     INSERT OR IGNORE INTO meta VALUES('telemetry-migration-cursor','0');
     PRAGMA user_version=2;
   `);

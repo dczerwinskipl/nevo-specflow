@@ -190,12 +190,12 @@ Do not reload chat/history/content. On replay gaps or a
 `resync-required`, refetch both subscribed read models with the established
 snapshot/replay handshake.
 
-Producer coalescing: commit the latest changed native observation within 500 ms;
-active provider pushes therefore aim for UI visibility within about one second,
-excluding provider/network delay. Coalesce _before_ durable publication; do not
-silently discard assigned outbox sequences. A terminal flush commits outstanding
-Turn usage/cost with terminal publication. Shutdown/overload cannot silently lose
-an authoritative terminal sample.
+Native samples update the SQLite ledger as they arrive. The Worker groups their
+outbox invalidations in a 500 ms window per Session and publishes the latest
+committed revision. SQLite retains pending publication across restarts. Terminal
+publication flushes the pending revision in the same transaction as the Turn
+outcome. Explicit refresh, account fencing and expiry continue to publish
+immediately.
 
 Account limits update from native Turn observations and explicit refresh requests.
 Opening the Session stream schedules freshness notifications for existing readings

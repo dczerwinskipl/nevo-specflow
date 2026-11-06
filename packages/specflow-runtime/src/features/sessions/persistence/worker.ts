@@ -24,6 +24,8 @@ import { createProviderFacts } from './facts';
 import { createEffectReconciliation } from './reconciliation';
 import { createSessionTelemetry } from './telemetry';
 
+const TELEMETRY_PUBLICATION_RETRY_MS = 1000;
+
 /** Separate Worker entry: imported surface checks must not acquire a database. */
 export async function runSessionWorker(): Promise<void> {
   const options = workerData as {
@@ -361,6 +363,8 @@ export async function runSessionWorker(): Promise<void> {
     });
   }
 
+  let publicationTimer: ReturnType<typeof setTimeout> | undefined;
+  let publicationAt: number | undefined;
   const telemetry = createSessionTelemetry({
     get,
     all,
@@ -368,8 +372,43 @@ export async function runSessionWorker(): Promise<void> {
     now,
     session,
     emit,
+    schedulePublication,
     owner: options.runtimeId,
   });
+  function schedulePublication(due: number) {
+    if (publicationAt !== undefined && publicationAt <= due) {
+      return;
+    }
+
+    clearTimeout(publicationTimer);
+    publicationAt = due;
+    publicationTimer = setTimeout(
+      () => {
+        publicationAt = undefined;
+        committedChanges.clear();
+        try {
+          transaction(() => telemetry.publishDue(Date.now()));
+          if (committedChanges.size) {
+            port.postMessage({ changed: [...committedChanges] });
+          }
+
+          const next = telemetry.nextPublicationAt();
+          if (next !== undefined) {
+            schedulePublication(next);
+          }
+        } catch (error) {
+          // Pending rows survive a failed transaction and are recovered by the
+          // next owner. This Worker must not keep writing after losing its fence.
+          if (!(error instanceof StoreFault && error.code === 'SESSION_STORE_BUSY')) {
+            schedulePublication(Date.now() + TELEMETRY_PUBLICATION_RETRY_MS);
+          }
+        }
+      },
+      Math.max(0, due - Date.now()),
+    );
+    publicationTimer.unref();
+  }
+
   const { applyFact } = createProviderFacts({
     get,
     run,
@@ -428,6 +467,11 @@ export async function runSessionWorker(): Promise<void> {
       }
     }
   });
+  const pendingPublication = telemetry.nextPublicationAt();
+  if (pendingPublication !== undefined) {
+    schedulePublication(pendingPublication);
+  }
+
   function execute(c: StoreCommand): unknown {
     if (c.op === 'telemetry') {
       return telemetry.read(session(c.sessionId), c.expectedScope);
@@ -580,6 +624,7 @@ export async function runSessionWorker(): Promise<void> {
       transaction(() =>
         run("UPDATE owner SET runtime='',pid=0 WHERE id=1 AND runtime=?", options.runtimeId),
       );
+      clearTimeout(publicationTimer);
       db.close();
 
       return null;

@@ -213,7 +213,8 @@ export interface StoreReadMetrics {
   contentBytes: number;
 }
 export interface WorkerReply {
-  id: number;
+  /** Absent for unsolicited notifications after a Worker-owned commit. */
+  id?: number;
   /** Sessions whose outbox changed in a committed transaction, never speculative facts. */
   changed?: string[];
   result?: unknown;

@@ -66,6 +66,8 @@ const relationships = {
   reasoningToOutput: 'unknown',
 } as const;
 const scale = 1_000_000_000_000n;
+const PUBLICATION_WINDOW_MS = 500;
+const PUBLICATION_BATCH_SIZE = 32;
 /** Integer decimal arithmetic preserves the public twelve-place monetary precision. */
 function decimal(value: string): bigint {
   if (!/^(0|[1-9][0-9]{0,15})(\.[0-9]{1,12})?$/.test(value)) {
@@ -112,6 +114,7 @@ export function createSessionTelemetry(
     now(this: void): string;
     session(this: void, id: string): StoredSession;
     emit(this: void, s: StoredSession, kind: SessionChange['kind'], changes: unknown): void;
+    schedulePublication(this: void, due: number): void;
   },
 ) {
   const { get, all, run, now, emit } = deps;
@@ -142,14 +145,39 @@ export function createSessionTelemetry(
     );
   }
 
-  function save(s: StoredSession, data: Ledger) {
+  function publish(s: StoredSession, revision: number) {
+    run('DELETE FROM telemetry_publications WHERE session=?', s.snapshot.session.sessionId);
+    emit(s, 'telemetry', { telemetryRevision: revision });
+  }
+
+  function save(s: StoredSession, data: Ledger, deferred = false) {
+    const sid = s.snapshot.session.sessionId;
     data.revision = safe(data.revision + 1);
-    run(
-      'INSERT OR REPLACE INTO telemetry_sessions VALUES(?,?)',
-      s.snapshot.session.sessionId,
-      JSON.stringify(data),
-    );
-    emit(s, 'telemetry', { telemetryRevision: data.revision });
+    run('INSERT OR REPLACE INTO telemetry_sessions VALUES(?,?)', sid, JSON.stringify(data));
+    if (deferred) {
+      const due = Date.parse(now()) + PUBLICATION_WINDOW_MS;
+      run('INSERT OR IGNORE INTO telemetry_publications VALUES(?,?)', sid, due);
+      deps.schedulePublication(due);
+    } else {
+      publish(s, data.revision);
+    }
+  }
+
+  function nextPublicationAt(): number | undefined {
+    const row = get('SELECT due FROM telemetry_publications ORDER BY due,session LIMIT 1');
+
+    return row ? Number(row.due) : undefined;
+  }
+
+  function publishDue(nowMs: number) {
+    for (const row of all(
+      'SELECT session FROM telemetry_publications WHERE due<=? ORDER BY due,session LIMIT ?',
+      nowMs,
+      PUBLICATION_BATCH_SIZE,
+    )) {
+      const sid = String(row.session);
+      publish(deps.session(sid), load(sid).revision);
+    }
   }
 
   function ledger(turn: StoredTurn): TurnLedger {
@@ -162,7 +190,7 @@ export function createSessionTelemetry(
     };
   }
 
-  function update(s: StoredSession, next: TurnLedger) {
+  function update(s: StoredSession, next: TurnLedger, deferred = false) {
     const sid = s.snapshot.session.sessionId;
     const old = readJson<TurnLedger>('SELECT data FROM telemetry_turns WHERE turn=?', next.turnId);
     if (old && stable(old) === stable(next)) {
@@ -224,7 +252,7 @@ export function createSessionTelemetry(
       sid,
       JSON.stringify(next),
     );
-    save(s, data);
+    save(s, data, deferred);
   }
 
   function start(s: StoredSession, t: StoredTurn) {
@@ -336,7 +364,7 @@ export function createSessionTelemetry(
       delete t.summary.usage;
     }
 
-    update(s, old);
+    update(s, old, true);
   }
 
   function limitsObservation(
@@ -456,7 +484,7 @@ export function createSessionTelemetry(
         );
       }
 
-      save(s, data);
+      save(s, data, true);
 
       return;
     }
@@ -522,7 +550,7 @@ export function createSessionTelemetry(
       next.costAt = now();
     }
 
-    update(s, next);
+    update(s, next, true);
   }
 
   function read(
@@ -942,5 +970,7 @@ export function createSessionTelemetry(
     observationFence,
     expire,
     expiryDeadline,
+    nextPublicationAt,
+    publishDue,
   };
 }

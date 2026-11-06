@@ -3,7 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { validateTelemetrySnapshot } from '@nevo/specflow-contracts/sessions';
 import { createSessionTelemetry } from './telemetry';
 import { initializeSessionSchema } from './schema';
@@ -52,6 +52,7 @@ function fixture() {
     run,
     now: () => time,
     session: () => s,
+    schedulePublication: () => undefined,
     emit: (_s: StoredSession, kind: string, changes: unknown) => {
       s.snapshot.eventSeq++;
       events.push({ kind, changes });
@@ -123,6 +124,37 @@ const dollars = (
 });
 
 describe('materialized Session telemetry', () => {
+  it('persists each sample, publishes the latest revision once per window, and flushes on terminal', () => {
+    const f = fixture();
+    f.telemetry.create(f.s);
+    const t = f.turn(1);
+    f.telemetry.start(f.s, t);
+    f.events.length = 0;
+    const first = '2026-10-31T12:00:00.000Z';
+    f.telemetry.measurement(f.s, t, dollars('first', '0.1', 'delta'));
+    f.setTime('2026-10-31T12:00:00.100Z');
+    f.telemetry.measurement(f.s, t, dollars('second', '0.2', 'delta'));
+    const snapshot = f.telemetry.read(f.s);
+    expect(snapshot.cost.session).toMatchObject({ value: { amount: '0.3' } });
+    expect(f.events).toEqual([]);
+    const deadline = Date.parse(first) + 500;
+    f.reopen();
+    expect(f.telemetry.nextPublicationAt()).toBe(deadline);
+    f.telemetry.publishDue(deadline - 1);
+    expect(f.events).toEqual([]);
+    f.telemetry.publishDue(deadline);
+    expect(f.events).toEqual([
+      { kind: 'telemetry', changes: { telemetryRevision: snapshot.revision } },
+    ]);
+
+    f.setTime('2026-10-31T12:00:01.000Z');
+    f.telemetry.measurement(f.s, t, dollars('final', '0.3', 'delta'));
+    f.telemetry.terminal(f.s, t);
+    expect(f.events).toHaveLength(2);
+    expect(f.telemetry.nextPublicationAt()).toBeUndefined();
+    expect(f.telemetry.read(f.s).cost.session).toMatchObject({ value: { amount: '0.6' } });
+  });
+
   it('maintains exact decimal totals, duplicate identity and Turn coverage across reopen', () => {
     const f = fixture();
     f.telemetry.create(f.s);
@@ -743,12 +775,32 @@ describe('materialized Session telemetry', () => {
           driverSeq,
           fact: value,
         });
+      const before = await store.call<{ eventSeq: number }>({ op: 'telemetry', sessionId });
+      let notifications = 0;
+      const unsubscribe = store.subscribe(sessionId, () => {
+        notifications++;
+      });
       await fact(1, {
         kind: 'usage',
         sampleId: 'native',
         basis: 'turn-total',
         counters: { inputTokens: 22 },
       });
+      try {
+        await vi.waitFor(async () => {
+          const replay = await store.call<{ events: { kind: string }[] }>({
+            op: 'events',
+            sessionId,
+            after: before.eventSeq,
+          });
+          expect(replay.events.filter((event) => event.kind === 'telemetry')).toHaveLength(1);
+          // The fact publishes a Turn event, then the timer commits telemetry.
+          expect(notifications).toBe(2);
+        });
+      } finally {
+        unsubscribe();
+      }
+
       await fact(2, dollars('cost', '0.000000000001'));
       await fact(3, { kind: 'outcome', outcome: 'completed' });
       const snapshot = await store.call<

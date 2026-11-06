@@ -140,24 +140,29 @@ describe('native Antigravity hook policy', () => {
 
   it('requires a canonical single-operation interaction for an exact command and cwd', async () => {
     const f = await fixture();
+    const cwd = join(f.workspace, 'src', 'tools');
+    await mkdir(cwd, { recursive: true });
     const args = {
       CommandLine: 'echo controlled',
-      Cwd: f.workspace,
+      Cwd: cwd,
       WaitMsBeforeAsync: 5000,
       toolSummary: 'Controlled fixture',
       toolAction: 'execute',
     };
     const result = await prepareAntigravityPermission(f.hook('run_command', args), f.context);
     expect(result.interaction?.kind).toBe('permission');
-    expect(JSON.parse(result.interaction!.actionSummary)).toEqual({
+    expect(result.interaction?.action).toEqual({
       operation: 'command',
       command: 'echo controlled',
-      cwd: '.',
+      cwd: 'src/tools',
       authority: 'workspace-write',
       approval: 'once',
     });
-    expect(result.interaction!.actionSummary).not.toContain(f.workspace);
-    expect(result.interaction!.actionSummary).not.toMatch(/CommandLine|Cwd|toolSummary|WaitMs/);
+    expect(result.interaction?.actionSummary).toBe(
+      'Directory: src/tools\nCommand:\necho controlled',
+    );
+    expect(JSON.stringify(result.interaction)).not.toContain(f.workspace);
+    expect(JSON.stringify(result.interaction)).not.toMatch(/CommandLine|Cwd|toolSummary|WaitMs/);
     await result.revalidate();
   });
 

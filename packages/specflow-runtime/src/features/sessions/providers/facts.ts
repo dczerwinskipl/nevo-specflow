@@ -8,6 +8,7 @@ import {
   TelemetryContextUsageSchema,
   TelemetryLimitWindowSchema,
   validateTelemetryContextUsage,
+  CommandPermissionActionSchema,
 } from '@nevo/specflow-contracts/sessions';
 import { SessionError } from '../errors';
 import type { DriverFact } from '../persistence/protocol';
@@ -45,7 +46,12 @@ const question = Type.Object(
   closed,
 );
 const permission = Type.Object(
-  { kind: Type.Literal('permission'), prompt: text(8192), actionSummary: text(8192) },
+  {
+    kind: Type.Literal('permission'),
+    prompt: text(8192),
+    actionSummary: text(8192),
+    action: Type.Optional(CommandPermissionActionSchema),
+  },
   closed,
 );
 const schema = Type.Union([
@@ -232,6 +238,10 @@ export function validateDriverFact(fact: DriverFact): void {
     bounded(JSON.stringify(i), 24576);
     if (i.kind === 'permission') {
       bounded(i.actionSummary, 8192);
+      if (i.action) {
+        bounded(i.action.command, 7000);
+        bounded(i.action.cwd, 1024);
+      }
     } else {
       for (const option of i.options ?? []) {
         bounded(option.label, 512);

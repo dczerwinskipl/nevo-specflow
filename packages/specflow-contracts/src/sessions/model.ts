@@ -70,6 +70,16 @@ export const TextPreviewSchema = Type.Union([
     closed,
   ),
 ]);
+export const CommandPermissionActionSchema = Type.Object(
+  {
+    operation: Type.Literal('command'),
+    command: Type.String({ minLength: 1, maxLength: 7000 }),
+    cwd: Type.String({ minLength: 1, maxLength: 1024 }),
+    authority: Type.Literal('workspace-write'),
+    approval: Type.Literal('once'),
+  },
+  closed,
+);
 export const InteractionSchema = Type.Union([
   Type.Object(
     {
@@ -96,6 +106,7 @@ export const InteractionSchema = Type.Union([
       kind: Type.Literal('permission'),
       prompt: text(8192),
       actionSummary: text(8192),
+      action: Type.Optional(CommandPermissionActionSchema),
     },
     closed,
   ),

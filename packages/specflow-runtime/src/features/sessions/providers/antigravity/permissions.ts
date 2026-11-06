@@ -226,6 +226,7 @@ export async function prepareAntigravityPermission(
   ) {
     if (
       typeof args.CommandLine !== 'string' ||
+      typeof args.Cwd !== 'string' ||
       !args.CommandLine.trim() ||
       Buffer.byteLength(args.CommandLine) > 7000 ||
       (args.BypassSandbox !== undefined && args.BypassSandbox !== false) ||
@@ -242,17 +243,18 @@ export async function prepareAntigravityPermission(
 
     target = args.Cwd;
     directory = true;
+    const cwd = relative(context.workspace, args.Cwd).split(sep).join('/') || '.';
     interaction = {
       kind: 'permission',
       prompt: 'Allow this native command once?',
-      actionSummary: JSON.stringify({
+      actionSummary: `Directory: ${cwd}\nCommand:\n${args.CommandLine}`,
+      action: {
         operation: 'command',
         command: args.CommandLine,
-        cwd:
-          typeof args.Cwd === 'string' ? relative(context.workspace, args.Cwd) || '.' : undefined,
+        cwd,
         authority: 'workspace-write',
         approval: 'once',
-      }),
+      },
     };
     validateDriverFact({ kind: 'interaction', key: 'validation', interaction });
   } else {

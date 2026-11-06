@@ -161,7 +161,13 @@ Interaction is a discriminated union:
 
 - {interactionId, turnId, workId, revision, kind:'question', prompt, options?: [{id,label}],
   allowText:boolean, maxSelections?:integer};
-- {interactionId, turnId, workId, revision, kind:'permission', prompt, actionSummary}.
+- {interactionId, turnId, workId, revision, kind:'permission', prompt, actionSummary, action?}.
+
+Command approvals may include an `action` with `operation: 'command'`, the exact
+`command`, workspace-relative `cwd` using slash separators (`.` for the root),
+`authority: 'workspace-write'`, and `approval: 'once'`. Clients can display the
+human-readable `actionSummary` directly. The command text can itself contain paths
+as part of what the user is asked to approve.
 
 At most one answerable interaction per Turn. prompt/actionSummary <=8 KiB each, <=20 options,
 each ID <=128 characters and label <=512 bytes; entire Interaction <=24 KiB. The driver must

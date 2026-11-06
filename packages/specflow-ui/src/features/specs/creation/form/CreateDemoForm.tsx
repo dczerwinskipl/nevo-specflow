@@ -1,3 +1,4 @@
+import { layoutPrototype } from '../../../../app/layoutPrototype';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { isHttpClientError } from '@nevo/http-client';
 import { useTranslation } from 'react-i18next';
@@ -322,10 +323,28 @@ export function CreateDemoForm({
           heading={t('create.heading.specification')}
           subheading={t('create.subheading.withArchetype')}
         />
-        {sections.flatMap((section, index) => [
-          index > 0 ? <Separator key={`separator-${index}`} /> : null,
-          section,
-        ])}
+        {layoutPrototype === 'A' || layoutPrototype === 'B' || layoutPrototype === 'C' ? (
+          // PROTOTYPE: when the column is wide enough, "what is created" (name, archetype and its
+          // documents) sits beside "who and where" (agent, workspace). Same sections, same order
+          // in the narrow single column.
+          <div className="@container/create">
+            <div className="grid gap-8 @5xl/create:grid-cols-2 @5xl/create:gap-x-16">
+              {[sections.slice(0, 2), sections.slice(2)].map((group, column) => (
+                <div key={column} className="@container grid content-start gap-8">
+                  {group.flatMap((section, index) => [
+                    index > 0 ? <Separator key={`separator-${column}-${index}`} /> : null,
+                    section,
+                  ])}
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          sections.flatMap((section, index) => [
+            index > 0 ? <Separator key={`separator-${index}`} /> : null,
+            section,
+          ])
+        )}
         {failureRegion}
         {region}
       </div>

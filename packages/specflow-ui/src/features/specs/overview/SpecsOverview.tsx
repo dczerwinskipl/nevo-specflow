@@ -1,3 +1,5 @@
+import { layoutPrototype, overviewWidthClass } from '../../../app/layoutPrototype';
+import { cn as protoCn } from '@nevo/ui';
 import { type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -81,7 +83,7 @@ export function SpecsOverview({
         openNavigation: t('navigation.open'),
       }}
       split="primary"
-      fit="bounded"
+      fit={layoutPrototype === 'B' ? 'available' : 'bounded'}
     >
       <AppWorkspace.Primary
         header={
@@ -95,7 +97,16 @@ export function SpecsOverview({
           />
         }
       >
-        <AppContent className="mx-auto w-content-standard max-w-full">
+        <AppContent
+          className={protoCn(
+            'mx-auto max-w-full',
+            layoutPrototype === 'A' || layoutPrototype === 'C'
+              ? overviewWidthClass[layoutPrototype]
+              : layoutPrototype === 'B'
+                ? 'w-full'
+                : 'w-content-standard',
+          )}
+        >
           {/* A flex column down to the list, so an empty collection can centre in the free height. */}
           <AppWorkspaceBody scroll="area" contentClassName="flex min-h-full flex-col py-6">
             <AppContentContainer align="start" className="flex flex-1 flex-col gap-4" size="full">

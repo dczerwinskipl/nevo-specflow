@@ -1,3 +1,4 @@
+import { layoutPrototype } from '../../../app/layoutPrototype';
 import { RefreshStatus } from '../../../app/loading/RefreshStatus';
 import {
   ApplicationLocationIdentity,
@@ -222,7 +223,7 @@ function SpecificationWorkspaceInner({
       <WorkspaceProvider runtime={runtime}>
         <AppWorkspace
           split="primary"
-          fit="bounded"
+          fit={layoutPrototype === 'A' || layoutPrototype === 'B' ? 'available' : 'bounded'}
           labels={{
             backToPrimary: t('navigation.back'),
             closeSecondary: t('navigation.closeSecondary'),

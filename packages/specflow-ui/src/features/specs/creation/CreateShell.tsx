@@ -1,5 +1,6 @@
 import type { FormHTMLAttributes, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { layoutPrototype, createColumnWidthClass } from '../../../app/layoutPrototype';
 import {
   AppContent,
   AppContentContainer,
@@ -46,7 +47,14 @@ export function CreateShell({
   // scroller, which would leave unscrollable side bands and put the scrollbar at the column's
   // edge instead of the pane's). The footer centres the same column, so
   // its button stays aligned with the content.
-  const column = 'mx-auto w-content-form max-w-full px-4 sm:px-6';
+  const column = cn(
+    'mx-auto max-w-full px-4 sm:px-6',
+    layoutPrototype === 'A' || layoutPrototype === 'C'
+      ? createColumnWidthClass[layoutPrototype]
+      : layoutPrototype === 'B'
+        ? 'w-full sm:px-8'
+        : 'w-content-form',
+  );
   const body = (
     <>
       {/* The gutter is reserved on both edges so a classic (space-taking) scrollbar keeps the
@@ -57,7 +65,12 @@ export function CreateShell({
         className="[&>.scroll-area-viewport]:[scrollbar-gutter:stable_both-edges]"
       >
         <div className={cn(column, 'py-4 sm:py-6')}>
-          <AppContentContainer className={containerClassName}>{children}</AppContentContainer>
+          <AppContentContainer
+            className={containerClassName}
+            size={layoutPrototype === 'base' || layoutPrototype === 'D' ? undefined : 'full'}
+          >
+            {children}
+          </AppContentContainer>
         </div>
       </AppWorkspaceBody>
       {footer ? (
@@ -68,7 +81,11 @@ export function CreateShell({
           <Separator />
           <div className="flex min-h-shell-footer shrink-0 items-center py-shell-footer-padding">
             <div className={column}>
-              <AppContentContainer>{footer}</AppContentContainer>
+              <AppContentContainer
+                size={layoutPrototype === 'base' || layoutPrototype === 'D' ? undefined : 'full'}
+              >
+                {footer}
+              </AppContentContainer>
             </div>
           </div>
         </>
@@ -77,7 +94,11 @@ export function CreateShell({
   );
 
   return (
-    <AppWorkspace fit="bounded" labels={workspaceLabels} scroll="content">
+    <AppWorkspace
+      fit={layoutPrototype === 'B' ? 'available' : 'bounded'}
+      labels={workspaceLabels}
+      scroll="content"
+    >
       <AppWorkspace.Primary
         header={applicationLocationHeader({
           title: title ?? (specId ? t('create.newSession') : t('create.newSpecification')),

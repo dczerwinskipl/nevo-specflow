@@ -6,6 +6,7 @@ import { useRouter } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import type { AuthStore } from '../auth/store';
 import { defaultNevoBrand } from '../brand';
+import { layoutPrototype } from './layoutPrototype';
 import { ProductNavigation } from './navigation/ProductNavigation';
 import { NavigationTransitionProvider } from './navigation/NavigationTransition';
 export function SpecFlowShell({ auth, children }: PropsWithChildren<{ readonly auth: AuthStore }>) {
@@ -42,6 +43,7 @@ export function SpecFlowShell({ auth, children }: PropsWithChildren<{ readonly a
       <div className="h-dvh w-full" {...capture}>
         <div className="h-full" {...designSlot('SpecFlowApplicationShell', 'shell')}>
           <AppShell
+            className={layoutPrototype === 'D' ? 'justify-start!' : undefined}
             brandPrimary={defaultNevoBrand.coreColor}
             labels={{
               closeNavigation: t('navigation.close'),

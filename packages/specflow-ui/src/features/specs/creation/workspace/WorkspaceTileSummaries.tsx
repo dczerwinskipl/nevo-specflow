@@ -1,3 +1,4 @@
+import { isA3Family } from '../../../../app/layoutPrototype';
 import { FolderPlus, Layers } from 'lucide-react';
 import { type Dispatch, type MutableRefObject, type ReactNode, type SetStateAction } from 'react';
 import type { TFunction } from 'i18next';
@@ -217,7 +218,8 @@ export function NewSummary({
             ) : undefined
           }
         >
-          <BranchRef name={branch} />
+          {/* PROTOTYPE (A3): value-only rows truncate in the narrower right column. */}
+          <BranchRef name={branch} truncate={isA3Family} />
         </SummaryRow>
         {options.commits && (
           <SummaryRow label={t('create.workspace.fact.commit')} override={false}>
@@ -234,7 +236,12 @@ export function NewSummary({
             options.worktreesRoot.exists ? undefined : t('create.workspace.folderWillBeCreated')
           }
         >
-          <Typography as="span" variant="code-md" className="wrap-anywhere">
+          <Typography
+            as="span"
+            variant="code-md"
+            className={isA3Family ? 'block truncate' : 'wrap-anywhere'}
+            title={isA3Family ? options.worktreesRoot.path : undefined}
+          >
             {options.worktreesRoot.path}
           </Typography>
         </SummaryRow>

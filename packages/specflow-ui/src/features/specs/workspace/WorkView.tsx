@@ -83,13 +83,13 @@ export function WorkView({ specId, data, aside }: WorkViewProps) {
   if (twoColumns) {
     return (
       <div ref={ref} className="@container/work min-w-0">
+        {summary}
         <div className="grid grid-cols-[minmax(0,1fr)_minmax(22rem,30rem)] gap-x-12">
           <div className="min-w-0">
-            {summary}
             {attention}
             {main}
           </div>
-          <div className="min-w-0 pt-2">
+          <div className="min-w-0 [&>*:first-child]:border-t-0 [&>*:first-child]:pt-0">
             {context}
             {preparation}
             {related}

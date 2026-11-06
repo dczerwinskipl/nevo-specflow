@@ -67,7 +67,9 @@ export function CreateShell({
       layoutPrototype === 'A3' ||
       layoutPrototype === 'A3h' ||
       layoutPrototype === 'C'
-      ? createColumnWidthClass[layoutPrototype]
+      ? isA3Family && !footer
+        ? 'w-[1080px]'
+        : createColumnWidthClass[layoutPrototype]
       : layoutPrototype === 'B'
         ? 'w-full sm:px-8'
         : layoutPrototype === 'E'
@@ -85,15 +87,16 @@ export function CreateShell({
       >
         <div className={cn(column, 'py-4 sm:py-6')}>
           <AppContentContainer
-            className={cn(
-              containerClassName,
-              isA3Family && contentWidth === 'form'
-                ? cn('max-w-content-form', progressAlign === 'center' && 'mx-auto')
-                : undefined,
-            )}
+            className={containerClassName}
             size={layoutPrototype === 'base' || layoutPrototype === 'D' ? undefined : 'full'}
           >
-            {children}
+            {isA3Family && contentWidth === 'form' ? (
+              <div className={cn('max-w-content-form', progressAlign === 'center' && 'mx-auto')}>
+                {children}
+              </div>
+            ) : (
+              children
+            )}
           </AppContentContainer>
         </div>
       </AppWorkspaceBody>

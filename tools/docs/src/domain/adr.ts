@@ -20,7 +20,7 @@ export function slugify(title: string): string {
     .replace(/[̀-ͯ]/g, '') // strip combining diacritics
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+    .replace(/^-|-$/g, '');
   if (!s) {
     throw new UsageError(`Cannot slugify title ${JSON.stringify(title)} — no alphanumerics.`);
   }

@@ -21,10 +21,14 @@ related:
 
 # Session provider driver
 
-Internal Runtime Sessions port, implemented by the mock and the bounded Claude adapter; remaining
-provider operations are design guidance until their adapter is delivered. This is not a UI SDK.
+Internal Runtime Sessions port, implemented by the mock, Claude, Codex and Antigravity adapters.
+Availability remains subject to each adapter's native profile and platform checks. This is not a UI SDK.
 Runtime owns ordering, identity, persistence and terminal arbitration. Drivers own native correlation,
 process/transport resources and translating protocol evidence. This contract does not import Engine.
+
+Deferred capabilities are tracked in the consolidated
+[provider capability backlog](../../ideas/specflow-runtime/provider-migration-plan.md#current-scope-and-capability-backlog-ownership).
+They do not extend this implemented contract.
 
 ## Operations
 

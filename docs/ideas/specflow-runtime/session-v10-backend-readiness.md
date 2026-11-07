@@ -30,6 +30,11 @@ The current frontend implementation branch is `feat/session-workspace-v2-v10`.
 This audit separates implemented APIs from requirements needing another capability;
 it does not authorize shipping every synthetic behavior in the HTML examples.
 
+This is a dated readiness checkpoint, not a second provider roadmap. Provider-only
+gaps now belong to the consolidated [capability backlog](provider-migration-plan.md#current-scope-and-capability-backlog-ownership).
+The associations and frontend/backend requirements below retain their own scope;
+future provider capabilities are not current API guarantees or PR #107 merge gates.
+
 ## What has already migrated
 
 The independent Session/Turn/Work model, worker-owned SQLite, durable command

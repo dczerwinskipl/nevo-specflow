@@ -1,6 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { randomUUID } from 'node:crypto';
-import { mkdtemp, mkdir, writeFile, rename, realpath, symlink, rm } from 'node:fs/promises';
+import {
+  mkdtemp,
+  mkdir,
+  readFile,
+  writeFile,
+  rename,
+  realpath,
+  symlink,
+  rm,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { DriverFact } from '../../persistence/protocol';
@@ -16,7 +25,7 @@ afterEach(async () => {
     await cleanup();
   }
 });
-async function fixture(active = true, created = false) {
+async function fixture(active = true, created = false, nativeFileAccess = false) {
   const accesses: { created: boolean; close: ReturnType<typeof vi.fn> }[] = [];
   const acquireFileAccess = vi.fn(() => {
     const access = { created, close: vi.fn() };
@@ -58,9 +67,7 @@ async function fixture(active = true, created = false) {
       },
       permissionContext: () => context,
     },
-    {
-      acquireFileAccess,
-    },
+    nativeFileAccess ? {} : { acquireFileAccess },
   );
   cleanups.push(async () => {
     await bridge.close();
@@ -120,6 +127,40 @@ async function fixture(active = true, created = false) {
 }
 
 describe('controlled native hook HTTP/helper boundary', () => {
+  it.runIf(process.platform === 'win32' && process.arch === 'x64')(
+    'holds real native path identities across HTTP admission, use and the matching receipt',
+    async () => {
+      // Default production file ownership, rather than the fake leases used for protocol races.
+      const f = await fixture(true, false, true);
+      const parent = join(f.workspace, 'safe');
+      const moved = join(f.workspace, 'moved');
+      await mkdir(parent);
+      const target = join(parent, 'new.txt');
+      const input = {
+        ...f.body(),
+        toolCall: {
+          name: 'write_to_file',
+          args: { TargetFile: target, CodeContent: 'controlled', Overwrite: false },
+        },
+      };
+      await expect(f.post('pre-tool-use', input)).resolves.toEqual({
+        decision: 'allow',
+        overwrite: { Overwrite: true },
+      });
+      await expect(rename(parent, moved)).rejects.toMatchObject({ code: 'EBUSY' });
+      await writeFile(target, 'controlled native write');
+      await expect(
+        f.post('post-tool-use', {
+          ...input,
+          toolCall: { ...input.toolCall, args: { ...input.toolCall.args, Overwrite: true } },
+        }),
+      ).resolves.toEqual({});
+      await rename(parent, moved);
+      expect(await readFile(join(moved, 'new.txt'), 'utf8')).toBe('controlled native write');
+      await f.bridge.close();
+      await expect(f.post('pre-tool-use', input)).resolves.toEqual({ decision: 'deny' });
+    },
+  );
   it('correlates different calls within one native step and refuses an exact retry', async () => {
     const f = await fixture();
     const first = {
@@ -147,7 +188,7 @@ describe('controlled native hook HTTP/helper boundary', () => {
     expect(secondAccess.close).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps reserved target ownership until the matching effective post-tool receipt', async () => {
+  it('retains reserved ownership and rejects replay of effective arguments before and after receipt', async () => {
     const f = await fixture(true, true);
     const input = {
       ...f.body(),
@@ -173,6 +214,12 @@ describe('controlled native hook HTTP/helper boundary', () => {
       fullyIdle: true,
     };
     await expect(f.post('stop', stop)).resolves.toEqual({ decision: 'deny' });
+    const effective = {
+      ...input,
+      toolCall: { ...input.toolCall, args: { ...input.toolCall.args, Overwrite: true } },
+    };
+    await expect(f.post('pre-tool-use', effective)).resolves.toEqual({ decision: 'deny' });
+    expect(f.acquireFileAccess).toHaveBeenCalledTimes(1);
     await expect(
       f.post('post-tool-use', {
         ...input,
@@ -181,6 +228,7 @@ describe('controlled native hook HTTP/helper boundary', () => {
     ).resolves.toEqual({});
     expect(access.close).toHaveBeenCalledTimes(1);
     await expect(f.post('stop', stop)).resolves.toEqual({ decision: 'stop' });
+    await expect(f.post('pre-tool-use', effective)).resolves.toEqual({ decision: 'deny' });
   });
 
   it('bounds outstanding file ownership without releasing still-active tools', async () => {
@@ -201,6 +249,50 @@ describe('controlled native hook HTTP/helper boundary', () => {
     for (const access of f.accesses) {
       expect(access.close).not.toHaveBeenCalled();
     }
+  });
+  it('does not assign an earlier receipt identity to a new reserved-file operation', async () => {
+    const f = await fixture(true, true);
+    const first = {
+      ...f.body(),
+      toolCall: {
+        name: 'write_to_file',
+        args: {
+          TargetFile: join(f.workspace, 'new.txt'),
+          CodeContent: 'controlled',
+          Overwrite: true,
+        },
+      },
+    };
+    await expect(f.post('pre-tool-use', first)).resolves.toEqual({
+      decision: 'allow',
+      overwrite: { Overwrite: true },
+    });
+    await expect(f.post('post-tool-use', first)).resolves.toEqual({});
+    const second = {
+      ...first,
+      toolCall: { ...first.toolCall, args: { ...first.toolCall.args, Overwrite: false } },
+    };
+    await expect(f.post('pre-tool-use', second)).resolves.toEqual({ decision: 'deny' });
+    expect(f.accesses).toHaveLength(2);
+    for (const access of f.accesses) {
+      expect(access.close).toHaveBeenCalledOnce();
+    }
+
+    // A late old receipt cannot release ownership belonging to a newer call.
+    await expect(f.post('post-tool-use', first)).resolves.toEqual({});
+    for (const access of f.accesses) {
+      expect(access.close).toHaveBeenCalledOnce();
+    }
+
+    await expect(
+      f.post('stop', {
+        conversationId: f.context.nativeSessionId,
+        workspacePaths: [f.workspace],
+        executionNum: 1,
+        terminationReason: 'NO_TOOL_CALL',
+        fullyIdle: true,
+      }),
+    ).resolves.toEqual({ decision: 'stop' });
   });
   it('does not consume the MCP request budget for native file hooks', async () => {
     const f = await fixture();

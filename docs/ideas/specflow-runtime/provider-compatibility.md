@@ -20,6 +20,10 @@ related:
 
 # Optimistic compatibility, strict capability enforcement
 
+Future capability discovery and version-to-handler profiles are tracked in F17 of
+the consolidated [provider capability backlog](provider-migration-plan.md#f17--provider-feature-discovery).
+That follow-up does not replace the optimistic admission policy implemented here.
+
 The owner's PR98_provider_compatibility_override.md replaces the original handover section 3.
 Unknown versions and hashes are allowed when the implemented protocol and the required execution
 checks pass. A catalogue entry, signature service or new SpecFlow release is not required for every

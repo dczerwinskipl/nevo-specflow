@@ -54,7 +54,8 @@ Managed Agent and Plan require Engine write admission. Automatic file access is
 bound to Runtime-held Windows file identities; every shell command requires a
 one-time host-execution approval. See
 [Antigravity implementation and acceptance limits](../../ideas/specflow-runtime/antigravity-provider.md).
-Imported Nevo history and writable Engine execution remain outside this foundation. Disabling only the provider
+Importing external Nevo history remains outside this API. Writable execution uses
+Engine-owned admission and settlement; it does not imply OS isolation. Disabling only the provider
 keeps stored reads available. Disabling the feature acquires no database owner.
 
 ## Authorization and transport

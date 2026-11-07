@@ -49,6 +49,8 @@ describe.skipIf(process.platform !== 'win32' || process.arch !== 'x64')(
       await expect(rename(f.file, join(f.directory, 'old.txt'))).rejects.toMatchObject({
         code: 'EBUSY',
       });
+      await expect(rm(f.file)).rejects.toThrow();
+      expect(await readFile(f.file, 'utf8')).toBe('updated');
       guard.close();
       await rename(f.directory, join(f.workspace, 'old'));
       await symlink(f.outside, f.directory, 'junction');
@@ -83,6 +85,22 @@ describe.skipIf(process.platform !== 'win32' || process.arch !== 'x64')(
       expect(() =>
         acquireWindowsFileAccess(f.workspace, f.file, { directory: false, create: false }),
       ).toThrow();
+      expect(await readFile(f.file, 'utf8')).toBe('original');
+    });
+
+    it('rejects Win32 aliases and alternate data streams before native file access', async () => {
+      const f = await fixture();
+      for (const target of [
+        f.file + '.',
+        f.file + ' ',
+        f.file + ':alternate',
+        join(f.outside, 'file.txt'),
+      ]) {
+        expect(() =>
+          acquireWindowsFileAccess(f.workspace, target, { directory: false, create: true }),
+        ).toThrow();
+      }
+
       expect(await readFile(f.file, 'utf8')).toBe('original');
     });
   },

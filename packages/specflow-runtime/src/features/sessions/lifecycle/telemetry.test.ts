@@ -46,6 +46,9 @@ function fixture(
   const snapshots: Omit<TelemetrySnapshot, 'accessRevision'>[] = [];
   const deadline = vi.fn((): Promise<number | undefined> => Promise.resolve(undefined));
   const expire = vi.fn(() => Promise.resolve());
+  const refreshState = vi.fn((_command: Extract<StoreCommand, { op: 'telemetry-refresh-state' }>) =>
+    Promise.resolve(),
+  );
   const receipts = new Map<string, unknown>();
   const subscriptions = new Map<string, Set<() => void>>();
   const store: SessionStore = {
@@ -70,6 +73,10 @@ function fixture(
 
       if (command.op === 'telemetry-expire') {
         return expire() as Promise<T>;
+      }
+
+      if (command.op === 'telemetry-refresh-state') {
+        return refreshState(command) as Promise<T>;
       }
 
       if (command.op === 'telemetry-refresh-replay') {
@@ -151,10 +158,93 @@ function fixture(
     snapshots,
     deadline,
     expire,
+    refreshState,
   };
 }
 
 describe('Session telemetry refresh lifecycle', () => {
+  it.each([false, true])(
+    'settles refresh after transient terminal store pressure (native failure: %s)',
+    async (nativeFailure) => {
+      const f = fixture();
+      let state: 'idle' | 'queued' | 'running' = 'idle';
+      let idleAttempts = 0;
+      f.refreshState.mockImplementation((command) => {
+        if (command.state === 'idle' && ++idleAttempts === 1) {
+          return Promise.reject(
+            new SessionError('SESSION_STORE_BUSY', 'Controlled store pressure.'),
+          );
+        }
+
+        state = command.state;
+
+        return Promise.resolve();
+      });
+      if (nativeFailure) {
+        f.refresh.mockRejectedValue(new Error('Controlled native observation failure.'));
+      }
+
+      await f.request();
+      await vi.waitFor(() => expect(state).toBe('idle'));
+      expect(idleAttempts).toBe(2);
+      expect(f.refresh).toHaveBeenCalledOnce();
+      const idleWrites = f.refreshState.mock.calls
+        .map(([command]) => command)
+        .filter((command) => command.state === 'idle');
+      expect(idleWrites.every((command) => !!command.failed === nativeFailure)).toBe(true);
+    },
+  );
+  it('retries running-state admission without repeating the native read', async () => {
+    const f = fixture();
+    f.refreshState.mockRejectedValueOnce(
+      new SessionError('SESSION_STORE_BUSY', 'Controlled pressure.'),
+    );
+    await f.request();
+    await vi.waitFor(() =>
+      expect(f.refreshState.mock.calls.some(([command]) => command.state === 'idle')).toBe(true),
+    );
+    expect(f.refreshState.mock.calls.map(([command]) => command.state)).toEqual([
+      'running',
+      'running',
+      'idle',
+    ]);
+    expect(f.refresh).toHaveBeenCalledOnce();
+    expect(
+      f.refreshState.mock.calls.every(([command]) => command.expectedGeneration === 'generation'),
+    ).toBe(true);
+  });
+
+  it('bounds terminal-state retries when the store remains busy', async () => {
+    const f = fixture();
+    f.refresh.mockRejectedValue(new Error('Controlled source failure.'));
+    f.refreshState.mockImplementation((command) =>
+      command.state === 'idle'
+        ? Promise.reject(new SessionError('SESSION_STORE_BUSY', 'Controlled pressure.'))
+        : Promise.resolve(),
+    );
+    await f.request();
+    await vi.waitFor(() =>
+      expect(
+        f.refreshState.mock.calls.filter(([command]) => command.state === 'idle'),
+      ).toHaveLength(3),
+    );
+    await f.service.close();
+    expect(f.refreshState).toHaveBeenCalledTimes(4);
+    expect(f.refresh).toHaveBeenCalledOnce();
+  });
+
+  it('interrupts a pending store retry when its owner stops', async () => {
+    const f = fixture();
+    f.refreshState.mockRejectedValue(
+      new SessionError('SESSION_STORE_BUSY', 'Controlled pressure.'),
+    );
+    await f.request();
+    await vi.waitFor(() => expect(f.refreshState).toHaveBeenCalledOnce());
+    await f.service.close();
+    expect(f.refreshState).toHaveBeenCalledOnce();
+    expect(f.commands.some((command) => command.op === 'telemetry-observations')).toBe(false);
+  });
+
   it('rechecks the expiry deadline when a commit lands during the previous read', async () => {
     const f = fixture();
     const sessionId = randomUUID();

@@ -4828,14 +4828,14 @@
     {
       "id": "ideas.specflow-runtime.provider-migration-plan",
       "type": "engineering",
-      "title": "Real provider migration after the independent Session foundation",
+      "title": "Provider integration migration and capability backlog",
       "status": "draft",
       "file": "docs/ideas/specflow-runtime/provider-migration-plan.md",
       "read_when": [
         "continuing migration after Plan 04",
         "planning real provider parity and managed writer integration"
       ],
-      "summary": "Bounded follow-on deliveries for Claude, Codex and Antigravity against the fixed Session driver contract, with explicit Engine prerequisites for writable execution.",
+      "summary": "Consolidated provider capability follow-ups, source evidence and acceptance boundaries, alongside historical migration checkpoints. Future capabilities are outside PR 107.",
       "related": [
         "ideas.specflow-engine.plan-04",
         "ideas.specflow-engine.plan-05",
@@ -4853,6 +4853,7 @@
       "tags": [
         "providers",
         "migration",
+        "backlog",
         "claude",
         "codex",
         "antigravity"

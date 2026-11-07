@@ -16,8 +16,8 @@ const MAX_BINDINGS = 64;
 const MAX_WATCHES = 32;
 const MAX_REFRESH_REQUESTS = 64;
 const EXPIRY_COALESCE_MS = 500;
-const EXPIRY_RETRY_MS = 250;
-const MAX_EXPIRY_ATTEMPTS = 3;
+const STORE_BUSY_RETRY_MS = 250;
+const MAX_STORE_BUSY_ATTEMPTS = 3;
 
 export class TelemetryRateLimited extends Error {
   readonly retryAfterSeconds: number;
@@ -367,13 +367,17 @@ export function createSessionTelemetryService(
 
         const promise = (async () => {
           try {
-            await store.call({
-              op: 'telemetry-refresh-state',
-              sessionId,
-              state: 'running',
-              groups: input.groups,
-              expectedGeneration: binding.credentialGeneration,
-            });
+            await retryStoreBusy(
+              () =>
+                store.call({
+                  op: 'telemetry-refresh-state',
+                  sessionId,
+                  state: 'running',
+                  groups: input.groups,
+                  expectedGeneration: binding.credentialGeneration,
+                }),
+              () => !stopped,
+            );
             const measurements = await job.promise;
             if (stopped) {
               return;
@@ -404,23 +408,31 @@ export function createSessionTelemetryService(
                 observedAt: job.observedAt,
               });
             });
-            await store.call({
-              op: 'telemetry-refresh-state',
-              sessionId,
-              state: 'idle',
-              groups: [],
-              expectedGeneration: binding.credentialGeneration,
-            });
+            await retryStoreBusy(
+              () =>
+                store.call({
+                  op: 'telemetry-refresh-state',
+                  sessionId,
+                  state: 'idle',
+                  groups: [],
+                  expectedGeneration: binding.credentialGeneration,
+                }),
+              () => !stopped,
+            );
           } catch {
             if (!stopped) {
-              await store.call({
-                op: 'telemetry-refresh-state',
-                sessionId,
-                state: 'idle',
-                groups: input.groups,
-                failed: true,
-                expectedGeneration: binding.credentialGeneration,
-              });
+              await retryStoreBusy(
+                () =>
+                  store.call({
+                    op: 'telemetry-refresh-state',
+                    sessionId,
+                    state: 'idle',
+                    groups: input.groups,
+                    failed: true,
+                    expectedGeneration: binding.credentialGeneration,
+                  }),
+                () => !stopped,
+              );
             }
           }
         })();
@@ -440,20 +452,20 @@ export function createSessionTelemetryService(
     }
   }
 
-  async function retryExpiry<T>(run: () => Promise<T>, isWatching: () => boolean) {
-    for (let attempt = 1; attempt <= MAX_EXPIRY_ATTEMPTS && isWatching(); attempt++) {
+  async function retryStoreBusy<T>(run: () => Promise<T>, isRelevant: () => boolean) {
+    for (let attempt = 1; attempt <= MAX_STORE_BUSY_ATTEMPTS && isRelevant(); attempt++) {
       try {
         return await run();
       } catch (error) {
         if (
           !(error instanceof SessionError) ||
           error.code !== 'SESSION_STORE_BUSY' ||
-          attempt === MAX_EXPIRY_ATTEMPTS
+          attempt === MAX_STORE_BUSY_ATTEMPTS
         ) {
           throw error;
         }
 
-        await delay(EXPIRY_RETRY_MS, undefined, { signal: shutdown.signal });
+        await delay(STORE_BUSY_RETRY_MS, undefined, { signal: shutdown.signal });
       }
     }
   }
@@ -480,7 +492,7 @@ export function createSessionTelemetryService(
         }
 
         watch.dirty = false;
-        const deadline = await retryExpiry(
+        const deadline = await retryStoreBusy(
           () => store.call<number | undefined>({ op: 'telemetry-expiry-deadline', sessionId }),
           isWatching,
         );
@@ -492,7 +504,7 @@ export function createSessionTelemetryService(
         if (deadline !== undefined) {
           watch.expiry = setTimeout(
             () =>
-              void retryExpiry(
+              void retryStoreBusy(
                 () => store.call({ op: 'telemetry-expire', sessionId }),
                 isWatching,
               ).catch(() => undefined),

@@ -41,6 +41,7 @@ export async function createAntigravityQuestionBridge(
   dependencies: { acquireFileAccess?: typeof acquireWindowsFileAccess } = {},
 ) {
   const nativeCalls = new Set<string>();
+  let admittedNativeCalls = 0;
   const fileAccess = new Map<string, NativeFileAccess>();
   const acquireFileAccess = dependencies.acquireFileAccess ?? acquireWindowsFileAccess;
   const callKey = (body: Record<string, unknown>) =>
@@ -172,11 +173,12 @@ export async function createAntigravityQuestionBridge(
       const permission = await prepareAntigravityPermission(envelope, context);
       assertCurrent();
       const key = callKey(bound);
-      if (nativeCalls.has(key) || nativeCalls.size >= AntigravityHookLimits.nativeHookCalls) {
+      if (nativeCalls.has(key) || admittedNativeCalls >= AntigravityHookLimits.nativeHookCalls) {
         throw new Error('Duplicate or excessive native hook.');
       }
 
       nativeCalls.add(key);
+      admittedNativeCalls++;
       nativeBusy();
 
       if (!permission.interaction) {
@@ -191,7 +193,6 @@ export async function createAntigravityQuestionBridge(
             directory: false,
             create: permission.fileAccess.create,
           });
-          fileAccess.set(key, access);
           if (access.created) {
             permission.decision.overwrite = { Overwrite: true };
             const call = bound.toolCall as { name: string; args: Record<string, unknown> };
@@ -199,8 +200,19 @@ export async function createAntigravityQuestionBridge(
               ...bound,
               toolCall: { ...call, args: { ...call.args, Overwrite: true } },
             });
+            if (updated !== key && nativeCalls.has(updated)) {
+              access.close();
+
+              throw new Error('Effective native arguments belong to an earlier call.');
+            }
+
+            // The rewritten arguments identify this same operation, including
+            // after its PostToolUse receipt has released the native handles.
+            nativeCalls.add(updated);
             fileAccess.set(updated, access);
           }
+
+          fileAccess.set(key, access);
         }
 
         hookJson(response, permission.decision);

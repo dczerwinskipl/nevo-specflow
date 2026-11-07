@@ -26,6 +26,11 @@ The adapter uses the existing Session driver, Engine execution admission and
 settlement, SQLite lifecycle and HTTP/SSE/history contracts. It introduces no
 second lifecycle authority, credential broker or global MCP installation.
 
+Future capabilities are consolidated in the
+[provider capability backlog](provider-migration-plan.md#current-scope-and-capability-backlog-ownership),
+especially recursive search (F14), effort discovery (F15) and interaction parity (F13).
+They are outside PR #107; this document describes the admitted native profile.
+
 Production Runtime enables managed Agent and Plan with Engine write admission.
 Supported automatic file tools retain native file identities through completion;
 each command requires explicit one-shot delegation to the user's host permissions.

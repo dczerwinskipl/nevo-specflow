@@ -20,6 +20,10 @@ related:
 
 # Native modes and managed agent execution
 
+This document owns implemented execution policy. The consolidated
+[provider capability backlog](provider-migration-plan.md#current-scope-and-capability-backlog-ownership)
+owns future settings, tool inventory and platform isolation work, all outside PR #107.
+
 ## Common execution-boundary acceptance
 
 The owner's 2026-11-07 decision separates two execution authorities:

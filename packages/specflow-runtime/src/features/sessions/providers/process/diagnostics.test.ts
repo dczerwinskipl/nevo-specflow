@@ -1,6 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { createDiagnosticStore, sanitizeDiagnostic } from './diagnostics';
 describe('private provider diagnostics', () => {
+  it('redacts an unlabelled bearer credential when the known secret includes its scheme', () => {
+    const credential = 'controlled-opaque-credential+/=';
+    const store = createDiagnosticStore({ enabled: true });
+    const capture = store.open('private-mcp', ['Bearer ' + credential]);
+    capture.write('stderr', Buffer.from('opaque payload ' + credential + '\n'));
+    capture.write('stderr', Buffer.from('opaque payload ' + encodeURIComponent(credential) + '\n'));
+    capture.finish();
+    expect(store.read('private-mcp')?.text).toBe(
+      'opaque payload [redacted]\nopaque payload [redacted]\n',
+    );
+  });
   it('bounds metadata for blank-line-heavy output as well as payload bytes', () => {
     const store = createDiagnosticStore({
       enabled: true,

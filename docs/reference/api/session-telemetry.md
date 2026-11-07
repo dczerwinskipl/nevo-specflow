@@ -302,10 +302,14 @@ Return a strong opaque ETag over the authorized projection revision and access
 generation; require private revalidation (`Cache-Control: private, no-cache`, no
 shared-cache reuse). Authorize before evaluating `If-None-Match`, including 304.
 Freshness/refresh state transitions change the validator; do not include request
-wall-clock time in every response. This route-specific policy is a proposed
+wall-clock time in every response. This route-specific policy is an implemented
 exception to existing Sessions `no-store`, not a global cache-policy replacement.
 
 ## Implementation readiness and acceptance
+
+Additional source coverage and pricing provenance belong to F16 in the
+[provider capability backlog](../../ideas/specflow-runtime/provider-migration-plan.md#f16--telemetry-coverage-and-provenance).
+That backlog does not promise additional metrics in the current API.
 
 The snapshot, explicit refresh, SSE invalidation, access generation and account-limit
 permission are implemented. Built-in admin has the new account-limit permission;

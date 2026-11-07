@@ -192,12 +192,28 @@ already provides containment.
 
 ## Bounded workspace rule
 
-A Primary-only collection page whose readable unit has a fixed optimal width (for example a list
-whose rows are designed for `content-standard`) bounds the workspace rather than stretching rows
-or leaving the content left-anchored in a wide workspace. Use `AppWorkspace fit="bounded"` with the
-existing width token on `AppContent`; do not add a new width token or a local maximum width. The
-workspace and navigation are then centred as one group, and header actions stay aligned with the
-content. Narrow and drawer layouts fill the workspace (a bounded `AppContent` centres itself inside it), so no bare strip is left beside a content-wide surface.
+A Primary-only page whose content has its own reading or scanning widths, such as a collection list
+or a focused creation flow, uses the **Focused frame** instead of a workspace that keeps growing on
+wide screens: `AppWorkspace fit="bounded"`. The frame is `min(available width, workspace-focused)`,
+border included, where `workspace-focused` is the one design token for every Focused screen
+(`--spacing-workspace-focused`, 90rem). Below that maximum the frame fills the available width like
+a full-width workspace; once it reaches the maximum it is centred together with the navigation. So
+nothing jumps while the window is resized, and every Focused screen shares the same geometry, so
+moving between them changes nothing. Do not add a local maximum width, a per-screen width token or a
+measured width to the workspace.
+
+Inside the frame the content keeps its own widths instead of stretching with it:
+
+- a form keeps its reading column (for example `content-form`), left-aligned within the frame's
+  content padding, and its controls keep their maximum widths;
+- a list keeps related values together with bounded scan columns (see the
+  [scan-column rule](#scan-column-rule)), so a flexible title track does not push them apart as the
+  frame grows. The rows themselves span the frame.
+
+Detail workspaces whose screens share one context, for example a Specification with its Overview,
+Documents and Sessions, use `fit="available"` so the whole context keeps one geometry; do not bound
+them. Narrow and drawer layouts fill the workspace, and so does a Focused page while it shows a
+Secondary.
 
 ## Nested-containment rule
 

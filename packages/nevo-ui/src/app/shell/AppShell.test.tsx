@@ -5,6 +5,8 @@ import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DesignMetadataProvider } from '@nevo/figma-capture/metadata';
 import { AppShell, resolveAppShellLayout } from './AppShell';
+import { AppWorkspace } from '../workspace/AppWorkspace';
+import type { AppWorkspaceFit } from '../workspace/workspaceSizing';
 import {
   APP_WORKSPACE_EDGE_BORDER,
   WIDE_SHELL_MIN_WIDTH,
@@ -247,5 +249,112 @@ describe('AppShell resize measurement coalescing', () => {
     }
 
     expect(screen.queryByRole('navigation')).toBeNull();
+  });
+});
+
+/**
+ * The Focused frame (`fit="bounded"`) is decided in CSS: the shell asks for the
+ * `workspace-focused` token and its maximum width clamps it to the available width. Only the inset
+ * edge is measured, and it must be right before paint when a route swaps a full-width workspace for
+ * a Focused one (and back), not one coalesced observer frame later.
+ */
+describe('AppShell Focused frame', () => {
+  const shellWidth = 1920;
+  const availableWidth = shellWidth - 268;
+  let workspaceWidth: number;
+
+  beforeEach(() => {
+    workspaceWidth = availableWidth;
+    // Frames and observers never run in these tests: whatever is rendered comes from layout effects.
+    vi.stubGlobal('requestAnimationFrame', () => 0);
+    vi.stubGlobal('cancelAnimationFrame', () => undefined);
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        observe() {}
+        disconnect() {}
+        unobserve() {}
+      },
+    );
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      const width = this.matches('[data-app-shell-region="workspace"]')
+        ? workspaceWidth
+        : shellWidth;
+
+      return {
+        width,
+        height: 900,
+        x: 0,
+        y: 0,
+        top: 0,
+        left: 0,
+        right: width,
+        bottom: 900,
+        toJSON: () => ({}),
+      };
+    });
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  function Shell({ fit }: { fit: AppWorkspaceFit }) {
+    return (
+      <AppShell navigation={<nav>Navigation</nav>}>
+        <AppWorkspace fit={fit}>
+          <AppWorkspace.Primary>
+            <div>Content</div>
+          </AppWorkspace.Primary>
+        </AppWorkspace>
+      </AppShell>
+    );
+  }
+
+  function workspace() {
+    return document.querySelector<HTMLElement>('main[data-app-shell-region="workspace"]')!;
+  }
+
+  it('sizes a bounded workspace with the focused token, clamped by the available width', () => {
+    render(<Shell fit="bounded" />);
+
+    expect(document.querySelector('[data-workspace-fit]')?.getAttribute('data-workspace-fit')).toBe(
+      'bounded',
+    );
+    expect(workspace().className).toContain(
+      'has-[[data-workspace-fit=bounded]]:w-workspace-focused',
+    );
+    expect(workspace().className).toContain(
+      'max-w-[calc(100%-var(--app-navigation-width)-var(--app-shell-gap))]',
+    );
+  });
+
+  it('paints the inset edge of a Focused frame without waiting for an observer frame', () => {
+    const { rerender } = render(<Shell fit="available" />);
+    expect(workspace().dataset.appShellWorkspaceFit).toBe('edge');
+    expect(workspace().className).not.toContain('border-r');
+
+    // The route swaps in a Focused screen narrower than the available width (1440 of 1652 px).
+    workspaceWidth = 1440;
+    rerender(<Shell fit="bounded" />);
+    expect(workspace().dataset.appShellWorkspaceFit).toBe('inset');
+    expect(workspace().className).toContain('rounded-tr-surface border-r');
+
+    // And back to a full-width screen: the edge disappears in the same commit.
+    workspaceWidth = availableWidth;
+    rerender(<Shell fit="available" />);
+    expect(workspace().dataset.appShellWorkspaceFit).toBe('edge');
+    expect(workspace().className).not.toContain('border-r');
+  });
+
+  it('keeps a Focused frame that fills the available width on the edge', () => {
+    workspaceWidth = availableWidth;
+    render(<Shell fit="bounded" />);
+
+    expect(workspace().dataset.appShellWorkspaceFit).toBe('edge');
   });
 });

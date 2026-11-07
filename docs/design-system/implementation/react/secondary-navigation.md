@@ -405,19 +405,30 @@ instead of wrapping the content in an extra padding element.
 Stacked layouts always fill the available width, whatever the value. The resolution lives in
 `resolveWorkspaceFit` (`workspaceSizing.ts`) and is covered by `workspaceSizing.test.ts`.
 
-| `fit`               | Primary only                                        | Primary + Secondary                                                 | Use for                                                                       |
-| ------------------- | --------------------------------------------------- | ------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| `content` (default) | fills the available width                           | fits intrinsic content (`max-content`), centred with the navigation | ordinary pages; unchanged default                                             |
-| `available`         | fills                                               | fills; the split shares follow `split`                              | editors, creation flows and other surfaces that should use all measured space |
-| `bounded`           | fits intrinsic content, centred with the navigation | fits intrinsic content                                              | Primary-only collection pages whose readable unit has a fixed optimal width   |
+| `fit`               | Primary only                                                                        | Primary + Secondary                                                 | Use for                                                                   |
+| ------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `content` (default) | fills the available width                                                           | fits intrinsic content (`max-content`), centred with the navigation | ordinary pages; unchanged default                                         |
+| `available`         | fills                                                                               | fills; the split shares follow `split`                              | editors, detail workspaces and other surfaces that use all measured space |
+| `bounded`           | the Focused frame: `min(available, workspace-focused)`, centred once at its maximum | fills, like `available`                                             | Focused Primary-only pages (collection lists, creation flows)             |
 
-With `bounded`, the Primary must declare its width (for example
-`<AppContent className="w-content-standard max-w-full">`); the workspace then shrinks to that
-width and `AppShell` centres navigation and workspace as one group, so header actions stay next to
-the content they act on at wide and ultrawide sizes. A Primary without a declared width has no
-intrinsic bound and behaves like `content`. Do not combine `bounded` with ad-hoc `max-w-[…]` or
-centring wrappers. `AppWorkspaceFit.contract.stories.tsx` covers the three values (`Available*`, `Content*`,
-`BoundedPrimaryOnly*` contracts at 1024/1440/1920/2560 and 390).
+`bounded` is the Focused frame of the
+[Bounded workspace rule](../../principles/layout-and-containment.md#bounded-workspace-rule). It
+resolves to its own `data-workspace-fit="bounded"` only while the page is Primary-only beside a
+persistent navigation. `AppShell` then asks for the `workspace-focused` token as the surface width
+(`--spacing-workspace-focused`, 90rem, border included) and the surface's existing maximum
+width (the row minus the navigation and the gap) clamps that to the available width, so the frame fills like
+`available` below the maximum. Only once the frame stops at the maximum does the shell row's
+`justify-center` centre navigation and workspace as one group, and the surface becomes inset. The
+rule is pure CSS: no width is measured to decide it, and every Focused screen has the same frame, so
+moving between them changes nothing. With a drawer navigation or a shown Secondary it resolves to
+`available` (the split shares are computed from the whole available width). The Primary content
+fills the frame and keeps its own widths inside it: a reading column such as
+`AppContentContainer` or a `w-content-form` column, or bounded scan columns for a list. Do not
+combine `bounded` with ad-hoc `max-w-[…]` or centring wrappers on the workspace.
+`AppWorkspaceFit.contract.stories.tsx` covers the three values: `Available*`, `Content*`, and
+`Bounded*` contracts that assert the frame fills below the maximum (1366/1440/1600), is the token
+width and centred above it (1920/2560), and fills in drawer (1024), stacked (390) and with a
+Secondary.
 
 **Stacked close (opt-in).** `stackedSecondaryClose="hide"` removes the Secondary's own close action (the trailing
 `x`, and the matching item of the compact row) while the layout is stacked, where Back already leaves the
@@ -435,7 +446,11 @@ sentence and a cap that is not reached changes nothing. The default is no cap. I
 (840 workspace) gives Primary 280 px. `CappedPrimary*Contract` stories cover 1108/1280/1440/1920/2560,
 the stacked layout and the uncapped share.
 
-The shell-owned workspace surface has an edge border (`border-l`, plus `border-r` when inset). `AppShell`
+The shell-owned workspace surface has an edge border (`border-l`, plus `border-r` and a rounded top-right
+corner when inset, that is narrower than the available width). `AppShell` measures the surface to decide
+the inset edge. `AppWorkspace` asks it to re-read that width from a layout effect whenever its resolved
+fit changes, so a route change between a Focused and a full-width screen paints the right edge in the
+first frame; the coalesced `ResizeObserver` keeps covering window resizes. `AppShell`
 publishes two widths through the workspace context: `availableWidth` (the surface border-box, which decides
 split/stacked mode and the dominance thresholds) and `contentWidth` (`availableWidth` minus
 `APP_WORKSPACE_EDGE_BORDER` per border, `resolveWorkspaceContentWidth`), which the Primary/Secondary max

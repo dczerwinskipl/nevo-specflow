@@ -152,54 +152,94 @@ function assertFullWidth(layoutRect: DOMRect, message: string) {
   assert(layoutRect.width >= window.innerWidth - 2 * layoutRect.left - 1, message);
 }
 
-const contentStandardPx = 68.75 * 16;
+/** The Focused frame maximum, read from the design token so the contract follows it. */
+function focusedFramePx() {
+  const root = getComputedStyle(document.documentElement);
+  const token = root.getPropertyValue('--spacing-workspace-focused').trim();
+  assert(token.endsWith('rem'), `The workspace-focused token is a rem length (${token}).`);
 
-async function verifyBoundedWide(canvasElement: HTMLElement, width: number) {
-  const { mainRect, borders, layout, content, navigation } = await measure(canvasElement, width);
+  return Number.parseFloat(token) * Number.parseFloat(root.fontSize);
+}
+
+/** Below the maximum the Focused frame fills the available width exactly like `available`. */
+async function verifyFocusedFills(canvasElement: HTMLElement, width: number) {
+  const { mainRect, layout, navigation } = await measure(canvasElement, width);
+  assert(layout.dataset.workspaceFit === 'bounded', 'Bounded Primary-only is the Focused frame.');
+  assert(navigation, 'Wide layouts keep persistent navigation.');
   assert(
-    layout.dataset.workspaceFit === 'content',
-    'Bounded Primary-only resolves to a content fit.',
+    Math.abs(navigation.getBoundingClientRect().left) <= 0.5,
+    'Below its maximum the frame is not centred: the navigation stays at the edge.',
   );
-  const contentWidth = content.getBoundingClientRect().width;
   assert(
-    Math.abs(contentWidth - contentStandardPx) <= 1,
-    `The Primary keeps content-standard width (${contentWidth}).`,
+    Math.abs(mainRect.right - window.innerWidth) <= 0.5,
+    `The frame fills to the viewport edge (${mainRect.right} of ${window.innerWidth}).`,
   );
   assert(
-    Math.abs(mainRect.width - borders - contentWidth) <= 1,
-    `The workspace is bounded to the Primary content (${mainRect.width} vs ${contentWidth}).`,
+    mainRect.width < focusedFramePx(),
+    `The frame is below its maximum (${mainRect.width} < ${focusedFramePx()}).`,
+  );
+  const main = canvasElement.querySelector<HTMLElement>('main[data-app-shell-region="workspace"]')!;
+  assert(main.dataset.appShellWorkspaceFit === 'edge', 'A filling frame keeps the edge surface.');
+}
+
+/** At its maximum the Focused frame is the token width, border included, and centred. */
+async function verifyFocusedCentred(canvasElement: HTMLElement, width: number) {
+  const { mainRect, layout, navigation } = await measure(canvasElement, width);
+  assert(layout.dataset.workspaceFit === 'bounded', 'Bounded Primary-only is the Focused frame.');
+  assert(
+    Math.abs(mainRect.width - focusedFramePx()) <= 0.5,
+    `The frame stops at the workspace-focused token (${mainRect.width} vs ${focusedFramePx()}).`,
   );
   assertCentredGroup(navigation, mainRect);
+  const main = canvasElement.querySelector<HTMLElement>('main[data-app-shell-region="workspace"]')!;
+  assert(main.dataset.appShellWorkspaceFit === 'inset', 'A centred frame is an inset surface.');
+  assert(
+    getComputedStyle(main).borderRightWidth !== '0px',
+    'An inset frame restores its right edge.',
+  );
 }
 
 export const BoundedPrimaryOnly: Story = {
   globals: { viewport: { value: 'w1920', isRotated: false } },
 };
 
-export const BoundedPrimaryOnly1440Contract: Story = {
+export const BoundedFocusedFills1366Contract: Story = {
+  tags: ['contract', '!autodocs'],
+  globals: { viewport: { value: 'w1366', isRotated: false } },
+  play: async ({ canvasElement }) => verifyFocusedFills(canvasElement, 1366),
+};
+
+export const BoundedFocusedFills1440Contract: Story = {
   tags: ['contract', '!autodocs'],
   globals: { viewport: { value: 'w1440', isRotated: false } },
-  play: async ({ canvasElement }) => verifyBoundedWide(canvasElement, 1440),
+  play: async ({ canvasElement }) => verifyFocusedFills(canvasElement, 1440),
 };
 
-export const BoundedPrimaryOnly1920Contract: Story = {
+export const BoundedFocusedFills1600Contract: Story = {
+  tags: ['contract', '!autodocs'],
+  globals: { viewport: { value: 'w1600', isRotated: false } },
+  play: async ({ canvasElement }) => verifyFocusedFills(canvasElement, 1600),
+};
+
+export const BoundedFocusedCentred1920Contract: Story = {
   tags: ['contract', '!autodocs'],
   globals: { viewport: { value: 'w1920', isRotated: false } },
-  play: async ({ canvasElement }) => verifyBoundedWide(canvasElement, 1920),
+  play: async ({ canvasElement }) => verifyFocusedCentred(canvasElement, 1920),
 };
 
-export const BoundedPrimaryOnly2560Contract: Story = {
+export const BoundedFocusedCentred2560Contract: Story = {
   tags: ['contract', '!autodocs'],
   globals: { viewport: { value: 'w2560', isRotated: false } },
-  play: async ({ canvasElement }) => verifyBoundedWide(canvasElement, 2560),
+  play: async ({ canvasElement }) => verifyFocusedCentred(canvasElement, 2560),
 };
 
 export const BoundedPrimaryOnly1024Contract: Story = {
   tags: ['contract', '!autodocs'],
   globals: { viewport: { value: 'w1024', isRotated: false } },
   play: async ({ canvasElement }) => {
-    const { navigation, content, layoutRect } = await measure(canvasElement, 1024);
+    const { navigation, content, layout, layoutRect } = await measure(canvasElement, 1024);
     assert(!navigation, 'At 1024 navigation is a drawer.');
+    assert(layout.dataset.workspaceFit === 'available', 'A drawer layout fills.');
     assertFullWidth(layoutRect, 'The bounded workspace spans the viewport in drawer mode.');
     assert(
       content.getBoundingClientRect().width <= layoutRect.width + 0.5,
@@ -218,17 +258,17 @@ export const BoundedPrimaryOnly390Contract: Story = {
   },
 };
 
-export const BoundedWithSecondary1440Contract: Story = {
+export const BoundedWithSecondary1920Contract: Story = {
   tags: ['contract', '!autodocs'],
   args: { secondary: true },
-  globals: { viewport: { value: 'w1440', isRotated: false } },
+  globals: { viewport: { value: 'w1920', isRotated: false } },
   play: async ({ canvasElement }) => {
-    const { layout, mainRect, navigation } = await measure(canvasElement, 1440);
+    const { layout, mainRect, navigation } = await measure(canvasElement, 1920);
     assert(
-      layout.dataset.workspaceFit === 'content',
-      'Bounded with a Secondary also fits content.',
+      layout.dataset.workspaceFit === 'available',
+      'A bounded workspace that shows a Secondary fills.',
     );
-    assertCentredGroup(navigation, mainRect);
+    assertFillsWide(navigation, mainRect, 'The split workspace fills beyond the Focused maximum');
   },
 };
 

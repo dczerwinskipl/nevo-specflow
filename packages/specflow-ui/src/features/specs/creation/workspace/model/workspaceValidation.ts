@@ -1,6 +1,7 @@
 import {
   branchNameProblem,
   engineCommitRefusal,
+  localBranchRef,
   specSlugProblem,
 } from '@nevo/specflow-contracts/specs';
 import type { CreateOptions } from '@nevo/specflow-contracts/specs';
@@ -189,8 +190,9 @@ export function branchNameError(name: string, options: CreateOptions): Message |
       break;
   }
 
+  // `baseRefs` hold full refs, workspaces short branch names.
   if (
-    options.baseRefs.some((item) => item.ref === branch) ||
+    options.baseRefs.some((item) => item.ref === localBranchRef(branch)) ||
     options.workspaces.some((item) => item.branch === branch)
   ) {
     return message('create.workspace.errors.branchExists');

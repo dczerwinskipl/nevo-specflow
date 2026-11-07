@@ -29,6 +29,7 @@ it.each(['compatible', 'malformed', 'uncertain-settlement'] as const)(
     const launch: typeof launchOwnedProcess = (options) =>
       Promise.resolve({
         done: Promise.resolve({ code: 0, signal: null }),
+        endInput: () => Promise.resolve(),
         dispose,
         write(line) {
           writes.push(JSON.parse(line) as Record<string, unknown>);

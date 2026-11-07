@@ -353,6 +353,7 @@ export function createCodexOperation(
         !context.resume,
         options.workspace,
         mode.mode === 'workspace-write',
+        { turnId: invocation.turnId, modelId: model.modelId },
       );
       await options.beforeInput?.(operationSignal);
       signal.throwIfAborted();

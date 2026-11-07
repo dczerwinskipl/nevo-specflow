@@ -94,7 +94,9 @@ async function setup() {
   return { store, authId, cookie, sessionId, origin, reopen };
 }
 
-describe('live Session stream authorization and replay', () => {
+// Each case cold-starts a Runtime and SQLite Worker. Keep the separate bounds
+// on replay and authorization inside a budget that includes Windows startup.
+describe('live Session stream authorization and replay', { timeout: 20000 }, () => {
   it('keeps 32 idle sockets event-driven while revalidating authorization', async () => {
     const { store, cookie, sessionId, origin } = await setup();
     const bootstrapReads = activity.events + 32 * 2;
@@ -142,18 +144,21 @@ describe('live Session stream authorization and replay', () => {
   });
   it('requires a fresh snapshot when the replay cursor is outside retained history', async () => {
     const { cookie, sessionId, reopen } = await setup();
-    await app!.inject({
+    const started = await app!.inject({
       method: 'POST',
       url: '/api/sessions/' + sessionId + '/turns',
       headers: { cookie },
       payload: { requestId: randomUUID(), message: 'Expire replay' },
     });
-    await vi.waitFor(async () =>
-      expect(
-        (await app!.inject({ url: '/api/sessions/' + sessionId, headers: { cookie } }))
-          .json<SessionSnapshot>()
-          .entries.at(-1)?.kind,
-      ).toBe('outcome'),
+    expect(started.statusCode).toBe(202);
+    await vi.waitFor(
+      async () =>
+        expect(
+          (await app!.inject({ url: '/api/sessions/' + sessionId, headers: { cookie } }))
+            .json<SessionSnapshot>()
+            .entries.at(-1)?.kind,
+        ).toBe('outcome'),
+      { timeout: 5000 },
     );
     await app!.close();
     // Controlled offline fixture: no production writer bypasses the singleton owner.
@@ -168,25 +173,27 @@ describe('live Session stream authorization and replay', () => {
     expect(response.statusCode).toBe(200);
     expect(response.body).toContain('event: resync-required');
     expect(response.body).not.toContain('event: session-change');
-    // Includes two cold Runtime/SQLite Worker starts plus offline pruning on Windows.
-  }, 20000);
+  });
   it('replays from the snapshot sequence without losing an intervening Turn', async () => {
     const { cookie, sessionId, origin } = await setup();
     const snapshot = (
       await app!.inject({ url: '/api/sessions/' + sessionId, headers: { cookie } })
     ).json<SessionSnapshot>();
-    await app!.inject({
+    const started = await app!.inject({
       method: 'POST',
       url: '/api/sessions/' + sessionId + '/turns',
       headers: { cookie },
       payload: { requestId: randomUUID(), message: 'Between snapshot and stream' },
     });
-    await vi.waitFor(async () =>
-      expect(
-        (await app!.inject({ url: '/api/sessions/' + sessionId, headers: { cookie } }))
-          .json<SessionSnapshot>()
-          .entries.at(-1)?.kind,
-      ).toBe('outcome'),
+    expect(started.statusCode).toBe(202);
+    await vi.waitFor(
+      async () =>
+        expect(
+          (await app!.inject({ url: '/api/sessions/' + sessionId, headers: { cookie } }))
+            .json<SessionSnapshot>()
+            .entries.at(-1)?.kind,
+        ).toBe('outcome'),
+      { timeout: 5000 },
     );
     const controller = new AbortController();
     controllers.push(controller);

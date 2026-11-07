@@ -53,7 +53,7 @@ export function deriveSpecSlug(title: string): string {
     .toLowerCase()
     .replace(/ł/gu, 'l')
     .replace(/[^a-z0-9]+/gu, '-')
-    .replace(/^-+|-+$/gu, '')
+    .replace(/^-|-$/gu, '')
     .slice(0, SPEC_SLUG_MAX_LENGTH)
     .replace(/-+$/gu, '');
 }

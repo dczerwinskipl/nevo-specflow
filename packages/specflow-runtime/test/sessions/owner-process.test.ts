@@ -3,7 +3,9 @@ import { once } from 'node:events';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { expect, it } from 'vitest';
+import { DatabaseSync } from 'node:sqlite';
+import { expect, it, vi } from 'vitest';
+import type { SessionChange, TelemetrySnapshot } from '@nevo/specflow-contracts/sessions';
 import { openSessionStore, type SessionStore } from '../../src/features/sessions/persistence/store';
 import type {
   SnapshotSource,
@@ -15,23 +17,39 @@ interface ChildAdmission {
   input: { requestId: string; message: string };
 }
 
-it.each(['mock', 'undispatched', 'confirmed', 'uncertain'] as const)(
+it.each(['mock', 'undispatched', 'confirmed', 'uncertain', 'telemetry'] as const)(
   'reconciles %s evidence after SIGKILL without repeating native input',
   async (scenario) => {
     const directory = await mkdtemp(join(tmpdir(), 'nevo-session-owner-'));
     const entry = new URL('../../src/session-worker.ts', import.meta.url).href;
+    // Exit the Worker on the committed sample's reply, before its event loop
+    // can execute the publication timer. The parent still owns the store.
+    const exitAfterSample = `
+      import { parentPort } from 'node:worker_threads';
+      const post = parentPort.postMessage.bind(parentPort);
+      parentPort.postMessage = (message) => {
+        post(message);
+        if (message.id === 5 && !message.error) process.exit(0);
+      };
+      await import(${JSON.stringify(entry)});
+    `;
+    const workerEntry =
+      scenario === 'telemetry'
+        ? 'data:text/javascript,' + encodeURIComponent(exitAfterSample)
+        : entry;
     const source = `
     import { Worker } from 'node:worker_threads';
     import { randomUUID } from 'node:crypto';
     const scenario = ${JSON.stringify(scenario)};
     const directory = ${JSON.stringify(directory)};
-    const worker = new Worker(new URL(${JSON.stringify(entry)}), {
+    const worker = new Worker(new URL(${JSON.stringify(workerEntry)}), {
       execArgv: [],
       workerData: { kind: 'session-store', directory, projectId: 'project', runtimeId: randomUUID(), pid: process.pid },
     });
     let sessionId;
     let admission;
     const input = { requestId: randomUUID(), message: 'running' };
+    if (scenario === 'telemetry') setInterval(() => {}, 1000);
     const ready = () => process.stdout.write(JSON.stringify({ sessionId, admission, input }) + '\\n');
     const send = (id, command) => worker.postMessage({ id, command });
     worker.on('message', (message) => {
@@ -57,7 +75,13 @@ it.each(['mock', 'undispatched', 'confirmed', 'uncertain'] as const)(
           driverSeq: 1, fact: { kind: 'correlation', providerSessionId: admission.providerContext.nativeSessionId },
         });
       }
-      if (message.id === 4) ready();
+      if (message.id === 4) {
+        if (scenario !== 'telemetry') ready();
+        else send(5, { op: 'fact', sessionId, turnId: admission.turnId, invocationId: admission.invocationId,
+          driverSeq: 2, fact: { kind: 'usage', sampleId: 'pending-publication', basis: 'turn-total', counters: { inputTokens: 19 } },
+        });
+      }
+      if (message.id === 5) ready();
     });
   `;
     const child = spawn(process.execPath, ['--input-type=module', '-e', source], {
@@ -90,6 +114,22 @@ it.each(['mock', 'undispatched', 'confirmed', 'uncertain'] as const)(
       const exited = once(child, 'exit');
       child.kill('SIGKILL');
       await exited;
+      let beforeRecovery = 0;
+      if (scenario === 'telemetry') {
+        const db = new DatabaseSync(join(directory, 'sessions.sqlite'), { readOnly: true });
+        try {
+          expect(db.prepare('SELECT session FROM telemetry_publications').all()).toEqual([
+            { session: ready.sessionId },
+          ]);
+          beforeRecovery = Number(
+            db.prepare('SELECT seq FROM sessions WHERE id=?').get(ready.sessionId)?.seq,
+          );
+          expect(beforeRecovery).toBeGreaterThan(0);
+        } finally {
+          db.close();
+        }
+      }
+
       store = await openSessionStore({ directory, projectId: 'project' });
       const snapshot = (
         await store.call<SnapshotSource>({
@@ -121,6 +161,29 @@ it.each(['mock', 'undispatched', 'confirmed', 'uncertain'] as const)(
             requestId: crypto.randomUUID(),
           }),
         ).rejects.toMatchObject({ code: 'SESSION_RECOVERY_REQUIRED' });
+      }
+
+      if (scenario === 'telemetry') {
+        const telemetry = await store.call<TelemetrySnapshot>({
+          op: 'telemetry',
+          sessionId: ready.sessionId,
+        });
+        expect(telemetry.usage.session).toMatchObject({ value: { inputTokens: 19 } });
+        await vi.waitFor(
+          async () => {
+            const replay = await store!.call<{ events: SessionChange[] }>({
+              op: 'events',
+              sessionId: ready.sessionId,
+              after: beforeRecovery,
+            });
+            const publications = replay.events.filter((event) => event.kind === 'telemetry');
+            expect(publications).toHaveLength(1);
+            expect(publications.at(-1)).toMatchObject({
+              changes: { telemetryRevision: telemetry.revision },
+            });
+          },
+          { timeout: 3000 },
+        );
       }
     } finally {
       if (child.exitCode === null && child.signalCode === null) {

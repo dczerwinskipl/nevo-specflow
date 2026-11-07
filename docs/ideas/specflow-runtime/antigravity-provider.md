@@ -1,17 +1,17 @@
 ---
 id: ideas.specflow-runtime.antigravity-provider
 type: engineering
-title: Antigravity Session provider discovery and admission prerequisites
+title: Antigravity managed Session provider
 status: draft
 scope: specflow
 areas: [ai, runtime, security, testing]
 tags: [antigravity, providers, sessions, migration]
 read_when:
-  - implementing the Antigravity Session adapter
-  - checking native context allocation, cancellation and sandbox prerequisites
+  - implementing or reviewing the Antigravity Session adapter
+  - checking account binding, interactive tools and process settlement
 summary: >
-  Verified installed CLI surface, primary protocol evidence, and explicit gaps
-  that must be closed before advertising managed Antigravity execution.
+  Native Antigravity protocol, private configuration, account affinity and
+  interactive bridge implementation, with separate controlled and native evidence.
 related:
   - ideas.specflow-runtime.provider-migration-plan
   - ideas.specflow-runtime.provider-process-boundary
@@ -19,91 +19,263 @@ related:
   - reference.protocols.session-provider-driver
 ---
 
-# Antigravity provider discovery
+# Antigravity managed Session provider
 
-Status: discovery in PR #98, not a registered executable Session driver. Do not
-interpret the legacy adapter or a help-only probe as writable certification.
+Continue in PR #107, branch `feature/antigravity-provider`. PR #98 is merged.
+The adapter uses the existing Session driver, Engine execution admission and
+settlement, SQLite lifecycle and HTTP/SSE/history contracts. It introduces no
+second lifecycle authority, credential broker or global MCP installation.
 
-## Observed installation
+Future capabilities are consolidated in the
+[provider capability backlog](provider-migration-plan.md#current-scope-and-capability-backlog-ownership),
+especially recursive search (F14), effort discovery (F15) and interaction parity (F13).
+They are outside PR #107; this document describes the admitted native profile.
 
-An explicitly invoked Windows x64 installed-CLI `--help` probe passed through the retained
-Job Object process boundary. It submitted no prompt, model request or daemon
-command. The installed CLI advertises stream-json input/output, explicit
-conversation IDs, model/effort, `plan`/`accept-edits`, disabled slash expansion and
-a terminal sandbox flag. Future probes disable the documented background updater
-with `AGY_CLI_DISABLE_AUTO_UPDATE=true` and request noninteractive behavior.
+Production Runtime enables managed Agent and Plan with Engine write admission.
+Supported automatic file tools retain native file identities through completion;
+each command requires explicit one-shot delegation to the user's host permissions.
 
-Further no-prompt discovery with a temporary Windows profile returned the model
-catalogue and emitted `init` with `conversation_id` while stdin was still empty.
-The profile used private USERPROFILE/HOME/APPDATA/LOCALAPPDATA directories and
-disabled the updater. No user event or model request was sent. This is evidence
-for that installed build, not an authentication or effective-policy certificate.
+## Native context and transcript
 
-It does not establish model/tool ownership, account binding or sandbox enforcement.
-The native tool inventory still includes browser, MCP, scheduling and messaging
-families; a private profile alone is not sufficient admission evidence.
-These experimental test-runner probes have been removed. Future native checks
-are manual only under the [manual provider check policy](provider-manual-checks.md).
+The installed CLI emits `init` before a user frame. Runtime validates the account,
+workspace and permission profile, persists the assigned native conversation ID,
+and crosses durable dispatch admission before writing literal user input.
+Continuation selects only the exact persisted `--conversation`; there is no
+most-recent fallback, automatic replay or replacement of an uncertain context.
 
-## Documented protocol and unresolved evidence
+The bounded stream adapter handles native `step_update` and `result` frames,
+message text, commentary, actual supplied reasoning text, tool Work/Actions and
+session-cumulative usage. Numeric thinking-token usage is not reasoning text.
+Conflicting tool identities/arguments and unsupported frames fail closed. A
+failed tool remains failed even if the overall native Turn reports success.
 
-The primary [headless reference](https://www.antigravity.google/docs/cli/headless/)
-documents `event:user` input and `init`, `step_update`, `result` output. Native
-context is the top-level `conversation_id` on `init`; continuation uses the exact
-ID through `--conversation`, without a most-recent-context fallback.
+Native Agent (`accept-edits`) is the default; native Plan is also exposed. Both
+require canonical `workspace-write` authority: Plan is an instruction, not a
+filesystem read-only boundary. Models come from bounded no-input CLI discovery;
+effort overrides remain unavailable until a native catalogue contract establishes
+supported values. No model-name heuristics invent effort support.
 
-The documentation does not promise pre-input `init`, but the installed build
-emitted it during the no-prompt discovery above. Reuse the current provider-assigned
-contract and durably correlate that ID before the first user event. If a future
-build cannot supply it within bounded initialization, leave dispatch unavailable;
-do not weaken the existing correlation-before-dispatch guarantee.
+## Authentication and private configuration
 
-EOF drains the current Turn; it is not cancellation. Claude control frames are
-explicitly unsupported. Native interrupted/cancelled result statuses can supply
-authoritative outcome evidence, but the correlated cancellation mechanism and
-process settlement still require acceptance tests.
+The Windows x64 consumer CLI source is the exact generic Credential Manager
+entry `gemini:antigravity`. Enumeration returning no entries did not establish
+absence: exact `CredReadW` succeeds. The previous generic account-source blocker
+is resolved; the owner's existing terminal login needs no replacement.
 
-## Execution and configuration gates
+The inspector reads an owned bounded credential copy and clears it. Stable
+account scope derives from native OAuth identity metadata; rotating access-token
+fingerprints are separate. Local identity parsing is affinity evidence, not JWT
+signature validation or proof of remote authentication. The CLI remains solely
+responsible for actual login and token refresh. No credential is copied into the
+workspace or private profile, exported, logged or returned through descriptors.
 
-The primary [sandbox reference](https://www.antigravity.google/docs/sandbox/)
-documents Windows platform prerequisites and that `--sandbox` can have no effect
-when OS containment is unavailable. A flag or `init.permission_mode` is therefore
-insufficient proof. Establish positive in-root write and negative outside-root
-controls, and inspect whether native file tools and terminal tools share the
-requested policy. Do not automatically allow unsandboxed exceptions.
+The first supported authentication profile is the native consumer keyring source.
+Alternate gateway, ADC/WIF, API-key and file-fallback sources are not silently
+selected. Environment projection excludes ambient authentication overrides.
+Known fallback files and cached keyring-failure markers in the private profile
+are rejected. Installation/account identity is checked at discovery, launch,
+before native correlation and immediately before input. Account switches cannot
+resume the old account's native context. The read-to-launch window is not atomic.
 
-The native [mode reference](https://www.antigravity.google/docs/cli/modes/)
-describes Plan as an instruction prefix. Its name alone cannot establish Runtime
-read-only authority. Legacy `agent` mapped to skip-permissions; that mapping must
-not be copied into this adapter.
+Private native history lives outside the project, under a project/account/Session
+binding. Each Session has independent hook/MCP configuration, preventing concurrent
+Sessions from overwriting each other's invocation transport. Discovery uses a
+separate disposable profile and sends no user event. Private directories and
+configuration targets reject symlink redirection before child writes. Profile
+markers bind account and physical workspace; token rotation preserves history.
+The CLI-created `default-cli-project.json` is accepted only with closed metadata
+keys, the exact default ID and empty project resources. Additional projects,
+resources, malformed files and symlinks remain unavailable; legitimate native
+bookkeeping must not prevent the next Turn.
+Directory identities use full SHA-256 encoded as base64url to keep native Windows
+HOME below 260 UTF-16 code units. Longer homes are rejected before directory
+creation. A 261-character profile reproduced initialization timeout before any
+user input; the shorter representation passed the full Runtime correlation and
+dispatch barriers in a manually instrumented check that prevented model input.
 
-The primary [settings reference](https://www.antigravity.google/docs/settings?tab=cli)
-describes mutable global settings and separate global/workspace hooks, MCP and
-plugins. Before startup, prove configuration isolation or strictly validate the
-effective allowed configuration, including account/workspace affinity. Do not
-copy reusable refresh credentials into independent authorities or rewrite the
-owner's global settings to make a probe pass.
+Workspace `.agents` hooks, MCP configuration, plugins, sidecars and project
+customizations are rejected rather than deleted. Native global user configuration
+is untouched. The updater is disabled. Only the invocation-private MCP server is
+registered, with the exact `mcp(specflow-interactions/ask_user)` permission.
 
-The [troubleshooting reference](https://www.antigravity.google/docs/cli/troubleshooting/)
-documents disabling the automatic updater. Installation identity must remain
-stable between discovery and dispatch.
+## Interactive questions and permissions
 
-Ordinary headless process ancestry is not specified by these references. The
-separate [Remote Control daemon](https://www.antigravity.google/docs/remote-control/)
-does not prove that model execution uses a shared daemon. Verify actual worker
-ownership instead of assuming either shared or per-invocation execution.
+The shared implementation is owned by Sessions `interactions/mcp/`: MCP/HTTP,
+`ask_user` schema, per-Invocation authentication, limits, canonical interaction
+delivery, expiry and cleanup. It imports no Antigravity policy. The Antigravity
+bridge owns only native configuration/permission registration, hook decisions,
+native correlation and Stop/idle evidence. Hook extensions share the same bounded
+invocation transport and delivery ledger; SQLite remains the canonical owner.
+Claude and Codex retain their native question protocols and do not use MCP merely
+for uniformity.
 
-## Next implementation steps
+The MCP tool accepts free-text questions and single-choice lists. Calls
+requesting multiple selections are rejected before creating an Interaction.
 
-1. Establish isolated configuration and stable account identity without modifying
-   global hooks/MCP/plugins or duplicating refresh ownership.
-2. Observe idle startup and native context allocation without a user prompt.
-3. Prove actual tool-process ownership, sandbox enforcement and cancellation.
-4. Implement the verified native context contract, bounded transcript normalizer
-   and independent stopped-tree settlement evidence.
-5. Verify native write, continuation, restart, quota/auth failures and canonical
-   HTTP/SSE/history through the same Engine and SQLite owners as other providers.
+This transport binds only to loopback with an OS-assigned port. Runtime and CLI
+must share the network namespace; a Runtime/CLI split across Docker/host namespaces
+needs a separately designed execution transport. A configurable public bind host
+or global cross-Session MCP server is not a fallback.
 
-Until these gates are established, do not advertise Antigravity as ready, add a
-force-completion path, infer successful cancellation from EOF, or install the
-legacy persistent MCP bridge into user configuration.
+The invocation-private Streamable HTTP MCP server uses a random bearer credential,
+bounded requests and waiters, canonical interaction facts and existing response
+idempotency. Setup may precede dispatch; question admission requires activation
+after durable native correlation and dispatch. Human response lifetime is bounded
+separately from initialization; no protocol-silence timer interrupts a pending
+human answer. Disconnect, cancellation and restart expire live interactions.
+Lost delivery acknowledgement never causes automatic retransmission. Transport
+flush is delivery evidence, not evidence the model consumed the answer.
+
+Native MCP calls pass through `PreToolUse` as `call_mcp_tool`. The adapter admits
+only the exact server/tool pair and validated question arguments. It does not
+allow arbitrary MCP, resource, browser, scheduling, messaging or other unknown
+native tools. Hook metadata must identify the admitted native conversation and
+exactly one normalized workspace. Immutable native step and argument identity
+prevent replay or changed-operation grants.
+The native call ledger binds `stepIdx` and a canonical digest of tool name and
+arguments. Distinct calls at the same trajectory step receive separate admission;
+an exact retry is denied, never granted from a previous answer. Matching
+PostToolUse receipts release that call's file ownership. The reserved-file
+Overwrite variant is correlated privately to the same owned operation.
+The native-hook ledger has its own 1024-call budget, independent of JSON-RPC
+request IDs and HTTP admission. One invocation accepts one initialized MCP
+session; attempted reinitialization closes it rather than replaying client IDs.
+
+The native permission profile is `proceed-in-sandbox`, including for Agent and
+Plan. Direct native file operations retain Agent auto-edit behavior. Runtime opens
+each path component without following reparse points and keeps directory/target
+handles open without delete sharing until its matching PostToolUse or proven
+process-tree termination. Existing hardlinked targets are denied. New targets are
+reserved atomically, and only that reservation receives native Overwrite=true.
+Outside-root and customization-control-path writes are denied. Recursive native
+listing/search is denied in this profile because a root handle cannot constrain
+uninspected descendants; an explicitly approved command remains available.
+Command execution requires an exact canonical once-only host permission and
+physical CWD validation. After approval the hook returns auto_approve for that
+call only. No confinement is promised for approved commands. Bypass, daemon,
+background/reused-terminal and unknown argument variants are rejected.
+The managed command policy accepts `WaitMsBeforeAsync` up to 30 seconds.
+Supported file-tool arguments have explicit type and range checks. Unverified
+artifact/lint metadata is rejected rather than passed through. Public command
+permissions contain the exact command, a workspace-relative CWD and canonical
+authority/once-only approval; native metadata remains private. A command may
+itself contain explicit paths that the user must see before approving it.
+
+Node path checks remain admission filters; retained Win32 handles prevent the
+admitted direct path from being renamed/replaced before native use. This is not
+protection against an arbitrary malicious process already running as the user.
+There are at most 32 outstanding file operations and 1024 admitted calls per Turn.
+Transport closure alone never releases file handles while process settlement is
+unknown. An interrupted new-file reservation can leave an empty file or parent
+directories inside the workspace; it is an admitted partial effect, not rolled
+back after an uncertain native write.
+File tools deny customization writes, but an approved native command can change
+repository configuration files. The current active private configuration and
+subsequent-invocation admission checks are separate from repository immutability;
+this adapter does not claim immutable repository configuration for a whole Turn.
+Job Objects provide process ownership, not a filesystem sandbox.
+
+The fixed Windows hook launcher encodes only trusted executable paths and hook
+role. Native tool input travels through bounded UTF-8 stdin, never shell-code
+interpolation. Its invocation credential stays in private configuration; command
+lines and public readiness contain no credential. Helper errors produce denial.
+
+## Lifetime and recovery
+
+Windows Job Objects retain ownership independently of root PID lifetime. A
+terminal protocol result alone is insufficient for settlement. Normal completion
+requires graceful stdin EOF, authenticated positive `Stop`/`fullyIdle` evidence,
+natural process exit and positive stopped-tree evidence. Missing idle, nonzero
+success exit, timeout, failed helper or forced descendant cleanup cannot fabricate
+success. Stop metadata is bound to the native conversation/workspace and cannot
+settle a newer tool generation or an unresolved interaction.
+
+EOF is graceful draining, not cancellation. Forced process termination after
+possible dispatch, without a correlated authoritative outcome, remains uncertain
+under existing recovery/Engine claim rules. No Claude control-frame emulation,
+force-success endpoint or automatic replay is introduced.
+
+## Evidence as of 2026-10-30
+
+Evidence types remain separate:
+
+- Automated tests use controlled process owners, synthetic credentials, native
+  protocol fixtures and authenticated loopback MCP/hooks only. No real CLI login,
+  paid endpoint, model or subscription is used by any test runner or CI.
+- Manual exact-source credential inspection succeeded without exporting tokens.
+- Manual production-driver no-input discovery succeeded with the existing native
+  keyring login: 13 models, native Agent/Plan and account affinity. No user frame
+  or inference prompt was sent. This does not prove semantic continuation.
+- Manual Runtime HTTP acceptance with the existing native consumer login passed:
+  a minimal explicit integration-test prompt produced the requested marker and
+  completed; after closing/reopening Runtime, a second minimal prompt recovered
+  that marker from native conversation context and completed. Earlier attempts
+  exposed the Windows HOME limit, inert default project metadata and a native
+  resume `system_message` step; each now has controlled regression coverage.
+  The earlier uncertain invocation was not automatically replayed or released.
+- Manual native CLI tests used a synthetic loopback model backend, synthetic key
+  and disposable private configuration, outside all test runners and CI. They
+  verified actual hook allow/deny, malformed/error/timeout denial, exact native MCP
+  question invocation, positive `fullyIdle` Stop before result, and retained Job
+  cleanup. These are native protocol/policy observations, not OAuth model success.
+- Native terminal positive control wrote inside the disposable workspace; the
+  same PowerShell command targeting an owned sibling was denied by Windows and
+  produced no file. A command may exit zero despite a nonterminating write error;
+  this is not proof that its requested effects succeeded.
+- A controlled native command created a workspace hook configuration, followed
+  by a native file write in the same Turn. The new workspace hook did not run;
+  the original private hook remained active. The next invocation rejects that
+  workspace configuration. This is observed behavior of the recorded build,
+  not a guarantee that arbitrary future native plugins cannot reload dynamically.
+
+Observed Windows x64 CLI SHA-256:
+`fbbfb3f15c7628252c5e12765683c688ba05ee122b853cadeb0bbfd4e13ca25b`.
+The PE has no file/product version. This is diagnostic evidence, not a version pin
+or permission for arbitrary future binaries. Compatibility classification remains
+provisional unless trusted tested-build evidence exists; actual policy and
+protocol checks are separate admission prerequisites.
+
+The CLI does not expose its internal `SandboxStatus` in stream initialization.
+Primary documentation says `--sandbox` can have no effect on an unsupported host.
+Flags and OS version alone therefore cannot establish command containment. After
+canonical human approval, the current contract explicitly delegates host execution
+and returns a one-call `auto_approve`. The UI displays the exact command, relative
+CWD and outside-workspace warning. Every command requires this decision; native
+auto-edit modes cannot suppress it. Runtime does not treat a configuration boolean
+or guessed version as proof of command containment.
+Some soft-denied executions emit a result without positive Stop/idle evidence;
+these remain uncertain rather than being promoted to success.
+
+Remaining acceptance is reported on the final implementation commit: full Runtime
+and process verification, installed helper packaging, independent review, and a
+separately recorded native evidence above. No automated paid acceptance or retry
+is permitted. No UI redesign,
+historical import or backward compatibility belongs to this feature.
+
+Primary sources: [headless protocol](https://antigravity.google/docs/cli/headless/),
+[hooks](https://antigravity.google/docs/hooks/),
+[MCP](https://antigravity.google/docs/mcp/),
+[authentication](https://antigravity.google/docs/install/),
+[sandbox](https://antigravity.google/docs/sandbox/), and
+[settings schema](https://antigravity.google/schemas/v1/settings.json).
+
+## Execution policy and routine CLI updates
+
+The owner reaffirmed optimistic compatibility after the 2026-10-31 deep review.
+Required native API inventory, permission mode, workspace and account binding
+are checked; hooks accept only declared tools with supported handlers/schemas.
+Additional tools in a compatible minor do not disable the installation. There
+is no per-hash security certification or mandatory negative-control run on every
+update. Unpaid initialization, configured hooks, actual native hook execution
+and OS containment remain distinct evidence; readiness is not a sandbox proof.
+An unlisted compatible build remains eligible for provisional discovery. Managed
+execution uses retained file identities for supported automatic file operations
+and explicit one-shot host delegation for commands. Engine admission is required
+for both managed modes. This restores Agent/Plan without a version/hash pin or
+a claim that Job Objects provide filesystem isolation.
+
+Manual no-input verification of the updated inventory checks succeeded on
+2026-10-31: the real local CLI reported the required native file/command/MCP APIs
+among its inventory, discovery returned 13 models and readiness `ready`. No user
+frame, inference prompt, native tool execution or model request was sent. This
+confirms detection/configuration compatibility, not OS sandbox enforcement.

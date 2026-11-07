@@ -12,7 +12,14 @@ export function sanitizeDiagnostic(text: string, secrets: readonly string[] = []
   text = plain(text);
   const variants = new Set<string>();
   for (const secret of secrets) {
-    for (const value of [secret, plain(secret), ...plain(secret).split(/\r?\n/)]) {
+    const normalized = plain(secret);
+    const bearer = /^Bearer\s+(\S+)$/i.exec(normalized)?.[1];
+    for (const value of [
+      secret,
+      normalized,
+      ...normalized.split(/\r?\n/),
+      ...(bearer ? [bearer] : []),
+    ]) {
       if (!value) {
         continue;
       }

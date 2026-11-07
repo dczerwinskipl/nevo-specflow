@@ -222,9 +222,15 @@ detail pane alike (a list instead fills the pane with bounded column tracks, as 
 the column a narrower box around the scroller: the scrollbar would sit in the middle of the pane and
 the band beside the column would not scroll. Every such column and list starts at the workspace's
 content inset, the 16 px of the header (`px-4`) and `AppWorkspaceBody` (`p-4`), so moving between
-screens never shifts the content edge. A detail pane may later fill that space with more columns;
-until then the space beside the column stays empty rather than stretching it. This does not apply
-to a conversation: a Session conversation column keeps its centred measure.
+screens never shifts the content edge. A detail pane may fill that space with more columns once the
+pane is wide enough; until then the space beside the column stays empty rather than stretching it.
+When it does, the reading column no longer applies: the columns fill the pane at the same 16 px
+inset, each column stacks on its own (a missing section leaves no gap), and a summary above them
+spans both (Specification Overview: two columns from 1408 px of content width). Decide such a
+switch on the pane's content width, never the viewport; when the DOM order has to change with it,
+see the width-dependent structure rule in
+[React component guidelines](../implementation/react/component-guidelines.md#accessibility--responsive).
+This does not apply to a conversation: a Session conversation column keeps its centred measure.
 
 ## Nested-containment rule
 

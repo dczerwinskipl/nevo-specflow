@@ -141,6 +141,108 @@ describe('F16 closing a tab restores focus to its opener only when nothing else 
   });
 });
 
+describe('restoring focus to an opener the product remounted', () => {
+  function Rows({ generation }: { generation: number }) {
+    const navigation = useSecondaryNavigation();
+
+    return (
+      <ul key={generation}>
+        {['a', 'b'].map((id) => (
+          <li key={id} data-focus-key={`row:${id}`}>
+            <button
+              type="button"
+              onClick={() => void navigation.open(objectStack, { objectId: id })}
+            >
+              Open
+            </button>
+          </li>
+        ))}
+        <li>
+          <button type="button" onClick={() => void navigation.close()}>
+            close
+          </button>
+        </li>
+      </ul>
+    );
+  }
+
+  it('finds the same row again by its focus key, not the first control with the same text', async () => {
+    const { rerender } = render(
+      <AppWorkspaceProvider>
+        <Rows generation={0} />
+      </AppWorkspaceProvider>,
+    );
+    const opener = screen.getAllByRole('button', { name: 'Open' })[1]!;
+    opener.focus();
+    fireEvent.click(opener);
+    await flush();
+
+    // The rows remount while the Secondary is open (for example a layout change).
+    rerender(
+      <AppWorkspaceProvider>
+        <Rows generation={1} />
+      </AppWorkspaceProvider>,
+    );
+    expect(opener.isConnected).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'close' }));
+    await flush();
+    await settleFrames();
+
+    const remounted = screen.getAllByRole('button', { name: 'Open' })[1]!;
+    expect(document.activeElement).toBe(remounted);
+  });
+});
+
+describe('restoring a keyed opener in its own layer', () => {
+  function Layers({ generation }: { generation: number }) {
+    const navigation = useSecondaryNavigation();
+
+    return (
+      <div key={generation}>
+        {['one', 'two'].map((layer) => (
+          <div key={layer} data-workspace-layer={layer}>
+            <div data-focus-key="row:a">
+              <button
+                type="button"
+                aria-label={`Open in ${layer}`}
+                onClick={() => void navigation.open(objectStack, { objectId: layer })}
+              >
+                Open
+              </button>
+            </div>
+          </div>
+        ))}
+        <button type="button" onClick={() => void navigation.close()}>
+          close
+        </button>
+      </div>
+    );
+  }
+
+  it('does not move focus to the same key in another layer', async () => {
+    const { rerender } = render(
+      <AppWorkspaceProvider>
+        <Layers generation={0} />
+      </AppWorkspaceProvider>,
+    );
+    const opener = screen.getByRole('button', { name: 'Open in two' });
+    opener.focus();
+    fireEvent.click(opener);
+    await flush();
+
+    rerender(
+      <AppWorkspaceProvider>
+        <Layers generation={1} />
+      </AppWorkspaceProvider>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'close' }));
+    await flush();
+    await settleFrames();
+
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Open in two' }));
+  });
+});
+
 describe('N2 hiding the region while the pinned tab is active', () => {
   function Host() {
     useRegisterPinnedSecondaryTab({ title: 'Context' });

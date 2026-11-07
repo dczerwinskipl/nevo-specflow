@@ -1,10 +1,13 @@
 // @vitest-environment jsdom
 import { readFile } from 'node:fs/promises';
+import { StrictMode, useState } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DesignMetadataProvider } from '@nevo/figma-capture/metadata';
-import { AppShell, resolveAppShellLayout } from './AppShell';
+import { AppShell, resolveAppShellLayout, useAppWorkspace } from './AppShell';
+import { AppWorkspace } from '../workspace/AppWorkspace';
+import type { AppWorkspaceFit } from '../workspace/workspaceSizing';
 import {
   APP_WORKSPACE_EDGE_BORDER,
   WIDE_SHELL_MIN_WIDTH,
@@ -247,5 +250,326 @@ describe('AppShell resize measurement coalescing', () => {
     }
 
     expect(screen.queryByRole('navigation')).toBeNull();
+  });
+});
+
+/**
+ * The Focused frame (`fit="bounded"`) is decided in CSS: the shell asks for the
+ * `workspace-focused` token and its maximum width clamps it to the available width. Only the inset
+ * edge is measured, and it must be right before paint when a route swaps a full-width workspace for
+ * a Focused one (and back), not one coalesced observer frame later.
+ */
+describe('AppShell Focused frame', () => {
+  const shellWidth = 1920;
+  const availableWidth = shellWidth - 268;
+  let workspaceWidth: number;
+
+  beforeEach(() => {
+    workspaceWidth = availableWidth;
+    // Frames and observers never run in these tests: whatever is rendered comes from layout effects.
+    vi.stubGlobal('requestAnimationFrame', () => 0);
+    vi.stubGlobal('cancelAnimationFrame', () => undefined);
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        observe() {}
+        disconnect() {}
+        unobserve() {}
+      },
+    );
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      const width = this.matches('[data-app-shell-region="workspace"]')
+        ? workspaceWidth
+        : shellWidth;
+
+      return {
+        width,
+        height: 900,
+        x: 0,
+        y: 0,
+        top: 0,
+        left: 0,
+        right: width,
+        bottom: 900,
+        toJSON: () => ({}),
+      };
+    });
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  function Shell({ fit }: { fit: AppWorkspaceFit }) {
+    return (
+      <AppShell navigation={<nav>Navigation</nav>}>
+        <AppWorkspace fit={fit}>
+          <AppWorkspace.Primary>
+            <div>Content</div>
+          </AppWorkspace.Primary>
+        </AppWorkspace>
+      </AppShell>
+    );
+  }
+
+  function workspace() {
+    return document.querySelector<HTMLElement>('main[data-app-shell-region="workspace"]')!;
+  }
+
+  it('sizes a bounded workspace with the focused token, clamped by the available width', () => {
+    render(<Shell fit="bounded" />);
+
+    expect(document.querySelector('[data-workspace-fit]')?.getAttribute('data-workspace-fit')).toBe(
+      'bounded',
+    );
+    // Only the outermost workspace marker sizes the frame, never a nested workspace.
+    expect(workspace().className).toContain(
+      'has-[[data-workspace-fit=bounded]:not([data-workspace-fit]_*)]:w-workspace-focused',
+    );
+    expect(workspace().className).toContain(
+      'max-w-[calc(100%-var(--app-navigation-width)-var(--app-shell-gap))]',
+    );
+  });
+
+  it('paints the inset edge of a Focused frame without waiting for an observer frame', () => {
+    const { rerender } = render(<Shell fit="available" />);
+    expect(workspace().dataset.appShellWorkspaceFit).toBe('edge');
+    expect(workspace().className).not.toContain('border-r');
+
+    // The route swaps in a Focused screen narrower than the available width (1440 of 1652 px).
+    workspaceWidth = 1440;
+    rerender(<Shell fit="bounded" />);
+    expect(workspace().dataset.appShellWorkspaceFit).toBe('inset');
+    expect(workspace().className).toContain('rounded-tr-surface border-r');
+
+    // And back to a full-width screen: the edge disappears in the same commit.
+    workspaceWidth = availableWidth;
+    rerender(<Shell fit="available" />);
+    expect(workspace().dataset.appShellWorkspaceFit).toBe('edge');
+    expect(workspace().className).not.toContain('border-r');
+  });
+
+  it('keeps a Focused frame that fills the available width on the edge', () => {
+    workspaceWidth = availableWidth;
+    render(<Shell fit="bounded" />);
+
+    expect(workspace().dataset.appShellWorkspaceFit).toBe('edge');
+  });
+});
+
+/**
+ * Resilience of the pre-paint edge sync. The surface width follows the rendered fit marker, as the
+ * CSS does: a bounded marker gives the 1440 px Focused frame, anything else the available width.
+ * Animation frames are queued (and really cancelled) so a pending observer measurement can be run
+ * after an unmount.
+ */
+describe('AppShell workspace width sync', () => {
+  const shellWidth = 1920;
+  const availableWidth = shellWidth - 268;
+  const focusedWidth = 1440;
+  let frames: Map<number, FrameRequestCallback>;
+  let nextFrame: number;
+  let observers: ResizeObserverCallback[];
+  let measuredDetached: number;
+  let errors: ReturnType<typeof vi.spyOn>;
+  let warnings: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    frames = new Map();
+    nextFrame = 0;
+    observers = [];
+    measuredDetached = 0;
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+      nextFrame += 1;
+      frames.set(nextFrame, callback);
+
+      return nextFrame;
+    });
+    vi.stubGlobal('cancelAnimationFrame', (id: number) => {
+      frames.delete(id);
+    });
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback: ResizeObserverCallback) {
+          observers.push(callback);
+        }
+        observe() {}
+        disconnect() {}
+        unobserve() {}
+      },
+    );
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      if (!this.isConnected) {
+        measuredDetached += 1;
+      }
+
+      const width = this.matches('[data-app-shell-region="workspace"]')
+        ? this.querySelector('[data-workspace-fit="bounded"]')
+          ? focusedWidth
+          : availableWidth
+        : shellWidth;
+
+      return {
+        width,
+        height: 900,
+        x: 0,
+        y: 0,
+        top: 0,
+        left: 0,
+        right: width,
+        bottom: 900,
+        toJSON: () => ({}),
+      };
+    });
+    errors = vi.spyOn(console, 'error');
+    warnings = vi.spyOn(console, 'warn');
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  function workspace() {
+    return document.querySelector<HTMLElement>('main[data-app-shell-region="workspace"]')!;
+  }
+
+  function expectEdgeFor(fit: AppWorkspaceFit) {
+    if (fit === 'bounded') {
+      expect(workspace().dataset.appShellWorkspaceFit).toBe('inset');
+      expect(workspace().className).toContain('rounded-tr-surface border-r');
+    } else {
+      expect(workspace().dataset.appShellWorkspaceFit).toBe('edge');
+      expect(workspace().className).not.toContain('border-r');
+    }
+  }
+
+  function flushFrames() {
+    const pending = [...frames.values()];
+    frames.clear();
+    pending.forEach((callback) => callback(0));
+  }
+
+  let setRouteFit: (fit: AppWorkspaceFit | 'none') => void = () => undefined;
+  let capturedSync: (() => void) | undefined;
+
+  function SyncProbe() {
+    capturedSync = useAppWorkspace().syncWorkspaceWidth;
+
+    return null;
+  }
+
+  /** A route outlet: each fit is a different screen, and `none` is a screen without a workspace. */
+  function RoutedShell({ initial }: { initial: AppWorkspaceFit | 'none' }) {
+    const [fit, setFit] = useState(initial);
+    setRouteFit = setFit;
+
+    return (
+      <AppShell navigation={<nav>Navigation</nav>}>
+        <SyncProbe />
+        {fit === 'none' ? (
+          <div>No workspace</div>
+        ) : (
+          <AppWorkspace fit={fit} key={fit}>
+            <AppWorkspace.Primary>
+              <div>{fit}</div>
+            </AppWorkspace.Primary>
+          </AppWorkspace>
+        )}
+      </AppShell>
+    );
+  }
+
+  function expectQuiet() {
+    expect(errors).not.toHaveBeenCalled();
+    expect(warnings).not.toHaveBeenCalled();
+  }
+
+  it('keeps the edge right on every switch under StrictMode', () => {
+    render(
+      <StrictMode>
+        <RoutedShell initial="available" />
+      </StrictMode>,
+    );
+    expectEdgeFor('available');
+
+    for (const fit of ['bounded', 'available', 'bounded', 'available'] as const) {
+      act(() => setRouteFit(fit));
+      expectEdgeFor(fit);
+    }
+
+    expectQuiet();
+  });
+
+  it('settles on the last fit after rapid switches, also within one batch', () => {
+    render(<RoutedShell initial="available" />);
+
+    // Several route changes in quick succession, each committed on its own.
+    for (const fit of [
+      'bounded',
+      'available',
+      'bounded',
+      'bounded',
+      'available',
+      'bounded',
+    ] as const) {
+      act(() => setRouteFit(fit));
+      expectEdgeFor(fit);
+    }
+
+    // Several route changes inside one batch: only the last one is committed, and is right.
+    act(() => {
+      setRouteFit('available');
+      setRouteFit('bounded');
+      setRouteFit('available');
+    });
+    expectEdgeFor('available');
+    act(() => {
+      setRouteFit('bounded');
+      setRouteFit('available');
+      setRouteFit('bounded');
+    });
+    expectEdgeFor('bounded');
+
+    // Any observer measurement still queued agrees with the synchronous one.
+    observers.forEach((callback) =>
+      callback([], { observe() {}, unobserve() {}, disconnect() {} }),
+    );
+    act(() => flushFrames());
+    expectEdgeFor('bounded');
+    expectQuiet();
+  });
+
+  it('leaves no stale measurement behind when the workspace or the shell unmounts', () => {
+    const { unmount } = render(<RoutedShell initial="bounded" />);
+    expectEdgeFor('bounded');
+
+    // An observer measurement is queued, then the workspace unmounts before it runs.
+    observers.forEach((callback) =>
+      callback([], { observe() {}, unobserve() {}, disconnect() {} }),
+    );
+    act(() => setRouteFit('none'));
+    act(() => flushFrames());
+    expect(workspace().dataset.appShellWorkspaceFit).toBe('edge');
+
+    // The shell unmounts with measurements queued: running whatever frames are left, and the sync
+    // captured from the old context, never reads the detached surface.
+    observers.forEach((callback) =>
+      callback([], { observe() {}, unobserve() {}, disconnect() {} }),
+    );
+    unmount();
+    act(() => flushFrames());
+    expect(capturedSync).toBeTypeOf('function');
+    expect(() => capturedSync?.()).not.toThrow();
+    expect(measuredDetached).toBe(0);
+    expectQuiet();
   });
 });

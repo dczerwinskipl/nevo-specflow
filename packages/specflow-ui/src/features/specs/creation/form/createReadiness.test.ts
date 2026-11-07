@@ -68,3 +68,44 @@ describe('createReadiness: the agent', () => {
     expect(readiness.prerequisite?.key).toBe('create.prerequisite.model');
   });
 });
+
+describe('createReadiness: the first problem follows the form order and names its field', () => {
+  const agent = { providerId: 'listed', modelId: '', effort: providerDefaultEffort, mode: 'build' };
+  const pendingBase = {
+    ...initialWorkspaceChoice,
+    tile: 'new' as const,
+    base: { on: true, ref: '' },
+  };
+
+  it('name, then archetype, then the agent, then the workspace', () => {
+    const all = {
+      ...base,
+      title: '',
+      archetype: undefined,
+      catalogue: { ...catalogue(listedProvider), archetypes: [{ id: 'feature' }] } as DemoCatalogue,
+      agent,
+      choice: pendingBase,
+    };
+    expect(createReadiness(all).problemField).toBe('name');
+    expect(createReadiness({ ...all, title: 'T' }).problemField).toBe('archetype');
+    const withArchetype = { ...all, title: 'T', archetype: { id: 'feature' } as ArchetypeInfo };
+    expect(createReadiness(withArchetype)).toMatchObject({
+      problemField: 'model',
+      prerequisite: { key: 'create.prerequisite.model' },
+    });
+    expect(createReadiness({ ...withArchetype, agent: { ...agent, modelId: 'm1' } })).toMatchObject(
+      { problemField: 'base', prerequisite: { key: 'create.workspace.errors.pickBase' } },
+    );
+  });
+
+  it('a reason no field can fix has no field', () => {
+    expect(
+      createReadiness({
+        ...base,
+        catalogue: catalogue(listedProvider),
+        agent,
+        configurationUnavailable: true,
+      }).problemField,
+    ).toBeUndefined();
+  });
+});

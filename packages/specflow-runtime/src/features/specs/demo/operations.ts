@@ -5,7 +5,7 @@ import type {
   DemoCreatedSpec,
   DemoLocation,
 } from '@nevo/specflow-contracts/demo';
-import { isValidSpecSlug } from '@nevo/specflow-contracts/specs';
+import { isValidSpecSlug, localBranchRef } from '@nevo/specflow-contracts/specs';
 import { DocumentError } from '@nevo/specflow-engine';
 import { fingerprintInput, type DemoState } from '../../../demo/state';
 import type { DemoDocuments } from '../../documents';
@@ -217,7 +217,10 @@ export function createDemoSpecs(state: DemoState, documents: Pick<DemoDocuments,
             : {}),
           branch,
         });
-        liveOptions.baseRefs.push({ ref: branch, checkedOutWorkspaceId: workspaceId });
+        liveOptions.baseRefs.push({
+          ref: localBranchRef(branch),
+          checkedOutWorkspaceId: workspaceId,
+        });
       } else {
         const workspace = liveOptions.workspaces.find((w) => w.workspaceId === workspaceId)!;
         workspace.specCount += 1;

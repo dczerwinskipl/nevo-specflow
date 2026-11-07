@@ -5602,7 +5602,7 @@
         "reviewing Specification creation and manual or AI preparation in the demo",
         "reviewing the Documents explorer and editor interactions"
       ],
-      "summary": "Owner-approved Create and Documents contract of the bounded demo: workflow-led single-column creation, first-session configuration, branch/worktree choice, preview-first documents in a larger Secondary, and folder-context inline file operations through bounded Runtime demo capabilities.",
+      "summary": "Owner-approved Create and Documents contract of the bounded demo: workflow-led creation in one column, or two from a 992 px form column, first-session configuration, branch/worktree choice, preview-first documents in a larger Secondary, and folder-context inline file operations through bounded Runtime demo capabilities.",
       "related": [
         "ideas.specflow-ui.screens.specs-overview",
         "ideas.specflow-ui.navigation-route-model",
@@ -6034,6 +6034,26 @@
       "related": [
         "product.specflow.ui.interaction-model",
         "product.specflow.cli.personas"
+      ]
+    },
+    {
+      "id": "product.specflow.ui.shell-geometry",
+      "type": "product",
+      "title": "App Shell geometry decisions",
+      "status": "current",
+      "file": "docs/product/specflow/ui/shell-geometry.md",
+      "read_when": [
+        "changing the width or position of the Specifications list, Create Specification or a Specification screen",
+        "changing AppWorkspace fit, the Focused frame or the Bounded workspace rule",
+        "adding a section to Specification Overview or changing its columns",
+        "picking up an open UX finding about the shell, the navigator or mobile"
+      ],
+      "summary": "Owner decisions of November 2026 on SpecFlow screen geometry: one Focused frame that grows to 1440 px for the Specifications list and Create, full width inside a Specification, a two-column Create and Specification Overview, the alternatives that were rejected and why, and the UX findings left open for later work.",
+      "related": [
+        "design-system.principles.layout-and-containment",
+        "design-system.implementation.react.secondary-navigation",
+        "product.specflow.specification-creation",
+        "product.specflow.ui.interaction-model"
       ]
     },
     {

@@ -55,7 +55,7 @@ export function mapWorkspaceResponse(
     id: session.id,
     title: session.title,
     navigationStatus: session.status,
-    taskCount: session.taskIds.length > 0 ? String(session.taskIds.length) : undefined,
+    taskCount: session.taskIds.length > 0 ? session.taskIds.length : undefined,
     activityCode:
       session.status === 'active' || session.status === 'attention' ? session.status : undefined,
     activity:

@@ -173,7 +173,7 @@ export const defaultSessions: readonly SessionSummary[] = [
   {
     id: 'recent',
     title: 'Implementacja odświeżania sesji',
-    taskCount: '3 taski',
+    taskCount: 3,
     age: '5 min temu',
     activity: {
       label: 'Agent pracuje',
@@ -186,7 +186,7 @@ export const defaultSessions: readonly SessionSummary[] = [
   {
     id: 'review',
     title: 'Przegląd scenariuszy bezpieczeństwa',
-    taskCount: 'review',
+    taskCount: 1,
     age: '10 min temu',
     activity: {
       label: 'Czeka na Twoją odpowiedź',
@@ -198,7 +198,6 @@ export const defaultSessions: readonly SessionSummary[] = [
   {
     id: 'scope',
     title: 'Dopracowanie zakresu i dokumentów',
-    taskCount: 'rozmowa o specyfikacji',
     age: '1 godz. temu',
     activity: {
       label: 'Zakończona',
@@ -210,7 +209,6 @@ export const defaultSessions: readonly SessionSummary[] = [
   {
     id: 'api-compat',
     title: 'Rozszerzenie scenariuszy API o zgodność ze starszym klientem',
-    taskCount: 'rozmowa o specyfikacji',
     age: '2 godz. temu',
     activity: {
       label: 'Zakończona',

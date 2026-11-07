@@ -142,7 +142,7 @@ describe('CreateSpecificationScreen on a project Runtime', () => {
       target: { value: 'Limit refunds' },
     });
     const submit = await screen.findByRole('button', { name: 'Create specification' });
-    await waitFor(() => expect((submit as HTMLButtonElement).disabled).toBe(false));
+    await waitFor(() => expect(submit.getAttribute('aria-disabled')).toBeNull());
     fireEvent.click(submit);
     await waitFor(() => expect(onProjectStarted).toHaveBeenCalledOnce());
     const [operationId] = onProjectStarted.mock.calls[0] as [string];
@@ -177,7 +177,7 @@ describe('CreateSpecificationScreen on a project Runtime', () => {
     });
     fireEvent.click(await screen.findByRole('radio', { name: /new workspace/i }));
     const submit = await screen.findByRole('button', { name: 'Create specification' });
-    await waitFor(() => expect((submit as HTMLButtonElement).disabled).toBe(false));
+    await waitFor(() => expect(submit.getAttribute('aria-disabled')).toBeNull());
     fireEvent.click(submit);
     await waitFor(() => expect(onProjectStarted).toHaveBeenCalled());
     const [operationId] = onProjectStarted.mock.calls[0] as [string];
@@ -226,7 +226,7 @@ describe('CreateSpecificationScreen on a project Runtime', () => {
       target: { value: 'Second' },
     });
     const submit = await screen.findByRole('button', { name: 'Create specification' });
-    await waitFor(() => expect((submit as HTMLButtonElement).disabled).toBe(false));
+    await waitFor(() => expect(submit.getAttribute('aria-disabled')).toBeNull());
     fireEvent.click(submit);
     await waitFor(() => expect(onProjectStarted).toHaveBeenCalledOnce());
     const [secondId] = onProjectStarted.mock.calls[0] as [string];
@@ -269,7 +269,6 @@ describe('CreateSpecificationScreen on a project Runtime', () => {
         choice: {
           ...initialWorkspaceChoice,
           tile: 'new',
-          settingsOpen: true,
           branch: { on: true, name: branch, edited: true },
         },
         failure,
@@ -336,7 +335,7 @@ describe('CreateSpecificationScreen on a project Runtime', () => {
     expect(document.querySelector('[aria-busy="true"]')).not.toBeNull();
     const submit = screen.getByRole('button', { name: 'Create specification' });
     fireEvent.change(screen.getByLabelText('Specification name'), { target: { value: 'Title' } });
-    expect((submit as HTMLButtonElement).disabled).toBe(true);
+    expect(submit.getAttribute('aria-disabled')).toBe('true');
 
     resolve(createOptionsFixture('default'));
     expect(await screen.findByRole('radio', { name: /new workspace/i })).toBeTruthy();

@@ -99,7 +99,7 @@ describe('target-aware demo create', () => {
       body(1, {
         target: {
           kind: 'new-worktree',
-          baseRef: 'feature/platform',
+          baseRef: 'refs/heads/feature/platform',
           branch: 'feature/payments-v2',
           integrationTargetWorkspaceId: ids.platform,
         },
@@ -115,7 +115,7 @@ describe('target-aware demo create', () => {
       selectable: true,
     });
     expect(after.baseRefs.at(-1)).toEqual({
-      ref: 'feature/payments-v2',
+      ref: 'refs/heads/feature/payments-v2',
       checkedOutWorkspaceId: result.workspaceId,
     });
     expect(env.state.specifications.get(result.specId)).toMatchObject({

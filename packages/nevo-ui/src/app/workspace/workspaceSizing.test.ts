@@ -129,8 +129,8 @@ describe('resolveWorkspaceFit', () => {
     ['content', 'stacked', true, 'available'],
     ['available', 'split', true, 'available'],
     ['available', 'split', false, 'available'],
-    ['bounded', 'split', false, 'content'],
-    ['bounded', 'split', true, 'content'],
+    ['bounded', 'split', false, 'bounded'],
+    ['bounded', 'split', true, 'available'],
     ['bounded', 'stacked', false, 'available'],
   ] as const)(
     'fit=%s in %s layout (secondary: %s) resolves to %s',
@@ -141,9 +141,9 @@ describe('resolveWorkspaceFit', () => {
 });
 
 describe('resolveWorkspaceFit with a drawer navigation', () => {
-  it('fills a bounded workspace (no bare strip beside it) and leaves the other fits alone', () => {
+  it('fills a bounded workspace (nothing to centre it with) and leaves the other fits alone', () => {
     expect(resolveWorkspaceFit('bounded', 'split', false, 'drawer')).toBe('available');
-    expect(resolveWorkspaceFit('bounded', 'split', false, 'persistent')).toBe('content');
+    expect(resolveWorkspaceFit('bounded', 'split', false, 'persistent')).toBe('bounded');
     expect(resolveWorkspaceFit('content', 'split', true, 'drawer')).toBe('content');
   });
 });

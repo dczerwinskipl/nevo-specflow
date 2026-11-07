@@ -126,6 +126,29 @@ and activating one must not also trigger the row's primary action. A non-interac
 with sibling navigation/control targets is the normal composition; an equivalent implementation is
 acceptable only when DOM semantics, focus behavior, and independent activation remain valid.
 
+**Width-dependent structure.** Restyle for the available space with a CSS container query. When the
+DOM structure or order itself has to change with the width (for example one reading column versus
+two independent columns, each read in its own order), CSS cannot express it: use
+`useContainerMinWidth(minWidth, { hysteresis })` from Nevo UI and render the arrangement from its
+`matches`. It reads the width before the first paint and commits a crossing before the browser
+paints it, so no frame shows the other arrangement, and it renders only on a crossing.
+
+- Observe a zero-height, full-width sentinel, not the content whose height the arrangement changes
+  (that raises "ResizeObserver loop completed with undelivered notifications").
+- Give it an exit `hysteresis` (16 px covers a classic scrollbar) when the change could move the
+  width back across the breakpoint.
+- Hold back the parts whose place depends on `matches` until `measured`, so a wide screen does
+  not mount them in the narrow arrangement first.
+- Parts that stay keyed children of the same parent in both arrangements are moved, not
+  remounted, and keep their state (a selection). Parts that change parent remount: their local
+  state resets, and focus inside them is lost unless the product restores it. Keep their view state
+  (an expanded list) outside them, give opener rows a stable `data-focus-key`, and restore focus to
+  the same control only when that change removed it, never after the user moved focus away. The
+  Secondary's own focus return uses the same key, within the opener's layer.
+
+Never use the viewport width for this, and never use CSS `order` to make the visual order differ
+from the reading order.
+
 ## Testing
 
 Follow the [shared testing guidance](../../../engineering/shared/testing.md): focused unit,

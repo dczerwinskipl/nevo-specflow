@@ -211,6 +211,11 @@
     "taskStatusBlocked": "Blocked",
     "sessionStatusActive": "Active",
     "sessionStatusAttention": "Requires attention",
+    "sessionStatusQuiet": "Idle",
+    "sessionTaskCount_one": "{{count}} task",
+    "sessionTaskCount_other": "{{count}} tasks",
+    "sessionTaskCount_few": "{{count}} tasks",
+    "sessionTaskCount_many": "{{count}} tasks",
     "attentionViewTask": "View task",
     "viewTasks": "Tasks"
   },
@@ -829,7 +834,6 @@
         "body": "We are showing the most recently loaded options. The form is kept."
       },
       "baseHead": "Current commit of the current folder",
-      "baseHeadOnBranch": "Default: the current branch, <branch/>",
       "fact": {
         "base": "Start from",
         "target": "Merge into",
@@ -858,16 +862,16 @@
         "unmanagedNote": "This workspace was added outside Nevo and is not managed by it."
       },
       "errors": {
-        "branchEmpty": "Enter a branch name or turn this option off.",
+        "branchEmpty": "Enter a branch name or use “Restore default”.",
         "branchTooLong": "The branch name is too long. Use at most 240 characters.",
         "branchCharacters": "The branch name contains characters that are not allowed. Start with a letter or digit and use only letters, digits, \".\", \"-\", \"_\" and \"/\".",
         "branchStructure": "The branch name has a layout that is not allowed: do not end with \"/\", \".\" or \".lock\", do not use \"..\" or \"//\", and do not start a segment with \".\".",
         "branchExists": "A branch with this name already exists. Enter a different name.",
         "noWorkspace": "No workspace is available.",
         "pickWorkspace": "Choose a workspace.",
-        "pickBase": "Choose a starting branch or turn this option off.",
-        "pickTarget": "Choose a merge target or turn this option off.",
-        "slugEmpty": "Enter a slug or turn this option off.",
+        "pickBase": "Choose a starting branch or use “Restore default”.",
+        "pickTarget": "Choose a merge target or use “Restore default”.",
+        "slugEmpty": "Enter a slug or use “Restore default”.",
         "slugTooLong": "The slug is too long. Use at most 80 characters.",
         "slugFormat": "Use lowercase letters, digits and single hyphens, for example payment-limits.",
         "slugReserved": "This name is reserved by the operating system. Choose another one.",
@@ -881,8 +885,8 @@
       "stale": {
         "tile": "This option is no longer available. Choose another one.",
         "existing": "This workspace is no longer available.",
-        "base": "This branch is no longer available. Choose another one or turn this option off.",
-        "target": "This workspace can no longer be a merge target. Choose another one or turn this option off."
+        "base": "This branch is no longer available. Choose another one or use “Restore default”.",
+        "target": "This workspace can no longer be a merge target. Choose another one or use “Restore default”."
       },
       "settings": {
         "default": "Default settings",
@@ -890,33 +894,40 @@
         "nameBase": "base",
         "nameTarget": "target",
         "nameBranch": "name",
-        "trigger": "Change settings",
-        "baseSwitch": "Start from a different branch",
         "baseNone": "There are no local branches to choose from.",
-        "baseDefault": "Default: <branch/>",
         "basePlaceholder": "Choose a branch",
         "refCurrent": "current folder",
         "refWorkspace": "has a workspace",
         "refDirty": "{{label}} · changes",
-        "targetSwitch": "Merge later into a different workspace",
-        "targetPick": "Choose which workspace the changes will return to.",
         "targetNone": "There are no workspaces to merge into.",
-        "targetFollows": "By default the changes return to the workspace on the project target <branch/>.",
-        "targetUnconfigured": "The integration target is not configured.",
         "targetLabel": "Merge into",
         "targetNote": "Nothing will be merged now. This only marks the place for later. The choice pins the target at creation and will not change, while the default target follows the project configuration.",
         "targetUnavailable": "Unavailable as a target: <targets/>.",
-        "branchSwitch": "Use your own branch name",
-        "branchSwitchDescription": "Nevo builds the name from the slug. Turn this on only if you need a specific branch name.",
         "branchLabel": "New branch name",
         "branchPlaceholder": "feature/new-api",
         "branchHelp": "Nevo prepares the worktree folder itself. If the name is taken, you will enter another one.",
         "nameSlug": "slug",
         "unavailableReason": "– {{reason}}",
-        "slugSwitch": "Edit the name (slug)",
-        "slugSwitchDescription": "The slug names the specification folder, the worktree folder and the new branch. It follows the specification name until you edit it.",
+        "slugDescription": "The slug names the specification folder, the worktree folder and the new branch. It follows the specification name until you edit it.",
         "slugLabel": "Slug",
         "slugPlaceholder": "payment-limits"
+      },
+      "rows": {
+        "change": "Change",
+        "useDefault": "Restore default",
+        "actionLabel": "{{action}}: {{row}}",
+        "commit": "The specification files will be committed to this branch.",
+        "folder": "Worktree folder:",
+        "pending": {
+          "key": "key",
+          "id": "id",
+          "slug": "slug"
+        },
+        "pendingNote": {
+          "key": "The specification key is assigned when it is created.",
+          "id": "The id is assigned when it is created.",
+          "slug": "The slug is made from the specification name."
+        }
       },
       "suggestion": {
         "title": "Do you want to merge the changes back into <branch/> later?",
@@ -930,7 +941,6 @@
         "dirty": "We will not suggest merging back into <branch/>: that workspace has uncommitted changes, so it cannot be a merge target until they are committed or stashed. The merge target stays unchanged."
       },
       "merge": {
-        "pickTarget": "Choose a workspace",
         "notAvailable": "Not available",
         "notConfigured": "Not set",
         "noteDirty": "This workspace has uncommitted changes. You can still create the specification; commit or stash them before merging into it.",
@@ -1055,6 +1065,9 @@
     },
     "operations": {
       "kind": "Creating a specification"
+    },
+    "guide": {
+      "goToField": "Go to the field"
     }
   },
   "documents": {

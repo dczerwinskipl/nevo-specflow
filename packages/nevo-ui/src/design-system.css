@@ -88,6 +88,12 @@
   --spacing-content-standard: 68.75rem;
   --spacing-content-wide: 80rem;
   --spacing-content-xwide: 90rem;
+  /*
+   * The Focused workspace frame (`AppWorkspace fit="bounded"`): the largest width of the
+   * workspace surface, border included. Below it the frame fills the available width; once it
+   * reaches it, the frame is centred with the navigation. One value for every Focused screen.
+   */
+  --spacing-workspace-focused: 90rem;
 
   --spacing-floating-window-collapsed: 11rem;
   --spacing-floating-window-expanded: 25rem;

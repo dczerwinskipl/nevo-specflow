@@ -247,7 +247,10 @@ export const BoundedFocusedFills1700Contract: Story = {
     await verifyFocusedFills(canvasElement, 1700);
     const { mainRect, navigation } = await measure(canvasElement, 1700);
     assert(navigation, 'Wide layouts keep persistent navigation.');
-    const available = window.innerWidth - navigation.getBoundingClientRect().right - 8;
+    // The shell's gap custom property, inherited by the navigation.
+    const gap = Number.parseFloat(getComputedStyle(navigation).getPropertyValue('--app-shell-gap'));
+    assert(Number.isFinite(gap), 'The shell publishes its --app-shell-gap.');
+    const available = window.innerWidth - navigation.getBoundingClientRect().right - gap;
     assert(
       Math.abs(mainRect.width - available) <= 0.5,
       `At 1700 the frame is the available width (${mainRect.width} vs ${available}).`,

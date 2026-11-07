@@ -216,14 +216,15 @@ Documents and Sessions, use `fit="available"` so the whole context keeps one geo
 them. Narrow and drawer layouts fill the workspace, and so does a Focused page while it shows a
 Secondary.
 
-**A reading column inside a wider pane.** A reading column, such as a form or a detail page's
-sections, sits left-aligned inside a scroller that fills the pane, in a Focused frame and in a
-full-width detail pane alike (a list instead fills the pane with bounded column tracks, as
-above). Do not make the column a narrower box around the scroller: the scrollbar would sit in the
-middle of the pane and the band beside the column would not scroll. Every column and list starts
-at the workspace's content inset, the 16 px of the header (`px-4`) and `AppWorkspaceBody` (`p-4`),
-so moving between screens never shifts the content edge. A detail pane may later fill that space with more columns; until then the
-space beside the column stays empty rather than stretching it.
+**A reading column inside a wider pane.** A form or a detail page's sections sit in a reading
+column, left-aligned inside a scroller that fills the pane, in a Focused frame and in a full-width
+detail pane alike (a list instead fills the pane with bounded column tracks, as above). Do not make
+the column a narrower box around the scroller: the scrollbar would sit in the middle of the pane and
+the band beside the column would not scroll. Every such column and list starts at the workspace's
+content inset, the 16 px of the header (`px-4`) and `AppWorkspaceBody` (`p-4`), so moving between
+screens never shifts the content edge. A detail pane may later fill that space with more columns;
+until then the space beside the column stays empty rather than stretching it. This does not apply
+to a conversation: a Session conversation column keeps its centred measure.
 
 ## Nested-containment rule
 

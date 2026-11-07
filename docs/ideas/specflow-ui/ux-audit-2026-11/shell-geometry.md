@@ -313,22 +313,24 @@ Full size: [A2 project Create, 1920](images/shell-geometry/A2-project-create-192
 
 ### Verification in this iteration
 
-| Check                | Result                                                                                                                                                                              |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Real project Runtime | `nevo-specflow start` on a scratch Git project with installed definitions; three Specifications created through the form, each with a new worktree                                  |
-| Viewports            | 1280, 1366, 1440, 1600, 1920, 2560, 390 and 200% zoom                                                                                                                               |
-| Create states        | Initial without archetype, filled, whole form, Git settings expanded, options loading, options failed; progress in progress, succeeded and refused (protected branch, invalid path) |
-| Frame continuity     | Specs Overview and Create share the same frame at every width; the navigation does not move between them                                                                            |
-| Mobile               | Every demo screen at 390 px is byte-identical to `main` except Specification Overview in A3h, which differs only in hash                                                            |
-| Interactions         | Task preview, closing it, Session splitter and mobile Back behave as in `main` in A3 and A3h                                                                                        |
-| Type check and lint  | Clean for the prototype                                                                                                                                                             |
+| Check                  | Result                                                                                                                                                                                                                                         |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Real project Runtime   | `nevo-specflow start` on a scratch Git project with installed definitions; three Specifications created through the form, each with a new worktree                                                                                             |
+| Viewports              | 1280, 1366, 1440, 1600, 1920, 2560, 390 and 200% zoom                                                                                                                                                                                          |
+| Create states          | Initial without archetype, filled, whole form, Git settings expanded, options loading, options failed; progress in progress, succeeded and refused (protected branch, invalid path)                                                            |
+| Git states in the form | With `main` protected, the current-folder tile is disabled and says why; a custom branch on a protected pattern is a field error, Create is disabled and the footer names the reason; the archetype guide expanded beside a long document list |
+| Field error and focus  | Enter in the name field does not submit and focus stays on the name, in `main` and A3 alike. In A3 the faulty branch is visible on the same screen in the right column; in `main` it is below the fold and only the footer explains it         |
+| Frame continuity       | Specs Overview and Create share the same frame at every width; the navigation does not move between them                                                                                                                                       |
+| Mobile                 | Every demo screen at 390 px is byte-identical to `main` except Specification Overview in A3h, which differs only in hash                                                                                                                       |
+| Interactions           | Task preview, closing it, Session splitter and mobile Back behave as in `main` in A3 and A3h                                                                                                                                                   |
+| Type check and lint    | Clean for the prototype                                                                                                                                                                                                                        |
 
 **Limits.**
 
 - The project Runtime does not serve the Specification Overview projection yet, so a newly created
   Specification shows "unavailable" after Create. Specification Overview was judged on demo data.
 - A server-side name error could not be produced: the server accepts any title and generates a
-  branch name, so the inline name error and its scroll and focus behaviour were not seen.
+  branch name. A client-side field error was checked instead, with a protected branch name.
 - Refused and succeeded progress states come from Storybook, which has no snap rule, so at 1600 px
   its navigation is centred while the app snaps it to the left edge.
 
@@ -337,6 +339,10 @@ Full size: [A2 project Create, 1920](images/shell-geometry/A2-project-create-192
 ![Create progress page at 1920 px: main above, A3 below](images/shell-geometry/compare-it3-progress-1920.png)
 
 ![Project Create, whole form at 1920 px: main and A3](images/shell-geometry/compare-it3-project-full-1920.png)
+
+![Protected main at 1920 px: branch error in main and A3, protected current folder and expanded archetype guide in A3](images/shell-geometry/compare-it3-gaps-1920.png)
+
+![A3 at 390 px with main protected: current folder, archetype guide and branch error](images/shell-geometry/compare-it3-gaps-390.png)
 
 ### Independent review of this iteration
 
@@ -364,6 +370,14 @@ and the layout rules. The reviewer's findings were fixed in A3 and re-rendered:
   The workspace spec warns against deriving hierarchy from unused space, so the owner decides
   whether that move is acceptable.
 - **The empty Activity history Secondary remains.** It is audit finding 1.2 and a separate decision.
+- **A blocked Create does not move focus to the faulty field.** The footer names the reason, but the
+  user has to find the field. This is existing behaviour in `main`; moving focus to the first
+  invalid field would help in every layout.
+- **The Git defaults block reads as chaotic.** It looks like an alert, has four left edges, mixes
+  four value styles, repeats the branch name and `main`, restates every default again under
+  **Change settings**, and the contract's three-row rule has grown to five rows. Directions: back to
+  the three decision rows, a plain list aligned with the section, editing per row instead of a
+  panel of switches, one disclosure style, and label above value on mobile.
 
 ### Contract changes A3 would require
 

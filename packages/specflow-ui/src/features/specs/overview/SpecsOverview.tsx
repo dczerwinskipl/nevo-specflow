@@ -1,4 +1,4 @@
-import { usePrototypeFillFocused } from '../../../app/usePrototypeViewport';
+import { usePrototypeFillFocused, usePrototypeGrowFrame } from '../../../app/usePrototypeViewport';
 import { layoutPrototype, overviewWidthClass } from '../../../app/layoutPrototype';
 import { cn as protoCn } from '@nevo/ui';
 import { type ReactNode } from 'react';
@@ -62,6 +62,7 @@ export function SpecsOverview({
   renderSpecificationLink,
 }: SpecsOverviewProps) {
   const fillFocused = usePrototypeFillFocused();
+  const growFrame = usePrototypeGrowFrame();
   const { t } = useTranslation();
   const search = useCollectionSearch(state.collection);
   const projection =
@@ -100,6 +101,7 @@ export function SpecsOverview({
         }
       >
         <AppContent
+          style={growFrame ? { width: growFrame - 1 } : undefined}
           className={protoCn(
             'mx-auto max-w-full',
             layoutPrototype === 'A' || layoutPrototype === 'C'

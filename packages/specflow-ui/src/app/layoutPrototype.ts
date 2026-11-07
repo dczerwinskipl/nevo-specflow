@@ -91,7 +91,13 @@ const flag = <T extends string>(key: string, values: readonly T[], fallback: T):
 };
 
 /** `snap240`: anchor left under 240 px leftover; `center`: always centre; `fill`: below that width the Focused frame fills the workspace while controls keep their limits. */
-export const protoSnap = flag('proto.snap', ['snap240', 'center', 'fill'] as const, 'snap240');
+export const protoSnap = flag(
+  'proto.snap',
+  ['snap240', 'center', 'fill', 'grow'] as const,
+  'snap240',
+);
+/** `grow`: the Focused frame follows the available width up to this maximum, then centres. */
+export const growMaxPx = Number(flag('proto.growMax', ['1280', '1440'] as const, '1440'));
 /** Where the recent Session sits in the two-column Specification Overview. */
 export const protoOverview = flag('proto.overview', ['side', 'left', 'row'] as const, 'side');
 /** `rows`: the Git defaults block as three decision rows. */

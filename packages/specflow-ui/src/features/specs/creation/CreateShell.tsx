@@ -1,4 +1,4 @@
-import { usePrototypeFillFocused } from '../../../app/usePrototypeViewport';
+import { usePrototypeFillFocused, usePrototypeGrowFrame } from '../../../app/usePrototypeViewport';
 import type { FormHTMLAttributes, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -58,6 +58,9 @@ export function CreateShell({
   const workspaceLabels = useWorkspaceLabels();
   const withPreview = layoutPrototype === 'E' && Boolean(preview);
   const fillFocused = usePrototypeFillFocused();
+  const growFrame = usePrototypeGrowFrame();
+  // Footer pages add a 10 px gutter to the intrinsic width; the column compensates.
+  const columnStyle = growFrame ? { width: growFrame - (footer ? 31 : 21) } : undefined;
   // The scroll area spans the whole pane and the form column is centred INSIDE it (the column must not wrap the
   // scroller, which would leave unscrollable side bands and put the scrollbar at the column's
   // edge instead of the pane's). The footer centres the same column, so
@@ -89,7 +92,7 @@ export function CreateShell({
         padding="none"
         className="[&>.scroll-area-viewport]:[scrollbar-gutter:stable_both-edges]"
       >
-        <div className={cn(column, 'py-4 sm:py-6')}>
+        <div className={cn(column, 'py-4 sm:py-6')} style={columnStyle}>
           <AppContentContainer
             className={containerClassName}
             size={layoutPrototype === 'base' || layoutPrototype === 'D' ? undefined : 'full'}
@@ -118,7 +121,7 @@ export function CreateShell({
               isA3Family && 'overflow-hidden [scrollbar-gutter:stable_both-edges]',
             )}
           >
-            <div className={column}>
+            <div className={column} style={columnStyle}>
               <AppContentContainer
                 size={layoutPrototype === 'base' || layoutPrototype === 'D' ? undefined : 'full'}
               >

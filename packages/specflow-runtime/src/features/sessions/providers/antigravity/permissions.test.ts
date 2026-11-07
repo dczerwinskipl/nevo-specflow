@@ -155,7 +155,7 @@ describe('native Antigravity hook policy', () => {
       operation: 'command',
       command: 'echo controlled',
       cwd: 'src/tools',
-      authority: 'workspace-write',
+      authority: 'host-execution',
       approval: 'once',
     });
     expect(result.interaction?.actionSummary).toBe(

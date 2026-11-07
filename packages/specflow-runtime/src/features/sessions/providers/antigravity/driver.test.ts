@@ -150,7 +150,7 @@ describe('Antigravity driver discovery and admission', () => {
     const test = await fixture(false);
     expect(await test.refresh()).toMatchObject({
       readiness: 'unavailable',
-      reason: 'Managed Antigravity requires verified workspace isolation.',
+      reason: 'Managed Antigravity requires Engine write admission.',
       compatibility: { classification: 'provisional' },
       providerModes: [
         { modeId: 'accept-edits', readiness: 'unavailable' },

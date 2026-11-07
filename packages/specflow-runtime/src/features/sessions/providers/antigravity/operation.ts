@@ -25,6 +25,7 @@ export interface AntigravityInteractions {
   awaitNativeIdle(signal: AbortSignal): Promise<void>;
   respond(key: string, response: RespondInteraction): Promise<{ deliveredKeys: readonly string[] }>;
   close(): Promise<void>;
+  releaseFileAccess?(): void;
   done: Promise<void>;
 }
 
@@ -226,6 +227,10 @@ export function createAntigravityOperation(
       signal.removeEventListener('abort', cancel);
       // Quiesce native execution before waiting on canonical interaction cleanup.
       const disposition = await owner?.dispose().catch(() => undefined);
+      if (disposition?.process.state === 'stopped') {
+        interactions?.releaseFileAccess?.();
+      }
+
       const bridgeClosed = await interactions?.close().then(
         () => true,
         () => false,

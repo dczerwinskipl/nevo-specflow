@@ -19,9 +19,9 @@ function invokedAsMain() {
 // Import-safe package entry: build surface validation imports every export.
 if (invokedAsMain()) {
   const hook = process.argv[2];
-  let decision: 'allow' | 'auto_approve' | 'deny' | 'stop';
+  let result: Awaited<ReturnType<typeof runAntigravityHook>>;
   try {
-    if (hook !== 'pre-tool-use' && hook !== 'stop') {
+    if (hook !== 'pre-tool-use' && hook !== 'post-tool-use' && hook !== 'stop') {
       throw new Error('Invalid hook role.');
     }
 
@@ -43,19 +43,17 @@ if (invokedAsMain()) {
       clearTimeout(inputDeadline);
     }
 
-    decision = (
-      await runAntigravityHook({
-        hook,
-        configurationPath: process.env.NEVO_ANTIGRAVITY_HOOK_CONFIG ?? '',
-        input: Buffer.concat(chunks),
-        signal,
-      })
-    ).decision;
+    result = await runAntigravityHook({
+      hook,
+      configurationPath: process.env.NEVO_ANTIGRAVITY_HOOK_CONFIG ?? '',
+      input: Buffer.concat(chunks),
+      signal,
+    });
   } catch {
-    decision = 'deny';
+    result = { decision: 'deny' };
   }
 
-  process.stdout.write(JSON.stringify({ decision }) + '\n');
+  process.stdout.write(JSON.stringify(result) + '\n');
 }
 
 export {};

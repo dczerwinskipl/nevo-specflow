@@ -110,6 +110,7 @@ function fixture(
     activate: vi.fn(),
     awaitNativeIdle: vi.fn(options.nativeIdle ?? (() => Promise.resolve())),
     respond: vi.fn((key: string) => Promise.resolve({ deliveredKeys: [key] })),
+    releaseFileAccess: vi.fn(),
     close: vi.fn(() => {
       bridgeDone.resolve();
 
@@ -260,6 +261,7 @@ describe('Antigravity operation lifecycle', () => {
     expect(f.facts.some((fact) => fact.kind === 'outcome')).toBe(false);
     idle.resolve();
     await f.operation.done;
+    expect(f.bridge.releaseFileAccess).toHaveBeenCalledOnce();
     expect(await f.operation.settlement).toMatchObject({
       process: 'stopped',
       source: 'native-result',
@@ -440,6 +442,7 @@ describe('Antigravity operation lifecycle', () => {
     f.result();
     await f.operation.done;
     expect(await f.operation.settlement).toEqual({ process: 'unknown', source: 'unverified' });
+    expect(f.bridge.releaseFileAccess).not.toHaveBeenCalled();
     expect(f.facts.at(-1)).toMatchObject({ kind: 'lost' });
     expect(f.facts.some((fact) => fact.kind === 'outcome')).toBe(false);
   });

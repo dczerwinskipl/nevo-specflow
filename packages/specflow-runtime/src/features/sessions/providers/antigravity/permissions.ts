@@ -15,7 +15,8 @@ export interface AntigravityPermissionContext {
   commandsAllowed?: boolean;
 }
 export interface NativeHookDecision {
-  decision: 'allow' | 'deny';
+  decision: 'allow' | 'deny' | 'auto_approve';
+  overwrite?: { Overwrite: true };
 }
 type Permission = Extract<DriverFact, { kind: 'interaction' }>['interaction'] & {
   kind: 'permission';
@@ -150,6 +151,7 @@ export async function prepareAntigravityPermission(
   step: number;
   decision: NativeHookDecision;
   interaction?: Permission;
+  fileAccess?: { path: string; create: boolean };
   revalidate(): Promise<void>;
 }> {
   const body = validateAntigravityHookBinding(input, context);
@@ -202,6 +204,10 @@ export async function prepareAntigravityPermission(
   if (file && (!file.writable || context.writable)) {
     validateAntigravityFileArguments(name, args);
     target = args[file.path];
+    if (['list_dir', 'find_by_name', 'grep_search'].includes(name)) {
+      throw new Error('Recursive native inspection requires an approved command.');
+    }
+
     writable = file.writable;
     if (file.writable && typeof target === 'string') {
       if (executionConfiguration(context.workspace, resolve(target))) {
@@ -246,13 +252,14 @@ export async function prepareAntigravityPermission(
     const cwd = relative(context.workspace, args.Cwd).split(sep).join('/') || '.';
     interaction = {
       kind: 'permission',
-      prompt: 'Allow this native command once?',
+      prompt:
+        'Allow this command once with your account permissions? It may modify files outside the workspace.',
       actionSummary: `Directory: ${cwd}\nCommand:\n${args.CommandLine}`,
       action: {
         operation: 'command',
         command: args.CommandLine,
         cwd,
-        authority: 'workspace-write',
+        authority: 'host-execution',
         approval: 'once',
       },
     };
@@ -268,6 +275,9 @@ export async function prepareAntigravityPermission(
     step,
     decision: { decision: 'allow' },
     ...(interaction ? { interaction } : {}),
+    ...(file && typeof target === 'string'
+      ? { fileAccess: { path: target, create: name === 'write_to_file' } }
+      : {}),
     revalidate,
   };
 }

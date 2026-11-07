@@ -53,7 +53,11 @@ describe('Claude native launch contract', () => {
     expect(resume).not.toContain('--continue');
     expect(resume).not.toContain('--bare');
     expect(resume).toContain('stdio');
-    expect(resume).toContain('{"disableAllHooks":true}');
+    expect(JSON.parse(resume[resume.indexOf('--settings') + 1]!)).toEqual({
+      disableAllHooks: true,
+      permissions: { ask: ['Bash'] },
+      env: { CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR: '1' },
+    });
   });
   it('uses native model/effort metadata and refuses changed version or ambiguous models', () => {
     const payload = {

@@ -3,15 +3,18 @@ import { McpQuestionTransportLimits } from '../../interactions/mcp/limits';
 
 /** Fixed helper transport only. No arguments from tool input enter a shell command. */
 export async function runAntigravityHook(options: {
-  hook: 'pre-tool-use' | 'stop';
+  hook: 'pre-tool-use' | 'post-tool-use' | 'stop';
   configurationPath: string;
   input: Uint8Array;
   signal: AbortSignal;
-}): Promise<{ decision: 'allow' | 'deny' | 'stop' }> {
+}): Promise<{
+  decision?: 'allow' | 'deny' | 'auto_approve' | 'stop';
+  overwrite?: { Overwrite: true };
+}> {
   try {
     options.signal.throwIfAborted();
     if (
-      !['pre-tool-use', 'stop'].includes(options.hook) ||
+      !['pre-tool-use', 'post-tool-use', 'stop'].includes(options.hook) ||
       options.input.byteLength > McpQuestionTransportLimits.requestBytes
     ) {
       throw new Error('Invalid hook request.');
@@ -104,16 +107,28 @@ export async function runAntigravityHook(options: {
     }
 
     const output = value as Record<string, unknown>;
+    if (options.hook === 'post-tool-use') {
+      if (Object.keys(output).length) {
+        throw new Error('Invalid native completion receipt.');
+      }
+
+      return {};
+    }
+
     if (
-      Object.keys(output).join(',') !== 'decision' ||
-      !(options.hook === 'stop' ? ['stop', 'deny'] : ['allow', 'deny']).includes(
+      Object.keys(output).some((key) => key !== 'decision' && key !== 'overwrite') ||
+      !(options.hook === 'stop' ? ['stop', 'deny'] : ['allow', 'deny', 'auto_approve']).includes(
         String(output.decision),
-      )
+      ) ||
+      (output.overwrite !== undefined &&
+        (options.hook !== 'pre-tool-use' ||
+          output.decision !== 'allow' ||
+          JSON.stringify(output.overwrite) !== '{"Overwrite":true}'))
     ) {
       throw new Error('Invalid hook decision.');
     }
 
-    return { decision: output.decision as 'allow' | 'deny' | 'stop' };
+    return output;
   } catch {
     return { decision: 'deny' };
   }

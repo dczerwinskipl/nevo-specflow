@@ -75,7 +75,7 @@ export const CommandPermissionActionSchema = Type.Object(
     operation: Type.Literal('command'),
     command: Type.String({ minLength: 1, maxLength: 7000 }),
     cwd: Type.String({ minLength: 1, maxLength: 1024 }),
-    authority: Type.Literal('workspace-write'),
+    authority: Type.Union([Type.Literal('workspace-write'), Type.Literal('host-execution')]),
     approval: Type.Literal('once'),
   },
   closed,

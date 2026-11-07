@@ -26,9 +26,9 @@ The adapter uses the existing Session driver, Engine execution admission and
 settlement, SQLite lifecycle and HTTP/SSE/history contracts. It introduces no
 second lifecycle authority, credential broker or global MCP installation.
 
-Production Runtime currently enables discovery only. Managed Agent and Plan
-remain unavailable until filesystem isolation is verified at native access time
-for both command execution and native file tools.
+Production Runtime enables managed Agent and Plan with Engine write admission.
+Supported automatic file tools retain native file identities through completion;
+each command requires explicit one-shot delegation to the user's host permissions.
 
 ## Native context and transcript
 
@@ -127,20 +127,27 @@ allow arbitrary MCP, resource, browser, scheduling, messaging or other unknown
 native tools. Hook metadata must identify the admitted native conversation and
 exactly one normalized workspace. Immutable native step and argument identity
 prevent replay or changed-operation grants.
-The current native hook contract exposes a trajectory `stepIdx`, not a verified
-tool-call identifier. Reuse is conservatively denied, including a changed call
-or retry at the same index; no previous approval is replayed. Native acceptance
-must still establish whether multi-tool steps require a richer correlation.
+The native call ledger binds `stepIdx` and a canonical digest of tool name and
+arguments. Distinct calls at the same trajectory step receive separate admission;
+an exact retry is denied, never granted from a previous answer. Matching
+PostToolUse receipts release that call's file ownership. The reserved-file
+Overwrite variant is correlated privately to the same owned operation.
 The native-hook ledger has its own 1024-call budget, independent of JSON-RPC
 request IDs and HTTP admission. One invocation accepts one initialized MCP
 session; attempted reinitialization closes it rather than replaying client IDs.
 
 The native permission profile is `proceed-in-sandbox`, including for Agent and
-Plan. In-workspace native file operations retain Agent auto-edit behavior. Physical
-paths are checked before admission and immediately before grant; outside-root
-and customization-control-path writes are denied. Command execution requires
-an exact canonical once-only permission, physical CWD validation and the selected
-native `proceed-in-sandbox` policy. Runtime never requests an explicit sandbox bypass. Bypass, daemon,
+Plan. Direct native file operations retain Agent auto-edit behavior. Runtime opens
+each path component without following reparse points and keeps directory/target
+handles open without delete sharing until its matching PostToolUse or proven
+process-tree termination. Existing hardlinked targets are denied. New targets are
+reserved atomically, and only that reservation receives native Overwrite=true.
+Outside-root and customization-control-path writes are denied. Recursive native
+listing/search is denied in this profile because a root handle cannot constrain
+uninspected descendants; an explicitly approved command remains available.
+Command execution requires an exact canonical once-only host permission and
+physical CWD validation. After approval the hook returns auto_approve for that
+call only. No confinement is promised for approved commands. Bypass, daemon,
 background/reused-terminal and unknown argument variants are rejected.
 The managed command policy accepts `WaitMsBeforeAsync` up to 30 seconds.
 Supported file-tool arguments have explicit type and range checks. Unverified
@@ -149,8 +156,14 @@ permissions contain the exact command, a workspace-relative CWD and canonical
 authority/once-only approval; native metadata remains private. A command may
 itself contain explicit paths that the user must see before approving it.
 
-These Node path checks are additional admission filters, not atomic filesystem
-containment. They cannot close a junction/symlink race after the final grant.
+Node path checks remain admission filters; retained Win32 handles prevent the
+admitted direct path from being renamed/replaced before native use. This is not
+protection against an arbitrary malicious process already running as the user.
+There are at most 32 outstanding file operations and 1024 admitted calls per Turn.
+Transport closure alone never releases file handles while process settlement is
+unknown. An interrupted new-file reservation can leave an empty file or parent
+directories inside the workspace; it is an admitted partial effect, not rolled
+back after an uncertain native write.
 File tools deny customization writes, but an approved native command can change
 repository configuration files. The current active private configuration and
 subsequent-invocation admission checks are separate from repository immutability;
@@ -220,12 +233,11 @@ protocol checks are separate admission prerequisites.
 The CLI does not expose its internal `SandboxStatus` in stream initialization.
 Primary documentation says `--sandbox` can have no effect on an unsupported host.
 Flags and OS version alone therefore cannot establish command containment. After
-canonical human approval, the hook returns `allow`, delegating to native
-`proceed-in-sandbox`, never `auto_approve`. Manual controls confirmed the same
-approved command executes with the sandbox enabled and is soft-denied with it
-disabled, both inside and outside the workspace. Native file auto-edits still
-work under this profile. Thus the native policy retains its fail-closed fallback;
-Runtime does not replace it with a configuration boolean or guessed version.
+canonical human approval, the current contract explicitly delegates host execution
+and returns a one-call `auto_approve`. The UI displays the exact command, relative
+CWD and outside-workspace warning. Every command requires this decision; native
+auto-edit modes cannot suppress it. Runtime does not treat a configuration boolean
+or guessed version as proof of command containment.
 Some soft-denied executions emit a result without positive Stop/idle evidence;
 these remain uncertain rather than being promoted to success.
 
@@ -252,10 +264,10 @@ is no per-hash security certification or mandatory negative-control run on every
 update. Unpaid initialization, configured hooks, actual native hook execution
 and OS containment remain distinct evidence; readiness is not a sandbox proof.
 An unlisted compatible build remains eligible for provisional discovery. Managed
-execution requires verified filesystem isolation in addition to protocol
-compatibility. The native acceptance check did not establish this isolation for
-either command execution or native file writes, so production admission is
-disabled for both managed modes.
+execution uses retained file identities for supported automatic file operations
+and explicit one-shot host delegation for commands. Engine admission is required
+for both managed modes. This restores Agent/Plan without a version/hash pin or
+a claim that Job Objects provide filesystem isolation.
 
 Manual no-input verification of the updated inventory checks succeeded on
 2026-10-31: the real local CLI reported the required native file/command/MCP APIs

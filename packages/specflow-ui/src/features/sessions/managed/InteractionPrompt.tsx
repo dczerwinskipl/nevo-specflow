@@ -31,9 +31,27 @@ export function InteractionPrompt({
         <Alert tone="attention" title={t('managedSession.unsupportedQuestion')} />
       ) : interaction.kind === 'permission' ? (
         <>
-          <p className="whitespace-pre-wrap break-words text-body-sm">
-            {interaction.actionSummary}
-          </p>
+          {interaction.action ? (
+            <>
+              <p className="whitespace-pre-wrap break-words text-body-sm">
+                {t('managedSession.commandDirectory', { cwd: interaction.action.cwd })}
+              </p>
+              <pre className="whitespace-pre-wrap break-words text-body-sm">
+                {interaction.action.command}
+              </pre>
+              <p className="text-body-sm">
+                {t(
+                  interaction.action.authority === 'host-execution'
+                    ? 'managedSession.hostExecutionScope'
+                    : 'managedSession.workspaceExecutionScope',
+                )}
+              </p>
+            </>
+          ) : (
+            <p className="whitespace-pre-wrap break-words text-body-sm">
+              {interaction.actionSummary}
+            </p>
+          )}
           <div className="flex gap-2">
             <Button disabled={busy} onClick={() => onRespond('', undefined, true)}>
               {t('managedSession.allow')}

@@ -189,7 +189,7 @@ export function createAntigravityDriver(
             protocolProfile: 'antigravity-stream-json-v1',
           },
           ...(!admission.allowed
-            ? { reason: 'Managed Antigravity requires verified workspace isolation.' }
+            ? { reason: 'Managed Antigravity requires Engine write admission.' }
             : {}),
         };
         if (admission.allowed) {
@@ -375,8 +375,8 @@ export function createAntigravityDriver(
                         nativeTools,
                         workspace: options.workspace,
                         writable: true,
-                        // A canonical approval delegates to native proceed-in-sandbox.
-                        // Runtime does not request sandbox bypass; enforcement is native.
+                        // Every command requires an explicit, one-shot host grant.
+                        // File tools use Runtime-held path identities instead.
                         commandsAllowed: true,
                       }
                     : undefined,

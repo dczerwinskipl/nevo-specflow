@@ -1,8 +1,11 @@
 import type { ServerResponse } from 'node:http';
+import { createHash } from 'node:crypto';
 import type { EmitFact, Invocation } from '../driver';
 import { SessionError } from '../../errors';
 import { createMcpQuestionTransport } from '../../interactions/mcp/question-transport';
 import { McpQuestionEndpoint } from '../../interactions/mcp/questions';
+import { stable } from '../../persistence/encoding';
+import { acquireWindowsFileAccess, type NativeFileAccess } from '../process/windows-file-access';
 import {
   prepareAntigravityPermission,
   validateAntigravityHookBinding,
@@ -11,7 +14,7 @@ import {
 
 // Native tool steps and JSON-RPC requests have independent capacity budgets.
 // Bound the per-invocation replay ledger consistently with the native parser.
-export const AntigravityHookLimits = { nativeHookCalls: 1024 } as const;
+export const AntigravityHookLimits = { nativeHookCalls: 1024, activeFileAccess: 32 } as const;
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -28,13 +31,22 @@ function deferred<T>() {
 }
 
 /** Native CLI registration and hook policy over the shared invocation transport. */
-export async function createAntigravityQuestionBridge(options: {
-  invocation: Pick<Invocation, 'sessionId' | 'turnId' | 'invocationId'>;
-  emit: EmitFact;
-  signal: AbortSignal;
-  permissionContext?: () => AntigravityPermissionContext | undefined;
-}) {
-  const nativeSteps = new Set<number>();
+export async function createAntigravityQuestionBridge(
+  options: {
+    invocation: Pick<Invocation, 'sessionId' | 'turnId' | 'invocationId'>;
+    emit: EmitFact;
+    signal: AbortSignal;
+    permissionContext?: () => AntigravityPermissionContext | undefined;
+  },
+  dependencies: { acquireFileAccess?: typeof acquireWindowsFileAccess } = {},
+) {
+  const nativeCalls = new Set<string>();
+  const fileAccess = new Map<string, NativeFileAccess>();
+  const acquireFileAccess = dependencies.acquireFileAccess ?? acquireWindowsFileAccess;
+  const callKey = (body: Record<string, unknown>) =>
+    createHash('sha256')
+      .update(stable({ step: body.stepIdx, call: body.toolCall }))
+      .digest('hex');
   let idle = deferred<void>();
   let nativeIdle = false;
   let hookGeneration = 0;
@@ -58,7 +70,7 @@ export async function createAntigravityQuestionBridge(options: {
     onQuestion: nativeBusy,
     onClose: () => idle.reject(expired()),
     extension: {
-      paths: ['/hooks/pre-tool-use', '/hooks/stop'],
+      paths: ['/hooks/pre-tool-use', '/hooks/post-tool-use', '/hooks/stop'],
       handle: handleHook,
     },
   });
@@ -99,6 +111,25 @@ export async function createAntigravityQuestionBridge(options: {
 
     try {
       const bound = validateAntigravityHookBinding(envelope, context);
+      if (route === '/hooks/post-tool-use') {
+        const key = callKey(bound);
+        const access = fileAccess.get(key);
+        if (access) {
+          access.close();
+          for (const [alias, value] of fileAccess) {
+            if (value === access) {
+              fileAccess.delete(alias);
+            }
+          }
+        } else if (!nativeCalls.has(key)) {
+          throw expired();
+        }
+
+        hookJson(response, {});
+
+        return;
+      }
+
       if (route === '/hooks/stop') {
         if (
           typeof bound.fullyIdle !== 'boolean' ||
@@ -120,7 +151,7 @@ export async function createAntigravityQuestionBridge(options: {
           throw new Error('Stale native stop evidence.');
         }
 
-        if (transport.hasPendingInteractions()) {
+        if (transport.hasPendingInteractions() || fileAccess.size) {
           throw new Error('Native stop conflicts with unresolved interactions.');
         }
 
@@ -140,19 +171,38 @@ export async function createAntigravityQuestionBridge(options: {
 
       const permission = await prepareAntigravityPermission(envelope, context);
       assertCurrent();
-      if (
-        nativeSteps.has(permission.step) ||
-        nativeSteps.size >= AntigravityHookLimits.nativeHookCalls
-      ) {
+      const key = callKey(bound);
+      if (nativeCalls.has(key) || nativeCalls.size >= AntigravityHookLimits.nativeHookCalls) {
         throw new Error('Duplicate or excessive native hook.');
       }
 
-      nativeSteps.add(permission.step);
+      nativeCalls.add(key);
       nativeBusy();
 
       if (!permission.interaction) {
         await permission.revalidate();
         assertCurrent();
+        if (permission.fileAccess) {
+          if (new Set(fileAccess.values()).size >= AntigravityHookLimits.activeFileAccess) {
+            throw new Error('Too many native files are still in use.');
+          }
+
+          const access = acquireFileAccess(context.workspace, permission.fileAccess.path, {
+            directory: false,
+            create: permission.fileAccess.create,
+          });
+          fileAccess.set(key, access);
+          if (access.created) {
+            permission.decision.overwrite = { Overwrite: true };
+            const call = bound.toolCall as { name: string; args: Record<string, unknown> };
+            const updated = callKey({
+              ...bound,
+              toolCall: { ...call, args: { ...call.args, Overwrite: true } },
+            });
+            fileAccess.set(updated, access);
+          }
+        }
+
         hookJson(response, permission.decision);
 
         return;
@@ -178,8 +228,9 @@ export async function createAntigravityQuestionBridge(options: {
               );
             }
 
-            // Delegate only to the selected native policy, without a bypass override.
-            return JSON.stringify({ decision: answer.decision === 'allow' ? 'allow' : 'deny' });
+            return JSON.stringify({
+              decision: answer.decision === 'allow' ? 'auto_approve' : 'deny',
+            });
           },
         });
         response.writeHead(200, { 'content-type': 'application/json' });
@@ -235,6 +286,13 @@ export async function createAntigravityQuestionBridge(options: {
 
     activate: () => transport.activate(),
     respond: transport.respond,
+    releaseFileAccess() {
+      for (const access of new Set(fileAccess.values())) {
+        access.close();
+      }
+
+      fileAccess.clear();
+    },
     close: transport.close,
     done: transport.done,
   };

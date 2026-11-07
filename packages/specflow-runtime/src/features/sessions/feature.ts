@@ -107,9 +107,8 @@ export function createSessionsFeature(
               createHash('sha256').update(options.storage!.projectId).digest('base64url'),
             ),
             executable: antigravity.executable,
-            // Engine admission records authority. Antigravity also needs a
-            // verified filesystem boundary at the point of native access.
-            managedWrites: false,
+            // File hooks hold native path identities; commands need one-shot host approval.
+            managedWrites: effects !== undefined,
           }),
         );
       }

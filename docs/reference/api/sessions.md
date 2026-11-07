@@ -50,8 +50,9 @@ The explicitly labelled mock performs no external effects. The optional Claude a
 same API; see [Claude enablement and supported installations](../../ideas/specflow-runtime/claude-provider.md).
 On Windows x64, `sessions.providers.antigravity.enabled: true` enables no-input
 discovery of the consumer CLI, with an optional absolute `executable` path.
-Runtime reports managed Agent and Plan as unavailable pending a verified
-filesystem isolation boundary. See
+Managed Agent and Plan require Engine write admission. Automatic file access is
+bound to Runtime-held Windows file identities; every shell command requires a
+one-time host-execution approval. See
 [Antigravity implementation and acceptance limits](../../ideas/specflow-runtime/antigravity-provider.md).
 Imported Nevo history and writable Engine execution remain outside this foundation. Disabling only the provider
 keeps stored reads available. Disabling the feature acquires no database owner.
@@ -165,9 +166,14 @@ Interaction is a discriminated union:
 
 Command approvals may include an `action` with `operation: 'command'`, the exact
 `command`, workspace-relative `cwd` using slash separators (`.` for the root),
-`authority: 'workspace-write'`, and `approval: 'once'`. Clients can display the
-human-readable `actionSummary` directly. The command text can itself contain paths
-as part of what the user is asked to approve.
+`authority: 'workspace-write' | 'host-execution'`, and `approval: 'once'`.
+`workspace-write` represents execution confined to the workspace. `host-execution`
+delegates the exact command to the user's account permissions and can affect
+files outside the workspace. Clients must show this distinction together with
+the exact command and directory before approval. It never authorizes a subsequent
+command, a native persistent permission or automatic replay. `actionSummary`
+remains a human-readable fallback. The command text can itself contain paths as
+part of what the user is asked to approve.
 
 At most one answerable interaction per Turn. prompt/actionSummary <=8 KiB each, <=20 options,
 each ID <=128 characters and label <=512 bytes; entire Interaction <=24 KiB. The driver must

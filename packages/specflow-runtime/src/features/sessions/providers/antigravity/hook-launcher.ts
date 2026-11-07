@@ -27,7 +27,7 @@ export function antigravityHooks(options: { systemRoot: string; node: string; he
   const literal = (value: string) => "'" + value.replaceAll("'", "''") + "'";
   const argument = (value: string) =>
     '"' + value.replace(/(\\*)"/g, '$1$1\\"').replace(/(\\+)$/g, '$1$1') + '"';
-  function command(hook: 'pre-tool-use' | 'stop') {
+  function command(hook: 'pre-tool-use' | 'post-tool-use' | 'stop') {
     const script = `
 $ErrorActionPreference = 'Stop'
 $OutputEncoding = [Text.UTF8Encoding]::new($false)
@@ -62,7 +62,7 @@ $errorCount = 0
 $outputRead = $helperProcess.StandardOutput.BaseStream.ReadAsync($outputBytes, 0, $outputBytes.Length)
 $errorRead = $helperProcess.StandardError.BaseStream.ReadAsync($errorBytes, 0, $errorBytes.Length)
 $clock = [Diagnostics.Stopwatch]::StartNew()
-$budget = ${hook === 'stop' ? 9000 : 1805000}
+$budget = ${hook === 'pre-tool-use' ? 1805000 : 9000}
 $bytes = [Text.Encoding]::UTF8.GetBytes($json)
 $inputWrite = $helperProcess.StandardInput.BaseStream.WriteAsync($bytes, 0, $bytes.Length)
 while ($null -ne $inputWrite -or $null -ne $outputRead -or $null -ne $errorRead) {
@@ -126,6 +126,12 @@ $utf8 = [Text.UTF8Encoding]::new($false, $true)
         {
           matcher: '*',
           hooks: [{ type: 'command', command: command('pre-tool-use'), timeout: 1810 }],
+        },
+      ],
+      PostToolUse: [
+        {
+          matcher: '*',
+          hooks: [{ type: 'command', command: command('post-tool-use'), timeout: 10 }],
         },
       ],
       Stop: [{ type: 'command', command: command('stop'), timeout: 10 }],

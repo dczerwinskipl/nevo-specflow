@@ -244,7 +244,7 @@ the right of the form edge.
   column.
 - **SpecFlow UI.** Create adopts `content-standard`. Its sections use a container-query
   two-column arrangement. That arrangement applies to the real project form as well as the demo
-  form; only the demo form was prototyped.
+  form; A2 itself was only prototyped on the demo form, which section 6 corrects.
 - **No change** to Documents, Session, the 50/50 split, root tabs, Back behaviour or mobile.
 - **Verification.** Before-and-after captures of the whole journey at 1280, 1600, 1920, 2560 and
   390 px, and transition tests, not single-screen stories.
@@ -393,31 +393,36 @@ Activity history placement is not fixed by an accepted product document; only th
 puts it in the Secondary. Adopting A3h is therefore a product decision rather than a contract
 change.
 
-## 7. Decisions for the owner
+## 7. Owner decisions (2026-11-07)
 
-The current proposal is **A3**. Every item is still a proposal until approved.
+The owner accepted A3 conditionally as the basis for production work. The table records each
+decision; "conditional" items need the evidence named in the condition before they become a
+contract.
 
-1. **Direction.** Adopt A3 as three separate decisions: shell geometry, Create composition and
-   Specification Overview composition. A3h is not recommended.
-2. **The remaining jump.** Accept one navigation jump at the Specification boundary: 275 px at 1920
-   and 595 px at 2560. The alternative is a 1280 px Focused frame used only on screens of 2200 px and
-   wider.
-3. **Snap threshold.** Accept the 240 px threshold and the strip of about 230 px it leaves on the
-   right of Focused screens at 1600, or let Focused screens fill the width below about 1700 px.
-4. **Two-column Create.** Approve two columns from a 992 px form column, with the order kept as it is
-   in one column, and amend the Create contracts as listed above.
-5. **Progress page.** Approve keeping its content at `content-form`, left-aligned in the shared
-   frame, and amend the project Create contract.
-6. **Specification Overview.** Approve the operational two-column arrangement on panes of at least
-   1408 px, aligned with the breadcrumb, including the recent Session moving to the side column.
-7. **Activity history.** Keep it in the Secondary and decide its empty state separately (finding
-   1.2), or revisit A3h with a capped task column.
-8. **Commit row copy.** Decide whether the Git commit row refers to the branch shown above instead of
-   repeating it.
-9. **Design System rule.** Approve amending the Bounded workspace rule: one shared Focused frame,
-   Specification Overview no longer bounded.
-10. **Create Session principle.** Confirm that Create Specification stays a Focused screen. The review
-    rejected variant E, which also conflicts with the accepted rule against a summary on the right.
+| #   | Topic                                  | Decision                                                                                                                             | Condition or instruction                                                                                                                                                                                 |
+| --- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Direction                              | **Accepted.** A3, as three independent decisions and implementation scopes: App Shell, Create, Specification Overview. A3h rejected. | —                                                                                                                                                                                                        |
+| 2   | One jump at the Specification boundary | **Conditional.** A justified context boundary, but 595 px at 2560 px is still significant.                                           | No extra 2200 px breakpoint to shrink the jump. Evaluate the real transition between screens, not only static screenshots.                                                                               |
+| 3   | Snap threshold of 240 px               | **Not yet.** The idea of a stable Focused geometry is accepted, the threshold is not.                                                | Check transitions and width behaviour from 1500 to 1800 px. Consider using the available frame width while keeping control widths limited; do not stretch the form.                                      |
+| 4   | Two-column Create                      | **Accepted.** From a 992 px form column, one column below.                                                                           | The layout follows the container width, not the viewport. Keep the keyboard order and no preview panel.                                                                                                  |
+| 5   | Progress page                          | **Accepted.** Same Create frame, content limited to `content-form`, no layout jump on submit.                                        | —                                                                                                                                                                                                        |
+| 6   | Specification Overview                 | **Accepted** for two columns, **conditional** for hierarchy. 1408 px is the starting threshold.                                      | The recent Session may sit on the right but must stay an easy-to-see entry for continuing work; its priority must not come from leftover space. Check its position against Requires attention and Tasks. |
+| 7   | Activity history                       | **Stays in the Secondary.** A3h rejected.                                                                                            | The empty panel needs its own solution; it must not permanently reserve a large area for an empty message.                                                                                               |
+| 8   | Git commit row                         | **Accepted.** Do not repeat the full branch name; refer to the branch shown above, with clear context.                               | —                                                                                                                                                                                                        |
+| 9   | Design System rule                     | **Accepted.** Amend the Bounded workspace rule together with the production implementation.                                          | No divergence between docs and code.                                                                                                                                                                     |
+| 10  | Create stays Focused                   | **Accepted.** No Create Session approach for Create Specification; variant E stays rejected.                                         | —                                                                                                                                                                                                        |
+
+**Additional corrections requested.**
+
+- **Git settings.** Recompose the block around the three real user decisions, without adding
+  containers, separators or switches, and without changing Git semantics.
+- **Form validation.** The user must be able to reach the faulty field easily when Create is
+  blocked; propose an accessible, deterministic behaviour that leads to the first error without
+  starting a forbidden operation.
+- **Process.** Do not implement unapproved snap variants or further Overview changes as final
+  contracts. Close the geometry comparisons and the Overview hierarchy first, then prepare the
+  production scope of A3 with its documentation changes. Keep visual evidence, accepted decisions
+  and production implementation separate; the prototype branch is not mergeable.
 
 ### What A3 would need in production
 
@@ -442,6 +447,7 @@ The current proposal is **A3**. Every item is still a proposal until approved.
 **Limits of the evidence.**
 
 - Prototype widths are pixel classes.
-- Only the demo Create form was rearranged.
+- A2 rearranged only the demo Create form; A3 was rendered and used on the real project Create
+  form as well (section 6).
 - Full Session screenshots come from Storybook, where the navigation is a stub. Session is the same
   in every variant.

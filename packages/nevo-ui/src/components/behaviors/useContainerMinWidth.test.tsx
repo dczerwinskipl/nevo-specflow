@@ -8,8 +8,8 @@ let observerCallbacks: ResizeObserverCallback[];
 let currentWidth: number;
 let commits: number;
 
-function Probe({ minWidth = 1000 }: { minWidth?: number }) {
-  const { matches, setElement } = useContainerMinWidth<HTMLDivElement>(minWidth);
+function Probe({ minWidth = 1000, hysteresis }: { minWidth?: number; hysteresis?: number }) {
+  const { matches, setElement } = useContainerMinWidth<HTMLDivElement>(minWidth, { hysteresis });
   commits += 1;
 
   return (
@@ -79,5 +79,37 @@ describe('useContainerMinWidth', () => {
     resizeTo(999);
 
     expect(commits).toBe(settled);
+  });
+
+  it('enters at the minimum and leaves only below the exit margin', () => {
+    render(<Probe hysteresis={16} />);
+
+    resizeTo(1000);
+    expect(screen.getByTestId('probe').textContent).toBe('wide');
+    // Within the margin (a scrollbar appearing with the new content): no oscillation.
+    resizeTo(985);
+    expect(screen.getByTestId('probe').textContent).toBe('wide');
+    resizeTo(983);
+    expect(screen.getByTestId('probe').textContent).toBe('narrow');
+    // Entering again needs the full minimum.
+    resizeTo(990);
+    expect(screen.getByTestId('probe').textContent).toBe('narrow');
+    resizeTo(1000);
+    expect(screen.getByTestId('probe').textContent).toBe('wide');
+  });
+
+  it('reports when the first read has happened', () => {
+    let measured: boolean[] = [];
+    function Reporter() {
+      const result = useContainerMinWidth<HTMLDivElement>(1000);
+      measured = [...measured, result.measured];
+
+      return <div ref={result.setElement} />;
+    }
+
+    render(<Reporter />);
+
+    expect(measured[0]).toBe(false);
+    expect(measured.at(-1)).toBe(true);
   });
 });

@@ -129,12 +129,25 @@ acceptable only when DOM semantics, focus behavior, and independent activation r
 **Width-dependent structure.** Restyle for the available space with a CSS container query. When the
 DOM structure or order itself has to change with the width (for example one reading column versus
 two independent columns, each read in its own order), CSS cannot express it: use
-`useContainerMinWidth(minWidth)` from Nevo UI and render the arrangement from its `matches`. It
-reads the width before the first paint and commits a crossing before the browser paints it, so no
-frame shows the other arrangement, and it renders only on a crossing. Keep the parts that hold
-state (a selection, an expanded section, focus) as keyed children of the same parent in both
-arrangements, so React moves them instead of remounting them. Never use the viewport width for
-this, and never use CSS `order` to make the visual order differ from the reading order.
+`useContainerMinWidth(minWidth, { hysteresis })` from Nevo UI and render the arrangement from its
+`matches`. It reads the width before the first paint and commits a crossing before the browser
+paints it, so no frame shows the other arrangement, and it renders only on a crossing.
+
+- Observe a zero-height, full-width sentinel, not the content whose height the arrangement changes
+  (that raises "ResizeObserver loop completed with undelivered notifications").
+- Give it an exit `hysteresis` and the scroller `[scrollbar-gutter:stable]`
+  (`AppWorkspaceBody viewportClassName`) when the change could move the width back across the
+  breakpoint.
+- Hold back the parts whose place depends on `matches` until `measured`, so a wide screen does
+  not mount them in the narrow arrangement first.
+- Parts that stay keyed children of the same parent in both arrangements are moved, not
+  remounted, and keep their state (a selection). Parts that change parent remount: their local
+  state resets, and focus inside them is lost unless the product restores it. Give such opener
+  rows a stable `data-focus-key` and restore focus to the same control after the change; the
+  Secondary's own focus return uses the same key.
+
+Never use the viewport width for this, and never use CSS `order` to make the visual order differ
+from the reading order.
 
 ## Testing
 

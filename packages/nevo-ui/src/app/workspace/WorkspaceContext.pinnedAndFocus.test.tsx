@@ -141,6 +141,58 @@ describe('F16 closing a tab restores focus to its opener only when nothing else 
   });
 });
 
+describe('restoring focus to an opener the product remounted', () => {
+  function Rows({ generation }: { generation: number }) {
+    const navigation = useSecondaryNavigation();
+
+    return (
+      <ul key={generation}>
+        {['a', 'b'].map((id) => (
+          <li key={id} data-focus-key={`row:${id}`}>
+            <button
+              type="button"
+              onClick={() => void navigation.open(objectStack, { objectId: id })}
+            >
+              Open
+            </button>
+          </li>
+        ))}
+        <li>
+          <button type="button" onClick={() => void navigation.close()}>
+            close
+          </button>
+        </li>
+      </ul>
+    );
+  }
+
+  it('finds the same row again by its focus key, not the first control with the same text', async () => {
+    const { rerender } = render(
+      <AppWorkspaceProvider>
+        <Rows generation={0} />
+      </AppWorkspaceProvider>,
+    );
+    const opener = screen.getAllByRole('button', { name: 'Open' })[1]!;
+    opener.focus();
+    fireEvent.click(opener);
+    await flush();
+
+    // The rows remount while the Secondary is open (for example a layout change).
+    rerender(
+      <AppWorkspaceProvider>
+        <Rows generation={1} />
+      </AppWorkspaceProvider>,
+    );
+    expect(opener.isConnected).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'close' }));
+    await flush();
+    await settleFrames();
+
+    const remounted = screen.getAllByRole('button', { name: 'Open' })[1]!;
+    expect(document.activeElement).toBe(remounted);
+  });
+});
+
 describe('N2 hiding the region while the pinned tab is active', () => {
   function Host() {
     useRegisterPinnedSecondaryTab({ title: 'Context' });

@@ -88,6 +88,7 @@ export function AppWorkspaceBody({
   children,
   className,
   contentClassName,
+  viewportClassName,
   tabIndex = 0,
   padding = 'md',
   scroll = 'native',
@@ -100,6 +101,12 @@ export function AppWorkspaceBody({
      * ScrollArea root; in `native` mode they apply to the body element itself.
      */
     contentClassName?: string;
+    /**
+     * `scroll="area"` only: classes for the scrolling viewport, for example
+     * `[scrollbar-gutter:stable]` when the content's arrangement depends on its width, so a
+     * scrollbar appearing cannot change that width. A stacked host owns the scroll and ignores it.
+     */
+    viewportClassName?: string;
     padding?: 'none' | 'sm' | 'md';
     scroll?: 'native' | 'area';
   }
@@ -111,6 +118,7 @@ export function AppWorkspaceBody({
       <ScrollArea
         {...props}
         className={cn('min-h-0 flex-1 w-full', className)}
+        viewportClassName={viewportClassName}
         contentClassName={cn(
           padding === 'md' ? 'p-4' : padding === 'sm' ? 'p-3' : undefined,
           contentClassName,

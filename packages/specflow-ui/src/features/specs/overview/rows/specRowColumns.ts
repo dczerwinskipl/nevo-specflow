@@ -3,9 +3,9 @@
  * shared by the column header and the rows so they cannot drift apart. Columns appear from the
  * 48rem container width; below it each row stacks.
  *
- * The title track is bounded (`minmax(0,40rem)`, a reading measure, about its width in a
- * `content-standard` list) so the situation and progress stay next to the name they qualify when
- * the Focused frame grows; the rest of a wide row stays empty instead of pushing them apart.
+ * The title track is bounded (`minmax(0,40rem)`, a reading measure, about its width in the page's
+ * `content-standard` column) so the situation and progress always stay next to the name they
+ * qualify, whatever width the list is given.
  */
 export const specRowColumns = {
   current: {

@@ -46,8 +46,9 @@ export function CreateShell({
   // The scroll area spans the whole pane and the form column sits INSIDE it (the column must not wrap the
   // scroller, which would leave unscrollable side bands and put the scrollbar at the column's
   // edge instead of the pane's). The footer holds the same column, so its button stays aligned
-  // with the content.
-  const column = 'w-content-form max-w-full px-4 sm:px-6';
+  // with the content. The 16 px inset (`px-4`) is the one the header and the Specifications list
+  // use, so moving between the Focused screens never shifts the content edge.
+  const column = 'w-content-form max-w-full px-4';
   const body = (
     <>
       {/* The gutter is reserved only at the end, so a classic (space-taking) scrollbar never

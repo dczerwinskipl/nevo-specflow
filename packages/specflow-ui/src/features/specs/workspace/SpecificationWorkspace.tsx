@@ -280,9 +280,10 @@ function SpecificationWorkspaceInner({
               />
             }
           >
-            <AppContent className="w-content-standard max-w-full">
+            {/* The scroller fills the pane; the reading column sits inside it, left-aligned. */}
+            <AppContent className="w-full">
               <AppWorkspaceBody scroll="area" contentClassName="py-6">
-                <AppContentContainer align="start" size="full" className="grid gap-6">
+                <AppContentContainer align="start" size="standard" className="grid gap-6">
                   {refreshFailed ? (
                     <Alert
                       tone="attention"

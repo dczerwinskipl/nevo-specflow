@@ -95,12 +95,17 @@ export function SpecsOverview({
           />
         }
       >
-        {/* The Focused frame (`fit="bounded"`) sets the width; the list keeps its columns
-            together with bounded tracks (`specRowColumns`) instead of a narrower content box. */}
+        {/* The scroller fills the Focused frame (`fit="bounded"`). Inside it the whole page
+            (title, toolbar, search, notices and the list) is one left-aligned `content-standard`
+            column, and the list's bounded tracks (`specRowColumns`) keep its values together. */}
         <AppContent className="w-full">
           {/* A flex column down to the list, so an empty collection can centre in the free height. */}
           <AppWorkspaceBody scroll="area" contentClassName="flex min-h-full flex-col py-6">
-            <AppContentContainer align="start" className="flex flex-1 flex-col gap-4" size="full">
+            <AppContentContainer
+              align="start"
+              className="flex flex-1 flex-col gap-4"
+              size="standard"
+            >
               <ViewPageTitle className="mb-2">{t('specifications.title')}</ViewPageTitle>
               <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
                 <SegmentedControl

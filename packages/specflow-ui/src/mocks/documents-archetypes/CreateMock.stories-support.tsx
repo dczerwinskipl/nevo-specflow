@@ -31,9 +31,11 @@ import {
 
 /*
  * PRESENTATION MOCK ONLY. The Create form of a project Runtime with the new Archetype section, and
- * the Configuration block of the progress page with the two new rows. Hand-composed with the real
- * CreateShell geometry (AppWorkspace fit="bounded", content-standard / content-narrow); the
- * workspace-place section is unchanged and only stubbed here.
+ * the Configuration block of the progress page with the two new rows. Hand-composed in the real
+ * CreateShell frame (AppWorkspace fit="bounded", a full-width scroller with a left-aligned column
+ * and the 16 px inset); the column keeps this mock's own widths (content-standard for the form,
+ * content-narrow for the progress page), where the real CreateShell uses content-form for both.
+ * The workspace-place section is unchanged and only stubbed here.
  */
 
 export type CreateScenario = 'form' | 'feature' | 'owner-requirement' | 'progress';
@@ -251,14 +253,10 @@ function Page({ scenario }: { scenario: CreateScenario }) {
           <WorkspaceHeader title={narrow ? 'Creating a specification' : 'New specification'} />
         }
       >
-        <AppContent
-          className={
-            narrow ? 'mx-auto w-content-narrow max-w-full' : 'w-content-standard max-w-full'
-          }
-        >
+        <AppContent className="w-full">
           <AppWorkspaceBody scroll="area" padding="none">
-            <div className="p-4 sm:p-6">
-              <AppContentContainer size={narrow ? 'narrow' : 'standard'}>
+            <div className="p-4 sm:py-6">
+              <AppContentContainer align="start" size={narrow ? 'narrow' : 'standard'}>
                 {content}
               </AppContentContainer>
             </div>

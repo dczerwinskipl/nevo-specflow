@@ -1,4 +1,8 @@
-import { localBranchRef, type CreateOptions } from '@nevo/specflow-contracts/specs';
+import {
+  designatedBaseRef,
+  localBranchRef,
+  type CreateOptions,
+} from '@nevo/specflow-contracts/specs';
 import { message, type Message } from '../../../../../i18n/message';
 import type { Tile, WorkspaceChoice } from './workspaceChoice';
 
@@ -166,14 +170,11 @@ export function inheritedTarget(options: CreateOptions, workspace: Workspace): I
  * primary workspace) there is nothing honest to preselect.
  */
 export function defaultBaseValue(options: CreateOptions): string {
-  const configured = options.defaultBaseRef;
   const primaryBranch = primaryWorkspace(options)?.branch;
   const ref =
-    configured === 'HEAD'
+    options.defaultBaseRef === 'HEAD'
       ? primaryBranch && localBranchRef(primaryBranch)
-      : configured.startsWith('refs/')
-        ? configured
-        : localBranchRef(configured);
+      : designatedBaseRef(options.defaultBaseRef);
 
   return ref && options.baseRefs.some((item) => item.ref === ref) ? ref : '';
 }

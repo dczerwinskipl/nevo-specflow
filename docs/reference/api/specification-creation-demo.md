@@ -334,7 +334,7 @@ body returns the original result.
   `integrationSelectable: false`); the UI shows a quiet note, the Engine does not declare it.
 
 Like the Engine, `baseRefs[].ref` values are full refs (`refs/heads/develop`) while workspace branches,
-`integrationTargetBranch` and `defaultBaseRef` (`develop`) are short names; a new-worktree `baseRef` is sent as the
+`integrationTargetBranch` and the seed's `defaultBaseRef` (`develop`) are short names; a new-worktree `baseRef` is sent as the
 listed full ref. Demo divergences kept on purpose: `branchPattern` has no `{shortId}` (the Engine allows it optionally), titles are limited to 240 (the
 Engine accepts 200), and the operation-status read (proposed, includes `failed`) has no Engine
 counterpart for Create.

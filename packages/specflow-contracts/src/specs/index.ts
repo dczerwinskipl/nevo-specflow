@@ -4,6 +4,7 @@ export * from './close';
 export {
   CreateCommitsSchema,
   CreateOptionsSchema,
+  designatedBaseRef,
   localBranchRef,
   refDisplayName,
   type CreateOptions,

@@ -112,6 +112,11 @@ describe('New workspace settings prefill their switches with the effective defau
     renderSettings();
     toggle(/Start from a different branch/);
     expect(screen.queryByText('Choose a branch')).toBeNull();
+    // The value is the listed full ref; the field shows its branch name.
+    expect(latest.base.ref).toBe('refs/heads/develop');
+    const base = screen.getByRole('combobox', { name: 'Start from' }).textContent;
+    expect(base).toContain('develop');
+    expect(base).not.toContain('refs/heads/');
     toggle(/Merge later into a different workspace/);
     expect(screen.queryByText('Choose a workspace')).toBeNull();
     expect(screen.getAllByRole('combobox')).toHaveLength(2);

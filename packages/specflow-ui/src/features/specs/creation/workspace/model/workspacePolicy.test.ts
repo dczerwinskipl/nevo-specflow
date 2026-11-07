@@ -584,6 +584,11 @@ describe('base refs in the project Runtime format (full refs, short workspace br
     expect(defaultBaseValue(runtime('refs/heads/feature/x'))).toBe('refs/heads/feature/x');
     expect(defaultBaseValue(runtime('refs/tags/v1.0'))).toBe('');
     expect(defaultBaseValue(runtime('0123456789abcdef0123456789abcdef01234567'))).toBe('');
+    // A commit default is a commit, as for the Engine, even if a branch has the same name.
+    const sha = '0123456789abcdef0123456789abcdef01234567';
+    const commit = runtime(sha);
+    commit.baseRefs.push({ ref: `refs/heads/${sha}` });
+    expect(defaultBaseValue(commit)).toBe('');
   });
   it('turning the switch on does not block Create and sends no override', () => {
     for (const value of ['HEAD', 'main', 'refs/heads/main']) {

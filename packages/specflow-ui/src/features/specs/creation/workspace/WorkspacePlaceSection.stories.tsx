@@ -1166,11 +1166,16 @@ export const EnablingTheBaseSwitchPrefillsTheEffectiveDefault: Story = {
     await userEvent.click(canvas.getByRole('switch', { name: 'Zacznij od innej gałęzi' }));
     // F-08: never an empty select; the default is what the user starts from, and it is not an override.
     await expect(canvas.getByRole('combobox', { name: 'Zacznij od' })).toHaveTextContent('develop');
+    await expect(canvas.getByRole('combobox', { name: 'Zacznij od' })).not.toHaveTextContent(
+      'refs/heads/',
+    );
     await expect(request(canvas)).toBe('{"kind":"new-worktree"}');
     await userEvent.click(canvas.getByRole('combobox', { name: 'Zacznij od' }));
-    await userEvent.click(
-      await within(document.body).findByRole('option', { name: /release\/1\.4/ }),
-    );
+    // The options list full refs (`refs/heads/release/1.4`); people see and pick the branch name.
+    const release = await within(document.body).findByRole('option', { name: 'release/1.4' });
+    const listed = within(document.body).getAllByRole('option');
+    await expect(listed.some((o) => o.textContent?.includes('refs/heads/'))).toBe(false);
+    await userEvent.click(release);
     await expect(request(canvas)).toBe(
       '{"kind":"new-worktree","baseRef":"refs/heads/release/1.4"}',
     );

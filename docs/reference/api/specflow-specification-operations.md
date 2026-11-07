@@ -112,8 +112,8 @@ Local `baseRefs[].ref` values are always full refs `refs/heads/<branch>` (the co
 are never listed): the ref is the option's identity and the value a `target.baseRef` override sends, and
 `<branch>` is its display name. Every other branch in create-options (`workspaces[].branch`,
 `integrationTargetBranch`, `integrationDestination.branch`) is a short name. `defaultBaseRef` is the configured
-value as written: `HEAD`, a SHA, a tag, a full ref, or a short local branch name that designates
-`refs/heads/<name>`. An existing dirty workspace may be selectable for Create but is
+value as written, one of: `HEAD`; a full commit SHA; `refs/heads/...` or `refs/tags/...`; or a short local branch
+name without `/`, which designates `refs/heads/<name>` (so a short tag name such as `v1.0` is read as a branch). An existing dirty workspace may be selectable for Create but is
 not an integration-selectable destination. All options are a snapshot, not a reservation.
 
 Operation lookup returns `{operationId,kind:"specification-create",status:"in-progress"|"recovery-required",code?}`,

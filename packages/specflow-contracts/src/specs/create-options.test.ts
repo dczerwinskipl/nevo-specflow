@@ -1,7 +1,12 @@
 import { Value } from 'typebox/value';
 import { describe, expect, it } from 'vitest';
 
-import { CreateOptionsSchema, localBranchRef, refDisplayName } from './create-options';
+import {
+  CreateOptionsSchema,
+  designatedBaseRef,
+  localBranchRef,
+  refDisplayName,
+} from './create-options';
 
 const ID = '0b8f1c1e-0a11-4c6e-9a01-000000000001';
 
@@ -29,6 +34,22 @@ describe('create-options base refs', () => {
     for (const value of ['HEAD', 'main', 'refs/heads/main', 'refs/tags/v1.0']) {
       expect(Value.Check(CreateOptionsSchema, options([], value)), value).toBe(true);
     }
+  });
+
+  it('reads a configured base ref in the Engine order: HEAD, commit, full ref, then branch', () => {
+    const sha1 = '0123456789abcdef0123456789abcdef01234567';
+    const sha256 = sha1 + '0123456789abcdef01234567';
+    expect(designatedBaseRef('HEAD')).toBe('HEAD');
+    expect(designatedBaseRef(sha1)).toBe(sha1);
+    expect(designatedBaseRef(sha1.toUpperCase())).toBe(sha1.toUpperCase());
+    expect(designatedBaseRef(sha256)).toBe(sha256);
+    expect(designatedBaseRef('refs/heads/main')).toBe('refs/heads/main');
+    expect(designatedBaseRef('refs/tags/v1.0')).toBe('refs/tags/v1.0');
+    expect(designatedBaseRef('main')).toBe('refs/heads/main');
+    // A short tag name is a branch name to the Engine as well.
+    expect(designatedBaseRef('v1.0')).toBe('refs/heads/v1.0');
+    // Not a full SHA: an abbreviated hex name is a branch.
+    expect(designatedBaseRef('0123456')).toBe('refs/heads/0123456');
   });
 
   it('converts between a short branch name and its ref', () => {

@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
-import { Alert, Field, Separator, TextArea, TextInput } from '@nevo/ui';
+import { Alert, Field, Separator, TextArea, TextInput, cn } from '@nevo/ui';
 import { isApiError } from '../../../../api';
 import { ApplicationContextLine } from '../../../../app/navigation/ApplicationLocation';
 import { useAppServices } from '../../../../app/useAppServices';
@@ -36,6 +36,14 @@ import {
   type ArchetypeChoice,
 } from '../options/archetypeChoice';
 import { CreateWorkspaceSection } from './CreateWorkspaceSection';
+import {
+  createControlWidth,
+  createFormColumn,
+  createFormColumns,
+  createFormWidth,
+} from '../createFormLayout';
+import { firstChoiceControl } from './createGuide';
+import { revealControl, useCreateGuide } from './useCreateGuide';
 import { buildCreateFacts } from '../workspace/model/createFacts';
 import { buildCreateSlug, buildCreateTarget } from '../workspace/model/createRequest';
 import { requestChoiceSnapshot, type WorkspaceChoice } from '../workspace/model/workspaceChoice';
@@ -139,7 +147,7 @@ export function CreateProjectForm({
   });
 
   const locked = createOptions.forbidden;
-  const { prerequisite, canSubmit } = projectCreateReadiness({
+  const { prerequisite, problemField, canSubmit } = projectCreateReadiness({
     title,
     goal,
     workspaceState: createOptions.state,
@@ -153,6 +161,27 @@ export function CreateProjectForm({
   // Back from a name the Engine refused (invalid or too long path): the name says so until edited.
   const [nameRefused, setNameRefused] = useState(draft?.failure?.kind === 'name-invalid');
   const nameRef = useRef<HTMLInputElement>(null);
+  const archetypeRef = useRef<HTMLDivElement>(null);
+  const reason = prerequisite ? text(prerequisite) : undefined;
+  const { tried, guide } = useCreateGuide({
+    problemField,
+    reason,
+    announce,
+    focusField: (field) => {
+      if (field === 'name') {
+        revealControl(nameRef.current);
+      } else if (field === 'archetype') {
+        revealControl(firstChoiceControl(archetypeRef.current));
+      } else if (field !== 'provider' && field !== 'model' && field !== 'mode') {
+        place.handleRef.current?.focusProblem(field);
+      }
+    },
+  });
+  // An empty name says so at the field once the owner typed and left it empty, or once Create was
+  // tried; passing through the empty field says nothing.
+  const nameEdited = useRef(false);
+  const [nameLeft, setNameLeft] = useState(false);
+  const nameMissing = !title.trim() && (tried || nameLeft);
   useEffect(() => {
     if (nameRefused) {
       nameRef.current?.focus();
@@ -216,23 +245,36 @@ export function CreateProjectForm({
 
   return (
     <CreateShell
+      columns
       form={{
         onSubmit: (event) => {
           event.preventDefault();
+          if (!canSubmit) {
+            // Blocked by the form's values (a click, Enter or Space on Create, Enter in a field):
+            // nothing is prepared or sent; lead to the first faulty field instead.
+            if (!locked) {
+              guide();
+            }
+
+            return;
+          }
+
           submit();
         },
       }}
       footer={
         <CreateFooter
           submitRef={submitRef}
-          prerequisite={prerequisite ? text(prerequisite) : undefined}
+          prerequisite={reason}
           note={t('create.project.footNote')}
           submitLabel={t('create.submit.create')}
-          submitDisabled={locked || !canSubmit}
+          submitDisabled={locked}
+          submitBlocked={!canSubmit}
+          onGuide={problemField && !locked ? guide : undefined}
         />
       }
     >
-      <div className="grid gap-8">
+      <div className={cn('grid gap-8', createFormWidth)}>
         <CreateFormHeader
           headingRef={headingRef}
           lead={<ApplicationContextLine className="mb-0" view="new-specification" />}
@@ -240,54 +282,79 @@ export function CreateProjectForm({
           subheading={t('create.subheading.withArchetype')}
         />
         <Separator />
-        <div className="grid gap-4">
-          <Field invalid={nameRefused}>
-            <Field.Label>{t('create.nameLabel')}</Field.Label>
-            <TextInput
-              ref={nameRef}
-              value={title}
-              maxLength={createTitleMaxLength}
-              disabled={locked}
-              onChange={(event) => {
-                setUnprepared(false);
-                setNameRefused(false);
-                setTitle(event.target.value);
-              }}
-              placeholder={t('create.namePlaceholder')}
+        {/* What is created (left), then where (right): DOM order is the reading and Tab order. */}
+        <div className={createFormColumns}>
+          <div className={createFormColumn}>
+            <div className="grid gap-4">
+              <Field invalid={nameRefused || nameMissing} className={createControlWidth}>
+                <Field.Label>{t('create.nameLabel')}</Field.Label>
+                <TextInput
+                  ref={nameRef}
+                  value={title}
+                  maxLength={createTitleMaxLength}
+                  disabled={locked}
+                  onChange={(event) => {
+                    setUnprepared(false);
+                    setNameRefused(false);
+                    nameEdited.current = true;
+                    setTitle(event.target.value);
+                  }}
+                  onBlur={() => setNameLeft(nameEdited.current)}
+                  placeholder={t('create.namePlaceholder')}
+                />
+                {nameRefused ? (
+                  <Field.Error>{t('create.errors.nameInvalid.field')}</Field.Error>
+                ) : nameMissing ? (
+                  <Field.Error>{t('create.prerequisite.title')}</Field.Error>
+                ) : null}
+              </Field>
+              <Field className={createControlWidth}>
+                <Field.Label>{t('create.project.goalLabel')}</Field.Label>
+                <TextArea
+                  value={goal}
+                  maxLength={createGoalMaxLength}
+                  disabled={locked}
+                  onChange={(event) => setGoal(event.target.value)}
+                  placeholder={t('create.project.goalPlaceholder')}
+                />
+                <Field.Description>{t('create.project.goalHelp')}</Field.Description>
+              </Field>
+            </div>
+            <Separator />
+            <div ref={archetypeRef} className="min-w-0">
+              <ArchetypeSection
+                state={archetypeState}
+                choice={archetypeChoice}
+                locked={locked}
+                onChange={setArchetypeChoice}
+                error={
+                  tried && catalogue && !archetype ? t('create.prerequisite.archetype') : undefined
+                }
+              />
+            </div>
+          </div>
+          {/* Between the stacked columns only: side by side, the gap separates them. */}
+          <Separator className="@min-[62rem]:hidden" />
+          <div className={createFormColumn}>
+            <CreateWorkspaceSection
+              headingId={gitHeadingId}
+              createOptions={createOptions}
+              place={place}
+              locked={locked}
+              title={title}
+              onRefresh={refreshOptions}
+              onAnnounce={announce}
+              showRequired={tried}
             />
-            {nameRefused && <Field.Error>{t('create.errors.nameInvalid.field')}</Field.Error>}
-          </Field>
-          <Field>
-            <Field.Label>{t('create.project.goalLabel')}</Field.Label>
-            <TextArea
-              value={goal}
-              maxLength={createGoalMaxLength}
-              disabled={locked}
-              onChange={(event) => setGoal(event.target.value)}
-              placeholder={t('create.project.goalPlaceholder')}
-            />
-            <Field.Description>{t('create.project.goalHelp')}</Field.Description>
-          </Field>
+          </div>
         </div>
-        <Separator />
-        <ArchetypeSection
-          state={archetypeState}
-          choice={archetypeChoice}
-          locked={locked}
-          onChange={setArchetypeChoice}
-        />
-        <Separator />
-        <CreateWorkspaceSection
-          headingId={gitHeadingId}
-          createOptions={createOptions}
-          place={place}
-          locked={locked}
-          title={title}
-          onRefresh={refreshOptions}
-          onAnnounce={announce}
-        />
         {unprepared && (
-          <Alert role="alert" tone="attention" title={t('create.errors.failed.title')}>
+          <Alert
+            role="alert"
+            tone="attention"
+            title={t('create.errors.failed.title')}
+            className="max-w-content-form"
+          >
             <p>{t('create.errors.failed.body')}</p>
           </Alert>
         )}

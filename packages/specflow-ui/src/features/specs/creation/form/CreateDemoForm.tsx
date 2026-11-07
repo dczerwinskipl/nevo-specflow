@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { isHttpClientError } from '@nevo/http-client';
 import { useTranslation } from 'react-i18next';
-import { Separator, useWorkspaceCapabilities } from '@nevo/ui';
+import { Separator, cn, useWorkspaceCapabilities } from '@nevo/ui';
 import type { DemoCatalogue } from '@nevo/specflow-contracts/demo';
 import { ApplicationFlowBack } from '../../../../app/navigation/ApplicationLocation';
 import { useAppServices } from '../../../../app/useAppServices';
@@ -40,6 +40,9 @@ import {
 } from '../operation/useCreateDemoSpecification';
 import { useRevealFailure } from '../errors/useRevealFailure';
 import { CreateWorkspaceSection } from './CreateWorkspaceSection';
+import { createFormColumn, createFormColumns, createFormWidth } from '../createFormLayout';
+import { firstChoiceControl } from './createGuide';
+import { revealControl, useCreateGuide } from './useCreateGuide';
 import { buildCreateSlug, buildCreateTarget } from '../workspace/model/createRequest';
 import { requestChoiceSnapshot } from '../workspace/model/workspaceChoice';
 import { useWorkspacePlace } from '../workspace/useWorkspacePlace';
@@ -131,7 +134,7 @@ export function CreateDemoForm({
     forbiddenCreate ||
     configurationUnavailable ||
     createOptions.forbidden;
-  const { prerequisite, canSubmit } = createReadiness({
+  const { prerequisite, problemField, canSubmit } = createReadiness({
     method,
     title,
     catalogue,
@@ -142,6 +145,38 @@ export function CreateDemoForm({
     configurationUnavailable,
     forbiddenCreate,
   });
+
+  // A blocked Create leads to the first faulty field in the form's order (`createReadiness`).
+  const nameRef = useRef<HTMLInputElement>(null);
+  const archetypeRef = useRef<HTMLDivElement>(null);
+  const providersRef = useRef<HTMLDivElement>(null);
+  const modelRef = useRef<HTMLElement | null>(null);
+  const showPrerequisite = Boolean(prerequisite) && !uncertain && !recovery;
+  const reason = showPrerequisite && prerequisite ? text(prerequisite) : undefined;
+  const { tried, guide } = useCreateGuide({
+    problemField,
+    reason,
+    announce,
+    focusField: (field) => {
+      if (field === 'name') {
+        revealControl(nameRef.current);
+      } else if (field === 'archetype') {
+        revealControl(firstChoiceControl(archetypeRef.current));
+      } else if (field === 'provider') {
+        revealControl(firstChoiceControl(providersRef.current));
+      } else if (field === 'model' || field === 'mode') {
+        // The work modes follow the model: a missing or unsupported mode is fixed from the model.
+        revealControl(modelRef.current);
+      } else {
+        place.handleRef.current?.focusProblem(field);
+      }
+    },
+  });
+  const provider = catalogue.providers.find((p) => p.id === agent.providerId);
+  const modelMissing =
+    method === 'ai' &&
+    Boolean(provider?.models.length) &&
+    !provider?.models.some((m) => m.id === agent.modelId);
 
   useEffect(() => {
     if (method && !supportsSplit) {
@@ -194,7 +229,13 @@ export function CreateDemoForm({
   }
 
   const working = busy || state.checking;
-  const showPrerequisite = Boolean(prerequisite) && !uncertain && !recovery;
+  // Only the form's own values block Create in place (focusable, `aria-disabled`); an operation in
+  // progress, a forbidden Create or a stale configuration disable it.
+  const settled = !uncertain && !recovery;
+  const submitDisabled =
+    working ||
+    (settled && (forbiddenCreate || configurationUnavailable || createOptions.forbidden));
+  const submitBlocked = settled && !canSubmit;
   const submitLabel = working
     ? uncertain || recovery
       ? t('create.submit.checking')
@@ -213,15 +254,28 @@ export function CreateDemoForm({
         ? t('create.footer.aiNote')
         : t('create.footer.manualNote');
 
-  const sections: ReactNode[] = [
-    <CreateBasicsSection key="basics" title={title} locked={locked} onTitleChange={setTitle} />,
-    <ArchetypeSection
-      key="archetype"
-      state={{ status: 'ready', catalogue }}
-      choice={archetypeChoice}
+  // What is created (left), then who starts it and where (right). DOM order is the reading and
+  // Tab order; below the threshold the same sections stack in that order.
+  const whatSections: ReactNode[] = [
+    <CreateBasicsSection
+      key="basics"
+      title={title}
       locked={locked}
-      onChange={setArchetypeChoice}
+      onTitleChange={setTitle}
+      tried={tried}
+      inputRef={nameRef}
     />,
+    <div key="archetype" ref={archetypeRef} className="min-w-0">
+      <ArchetypeSection
+        state={{ status: 'ready', catalogue }}
+        choice={archetypeChoice}
+        locked={locked}
+        onChange={setArchetypeChoice}
+        error={tried && !archetype ? t('create.prerequisite.archetype') : undefined}
+      />
+    </div>,
+  ];
+  const whoAndWhereSections: ReactNode[] = [
     method === 'ai' && (
       <CreateAgentSection
         key="agent"
@@ -229,6 +283,9 @@ export function CreateDemoForm({
         choice={agent}
         locked={locked}
         onChange={setAgent}
+        modelError={tried && modelMissing ? t('create.prerequisite.model') : undefined}
+        providersRef={providersRef}
+        modelControlRef={modelRef}
       />
     ),
     <CreateWorkspaceSection
@@ -240,12 +297,18 @@ export function CreateDemoForm({
       title={title}
       onRefresh={refreshOptions}
       onAnnounce={announce}
+      showRequired={tried}
     />,
   ].filter(Boolean);
+  const separated = (sections: ReactNode[], column: string) =>
+    sections.flatMap((section, index) => [
+      index > 0 ? <Separator key={`separator-${column}-${index}`} /> : null,
+      section,
+    ]);
   // Under the last section, in the scrolling form: what went wrong and how to go on. The pinned
   // footer stays one line; a failure is revealed here (`useRevealFailure`).
   const failureRegion = (
-    <div ref={reveal.actionRegion} className="grid gap-4 empty:hidden">
+    <div ref={reveal.actionRegion} className="grid max-w-content-form gap-4 empty:hidden">
       {configurationUnavailable && <CreateConfigurationNotice onRefresh={onRefresh} />}
       {failure && (
         <CreateFailurePanel
@@ -284,6 +347,7 @@ export function CreateDemoForm({
 
   return (
     <CreateShell
+      columns
       form={{
         onSubmit: (event) => {
           event.preventDefault();
@@ -293,23 +357,37 @@ export function CreateDemoForm({
             return;
           }
 
-          if (!busy && (uncertain || canSubmit)) {
+          if (busy) {
+            return;
+          }
+
+          if (uncertain || canSubmit) {
             reveal.captureSubmit(event);
             void actions.submit(submission());
+
+            return;
+          }
+
+          // Blocked by the form's values (a click, Enter or Space on Create, Enter in a field):
+          // nothing is sent; lead to the first faulty field instead.
+          if (!locked) {
+            guide();
           }
         },
       }}
       footer={
         <CreateFooter
           submitRef={submitRef}
-          prerequisite={showPrerequisite && prerequisite ? text(prerequisite) : undefined}
+          prerequisite={reason}
           note={note}
           submitLabel={submitLabel}
-          submitDisabled={working || (!uncertain && !recovery && !canSubmit)}
+          submitDisabled={submitDisabled}
+          submitBlocked={submitBlocked}
+          onGuide={problemField && reason && !locked ? guide : undefined}
         />
       }
     >
-      <div className="grid gap-8">
+      <div className={cn('grid gap-8', createFormWidth)}>
         <CreateFormHeader
           headingRef={headingRef}
           lead={
@@ -322,10 +400,12 @@ export function CreateDemoForm({
           heading={t('create.heading.specification')}
           subheading={t('create.subheading.withArchetype')}
         />
-        {sections.flatMap((section, index) => [
-          index > 0 ? <Separator key={`separator-${index}`} /> : null,
-          section,
-        ])}
+        <div className={createFormColumns}>
+          <div className={createFormColumn}>{separated(whatSections, 'what')}</div>
+          {/* Between the stacked columns only: side by side, the gap separates them. */}
+          <Separator className="@min-[62rem]:hidden" />
+          <div className={createFormColumn}>{separated(whoAndWhereSections, 'who')}</div>
+        </div>
         {failureRegion}
         {region}
       </div>

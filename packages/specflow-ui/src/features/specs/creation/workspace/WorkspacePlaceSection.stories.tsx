@@ -143,17 +143,25 @@ async function expectNoOverflow(width: number) {
   await expect(culprits.slice(0, 5), `overflow at ${width}`).toEqual([]);
 }
 
-/** Value cell of one row of the default-settings definition list. */
-const rowValue = (canvas: Context['canvas'], term: string) =>
-  within(summary(canvas)).getByText(term, { selector: 'dt' }).nextElementSibling as HTMLElement;
+/** One decision row of a new workspace: its label, its value (or field) and its one action. */
+const row = (canvas: Context['canvas'], name: string) =>
+  within(summary(canvas)).getByRole('group', { name });
+const rowValue = row;
+/** Presses the one action of a decision row ("Zmień" or "Użyj domyślnej"). */
+async function rowAction(
+  canvas: Context['canvas'],
+  userEvent: Context['userEvent'],
+  name: 'Zacznij od' | 'Scal do' | 'Nazwa gałęzi',
+  label: 'Zmień' | 'Użyj domyślnej' = 'Zmień',
+) {
+  await userEvent.click(within(row(canvas, name)).getByRole('button', { name: label }));
+}
+
 const tiles = (canvas: Context['canvas']) =>
   ['Nowe środowisko pracy', 'Bieżący katalog', 'Istniejące środowisko pracy'].map((name) =>
     canvas.getByRole('radio', { name }),
   ) as [HTMLElement, HTMLElement, HTMLElement];
 const label = (element: HTMLElement) => element.closest('label')!;
-async function openSettings(canvas: Context['canvas'], userEvent: Context['userEvent']) {
-  await userEvent.click(canvas.getByRole('button', { name: /Zmień ustawienia/ }));
-}
 
 export const Default: Story = {
   argTypes: {
@@ -210,19 +218,18 @@ export const DefaultNewWorkspace: Story = {
     // The tile owns the "new branch + worktree" statement; the summary only labels defaults.
     await expect(summary(canvas)).toHaveTextContent('Ustawienia domyślne');
     await expect(summary(canvas)).not.toHaveTextContent('Powstanie nowa gałąź');
-    // One consistent definition list: exactly three rows with one branch notation.
-    await expect(canvas.getAllByRole('term').map((term) => term.textContent)).toEqual([
-      'Zacznij od',
-      'Scal do',
-      'Nazwa gałęzi',
-      'Katalog worktree',
-    ]);
+    // Three decision rows, each with its value and one quiet action, and no switch.
+    for (const name of ['Zacznij od', 'Scal do', 'Nazwa gałęzi'] as const) {
+      await expect(within(row(canvas, name)).getByRole('button')).toHaveTextContent('Zmień');
+    }
+
+    await expect(canvas.queryByRole('switch')).toBeNull();
     await expect(rowValue(canvas, 'Zacznij od')).toHaveTextContent('develop');
     await expect(rowValue(canvas, 'Scal do')).toHaveTextContent('acme-app develop');
     await expect(rowValue(canvas, 'Nazwa gałęzi')).toHaveTextContent('feature/limity-platnosci');
-    await expect(rowValue(canvas, 'Katalog worktree')).toHaveTextContent(
-      '/work/acme-app-worktrees',
-    );
+    // The worktree folder is one quiet, truncated line with the full path as its tooltip.
+    const folder = within(summary(canvas)).getByTitle('/work/acme-app-worktrees');
+    await expect(getComputedStyle(folder).textOverflow).toBe('ellipsis');
     // Default request: nothing but the kind; no baseRef, branch or target is hard-coded.
     await expect(request(canvas)).toBe('{"kind":"new-worktree"}');
     // The summary comes after the whole radio group, also in the DOM.
@@ -231,10 +238,6 @@ export const DefaultNewWorkspace: Story = {
       group.compareDocumentPosition(summary(canvas)) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     await expect(group.contains(summary(canvas))).toBe(false);
-    await expect(canvas.getByRole('button', { name: 'Zmień ustawienia' })).toHaveAttribute(
-      'aria-expanded',
-      'false',
-    );
   },
 };
 
@@ -256,9 +259,7 @@ export const MainWorkspace: Story = {
     await expect(summary(canvas)).toHaveTextContent(
       'Specyfikacja powstanie na gałęzi develop. Nie tworzymy nowej gałęzi ani worktree i nie przełączamy aktualnej gałęzi.',
     );
-    await expect(
-      canvas.queryByRole('button', { name: /Zmień ustawienia/ }),
-    ).not.toBeInTheDocument();
+    await expect(canvas.queryByRole('group', { name: 'Zacznij od' })).not.toBeInTheDocument();
     await expect(request(canvas)).toBe('null');
   },
 };
@@ -435,46 +436,49 @@ export const ExistingOutsideNevo: Story = {
   },
 };
 
-export const SwitchesCollapsedByDefault: Story = {
+export const RowsShowTheirValuesUntilChanged: Story = {
   tags: ['contract'],
   play: async ({ canvas, userEvent }) => {
-    const trigger = canvas.getByRole('button', { name: /Zmień ustawienia/ });
-    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    // Collapsed: values only, no field, no switch, no nested disclosure.
+    await expect(within(summary(canvas)).queryByRole('textbox')).toBeNull();
+    await expect(within(summary(canvas)).queryByRole('combobox')).toBeNull();
     await expect(canvas.queryByRole('switch')).not.toBeInTheDocument();
-    await userEvent.click(trigger);
-    await expect(trigger).toHaveAttribute('aria-expanded', 'true');
-    await expect(canvas.getAllByRole('switch')).toHaveLength(4);
+    // Changing the branch name reveals its two fields at once, without further switches.
+    await rowAction(canvas, userEvent, 'Nazwa gałęzi');
+    await expect(within(summary(canvas)).getAllByRole('textbox')).toHaveLength(2);
+    await expect(canvas.queryByRole('switch')).not.toBeInTheDocument();
+    // Every row action is the same quiet button, never a pressed toggle.
+    const actions = (['Zacznij od', 'Scal do', 'Nazwa gałęzi'] as const).map((name) =>
+      within(row(canvas, name)).getByRole('button', { name: /^(Zmień|Użyj domyślnej)$/ }),
+    );
+    await expect(new Set(actions.map((action) => action.className)).size).toBe(1);
+    for (const action of actions) {
+      await expect(action).not.toHaveAttribute('aria-pressed');
+      await expect(action).not.toHaveAttribute('aria-expanded');
+    }
+
+    await rowAction(canvas, userEvent, 'Nazwa gałęzi', 'Użyj domyślnej');
+    await expect(within(summary(canvas)).queryByRole('textbox')).toBeNull();
   },
 };
 
-export const IndependentSwitchesStartFromTheDefaults: Story = {
+export const RowActionsStartFromTheDefaults: Story = {
   tags: ['contract'],
   parameters: { a11y: { test: 'off' } },
   play: async ({ canvas, userEvent }) => {
-    await openSettings(canvas, userEvent);
-    const base = canvas.getByRole('switch', { name: 'Zacznij od innej gałęzi' });
-    const target = canvas.getByRole('switch', { name: 'Scal później do innego środowiska' });
-    const slug = canvas.getByRole('switch', { name: 'Zmień nazwę (slug)' });
-    const name = canvas.getByRole('switch', { name: 'Użyj własnej nazwy gałęzi' });
-    for (const control of [base, target, slug, name]) {
-      await expect(control).not.toBeChecked();
-    }
-
     await expect(request(canvas)).toBe('{"kind":"new-worktree"}');
 
-    // Switching on prefills the effective default: nothing is an override until it differs.
-    await userEvent.click(name);
+    // Change prefills the effective default: nothing is an override until it differs.
+    await rowAction(canvas, userEvent, 'Nazwa gałęzi');
     const branch = canvas.getByRole('textbox', { name: 'Nazwa nowej gałęzi' });
     await expect(branch).toHaveValue('feature/limity-platnosci');
     await expect(request(canvas)).toBe('{"kind":"new-worktree"}');
     await userEvent.clear(branch);
     await userEvent.type(branch, 'feature/payments-v2');
     await expect(request(canvas)).toBe('{"kind":"new-worktree","branch":"feature/payments-v2"}');
-    await expect(base).not.toBeChecked();
-    await expect(target).not.toBeChecked();
     await expect(summary(canvas)).toHaveTextContent('Zmienione ustawienia (1): nazwa');
 
-    await userEvent.click(target);
+    await rowAction(canvas, userEvent, 'Scal do');
     // The default target workspace is preselected: no "choose" empty state.
     await expect(canvas.getByRole('combobox', { name: 'Scal do' })).toHaveTextContent('develop');
     await expect(request(canvas)).toBe('{"kind":"new-worktree","branch":"feature/payments-v2"}');
@@ -490,15 +494,15 @@ export const IndependentSwitchesStartFromTheDefaults: Story = {
       }),
     );
     await expect(rowValue(canvas, 'Scal do')).toHaveTextContent('architecture spec/architecture');
-    // Turning a switch off restores its default and removes its field.
-    await userEvent.click(name);
+    // Use default restores the default and removes the fields.
+    await rowAction(canvas, userEvent, 'Nazwa gałęzi', 'Użyj domyślnej');
     await expect(request(canvas)).toBe(
       JSON.stringify({
         kind: 'new-worktree',
         integrationTargetWorkspaceId: workspaceIds.architecture,
       }),
     );
-    await userEvent.click(name);
+    await rowAction(canvas, userEvent, 'Nazwa gałęzi');
     await expect(canvas.getByRole('textbox', { name: 'Nazwa nowej gałęzi' })).toHaveValue(
       'feature/limity-platnosci',
     );
@@ -509,8 +513,7 @@ export const SlugFollowsTheTitleUntilEditedAndIsValidated: Story = {
   tags: ['contract'],
   parameters: { a11y: { test: 'off' } },
   play: async ({ canvas, userEvent }) => {
-    await openSettings(canvas, userEvent);
-    await userEvent.click(canvas.getByRole('switch', { name: 'Zmień nazwę (slug)' }));
+    await rowAction(canvas, userEvent, 'Nazwa gałęzi');
     const slug = canvas.getByRole('textbox', { name: 'Slug' });
     await expect(slug).toHaveValue('limity-platnosci');
     await expect(request(canvas)).toBe('{"kind":"new-worktree"}');
@@ -536,8 +539,7 @@ export const MovingBetweenTilesKeepsAndHidesSettings: Story = {
   tags: ['contract'],
   parameters: { a11y: { test: 'off' } },
   play: async ({ canvas, userEvent }) => {
-    await openSettings(canvas, userEvent);
-    await userEvent.click(canvas.getByRole('switch', { name: 'Użyj własnej nazwy gałęzi' }));
+    await rowAction(canvas, userEvent, 'Nazwa gałęzi');
     await userEvent.clear(canvas.getByRole('textbox', { name: 'Nazwa nowej gałęzi' }));
     await userEvent.type(
       canvas.getByRole('textbox', { name: 'Nazwa nowej gałęzi' }),
@@ -545,7 +547,9 @@ export const MovingBetweenTilesKeepsAndHidesSettings: Story = {
     );
     await userEvent.click(canvas.getByRole('radio', { name: 'Bieżący katalog' }));
     await expect(request(canvas)).toBe('null');
-    await expect(canvas.queryByRole('switch')).not.toBeInTheDocument();
+    await expect(
+      canvas.queryByRole('textbox', { name: 'Nazwa nowej gałęzi' }),
+    ).not.toBeInTheDocument();
     await userEvent.click(canvas.getByRole('radio', { name: 'Nowe środowisko pracy' }));
     // Same disclosure state and value as before; no silent change of the others.
     await expect(canvas.getByRole('textbox', { name: 'Nazwa nowej gałęzi' })).toHaveValue(
@@ -559,8 +563,7 @@ export const BaseSuggestionAcceptMovesFocusAndAnnounces: Story = {
   tags: ['contract'],
   parameters: { a11y: { test: 'off' } },
   play: async ({ canvas, userEvent }) => {
-    await openSettings(canvas, userEvent);
-    await userEvent.click(canvas.getByRole('switch', { name: 'Zacznij od innej gałęzi' }));
+    await rowAction(canvas, userEvent, 'Zacznij od');
     await userEvent.click(canvas.getByRole('combobox', { name: 'Zacznij od' }));
     await userEvent.click(
       await within(document.body).findByRole('option', { name: /feature\/platform/ }),
@@ -596,8 +599,7 @@ export const BaseSuggestionDeclineKeepsTarget: Story = {
   tags: ['contract'],
   parameters: { a11y: { test: 'off' } },
   play: async ({ canvas, userEvent }) => {
-    await openSettings(canvas, userEvent);
-    await userEvent.click(canvas.getByRole('switch', { name: 'Zacznij od innej gałęzi' }));
+    await rowAction(canvas, userEvent, 'Zacznij od');
     await userEvent.click(canvas.getByRole('combobox', { name: 'Zacznij od' }));
     await userEvent.click(
       await within(document.body).findByRole('option', { name: /feature\/platform/ }),
@@ -619,8 +621,7 @@ export const BaseSuggestionForDirtyWorkspaceExplains: Story = {
   tags: ['contract'],
   parameters: { a11y: { test: 'off' } },
   play: async ({ canvas, userEvent }) => {
-    await openSettings(canvas, userEvent);
-    await userEvent.click(canvas.getByRole('switch', { name: 'Zacznij od innej gałęzi' }));
+    await rowAction(canvas, userEvent, 'Zacznij od');
     await userEvent.click(canvas.getByRole('combobox', { name: 'Zacznij od' }));
     await userEvent.click(
       await within(document.body).findByRole('option', { name: /feature\/payments/ }),
@@ -634,15 +635,12 @@ export const TargetListNeverEqualsBaseList: Story = {
   tags: ['contract'],
   parameters: { a11y: { test: 'off' } },
   play: async ({ canvas, userEvent }) => {
-    await openSettings(canvas, userEvent);
-    await userEvent.click(canvas.getByRole('switch', { name: 'Zacznij od innej gałęzi' }));
+    await rowAction(canvas, userEvent, 'Zacznij od');
     await userEvent.click(canvas.getByRole('combobox', { name: 'Zacznij od' }));
     const bases = (await within(document.body).findAllByRole('option')).map((o) => o.textContent);
     await expect(bases.some((text) => text?.includes('release/1.4'))).toBe(true);
     await userEvent.keyboard('{Escape}');
-    await userEvent.click(
-      canvas.getByRole('switch', { name: 'Scal później do innego środowiska' }),
-    );
+    await rowAction(canvas, userEvent, 'Scal do');
     await userEvent.click(canvas.getByRole('combobox', { name: 'Scal do' }));
     const targets = await within(document.body).findAllByRole('option');
     await expect(targets.some((o) => o.textContent?.includes('release/1.4'))).toBe(false);
@@ -663,10 +661,7 @@ export const UnavailableTargetsStayReadableUnderTheField: Story = {
   tags: ['contract'],
   parameters: { a11y: { test: 'off' } },
   play: async ({ canvas, userEvent }) => {
-    await openSettings(canvas, userEvent);
-    await userEvent.click(
-      canvas.getByRole('switch', { name: 'Scal później do innego środowiska' }),
-    );
+    await rowAction(canvas, userEvent, 'Scal do');
     const hint = canvas.getByText(/Niedostępne jako cel:/);
     await expect(hint).toHaveTextContent(
       'payments feature/payments – ma niezapisane zmiany (zapisz je w commicie lub odłóż przed scaleniem do tego środowiska)',
@@ -678,19 +673,16 @@ export const UnavailableTargetsStayReadableUnderTheField: Story = {
   },
 };
 
-export const TargetSwitchWithoutAnyTargetIsReachableAndExplained: Story = {
+export const TargetRowWithoutAnyTargetSaysWhy: Story = {
   args: { variant: 'no-selectable-targets' },
   tags: ['contract'],
   parameters: { a11y: { test: 'off' } },
-  play: async ({ canvas, userEvent }) => {
-    await openSettings(canvas, userEvent);
-    const target = canvas.getByRole('switch', { name: 'Scal później do innego środowiska' });
-    // aria-disabled, not disabled: reachable by keyboard with its reason as the description.
-    await expect(target).toHaveAttribute('aria-disabled', 'true');
-    await expect(target).not.toBeDisabled();
-    await expect(canvas.getByText('Brak środowisk pracy, do których można scalić.')).toBeVisible();
-    await userEvent.click(target);
-    await expect(target).not.toBeChecked();
+  play: async ({ canvas }) => {
+    // Nothing to choose from: no action, the reason is said on the row at full strength.
+    await expect(within(row(canvas, 'Scal do')).queryByRole('button')).toBeNull();
+    await expect(
+      within(row(canvas, 'Scal do')).getByText('Brak środowisk pracy, do których można scalić.'),
+    ).toBeVisible();
     await expect(request(canvas)).toBe('{"kind":"new-worktree"}');
   },
 };
@@ -699,8 +691,7 @@ export const CustomNameValidation: Story = {
   tags: ['contract'],
   parameters: { a11y: { test: 'off' } },
   play: async ({ canvas, userEvent }) => {
-    await openSettings(canvas, userEvent);
-    await userEvent.click(canvas.getByRole('switch', { name: 'Użyj własnej nazwy gałęzi' }));
+    await rowAction(canvas, userEvent, 'Nazwa gałęzi');
     const input = canvas.getByRole('textbox', { name: 'Nazwa nowej gałęzi' });
     await userEvent.clear(input);
     await userEvent.type(input, 'bad name');
@@ -723,7 +714,6 @@ export const ServerNameConflictFocusesTheField: Story = {
     branchConflict: 'feature/payments-v2',
     initial: {
       tile: 'new',
-      settingsOpen: true,
       branch: { on: true, name: 'feature/payments-v2', edited: true },
     },
   },
@@ -745,7 +735,6 @@ export const ServerSlugConflictFocusesTheSlugField: Story = {
     slugConflict: 'moj-slug',
     initial: {
       tile: 'new',
-      settingsOpen: true,
       slug: { on: true, value: 'moj-slug', edited: true },
     },
   },
@@ -782,7 +771,7 @@ export const StaleRememberedValueIsFlaggedOnReturn: Story = {
     await expect(canvas.getByText(/Ta gałąź nie jest już dostępna/)).toBeVisible();
     await expect(canvas.getByLabelText('Żądanie')).toHaveAttribute(
       'data-problems',
-      'Ta gałąź nie jest już dostępna. Wybierz inną lub wyłącz tę opcję.',
+      'Ta gałąź nie jest już dostępna. Wybierz inną lub wybierz „Użyj domyślnej”.',
     );
     await userEvent.click(canvas.getByRole('radio', { name: 'Istniejące środowisko pracy' }));
     await expect(canvas.getByText('To środowisko pracy nie jest już dostępne.')).toBeVisible();
@@ -927,7 +916,7 @@ export const IntegrationTargetNotConfigured: Story = {
   args: { variant: 'no-integration-target' },
   tags: ['contract'],
   parameters: { a11y: { test: 'off' } },
-  play: async ({ canvas, userEvent }) => {
+  play: async ({ canvas }) => {
     // A quiet note on the Merge row, not a separate warning under everything.
     await expect(rowValue(canvas, 'Scal do')).toHaveTextContent('Nie ustawiono');
     await expect(summary(canvas)).toHaveTextContent(
@@ -935,11 +924,7 @@ export const IntegrationTargetNotConfigured: Story = {
     );
     // It does not block Create and does not invent main or develop.
     await expect(canvas.getByLabelText('Żądanie')).toHaveAttribute('data-problems', '');
-    await openSettings(canvas, userEvent);
-    await expect(canvas.getByText('Cel integracji nie jest skonfigurowany.')).toBeVisible();
-    await expect(
-      canvas.getByRole('switch', { name: 'Scal później do innego środowiska' }),
-    ).toBeEnabled();
+    await expect(within(row(canvas, 'Scal do')).getByRole('button')).toBeEnabled();
   },
 };
 
@@ -956,10 +941,7 @@ export const ProjectTargetHeldOnlyByALinkedWorkspaceIsNotAvailable: Story = {
     await expect(summary(canvas)).toHaveTextContent('Tworzenie nie jest blokowane.');
     await expect(canvas.getByLabelText('Żądanie')).toHaveAttribute('data-problems', '');
     await expect(request(canvas)).toBe('{"kind":"new-worktree"}');
-    await openSettings(canvas, userEvent);
-    await userEvent.click(
-      canvas.getByRole('switch', { name: 'Scal później do innego środowiska' }),
-    );
+    await rowAction(canvas, userEvent, 'Scal do');
     // No default target exists, so nothing is preselected (and nothing is sent) until a real pick.
     await expect(canvas.getByRole('combobox', { name: 'Scal do' })).toHaveTextContent(
       'Wybierz środowisko pracy',
@@ -1024,7 +1006,7 @@ export const Refreshing: Story = {
 };
 
 export const LockedWhileCreating: Story = {
-  args: { locked: true, initial: { tile: 'new', settingsOpen: true } },
+  args: { locked: true, initial: { tile: 'new' } },
   tags: ['contract'],
   parameters: { a11y: { test: 'off' } },
   play: async ({ canvas }) => {
@@ -1032,18 +1014,18 @@ export const LockedWhileCreating: Story = {
       await expect(tile).toBeDisabled();
     }
 
-    for (const control of canvas.getAllByRole('switch')) {
+    for (const control of within(summary(canvas)).getAllByRole('button')) {
       await expect(control).toBeDisabled();
     }
   },
 };
 
 export const LongNamesWrapWithoutOverflow: Story = {
-  args: { variant: 'long-names', initial: { tile: 'new', settingsOpen: true } },
+  args: { variant: 'long-names', initial: { tile: 'new' } },
   tags: ['contract'],
   parameters: { a11y: { test: 'off' } },
   play: async ({ canvas, userEvent }) => {
-    await userEvent.click(canvas.getByRole('switch', { name: 'Zacznij od innej gałęzi' }));
+    await rowAction(canvas, userEvent, 'Zacznij od');
     await userEvent.click(canvas.getByRole('combobox', { name: 'Zacznij od' }));
     await userEvent.click(
       await within(document.body).findByRole('option', { name: /very-long-descriptive/ }),
@@ -1091,15 +1073,14 @@ export const ResponsiveColumnsAndNoOverflow: Story = {
   },
 };
 async function userEventOpen(canvas: Context['canvas']) {
-  canvas.getByRole('button', { name: /Zmień ustawienia/ }).click();
-  await waitFor(() =>
-    expect(canvas.getByRole('switch', { name: 'Zacznij od innej gałęzi' })).toBeVisible(),
-  );
-  const field = canvas.getByRole('switch', { name: 'Użyj własnej nazwy gałęzi' }).closest('div')!;
-  const block = canvas.getByRole('group', { name: 'Podsumowanie środowiska pracy' });
-  await expect(field.getBoundingClientRect().width).toBeLessThanOrEqual(760);
-  await expect(block.getBoundingClientRect().width).toBeGreaterThan(
-    field.getBoundingClientRect().width,
+  within(row(canvas, 'Nazwa gałęzi')).getByRole('button', { name: 'Zmień' }).click();
+  const input = await canvas.findByRole('textbox', { name: 'Nazwa nowej gałęzi' });
+  const field = input.closest('.field')!;
+  const rows = row(canvas, 'Nazwa gałęzi').parentElement!;
+  // The rows and their fields keep the control width (34rem) however wide the section is.
+  await expect(rows.getBoundingClientRect().width).toBeLessThanOrEqual(545);
+  await expect(field.getBoundingClientRect().width).toBeLessThan(
+    rows.getBoundingClientRect().width,
   );
 }
 
@@ -1123,17 +1104,11 @@ const brokenWords = (root: Element) => {
   return broken;
 };
 
-export const TargetSwitchPrefillsTheDefaultTargetAndOnlyADifferentPickIsSent: Story = {
+export const TargetChangePrefillsTheDefaultTargetAndOnlyADifferentPickIsSent: Story = {
   tags: ['contract'],
   parameters: { a11y: { test: 'off' } },
   play: async ({ canvas, userEvent }) => {
-    await openSettings(canvas, userEvent);
-    await expect(
-      canvas.getByText(/Domyślnie zmiany wrócą do środowiska na celu projektu/),
-    ).toBeVisible();
-    await userEvent.click(
-      canvas.getByRole('switch', { name: 'Scal później do innego środowiska' }),
-    );
+    await rowAction(canvas, userEvent, 'Scal do');
     // On: the default target workspace is preselected, no empty state, nothing sent yet.
     await expect(canvas.getByRole('combobox', { name: 'Scal do' })).toHaveTextContent('develop');
     await expect(canvas.queryByText('Wybierz środowisko pracy')).toBeNull();
@@ -1149,21 +1124,18 @@ export const TargetSwitchPrefillsTheDefaultTargetAndOnlyADifferentPickIsSent: St
       JSON.stringify({ kind: 'new-worktree', integrationTargetWorkspaceId: workspaceIds.platform }),
     );
     await expect(rowValue(canvas, 'Scal do')).toHaveTextContent('platform feature/platform');
-    // Off restores the default and sends nothing.
-    await userEvent.click(
-      canvas.getByRole('switch', { name: 'Scal później do innego środowiska' }),
-    );
+    // Use default restores the default and sends nothing.
+    await rowAction(canvas, userEvent, 'Scal do', 'Użyj domyślnej');
     await expect(request(canvas)).toBe('{"kind":"new-worktree"}');
     await expect(rowValue(canvas, 'Scal do')).toHaveTextContent('acme-app develop');
   },
 };
 
-export const EnablingTheBaseSwitchPrefillsTheEffectiveDefault: Story = {
+export const ChangingTheBasePrefillsTheEffectiveDefault: Story = {
   tags: ['contract'],
   parameters: { a11y: { test: 'off' } },
   play: async ({ canvas, userEvent }) => {
-    await openSettings(canvas, userEvent);
-    await userEvent.click(canvas.getByRole('switch', { name: 'Zacznij od innej gałęzi' }));
+    await rowAction(canvas, userEvent, 'Zacznij od');
     // F-08: never an empty select; the default is what the user starts from, and it is not an override.
     await expect(canvas.getByRole('combobox', { name: 'Zacznij od' })).toHaveTextContent('develop');
     await expect(canvas.getByRole('combobox', { name: 'Zacznij od' })).not.toHaveTextContent(
@@ -1179,10 +1151,10 @@ export const EnablingTheBaseSwitchPrefillsTheEffectiveDefault: Story = {
     await expect(request(canvas)).toBe(
       '{"kind":"new-worktree","baseRef":"refs/heads/release/1.4"}',
     );
-    // Off restores the default: turning it on again starts from the default, not the discarded pick.
-    await userEvent.click(canvas.getByRole('switch', { name: 'Zacznij od innej gałęzi' }));
+    // Use default restores the default: changing again starts from it, not from the discarded pick.
+    await rowAction(canvas, userEvent, 'Zacznij od', 'Użyj domyślnej');
     await expect(request(canvas)).toBe('{"kind":"new-worktree"}');
-    await userEvent.click(canvas.getByRole('switch', { name: 'Zacznij od innej gałęzi' }));
+    await rowAction(canvas, userEvent, 'Zacznij od');
     await expect(canvas.getByRole('combobox', { name: 'Zacznij od' })).toHaveTextContent('develop');
   },
 };
@@ -1192,24 +1164,22 @@ export const EnablingBaseWithoutAnyDefaultStaysBlockedUntilChosen: Story = {
   args: { variant: 'head-base-no-branch' },
   parameters: { a11y: { test: 'off' } },
   play: async ({ canvas, userEvent }) => {
-    await openSettings(canvas, userEvent);
-    await userEvent.click(canvas.getByRole('switch', { name: 'Zacznij od innej gałęzi' }));
+    await rowAction(canvas, userEvent, 'Zacznij od');
     await expect(canvas.getByRole('combobox', { name: 'Zacznij od' })).toHaveTextContent(
       'Wybierz gałąź',
     );
     await expect(request(canvas)).toBe('{"kind":"new-worktree"}');
     await expect(canvas.getByLabelText('Żądanie')).toHaveAttribute(
       'data-problems',
-      'Wybierz gałąź początkową lub wyłącz tę opcję.',
+      'Wybierz gałąź początkową lub wybierz „Użyj domyślnej”.',
     );
   },
 };
 
-export const DisclosureMetaWrapsAtWordBoundariesAt320: Story = {
+export const RowsKeepWordsWholeAt320: Story = {
   tags: ['contract'],
   args: {
     initial: {
-      settingsOpen: false,
       base: { on: true, ref: 'refs/heads/feature/platform' },
       branch: {
         on: true,
@@ -1222,23 +1192,27 @@ export const DisclosureMetaWrapsAtWordBoundariesAt320: Story = {
   play: async ({ canvas }) => {
     for (const width of [320, 360, 390]) {
       await settle(width);
-      const trigger = canvas.getByRole('button', { name: /Zmień ustawienia/ });
-      // F-03: the label and every word of the meta stay whole; the meta may wrap under the label.
-      await expect(brokenWords(trigger)).toEqual([]);
+      // F-03: the label of the changed settings and every row action stay whole words.
       await expect(brokenWords(canvas.getByText(/Zmienione ustawienia/))).toEqual([]);
-      await expect(trigger.scrollWidth).toBeLessThanOrEqual(trigger.clientWidth + 1);
+      for (const name of ['Zacznij od', 'Scal do', 'Nazwa gałęzi'] as const) {
+        const action = within(row(canvas, name)).getByRole('button', {
+          name: /^(Zmień|Użyj domyślnej)$/,
+        });
+        await expect(brokenWords(action)).toEqual([]);
+        await expect(action.scrollWidth).toBeLessThanOrEqual(action.clientWidth + 1);
+      }
     }
 
-    // F-10: the accessible name has no stray separator (the list is joined the Polish way).
+    // F-10: no stray separator (the list is joined the Polish way).
     await expect(canvas.getByText('Zmienione ustawienia (2): baza i nazwa')).toBeVisible();
     await expectNoOverflow(320);
   },
 };
 
-export const DefaultDisclosureNameHasNoStrayComma: Story = {
+export const DefaultSettingsLabel: Story = {
   tags: ['contract'],
   play: async ({ canvas }) => {
-    await expect(canvas.getByRole('button', { name: 'Zmień ustawienia' })).toBeVisible();
+    await expect(within(summary(canvas)).getByText('Ustawienia domyślne')).toBeVisible();
   },
 };
 
@@ -1273,8 +1247,7 @@ export const StructuralBranchNameErrorNamesTheRule: Story = {
   tags: ['contract'],
   parameters: { a11y: { test: 'off' } },
   play: async ({ canvas, userEvent }) => {
-    await openSettings(canvas, userEvent);
-    await userEvent.click(canvas.getByRole('switch', { name: 'Użyj własnej nazwy gałęzi' }));
+    await rowAction(canvas, userEvent, 'Nazwa gałęzi');
     const input = canvas.getByRole('textbox', { name: 'Nazwa nowej gałęzi' });
     await userEvent.clear(input);
     await userEvent.type(input, 'feature//x');
@@ -1329,13 +1302,16 @@ export const FailedRefreshKeepsTheOptionsAndSaysSo: Story = {
   },
 };
 
-export const CommitRowNamesTheBranchOfANewWorkspace: Story = {
+export const CommitNoteRefersToTheBranchAbove: Story = {
   args: { variant: 'commits' },
   tags: ['contract'],
   play: async ({ canvas }) => {
-    await expect(rowValue(canvas, 'Commit')).toHaveTextContent(
-      'Pliki specyfikacji zostaną zapisane w commicie na gałęzi feature/limity-platnosci.',
+    await expect(rowValue(canvas, 'Nazwa gałęzi')).toHaveTextContent('feature/limity-platnosci');
+    await expect(summary(canvas)).toHaveTextContent(
+      'Pliki specyfikacji trafią w commicie na tę gałąź.',
     );
+    // The branch is not repeated inside the sentence.
+    await expect(summary(canvas)).not.toHaveTextContent('na gałęzi feature/limity-platnosci');
   },
 };
 
@@ -1343,7 +1319,7 @@ export const GitOffHasNoCommitRowAndNoProtectionText: Story = {
   args: { variant: 'default' },
   tags: ['contract'],
   play: async ({ canvas }) => {
-    await expect(within(summary(canvas)).queryByText('Commit', { selector: 'dt' })).toBeNull();
+    await expect(within(summary(canvas)).queryByText(/trafią w commicie/)).toBeNull();
     await expect(canvas.queryByText(/chronion/)).toBeNull();
     await expect(canvas.queryByRole('button', { name: 'Użyj nowego środowiska pracy' })).toBeNull();
   },
@@ -1432,7 +1408,7 @@ export const GeneratedBranchIsProtectedSoOwnNameIsRequired: Story = {
       expect.stringContaining('Wygenerowana gałąź release/limity-platnosci jest chroniona'),
     );
     // A typed name that is protected as well is flagged at the field.
-    await userEvent.click(canvas.getByRole('switch', { name: 'Użyj własnej nazwy gałęzi' }));
+    await rowAction(canvas, userEvent, 'Nazwa gałęzi');
     const input = canvas.getByRole('textbox', { name: 'Nazwa nowej gałęzi' });
     await userEvent.clear(input);
     await userEvent.type(input, 'release/hotfix');

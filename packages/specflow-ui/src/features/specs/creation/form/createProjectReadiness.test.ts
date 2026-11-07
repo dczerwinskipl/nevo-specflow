@@ -57,3 +57,29 @@ describe('projectCreateReadiness', () => {
     expect(result.prerequisite).toEqual({ key });
   });
 });
+
+describe('projectCreateReadiness: the field of the first problem', () => {
+  it('follows the form order: name, archetype, then the workspace fields', () => {
+    const pending = {
+      ...initialWorkspaceChoice,
+      tile: 'new' as const,
+      base: { on: true, ref: '' },
+    };
+    const all = { ...base, title: '', archetype: undefined, choice: pending };
+    expect(projectCreateReadiness(all).problemField).toBe('name');
+    expect(projectCreateReadiness({ ...all, title: 'T' }).problemField).toBe('archetype');
+    expect(projectCreateReadiness({ ...all, title: 'T', archetype: base.archetype })).toMatchObject(
+      { problemField: 'base', canSubmit: false },
+    );
+  });
+
+  it('loading, no permission and nothing installed have no field to lead to', () => {
+    expect(projectCreateReadiness({ ...base, forbidden: true }).problemField).toBeUndefined();
+    expect(
+      projectCreateReadiness({ ...base, archetypesLoading: true }).problemField,
+    ).toBeUndefined();
+    expect(
+      projectCreateReadiness({ ...base, workspaceState: { status: 'loading' } }).problemField,
+    ).toBeUndefined();
+  });
+});

@@ -1,6 +1,6 @@
-import { useId, useMemo } from 'react';
+import { useId, useMemo, type MutableRefObject, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Typography } from '@nevo/ui';
+import { Typography, cn } from '@nevo/ui';
 import type { DemoCatalogue } from '@nevo/specflow-contracts/demo';
 import {
   AgentFields,
@@ -9,6 +9,7 @@ import {
   startCatalogueFromDemo,
   type AgentChoice,
 } from '../../../sessions';
+import { createControlWidth } from '../createFormLayout';
 
 /**
  * The agent of the Specification's initial Session: the provider tiles, then the same labelled
@@ -20,11 +21,19 @@ export function CreateAgentSection({
   choice,
   locked,
   onChange,
+  modelError,
+  providersRef,
+  modelControlRef,
 }: {
   catalogue: DemoCatalogue;
   choice: AgentChoice;
   locked: boolean;
   onChange: (choice: AgentChoice) => void;
+  /** Why the missing model blocks Create (once tried). */
+  modelError?: string;
+  /** The provider cards, so a blocked Create can lead to them. */
+  providersRef?: RefObject<HTMLDivElement | null>;
+  modelControlRef?: MutableRefObject<HTMLElement | null>;
 }) {
   const { t } = useTranslation();
   const start = useMemo(() => startCatalogueFromDemo(catalogue), [catalogue]);
@@ -41,21 +50,34 @@ export function CreateAgentSection({
             {t('create.agent.introInitial')}
           </Typography>
         </div>
-        <ProviderChoice
-          catalogue={start}
-          providerId={choice.providerId}
-          labelledBy={legendId}
-          onSelect={(providerId) =>
-            onChange(
-              selectProvider(
-                choice,
-                start.providers.find((p) => p.id === providerId),
-              ),
-            )
-          }
-        />
+        {/* Capped like every Create control, and its own container: the cards choose their
+            columns from this width, not from the frame's. */}
+        <div ref={providersRef} className={cn('@container', createControlWidth)}>
+          <ProviderChoice
+            catalogue={start}
+            providerId={choice.providerId}
+            labelledBy={legendId}
+            onSelect={(providerId) =>
+              onChange(
+                selectProvider(
+                  choice,
+                  start.providers.find((p) => p.id === providerId),
+                ),
+              )
+            }
+          />
+        </div>
       </fieldset>
-      <AgentFields catalogue={start} choice={choice} locked={locked} onChange={onChange} />
+      <div className={createControlWidth}>
+        <AgentFields
+          catalogue={start}
+          choice={choice}
+          locked={locked}
+          onChange={onChange}
+          modelError={modelError}
+          modelControlRef={modelControlRef}
+        />
+      </div>
     </div>
   );
 }

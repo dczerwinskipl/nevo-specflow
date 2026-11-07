@@ -546,7 +546,10 @@ export const ZeroProviders: Story = {
   play: async ({ canvas, userEvent }) => {
     await openAgentForm(canvas, userEvent);
     await expect(canvas.getByText('Brak dostępnych wykonawców.')).toBeVisible();
-    await expect(canvas.getByRole('button', { name: 'Utwórz i otwórz sesję' })).toBeDisabled();
+    await expect(canvas.getByRole('button', { name: 'Utwórz i otwórz sesję' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
     for (const width of [390, 1440]) {
       await expectNoOverflow(width);
     }
@@ -588,7 +591,8 @@ export const ThreeProvidersNoOrphan: Story = {
         Math.round(card.getBoundingClientRect().top),
       ),
     );
-    await expect(tops.size).toBe(1);
+    // No orphan: the capped cards are one full row of three or a stack, never two plus one.
+    await expect([1, 3]).toContain(tops.size);
     await expect(canvas.getByText('Adapter nie jest skonfigurowany.')).toBeVisible();
     await expectEqualRows(canvas);
     await expectNoOverflow(390);
@@ -735,6 +739,17 @@ async function openManualForm(
 
 const lastRequest = () => createRequests.at(-1)!;
 const submit = (canvas: Canvas) => canvas.getByRole('button', { name: 'Utwórz specyfikację' });
+/** Presses the one action of a Git decision row ("Zmień" or "Użyj domyślnej"). */
+async function changeRow(
+  canvas: Canvas,
+  userEvent: StoryContext['userEvent'],
+  name: 'Zacznij od' | 'Scal do' | 'Nazwa gałęzi',
+  label: 'Zmień' | 'Użyj domyślnej' = 'Zmień',
+) {
+  await userEvent.click(
+    within(canvas.getByRole('group', { name })).getByRole('button', { name: label }),
+  );
+}
 
 export const DefaultCreateSendsOnlyTheNewWorktreeKind: Story = {
   render: () => <Fixture />,
@@ -769,7 +784,7 @@ export const ExistingWorkspaceCreateSendsOnlyTheWorkspace: Story = {
   play: async ({ canvas, userEvent }) => {
     await openManualForm(canvas, userEvent);
     await userEvent.click(canvas.getByRole('radio', { name: 'Istniejące środowisko pracy' }));
-    await expect(submit(canvas)).toBeDisabled();
+    await expect(submit(canvas)).toHaveAttribute('aria-disabled', 'true');
     await expect(canvas.getByText('Wybierz środowisko pracy.', { selector: 'span' })).toBeVisible();
     await userEvent.click(canvas.getByRole('combobox', { name: 'Środowisko pracy' }));
     await userEvent.click(
@@ -789,8 +804,7 @@ export const OverridesAreSentOnlyForTheActiveTile: Story = {
   parameters: { a11y: { test: 'off' } },
   play: async ({ canvas, userEvent }) => {
     await openManualForm(canvas, userEvent);
-    await userEvent.click(canvas.getByRole('button', { name: /Zmień ustawienia/ }));
-    await userEvent.click(canvas.getByRole('switch', { name: 'Użyj własnej nazwy gałęzi' }));
+    await changeRow(canvas, userEvent, 'Nazwa gałęzi');
     await userEvent.clear(canvas.getByRole('textbox', { name: 'Nazwa nowej gałęzi' }));
     await userEvent.type(
       canvas.getByRole('textbox', { name: 'Nazwa nowej gałęzi' }),
@@ -813,7 +827,10 @@ export const AgentPathKeepsAcceptedSectionOrderAndCta: Story = {
     await expect(
       agent.compareDocumentPosition(workspace) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
-    await expect(canvas.getByRole('button', { name: 'Utwórz i otwórz sesję' })).toBeDisabled();
+    await expect(canvas.getByRole('button', { name: 'Utwórz i otwórz sesję' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
     await expect(canvas.queryByRole('button', { name: 'Utwórz specyfikację' })).toBeNull();
   },
 };
@@ -826,7 +843,7 @@ export const OptionsLoadingBlocksCreateButNotTheName: Story = {
     await userEvent.type(name, 'Szkic');
     await expect(name).toHaveValue('Szkic');
     await expect(canvas.getByText('Wczytujemy opcje środowiska pracy…')).toBeVisible();
-    await expect(submit(canvas)).toBeDisabled();
+    await expect(submit(canvas)).toHaveAttribute('aria-disabled', 'true');
     await expect(canvas.queryByRole('radio', { name: 'Nowe środowisko pracy' })).toBeNull();
     for (const width of [320, 390, 1440]) {
       await expectNoOverflow(width);
@@ -844,7 +861,7 @@ export const OptionsErrorKeepsTheDraft: Story = {
     );
     await canvas.findByText('Nie udało się wczytać opcji środowiska pracy');
     await expect(canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' })).toHaveValue('Szkic');
-    await expect(submit(canvas)).toBeDisabled();
+    await expect(submit(canvas)).toHaveAttribute('aria-disabled', 'true');
     await expect(canvas.getByRole('button', { name: 'Spróbuj ponownie' })).toBeVisible();
   },
 };
@@ -864,8 +881,7 @@ export const BranchNameConflictKeepsTheFormAndFocusesTheField: Story = {
   parameters: { a11y: { test: 'off' } },
   play: async ({ canvas, userEvent }) => {
     await openManualForm(canvas, userEvent);
-    await userEvent.click(canvas.getByRole('button', { name: /Zmień ustawienia/ }));
-    await userEvent.click(canvas.getByRole('switch', { name: 'Użyj własnej nazwy gałęzi' }));
+    await changeRow(canvas, userEvent, 'Nazwa gałęzi');
     await userEvent.clear(canvas.getByRole('textbox', { name: 'Nazwa nowej gałęzi' }));
     await userEvent.type(
       canvas.getByRole('textbox', { name: 'Nazwa nowej gałęzi' }),
@@ -882,12 +898,12 @@ export const BranchNameConflictKeepsTheFormAndFocusesTheField: Story = {
     await expect(canvas.queryByRole('button', { name: 'Spróbuj ponownie' })).toBeNull();
     const first = lastRequest().operationId;
     await userEvent.click(canvas.getByRole('button', { name: 'Użyj automatycznej nazwy' }));
-    await expect(
-      canvas.getByRole('switch', { name: 'Użyj własnej nazwy gałęzi' }),
-    ).not.toBeChecked();
+    await expect(canvas.getByRole('textbox', { name: 'Nazwa nowej gałęzi' })).not.toHaveValue(
+      'feature/payments-v2',
+    );
     await userEvent.click(submit(canvas));
     await waitFor(() => expect(createRequests).toHaveLength(2));
-    // A changed body is a new operation; switching the name off restored the default, so nothing is sent.
+    // A changed body is a new operation; the automatic name is the default again, so nothing is sent.
     await expect(lastRequest().operationId).not.toBe(first);
     await expect(lastRequest().target).toEqual({ kind: 'new-worktree' });
   },
@@ -900,10 +916,7 @@ export const StaleWorkspaceConflictRefreshPreservesTheForm: Story = {
   parameters: { a11y: { test: 'off' } },
   play: async ({ canvas, userEvent }) => {
     await openManualForm(canvas, userEvent);
-    await userEvent.click(canvas.getByRole('button', { name: /Zmień ustawienia/ }));
-    await userEvent.click(
-      canvas.getByRole('switch', { name: 'Scal później do innego środowiska' }),
-    );
+    await changeRow(canvas, userEvent, 'Scal do');
     await userEvent.click(canvas.getByRole('combobox', { name: 'Scal do' }));
     await userEvent.click(
       await within(document.body).findByRole('option', { name: /feature\/platform/ }),
@@ -917,13 +930,13 @@ export const StaleWorkspaceConflictRefreshPreservesTheForm: Story = {
         canvas.getByText(/^Opcje odświeżone. Formularz zachowany/, { selector: '[role="status"]' }),
       ).toBeInTheDocument(),
     );
-    // Nothing was reset: name, tile, switch and the now-invalid value stay and are flagged.
+    // Nothing was reset: name, tile, changed row and the now-invalid value stay and are flagged.
     await expect(canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' })).toHaveValue(
       'Nowa obsługa płatności',
     );
     await expect(
-      canvas.getByRole('switch', { name: 'Scal później do innego środowiska' }),
-    ).toBeChecked();
+      within(canvas.getByRole('group', { name: 'Scal do' })).getByRole('button'),
+    ).toHaveTextContent('Użyj domyślnej');
     await expect(canvas.getAllByText(/nie może już być celem scalenia/)[0]).toBeVisible();
     await expect(canvas.getByRole('combobox', { name: 'Scal do' })).toHaveAttribute(
       'aria-invalid',
@@ -935,7 +948,7 @@ export const StaleWorkspaceConflictRefreshPreservesTheForm: Story = {
       canvas.queryByText('Stan środowiska pracy zmienił się od otwarcia formularza'),
     ).toBeNull();
     await waitFor(() => expect(canvas.getByRole('combobox', { name: 'Scal do' })).toHaveFocus());
-    await expect(submit(canvas)).toBeDisabled();
+    await expect(submit(canvas)).toHaveAttribute('aria-disabled', 'true');
   },
 };
 
@@ -962,8 +975,7 @@ export const RecoveryRequiredLocksTheFormAndNeverCreatesAgain: Story = {
   parameters: { a11y: { test: 'off' } },
   play: async ({ canvas, userEvent }) => {
     await openManualForm(canvas, userEvent);
-    await userEvent.click(canvas.getByRole('button', { name: /Zmień ustawienia/ }));
-    await userEvent.click(canvas.getByRole('switch', { name: 'Użyj własnej nazwy gałęzi' }));
+    await changeRow(canvas, userEvent, 'Nazwa gałęzi');
     await userEvent.clear(canvas.getByRole('textbox', { name: 'Nazwa nowej gałęzi' }));
     await userEvent.type(
       canvas.getByRole('textbox', { name: 'Nazwa nowej gałęzi' }),
@@ -1008,8 +1020,7 @@ export const ProtectedTypedBranchIsFlaggedAtItsFieldAndNothingWasCreated: Story 
   parameters: { a11y: { test: 'off' } },
   play: async ({ canvas, userEvent }) => {
     await openManualForm(canvas, userEvent);
-    await userEvent.click(canvas.getByRole('button', { name: /Zmień ustawienia/ }));
-    await userEvent.click(canvas.getByRole('switch', { name: 'Użyj własnej nazwy gałęzi' }));
+    await changeRow(canvas, userEvent, 'Nazwa gałęzi');
     await userEvent.clear(canvas.getByRole('textbox', { name: 'Nazwa nowej gałęzi' }));
     await userEvent.type(
       canvas.getByRole('textbox', { name: 'Nazwa nowej gałęzi' }),
@@ -1091,21 +1102,24 @@ export const WorkspaceSectionGeometryInTheForm: Story = {
   parameters: { a11y: { test: 'off' } },
   play: async ({ canvas, userEvent }) => {
     await openManualForm(canvas, userEvent);
-    await userEvent.click(canvas.getByRole('button', { name: /Zmień ustawienia/ }));
+    await changeRow(canvas, userEvent, 'Nazwa gałęzi');
     for (const width of [320, 390, 768, 1440, 2560]) {
       await expectNoOverflow(width);
     }
 
-    const [a, b, c] = [
-      'Nowe środowisko pracy',
-      'Bieżący katalog',
-      'Istniejące środowisko pracy',
-    ].map((name) =>
-      canvas.getByRole('radio', { name }).closest('label')!.getBoundingClientRect(),
-    ) as [DOMRect, DOMRect, DOMRect];
-    // Wide: three equal columns on one row.
+    const tileRects = () =>
+      ['Nowe środowisko pracy', 'Bieżący katalog', 'Istniejące środowisko pracy'].map((name) =>
+        canvas.getByRole('radio', { name }).closest('label')!.getBoundingClientRect(),
+      ) as [DOMRect, DOMRect, DOMRect];
+    // One column wide enough (below the two-column threshold): three equal tiles on one row.
+    await settle(1200);
+    const [a, b, c] = tileRects();
     await expect(Math.abs(a.top - c.top)).toBeLessThan(1);
     await expect(Math.abs(a.width - b.width)).toBeLessThan(1);
+    // Two columns: the tiles stack in the right column, which is their own container.
+    await settle(1920);
+    const [wideA, wideB] = tileRects();
+    await expect(wideB.top).toBeGreaterThan(wideA.bottom - 1);
     await settle(390);
     // Narrow: stacked. Both tiles are measured at 390 (settle waits for the layout to follow).
     const [first, second] = ['Nowe środowisko pracy', 'Bieżący katalog'].map((name) =>
@@ -1160,8 +1174,6 @@ const setOnline = (online: boolean) => {
   }
 };
 
-const settings = (canvas: Canvas) => canvas.getByRole('button', { name: /Zmień ustawienia/ });
-
 export const AutomaticBranchNameCollisionOffersACustomName: Story = {
   render: () => <Fixture createBehavior="branch-exists" />,
   parameters: { a11y: { test: 'off' } },
@@ -1179,8 +1191,9 @@ export const AutomaticBranchNameCollisionOffersACustomName: Story = {
     );
     await expect(canvas.queryByRole('button', { name: 'Użyj automatycznej nazwy' })).toBeNull();
     await userEvent.click(canvas.getByRole('button', { name: 'Podaj własną nazwę' }));
-    await expect(canvas.getByRole('switch', { name: 'Użyj własnej nazwy gałęzi' })).toBeChecked();
-    await expect(settings(canvas)).toHaveAttribute('aria-expanded', 'true');
+    await expect(
+      within(canvas.getByRole('group', { name: 'Nazwa gałęzi' })).getByRole('button'),
+    ).toHaveTextContent('Użyj domyślnej');
     const field = canvas.getByRole('textbox', { name: 'Nazwa nowej gałęzi' });
     await waitFor(() => expect(field).toHaveFocus());
     await expect(canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' })).toHaveValue(
@@ -1197,18 +1210,14 @@ export const AutomaticBranchNameCollisionOffersACustomName: Story = {
   },
 };
 
-export const OpeningSettingsDoesNotRetireAFailureAlert: Story = {
+export const AFailureAlertStaysUntilARealEdit: Story = {
   render: () => <Fixture createBehavior="stale-workspace" />,
   parameters: { a11y: { test: 'off' } },
   play: async ({ canvas, userEvent }) => {
     await openManualForm(canvas, userEvent);
     await userEvent.click(submit(canvas));
     await canvas.findByText('Stan środowiska pracy zmienił się od otwarcia formularza');
-    // Q4: opening / closing the disclosure is not an edit of the request.
-    await userEvent.click(settings(canvas));
-    await expect(settings(canvas)).toHaveAttribute('aria-expanded', 'true');
-    await expect(canvas.getByRole('alert')).toHaveTextContent('Stan środowiska pracy zmienił się');
-    await userEvent.click(settings(canvas));
+    // Q4: the alert stays while nothing that is sent changed.
     await expect(canvas.getByRole('alert')).toHaveTextContent('Stan środowiska pracy zmienił się');
     // A real edit still retires it.
     await userEvent.type(canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' }), ' v2');
@@ -1498,29 +1507,190 @@ export const NotStartedStatusKeepsTheOperationUntilItIsKnownToBeFinished: Story 
   },
 };
 
-export const RefetchInvalidatingACollapsedSettingOpensThePanel: Story = {
+export const RefetchInvalidatingAChangedRowFlagsItsField: Story = {
   render: () => <Fixture controls optionsVariants={['default', 'platform-dirty']} />,
   parameters: { a11y: { test: 'off' } },
   play: async ({ canvas, userEvent }) => {
     await openManualForm(canvas, userEvent);
-    await userEvent.click(settings(canvas));
-    await userEvent.click(
-      canvas.getByRole('switch', { name: 'Scal później do innego środowiska' }),
-    );
+    await changeRow(canvas, userEvent, 'Scal do');
     await userEvent.click(canvas.getByRole('combobox', { name: 'Scal do' }));
     await userEvent.click(
       await within(document.body).findByRole('option', { name: /feature\/platform/ }),
     );
-    await userEvent.click(settings(canvas));
-    await expect(settings(canvas)).toHaveAttribute('aria-expanded', 'false');
-    // A background refetch removes the chosen target: the panel opens on the flagged field.
+    // A background refetch removes the chosen target: its field, still in the row, is flagged.
     await userEvent.click(canvas.getByRole('button', { name: 'Odśwież opcje w tle' }));
-    await waitFor(() => expect(settings(canvas)).toHaveAttribute('aria-expanded', 'true'));
-    await expect(canvas.getByRole('combobox', { name: 'Scal do' })).toHaveAttribute(
-      'aria-invalid',
-      'true',
+    await waitFor(() =>
+      expect(canvas.getByRole('combobox', { name: 'Scal do' })).toHaveAttribute(
+        'aria-invalid',
+        'true',
+      ),
     );
     await expect(canvas.getAllByText(/nie może już być celem scalenia/)[0]).toBeVisible();
-    await expect(submit(canvas)).toBeDisabled();
+    await expect(submit(canvas)).toHaveAttribute('aria-disabled', 'true');
+  },
+};
+
+/* A3 Create: two columns from a 992 px form column, and a blocked Create that leads to its field. */
+const formColumn = (canvas: Canvas) =>
+  canvas
+    .getByRole('heading', { name: 'Nowa specyfikacja' })
+    .closest<HTMLElement>('[class~="@container"]')!;
+const sideBySide = (canvas: Canvas, rightStart = 'Miejsce pracy') => {
+  const name = canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' }).getBoundingClientRect();
+  const place = canvas.getByText(rightStart).getBoundingClientRect();
+
+  return place.left > name.right && place.top < name.bottom + 40;
+};
+
+export const TwoColumnsFromA992PxFormColumn: Story = {
+  render: () => <Fixture />,
+  parameters: { a11y: { test: 'off' } },
+  play: async ({ canvas, userEvent }) => {
+    await openManualForm(canvas, userEvent);
+    // The frame follows the window 1:1 below its maximum: find the window of a 992 px form column.
+    for (const [column, columns] of [
+      [992, true],
+      [991, false],
+    ] as const) {
+      // Converge on the window whose form column is exactly this wide.
+      let viewport = 1300;
+      for (let step = 0; step < 6; step++) {
+        await settleViewport(viewport, 900);
+        const width = formColumn(canvas).getBoundingClientRect().width;
+        if (Math.abs(width - column) < 0.6) {
+          break;
+        }
+
+        viewport += Math.round(column - width);
+      }
+
+      await expect(
+        Math.abs(formColumn(canvas).getBoundingClientRect().width - column),
+      ).toBeLessThan(0.6);
+      await expect(sideBySide(canvas)).toBe(columns);
+      // The Create button ends on the form's edge in both arrangements.
+      const form = canvas
+        .getByRole('heading', { name: 'Nowa specyfikacja' })
+        .closest<HTMLElement>('[class*="max-w-content-form"]')!
+        .getBoundingClientRect();
+      await expect(
+        Math.abs(submit(canvas).getBoundingClientRect().right - form.right),
+      ).toBeLessThan(1.5);
+      // One column keeps the reading width; text inputs keep their 34rem cap in both.
+      if (!columns) {
+        await expect(form.width).toBeLessThanOrEqual(880 + 0.5);
+      }
+
+      await expect(
+        canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' }).getBoundingClientRect().width,
+      ).toBeLessThanOrEqual(544.5);
+    }
+
+    await settleViewport();
+  },
+};
+
+export const TabOrderReadsTheLeftColumnThenTheRight: Story = {
+  render: () => <Fixture />,
+  parameters: { a11y: { test: 'off' } },
+  play: async ({ canvas, userEvent }) => {
+    await settleViewport(1920, 1080);
+    await openAgentForm(canvas, userEvent);
+    await expect(sideBySide(canvas, 'Początkowa sesja agenta')).toBe(true);
+    // Name, the archetype, its documents (left), then the agent and the workspace (right).
+    const name = canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' });
+    const archetype = canvas.getByRole('radio', { name: /Feature/ });
+    const provider = canvas.getByRole('radio', { name: /Codex/ });
+    const tile = canvas.getByRole('radio', { name: 'Nowe środowisko pracy' });
+    const order = [name, archetype, provider, tile];
+    for (const [index, element] of order.entries()) {
+      if (index > 0) {
+        await expect(
+          order[index - 1]!.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+      }
+    }
+
+    name.focus();
+    const seen: Element[] = [];
+    for (let step = 0; step < 40 && document.activeElement !== submit2(canvas); step++) {
+      await userEvent.tab();
+      seen.push(document.activeElement!);
+    }
+
+    const at = (element: Element) => seen.indexOf(element);
+    await expect(at(archetype)).toBeGreaterThan(-1);
+    await expect(at(provider)).toBeGreaterThan(at(archetype));
+    await expect(at(tile)).toBeGreaterThan(at(provider));
+    await settleViewport();
+  },
+};
+const submit2 = (canvas: Canvas) => canvas.getByRole('button', { name: 'Utwórz i otwórz sesję' });
+
+export const BlockedCreateLeadsToTheFirstFaultyFieldAndSendsNothing: Story = {
+  render: () => <Fixture />,
+  parameters: { a11y: { test: 'off' } },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(await canvas.findByRole('button', { name: /Samodzielnie/ }));
+    await canvas.findByRole('radio', { name: 'Nowe środowisko pracy' });
+    const name = canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' });
+    await expect(name).not.toHaveAttribute('aria-invalid');
+    // Focusable and announced as unavailable, never disabled.
+    await expect(submit(canvas)).toHaveAttribute('aria-disabled', 'true');
+    await expect(submit(canvas)).not.toBeDisabled();
+    await userEvent.click(submit(canvas));
+    await waitFor(() => expect(name).toHaveFocus());
+    await expect(name).toHaveAttribute('aria-invalid', 'true');
+    await expect(
+      canvas.getByText('Podaj nazwę specyfikacji.', { selector: '.field-error' }),
+    ).toBeVisible();
+    // With the name typed, Enter in it leads on to the next problem: an emptied branch name.
+    await userEvent.type(name, 'Nowa obsługa płatności');
+    await changeRow(canvas, userEvent, 'Nazwa gałęzi');
+    await userEvent.clear(canvas.getByRole('textbox', { name: 'Nazwa nowej gałęzi' }));
+    name.focus();
+    await userEvent.keyboard('{Enter}');
+    const branch = canvas.getByRole('textbox', { name: 'Nazwa nowej gałęzi' });
+    await waitFor(() => expect(branch).toHaveFocus());
+    await expect(
+      canvas.getByText('Wpisz nazwę gałęzi lub wybierz „Użyj domyślnej”.', {
+        selector: '.field-error',
+      }),
+    ).toBeVisible();
+    // The footer's own action does the same.
+    name.focus();
+    await userEvent.click(canvas.getByRole('button', { name: 'Przejdź do pola' }));
+    await waitFor(() => expect(branch).toHaveFocus());
+    await expect(createRequests).toHaveLength(0);
+  },
+};
+
+export const LedFieldStaysClearOfThePinnedFooterOnMobile: Story = {
+  render: () => <Fixture />,
+  parameters: { a11y: { test: 'off' } },
+  play: async ({ canvas, userEvent }) => {
+    await settleViewport(390, 640);
+    await openManualForm(canvas, userEvent);
+    await changeRow(canvas, userEvent, 'Nazwa gałęzi');
+    const branch = canvas.getByRole('textbox', { name: 'Nazwa nowej gałęzi' });
+    await userEvent.clear(branch);
+    const scroller = branch.closest<HTMLElement>('.scroll-area-viewport')!;
+    scroller.scrollTop = 0;
+    await userEvent.click(canvas.getByRole('button', { name: 'Przejdź do pola' }));
+    await waitFor(() => expect(branch).toHaveFocus());
+    const error = canvas.getByText('Wpisz nazwę gałęzi lub wybierz „Użyj domyślnej”.', {
+      selector: '.field-error',
+    });
+    const footer = canvas.getByRole('group', { name: 'Utworzenie specyfikacji' });
+    // The field and its message end above the footer, within the scroller.
+    await waitFor(() =>
+      expect(error.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+        footer.getBoundingClientRect().top,
+      ),
+    );
+    await expect(branch.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+      scroller.getBoundingClientRect().top,
+    );
+    await settleViewport();
   },
 };

@@ -23,6 +23,59 @@ export function branchPreview(options: CreateOptions, slug: string): string {
     .replaceAll('{key}', '<key>');
 }
 
+/** A piece of the generated branch: known text, or a part that exists only once it is created. */
+export type BranchPreviewPart =
+  | { readonly kind: 'text'; readonly text: string }
+  | { readonly kind: 'pending'; readonly part: 'slug' | 'id' | 'key' };
+
+const patternParts = /\{(slug|shortId|key)\}/gu;
+
+/**
+ * The generated branch for a slug as pieces, so the Create form can write the parts nobody knows
+ * yet (the Specification key, the random id, a slug before there is a name) as words instead of
+ * template tokens.
+ */
+export function branchPreviewParts(options: CreateOptions, slug: string): BranchPreviewPart[] {
+  const parts: BranchPreviewPart[] = [];
+  let text = '';
+  let index = 0;
+  for (const match of options.branchPattern.matchAll(patternParts)) {
+    text += options.branchPattern.slice(index, match.index);
+    index = match.index + match[0].length;
+    if (match[1] === 'slug' && slug) {
+      text += slug;
+      continue;
+    }
+
+    if (text) {
+      parts.push({ kind: 'text', text });
+      text = '';
+    }
+
+    parts.push({
+      kind: 'pending',
+      part: match[1] === 'shortId' ? 'id' : match[1] === 'key' ? 'key' : 'slug',
+    });
+  }
+
+  text += options.branchPattern.slice(index);
+  if (text) {
+    parts.push({ kind: 'text', text });
+  }
+
+  return parts;
+}
+
+/**
+ * The generated branch as plain text for a sentence: a part that exists only once it is created is
+ * an ellipsis (`feature/…-payment-limits`), never a template token.
+ */
+export function readableBranchPreview(options: CreateOptions, slug: string): string {
+  return branchPreviewParts(options, slug)
+    .map((part) => (part.kind === 'text' ? part.text : '…'))
+    .join('');
+}
+
 /** The parts of a pattern an owner cannot know before creation (with one separator after them). */
 const unknownParts = /\{(?:shortId|key)\}[-_.]?/gu;
 

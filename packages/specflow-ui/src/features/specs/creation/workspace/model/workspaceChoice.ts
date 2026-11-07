@@ -25,7 +25,6 @@ export interface WorkspaceChoice {
   /** `edited`: the owner typed a slug; until then the field follows the title. */
   slug: { on: boolean; value: string; edited: boolean };
   existingWorkspaceId: string;
-  settingsOpen: boolean;
   /** Merge-back suggestions the user declined, per workspace id. */
   dismissedSuggestions: Record<string, true>;
 }
@@ -37,14 +36,13 @@ export const initialWorkspaceChoice: WorkspaceChoice = {
   branch: { on: false, name: '', edited: false },
   slug: { on: false, value: '', edited: false },
   existingWorkspaceId: '',
-  settingsOpen: false,
   dismissedSuggestions: {},
 };
 
 /**
- * The request-relevant part of the choice. UI-only state (`settingsOpen`, declined suggestions)
- * is deliberately absent: opening the disclosure is neither an edit nor a reason to retire a
- * failure alert or to ask for a leave confirmation.
+ * The request-relevant part of the choice. UI-only state (declined suggestions) is deliberately
+ * absent: declining a suggestion is neither an edit nor a reason to retire a failure alert or to
+ * ask for a leave confirmation.
  */
 export function requestChoiceSnapshot(choice: WorkspaceChoice) {
   return {

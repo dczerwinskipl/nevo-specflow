@@ -126,6 +126,16 @@ and activating one must not also trigger the row's primary action. A non-interac
 with sibling navigation/control targets is the normal composition; an equivalent implementation is
 acceptable only when DOM semantics, focus behavior, and independent activation remain valid.
 
+**Width-dependent structure.** Restyle for the available space with a CSS container query. When the
+DOM structure or order itself has to change with the width (for example one reading column versus
+two independent columns, each read in its own order), CSS cannot express it: use
+`useContainerMinWidth(minWidth)` from Nevo UI and render the arrangement from its `matches`. It
+reads the width before the first paint and commits a crossing before the browser paints it, so no
+frame shows the other arrangement, and it renders only on a crossing. Keep the parts that hold
+state (a selection, an expanded section, focus) as keyed children of the same parent in both
+arrangements, so React moves them instead of remounting them. Never use the viewport width for
+this, and never use CSS `order` to make the visual order differ from the reading order.
+
 ## Testing
 
 Follow the [shared testing guidance](../../../engineering/shared/testing.md): focused unit,

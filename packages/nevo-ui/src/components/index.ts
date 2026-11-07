@@ -1,4 +1,5 @@
 export * from './actions';
+export * from './behaviors';
 export * from './content';
 export * from './data';
 export * from './feedback';

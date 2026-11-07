@@ -473,12 +473,17 @@ describe('controlled native hook HTTP/helper boundary', () => {
     expect(f.facts).toEqual([]);
   });
 
-  it('carries a one-operation host grant from the authenticated bridge', async () => {
+  it.each([
+    [{ decision: 'auto_approve' }, { decision: 'auto_approve' }],
+    [{ decision: ['auto_approve'] }, { decision: 'deny' }],
+    [{ decision: ['allow'] }, { decision: 'deny' }],
+    [{ decision: 'deny', overwrite: { Overwrite: true } }, { decision: 'deny' }],
+  ])('validates the exact bridge response shape %#', async (payload, expected) => {
     const f = await fixture();
     const server = createServer((request, response) => {
       request.resume();
       response.writeHead(200, { 'content-type': 'application/json' });
-      response.end(JSON.stringify({ decision: 'auto_approve' }));
+      response.end(JSON.stringify(payload));
     });
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
     cleanups.push(
@@ -500,7 +505,7 @@ describe('controlled native hook HTTP/helper boundary', () => {
         baseUrl: `http://127.0.0.1:${address.port}`,
       }),
     );
-    await expect(f.post('pre-tool-use', f.body())).resolves.toEqual({ decision: 'auto_approve' });
+    await expect(f.post('pre-tool-use', f.body())).resolves.toEqual(expected);
     expect(f.facts).toEqual([]);
   });
 });

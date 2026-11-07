@@ -117,8 +117,9 @@ export async function runAntigravityHook(options: {
 
     if (
       Object.keys(output).some((key) => key !== 'decision' && key !== 'overwrite') ||
+      typeof output.decision !== 'string' ||
       !(options.hook === 'stop' ? ['stop', 'deny'] : ['allow', 'deny', 'auto_approve']).includes(
-        String(output.decision),
+        output.decision,
       ) ||
       (output.overwrite !== undefined &&
         (options.hook !== 'pre-tool-use' ||

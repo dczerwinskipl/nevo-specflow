@@ -132,4 +132,50 @@ describe('Specification Overview focus across the column change', () => {
     expect(row.closest('[data-focus-key]')?.getAttribute('data-focus-key')).toBe('document:spec');
     expect(document.activeElement).toBe(row);
   });
+
+  it('keeps the expanded Documents list and focus on a row past the first three', async () => {
+    const { container } = render(<Workspace />);
+    const context = () =>
+      within(container.querySelector<HTMLElement>('[data-overview-column="context"]')!);
+    fireEvent.click(context().getByRole('button', { name: 'Show all (5)' }));
+    const fifth = () =>
+      screen.getByRole('button', { name: 'Kryteria akceptacji i scenariusze brzegowe' });
+    const opener = fifth();
+    opener.focus();
+    fireEvent.click(opener);
+    await settle();
+
+    resizeOverview(1000);
+    expect(columns(container)).toBe('1');
+    // Still expanded after the remount: the fifth row exists in one column.
+    expect(fifth()).not.toBe(opener);
+
+    fireEvent.click(screen.getByRole('button', { name: /Close secondary content/i }));
+    resizeOverview(1600);
+    await settle();
+
+    expect(columns(container)).toBe('2');
+    expect(context().getByRole('button', { name: 'Show less' })).not.toBeNull();
+    expect(document.activeElement).toBe(fifth());
+  });
+
+  it('does not pull focus back after the user left the row', async () => {
+    const { container } = render(<Workspace />);
+    documentRow(container).blur(); // the user clicked empty space: focus went to the body
+    await act(() => Promise.resolve());
+
+    resizeOverview(1000);
+
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it('does not restore focus after a pointer press inside the Overview', () => {
+    const { container } = render(<Workspace />);
+    documentRow(container).focus();
+    fireEvent.pointerDown(container.querySelector('[data-overview-columns]')!);
+
+    resizeOverview(1000);
+
+    expect(document.activeElement).toBe(document.body);
+  });
 });

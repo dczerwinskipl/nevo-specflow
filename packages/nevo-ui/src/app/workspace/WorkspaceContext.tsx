@@ -391,10 +391,16 @@ function resolveFocusTarget(target: WorkspaceFocusTarget) {
     return target.element;
   }
 
-  // A remounted opener: prefer its stable identity, then the same control inside it.
+  const inTargetLayer = (candidate: HTMLElement) =>
+    !target.layerKey ||
+    candidate.closest<HTMLElement>('[data-workspace-layer]')?.dataset.workspaceLayer ===
+      target.layerKey;
+
+  // A remounted opener: prefer its stable identity (in the same layer), then the same control
+  // inside it.
   const keyed = target.focusKey
     ? Array.from(document.querySelectorAll<HTMLElement>('[data-focus-key]')).find(
-        (candidate) => candidate.dataset.focusKey === target.focusKey,
+        (candidate) => candidate.dataset.focusKey === target.focusKey && inTargetLayer(candidate),
       )
     : undefined;
   if (keyed) {
@@ -416,11 +422,7 @@ function resolveFocusTarget(target: WorkspaceFocusTarget) {
       return false;
     }
 
-    if (
-      target.layerKey &&
-      candidate.closest<HTMLElement>('[data-workspace-layer]')?.dataset.workspaceLayer !==
-        target.layerKey
-    ) {
+    if (!inTargetLayer(candidate)) {
       return false;
     }
 

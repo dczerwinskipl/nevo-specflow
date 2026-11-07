@@ -193,6 +193,56 @@ describe('restoring focus to an opener the product remounted', () => {
   });
 });
 
+describe('restoring a keyed opener in its own layer', () => {
+  function Layers({ generation }: { generation: number }) {
+    const navigation = useSecondaryNavigation();
+
+    return (
+      <div key={generation}>
+        {['one', 'two'].map((layer) => (
+          <div key={layer} data-workspace-layer={layer}>
+            <div data-focus-key="row:a">
+              <button
+                type="button"
+                aria-label={`Open in ${layer}`}
+                onClick={() => void navigation.open(objectStack, { objectId: layer })}
+              >
+                Open
+              </button>
+            </div>
+          </div>
+        ))}
+        <button type="button" onClick={() => void navigation.close()}>
+          close
+        </button>
+      </div>
+    );
+  }
+
+  it('does not move focus to the same key in another layer', async () => {
+    const { rerender } = render(
+      <AppWorkspaceProvider>
+        <Layers generation={0} />
+      </AppWorkspaceProvider>,
+    );
+    const opener = screen.getByRole('button', { name: 'Open in two' });
+    opener.focus();
+    fireEvent.click(opener);
+    await flush();
+
+    rerender(
+      <AppWorkspaceProvider>
+        <Layers generation={1} />
+      </AppWorkspaceProvider>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'close' }));
+    await flush();
+    await settleFrames();
+
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Open in two' }));
+  });
+});
+
 describe('N2 hiding the region while the pinned tab is active', () => {
   function Host() {
     useRegisterPinnedSecondaryTab({ title: 'Context' });

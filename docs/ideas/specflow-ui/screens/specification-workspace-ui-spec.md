@@ -453,12 +453,16 @@ Tasks                                    Documents
   reads in priority order, two columns read the work column, then the context column. The
   arrangement is therefore measured (`useContainerMinWidth`, on a zero-height sentinel), not a CSS
   container query. The work sections move without remounting, so a Task selection survives a
-  crossing; the context sections change parent and remount (Documents' "show all" resets), and focus
-  inside them returns to the same control, found by its row's `data-focus-key` (`document:<id>`,
-  `session:<id>`). A Secondary opened from such a row returns focus to it the same way.
+  crossing. The context sections change parent and remount; their view state lives outside them
+  (Documents' "show all" is kept per Specification for the visit), and focus inside them returns to
+  the same control, found by its row's `data-focus-key` (`document:<id>`, `session:<id>`). Focus
+  is only restored when that crossing removed the focused control; once the user has moved focus
+  away, clicked inside the Overview or blurred to empty space, a later crossing leaves focus alone.
+  A Secondary opened from such a row returns focus to it the same way.
 - **No oscillation.** Two columns start at 1408 px and stay until the content is narrower than
-  1392 px (16 px hysteresis), and the Overview's scroller keeps a stable scrollbar gutter, so the
-  change of arrangement cannot flip it back.
+  1392 px (16 px hysteresis), which also absorbs a classic scrollbar appearing with the new
+  arrangement, so the change cannot flip it back. The scroller keeps the workspace's usual right
+  inset, like Documents and Session.
 - **Secondary.** Opening the Secondary narrows the Overview and may return it to one column; that is
   the intended responsive behaviour, not a breakpoint to compensate for.
 

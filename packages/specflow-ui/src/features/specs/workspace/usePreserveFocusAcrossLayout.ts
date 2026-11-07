@@ -58,13 +58,19 @@ function resolve(root: HTMLElement, address: FocusAddress): HTMLElement | null {
  *
  * Specification Overview moves its context sections into or out of the context column when it
  * crosses its two-column width, which remounts them. If the control that had focus inside `root`
- * is detached by such a change and focus fell to the document body, the same control is focused
- * again in the new arrangement, found by its closest `data-focus-key` (an opener row keyed by its
- * object) or else by its section and position. Focus that moved elsewhere on purpose (into the
- * Secondary, for example) is left alone.
+ * is detached by that crossing's own commit and focus fell to the document body, the same control
+ * is focused again in the new arrangement, found by its closest `data-focus-key` (an opener row
+ * keyed by its object) or else by its section and position.
+ *
+ * The record never outlives the user's own focus change: moving focus outside the Overview, a
+ * pointer press inside it, or a blur to nothing while the control stays in the document (the user
+ * clicked empty space) clears it, so a later crossing never pulls focus back. Focus that moved
+ * elsewhere on purpose (into the Secondary, for example) is left alone.
  */
 export function usePreserveFocusAcrossLayout(root: HTMLElement | null, layout: unknown) {
   const lastFocused = useRef<FocusAddress | null>(null);
+  /** Whether the recorded control was in the document when the previous commit finished. */
+  const connectedAtLastCommit = useRef(false);
 
   useEffect(() => {
     if (!root) {
@@ -73,22 +79,46 @@ export function usePreserveFocusAcrossLayout(root: HTMLElement | null, layout: u
 
     const onFocusIn = (event: FocusEvent) => {
       lastFocused.current = event.target instanceof HTMLElement ? addressOf(event.target) : null;
+      connectedAtLastCommit.current = lastFocused.current !== null;
     };
 
     const onFocusOut = (event: FocusEvent) => {
-      // Moving to another control outside the Overview is deliberate; a blur to nothing (the
-      // focused control was removed, or the window lost focus) keeps the record.
-      if (event.relatedTarget instanceof Node && !root.contains(event.relatedTarget)) {
-        lastFocused.current = null;
+      if (event.relatedTarget instanceof Node) {
+        if (!root.contains(event.relatedTarget)) {
+          lastFocused.current = null;
+        }
+
+        return;
       }
+
+      // A blur to nothing: removal by a layout change keeps the record (that commit restores it
+      // synchronously); a control still in the document was left by the user, so forget it. The
+      // window losing focus keeps the control active and is not a user choice either.
+      const left = lastFocused.current;
+      queueMicrotask(() => {
+        if (
+          left &&
+          lastFocused.current === left &&
+          left.element.isConnected &&
+          document.activeElement !== left.element
+        ) {
+          lastFocused.current = null;
+        }
+      });
+    };
+
+    const onPointerDown = () => {
+      lastFocused.current = null;
     };
 
     root.addEventListener('focusin', onFocusIn);
     root.addEventListener('focusout', onFocusOut);
+    root.addEventListener('pointerdown', onPointerDown, true);
 
     return () => {
       root.removeEventListener('focusin', onFocusIn);
       root.removeEventListener('focusout', onFocusOut);
+      root.removeEventListener('pointerdown', onPointerDown, true);
     };
   }, [root]);
 
@@ -98,6 +128,7 @@ export function usePreserveFocusAcrossLayout(root: HTMLElement | null, layout: u
     if (
       !root ||
       !address ||
+      !connectedAtLastCommit.current ||
       address.element.isConnected ||
       (active !== null && active !== document.body)
     ) {
@@ -109,4 +140,10 @@ export function usePreserveFocusAcrossLayout(root: HTMLElement | null, layout: u
       target.focus({ preventScroll: true });
     }
   }, [root, layout]);
+
+  // Runs after the restore above on every commit: a control detached by some other commit (a data
+  // refresh) is not restored by a later crossing.
+  useLayoutEffect(() => {
+    connectedAtLastCommit.current = lastFocused.current?.element.isConnected ?? false;
+  });
 }

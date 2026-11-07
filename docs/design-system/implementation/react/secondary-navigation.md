@@ -168,8 +168,8 @@ Overview (Activity history) do.
 
 Closing a flow returns focus to the control that opened it. If the product remounted that control
 while the Secondary was open (a layout change moved it), the workspace finds it again by the
-opener's closest `data-focus-key` (for example `document:<id>` on its row), then by its tag, name
-and text. Key opener rows that can remount.
+opener's closest `data-focus-key` (for example `document:<id>` on its row) within the opener's
+workspace layer, then by its tag, name and text. Key opener rows that can remount.
 On Narrow, the active runtime Secondary replaces visible Primary and Back occupies the navigation
 position instead of the global hamburger. On desktop/split with a single runtime flow (no tab
 strip), Back and Close are provided by the workspace header. With the root-tab strip shown on
@@ -408,8 +408,7 @@ content width (for example `w-content-standard max-w-full`) and use `AppWorkspac
 for scrolling. An intrinsic-width surface cannot measure content through size containment.
 
 Use `AppWorkspaceBody scroll="area"` for the shared `ScrollArea` edge indicators and
-viewport on a desktop surface. `viewportClassName` styles that viewport, for example
-`[scrollbar-gutter:stable]` when the content's arrangement depends on its width. On stacked layouts the host already owns `ScrollArea`;
+viewport on a desktop surface. On stacked layouts the host already owns `ScrollArea`;
 the body then contributes content and padding without nesting another scroll viewport.
 In `scroll="area"` mode `className` styles the ScrollArea root; refine the padded content box with
 `contentClassName` (merged after the `padding` preset, for example `padding="md" contentClassName="py-6"`)

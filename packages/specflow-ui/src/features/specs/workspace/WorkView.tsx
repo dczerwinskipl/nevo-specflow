@@ -62,9 +62,10 @@ export interface WorkViewProps {
  * in both arrangements, and independent columns need their own containers. The summary, Requires
  * attention, preparation and Tasks stay keyed children of one parent, so a crossing moves them
  * without remounting (a Task selection survives it). The context sections change parent and do
- * remount: Documents' "show all" resets, and focus inside them is restored by
- * `usePreserveFocusAcrossLayout`. They are not mounted before the first measurement, so an
- * Overview opening wide does not mount them in one column first.
+ * remount: their view state lives outside them (Documents' "show all" in the Specification store),
+ * and focus inside them is restored by `usePreserveFocusAcrossLayout`. They are not mounted
+ * before the first measurement, so an Overview opening wide does not mount them in one column
+ * first.
  */
 export function WorkView({ specId, data }: WorkViewProps) {
   const modules = useUiModules();

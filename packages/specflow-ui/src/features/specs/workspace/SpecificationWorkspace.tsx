@@ -33,6 +33,7 @@ import {
 } from './specificationSecondaryStack';
 import { useSpecificationDialogs } from './useSpecificationDialogs';
 import { useActivityHistoryPanel } from './useActivityHistoryPanel';
+import { EnsureSpecificationState } from '../SpecificationStateProvider';
 import { TaskViewStateProvider } from '../../tasks';
 
 function fullTaskHref(specId: string, taskId: string, collection: 'current' | 'archive'): string {
@@ -64,12 +65,14 @@ export interface SpecificationWorkspaceProps {
 
 export function SpecificationWorkspace(props: SpecificationWorkspaceProps) {
   return (
-    <AppWorkspaceProvider scopeKey={props.specId}>
-      <WorkspaceRouteLeaveGuard />
-      <TaskViewStateProvider key={props.specId}>
-        <SpecificationWorkspaceInner {...props} />
-      </TaskViewStateProvider>
-    </AppWorkspaceProvider>
+    <EnsureSpecificationState>
+      <AppWorkspaceProvider scopeKey={props.specId}>
+        <WorkspaceRouteLeaveGuard />
+        <TaskViewStateProvider key={props.specId}>
+          <SpecificationWorkspaceInner {...props} />
+        </TaskViewStateProvider>
+      </AppWorkspaceProvider>
+    </EnsureSpecificationState>
   );
 }
 
@@ -293,13 +296,7 @@ function SpecificationWorkspaceInner({
             {/* The scroller fills the pane. Overview is a left-aligned reading column inside it,
               or two columns filling it once the pane is wide enough (WorkView). */}
             <AppContent className="w-full">
-              {/* A stable gutter: a scrollbar appearing with the other arrangement cannot change
-                the width the Overview's columns depend on. */}
-              <AppWorkspaceBody
-                scroll="area"
-                contentClassName="py-6"
-                viewportClassName="[scrollbar-gutter:stable]"
-              >
+              <AppWorkspaceBody scroll="area" contentClassName="py-6">
                 <AppContentContainer align="start" size="full" className="grid gap-6">
                   {refreshFailed ? (
                     <Alert

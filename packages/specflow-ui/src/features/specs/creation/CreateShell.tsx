@@ -1,3 +1,4 @@
+import { usePrototypeFillFocused } from '../../../app/usePrototypeViewport';
 import type { FormHTMLAttributes, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -56,25 +57,28 @@ export function CreateShell({
   const { t } = useTranslation();
   const workspaceLabels = useWorkspaceLabels();
   const withPreview = layoutPrototype === 'E' && Boolean(preview);
+  const fillFocused = usePrototypeFillFocused();
   // The scroll area spans the whole pane and the form column is centred INSIDE it (the column must not wrap the
   // scroller, which would leave unscrollable side bands and put the scrollbar at the column's
   // edge instead of the pane's). The footer centres the same column, so
   // its button stays aligned with the content.
   const column = cn(
     'mx-auto max-w-full px-4 sm:px-6',
-    layoutPrototype === 'A' ||
-      layoutPrototype === 'A2' ||
-      layoutPrototype === 'A3' ||
-      layoutPrototype === 'A3h' ||
-      layoutPrototype === 'C'
-      ? isA3Family && !footer
-        ? 'w-[1080px]'
-        : createColumnWidthClass[layoutPrototype]
-      : layoutPrototype === 'B'
-        ? 'w-full sm:px-8'
-        : layoutPrototype === 'E'
-          ? 'w-content-standard'
-          : 'w-content-form',
+    fillFocused
+      ? 'w-full sm:px-8'
+      : layoutPrototype === 'A' ||
+          layoutPrototype === 'A2' ||
+          layoutPrototype === 'A3' ||
+          layoutPrototype === 'A3h' ||
+          layoutPrototype === 'C'
+        ? isA3Family && !footer
+          ? 'w-[1080px]'
+          : createColumnWidthClass[layoutPrototype]
+        : layoutPrototype === 'B'
+          ? 'w-full sm:px-8'
+          : layoutPrototype === 'E'
+            ? 'w-content-standard'
+            : 'w-content-form',
   );
   const body = (
     <>
@@ -129,7 +133,7 @@ export function CreateShell({
 
   return (
     <AppWorkspace
-      fit={layoutPrototype === 'B' || withPreview ? 'available' : 'bounded'}
+      fit={layoutPrototype === 'B' || withPreview || fillFocused ? 'available' : 'bounded'}
       split={withPreview ? 'primary' : undefined}
       labels={workspaceLabels}
       scroll="content"

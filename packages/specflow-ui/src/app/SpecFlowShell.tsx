@@ -6,14 +6,14 @@ import { useRouter } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import type { AuthStore } from '../auth/store';
 import { defaultNevoBrand } from '../brand';
-import { isA2Family, layoutPrototype, snapLeftBelowPx } from './layoutPrototype';
+import { isA2Family, layoutPrototype, protoSnap, snapLeftBelowPx } from './layoutPrototype';
 import { ProductNavigation } from './navigation/ProductNavigation';
 import { NavigationTransitionProvider } from './navigation/NavigationTransition';
 /** PROTOTYPE (A2): anchor the shell left when a centred group would only leave a small margin. */
 function usePrototypeSnapLeft() {
   const [snap, setSnap] = useState(false);
   useEffect(() => {
-    if (!isA2Family) {
+    if (!isA2Family || protoSnap !== 'snap240') {
       return;
     }
 

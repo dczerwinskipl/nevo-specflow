@@ -1,3 +1,4 @@
+import { isA3Family, protoGit } from '../../../../app/layoutPrototype';
 import {
   useId,
   useImperativeHandle,
@@ -338,42 +339,63 @@ export function WorkspacePlaceSection({
             </Button>
           </Alert>
         )}
-        {active && (
-          <AccentBlock role="group" aria-label={t('create.workspace.summaryLabel')}>
-            <div className="grid max-w-content-narrow grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2">
-              {!available[active].ok ? (
-                <>
-                  <Icon name="triangle-alert" className="text-status-attention" />
-                  <Typography as="p" variant="body-md" className="min-w-0 text-content-primary">
-                    {text(staleMessages.tile)}
-                  </Typography>
-                </>
-              ) : active === 'new' ? (
-                <NewSummary
-                  options={ready}
-                  choice={choice}
-                  update={update}
-                  errors={errors}
-                  title={title}
-                  conflicts={conflicts}
-                  onAnnounce={onAnnounce}
-                  controls={controls}
-                  onRequestFocus={(field) => requestFocus({ field })}
-                />
-              ) : active === 'main' ? (
-                <MainSummary options={ready} />
-              ) : (
-                <ExistingSummary
-                  options={ready}
-                  choice={choice}
-                  update={update}
-                  errors={errors}
-                  controlRef={existingControl}
-                />
-              )}
-            </div>
-          </AccentBlock>
-        )}
+        {active && isA3Family && protoGit === 'rows' && active === 'new' && available[active].ok ? (
+          // PROTOTYPE: the new-workspace decisions sit in the section without an accent container.
+          <div
+            role="group"
+            aria-label={t('create.workspace.summaryLabel')}
+            className="grid min-w-0 grid-cols-2"
+          >
+            <NewSummary
+              options={ready}
+              choice={choice}
+              update={update}
+              errors={errors}
+              title={title}
+              conflicts={conflicts}
+              onAnnounce={onAnnounce}
+              controls={controls}
+              onRequestFocus={(field) => requestFocus({ field })}
+            />
+          </div>
+        ) : null}
+        {active &&
+          !(isA3Family && protoGit === 'rows' && active === 'new' && available[active].ok) && (
+            <AccentBlock role="group" aria-label={t('create.workspace.summaryLabel')}>
+              <div className="grid max-w-content-narrow grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2">
+                {!available[active].ok ? (
+                  <>
+                    <Icon name="triangle-alert" className="text-status-attention" />
+                    <Typography as="p" variant="body-md" className="min-w-0 text-content-primary">
+                      {text(staleMessages.tile)}
+                    </Typography>
+                  </>
+                ) : active === 'new' ? (
+                  <NewSummary
+                    options={ready}
+                    choice={choice}
+                    update={update}
+                    errors={errors}
+                    title={title}
+                    conflicts={conflicts}
+                    onAnnounce={onAnnounce}
+                    controls={controls}
+                    onRequestFocus={(field) => requestFocus({ field })}
+                  />
+                ) : active === 'main' ? (
+                  <MainSummary options={ready} />
+                ) : (
+                  <ExistingSummary
+                    options={ready}
+                    choice={choice}
+                    update={update}
+                    errors={errors}
+                    controlRef={existingControl}
+                  />
+                )}
+              </div>
+            </AccentBlock>
+          )}
       </>
     );
   })();

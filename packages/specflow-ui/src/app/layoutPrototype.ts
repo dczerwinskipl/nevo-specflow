@@ -78,3 +78,26 @@ export const progressAlign: 'start' | 'center' = (() => {
 
 /** A3 and its history-in-page sibling share every A3 behaviour. */
 export const isA3Family = layoutPrototype === 'A3' || layoutPrototype === 'A3h';
+
+/** PROTOTYPE (iteration 4) sub-flags, each compared against plain A3. */
+const flag = <T extends string>(key: string, values: readonly T[], fallback: T): T => {
+  try {
+    const value = globalThis.localStorage?.getItem(key);
+
+    return values.includes(value as T) ? (value as T) : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+/** `snap240`: anchor left under 240 px leftover; `center`: always centre; `fill`: below that width the Focused frame fills the workspace while controls keep their limits. */
+export const protoSnap = flag('proto.snap', ['snap240', 'center', 'fill'] as const, 'snap240');
+/** Where the recent Session sits in the two-column Specification Overview. */
+export const protoOverview = flag('proto.overview', ['side', 'left', 'row'] as const, 'side');
+/** `rows`: the Git defaults block as three decision rows. */
+export const protoGit = flag('proto.git', ['old', 'rows'] as const, 'old');
+/** `on`: a blocked Create leads to the first faulty field. */
+export const protoGuide = flag('proto.guide', ['off', 'on'] as const, 'off');
+
+/** Viewport width under which `fill` lets the Focused frame use the available width. */
+export const fillBelowViewportPx = 260 + 8 + 1102 + snapLeftBelowPx;

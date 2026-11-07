@@ -25,12 +25,15 @@ export function MergeTargetSetting({
   error,
   update,
   controlRef,
+  presentation = 'switch',
 }: {
   options: CreateOptions;
   choice: WorkspaceChoice;
   error: Message | undefined;
   update: SettingsUpdate;
   controlRef: MutableRefObject<HTMLElement | null>;
+  /** PROTOTYPE (`proto.git=rows`): the field only; the row owns the on/off action. */
+  presentation?: 'switch' | 'field';
 }) {
   const { t } = useTranslation();
   const text = useMessage();
@@ -54,23 +57,25 @@ export function MergeTargetSetting({
 
   return (
     <div className="grid grid-cols-1 gap-3 py-3">
-      <SwitchField
-        label={t('create.workspace.settings.targetSwitch')}
-        checked={choice.target.on}
-        aria-disabled={unavailable ? true : undefined}
-        description={description}
-        onCheckedChange={(on) => {
-          if (unavailable && on) {
-            return;
-          }
-
-          // On starts from the default target workspace; it is sent only once it differs.
-          update.set({ target: { on, workspaceId: on ? defaultTargetWorkspaceId(options) : '' } });
-        }}
-      />
+      {presentation === 'field' ? null : (
+        <SwitchField
+          label={t('create.workspace.settings.targetSwitch')}
+          checked={choice.target.on}
+          aria-disabled={unavailable ? true : undefined}
+          description={description}
+          onCheckedChange={(on) => {
+            const patch = targetOverridePatch(options, choice, on);
+            if (patch) {
+              update.set(patch);
+            }
+          }}
+        />
+      )}
       {choice.target.on && (
         <Field invalid={Boolean(error)}>
-          <Field.Label>{t('create.workspace.settings.targetLabel')}</Field.Label>
+          <Field.Label className={presentation === 'field' ? 'sr-only' : undefined}>
+            {t('create.workspace.settings.targetLabel')}
+          </Field.Label>
           <LocalizedOptionPicker
             value={choice.target.workspaceId}
             invalid={Boolean(error)}
@@ -119,4 +124,18 @@ export function MergeTargetSetting({
       )}
     </div>
   );
+}
+
+/** The one on/off transition of the merge target override, shared by the switch and the row action. */
+export function targetOverridePatch(
+  options: CreateOptions,
+  choice: WorkspaceChoice,
+  on: boolean,
+): Partial<WorkspaceChoice> | null {
+  const noTargets = options.workspaces.every((w) => w.integrationSelectable !== true);
+  if (noTargets && !choice.target.on && on) {
+    return null;
+  }
+
+  return { target: { on, workspaceId: on ? defaultTargetWorkspaceId(options) : '' } };
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { isA3Family } from '../../../app/layoutPrototype';
+import { isA3Family, protoOverview } from '../../../app/layoutPrototype';
 import { useUiModules } from '../../../app/ui-modules/UiModulesProvider';
 import { SpecificationWorkSectionOutlet } from './SpecificationWorkSectionOutlet';
 import { SpecificationAttentionOutlet } from './SpecificationAttentionOutlet';
@@ -79,6 +79,48 @@ export function WorkView({ specId, data, aside }: WorkViewProps) {
       modules={modules}
     />
   );
+
+  if (twoColumns && protoOverview === 'row') {
+    // PROTOTYPE: "now" row (attention beside the recent Session), then Tasks beside Documents.
+    return (
+      <div ref={ref} className="@container/work min-w-0">
+        {summary}
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(22rem,30rem)] items-start gap-x-12">
+          <div className="min-w-0">{attention}</div>
+          <div className="min-w-0 [&>*:first-child]:border-t-0 [&>*:first-child]:pt-0">
+            {context}
+          </div>
+          <div className="min-w-0">{main}</div>
+          <div className="min-w-0">
+            {preparation}
+            {related}
+            {aside}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (twoColumns && protoOverview === 'left') {
+    // PROTOTYPE: the single-column order kept on the left (attention, recent Session, Tasks).
+    return (
+      <div ref={ref} className="@container/work min-w-0">
+        {summary}
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(22rem,30rem)] gap-x-12">
+          <div className="min-w-0">
+            {attention}
+            {context}
+            {main}
+          </div>
+          <div className="min-w-0 [&>*:first-child]:border-t-0 [&>*:first-child]:pt-0">
+            {preparation}
+            {related}
+            {aside}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (twoColumns) {
     return (

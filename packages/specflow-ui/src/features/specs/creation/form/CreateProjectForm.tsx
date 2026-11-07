@@ -1,4 +1,4 @@
-import { isA3Family } from '../../../../app/layoutPrototype';
+import { isA3Family, protoGuide } from '../../../../app/layoutPrototype';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
@@ -151,6 +151,53 @@ export function CreateProjectForm({
     noArchetypes: catalogue?.archetypes.length === 0,
   });
 
+  // PROTOTYPE (`proto.guide=on`): a blocked Create leads, deterministically and without submitting,
+  // to the first problem in the form's own order: name, archetype, then the workspace fields.
+  const guideActive = isA3Family && protoGuide === 'on';
+  const archetypeRef = useRef<HTMLDivElement>(null);
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  const actionableProblem =
+    Boolean(prerequisite) &&
+    (!title.trim() || (Boolean(catalogue) && !archetype) || Boolean(workspaceOptions));
+  const guideToFirstProblem = () => {
+    const reveal = (element: HTMLElement | null | undefined) => {
+      element?.focus();
+      element?.scrollIntoView({ block: 'center' });
+    };
+
+    if (prerequisite) {
+      announce(text(prerequisite));
+    }
+
+    if (!title.trim()) {
+      reveal(nameRef.current);
+
+      return;
+    }
+
+    if (!archetype) {
+      reveal(
+        archetypeRef.current?.querySelector<HTMLElement>('input[type="radio"], [role="radio"]'),
+      );
+
+      return;
+    }
+
+    place.handleRef.current?.focusFirstInvalid(() => {
+      if (place.choice.branch.on) {
+        place.handleRef.current?.focusField('branch');
+      } else if (place.choice.slug.on) {
+        place.handleRef.current?.focusField('slug');
+      } else {
+        reveal(
+          workspaceRef.current?.querySelector<HTMLElement>(
+            '[role="radio"]:not([aria-disabled="true"]), input[type="radio"]:not(:disabled)',
+          ),
+        );
+      }
+    });
+  };
+
   // Back from a name the Engine refused (invalid or too long path): the name says so until edited.
   const [nameRefused, setNameRefused] = useState(draft?.failure?.kind === 'name-invalid');
   const nameRef = useRef<HTMLInputElement>(null);
@@ -220,6 +267,12 @@ export function CreateProjectForm({
       form={{
         onSubmit: (event) => {
           event.preventDefault();
+          if (guideActive && !canSubmit) {
+            guideToFirstProblem();
+
+            return;
+          }
+
           submit();
         },
       }}
@@ -230,6 +283,10 @@ export function CreateProjectForm({
           note={t('create.project.footNote')}
           submitLabel={t('create.submit.create')}
           submitDisabled={locked || !canSubmit}
+          onBlockedActivate={
+            guideActive && !locked && actionableProblem ? guideToFirstProblem : undefined
+          }
+          blockedActionLabel={t('createGuidePrototype.goToProblem')}
         />
       }
     >
@@ -245,7 +302,7 @@ export function CreateProjectForm({
           // PROTOTYPE (A3): what is created (name, goal, archetype and its documents) beside where
           // it is created. DOM order is the reading and Tab order: left column, then right.
           <div className="@container/create">
-            <div className="grid gap-8 @min-[62rem]/create:grid-cols-2 @min-[62rem]/create:gap-x-16">
+            <div className="grid gap-8 @min-[62rem]/create:grid-cols-2 @min-[62rem]/create:gap-x-16 [&_input:not([type=checkbox]):not([type=radio])]:max-w-[34rem] [&_textarea]:max-w-[34rem]">
               <div className="@container grid content-start gap-8">
                 <div className="grid gap-4">
                   <Field invalid={nameRefused}>
@@ -279,23 +336,27 @@ export function CreateProjectForm({
                   </Field>
                 </div>
                 <Separator />
-                <ArchetypeSection
-                  state={archetypeState}
-                  choice={archetypeChoice}
-                  locked={locked}
-                  onChange={setArchetypeChoice}
-                />
+                <div ref={archetypeRef} className="contents">
+                  <ArchetypeSection
+                    state={archetypeState}
+                    choice={archetypeChoice}
+                    locked={locked}
+                    onChange={setArchetypeChoice}
+                  />
+                </div>
               </div>
               <div className="@container grid content-start gap-8">
-                <CreateWorkspaceSection
-                  headingId={gitHeadingId}
-                  createOptions={createOptions}
-                  place={place}
-                  locked={locked}
-                  title={title}
-                  onRefresh={refreshOptions}
-                  onAnnounce={announce}
-                />
+                <div ref={workspaceRef} className="contents">
+                  <CreateWorkspaceSection
+                    headingId={gitHeadingId}
+                    createOptions={createOptions}
+                    place={place}
+                    locked={locked}
+                    title={title}
+                    onRefresh={refreshOptions}
+                    onAnnounce={announce}
+                  />
+                </div>
               </div>
             </div>
           </div>

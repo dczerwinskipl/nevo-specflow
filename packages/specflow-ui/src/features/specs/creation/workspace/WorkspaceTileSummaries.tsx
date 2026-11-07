@@ -1,10 +1,16 @@
-import { isA3Family } from '../../../../app/layoutPrototype';
+import { BaseRefSetting, baseOverridePatch } from './BaseRefSetting';
+import { MergeTargetSetting, targetOverridePatch } from './MergeTargetSetting';
+import { SlugSetting } from './SlugSetting';
+import { BranchSetting } from './BranchSetting';
+import { workspaceFieldErrors } from './model/workspaceValidation';
+import type { WorkspaceChoice as ProtoWorkspaceChoice } from './model/workspaceChoice';
+import { isA3Family, protoGit } from '../../../../app/layoutPrototype';
 import { FolderPlus, Layers } from 'lucide-react';
 import { type Dispatch, type MutableRefObject, type ReactNode, type SetStateAction } from 'react';
 import type { TFunction } from 'i18next';
 import { Trans, useTranslation } from 'react-i18next';
 import { useMessage } from '../../../../i18n/message';
-import { Badge, DescriptionList, Field, Icon, InlineNote, Typography, cn } from '@nevo/ui';
+import { Badge, Button, DescriptionList, Field, Icon, InlineNote, Typography, cn } from '@nevo/ui';
 import { LocalizedOptionPicker } from '../../../../shared/controls/LocalizedOptionPicker';
 import type { CreateOptions } from '@nevo/specflow-contracts/specs';
 import { BranchRef } from './BranchRef';
@@ -181,6 +187,145 @@ export function NewSummary({
   const slug = effectiveSlug(choice, title);
   const branch = overrides.branch ?? branchPreview(options, slug);
   const generatedProblem = generatedBranchProblem(choice, options, title);
+
+  if (isA3Family && protoGit === 'rows') {
+    // PROTOTYPE: three decision rows. "Change" and "Use default" are the same on/off transitions the
+    // switches perform, so the request semantics do not change.
+    const set = (patch: Partial<ProtoWorkspaceChoice> | null) =>
+      patch && update((current) => ({ ...current, ...patch }));
+    const branchOpen =
+      choice.settingsOpen ||
+      Boolean(
+        errors.slug ?? errors.branch ?? generatedProblem ?? conflicts?.branch ?? conflicts?.slug,
+      );
+    const settingsUpdate = { set: (patch: Partial<ProtoWorkspaceChoice>) => set(patch), update };
+    const fieldErrors = workspaceFieldErrors(choice, options, conflicts, title, errors);
+    // One row per decision: label, value (or its field while changed) and one action. On a narrow
+    // container the label and action share the first line and the value takes the second.
+    const decisionRow = (label: string, value: ReactNode, rowAction: ReactNode) => (
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-4 gap-y-1 text-body-sm text-content-primary @md/git:grid-cols-[8.5rem_minmax(0,1fr)_auto]">
+        <span className="text-content-secondary">{label}</span>
+        <span className="order-last col-span-2 min-w-0 @md/git:order-none @md/git:col-span-1">
+          {value}
+        </span>
+        {rowAction}
+      </div>
+    );
+    const action = (label: string, onPress: () => void, pressed?: boolean) => (
+      <Button variant="ghost" size="sm" aria-expanded={pressed} onClick={onPress}>
+        {label}
+      </Button>
+    );
+
+    return (
+      <div className="col-span-2 grid min-w-0 gap-3">
+        <Typography as="p" variant="section-label">
+          {text(summary)}
+        </Typography>
+        <div className="@container/git grid min-w-0 gap-3">
+          {decisionRow(
+            t('create.workspace.fact.base'),
+            choice.base.on ? (
+              <div className="min-w-0 [&>div]:py-0">
+                <BaseRefSetting
+                  presentation="field"
+                  options={options}
+                  choice={choice}
+                  error={errors.base}
+                  update={settingsUpdate}
+                  controlRef={controls.base}
+                  onAnnounce={onAnnounce}
+                  onRequestFocus={onRequestFocus}
+                />
+              </div>
+            ) : (
+              <BaseValue options={options} />
+            ),
+            action(
+              choice.base.on ? t('createGitPrototype.reset') : t('createGitPrototype.change'),
+              () => set(baseOverridePatch(options, choice, !choice.base.on)),
+            ),
+          )}
+          {decisionRow(
+            t('create.workspace.fact.target'),
+            choice.target.on ? (
+              <div className="min-w-0 [&>div]:py-0">
+                <MergeTargetSetting
+                  presentation="field"
+                  options={options}
+                  choice={choice}
+                  error={errors.target}
+                  update={settingsUpdate}
+                  controlRef={controls.target}
+                />
+              </div>
+            ) : (
+              <span className="grid min-w-0 gap-1">
+                <span className="min-w-0">{merge.value}</span>
+                {merge.note ? (
+                  <span className="text-body-sm text-content-secondary">{merge.note}</span>
+                ) : null}
+              </span>
+            ),
+            action(
+              choice.target.on ? t('createGitPrototype.reset') : t('createGitPrototype.change'),
+              () => set(targetOverridePatch(options, choice, !choice.target.on)),
+            ),
+          )}
+          {decisionRow(
+            t('create.workspace.fact.branch'),
+            <span className="grid min-w-0 gap-1">
+              <BranchRef name={branch} truncate />
+              {generatedProblem ? (
+                <span className="text-body-sm text-status-attention">{text(generatedProblem)}</span>
+              ) : null}
+            </span>,
+            action(
+              branchOpen ? t('createGitPrototype.close') : t('createGitPrototype.change'),
+              () => update((current) => ({ ...current, settingsOpen: !branchOpen })),
+              branchOpen,
+            ),
+          )}
+          {branchOpen ? (
+            <div className="grid min-w-0 grid-cols-1 divide-y divide-border-subtle">
+              <SlugSetting
+                choice={choice}
+                title={title}
+                error={fieldErrors.slug}
+                update={settingsUpdate}
+                inputRef={controls.slug}
+              />
+              <BranchSetting
+                options={options}
+                choice={choice}
+                title={title}
+                error={fieldErrors.branch}
+                update={settingsUpdate}
+                inputRef={controls.branch}
+              />
+            </div>
+          ) : null}
+        </div>
+        <div className="grid min-w-0 gap-1 text-body-sm text-content-secondary">
+          {options.commits ? <p className="m-0">{t('createGitPrototype.commitOnBranch')}</p> : null}
+          <p className="m-0 flex min-w-0 gap-1">
+            <span className="shrink-0">{t('createGitPrototype.folder')}</span>
+            <Typography
+              as="span"
+              variant="code-md"
+              className="min-w-0 truncate"
+              title={options.worktreesRoot.path}
+            >
+              {options.worktreesRoot.path}
+            </Typography>
+          </p>
+          {options.worktreesRoot.exists ? null : (
+            <p className="m-0">{t('create.workspace.folderWillBeCreated')}</p>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

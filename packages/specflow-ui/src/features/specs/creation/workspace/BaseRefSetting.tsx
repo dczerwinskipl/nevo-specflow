@@ -20,6 +20,7 @@ export function BaseRefSetting({
   controlRef,
   onAnnounce,
   onRequestFocus,
+  presentation = 'switch',
 }: {
   options: CreateOptions;
   choice: WorkspaceChoice;
@@ -28,6 +29,8 @@ export function BaseRefSetting({
   controlRef: MutableRefObject<HTMLElement | null>;
   onAnnounce: (message: string) => void;
   onRequestFocus: SettingsFocusRequest;
+  /** PROTOTYPE (`proto.git=rows`): the field only; the row owns the on/off action. */
+  presentation?: 'switch' | 'field';
 }) {
   const { t } = useTranslation();
   const text = useMessage();
@@ -71,23 +74,25 @@ export function BaseRefSetting({
 
   return (
     <div className="grid grid-cols-1 gap-3 py-3 first:pt-2">
-      <SwitchField
-        label={t('create.workspace.settings.baseSwitch')}
-        checked={choice.base.on}
-        aria-disabled={unavailable ? true : undefined}
-        description={description}
-        onCheckedChange={(on) => {
-          if (unavailable && on) {
-            return;
-          }
-
-          // On starts from the effective default (never an empty select, F-08); off restores it.
-          update.set({ base: { on, ref: on ? defaultBaseValue(options) : '' } });
-        }}
-      />
+      {presentation === 'field' ? null : (
+        <SwitchField
+          label={t('create.workspace.settings.baseSwitch')}
+          checked={choice.base.on}
+          aria-disabled={unavailable ? true : undefined}
+          description={description}
+          onCheckedChange={(on) => {
+            const patch = baseOverridePatch(options, choice, on);
+            if (patch) {
+              update.set(patch);
+            }
+          }}
+        />
+      )}
       {choice.base.on && (
         <Field invalid={Boolean(error)}>
-          <Field.Label>{t('create.workspace.fact.base')}</Field.Label>
+          <Field.Label className={presentation === 'field' ? 'sr-only' : undefined}>
+            {t('create.workspace.fact.base')}
+          </Field.Label>
           <LocalizedOptionPicker
             value={choice.base.ref}
             invalid={Boolean(error)}
@@ -115,4 +120,21 @@ export function BaseRefSetting({
       )}
     </div>
   );
+}
+
+/**
+ * The one on/off transition of the base override, shared by the switch and the row action: on starts
+ * from the effective default (never an empty select, F-08), off restores it. Null when unavailable.
+ */
+export function baseOverridePatch(
+  options: CreateOptions,
+  choice: WorkspaceChoice,
+  on: boolean,
+): Partial<WorkspaceChoice> | null {
+  const unavailable = options.baseRefs.length === 0 && !choice.base.on;
+  if (unavailable && on) {
+    return null;
+  }
+
+  return { base: { on, ref: on ? defaultBaseValue(options) : '' } };
 }

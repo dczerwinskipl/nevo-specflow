@@ -14,6 +14,8 @@ export function CreateFooter({
   note,
   submitLabel,
   submitDisabled,
+  onBlockedActivate,
+  blockedActionLabel,
 }: {
   submitRef?: RefObject<HTMLButtonElement | null>;
   /** Translated reason Create is unavailable; undefined shows `note` instead. */
@@ -21,6 +23,9 @@ export function CreateFooter({
   note: string;
   submitLabel: string;
   submitDisabled: boolean;
+  /** PROTOTYPE (`proto.guide=on`): a blocked Create stays focusable and leads to the first problem. */
+  onBlockedActivate?: () => void;
+  blockedActionLabel?: string;
 }) {
   const { t } = useTranslation();
   const prerequisiteId = useId();
@@ -35,7 +40,14 @@ export function CreateFooter({
       className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 @lg:gap-x-4"
     >
       <div className="min-w-0 flex-1 basis-28">
-        {prerequisite ? (
+        {prerequisite && onBlockedActivate && submitDisabled ? (
+          <span className="flex flex-wrap items-center gap-x-2">
+            <InlineNote id={prerequisiteId}>{prerequisite}</InlineNote>
+            <Button variant="ghost" size="sm" type="button" onClick={onBlockedActivate}>
+              {blockedActionLabel}
+            </Button>
+          </span>
+        ) : prerequisite ? (
           <InlineNote id={prerequisiteId}>{prerequisite}</InlineNote>
         ) : (
           <InlineNote icon={null}>{note}</InlineNote>
@@ -46,7 +58,17 @@ export function CreateFooter({
           ref={submitRef}
           type="submit"
           aria-describedby={prerequisite ? prerequisiteId : undefined}
-          disabled={submitDisabled}
+          disabled={onBlockedActivate ? undefined : submitDisabled}
+          aria-disabled={onBlockedActivate && submitDisabled ? true : undefined}
+          onClick={
+            onBlockedActivate && submitDisabled
+              ? (event) => {
+                  // Enter in a field and a click both arrive here: never submit, lead to the problem.
+                  event.preventDefault();
+                  onBlockedActivate();
+                }
+              : undefined
+          }
         >
           {submitLabel}
         </Button>

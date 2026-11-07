@@ -1872,5 +1872,15 @@
     "tileNew": "Nowe środowisko pracy",
     "tileMain": "Bieżący katalog",
     "tileExisting": "Istniejące środowisko pracy"
+  },
+  "createGitPrototype": {
+    "change": "Zmień",
+    "reset": "Użyj domyślnej",
+    "close": "Zwiń",
+    "commitOnBranch": "Pliki specyfikacji trafią w commicie na tę gałąź.",
+    "folder": "Katalog worktree:"
+  },
+  "createGuidePrototype": {
+    "goToProblem": "Przejdź do pola"
   }
 }

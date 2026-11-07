@@ -1872,5 +1872,15 @@
     "tileNew": "New workspace",
     "tileMain": "Current directory",
     "tileExisting": "Existing workspace"
+  },
+  "createGitPrototype": {
+    "change": "Change",
+    "reset": "Use default",
+    "close": "Collapse",
+    "commitOnBranch": "The specification files are committed to this branch.",
+    "folder": "Worktree folder:"
+  },
+  "createGuidePrototype": {
+    "goToProblem": "Go to the field"
   }
 }

@@ -1,3 +1,4 @@
+import { usePrototypeFillFocused } from '../../../app/usePrototypeViewport';
 import { layoutPrototype, overviewWidthClass } from '../../../app/layoutPrototype';
 import { cn as protoCn } from '@nevo/ui';
 import { type ReactNode } from 'react';
@@ -60,6 +61,7 @@ export function SpecsOverview({
   specificationHref,
   renderSpecificationLink,
 }: SpecsOverviewProps) {
+  const fillFocused = usePrototypeFillFocused();
   const { t } = useTranslation();
   const search = useCollectionSearch(state.collection);
   const projection =
@@ -83,7 +85,7 @@ export function SpecsOverview({
         openNavigation: t('navigation.open'),
       }}
       split="primary"
-      fit={layoutPrototype === 'B' ? 'available' : 'bounded'}
+      fit={layoutPrototype === 'B' || fillFocused ? 'available' : 'bounded'}
     >
       <AppWorkspace.Primary
         header={
@@ -102,7 +104,7 @@ export function SpecsOverview({
             'mx-auto max-w-full',
             layoutPrototype === 'A' || layoutPrototype === 'C'
               ? overviewWidthClass[layoutPrototype]
-              : layoutPrototype === 'B'
+              : layoutPrototype === 'B' || fillFocused
                 ? 'w-full'
                 : 'w-content-standard',
           )}

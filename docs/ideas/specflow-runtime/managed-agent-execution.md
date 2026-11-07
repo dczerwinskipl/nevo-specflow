@@ -20,6 +20,78 @@ related:
 
 # Native modes and managed agent execution
 
+## Common execution-boundary acceptance
+
+The complete migration requires usable native Agent modes for Claude, Codex and
+Antigravity. Discovery-only Antigravity is an interim containment measure.
+Engine admission coordinates effects and recovery. Filesystem isolation is a
+separate execution prerequisite when a mode promises workspace-scoped writes.
+
+Apply the same acceptance cases to each adapter while preserving native mode
+semantics. In particular, Antigravity Plan currently requests write authority;
+it cannot inherit another provider's read-only Plan guarantee.
+
+For a workspace-scoped writer, require positive in-workspace create/edit/command
+controls and negative outside-workspace create, overwrite, delete and rename
+controls. Repeat file and command cases with a directory replaced by a junction
+after admission. Confirm the same boundary in child processes, cancellation and
+restart. Use synthetic credentials and a local deterministic model backend for
+manual native protocol checks. Automated tests use controlled programs and never
+depend on installed providers or a subscription.
+
+Manual observations on Windows x64 on 2026-11-07 are bounded to the exercised
+installations and profiles. Claude reported 2.1.312, Codex reported
+0.166.0-alpha.6 and Antigravity reported 1.3.3. Versions identify observations
+and are not admission pins.
+
+| Surface                                                                            | Observation                                                                                                                                | Remaining evidence                                                                 |
+| ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
+| Claude native Write/Edit with the adapter's restricted profile and manual approval | In-workspace controls succeeded. Direct outside writes/edits and writes/edits after junction replacement were refused.                     | Repeat across the other admitted native permission modes.                          |
+| Claude native Bash after approval                                                  | Approval did not establish workspace-scoped write confinement.                                                                             | An independently enforced command boundary is required for that guarantee.         |
+| Codex app-server command execution with workspaceWrite sandbox policy              | In-workspace write succeeded. Read-only, outside-workspace, pre-existing junction and post-start junction replacement writes were refused. | Full normal Turn composition and retained authentication under the final boundary. |
+| Codex native apply-patch helper through sandboxed command execution                | An in-workspace patch succeeded and a direct outside patch was refused.                                                                    | The helper's directory replacement race remains unverified.                        |
+| Antigravity native command and file tools                                          | Native acceptance did not establish workspace-scoped write confinement.                                                                    | Restore production admission only after enforcement covers both surfaces.          |
+
+These manual checks ran outside all automated suites, with owned scratch paths,
+synthetic local model replies where required, and no inference subscription.
+Standalone helper checks do not certify the complete native Turn path.
+
+### Windows isolation prototype and integration requirements
+
+A disposable AppContainer prototype started a real Node process, allowed a file
+write in a directory granted to its package SID and refused an outside write with
+`EPERM`. The prototype used a private profile and removed that profile afterward.
+This establishes a candidate OS mechanism; it does not establish provider readiness.
+
+An additional native Win32 probe created a session-only synthetic Credential
+Manager entry on the host. `CredReadW` inside the disposable AppContainer returned
+`ERROR_ACCESS_DENIED`. The host then deleted that exact synthetic entry. This
+check accessed no personal credential. The existing consumer-keyring authentication
+path therefore cannot be assumed to work inside the candidate boundary.
+
+Before connecting this mechanism to a production driver, settle and implement:
+
+- Provider authentication and refresh under the isolated identity, including
+  compatibility with the existing consumer Credential Manager source.
+- Invocation-local question and permission transport. AppContainer network
+  restrictions affect the existing loopback MCP endpoint.
+- Executable/dependency access and normal tool startup. A direct Node file entry
+  in the prototype encountered denied ancestor metadata access.
+- A process launcher that joins the existing Runtime-owned Job Object before
+  dispatch, restricts inherited handles, and preserves protocol streams.
+- Owned access grants with crash recovery, revocation and cleanup. Tests must
+  prove the boundary persists after path replacement and in descendant processes.
+
+Product setup privileges are an open deployment decision. A local prototype
+must not silently grant broad host access to make an existing CLI start.
+The existing production Antigravity gate stays closed while these requirements
+are unresolved.
+
+References are the Windows
+[AppContainer execution contract](https://learn.microsoft.com/en-us/windows/win32/secauthz/implementing-an-appcontainer)
+and
+[restricted-token API](https://learn.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-createrestrictedtoken).
+
 The owner explicitly requires an agent capable of edits/tools as the normal task default.
 Read-only remains useful for tests and optional discussion/planning, not the final product default.
 This supersedes the earlier restriction of W1/W2 to a future PR. W1/W2 and writable

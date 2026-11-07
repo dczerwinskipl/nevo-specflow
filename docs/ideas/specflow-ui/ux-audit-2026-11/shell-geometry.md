@@ -19,8 +19,9 @@ summary: >
   Screenshot-backed comparison of App Shell layout prototypes for the shell-width problem found in
   the November 2026 UX audit. Six variants, including Create Specification in the Specification
   workspace geometry, were rendered at five viewports, checked for interaction regressions and
-  reviewed independently. Recommends variant A2 (explicit Focused and Workspace modes with one shared
-  Focused width) as a proposal and lists the decisions the owner still has to make.
+  reviewed independently. A2 was completed as A3, which the owner accepted conditionally. Iteration 4
+  compares the Focused width rules, real transitions, the Spec Overview hierarchy, Git settings rows
+  and blocked-Create guidance, and proposes the A3 production scope.
 related:
   - ideas.specflow-ui.ux-audit-2026-11
   - design-system.principles.layout-and-containment
@@ -30,8 +31,10 @@ related:
 
 # App Shell geometry and space use, rendered layout proposals
 
-> **Status: proposals, not approved designs.** Every layout below is a prototype. Nothing here
-> changes production behaviour until the owner chooses a direction.
+> **Status.** The owner accepted A3 conditionally on 2026-11-07 (section 7). The width rule for
+> the Focused frame, the Spec Overview hierarchy, the Git rows and the blocked-Create guide are
+> still proposals (section 8). Every layout here is a prototype on `proto/app-shell-geometry`,
+> which is not meant to be merged. Section 9 proposes the production scope.
 
 This is a follow-up to finding 1.1 of the [UX audit](README.md#11-the-shell-changes-geometry-between-screens).
 The original finding and its screenshots stay in the audit.
@@ -426,8 +429,9 @@ contract.
 
 ### What A3 would need in production
 
-- **Nevo UI.** A Focused frame capability and a snap rule in `AppShell`, instead of the prototype's
-  pixel classes and per-screen measurement.
+- **Nevo UI.** A Focused frame capability and a width rule in `AppShell`, instead of the
+  prototype's pixel classes and per-screen measurement. The rule itself is still open; section 8
+  compares the options, and section 9 is the proposed scope.
 - **SpecFlow UI.** Both Create forms use a container-query two-column arrangement; value-only Git
   rows truncate with a tooltip; the progress page keeps `content-form` inside the frame;
   Specification Overview composes its existing sections in two columns on wide panes.
@@ -436,13 +440,279 @@ contract.
 - **Verification.** The same journey captures at 1280, 1366, 1440, 1600, 1920, 2560, 390 px and 200%
   zoom, plus transition and keyboard checks, on both the demo and a real project Runtime.
 
-## 8. Reproduce
+## 8. Closing the comparisons (iteration 4)
+
+This section answers the conditions in section 7. Every variant below is still a prototype flag on
+`proto/app-shell-geometry`; none of them is a contract until the owner chooses one. Evidence comes
+from the demo Runtime (geometry, Spec Overview) and a real project Runtime (Git settings, the
+blocked-Create guide), in Polish, with Chromium.
+
+### Focused frame width from 1366 to 2560 px (decision 3)
+
+Four rules for the Focused frame (Specifications and Create) were compared on A3. Specification
+Overview is full width in every mode, so it is the reference line.
+
+| Mode                       | Rule                                                                                         | 1500–1700 px                                                        | Above                                                                            | Discontinuity while resizing                                     |
+| -------------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `snap240` (A3 as rendered) | Frame 1102 px; the shell anchors left while the leftover is under 240 px, otherwise centres. | Navigation at 0, an empty strip of 130–230 px on the right.         | Centred, navigation from 140 px.                                                 | At 1610 px the navigation jumps from 0 to 120 px.                |
+| `center`                   | Frame 1102 px, always centred.                                                               | Navigation at 65–115 px.                                            | Centred.                                                                         | None; the frame never moves relative to the window centre.       |
+| `fill`                     | The frame fills the width below a 1610 px viewport, then a centred 1102 px frame.            | Fills up to about 1340 px, then switches to 1102 px.                | Centred.                                                                         | At 1610 px the frame shrinks by 240 px and the navigation jumps. |
+| `grow` (1440 px maximum)   | The frame follows the available width up to 1440 px, then centres.                           | Fills: 1232 px at 1500, 1432 px at 1700, the same as Spec Overview. | Centred 1440 px frame; navigation at 46 px (1800), 106 px (1920), 426 px (2560). | None. The frame stops growing at 1708 px and starts centring.    |
+
+![Focused frame modes at 1600 px](images/shell-geometry/it4-snap-1600.png)
+
+![Focused frame modes at 1700 px](images/shell-geometry/it4-snap-1700.png)
+
+- **The text inputs are not stretched in any mode.** They stay capped at 34rem (544 px), and text
+  blocks keep their reading width.
+- **`grow` does stretch other controls.** In the right Create column, the provider cards, the Model
+  and Effort pickers and the Ask/Edit/Agent control grow to about 650 px. In the Specifications list,
+  the Situation column ends up about 1000 px from the names at 1700 px.
+- **Production `grow` would need two things:** a cap on those controls, and a list that keeps its
+  columns together.
+- **`grow` 1280 px** behaves like `grow` 1440 px with an earlier cap: it starts centring at 1548 px,
+  so from 1600 px Specifications and Create are 52 px narrower than Spec Overview.
+
+### Real transitions along the journey (decisions 2 and 3)
+
+The script clicked through the real application:
+
+overview → Create → Create with an agent → overview → Spec Overview → Documents → Spec Overview → Session → Back to Spec Overview → overview.
+
+It sampled the navigation and workspace rectangles on every animation frame. The diagrams draw the
+settled geometry per screen, and draw an intermediate paint in red wherever one appeared.
+
+![Transitions at 1920 px](images/shell-geometry/it4-journey-1920.png)
+
+<details>
+<summary>The same journey at 1600 px and 2560 px</summary>
+
+![Transitions at 1600 px](images/shell-geometry/it4-journey-1600.png)
+
+![Transitions at 2560 px](images/shell-geometry/it4-journey-2560.png)
+
+</details>
+
+| Configuration  | Geometry changes per journey (1920 px)                                                                                                    | Intermediate paints                                                                                                                                                                                |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Current `main` | 8 of 9 steps. Create is 200 px narrower than the list, and Spec Overview (1515 px, centred) differs from Documents and Session (1652 px). | Entering a Specification first paints the full width for about 120 ms, then settles at 1515 px.                                                                                                    |
+| A3 `snap240`   | 2: entering and leaving the Specification (the same boundary in both directions).                                                         | Leaving the Specification paints the 1102 px frame anchored left for one or two frames (40 ms at 1920, 14 ms at 2560), then centres. Cause: the prototype measures the leftover on a 100 ms timer. |
+| A3 `center`    | 2: entering and leaving the Specification.                                                                                                | None, apart from 1 px sub-pixel settling.                                                                                                                                                          |
+| A3 `grow`      | 2 at 1920 and 2560 px. 0 at 1600 px: the whole journey keeps one 1332 px frame.                                                           | None, apart from 1 px sub-pixel settling.                                                                                                                                                          |
+
+- **Inside the Specification, A3 is stable.** Spec Overview, Documents and Session share one
+  geometry in every A3 configuration. In `main`, by contrast, each move between Spec Overview and
+  the other two changes width.
+- **Every A3 configuration changes geometry only at the Specification boundary.** That means twice
+  per journey, on entering and on leaving. Each crossing is a single step. `center` and `grow` show
+  no intermediate paint. Its size is 230 px at 1600 px with `snap240` or `center`, and 0 with
+  `grow`. At 1920 px the jump grows to 212 px with `grow`, against 550 px with the other modes.
+- **A snap rule that measures in JavaScript produces a wrong first paint.** Any production snap rule
+  must be computed in CSS or before paint (layout effect), not on a timer.
+
+### Specification Overview hierarchy (decision 6)
+
+Three compositions were rendered at 1920 and 2560 px for the demo specifications. They cover every
+combination: with Requires attention and a Session (`admission`), attention only (`security`,
+`review`), a Session only (`providers`), and neither (`packaging`, `localization`).
+
+- **`side`.** Left column: Requires attention, then Tasks. Right column: Continue session first,
+  then Documents and related items.
+- **`left`.** Continue session sits in the left column between Requires attention and Tasks; the
+  right column keeps Documents.
+- **`row`.** A "now" row puts Requires attention and Continue session side by side above a second
+  row with Tasks and the rest.
+
+![Spec Overview hierarchy at 2560 px, admission](images/shell-geometry/it4-overview-admission-2560.png)
+
+![Spec Overview hierarchy at 2560 px, providers and security](images/shell-geometry/it4-overview-providers-security-2560.png)
+
+- **With the Secondary open, two columns start between a 2180 and a 2200 px viewport (measured).**
+  The Secondary (Activity History) takes a quarter of the workspace, about 400 px at 1920 px, so the
+  content stays below 1408 px. At 1920 px all three variants render as the same single column.
+- **The 1408 px threshold plus a quarter-width Secondary amounts to the 2200 px breakpoint the owner
+  rejected.** It needs a decision together with the empty Activity History panel (decision 7). For
+  example, a Secondary that does not reserve its quarter while it is empty would leave about 1620 px
+  of content at 1920 px, and two columns would start from about 1700 px.
+- **`side`.** Continue session starts on the same line as Requires attention, in every case. Tasks
+  are never pushed down, and Tasks start at the top whenever there is nothing needing attention.
+  The order in the right column is fixed (Continue session, Documents, related), so the Session's
+  priority is a rule, not leftover space.
+- **`left`.** The Session sits in the reading order, but it pushes Tasks down by about 180 px. On a
+  950 px high window this moves most of the Tasks list below the fold. The right column then holds
+  only Documents.
+- **`row`.** This pairs attention and Session explicitly, but leaves empty bands. With a Session
+  and no attention (`providers`), the left half of the first row is empty and Tasks start about
+  55 px lower. With attention and no Session, the right half is empty.
+
+### Git settings as three decision rows (correction 1)
+
+Status: a first composition. The independent review found defects that must be fixed before the
+owner judges it (listed below the screenshots).
+
+The block was recomposed as three rows, one per user decision, inside the existing form section.
+The rows are Start from (Zacznij od), Merge into (Scal do) and Branch name (Nazwa gałęzi). There is
+no accent container, no new separator and no new switch.
+
+- **Each row** shows a label, the value and one text action.
+- **The base and target actions** are Change / Use default ("Zmień" / "Użyj domyślnej"). They call
+  the same on/off transition as the existing switch, so the request semantics do not change: off
+  means the default and is omitted from the request.
+- **The branch row** opens the existing slug and branch fields.
+- **The commit row** becomes a quiet note that refers to the branch above (decision 8): "Pliki
+  specyfikacji trafią w commicie na tę gałąź."
+- **The worktree folder** is a quiet single line, truncated, with the full path as a tooltip.
+
+| Current block                                                    | Decision rows (collapsed)                                         |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------- |
+| ![Current Git block](images/shell-geometry/it4-git-old-1920.png) | ![Git decision rows](images/shell-geometry/it4-git-rows-1920.png) |
+
+![Git decision rows while changing the base and the branch](images/shell-geometry/it4-git-rows-1920-changing.png)
+
+On a 390 px viewport, the label and the action share the first line and the value takes the second.
+Use default restores the default on desktop and mobile.
+
+![Git decision rows at 390 px](images/shell-geometry/it4-git-rows-390.png)
+
+Defects found by the independent review, all still open:
+
+1. The blocking message still says "…lub wyłącz tę opcję", but the switch is gone; it should name
+   the row action instead.
+2. The three row actions differ: Change and Use default are text actions, while Close ("Zwiń") is a
+   filled pressed button.
+3. Branch name still opens the two existing switches (slug, own branch name) and a divider, so this
+   decision is still two toggles behind a disclosure.
+4. The preview shows the raw `<key>` token, and truncation hides the end of the branch name even on
+   desktop.
+5. On 390 px the sticky footer covers the lower expanded field.
+
+### Reaching the first faulty field when Create is blocked (correction 2)
+
+The proposal:
+
+- **The Create button keeps `type="submit"`** but uses `aria-disabled="true"` instead of `disabled`,
+  so it stays focusable and is announced as unavailable.
+- **Activating it** (click, Enter or Space), or pressing Enter in a form field, never submits. It
+  announces the blocking reason in the existing live region and moves focus to the first faulty
+  field.
+- **The order is fixed by the form's own order:** name, archetype, then the workspace and Git fields
+  (the field that owns the error, else the branch, the slug, the first available workspace).
+- **The footer hint gets a quiet "Go to field" action** ("Przejdź do pola") that does the same.
+
+Verified on the real project Runtime at 1920 and 390 px:
+
+- **Empty name.** Focus moves to the name input.
+- **Protected custom branch** (`feature/new-api`). Enter in the name field moves focus to the branch
+  input, scrolled into view.
+- **Every case.** The URL stays `/specs/new` and nothing is created.
+
+![Guide to the branch field at 1920 px](images/shell-geometry/it4-guide-1920-branch.png)
+
+Open risks:
+
+- **The empty name has no inline error.** The reason appears only in the footer and in the live
+  region; the field needs `aria-invalid` and a described error of its own.
+- **The sticky footer can cover the help text under the focused field.** It needs a scroll padding
+  equal to the footer height.
+- **The behaviour with several errors at once was not tested.** Nor was the absence of network
+  requests: "never submits" was shown only through the URL and the missing Specification.
+- **Contrast.** The dimmed Create button and the quiet action need a contrast check.
+
+### An existing defect found on the way
+
+On the real project Runtime, turning on Start from (base override) shows an empty picker and the
+blocking error "Wybierz gałąź początkową lub wyłącz tę opcję", even on `main`. The cause is a
+mismatch:
+
+- `defaultBaseValue` in `packages/specflow-ui/src/features/specs/creation/workspace/model/workspaceTiles.ts`
+  looks for the primary workspace branch (`main`) among the listed base refs.
+- The Runtime lists those base refs as full refs (`refs/heads/main`).
+- The unit tests use short names, so they do not catch it.
+
+This is outside the layout work. It needs a separate fix that decides which side owns the ref
+format.
+
+### Independent review of iteration 4
+
+A reviewer with fresh context assessed the evidence of this section without the author's conclusions.
+Its findings are merged above: the `grow` costs, the Secondary threshold, the Git defects and the
+guide risks. These are the points where it adds to or corrects the author:
+
+- **Ranking of the Focused modes:** `grow` 1440, `center`, `snap240`, `fill`. `fill` is effectively
+  a breakpoint at 1610 px.
+- **`snap240`.** The left-anchored first paint on leaving a Specification comes from measuring the
+  outgoing layout. A width rule must derive from the viewport or the container, never from the
+  element it resizes.
+- **Spec Overview ranking:** `side`, `left`, `row`. `row` is rejected because of its empty bands.
+  The Session in `side` is noticed early, but its visual weight is low. Its title is the only link,
+  and All sessions ("Wszystkie sesje") looks more like the action than the continue target does.
+- **Problems outside the brief:**
+  - The same Session appears three times: in the Specification navigation, in Requires attention
+    and in Continue session. That dilutes the priority decision 6 protects.
+  - Unlabelled numbers sit under the Session titles.
+  - English demo strings are mixed into the Polish UI.
+
+### What this iteration recommends (proposals)
+
+- **Focused frame (decision 3).** Choose between `center` and `grow` with a 1440 px maximum.
+  - **`grow`** gives the calmest journey: no change at all up to 1708 px, and a smaller jump above
+    that. It needs control caps in Create and a list layout that does not drift apart.
+  - **`center`** keeps the frame bounded and simple, but every crossing of the Specification
+    boundary moves the navigation.
+  - **Not recommended:** `snap240` (a resize jump and a wrong first paint) and `fill` (a breakpoint).
+- **Specification boundary (decision 2).** Keep the single boundary. The transition evidence shows
+  no other change anywhere in the journey for A3.
+- **Spec Overview (decision 6).** Use `side` as the hierarchy, giving the Continue session entry
+  more weight: the whole row is clickable and has a clear primary action. First decide the
+  threshold together with the Activity History panel (decision 7); otherwise two columns only
+  appear from about 2200 px.
+- **Git rows and the guide.** Fix the listed defects and render them again before the owner judges
+  the composition.
+
+## 9. Proposed production scope of A3
+
+Proposal for the owner. The table separates what is already accepted (section 7) from what still
+waits for a decision based on section 8. The three scopes follow decision 1. Each lands as one PR
+with its documentation changes and tests, so code and contracts never diverge. They do not build on
+the prototype branch: they reimplement the accepted parts cleanly, and every prototype flag stays
+out of production.
+
+| Scope                         | Accepted, ready to specify                                                                                                                                                                                                                                                                                                                                                                                                           | Waits for an owner decision                                                                                                                                                                                                                                                                                                                                      | Documentation changed in the same PR                                                                                                                                                                                                  |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **1. App Shell geometry**     | <ul><li>Nevo UI: an explicit Focused frame in `AppShell` / `AppWorkspace`, with one frame token shared by every Focused screen.</li><li>The Focused width rule is written in CSS, not measured in JavaScript.</li><li>SpecFlow: Specifications and Create use the Focused frame. Specification Overview, Documents and Session use the full width, so the Specification keeps one geometry.</li><li>No 2200 px breakpoint.</li></ul> | <ul><li>The width rule between 1366 and 1800 px: `center` or `grow` (and its maximum), or another rule. `snap240` and `fill` are not recommended (section 8).</li></ul>                                                                                                                                                                                          | <ul><li>`docs/design-system/principles/layout-and-containment.md`, Bounded workspace rule (decision 9).</li><li>The Nevo UI implementation notes for `AppWorkspace`.</li></ul>                                                        |
+| **2. Create Specification**   | <ul><li>Two columns from a 992 px form column, container-based, with keyboard order kept and no preview panel, in the project and demo forms (decision 4).</li><li>The progress page in the same frame at `content-form` (decision 5).</li><li>A shorter commit row that refers to the branch above (decision 8).</li><li>Value-only rows truncate with a tooltip.</li></ul>                                                         | <ul><li>Git settings as three decision rows, after the listed defects are fixed (section 8).</li><li>Guiding to the first faulty field (section 8).</li></ul> Both are proposals rendered once, so the owner should accept the composition and behaviour before they become contracts.                                                                           | <ul><li>`docs/product/specflow/specification-creation.md` (Create layout, Git settings, progress page, blocked-Create behaviour).</li><li>`docs/ideas/specflow-ui/screens/specification-creation-ui-spec.md` (demo Create).</li></ul> |
+| **3. Specification Overview** | <ul><li>Two columns from a 1408 px content width, composed from the existing sections; one column below (decision 6).</li></ul>                                                                                                                                                                                                                                                                                                      | <ul><li>The hierarchy: `side`, `left` or `row` (section 8).</li><li>The two-column threshold together with the Secondary: with Activity History open, two columns start at about 2200 px today (section 8).</li><li>A separate design for the empty Activity History panel, so that it stops reserving a wide strip for an empty message (decision 7).</li></ul> | The Specification Overview screen contract, where the two-column composition and the Session's position are written down.                                                                                                             |
+
+**Delivery.**
+
+- **Order.** Scope 1 goes first because the other two are judged inside its frame. Scopes 2 and 3
+  are independent after that.
+- **Verification for each scope:**
+  - the journey captures at 1280, 1366, 1440, 1600, 1920, 2560 and 390 px, and at 200% zoom;
+  - the per-frame transition check from section 8;
+  - keyboard order;
+  - the demo Runtime, a real project Runtime and Storybook.
+
+  The prototype scripts stay in the audit's reproduction notes as references, not as tests.
+
+- **Outside these scopes.**
+  - The `defaultBaseValue` defect is a separate fix with its own test.
+  - Mobile Back from a pushed Task preview, which leaves the Specification, stays recorded in the
+    audit.
+
+## 10. Reproduce
 
 1. Check out `proto/app-shell-geometry`.
 2. Run the demo Runtime as described in the audit's
    [verification guide](README.md#reproduce-the-environment), and the UI with Vite on port 5173.
 3. Set `localStorage['proto.layout']` to `A`, `A2`, `A3`, `A3h`, `B`, `C`, `D` or `E`, then reload. Without the key
    the app behaves exactly like `main`.
+4. Iteration 4 flags (with `A3`):
+   - `proto.snap`: `snap240` (default), `center`, `fill` or `grow`;
+   - `proto.growMax`: `1440` (default) or `1280`;
+   - `proto.overview`: `side` (default), `left` or `row`;
+   - `proto.git`: `rows`;
+   - `proto.guide`: `on`.
 
 **Limits of the evidence.**
 

@@ -26,6 +26,10 @@ afterEach(async () => {
 
 async function setup(role?: 'developer' | 'admin' | 'viewer', existingDirectory?: string) {
   directory = existingDirectory ?? (await mkdtemp(join(tmpdir(), 'specflow-telemetry-http-')));
+  let outcomeCommitted!: () => void;
+  const firstOutcome = new Promise<void>((resolve) => {
+    outcomeCommitted = resolve;
+  });
   const baseDriver = createMockDriver(async (_invocation, emit) => {
     await emit({
       kind: 'usage',
@@ -52,6 +56,7 @@ async function setup(role?: 'developer' | 'admin' | 'viewer', existingDirectory?
       value: { contextGeneration: 'controlled-context', occupiedTokens: 200, capacityTokens: 1000 },
     });
     await emit({ kind: 'outcome', outcome: 'completed' });
+    outcomeCommitted();
   });
   const refresh = vi.fn(() =>
     Promise.resolve([
@@ -107,7 +112,7 @@ async function setup(role?: 'developer' | 'admin' | 'viewer', existingDirectory?
     { sessions: { storage: { directory, projectId: 'project' }, driver } },
   );
 
-  return { driver, refresh };
+  return { driver, refresh, firstOutcome };
 }
 
 async function create() {
@@ -150,7 +155,7 @@ describe('Session telemetry HTTP', () => {
     expect(unchanged.body).toBe('');
   });
   it('publishes usage, precise cost and native context without loading conversation content', async () => {
-    await setup();
+    const { firstOutcome } = await setup();
     const id = await create();
     const result = await app!.inject({
       method: 'POST',
@@ -158,21 +163,20 @@ describe('Session telemetry HTTP', () => {
       payload: { requestId: randomUUID(), message: 'Controlled fixture only' },
     });
     expect(result.statusCode).toBe(202);
-    await vi.waitFor(async () => {
-      const response = await app!.inject(`/api/sessions/${id}/telemetry`);
-      expect(response.statusCode).toBe(200);
-      const snapshot = response.json<TelemetrySnapshot>();
-      expect(validateTelemetrySnapshot(snapshot)).toBe(true);
-      expect(observed(snapshot.usage.session)).toMatchObject({
-        inputTokens: 120,
-        outputTokens: 9,
-        cacheWriteTokens: 10,
-      });
-      expect(observed(snapshot.cost.session)).toMatchObject({ amount: '0.0123', currency: 'USD' });
-      // The no-effects mock has no verified native account/context binding.
-      expect(snapshot.context).toMatchObject({ status: 'unavailable', reason: 'NOT_OBSERVED' });
-      expect(snapshot.usage.turn?.turnId).toBe(result.json<{ turnId: string }>().turnId);
+    await firstOutcome;
+    const response = await app!.inject(`/api/sessions/${id}/telemetry`);
+    expect(response.statusCode).toBe(200);
+    const snapshot = response.json<TelemetrySnapshot>();
+    expect(validateTelemetrySnapshot(snapshot)).toBe(true);
+    expect(observed(snapshot.usage.session)).toMatchObject({
+      inputTokens: 120,
+      outputTokens: 9,
+      cacheWriteTokens: 10,
     });
+    expect(observed(snapshot.cost.session)).toMatchObject({ amount: '0.0123', currency: 'USD' });
+    // The no-effects mock has no verified native account/context binding.
+    expect(snapshot.context).toMatchObject({ status: 'unavailable', reason: 'NOT_OBSERVED' });
+    expect(snapshot.usage.turn?.turnId).toBe(result.json<{ turnId: string }>().turnId);
   });
   it('durably replays refresh receipts and throttles a fresh request after completion', async () => {
     const { refresh } = await setup();

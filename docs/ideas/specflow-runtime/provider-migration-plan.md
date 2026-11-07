@@ -87,6 +87,14 @@ rename/delete, trailing dot/space aliases, alternate data streams and outside-ro
 paths, and allow normal use followed by release on the matching receipt. These
 checks exercise Runtime handles, not an inference-backed native provider Turn.
 
+**A05 — P3 verification, Windows commit synchronization.** The final Windows
+lifecycle job failed two existing one-second polling waits: the coordinator's
+`active → unknown` assertion and the HTTP usage/cost projection. Both unchanged
+files passed in isolation. Their tests now await the actual lost-fact commit or
+fixture outcome commit before retaining the same state/value assertions. No
+timeout increase, global retry or production change is involved. Independent
+review and a focused Windows run passed all 18 tests.
+
 The audit does not certify every external CLI or claim OS isolation for approved
 host commands. Existing manual acceptance evidence and its limits remain in
 [managed execution](managed-agent-execution.md#common-execution-boundary-acceptance).
@@ -342,6 +350,10 @@ known incompatibilities and cache/dispatch replacement yield bounded honest per-
 **Current/evidence:** Job Objects own processes; Antigravity handles pin supported file identities;
 Codex retains its sandbox. Explicit host commands are not confined. The AppContainer prototype
 in [managed execution](managed-agent-execution.md) did not preserve Credential Manager access.
+An independent controlled Windows check could add a new hardlink from another
+same-user process after guard acquisition; a later guarded write affected both
+names. Pre-existing hardlinks remain denied. This is evidence of the already
+excluded arbitrary same-user-process threat model, not full filesystem isolation.
 **Impact/direction:** Current approved-host authority trusts the user's command and does not
 isolate an arbitrary malicious process running as that user. Research stronger optional boundaries
 only against an explicit deployment/threat model.

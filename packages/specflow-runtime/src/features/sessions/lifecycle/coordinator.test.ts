@@ -8,6 +8,7 @@ import { openSessionStore, type SessionStore } from '../persistence/store';
 import { SessionError } from '../errors';
 import { createMockDriver, type MockScenario } from '../providers/mock';
 import type { SessionDriver } from '../providers/driver';
+import type { StoreCommand } from '../persistence/protocol';
 
 let runtime: SessionCoordinator | undefined,
   directory = '';
@@ -87,9 +88,13 @@ describe('Session coordinator', () => {
   );
   it('records uncertainty instead of inventing failure when a terminal fact cannot be persisted', async () => {
     let attempts = 0;
+    let committed!: () => void;
+    const lostCommitted = new Promise<void>((resolve) => {
+      committed = resolve;
+    });
     const { sessionId } = await setup(undefined, undefined, (store) => ({
       ...store,
-      call(command) {
+      call<T>(command: StoreCommand): Promise<T> {
         if (command.op === 'fact' && command.fact.kind === 'outcome') {
           attempts++;
 
@@ -98,13 +103,20 @@ describe('Session coordinator', () => {
           );
         }
 
-        return store.call(command);
+        if (command.op === 'fact' && command.fact.kind === 'lost') {
+          return store.call<T>(command).then((result) => {
+            committed();
+
+            return result;
+          });
+        }
+
+        return store.call<T>(command);
       },
     }));
     await runtime!.start('actor', sessionId, { requestId: randomUUID(), message: 'Start' });
-    await vi.waitFor(async () =>
-      expect((await runtime!.snapshot(sessionId, 'actor')).activeTurn?.state).toBe('unknown'),
-    );
+    await lostCommitted;
+    expect((await runtime!.snapshot(sessionId, 'actor')).activeTurn?.state).toBe('unknown');
     expect(
       (await runtime!.snapshot(sessionId, 'actor')).entries.some((item) => item.kind === 'outcome'),
     ).toBe(false);

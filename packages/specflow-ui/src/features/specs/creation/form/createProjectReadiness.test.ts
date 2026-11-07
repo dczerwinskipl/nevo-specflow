@@ -73,6 +73,19 @@ describe('projectCreateReadiness: the field of the first problem', () => {
     );
   });
 
+  it('a catalogue that failed to load names the failure and has no field to lead to', () => {
+    const result = projectCreateReadiness({
+      ...base,
+      archetype: undefined,
+      archetypesFailed: true,
+    });
+    expect(result).toMatchObject({
+      canSubmit: false,
+      prerequisite: { key: 'create.archetype.loadFailed' },
+    });
+    expect(result.problemField).toBeUndefined();
+  });
+
   it('loading, no permission and nothing installed have no field to lead to', () => {
     expect(projectCreateReadiness({ ...base, forbidden: true }).problemField).toBeUndefined();
     expect(

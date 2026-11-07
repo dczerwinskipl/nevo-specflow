@@ -33,14 +33,15 @@ const operations: OperationsApi = {
   },
 };
 
-function renderProject(variant: OptionsVariant = 'default') {
+function renderProject(variant: OptionsVariant = 'default', { catalogueFails = false } = {}) {
   const create = vi.fn();
   const onProjectStarted = vi.fn();
   const services = createSpecFlowAppServices({
     runtimeInfoApi: { getInfo: () => Promise.resolve({ dataMode: 'project' }) },
     projectCreationApi: {
       operationEventsUrl: createOperationEventsUrl,
-      archetypes: () => Promise.resolve(catalogue),
+      archetypes: () =>
+        catalogueFails ? Promise.reject(new Error('unavailable')) : Promise.resolve(catalogue),
       createOptions: () => Promise.resolve(createOptionsFixture(variant)),
       create,
     } as unknown as ProjectCreationApi,
@@ -204,6 +205,23 @@ describe('a blocked Create on a project Runtime', () => {
     await waitFor(() => expect(document.activeElement).toBe(nameField()));
   });
 
+  it('a catalogue that failed to load offers its Retry, not "Go to the field"', async () => {
+    const { create } = renderProject('default', { catalogueFails: true });
+    await screen.findByRole('radio', { name: /new workspace/i });
+    fireEvent.change(nameField(), { target: { value: 'Payment limits' } });
+    const footer = document.querySelector('footer')!;
+    await waitFor(() =>
+      expect(within(footer).getByText('The archetypes could not be loaded')).toBeTruthy(),
+    );
+    expect(within(footer).queryByRole('button', { name: 'Go to the field' })).toBeNull();
+    // Activating the blocked Create announces the reason and moves nothing.
+    nameField().focus();
+    fireEvent.click(createButton());
+    await waitFor(() => expect(liveRegion()).toContain('The archetypes could not be loaded'));
+    expect(document.activeElement).toBe(nameField());
+    expect(create).not.toHaveBeenCalled();
+  });
+
   it('a valid form still hands the request over (the guard only applies while blocked)', async () => {
     const { onProjectStarted } = renderProject();
     await formReady();
@@ -229,8 +247,13 @@ describe('a blocked Create in the demo', () => {
 
     fireEvent.click(submit);
     await waitFor(() => expect(document.activeElement).toBe(nameField()));
+    // Each later activation is awaited until it has led to the field again.
+    submit.focus();
     fireEvent.submit(nameField().form!);
+    await waitFor(() => expect(document.activeElement).toBe(nameField()));
+    submit.focus();
     fireEvent.click(screen.getByRole('button', { name: 'Go to the field' }));
+    await waitFor(() => expect(document.activeElement).toBe(nameField()));
 
     expect(create).not.toHaveBeenCalled();
   });

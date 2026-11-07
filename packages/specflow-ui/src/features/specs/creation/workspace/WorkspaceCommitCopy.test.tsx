@@ -61,7 +61,7 @@ const newSummary = (variant: Parameters<typeof createOptionsFixture>[0], title =
 describe('Commit summary (only when the options carry `commits`)', () => {
   it('a new workspace says where the files will be committed, referring to the branch above', () => {
     const markup = text(newSummary('commits'));
-    expect(markup).toContain('Branch namefeature/payments');
+    expect(markup).toContain('Branch nameChangefeature/payments');
     expect(markup).toContain('The specification files will be committed to this branch.');
     // The branch is not repeated inside the sentence.
     expect(markup).not.toContain('committed to branch');

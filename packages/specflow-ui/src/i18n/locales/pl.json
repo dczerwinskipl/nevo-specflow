@@ -857,16 +857,16 @@
         "unmanagedNote": "To środowisko pracy zostało dodane poza Nevo i nie jest przez nie zarządzane."
       },
       "errors": {
-        "branchEmpty": "Wpisz nazwę gałęzi lub wybierz „Przywróć domyślne”.",
+        "branchEmpty": "Wpisz nazwę gałęzi albo użyj „Przywróć domyślne”.",
         "branchTooLong": "Nazwa gałęzi jest zbyt długa. Użyj co najwyżej 240 znaków.",
         "branchCharacters": "Nazwa gałęzi zawiera niedozwolone znaki. Zacznij od litery lub cyfry i użyj tylko liter, cyfr oraz „.”, „-”, „_” i „/”.",
         "branchStructure": "Nazwa gałęzi ma niedozwolony układ: nie kończ jej znakiem „/”, „.” ani „.lock”, nie używaj „..” ani „//” i nie zaczynaj segmentu od „.”.",
         "branchExists": "Gałąź o tej nazwie już istnieje. Wpisz inną nazwę.",
         "noWorkspace": "Brak dostępnego środowiska pracy.",
         "pickWorkspace": "Wybierz środowisko pracy.",
-        "pickBase": "Wybierz gałąź początkową lub wybierz „Przywróć domyślne”.",
-        "pickTarget": "Wybierz cel scalenia lub wybierz „Przywróć domyślne”.",
-        "slugEmpty": "Wpisz slug lub wybierz „Przywróć domyślne”.",
+        "pickBase": "Wybierz gałąź początkową albo użyj „Przywróć domyślne”.",
+        "pickTarget": "Wybierz cel scalenia albo użyj „Przywróć domyślne”.",
+        "slugEmpty": "Wpisz slug albo użyj „Przywróć domyślne”.",
         "slugTooLong": "Slug jest zbyt długi. Użyj najwyżej 80 znaków.",
         "slugFormat": "Użyj małych liter, cyfr i pojedynczych myślników, na przykład limity-platnosci.",
         "slugReserved": "Ta nazwa jest zarezerwowana przez system operacyjny. Wybierz inną.",
@@ -880,8 +880,8 @@
       "stale": {
         "tile": "Ten wariant nie jest już dostępny. Wybierz inną opcję.",
         "existing": "To środowisko pracy nie jest już dostępne.",
-        "base": "Ta gałąź nie jest już dostępna. Wybierz inną lub wybierz „Przywróć domyślne”.",
-        "target": "To środowisko pracy nie może już być celem scalenia. Wybierz inny lub wybierz „Przywróć domyślne”."
+        "base": "Ta gałąź nie jest już dostępna. Wybierz inną albo użyj „Przywróć domyślne”.",
+        "target": "To środowisko pracy nie może już być celem scalenia. Wybierz inny albo użyj „Przywróć domyślne”."
       },
       "settings": {
         "default": "Ustawienia domyślne",

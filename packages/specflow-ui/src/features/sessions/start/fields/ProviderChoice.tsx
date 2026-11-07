@@ -15,12 +15,17 @@ export function ProviderChoice({
   providerId,
   labelledBy,
   onSelect,
+  invalid = false,
+  describedBy,
 }: {
   catalogue: StartCatalogue;
   providerId: string;
   /** The heading/legend that names the group. */
   labelledBy: string;
   onSelect: (providerId: string) => void;
+  /** The choice blocks the owner's form; `describedBy` is the message that says why. */
+  invalid?: boolean;
+  describedBy?: string;
 }) {
   const { t } = useTranslation();
   const text = useMessage();
@@ -39,7 +44,12 @@ export function ProviderChoice({
   }
 
   return (
-    <ChoiceTileGroup aria-labelledby={labelledBy} columns={columns}>
+    <ChoiceTileGroup
+      aria-labelledby={labelledBy}
+      columns={columns}
+      invalid={invalid}
+      describedBy={describedBy}
+    >
       {providers.map((p) => {
         const status = providerStatus(p, catalogue);
 

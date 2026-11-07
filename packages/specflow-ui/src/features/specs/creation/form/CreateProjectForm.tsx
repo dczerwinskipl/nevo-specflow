@@ -45,8 +45,12 @@ import {
 import { firstChoiceControl } from './createGuide';
 import { revealControl, useCreateGuide } from './useCreateGuide';
 import { buildCreateFacts } from '../workspace/model/createFacts';
-import { buildCreateSlug, buildCreateTarget } from '../workspace/model/createRequest';
-import { requestChoiceSnapshot, type WorkspaceChoice } from '../workspace/model/workspaceChoice';
+import {
+  buildCreateSlug,
+  buildCreateTarget,
+  requestChoiceSnapshot,
+} from '../workspace/model/createRequest';
+import type { WorkspaceChoice } from '../workspace/model/workspaceChoice';
 import { useWorkspacePlace } from '../workspace/useWorkspacePlace';
 
 /**
@@ -128,7 +132,7 @@ export function CreateProjectForm({
     title,
     goal,
     archetype: archetypeChoice,
-    choice: requestChoiceSnapshot(place.choice),
+    choice: requestChoiceSnapshot(place.choice, workspaceOptions, title),
   });
   const [initialConfiguration] = useState(configurationSnapshot);
 
@@ -154,6 +158,7 @@ export function CreateProjectForm({
     choice: place.choice,
     forbidden: createOptions.forbidden,
     archetypesLoading: archetypes.isPending,
+    archetypesFailed: archetypes.isError && !catalogue,
     archetype,
     noArchetypes: catalogue?.archetypes.length === 0,
   });

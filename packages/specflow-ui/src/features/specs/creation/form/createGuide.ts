@@ -10,7 +10,7 @@ export type CreateProblemField =
 
 /**
  * The first focusable control inside a choice group (radio tiles or a radio group): the chosen
- * option, else the first one that can be chosen. Used to lead a blocked Create to a group that has
+ * option unless it is disabled, else the first one that can be chosen. Used to lead a blocked Create to a group that has
  * no single control of its own.
  */
 export function firstChoiceControl(container: HTMLElement | null): HTMLElement | null {
@@ -20,7 +20,7 @@ export function firstChoiceControl(container: HTMLElement | null): HTMLElement |
 
   return (
     container.querySelector<HTMLElement>(
-      'input[type="radio"]:checked, [role="radio"][aria-checked="true"]',
+      'input[type="radio"]:checked:not(:disabled), [role="radio"][aria-checked="true"]:not(:disabled)',
     ) ??
     container.querySelector<HTMLElement>(
       'input[type="radio"]:not(:disabled):not([aria-disabled="true"]), [role="radio"]:not(:disabled):not([aria-disabled="true"])',

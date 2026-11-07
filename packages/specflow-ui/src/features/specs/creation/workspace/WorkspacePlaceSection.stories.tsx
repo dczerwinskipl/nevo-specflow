@@ -773,7 +773,7 @@ export const StaleRememberedValueIsFlaggedOnReturn: Story = {
     await expect(canvas.getByText(/Ta gałąź nie jest już dostępna/)).toBeVisible();
     await expect(canvas.getByLabelText('Żądanie')).toHaveAttribute(
       'data-problems',
-      'Ta gałąź nie jest już dostępna. Wybierz inną lub wybierz „Przywróć domyślne”.',
+      'Ta gałąź nie jest już dostępna. Wybierz inną albo użyj „Przywróć domyślne”.',
     );
     await userEvent.click(canvas.getByRole('radio', { name: 'Istniejące środowisko pracy' }));
     await expect(canvas.getByText('To środowisko pracy nie jest już dostępne.')).toBeVisible();
@@ -1173,7 +1173,7 @@ export const EnablingBaseWithoutAnyDefaultStaysBlockedUntilChosen: Story = {
     await expect(request(canvas)).toBe('{"kind":"new-worktree"}');
     await expect(canvas.getByLabelText('Żądanie')).toHaveAttribute(
       'data-problems',
-      'Wybierz gałąź początkową lub wybierz „Przywróć domyślne”.',
+      'Wybierz gałąź początkową albo użyj „Przywróć domyślne”.',
     );
   },
 };

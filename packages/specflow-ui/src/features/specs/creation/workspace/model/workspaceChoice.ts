@@ -38,19 +38,3 @@ export const initialWorkspaceChoice: WorkspaceChoice = {
   existingWorkspaceId: '',
   dismissedSuggestions: {},
 };
-
-/**
- * The request-relevant part of the choice. UI-only state (declined suggestions) is deliberately
- * absent: declining a suggestion is neither an edit nor a reason to retire a failure alert or to
- * ask for a leave confirmation.
- */
-export function requestChoiceSnapshot(choice: WorkspaceChoice) {
-  return {
-    tile: choice.tile,
-    base: choice.base,
-    target: choice.target,
-    branch: choice.branch,
-    slug: choice.slug,
-    existingWorkspaceId: choice.existingWorkspaceId,
-  };
-}

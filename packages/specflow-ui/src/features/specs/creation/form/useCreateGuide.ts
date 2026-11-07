@@ -8,6 +8,9 @@ import type { CreateProblemField } from './createGuide';
  * fields show their missing-value errors, announces the reason in the form's live region and,
  * once those errors are rendered, moves focus to `problemField`: always the first problem in the
  * form's order, so several problems at once lead to the same field every time.
+ *
+ * The live region is cleared by the activation and filled again after that render, so a second
+ * activation with the same reason is announced again instead of being an unchanged text.
  */
 export function useCreateGuide({
   problemField,
@@ -24,19 +27,25 @@ export function useCreateGuide({
   focusField: (field: CreateProblemField) => void;
 }): { tried: boolean; guide: () => void } {
   const [tried, setTried] = useState(false);
-  const requestFocus = useFocusRequest(focusField);
+  const lead = useFocusRequest((request: { reason?: string; field?: CreateProblemField }) => {
+    if (request.reason) {
+      announce(request.reason);
+    }
+
+    if (request.field) {
+      focusField(request.field);
+    }
+  });
 
   return {
     tried,
     guide: () => {
       setTried(true);
-      if (reason) {
-        announce(reason);
-      }
-
-      if (problemField) {
-        requestFocus(problemField);
-      }
+      announce('');
+      lead({
+        ...(reason ? { reason } : {}),
+        ...(problemField ? { field: problemField } : {}),
+      });
     },
   };
 }
@@ -44,7 +53,8 @@ export function useCreateGuide({
 /**
  * Focuses a control and brings it into view inside its scroller together with the texts that
  * describe it (its help and its error, `aria-describedby`), so the message is read where the focus
- * lands. The scroller's bottom scroll padding (`CreateShell`) keeps both clear of the pinned footer.
+ * lands. The pinned footer sits under the scroll viewport (`CreateShell`), not over it, so whatever is
+ * brought into view inside the viewport is above the footer.
  */
 export function revealControl(control: HTMLElement | null | undefined): void {
   if (!control) {

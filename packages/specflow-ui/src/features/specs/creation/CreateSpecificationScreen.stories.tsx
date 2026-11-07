@@ -1210,14 +1210,18 @@ export const AutomaticBranchNameCollisionOffersACustomName: Story = {
   },
 };
 
-export const AFailureAlertStaysUntilARealEdit: Story = {
+export const ChangingARowWithoutAnOverrideDoesNotRetireAFailureAlert: Story = {
   render: () => <Fixture createBehavior="stale-workspace" />,
   parameters: { a11y: { test: 'off' } },
   play: async ({ canvas, userEvent }) => {
     await openManualForm(canvas, userEvent);
     await userEvent.click(submit(canvas));
     await canvas.findByText('Stan środowiska pracy zmienił się od otwarcia formularza');
-    // Q4: the alert stays while nothing that is sent changed.
+    // Q4: "Zmień" prefills the defaults and "Przywróć domyślne" restores them; nothing that is
+    // sent changed, so the alert stays throughout.
+    await changeRow(canvas, userEvent, 'Nazwa gałęzi');
+    await expect(canvas.getByRole('alert')).toHaveTextContent('Stan środowiska pracy zmienił się');
+    await changeRow(canvas, userEvent, 'Nazwa gałęzi', 'Przywróć domyślne');
     await expect(canvas.getByRole('alert')).toHaveTextContent('Stan środowiska pracy zmienił się');
     // A real edit still retires it.
     await userEvent.type(canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' }), ' v2');
@@ -1653,7 +1657,7 @@ export const BlockedCreateLeadsToTheFirstFaultyFieldAndSendsNothing: Story = {
     const branch = canvas.getByRole('textbox', { name: 'Nazwa nowej gałęzi' });
     await waitFor(() => expect(branch).toHaveFocus());
     await expect(
-      canvas.getByText('Wpisz nazwę gałęzi lub wybierz „Przywróć domyślne”.', {
+      canvas.getByText('Wpisz nazwę gałęzi albo użyj „Przywróć domyślne”.', {
         selector: '.field-error',
       }),
     ).toBeVisible();
@@ -1675,22 +1679,22 @@ export const LedFieldStaysClearOfThePinnedFooterOnMobile: Story = {
     const branch = canvas.getByRole('textbox', { name: 'Nazwa nowej gałęzi' });
     await userEvent.clear(branch);
     const scroller = branch.closest<HTMLElement>('.scroll-area-viewport')!;
+    const footer = canvas.getByRole('group', { name: 'Utworzenie specyfikacji' });
+    // The footer is not inside the scroll viewport: it sits under it and can never cover a field.
+    await expect(scroller.contains(footer)).toBe(false);
+    await expect(footer.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+      scroller.getBoundingClientRect().bottom - 1,
+    );
     scroller.scrollTop = 0;
     await userEvent.click(canvas.getByRole('button', { name: 'Przejdź do pola' }));
     await waitFor(() => expect(branch).toHaveFocus());
-    const error = canvas.getByText('Wpisz nazwę gałęzi lub wybierz „Przywróć domyślne”.', {
-      selector: '.field-error',
+    const error = canvas.getByText(/^Wpisz nazwę gałęzi/, { selector: '.field-error' });
+    // The led field and its message are brought into the scroll viewport, which ends above the footer.
+    await waitFor(async () => {
+      const viewport = scroller.getBoundingClientRect();
+      await expect(branch.getBoundingClientRect().top).toBeGreaterThanOrEqual(viewport.top - 1);
+      await expect(error.getBoundingClientRect().bottom).toBeLessThanOrEqual(viewport.bottom + 1);
     });
-    const footer = canvas.getByRole('group', { name: 'Utworzenie specyfikacji' });
-    // The field and its message end above the footer, within the scroller.
-    await waitFor(() =>
-      expect(error.getBoundingClientRect().bottom).toBeLessThanOrEqual(
-        footer.getBoundingClientRect().top,
-      ),
-    );
-    await expect(branch.getBoundingClientRect().top).toBeGreaterThanOrEqual(
-      scroller.getBoundingClientRect().top,
-    );
     await settleViewport();
   },
 };

@@ -211,3 +211,24 @@ export function buildCreateSlug(
     ? createOverrides(choice, options, title).slug
     : undefined;
 }
+
+/**
+ * What of the place choice an edit is measured by: what the request would carry, not how the form
+ * got there. The chosen tile, the chosen existing workspace and the real overrides
+ * (`createOverrides`): opening a row with "Change" prefills the default, which is not an override,
+ * so it is neither an edit nor a reason to retire a failure alert or to ask before leaving, and
+ * "Restore default" brings back exactly the snapshot it started from. UI-only state (declined
+ * suggestions) is absent. Without options (still loading) nothing can be overridden yet, so the
+ * snapshot of an untouched choice is the same before and after they arrive.
+ */
+export function requestChoiceSnapshot(
+  choice: WorkspaceChoice,
+  options: CreateOptions | undefined,
+  title: string,
+) {
+  return {
+    tile: choice.tile,
+    existingWorkspaceId: choice.existingWorkspaceId,
+    overrides: options ? createOverrides(choice, options, title) : {},
+  };
+}

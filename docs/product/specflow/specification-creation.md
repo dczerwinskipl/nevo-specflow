@@ -33,24 +33,28 @@ went wrong after a submit is explained at the end of the form, above that action
 
 **Layout.** The form is shown in the Focused frame (the design-system Bounded workspace rule). It is
 one column below a 992 px form column (`62rem`) and two columns from it. The threshold is a container
-query on the form column, never a viewport breakpoint, so it holds with the navigation open or
-closed and at any zoom; at 1280 px, at 200% zoom and on mobile the form is one column. The left
+query on the form column, never a viewport breakpoint: whether the navigation is open or closed,
+at any window width or zoom, the form is two columns exactly when its column is at least 992 px
+wide (a phone or 200% zoom is always one column). The left
 column holds what is created: the name, the goal and the archetype with its documents. The right
 column holds where it is created: the workspace place and its Git settings. DOM order is the reading
 and keyboard order: Tab moves through the whole left column, then the right column, then the Create
 button. Below the threshold the form keeps its reading column (`content-form`, left-aligned); from it
 the form grows to at most two control widths and the gap between them (72rem), left-aligned, and the
 Create button still ends on the form's edge. There is no preview panel and no Secondary. Controls
-keep their maximum widths however wide the frame is: text inputs and text areas, the workspace
-tiles, the Git rows and their fields stop at about 34rem, so in two columns everything in a column
-shares one edge.
+keep their maximum widths however wide the frame is: text inputs and text areas, the Git rows and
+their fields, and the agent's provider cards and fields stop at about 34rem. In two columns each
+column is at most 34rem, so everything in it, the workspace tiles included, shares one edge; in one
+column the workspace tiles span the reading column (three side by side when it is wide enough).
 
 **When Create is blocked.** A Create blocked by the form's own values stays a focusable submit button
 marked `aria-disabled="true"` (it is announced as unavailable, never `disabled`). Activating it
 (click, Enter or Space), or pressing Enter in a field, never submits and sends nothing: it announces
 the blocking reason in the form's live region and moves focus to the first faulty field in the
 form's order (the name, the archetype, then the workspace and Git fields: the tile, the existing
-workspace, Start from, Merge into, the slug, the branch name), scrolled clear of the pinned footer.
+workspace, Start from, Merge into, the slug, the branch name), brought into view with its message.
+The pinned footer sits under the scrolling form, never over it, so a field in view is never
+covered.
 The footer hint has a quiet **Go to the field** action that does the same. With several problems at
 once it always leads to the first one in that order. Fields validate inline with `aria-invalid` and
 a message tied to them by `aria-describedby`; a missing value (the empty name, an empty picker) is
@@ -107,7 +111,7 @@ derived from the name and the generated branch), so the user only adjusts it. An
 default-equal value is never sent as an override (an explicit merge target would become an
 immutable pin, omission follows the project); only a value that differs is. **Restore default**
 restores the default and forgets the typed or picked value. A message about a value the owner has
-to fix names the row action, never a switch, for example _"Choose a starting branch or choose
+to fix names the row action, never a switch, for example _"Choose a starting branch or use
 “Restore default”."_
 
 The optional `slug` names the Specification folder, the worktree folder and the generated branch

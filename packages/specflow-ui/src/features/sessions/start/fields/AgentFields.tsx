@@ -25,6 +25,8 @@ export function AgentFields({
   onChange,
   modelError,
   modelControlRef,
+  modeError,
+  modeControlRef,
 }: {
   catalogue: StartCatalogue;
   choice: AgentChoice;
@@ -34,6 +36,10 @@ export function AgentFields({
   modelError?: string;
   /** The Model picker's control, so the owner can lead focus to it. */
   modelControlRef?: MutableRefObject<HTMLElement | null>;
+  /** Why the work mode blocks the owner's form (shown at the Work mode field). */
+  modeError?: string;
+  /** The Work mode control, so the owner can lead focus to it. */
+  modeControlRef?: MutableRefObject<HTMLElement | null>;
 }) {
   const provider = catalogue.providers.find((p) => p.id === choice.providerId);
   if (!provider) {
@@ -64,6 +70,8 @@ export function AgentFields({
         value={choice.mode}
         disabled={decidedByModel}
         onChange={(mode) => onChange({ ...choice, mode })}
+        error={modeError}
+        controlRef={modeControlRef}
       />
     </div>
   );

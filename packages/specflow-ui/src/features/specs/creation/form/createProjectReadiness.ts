@@ -29,6 +29,8 @@ export function projectCreateReadiness(input: {
   forbidden: boolean;
   /** The archetype catalogue is still loading. */
   archetypesLoading: boolean;
+  /** The archetype catalogue could not be read: only its Retry can fix it, not a field. */
+  archetypesFailed?: boolean;
   /** The selected archetype (undefined while loading, after a failure or with an empty catalogue). */
   archetype: ArchetypeInfo | undefined;
   /** The catalogue was read and the project has no archetype installed. */
@@ -56,6 +58,10 @@ export function projectCreateReadiness(input: {
 
   if (input.archetypesLoading) {
     return blocked(message('create.archetype.loading'));
+  }
+
+  if (input.archetypesFailed) {
+    return blocked(message('create.archetype.loadFailed'));
   }
 
   if (input.noArchetypes) {

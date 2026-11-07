@@ -30,7 +30,7 @@ import { CreateFormHeader } from './CreateFormHeader';
 import { CreateLeaveDialog } from './CreateLeaveDialog';
 import { CreateMethodChoice } from '../options/CreateMethodChoice';
 import { CreateShell } from '../CreateShell';
-import { createReadiness } from './createReadiness';
+import { agentProblem, createReadiness } from './createReadiness';
 import { demoCreationKeys } from '../api/api.demo';
 import { useCreateLeaveGuard } from './useCreateLeaveGuard';
 import { useCreateOptions } from '../options/useCreateOptions';
@@ -43,8 +43,11 @@ import { CreateWorkspaceSection } from './CreateWorkspaceSection';
 import { createFormColumn, createFormColumns, createFormWidth } from '../createFormLayout';
 import { firstChoiceControl } from './createGuide';
 import { revealControl, useCreateGuide } from './useCreateGuide';
-import { buildCreateSlug, buildCreateTarget } from '../workspace/model/createRequest';
-import { requestChoiceSnapshot } from '../workspace/model/workspaceChoice';
+import {
+  buildCreateSlug,
+  buildCreateTarget,
+  requestChoiceSnapshot,
+} from '../workspace/model/createRequest';
 import { useWorkspacePlace } from '../workspace/useWorkspacePlace';
 
 export interface CreateDemoFormProps {
@@ -105,7 +108,7 @@ export function CreateDemoForm({
     modelId: agent.modelId,
     effort: agent.effort,
     mode: agent.mode,
-    choice: requestChoiceSnapshot(place.choice),
+    choice: requestChoiceSnapshot(place.choice, workspaceOptions, title),
   });
   const [initialConfiguration] = useState(configurationSnapshot);
   const configurationDirty = configurationSnapshot !== initialConfiguration;
@@ -151,6 +154,7 @@ export function CreateDemoForm({
   const archetypeRef = useRef<HTMLDivElement>(null);
   const providersRef = useRef<HTMLDivElement>(null);
   const modelRef = useRef<HTMLElement | null>(null);
+  const modeRef = useRef<HTMLElement | null>(null);
   const showPrerequisite = Boolean(prerequisite) && !uncertain && !recovery;
   const reason = showPrerequisite && prerequisite ? text(prerequisite) : undefined;
   const { tried, guide } = useCreateGuide({
@@ -164,19 +168,20 @@ export function CreateDemoForm({
         revealControl(firstChoiceControl(archetypeRef.current));
       } else if (field === 'provider') {
         revealControl(firstChoiceControl(providersRef.current));
-      } else if (field === 'model' || field === 'mode') {
-        // The work modes follow the model: a missing or unsupported mode is fixed from the model.
+      } else if (field === 'model') {
         revealControl(modelRef.current);
+      } else if (field === 'mode') {
+        // A segmented group leads to its chosen (or first) mode; a picker to itself.
+        revealControl(firstChoiceControl(modeRef.current) ?? modeRef.current);
       } else {
         place.handleRef.current?.focusProblem(field);
       }
     },
   });
-  const provider = catalogue.providers.find((p) => p.id === agent.providerId);
-  const modelMissing =
-    method === 'ai' &&
-    Boolean(provider?.models.length) &&
-    !provider?.models.some((m) => m.id === agent.modelId);
+  // The agent's own problem is said at its field once Create was tried (provider, model or mode).
+  const agentIssue = tried && method === 'ai' ? agentProblem(catalogue, agent) : undefined;
+  const agentError = (field: 'provider' | 'model' | 'mode') =>
+    agentIssue?.field === field ? text(agentIssue.message) : undefined;
 
   useEffect(() => {
     if (method && !supportsSplit) {
@@ -283,9 +288,12 @@ export function CreateDemoForm({
         choice={agent}
         locked={locked}
         onChange={setAgent}
-        modelError={tried && modelMissing ? t('create.prerequisite.model') : undefined}
+        providerError={agentError('provider')}
+        modelError={agentError('model')}
+        modeError={agentError('mode')}
         providersRef={providersRef}
         modelControlRef={modelRef}
+        modeControlRef={modeRef}
       />
     ),
     <CreateWorkspaceSection

@@ -21,23 +21,32 @@ export function CreateAgentSection({
   choice,
   locked,
   onChange,
+  providerError,
   modelError,
+  modeError,
   providersRef,
   modelControlRef,
+  modeControlRef,
 }: {
   catalogue: DemoCatalogue;
   choice: AgentChoice;
   locked: boolean;
   onChange: (choice: AgentChoice) => void;
+  /** Why the provider blocks Create (once tried): shown under the cards, tied to their group. */
+  providerError?: string;
   /** Why the missing model blocks Create (once tried). */
   modelError?: string;
+  /** Why the work mode blocks Create (once tried). */
+  modeError?: string;
   /** The provider cards, so a blocked Create can lead to them. */
   providersRef?: RefObject<HTMLDivElement | null>;
   modelControlRef?: MutableRefObject<HTMLElement | null>;
+  modeControlRef?: MutableRefObject<HTMLElement | null>;
 }) {
   const { t } = useTranslation();
   const start = useMemo(() => startCatalogueFromDemo(catalogue), [catalogue]);
   const legendId = useId();
+  const providerErrorId = useId();
 
   return (
     <div className="grid gap-4">
@@ -57,6 +66,8 @@ export function CreateAgentSection({
             catalogue={start}
             providerId={choice.providerId}
             labelledBy={legendId}
+            invalid={Boolean(providerError)}
+            describedBy={providerError ? providerErrorId : undefined}
             onSelect={(providerId) =>
               onChange(
                 selectProvider(
@@ -66,6 +77,11 @@ export function CreateAgentSection({
               )
             }
           />
+          {providerError && (
+            <p id={providerErrorId} className="m-0 mt-2 text-body-sm text-content-error">
+              {providerError}
+            </p>
+          )}
         </div>
       </fieldset>
       <div className={createControlWidth}>
@@ -76,6 +92,8 @@ export function CreateAgentSection({
           onChange={onChange}
           modelError={modelError}
           modelControlRef={modelControlRef}
+          modeError={modeError}
+          modeControlRef={modeControlRef}
         />
       </div>
     </div>

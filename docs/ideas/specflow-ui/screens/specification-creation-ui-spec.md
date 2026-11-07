@@ -105,14 +105,16 @@ from `AppWorkspace`.
   sized by the tallest content; narrow: stacked, icon next to the label, DS hit target and focus. No
   segments, radios or selects.
 - The form is **Name, Workflow, first Session (AI only), Branch and worktree**. It is one column
-  below a 992 px form column (`62rem`, a container query on the form column, not the viewport): at
-  1280 px, at 200% zoom and on mobile. From that width it is two columns: the left column holds what
+  below a 992 px form column (`62rem`, a container query on the form column, not the viewport),
+  with the navigation open or closed; a phone or 200% zoom is always one column. From that width it
+  is two columns: the left column holds what
   is created (name and workflow with its documents), the right column who starts it and where (the
   first Session's agent, then branch and worktree), in the same order as the single column. DOM
   order is the reading and Tab order. No Secondary, summary or preview on the right, planned-file
   tree, upload or optional-file choice before Create. Controls keep their maximum widths (about
-  34rem for text inputs, the provider cards, the agent fields and the workspace tiles; two columns
-  are at most 72rem), and the Create button ends on the form's edge. A blocked Create behaves as in
+  34rem for text inputs, the provider cards and the agent fields). In two columns each column is at
+  most 34rem, workspace tiles included; in one column the tiles span the reading column. The Create
+  button ends on the form's edge. A blocked Create behaves as in
   [Specification creation](../../../product/specflow/specification-creation.md#user-choices): it
   stays focusable (`aria-disabled`), sends nothing and leads to the first faulty field (name,
   workflow, the agent, then branch and worktree).

@@ -104,7 +104,7 @@ describe('New workspace settings: three decision rows that start from the effect
     fireEvent.change(field('Slug'), { target: { value: 'Not Valid' } });
     expect(screen.getByText(/Use lowercase letters, digits and single hyphens/)).toBeTruthy();
     fireEvent.change(field('Slug'), { target: { value: '' } });
-    expect(screen.getByText('Enter a slug or choose “Restore default”.')).toBeTruthy();
+    expect(screen.getByText('Enter a slug or use “Restore default”.')).toBeTruthy();
     expect(field('Slug').getAttribute('aria-invalid')).toBe('true');
   });
 
@@ -122,7 +122,7 @@ describe('New workspace settings: three decision rows that start from the effect
 
     // A cleared name says so at the field, naming the row action, not a switch.
     fireEvent.change(field('New branch name'), { target: { value: '' } });
-    expect(screen.getByText('Enter a branch name or choose “Restore default”.')).toBeTruthy();
+    expect(screen.getByText('Enter a branch name or use “Restore default”.')).toBeTruthy();
     expect(field('New branch name').getAttribute('aria-invalid')).toBe('true');
   });
 

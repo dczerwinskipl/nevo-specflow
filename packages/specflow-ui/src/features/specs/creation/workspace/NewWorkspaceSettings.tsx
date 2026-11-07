@@ -155,15 +155,18 @@ function DecisionRow({
       aria-labelledby={labelId}
       className="col-span-2 grid grid-cols-subgrid items-baseline gap-y-1 @md/git:col-span-3"
     >
-      <span id={labelId} className="text-body-sm text-content-secondary">
+      {/* DOM order = the narrow reading order: label and action on the first line, then the value
+          (or its field), then the details. Wide places the value between label and action; the
+          action still comes before the field it opens in the Tab order. */}
+      <span id={labelId} className="row-start-1 text-body-sm text-content-secondary">
         {label}
       </span>
-      <div className="order-last col-span-2 min-w-0 text-body-sm text-content-primary @md/git:order-none @md/git:col-span-1">
+      <div className="col-start-2 row-start-1 justify-self-end @md/git:col-start-3">{action}</div>
+      <div className="col-span-2 col-start-1 row-start-2 min-w-0 text-body-sm text-content-primary @md/git:col-span-1 @md/git:col-start-2 @md/git:row-start-1">
         {value}
       </div>
-      <div className="col-start-2 row-start-1 justify-self-end @md/git:col-start-3">{action}</div>
       {detail ? (
-        <div className="order-last col-span-2 mt-2 grid min-w-0 gap-4 @md/git:col-start-2">
+        <div className="col-span-2 col-start-1 row-start-3 mt-2 grid min-w-0 gap-4 @md/git:col-start-2 @md/git:row-start-2">
           {detail}
         </div>
       ) : null}

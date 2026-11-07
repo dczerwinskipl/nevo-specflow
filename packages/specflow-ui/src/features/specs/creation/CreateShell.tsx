@@ -64,12 +64,12 @@ export function CreateShell({
     <>
       {/* The gutter is reserved only at the end, so a classic (space-taking) scrollbar never
           shifts the left-aligned column away from the footer's, which reserves the same gutter.
-          The bottom scroll padding is the footer's height: a field focused or revealed near the
-          end of the form, and the message under it, stay clear of the pinned footer. */}
+          The pinned footer is a sibling under this scroll viewport, never laid over it, so a field
+          focused or revealed inside the viewport (and the message under it) is above the footer. */}
       <AppWorkspaceBody
         scroll="area"
         padding="none"
-        className="[&>.scroll-area-viewport]:scroll-pb-shell-footer [&>.scroll-area-viewport]:[scrollbar-gutter:stable]"
+        className="[&>.scroll-area-viewport]:[scrollbar-gutter:stable]"
       >
         <div className={cn(column, 'py-4 sm:py-6')}>
           <AppContentContainer {...container} className={containerClassName}>

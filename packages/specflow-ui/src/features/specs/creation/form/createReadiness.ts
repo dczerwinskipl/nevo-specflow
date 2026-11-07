@@ -35,11 +35,6 @@ export function createReadiness(input: {
   const { specId, method, title, catalogue, agent, workspaceState, choice, archetype } = input;
   const provider = catalogue.providers.find((p) => p.id === agent.providerId);
   const model = provider?.models.find((m) => m.id === agent.modelId);
-  // A provider that lists no model has nothing to choose (the start rule): its Session runs the
-  // provider's default model, so the modes are the provider's own and only the default effort fits.
-  // (Same predicate as the sessions start rule `offersModelChoice`, which the sessions barrel does not export.)
-  const modelChoice = (provider?.models.length ?? 0) > 0;
-  const modeIds = modelChoice ? model?.modes : provider?.modes.map((mode) => mode.id);
   const effortFits =
     agent.effort === providerDefaultEffort || Boolean(model?.efforts.includes(agent.effort));
   const workspaceProblem: { message: Message; field?: CreateProblemField } | undefined = specId
@@ -51,16 +46,7 @@ export function createReadiness(input: {
         : workspaceState.status === 'forbidden'
           ? { message: message('create.prerequisite.forbidden') }
           : workspaceProblems(choice, workspaceState.options, title)[0];
-  const agentProblem: { message: Message; field: CreateProblemField } | undefined =
-    method !== 'ai'
-      ? undefined
-      : !provider?.available
-        ? { message: message('create.prerequisite.provider'), field: 'provider' }
-        : modelChoice && !model
-          ? { message: message('create.prerequisite.model'), field: 'model' }
-          : !modeIds?.includes(agent.mode)
-            ? { message: message('create.prerequisite.mode'), field: 'mode' }
-            : undefined;
+  const agentIssue = method === 'ai' ? agentProblem(catalogue, agent) : undefined;
   const canSubmit =
     !input.configurationUnavailable &&
     !input.forbiddenCreate &&
@@ -68,7 +54,7 @@ export function createReadiness(input: {
     Boolean(method) &&
     Boolean(specId ?? title.trim()) &&
     !workspaceProblem &&
-    (method === 'manual' || (!agentProblem && effortFits));
+    (method === 'manual' || (!agentIssue && effortFits));
   // The first problem in the form's own order, so the footer names the field a blocked Create
   // leads to: name, archetype, the agent (right column, first), then where it is created.
   const problem: { message: Message; field?: CreateProblemField } | undefined =
@@ -82,11 +68,42 @@ export function createReadiness(input: {
             ? catalogue.archetypes.length === 0
               ? { message: message('create.prerequisite.noArchetypes') }
               : { message: message('create.prerequisite.archetype'), field: 'archetype' }
-            : (agentProblem ?? workspaceProblem);
+            : (agentIssue ?? workspaceProblem);
 
   return {
     prerequisite: problem?.message,
     ...(problem?.field ? { problemField: problem.field } : {}),
     canSubmit,
   };
+}
+
+/**
+ * The first problem of the agent of a first Session, in the order of its fields: an unavailable
+ * provider, a missing model (when the provider lists models), a work mode the choice does not run.
+ * The form shows it at that field once Create was tried, and a blocked Create leads there.
+ */
+export function agentProblem(
+  catalogue: DemoCatalogue,
+  agent: AgentChoice,
+): { message: Message; field: 'provider' | 'model' | 'mode' } | undefined {
+  const provider = catalogue.providers.find((p) => p.id === agent.providerId);
+  const model = provider?.models.find((m) => m.id === agent.modelId);
+  // A provider that lists no model has nothing to choose (the start rule): its Session runs the
+  // provider's default model, so the modes are the provider's own.
+  // (Same predicate as the sessions start rule `offersModelChoice`, which the sessions barrel does not export.)
+  const modelChoice = (provider?.models.length ?? 0) > 0;
+  const modeIds = modelChoice ? model?.modes : provider?.modes.map((mode) => mode.id);
+  if (!provider?.available) {
+    return { message: message('create.prerequisite.provider'), field: 'provider' };
+  }
+
+  if (modelChoice && !model) {
+    return { message: message('create.prerequisite.model'), field: 'model' };
+  }
+
+  if (!modeIds?.includes(agent.mode)) {
+    return { message: message('create.prerequisite.mode'), field: 'mode' };
+  }
+
+  return undefined;
 }

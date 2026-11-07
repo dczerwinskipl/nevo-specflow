@@ -290,8 +290,8 @@ How to work with the archetype (instructions) is available behind a disclosure.
 
 Placed after Name and Goal and before **Where do you want to work?**, separated by the form's existing
 `Separator`s (project form: new section between the name/goal group and the workspace section; demo form:
-replaces the Workflow select and `ArchetypeSummary` inside `CreateBasicsSection`). The form width stays
-`content-standard`.
+replaces the Workflow select and `ArchetypeSummary` inside `CreateBasicsSection`). The form keeps its
+reading width (`content-form`, left-aligned in the Focused frame).
 
 ```text
 Archetype                                                    h2 title-md

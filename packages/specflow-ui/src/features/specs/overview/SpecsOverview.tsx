@@ -95,7 +95,9 @@ export function SpecsOverview({
           />
         }
       >
-        <AppContent className="mx-auto w-content-standard max-w-full">
+        {/* The Focused frame (`fit="bounded"`) sets the width; the list keeps its columns
+            together with bounded tracks (`specRowColumns`) instead of a narrower content box. */}
+        <AppContent className="w-full">
           {/* A flex column down to the list, so an empty collection can centre in the free height. */}
           <AppWorkspaceBody scroll="area" contentClassName="flex min-h-full flex-col py-6">
             <AppContentContainer align="start" className="flex flex-1 flex-col gap-4" size="full">

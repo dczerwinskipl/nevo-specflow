@@ -12,9 +12,10 @@ import { useWorkspaceLabels } from '../../../app/navigation/useWorkspaceLabels';
 import { applicationLocationHeader } from '../../../app/navigation/ApplicationLocation';
 
 /**
- * The Primary pane every Create state is shown in (loading, error, the form and its progress page
- * alike). All of them share one content width (`content-form`, centred by the bounded
- * workspace), so submitting the form never makes the page jump.
+ * The Primary pane every Create state is shown in (loading, error, the method choice, the form and
+ * its progress page alike). It uses the Focused frame (`fit="bounded"`), the same frame as the
+ * Specifications list, so moving between them changes nothing. Inside it every state keeps one
+ * reading column (`content-form`), left-aligned, so submitting the form never makes the page jump.
  */
 export function CreateShell({
   specId,
@@ -42,19 +43,19 @@ export function CreateShell({
 }) {
   const { t } = useTranslation();
   const workspaceLabels = useWorkspaceLabels();
-  // The scroll area spans the whole pane and the form column is centred INSIDE it (the column must not wrap the
+  // The scroll area spans the whole pane and the form column sits INSIDE it (the column must not wrap the
   // scroller, which would leave unscrollable side bands and put the scrollbar at the column's
-  // edge instead of the pane's). The footer centres the same column, so
-  // its button stays aligned with the content.
-  const column = 'mx-auto w-content-form max-w-full px-4 sm:px-6';
+  // edge instead of the pane's). The footer holds the same column, so its button stays aligned
+  // with the content.
+  const column = 'w-content-form max-w-full px-4 sm:px-6';
   const body = (
     <>
-      {/* The gutter is reserved on both edges so a classic (space-taking) scrollbar keeps the
-          column centred exactly like the footer's, which has no scrollbar. */}
+      {/* The gutter is reserved only at the end, so a classic (space-taking) scrollbar never
+          shifts the left-aligned column away from the footer's, which has no scrollbar. */}
       <AppWorkspaceBody
         scroll="area"
         padding="none"
-        className="[&>.scroll-area-viewport]:[scrollbar-gutter:stable_both-edges]"
+        className="[&>.scroll-area-viewport]:[scrollbar-gutter:stable]"
       >
         <div className={cn(column, 'py-4 sm:py-6')}>
           <AppContentContainer className={containerClassName}>{children}</AppContentContainer>

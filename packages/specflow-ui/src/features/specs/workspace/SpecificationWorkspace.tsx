@@ -222,7 +222,7 @@ function SpecificationWorkspaceInner({
       <WorkspaceProvider runtime={runtime}>
         <AppWorkspace
           split="primary"
-          fit="bounded"
+          fit="available"
           labels={{
             backToPrimary: t('navigation.back'),
             closeSecondary: t('navigation.closeSecondary'),

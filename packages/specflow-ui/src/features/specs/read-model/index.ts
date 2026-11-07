@@ -5,7 +5,7 @@
  */
 export { type SpecificationApi, createRuntimeSpecificationApi } from './api';
 export { invalidateSpecificationWorkspace, specificationKeys } from './queries';
-export { sessionActivityLabel, sessionTaskCountLabel } from './status-labels';
+export { sessionActivityLabel, sessionStatusLabel, sessionTaskCountLabel } from './status-labels';
 export { useSpecificationWorkspace } from './useSpecificationWorkspace';
 export type { UseSpecificationWorkspaceResult } from './useSpecificationWorkspace';
 export type {

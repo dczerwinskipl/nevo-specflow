@@ -67,9 +67,7 @@ export function mapWorkspaceResponse(
               tone: 'attention' as const,
               icon: 'triangle-alert' as const,
             }
-          : session.status === 'quiet'
-            ? { label: '', tone: 'neutral' as const }
-            : undefined,
+          : undefined,
   }));
   const repository =
     sections.repository.state === 'available' ? sections.repository.data : undefined;

@@ -1,7 +1,7 @@
 import { Button, InformationList, MenuItem, OverflowMenu } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import {
-  sessionActivityLabel,
+  sessionStatusLabel,
   sessionTaskCountLabel,
   type SessionSummary,
 } from '../../../specs/read-model';
@@ -41,7 +41,7 @@ export function ResumeSessionSection({
   canOpenSession,
 }: ResumeSessionSectionProps) {
   const { t } = useTranslation();
-  const status = sessionActivityLabel(session, t);
+  const status = sessionStatusLabel(session, t);
 
   return (
     <WorkspaceSection aria-labelledby="resume-heading">
@@ -73,6 +73,7 @@ export function ResumeSessionSection({
           titleAs="span"
           primary={session.title}
           onPrimaryClick={canOpenSession ? () => onOpenSession(session.id) : undefined}
+          dataAttributes={{ 'data-focus-key': `session:${session.id}` }}
           compactFacts={sessionFacts(sessionTaskCountLabel(session, t), session.age)}
           supporting={
             session.activity && status
@@ -82,9 +83,11 @@ export function ResumeSessionSection({
                   icon: session.activity.icon,
                   iconClassName: session.activity.animate ? 'animate-spin' : undefined,
                 }
-              : session.meta
-                ? { text: session.meta }
-                : undefined
+              : status
+                ? { text: status }
+                : session.meta
+                  ? { text: session.meta }
+                  : undefined
           }
         />
       </InformationList>

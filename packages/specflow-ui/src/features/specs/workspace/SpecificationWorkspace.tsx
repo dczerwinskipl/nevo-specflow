@@ -293,7 +293,13 @@ function SpecificationWorkspaceInner({
             {/* The scroller fills the pane. Overview is a left-aligned reading column inside it,
               or two columns filling it once the pane is wide enough (WorkView). */}
             <AppContent className="w-full">
-              <AppWorkspaceBody scroll="area" contentClassName="py-6">
+              {/* A stable gutter: a scrollbar appearing with the other arrangement cannot change
+                the width the Overview's columns depend on. */}
+              <AppWorkspaceBody
+                scroll="area"
+                contentClassName="py-6"
+                viewportClassName="[scrollbar-gutter:stable]"
+              >
                 <AppContentContainer align="start" size="full" className="grid gap-6">
                   {refreshFailed ? (
                     <Alert

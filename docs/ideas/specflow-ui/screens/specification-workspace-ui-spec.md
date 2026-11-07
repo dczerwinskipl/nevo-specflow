@@ -424,13 +424,15 @@ Owner decisions of 2026-11-07 (A3 scope 3, `side` hierarchy). The arrangement fo
 Overview's **content width**, not the viewport:
 
 - **Below 1408 px** of content width, Overview is one left-aligned reading column
-  (`content-standard`) in the priority order above: summary, Requires attention, Continue session
-  (and the repository section), preparation, Tasks, Documents.
+  (`content-standard`) in the priority order above: summary, Requires attention, Continue session,
+  the repository section, preparation, Tasks, Documents.
 - **From 1408 px** the summary (title and description) sits above two columns that fill the pane
   at the workspace's shared 16 px inset; the reading column no longer applies. The **work column**
   (left, flexible) holds Requires attention, then preparation (an empty Specification only), then
-  Tasks. The **context column** (right, `22rem` to `30rem`) holds Continue session, then the
-  repository section, then Documents and the other related sections.
+  Tasks. The **context column** (right, `22rem` to `30rem`) holds Continue session, then Documents
+  and the other related sections, then the repository section and any other context. Continue
+  session has its own section slot (`resume`), so its place never depends on module registration
+  order.
 
 ```text
 Specification title
@@ -444,12 +446,19 @@ Tasks                                    Documents
 
 - **No empty bands.** Each column stacks on its own. A missing section collapses: without Requires
   attention Tasks open the work column; without a Session the next context section opens the
-  context column. Both columns start on one line under the summary. With no context section to
-  show at all, Overview stays one column at any width instead of reserving an empty context track.
+  context column. Both columns start on one line under the summary. Two columns need a section on
+  each side: with nothing to show in the work column (Requires attention, preparation, Tasks) or in
+  the context column, Overview stays one column at any width instead of reserving an empty track.
 - **Order.** Keyboard and reading order follow the visible order in both arrangements: one column
   reads in priority order, two columns read the work column, then the context column. The
-  arrangement is therefore measured (`useContainerMinWidth`), not a CSS container query, and the
-  work sections move without remounting, so a Task selection survives crossing the threshold.
+  arrangement is therefore measured (`useContainerMinWidth`, on a zero-height sentinel), not a CSS
+  container query. The work sections move without remounting, so a Task selection survives a
+  crossing; the context sections change parent and remount (Documents' "show all" resets), and focus
+  inside them returns to the same control, found by its row's `data-focus-key` (`document:<id>`,
+  `session:<id>`). A Secondary opened from such a row returns focus to it the same way.
+- **No oscillation.** Two columns start at 1408 px and stay until the content is narrower than
+  1392 px (16 px hysteresis), and the Overview's scroller keeps a stable scrollbar gutter, so the
+  change of arrangement cannot flip it back.
 - **Secondary.** Opening the Secondary narrows the Overview and may return it to one column; that is
   the intended responsive behaviour, not a breakpoint to compensate for.
 

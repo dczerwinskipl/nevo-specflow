@@ -1,7 +1,12 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { useState } from 'react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppShell } from '@nevo/ui';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { createSpecFlowQueryClient } from '../../../app/queryClient';
+import { createSpecFlowAppServices } from '../../../services';
+import { TestServicesRouterContext } from '../../../../test-support/app/TestServicesRouterContext';
 import { UiModulesProvider } from '../../../app/ui-modules/UiModulesProvider';
 import { builtInUiModuleRegistry } from '../../../app/ui-modules/builtInUiModules';
 import { LocalizationProvider, createSpecFlowI18n } from '../../../i18n';
@@ -10,7 +15,11 @@ import type { SpecificationWorkspaceData } from '../read-model/model';
 import { SpecificationStateProvider } from '../SpecificationStateProvider';
 import { SpecificationWorkspace } from './SpecificationWorkspace';
 
+/** The measured width of every element: split-capable unless a test narrows it. */
+let width = 1600;
+
 beforeEach(() => {
+  width = 1600;
   vi.stubGlobal(
     'ResizeObserver',
     class {
@@ -21,8 +30,7 @@ beforeEach(() => {
   );
   // A split-capable workspace: the declarative Secondary can show beside Overview.
   vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
-    () =>
-      ({ width: 1600, height: 900, x: 0, y: 0, top: 0, left: 0, right: 0, bottom: 0 }) as DOMRect,
+    () => ({ width, height: 900, x: 0, y: 0, top: 0, left: 0, right: 0, bottom: 0 }) as DOMRect,
   );
 });
 
@@ -42,14 +50,23 @@ function Workspace({
   readonly data: SpecificationWorkspaceData;
   readonly specId?: string;
 }) {
+  const [setup] = useState(() => ({
+    query: createSpecFlowQueryClient(),
+    services: createSpecFlowAppServices({}),
+  }));
+
   return (
-    <UiModulesProvider modules={builtInUiModuleRegistry}>
-      <LocalizationProvider instance={createSpecFlowI18n('en')}>
-        <AppShell navigation={<div>Navigation</div>}>
-          <SpecificationWorkspace specId={specId} data={data} />
-        </AppShell>
-      </LocalizationProvider>
-    </UiModulesProvider>
+    <QueryClientProvider client={setup.query}>
+      <TestServicesRouterContext services={setup.services}>
+        <UiModulesProvider modules={builtInUiModuleRegistry}>
+          <LocalizationProvider instance={createSpecFlowI18n('en')}>
+            <AppShell navigation={<div>Navigation</div>}>
+              <SpecificationWorkspace specId={specId} data={data} />
+            </AppShell>
+          </LocalizationProvider>
+        </UiModulesProvider>
+      </TestServicesRouterContext>
+    </QueryClientProvider>
   );
 }
 
@@ -160,5 +177,37 @@ describe('Specification Overview Activity history', () => {
 
     rerender(<Visit route="overview" data={withHistory} />);
     expect(historyPanel()).toBeNull();
+  });
+
+  it('brings the history forward from behind a document preview', async () => {
+    render(<Workspace data={withHistory} />);
+    expect(historyPanel()).not.toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Specyfikacja' }));
+    await act(() => Promise.resolve());
+    // The preview covers the history: the toggle no longer reads as pressed.
+    expect(historyPanel()).toBeNull();
+    expect(historyToggle().getAttribute('aria-pressed')).toBe('false');
+
+    fireEvent.click(historyToggle());
+    await act(() => Promise.resolve());
+
+    expect(historyPanel()).not.toBeNull();
+    expect(historyToggle().getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('opens the history from the header menu on a narrow workspace', async () => {
+    width = 600;
+    render(<Workspace data={emptyHistory} />);
+    // No split: no declarative Secondary and no toggle, the action sits in the "More actions" menu.
+    expect(historyPanel()).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Activity history' })).toBeNull();
+
+    fireEvent.keyDown(screen.getByRole('button', { name: 'More actions' }), { key: 'Enter' });
+    const menu = screen.getByRole('menu');
+    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Activity history' }));
+    await act(() => Promise.resolve());
+
+    expect(await screen.findByText('No history for this specification')).not.toBeNull();
   });
 });

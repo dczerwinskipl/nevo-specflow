@@ -174,4 +174,41 @@ describe('Specification Overview columns', () => {
     expect(container.querySelector('[data-overview-column="context"]')).toBeNull();
     expect(container.querySelector('#tasks-heading')).not.toBeNull();
   });
+
+  it('opens the context column with Continue session, then Documents, in a Specification with Git', () => {
+    const data = createSpecificationWorkspaceFixture('working');
+    expect(data.hasGit && data.repoContext).toBeTruthy();
+    const { container } = renderWorkView(1600, data);
+    const context = container.querySelector('[data-overview-column="context"]');
+
+    expect(context?.firstElementChild?.querySelector('#resume-heading')).not.toBeNull();
+    const sections = [...(context?.children ?? [])].map(
+      (section) => section.querySelector('h3')?.textContent ?? '',
+    );
+    expect(sections[0]).toMatch(/^Continue session/);
+    expect(sections[1]).toMatch(/^Documents/);
+    expect(sections.slice(2).join(' ')).toMatch(/Repository/);
+  });
+
+  it('stays one column at any width when no work section shows', () => {
+    // An empty Specification whose Runtime cannot start a conversation: no attention, no
+    // preparation, no Tasks; only the repository on the context side.
+    const working = withoutAttention(createSpecificationWorkspaceFixture('working'));
+    const { container } = render(
+      <UiModulesProvider modules={builtInUiModuleRegistry}>
+        <LocalizationProvider instance={createSpecFlowI18n('en')}>
+          <WorkspaceProvider runtime={createFakeWorkspaceRuntime({ canStartConversation: false })}>
+            <WorkView data={{ ...working, isEmpty: true }} />
+          </WorkspaceProvider>
+        </LocalizationProvider>
+      </UiModulesProvider>,
+    );
+    contentWidth = 2400;
+    resizeTo(2400);
+
+    expect(container.querySelector('#tasks-heading')).toBeNull();
+    // The context side alone would fill a column: the repository is there.
+    expect([...container.querySelectorAll('h3')].map((h) => h.textContent)).toContain('Repository');
+    expect(columns(container)).toBe('1');
+  });
 });

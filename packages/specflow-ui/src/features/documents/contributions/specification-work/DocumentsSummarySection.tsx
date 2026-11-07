@@ -47,6 +47,8 @@ export function DocumentsSummarySection({
             compactFacts={[doc.kind]}
             supporting={doc.summary}
             onPrimaryClick={() => onOpenDocument(doc.id)}
+            // A stable identity, so focus finds the row again when Overview remounts it.
+            dataAttributes={{ 'data-focus-key': `document:${doc.id}` }}
           />
         ))}
       </InformationList>

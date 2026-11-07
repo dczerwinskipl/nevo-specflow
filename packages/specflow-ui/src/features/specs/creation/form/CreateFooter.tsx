@@ -7,6 +7,11 @@ import { Button, InlineNote } from '@nevo/ui';
  * scrolling form): the one reason Create is unavailable (or the note about what Create does) and the
  * submit button. Failure alerts belong to the end of the form, not here, so the footer stays one
  * compact line.
+ *
+ * A Create blocked by the form's own values (`submitBlocked`) stays a focusable submit button marked
+ * `aria-disabled`: activating it submits the form, whose owner then leads to the field instead of
+ * sending anything. `onGuide` adds the same lead as a quiet action after the reason. Only an
+ * operation in progress or a locked form disables the button (`submitDisabled`).
  */
 export function CreateFooter({
   submitRef,
@@ -14,6 +19,8 @@ export function CreateFooter({
   note,
   submitLabel,
   submitDisabled,
+  submitBlocked = false,
+  onGuide,
 }: {
   submitRef?: RefObject<HTMLButtonElement | null>;
   /** Translated reason Create is unavailable; undefined shows `note` instead. */
@@ -21,6 +28,10 @@ export function CreateFooter({
   note: string;
   submitLabel: string;
   submitDisabled: boolean;
+  /** The form's values block Create: the button is announced unavailable but stays focusable. */
+  submitBlocked?: boolean;
+  /** Leads to the field that holds `prerequisite`; absent when no field can fix it. */
+  onGuide?: () => void;
 }) {
   const { t } = useTranslation();
   const prerequisiteId = useId();
@@ -34,9 +45,18 @@ export function CreateFooter({
       // where its label wraps instead of overflowing.
       className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 @lg:gap-x-4"
     >
-      <div className="min-w-0 flex-1 basis-28">
+      <div className="flex min-w-0 flex-1 basis-28 flex-wrap items-center gap-x-2 gap-y-1">
         {prerequisite ? (
-          <InlineNote id={prerequisiteId}>{prerequisite}</InlineNote>
+          <>
+            <InlineNote id={prerequisiteId} className="min-w-0">
+              {prerequisite}
+            </InlineNote>
+            {onGuide ? (
+              <Button variant="ghost" size="sm" onClick={onGuide}>
+                {t('create.guide.goToField')}
+              </Button>
+            ) : null}
+          </>
         ) : (
           <InlineNote icon={null}>{note}</InlineNote>
         )}
@@ -46,6 +66,7 @@ export function CreateFooter({
           ref={submitRef}
           type="submit"
           aria-describedby={prerequisite ? prerequisiteId : undefined}
+          aria-disabled={submitBlocked && !submitDisabled ? true : undefined}
           disabled={submitDisabled}
         >
           {submitLabel}

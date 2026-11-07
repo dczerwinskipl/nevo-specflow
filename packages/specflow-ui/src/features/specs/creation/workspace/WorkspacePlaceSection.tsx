@@ -34,7 +34,16 @@ import { BranchRef } from './BranchRef';
 import { ExistingSummary, MainSummary, NewSummary } from './WorkspaceTileSummaries';
 import { activeTile, primaryWorkspace, tileAvailability } from './model/workspaceTiles';
 import { availableCountLabel } from './model/workspaceCopy';
-import { revalidate, staleMessages } from './model/workspaceValidation';
+import { branchNameOverride } from './model/workspaceOverrides';
+import {
+  requiredMessages,
+  revalidate,
+  staleMessages,
+  type WorkspaceErrors,
+  type WorkspaceProblemField,
+} from './model/workspaceValidation';
+import { firstChoiceControl } from '../form/createGuide';
+import { revealControl } from '../form/useCreateGuide';
 import type { Tile, WorkspaceChoice, WorkspaceOptionsState } from './model/workspaceChoice';
 import type { WorkspaceConflicts } from './model/workspaceConflicts';
 
@@ -43,15 +52,42 @@ import type { WorkspaceConflicts } from './model/workspaceConflicts';
  * shown: a failure alert is gone, options were refreshed, a field was flagged).
  */
 export interface WorkspacePlaceSectionHandle {
-  /** Opens the settings if needed and focuses the typed field the server refused. */
+  /** Opens the Branch name row if needed and focuses the typed field the server refused. */
   focusField: (field: 'branch' | 'slug') => void;
   /** Focuses the first field the current options flag as invalid, else calls `fallback`. */
   focusFirstInvalid: (fallback?: () => void) => void;
+  /**
+   * Leads a blocked Create to the field of a workspace problem: opens the Branch name row for its
+   * fields, focuses the control and brings it into view.
+   */
+  focusProblem: (field: WorkspaceProblemField) => void;
 }
 
 type FocusRequest =
   | { readonly field: 'base' | 'target' | 'branch' | 'slug' }
+  | { readonly problem: WorkspaceProblemField }
   | { readonly firstInvalid: true; readonly fallback?: () => void };
+
+/**
+ * The missing-value errors of opened pickers (a changed Start from or Merge into, an Existing
+ * workspace without a pick). Shown only once Create was tried, never while the owner is choosing.
+ */
+function requiredErrors(choice: WorkspaceChoice, active: Tile | null): WorkspaceErrors {
+  const errors: WorkspaceErrors = {};
+  if (active === 'existing' && !choice.existingWorkspaceId) {
+    errors.existing = requiredMessages.existing;
+  }
+
+  if (active === 'new' && choice.base.on && !choice.base.ref) {
+    errors.base = requiredMessages.base;
+  }
+
+  if (active === 'new' && choice.target.on && !choice.target.workspaceId) {
+    errors.target = requiredMessages.target;
+  }
+
+  return errors;
+}
 
 interface TileDefinition {
   id: Tile;
@@ -108,6 +144,7 @@ export function WorkspacePlaceSection({
   conflicts,
   headingId,
   handleRef,
+  showRequired = false,
 }: {
   state: WorkspaceOptionsState;
   refreshing?: boolean;
@@ -126,6 +163,8 @@ export function WorkspacePlaceSection({
   headingId: string;
   /** Lets the owner move focus to the first field the options flagged as invalid. */
   handleRef?: Ref<WorkspacePlaceSectionHandle>;
+  /** Create was tried: opened pickers left empty say so at the field. */
+  showRequired?: boolean;
 }) {
   const { t } = useTranslation();
   const text = useMessage();
@@ -140,11 +179,26 @@ export function WorkspacePlaceSection({
   const options = state.status === 'ready' ? state.options : undefined;
   const availability = options ? tileAvailability(options) : undefined;
   const active = options ? activeTile(choice, options) : null;
-  const errors = options ? revalidate(choice, options) : {};
+  const errors: WorkspaceErrors = options
+    ? { ...revalidate(choice, options), ...(showRequired ? requiredErrors(choice, active) : {}) }
+    : {};
+  const sectionRef = useRef<HTMLElement>(null);
   const nothing = Boolean(options) && active === null;
   const resolveFocus = (request: FocusRequest) => {
     if ('field' in request) {
       controls[request.field].current?.focus();
+
+      return;
+    }
+
+    if ('problem' in request) {
+      revealControl(
+        request.problem === 'tile'
+          ? firstChoiceControl(sectionRef.current)
+          : request.problem === 'existing'
+            ? existingControl.current
+            : controls[request.problem].current,
+      );
 
       return;
     }
@@ -167,10 +221,17 @@ export function WorkspacePlaceSection({
   const requestFocus = useFocusRequest(resolveFocus);
   useImperativeHandle(handleRef, () => ({
     focusField: (field) => {
-      update((current) => ({ ...current, settingsOpen: true }));
+      update((current) => ({ ...current, ...branchNameOverride(current, true) }));
       requestFocus({ field });
     },
     focusFirstInvalid: (fallback) => requestFocus({ firstInvalid: true, fallback }),
+    focusProblem: (field) => {
+      if (field === 'slug' || field === 'branch') {
+        update((current) => ({ ...current, ...branchNameOverride(current, true) }));
+      }
+
+      requestFocus({ problem: field });
+    },
   }));
 
   const select = (tile: Tile) => {
@@ -189,7 +250,7 @@ export function WorkspacePlaceSection({
       onAnnounce(t('create.workspace.staleAnnouncement'));
     }
 
-    update({ ...next, settingsOpen: tile === 'new' && stale ? true : next.settingsOpen });
+    update(next);
   };
 
   const meta = (tile: Tile): ReactNode => {
@@ -338,7 +399,20 @@ export function WorkspacePlaceSection({
             </Button>
           </Alert>
         )}
-        {active && (
+        {active === 'new' && available.new.ok ? (
+          // The new workspace's decision rows sit in the section like the rest of the form.
+          <NewSummary
+            options={ready}
+            choice={choice}
+            update={update}
+            errors={errors}
+            title={title}
+            conflicts={conflicts}
+            onAnnounce={onAnnounce}
+            controls={controls}
+            onRequestFocus={(field) => requestFocus({ field })}
+          />
+        ) : active ? (
           <AccentBlock role="group" aria-label={t('create.workspace.summaryLabel')}>
             <div className="grid max-w-content-narrow grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2">
               {!available[active].ok ? (
@@ -348,18 +422,6 @@ export function WorkspacePlaceSection({
                     {text(staleMessages.tile)}
                   </Typography>
                 </>
-              ) : active === 'new' ? (
-                <NewSummary
-                  options={ready}
-                  choice={choice}
-                  update={update}
-                  errors={errors}
-                  title={title}
-                  conflicts={conflicts}
-                  onAnnounce={onAnnounce}
-                  controls={controls}
-                  onRequestFocus={(field) => requestFocus({ field })}
-                />
               ) : active === 'main' ? (
                 <MainSummary options={ready} />
               ) : (
@@ -373,13 +435,13 @@ export function WorkspacePlaceSection({
               )}
             </div>
           </AccentBlock>
-        )}
+        ) : null}
       </>
     );
   })();
 
   return (
-    <section className="grid min-w-0 gap-4" aria-labelledby={headingId}>
+    <section ref={sectionRef} className="grid min-w-0 gap-4" aria-labelledby={headingId}>
       <div className="flex items-start justify-between gap-3">
         <div className="grid gap-1">
           <Typography as="h2" variant="title-md" id={headingId}>

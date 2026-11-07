@@ -1,3 +1,4 @@
+import type { MutableRefObject } from 'react';
 import type { StartCatalogue } from '../catalogue/startCatalogue';
 import {
   listedModes,
@@ -22,11 +23,23 @@ export function AgentFields({
   choice,
   locked = false,
   onChange,
+  modelError,
+  modelControlRef,
+  modeError,
+  modeControlRef,
 }: {
   catalogue: StartCatalogue;
   choice: AgentChoice;
   locked?: boolean;
   onChange: (choice: AgentChoice) => void;
+  /** Why the missing model blocks the owner's form (shown at the Model field). */
+  modelError?: string;
+  /** The Model picker's control, so the owner can lead focus to it. */
+  modelControlRef?: MutableRefObject<HTMLElement | null>;
+  /** Why the work mode blocks the owner's form (shown at the Work mode field). */
+  modeError?: string;
+  /** The Work mode control, so the owner can lead focus to it. */
+  modeControlRef?: MutableRefObject<HTMLElement | null>;
 }) {
   const provider = catalogue.providers.find((p) => p.id === choice.providerId);
   if (!provider) {
@@ -43,6 +56,8 @@ export function AgentFields({
         value={choice.modelId}
         disabled={locked || !provider.available || !offersModelChoice(provider)}
         onChange={(modelId) => onChange(selectModel(choice, provider, modelId))}
+        error={modelError}
+        controlRef={modelControlRef}
       />
       <EffortField
         efforts={model?.efforts ?? []}
@@ -55,6 +70,8 @@ export function AgentFields({
         value={choice.mode}
         disabled={decidedByModel}
         onChange={(mode) => onChange({ ...choice, mode })}
+        error={modeError}
+        controlRef={modeControlRef}
       />
     </div>
   );

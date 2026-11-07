@@ -23,6 +23,48 @@ export function branchPreview(options: CreateOptions, slug: string): string {
     .replaceAll('{key}', '<key>');
 }
 
+/** A piece of a branch name: known text, or a part that exists only once it is created. */
+export type BranchNamePart =
+  | { readonly kind: 'text'; readonly text: string }
+  | { readonly kind: 'pending'; readonly part: 'slug' | 'id' | 'key' };
+
+/** The named placeholders `branchPreview` writes; a real branch name never contains `<` or `>`. */
+const pendingParts = /<(slug|id|key)>/gu;
+
+/**
+ * A branch name as pieces, so every place in Create (the form's preview, the progress page's
+ * settings and technical details) writes the parts nobody knows yet (the Specification key, the
+ * random id, a slug before there is a name) as words, never as the `<key>` placeholders.
+ */
+export function branchNameParts(name: string): BranchNamePart[] {
+  const parts: BranchNamePart[] = [];
+  let index = 0;
+  for (const match of name.matchAll(pendingParts)) {
+    if (match.index > index) {
+      parts.push({ kind: 'text', text: name.slice(index, match.index) });
+    }
+
+    parts.push({ kind: 'pending', part: match[1] as 'slug' | 'id' | 'key' });
+    index = match.index + match[0].length;
+  }
+
+  if (index < name.length) {
+    parts.push({ kind: 'text', text: name.slice(index) });
+  }
+
+  return parts;
+}
+
+/**
+ * A branch name as plain text for a sentence or a tooltip: a part that exists only once it is
+ * created is an ellipsis (`feature/…-payment-limits`), never a placeholder.
+ */
+export function readableBranchName(name: string): string {
+  return branchNameParts(name)
+    .map((part) => (part.kind === 'text' ? part.text : '…'))
+    .join('');
+}
+
 /** The parts of a pattern an owner cannot know before creation (with one separator after them). */
 const unknownParts = /\{(?:shortId|key)\}[-_.]?/gu;
 
@@ -168,4 +210,25 @@ export function buildCreateSlug(
   return activeTile(choice, options) === 'new'
     ? createOverrides(choice, options, title).slug
     : undefined;
+}
+
+/**
+ * What of the place choice an edit is measured by: what the request would carry, not how the form
+ * got there. The chosen tile, the chosen existing workspace and the real overrides
+ * (`createOverrides`): opening a row with "Change" prefills the default, which is not an override,
+ * so it is neither an edit nor a reason to retire a failure alert or to ask before leaving, and
+ * "Restore default" brings back exactly the snapshot it started from. UI-only state (declined
+ * suggestions) is absent. Without options (still loading) nothing can be overridden yet, so the
+ * snapshot of an untouched choice is the same before and after they arrive.
+ */
+export function requestChoiceSnapshot(
+  choice: WorkspaceChoice,
+  options: CreateOptions | undefined,
+  title: string,
+) {
+  return {
+    tile: choice.tile,
+    existingWorkspaceId: choice.existingWorkspaceId,
+    overrides: options ? createOverrides(choice, options, title) : {},
+  };
 }

@@ -834,7 +834,6 @@
         "body": "Pokazujemy ostatnio wczytane opcje. Formularz został zachowany."
       },
       "baseHead": "Aktualny commit bieżącego katalogu",
-      "baseHeadOnBranch": "Domyślnie: bieżąca gałąź, <branch/>",
       "fact": {
         "base": "Zacznij od",
         "target": "Scal do",
@@ -863,16 +862,16 @@
         "unmanagedNote": "To środowisko pracy zostało dodane poza Nevo i nie jest przez nie zarządzane."
       },
       "errors": {
-        "branchEmpty": "Wpisz nazwę gałęzi lub wyłącz tę opcję.",
+        "branchEmpty": "Wpisz nazwę gałęzi albo użyj „Przywróć domyślne”.",
         "branchTooLong": "Nazwa gałęzi jest zbyt długa. Użyj co najwyżej 240 znaków.",
         "branchCharacters": "Nazwa gałęzi zawiera niedozwolone znaki. Zacznij od litery lub cyfry i użyj tylko liter, cyfr oraz „.”, „-”, „_” i „/”.",
         "branchStructure": "Nazwa gałęzi ma niedozwolony układ: nie kończ jej znakiem „/”, „.” ani „.lock”, nie używaj „..” ani „//” i nie zaczynaj segmentu od „.”.",
         "branchExists": "Gałąź o tej nazwie już istnieje. Wpisz inną nazwę.",
         "noWorkspace": "Brak dostępnego środowiska pracy.",
         "pickWorkspace": "Wybierz środowisko pracy.",
-        "pickBase": "Wybierz gałąź początkową lub wyłącz tę opcję.",
-        "pickTarget": "Wybierz cel scalenia lub wyłącz tę opcję.",
-        "slugEmpty": "Wpisz slug lub wyłącz tę opcję.",
+        "pickBase": "Wybierz gałąź początkową albo użyj „Przywróć domyślne”.",
+        "pickTarget": "Wybierz cel scalenia albo użyj „Przywróć domyślne”.",
+        "slugEmpty": "Wpisz slug albo użyj „Przywróć domyślne”.",
         "slugTooLong": "Slug jest zbyt długi. Użyj najwyżej 80 znaków.",
         "slugFormat": "Użyj małych liter, cyfr i pojedynczych myślników, na przykład limity-platnosci.",
         "slugReserved": "Ta nazwa jest zarezerwowana przez system operacyjny. Wybierz inną.",
@@ -886,8 +885,8 @@
       "stale": {
         "tile": "Ten wariant nie jest już dostępny. Wybierz inną opcję.",
         "existing": "To środowisko pracy nie jest już dostępne.",
-        "base": "Ta gałąź nie jest już dostępna. Wybierz inną lub wyłącz tę opcję.",
-        "target": "To środowisko pracy nie może już być celem scalenia. Wybierz inny lub wyłącz tę opcję."
+        "base": "Ta gałąź nie jest już dostępna. Wybierz inną albo użyj „Przywróć domyślne”.",
+        "target": "To środowisko pracy nie może już być celem scalenia. Wybierz inny albo użyj „Przywróć domyślne”."
       },
       "settings": {
         "default": "Ustawienia domyślne",
@@ -895,33 +894,40 @@
         "nameBase": "baza",
         "nameTarget": "cel",
         "nameBranch": "nazwa",
-        "trigger": "Zmień ustawienia",
-        "baseSwitch": "Zacznij od innej gałęzi",
         "baseNone": "Brak lokalnych gałęzi do wyboru.",
-        "baseDefault": "Domyślnie: <branch/>",
         "basePlaceholder": "Wybierz gałąź",
         "refCurrent": "bieżący katalog",
         "refWorkspace": "ma środowisko pracy",
         "refDirty": "{{label}} · zmiany",
-        "targetSwitch": "Scal później do innego środowiska",
-        "targetPick": "Wybierz, do jakiego środowiska wrócą zmiany.",
         "targetNone": "Brak środowisk pracy, do których można scalić.",
-        "targetFollows": "Domyślnie zmiany wrócą do środowiska na celu projektu <branch/>.",
-        "targetUnconfigured": "Cel integracji nie jest skonfigurowany.",
         "targetLabel": "Scal do",
         "targetNote": "Nic nie zostanie scalone teraz. To tylko wskazanie miejsca na później. Wybór przypina cel przy tworzeniu i już się nie zmieni, a domyślny cel podąża za konfiguracją projektu.",
         "targetUnavailable": "Niedostępne jako cel: <targets/>.",
-        "branchSwitch": "Użyj własnej nazwy gałęzi",
-        "branchSwitchDescription": "Nevo buduje nazwę ze sluga. Włącz tylko wtedy, gdy potrzebujesz konkretnej nazwy gałęzi.",
         "branchLabel": "Nazwa nowej gałęzi",
         "branchPlaceholder": "feature/new-api",
         "branchHelp": "Katalog worktree Nevo przygotuje samodzielnie. Jeśli nazwa jest zajęta, podasz inną.",
         "nameSlug": "slug",
         "unavailableReason": "– {{reason}}",
-        "slugSwitch": "Zmień nazwę (slug)",
-        "slugSwitchDescription": "Slug nazywa katalog specyfikacji, katalog worktree i nową gałąź. Podąża za nazwą specyfikacji, dopóki go nie zmienisz.",
+        "slugDescription": "Slug nazywa katalog specyfikacji, katalog worktree i nową gałąź. Podąża za nazwą specyfikacji, dopóki go nie zmienisz.",
         "slugLabel": "Slug",
         "slugPlaceholder": "limity-platnosci"
+      },
+      "rows": {
+        "change": "Zmień",
+        "useDefault": "Przywróć domyślne",
+        "actionLabel": "{{action}}: {{row}}",
+        "commit": "Pliki specyfikacji trafią w commicie na tę gałąź.",
+        "folder": "Katalog worktree:",
+        "pending": {
+          "key": "klucz",
+          "id": "id",
+          "slug": "slug"
+        },
+        "pendingNote": {
+          "key": "Klucz specyfikacji zostanie nadany przy tworzeniu.",
+          "id": "Identyfikator zostanie nadany przy tworzeniu.",
+          "slug": "Slug powstanie z nazwy specyfikacji."
+        }
       },
       "suggestion": {
         "title": "Chcesz później scalić zmiany z powrotem do <branch/>?",
@@ -935,7 +941,6 @@
         "dirty": "Nie zaproponujemy scalenia z powrotem do <branch/>: to środowisko pracy ma niezapisane zmiany, więc nie może być celem scalenia, dopóki ich nie zatwierdzisz lub nie odłożysz. Cel scalenia zostaje bez zmian."
       },
       "merge": {
-        "pickTarget": "Wybierz środowisko pracy",
         "notAvailable": "Niedostępne",
         "notConfigured": "Nie ustawiono",
         "noteDirty": "To środowisko pracy ma niezapisane zmiany. Specyfikację nadal możesz utworzyć; zapisz je w commicie lub odłóż (stash) przed scaleniem do niego.",
@@ -1060,6 +1065,9 @@
     },
     "operations": {
       "kind": "Tworzenie specyfikacji"
+    },
+    "guide": {
+      "goToField": "Przejdź do pola"
     }
   },
   "documents": {

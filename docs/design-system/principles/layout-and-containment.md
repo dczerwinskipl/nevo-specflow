@@ -205,7 +205,9 @@ measured width to the workspace.
 Inside the frame the content keeps its own widths instead of stretching with it:
 
 - a form keeps its reading column (for example `content-form`) and its controls keep their maximum
-  widths;
+  widths; a form that lays out a second column from a threshold on its own container (as Create does
+  from a 992 px form column) may grow to two control widths and their gap, but its controls still
+  keep their maximum widths and a single column keeps the reading column;
 - a list fills the frame: its title, toolbar, group headers and rows span the frame's content width,
   and bounded scan columns (see the [scan-column rule](#scan-column-rule)) keep related values
   together, so the rest of a wide row stays empty instead of pushing them apart. Text blocks above

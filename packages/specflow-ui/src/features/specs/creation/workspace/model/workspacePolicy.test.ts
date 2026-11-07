@@ -24,11 +24,15 @@ import {
   branchFieldValue,
   branchPrefill,
   branchPreview,
+  branchNameParts,
   buildCreateSlug,
   buildCreateTarget,
   createOverrides,
   effectiveSlug,
+  readableBranchName,
+  requestChoiceSnapshot,
 } from './createRequest';
+import { baseOverride, branchNameOverride, targetOverride } from './workspaceOverrides';
 import { buildCreateRequest } from './createRequest.test-support';
 import { deriveSpecSlug } from '@nevo/specflow-contracts/specs';
 import { effectiveTargetBranch, mergeSuggestion } from './mergeSuggestion';
@@ -36,11 +40,7 @@ import {
   formatOperationTime as rawFormatOperationTime,
   operationStageLabel as rawOperationStageLabel,
 } from '../../errors/createOperationDetails';
-import {
-  initialWorkspaceChoice,
-  requestChoiceSnapshot,
-  type WorkspaceChoice,
-} from './workspaceChoice';
+import { initialWorkspaceChoice, type WorkspaceChoice } from './workspaceChoice';
 import {
   settingsSummary as rawSettingsSummary,
   sharedUseNote as rawSharedUseNote,
@@ -244,10 +244,12 @@ describe('buildCreateRequest', () => {
   it('an enabled switch without a value sends nothing and blocks Create', () => {
     const pending = choice({ tile: 'new', base: { on: true, ref: '' } });
     expect(buildCreateTarget(pending, options())).toEqual({ kind: 'new-worktree' });
-    expect(problems(pending, options())).toEqual(['Wybierz gałąź początkową lub wyłącz tę opcję.']);
+    expect(problems(pending, options())).toEqual([
+      'Wybierz gałąź początkową albo użyj „Przywróć domyślne”.',
+    ]);
     expect(
       problems(choice({ tile: 'new', target: { on: true, workspaceId: '' } }), options()),
-    ).toEqual(['Wybierz cel scalenia lub wyłącz tę opcję.']);
+    ).toEqual(['Wybierz cel scalenia albo użyj „Przywróć domyślne”.']);
   });
   it('changing tiles keeps remembered values and a round trip restores the same request', () => {
     const configured = choice({
@@ -265,7 +267,9 @@ describe('buildCreateRequest', () => {
 
 describe('branchNameError', () => {
   it.each(['', '   '])('asks for a name when %j', (name) =>
-    expect(branchNameError(name, options())).toBe('Wpisz nazwę gałęzi lub wyłącz tę opcję.'),
+    expect(branchNameError(name, options())).toBe(
+      'Wpisz nazwę gałęzi albo użyj „Przywróć domyślne”.',
+    ),
   );
   const characters =
     'Nazwa gałęzi zawiera niedozwolone znaki. Zacznij od litery lub cyfry i użyj tylko liter, cyfr oraz „.”, „-”, „_” i „/”.';
@@ -409,7 +413,7 @@ describe('revalidate keeps values and flags them', () => {
     stale.baseRefs = stale.baseRefs.filter((b) => b.ref !== 'refs/heads/feature/platform');
     expect(problems(remembered, stale)).toEqual([]);
     expect(problems({ ...remembered, tile: 'new' }, stale)).toEqual([
-      'Ta gałąź nie jest już dostępna. Wybierz inną lub wyłącz tę opcję.',
+      'Ta gałąź nie jest już dostępna. Wybierz inną albo użyj „Przywróć domyślne”.',
     ]);
   });
   it('a selected tile that became unavailable blocks Create without a silent jump', () => {
@@ -656,14 +660,28 @@ describe('switch values come from the options, never from a hard-coded branch', 
 });
 
 describe('requestChoiceSnapshot', () => {
-  it('ignores UI-only state so opening the disclosure is not an edit', () => {
-    const base = choice({ branch: { on: true, name: 'feature/x', edited: true } });
-    const same = requestChoiceSnapshot(base);
-    expect(requestChoiceSnapshot({ ...base, settingsOpen: true })).toEqual(same);
-    expect(requestChoiceSnapshot({ ...base, dismissedSuggestions: { a: true } })).toEqual(same);
-    expect(
-      requestChoiceSnapshot({ ...base, branch: { on: true, name: 'feature/y', edited: true } }),
-    ).not.toEqual(same);
+  const o = options();
+  const snap = (value: WorkspaceChoice) => requestChoiceSnapshot(value, o, 'Payment limits');
+
+  it('measures what the request carries: opening a row on its default is not an edit', () => {
+    const base = choice({ tile: 'new' });
+    const same = snap(base);
+    expect(snap({ ...base, dismissedSuggestions: { a: true } })).toEqual(same);
+    // "Change" prefills the defaults, which are not overrides; "Restore default" goes back.
+    expect(snap({ ...base, ...branchNameOverride(base, true) })).toEqual(same);
+    expect(snap({ ...base, ...baseOverride(o, base, true) })).toEqual(same);
+    expect(snap({ ...base, ...targetOverride(o, base, true) })).toEqual(same);
+    // A value that differs is an edit.
+    expect(snap({ ...base, branch: { on: true, name: 'feature/y', edited: true } })).not.toEqual(
+      same,
+    );
+    expect(snap({ ...base, tile: 'main' })).not.toEqual(same);
+  });
+
+  it('is the same for an untouched choice before and after the options arrive', () => {
+    expect(requestChoiceSnapshot(initialWorkspaceChoice, undefined, 'T')).toEqual(
+      requestChoiceSnapshot(initialWorkspaceChoice, o, 'T'),
+    );
   });
 });
 
@@ -690,7 +708,9 @@ describe('integration target request semantics (explicit pin vs follow the proje
   it('switch on without a pick sends nothing and blocks Create with the footer prerequisite', () => {
     const pending = newTile({ target: { on: true, workspaceId: '' } });
     expect(buildCreateTarget(pending, options())).toEqual({ kind: 'new-worktree' });
-    expect(problems(pending, options())).toEqual(['Wybierz cel scalenia lub wyłącz tę opcję.']);
+    expect(problems(pending, options())).toEqual([
+      'Wybierz cel scalenia albo użyj „Przywróć domyślne”.',
+    ]);
   });
   it('the prefilled default target (primary) is not a pin request; another workspace is', () => {
     const untouched = newTile({ target: { on: true, workspaceId: ids.main } });
@@ -745,7 +765,7 @@ describe('integration target request semantics (explicit pin vs follow the proje
   it('an unavailable remembered pick blocks instead of silently falling back', () => {
     const stale = newTile({ target: { on: true, workspaceId: ids.payments } });
     expect(problems(stale, options())).toEqual([
-      'To środowisko pracy nie może już być celem scalenia. Wybierz inny lub wyłącz tę opcję.',
+      'To środowisko pracy nie może już być celem scalenia. Wybierz inny albo użyj „Przywróć domyślne”.',
     ]);
   });
 });
@@ -769,6 +789,32 @@ describe('slug and branch defaults', () => {
     const withKey = { ...o, branchPattern: 'feature/{key}-{slug}' };
     expect(branchPreview(withKey, 'a-b')).toBe('feature/<key>-a-b');
     expect(branchPrefill(withKey, 'a-b')).toBe('feature/a-b');
+  });
+  it('splits a branch name into known text and the parts that exist only once it is created', () => {
+    const withKey = { ...o, branchPattern: 'feature/{key}-{slug}' };
+    expect(branchNameParts(branchPreview(withKey, 'a-b'))).toEqual([
+      { kind: 'text', text: 'feature/' },
+      { kind: 'pending', part: 'key' },
+      { kind: 'text', text: '-a-b' },
+    ]);
+    expect(branchNameParts(branchPreview(o, ''))).toEqual([
+      { kind: 'text', text: 'feature/' },
+      { kind: 'pending', part: 'slug' },
+    ]);
+    expect(
+      branchNameParts(branchPreview({ ...o, branchPattern: 'spec/{slug}-{shortId}' }, 'a-b')),
+    ).toEqual([
+      { kind: 'text', text: 'spec/a-b-' },
+      { kind: 'pending', part: 'id' },
+    ]);
+    // A real branch name has no placeholder.
+    expect(branchNameParts('feature/a-b')).toEqual([{ kind: 'text', text: 'feature/a-b' }]);
+  });
+  it('writes the pending parts of a name in a sentence as an ellipsis, never as a placeholder', () => {
+    const withKey = { ...o, branchPattern: 'feature/{key}-{slug}' };
+    expect(readableBranchName(branchPreview(withKey, 'a-b'))).toBe('feature/…-a-b');
+    expect(readableBranchName(branchPreview(o, ''))).toBe('feature/…');
+    expect(readableBranchName('feature/a-b')).toBe('feature/a-b');
   });
   it('the effective slug follows the title until the owner edits it', () => {
     const on = choice({ slug: { on: true, value: '', edited: false } });
@@ -843,7 +889,7 @@ describe('slug and branch defaults', () => {
   });
   it('validates a typed slug with the shared contract rule and blocks Create', () => {
     expect(slugError('moj-slug')).toBeUndefined();
-    expect(slugError('')).toBe('Wpisz slug lub wyłącz tę opcję.');
+    expect(slugError('')).toBe('Wpisz slug albo użyj „Przywróć domyślne”.');
     expect(slugError('Moj Slug')).toContain('małych liter');
     expect(slugError('a'.repeat(81))).toContain('zbyt długi');
     expect(slugError('con')).toContain('zarezerwowana');

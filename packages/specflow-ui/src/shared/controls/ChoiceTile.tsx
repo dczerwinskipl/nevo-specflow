@@ -17,17 +17,24 @@ export function ChoiceTileGroup({
   columns,
   className,
   children,
+  invalid = false,
+  describedBy,
   ...label
 }: {
   /** Responsive column classes of the grid, for example `@2xl:grid-cols-3`. */
   readonly columns?: string;
   readonly className?: string;
   readonly children: ReactNode;
+  /** The choice blocks the form (`aria-invalid`); `describedBy` names the message that says why. */
+  readonly invalid?: boolean;
+  readonly describedBy?: string;
 } & ({ 'aria-labelledby': string } | { 'aria-label': string })) {
   return (
     <div
       role="radiogroup"
       className={cn('grid items-stretch gap-3', columns, className)}
+      aria-invalid={invalid ? true : undefined}
+      aria-describedby={describedBy}
       {...label}
     >
       {children}

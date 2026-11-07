@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useId, type MutableRefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Field, SegmentedControl } from '@nevo/ui';
 import { useMessage } from '../../../../i18n/message';
@@ -18,11 +18,17 @@ export function WorkModeField({
   value,
   disabled,
   onChange,
+  error,
+  controlRef,
 }: {
   modes: readonly StartMode[];
   value: string;
   disabled: boolean;
   onChange: (mode: string) => void;
+  /** Why the work mode blocks the owner's form (Create, once tried); shown under the field. */
+  error?: string;
+  /** The control (the picker, or the segmented group), so the owner can lead focus to it. */
+  controlRef?: MutableRefObject<HTMLElement | null>;
 }) {
   const { t } = useTranslation();
   const text = useMessage();
@@ -31,11 +37,13 @@ export function WorkModeField({
 
   if (modes.length > segmentedMax) {
     return (
-      <Field disabled={disabled}>
+      <Field disabled={disabled} invalid={Boolean(error)}>
         <Field.Label>{t('managedSession.intent.sectionLabel')}</Field.Label>
         <LocalizedOptionPicker
           value={value}
           disabled={disabled}
+          invalid={Boolean(error)}
+          controlRef={controlRef}
           placeholder={t('managedSession.intent.placeholder')}
           onValueChange={onChange}
           items={modes.map((mode) => ({
@@ -44,15 +52,23 @@ export function WorkModeField({
             label: text(mode.title),
           }))}
         />
+        {error && <Field.Error>{error}</Field.Error>}
       </Field>
     );
   }
 
   return (
-    <Field controlId={controlId} disabled={disabled}>
+    <Field controlId={controlId} disabled={disabled} invalid={Boolean(error)}>
       <Field.Label>{t('managedSession.intent.sectionLabel')}</Field.Label>
       <SegmentedControl
+        ref={(element) => {
+          if (controlRef) {
+            controlRef.current = element;
+          }
+        }}
         aria-labelledby={`${controlId}-label`}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `${controlId}-error` : undefined}
         className="w-full"
         value={value}
         onValueChange={onChange}
@@ -63,6 +79,7 @@ export function WorkModeField({
           </SegmentedControl.Item>
         ))}
       </SegmentedControl>
+      {error && <Field.Error>{error}</Field.Error>}
     </Field>
   );
 }

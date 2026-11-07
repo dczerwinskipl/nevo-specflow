@@ -188,7 +188,12 @@ export function CreateProjectForm({
         revealControl(nameRef.current);
       } else if (field === 'archetype') {
         revealControl(firstChoiceControl(archetypeRef.current));
-      } else if (field !== 'provider' && field !== 'model' && field !== 'mode') {
+      } else if (
+        field !== 'provider' &&
+        field !== 'model' &&
+        field !== 'effort' &&
+        field !== 'mode'
+      ) {
         place.handleRef.current?.focusProblem(field);
       }
     },

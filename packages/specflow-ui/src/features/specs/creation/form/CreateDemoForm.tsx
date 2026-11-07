@@ -41,7 +41,7 @@ import {
 import { useRevealFailure } from '../errors/useRevealFailure';
 import { CreateWorkspaceSection } from './CreateWorkspaceSection';
 import { createFormColumn, createFormColumns, createFormWidth } from '../createFormLayout';
-import { firstChoiceControl, modeFocusTarget } from './createGuide';
+import { firstChoiceControl, modelDecidedTarget } from './createGuide';
 import { revealControl, useCreateGuide } from './useCreateGuide';
 import {
   buildCreateSlug,
@@ -155,6 +155,7 @@ export function CreateDemoForm({
   const providersRef = useRef<HTMLDivElement>(null);
   const modelRef = useRef<HTMLElement | null>(null);
   const modeRef = useRef<HTMLElement | null>(null);
+  const effortRef = useRef<HTMLElement | null>(null);
   const showPrerequisite = Boolean(prerequisite) && !uncertain && !recovery;
   const reason = showPrerequisite && prerequisite ? text(prerequisite) : undefined;
   const { tried, guide } = useCreateGuide({
@@ -171,7 +172,9 @@ export function CreateDemoForm({
       } else if (field === 'model') {
         revealControl(modelRef.current);
       } else if (field === 'mode') {
-        revealControl(modeFocusTarget(modeRef.current, modelRef.current));
+        revealControl(modelDecidedTarget(modeRef.current, modelRef.current));
+      } else if (field === 'effort') {
+        revealControl(modelDecidedTarget(effortRef.current, modelRef.current));
       } else {
         place.handleRef.current?.focusProblem(field);
       }
@@ -179,7 +182,7 @@ export function CreateDemoForm({
   });
   // The agent's own problem is said at its field once Create was tried (provider, model or mode).
   const agentIssue = tried && method === 'ai' ? agentProblem(catalogue, agent) : undefined;
-  const agentError = (field: 'provider' | 'model' | 'mode') =>
+  const agentError = (field: 'provider' | 'model' | 'effort' | 'mode') =>
     agentIssue?.field === field ? text(agentIssue.message) : undefined;
 
   useEffect(() => {
@@ -289,9 +292,11 @@ export function CreateDemoForm({
         onChange={setAgent}
         providerError={agentError('provider')}
         modelError={agentError('model')}
+        effortError={agentError('effort')}
         modeError={agentError('mode')}
         providersRef={providersRef}
         modelControlRef={modelRef}
+        effortControlRef={effortRef}
         modeControlRef={modeRef}
       />
     ),

@@ -21,7 +21,11 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function renderSection(errors: { providerError?: string; modeError?: string }) {
+function renderSection(errors: {
+  providerError?: string;
+  effortError?: string;
+  modeError?: string;
+}) {
   const choice = initialAgentChoice(startCatalogueFromDemo(catalogue));
   const model = catalogue.providers.find((p) => p.id === choice.providerId)!.models[0]!;
   render(
@@ -56,6 +60,13 @@ describe('CreateAgentSection says agent problems at their own control', () => {
     const mode = screen.getByRole('radiogroup', { name: 'Work mode' });
     expect(mode.getAttribute('aria-invalid')).toBe('true');
     expect(describedText(mode)).toContain('Choose a supported work mode.');
+  });
+
+  it('the Effort picker is invalid and described by the message', () => {
+    renderSection({ effortError: 'Choose an effort this model supports.' });
+    const effort = screen.getByRole('combobox', { name: 'Effort' });
+    expect(effort.getAttribute('aria-invalid')).toBe('true');
+    expect(describedText(effort)).toContain('Choose an effort this model supports.');
   });
 
   it('says nothing without a problem', () => {

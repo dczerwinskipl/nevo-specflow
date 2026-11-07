@@ -109,3 +109,56 @@ describe('createReadiness: the first problem follows the form order and names it
     ).toBeUndefined();
   });
 });
+
+describe('createReadiness: a blocked Create always has a reason', () => {
+  const agent = { providerId: 'listed', modelId: 'm1', effort: 'high', mode: 'build' };
+  const ready = {
+    ...base,
+    catalogue: { ...catalogue(listedProvider), archetypes: [{ id: 'feature' }] } as DemoCatalogue,
+    agent,
+  };
+
+  it('an effort the chosen model does not offer is an agent problem at the Effort field', () => {
+    const readiness = createReadiness({ ...ready, agent: { ...agent, effort: 'max' } });
+    expect(readiness).toMatchObject({
+      canSubmit: false,
+      problemField: 'effort',
+      prerequisite: { key: 'create.prerequisite.effort' },
+    });
+    // The Effort field comes before Work mode: with both wrong, effort is the first problem.
+    expect(
+      createReadiness({ ...ready, agent: { ...agent, effort: 'max', mode: 'other' } }).problemField,
+    ).toBe('effort');
+    // A provider without models runs only its default effort.
+    expect(
+      createReadiness({
+        ...ready,
+        catalogue: catalogue(modelLessProvider),
+        agent: { providerId: 'plain', modelId: '', effort: 'high', mode: 'build' },
+      }).problemField,
+    ).toBe('effort');
+  });
+
+  it.each([
+    ['ready', {}],
+    ['no name', { title: '' }],
+    ['no archetype', { archetype: undefined }],
+    ['an unknown provider', { agent: { ...agent, providerId: 'gone' } }],
+    ['no model', { agent: { ...agent, modelId: '' } }],
+    ['an unsupported effort', { agent: { ...agent, effort: 'max' } }],
+    ['an unsupported mode', { agent: { ...agent, mode: 'other' } }],
+    ['a forbidden Create', { forbiddenCreate: true }],
+    ['a stale configuration', { configurationUnavailable: true }],
+    ['loading options', { workspaceState: { status: 'loading' } as const }],
+    [
+      'a pending base',
+      { choice: { ...initialWorkspaceChoice, tile: 'new' as const, base: { on: true, ref: '' } } },
+    ],
+  ])('%s: canSubmit is false only with a prerequisite', (_name, change) => {
+    const readiness = createReadiness({ ...ready, ...change });
+    expect(readiness.canSubmit || readiness.prerequisite !== undefined).toBe(true);
+    if (!readiness.canSubmit) {
+      expect(readiness.prerequisite).toBeDefined();
+    }
+  });
+});

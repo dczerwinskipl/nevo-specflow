@@ -586,6 +586,7 @@
       "title": "Enter a specification name.",
       "provider": "Choose an available executor.",
       "model": "Choose a model.",
+      "effort": "Choose an effort this model supports.",
       "mode": "Choose a supported working mode.",
       "archetype": "Choose an archetype.",
       "noArchetypes": "No archetypes are installed."

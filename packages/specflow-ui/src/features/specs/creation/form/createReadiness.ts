@@ -33,10 +33,6 @@ export function createReadiness(input: {
   forbiddenCreate: boolean;
 }): CreateReadiness {
   const { specId, method, title, catalogue, agent, workspaceState, choice, archetype } = input;
-  const provider = catalogue.providers.find((p) => p.id === agent.providerId);
-  const model = provider?.models.find((m) => m.id === agent.modelId);
-  const effortFits =
-    agent.effort === providerDefaultEffort || Boolean(model?.efforts.includes(agent.effort));
   const workspaceProblem: { message: Message; field?: CreateProblemField } | undefined = specId
     ? undefined
     : workspaceState.status === 'loading'
@@ -54,7 +50,7 @@ export function createReadiness(input: {
     Boolean(method) &&
     Boolean(specId ?? title.trim()) &&
     !workspaceProblem &&
-    (method === 'manual' || (!agentIssue && effortFits));
+    (method === 'manual' || !agentIssue);
   // The first problem in the form's own order, so the footer names the field a blocked Create
   // leads to: name, archetype, the agent (right column, first), then where it is created.
   const problem: { message: Message; field?: CreateProblemField } | undefined =
@@ -79,13 +75,14 @@ export function createReadiness(input: {
 
 /**
  * The first problem of the agent of a first Session, in the order of its fields: an unavailable
- * provider, a missing model (when the provider lists models), a work mode the choice does not run.
+ * provider, a missing model (when the provider lists models), an effort the model does not offer
+ * (the Effort field comes before Work mode), a work mode the choice does not run.
  * The form shows it at that field once Create was tried, and a blocked Create leads there.
  */
 export function agentProblem(
   catalogue: DemoCatalogue,
   agent: AgentChoice,
-): { message: Message; field: 'provider' | 'model' | 'mode' } | undefined {
+): { message: Message; field: 'provider' | 'model' | 'effort' | 'mode' } | undefined {
   const provider = catalogue.providers.find((p) => p.id === agent.providerId);
   const model = provider?.models.find((m) => m.id === agent.modelId);
   // A provider that lists no model has nothing to choose (the start rule): its Session runs the
@@ -99,6 +96,11 @@ export function agentProblem(
 
   if (modelChoice && !model) {
     return { message: message('create.prerequisite.model'), field: 'model' };
+  }
+
+  // Only the provider's default fits a model without efforts (or a provider without models).
+  if (agent.effort !== providerDefaultEffort && !model?.efforts.includes(agent.effort)) {
+    return { message: message('create.prerequisite.effort'), field: 'effort' };
   }
 
   if (!modeIds?.includes(agent.mode)) {

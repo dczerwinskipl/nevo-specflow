@@ -25,6 +25,8 @@ export function AgentFields({
   onChange,
   modelError,
   modelControlRef,
+  effortError,
+  effortControlRef,
   modeError,
   modeControlRef,
 }: {
@@ -36,6 +38,10 @@ export function AgentFields({
   modelError?: string;
   /** The Model picker's control, so the owner can lead focus to it. */
   modelControlRef?: MutableRefObject<HTMLElement | null>;
+  /** Why the effort blocks the owner's form (shown at the Effort field). */
+  effortError?: string;
+  /** The Effort picker's control, so the owner can lead focus to it. */
+  effortControlRef?: MutableRefObject<HTMLElement | null>;
   /** Why the work mode blocks the owner's form (shown at the Work mode field). */
   modeError?: string;
   /** The Work mode control, so the owner can lead focus to it. */
@@ -64,6 +70,8 @@ export function AgentFields({
         value={choice.effort}
         disabled={decidedByModel}
         onChange={(effort) => onChange({ ...choice, effort })}
+        error={effortError}
+        controlRef={effortControlRef}
       />
       <WorkModeField
         modes={listedModes(provider, model)}

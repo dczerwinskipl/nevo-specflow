@@ -23,9 +23,11 @@ export function CreateAgentSection({
   onChange,
   providerError,
   modelError,
+  effortError,
   modeError,
   providersRef,
   modelControlRef,
+  effortControlRef,
   modeControlRef,
 }: {
   catalogue: DemoCatalogue;
@@ -36,11 +38,14 @@ export function CreateAgentSection({
   providerError?: string;
   /** Why the missing model blocks Create (once tried). */
   modelError?: string;
+  /** Why the effort blocks Create (once tried). */
+  effortError?: string;
   /** Why the work mode blocks Create (once tried). */
   modeError?: string;
   /** The provider cards, so a blocked Create can lead to them. */
   providersRef?: RefObject<HTMLDivElement | null>;
   modelControlRef?: MutableRefObject<HTMLElement | null>;
+  effortControlRef?: MutableRefObject<HTMLElement | null>;
   modeControlRef?: MutableRefObject<HTMLElement | null>;
 }) {
   const { t } = useTranslation();
@@ -92,6 +97,8 @@ export function CreateAgentSection({
           onChange={onChange}
           modelError={modelError}
           modelControlRef={modelControlRef}
+          effortError={effortError}
+          effortControlRef={effortControlRef}
           modeError={modeError}
           modeControlRef={modeControlRef}
         />

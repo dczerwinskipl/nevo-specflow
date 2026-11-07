@@ -586,6 +586,7 @@
       "title": "Podaj nazwę specyfikacji.",
       "provider": "Wybierz dostępnego wykonawcę.",
       "model": "Wybierz model.",
+      "effort": "Wybierz wysiłek, który obsługuje ten model.",
       "mode": "Wybierz obsługiwany tryb pracy.",
       "archetype": "Wybierz archetyp.",
       "noArchetypes": "Nie zainstalowano archetypów."

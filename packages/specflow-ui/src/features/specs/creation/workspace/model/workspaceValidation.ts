@@ -8,7 +8,8 @@ import type { CreateOptions } from '@nevo/specflow-contracts/specs';
 import { message, type Message } from '../../../../../i18n/message';
 import type { WorkspaceChoice } from './workspaceChoice';
 import {
-  readableBranchPreview,
+  branchPreview,
+  readableBranchName,
   createOverrides,
   effectiveSlug,
   generatedBranchRefusal,
@@ -168,7 +169,7 @@ export function generatedBranchProblem(
     refusal === 'branch-protected'
       ? 'create.workspace.errors.generatedBranchProtected'
       : 'create.workspace.errors.generatedBranchNotAllowed',
-    { branch: readableBranchPreview(options, slug) },
+    { branch: readableBranchName(branchPreview(options, slug)) },
   );
 }
 

@@ -739,15 +739,15 @@ async function openManualForm(
 
 const lastRequest = () => createRequests.at(-1)!;
 const submit = (canvas: Canvas) => canvas.getByRole('button', { name: 'Utwórz specyfikację' });
-/** Presses the one action of a Git decision row ("Zmień" or "Użyj domyślnej"). */
+/** Presses the one action of a Git decision row ("Zmień" or "Przywróć domyślne"). */
 async function changeRow(
   canvas: Canvas,
   userEvent: StoryContext['userEvent'],
   name: 'Zacznij od' | 'Scal do' | 'Nazwa gałęzi',
-  label: 'Zmień' | 'Użyj domyślnej' = 'Zmień',
+  label: 'Zmień' | 'Przywróć domyślne' = 'Zmień',
 ) {
   await userEvent.click(
-    within(canvas.getByRole('group', { name })).getByRole('button', { name: label }),
+    within(canvas.getByRole('group', { name })).getByRole('button', { name: `${label}: ${name}` }),
   );
 }
 
@@ -936,7 +936,7 @@ export const StaleWorkspaceConflictRefreshPreservesTheForm: Story = {
     );
     await expect(
       within(canvas.getByRole('group', { name: 'Scal do' })).getByRole('button'),
-    ).toHaveTextContent('Użyj domyślnej');
+    ).toHaveTextContent('Przywróć domyślne');
     await expect(canvas.getAllByText(/nie może już być celem scalenia/)[0]).toBeVisible();
     await expect(canvas.getByRole('combobox', { name: 'Scal do' })).toHaveAttribute(
       'aria-invalid',
@@ -1193,7 +1193,7 @@ export const AutomaticBranchNameCollisionOffersACustomName: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Podaj własną nazwę' }));
     await expect(
       within(canvas.getByRole('group', { name: 'Nazwa gałęzi' })).getByRole('button'),
-    ).toHaveTextContent('Użyj domyślnej');
+    ).toHaveTextContent('Przywróć domyślne');
     const field = canvas.getByRole('textbox', { name: 'Nazwa nowej gałęzi' });
     await waitFor(() => expect(field).toHaveFocus());
     await expect(canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' })).toHaveValue(
@@ -1653,7 +1653,7 @@ export const BlockedCreateLeadsToTheFirstFaultyFieldAndSendsNothing: Story = {
     const branch = canvas.getByRole('textbox', { name: 'Nazwa nowej gałęzi' });
     await waitFor(() => expect(branch).toHaveFocus());
     await expect(
-      canvas.getByText('Wpisz nazwę gałęzi lub wybierz „Użyj domyślnej”.', {
+      canvas.getByText('Wpisz nazwę gałęzi lub wybierz „Przywróć domyślne”.', {
         selector: '.field-error',
       }),
     ).toBeVisible();
@@ -1678,7 +1678,7 @@ export const LedFieldStaysClearOfThePinnedFooterOnMobile: Story = {
     scroller.scrollTop = 0;
     await userEvent.click(canvas.getByRole('button', { name: 'Przejdź do pola' }));
     await waitFor(() => expect(branch).toHaveFocus());
-    const error = canvas.getByText('Wpisz nazwę gałęzi lub wybierz „Użyj domyślnej”.', {
+    const error = canvas.getByText('Wpisz nazwę gałęzi lub wybierz „Przywróć domyślne”.', {
       selector: '.field-error',
     });
     const footer = canvas.getByRole('group', { name: 'Utworzenie specyfikacji' });

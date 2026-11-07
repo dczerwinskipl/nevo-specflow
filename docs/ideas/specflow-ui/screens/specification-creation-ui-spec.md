@@ -111,8 +111,8 @@ from `AppWorkspace`.
   first Session's agent, then branch and worktree), in the same order as the single column. DOM
   order is the reading and Tab order. No Secondary, summary or preview on the right, planned-file
   tree, upload or optional-file choice before Create. Controls keep their maximum widths (about
-  34rem for text inputs, the provider cards and the agent fields), and the Create button ends on the
-  form's edge. A blocked Create behaves as in
+  34rem for text inputs, the provider cards, the agent fields and the workspace tiles; two columns
+  are at most 72rem), and the Create button ends on the form's edge. A blocked Create behaves as in
   [Specification creation](../../../product/specflow/specification-creation.md#user-choices): it
   stays focusable (`aria-disabled`), sends nothing and leads to the first faulty field (name,
   workflow, the agent, then branch and worktree).

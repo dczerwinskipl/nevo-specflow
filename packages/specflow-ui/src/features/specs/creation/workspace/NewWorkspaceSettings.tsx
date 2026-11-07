@@ -20,11 +20,10 @@ import { SlugField } from './SlugField';
 import { WorkspaceRef } from './WorkspaceRef';
 import type { SettingsFocusRequest } from './settingsTypes';
 import {
-  branchPreviewParts,
+  branchNameParts,
+  branchPreview,
   createOverrides,
   effectiveSlug,
-  readableBranchPreview,
-  type BranchPreviewPart,
 } from './model/createRequest';
 import { mergeUnavailableNote } from './model/workspaceCopy';
 import {
@@ -121,39 +120,10 @@ function BaseDefault({ options }: { options: CreateOptions }) {
   return <BranchRef name={refDisplayName(options.defaultBaseRef)} />;
 }
 
-/**
- * The generated branch with the parts nobody knows before creation (the Specification key, the
- * random id, a slug before there is a name) written as words in their own quiet style, never as
- * template tokens; the full name wraps rather than hiding its end.
- */
-function BranchPreview({ options, slug }: { options: CreateOptions; slug: string }) {
-  const { t } = useTranslation();
-  const parts = branchPreviewParts(options, slug);
-  const pendingWord = (part: BranchPreviewPart & { kind: 'pending' }) =>
-    t(`create.workspace.rows.pending.${part.part}`);
-
-  return (
-    <BranchRef
-      title={readableBranchPreview(options, slug)}
-      name={parts.map((part, index) =>
-        part.kind === 'text' ? (
-          part.text
-        ) : (
-          <span key={index} className="font-sans italic text-content-muted">
-            {pendingWord(part)}
-          </span>
-        ),
-      )}
-    />
-  );
-}
-
 /** What the pending parts of the preview mean, once each. */
-function pendingNotes(options: CreateOptions, slug: string, t: TFunction): string[] {
+function pendingNotes(name: string, t: TFunction): string[] {
   const pending = new Set(
-    branchPreviewParts(options, slug).flatMap((part) =>
-      part.kind === 'pending' ? [part.part] : [],
-    ),
+    branchNameParts(name).flatMap((part) => (part.kind === 'pending' ? [part.part] : [])),
   );
 
   return (['key', 'id', 'slug'] as const)
@@ -204,7 +174,7 @@ function DecisionRow({
 /**
  * The settings of a new workspace as three decision rows: Start from, Merge into and Branch name.
  * Each row shows the value Create will use and one action: "Change" replaces the value with its
- * field, "Use default" goes back. The actions use the transitions of `workspaceOverrides`, so an
+ * field, "Restore default" goes back. The actions use the transitions of `workspaceOverrides`, so an
  * untouched or default-equal value is never sent. Under the rows, quietly: where the files are
  * committed (Git enabled) and the worktree folder.
  */
@@ -256,11 +226,24 @@ export function NewWorkspaceSettings({
   const branchOpen = branchNameChanged(choice);
   const merge = mergeDefault(options, t, text);
 
-  const action = (changed: boolean, onPress: () => void) => (
-    <Button variant="ghost" size="sm" onClick={onPress}>
-      {changed ? t('create.workspace.rows.useDefault') : t('create.workspace.rows.change')}
-    </Button>
-  );
+  const branchName = overrides.branch ?? branchPreview(options, slug);
+  // The visible word plus the row, so each action has its own name that starts with what is seen.
+  const action = (row: string, changed: boolean, onPress: () => void) => {
+    const label = changed
+      ? t('create.workspace.rows.useDefault')
+      : t('create.workspace.rows.change');
+
+    return (
+      <Button
+        variant="ghost"
+        size="sm"
+        aria-label={t('create.workspace.rows.actionLabel', { action: label, row })}
+        onClick={onPress}
+      >
+        {label}
+      </Button>
+    );
+  };
 
   return (
     <div className={cn('@container/git grid min-w-0 gap-3', createControlWidth)}>
@@ -289,7 +272,7 @@ export function NewWorkspaceSettings({
           action={
             baseUnchangeable(options, choice)
               ? undefined
-              : action(choice.base.on, () => {
+              : action(t('create.workspace.fact.base'), choice.base.on, () => {
                   const on = !choice.base.on;
                   set(baseOverride(options, choice, on));
                   if (on) {
@@ -321,7 +304,7 @@ export function NewWorkspaceSettings({
           action={
             targetUnchangeable(options, choice)
               ? undefined
-              : action(choice.target.on, () => {
+              : action(t('create.workspace.fact.target'), choice.target.on, () => {
                   const on = !choice.target.on;
                   set(targetOverride(options, choice, on));
                   if (on) {
@@ -334,23 +317,18 @@ export function NewWorkspaceSettings({
           label={t('create.workspace.fact.branch')}
           value={
             <>
-              {overrides.branch ? (
-                <BranchRef name={overrides.branch} />
-              ) : (
-                <BranchPreview options={options} slug={slug} />
-              )}
-              {overrides.branch
-                ? null
-                : pendingNotes(options, slug, t).map((note) => (
-                    <span key={note}>{rowNote(note)}</span>
-                  ))}
+              {/* The generated name writes its pending parts as words; it wraps, never hides its end. */}
+              <BranchRef name={branchName} />
+              {pendingNotes(branchName, t).map((note) => (
+                <span key={note}>{rowNote(note)}</span>
+              ))}
               {/* While changed, the branch field says it; otherwise the row does. */}
               {generatedProblem && !branchOpen
                 ? rowNote(text(generatedProblem), 'attention')
                 : null}
             </>
           }
-          action={action(branchOpen, () => {
+          action={action(t('create.workspace.fact.branch'), branchOpen, () => {
             set(branchNameOverride(choice, !branchOpen));
             if (!branchOpen) {
               onRequestFocus('slug');

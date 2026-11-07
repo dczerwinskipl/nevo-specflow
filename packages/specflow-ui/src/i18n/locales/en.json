@@ -857,16 +857,16 @@
         "unmanagedNote": "This workspace was added outside Nevo and is not managed by it."
       },
       "errors": {
-        "branchEmpty": "Enter a branch name or choose “Use default”.",
+        "branchEmpty": "Enter a branch name or choose “Restore default”.",
         "branchTooLong": "The branch name is too long. Use at most 240 characters.",
         "branchCharacters": "The branch name contains characters that are not allowed. Start with a letter or digit and use only letters, digits, \".\", \"-\", \"_\" and \"/\".",
         "branchStructure": "The branch name has a layout that is not allowed: do not end with \"/\", \".\" or \".lock\", do not use \"..\" or \"//\", and do not start a segment with \".\".",
         "branchExists": "A branch with this name already exists. Enter a different name.",
         "noWorkspace": "No workspace is available.",
         "pickWorkspace": "Choose a workspace.",
-        "pickBase": "Choose a starting branch or choose “Use default”.",
-        "pickTarget": "Choose a merge target or choose “Use default”.",
-        "slugEmpty": "Enter a slug or choose “Use default”.",
+        "pickBase": "Choose a starting branch or choose “Restore default”.",
+        "pickTarget": "Choose a merge target or choose “Restore default”.",
+        "slugEmpty": "Enter a slug or choose “Restore default”.",
         "slugTooLong": "The slug is too long. Use at most 80 characters.",
         "slugFormat": "Use lowercase letters, digits and single hyphens, for example payment-limits.",
         "slugReserved": "This name is reserved by the operating system. Choose another one.",
@@ -880,8 +880,8 @@
       "stale": {
         "tile": "This option is no longer available. Choose another one.",
         "existing": "This workspace is no longer available.",
-        "base": "This branch is no longer available. Choose another one or choose “Use default”.",
-        "target": "This workspace can no longer be a merge target. Choose another one or choose “Use default”."
+        "base": "This branch is no longer available. Choose another one or choose “Restore default”.",
+        "target": "This workspace can no longer be a merge target. Choose another one or choose “Restore default”."
       },
       "settings": {
         "default": "Default settings",
@@ -909,7 +909,8 @@
       },
       "rows": {
         "change": "Change",
-        "useDefault": "Use default",
+        "useDefault": "Restore default",
+        "actionLabel": "{{action}}: {{row}}",
         "commit": "The specification files will be committed to this branch.",
         "folder": "Worktree folder:",
         "pending": {

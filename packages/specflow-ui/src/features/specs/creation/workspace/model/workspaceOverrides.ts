@@ -4,7 +4,7 @@ import { defaultBaseValue, defaultTargetWorkspaceId } from './workspaceTiles';
 
 /**
  * The on/off transitions of the new-workspace decision rows (Start from, Merge into, Branch name).
- * "Change" turns an override on, "Use default" turns it off. On starts from the effective default,
+ * "Change" turns an override on, "Restore default" turns it off. On starts from the effective default,
  * so the owner only adjusts it and an untouched value is never sent (`createOverrides` sends only a
  * value that differs); off restores the default and forgets the value. The rows call nothing else,
  * so the request semantics stay those of the former switches.

@@ -24,12 +24,12 @@ import {
   branchFieldValue,
   branchPrefill,
   branchPreview,
-  branchPreviewParts,
+  branchNameParts,
   buildCreateSlug,
   buildCreateTarget,
   createOverrides,
   effectiveSlug,
-  readableBranchPreview,
+  readableBranchName,
 } from './createRequest';
 import { buildCreateRequest } from './createRequest.test-support';
 import { deriveSpecSlug } from '@nevo/specflow-contracts/specs';
@@ -247,11 +247,11 @@ describe('buildCreateRequest', () => {
     const pending = choice({ tile: 'new', base: { on: true, ref: '' } });
     expect(buildCreateTarget(pending, options())).toEqual({ kind: 'new-worktree' });
     expect(problems(pending, options())).toEqual([
-      'Wybierz gałąź początkową lub wybierz „Użyj domyślnej”.',
+      'Wybierz gałąź początkową lub wybierz „Przywróć domyślne”.',
     ]);
     expect(
       problems(choice({ tile: 'new', target: { on: true, workspaceId: '' } }), options()),
-    ).toEqual(['Wybierz cel scalenia lub wybierz „Użyj domyślnej”.']);
+    ).toEqual(['Wybierz cel scalenia lub wybierz „Przywróć domyślne”.']);
   });
   it('changing tiles keeps remembered values and a round trip restores the same request', () => {
     const configured = choice({
@@ -270,7 +270,7 @@ describe('buildCreateRequest', () => {
 describe('branchNameError', () => {
   it.each(['', '   '])('asks for a name when %j', (name) =>
     expect(branchNameError(name, options())).toBe(
-      'Wpisz nazwę gałęzi lub wybierz „Użyj domyślnej”.',
+      'Wpisz nazwę gałęzi lub wybierz „Przywróć domyślne”.',
     ),
   );
   const characters =
@@ -415,7 +415,7 @@ describe('revalidate keeps values and flags them', () => {
     stale.baseRefs = stale.baseRefs.filter((b) => b.ref !== 'refs/heads/feature/platform');
     expect(problems(remembered, stale)).toEqual([]);
     expect(problems({ ...remembered, tile: 'new' }, stale)).toEqual([
-      'Ta gałąź nie jest już dostępna. Wybierz inną lub wybierz „Użyj domyślnej”.',
+      'Ta gałąź nie jest już dostępna. Wybierz inną lub wybierz „Przywróć domyślne”.',
     ]);
   });
   it('a selected tile that became unavailable blocks Create without a silent jump', () => {
@@ -696,7 +696,7 @@ describe('integration target request semantics (explicit pin vs follow the proje
     const pending = newTile({ target: { on: true, workspaceId: '' } });
     expect(buildCreateTarget(pending, options())).toEqual({ kind: 'new-worktree' });
     expect(problems(pending, options())).toEqual([
-      'Wybierz cel scalenia lub wybierz „Użyj domyślnej”.',
+      'Wybierz cel scalenia lub wybierz „Przywróć domyślne”.',
     ]);
   });
   it('the prefilled default target (primary) is not a pin request; another workspace is', () => {
@@ -752,7 +752,7 @@ describe('integration target request semantics (explicit pin vs follow the proje
   it('an unavailable remembered pick blocks instead of silently falling back', () => {
     const stale = newTile({ target: { on: true, workspaceId: ids.payments } });
     expect(problems(stale, options())).toEqual([
-      'To środowisko pracy nie może już być celem scalenia. Wybierz inny lub wybierz „Użyj domyślnej”.',
+      'To środowisko pracy nie może już być celem scalenia. Wybierz inny lub wybierz „Przywróć domyślne”.',
     ]);
   });
 });
@@ -777,28 +777,31 @@ describe('slug and branch defaults', () => {
     expect(branchPreview(withKey, 'a-b')).toBe('feature/<key>-a-b');
     expect(branchPrefill(withKey, 'a-b')).toBe('feature/a-b');
   });
-  it('splits the preview into known text and the parts that exist only once it is created', () => {
+  it('splits a branch name into known text and the parts that exist only once it is created', () => {
     const withKey = { ...o, branchPattern: 'feature/{key}-{slug}' };
-    expect(branchPreviewParts(withKey, 'a-b')).toEqual([
+    expect(branchNameParts(branchPreview(withKey, 'a-b'))).toEqual([
       { kind: 'text', text: 'feature/' },
       { kind: 'pending', part: 'key' },
       { kind: 'text', text: '-a-b' },
     ]);
-    expect(branchPreviewParts(o, '')).toEqual([
+    expect(branchNameParts(branchPreview(o, ''))).toEqual([
       { kind: 'text', text: 'feature/' },
       { kind: 'pending', part: 'slug' },
     ]);
-    expect(branchPreviewParts({ ...o, branchPattern: 'spec/{slug}-{shortId}' }, 'a-b')).toEqual([
+    expect(
+      branchNameParts(branchPreview({ ...o, branchPattern: 'spec/{slug}-{shortId}' }, 'a-b')),
+    ).toEqual([
       { kind: 'text', text: 'spec/a-b-' },
       { kind: 'pending', part: 'id' },
     ]);
-    expect(branchPreviewParts(o, 'a-b')).toEqual([{ kind: 'text', text: 'feature/a-b' }]);
+    // A real branch name has no placeholder.
+    expect(branchNameParts('feature/a-b')).toEqual([{ kind: 'text', text: 'feature/a-b' }]);
   });
-  it('writes the pending parts of a preview in a sentence as an ellipsis, never as a token', () => {
+  it('writes the pending parts of a name in a sentence as an ellipsis, never as a placeholder', () => {
     const withKey = { ...o, branchPattern: 'feature/{key}-{slug}' };
-    expect(readableBranchPreview(withKey, 'a-b')).toBe('feature/…-a-b');
-    expect(readableBranchPreview(o, '')).toBe('feature/…');
-    expect(readableBranchPreview(o, 'a-b')).toBe('feature/a-b');
+    expect(readableBranchName(branchPreview(withKey, 'a-b'))).toBe('feature/…-a-b');
+    expect(readableBranchName(branchPreview(o, ''))).toBe('feature/…');
+    expect(readableBranchName('feature/a-b')).toBe('feature/a-b');
   });
   it('the effective slug follows the title until the owner edits it', () => {
     const on = choice({ slug: { on: true, value: '', edited: false } });
@@ -873,7 +876,7 @@ describe('slug and branch defaults', () => {
   });
   it('validates a typed slug with the shared contract rule and blocks Create', () => {
     expect(slugError('moj-slug')).toBeUndefined();
-    expect(slugError('')).toBe('Wpisz slug lub wybierz „Użyj domyślnej”.');
+    expect(slugError('')).toBe('Wpisz slug lub wybierz „Przywróć domyślne”.');
     expect(slugError('Moj Slug')).toContain('małych liter');
     expect(slugError('a'.repeat(81))).toContain('zbyt długi');
     expect(slugError('con')).toContain('zarezerwowana');

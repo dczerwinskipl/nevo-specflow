@@ -23,55 +23,44 @@ export function branchPreview(options: CreateOptions, slug: string): string {
     .replaceAll('{key}', '<key>');
 }
 
-/** A piece of the generated branch: known text, or a part that exists only once it is created. */
-export type BranchPreviewPart =
+/** A piece of a branch name: known text, or a part that exists only once it is created. */
+export type BranchNamePart =
   | { readonly kind: 'text'; readonly text: string }
   | { readonly kind: 'pending'; readonly part: 'slug' | 'id' | 'key' };
 
-const patternParts = /\{(slug|shortId|key)\}/gu;
+/** The named placeholders `branchPreview` writes; a real branch name never contains `<` or `>`. */
+const pendingParts = /<(slug|id|key)>/gu;
 
 /**
- * The generated branch for a slug as pieces, so the Create form can write the parts nobody knows
- * yet (the Specification key, the random id, a slug before there is a name) as words instead of
- * template tokens.
+ * A branch name as pieces, so every place in Create (the form's preview, the progress page's
+ * settings and technical details) writes the parts nobody knows yet (the Specification key, the
+ * random id, a slug before there is a name) as words, never as the `<key>` placeholders.
  */
-export function branchPreviewParts(options: CreateOptions, slug: string): BranchPreviewPart[] {
-  const parts: BranchPreviewPart[] = [];
-  let text = '';
+export function branchNameParts(name: string): BranchNamePart[] {
+  const parts: BranchNamePart[] = [];
   let index = 0;
-  for (const match of options.branchPattern.matchAll(patternParts)) {
-    text += options.branchPattern.slice(index, match.index);
+  for (const match of name.matchAll(pendingParts)) {
+    if (match.index > index) {
+      parts.push({ kind: 'text', text: name.slice(index, match.index) });
+    }
+
+    parts.push({ kind: 'pending', part: match[1] as 'slug' | 'id' | 'key' });
     index = match.index + match[0].length;
-    if (match[1] === 'slug' && slug) {
-      text += slug;
-      continue;
-    }
-
-    if (text) {
-      parts.push({ kind: 'text', text });
-      text = '';
-    }
-
-    parts.push({
-      kind: 'pending',
-      part: match[1] === 'shortId' ? 'id' : match[1] === 'key' ? 'key' : 'slug',
-    });
   }
 
-  text += options.branchPattern.slice(index);
-  if (text) {
-    parts.push({ kind: 'text', text });
+  if (index < name.length) {
+    parts.push({ kind: 'text', text: name.slice(index) });
   }
 
   return parts;
 }
 
 /**
- * The generated branch as plain text for a sentence: a part that exists only once it is created is
- * an ellipsis (`feature/…-payment-limits`), never a template token.
+ * A branch name as plain text for a sentence or a tooltip: a part that exists only once it is
+ * created is an ellipsis (`feature/…-payment-limits`), never a placeholder.
  */
-export function readableBranchPreview(options: CreateOptions, slug: string): string {
-  return branchPreviewParts(options, slug)
+export function readableBranchName(name: string): string {
+  return branchNameParts(name)
     .map((part) => (part.kind === 'text' ? part.text : '…'))
     .join('');
 }

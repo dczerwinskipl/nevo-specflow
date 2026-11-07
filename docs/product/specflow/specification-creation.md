@@ -39,9 +39,11 @@ column holds what is created: the name, the goal and the archetype with its docu
 column holds where it is created: the workspace place and its Git settings. DOM order is the reading
 and keyboard order: Tab moves through the whole left column, then the right column, then the Create
 button. Below the threshold the form keeps its reading column (`content-form`, left-aligned); from it
-the form may use the frame's width, and the Create button still ends on the form's edge. There is no
-preview panel and no Secondary. Controls keep their maximum widths however wide the frame is: text
-inputs and text areas, the Git rows and their fields stop at about 34rem.
+the form grows to at most two control widths and the gap between them (72rem), left-aligned, and the
+Create button still ends on the form's edge. There is no preview panel and no Secondary. Controls
+keep their maximum widths however wide the frame is: text inputs and text areas, the workspace
+tiles, the Git rows and their fields stop at about 34rem, so in two columns everything in a column
+shares one edge.
 
 **When Create is blocked.** A Create blocked by the form's own values stays a focusable submit button
 marked `aria-disabled="true"` (it is announced as unavailable, never `disabled`). Activating it
@@ -75,9 +77,10 @@ workspace as the primary text and its branch as a secondary branch chip. **Start
 **Branch name** are branches. The settings of a new workspace are **three decision rows**: Start
 from, Merge into and Branch name, under a quiet label that says whether Create uses the defaults or
 which of them were changed. Each row shows its label, the value Create will use and one quiet text
-action: **Change**, or **Use default** while the row is changed. Changing Start from or Merge into
+action: **Change**, or **Restore default** while the row is changed. Changing Start from or Merge into
 replaces the value with its picker in the row; changing Branch name reveals the slug and branch
-fields under the row directly (no further switches). All three actions look the same. On a narrow
+fields under the row directly (no further switches). All three actions look the same, and each is
+named for its row, starting with its visible text (for example _"Change: Start from"_). On a narrow
 screen the label and the action share the first line and the value takes the second. The rows sit
 in the section without an accent container, new separators or switches. Every branch in the section
 uses one shared presentational piece (`BranchRef`: one icon size, the `code-md` token, no
@@ -102,10 +105,10 @@ available now" wording, and it stays a quiet inline note, never an alert.
 default prefilled** (the listed ref of the default base, the default target workspace, the slug
 derived from the name and the generated branch), so the user only adjusts it. An untouched or
 default-equal value is never sent as an override (an explicit merge target would become an
-immutable pin, omission follows the project); only a value that differs is. **Use default**
+immutable pin, omission follows the project); only a value that differs is. **Restore default**
 restores the default and forgets the typed or picked value. A message about a value the owner has
 to fix names the row action, never a switch, for example _"Choose a starting branch or choose
-“Use default”."_
+“Restore default”."_
 
 The optional `slug` names the Specification folder, the worktree folder and the generated branch
 (`branchPattern` with `{slug}`). It is lowercase kebab-case ASCII (at most 80 characters, the

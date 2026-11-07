@@ -34,7 +34,7 @@ describe('the decision-row transitions keep the request semantics of the former 
     const picked = apply(changed, { base: { on: true, ref: other } });
     expect(target(picked)).toEqual({ kind: 'new-worktree', baseRef: other });
 
-    // Use default forgets the pick: nothing is sent again.
+    // Restore default forgets the pick: nothing is sent again.
     const reset = apply(picked, baseOverride(options, picked, false));
     expect(reset.base).toEqual(initialWorkspaceChoice.base);
     expect(target(reset)).toEqual({ kind: 'new-worktree' });
@@ -75,7 +75,7 @@ describe('the decision-row transitions keep the request semantics of the former 
       target: { kind: 'new-worktree', branch: 'feature/own' },
     });
 
-    // Changing again keeps what was typed; Use default forgets both.
+    // Changing again keeps what was typed; Restore default forgets both.
     expect(apply(typed, branchNameOverride(typed, true))).toEqual(typed);
     const reset = apply(typed, branchNameOverride(typed, false));
     expect(branchNameChanged(reset)).toBe(false);

@@ -38,10 +38,10 @@ function Harness({
 
 const request = (title: string) => buildCreateRequest(latest, options, title, operationId);
 const field = (name: string) => screen.getByRole<HTMLInputElement>('textbox', { name });
-/** The one action of a decision row ("Change" or "Use default"). */
+/** The one action of a decision row ("Change" or "Restore default"). */
 const rowAction = (row: string) =>
   within(screen.getByRole('group', { name: row })).getByRole('button');
-const act = (row: string, label: 'Change' | 'Use default') => {
+const act = (row: string, label: 'Change' | 'Restore default') => {
   const action = rowAction(row);
   expect(action.textContent).toBe(label);
   fireEvent.click(action);
@@ -104,7 +104,7 @@ describe('New workspace settings: three decision rows that start from the effect
     fireEvent.change(field('Slug'), { target: { value: 'Not Valid' } });
     expect(screen.getByText(/Use lowercase letters, digits and single hyphens/)).toBeTruthy();
     fireEvent.change(field('Slug'), { target: { value: '' } });
-    expect(screen.getByText('Enter a slug or choose “Use default”.')).toBeTruthy();
+    expect(screen.getByText('Enter a slug or choose “Restore default”.')).toBeTruthy();
     expect(field('Slug').getAttribute('aria-invalid')).toBe('true');
   });
 
@@ -122,7 +122,7 @@ describe('New workspace settings: three decision rows that start from the effect
 
     // A cleared name says so at the field, naming the row action, not a switch.
     fireEvent.change(field('New branch name'), { target: { value: '' } });
-    expect(screen.getByText('Enter a branch name or choose “Use default”.')).toBeTruthy();
+    expect(screen.getByText('Enter a branch name or choose “Restore default”.')).toBeTruthy();
     expect(field('New branch name').getAttribute('aria-invalid')).toBe('true');
   });
 
@@ -141,7 +141,7 @@ describe('New workspace settings: three decision rows that start from the effect
     expect(request('T').target).toEqual({ kind: 'new-worktree' });
   });
 
-  it('Use default restores the default and sends nothing', () => {
+  it('Restore default restores the default and sends nothing', () => {
     renderSettings();
     act('Branch name', 'Change');
     fireEvent.change(field('Slug'), { target: { value: 'my-limits' } });
@@ -151,7 +151,7 @@ describe('New workspace settings: three decision rows that start from the effect
       target: { branch: 'feature/own' },
     });
 
-    act('Branch name', 'Use default');
+    act('Branch name', 'Restore default');
     expect(latest.slug).toEqual(initialWorkspaceChoice.slug);
     expect(latest.branch).toEqual(initialWorkspaceChoice.branch);
     expect(screen.queryByRole('textbox')).toBeNull();
@@ -164,6 +164,20 @@ describe('New workspace settings: three decision rows that start from the effect
     // Changing again starts from the default, not from the discarded edit.
     act('Branch name', 'Change');
     expect(field('Slug').value).toBe('payment-limits');
+  });
+
+  it('every row action is named for its row, starting with its visible text', () => {
+    renderSettings();
+    act('Branch name', 'Change');
+    expect(rowAction('Start from').getAttribute('aria-label')).toBe('Change: Start from');
+    expect(rowAction('Merge into').getAttribute('aria-label')).toBe('Change: Merge into');
+    expect(rowAction('Branch name').getAttribute('aria-label')).toBe(
+      'Restore default: Branch name',
+    );
+    for (const row of ['Start from', 'Merge into', 'Branch name']) {
+      const action = rowAction(row);
+      expect(action.getAttribute('aria-label')!.startsWith(action.textContent)).toBe(true);
+    }
   });
 
   it('every row action looks the same: one quiet button, never a pressed toggle', () => {
@@ -209,7 +223,7 @@ describe('flagged settings', () => {
     expect(within(row).getByText(/is protected/)).toBeTruthy();
     act('Branch name', 'Change');
     fireEvent.change(field('New branch name'), { target: { value: 'release/hotfix' } });
-    // The unflagged name does not close the row: it stays changed until Use default.
+    // The unflagged name does not close the row: it stays changed until Restore default.
     fireEvent.change(field('New branch name'), { target: { value: 'feature' } });
     expect(field('New branch name').value).toBe('feature');
   });

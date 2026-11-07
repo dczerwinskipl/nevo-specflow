@@ -147,14 +147,16 @@ async function expectNoOverflow(width: number) {
 const row = (canvas: Context['canvas'], name: string) =>
   within(summary(canvas)).getByRole('group', { name });
 const rowValue = row;
-/** Presses the one action of a decision row ("Zmień" or "Użyj domyślnej"). */
+/** Presses the one action of a decision row ("Zmień" or "Przywróć domyślne"). */
 async function rowAction(
   canvas: Context['canvas'],
   userEvent: Context['userEvent'],
   name: 'Zacznij od' | 'Scal do' | 'Nazwa gałęzi',
-  label: 'Zmień' | 'Użyj domyślnej' = 'Zmień',
+  label: 'Zmień' | 'Przywróć domyślne' = 'Zmień',
 ) {
-  await userEvent.click(within(row(canvas, name)).getByRole('button', { name: label }));
+  await userEvent.click(
+    within(row(canvas, name)).getByRole('button', { name: `${label}: ${name}` }),
+  );
 }
 
 const tiles = (canvas: Context['canvas']) =>
@@ -449,7 +451,7 @@ export const RowsShowTheirValuesUntilChanged: Story = {
     await expect(canvas.queryByRole('switch')).not.toBeInTheDocument();
     // Every row action is the same quiet button, never a pressed toggle.
     const actions = (['Zacznij od', 'Scal do', 'Nazwa gałęzi'] as const).map((name) =>
-      within(row(canvas, name)).getByRole('button', { name: /^(Zmień|Użyj domyślnej)$/ }),
+      within(row(canvas, name)).getByRole('button', { name: /^(Zmień|Przywróć domyślne): / }),
     );
     await expect(new Set(actions.map((action) => action.className)).size).toBe(1);
     for (const action of actions) {
@@ -457,7 +459,7 @@ export const RowsShowTheirValuesUntilChanged: Story = {
       await expect(action).not.toHaveAttribute('aria-expanded');
     }
 
-    await rowAction(canvas, userEvent, 'Nazwa gałęzi', 'Użyj domyślnej');
+    await rowAction(canvas, userEvent, 'Nazwa gałęzi', 'Przywróć domyślne');
     await expect(within(summary(canvas)).queryByRole('textbox')).toBeNull();
   },
 };
@@ -494,8 +496,8 @@ export const RowActionsStartFromTheDefaults: Story = {
       }),
     );
     await expect(rowValue(canvas, 'Scal do')).toHaveTextContent('architecture spec/architecture');
-    // Use default restores the default and removes the fields.
-    await rowAction(canvas, userEvent, 'Nazwa gałęzi', 'Użyj domyślnej');
+    // Restore default restores the default and removes the fields.
+    await rowAction(canvas, userEvent, 'Nazwa gałęzi', 'Przywróć domyślne');
     await expect(request(canvas)).toBe(
       JSON.stringify({
         kind: 'new-worktree',
@@ -771,7 +773,7 @@ export const StaleRememberedValueIsFlaggedOnReturn: Story = {
     await expect(canvas.getByText(/Ta gałąź nie jest już dostępna/)).toBeVisible();
     await expect(canvas.getByLabelText('Żądanie')).toHaveAttribute(
       'data-problems',
-      'Ta gałąź nie jest już dostępna. Wybierz inną lub wybierz „Użyj domyślnej”.',
+      'Ta gałąź nie jest już dostępna. Wybierz inną lub wybierz „Przywróć domyślne”.',
     );
     await userEvent.click(canvas.getByRole('radio', { name: 'Istniejące środowisko pracy' }));
     await expect(canvas.getByText('To środowisko pracy nie jest już dostępne.')).toBeVisible();
@@ -1073,7 +1075,7 @@ export const ResponsiveColumnsAndNoOverflow: Story = {
   },
 };
 async function userEventOpen(canvas: Context['canvas']) {
-  within(row(canvas, 'Nazwa gałęzi')).getByRole('button', { name: 'Zmień' }).click();
+  within(row(canvas, 'Nazwa gałęzi')).getByRole('button', { name: 'Zmień: Nazwa gałęzi' }).click();
   const input = await canvas.findByRole('textbox', { name: 'Nazwa nowej gałęzi' });
   const field = input.closest('.field')!;
   const rows = row(canvas, 'Nazwa gałęzi').parentElement!;
@@ -1124,8 +1126,8 @@ export const TargetChangePrefillsTheDefaultTargetAndOnlyADifferentPickIsSent: St
       JSON.stringify({ kind: 'new-worktree', integrationTargetWorkspaceId: workspaceIds.platform }),
     );
     await expect(rowValue(canvas, 'Scal do')).toHaveTextContent('platform feature/platform');
-    // Use default restores the default and sends nothing.
-    await rowAction(canvas, userEvent, 'Scal do', 'Użyj domyślnej');
+    // Restore default restores the default and sends nothing.
+    await rowAction(canvas, userEvent, 'Scal do', 'Przywróć domyślne');
     await expect(request(canvas)).toBe('{"kind":"new-worktree"}');
     await expect(rowValue(canvas, 'Scal do')).toHaveTextContent('acme-app develop');
   },
@@ -1151,8 +1153,8 @@ export const ChangingTheBasePrefillsTheEffectiveDefault: Story = {
     await expect(request(canvas)).toBe(
       '{"kind":"new-worktree","baseRef":"refs/heads/release/1.4"}',
     );
-    // Use default restores the default: changing again starts from it, not from the discarded pick.
-    await rowAction(canvas, userEvent, 'Zacznij od', 'Użyj domyślnej');
+    // Restore default restores the default: changing again starts from it, not from the discarded pick.
+    await rowAction(canvas, userEvent, 'Zacznij od', 'Przywróć domyślne');
     await expect(request(canvas)).toBe('{"kind":"new-worktree"}');
     await rowAction(canvas, userEvent, 'Zacznij od');
     await expect(canvas.getByRole('combobox', { name: 'Zacznij od' })).toHaveTextContent('develop');
@@ -1171,7 +1173,7 @@ export const EnablingBaseWithoutAnyDefaultStaysBlockedUntilChosen: Story = {
     await expect(request(canvas)).toBe('{"kind":"new-worktree"}');
     await expect(canvas.getByLabelText('Żądanie')).toHaveAttribute(
       'data-problems',
-      'Wybierz gałąź początkową lub wybierz „Użyj domyślnej”.',
+      'Wybierz gałąź początkową lub wybierz „Przywróć domyślne”.',
     );
   },
 };
@@ -1196,7 +1198,7 @@ export const RowsKeepWordsWholeAt320: Story = {
       await expect(brokenWords(canvas.getByText(/Zmienione ustawienia/))).toEqual([]);
       for (const name of ['Zacznij od', 'Scal do', 'Nazwa gałęzi'] as const) {
         const action = within(row(canvas, name)).getByRole('button', {
-          name: /^(Zmień|Użyj domyślnej)$/,
+          name: /^(Zmień|Przywróć domyślne): /,
         });
         await expect(brokenWords(action)).toEqual([]);
         await expect(action.scrollWidth).toBeLessThanOrEqual(action.clientWidth + 1);

@@ -204,16 +204,25 @@ measured width to the workspace.
 
 Inside the frame the content keeps its own widths instead of stretching with it:
 
-- a form keeps its reading column (for example `content-form`), left-aligned within the frame's
-  content padding, and its controls keep their maximum widths;
-- a list keeps related values together with bounded scan columns (see the
-  [scan-column rule](#scan-column-rule)), so a flexible title track does not push them apart as the
-  frame grows. The rows themselves span the frame.
+- a form keeps its reading column (for example `content-form`) and its controls keep their maximum
+  widths;
+- a list page keeps its title, toolbar, search, notices and rows in one reading column (for example
+  `content-standard`), and the list keeps related values together with bounded scan columns (see the
+  [scan-column rule](#scan-column-rule)), so the screen reads as one column group however wide the
+  frame is.
 
 Detail workspaces whose screens share one context, for example a Specification with its Overview,
 Documents and Sessions, use `fit="available"` so the whole context keeps one geometry; do not bound
 them. Narrow and drawer layouts fill the workspace, and so does a Focused page while it shows a
 Secondary.
+
+**A reading column inside a wider pane.** In a Focused frame and in a full-width detail pane alike,
+the scroller fills the pane and the reading column sits inside it, left-aligned. Do not make the
+column a narrower box around the scroller: the scrollbar would sit in the middle of the pane and the
+band beside the column would not scroll. Every such column starts at the workspace's content inset,
+the 16 px of the header (`px-4`) and `AppWorkspaceBody` (`p-4`), so moving between screens never
+shifts the content edge. A detail pane may later fill that space with more columns; until then the
+space beside the column stays empty rather than stretching it.
 
 ## Nested-containment rule
 

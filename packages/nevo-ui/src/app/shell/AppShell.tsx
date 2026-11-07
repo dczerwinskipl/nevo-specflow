@@ -253,11 +253,13 @@ export function AppShell({
                   // `available` fills, and `bounded` (the Focused frame) asks for the
                   // `workspace-focused` token, which the max-width clamps to the available width.
                   // The row's `justify-center` then centres navigation and workspace only while
-                  // the frame is narrower than the available width.
+                  // the frame is narrower than the available width. Only the outermost workspace
+                  // marker counts (`:not([data-workspace-fit] *)`): a nested workspace never
+                  // changes the frame.
                   className={cn(
                     workspaceMaterialOwner === 'shell'
                       ? cn(
-                          'mt-4 h-[calc(100%-1rem)] w-max has-[[data-workspace-fit=available]]:w-full has-[[data-workspace-fit=bounded]]:w-workspace-focused min-w-0 max-w-[calc(100%-var(--app-navigation-width)-var(--app-shell-gap))] flex-none overflow-hidden rounded-tl-surface border-t border-l border-workspace-edge',
+                          'mt-4 h-[calc(100%-1rem)] w-max has-[[data-workspace-fit=available]:not([data-workspace-fit]_*)]:w-full has-[[data-workspace-fit=bounded]:not([data-workspace-fit]_*)]:w-workspace-focused min-w-0 max-w-[calc(100%-var(--app-navigation-width)-var(--app-shell-gap))] flex-none overflow-hidden rounded-tl-surface border-t border-l border-workspace-edge',
                           workspaceIsInset && 'rounded-tr-surface border-r',
                         )
                       : 'h-full w-full min-w-0 flex-none overflow-hidden',

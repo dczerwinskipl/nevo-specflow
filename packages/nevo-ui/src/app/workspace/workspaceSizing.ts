@@ -51,26 +51,21 @@ export type AppWorkspaceShare = number;
 export type AppWorkspaceFit = 'content' | 'available' | 'bounded';
 
 /**
- * How the rendered workspace is sized: `content` is `max-content` wide (the shell centres
+ * Resolves the rendered workspace fit: `content` is `max-content` wide (the shell centres
  * navigation and workspace together), `available` fills the measured width, and `bounded` is the
- * Focused frame: the shell sizes the surface `min(available width, --spacing-workspace-focused)`,
- * border included, in CSS, so it fills like `available` until it reaches that maximum and is then
- * centred with the navigation.
- */
-export type ResolvedAppWorkspaceFit = 'content' | 'available' | 'bounded';
-
-/**
- * Resolves the rendered workspace fit. Stacked layouts always fill. A `bounded` workspace is the
- * Focused frame only while it is Primary-only beside a persistent navigation: with a drawer
- * navigation there is nothing to centre it with, and a Secondary splits shares of the whole
- * available width (`contentWidth`), so in both cases it fills instead.
+ * Focused frame, which the shell sizes `min(available width, --spacing-workspace-focused)`, border
+ * included, in CSS: it fills like `available` until it reaches that maximum and is then centred
+ * with the navigation. Stacked layouts always fill. A `bounded` workspace is the Focused frame only
+ * while it is Primary-only beside a persistent navigation: with a drawer navigation there is
+ * nothing to centre it with, and a Secondary splits shares of the whole available width
+ * (`contentWidth`), so in both cases it resolves to `available`.
  */
 export function resolveWorkspaceFit(
   fit: AppWorkspaceFit,
   mode: 'split' | 'stacked',
   showSecondary: boolean,
   navigationMode: 'persistent' | 'drawer' = 'persistent',
-): ResolvedAppWorkspaceFit {
+): AppWorkspaceFit {
   if (mode === 'stacked' || fit === 'available') {
     return 'available';
   }

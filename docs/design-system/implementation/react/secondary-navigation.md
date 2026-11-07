@@ -414,21 +414,26 @@ Stacked layouts always fill the available width, whatever the value. The resolut
 `bounded` is the Focused frame of the
 [Bounded workspace rule](../../principles/layout-and-containment.md#bounded-workspace-rule). It
 resolves to its own `data-workspace-fit="bounded"` only while the page is Primary-only beside a
-persistent navigation. `AppShell` then asks for the `workspace-focused` token as the surface width
+persistent navigation (the shell reads only the outermost marker, so a nested workspace never
+changes the frame). `AppShell` then asks for the `workspace-focused` token as the surface width
 (`--spacing-workspace-focused`, 90rem, border included) and the surface's existing maximum
 width (the row minus the navigation and the gap) clamps that to the available width, so the frame fills like
 `available` below the maximum. Only once the frame stops at the maximum does the shell row's
 `justify-center` centre navigation and workspace as one group, and the surface becomes inset. The
 rule is pure CSS: no width is measured to decide it, and every Focused screen has the same frame, so
 moving between them changes nothing. With a drawer navigation or a shown Secondary it resolves to
-`available` (the split shares are computed from the whole available width). The Primary content
-fills the frame and keeps its own widths inside it: a reading column such as
-`AppContentContainer` or a `w-content-form` column, or bounded scan columns for a list. Do not
+`available` and sizes its regions exactly like `available` (the split shares are computed from the
+whole available width). The Primary's
+`AppContent` and its `AppWorkspaceBody` scroller fill the frame, and the content keeps its own
+widths inside the scroller, left-aligned: an `AppContentContainer align="start"` reading column or a
+`w-content-form` column, with bounded scan columns for a list (see the layout rule's "A reading
+column inside a wider pane"). Do not
 combine `bounded` with ad-hoc `max-w-[…]` or centring wrappers on the workspace.
 `AppWorkspaceFit.contract.stories.tsx` covers the three values: `Available*`, `Content*`, and
-`Bounded*` contracts that assert the frame fills below the maximum (1366/1440/1600), is the token
-width and centred above it (1920/2560), and fills in drawer (1024), stacked (390) and with a
-Secondary.
+`Bounded*` contracts that assert the frame fills below the maximum (1366/1440/1600/1700), is the
+token width and centred above it (1720/1920/2560), so it is continuous across the switch at about
+1708 px, and fills in drawer (1024), stacked (390) and with a Secondary, where the regions keep
+their `available` shares.
 
 **Stacked close (opt-in).** `stackedSecondaryClose="hide"` removes the Secondary's own close action (the trailing
 `x`, and the matching item of the compact row) while the layout is stacked, where Back already leaves the

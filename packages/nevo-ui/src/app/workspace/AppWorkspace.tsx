@@ -1360,7 +1360,7 @@ function AppWorkspaceRoot({
       instanceKey="primary"
       key="primary"
       leadingAction={primaryNavigationAction}
-      fitAvailable={fit === 'available'}
+      fitAvailable={resolvedFit === 'available'}
       maxWidth={state.primaryMaxWidth}
       mobileRuntime={state.mode === 'stacked' ? mobileRuntime.primary : undefined}
       onMobileMotionComplete={mobileRuntime.completeMotion}
@@ -1404,7 +1404,7 @@ function AppWorkspaceRoot({
         contentNavigation={secondaryLocalNavigationRow}
         headerVariant={splitRailHeader ? 'tab-rail' : 'header'}
         detailHeaderHosted={detailHeaderHosted}
-        fitAvailable={fit === 'available'}
+        fitAvailable={resolvedFit === 'available'}
         maxWidth={state.mode === 'split' ? state.secondaryMaxWidth : undefined}
         mobileRuntime={state.mode === 'stacked' ? mobileRuntime.secondary : undefined}
         onMobileMotionComplete={mobileRuntime.completeMotion}

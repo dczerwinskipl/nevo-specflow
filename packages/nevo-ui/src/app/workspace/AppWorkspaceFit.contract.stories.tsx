@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Typography } from '../../components';
 import { AppShell } from '../shell/AppShell';
-import { AppContent, AppWorkspace, AppWorkspaceBody } from './AppWorkspace';
+import { AppContent, AppContentContainer, AppWorkspace, AppWorkspaceBody } from './AppWorkspace';
 import { WorkspaceHeader } from './WorkspaceHeader';
 import type { AppWorkspaceFit } from './workspaceSizing';
 
@@ -13,6 +13,9 @@ const viewports = {
   w1366: { name: '1366', styles: { width: '1366px', height: '768px' }, type: 'desktop' },
   w1440: { name: '1440', styles: { width: '1440px', height: '900px' }, type: 'desktop' },
   w1600: { name: '1600', styles: { width: '1600px', height: '900px' }, type: 'desktop' },
+  // Either side of the Focused maximum (90rem + 260 navigation + 8 gap = 1708 px).
+  w1700: { name: '1700', styles: { width: '1700px', height: '900px' }, type: 'desktop' },
+  w1720: { name: '1720', styles: { width: '1720px', height: '900px' }, type: 'desktop' },
   w1920: { name: '1920', styles: { width: '1920px', height: '1080px' }, type: 'desktop' },
   w2560: { name: '2560', styles: { width: '2560px', height: '1440px' }, type: 'desktop' },
 } as const;
@@ -27,21 +30,32 @@ function Navigation() {
   );
 }
 
-function Rows({ label }: { label: string }) {
+function Rows({ label, column = false }: { label: string; column?: boolean }) {
+  const rows = (
+    <div className="grid gap-2">
+      {Array.from({ length: 6 }, (_, index) => (
+        <div
+          className="rounded-control border border-border-subtle bg-surface-subtle p-3"
+          key={index}
+        >
+          <Typography className="text-content-secondary" variant="body-sm">
+            {label} row {index + 1}
+          </Typography>
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <AppWorkspaceBody>
-      <div className="grid gap-2">
-        {Array.from({ length: 6 }, (_, index) => (
-          <div
-            className="rounded-control border border-border-subtle bg-surface-subtle p-3"
-            key={index}
-          >
-            <Typography className="text-content-secondary" variant="body-sm">
-              {label} row {index + 1}
-            </Typography>
-          </div>
-        ))}
-      </div>
+      {column ? (
+        // A reading column inside the full-width pane, as a Focused page composes it.
+        <AppContentContainer align="start" data-fit-column="primary">
+          {rows}
+        </AppContentContainer>
+      ) : (
+        rows
+      )}
     </AppWorkspaceBody>
   );
 }
@@ -65,8 +79,8 @@ function FitFixture({ fit, secondary = false, primaryMaxPx }: FitFixtureProps) {
         <AppWorkspace.Primary
           header={<WorkspaceHeader actions={headerActions} title="Collection" />}
         >
-          <AppContent className="w-content-standard max-w-full" data-fit-content="primary">
-            <Rows label="Collection" />
+          <AppContent className="w-full" data-fit-content="primary">
+            <Rows column label="Collection" />
           </AppContent>
         </AppWorkspace.Primary>
         {secondary ? (
@@ -221,6 +235,32 @@ export const BoundedFocusedFills1600Contract: Story = {
   play: async ({ canvasElement }) => verifyFocusedFills(canvasElement, 1600),
 };
 
+/**
+ * Continuity across the maximum (about 1708 px): just below it the frame still equals the
+ * available width with the navigation at the edge; just above it the frame is the token width and
+ * centred. Nothing jumps in between, the frame only stops growing.
+ */
+export const BoundedFocusedFills1700Contract: Story = {
+  tags: ['contract', '!autodocs'],
+  globals: { viewport: { value: 'w1700', isRotated: false } },
+  play: async ({ canvasElement }) => {
+    await verifyFocusedFills(canvasElement, 1700);
+    const { mainRect, navigation } = await measure(canvasElement, 1700);
+    assert(navigation, 'Wide layouts keep persistent navigation.');
+    const available = window.innerWidth - navigation.getBoundingClientRect().right - 8;
+    assert(
+      Math.abs(mainRect.width - available) <= 0.5,
+      `At 1700 the frame is the available width (${mainRect.width} vs ${available}).`,
+    );
+  },
+};
+
+export const BoundedFocusedCentred1720Contract: Story = {
+  tags: ['contract', '!autodocs'],
+  globals: { viewport: { value: 'w1720', isRotated: false } },
+  play: async ({ canvasElement }) => verifyFocusedCentred(canvasElement, 1720),
+};
+
 export const BoundedFocusedCentred1920Contract: Story = {
   tags: ['contract', '!autodocs'],
   globals: { viewport: { value: 'w1920', isRotated: false } },
@@ -269,6 +309,23 @@ export const BoundedWithSecondary1920Contract: Story = {
       'A bounded workspace that shows a Secondary fills.',
     );
     assertFillsWide(navigation, mainRect, 'The split workspace fills beyond the Focused maximum');
+    // The regions are sized like `available`: Primary is exactly its 75% share of the group.
+    const primary = canvasElement.querySelector<HTMLElement>('[data-workspace-surface="primary"]');
+    const secondary = canvasElement.querySelector<HTMLElement>(
+      '[data-workspace-surface="secondary"]',
+    );
+    assert(primary && secondary, 'Primary and Secondary are split side by side.');
+    const group = layout.getBoundingClientRect().width;
+    const primaryWidth = primary.getBoundingClientRect().width;
+    const secondaryWidth = secondary.getBoundingClientRect().width;
+    assert(
+      Math.abs(primaryWidth - group * 0.75) <= 1.5,
+      `Primary keeps its 75% share: ${primaryWidth} of ${group}.`,
+    );
+    assert(
+      Math.abs(primaryWidth + secondaryWidth - group) <= 1.5,
+      `Secondary takes the rest: ${primaryWidth} + ${secondaryWidth} of ${group}.`,
+    );
   },
 };
 

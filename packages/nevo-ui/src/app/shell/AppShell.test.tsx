@@ -325,8 +325,9 @@ describe('AppShell Focused frame', () => {
     expect(document.querySelector('[data-workspace-fit]')?.getAttribute('data-workspace-fit')).toBe(
       'bounded',
     );
+    // Only the outermost workspace marker sizes the frame, never a nested workspace.
     expect(workspace().className).toContain(
-      'has-[[data-workspace-fit=bounded]]:w-workspace-focused',
+      'has-[[data-workspace-fit=bounded]:not([data-workspace-fit]_*)]:w-workspace-focused',
     );
     expect(workspace().className).toContain(
       'max-w-[calc(100%-var(--app-navigation-width)-var(--app-shell-gap))]',

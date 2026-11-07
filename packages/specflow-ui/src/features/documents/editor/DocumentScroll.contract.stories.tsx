@@ -438,11 +438,16 @@ export const CloseAndReopenRestoresModeAndPosition: Story = {
     view.dispatch({ selection: { anchor: view.state.doc.line(entered + 2).from } });
     view.focus();
     await userEvent.keyboard('SZKIC');
-    await frames();
+    // The contract restores the position the panel had when it closed. Focus and typing may still
+    // nudge the view by a line or two on a slow runner, so compare against the settled position.
+    const closedAt = await settled(() => editorTopLine(view));
+    await expect(Math.abs(closedAt - entered)).toBeLessThanOrEqual(4);
     await userEvent.click(canvas.getByRole('button', { name: 'Zamknij panel' }));
     await userEvent.click(canvas.getByRole('button', { name: 'Zamknij panel' }));
     const reopened = await openEditorOnly(canvasElement);
-    await waitFor(() => expect(Math.abs(editorTopLine(reopened) - entered)).toBeLessThanOrEqual(1));
+    await waitFor(() =>
+      expect(Math.abs(editorTopLine(reopened) - closedAt)).toBeLessThanOrEqual(1),
+    );
     await expect(reopened.state.doc.toString()).toContain('SZKIC');
   },
 };

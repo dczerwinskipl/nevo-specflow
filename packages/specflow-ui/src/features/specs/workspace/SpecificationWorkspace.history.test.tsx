@@ -7,6 +7,7 @@ import { builtInUiModuleRegistry } from '../../../app/ui-modules/builtInUiModule
 import { LocalizationProvider, createSpecFlowI18n } from '../../../i18n';
 import { createSpecificationWorkspaceFixture } from '../../../../test-support/specs/workspace/fixtures';
 import type { SpecificationWorkspaceData } from '../read-model/model';
+import { SpecificationStateProvider } from '../SpecificationStateProvider';
 import { SpecificationWorkspace } from './SpecificationWorkspace';
 
 beforeEach(() => {
@@ -34,15 +35,38 @@ afterEach(() => {
 const withHistory = createSpecificationWorkspaceFixture('working', 'SPEC-1');
 const emptyHistory: SpecificationWorkspaceData = { ...withHistory, activityEvents: [] };
 
-function Workspace({ data }: { readonly data: SpecificationWorkspaceData }) {
+function Workspace({
+  data,
+  specId = 'SPEC-1',
+}: {
+  readonly data: SpecificationWorkspaceData;
+  readonly specId?: string;
+}) {
   return (
     <UiModulesProvider modules={builtInUiModuleRegistry}>
       <LocalizationProvider instance={createSpecFlowI18n('en')}>
         <AppShell navigation={<div>Navigation</div>}>
-          <SpecificationWorkspace specId="SPEC-1" data={data} />
+          <SpecificationWorkspace specId={specId} data={data} />
         </AppShell>
       </LocalizationProvider>
     </UiModulesProvider>
+  );
+}
+
+/** The visit outlives the Overview: `route` swaps it for another screen, as navigation does. */
+function Visit({
+  route,
+  data,
+  specId,
+}: {
+  readonly route: 'overview' | 'documents';
+  readonly data: SpecificationWorkspaceData;
+  readonly specId?: string;
+}) {
+  return (
+    <SpecificationStateProvider>
+      {route === 'overview' ? <Workspace data={data} specId={specId} /> : <p>Documents screen</p>}
+    </SpecificationStateProvider>
   );
 }
 
@@ -93,6 +117,48 @@ describe('Specification Overview Activity history', () => {
     fireEvent.click(historyToggle());
     expect(historyPanel()).toBeNull();
     rerender(<Workspace data={withHistory} />);
+    expect(historyPanel()).toBeNull();
+  });
+
+  it('keeps a history the user opened open after leaving the Overview and coming back', () => {
+    const { rerender } = render(<Visit route="overview" data={emptyHistory} />);
+    fireEvent.click(historyToggle());
+
+    rerender(<Visit route="documents" data={emptyHistory} />);
+    expect(historyPanel()).toBeNull();
+    rerender(<Visit route="overview" data={emptyHistory} />);
+
+    expect(historyPanel()).not.toBeNull();
+    expect(historyToggle().getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('keeps a history with entries the user closed closed after the round trip', () => {
+    const { rerender } = render(<Visit route="overview" data={withHistory} />);
+    fireEvent.click(historyToggle());
+    expect(historyPanel()).toBeNull();
+
+    rerender(<Visit route="documents" data={withHistory} />);
+    rerender(<Visit route="overview" data={withHistory} />);
+
+    expect(historyPanel()).toBeNull();
+  });
+
+  it('applies a choice to its own Specification only', () => {
+    const other = { ...withHistory, id: 'SPEC-2' };
+    const { rerender } = render(<Visit route="overview" data={withHistory} />);
+    fireEvent.click(historyToggle());
+    expect(historyPanel()).toBeNull();
+
+    // Another Specification without a choice takes the default: open, it has entries.
+    rerender(<Visit route="overview" specId="SPEC-2" data={other} />);
+    expect(historyPanel()).not.toBeNull();
+    rerender(<Visit route="overview" specId="SPEC-2" data={{ ...other, activityEvents: [] }} />);
+    rerender(<Visit route="documents" data={other} />);
+    rerender(<Visit route="overview" specId="SPEC-2" data={{ ...other, activityEvents: [] }} />);
+    // Remounted without a choice: an empty history now stays closed by default.
+    expect(historyPanel()).toBeNull();
+
+    rerender(<Visit route="overview" data={withHistory} />);
     expect(historyPanel()).toBeNull();
   });
 });

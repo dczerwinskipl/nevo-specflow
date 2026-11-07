@@ -444,7 +444,8 @@ Tasks                                    Documents
 
 - **No empty bands.** Each column stacks on its own. A missing section collapses: without Requires
   attention Tasks open the work column; without a Session the next context section opens the
-  context column. Both columns start on one line under the summary.
+  context column. Both columns start on one line under the summary. With no context section to
+  show at all, Overview stays one column at any width instead of reserving an empty context track.
 - **Order.** Keyboard and reading order follow the visible order in both arrangements: one column
   reads in priority order, two columns read the work column, then the context column. The
   arrangement is therefore measured (`useContainerMinWidth`), not a CSS container query, and the
@@ -543,9 +544,13 @@ was rejected). On split-capable layouts it is the declarative Secondary of Overv
 - **On demand.** A Primary header toggle, **Activity history** (clock icon, `aria-pressed`), shows
   and hides it; the open Secondary also has its own Close. While a Task or document preview covers
   the history, the toggle brings the history forward.
-- **The user owns it after the first paint.** The default is taken once, when the Overview of a
-  Specification opens. A refresh or a first event never opens or closes it, so a history the user
-  opened stays open while it is empty, and one the user closed stays closed.
+- **The user's choice wins.** Once the user shows or hides the history of a Specification, that
+  choice holds for that Specification for the rest of the app session (in memory only; a reload
+  forgets it), including after leaving the Overview for Documents or a Session and coming back. A
+  history the user opened therefore never closes because it is empty, and one the user closed stays
+  closed even with entries. Other Specifications are unaffected.
+- **Default without a choice.** It is taken when the Overview mounts, so a refresh or a first event
+  never opens or closes the panel.
 - Narrow layouts keep the **Activity history** header action, which opens the history as a
   contextual flow.
 

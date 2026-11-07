@@ -96,7 +96,7 @@ function SpecificationWorkspaceInner({
   const { t } = useTranslation();
   const secondaryNavigation = useSecondaryNavigation();
   const { supportsSplit } = useWorkspaceCapabilities();
-  const historyPanel = useActivityHistoryPanel(data.activityEvents.length > 0);
+  const historyPanel = useActivityHistoryPanel(specId, data.activityEvents.length > 0);
 
   const {
     executeDialogOpen,

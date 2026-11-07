@@ -161,4 +161,17 @@ describe('Specification Overview columns', () => {
     expect(screen.getAllByRole('checkbox')[0]).toBe(checkbox);
     expect(checkbox.getAttribute('aria-checked')).toBe('true');
   });
+
+  it('stays one column at any width when no context section shows', () => {
+    const data = createSpecificationWorkspaceFixture('no-git');
+    const { container } = renderWorkView(2400, {
+      ...data,
+      resumeSession: undefined,
+      sectionAvailability: { documents: 'unavailable' },
+    });
+
+    expect(columns(container)).toBe('1');
+    expect(container.querySelector('[data-overview-column="context"]')).toBeNull();
+    expect(container.querySelector('#tasks-heading')).not.toBeNull();
+  });
 });

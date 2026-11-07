@@ -159,8 +159,9 @@ AppWorkspace owns the responsive split/stacked choice and automatic header contr
 The declarative (default) Secondary is shown while `AppWorkspace.Secondary`'s `open` is true
 (default `true`); `onOpenChange` gives it a Close. Whether it starts open is the product's choice:
 a Secondary that has nothing to show (for example an empty Activity history) may start closed, so
-the Primary keeps the space. Take that default once, when the scope opens, and leave the panel to
-the user afterwards: data updates never open or close it, so a panel the user opened is never
+the Primary keeps the space. Take that default when the screen mounts and leave the panel to the
+user afterwards: data updates never open or close it, and the user's explicit choice outlives the
+screen for the visit (a product visit store keyed by the scope), so a panel the user opened is never
 closed because it became or stayed empty. Offer the way back as a Primary header toggle
 (`presentation: 'icon'`, `pressed` while the panel shows), as Session (Context) and Specification
 Overview (Activity history) do.

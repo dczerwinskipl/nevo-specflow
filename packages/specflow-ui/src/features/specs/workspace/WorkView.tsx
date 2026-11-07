@@ -1,7 +1,10 @@
 import { Fragment } from 'react';
 import { cn, useContainerMinWidth } from '@nevo/ui';
 import { useUiModules } from '../../../app/ui-modules/UiModulesProvider';
-import { SpecificationWorkSectionOutlet } from './SpecificationWorkSectionOutlet';
+import {
+  hasVisibleWorkSections,
+  SpecificationWorkSectionOutlet,
+} from './SpecificationWorkSectionOutlet';
 import { SpecificationAttentionOutlet } from './SpecificationAttentionOutlet';
 import type { SpecificationWorkspaceData } from '../read-model/model';
 import { useWorkspaceRuntime } from './WorkspaceContext';
@@ -29,11 +32,11 @@ export interface WorkViewProps {
  * their priority order. From that width they form two columns that fill the pane: work on the left
  * (Requires attention, preparation, Tasks), context on the right (Continue session, repository,
  * Documents), with the summary above both. Each column stacks on its own, so a missing section
- * leaves no gap and both columns start on one line.
+ * leaves no gap and both columns start on one line. With no context section to show, Overview
+ * stays one column at any width rather than reserving an empty context track.
  *
  * The width is measured (`useContainerMinWidth`) rather than queried in CSS because the DOM order
- * changes with it: keyboard
- * and reading order follow the visible order in both arrangements, and independent columns need
+ * changes with it: keyboard and reading order follow the visible order in both arrangements, and independent columns need
  * their own containers. The summary, Requires attention, preparation and Tasks stay keyed children
  * of one parent, so crossing the threshold (for example when the Secondary opens) moves them
  * without remounting: a Task selection or an expanded description survives it.
@@ -41,8 +44,14 @@ export interface WorkViewProps {
 export function WorkView({ specId, data }: WorkViewProps) {
   const modules = useUiModules();
   const runtime = useWorkspaceRuntime();
-  const { matches: twoColumns, setElement } = useContainerMinWidth(OVERVIEW_TWO_COLUMN_MIN_WIDTH);
+  const { matches: wide, setElement } = useContainerMinWidth(OVERVIEW_TWO_COLUMN_MIN_WIDTH);
   const id = specId ?? data.id;
+  const hasContext = hasVisibleWorkSections(modules, ['context', 'related'], {
+    specId: id,
+    data,
+    actions: runtime,
+  });
+  const twoColumns = wide && hasContext;
 
   const summary = (
     <div key="summary" className={cn('pb-3', twoColumns && 'col-span-2')}>

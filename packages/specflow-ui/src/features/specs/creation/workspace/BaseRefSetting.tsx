@@ -1,7 +1,7 @@
 import type { MutableRefObject, ReactNode } from 'react';
 import { Field, SwitchField } from '@nevo/ui';
 import { Trans, useTranslation } from 'react-i18next';
-import type { CreateOptions } from '@nevo/specflow-contracts/specs';
+import { refDisplayName, type CreateOptions } from '@nevo/specflow-contracts/specs';
 import { useMessage, type Message } from '../../../../i18n/message';
 import { LocalizedOptionPicker } from '../../../../shared/controls/LocalizedOptionPicker';
 import { BranchRef } from './BranchRef';
@@ -65,7 +65,7 @@ export function BaseRefSetting({
     ) : (
       <Trans
         i18nKey="create.workspace.settings.baseDefault"
-        components={{ branch: <BranchRef name={options.defaultBaseRef} /> }}
+        components={{ branch: <BranchRef name={refDisplayName(options.defaultBaseRef)} /> }}
       />
     );
 
@@ -96,9 +96,10 @@ export function BaseRefSetting({
             onValueChange={(ref) => update.set({ base: { on: true, ref } })}
             items={options.baseRefs.map((item) => ({
               value: item.ref,
-              textValue: item.ref,
+              // The value is the full ref the request sends; people see the branch name.
+              textValue: refDisplayName(item.ref),
               meta: baseRefMeta(item.ref, item.checkedOutWorkspaceId),
-              label: (wraps) => <BranchRef name={item.ref} truncate={!wraps} />,
+              label: (wraps) => <BranchRef name={refDisplayName(item.ref)} truncate={!wraps} />,
             }))}
           />
           {error && <Field.Error>{text(error)}</Field.Error>}

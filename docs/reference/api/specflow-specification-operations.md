@@ -108,8 +108,12 @@ Creates stay possible). Create (every target, existing included) and the lifecyc
 closed** with `GIT_POLICY_INVALID`/503, because they read the policy to decide whether the Engine commits;
 fixing the configuration restores everything. Overview, workspace and document reads never read the policy and are
 unaffected.
-Local `baseRefs[].ref` values are `refs/heads/...`; project default may instead be
-`HEAD`, a SHA or a tag. An existing dirty workspace may be selectable for Create but is
+Local `baseRefs[].ref` values are always full refs `refs/heads/<branch>` (the contract schema requires it; remote refs
+are never listed): the ref is the option's identity and the value a `target.baseRef` override sends, and
+`<branch>` is its display name. Every other branch in create-options (`workspaces[].branch`,
+`integrationTargetBranch`, `integrationDestination.branch`) is a short name. `defaultBaseRef` is the configured
+value as written: `HEAD`, a SHA, a tag, a full ref, or a short local branch name that designates
+`refs/heads/<name>`. An existing dirty workspace may be selectable for Create but is
 not an integration-selectable destination. All options are a snapshot, not a reservation.
 
 Operation lookup returns `{operationId,kind:"specification-create",status:"in-progress"|"recovery-required",code?}`,

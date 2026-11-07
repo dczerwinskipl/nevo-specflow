@@ -566,7 +566,9 @@ export const BaseSuggestionAcceptMovesFocusAndAnnounces: Story = {
       await within(document.body).findByRole('option', { name: /feature\/platform/ }),
     );
     // Changing the base alone never changes the target.
-    await expect(request(canvas)).toBe('{"kind":"new-worktree","baseRef":"feature/platform"}');
+    await expect(request(canvas)).toBe(
+      '{"kind":"new-worktree","baseRef":"refs/heads/feature/platform"}',
+    );
     await expect(canvas.getByText(/Chcesz później scalić zmiany z powrotem do/)).toBeVisible();
     // Q9: short labels, so no button needs to truncate or reach into the DS Button internals.
     await expect(
@@ -582,7 +584,7 @@ export const BaseSuggestionAcceptMovesFocusAndAnnounces: Story = {
     await expect(request(canvas)).toBe(
       JSON.stringify({
         kind: 'new-worktree',
-        baseRef: 'feature/platform',
+        baseRef: 'refs/heads/feature/platform',
         integrationTargetWorkspaceId: workspaceIds.platform,
       }),
     );
@@ -607,7 +609,9 @@ export const BaseSuggestionDeclineKeepsTarget: Story = {
         selector: '[role="status"]',
       }),
     ).toBeInTheDocument();
-    await expect(request(canvas)).toBe('{"kind":"new-worktree","baseRef":"feature/platform"}');
+    await expect(request(canvas)).toBe(
+      '{"kind":"new-worktree","baseRef":"refs/heads/feature/platform"}',
+    );
   },
 };
 
@@ -760,7 +764,7 @@ export const StaleRememberedValueIsFlaggedOnReturn: Story = {
   args: {
     initial: {
       tile: 'main',
-      base: { on: true, ref: 'feature/removed' },
+      base: { on: true, ref: 'refs/heads/feature/removed' },
       existingWorkspaceId: workspaceIds.spike,
     },
   },
@@ -1167,7 +1171,9 @@ export const EnablingTheBaseSwitchPrefillsTheEffectiveDefault: Story = {
     await userEvent.click(
       await within(document.body).findByRole('option', { name: /release\/1\.4/ }),
     );
-    await expect(request(canvas)).toBe('{"kind":"new-worktree","baseRef":"release/1.4"}');
+    await expect(request(canvas)).toBe(
+      '{"kind":"new-worktree","baseRef":"refs/heads/release/1.4"}',
+    );
     // Off restores the default: turning it on again starts from the default, not the discarded pick.
     await userEvent.click(canvas.getByRole('switch', { name: 'Zacznij od innej gałęzi' }));
     await expect(request(canvas)).toBe('{"kind":"new-worktree"}');
@@ -1199,7 +1205,7 @@ export const DisclosureMetaWrapsAtWordBoundariesAt320: Story = {
   args: {
     initial: {
       settingsOpen: false,
-      base: { on: true, ref: 'feature/platform' },
+      base: { on: true, ref: 'refs/heads/feature/platform' },
       branch: {
         on: true,
         name: 'feature/a-fairly-long-custom-branch-name-for-narrow-screens',

@@ -143,7 +143,7 @@ describe('buildCreateRequest', () => {
   it('main has no target and no overrides, even when other tiles hold values', () => {
     const remembered = choice({
       tile: 'main',
-      base: { on: true, ref: 'feature/platform' },
+      base: { on: true, ref: 'refs/heads/feature/platform' },
       target: { on: true, workspaceId: ids.platform },
       branch: { on: true, name: 'feature/x', edited: true },
       existingWorkspaceId: ids.platform,
@@ -158,7 +158,7 @@ describe('buildCreateRequest', () => {
       choice({
         tile: 'existing',
         existingWorkspaceId: ids.platform,
-        base: { on: true, ref: 'main' },
+        base: { on: true, ref: 'refs/heads/main' },
         branch: { on: true, name: 'x', edited: true },
       }),
       options(),
@@ -176,7 +176,7 @@ describe('buildCreateRequest', () => {
     const target = buildCreateTarget(
       choice({
         tile: 'new',
-        base: { on: false, ref: 'feature/platform' },
+        base: { on: false, ref: 'refs/heads/feature/platform' },
         target: { on: false, workspaceId: ids.platform },
         branch: { on: false, name: 'feature/x', edited: true },
       }),
@@ -196,7 +196,7 @@ describe('buildCreateRequest', () => {
     const target = buildCreateTarget(
       choice({
         tile: 'new',
-        base: { on: on.base, ref: 'feature/platform' },
+        base: { on: on.base, ref: 'refs/heads/feature/platform' },
         target: { on: on.target, workspaceId: ids.architecture },
         branch: { on: on.branch, name: ' feature/payments-v2 ', edited: true },
       }),
@@ -204,7 +204,7 @@ describe('buildCreateRequest', () => {
     );
     expect(target).toEqual({
       kind: 'new-worktree',
-      ...(on.base ? { baseRef: 'feature/platform' } : {}),
+      ...(on.base ? { baseRef: 'refs/heads/feature/platform' } : {}),
       ...(on.branch ? { branch: 'feature/payments-v2' } : {}),
       ...(on.target ? { integrationTargetWorkspaceId: ids.architecture } : {}),
     });
@@ -225,8 +225,11 @@ describe('buildCreateRequest', () => {
   it('sends a base or target once it differs from the default', () => {
     const o = options();
     expect(
-      buildCreateTarget(choice({ tile: 'new', base: { on: true, ref: 'feature/platform' } }), o),
-    ).toEqual({ kind: 'new-worktree', baseRef: 'feature/platform' });
+      buildCreateTarget(
+        choice({ tile: 'new', base: { on: true, ref: 'refs/heads/feature/platform' } }),
+        o,
+      ),
+    ).toEqual({ kind: 'new-worktree', baseRef: 'refs/heads/feature/platform' });
     expect(
       buildCreateTarget(
         choice({ tile: 'new', target: { on: true, workspaceId: ids.architecture } }),
@@ -249,7 +252,7 @@ describe('buildCreateRequest', () => {
   it('changing tiles keeps remembered values and a round trip restores the same request', () => {
     const configured = choice({
       tile: 'new',
-      base: { on: true, ref: 'feature/platform' },
+      base: { on: true, ref: 'refs/heads/feature/platform' },
       branch: { on: true, name: 'feature/payments-v2', edited: true },
     });
     const first = buildCreateTarget(configured, options());
@@ -376,7 +379,7 @@ describe('inheritedTarget (Existing tile)', () => {
 describe('revalidate keeps values and flags them', () => {
   const remembered = choice({
     tile: 'main',
-    base: { on: true, ref: 'feature/platform' },
+    base: { on: true, ref: 'refs/heads/feature/platform' },
     target: { on: true, workspaceId: ids.platform },
     branch: { on: true, name: 'feature/payments-v2', edited: true },
     existingWorkspaceId: ids.platform,
@@ -386,7 +389,7 @@ describe('revalidate keeps values and flags them', () => {
   });
   it('flags a removed ref, a target that became dirty and a vanished workspace', () => {
     const stale = options('platform-dirty');
-    stale.baseRefs = stale.baseRefs.filter((b) => b.ref !== 'feature/platform');
+    stale.baseRefs = stale.baseRefs.filter((b) => b.ref !== 'refs/heads/feature/platform');
     const errors = revalidate(remembered, stale);
     expect(errors.base).toContain('nie jest już dostępna');
     expect(errors.target).toContain('nie może już być celem scalenia');
@@ -398,12 +401,12 @@ describe('revalidate keeps values and flags them', () => {
   });
   it('flags a custom name that has become taken', () => {
     const taken = options();
-    taken.baseRefs.push({ ref: 'feature/payments-v2' });
+    taken.baseRefs.push({ ref: 'refs/heads/feature/payments-v2' });
     expect(revalidate(remembered, taken).branch).toContain('już istnieje');
   });
   it('inactive tile values never block Create', () => {
     const stale = options();
-    stale.baseRefs = stale.baseRefs.filter((b) => b.ref !== 'feature/platform');
+    stale.baseRefs = stale.baseRefs.filter((b) => b.ref !== 'refs/heads/feature/platform');
     expect(problems(remembered, stale)).toEqual([]);
     expect(problems({ ...remembered, tile: 'new' }, stale)).toEqual([
       'Ta gałąź nie jest już dostępna. Wybierz inną lub wyłącz tę opcję.',
@@ -432,7 +435,10 @@ describe('revalidate keeps values and flags them', () => {
 });
 
 describe('mergeSuggestion (D5)', () => {
-  const onPlatform = choice({ tile: 'new', base: { on: true, ref: 'feature/platform' } });
+  const onPlatform = choice({
+    tile: 'new',
+    base: { on: true, ref: 'refs/heads/feature/platform' },
+  });
   it('offers merging back to a registered workspace, never automatically', () => {
     expect(mergeSuggestion(onPlatform, options())).toEqual({
       kind: 'offer',
@@ -441,23 +447,29 @@ describe('mergeSuggestion (D5)', () => {
     });
     expect(buildCreateTarget(onPlatform, options())).toEqual({
       kind: 'new-worktree',
-      baseRef: 'feature/platform',
+      baseRef: 'refs/heads/feature/platform',
     });
   });
   it('says why a dirty workspace is not offered', () => {
     expect(
       mergeSuggestion(
-        choice({ tile: 'new', base: { on: true, ref: 'feature/payments' } }),
+        choice({ tile: 'new', base: { on: true, ref: 'refs/heads/feature/payments' } }),
         options(),
       ),
     ).toEqual({ kind: 'dirty', branch: 'feature/payments' });
   });
   it('is silent for the primary branch, an unregistered ref, a declined or accepted offer', () => {
     expect(
-      mergeSuggestion(choice({ tile: 'new', base: { on: true, ref: 'develop' } }), options()),
+      mergeSuggestion(
+        choice({ tile: 'new', base: { on: true, ref: 'refs/heads/develop' } }),
+        options(),
+      ),
     ).toBeUndefined();
     expect(
-      mergeSuggestion(choice({ tile: 'new', base: { on: true, ref: 'release/1.4' } }), options()),
+      mergeSuggestion(
+        choice({ tile: 'new', base: { on: true, ref: 'refs/heads/release/1.4' } }),
+        options(),
+      ),
     ).toBeUndefined();
     expect(
       mergeSuggestion({ ...onPlatform, dismissedSuggestions: { [ids.platform]: true } }, options()),
@@ -473,7 +485,10 @@ describe('mergeSuggestion (D5)', () => {
     // The default target is the primary, so a linked workspace on that branch is not "already the target".
     const value = options('primary-other-branch');
     expect(
-      mergeSuggestion(choice({ tile: 'new', base: { on: true, ref: 'develop' } }), value),
+      mergeSuggestion(
+        choice({ tile: 'new', base: { on: true, ref: 'refs/heads/develop' } }),
+        value,
+      ),
     ).toEqual({ kind: 'offer', workspaceId: ids.platform, branch: 'develop' });
   });
   it('the effective target branch follows an explicit pick, else the project target', () => {
@@ -492,13 +507,13 @@ describe('copy helpers', () => {
   it('summarises overrides', () => {
     const o = options();
     expect(settingsSummary(choice(), o, 'T')).toBe('Ustawienia domyślne');
-    expect(settingsSummary(choice({ base: { on: true, ref: 'feature/platform' } }), o, 'T')).toBe(
-      'Zmienione ustawienia (1): baza',
-    );
+    expect(
+      settingsSummary(choice({ base: { on: true, ref: 'refs/heads/feature/platform' } }), o, 'T'),
+    ).toBe('Zmienione ustawienia (1): baza');
     expect(
       settingsSummary(
         choice({
-          base: { on: true, ref: 'feature/platform' },
+          base: { on: true, ref: 'refs/heads/feature/platform' },
           target: { on: true, workspaceId: ids.architecture },
           slug: { on: true, value: 'moj-slug', edited: true },
           branch: { on: true, name: 'x', edited: true },
@@ -535,12 +550,63 @@ describe('copy helpers', () => {
 
 describe('enabling the base switch starts from the effective default (F-08)', () => {
   it('base: the default ref, or the primary branch for a HEAD default, else nothing', () => {
-    expect(defaultBaseValue(options())).toBe('develop');
-    expect(defaultBaseValue(options('head-base'))).toBe('develop');
+    expect(defaultBaseValue(options())).toBe('refs/heads/develop');
+    expect(defaultBaseValue(options('head-base'))).toBe('refs/heads/develop');
     expect(defaultBaseValue(options('head-base-no-branch'))).toBe('');
     const unlisted = options();
-    unlisted.baseRefs = unlisted.baseRefs.filter((item) => item.ref !== 'develop');
+    unlisted.baseRefs = unlisted.baseRefs.filter((item) => item.ref !== 'refs/heads/develop');
     expect(defaultBaseValue(unlisted)).toBe('');
+  });
+});
+
+describe('base refs in the project Runtime format (full refs, short workspace branches)', () => {
+  // What a real project Runtime serves for a repository on `main` with the Engine default `HEAD`.
+  const runtime = (defaultBaseRef = 'HEAD') => {
+    const value = options();
+    value.defaultBaseRef = defaultBaseRef;
+    value.workspaces = value.workspaces.map((w) =>
+      w.kind === 'primary' ? { ...w, branch: 'main' } : w,
+    );
+    value.baseRefs = [
+      { ref: 'refs/heads/main', checkedOutWorkspaceId: ids.main },
+      { ref: 'refs/heads/feature/x' },
+    ];
+
+    return value;
+  };
+
+  const baseOn = (o: ReturnType<typeof runtime>) =>
+    choice({ tile: 'new', base: { on: true, ref: defaultBaseValue(o) } });
+
+  it('preselects the listed full ref the default designates', () => {
+    expect(defaultBaseValue(runtime())).toBe('refs/heads/main');
+    expect(defaultBaseValue(runtime('main'))).toBe('refs/heads/main');
+    expect(defaultBaseValue(runtime('refs/heads/feature/x'))).toBe('refs/heads/feature/x');
+    expect(defaultBaseValue(runtime('refs/tags/v1.0'))).toBe('');
+    expect(defaultBaseValue(runtime('0123456789abcdef0123456789abcdef01234567'))).toBe('');
+  });
+  it('turning the switch on does not block Create and sends no override', () => {
+    for (const value of ['HEAD', 'main', 'refs/heads/main']) {
+      const o = runtime(value);
+      expect(problems(baseOn(o), o), value).toEqual([]);
+      expect(revalidate(baseOn(o), o).base, value).toBeUndefined();
+      expect(buildCreateRequest(baseOn(o), o, 'T', op).target, value).toEqual({
+        kind: 'new-worktree',
+      });
+    }
+  });
+  it('sends another listed branch as the full ref the Runtime listed', () => {
+    const o = runtime();
+    const other = choice({ tile: 'new', base: { on: true, ref: 'refs/heads/feature/x' } });
+    expect(problems(other, o)).toEqual([]);
+    expect(buildCreateRequest(other, o, 'T', op).target).toEqual({
+      kind: 'new-worktree',
+      baseRef: 'refs/heads/feature/x',
+    });
+  });
+  it('a typed branch name collides with a listed branch that no workspace has checked out', () => {
+    expect(branchNameError('feature/x', runtime())).toContain('już istnieje');
+    expect(branchNameError('feature/y', runtime())).toBeUndefined();
   });
 });
 
@@ -553,13 +619,16 @@ describe('switch values come from the options, never from a hard-coded branch', 
   it('base on: a value equal to the options default is not an override; off: omitted', () => {
     const o = custom();
     const ref = defaultBaseValue(o);
-    expect(ref).toBe('release/1.4');
+    expect(ref).toBe('refs/heads/release/1.4');
     expect(buildCreateTarget(choice({ tile: 'new', base: { on: true, ref } }), o)).toEqual({
       kind: 'new-worktree',
     });
     expect(
-      buildCreateTarget(choice({ tile: 'new', base: { on: true, ref: 'feature/platform' } }), o),
-    ).toEqual({ kind: 'new-worktree', baseRef: 'feature/platform' });
+      buildCreateTarget(
+        choice({ tile: 'new', base: { on: true, ref: 'refs/heads/feature/platform' } }),
+        o,
+      ),
+    ).toEqual({ kind: 'new-worktree', baseRef: 'refs/heads/feature/platform' });
     expect(buildCreateTarget(choice({ tile: 'new', base: { on: false, ref } }), o)).toEqual({
       kind: 'new-worktree',
     });
@@ -629,7 +698,7 @@ describe('integration target request semantics (explicit pin vs follow the proje
     });
   });
   it('the target is independent of baseRef and never derived from a branch name', () => {
-    for (const ref of ['feature/platform', 'spec/architecture']) {
+    for (const ref of ['refs/heads/feature/platform', 'refs/heads/spec/architecture']) {
       expect(buildCreateTarget(newTile({ base: { on: true, ref } }), options())).toEqual({
         kind: 'new-worktree',
         baseRef: ref,
@@ -638,14 +707,14 @@ describe('integration target request semantics (explicit pin vs follow the proje
 
     const both = buildCreateTarget(
       newTile({
-        base: { on: true, ref: 'feature/platform' },
+        base: { on: true, ref: 'refs/heads/feature/platform' },
         target: { on: true, workspaceId: ids.architecture },
       }),
       options(),
     );
     expect(both).toEqual({
       kind: 'new-worktree',
-      baseRef: 'feature/platform',
+      baseRef: 'refs/heads/feature/platform',
       integrationTargetWorkspaceId: ids.architecture,
     });
     expect(
@@ -656,7 +725,7 @@ describe('integration target request semantics (explicit pin vs follow the proje
     ).toEqual({ kind: 'new-worktree', branch: 'develop-2' });
   });
   it('accepting the merge suggestion is the only way it becomes a pin; declining sends nothing', () => {
-    const base = newTile({ base: { on: true, ref: 'feature/platform' } });
+    const base = newTile({ base: { on: true, ref: 'refs/heads/feature/platform' } });
     expect(mergeSuggestion(base, options())).toMatchObject({ kind: 'offer' });
     expect(buildCreateTarget(base, options())).not.toHaveProperty('integrationTargetWorkspaceId');
     const declined = { ...base, dismissedSuggestions: { [ids.platform]: true as const } };

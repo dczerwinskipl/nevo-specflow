@@ -1,4 +1,5 @@
 import type { DemoCreateOptions, DemoCreatedSpec } from '@nevo/specflow-contracts/demo';
+import { localBranchRef } from '@nevo/specflow-contracts/specs';
 
 /**
  * Deterministic `create-options` fixtures for stories and unit tests. They mirror the shapes of
@@ -139,13 +140,14 @@ export function seedOptions(): DemoCreateOptions {
     worktreesRoot: { path: '/work/acme-app-worktrees', exists: true },
     integrationTargetBranch: 'develop',
     baseRefs: [
-      { ref: 'develop', checkedOutWorkspaceId: ids.main },
-      { ref: 'feature/platform', checkedOutWorkspaceId: ids.platform },
-      { ref: 'feature/payments', checkedOutWorkspaceId: ids.payments },
-      { ref: 'spec/architecture', checkedOutWorkspaceId: ids.architecture },
-      { ref: 'release/1.4' },
-      { ref: 'main' },
-      { ref: 'feature/legacy' },
+      // Full refs, like the Runtime; workspace branches and the default stay short names.
+      { ref: localBranchRef('develop'), checkedOutWorkspaceId: ids.main },
+      { ref: localBranchRef('feature/platform'), checkedOutWorkspaceId: ids.platform },
+      { ref: localBranchRef('feature/payments'), checkedOutWorkspaceId: ids.payments },
+      { ref: localBranchRef('spec/architecture'), checkedOutWorkspaceId: ids.architecture },
+      { ref: localBranchRef('release/1.4') },
+      { ref: localBranchRef('main') },
+      { ref: localBranchRef('feature/legacy') },
     ],
   };
 }
@@ -204,9 +206,9 @@ export function createOptionsFixture(variant: OptionsVariant = 'default'): DemoC
         (w) => w.kind === 'primary',
       );
       next.baseRefs = next.baseRefs.map((b) =>
-        b.ref === 'develop'
+        b.ref === localBranchRef('develop')
           ? { ref: b.ref }
-          : b.ref === 'main'
+          : b.ref === localBranchRef('main')
             ? { ...b, checkedOutWorkspaceId: workspaceIds.main }
             : b,
       );
@@ -286,10 +288,11 @@ export function createOptionsFixture(variant: OptionsVariant = 'default'): DemoC
         (w) => w.workspaceId === workspaceIds.platform,
       );
       next.baseRefs = [
-        { ref: 'develop', checkedOutWorkspaceId: workspaceIds.platform },
-        { ref: 'release/1.4', checkedOutWorkspaceId: workspaceIds.main },
+        { ref: localBranchRef('develop'), checkedOutWorkspaceId: workspaceIds.platform },
+        { ref: localBranchRef('release/1.4'), checkedOutWorkspaceId: workspaceIds.main },
         ...next.baseRefs.filter(
-          (b) => !['develop', 'feature/platform', 'release/1.4'].includes(b.ref),
+          (b) =>
+            !['develop', 'feature/platform', 'release/1.4'].map(localBranchRef).includes(b.ref),
         ),
       ];
       break;
@@ -342,7 +345,7 @@ export function createOptionsFixture(variant: OptionsVariant = 'default'): DemoC
           integrationSelectable: true,
           branch,
         });
-        next.baseRefs.push({ ref: branch, checkedOutWorkspaceId: workspaceId });
+        next.baseRefs.push({ ref: localBranchRef(branch), checkedOutWorkspaceId: workspaceId });
       }
 
       break;
@@ -362,7 +365,7 @@ export function createOptionsFixture(variant: OptionsVariant = 'default'): DemoC
         (w) => w.workspaceId === workspaceIds.platform,
       );
       next.baseRefs = next.baseRefs.map((b) =>
-        b.ref === 'feature/platform' ? { ...b, ref: long } : b,
+        b.ref === localBranchRef('feature/platform') ? { ...b, ref: localBranchRef(long) } : b,
       );
       break;
     }

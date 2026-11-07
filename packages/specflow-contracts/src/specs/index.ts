@@ -1,7 +1,13 @@
 export { SpecCapabilities } from './capabilities';
 export { ProjectGitCapabilities } from './close-capabilities';
 export * from './close';
-export { CreateCommitsSchema, CreateOptionsSchema, type CreateOptions } from './create-options';
+export {
+  CreateCommitsSchema,
+  CreateOptionsSchema,
+  localBranchRef,
+  refDisplayName,
+  type CreateOptions,
+} from './create-options';
 
 export {
   BRANCH_PATTERN_MAX_ENTRIES,

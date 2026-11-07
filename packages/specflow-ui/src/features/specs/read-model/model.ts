@@ -40,7 +40,8 @@ export interface SessionSummary {
   readonly id: string;
   readonly title: string;
   readonly meta?: string;
-  readonly taskCount?: string;
+  /** Number of Tasks the Session is linked to; absent when it has none. */
+  readonly taskCount?: number;
   readonly age?: string;
   readonly activity?: SessionActivity;
   readonly activityCode?: 'active' | 'attention';

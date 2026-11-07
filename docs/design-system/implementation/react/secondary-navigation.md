@@ -155,6 +155,15 @@ may remount screens; an ordinary data update must not.
 ## Presentation
 
 AppWorkspace owns the responsive split/stacked choice and automatic header controls.
+
+The declarative (default) Secondary is shown while `AppWorkspace.Secondary`'s `open` is true
+(default `true`); `onOpenChange` gives it a Close. Whether it starts open is the product's choice:
+a Secondary that has nothing to show (for example an empty Activity history) may start closed, so
+the Primary keeps the space. Take that default once, when the scope opens, and leave the panel to
+the user afterwards: data updates never open or close it, so a panel the user opened is never
+closed because it became or stayed empty. Offer the way back as a Primary header toggle
+(`presentation: 'icon'`, `pressed` while the panel shows), as Session (Context) and Specification
+Overview (Activity history) do.
 On Narrow, the active runtime Secondary replaces visible Primary and Back occupies the navigation
 position instead of the global hamburger. On desktop/split with a single runtime flow (no tab
 strip), Back and Close are provided by the workspace header. With the root-tab strip shown on

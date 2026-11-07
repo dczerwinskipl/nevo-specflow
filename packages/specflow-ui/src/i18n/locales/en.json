@@ -211,6 +211,11 @@
     "taskStatusBlocked": "Blocked",
     "sessionStatusActive": "Active",
     "sessionStatusAttention": "Requires attention",
+    "sessionStatusQuiet": "Idle",
+    "sessionTaskCount_one": "{{count}} task",
+    "sessionTaskCount_other": "{{count}} tasks",
+    "sessionTaskCount_few": "{{count}} tasks",
+    "sessionTaskCount_many": "{{count}} tasks",
     "attentionViewTask": "View task",
     "viewTasks": "Tasks"
   },

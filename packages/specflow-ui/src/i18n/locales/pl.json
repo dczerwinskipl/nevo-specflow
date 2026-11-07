@@ -211,6 +211,11 @@
     "taskStatusBlocked": "Zablokowane",
     "sessionStatusActive": "Aktywna",
     "sessionStatusAttention": "Wymaga uwagi",
+    "sessionStatusQuiet": "Bezczynna",
+    "sessionTaskCount_one": "{{count}} zadanie",
+    "sessionTaskCount_few": "{{count}} zadania",
+    "sessionTaskCount_many": "{{count}} zadań",
+    "sessionTaskCount_other": "{{count}} zadania",
     "attentionViewTask": "Zobacz zadanie",
     "viewTasks": "Zadania"
   },

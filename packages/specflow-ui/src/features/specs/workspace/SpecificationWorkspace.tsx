@@ -32,6 +32,7 @@ import {
   type SpecificationSecondaryContextValue,
 } from './specificationSecondaryStack';
 import { useSpecificationDialogs } from './useSpecificationDialogs';
+import { useActivityHistoryPanel } from './useActivityHistoryPanel';
 import { TaskViewStateProvider } from '../../tasks';
 
 function fullTaskHref(specId: string, taskId: string, collection: 'current' | 'archive'): string {
@@ -95,6 +96,7 @@ function SpecificationWorkspaceInner({
   const { t } = useTranslation();
   const secondaryNavigation = useSecondaryNavigation();
   const { supportsSplit } = useWorkspaceCapabilities();
+  const historyPanel = useActivityHistoryPanel(data.activityEvents.length > 0);
 
   const {
     executeDialogOpen,
@@ -249,16 +251,24 @@ function SpecificationWorkspaceInner({
                 icon="file"
                 labels={{ moreActions: t('common.moreActions') }}
                 actions={[
-                  ...(!supportsSplit
-                    ? [
-                        {
-                          id: 'history',
-                          icon: 'clock' as const,
-                          label: t('specification.activityHistory'),
-                          onPress: handleOpenHistory,
-                        },
-                      ]
-                    : []),
+                  // Narrow: history opens as a contextual flow. Split: the declarative history
+                  // Secondary is shown or hidden by a toggle, the way back when it starts closed.
+                  supportsSplit
+                    ? {
+                        id: 'history',
+                        icon: 'clock' as const,
+                        presentation: 'icon' as const,
+                        label: t('specification.activityHistory'),
+                        pressed: historyPanel.visible,
+                        direct: 'always' as const,
+                        onPress: () => void historyPanel.toggle(),
+                      }
+                    : {
+                        id: 'history',
+                        icon: 'clock' as const,
+                        label: t('specification.activityHistory'),
+                        onPress: handleOpenHistory,
+                      },
                   ...(onRefresh
                     ? [
                         {
@@ -280,15 +290,17 @@ function SpecificationWorkspaceInner({
               />
             }
           >
-            {/* The scroller fills the pane; the reading column sits inside it, left-aligned. */}
+            {/* The scroller fills the pane. Overview is a left-aligned reading column inside it,
+              or two columns filling it once the pane is wide enough (WorkView). */}
             <AppContent className="w-full">
               <AppWorkspaceBody scroll="area" contentClassName="py-6">
-                <AppContentContainer align="start" size="standard" className="grid gap-6">
+                <AppContentContainer align="start" size="full" className="grid gap-6">
                   {refreshFailed ? (
                     <Alert
                       tone="attention"
                       role="status"
                       title={t('specification.unavailableTitle')}
+                      className="max-w-content-standard"
                     >
                       {t('specification.unavailableDescription', { id: specId })}
                     </Alert>
@@ -309,8 +321,11 @@ function SpecificationWorkspaceInner({
             </AppContent>
           </AppWorkspace.Primary>
 
-          {/* Declarative base Secondary: Activity History shown on split-capable layouts */}
+          {/* Declarative base Secondary: Activity history on split-capable layouts, open by
+            default only when it has entries (useActivityHistoryPanel). */}
           <AppWorkspace.Secondary
+            open={historyPanel.open}
+            onOpenChange={historyPanel.setOpen}
             header={<WorkspaceHeader as="h2" title={t('specification.activityHistory')} />}
           >
             <AppContent>

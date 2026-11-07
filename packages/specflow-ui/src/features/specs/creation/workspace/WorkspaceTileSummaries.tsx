@@ -5,7 +5,7 @@ import { Trans, useTranslation } from 'react-i18next';
 import { useMessage } from '../../../../i18n/message';
 import { Badge, DescriptionList, Field, Icon, InlineNote, Typography, cn } from '@nevo/ui';
 import { LocalizedOptionPicker } from '../../../../shared/controls/LocalizedOptionPicker';
-import type { CreateOptions } from '@nevo/specflow-contracts/specs';
+import { refDisplayName, type CreateOptions } from '@nevo/specflow-contracts/specs';
 import { BranchRef } from './BranchRef';
 import { NewWorkspaceSettings, type WorkspaceSettingsControls } from './NewWorkspaceSettings';
 import { WorkspaceLabel, WorkspaceRef } from './WorkspaceRef';
@@ -135,7 +135,7 @@ function mergeRow(
 function BaseValue({ options, base }: { options: CreateOptions; base?: string }) {
   const { t } = useTranslation();
   if (base) {
-    return <BranchRef name={base} />;
+    return <BranchRef name={refDisplayName(base)} />;
   }
 
   const primary = primaryWorkspace(options);
@@ -147,7 +147,7 @@ function BaseValue({ options, base }: { options: CreateOptions; base?: string })
     );
   }
 
-  return <BranchRef name={options.defaultBaseRef} />;
+  return <BranchRef name={refDisplayName(options.defaultBaseRef)} />;
 }
 
 export function NewSummary({

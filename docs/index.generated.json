@@ -5602,7 +5602,7 @@
         "reviewing Specification creation and manual or AI preparation in the demo",
         "reviewing the Documents explorer and editor interactions"
       ],
-      "summary": "Owner-approved Create and Documents contract of the bounded demo: workflow-led single-column creation, first-session configuration, branch/worktree choice, preview-first documents in a larger Secondary, and folder-context inline file operations through bounded Runtime demo capabilities.",
+      "summary": "Owner-approved Create and Documents contract of the bounded demo: workflow-led creation in one column, or two from a 992 px form column, first-session configuration, branch/worktree choice, preview-first documents in a larger Secondary, and folder-context inline file operations through bounded Runtime demo capabilities.",
       "related": [
         "ideas.specflow-ui.screens.specs-overview",
         "ideas.specflow-ui.navigation-route-model",

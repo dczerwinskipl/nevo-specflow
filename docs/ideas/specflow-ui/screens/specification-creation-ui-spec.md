@@ -16,8 +16,8 @@ read_when:
   - reviewing Specification creation and manual or AI preparation in the demo
   - reviewing the Documents explorer and editor interactions
 summary: >
-  Owner-approved Create and Documents contract of the bounded demo: workflow-led single-column
-  creation, first-session configuration, branch/worktree choice, preview-first documents in a larger
+  Owner-approved Create and Documents contract of the bounded demo: workflow-led creation in one
+  column, or two from a 992 px form column, first-session configuration, branch/worktree choice, preview-first documents in a larger
   Secondary, and folder-context inline file operations through bounded Runtime demo capabilities.
 related:
   - ideas.specflow-ui.screens.specs-overview
@@ -68,12 +68,12 @@ project operations. A project-mode Runtime never receives a mock of these capabi
 
 ## Regions
 
-| Surface       | User question and hierarchy                                         | Composition                                                                               |
-| ------------- | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| Create entry  | How do I want to work?                                              | Two large cards on a full page; no Secondary, no form in a modal.                         |
-| Create config | What am I creating? What does the workflow need? Who starts? Where? | One Primary column: workflow description, first-Session setup (AI only), branch/worktree. |
-| Documents     | Where is the file? What am I editing? Are there unsaved changes?    | Smaller Primary with the tree, larger Secondary with one active content.                  |
-| Session       | Who do I work with? Where do I check the context?                   | Existing Session placeholder in Primary, one composer, general Context in Secondary.      |
+| Surface       | User question and hierarchy                                         | Composition                                                                                         |
+| ------------- | ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Create entry  | How do I want to work?                                              | Two large cards on a full page; no Secondary, no form in a modal.                                   |
+| Create config | What am I creating? What does the workflow need? Who starts? Where? | Primary only: what is created, then who starts it and where; two columns from a 992 px form column. |
+| Documents     | Where is the file? What am I editing? Are there unsaved changes?    | Smaller Primary with the tree, larger Secondary with one active content.                            |
+| Session       | Who do I work with? Where do I check the context?                   | Existing Session placeholder in Primary, one composer, general Context in Secondary.                |
 
 Free space is not filled with extra metadata. Header, breadcrumb and document identity do not scroll
 with the content; each region or editor has exactly one scroll owner. Proportions and breakpoints come
@@ -104,9 +104,18 @@ from `AppWorkspace`.
 - The first step is two fully active cards, **With an agent** and **On my own**. Wide: equal columns
   sized by the tallest content; narrow: stacked, icon next to the label, DS hit target and focus. No
   segments, radios or selects.
-- The form is **Name, Workflow, first Session (AI only), Branch and worktree**, single column on every
-  width. No Secondary, summary on the right, planned-file tree, upload or optional-file choice before
-  Create.
+- The form is **Name, Workflow, first Session (AI only), Branch and worktree**. It is one column
+  below a 992 px form column (`62rem`, a container query on the form column, not the viewport): at
+  1280 px, at 200% zoom and on mobile. From that width it is two columns: the left column holds what
+  is created (name and workflow with its documents), the right column who starts it and where (the
+  first Session's agent, then branch and worktree), in the same order as the single column. DOM
+  order is the reading and Tab order. No Secondary, summary or preview on the right, planned-file
+  tree, upload or optional-file choice before Create. Controls keep their maximum widths (about
+  34rem for text inputs, the provider cards and the agent fields), and the Create button ends on the
+  form's edge. A blocked Create behaves as in
+  [Specification creation](../../../product/specflow/specification-creation.md#user-choices): it
+  stays focusable (`aria-disabled`), sends nothing and leads to the first faulty field (name,
+  workflow, the agent, then branch and worktree).
 - **Back to the method choice** keeps the name, workflow, branch/worktree and the last agent setup. The
   prompt is not sent from the form; the first message is written in the composer of the opened Session.
 
@@ -155,15 +164,16 @@ prepared in-memory result, not an executed repository operation.
 
 ### Pending, success and recovery
 
-| Outcome                              | Required behaviour                                                                                                                               |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Pending Create                       | One request and logical operation; the CTA is disabled and double submit is guarded; the values stay.                                            |
-| Confirmed manual success             | Straight to the Documents of the new specification, editing the first editable required document or a meaningful empty state.                    |
-| Confirmed AI success                 | Straight to the initial idle Session with an empty composer; the context is passed by the system.                                                |
-| Success (both paths)                 | A short accessible toast **Specification created**; no success screen, extra choice or blocking overlay.                                         |
-| Validation or refusal                | The form stays with its data and configuration; the error sits at the right field or action.                                                     |
-| Unknown outcome / lost response      | Recovery establishes the authoritative result of the same operation; no blind second Create; a retry reuses the same identity (idempotency key). |
-| Specification exists, Session failed | Go to the Documents of the existing specification with **Could not open the Session** and a retry of the Session only; no second Create.         |
+| Outcome                              | Required behaviour                                                                                                                                |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Pending Create                       | One request and logical operation; the CTA is disabled and double submit is guarded; the values stay.                                             |
+| Blocked Create                       | Nothing is sent; the CTA stays focusable (`aria-disabled`), announces the reason and leads to the first faulty field, also with Enter in a field. |
+| Confirmed manual success             | Straight to the Documents of the new specification, editing the first editable required document or a meaningful empty state.                     |
+| Confirmed AI success                 | Straight to the initial idle Session with an empty composer; the context is passed by the system.                                                 |
+| Success (both paths)                 | A short accessible toast **Specification created**; no success screen, extra choice or blocking overlay.                                          |
+| Validation or refusal                | The form stays with its data and configuration; the error sits at the right field or action.                                                      |
+| Unknown outcome / lost response      | Recovery establishes the authoritative result of the same operation; no blind second Create; a retry reuses the same identity (idempotency key).  |
+| Specification exists, Session failed | Go to the Documents of the existing specification with **Could not open the Session** and a retry of the Session only; no second Create.          |
 
 After a failed Create the values and the operation identity are kept; if the user stayed at the sent
 action, feedback and retry are revealed in the existing scroll without capturing the scroll of a user who

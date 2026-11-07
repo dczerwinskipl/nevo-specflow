@@ -150,7 +150,7 @@ export async function launchOwnedProcess(options: {
   function stopTree() {
     termination ??= (
       windowsJob
-        ? windowsJob.stop().finally(() => {
+        ? windowsJob.stop(child.exitCode !== null || child.signalCode !== null).finally(() => {
             // A bootstrap can still be loading before job assignment. It cannot dispatch
             // after the job closes; terminate its exact ChildProcess handle as well.
             if (child.exitCode === null) {

@@ -72,6 +72,13 @@ These manual checks ran outside all automated suites, with owned scratch paths,
 synthetic local model replies where required, and no inference subscription.
 Standalone helper checks do not certify the complete native Turn path.
 
+Windows root-exit notification may arrive before Job Object accounting reaches
+zero. Runtime allows a bounded 100 ms accounting drain after observed root exit,
+then terminates any remaining owned processes and independently verifies zero.
+Root exit alone never proves tree settlement. Explicit cancellation of a running
+root does not wait through this natural-exit drain. Regression tests cover delayed
+accounting, surviving descendants and unavailable termination evidence.
+
 Claude uses `CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR=1` in its fixed settings so
 the displayed starting directory remains the project root. A two-command native
 control changed directory in the first command and confirmed that the second

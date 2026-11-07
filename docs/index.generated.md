@@ -265,6 +265,7 @@ Regenerate with `pnpm docs:check --write`. Human-authored navigation lives in [`
 | `product.specflow.ui.documents-editor-mode` | [Documents editor mode](product/specflow/ui/documents-editor-mode.md) | draft | Behavior of the Documents screen with several open documents (tree plus tabbed document area), the same tabs as read-only previews in a Session, and the open decisions around the layout. |
 | `product.specflow.ui.interaction-model` | [UI interaction model](product/specflow/ui/interaction-model.md) | draft | Responsive shell with independent navigation and workspace breakpoints, the product navigation hierarchy, context-preserving drill-down, and when to use floating, Secondary, pushed-detail, or full-workspace surfaces. |
 | `product.specflow.ui.personas` | [UI personas](product/specflow/ui/personas.md) | draft | Who uses the UI — the owner monitoring and steering work, and the reviewer checking a change — and what each needs from it. The UI observes and steers; it does not replace the CLI/PR workflow. |
+| `product.specflow.ui.shell-geometry` | [App Shell geometry decisions](product/specflow/ui/shell-geometry.md) | current | Owner decisions of November 2026 on SpecFlow screen geometry: one Focused frame that grows to 1440 px for the Specifications list and Create, full width inside a Specification, a two-column Create and Specification Overview, the alternatives that were rejected and why, and the UX findings left open for later work. |
 
 ## Reference
 

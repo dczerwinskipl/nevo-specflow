@@ -6037,6 +6037,26 @@
       ]
     },
     {
+      "id": "product.specflow.ui.shell-geometry",
+      "type": "product",
+      "title": "App Shell geometry decisions",
+      "status": "current",
+      "file": "docs/product/specflow/ui/shell-geometry.md",
+      "read_when": [
+        "changing the width or position of the Specifications list, Create Specification or a Specification screen",
+        "changing AppWorkspace fit, the Focused frame or the Bounded workspace rule",
+        "adding a section to Specification Overview or changing its columns",
+        "picking up an open UX finding about the shell, the navigator or mobile"
+      ],
+      "summary": "Owner decisions of November 2026 on SpecFlow screen geometry: one Focused frame that grows to 1440 px for the Specifications list and Create, full width inside a Specification, a two-column Create and Specification Overview, the alternatives that were rejected and why, and the UX findings left open for later work.",
+      "related": [
+        "design-system.principles.layout-and-containment",
+        "design-system.implementation.react.secondary-navigation",
+        "product.specflow.specification-creation",
+        "product.specflow.ui.interaction-model"
+      ]
+    },
+    {
       "id": "ideas.specflow-engine.acceptance",
       "type": "reference",
       "title": "Engine worktree foundation acceptance criteria",

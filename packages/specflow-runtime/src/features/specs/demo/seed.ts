@@ -1,4 +1,5 @@
 import type { DemoCreateOptions } from '@nevo/specflow-contracts/demo';
+import { localBranchRef } from '@nevo/specflow-contracts/specs';
 
 /**
  * Synthetic workspace registry (the default seed) of the demo create options.
@@ -147,13 +148,14 @@ export function seedCreateOptions(): DemoCreateOptions {
     // Git is on, so the Engine commits the scaffold; only `main` is protected in the demo project.
     commits: { protectedBranches: ['main'] },
     baseRefs: [
-      { ref: 'develop', checkedOutWorkspaceId: ids.main },
-      { ref: 'feature/platform', checkedOutWorkspaceId: ids.platform },
-      { ref: 'feature/payments', checkedOutWorkspaceId: ids.payments },
-      { ref: 'spec/architecture', checkedOutWorkspaceId: ids.architecture },
-      { ref: 'release/1.4' },
-      { ref: 'main' },
-      { ref: 'feature/legacy' },
+      // Full refs, like the Engine; workspace branches and the default stay short names.
+      { ref: localBranchRef('develop'), checkedOutWorkspaceId: ids.main },
+      { ref: localBranchRef('feature/platform'), checkedOutWorkspaceId: ids.platform },
+      { ref: localBranchRef('feature/payments'), checkedOutWorkspaceId: ids.payments },
+      { ref: localBranchRef('spec/architecture'), checkedOutWorkspaceId: ids.architecture },
+      { ref: localBranchRef('release/1.4') },
+      { ref: localBranchRef('main') },
+      { ref: localBranchRef('feature/legacy') },
     ],
   };
 }

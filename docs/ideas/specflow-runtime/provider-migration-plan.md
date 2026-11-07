@@ -69,6 +69,19 @@ credential was used.
 | A02 — P2, refresh settlement under transient store pressure | A failed native read followed by one busy terminal-state write could leave durable refresh state `running`; a successful read followed by the same failure could be incorrectly marked failed.                                                                                                                | Retry only `SESSION_STORE_BUSY`, at most three attempts with 250 ms spacing, preserving generation fencing. The native source is read once. `lifecycle/telemetry.test.ts` covers success/failure, running-state pressure, retry exhaustion and owner shutdown. Persistent store failure still requires existing restart recovery; no outcome is fabricated when persistence is unavailable. |
 | A03 — P2 hardening, known bearer-secret variants            | Private diagnostic capture received a known `Bearer <credential>` secret, but an unlabelled raw or percent-encoded credential component could remain in captured stderr. This was reproduced with a synthetic token, not an observed personal-secret disclosure.                                              | Include the credential component among existing known-secret variants. `process/diagnostics.test.ts` exercises actual bounded diagnostic capture; public errors/DTOs are unchanged.                                                                                                                                                                                                         |
 
+**A04 — P2, account-switch observation retirement.** The service submitted the new
+account to the normal observation fence, but Worker correctly rejected that scope
+against immutable native Session binding. A cached old driver scope could therefore
+keep showing the old account's limits; late native gauges could also restore them.
+The real service/Worker regression fails against the pre-fix implementation.
+The correction separates retirement from rebinding: revalidate the observed account
+under serialized admission, compare the prior durable fence transactionally, retire
+gauges and old refresh state, and ignore old-account native gauges. Session identity
+and historical usage/cost remain unchanged. The regression also verifies that delayed
+retirement cannot erase a newer valid login/publication or admit observations for
+the wrong account. An independent reviewer reproduced the original defect and
+reviewed the correction; the two telemetry suites passed all 42 tests.
+
 Additional controlled Windows checks verify that held direct-file identities reject
 rename/delete, trailing dot/space aliases, alternate data streams and outside-root
 paths, and allow normal use followed by release on the matching receipt. These

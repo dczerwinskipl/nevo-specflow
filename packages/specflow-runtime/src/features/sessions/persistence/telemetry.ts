@@ -457,6 +457,13 @@ export function createSessionTelemetry(
 
     if (f.metric !== 'cost') {
       const data = load(sid);
+      const scope = get('SELECT scope FROM provider_contexts WHERE session=?', sid)?.scope;
+      // Historical accounting survives an account switch; current gauges from
+      // the old native invocation must not resurrect retired observations.
+      if (data.observationFence && data.observationFence.scope !== scope) {
+        return;
+      }
+
       const reading = {
         status: 'available' as const,
         freshness: 'fresh' as const,
@@ -472,10 +479,8 @@ export function createSessionTelemetry(
           ...reading,
           staleAt: new Date(Date.parse(reading.observedAt) + 60_000).toISOString(),
         } as TelemetryReading<TelemetryContextUsage>;
-        const scope = get('SELECT scope FROM provider_contexts WHERE session=?', sid)?.scope;
         data.contextScope = typeof scope === 'string' ? scope : undefined;
       } else {
-        const scope = get('SELECT scope FROM provider_contexts WHERE session=?', sid)?.scope;
         limitsObservation(
           data,
           f,
@@ -930,6 +935,30 @@ export function createSessionTelemetry(
     save(s, data);
   }
 
+  function observationBinding(s: StoredSession) {
+    return load(s.snapshot.session.sessionId).observationFence;
+  }
+
+  function retireObservations(
+    s: StoredSession,
+    scope: string,
+    generation: string,
+    expectedFence: Ledger['observationFence'],
+  ) {
+    const current = observationBinding(s);
+    if (
+      current?.scope !== expectedFence?.scope ||
+      current?.generation !== expectedFence?.generation
+    ) {
+      return false;
+    }
+
+    observationFence(s, scope, generation);
+    refreshState(s, 'idle', [], false, generation);
+
+    return true;
+  }
+
   function expiryDeadline(s: StoredSession): number | undefined {
     const { context, limits } = load(s.snapshot.session.sessionId);
     const deadlines = [context, limits].flatMap((reading) =>
@@ -968,6 +997,8 @@ export function createSessionTelemetry(
     refreshState,
     observations,
     observationFence,
+    observationBinding,
+    retireObservations,
     expire,
     expiryDeadline,
     nextPublicationAt,

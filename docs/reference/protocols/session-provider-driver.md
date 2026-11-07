@@ -37,7 +37,7 @@ They do not extend this implemented contract.
   cache positive/negative availability for at most 30 seconds, invalidate on authoritative start error.
   Snapshot reads use the last known descriptor without network/subprocess probes; unknown is honest.
 - validate(selection, signal): validate requested model/mode/effort and readiness before admission;
-  no execution effects. It may refresh discovery but must be cancellable and bounded (10 seconds).
+  no execution effects. It may refresh discovery but must be cancellable and bounded (30 seconds).
 - start(invocation, emit, signal): return a live handle after resource acquisition or reject with
   explicit startup evidence. Do not confuse resource acquisition with provider execution completion.
   emit is asynchronous and backpressured; resolve only after Runtime has persisted/ignored the fact.

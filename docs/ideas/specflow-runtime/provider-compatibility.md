@@ -75,8 +75,10 @@ All authentication/policy sources are rechecked before consulting the cache. Nat
 routine token refresh do not require a new catalogue record. Changing the account or relevant
 configuration invalidates availability. Configuration outside the supported sources remains denied.
 
-Reinspect after probing and before invocation. If the executable changes during discovery, discard
-that result and probe the current build, with at most two attempts. Revalidate model/effort against
+Reinspect after probing and before invocation. Claude and Codex discard executable changes during
+discovery and probe the current build, with at most two attempts. Antigravity refuses identity changes
+during discovery or immediately before invocation and requires availability to be rechecked.
+Revalidate model/effort against
 the fresh catalogue after an update between admission and launch. Never dispatch using the old
 build's models. The path-based hash-to-spawn interval is not an atomic executable-handle lock;
 stronger OS ownership/identity binding remains a separate hardening concern.

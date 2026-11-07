@@ -35,6 +35,7 @@ export function createSessionTelemetryService(
   interface Source {
     providerId: string;
     nativeScope?: string;
+    observationFence?: { scope: string; generation: string };
   }
   interface Job {
     at: number;
@@ -221,11 +222,26 @@ export function createSessionTelemetryService(
         // A confirmed external account switch retires the old gauges and fences
         // any unfinished publication. Do not rebind the native Session, issue a
         // request on the new account or leave old limits looking current.
-        await store.call({
-          op: 'telemetry-observation-fence',
-          sessionId,
-          scope: binding.accountScope,
-          generation: binding.credentialGeneration,
+        await serialize(async () => {
+          const current = await within(() => provider.binding(signal), signal);
+          if (
+            current.accountScope !== binding.accountScope ||
+            current.credentialGeneration !== binding.credentialGeneration
+          ) {
+            throw new SessionError(
+              'PROVIDER_UNAVAILABLE',
+              'Telemetry account changed before retirement.',
+            );
+          }
+
+          await store.call({
+            op: 'telemetry-retire-observations',
+            sessionId,
+            nativeScope: info.nativeScope!,
+            observedScope: binding.accountScope,
+            observedGeneration: binding.credentialGeneration,
+            expectedFence: info.observationFence,
+          });
         });
 
         throw new SessionError('PROVIDER_UNAVAILABLE', 'Session provider account binding changed.');

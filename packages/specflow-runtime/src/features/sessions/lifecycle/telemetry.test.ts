@@ -299,9 +299,10 @@ describe('Session telemetry refresh lifecycle', () => {
     await expect(f.request()).rejects.toMatchObject({ code: 'PROVIDER_UNAVAILABLE' });
     expect(f.commands).toContainEqual(
       expect.objectContaining({
-        op: 'telemetry-observation-fence',
-        scope: 'changed-account',
-        generation: 'changed-login',
+        op: 'telemetry-retire-observations',
+        nativeScope: 'account',
+        observedScope: 'changed-account',
+        observedGeneration: 'changed-login',
       }),
     );
     expect(f.commands.some((command) => command.op === 'telemetry-refresh-admit')).toBe(false);

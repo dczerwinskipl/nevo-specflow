@@ -11,6 +11,8 @@ import type { StoredSession, StoredTurn, DriverFact } from './protocol';
 import type { Row } from './encoding';
 import { openSessionStore } from './store';
 import type { StartAdmission } from './protocol';
+import { createSessionTelemetryService } from '../lifecycle/telemetry';
+import { createMockDriver } from '../providers/mock';
 
 const databases: DatabaseSync[] = [];
 afterEach(() => {
@@ -749,6 +751,132 @@ describe('materialized Session telemetry', () => {
     expect(f.telemetry.read(f.s, 'account-b').usage.session).toMatchObject({
       value: { inputTokens: 10 },
     });
+  });
+
+  it('retires switched-account gauges through the real service and Worker without rebinding or accepting stale callbacks', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'nevo-telemetry-retirement-'));
+    const store = await openSessionStore({ directory, projectId: 'retirement' });
+    const binding = vi.fn(() =>
+      Promise.resolve({
+        accountScope: 'account-b',
+        credentialGeneration: 'login-b',
+      }),
+    );
+    const refresh = vi.fn(() => Promise.resolve([]));
+    const service = createSessionTelemetryService(store, () => ({
+      ...createMockDriver(),
+      contextScope: () => 'account-a',
+      telemetry: { binding, refresh, refreshableGroups: ['limits'] },
+    }));
+    try {
+      const { sessionId } = await store.call<{ sessionId: string }>({
+        op: 'create',
+        actor: 'actor',
+        input: { requestId: randomUUID(), providerId: 'mock', mode: 'read-only' },
+      });
+      const admitted = await store.call<StartAdmission>({
+        op: 'start',
+        sessionId,
+        actor: 'actor',
+        nativeScope: 'account-a',
+        nativeWorkspace: directory,
+        input: { requestId: randomUUID(), message: 'controlled' },
+      });
+      let driverSeq = 0;
+      const fact = (value: DriverFact) =>
+        store.call({
+          op: 'fact',
+          sessionId,
+          turnId: admitted.turnId,
+          invocationId: admitted.invocationId,
+          driverSeq: ++driverSeq,
+          fact: value,
+        });
+      const limits = {
+        kind: 'measurement',
+        metric: 'limits',
+        sampleId: 'limits',
+        value: {
+          windows: [{ windowId: 'hour', scope: 'account', unit: 'requests', remaining: '9' }],
+        },
+      } as const;
+      const admit = (generation: string) =>
+        store.call({
+          op: 'telemetry-refresh-admit',
+          sessionId,
+          actor: 'actor',
+          input: { requestId: randomUUID(), groups: ['limits'] },
+          binding: { accountScope: 'account-a', credentialGeneration: generation },
+        });
+      const observe = (generation: string) =>
+        store.call({
+          op: 'telemetry-observations',
+          sessionId,
+          measurements: [{ ...limits, value: { windows: [...limits.value.windows] } }],
+          expectedScope: 'account-a',
+          expectedGeneration: generation,
+        });
+      await fact({
+        kind: 'usage',
+        sampleId: 'usage',
+        basis: 'turn-total',
+        counters: { inputTokens: 10 },
+      });
+      await admit('login-a');
+      await observe('login-a');
+      expect((await service.snapshot(sessionId)).limits.status).toBe('available');
+      await expect(
+        service.refresh(sessionId, 'actor', { requestId: randomUUID(), groups: ['limits'] }),
+      ).rejects.toMatchObject({ code: 'PROVIDER_UNAVAILABLE' });
+      expect(refresh).not.toHaveBeenCalled();
+      await fact({
+        ...limits,
+        sampleId: 'late-limits',
+        value: { windows: [...limits.value.windows] },
+      });
+      await fact({
+        kind: 'measurement',
+        metric: 'context',
+        sampleId: 'late-context',
+        value: { contextGeneration: 'old-native-context', occupiedTokens: 50 },
+      });
+      const retired = await service.snapshot(sessionId);
+      expect(retired.limits.status).toBe('unavailable');
+      expect(retired.context.status).toBe('unavailable');
+      expect(retired.refresh.state).toBe('idle');
+      expect(retired.usage.session).toMatchObject({ value: { inputTokens: 10 } });
+      expect(await store.call({ op: 'telemetry-source', sessionId })).toMatchObject({
+        nativeScope: 'account-a',
+      });
+
+      // A newer valid login/publication wins over a delayed retirement callback.
+      await admit('login-a-new');
+      await observe('login-a-new');
+      expect(
+        await store.call({
+          op: 'telemetry-retire-observations',
+          sessionId,
+          nativeScope: 'account-a',
+          observedScope: 'account-b',
+          observedGeneration: 'login-b',
+          expectedFence: { scope: 'account-a', generation: 'login-a' },
+        }),
+      ).toBe(false);
+      expect((await service.snapshot(sessionId)).limits.status).toBe('available');
+      await expect(
+        store.call({
+          op: 'telemetry-observations',
+          sessionId,
+          measurements: [{ ...limits, value: { windows: [...limits.value.windows] } }],
+          expectedScope: 'account-b',
+          expectedGeneration: 'login-b',
+        }),
+      ).rejects.toMatchObject({ code: 'PROVIDER_UNAVAILABLE' });
+    } finally {
+      await service.close();
+      await store.close();
+      await rm(directory, { recursive: true, force: true });
+    }
   });
 
   it('publishes terminal telemetry and restores bounded aggregates and refresh receipts through the Worker', async () => {

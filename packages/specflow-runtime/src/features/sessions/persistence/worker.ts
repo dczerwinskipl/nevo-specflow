@@ -481,6 +481,7 @@ export async function runSessionWorker(): Promise<void> {
       return {
         providerId: session(c.sessionId).snapshot.session.providerId,
         nativeScope: get('SELECT scope FROM provider_contexts WHERE session=?', c.sessionId)?.scope,
+        observationFence: telemetry.observationBinding(session(c.sessionId)),
       };
     }
 
@@ -524,6 +525,25 @@ export async function runSessionWorker(): Promise<void> {
           c.expectedScope,
           c.observedAt,
           c.expectedGeneration,
+        );
+      });
+    }
+
+    if (c.op === 'telemetry-retire-observations') {
+      return transaction(() => {
+        const scope = get(
+          'SELECT scope FROM provider_contexts WHERE session=?',
+          c.sessionId,
+        )?.scope;
+        if (!scope || scope !== c.nativeScope || scope === c.observedScope) {
+          fail('PROVIDER_UNAVAILABLE', 'Provider account binding changed.');
+        }
+
+        return telemetry.retireObservations(
+          session(c.sessionId),
+          c.observedScope,
+          c.observedGeneration,
+          c.expectedFence,
         );
       });
     }

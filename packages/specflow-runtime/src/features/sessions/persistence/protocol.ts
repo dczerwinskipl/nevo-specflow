@@ -165,6 +165,14 @@ export type StoreCommand =
       observedAt?: string;
     }
   | { op: 'telemetry-observation-fence'; sessionId: string; scope: string; generation: string }
+  | {
+      op: 'telemetry-retire-observations';
+      sessionId: string;
+      nativeScope: string;
+      observedScope: string;
+      observedGeneration: string;
+      expectedFence?: { scope: string; generation: string };
+    }
   | { op: 'telemetry-expiry-deadline'; sessionId: string }
   | { op: 'telemetry-expire'; sessionId: string }
   | { op: 'identity'; sessionId: string }

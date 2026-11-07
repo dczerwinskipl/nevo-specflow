@@ -13,6 +13,8 @@ import { createOperationEventsUrl, type ProjectCreationApi } from './api/api.pro
 import { CreateSpecificationScreen } from './CreateSpecificationScreen';
 import { createOptionsFixture } from './options/creationOptions.stories-support';
 import { catalogue } from './options/creationCatalogue.stories-support';
+import { createSessionOperationStorage } from './operation/createOperationStorage';
+import { initialWorkspaceChoice } from './workspace/model/workspaceChoice';
 
 /** What the project form tells the leave guard, read through the real hook. */
 const dirtyValues: boolean[] = [];
@@ -37,13 +39,17 @@ const operations: OperationsApi = {
   },
 };
 
-function renderProject() {
+function renderProject(
+  createOptions: () => Promise<ReturnType<typeof createOptionsFixture>> = () =>
+    Promise.resolve(createOptionsFixture('default')),
+  props: { restoreDraftOf?: string } = {},
+) {
   const services = createSpecFlowAppServices({
     runtimeInfoApi: { getInfo: () => Promise.resolve({ dataMode: 'project' }) },
     projectCreationApi: {
       operationEventsUrl: createOperationEventsUrl,
       archetypes: () => Promise.resolve(catalogue),
-      createOptions: () => Promise.resolve(createOptionsFixture('default')),
+      createOptions,
       create: vi.fn(),
     } as unknown as ProjectCreationApi,
     operationsApi: operations,
@@ -56,6 +62,7 @@ function renderProject() {
             <AppWorkspaceProvider>
               <AppShell navigation={<div>Nav</div>}>
                 <CreateSpecificationScreen
+                  {...props}
                   onCreated={vi.fn()}
                   onProjectStarted={vi.fn()}
                   onSession={vi.fn()}
@@ -124,5 +131,34 @@ describe('the leave guard measures the request, not the form', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Restore default: Branch name' }));
     fireEvent.click(screen.getByRole('button', { name: 'Restore default: Start from' }));
     await waitFor(() => expect(dirty()).toBe(false));
+  });
+});
+
+describe('a restored draft', () => {
+  it('stays clean when the options arrive after it, even with a typed override', async () => {
+    const operationId = '00000000-0000-4000-8000-000000000001';
+    createSessionOperationStorage('unknown', sessionStorage).saveDraft({
+      operationId,
+      title: 'Payment limits',
+      goal: '',
+      choice: {
+        ...initialWorkspaceChoice,
+        tile: 'new',
+        branch: { on: true, name: 'feature/own', edited: true },
+      },
+    });
+    let resolve!: (value: ReturnType<typeof createOptionsFixture>) => void;
+    const pending = new Promise<ReturnType<typeof createOptionsFixture>>((r) => (resolve = r));
+    renderProject(() => pending, { restoreDraftOf: operationId });
+    await screen.findByRole('radio', { name: /Feature/ });
+    // No options yet: nothing to measure the place choice against.
+    expect(dirty()).toBe(false);
+    resolve(createOptionsFixture('default'));
+    const branch = await screen.findByLabelText<HTMLInputElement>('New branch name');
+    expect(branch.value).toBe('feature/own');
+    expect(dirty()).toBe(false);
+    // A real edit after that still counts.
+    fireEvent.change(branch, { target: { value: 'feature/other' } });
+    await waitFor(() => expect(dirty()).toBe(true));
   });
 });

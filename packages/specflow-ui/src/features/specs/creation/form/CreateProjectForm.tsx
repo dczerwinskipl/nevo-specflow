@@ -128,13 +128,24 @@ export function CreateProjectForm({
     draft && { choice: draft.choice, failure: draft.failure },
   );
 
-  const configurationSnapshot = JSON.stringify({
-    title,
-    goal,
-    archetype: archetypeChoice,
-    choice: requestChoiceSnapshot(place.choice, workspaceOptions, title),
-  });
-  const [initialConfiguration] = useState(configurationSnapshot);
+  // What an edit is measured against. The fields are taken on the first render; the place choice
+  // only once the options are there, because only then can a restored draft's overrides be read
+  // (before that, its snapshot has none, and the arriving options would look like an edit).
+  const fieldsSnapshot = JSON.stringify({ title, goal, archetype: archetypeChoice });
+  const choiceSnapshot = JSON.stringify(
+    requestChoiceSnapshot(place.choice, workspaceOptions, title),
+  );
+  const [initialFields] = useState(fieldsSnapshot);
+  const [initialChoice, setInitialChoice] = useState(() =>
+    workspaceOptions ? choiceSnapshot : undefined,
+  );
+  if (initialChoice === undefined && workspaceOptions) {
+    setInitialChoice(choiceSnapshot);
+  }
+
+  const edited =
+    fieldsSnapshot !== initialFields ||
+    (initialChoice !== undefined && choiceSnapshot !== initialChoice);
 
   // The draft is consumed by the first render: a reload of the form starts clean again.
   useEffect(() => {
@@ -146,7 +157,7 @@ export function CreateProjectForm({
   // Only unsaved edits ask before leaving; an operation outlives this screen (it has its page).
   const leaveGuard = useCreateLeaveGuard({
     unfinished: false,
-    dirty: configurationSnapshot !== initialConfiguration,
+    dirty: edited,
     isNavigationAllowed: () => started.current,
   });
 

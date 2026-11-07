@@ -27,3 +27,26 @@ export function firstChoiceControl(container: HTMLElement | null): HTMLElement |
     )
   );
 }
+
+/**
+ * Where a blocked Create leads for a work-mode problem: the chosen (or first enabled) mode of a
+ * segmented group, or the mode picker. When the model decides the modes (the group's items or the
+ * picker are disabled), nothing there can take focus, so it leads to the model picker instead.
+ */
+export function modeFocusTarget(
+  mode: HTMLElement | null,
+  model: HTMLElement | null,
+): HTMLElement | null {
+  if (!mode) {
+    return model;
+  }
+
+  const usable =
+    mode.getAttribute('role') === 'radiogroup'
+      ? firstChoiceControl(mode)
+      : mode.matches(':disabled, [aria-disabled="true"]')
+        ? null
+        : mode;
+
+  return usable ?? model;
+}

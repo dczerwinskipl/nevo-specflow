@@ -41,7 +41,7 @@ import {
 import { useRevealFailure } from '../errors/useRevealFailure';
 import { CreateWorkspaceSection } from './CreateWorkspaceSection';
 import { createFormColumn, createFormColumns, createFormWidth } from '../createFormLayout';
-import { firstChoiceControl } from './createGuide';
+import { firstChoiceControl, modeFocusTarget } from './createGuide';
 import { revealControl, useCreateGuide } from './useCreateGuide';
 import {
   buildCreateSlug,
@@ -171,8 +171,7 @@ export function CreateDemoForm({
       } else if (field === 'model') {
         revealControl(modelRef.current);
       } else if (field === 'mode') {
-        // A segmented group leads to its chosen (or first) mode; a picker to itself.
-        revealControl(firstChoiceControl(modeRef.current) ?? modeRef.current);
+        revealControl(modeFocusTarget(modeRef.current, modelRef.current));
       } else {
         place.handleRef.current?.focusProblem(field);
       }

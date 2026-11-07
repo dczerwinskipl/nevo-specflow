@@ -332,6 +332,165 @@ export const BoundedWithSecondary1920Contract: Story = {
   },
 };
 
+/**
+ * A Focused page whose Primary hosts its own workspace (for example an editor region) with
+ * `fit="available"`. The shell reads only the outermost fit marker, so the outer frame stays the
+ * Focused frame and the nested workspace fills its own region.
+ */
+function NestedAvailableFixture() {
+  return (
+    <AppShell navigation={<Navigation />}>
+      <AppWorkspace fit="bounded" split="primary">
+        <AppWorkspace.Primary header={<WorkspaceHeader title="Focused page" />}>
+          <AppContent className="w-full" data-fit-content="primary">
+            <AppWorkspace fit="available">
+              <AppWorkspace.Primary header={<WorkspaceHeader title="Nested editor" />}>
+                <AppContent className="w-full" data-fit-content="nested">
+                  <Rows label="Nested" />
+                </AppContent>
+              </AppWorkspace.Primary>
+            </AppWorkspace>
+          </AppContent>
+        </AppWorkspace.Primary>
+      </AppWorkspace>
+    </AppShell>
+  );
+}
+
+async function verifyNestedAvailable(canvasElement: HTMLElement, width: number) {
+  const markers = [...canvasElement.querySelectorAll<HTMLElement>('[data-workspace-fit]')];
+  assert(markers.length === 2, 'The fixture renders an outer and a nested workspace.');
+  const [outer, nested] = markers as [HTMLElement, HTMLElement];
+  assert(outer.contains(nested), 'The second workspace is nested in the first.');
+  assert(nested.dataset.workspaceFit === 'available', 'The nested workspace fills.');
+  if (width > 1708) {
+    await verifyFocusedCentred(canvasElement, width);
+  } else {
+    await verifyFocusedFills(canvasElement, width);
+  }
+
+  const region = canvasElement.querySelector<HTMLElement>('[data-fit-content="primary"]')!;
+  const regionRect = region.getBoundingClientRect();
+  const nestedRect = nested.getBoundingClientRect();
+  assert(
+    Math.abs(nestedRect.width - regionRect.width) <= 0.5 &&
+      Math.abs(nestedRect.left - regionRect.left) <= 0.5,
+    `The nested workspace fills its region (${nestedRect.width} of ${regionRect.width}).`,
+  );
+}
+
+export const NestedAvailableInBounded1600Contract: StoryObj<typeof NestedAvailableFixture> = {
+  render: () => <NestedAvailableFixture />,
+  tags: ['contract', '!autodocs'],
+  globals: { viewport: { value: 'w1600', isRotated: false } },
+  play: async ({ canvasElement }) => verifyNestedAvailable(canvasElement, 1600),
+};
+
+export const NestedAvailableInBounded1920Contract: StoryObj<typeof NestedAvailableFixture> = {
+  render: () => <NestedAvailableFixture />,
+  tags: ['contract', '!autodocs'],
+  globals: { viewport: { value: 'w1920', isRotated: false } },
+  play: async ({ canvasElement }) => verifyNestedAvailable(canvasElement, 1920),
+};
+
+/**
+ * The reverse nesting: a full-width (`available`) page that hosts a `bounded` workspace in its
+ * Primary. The nested marker must not turn the outer surface into a Focused frame.
+ */
+function NestedBoundedFixture() {
+  return (
+    <AppShell navigation={<Navigation />}>
+      <AppWorkspace fit="available" split="primary">
+        <AppWorkspace.Primary header={<WorkspaceHeader title="Detail page" />}>
+          <AppContent className="w-full" data-fit-content="primary">
+            <AppWorkspace fit="bounded">
+              <AppWorkspace.Primary header={<WorkspaceHeader title="Nested region" />}>
+                <AppContent className="w-full">
+                  <Rows label="Nested" />
+                </AppContent>
+              </AppWorkspace.Primary>
+            </AppWorkspace>
+          </AppContent>
+        </AppWorkspace.Primary>
+      </AppWorkspace>
+    </AppShell>
+  );
+}
+
+export const NestedBoundedInAvailable1920Contract: StoryObj<typeof NestedBoundedFixture> = {
+  render: () => <NestedBoundedFixture />,
+  tags: ['contract', '!autodocs'],
+  globals: { viewport: { value: 'w1920', isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const { mainRect, layout, navigation } = await measure(canvasElement, 1920);
+    assert(layout.dataset.workspaceFit === 'available', 'The outer workspace fills.');
+    assertFillsWide(navigation, mainRect, 'A nested bounded workspace leaves the outer frame full');
+    const main = canvasElement.querySelector<HTMLElement>(
+      'main[data-app-shell-region="workspace"]',
+    )!;
+    assert(main.dataset.appShellWorkspaceFit === 'edge', 'The outer surface stays on the edge.');
+  },
+};
+
+/**
+ * A plain `fit="content"` consumer (the default) with a Secondary and small intrinsic content keeps
+ * its old behaviour: the workspace is as wide as its regions, centred with the navigation, with the
+ * inset edge. The Focused frame changed only `bounded`.
+ */
+function ContentIntrinsicFixture() {
+  return (
+    <AppShell navigation={<Navigation />}>
+      <AppWorkspace split="primary">
+        <AppWorkspace.Primary header={<WorkspaceHeader title="List" />}>
+          <div data-intrinsic="primary" style={{ width: 420 }}>
+            <Rows label="List" />
+          </div>
+        </AppWorkspace.Primary>
+        <AppWorkspace.Secondary header={<WorkspaceHeader title="Context" />}>
+          <div data-intrinsic="secondary" style={{ width: 300 }}>
+            <Rows label="Context" />
+          </div>
+        </AppWorkspace.Secondary>
+      </AppWorkspace>
+    </AppShell>
+  );
+}
+
+export const ContentIntrinsicWithSecondary1920Contract: StoryObj<typeof ContentIntrinsicFixture> = {
+  render: () => <ContentIntrinsicFixture />,
+  tags: ['contract', '!autodocs'],
+  globals: { viewport: { value: 'w1920', isRotated: false } },
+  play: async ({ canvasElement }) => {
+    await settle();
+    const main = canvasElement.querySelector<HTMLElement>(
+      'main[data-app-shell-region="workspace"]',
+    )!;
+    const layout = canvasElement.querySelector<HTMLElement>('[data-workspace-fit]')!;
+    const navigation = canvasElement.querySelector<HTMLElement>(
+      '[data-app-shell-region="navigation"]',
+    );
+    assert(
+      layout.dataset.workspaceFit === 'content',
+      'The default fit with a Secondary is content.',
+    );
+    const mainRect = main.getBoundingClientRect();
+    const style = getComputedStyle(main);
+    const borders =
+      Number.parseFloat(style.borderLeftWidth) + Number.parseFloat(style.borderRightWidth);
+    const regions = [...canvasElement.querySelectorAll<HTMLElement>('[data-intrinsic]')].reduce(
+      (sum, region) => sum + region.getBoundingClientRect().width,
+      0,
+    );
+    assert(
+      Math.abs(mainRect.width - borders - regions - 1) <= 1.5,
+      `The workspace is as wide as its regions (${mainRect.width} vs ${regions} + borders).`,
+    );
+    assert(mainRect.width < focusedFramePx(), 'An intrinsic workspace is not the Focused frame.');
+    assertCentredGroup(navigation, mainRect);
+    assert(main.dataset.appShellWorkspaceFit === 'inset', 'An intrinsic workspace is inset.');
+  },
+};
+
 export const ContentPrimaryOnly1440Contract: Story = {
   tags: ['contract', '!autodocs'],
   args: { fit: 'content' },

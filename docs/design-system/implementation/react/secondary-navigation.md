@@ -435,6 +435,14 @@ token width and centred above it (1720/1920/2560), so it is continuous across th
 1708 px, and fills in drawer (1024), stacked (390) and with a Secondary, where the regions keep
 their `available` shares.
 
+**Nested workspaces.** Only the outermost `AppWorkspace` sizes the shell surface: `AppShell` matches
+its fit marker alone (`:not([data-workspace-fit] *)`). A workspace rendered inside another
+workspace's region sizes only that region with its own `fit` (`available` fills the region, and a
+nested `bounded` fills it too, since the region is narrower than the Focused maximum), so it can
+neither turn a full-width page into a Focused frame nor widen a Focused frame. The default
+`content` fit keeps its intrinsic width with a Secondary. `NestedAvailableInBounded*`,
+`NestedBoundedInAvailable1920` and `ContentIntrinsicWithSecondary1920` cover these cases.
+
 **Stacked close (opt-in).** `stackedSecondaryClose="hide"` removes the Secondary's own close action (the trailing
 `x`, and the matching item of the compact row) while the layout is stacked, where Back already leaves the
 Secondary and the second control only repeats it. Split layouts keep the close action. The default is

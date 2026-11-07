@@ -1,5 +1,6 @@
 import { Alert, Button } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
+import { specTitleTrackMaxWidth } from './rows/specRowColumns';
 
 /**
  * A failed read. With rows already on screen the failure is a warning above them (the rows stay);
@@ -19,6 +20,7 @@ export function SpecsOverviewNotice({
   return (
     <Alert
       role="alert"
+      className={specTitleTrackMaxWidth}
       tone={hasRows ? 'attention' : 'danger'}
       title={t(hasRows ? 'specifications.refreshFailed' : 'specifications.unavailable')}
     >

@@ -8,6 +8,7 @@ import {
   SegmentedControl,
   TextInput,
   Typography,
+  cn,
   useInitialAppearance,
 } from '@nevo/ui';
 
@@ -18,6 +19,7 @@ import { SpecsOverviewCollection } from './SpecsOverviewCollection';
 import { SpecsOverviewEmpty } from './SpecsOverviewEmpty';
 import { SpecsOverviewHeader } from './SpecsOverviewHeader';
 import { SpecsOverviewNotice } from './SpecsOverviewNotice';
+import { specTitleTrackMaxWidth } from './rows/specRowColumns';
 import { overviewCapabilities } from './presentation';
 import { filterSpecsOverview, isSearchable } from './search/search';
 import { useCollectionSearch } from './search/useCollectionSearch';
@@ -95,17 +97,13 @@ export function SpecsOverview({
           />
         }
       >
-        {/* The scroller fills the Focused frame (`fit="bounded"`). Inside it the whole page
-            (title, toolbar, search, notices and the list) is one left-aligned `content-standard`
-            column, and the list's bounded tracks (`specRowColumns`) keep its values together. */}
+        {/* The page fills the Focused frame (`fit="bounded"`): the rows span it and their bounded
+            tracks (`specRowColumns`) keep the values together; the search field and notices stay
+            as wide as the title track. */}
         <AppContent className="w-full">
           {/* A flex column down to the list, so an empty collection can centre in the free height. */}
           <AppWorkspaceBody scroll="area" contentClassName="flex min-h-full flex-col py-6">
-            <AppContentContainer
-              align="start"
-              className="flex flex-1 flex-col gap-4"
-              size="standard"
-            >
+            <AppContentContainer align="start" className="flex flex-1 flex-col gap-4" size="full">
               <ViewPageTitle className="mb-2">{t('specifications.title')}</ViewPageTitle>
               <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
                 <SegmentedControl
@@ -137,7 +135,7 @@ export function SpecsOverview({
                   placeholder={t('specifications.search')}
                   value={search.term}
                   onChange={(event) => search.setTerm(event.target.value)}
-                  className="w-full"
+                  className={cn('w-full', specTitleTrackMaxWidth)}
                 />
               ) : null}
               {state.error ? (

@@ -9,10 +9,14 @@ tags: [sessions, pagination, tail, streaming, idempotency]
 read_when:
   - implementing Session schemas, HTTP or UI clients
   - implementing tail/history cursors and replay
+  - listing Sessions, reading a Session's association or starting a Session from a Specification
 summary: >
   Implementation contract for independent Session commands, bounded snapshots,
-  conversation and Work paging, content ranges, scoped authorization and SSE resync.
+  conversation and Work paging, content ranges, scoped authorization and SSE resync, plus the
+  Session list, the association read and the composed create from a Specification.
 related:
+  - ideas.specflow-runtime.session-association
+  - architecture.runtime.authorization
   - architecture.ai.session-storage-and-lifecycle
   - architecture.ai.canonical-session-turn-work
   - reference.protocols.session-provider-driver
@@ -45,7 +49,9 @@ sessions:
 ```
 
 Both flags default to false. Local overrides and unknown provider keys are rejected.
-Start the existing product server and open `/sessions/new`; created chats use `/sessions/:sessionId`.
+Start the existing product server and open a Specification's **Sessions** list; a Session started
+there (`/specs/:specId/sessions/new`) opens at `/sessions/:sessionId`. Every UI start is from a
+Specification; `/sessions/new` redirects to `/`.
 The explicitly labelled mock performs no external effects. The optional Claude adapter uses this
 same API; see [Claude enablement and supported installations](../../ideas/specflow-runtime/claude-provider.md).
 On Windows x64, `sessions.providers.antigravity.enabled: true` enables no-input
@@ -64,12 +70,29 @@ Authentication/authorization, origin protection and shared rate limits use exist
 boundaries. Cache-Control: no-store applies. Never include raw provider IDs, process handles,
 private interaction IDs, local absolute paths or provider payloads in ordinary DTOs.
 
-Create and provider catalogue: session.create at server-derived {projectId}.
-Existing resource reads: session.view at store-derived {projectId, sessionId}.
+Standalone create and provider catalogue: session.create at server-derived {projectId}.
+Existing resource reads: session.view at the Session's store-derived scope (below).
 Start/cancel/reconcile/respond and rename/archive/unarchive: session.manage at that same scope.
 Delete: session.delete at that same scope. Check access before protected source
 reads; a small identity lookup may precede target authorization. No actor/scope/specId from a
-request is an authority. Missing auth -> existing 401 authentication_required; forbidden -> 403
+request is an authority.
+
+**Session scope.** One builder, `sessionScope(identity, capability)`
+(`features/sessions/scope.ts`), fed only by the store-derived identity (the Session row joined with
+its association), serves every Session route, SSE reauthorization, telemetry, the list and the
+Specification/Task projections of Session references:
+
+| Capability                                                                         | Standalone Session       | Session associated with Specification S |
+| ---------------------------------------------------------------------------------- | ------------------------ | --------------------------------------- |
+| `session.view`, `session.manage`, `session.delete`, `session.view-provider-limits` | `{projectId, sessionId}` | `{projectId, specId: S, sessionId}`     |
+| `session.execute-write` (Turn start/respond in write mode)                         | `{projectId, sessionId}` | `{projectId, sessionId}` (no `specId`)  |
+| `session.execute-write` (create in write mode)                                     | `{projectId}`            | `{projectId}`                           |
+
+`session.execute-write` never carries `specId`: until a Specification's Session is confined to that
+Specification's worktree, every provider runs with the Runtime's whole verified workspace as `cwd`,
+so a Specification-scoped grant must not admit writes. A Session's home Specification is immutable,
+so its scope never changes. See
+[Runtime authorization](../../architecture/runtime/auth/authorization.md#session-scope). Missing auth -> existing 401 authentication_required; forbidden -> 403
 forbidden; unknown ID -> 404 SESSION_NOT_FOUND after access handling. Existing Auth conventions
 remain authoritative; no new per-creator ACL is introduced.
 
@@ -208,11 +231,14 @@ allocates a new interactionId and expires the old one; a stale form cannot answe
 | POST /api/sessions/:sessionId/unarchive                           | {requestId}                          | 200 {session: SessionInfo}        |
 | DELETE /api/sessions/:sessionId                                   | none                                 | 204 (no body)                     |
 | GET /api/sessions/:sessionId/events                               | optional after sequence              | text/event-stream                 |
+| GET /api/sessions                                                 | list query                           | 200 SessionListPage               |
+| GET /api/sessions/:sessionId/association                          | none                                 | 200 SessionAssociationRead        |
+| POST /api/specs/:specId/sessions                                  | CreateContextSession                 | 201 CreateContextSessionResult    |
 
-No core spec/task prefix, GET-all-transcript endpoint, attach/import, list-all count,
-force-recovery or workflow finish endpoint. A new conversation launcher obtains its new ID
-from POST; no list endpoint is required for the foundation. Product lists consume later association
-projections. Disabled Session capability gives 503 SESSION_DISABLED for these routes.
+No core spec/task prefix on the Session routes, GET-all-transcript endpoint, attach/import,
+list-all count, force-recovery or workflow finish endpoint. The last three routes are specified in
+[Session list, association read and composed create](#session-list-association-read-and-composed-create).
+Disabled Session capability gives 503 SESSION_DISABLED for these routes.
 
 ```ts
 type CreateSession = {
@@ -291,17 +317,139 @@ Schemas: `RenameSessionSchema`, `ArchiveSessionSchema` (archive and unarchive) a
   same requestId is 409 IDEMPOTENCY_CONFLICT. A change emits one `session` event.
 - `DELETE /api/sessions/:sessionId` (no body) hard-deletes every Session-owned Runtime row in
   one transaction: Session, provider correlation, Turns, conversation, Work, actions, content,
-  interactions, Session-scoped idempotency records, fact/usage deduplication, telemetry and the
-  event outbox. The project-scoped create record is kept, so a late create retry with the old
+  interactions, Session-scoped idempotency records, fact/usage deduplication, telemetry, the
+  association and its Task rows, and the event outbox. The project-scoped create record is kept, so a late create retry with the old
   requestId replays the deleted sessionId, whose use answers 404.
   It is rejected with 409 TURN_CONFLICT (details.turnId) while any Turn is nonterminal or
   `unknown` or a live invocation of the Session is still attached, so a running write Turn gets
   TURN_CONFLICT. 409 SESSION_DELETE_BLOCKED (details.turnId) occurs only for an `unknown` or
   recovering write Turn whose invocation has detached while its Engine effect evidence is
   unsettled; that Turn is visible as `activeTurn`. Engine workspace-execution records and
-  provider-native transcripts are not touched (only the Runtime's locator is removed). Open SSE streams of the deleted Session close without
-  further payload. There is no tombstone: a repeated delete, and any later read or stream
-  request, is 404 SESSION_NOT_FOUND. Clients treat 404 after their own delete as done.
+  provider-native transcripts are not touched (only the Runtime's locator is removed); Engine
+  attempt records keep the `sessionId` as audit. Open SSE streams of the deleted Session close
+  without further payload. There is no tombstone: a repeated delete, and any later read or stream
+  request, including the association read, is 404 SESSION_NOT_FOUND; Specification and Task reads
+  then hide the reference. Clients treat 404 after their own delete as done.
+- Archive and unarchive leave the association untouched. An archived Session stays associated; it
+  is excluded from the workspace Sessions section and from the default list (`archived=exclude`).
+
+## Session list, association read and composed create
+
+Schemas: `SessionListQuerySchema`, `SessionListFilterSchema`, `SessionListPageSchema`,
+`SessionAssociationReadSchema`, `CreateContextSessionSchema` and `CreateContextSessionResultSchema`
+in `@nevo/specflow-contracts/sessions`. Sessions stay independent: the association is a separate,
+Session-owned sidecar record
+([storage](../../architecture/ai/session-storage-and-lifecycle.md#authorization-and-associations)),
+written only by the composed create. There is no route to reassign, unlink or append Tasks.
+
+### Composed create
+
+`POST /api/specs/:specId/sessions` (body limit 256 KiB) starts a Session associated with the
+Specification, atomically:
+
+```ts
+type CreateContextSession = CreateSession & { taskIds?: string[] }; // <=32, unique, members of specId
+type CreateContextSessionResult = {
+  sessionId: string;
+  association: { specId: string; taskIds: string[] };
+};
+```
+
+- Refusal precedence: authentication, `503 SESSION_DISABLED`, then `spec.start-session` at
+  `specScope(projectId, specId)`, `session.create` at `{projectId, specId}` and, for
+  `mode: 'workspace-write'`, `session.execute-write` at `{projectId}` (403 `forbidden`); only then
+  the Engine verification, so a refused caller never learns whether the Specification exists.
+- The Engine verifies the Specification and every `taskId` before the write (time-of-check only):
+  `404 {error: 'specification_not_found'}`, `404 {error: 'specification_task_not_found'}` (unknown
+  Task or one of another Specification), `503 {error: 'specification_source_unavailable'}` when the
+  Specification or Task source is unreadable. The project-mode Runtime has no Engine Task source
+  yet, so a create with `taskIds` answers that 503 there.
+- The Session and its association rows are written in one store transaction under the
+  project-scoped create idempotency key; its fingerprint covers `{input, association}`. The same
+  `requestId` sent standalone and from a Specification, or to two Specifications, is
+  `409 IDEMPOTENCY_CONFLICT`. A replay re-runs the Engine verification, so a replay after the
+  Specification was removed answers 404 while the stored Session stays.
+- `POST /api/sessions` and `CreateSession` are unchanged and create a standalone Session; the UI
+  has no entry to it. The demo Runtime has no composed create: its workspace `startSession` action
+  carries the demo start `path` instead.
+
+### Association read
+
+`GET /api/sessions/:sessionId/association` (project and demo mode) serves the Session Context and
+the navigator:
+
+```ts
+type SessionAssociationRead = {
+  sessionId: string;
+  association:
+    | { kind: 'standalone' }
+    | {
+        kind: 'specification';
+        specification: AssociatedFact<{
+          specId: string;
+          key?: string;
+          title: string;
+          collection: 'current' | 'archived';
+        }>;
+        tasks: AssociatedFact<{ taskId: string; key?: string; title: string }>[]; // [] when forbidden
+      };
+};
+type AssociatedFact<T> =
+  | { state: 'available'; value: T }
+  | { state: 'missing'; id: string } // associated, the referenced object is gone
+  | { state: 'forbidden' } // no spec.view: no id, no title, no Task list
+  | { state: 'unavailable' }; // Engine source unreadable
+```
+
+`session.view` at the Session's scope admits the read (unknown ID: 404 SESSION_NOT_FOUND).
+Specification and Task facts additionally need `spec.view` at `specScope(projectId, specId)`,
+checked before any Engine lookup, so `forbidden` never reveals existence. Titles, keys and the
+archive collection are read from the Engine at request time; the registry stores only ids. A
+removed Specification or Task reads as `missing` (no cascade); a later object reusing the same id
+reads as the associated one. Without an Engine Task source (project mode today) associated Tasks
+read as `unavailable`.
+
+### Session list
+
+`GET /api/sessions?specId=&taskId=&standalone=true&archived=exclude|include|only&limit=&cursor=`
+
+```ts
+type SessionListItem = {
+  sessionId: string;
+  title?: string;
+  providerId: string;
+  modelId?: string;
+  readiness: Readiness;
+  activeTurn?: { turnId: string; state: TurnState };
+  archivedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  association:
+    | { kind: 'standalone' }
+    | { kind: 'specification'; specId: string; taskIds: string[] } // only with spec.view at specScope
+    | { kind: 'restricted' }; // associated, caller lacks spec.view
+};
+type SessionListPage = { items: SessionListItem[]; nextCursor?: string };
+```
+
+- Filters select, they never grant. `specId` and `standalone` are exclusive and `taskId` requires
+  `specId` (otherwise `400 SESSION_INPUT_INVALID` with `field`). `archived` defaults to `exclude`.
+- Authorization: `session.view` in any scope, then each scanned row at
+  `sessionScope(row, 'view')`; rows the caller may not view are skipped. With `specId` the request
+  also requires `spec.view` at `specScope(projectId, specId)` (403 otherwise): selecting by a
+  Specification reveals which Sessions belong to it. Without `specId` or `standalone`, a caller
+  whose `session.view` comes only from Specification-scoped grants gets
+  `400 SESSION_LIST_SCOPE_REQUIRED` (`field: 'specId'`); `standalone=true` answers such a caller an
+  empty page.
+- Order: newest created first, keyset-paged on the immutable creation sequence. `limit` 1..100,
+  default 50. One request scans at most 500 index rows and stops when `limit` rows are filled or
+  the budget is spent; `nextCursor` points after the last **scanned** row, so a page may hold
+  fewer than `limit` items, even none, while `nextCursor` is present. Clients follow it explicitly.
+- `nextCursor` is HMAC-signed and bound to the store generation, the project and the exact filter;
+  a tampered cursor or one of another filter is `400 SESSION_CURSOR_INVALID`, an expired one
+  `409 SESSION_CURSOR_EXPIRED`.
+- A page decodes only the rows it returns; a Session deleted between scan and decode is omitted.
+  The demo Runtime serves the same route from its catalogue.
 
 ## Bounded history and Work
 
@@ -512,11 +660,13 @@ enabling the mock does not grant Claude availability. No real adapter is adverti
 
 Domain error body: {error:'session_error', code, message, details?}. message is safe text <=2 KiB.
 details is code-specific and bounded; never provider-private diagnostics. Existing Auth/rate-limit
-envelopes remain their own contracts. UI branches on code, not message text.
+envelopes remain their own contracts. UI branches on code, not message text. The composed create
+answers its Engine verification failures with the Specification read envelope
+(`{error: 'specification_not_found' | 'specification_task_not_found' | 'specification_source_unavailable'}`).
 
 | Status | Codes and permitted details                                                                                                                                                                                             |
 | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 400    | SESSION_INPUT_INVALID (field?), SESSION_CURSOR_INVALID, INTERACTION_RESPONSE_INVALID                                                                                                                                    |
+| 400    | SESSION_INPUT_INVALID (field?), SESSION_CURSOR_INVALID, SESSION_LIST_SCOPE_REQUIRED (field), INTERACTION_RESPONSE_INVALID                                                                                               |
 | 404    | SESSION_NOT_FOUND, SESSION_RESOURCE_NOT_FOUND                                                                                                                                                                           |
 | 409    | TURN_CONFLICT (turnId), SESSION_ARCHIVED, SESSION_DELETE_BLOCKED (turnId), IDEMPOTENCY_CONFLICT, INTERACTION_EXPIRED, SESSION_CURSOR_EXPIRED, CONTENT_REVISION_UNAVAILABLE, SESSION_RECOVERY_REQUIRED (turnId?, reason) |
 | 413    | SESSION_PAYLOAD_TOO_LARGE                                                                                                                                                                                               |

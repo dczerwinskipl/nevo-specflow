@@ -89,6 +89,21 @@ Multiple bounded areas are represented by multiple assignments:
 SpecFlow does not currently impose a `projectId -> specId -> sessionId` scope hierarchy and does
 not support wildcard scope values. Values must be non-empty strings.
 
+The dimensions SpecFlow checks today: Specification capabilities at `{projectId, specId}`;
+Session capabilities at `{projectId, sessionId}` for a standalone Session and
+`{projectId, specId, sessionId}` for a Session associated with a Specification, except
+`session.execute-write`, which never carries `specId`. Consequently:
+
+- a `{projectId: P}` or global assignment covers every Specification and Session of the project;
+- a `{specId: S}` assignment applies its role's Specification capabilities to S and its Session
+  capabilities to the Sessions associated with S, but not to standalone Sessions or Sessions of
+  another Specification, and never admits write-mode execution; for example a `developer` at
+  `{specId: S}` starts read-only Sessions in S and views, manages and deletes every Session of S,
+  and a `viewer` there only views them;
+- a `{sessionId}` assignment covers that one Session and cannot create another.
+
+The exact rule is in [Runtime authorization](../../architecture/runtime/auth/authorization.md#specflow-required-scopes).
+
 ## Current roles
 
 - `viewer`: `spec.view`, `session.view`;

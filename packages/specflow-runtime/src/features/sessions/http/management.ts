@@ -11,7 +11,7 @@ import {
 } from '@nevo/specflow-contracts/sessions';
 import type { SessionCoordinator } from '../lifecycle/coordinator';
 import type { SessionView } from '../persistence/protocol';
-import { authorizeSessionCapability } from './authorization';
+import { authorizeSessionCapability, authorizedIdentity } from './authorization';
 import { effective } from './projection';
 
 const params = Type.Object({ sessionId: SessionIdSchema }, { additionalProperties: false });
@@ -23,8 +23,8 @@ export function registerSessionManagementRoutes(
   feature: FastifyInstance,
   coordinator: () => SessionCoordinator,
 ): void {
-  const authorize = (capability: 'manage' | 'delete') => (request: FastifyRequest) =>
-    authorizeSessionCapability(
+  const authorize = (capability: 'manage' | 'delete') => async (request: FastifyRequest) => {
+    await authorizeSessionCapability(
       request,
       coordinator(),
       sessionId(request),
@@ -32,6 +32,8 @@ export function registerSessionManagementRoutes(
         ? SessionCapabilities.capabilities.Delete
         : SessionCapabilities.capabilities.Manage,
     );
+  };
+
   const project = (view: SessionView, request: FastifyRequest) => ({
     session: effective(
       {
@@ -44,6 +46,7 @@ export function registerSessionManagementRoutes(
       },
       request,
       coordinator().provider,
+      authorizedIdentity(request, view.session.sessionId),
     ).session,
   });
   const command = (

@@ -93,12 +93,16 @@ not support wildcard scope values. Values must be non-empty strings.
 
 - `viewer`: `spec.view`, `session.view`;
 - `developer`: viewer capabilities plus `spec.create`, `spec.manage`, `spec.close-worktree`,
-  `spec.close-specification`, `session.create`, `session.manage`, `session.delete`,
-  `session.execute-write`;
+  `spec.close-specification`, `spec.start-session`, `session.create`, `session.manage`,
+  `session.delete`, `session.execute-write`;
 - `admin`: developer capabilities plus `session.view-provider-limits`, `settings.view`,
   `settings.manage`, `project-git.integrate`, `project-git.close-workspace`.
 
 Roles contain capabilities only. Scope belongs to the assignment, not to the role.
+
+Capabilities are granular: none implies another. `spec.start-session` only permits associating a
+new Session with a Specification; it grants no Session capability, and no Session capability
+grants it.
 
 There is no role inheritance, deny model, wildcard capability, or precedence rule in the
 authorization resolver. Capabilities from matching assignments are unioned.

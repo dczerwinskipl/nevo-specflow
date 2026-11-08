@@ -25,7 +25,7 @@ import {
 import type { SessionCoordinator } from '../lifecycle/coordinator';
 import { SessionError } from '../errors';
 import { effective } from './projection';
-import { authorizeSession, authorizeSessionWrite } from './authorization';
+import { authorizeSession, authorizeSessionWrite, authorizedIdentity } from './authorization';
 import { createSessionStreams } from './stream';
 import { registerTelemetryRoutes } from './telemetry';
 import { registerSessionManagementRoutes } from './management';
@@ -125,7 +125,7 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
     const authorize = (request: FastifyRequest, manage = false) =>
       authorizeSession(request, coordinator(), ids(request).sessionId, manage);
     async function authorizeExecution(request: FastifyRequest, continuation = false) {
-      await authorize(request, true);
+      const identity = await authorize(request, true);
       const response = request.body as RespondInteraction;
       if (continuation && response.kind === 'permission' && response.decision === 'deny') {
         return;
@@ -139,10 +139,8 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
         ? (snapshot.activeTurn?.mode ?? snapshot.session.mode)
         : ((request.body as StartTurn).mode ?? snapshot.session.mode);
       if (mode === 'workspace-write') {
-        authorizeSessionWrite(request, {
-          projectId: snapshot.session.projectId,
-          sessionId: snapshot.session.sessionId,
-        });
+        // Store-derived identity; execute-write never takes the home Specification's scope.
+        authorizeSessionWrite(request, identity);
       }
     }
 
@@ -213,6 +211,7 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
           await coordinator().snapshot(ids(request).sessionId, actor(request)),
           request,
           coordinator().provider,
+          authorizedIdentity(request, ids(request).sessionId),
         ),
     );
     feature.get(

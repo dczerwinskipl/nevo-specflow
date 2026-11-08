@@ -27,9 +27,12 @@ export class SessionError extends Error {
     }
 
     if (
-      ['SESSION_INPUT_INVALID', 'SESSION_CURSOR_INVALID', 'INTERACTION_RESPONSE_INVALID'].includes(
-        this.code,
-      )
+      [
+        'SESSION_INPUT_INVALID',
+        'SESSION_CURSOR_INVALID',
+        'SESSION_LIST_SCOPE_REQUIRED',
+        'INTERACTION_RESPONSE_INVALID',
+      ].includes(this.code)
     ) {
       return 400;
     }

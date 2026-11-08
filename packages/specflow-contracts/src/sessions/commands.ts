@@ -73,6 +73,7 @@ export const ReconcileTurnResultSchema = Type.Object(
 export const SessionErrorCodes = [
   'SESSION_INPUT_INVALID',
   'SESSION_CURSOR_INVALID',
+  'SESSION_LIST_SCOPE_REQUIRED',
   'INTERACTION_RESPONSE_INVALID',
   'SESSION_NOT_FOUND',
   'SESSION_RESOURCE_NOT_FOUND',

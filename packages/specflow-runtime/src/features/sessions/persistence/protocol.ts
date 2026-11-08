@@ -16,8 +16,18 @@ import type {
   ArchiveSession,
   SessionInfo,
   ToolOperation,
+  SessionListFilter,
 } from '@nevo/specflow-contracts/sessions';
 import type { WorkAggregate } from '../lifecycle/work-aggregate';
+import type { AssociationWrite } from './associations';
+
+export type { AssociationWrite, StoredAssociation } from './associations';
+export type {
+  SessionIdentity,
+  SessionListRow,
+  SessionListScan,
+  SessionListSummary,
+} from './catalogue';
 
 export type MeasurementFact =
   | {
@@ -98,7 +108,8 @@ export type StoreCommand =
       requestId: string;
       input: unknown;
     }
-  | { op: 'create'; actor: string; input: CreateSession }
+  /** `association` is an opaque sidecar written verbatim in the same transaction. */
+  | { op: 'create'; actor: string; input: CreateSession; association?: AssociationWrite }
   | {
       op: 'start';
       actor: string;
@@ -191,7 +202,24 @@ export type StoreCommand =
     }
   | { op: 'telemetry-expiry-deadline'; sessionId: string }
   | { op: 'telemetry-expire'; sessionId: string }
+  /** `SessionIdentity`, including the home `specId` of an associated Session. */
   | { op: 'identity'; sessionId: string }
+  /** `SessionIdentity[]` of the known IDs; at most 500 unique IDs, one indexed query. */
+  | { op: 'identities'; sessionIds: string[] }
+  /** `StoredAssociation | null`. */
+  | { op: 'association'; sessionId: string }
+  /** In-process workflow orchestrator only; refused for another home or a standalone Session. */
+  | {
+      op: 'associate-tasks';
+      sessionId: string;
+      specId: string;
+      taskIds: string[];
+      origin: 'workflow';
+    }
+  /** `SessionListScan`: at most `scanBudget` (<= 500) index rows after `after` (a created_seq). */
+  | { op: 'list'; filter: SessionListFilter; after?: number; scanBudget: number }
+  /** `SessionListSummary[]` for at most 100 Sessions, decoding only those rows. */
+  | { op: 'summaries'; sessionIds: string[] }
   | { op: 'history'; sessionId: string; actor: string; before: string; limit: number }
   | { op: 'work'; sessionId: string; turnId: string; actor: string; before?: string; limit: number }
   | {

@@ -42,7 +42,8 @@ export const WorkspaceDocumentSchema = Type.Object({
 });
 export const WorkspaceSessionSchema = Type.Object({
   id: IdSchema,
-  title: Type.String(),
+  /** Absent for an untitled Session; the server never invents a title. */
+  title: Type.Optional(Type.String()),
   taskIds: Type.Array(IdSchema),
   status: Type.Union([
     Type.Literal('active'),
@@ -105,6 +106,8 @@ const DocumentCollectionSchema = Type.Object({
 });
 const SessionCollectionSchema = Type.Object({
   items: Type.Array(WorkspaceSessionSchema),
+  /** More associated Sessions exist than the bounded section returns. */
+  hasMore: Type.Optional(Type.Boolean()),
   attention: Type.Array(WorkspaceAttentionSchema),
 });
 const ActivityCollectionSchema = Type.Object({ items: Type.Array(ActivitySchema) });

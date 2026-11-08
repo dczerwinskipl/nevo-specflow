@@ -118,18 +118,35 @@ export function createDemoSessions(state: DemoState) {
     },
     /** Resolves allocated sessions first, then the seeded references. */
     overlayReferences(seeded: SessionReferenceOwner): SessionReferenceOwner {
+      const allocated = (sessionId: string) => {
+        const session = state.sessions.get(sessionId);
+
+        return session
+          ? {
+              sessionId,
+              specId: session.specId,
+              projectId: state.catalogue.project.id,
+              workspaceId: 'demo-workspace',
+            }
+          : undefined;
+      };
+
       return {
         async resolve(sessionId) {
-          const session = state.sessions.get(sessionId);
+          return allocated(sessionId) ?? seeded.resolve(sessionId);
+        },
+        async resolveMany(sessionIds) {
+          const resolved = new Map(
+            await seeded.resolveMany(sessionIds.filter((id) => !state.sessions.has(id))),
+          );
+          for (const sessionId of sessionIds) {
+            const reference = allocated(sessionId);
+            if (reference) {
+              resolved.set(sessionId, reference);
+            }
+          }
 
-          return session
-            ? {
-                sessionId,
-                specId: session.specId,
-                projectId: state.catalogue.project.id,
-                workspaceId: 'demo-workspace',
-              }
-            : seeded.resolve(sessionId);
+          return resolved;
         },
       };
     },

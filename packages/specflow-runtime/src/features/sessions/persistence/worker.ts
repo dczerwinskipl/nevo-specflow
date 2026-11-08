@@ -22,7 +22,7 @@ import {
   hasToolActions,
 } from '../lifecycle/work-aggregate';
 import { StoreFault, fail, decode, type Row } from './encoding';
-import { initializeSessionSchema } from './schema';
+import { CREATED_SEQ_KEY, initializeSessionSchema } from './schema';
 import { createContentStorage } from './content';
 import { createRequestJournal } from './requests';
 import { createSessionCursors } from './cursors';
@@ -31,6 +31,8 @@ import { createProviderFacts } from './facts';
 import { createEffectReconciliation } from './reconciliation';
 import { createSessionTelemetry } from './telemetry';
 import { createSessionManagement } from './session-management';
+import { createFingerprint, createSessionAssociations } from './associations';
+import { createSessionCatalogue } from './catalogue';
 
 const TELEMETRY_PUBLICATION_RETRY_MS = 1000;
 
@@ -154,13 +156,18 @@ export async function runSessionWorker(): Promise<void> {
     return decode<StoredTurn>(get('SELECT data FROM turns WHERE id=? AND session=?', id, sid));
   }
 
+  /** The list projection columns mirror `data` in the same statement. */
   function saveSession(s: StoredSession): void {
+    const info = s.snapshot.session;
     run(
-      'UPDATE sessions SET seq=?,ordinal=?,data=? WHERE id=?',
+      'UPDATE sessions SET seq=?,ordinal=?,data=?,archived_at=?,readiness=?,updated_at=? WHERE id=?',
       s.snapshot.eventSeq,
       s.ordinal,
       JSON.stringify(s),
-      s.snapshot.session.sessionId,
+      info.archivedAt ?? null,
+      info.readiness,
+      info.updatedAt,
+      info.sessionId,
     );
   }
 
@@ -472,6 +479,14 @@ export async function runSessionWorker(): Promise<void> {
     telemetry,
   });
   const effects = createEffectReconciliation({ get, all, run, request, remember, turn, applyFact });
+  const associations = createSessionAssociations({ get, all, run });
+  const catalogue = createSessionCatalogue({
+    get,
+    all,
+    run,
+    projectId: options.projectId,
+    associations,
+  });
   const management = createSessionManagement({
     get,
     all,
@@ -716,20 +731,55 @@ export async function runSessionWorker(): Promise<void> {
     }
 
     if (c.op === 'identity') {
-      const s = session(c.sessionId);
+      return catalogue.identity(c.sessionId);
+    }
 
-      return { projectId: s.snapshot.session.projectId, sessionId: c.sessionId };
+    if (c.op === 'identities') {
+      return catalogue.identities(c.sessionIds);
+    }
+
+    if (c.op === 'list') {
+      return catalogue.list(c.filter, c.after, c.scanBudget);
+    }
+
+    if (c.op === 'summaries') {
+      return catalogue.summaries(c.sessionIds);
+    }
+
+    if (c.op === 'association') {
+      session(c.sessionId);
+
+      return associations.read(c.sessionId);
+    }
+
+    if (c.op === 'associate-tasks') {
+      return transaction(() => {
+        session(c.sessionId);
+
+        return associations.associateTasks(c.sessionId, c.specId, c.taskIds, c.origin, Date.now());
+      });
     }
 
     if (c.op === 'create') {
       return transaction(() => {
-        const cached = request(c.actor, 'create', options.projectId, c.input.requestId, c.input);
+        // One project-scoped key for both create routes, fingerprinted over input and association.
+        const fingerprint = createFingerprint(c.input, c.association);
+        const cached = request(
+          c.actor,
+          'create',
+          options.projectId,
+          c.input.requestId,
+          fingerprint,
+        );
         if (cached) {
           return cached;
         }
 
         const id = randomUUID(),
           date = now();
+        const createdSeq =
+          Number(get('SELECT value FROM meta WHERE key=?', CREATED_SEQ_KEY)?.value ?? 0) + 1;
+        run('INSERT OR REPLACE INTO meta VALUES(?,?)', CREATED_SEQ_KEY, String(createdSeq));
         const s: StoredSession = {
           ordinal: 0,
           snapshot: {
@@ -761,16 +811,23 @@ export async function runSessionWorker(): Promise<void> {
           },
         };
         run(
-          'INSERT INTO sessions VALUES(?,?,?,?,?,NULL)',
+          'INSERT INTO sessions(id,project,seq,ordinal,data,native,created_seq,archived_at,readiness,updated_at) VALUES(?,?,?,?,?,NULL,?,NULL,?,?)',
           id,
           options.projectId,
           0,
           0,
           JSON.stringify(s),
+          createdSeq,
+          s.snapshot.session.readiness,
+          date,
         );
+        if (c.association) {
+          associations.write(id, createdSeq, c.actor, c.association, Date.now());
+        }
+
         telemetry.create(s);
         const result = { sessionId: id };
-        remember(c.actor, 'create', options.projectId, c.input.requestId, c.input, result);
+        remember(c.actor, 'create', options.projectId, c.input.requestId, fingerprint, result);
 
         return result;
       });

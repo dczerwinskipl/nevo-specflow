@@ -2,9 +2,10 @@ import type { SpecificationWorkspaceResponse } from '@nevo/specflow-contracts/sp
 import { SpecCapabilities } from '@nevo/specflow-contracts/specs';
 import { SessionCapabilities } from '@nevo/specflow-contracts/sessions';
 import type { RequestAuthorization } from '../../auth';
-import type { SessionReferenceOwner } from '../../sessions';
+import { sessionScope, type SessionReference, type SessionReferenceOwner } from '../../sessions';
 import type { SpecificationWorkspaceRepository, WorkspaceContributions } from './repository';
 import { readWorkspace } from './read-workspace';
+import { specScope } from '../scope';
 import { presentWorkspace } from './presenter';
 import { authorizeSessionReferences } from './authorize-projection';
 
@@ -14,13 +15,14 @@ export async function readAuthorizedWorkspace(
   specId: string,
   authz: RequestAuthorization,
   sessions?: SessionReferenceOwner,
+  projectId?: string,
 ): Promise<
   { kind: 'ok'; value: SpecificationWorkspaceResponse } | { kind: 'unavailable' | 'not_found' }
 > {
   authz.require({
     resource: SpecCapabilities,
     capability: SpecCapabilities.capabilities.View,
-    scope: { specId },
+    scope: specScope(projectId, specId),
   });
   if (!source) {
     return { kind: 'unavailable' };
@@ -66,16 +68,19 @@ export async function readAuthorizedWorkspace(
     }
   }
 
+  // One batch for every referenced Session; the store-derived identity decides the scope.
+  const owners: ReadonlyMap<string, SessionReference> =
+    ids.size && sessions ? await sessions.resolveMany([...ids]) : new Map();
   const permitted = new Set<string>();
   for (const id of ids) {
-    const owner = await sessions?.resolve(id);
+    const owner = owners.get(id);
     if (
       owner?.sessionId === id &&
       owner.specId === specId &&
       authz.can({
         resource: SessionCapabilities,
         capability: SessionCapabilities.capabilities.View,
-        scope: { specId: owner.specId, sessionId: owner.sessionId },
+        scope: sessionScope(owner, SessionCapabilities.capabilities.View),
       })
     ) {
       permitted.add(id);

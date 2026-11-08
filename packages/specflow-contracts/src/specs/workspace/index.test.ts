@@ -61,4 +61,22 @@ describe('Specification Workspace Attention contract', () => {
       expect(Value.Check(SpecificationWorkspaceResponseSchema, projection)).toBe(true);
     }
   });
+
+  it('accepts an untitled Session and a bounded Sessions section with hasMore', () => {
+    const response = workspace();
+    const sessions = {
+      state: 'available',
+      data: {
+        items: [{ id: 'session-1', taskIds: [], status: 'quiet' }],
+        hasMore: true,
+        attention: [],
+      },
+    };
+    expect(
+      Value.Check(SpecificationWorkspaceResponseSchema, {
+        ...response,
+        sections: { ...response.sections, sessions },
+      }),
+    ).toBe(true);
+  });
 });

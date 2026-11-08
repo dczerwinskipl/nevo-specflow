@@ -5,7 +5,7 @@ import type { SessionCoordinator } from '../lifecycle/coordinator';
 import type { EventBatch } from '../persistence/protocol';
 import { SessionError } from '../errors';
 import { createStreamWakeup } from './wakeup';
-import { authorizeSession } from './authorization';
+import { authorizeSession, authorizedIdentity } from './authorization';
 import { effectiveEvent } from './projection';
 import { telemetryAccess } from './telemetry';
 
@@ -55,11 +55,9 @@ export function createSessionStreams<RawServer extends RawServerBase>(
       }
 
       const controller = new AbortController();
-      const scope = await coordinator.store.call<{ projectId: string; sessionId: string }>({
-        op: 'identity',
-        sessionId: sid,
-      });
-      const initialAccess = telemetryAccess(request, scope).accessRevision;
+      // Immutable for the Session's life: the home Specification never changes.
+      const identity = authorizedIdentity(request, sid);
+      const initialAccess = telemetryAccess(request, identity).accessRevision;
       const unwatchTelemetry = coordinator.telemetry.watch(sid);
       const wakeup = createStreamWakeup((listener) => coordinator.store.subscribe(sid, listener));
       streams.add(controller);
@@ -82,7 +80,7 @@ export function createSessionStreams<RawServer extends RawServerBase>(
         while (!controller.signal.aborted) {
           request.authz = request.authz.refresh();
           await authorizeSession(request, coordinator, sid);
-          if (telemetryAccess(request, scope).accessRevision !== initialAccess) {
+          if (telemetryAccess(request, identity).accessRevision !== initialAccess) {
             break;
           }
 
@@ -119,7 +117,7 @@ export function createSessionStreams<RawServer extends RawServerBase>(
               'id: ' +
               event.eventSeq +
               '\nevent: session-change\ndata: ' +
-              JSON.stringify(effectiveEvent(event, request, coordinator.provider)) +
+              JSON.stringify(effectiveEvent(event, request, coordinator.provider, identity)) +
               '\n\n';
             if (!raw.write(frame)) {
               await once(raw, 'drain', { signal: controller.signal });

@@ -89,5 +89,5 @@ export function registerDemoRoutes<RawServer extends RawServerBase>(
     references: demo.sessionReferences,
     documentPaths: documents.pathsFor,
   });
-  registerDemoDocumentRoutes(app, documents, demo.catalogue);
+  registerDemoDocumentRoutes(app, documents, demo.catalogue, state.catalogue.project.id);
 }

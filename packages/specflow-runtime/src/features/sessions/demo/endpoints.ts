@@ -12,6 +12,8 @@ import type { DemoCatalogue, DemoSpecification } from '../../demo-catalogue';
 import { DemoId, DemoSpecParams, demoErrors, isDemoOperationError } from '../../../demo/http';
 import type { DemoState } from '../../../demo/state';
 import type { SessionReferenceOwner } from '../reference-owner';
+import { sessionScope } from '../scope';
+import { specScope } from '../../specs';
 import type { DemoSessions } from './operations';
 
 const SessionParams = Type.Object({ specId: DemoId, sessionId: DemoId });
@@ -50,12 +52,12 @@ export function registerDemoSessionRoutes<RawServer extends RawServerBase>(
       request.authz.require({
         resource: SpecCapabilities,
         capability: SpecCapabilities.capabilities.View,
-        scope: { specId },
+        scope: specScope(state.catalogue.project.id, specId),
       });
       request.authz.require({
         resource: SessionCapabilities,
         capability: SessionCapabilities.capabilities.Create,
-        scope: { specId },
+        scope: { projectId: state.catalogue.project.id, specId },
       });
       const record = await catalogue.find(specId);
       if (!record) {
@@ -97,7 +99,7 @@ export function registerDemoSessionRoutes<RawServer extends RawServerBase>(
       request.authz.require({
         resource: SpecCapabilities,
         capability: SpecCapabilities.capabilities.View,
-        scope: { specId },
+        scope: specScope(state.catalogue.project.id, specId),
       });
       const owner = await references.resolve(sessionId);
       if (owner?.specId !== specId) {
@@ -107,7 +109,7 @@ export function registerDemoSessionRoutes<RawServer extends RawServerBase>(
       request.authz.require({
         resource: SessionCapabilities,
         capability: SessionCapabilities.capabilities.View,
-        scope: owner,
+        scope: sessionScope(owner, SessionCapabilities.capabilities.View),
       });
       const detail = await sessions.detail(
         sessionId,

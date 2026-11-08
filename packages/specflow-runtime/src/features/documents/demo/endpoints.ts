@@ -23,6 +23,7 @@ import {
   DemoSpecParams,
 } from '../../../demo/http';
 import type { RequestAuthorization } from '../../auth';
+import { specScope } from '../../specs';
 import type { FastifyReply } from 'fastify';
 import { replyWithDocumentFailure } from '../content/route-support';
 import type { DemoDocuments } from './operations';
@@ -64,11 +65,11 @@ async function answer<T>(reply: unknown, work: () => Promise<T>): Promise<T | Fa
 }
 
 /** Every write needs the Manage capability on the Specification in the path. */
-function requireManage(authz: RequestAuthorization, specId: string) {
+function requireManage(authz: RequestAuthorization, projectId: string, specId: string) {
   authz.require({
     resource: SpecCapabilities,
     capability: SpecCapabilities.capabilities.Manage,
-    scope: { specId },
+    scope: specScope(projectId, specId),
   });
 }
 
@@ -81,6 +82,7 @@ export function registerDemoDocumentRoutes<RawServer extends RawServerBase>(
   app: FastifyInstance<RawServer>,
   documents: DemoDocuments,
   catalogue: DemoCatalogue,
+  projectId: string,
 ) {
   const typed = app.withTypeProvider<TypeBoxTypeProvider>();
   const find = (specId: string) => catalogue.find(specId);
@@ -98,7 +100,7 @@ export function registerDemoDocumentRoutes<RawServer extends RawServerBase>(
     async (request, reply) =>
       answer(reply, async () => {
         const { specId, documentId } = request.params;
-        requireManage(request.authz, specId);
+        requireManage(request.authz, projectId, specId);
         const subject = request.authz.readContext().subject;
 
         return documents.save(subject, specId, documentId, request.body, find);
@@ -117,7 +119,7 @@ export function registerDemoDocumentRoutes<RawServer extends RawServerBase>(
     async (request, reply) =>
       answer(reply, async () => {
         const { specId } = request.params;
-        requireManage(request.authz, specId);
+        requireManage(request.authz, projectId, specId);
 
         return documents.create(request.authz.readContext().subject, specId, request.body, find);
       }),
@@ -134,7 +136,7 @@ export function registerDemoDocumentRoutes<RawServer extends RawServerBase>(
     async (request, reply) =>
       answer(reply, async () => {
         const { specId } = request.params;
-        requireManage(request.authz, specId);
+        requireManage(request.authz, projectId, specId);
         const subject = request.authz.readContext().subject;
 
         return documents.createFolder(subject, specId, request.body, find);
@@ -152,7 +154,7 @@ export function registerDemoDocumentRoutes<RawServer extends RawServerBase>(
     async (request, reply) =>
       answer(reply, async () => {
         const { specId } = request.params;
-        requireManage(request.authz, specId);
+        requireManage(request.authz, projectId, specId);
 
         return documents.operate(request.authz.readContext().subject, specId, request.body, find);
       }),

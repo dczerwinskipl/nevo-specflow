@@ -2,6 +2,7 @@ import { ProjectGitCapabilities, SpecCapabilities } from '@nevo/specflow-contrac
 import type { SpecFlowEngine } from '@nevo/specflow-engine';
 
 import type { RuntimeFeature } from '../runtime-feature';
+import type { ProjectIdSource } from './scope';
 import { defaultSpecsFeatureConfig, type SpecsFeatureConfig } from './configuration';
 import { specsCreateEndpoint } from './create/endpoint';
 import { registerSpecsOperationList } from './create/operation-list';
@@ -24,6 +25,8 @@ export interface SpecsFeatureDependencies {
   readonly workspaceRepository?: SpecificationWorkspaceRepository;
   readonly contributions?: WorkspaceContributions;
   readonly sessions?: SessionReferenceOwner;
+  /** The Runtime's project when there is no Engine to read it from (demo catalogue); see `specScope`. */
+  readonly projectId?: ProjectIdSource;
   /** Generic operation progress registry; absent disables live progress. */
   readonly progress?: {
     readonly registry: OperationProgressRegistry;
@@ -55,6 +58,8 @@ export function createSpecsFeature(options: CreateSpecsFeatureOptions = {}): Run
       ? createEngineWorkspaceRepository(options.dependencies.engine)
       : undefined);
   const config = options.config ?? defaultSpecsFeatureConfig();
+  const projectId: ProjectIdSource = () =>
+    options.dependencies?.projectId?.() ?? options.dependencies?.engine?.context.project.projectId;
 
   return {
     authorizationResources: [SpecCapabilities, ProjectGitCapabilities],
@@ -91,11 +96,13 @@ export function createSpecsFeature(options: CreateSpecsFeatureOptions = {}): Run
       app.register(specsOverviewEndpoint, {
         repository,
         currentSections: config.overview.current.sections,
+        projectId,
       });
       app.register(specificationWorkspaceEndpoint, {
         repository: workspaceRepository,
         contributions: options.dependencies?.contributions,
         sessions: options.dependencies?.sessions,
+        projectId,
       });
     },
   };

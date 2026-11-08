@@ -3,6 +3,7 @@ import { join, resolve } from 'node:path';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { randomUUID } from 'node:crypto';
+import { inflateRawSync } from 'node:zlib';
 import { createInvocationScope, launchOwnedProcess, projectProviderEnvironment } from '../process';
 import { antigravityHooks } from './hook-launcher';
 import { createDiagnosticStore } from '../process/diagnostics';
@@ -10,9 +11,18 @@ import { createDiagnosticStore } from '../process/diagnostics';
 const launchDeadlineMs = 10000;
 const settlementBudgetMs = 5000;
 
+function hookScript(command: string) {
+  expect(command.length).toBeLessThanOrEqual(8191);
+  const loader = Buffer.from(command.split(' -EncodedCommand ')[1]!, 'base64').toString('utf16le');
+  const compressed = /FromBase64String\('([A-Za-z0-9+/=]+)'\)/.exec(loader)?.[1];
+  expect(compressed).toBeDefined();
+
+  return inflateRawSync(Buffer.from(compressed!, 'base64')).toString('utf8');
+}
+
 describe('Antigravity fixed hook launcher', () => {
   it.runIf(process.platform === 'win32').each([true, false])(
-    'forwards UTF-8 through the Windows launcher or denies startup failure (helper available: %s)',
+    'forwards UTF-8 through the native cmd launcher or denies startup failure (helper available: %s)',
     async (available) => {
       const root = await mkdtemp(join(tmpdir(), "specflow-hook path's-"));
       try {
@@ -47,13 +57,10 @@ process.stdin.on('end', () => {
         const owner = await launchOwnedProcess({
           invocationId,
           scope,
-          executable: join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe'),
-          args: [
-            '-NoProfile',
-            '-NonInteractive',
-            '-EncodedCommand',
-            command.split(' -EncodedCommand ')[1]!,
-          ],
+          // The native CLI invokes hook commands through cmd.exe. Directly
+          // starting PowerShell misses its smaller command-line limit.
+          executable: join(systemRoot, 'System32', 'cmd.exe'),
+          args: ['/d', '/s', '/c', command],
           cwd: root,
           environment: projectProviderEnvironment({ host: process.env }),
           signal: AbortSignal.timeout(launchDeadlineMs),
@@ -153,8 +160,7 @@ process.stdin.on('end', () => {
     })['specflow-managed-invocation'];
     const pre = hooks.PreToolUse[0]!;
     const command = pre.hooks[0]!.command;
-    const encoded = command.split(' -EncodedCommand ')[1]!;
-    const script = Buffer.from(encoded, 'base64').toString('utf16le');
+    const script = hookScript(command);
     expect(pre.matcher).toBe('*');
     expect(script).toContain("directory''s");
     expect(script).toContain('"pre-tool-use"');
@@ -163,10 +169,7 @@ process.stdin.on('end', () => {
     expect(script).toContain('$start.UseShellExecute = $false');
     expect(script).toContain('BaseStream.WriteAsync');
     expect(script).not.toContain('$json | &');
-    const stop = Buffer.from(
-      hooks.Stop[0]!.command.split(' -EncodedCommand ')[1]!,
-      'base64',
-    ).toString('utf16le');
+    const stop = hookScript(hooks.Stop[0]!.command);
     expect(stop).toContain('"stop"');
   });
 
@@ -194,9 +197,7 @@ process.stdin.on('end', () => {
       node: resolve('node'),
       helper,
     })['specflow-managed-invocation'].PreToolUse[0]!.hooks[0]!.command;
-    const script = Buffer.from(command.split(' -EncodedCommand ')[1]!, 'base64').toString(
-      'utf16le',
-    );
+    const script = hookScript(command);
     expect(script).toContain(String.raw`controlled helper\\" "pre-tool-use"`);
     const quotedHelper = resolve('controlled"helper');
     const quoted = antigravityHooks({
@@ -204,8 +205,6 @@ process.stdin.on('end', () => {
       node: resolve('node'),
       helper: quotedHelper,
     })['specflow-managed-invocation'].PreToolUse[0]!.hooks[0]!.command;
-    expect(
-      Buffer.from(quoted.split(' -EncodedCommand ')[1]!, 'base64').toString('utf16le'),
-    ).toContain(String.raw`controlled\"helper`);
+    expect(hookScript(quoted)).toContain(String.raw`controlled\"helper`);
   });
 });

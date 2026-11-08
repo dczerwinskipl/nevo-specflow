@@ -1,4 +1,5 @@
 import { isAbsolute, join } from 'node:path';
+import { deflateRawSync } from 'node:zlib';
 
 /** Native hooks accept a command string. Only fixed executable paths and a fixed
  * hook role enter this encoded script; native tool input travels through stdin. */
@@ -113,11 +114,28 @@ $utf8 = [Text.UTF8Encoding]::new($false, $true)
 }
 `;
 
-    return (
+    // The native CLI launches this through cmd.exe (8191 characters), rather
+    // than directly through CreateProcess. Keep trusted paths encoded while
+    // compressing the fixed script to fit that smaller boundary. Tool input
+    // still travels only through stdin, never through generated script text.
+    const compressed = deflateRawSync(Buffer.from(script, 'utf8')).toString('base64');
+    const loader = `
+$bytes = [Convert]::FromBase64String('${compressed}')
+$memory = [IO.MemoryStream]::new($bytes)
+$stream = [IO.Compression.DeflateStream]::new($memory, [IO.Compression.CompressionMode]::Decompress)
+$reader = [IO.StreamReader]::new($stream, [Text.UTF8Encoding]::new($false, $true))
+try { & ([ScriptBlock]::Create($reader.ReadToEnd())) }
+finally { $reader.Dispose() }
+`;
+    const result =
       executable +
       ' -NoProfile -NonInteractive -EncodedCommand ' +
-      Buffer.from(script, 'utf16le').toString('base64')
-    );
+      Buffer.from(loader, 'utf16le').toString('base64');
+    if (result.length > 8191) {
+      throw new Error('Native hook command exceeds the Windows shell limit.');
+    }
+
+    return result;
   }
 
   return {

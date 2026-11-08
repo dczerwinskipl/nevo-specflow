@@ -38,7 +38,7 @@ Implemented behavior remains owned by [the driver protocol](../../reference/prot
 [V10 readiness](session-v10-backend-readiness.md) separately owns product associations
 and frontend/backend integration gaps. This backlog introduces no current API guarantee.
 
-All F01–F19 items below are **outside PR #107**, including priorities marked P1.
+All F01–F20 items below are **outside PR #107**, including priorities marked P1.
 Priority is suggested follow-up ordering, not a new condition for merging this PR.
 Each needs its own bounded design/implementation/review. No current adapter should
 enable it by accepting arbitrary configuration keys, native tools or protocol frames.
@@ -105,6 +105,15 @@ control must first demonstrate successful patch-helper launch under the same
 sandbox, then hold it at a reproducible barrier before replacing the directory.
 No paid model Turn is needed for that evidence; it must not change Codex's denial
 of host escalation. This evidence gap is not a confirmed vulnerability.
+
+The later N01 native probe closed missing-hook execution uncertainty and exposed
+one additional functional defect: the generated PowerShell command exceeded the
+native intermediary `cmd.exe` limit. Compression of the fixed script plus an
+explicit length check preserves policy and bounded stdin. The Windows regression
+now uses the native command path and failed before correction. See the
+[20-case manual acceptance](antigravity-provider.md#n01-native-hook-start-failure-acceptance--2026-11-08),
+which uses only a synthetic loopback backend and synthetic credentials. Stop
+continuation semantics remain F20, rather than an expansion of this fix.
 
 ### Paseo comparison and classification
 
@@ -373,6 +382,23 @@ evidence sufficient to reconcile the original invocation without sending its inp
 ownership and native request correlation. PID absence, timeout or login success is insufficient.
 **Minimum acceptance:** SIGKILL cuts, retained/missing history, account switches, repeated command
 IDs and absent/contradictory evidence never release an uncertain writer or fabricate a result.
+
+### F20 — Antigravity Stop continuation semantics
+
+**Priority:** P2. **Outside PR #107; N02 from the final re-review.**
+**Current/evidence:** `antigravity/question-bridge.ts` answers `deny` when Stop
+conflicts with pending interactions or retained files. Native [Stop documentation](https://antigravity.google/docs/hooks/#stop)
+specifies that only `continue` re-enters the loop. Runtime still requires positive
+idle and process-tree settlement; this does not manufacture success or approve effects.
+**Impact/direction:** A conflicting Stop may unnecessarily end native execution and
+leave an uncertain outcome. Decide when to continue the same native invocation
+versus stop it without replay, then map that decision to the native Stop response.
+**Dependencies/security:** Existing interaction delivery, retained file ownership,
+terminal arbitration and cancellation; continuation must not create unbounded
+model activity or let an old Stop affect a newer tool generation.
+**Minimum acceptance:** Controlled pending-question/file cases, duplicate and stale
+Stop, cancellation and already-observed terminal results preserve one lifecycle
+owner, bounded continuation and honest settlement. No real subscription in tests.
 
 [paseo-types]: https://github.com/getpaseo/paseo/blob/ab8e1e61ff7c0bbad08c95e15a09f3ec42333410/packages/server/src/server/agent/agent-sdk-types.ts
 [paseo-provider]: https://github.com/getpaseo/paseo/blob/ab8e1e61ff7c0bbad08c95e15a09f3ec42333410/packages/plugin/src/server/provider.ts

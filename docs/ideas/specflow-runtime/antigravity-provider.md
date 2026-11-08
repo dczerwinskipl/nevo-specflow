@@ -261,6 +261,58 @@ Primary sources: [headless protocol](https://antigravity.google/docs/cli/headles
 
 ## Execution policy and routine CLI updates
 
+### N01 native hook-start failure acceptance — 2026-11-08
+
+The re-review requested a real-CLI control for a hook that cannot start, rather
+than another simulated helper response. The installed Windows x64 build above
+(SHA-256 `fbbfb3f15c7628252c5e12765683c688ba05ee122b853cadeb0bbfd4e13ca25b`)
+was exercised manually with a synthetic Gemini-compatible HTTP/SSE backend bound
+only to loopback. A disposable HOME selected `modelProvider: gemini`, a synthetic
+API key, an explicit custom model and a loopback `GOOGLE_GEMINI_BASE_URL`.
+No personal login, OAuth token, paid endpoint or real model inference was used.
+The initialization frame had to confirm that custom model before any user frame.
+The prompt explicitly identified a manual integration test and requested a short
+confirmation. Scripted model responses proposed exactly one controlled tool call;
+all target files and command working directories belonged to disposable scratch.
+
+The native invocation used `--input-format stream-json --output-format stream-json
+--disable-slash-commands --sandbox --mode <mode> --model <local-model>`. Apart from
+the synthetic model/auth source, execution policy matched the admitted profile:
+`toolPermission: proceed-in-sandbox`, `allowNonWorkspaceAccess: false`, terminal
+sandbox enabled, no persistent allow rules and private generated hooks. Every
+process was owned by the existing Job Object implementation and settled with a
+positive zero-process count (`group-exited`).
+
+| Native mode            | Tool                           | Hook cases                                                                                                                          | Observed effects                                                                                                              |
+| ---------------------- | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Agent (`accept-edits`) | `write_to_file`, `run_command` | Explicit fixture approval; explicit deny; missing launcher; launcher exit 23; missing helper; helper exit 23; malformed JSON output | Approved controls created their exact marker. All 12 negative cases reported native hook/tool errors and created no marker.   |
+| Plan (`plan`)          | `write_to_file`, `run_command` | Explicit fixture approval; missing launcher; launcher exit 23                                                                       | Approved controls created their exact marker. All four negative cases reported native hook/tool errors and created no marker. |
+
+All **20 manual cases passed**. Absence of a file was accepted as denial evidence
+only alongside a valid positive control, a valid proposed native tool call and
+the native hook/tool error. Native final `SUCCESS` can follow a handled tool
+error; it was not used as proof that the denied operation executed. These probes
+verify the native hook transport boundary, not a complete production OAuth Turn
+or protection against arbitrary same-user processes.
+
+The positive control exposed a separate confirmed defect: the generated UTF-16
+PowerShell `EncodedCommand` exceeded the native intermediary `cmd.exe` limit of
+8191 characters. Native CLI correctly blocked the tool with `The command line
+is too long`, so direct PowerShell unit launches had missed a functional failure.
+The launcher now compresses the same fixed trusted script, reconstructs it in
+PowerShell and rejects a command exceeding that limit before launch. Native tool
+input still travels only through bounded stdin; policy, permission decisions,
+deadlines, output bounds and child cleanup are unchanged. The controlled Windows
+regression now launches via `cmd.exe /d /s /c`, failed on the old code and passed
+after correction. Independent review reran all eight launcher tests successfully.
+
+N01 is closed for this recorded native profile. This evidence is not a hash pin,
+a requirement to test every ordinary CLI update, or a claim about all future hook
+implementations. N02 Stop/continue semantics remain a separate nonblocking
+[follow-up F20](provider-migration-plan.md#f20--antigravity-stop-continuation-semantics).
+
+### Compatible updates
+
 The owner reaffirmed optimistic compatibility after the 2026-10-31 deep review.
 Required native API inventory, permission mode, workspace and account binding
 are checked; hooks accept only declared tools with supported handlers/schemas.

@@ -4929,7 +4929,7 @@
         "asking what the feat/session-ui-integration delivery decided and what it left open",
         "planning the Session association registry or the Session list"
       ],
-      "summary": "Delivered record of the Managed Session UI integration (T1-T12): real telemetry, closed command acknowledgements, unknown-Turn reconcile, multi-select questions, Antigravity icon, Work counts and classified digest, Session rename/archive/unarchive/delete end to end. Keeps the owner decisions and the open follow-ups; the behaviour lives in the owning contracts.",
+      "summary": "Delivered record of the Managed Session UI integration (T1-T13): real telemetry, closed command acknowledgements, unknown-Turn reconcile, multi-select questions, Antigravity icon, Work counts and classified digest, Session rename/archive/unarchive/delete end to end. Keeps the owner decisions and the open follow-ups; the behaviour lives in the owning contracts.",
       "related": [
         "reference.api.sessions",
         "reference.api.session-telemetry",

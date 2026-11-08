@@ -14,12 +14,26 @@ export const codexItemTypes = [
   'contextCompaction',
   'commandExecution',
   'fileChange',
+  'mcpToolCall',
+  'webSearch',
 ] as const;
 
-/** Codex app-server ThreadItem types that open a ToolAction. A fileChange is a patch, so `edit`. */
+/** Codex app-server ThreadItem types that open a ToolAction. A fileChange is a patch, so `edit`.
+ * An MCP tool call and a native web search are `other` by owner decision; both are listed so the
+ * inventory of action-opening items stays closed. */
 export const codexToolOperations: NativeToolOperations = {
   commandExecution: 'command',
   fileChange: 'edit',
+  mcpToolCall: 'other',
+  webSearch: 'other',
+};
+
+const codexWorkTitles: Readonly<Record<string, string>> = {
+  reasoning: 'Codex reasoning',
+  commandExecution: 'Codex command',
+  fileChange: 'Codex file changes',
+  mcpToolCall: 'Codex MCP tool call',
+  webSearch: 'Codex web search',
 };
 
 function identifier(value: unknown): string {
@@ -38,6 +52,36 @@ function textValue(value: unknown): string {
   return value;
 }
 
+/** The native `server/tool` identity of an MCP tool call, bounded before it becomes a title. */
+function mcpToolTitle(item: Record<string, unknown>): string {
+  for (const name of [item.server, item.tool]) {
+    if (typeof name !== 'string' || !name || Buffer.byteLength(name) > 256) {
+      throw new CodexRpcError('protocol');
+    }
+  }
+
+  return String(item.server) + '/' + String(item.tool);
+}
+
+/** Native web-search request: the query, else the structured action (open or find in a page). */
+function webSearchInput(item: Record<string, unknown>): string | undefined {
+  const query = textValue(item.query);
+  if (query) {
+    return query;
+  }
+
+  if (item.action == null) {
+    return undefined;
+  }
+
+  const action = rpcObject(item.action);
+  if (!['search', 'openPage', 'findInPage', 'other'].includes(String(action.type))) {
+    throw new CodexRpcError('protocol');
+  }
+
+  return textValue(JSON.stringify(action));
+}
+
 /** Completed native items are authoritative, not reconstructed delta concatenations.
  * A single bounded pending answer preserves final/commentary separation for older
  * items without phase metadata. Native item identities, never text equality, dedupe.
@@ -53,6 +97,7 @@ export function createCodexProtocol(
   identifier(threadId);
   const active = new Map<string, string>();
   const patches = new Map<string, { targets: string[]; hash: string }>();
+  const searches = new Map<string, string>();
   const seen = new Map<string, string>();
   let turnId: string | undefined;
   let terminal = false;
@@ -207,17 +252,13 @@ export function createCodexProtocol(
           }
 
           active.set(id, kind);
-          if (kind === 'reasoning' || kind === 'commandExecution' || kind === 'fileChange') {
+          const workTitle = codexWorkTitles[kind];
+          if (workTitle) {
             await emit({
               kind: 'work-open',
               key: 'item:' + id,
               workKind: kind === 'reasoning' ? 'reasoning' : 'tool',
-              title:
-                kind === 'reasoning'
-                  ? 'Codex reasoning'
-                  : kind === 'fileChange'
-                    ? 'Codex file changes'
-                    : 'Codex command',
+              title: workTitle,
             });
           }
 
@@ -286,6 +327,41 @@ export function createCodexProtocol(
               operation: nativeToolOperation(codexToolOperations, kind),
             });
             await text('action:' + id, 'tool-input', textValue(JSON.stringify(item.changes)));
+          }
+
+          if (kind === 'mcpToolCall') {
+            if (item.status !== 'inProgress') {
+              throw new CodexRpcError('protocol');
+            }
+
+            await emit({
+              kind: 'action-open',
+              key: 'action:' + id,
+              parentKey: 'item:' + id,
+              title: mcpToolTitle(item),
+              operation: nativeToolOperation(codexToolOperations, kind),
+            });
+            await text(
+              'action:' + id,
+              'tool-input',
+              textValue(JSON.stringify(item.arguments ?? null)),
+            );
+          }
+
+          if (kind === 'webSearch') {
+            // Codex starts a search with an empty query; the request is known on completion.
+            const input = webSearchInput(item);
+            await emit({
+              kind: 'action-open',
+              key: 'action:' + id,
+              parentKey: 'item:' + id,
+              title: 'Web search',
+              operation: nativeToolOperation(codexToolOperations, kind),
+            });
+            if (input !== undefined) {
+              searches.set(id, input);
+              await text('action:' + id, 'tool-input', input);
+            }
           }
 
           return;
@@ -387,6 +463,60 @@ export function createCodexProtocol(
           const state = item.status === 'completed' ? 'completed' : 'failed';
           await emit({ kind: 'action-update', key: 'action:' + id, state });
           await emit({ kind: 'work-update', key: 'item:' + id, state });
+        } else if (kind === 'mcpToolCall') {
+          if (!['completed', 'failed'].includes(String(item.status))) {
+            throw new CodexRpcError('protocol');
+          }
+
+          mcpToolTitle(item);
+          if (item.error != null) {
+            await text('action:' + id, 'tool-output', textValue(rpcObject(item.error).message));
+          } else if (item.result != null) {
+            const result = rpcObject(item.result);
+            if (!Array.isArray(result.content)) {
+              throw new CodexRpcError('protocol');
+            }
+
+            await text(
+              'action:' + id,
+              'tool-output',
+              textValue(
+                JSON.stringify({
+                  content: result.content,
+                  structuredContent: result.structuredContent ?? null,
+                }),
+              ),
+            );
+          }
+
+          // A tool result the server flags as an error arrives as status `failed` with a result.
+          const state = item.status === 'completed' ? 'completed' : 'failed';
+          await emit({ kind: 'action-update', key: 'action:' + id, state });
+          await emit({ kind: 'work-update', key: 'item:' + id, state });
+        } else if (kind === 'webSearch') {
+          const input = webSearchInput(item);
+          const started = searches.get(id);
+          searches.delete(id);
+          if (started !== undefined && input !== started) {
+            throw new CodexRpcError('protocol');
+          }
+
+          if (started === undefined && input !== undefined) {
+            await text('action:' + id, 'tool-input', input);
+          }
+
+          if (item.results != null) {
+            if (!Array.isArray(item.results)) {
+              throw new CodexRpcError('protocol');
+            }
+
+            await text('action:' + id, 'tool-output', textValue(JSON.stringify(item.results)));
+          }
+
+          // A native web search carries no status; its completion is the only success signal.
+          // A search still open when the Turn settles is failed by Runtime settlement.
+          await emit({ kind: 'action-update', key: 'action:' + id, state: 'completed' });
+          await emit({ kind: 'work-update', key: 'item:' + id, state: 'completed' });
         } else if (kind === 'plan') {
           await text('plan:' + id, 'commentary', textValue(item.text));
         }
@@ -400,6 +530,7 @@ export function createCodexProtocol(
           'item/reasoning/summaryTextDelta',
           'item/reasoning/textDelta',
           'item/commandExecution/outputDelta',
+          'item/mcpToolCall/progress',
         ].includes(method)
       ) {
         const id = identifier(params.itemId);
@@ -407,8 +538,9 @@ export function createCodexProtocol(
           throw new CodexRpcError('protocol');
         }
 
-        // Do not append a delta and then the native completed text a second time.
-        textValue(params.delta);
+        // Do not append a delta and then the native completed text a second time. MCP progress
+        // is a transient status message, never part of the authoritative result.
+        textValue(method === 'item/mcpToolCall/progress' ? params.message : params.delta);
 
         return;
       }
@@ -553,6 +685,7 @@ export function createCodexProtocol(
       pending = undefined;
       active.clear();
       patches.clear();
+      searches.clear();
       seen.clear();
       terminal = true;
     },
@@ -565,6 +698,7 @@ export function createCodexProtocol(
       await emit({ kind: 'lost', message: 'Codex ended without an authoritative Turn outcome.' });
       active.clear();
       patches.clear();
+      searches.clear();
       seen.clear();
       terminal = true;
     },

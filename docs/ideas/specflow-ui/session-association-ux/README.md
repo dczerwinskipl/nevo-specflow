@@ -7,19 +7,16 @@ scope: specflow
 areas: [ui, ai]
 tags: [sessions, associations, session-list, navigation, context, workspace, archive, delete]
 read_when:
-  - implementing the Specification Sessions list or its paging
-  - changing where the UI goes after a Session is deleted, or what /sessions/new does
-  - mapping the Session association read onto the Session Context Specification and Tasks sections
-  - presenting Session status in the Specification workspace when it disagrees with the Engine attempt
+  - asking why standalone Sessions left the UI, or why delete goes where it goes
+  - asking why the Specification Sessions list pages explicitly with current/archive collections
+  - asking why Session status never takes Engine attempt facts
 summary: >
-  Accepted UX contract (owner decisions 2026-11-08) for the D10 items of the stage 3 Session
-  association design. Standalone Sessions are removed from the UI (every new Session starts from a
-  Specification; /sessions/new redirects to the Specifications list; existing standalone Sessions stay
-  reachable by direct link). Defines the Specification Sessions list paged from the Session list read
-  with current/archive collections, post-delete destinations derived from the association, Context
-  Specification/Related Tasks sections fed by the association read (never current execution), the
-  workspace Sessions section, New Session gating and Session-owned status that never takes Engine
-  attempt facts.
+  Decision record (owner decisions 2026-11-08, delivered in PR #126) for the D10 UX items of the
+  stage 3 Session association design: standalone Sessions removed from the UI, the Specification
+  Sessions list on the paged Session list read, post-delete destination from the association,
+  Context Specification/Related Tasks from the association read, New Session gating and
+  Session-owned status. Keeps decisions, rationale and rejected alternatives; the behaviour lives in
+  the owning screen and structure documents.
 related:
   - ideas.specflow-runtime.session-association
   - ideas.specflow-ui.full-session-screen-structure
@@ -28,6 +25,7 @@ related:
   - ideas.specflow-ui.navigation-route-model
   - ideas.specflow-ui.screens.specification-workspace
   - ideas.specflow-ui.screens.new-session
+  - ideas.specflow-ui.screens.specification-sessions-list
   - product.specflow.ui.ai-session-ux
   - product.specflow.ui.interaction-model
   - product.specflow.ui.data-loading-and-integration
@@ -36,9 +34,9 @@ related:
 
 # Session association UX (stage 3, D10)
 
-**Status:** accepted by the owner on 2026-11-08 (section 1) and implemented with T10 of PR #126. On
-landing, the behaviour moves into its owning contracts (section 9) and this file keeps the rationale,
-like the [Session actions decision record](../session-actions-ux/README.md).
+**Status:** accepted by the owner on 2026-11-08 (section 1) and delivered with T10 of PR #126. The
+behaviour lives in its owning contracts ([section 2](#2-owning-documents)); this file keeps the
+decisions and rationale, like the [Session actions decision record](../session-actions-ux/README.md).
 
 **Inputs:** [stage 3 design](../../specflow-runtime/session-association/README.md) §1, §7.4–7.5 and
 §11; [Full Session structure](../full-session-screen-structure.md) §7.2, §7.6, §22.1;
@@ -71,244 +69,48 @@ Specification (and its Focused-mode assignment); the project-level Session capab
 (nothing in the accepted scope needs it: every remaining entry is gated by the Specification's
 `actions.startSession`).
 
-## 2. Standalone Sessions in the UI (U1, U2)
+## 2. Owning documents
 
-- **Removed entry:** the Specifications list header action **Utwórz sesję**
-  (`SpecsOverviewHeader.tsx`, action `create-session`, key `specifications.createSession`) and every
-  other UI link to `/sessions/new`.
-- **`/sessions/new` opened directly** (bookmark, old link): redirects with `replace` to `/` (the
-  Specifications list), no toast. The `ManagedSessionStart` wrapper goes; the shared
-  `SessionStartScreen` and the managed start source stay, because the project-mode Specification New
-  Session (stage 3 §11) uses them with the Specification pinned.
-- **Existing standalone Session** opened by link: the Session screen works as today; Context shows no
-  Specification section and no note; the navigator shows no Specification section.
-- **Session not-found view** (§22.1, deleted elsewhere or unknown id): its one secondary action becomes
-  `managedSession.notFound.action` = **Przejdź do specyfikacji** / _Go to specifications_ → `/`.
+| Decision                                                                                 | Owning document                                                                                                                                                          |
+| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| U1, U2: no standalone UI entry, `/sessions/new` redirect, navigator from the association | [Navigation and route model](../navigation-and-route-model.md#starting-a-new-session), [New Session UI spec](../screens/new-session-ui-spec.md) (h)                      |
+| U3, not-found action, archive dialog copy                                                | [Full Session structure](../full-session-screen-structure.md) §22.1                                                                                                      |
+| U4: rows, collections, paging, states                                                    | [Specification Sessions list UI spec](../screens/specification-sessions-list-ui-spec.md)                                                                                 |
+| Workspace section, Continue session, navigator count                                     | [Specification UI spec](../screens/specification-workspace-ui-spec.md#session-history)                                                                                   |
+| U5 and its two Context deviations                                                        | [Full Session structure](../full-session-screen-structure.md) §7.6.1, [Full Session UI spec](../screens/full-session-ui-spec.md)                                         |
+| U6: reason precedence, start-route refusal states                                        | [Specification Workspace API](../../../reference/api/specification-workspace.md#project-sessions-section), [New Session UI spec](../screens/new-session-ui-spec.md) (h1) |
+| Session status ownership                                                                 | [AI Session UX](../../../product/specflow/ui/ai-session-ux.md#session-status-ownership-accepted-2026-11-08)                                                              |
 
-## 3. Specification Sessions list and the workspace Sessions section
+## 3. Rationale and rejected alternatives
 
-### Specification Sessions list (`/specs/:specId/sessions`) (U4)
+- **Standalone Sessions out of the UI (U1):** every remaining Session surface is owned by a
+  Specification; a global Sessions entry or a `/sessions` list of unassociated Sessions would add a
+  navigation item and a second home for the same Session. The API keeps standalone create and list,
+  so the decision is reversible without a migration.
+- **Delete destination (U3):** the association read already on the screen names the only honest
+  list to return to; with no available Specification, `/` is the only list that certainly exists.
+  The earlier `/sessions/new` destination ("only honest destination while scope is unknown") no
+  longer applies. Archive stays on the Session: it is reversible and the archived bar offers
+  **Przywróć**.
+- **Sessions list on the list read (U4):** rejected rendering the workspace section's rows and
+  switching to the list read beyond `hasMore` (two sources for one list, no archive); a "show
+  archived" switch mixing both (breaks the current/archive model of the Specifications list);
+  infinite scroll (end of list unreachable for keyboard users). Explicit paging up to 4 requests per
+  press bounds the work when per-row authorization leaves pages short or empty.
+- **Context from the association (U5):** an association is context, never current execution (N2,
+  I4), so associated Tasks are Related Tasks and scope `task` is never produced from it. No skeleton
+  while the association loads, because a standalone Session would show a skeleton that then
+  vanishes. A dedicated `relatedTasksMissing` note, because "Couldn't load related Tasks" misstates
+  a removed Task.
+- **Session-owned status (section 6 of the original contract):** rejected promoting a Session to
+  attention when an Engine item names it as executor: the registry stores neither execution nor
+  attention, the need would show twice, and executor identity can be stale.
 
-The screen reads `GET /api/sessions?specId=` ([Sessions API](../../../reference/api/sessions.md)),
-inside the Specification (Workspace mode). The workspace Sessions section stays the source of the
-navigator preview and Continue session only.
+## 4. Open follow-ups
 
-- Header action **Nowa sesja** (`sessions.list.newSession`, _New session_) replaces
-  `specification.newConversation` **Nowa rozmowa**; gating in section 5.
-- `specification.sessionsFutureNotice` (developer text) is removed.
-
-**Rows:** `InformationList` of `OperationalRow` (today's `SessionsView`); the primary text opens
-`/sessions/:sessionId`. Order: newest created first (the list read's order). No provider/model, no ids.
-
-| Slot         | Content                                                                                                                                                                                                                                                                                                        |
-| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| primary      | `title`, else `sessions.untitled` = **Sesja bez nazwy** / _Untitled session_ (also used by the navigator preview and Continue session; the Session header keeps its `managedSession.title` fallback)                                                                                                           |
-| supporting   | Session status (section 6): `requiresAttention` → **Wymaga uwagi** (attention tone), `busy` → **Aktywna** (info, spinner icon `aria-hidden`), `unavailable` → `sessions.list.statusUnknown` **Stan sesji nieznany** / _Session state unknown_ (muted), `ready` → nothing. Under **Archiwum** no archived label |
-| compactFacts | associated Task count `sessions.list.taskCount_*` (**1 zadanie**, **3 zadania**, **5 zadań** / _1 task_, _3 tasks_), accessible name `sessions.list.associatedTasks_*` (**Powiązana z {{count}} zadaniem** / **…zadaniami**; _Associated with {{count}} task(s)_); then the relative `updatedAt`               |
-
-**Collections (D6):** the Specifications list's pattern. A `SegmentedControl`
-(`sessions.list.collection` **Kolekcja sesji** / _Session collection_) with **Bieżące** / **Archiwum**
-(`sessions.list.current`, `sessions.list.archive`; _Current_ / _Archive_) maps to `archived=exclude` /
-`archived=only`. Default **Bieżące**, so archived Sessions are hidden by default. Route state: search
-param `sessionCollection=current|archive` (`collection` already means the Specification's collection).
-
-**Paging:** an explicit button under the list, `Button variant="secondary"` **Pokaż więcej** / _Show
-more_ (`sessions.list.loadMore`), pending **Wczytywanie…** (`sessions.list.loadingMore`,
-`aria-disabled`, guarded handler; the `OlderHistoryButton` pattern). A page may hold fewer items than
-requested, or none, while `nextCursor` is present, so:
-
-- One load (the first load or one press) follows `nextCursor` until at least one new row arrives or
-  the cursor ends, at most 4 requests.
-- **Rows arrived:** appended below without scrolling; focus stays on the button; polite status
-  `sessions.list.loaded_*` **Wczytano {{count}} sesji** / _Loaded {{count}} sessions_.
-- **4 requests, no rows, cursor remains:** the button stays with one muted line under it,
-  `sessions.list.noneInScanned` **Nie znaleziono więcej sesji w tej partii. Możesz szukać dalej.** /
-  _No more sessions in this batch. You can keep looking._
-- **No cursor:** the button disappears. The empty state shows only with no rows **and** no cursor.
-- **Failed request:** loaded rows stay, one line `sessions.list.loadMoreFailed` **Nie udało się
-  wczytać kolejnych sesji.** / _Couldn't load more sessions._, and the button retries the same cursor.
-- **Invalidation** resets the list to the first page; appended pages are dropped.
-
-**States:**
-
-| State           | Content                                                                                                                                                     |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| loading         | row skeletons; header and collection control already shown                                                                                                  |
-| empty, Bieżące  | **Ta specyfikacja nie ma jeszcze sesji.** / _This specification has no sessions yet._ (`sessions.list.emptySpecification`) plus **Nowa sesja** when offered |
-| empty, Archiwum | **Brak zarchiwizowanych sesji** / _No archived sessions_ (`sessions.list.emptyArchive`), no action                                                          |
-| failed          | **Nie udało się wczytać sesji.** / _Couldn't load sessions._ (`sessions.list.failed`) plus `common.retry`                                                   |
-| 403             | **Nie masz dostępu do sesji tej specyfikacji.** / _You don't have access to this specification's sessions._ (`sessions.list.forbiddenSpecification`)        |
-
-**Freshness:** refresh-on-action. The UI invalidates the list and the workspace query on its own
-Session create, rename, archive, unarchive and delete (stage 3 §7.5: the workspace `revision` does not
-cover Sessions). Rows are not live. A refetch keeps the understood screen (no skeleton).
-
-**Rejected:** rendering the section's rows and switching to the list read beyond `hasMore` (two
-sources for one list, no archive); a "show archived" switch mixing both (breaks the current/archive
-model); infinite scroll (end of list unreachable for keyboard users).
-
-### Workspace section (D12)
-
-- The section is `list({specId, archived: 'exclude'})` in creation order, newest first, at most 100
-  rows, `hasMore` when more exist (stage 3 §7.5). Only `recommendedSessionId` follows attention →
-  active → most recent `updatedAt`.
-- **Navigator:** on `/specs/:specId/**` and on a Session whose association is `available`, S's section
-  shows with **Sesje** active on the Session; while the association loads, and for `standalone`,
-  `forbidden`, `missing` or `unavailable`, no Specification section shows. Preview: the first three
-  `active`/`attention` rows, attention first, as today.
-- **Navigator count (interim):** **{{count}} aktywne** only when `hasMore` is false and no row has
-  status `unknown`. Otherwise no count, and the existing status line under the Specification section,
-  `applicationNavigation.partialActivity` **Aktywność jest częściowo dostępna**, says so
-  (`features/sessions/navigation/summary.ts`, state `partial`). The "same Session in navigator,
-  Requires attention and Continue session" redundancy is a separate information-model scope.
-- **Continue session** is one fully clickable row (shell geometry), title or **Sesja bez nazwy**.
-- **Wszystkie sesje** (navigator, Continue session) opens the Specification Sessions list.
-
-## 4. Post-delete and post-archive destination (U3)
-
-**Delete:** the destination follows the association read already on the Session screen when the
-delete succeeds:
-
-| Association at delete                                         | Destination (`replace`, toast **Sesja została usunięta.**, focus on the page heading) |
-| ------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `specification`, Specification `available`                    | `/specs/:specId/sessions`, `collection=archive` when the Specification is archived    |
-| `standalone`, `forbidden`, `missing`, `unavailable`, not read | `/` (Specifications list)                                                             |
-
-Accepted limit: a Session whose Specification was removed (`missing`, D5) is in no list; it stays
-reachable by URL and from Engine audit links. This replaces `/sessions/new` in
-[§22.1](../full-session-screen-structure.md#221-session-actions-and-archived-session-owner-accepted-2026-11-08);
-the alternative rejected there ("only honest destination while scope is unknown") no longer applies.
-
-**Archive:** stay on the Session, unchanged (archived bar with **Przywróć**). Only the dialog copy
-changes, because a list now exists: `managedSession.sessionActions.archiveDescription` = **Sesja
-zostanie przeniesiona do archiwum sesji. Nie będzie można w niej wysyłać wiadomości; historia, praca i
-zużycie pozostaną dostępne. Możesz ją w każdej chwili przywrócić.** / _The session will be moved to
-the session archive. No messages can be sent in it; its history, work and usage stay available. You
-can restore it at any time._
-
-## 5. New Session from a Specification (U6)
-
-Entry points: the Specification Sessions list header, its empty state, and Continue session's start
-action. All open `/specs/:specId/sessions/new` (the New Session start form with the Specification
-pinned, posting to the composed create).
-
-**Reason precedence** (one reason, first match wins; edit of stage 3 §7.5): `sessions_disabled` →
-`forbidden` → `no_provider`.
-
-| `actions.startSession`             | Entry points                                                                                      |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------- |
-| available                          | shown                                                                                             |
-| `no_provider`                      | shown; the start form states **No executor is available right now** (New Session spec, state (e)) |
-| `forbidden` or `sessions_disabled` | omitted                                                                                           |
-| Specification `missing` (removed)  | omitted everywhere; the Session Context offers no start in that Specification                     |
-
-**Start route opened directly:** while the workspace read loads or fails, the start form renders as
-today. With `forbidden` it is replaced by **Nie możesz rozpoczynać sesji w tej specyfikacji.** / _You
-can't start sessions in this specification._ (`sessionStart.forbiddenSpecification`), with
-`sessions_disabled` by **Sesje są wyłączone w tym projekcie.** / _Sessions are turned off in this
-project._ (`sessionStart.sessionsDisabled`); both offer **Wróć do specyfikacji** / _Back to
-specification_ (`sessionStart.backToSpecification`). A 403 from the composed create still shows in the
-form as today.
-
-## 6. Session status when readiness and the Engine attempt disagree
-
-Session rows, the navigator preview, Continue session and the Session header show **only
-Session-derived readiness** (stage 3 §7.5 mapping). Engine attempt and require-attention facts stay on
-their own subjects: the Task row's state and the Specification's Requires attention item for that
-Task. Neither re-colours the Session.
-
-| Disagreement                                         | Session shows                   | Engine fact shows on                               |
-| ---------------------------------------------------- | ------------------------------- | -------------------------------------------------- |
-| attempt running with this Session, readiness `ready` | no status (quiet)               | Task row: its own Engine state                     |
-| attempt requires review, Session `ready`             | no status                       | Requires attention: the Task item, not the Session |
-| attempt finished, Session `busy`                     | **Aktywna**                     | Task row: its finished state                       |
-| readiness `unavailable`                              | **Stan sesji nieznany** (muted) | unchanged                                          |
-
-Associated Tasks are context: rows and Context say **powiązana** / **Powiązane zadania**; no surface
-writes "pracuje nad", "wykonuje" or shows a Task as current execution from the association.
-
-**Out of scope:** the Task screen's Sessions section (`features/tasks/workspace/TaskWorkspaceSessions.tsx`)
-shows Engine attempt executions, not associations, and stays as it is; no `taskId`-filtered list is
-added in stage 3 (D9).
-
-**Rejected:** promoting a Session to attention when an Engine item names it as executor (the registry
-stores neither execution nor attention, I4; the need would show twice; executor identity can be
-stale).
-
-## 7. Session Context: Specification and Tasks from the association read (U5)
-
-The association read replaces the client-side context for every Session (stage 3 §11). Sections keep
-the fixed order of [§7.2](../full-session-screen-structure.md#72-proposed-structural-order).
-
-An associated Session has scope `specification` with or without Tasks; its associated Tasks fill
-**Powiązane zadania** (Related Tasks). **Aktualne wykonanie** (Current execution) is omitted, because
-the association is not execution (N2) and no Engine execution fact is read in stage 3.
-**Uwaga / dalsze działania** (Attention) is omitted too: its Session-owned fact (a pending
-interaction) is owned by Primary, and Spec/Task attention is not part of the read.
-
-| Association read                    | Specification section                                                                                                                                                                                                                               | Powiązane zadania                                                                                                                                                                                                                                                    |
-| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| loading                             | nothing (deviation from the §7.6 skeleton: a standalone Session would show a skeleton that then vanishes)                                                                                                                                           | nothing                                                                                                                                                                                                                                                              |
-| `standalone`                        | omitted; no note                                                                                                                                                                                                                                    | omitted                                                                                                                                                                                                                                                              |
-| `available`, current                | Specification row (key, title) plus Documents row                                                                                                                                                                                                   | one row per `available` Task (key or id, title); none omits the section                                                                                                                                                                                              |
-| `available`, `collection: archived` | same; row supporting text `sessions.context.specification.archived` **W archiwum** / _Archived_; links carry `collection=archive`                                                                                                                   | as above                                                                                                                                                                                                                                                             |
-| `forbidden`                         | info note `sessions.context.availability.specificationForbidden` **Nie masz uprawnień do wyświetlenia specyfikacji powiązanej z tą sesją.** / _You don't have permission to view the specification associated with this session._; no Documents row | omitted (the read returns no Tasks)                                                                                                                                                                                                                                  |
-| `missing`                           | danger note `specificationMissingNamed` with the id; copy changed to **Nie znaleziono specyfikacji {{key}}, z którą powiązana jest ta sesja.** / _Can't find specification {{key}} associated with this session._ (`specificationMissing` likewise) | omitted (one cause, one note)                                                                                                                                                                                                                                        |
-| `unavailable`                       | attention note `specificationUnreadable` **Nie udało się wczytać specyfikacji tej sesji.**                                                                                                                                                          | omitted                                                                                                                                                                                                                                                              |
-| some Tasks `missing`                | per the Specification's state                                                                                                                                                                                                                       | found Tasks plus attention note `sessions.context.availability.relatedTasksMissing` **Nie znaleziono {{count}} z {{total}} powiązanych zadań.** / _{{count}} of {{total}} associated tasks can't be found._ (deviation: §7.6 has only "Couldn't load related Tasks") |
-| Tasks `unavailable`                 | per the Specification's state                                                                                                                                                                                                                       | attention note `relatedTasksUnreadable` **Nie udało się wczytać powiązanych zadań.**                                                                                                                                                                                 |
-| read failed (HTTP)                  | panel note `scopeUnreadable` **Nie udało się wczytać powiązań tej sesji.**                                                                                                                                                                          | omitted                                                                                                                                                                                                                                                              |
-
-`scopeNotProvided` is no longer shown (every Runtime mode serves the read). A Session started from a
-Specification is seeded from the composed create response, so first paint and reload agree.
-
-## 8. Data, integration readiness and acceptance
-
-| Data group                                             | Source                                                                           | Readiness               |
-| ------------------------------------------------------ | -------------------------------------------------------------------------------- | ----------------------- |
-| Specification Sessions list                            | `GET /api/sessions?specId=` ([Sessions API](../../../reference/api/sessions.md)) | integration needed (T7) |
-| association for Context, navigator, delete destination | `GET /api/sessions/:sessionId/association`                                       | integration needed (T6) |
-| workspace section, `startSession`                      | Specification Workspace API (T8)                                                 | integration needed      |
-
-No new backend capability is needed.
-
-Acceptance scenarios:
-
-1. The Specifications list has no **Utwórz sesję**; opening `/sessions/new` lands on `/`.
-2. An existing standalone Session opened by link works; Context and navigator show no Specification.
-3. S's Sessions list: archive a Session, it leaves **Bieżące** and appears under **Archiwum** without an
-   archived label; unarchive returns it.
-4. 2 000 Sessions of S visible only in sparse rows: one press makes at most 4 requests; with no rows it
-   shows **Nie znaleziono więcej sesji w tej partii…** and the button; the empty state never shows while
-   a cursor remains.
-5. Delete a Session of S: S's Sessions list. Delete a standalone one or one with `forbidden`: `/`. Back
-   reopens none. The not-found view's **Przejdź do specyfikacji** goes to `/`.
-6. Reload a Session of S whose Task was removed: Specification row, **Nie znaleziono 1 z 2 powiązanych
-   zadań.**, no Current execution or Attention section.
-7. A project viewer without `spec.view` at S opens a Session of S: info note, no Documents row, no
-   navigator Specification section.
-8. An Engine attempt runs with Session X while X is `ready`: X shows no status anywhere; the Task row
-   shows its own state.
-9. A viewer at S sees no **Nowa sesja**; a developer at S with no usable provider sees it and the start
-   form explains; a viewer opening the start URL sees the refusal state.
-10. S has 100 Sessions and `hasMore`: no navigator count, the partial-activity line shows.
-
-## 9. Owning homes and edits on landing
-
-- U1, U2 (`/sessions/new` redirect, no standalone entry): [navigation and route model](../navigation-and-route-model.md)
-  §7 ("Starting a new Session": every UI start is from a Specification), the
-  [New Session UI spec](../screens/new-session-ui-spec.md) state (h) (no UI entry; route redirects).
-- U3, the not-found action and the archive copy:
-  [Full Session structure](../full-session-screen-structure.md) §22.1 (Delete destination, Deleted
-  elsewhere or unknown id, Archive dialog).
-- U4: a Specification Sessions list screen spec under `screens/` (rows, collections, paging).
-- U5 and the two Context deviations (no skeleton while the association loads; the
-  `relatedTasksMissing` note): Full Session structure §7.6, the
-  [Full Session UI spec](../screens/full-session-ui-spec.md), and stage 3 §11 and T10 (applied there).
-- U6: stage 3 §7.5 (reason precedence) and the New Session UI spec (start-route refusal states).
-- Status ownership (section 6):
-  [AI Session UX](../../../product/specflow/ui/ai-session-ux.md#session-association-vs-current-execution).
-- New keys go to both `pl.json` and `en.json`; this file gives both texts.
-
-No mock: every region reuses an existing component (`SegmentedControl`, `InformationList`/
-`OperationalRow`, `InlineNote`, `Button`); no design-system change.
+- A Session of a removed Specification (`missing`) is in no list; it stays reachable by URL and from
+  Engine audit links (accepted limit).
+- Navigator count is interim; the "same Session in navigator, Requires attention and Continue
+  session" redundancy is a separate information-model scope.
+- No Task-context start and no `taskId`-filtered list until a UX contract places one (D9); the Task
+  screen's Sessions section keeps showing Engine attempt executions.

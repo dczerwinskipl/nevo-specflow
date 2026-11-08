@@ -5,7 +5,7 @@ import type { SessionCoordinator } from '../lifecycle/coordinator';
 import type { EventBatch } from '../persistence/protocol';
 import { SessionError } from '../errors';
 import { createStreamWakeup } from './wakeup';
-import { authorizeSession, sessionIdentity } from './authorization';
+import { authorizeSession, authorizedIdentity } from './authorization';
 import { effectiveEvent } from './projection';
 import { telemetryAccess } from './telemetry';
 
@@ -56,7 +56,7 @@ export function createSessionStreams<RawServer extends RawServerBase>(
 
       const controller = new AbortController();
       // Immutable for the Session's life: the home Specification never changes.
-      const identity = await sessionIdentity(coordinator, sid);
+      const identity = authorizedIdentity(request, sid);
       const initialAccess = telemetryAccess(request, identity).accessRevision;
       const unwatchTelemetry = coordinator.telemetry.watch(sid);
       const wakeup = createStreamWakeup((listener) => coordinator.store.subscribe(sid, listener));

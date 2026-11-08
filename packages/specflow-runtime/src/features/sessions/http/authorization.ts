@@ -37,8 +37,20 @@ export function authorizeSession(
 }
 
 /** The store-derived identity of a Session, including its home Specification. */
-export function sessionIdentity(c: SessionCoordinator, sessionId: string) {
+function sessionIdentity(c: SessionCoordinator, sessionId: string) {
   return c.store.call<SessionIdentity>({ op: 'identity', sessionId });
+}
+
+const authorized = new WeakMap<FastifyRequest, SessionIdentity>();
+
+/** The identity the request's Session check ran against; a handler never looks it up twice. */
+export function authorizedIdentity(request: FastifyRequest, sessionId: string): SessionIdentity {
+  const identity = authorized.get(request);
+  if (identity?.sessionId !== sessionId) {
+    throw new Error('Session handler ran without its Session authorization.');
+  }
+
+  return identity;
 }
 
 /** Any-scope precheck, store-derived identity lookup, then the target-scoped check. */
@@ -56,6 +68,7 @@ export async function authorizeSessionCapability(
     capability,
     scope: sessionScope(identity, capability),
   });
+  authorized.set(request, identity);
 
   return identity;
 }

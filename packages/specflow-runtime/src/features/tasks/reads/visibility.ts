@@ -14,7 +14,9 @@ export function taskVisibility(
   authz: RequestAuthorization,
   sessions?: SessionReferenceOwner,
 ): TaskVisibility {
-  const owners = new Map<string, Promise<SessionReference | undefined>>();
+  // Each id maps to its one shared batch promise: no derived promise is left unobserved when a
+  // batch rejects.
+  const owners = new Map<string, Promise<ReadonlyMap<string, SessionReference>>>();
   function prefetch(links: readonly ReferenceFacts[]): Promise<void> {
     const pending = [
       ...new Set(
@@ -31,12 +33,11 @@ export function taskVisibility(
       return Promise.resolve();
     }
 
-    const batch = sessions ? sessions.resolveMany(pending) : Promise.resolve(new Map());
+    const batch: Promise<ReadonlyMap<string, SessionReference>> = sessions
+      ? sessions.resolveMany(pending)
+      : Promise.resolve(new Map());
     for (const sessionId of pending) {
-      owners.set(
-        sessionId,
-        batch.then((resolved: ReadonlyMap<string, SessionReference>) => resolved.get(sessionId)),
-      );
+      owners.set(sessionId, batch);
     }
 
     return batch.then(() => undefined);
@@ -57,8 +58,11 @@ export function taskVisibility(
 
     const sessionId = link.target.sessionId;
     await prefetch([link]);
-    const owner = await owners.get(sessionId);
+    const owner = (await owners.get(sessionId))?.get(sessionId);
 
+    // A Task Session link (evidence written by the Engine) follows the Session's own scope, so it
+    // may name another Specification's Session; the workspace section is stricter and keeps only
+    // Sessions whose home is that Specification (`owner.specId === specId`).
     return (
       owner?.sessionId === sessionId &&
       owner.projectId === identity.projectId &&

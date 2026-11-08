@@ -72,7 +72,8 @@ export function initializeSessionSchema(db: DatabaseSync, get: StoreDatabase['ge
     CREATE TABLE IF NOT EXISTS session_association_tasks(session TEXT NOT NULL REFERENCES session_associations(session),task TEXT NOT NULL,origin TEXT NOT NULL CHECK(origin IN ('user','workflow')),added INTEGER NOT NULL,PRIMARY KEY(session,task));
     CREATE INDEX IF NOT EXISTS session_association_tasks_task ON session_association_tasks(task,session);
   `);
-    if (version < 3) {
+    // Re-read under the write lock: a concurrent opener may have completed the upgrade meanwhile.
+    if (Number(get('PRAGMA user_version')?.user_version ?? 0) < 3) {
       addListProjection(db);
     }
 

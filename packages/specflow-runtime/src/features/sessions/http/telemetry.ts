@@ -14,7 +14,7 @@ import {
 import type { SessionCoordinator } from '../lifecycle/coordinator';
 import { TelemetryRateLimited } from '../lifecycle/telemetry';
 import { SessionError } from '../errors';
-import { authorizeSession, sessionIdentity } from './authorization';
+import { authorizeSession, authorizedIdentity } from './authorization';
 import type { SessionIdentity } from '../persistence/protocol';
 import { resolveSessionPermissions, sessionScope } from '../scope';
 
@@ -65,8 +65,8 @@ export function registerTelemetryRoutes(
 ) {
   const params = Type.Object({ sessionId: SessionIdSchema }, { additionalProperties: false });
   const sid = (request: FastifyRequest) => (request.params as { sessionId: string }).sessionId;
-  async function access(request: FastifyRequest) {
-    return telemetryAccess(request, await sessionIdentity(coordinator(), sid(request)));
+  function access(request: FastifyRequest) {
+    return telemetryAccess(request, authorizedIdentity(request, sid(request)));
   }
 
   feature.get(
@@ -78,7 +78,7 @@ export function registerTelemetryRoutes(
     async (request, reply) => {
       const value = projectTelemetry(
         await coordinator().telemetry.snapshot(sid(request)),
-        await access(request),
+        access(request),
       );
       if (!validateTelemetrySnapshot(value)) {
         throw new SessionError(

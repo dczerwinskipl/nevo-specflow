@@ -136,8 +136,10 @@ function allowed(
   );
 }
 
-const status = (permitted: boolean): unknown =>
-  permitted ? (expect.not.stringMatching(/^403$/) as unknown) : '403';
+/** The exact outcome: the route's success code when permitted, otherwise 403. */ const status = (
+  permitted: boolean,
+  success: number,
+) => String(permitted ? success : 403);
 
 describe('Session authorization at the associated Session scope', () => {
   const cases = (['viewer', 'developer', 'admin'] as const).flatMap((role) =>
@@ -150,13 +152,13 @@ describe('Session authorization at the associated Session scope', () => {
       const server = await open(role, grant, seeded);
       const scope = grantScope(grant, seeded),
         target = targets(seeded);
-      const can = (capabilities: readonly string[], at: Record<string, string>): unknown =>
-        status(allowed(role, scope, capabilities, at));
+      const can = (capabilities: readonly string[], at: Record<string, string>, success: number) =>
+        status(allowed(role, scope, capabilities, at), success);
       const post = (sessionId: string, path: string, payload: object) =>
         server.inject({ method: 'POST', url: `/api/sessions/${sessionId}/${path}`, payload });
       const observed: Record<string, string> = {},
-        expected: Record<string, unknown> = {};
-      const record = (name: string, statusCode: number, expectation: unknown) => {
+        expected: Record<string, string> = {};
+      const record = (name: string, statusCode: number, expectation: string) => {
         observed[name] = String(statusCode);
         expected[name] = expectation;
       };
@@ -166,23 +168,24 @@ describe('Session authorization at the associated Session scope', () => {
         record(
           'view ' + key,
           (await server.inject('/api/sessions/' + id)).statusCode,
-          can(['view'], target[key]),
+          can(['view'], target[key], 200),
         );
         record(
           'telemetry ' + key,
           (await server.inject(`/api/sessions/${id}/telemetry`)).statusCode,
-          can(['view'], target[key]),
+          can(['view'], target[key], 200),
         );
         record(
           'rename ' + key,
           (await post(id, 'rename', { requestId: randomUUID(), title: 'Renamed' })).statusCode,
-          can(['view', 'manage'], target[key]),
+          can(['view', 'manage'], target[key], 200),
         );
         record(
           'limits ' + key,
           (await post(id, 'telemetry/refresh', { requestId: randomUUID(), groups: ['limits'] }))
             .statusCode,
-          can(['view', 'manage', 'view-provider-limits'], target[key]),
+          // Authorized, then refused by the mock provider, which cannot refresh limits.
+          can(['view', 'manage', 'view-provider-limits'], target[key], 422),
         );
         if (!allowed(role, scope, ['view'], target[key])) {
           // A permitted stream stays open; only the refusal is observable through inject.
@@ -203,7 +206,7 @@ describe('Session authorization at the associated Session scope', () => {
             payload: { requestId: randomUUID(), providerId: 'mock', mode: 'read-only' },
           })
         ).statusCode,
-        can(['create'], target.create),
+        can(['create'], target.create, 201),
       );
       record(
         'write Turn',
@@ -215,7 +218,8 @@ describe('Session authorization at the associated Session scope', () => {
           })
         ).statusCode,
         allowed(role, scope, ['view', 'manage'], target.manageW)
-          ? can(['execute-write'], target.write)
+          ? // Authorized, then refused: the mock provider has no workspace-write mode.
+            can(['execute-write'], target.write, 422)
           : '403',
       );
       for (const key of ['a', 'b', 'c'] as const) {
@@ -223,7 +227,7 @@ describe('Session authorization at the associated Session scope', () => {
           'delete ' + key,
           (await server.inject({ method: 'DELETE', url: '/api/sessions/' + seeded[key] }))
             .statusCode,
-          can(['delete'], target[key]),
+          can(['delete'], target[key], 204),
         );
       }
 

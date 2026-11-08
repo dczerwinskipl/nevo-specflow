@@ -11,7 +11,7 @@ import {
 } from '@nevo/specflow-contracts/sessions';
 import type { SessionCoordinator } from '../lifecycle/coordinator';
 import type { SessionView } from '../persistence/protocol';
-import { authorizeSessionCapability, sessionIdentity } from './authorization';
+import { authorizeSessionCapability, authorizedIdentity } from './authorization';
 import { effective } from './projection';
 
 const params = Type.Object({ sessionId: SessionIdSchema }, { additionalProperties: false });
@@ -34,7 +34,7 @@ export function registerSessionManagementRoutes(
     );
   };
 
-  const project = async (view: SessionView, request: FastifyRequest) => ({
+  const project = (view: SessionView, request: FastifyRequest) => ({
     session: effective(
       {
         session: view.session,
@@ -46,7 +46,7 @@ export function registerSessionManagementRoutes(
       },
       request,
       coordinator().provider,
-      await sessionIdentity(coordinator(), view.session.sessionId),
+      authorizedIdentity(request, view.session.sessionId),
     ).session,
   });
   const command = (

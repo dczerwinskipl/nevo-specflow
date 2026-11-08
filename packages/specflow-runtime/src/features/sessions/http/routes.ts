@@ -25,7 +25,7 @@ import {
 import type { SessionCoordinator } from '../lifecycle/coordinator';
 import { SessionError } from '../errors';
 import { effective } from './projection';
-import { authorizeSession, authorizeSessionWrite, sessionIdentity } from './authorization';
+import { authorizeSession, authorizeSessionWrite, authorizedIdentity } from './authorization';
 import { createSessionStreams } from './stream';
 import { registerTelemetryRoutes } from './telemetry';
 import { registerSessionManagementRoutes } from './management';
@@ -211,7 +211,7 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
           await coordinator().snapshot(ids(request).sessionId, actor(request)),
           request,
           coordinator().provider,
-          await sessionIdentity(coordinator(), ids(request).sessionId),
+          authorizedIdentity(request, ids(request).sessionId),
         ),
     );
     feature.get(

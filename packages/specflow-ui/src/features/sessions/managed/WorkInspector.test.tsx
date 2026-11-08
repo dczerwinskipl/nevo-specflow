@@ -624,7 +624,7 @@ function pagedApi(options: PagedApiOptions) {
         items: pages[index] ?? [],
         history: { hasOlder, before: hasOlder ? String(index - 1) : undefined },
         ...(reported ? { counts: countsOf(reported.total) } : {}),
-      } satisfies WorkPage & { counts?: ReturnType<typeof countsOf> };
+      } satisfies WorkPage;
     },
     actions: () =>
       Promise.resolve({
@@ -845,6 +845,17 @@ describe('WorkInspector view state', () => {
 
     expect(screen.getByText('40 work items')).toBeTruthy();
     expect(screen.queryByText('7 work items')).toBeNull();
+  });
+
+  it('hides the counts row for a Turn whose WorkPage carries no counts', async () => {
+    const pages = [toolItems('Tail', 2)];
+    const { api } = pagedApi({ turns: { [turnId]: pages } });
+    mountTurns(api);
+    await openTurn('Open Turn 1');
+    await screen.findByText('Tail 0');
+
+    // Never derived from the loaded items: two are loaded, yet no "2 work items" row appears.
+    expect(screen.queryByText(/\d+ work items?/)).toBeNull();
   });
 });
 

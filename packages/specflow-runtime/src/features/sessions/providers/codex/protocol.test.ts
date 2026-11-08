@@ -199,7 +199,16 @@ describe('Codex authoritative native item normalization', () => {
       },
     });
     await f.finish();
-    expect(f.facts.filter((fact) => fact.kind === 'action-open')).toHaveLength(1);
+    // Codex's parsed shell fragments never reclassify the one native command action.
+    expect(f.facts.filter((fact) => fact.kind === 'action-open')).toEqual([
+      {
+        kind: 'action-open',
+        key: 'action:cmd',
+        parentKey: 'item:cmd',
+        title: 'Command',
+        operation: 'command',
+      },
+    ]);
     expect(f.facts).toContainEqual({
       kind: 'text',
       key: 'action:cmd',
@@ -284,7 +293,15 @@ describe('Codex authoritative native item normalization', () => {
       return facts;
     }
 
-    expect((await run(true)).filter((fact) => fact.kind === 'action-open')).toHaveLength(1);
+    expect((await run(true)).filter((fact) => fact.kind === 'action-open')).toEqual([
+      {
+        kind: 'action-open',
+        key: 'action:patch',
+        parentKey: 'item:patch',
+        title: 'Apply patch',
+        operation: 'edit',
+      },
+    ]);
     await expect(run(false)).rejects.toThrow();
     await expect(run(true, true)).rejects.toThrow();
   });

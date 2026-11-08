@@ -14,23 +14,13 @@ import {
   type ProviderDescriptor,
 } from '@nevo/specflow-contracts/sessions';
 import { createApiTransport, type ErrorCodeTable } from '../../../api';
-import type { WithWorkCounts } from './workCounts';
 
 export interface ManagedSessionsApi {
   providers(signal?: AbortSignal): Promise<{ items: ProviderDescriptor[] }>;
   create(input: CreateSession): Promise<{ sessionId: string }>;
   snapshot(sessionId: string, signal?: AbortSignal): Promise<SessionSnapshot>;
   history(sessionId: string, before: string, signal?: AbortSignal): Promise<HistoryPage>;
-  // `WithWorkCounts` is the proposed, not-yet-backend-implemented `counts` extension
-  // (workCounts.ts, docs/reference/api/sessions.md "Proposed Work aggregate counts"). The real
-  // HTTP implementation below returns a plain `WorkPage`, which satisfies this type with `counts`
-  // simply absent; only fixtures populate it.
-  work(
-    sessionId: string,
-    turnId: string,
-    before?: string,
-    signal?: AbortSignal,
-  ): Promise<WithWorkCounts<WorkPage>>;
+  work(sessionId: string, turnId: string, before?: string, signal?: AbortSignal): Promise<WorkPage>;
   actions(
     sessionId: string,
     workId: string,

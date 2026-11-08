@@ -9,10 +9,18 @@ import type {
   ToolActionSummary,
   SessionChange,
   LiveProjection,
+  WorkDigest,
 } from '@nevo/specflow-contracts/sessions';
 import type { StoredSession, StoredTurn, StoreCommand, DriverFact } from './protocol';
 import type { StoreDatabase } from './database';
 import { transitionWork } from '../lifecycle/reducer';
+import {
+  countActionOpened,
+  countActionTransition,
+  countWorkOpened,
+  countWorkTransition,
+  hasToolActions,
+} from '../lifecycle/work-aggregate';
 import { decode, fail, stable, prefix } from './encoding';
 import type { createSessionTelemetry } from './telemetry';
 
@@ -42,7 +50,9 @@ interface FactDependencies extends Pick<StoreDatabase, 'get' | 'run'> {
     text: TextPreview,
     workId?: string,
     existing?: string,
+    digest?: WorkDigest,
   ): ConversationEntry;
+  reviseWorkDigest(this: void, session: StoredSession, turn: StoredTurn): void;
 }
 /** Fact normalization mutates the caller's transaction; it never owns a connection or commit. */
 export function createProviderFacts({
@@ -59,6 +69,7 @@ export function createProviderFacts({
   body,
   preview,
   entry,
+  reviseWorkDigest,
   telemetry,
 }: FactDependencies) {
   function applyFact(c: Extract<StoreCommand, { op: 'fact' }>, effectVerified = false): boolean {
@@ -165,6 +176,10 @@ export function createProviderFacts({
           work.workId,
         );
         const next = transitionWork(work, 'expired', now());
+        if (t.work) {
+          t.work = countWorkTransition(t.work, work.state, next.state);
+        }
+
         run('UPDATE work SET data=? WHERE id=?', JSON.stringify(next), work.workId);
         emit(s, 'work', { turnId: c.turnId, items: [next] });
       }
@@ -199,6 +214,10 @@ export function createProviderFacts({
         f.key,
         JSON.stringify(w),
       );
+      if (t.work) {
+        t.work = countWorkOpened(t.work, f.workKind);
+      }
+
       s.snapshot.currentActivity = {
         turnId: c.turnId,
         workId: w.workId,
@@ -207,7 +226,12 @@ export function createProviderFacts({
       };
       emit(s, 'work', { turnId: c.turnId, items: [w] });
       if (f.workKind === 'tool') {
-        entry(s, c.turnId, 'work-summary', w.title, w.workId);
+        // The newest work-summary entry carries the Turn's digest from now on.
+        const digest = t.work && hasToolActions(t.work.digest) ? t.work.digest : undefined;
+        const summary = entry(s, c.turnId, 'work-summary', w.title, w.workId, undefined, digest);
+        if (t.work) {
+          t.workSummaryEntryId = summary.id;
+        }
       }
     }
 
@@ -216,6 +240,10 @@ export function createProviderFacts({
         get('SELECT data FROM work WHERE turn=? AND native=?', c.turnId, f.key),
       );
       const w = transitionWork(oldWork, f.state, now());
+      if (t.work) {
+        t.work = countWorkTransition(t.work, oldWork.state, w.state);
+      }
+
       if (
         s.snapshot.currentActivity?.workId === w.workId &&
         !['queued', 'active', 'waiting'].includes(w.state)
@@ -246,6 +274,7 @@ export function createProviderFacts({
         revision: 1,
         state: 'active',
         title: { text: f.title, complete: true },
+        operation: f.operation ?? 'other',
         createdAt: now(),
         updatedAt: now(),
       };
@@ -264,12 +293,29 @@ export function createProviderFacts({
       w.updatedAt = now();
       run('UPDATE work SET data=? WHERE id=?', JSON.stringify(w), w.workId);
       emit(s, 'work', { turnId: c.turnId, items: [w] });
+      if (t.work) {
+        t.work = countActionOpened(t.work, action.operation ?? 'other');
+        reviseWorkDigest(s, t);
+      }
     }
 
     if (f.kind === 'action-update') {
       const row = get('SELECT * FROM actions WHERE turn=? AND native=?', c.turnId, f.key),
         action = decode<ToolActionSummary>(row);
       if (['queued', 'active', 'waiting'].includes(action.state)) {
+        if (t.work) {
+          const digest = t.work.digest;
+          t.work = countActionTransition(
+            t.work,
+            action.operation ?? 'other',
+            action.state,
+            f.state,
+          );
+          if (t.work.digest !== digest) {
+            reviseWorkDigest(s, t);
+          }
+        }
+
         action.state = f.state;
         action.revision++;
         action.updatedAt = now();

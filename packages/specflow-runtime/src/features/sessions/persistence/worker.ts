@@ -11,9 +11,16 @@ import type {
   Interaction,
   ToolActionSummary,
   RefreshTelemetryReceipt,
+  WorkDigest,
 } from '@nevo/specflow-contracts/sessions';
 import type { StoredSession, StoredTurn, StoreCommand, WorkerRequest } from './protocol';
 import { terminalizeTurn } from '../lifecycle/reducer';
+import {
+  countActionTransition,
+  countWorkTransition,
+  emptyWorkAggregate,
+  hasToolActions,
+} from '../lifecycle/work-aggregate';
 import { StoreFault, fail, decode, type Row } from './encoding';
 import { initializeSessionSchema } from './schema';
 import { createContentStorage } from './content';
@@ -209,6 +216,7 @@ export async function runSessionWorker(): Promise<void> {
     text: TextPreview,
     workId?: string,
     existing?: string,
+    digest?: WorkDigest,
   ): ConversationEntry {
     const old = existing
       ? decode<ConversationEntry>(get('SELECT data FROM entries WHERE id=?', existing))
@@ -222,6 +230,7 @@ export async function runSessionWorker(): Promise<void> {
       text,
       createdAt: old?.createdAt ?? now(),
       ...(workId ? { workId } : {}),
+      ...(digest ? { digest } : {}),
     };
     run(
       'INSERT OR REPLACE INTO entries VALUES(?,?,?,?,?)',
@@ -234,6 +243,26 @@ export async function runSessionWorker(): Promise<void> {
     emit(s, 'conversation', { entries: [item], projection: projection(s) });
 
     return item;
+  }
+
+  /** Revises the Turn's latest `work-summary` entry with the Turn's current Work digest. */
+  function reviseWorkDigest(s: StoredSession, t: StoredTurn): void {
+    if (!t.work || !t.workSummaryEntryId || !hasToolActions(t.work.digest)) {
+      return;
+    }
+
+    const latest = decode<ConversationEntry>(
+      get('SELECT data FROM entries WHERE id=?', t.workSummaryEntryId),
+    );
+    entry(
+      s,
+      t.summary.turnId,
+      'work-summary',
+      latest.text,
+      latest.workId,
+      latest.id,
+      t.work.digest,
+    );
   }
 
   const { request, remember } = createRequestJournal({ get, run });
@@ -324,15 +353,21 @@ export async function runSessionWorker(): Promise<void> {
       "UPDATE interactions SET state='expired' WHERE turn=? AND state IN ('pending','admitted')",
       t.summary.turnId,
     );
+    const digestBefore = t.work?.digest;
     for (const row of all('SELECT * FROM work WHERE turn=?', t.summary.turnId)) {
       const w = decode<WorkSummary>(row);
       if (['queued', 'active', 'waiting'].includes(w.state)) {
+        const from = w.state;
         w.state =
           outcome === 'interrupted'
             ? 'interrupted'
             : outcome === 'cancelled'
               ? 'cancelled'
               : 'failed';
+        if (t.work) {
+          t.work = countWorkTransition(t.work, from, w.state);
+        }
+
         w.revision++;
         w.updatedAt = completedAt;
         run('UPDATE work SET data=? WHERE id=?', JSON.stringify(w), w.workId);
@@ -342,12 +377,17 @@ export async function runSessionWorker(): Promise<void> {
     for (const row of all('SELECT data FROM actions WHERE turn=?', t.summary.turnId)) {
       const action = decode<ToolActionSummary>(row);
       if (['queued', 'active', 'waiting'].includes(action.state)) {
+        const from = action.state;
         action.state =
           outcome === 'interrupted'
             ? 'interrupted'
             : outcome === 'cancelled'
               ? 'cancelled'
               : 'failed';
+        if (t.work) {
+          t.work = countActionTransition(t.work, action.operation ?? 'other', from, action.state);
+        }
+
         action.revision++;
         action.updatedAt = completedAt;
         run('UPDATE actions SET data=? WHERE id=?', JSON.stringify(action), action.actionId);
@@ -358,6 +398,10 @@ export async function runSessionWorker(): Promise<void> {
     refreshAttention(s, t);
     telemetry.terminal(s, t);
     emit(s, 'turn', { turn: t.summary, projection: projection(s) });
+    if (t.work && t.work.digest !== digestBefore) {
+      reviseWorkDigest(s, t);
+    }
+
     entry(s, t.summary.turnId, 'outcome', {
       text: t.summary.state === 'terminal' ? t.summary.outcome : outcome,
       complete: true,
@@ -424,6 +468,7 @@ export async function runSessionWorker(): Promise<void> {
     body,
     preview,
     entry,
+    reviseWorkDigest,
     telemetry,
   });
   const effects = createEffectReconciliation({ get, all, run, request, remember, turn, applyFact });
@@ -859,6 +904,7 @@ export async function runSessionWorker(): Promise<void> {
           invocationId,
           ...(c.effectBinding ? { effectBinding: c.effectBinding } : {}),
           cancelRequested: false,
+          work: emptyWorkAggregate(),
           summary: {
             turnId: tid,
             mode: c.input.mode ?? s.snapshot.session.mode,
@@ -1003,6 +1049,10 @@ export async function runSessionWorker(): Promise<void> {
         // Keep the Work waiting until the same live invocation confirms its write.
         run("UPDATE interactions SET state='admitted' WHERE id=?", c.interactionId);
         const w = decode<WorkSummary>(get('SELECT data FROM work WHERE id=?', i.workId));
+        if (t.work) {
+          t.work = countWorkTransition(t.work, w.state, 'waiting');
+        }
+
         w.state = 'waiting';
         w.revision++;
         w.updatedAt = now();
@@ -1038,6 +1088,7 @@ export async function runSessionWorker(): Promise<void> {
         }
 
         const s = session(c.sessionId);
+        let delivered = false;
         for (const nativeKey of c.nativeKeys) {
           const row = get(
             "SELECT i.data FROM interactions i JOIN work w ON w.id=json_extract(i.data,'$.workId') WHERE i.session=? AND i.turn=? AND i.state='admitted' AND w.native=?",
@@ -1054,11 +1105,20 @@ export async function runSessionWorker(): Promise<void> {
             get('SELECT data FROM work WHERE id=?', interaction.workId),
           );
           run("UPDATE interactions SET state='answered' WHERE id=?", interaction.interactionId);
+          delivered = true;
+          if (t.work) {
+            t.work = countWorkTransition(t.work, work.state, 'completed');
+          }
+
           work.state = 'completed';
           work.revision++;
           work.updatedAt = now();
           run('UPDATE work SET data=? WHERE id=?', JSON.stringify(work), work.workId);
           emit(s, 'work', { turnId: c.turnId, items: [work] });
+        }
+
+        if (delivered) {
+          saveTurn(c.sessionId, t);
         }
 
         return true;

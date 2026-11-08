@@ -5,12 +5,12 @@ import type {
   ProviderDescriptor,
   ToolActionSummary,
   TurnSummary,
+  WorkCounts,
   WorkPage,
   WorkSummary,
 } from '@nevo/specflow-contracts/sessions';
 import type { ManagedSessionsApi } from './api';
 import { fixtureSessionId } from './managedSession.stories-support';
-import type { WorkCounts, WorkKind } from './workCounts';
 
 /** Isolated Storybook fixtures for the Work L2 timeline (WorkInspector.tsx): never imported by a
  * production route. Kept independent from `ManagedSession.tsx`/`managedSession.stories-support.ts`
@@ -317,14 +317,14 @@ export function largeWorkTimelineItems(count = 144): WorkSummary[] {
 }
 
 /**
- * Demo stand-in for the proposed, not-yet-backend-implemented `WorkPage.counts` aggregate
- * (workCounts.ts, docs/reference/api/sessions.md "Proposed Work aggregate counts"): computed once
+ * Fixture value of Runtime's `WorkPage.counts` aggregate (docs/reference/api/sessions.md "Work
+ * aggregate counts"): computed once
  * from the FULL fixture `items` array, never per-page, so it keeps demonstrating a true Turn-wide
  * total even while `createWorkInspectorFixtureApi` only ever serves one bounded page at a time —
  * exactly the server-side projection this is standing in for.
  */
 function computeWorkCounts(items: readonly WorkSummary[]): WorkCounts {
-  const byKind: Record<WorkKind, number> = {
+  const byKind: WorkCounts['byKind'] = {
     commentary: 0,
     reasoning: 0,
     interaction: 0,
@@ -383,7 +383,7 @@ export function createWorkInspectorFixtureApi(
         items: pageItems,
         history: { hasOlder, before: hasOlder ? String(index - 1) : undefined },
         counts,
-      } satisfies WorkPage & { counts: WorkCounts });
+      } satisfies WorkPage);
     },
     actions: (_sessionId, workId) =>
       Promise.resolve({

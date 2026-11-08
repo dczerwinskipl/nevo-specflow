@@ -3,6 +3,24 @@ import { isAbsolute, relative, resolve } from 'node:path';
 import type { DriverFact } from '../../persistence/protocol';
 import type { EmitFact } from '../driver';
 import { CodexRpcError, rpcObject, type RpcMessage } from './rpc';
+import { nativeToolOperation, type NativeToolOperations } from '../tool-operations';
+
+/** The only Codex ThreadItem types this adapter accepts; any other item fails the protocol. */
+export const codexItemTypes = [
+  'userMessage',
+  'agentMessage',
+  'reasoning',
+  'plan',
+  'contextCompaction',
+  'commandExecution',
+  'fileChange',
+] as const;
+
+/** Codex app-server ThreadItem types that open a ToolAction. A fileChange is a patch, so `edit`. */
+export const codexToolOperations: NativeToolOperations = {
+  commandExecution: 'command',
+  fileChange: 'edit',
+};
 
 function identifier(value: unknown): string {
   if (typeof value !== 'string' || !/^[A-Za-z0-9_.:-]{1,128}$/.test(value)) {
@@ -179,17 +197,7 @@ export function createCodexProtocol(
           return;
         }
 
-        if (
-          ![
-            'userMessage',
-            'agentMessage',
-            'reasoning',
-            'plan',
-            'contextCompaction',
-            'commandExecution',
-            'fileChange',
-          ].includes(kind)
-        ) {
+        if (!(codexItemTypes as readonly string[]).includes(kind)) {
           throw new CodexRpcError('protocol');
         }
 
@@ -219,6 +227,7 @@ export function createCodexProtocol(
               key: 'action:' + id,
               parentKey: 'item:' + id,
               title: 'Command',
+              operation: nativeToolOperation(codexToolOperations, kind),
             });
             await text('action:' + id, 'tool-input', textValue(item.command));
           }
@@ -274,6 +283,7 @@ export function createCodexProtocol(
               key: 'action:' + id,
               parentKey: 'item:' + id,
               title: 'Apply patch',
+              operation: nativeToolOperation(codexToolOperations, kind),
             });
             await text('action:' + id, 'tool-input', textValue(JSON.stringify(item.changes)));
           }

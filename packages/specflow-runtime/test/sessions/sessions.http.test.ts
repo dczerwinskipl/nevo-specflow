@@ -4,7 +4,8 @@ import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { SessionSnapshot } from '@nevo/specflow-contracts/sessions';
+import { sessionValidators } from '@nevo/specflow-contracts/sessions';
+import type { SessionSnapshot, WorkPage } from '@nevo/specflow-contracts/sessions';
 import { createRuntimeApp } from '../../src/server/app';
 import { passwordConfig } from '../auth/support/config';
 
@@ -69,6 +70,12 @@ describe('managed Session HTTP', () => {
     );
     expect(work.statusCode).toBe(200);
     expect(work.json<{ items: unknown[] }>().items).toHaveLength(1);
+    expect(sessionValidators.work(work.json())).toBe(true);
+    expect(work.json<WorkPage>().counts).toEqual({
+      total: 1,
+      inProgress: 0,
+      byKind: { commentary: 1, reasoning: 0, interaction: 0, tool: 0 },
+    });
     const snapshot = (await app!.inject('/api/sessions/' + sessionId)).json<SessionSnapshot>();
     expect(snapshot.session.capabilities.start).toBe(true);
     const ref = snapshot.entries.find((e) => e.kind === 'answer')!.text.content!;

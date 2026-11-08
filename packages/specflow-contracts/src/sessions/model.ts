@@ -137,9 +137,12 @@ export const SessionInfoSchema = Type.Object(
         questions: Type.Boolean(),
         permissions: Type.Boolean(),
         executeWrite: Type.Optional(Type.Boolean()),
+        delete: Type.Optional(Type.Boolean()),
       },
       closed,
     ),
+    /** Present while archived: the Session is read-only until unarchived. */
+    archivedAt: Type.Optional(text(40)),
     createdAt: text(40),
     updatedAt: text(40),
   },

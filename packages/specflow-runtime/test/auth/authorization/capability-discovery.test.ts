@@ -95,6 +95,7 @@ describe('authorization HTTP API', () => {
         'view-provider-limits': false,
         view: true,
         manage: true,
+        delete: true,
       });
 
       const otherWorkspace = await app.inject({

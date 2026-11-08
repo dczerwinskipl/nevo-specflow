@@ -82,7 +82,8 @@ Authorization has five distinct concepts:
 The current feature-owned resources are:
 
 - `spec`: `spec.view`, `spec.create`, `spec.manage`;
-- `session`: `session.view`, `session.create`, `session.manage`;
+- `session`: `session.view`, `session.create`, `session.manage`, `session.delete`,
+  `session.execute-write`, `session.view-provider-limits`;
 - `settings`: `settings.view`, `settings.manage`.
 
 There is intentionally no `spec.list` capability. A Specs collection endpoint requires the subject

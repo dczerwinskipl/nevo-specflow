@@ -99,7 +99,11 @@ Commands use durable idempotency keyed by trusted actor, command kind, aggregate
 requestId. Fingerprint normalized explicit input. Look up an existing accepted request after
 authorization but before current provider/readiness validation. Matching input returns the original
 accepted result even after terminalization/restart; different input gives IDEMPOTENCY_CONFLICT.
-Keep accepted keys for the Session lifetime; no DELETE/purge API is part of the foundation.
+Exception: rename, archive and unarchive replays answer the current effective SessionInfo rather
+than a stored copy, still without a second effect.
+Keep accepted keys for the Session lifetime. Session delete removes its Session-scoped keys; the
+project-scoped create key is kept, so a late create retry replays the deleted sessionId, whose use
+is then 404.
 Validation/auth failures before admission have no accepted operation. Concurrent requests serialize.
 
 ## Transactions and lifecycle
@@ -139,6 +143,24 @@ pending live interactions become expired and open Work is explicitly closed. A f
 invocation with uncertain external effects remains unknown and cannot be automatically replayed.
 Only positive reconciliation evidence can remove that block. Plan 04 does not expose a force-recover API.
 
+## Archive and delete
+
+Archive marks the Session read-only (`archivedAt`); it is admitted only when no Turn is nonterminal
+or unknown, checked in the same transaction as the write, and new Turn starts and interaction
+responses are refused while archived. Unarchive clears the mark. Neither cancels anything.
+
+Delete is a hard delete inside one Worker transaction. It refuses with SESSION_DELETE_BLOCKED while
+a detached nonterminal Turn carries an unsettled Engine effect binding, and with TURN_CONFLICT
+while any other Turn is nonterminal or unknown or the coordinator still holds a live invocation for
+the Session. Otherwise it removes every Session-owned row: the Session record, provider context,
+Turns, conversation entries, Work, actions, content with its chunks and revisions, text keys,
+interactions, idempotency records scoped to the Session (the project-scoped create record is kept
+on purpose), fact/usage/telemetry deduplication rows of its invocations, Session usage, telemetry
+state and the event outbox. A single delete map classifies every table as Session-owned or global;
+a test fails when the schema gains a table the map does not classify. Engine records keep the Session
+ID as audit data; provider-native transcripts are left in place. Subscribers are woken by the commit
+and close because the Session no longer resolves. There is no tombstone.
+
 ## History, content and replay
 
 The exact bounded API is in reference.api.sessions. Tail queries never read content chunks or scan
@@ -158,7 +180,8 @@ Never synthesize complete history from an incomplete event log.
 
 ## Authorization and associations
 
-Reuse existing session.create/view/manage and flat-role coverage. Create requires session.create
+Reuse existing session.create/view/manage and flat-role coverage; deletion uses the separate
+session.delete capability (developer and admin roles). Create requires session.create
 at trusted {projectId}; existing Sessions use {projectId, sessionId} loaded from the store.
 There is no creator ACL or automatic creator grant: configured project/global roles determine
 sharing; creator is audit metadata only. A sessionId-scoped grant can allow one existing Session

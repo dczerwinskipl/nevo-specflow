@@ -20,6 +20,7 @@ describe('SpecFlow authorization contracts', () => {
       Create: 'session.create',
       View: 'session.view',
       Manage: 'session.manage',
+      Delete: 'session.delete',
       ExecuteWrite: 'session.execute-write',
       ViewProviderLimits: 'session.view-provider-limits',
     });

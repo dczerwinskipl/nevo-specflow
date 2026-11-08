@@ -293,6 +293,7 @@ function specFlowRoleCapabilities(): Readonly<Record<SpecFlowRoleId, readonly Ca
     SpecCapabilities.capabilities.CloseSpecification,
     SessionCapabilities.capabilities.Create,
     SessionCapabilities.capabilities.Manage,
+    SessionCapabilities.capabilities.Delete,
     SessionCapabilities.capabilities.ExecuteWrite,
   ] as const;
 

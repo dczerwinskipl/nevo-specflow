@@ -8,6 +8,7 @@ import {
   SessionChangeSchema,
 } from './model';
 import { ProviderCatalogueSchema } from './commands';
+import { SessionCommandResultSchema } from './management';
 import { RefreshTelemetryReceiptSchema, validateTelemetrySnapshot } from './telemetry';
 
 export const sessionValidators = {
@@ -20,4 +21,5 @@ export const sessionValidators = {
   content: (value: unknown) => Value.Check(ContentPageSchema, value),
   event: (value: unknown) => Value.Check(SessionChangeSchema, value),
   providers: (value: unknown) => Value.Check(ProviderCatalogueSchema, value),
+  sessionCommandResult: (value: unknown) => Value.Check(SessionCommandResultSchema, value),
 };

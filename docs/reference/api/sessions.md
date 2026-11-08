@@ -66,7 +66,8 @@ private interaction IDs, local absolute paths or provider payloads in ordinary D
 
 Create and provider catalogue: session.create at server-derived {projectId}.
 Existing resource reads: session.view at store-derived {projectId, sessionId}.
-Start/cancel/respond: session.manage at that same scope. Check access before protected source
+Start/cancel/reconcile/respond and rename/archive/unarchive: session.manage at that same scope.
+Delete: session.delete at that same scope. Check access before protected source
 reads; a small identity lookup may precede target authorization. No actor/scope/specId from a
 request is an authority. Missing auth -> existing 401 authentication_required; forbidden -> 403
 forbidden; unknown ID -> 404 SESSION_NOT_FOUND after access handling. Existing Auth conventions
@@ -130,7 +131,10 @@ type SessionInfo = {
     cancel: boolean;
     questions: boolean;
     permissions: boolean; // usable operation projection
+    executeWrite?: boolean;
+    delete?: boolean; // effective session.delete projection
   };
+  archivedAt?: string; // present while archived (read-only)
   createdAt: string;
   updatedAt: string;
 };
@@ -198,9 +202,13 @@ allocates a new interactionId and expires the old one; a stale form cannot answe
 | POST /api/sessions/:sessionId/turns/:turnId/cancel                | {requestId}                          | 202 {turnId}                      |
 | POST /api/sessions/:sessionId/turns/:turnId/reconcile             | {requestId}                          | 200 {turnId, outcome, reconciled} |
 | POST /api/sessions/:sessionId/interactions/:interactionId/respond | Respond                              | 202 {turnId, interactionId}       |
+| POST /api/sessions/:sessionId/rename                              | {requestId, title}                   | 200 {session: SessionInfo}        |
+| POST /api/sessions/:sessionId/archive                             | {requestId}                          | 200 {session: SessionInfo}        |
+| POST /api/sessions/:sessionId/unarchive                           | {requestId}                          | 200 {session: SessionInfo}        |
+| DELETE /api/sessions/:sessionId                                   | none                                 | 204 (no body)                     |
 | GET /api/sessions/:sessionId/events                               | optional after sequence              | text/event-stream                 |
 
-No core spec/task prefix, GET-all-transcript endpoint, attach/import, deletion, list-all count,
+No core spec/task prefix, GET-all-transcript endpoint, attach/import, list-all count,
 force-recovery or workflow finish endpoint. A new conversation launcher obtains its new ID
 from POST; no list endpoint is required for the foundation. Product lists consume later association
 projections. Disabled Session capability gives 503 SESSION_DISABLED for these routes.
@@ -246,11 +254,45 @@ Reconcile uses session.manage and the existing positive-evidence recovery path. 
 caller-supplied outcome, native receipt or force flag, and never resends a possibly executed prompt.
 Unavailable evidence leaves the operation unknown rather than manufacturing a terminal result.
 
-Route bodyLimit: 256 KiB Create/Start, 64 KiB respond/cancel. Exceed -> 413 SESSION_PAYLOAD_TOO_LARGE.
+Route bodyLimit: 256 KiB Create/Start, 64 KiB respond/cancel/reconcile/rename/archive/unarchive.
+Exceed -> 413 SESSION_PAYLOAD_TOO_LARGE.
 Session allocate does not launch the provider. Enforce requestId semantics from the storage design
-for all four commands, including create and cancel. Duplicate cancel after terminal is accepted
+for every command with a requestId, including create, cancel, rename, archive and unarchive. Duplicate cancel after terminal is accepted
 as no-op for that Turn; it must never cancel a later Turn. Respond duplicate with same accepted
 requestId returns its original response; a fresh response to an already resolved interaction conflicts.
+
+### Rename, archive, unarchive and delete
+
+Schemas: `RenameSessionSchema`, `ArchiveSessionSchema` (archive and unarchive) and
+`SessionCommandResultSchema` in `@nevo/specflow-contracts/sessions`.
+
+- Rename `{requestId, title}`: title is trimmed and must stay 1..256 characters with a
+  non-whitespace character; there is no "clear title". Allowed on an archived Session (owner
+  decision 2026-11-08: metadata, not conversation).
+- Archive `{requestId}` sets `SessionInfo.archivedAt`. It is rejected with 409 TURN_CONFLICT
+  (details.turnId) while the Session has a nonterminal Turn, including `unknown`; it never
+  cancels implicitly. The check and the write share one transaction, so no Turn can be admitted
+  in between. Archiving an archived Session is a no-op that keeps the original `archivedAt`.
+- An archived Session is read-only: start Turn and interaction respond return 409
+  SESSION_ARCHIVED and `capabilities.start` is false. Reads, content, history, Work, SSE,
+  telemetry GET and telemetry refresh keep working.
+- Unarchive `{requestId}` removes `archivedAt`; on a non-archived Session it is a no-op.
+- Rename/archive/unarchive replay a matching `(actor, command, sessionId, requestId)` without a
+  second effect and answer with the current effective `SessionInfo`; a changed payload under the
+  same requestId is 409 IDEMPOTENCY_CONFLICT. A change emits one `session` event.
+- `DELETE /api/sessions/:sessionId` (no body) hard-deletes every Session-owned Runtime row in
+  one transaction: Session, provider correlation, Turns, conversation, Work, actions, content,
+  interactions, Session-scoped idempotency records, fact/usage deduplication, telemetry and the
+  event outbox. The project-scoped create record is kept, so a late create retry with the old
+  requestId replays the deleted sessionId, whose use answers 404.
+  It is rejected with 409 TURN_CONFLICT (details.turnId) while any Turn is nonterminal or
+  `unknown` or a live invocation of the Session is still attached, so a running write Turn gets
+  TURN_CONFLICT. 409 SESSION_DELETE_BLOCKED (details.turnId) occurs only for an `unknown` or
+  recovering write Turn whose invocation has detached while its Engine effect evidence is
+  unsettled; that Turn is visible as `activeTurn`. Engine workspace-execution records and
+  provider-native transcripts are not touched (only the Runtime's locator is removed). Open SSE streams of the deleted Session close without
+  further payload. There is no tombstone: a repeated delete, and any later read or stream
+  request, is 404 SESSION_NOT_FOUND. Clients treat 404 after their own delete as done.
 
 ## Bounded history and Work
 
@@ -337,7 +379,7 @@ A conversation `TextPreview.text` is the UTF-8 byte prefix of its content (at mo
 character boundary), so a client continues with `offset` = the UTF-8 byte length of the preview text,
 not 0, and appends the pages to the preview.
 Return the longest valid UTF-8 prefix within the byte budget, nextOffset iff more remains.
-Old referenced revisions are retained for the Session lifetime, including for actively growing
+Old referenced revisions are retained for the Session lifetime (until Session delete), including for actively growing
 text; use immutable chunk references/prefix manifests rather than copying all prior text per delta.
 Append-only text revisions can identify immutable published prefixes by length/generation with
 constant-size revision metadata. Do not copy a growing chunk list or rehash the whole text on each
@@ -409,14 +451,14 @@ Domain error body: {error:'session_error', code, message, details?}. message is 
 details is code-specific and bounded; never provider-private diagnostics. Existing Auth/rate-limit
 envelopes remain their own contracts. UI branches on code, not message text.
 
-| Status | Codes and permitted details                                                                                                                                          |
-| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 400    | SESSION_INPUT_INVALID (field?), SESSION_CURSOR_INVALID, INTERACTION_RESPONSE_INVALID                                                                                 |
-| 404    | SESSION_NOT_FOUND, SESSION_RESOURCE_NOT_FOUND                                                                                                                        |
-| 409    | TURN_CONFLICT (turnId), IDEMPOTENCY_CONFLICT, INTERACTION_EXPIRED, SESSION_CURSOR_EXPIRED, CONTENT_REVISION_UNAVAILABLE, SESSION_RECOVERY_REQUIRED (turnId?, reason) |
-| 413    | SESSION_PAYLOAD_TOO_LARGE                                                                                                                                            |
-| 422    | CAPABILITY_UNSUPPORTED (capability), MODEL_UNSUPPORTED                                                                                                               |
-| 503    | SESSION_DISABLED, SESSION_STORE_BUSY, SESSION_STORE_UNAVAILABLE, PROVIDER_UNAVAILABLE, PROVIDER_AUTH_REQUIRED, PROVIDER_CATALOGUE_UNAVAILABLE                        |
+| Status | Codes and permitted details                                                                                                                                                                                             |
+| ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 400    | SESSION_INPUT_INVALID (field?), SESSION_CURSOR_INVALID, INTERACTION_RESPONSE_INVALID                                                                                                                                    |
+| 404    | SESSION_NOT_FOUND, SESSION_RESOURCE_NOT_FOUND                                                                                                                                                                           |
+| 409    | TURN_CONFLICT (turnId), SESSION_ARCHIVED, SESSION_DELETE_BLOCKED (turnId), IDEMPOTENCY_CONFLICT, INTERACTION_EXPIRED, SESSION_CURSOR_EXPIRED, CONTENT_REVISION_UNAVAILABLE, SESSION_RECOVERY_REQUIRED (turnId?, reason) |
+| 413    | SESSION_PAYLOAD_TOO_LARGE                                                                                                                                                                                               |
+| 422    | CAPABILITY_UNSUPPORTED (capability), MODEL_UNSUPPORTED                                                                                                                                                                  |
+| 503    | SESSION_DISABLED, SESSION_STORE_BUSY, SESSION_STORE_UNAVAILABLE, PROVIDER_UNAVAILABLE, PROVIDER_AUTH_REQUIRED, PROVIDER_CATALOGUE_UNAVAILABLE                                                                           |
 
 Missing/replaced/corrupt store never returns an invented ready/empty snapshot. Store ownership
 failure prevents feature startup and is reported in startup diagnostics using the same code.

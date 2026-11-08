@@ -9,6 +9,7 @@ import type {
   SpecificationWorkspaceData,
   TaskItem,
 } from './model';
+import { translateNow } from '../../../i18n/message';
 
 function mapAttention(items: readonly WorkspaceAttention[]): AttentionItem[] {
   return items.map((item) => ({
@@ -53,7 +54,8 @@ export function mapWorkspaceResponse(
   }));
   const sessionSummaries = sessions.map((session) => ({
     id: session.id,
-    title: session.title,
+    // The server never invents a title; an untitled Session shows the UI's untitled label.
+    title: session.title ?? translateNow('managedSession.title'),
     navigationStatus: session.status,
     taskCount: session.taskIds.length > 0 ? String(session.taskIds.length) : undefined,
     activityCode:

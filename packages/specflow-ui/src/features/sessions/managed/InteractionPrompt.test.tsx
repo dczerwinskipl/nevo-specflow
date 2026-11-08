@@ -111,10 +111,16 @@ describe('multi-select question', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: 'Gamma' }));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Alpha' }));
     expect(screen.getByText('Selected 2 of at most 2.')).toBeTruthy();
-    expect(screen.getByRole('checkbox', { name: 'Beta' })).toHaveProperty('disabled', true);
+    const beta = screen.getByRole('checkbox', { name: 'Beta' });
+    // At the cap the box stays focusable but cannot be checked.
+    expect(beta.getAttribute('aria-disabled')).toBe('true');
+    expect(beta).toHaveProperty('disabled', false);
+    fireEvent.click(beta);
+    expect(beta.getAttribute('aria-checked')).toBe('false');
+    expect(screen.getByText('Selected 2 of at most 2.').getAttribute('aria-live')).toBe('polite');
     // Unchecking frees a slot again.
     fireEvent.click(screen.getByRole('checkbox', { name: 'Gamma' }));
-    expect(screen.getByRole('checkbox', { name: 'Beta' })).toHaveProperty('disabled', false);
+    expect(screen.getByRole('checkbox', { name: 'Beta' }).getAttribute('aria-disabled')).toBeNull();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Gamma' }));
     fireEvent.click(respond);
     expect(onRespond).toHaveBeenCalledExactlyOnceWith({

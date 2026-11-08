@@ -166,19 +166,24 @@ function MultiSelectQuestion({
       >
         {options.map((option) => {
           const checked = selected.has(option.id);
+          // At the cap the other boxes stay focusable (`aria-disabled`); `toggle` ignores them.
+          const capped = full && !checked;
 
           return (
             <CheckboxField
               key={option.id}
               label={option.label}
               checked={checked}
-              disabled={busy || (full && !checked)}
+              disabled={busy}
+              aria-disabled={capped || undefined}
+              fieldClassName={capped ? 'opacity-60' : undefined}
+              className={capped ? 'cursor-not-allowed' : undefined}
               onCheckedChange={(value) => toggle(option.id, value === true)}
             />
           );
         })}
       </div>
-      <p id={countId} className="text-body-sm text-content-muted">
+      <p id={countId} aria-live="polite" className="text-body-sm text-content-muted">
         {t('managedSession.selectionCount', { count: selected.size, max })}
       </p>
       {interaction.allowText && (

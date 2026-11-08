@@ -3,6 +3,7 @@ import { useEffect, useState, type ComponentProps } from 'react';
 import { expect, fn, userEvent, within, waitFor } from 'storybook/test';
 import { settleViewport } from '../../../test-support/viewportSettle.stories-support';
 import { ManagedSession } from './ManagedSession';
+import type { ManagedSessionsApi } from './api';
 import { fixtureApi, fixtureSessionId, sessionFixture } from './managedSession.stories-support';
 import {
   genericSpecLevelSnapshot,
@@ -383,7 +384,12 @@ if (multiple.interaction?.kind === 'question') {
   ];
 }
 
-const multipleApi = { ...fixtureApi(multiple), respond: fn().mockResolvedValue({}) };
+const multipleApi = {
+  ...fixtureApi(multiple),
+  respond: fn<ManagedSessionsApi['respond']>((_id, interactionId) =>
+    Promise.resolve({ turnId: multiple.interaction!.turnId, interactionId }),
+  ),
+};
 
 /** A question with `maxSelections > 1`: checkboxes capped at the limit, one Respond, keyboard only. */
 export const MultipleChoice: Story = {
@@ -406,7 +412,11 @@ export const MultipleChoice: Story = {
     history.focus();
     await userEvent.keyboard(' ');
     await expect(canvas.getByText('Wybrano 2 z maksymalnie 2.')).toBeVisible();
-    await expect(recovery).toBeDisabled();
+    // Capped: still focusable, announced as unavailable, and Space does not check it.
+    await expect(recovery).toHaveAttribute('aria-disabled', 'true');
+    recovery.focus();
+    await userEvent.keyboard(' ');
+    await expect(recovery).not.toBeChecked();
     await expect(respond).toBeEnabled();
     respond.focus();
     await userEvent.keyboard('{Enter}');

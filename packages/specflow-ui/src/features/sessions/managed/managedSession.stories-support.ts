@@ -190,8 +190,31 @@ export function staggeredContentApi(snapshot: SessionSnapshot, delayMs = 120): M
   };
 }
 
+/**
+ * The snapshot as the Runtime serves it: the Session names its provider and model by the
+ * catalogue's titles (absent when not listed), whatever the caller may read of the catalogue.
+ */
+export function withRuntimeTitles(
+  snapshot: SessionSnapshot,
+  provider: ProviderDescriptor | undefined = providerFixture(snapshot.session.providerId),
+): SessionSnapshot {
+  const { providerTitle: _provider, modelTitle: _model, ...session } = snapshot.session;
+  const modelTitle = provider?.models.find((model) => model.modelId === session.modelId)?.title;
+
+  return {
+    ...snapshot,
+    session: {
+      ...session,
+      ...(provider ? { providerTitle: provider.title } : {}),
+      ...(modelTitle ? { modelTitle } : {}),
+    },
+  };
+}
+
 /** Isolated presentation adapter: never imported by a production route. */
-export function fixtureApi(snapshot: SessionSnapshot, historyError = false): ManagedSessionsApi {
+export function fixtureApi(served: SessionSnapshot, historyError = false): ManagedSessionsApi {
+  const snapshot = withRuntimeTitles(served);
+
   return {
     providers: () => Promise.resolve({ items: [providerFixture(snapshot.session.providerId)] }),
     create: () => Promise.resolve({ sessionId: fixtureSessionId }),

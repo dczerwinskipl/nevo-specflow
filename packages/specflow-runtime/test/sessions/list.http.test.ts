@@ -156,6 +156,25 @@ describe('GET /api/sessions', () => {
     expect(items[0]).not.toHaveProperty('providerModeId');
   });
 
+  it('names the executor in the Session snapshot for a viewer without the catalogue', async () => {
+    const seeded = await seed();
+    const server = await open('viewer', { projectId: 'project' });
+    expect((await server.inject('/api/session-providers')).statusCode).toBe(403);
+    const named = await server.inject(`/api/sessions/${seeded.s2}`);
+    expect(named.statusCode, named.body).toBe(200);
+    expect(named.json<SessionSnapshot>().session).toMatchObject({
+      providerId: 'mock',
+      providerTitle: 'Controlled mock (test only)',
+      modelId: 'mock',
+      modelTitle: 'Deterministic test model',
+      capabilities: { view: true, manage: false },
+    });
+    // No model chosen: the provider is named, no model title is invented.
+    const unnamedModel = (await server.inject(`/api/sessions/${seeded.c}`)).json<SessionSnapshot>();
+    expect(unnamedModel.session.providerTitle).toBe('Controlled mock (test only)');
+    expect(unnamedModel.session).not.toHaveProperty('modelTitle');
+  });
+
   it('reads a Session whose provider mode is not offered as unavailable, like the single read', async () => {
     directory = await mkdtemp(join(tmpdir(), 'nevo-session-list-'));
     const store = await openSessionStore({ directory, projectId: 'project' });

@@ -201,6 +201,42 @@ it('resolves an associated Session at its Specification scope, but write executi
     start: false,
   });
 });
+it('names the executor by catalogue titles in the snapshot and in change projections', () => {
+  const f = fixture();
+  f.provider.models = [{ modelId: 'm1', title: 'Model one', efforts: [] }];
+  f.snapshot.session.modelId = 'm1';
+  expect(f.project().session).toMatchObject({
+    providerTitle: 'Controlled',
+    modelTitle: 'Model one',
+  });
+
+  const event: SessionChange = {
+    sessionId: 'session',
+    eventSeq: 2,
+    kind: 'session',
+    changes: {
+      projection: {
+        // A model the catalogue no longer lists: a stale title never survives.
+        session: { ...f.snapshot.session, modelId: 'gone', modelTitle: 'Stale' },
+        activeTurn: null,
+        currentActivity: null,
+        interaction: null,
+      },
+    },
+  };
+  const projected = effectiveEvent(event, f.request, () => f.provider, identity);
+  if (projected.kind !== 'session') {
+    throw new Error('Wrong fixture event');
+  }
+
+  expect(projected.changes.projection.session.providerTitle).toBe('Controlled');
+  expect(projected.changes.projection.session).not.toHaveProperty('modelTitle');
+  // A provider the catalogue does not list is named by nothing.
+  const unlisted = fixture();
+  expect(
+    effective(unlisted.snapshot, unlisted.request, () => undefined, identity).session,
+  ).not.toHaveProperty('providerTitle');
+});
 it('keeps Cancel on a Session change (rename) emitted during an active Turn', () => {
   const f = fixture();
   const event: SessionChange = {

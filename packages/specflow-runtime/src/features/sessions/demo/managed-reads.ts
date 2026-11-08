@@ -73,7 +73,10 @@ export function createDemoManagedSessionReads(options: {
           projectId: identity.projectId,
           ...(summary.title ? { title: summary.title } : {}),
           providerId: summary.providerId,
+          // The list row's catalogue titles: a viewer names the executor without the catalogue.
+          ...(summary.providerTitle ? { providerTitle: summary.providerTitle } : {}),
           ...(summary.modelId ? { modelId: summary.modelId } : {}),
+          ...(summary.modelTitle ? { modelTitle: summary.modelTitle } : {}),
           mode: 'read-only',
           // The list row's readiness, so the header says what the Sessions navigator says.
           readiness: summary.readiness,

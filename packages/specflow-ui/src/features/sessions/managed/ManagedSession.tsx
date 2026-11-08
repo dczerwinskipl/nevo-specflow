@@ -694,7 +694,11 @@ function ManagedSessionConversation({
                   {!snapshot.entries.length && (
                     <SessionReadyEmptyState
                       providerId={snapshot.session.providerId}
-                      providerTitle={provider?.title ?? snapshot.session.providerId}
+                      providerTitle={
+                        snapshot.session.providerTitle ??
+                        provider?.title ??
+                        snapshot.session.providerId
+                      }
                       viewOnly={viewOnly}
                     />
                   )}
@@ -1216,10 +1220,6 @@ export function ManagedSession({
   useDropNarrowContextOnSplit(contextTitle);
 
   const workStack = useMemo(() => createWorkInspector(api, feed, owner), [api, feed, owner]);
-  const providers = useQuery({
-    queryKey: ['managed-session-providers', owner],
-    queryFn: ({ signal }) => api.providers(signal),
-  });
   const snapshot = state.snapshot;
   // Started here and not loaded yet: the start values stand in for the snapshot's.
   const fallback = useStartedSessionFallback({
@@ -1227,6 +1227,14 @@ export function ManagedSession({
     sessionId,
     hasSnapshot: !!snapshot,
     connection: state.connection,
+  });
+  // The provider catalogue is a Session creator's read: it feeds the composer's pickers only, so
+  // it is read only for a caller who can manage this Session (or who has just started it). The
+  // executor is named by the snapshot's own titles, which `session.view` alone can read.
+  const providers = useQuery({
+    queryKey: ['managed-session-providers', owner],
+    queryFn: ({ signal }) => api.providers(signal),
+    enabled: snapshot ? snapshot.session.capabilities.manage : !!fallback.pending,
   });
   const sessionProviderId = snapshot?.session.providerId ?? fallback.providerId;
   const provider = providers.data?.items.find((item) => item.providerId === sessionProviderId);
@@ -1245,51 +1253,44 @@ export function ManagedSession({
   const workHistoryTurnId = snapshot
     ? (snapshot.activeTurn?.turnId ?? state.latestTurnId)
     : undefined;
-  // Context's first section: the provider (as the Runtime names it) and the model/effort the
-  // composer has selected for the next Turn.
-  const executorModelTitle = provider?.models.find(
-    (model) => model.modelId === selectedModelId,
-  )?.title;
-  const providerId = sessionProviderId;
+  // Context's first section: the provider and the model/effort the composer has selected for the
+  // next Turn, named by the snapshot's own titles (the Runtime resolves them as for a list row).
+  // Only a model chosen in the composer, which needs Manage and so the catalogue, is named by the
+  // catalogue.
+  const sessionInfo = snapshot?.session;
+  const executorProviderTitle = sessionInfo?.providerTitle;
+  const executorModelTitle = state.modelOverride
+    ? provider?.models.find((model) => model.modelId === state.modelOverride)?.title
+    : sessionInfo?.modelTitle;
   const firstSnapshotFailed = !snapshot && !fallback.pending && state.connection === 'error';
   const executor = useMemo<ContextFact<SessionExecutor> | undefined>(() => {
     if (fallback.executor) {
       return fallback.executor;
     }
 
-    if (provider) {
+    if (!sessionInfo) {
+      // No snapshot ever arrived and nothing started here stands in for it: the provider cannot
+      // become known, so waiting would be a skeleton forever.
+      return firstSnapshotFailed ? { status: 'unreadable' } : { status: 'loading' };
+    }
+
+    if (executorProviderTitle) {
       return {
         status: 'ready',
         value: {
-          providerId: provider.providerId,
-          providerTitle: provider.title,
+          providerId: sessionInfo.providerId,
+          providerTitle: executorProviderTitle,
           modelTitle: executorModelTitle,
           effort: executorModelTitle ? selectedEffort : undefined,
         },
       };
     }
 
-    if (providers.isError) {
-      return { status: 'unreadable' };
-    }
-
-    if (!providerId) {
-      // No snapshot ever arrived and nothing started here stands in for it: the provider cannot
-      // become known, so waiting would be a skeleton forever.
-      return firstSnapshotFailed ? { status: 'unreadable' } : { status: 'loading' };
-    }
-
-    if (providers.isPending) {
-      return { status: 'loading' };
-    }
-
-    // The catalogue loaded but does not know the Session's provider.
-    return { status: 'missing', ref: { key: providerId } };
+    // The Runtime's catalogue does not know the Session's provider.
+    return { status: 'missing', ref: { key: sessionInfo.providerId } };
   }, [
-    provider,
-    providers.isError,
-    providers.isPending,
-    providerId,
+    sessionInfo,
+    executorProviderTitle,
     firstSnapshotFailed,
     executorModelTitle,
     selectedEffort,

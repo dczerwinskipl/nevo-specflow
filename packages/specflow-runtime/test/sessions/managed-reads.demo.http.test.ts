@@ -74,6 +74,9 @@ describe('demo managed Session reads (read-only, no coordinator)', () => {
         sessionId,
         // The header says what the list row (and the Sessions navigator) says.
         readiness: row.readiness,
+        // ...and names the executor as the row does.
+        providerTitle: row.providerTitle,
+        ...(row.modelTitle ? { modelTitle: row.modelTitle } : {}),
         capabilities: { view: true, manage: false, start: false, cancel: false },
       },
       eventSeq: 0,
@@ -133,6 +136,8 @@ describe('demo managed Session reads (read-only, no coordinator)', () => {
       view: true,
       start: false,
     });
+    // The executor is named by the list row's titles, without the catalogue below.
+    expect(own.json<SessionSnapshot>().session.providerTitle).toEqual(expect.any(String));
     expect((await scoped.inject('/api/sessions/' + otherSeeded)).statusCode).toBe(403);
     expect((await scoped.inject('/api/sessions/' + unknown)).statusCode).toBe(404);
     expect((await scoped.inject('/api/sessions/' + seeded + '/telemetry')).statusCode).toBe(200);

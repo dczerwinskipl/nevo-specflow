@@ -4,7 +4,7 @@ import { StandaloneScreenHeader } from '../../../../app/StandaloneScreenLayout';
 import { useWorkspaceLabels } from '../../../../app/navigation/useWorkspaceLabels';
 
 /**
- * A Session that was deleted (here or in another view) or never existed (session-actions-ux §3.6):
+ * A Session that was deleted (here or in another view) or never existed (full-session-screen-structure §22.1):
  * the product's not-found composition (`NotFoundView`: header, description, one secondary button)
  * with one way on to a new Session. It replaces the Session screen inside the application shell,
  * in the workspace the Session screen used, rather than opening a second standalone shell (which

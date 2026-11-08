@@ -122,7 +122,7 @@ export interface SessionContextViewModel {
    */
   telemetry?: TelemetrySnapshot;
   /**
-   * The provider-limits refresh (session-actions-ux §1). Present only when the user may manage
+   * The provider-limits refresh (full-session-screen-structure §7.7). Present only when the user may manage
    * the Session; the control itself also needs a `refreshable` limits reading.
    */
   limitsRefresh?: LimitsRefreshControl;

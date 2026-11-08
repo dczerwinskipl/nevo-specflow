@@ -8,7 +8,7 @@ import { unknownTurnSnapshot } from './sessionActions/sessionActions.stories-sup
 import { scriptedFixture, scriptedRender } from './sessionActions/scriptedSession.stories-support';
 
 /**
- * A Turn whose outcome is unknown (session-actions-ux §2): one attention notice above the
+ * A Turn whose outcome is unknown (full-session-screen-structure §17.1): one attention notice above the
  * Composer owns the fact; with Manage it checks the outcome through the Runtime's evidence path.
  */
 const meta = {

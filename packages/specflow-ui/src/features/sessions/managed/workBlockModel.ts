@@ -26,7 +26,7 @@ export function liveActivity(
   currentActivity: CurrentActivity | undefined,
 ): LiveActivity | undefined {
   // An unknown outcome is not running: its single owner is the reconcile notice above the Composer
-  // (session-actions-ux §2.1), so the Work block shows no live line and no spinner.
+  // (full-session-screen-structure §17.1), so the Work block shows no live line and no spinner.
   if (!activeTurn || activeTurn.state === 'unknown') {
     return undefined;
   }

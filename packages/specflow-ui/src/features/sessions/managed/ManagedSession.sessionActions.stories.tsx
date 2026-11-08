@@ -15,7 +15,7 @@ import { scriptedFixture, scriptedRender } from './sessionActions/scriptedSessio
 
 /**
  * Session header "…" menu: Rename / Archive (Restore) / Delete on the real commands
- * (session-actions-ux §3). Each story scripts the Runtime's answers; a successful command's
+ * (full-session-screen-structure §22.1). Each story scripts the Runtime's answers; a successful command's
  * `session` change arrives on the stream, as in the product.
  */
 const onSessionDeleted = fn();

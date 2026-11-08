@@ -350,7 +350,9 @@ another Stop conflicts with unresolved work, the adapter allows termination and
 withholds idle evidence. Insufficient settlement remains unknown under the
 existing recovery contract. This deliberately bounds additional native activity;
 it does not promise to repair every inconsistent native completion sequence.
-Handles remain owned until matching PostToolUse or positive stopped-tree cleanup.
+Operation cleanup also disables continuation before disposing the process, including
+protocol failure without a native terminal result. Handles remain owned until
+matching PostToolUse or positive stopped-tree cleanup.
 Private endpoints and replay state are invocation-local and are not restored or
 transferred on restart. There is no database/schema migration or public API change.
 

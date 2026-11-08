@@ -550,7 +550,7 @@ describe('controlled native hook HTTP/helper boundary', () => {
         toolCall: { name: 'view_file', args: { AbsolutePath: join(f.workspace, 'file.txt') } },
       });
       if (state === 'terminal') {
-        f.bridge.observeTerminal();
+        f.bridge.disableContinuation();
       }
 
       if (state === 'abort') {

@@ -22,7 +22,7 @@ export type AntigravityProcess = Pick<
 >;
 export interface AntigravityInteractions {
   activate(): void;
-  observeTerminal(): void;
+  disableContinuation(): void;
   awaitNativeIdle(signal: AbortSignal): Promise<void>;
   respond(key: string, response: RespondInteraction): Promise<{ deliveredKeys: readonly string[] }>;
   close(): Promise<void>;
@@ -80,7 +80,7 @@ export function createAntigravityOperation(
 
   const publish: EmitFact = async (fact) => {
     if (fact.kind === 'outcome') {
-      interactions?.observeTerminal();
+      interactions?.disableContinuation();
       pendingOutcome = fact;
     } else {
       await emit(fact);
@@ -225,6 +225,7 @@ export function createAntigravityOperation(
       failure = error;
     } finally {
       clearTimeout(deadline);
+      interactions?.disableContinuation();
       closed = true;
       signal.removeEventListener('abort', cancel);
       // Quiesce native execution before waiting on canonical interaction cleanup.

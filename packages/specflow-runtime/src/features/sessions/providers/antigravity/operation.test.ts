@@ -108,7 +108,7 @@ function fixture(
   const bridge = {
     done: bridgeDone.promise,
     activate: vi.fn(),
-    observeTerminal: vi.fn(),
+    disableContinuation: vi.fn(),
     awaitNativeIdle: vi.fn(options.nativeIdle ?? (() => Promise.resolve())),
     respond: vi.fn((key: string) => Promise.resolve({ deliveredKeys: [key] })),
     releaseFileAccess: vi.fn(),
@@ -257,7 +257,7 @@ describe('Antigravity operation lifecycle', () => {
     await f.ready();
     f.result();
     await vi.waitFor(() => expect(f.owner.endInput).toHaveBeenCalledOnce());
-    expect(f.bridge.observeTerminal).toHaveBeenCalledOnce();
+    expect(f.bridge.disableContinuation).toHaveBeenCalledOnce();
     expect(f.bridge.awaitNativeIdle).toHaveBeenCalledOnce();
     expect(f.owner.dispose).not.toHaveBeenCalled();
     expect(f.facts.some((fact) => fact.kind === 'outcome')).toBe(false);
@@ -467,6 +467,20 @@ describe('Antigravity operation lifecycle', () => {
     await f.operation.done;
     expect(await f.operation.settlement).toEqual({ process: 'stopped', source: 'unverified' });
     expect(f.facts.at(-1)).toMatchObject({ kind: 'lost' });
+    expect(f.facts.some((fact) => fact.kind === 'outcome')).toBe(false);
+  });
+
+  it('disables continuation before process cleanup on protocol failure without inventing a result', async () => {
+    const f = fixture();
+    f.init();
+    await f.ready();
+    f.push({ event: 'result', result: { status: 'invalid' } });
+    await f.operation.done;
+    expect(f.bridge.disableContinuation).toHaveBeenCalledOnce();
+    expect(f.bridge.disableContinuation.mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(f.owner.dispose).mock.invocationCallOrder[0]!,
+    );
+    expect(await f.operation.settlement).toEqual({ process: 'stopped', source: 'unverified' });
     expect(f.facts.some((fact) => fact.kind === 'outcome')).toBe(false);
   });
 

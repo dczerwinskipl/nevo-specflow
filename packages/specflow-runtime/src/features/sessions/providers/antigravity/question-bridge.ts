@@ -52,7 +52,6 @@ export async function createAntigravityQuestionBridge(
   let nativeIdle = false;
   let hookGeneration = 0;
   let continuationAvailable = true;
-  let terminalObserved = false;
   let lastStop:
     { execution: number; generation: number; fullyIdle: boolean; conflicted: boolean } | undefined;
   function expired() {
@@ -161,7 +160,7 @@ export async function createAntigravityQuestionBridge(
           (bound.terminationReason === 'NO_TOOL_CALL' ||
             bound.terminationReason === 'model_stop') &&
           (bound.error === undefined || bound.error === '');
-        if (!ordinaryCompletion || terminalObserved) {
+        if (!ordinaryCompletion) {
           continuationAvailable = false;
         }
 
@@ -324,8 +323,8 @@ export async function createAntigravityQuestionBridge(
       });
     },
 
-    observeTerminal() {
-      terminalObserved = true;
+    disableContinuation() {
+      continuationAvailable = false;
     },
     activate: () => transport.activate(),
     respond: transport.respond,

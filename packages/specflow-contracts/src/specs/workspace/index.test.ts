@@ -64,7 +64,12 @@ describe('Specification Workspace Attention contract', () => {
 
   it('requires the provider and update time of a Session row', () => {
     const response = workspace();
-    const row = { id: 'session-1', taskIds: [], status: 'quiet', providerId: 'claude' };
+    const row = {
+      id: '00000000-0000-4000-8000-000000000001',
+      taskIds: [],
+      status: 'quiet',
+      providerId: 'claude',
+    };
     const check = (item: object) =>
       Value.Check(SpecificationWorkspaceResponseSchema, {
         ...response,
@@ -77,7 +82,14 @@ describe('Specification Workspace Attention contract', () => {
     expect(check(row)).toBe(false);
     // Closed: no field outside the contract (no provider mode, no internal facts).
     expect(check({ ...row, updatedAt: '2026-11-08T00:00:00.000Z', mode: 'read-only' })).toBe(false);
-    expect(check({ id: 'session-1', taskIds: [], status: 'quiet', updatedAt: 'x' })).toBe(false);
+    expect(
+      check({
+        id: '00000000-0000-4000-8000-000000000001',
+        taskIds: [],
+        status: 'quiet',
+        updatedAt: 'x',
+      }),
+    ).toBe(false);
   });
 
   it('accepts an untitled Session and a bounded Sessions section with hasMore', () => {
@@ -87,14 +99,14 @@ describe('Specification Workspace Attention contract', () => {
       data: {
         items: [
           {
-            id: 'session-1',
+            id: '00000000-0000-4000-8000-000000000001',
             taskIds: [],
             status: 'quiet',
             providerId: 'claude',
             updatedAt: '2026-11-08T00:00:00.000Z',
           },
           {
-            id: 'session-2',
+            id: '00000000-0000-4000-8000-000000000002',
             taskIds: [],
             status: 'authenticationRequired',
             providerId: 'claude',

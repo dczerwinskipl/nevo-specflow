@@ -509,7 +509,7 @@ describe('filesystem workflow store: read budgets', () => {
         await mkdir(join(stateRoot, 'engine', 'workflow', 'attention'), { recursive: true });
         await writeFile(
           join(stateRoot, 'engine', 'workflow', 'attention', `${SPEC}.json`),
-          serializeAttention([]).replace('{', `{${' '.repeat(2 * 1024 * 1024)}`),
+          ' '.repeat(2 * 1024 * 1024) + serializeAttention([]),
         );
       },
     ],

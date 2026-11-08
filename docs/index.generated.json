@@ -4920,6 +4920,44 @@
       ]
     },
     {
+      "id": "ideas.specflow-runtime.session-ui-integration.plan",
+      "type": "engineering",
+      "title": "Managed Session UI integration and Session actions task plan",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/session-ui-integration/plan.md",
+      "read_when": [
+        "implementing or reviewing the feat/session-ui-integration pull request",
+        "deciding Session rename, archive or delete semantics"
+      ],
+      "summary": "Ordered, dependency-complete task plan for wiring the managed Session screen to the real Session API (telemetry, reconcile, multi-select questions, Antigravity icon) and for adding Work counts/digest, command response schemas and Session rename/archive/delete end to end, with the owner decisions that still block parts of it.",
+      "related": [
+        "reference.api.sessions",
+        "reference.api.session-telemetry",
+        "architecture.ai.session-storage-and-lifecycle",
+        "architecture.runtime.authorization",
+        "ideas.specflow-runtime.session-v10-backend-readiness",
+        "ideas.specflow-ui.components.session-chat-v10-design"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "server",
+        "security",
+        "ui",
+        "testing"
+      ],
+      "tags": [
+        "sessions",
+        "telemetry",
+        "interactions",
+        "work",
+        "session-actions",
+        "planning",
+        "implementation"
+      ]
+    },
+    {
       "id": "ideas.specflow-runtime.session-v10-backend-readiness",
       "type": "engineering",
       "title": "Session migration remainder and V10 backend readiness",
@@ -5776,6 +5814,46 @@
         "review",
         "evidence",
         "actions"
+      ]
+    },
+    {
+      "id": "ideas.specflow-ui.session-actions-ux",
+      "type": "product",
+      "title": "Session telemetry refresh, unknown-Turn reconcile and Session actions — UX contract",
+      "status": "current",
+      "file": "docs/ideas/specflow-ui/session-actions-ux/README.md",
+      "read_when": [
+        "implementing the telemetry refresh control in Session details (plan T2)",
+        "implementing reconcile of a Turn whose outcome is unknown (plan T4)",
+        "implementing Rename, Archive, Unarchive or Delete in the Session header (plan T11)"
+      ],
+      "summary": "UX contract for plan decisions D1, D2 and D10 of the Managed Session UI integration: where the provider-limits refresh appears and how its queued/running/429 states read; how a user with Manage settles an unknown Turn from Primary; and the archived read-only Session, Unarchive, Delete confirmation and post-delete navigation. Accepted by the owner on 2026-11-08; Rename stays allowed on an archived Session.",
+      "related": [
+        "ideas.specflow-runtime.session-ui-integration.plan",
+        "ideas.specflow-ui.components.session-chat-v10-design",
+        "ideas.specflow-ui.full-session-screen-structure",
+        "ideas.specflow-ui.components.session-composer-design",
+        "product.specflow.ui.documents-archetypes",
+        "reference.api.session-telemetry",
+        "reference.api.sessions",
+        "design-system.principles.ui-ux-guidelines",
+        "design-system.principles.layout-and-containment"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "ai",
+        "runtime"
+      ],
+      "tags": [
+        "sessions",
+        "telemetry",
+        "reconcile",
+        "recovery",
+        "rename",
+        "archive",
+        "delete",
+        "session-actions"
       ]
     },
     {

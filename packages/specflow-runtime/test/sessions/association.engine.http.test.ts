@@ -94,4 +94,29 @@ describe('Session association over the Engine (project mode)', () => {
     },
     timeoutMs,
   );
+
+  it(
+    'reads the associated Specification from its canonical manifest',
+    async () => {
+      const { sessionId } = (await create(specId)).json<CreateContextSessionResult>();
+      const response = await app.inject(`/api/sessions/${sessionId}/association`);
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({
+        sessionId,
+        association: {
+          kind: 'specification',
+          specification: {
+            state: 'available',
+            value: expect.objectContaining({
+              specId,
+              title: 'Associated canonical Spec',
+              collection: 'current',
+            }) as unknown,
+          },
+          tasks: [],
+        },
+      });
+    },
+    timeoutMs,
+  );
 });

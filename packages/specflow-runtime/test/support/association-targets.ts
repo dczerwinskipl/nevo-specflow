@@ -45,14 +45,17 @@ function task(specId: string, taskId: string): TargetFact<AssociatedTask> {
  * method is a spy, so a test can prove that no lookup happened.
  */
 export function associationTargets(
-  overrides: { specification?: Record<string, TargetFact<AssociatedSpecification>> } = {},
+  overrides: {
+    specification?: Record<string, TargetFact<AssociatedSpecification>>;
+    tasks?: Record<string, TargetFact<AssociatedTask>>;
+  } = {},
 ) {
   return {
     specification: vi.fn((specId: string) =>
       Promise.resolve(overrides.specification?.[specId] ?? specification(specId)),
     ),
     tasks: vi.fn((specId: string, taskIds: readonly string[]) =>
-      Promise.resolve(taskIds.map((taskId) => task(specId, taskId))),
+      Promise.resolve(taskIds.map((taskId) => overrides.tasks?.[taskId] ?? task(specId, taskId))),
     ),
     workspaces: vi.fn((specIds: readonly string[]) =>
       Promise.resolve(new Map(specIds.map((specId) => [specId, 'workspace']))),

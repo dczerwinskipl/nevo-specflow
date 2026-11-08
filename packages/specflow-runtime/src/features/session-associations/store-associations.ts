@@ -70,7 +70,7 @@ export function createStoreSessionAssociations(
       return (await resolveMany([sessionId])).get(sessionId) ?? null;
     },
     resolveMany,
-    identity(sessionId) {
+    async identity(sessionId) {
       return coordinatorOf(runtime).store.call<SessionIdentity>({ op: 'identity', sessionId });
     },
     async association(sessionId) {

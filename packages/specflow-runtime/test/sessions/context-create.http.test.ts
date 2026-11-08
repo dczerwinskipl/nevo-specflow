@@ -120,7 +120,7 @@ describe('POST /api/specs/:specId/sessions', () => {
     expect(response.json<{ code: string }>().code).toBe('SESSION_INPUT_INVALID');
   });
 
-  it.each([
+  it.each<{ name: string; role?: Role; scope?: Record<string, string> }>([
     { name: 'viewer at the project', role: 'viewer' as const, scope: { projectId: 'project' } },
     {
       name: 'developer of another Specification',

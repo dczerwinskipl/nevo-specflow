@@ -7,6 +7,7 @@ import {
 import type { ProjectIdSource } from '../specs/scope';
 import type { AssociationTargets } from './targets';
 import { registerCreateContextSessionRoute } from './create/endpoint';
+import { registerSessionAssociationReadRoute } from './read/endpoint';
 
 export interface SessionAssociationsFeatureOptions {
   /** The association port: the Session store (project) or the demo catalogue. */
@@ -31,6 +32,7 @@ export function createSessionAssociationsFeature(
     register(app) {
       app.register((feature, _options, done) => {
         registerSessionErrorHandling(feature);
+        registerSessionAssociationReadRoute(feature, options);
         if (options.sessions) {
           registerCreateContextSessionRoute(feature, {
             sessions: options.sessions,

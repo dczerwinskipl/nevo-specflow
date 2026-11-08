@@ -4,7 +4,7 @@ import type { SpecFlowEngine } from '../../../application';
 import { openVersionControl } from '../../../version-control';
 import type { CommitPort } from '../../../version-control/commits/port';
 import { sha256Hex } from '../../../hash';
-import { nodeVerifiedFs } from '../../document-rules/verified-file';
+import { FileChangedDuringOpen, nodeVerifiedFs } from '../../document-rules/verified-file';
 import { CASE_ONLY_RENAME_MESSAGE, documentChangeError } from '../changes/errors';
 import { planDocumentChange } from '../changes/plan';
 import { resolveDocument, type PlanResult } from '../changes/plan/draft';
@@ -19,6 +19,7 @@ import { nodeDocumentFileOps } from './file-effects';
 import { assertPlanFitsWindows, type WindowsPathBoundOptions } from './path-bound';
 import { planRemovesAnAliasedEntry } from './physical-aliases';
 import { readSpecificationSnapshot, type SpecificationSnapshot } from './snapshot';
+import { BUSY_RETRY_AFTER_MS } from './reservation-guard';
 import {
   asPlannerRequest,
   namesTemplates,
@@ -73,7 +74,17 @@ export async function admitDocumentChange(
   const request = asPlannerRequest(written);
   const observed = await readSpecificationSnapshot(engine, specId, options.read, (snapshot) =>
     pathsNeedingContentHash(snapshot, request),
-  );
+  ).catch((error: unknown) => {
+    if (error instanceof FileChangedDuringOpen) {
+      throw documentChangeError(
+        'busy-source-changed',
+        'A document changed during admission; read it again before retrying.',
+        { retryAfterMs: BUSY_RETRY_AFTER_MS },
+      );
+    }
+
+    throw error;
+  });
   const { loaded, snapshot } = observed;
   if (loaded.location !== 'active') {
     throw documentChangeError('archived', 'The Specification is archived and read-only.');

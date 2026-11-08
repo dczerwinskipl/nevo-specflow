@@ -419,7 +419,10 @@ part of this layer. Numbers are in "Limits".
    named document, path rules, collisions, protection of `overview`, `SPEC_MANIFEST_DIRTY` against the post-image of
    the latest non-terminal operation or `HEAD`); with Git enabled the commit port's read-only `preflight` for the
    operation's paths (cached per `(root, branch ref, path-set hash)` for 2 s while the stat signatures hold). Any
-   refusal ends here with no journal and no file written.
+   refusal ends here with no journal and no file written. A verified file identity that changes during
+   the planning read is `SPEC_BUSY` (`source-changed`, retry after 1 s), not evidence that the document
+   is missing. No write is retried automatically; the caller re-reads the document before retrying.
+   Tree and summary reads continue to skip such unstable entries.
 2. _Reservation_ under the control lock: preconditions and the manifest plan are re-checked (one re-plan, then
    `SPEC_BUSY`/`manifest-changed`); paths of a **claimed** batch are refused; `sequence` is allocated; the plan file
    and the content payload are durable; the operation becomes a **barrier** for its paths.

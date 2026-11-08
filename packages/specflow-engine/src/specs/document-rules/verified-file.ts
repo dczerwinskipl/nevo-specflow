@@ -53,6 +53,14 @@ function unavailable(message: string): DocumentError {
   return new DocumentError('SPEC_SOURCE_UNAVAILABLE', message);
 }
 
+/** A verified read lost its file identity; absence has not been established. */
+export class FileChangedDuringOpen extends DocumentError {
+  constructor() {
+    super('SPEC_SOURCE_UNAVAILABLE', 'A document changed while it was being opened.');
+    this.name = 'FileChangedDuringOpen';
+  }
+}
+
 /**
  * A filesystem failure the layer cannot act on (EACCES, EMFILE, EIO, ...) is an unavailable source,
  * not an internal error; anything that is not an errno failure is a defect and passes through.
@@ -206,7 +214,7 @@ export async function openVerifiedFile(
       errnoCode(error) === 'ENXIO' ||
       errnoCode(error) === 'EISDIR'
     ) {
-      throw unavailable('A document changed while it was being opened.');
+      throw new FileChangedDuringOpen();
     }
 
     return unreadable(error);
@@ -215,12 +223,12 @@ export async function openVerifiedFile(
   try {
     const opened = await handle.stat({ bigint: true });
     if (!opened.isFile() || !sameIdentity(before.stat, opened)) {
-      throw unavailable('A document changed while it was being opened.');
+      throw new FileChangedDuringOpen();
     }
 
     const after = await inspectEntry(fs, specDir, relativePath);
     if (after.state !== 'file' || !sameIdentity(opened, after.stat)) {
-      throw unavailable('A document changed while it was being opened.');
+      throw new FileChangedDuringOpen();
     }
 
     await assertPhysicalPath(fs, full, specDir, segments);
@@ -283,7 +291,7 @@ async function assertPhysicalPath(
     real = await fs.realpath(full);
   } catch (error) {
     if (isAbsent(error)) {
-      throw unavailable('A document changed while it was being opened.');
+      throw new FileChangedDuringOpen();
     }
 
     return unreadable(error);

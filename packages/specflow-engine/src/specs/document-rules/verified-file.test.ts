@@ -8,6 +8,7 @@ import { DocumentError } from './errors';
 import {
   aliasedPhysicalPath,
   assertContainedRelativePath,
+  FileChangedDuringOpen,
   inspectEntry,
   openVerifiedFile,
   type VerifiedFs,
@@ -224,18 +225,18 @@ describe('openVerifiedFile', () => {
   it('detects a file replaced by another file between the check and the open', async () => {
     const h = harness();
     h.hooks.handleStat = () => stat('file', 99); // a different inode answers fstat
-    await expect(openVerifiedFile(h.fs, SPEC, 'a/doc.md')).rejects.toMatchObject({
-      code: 'SPEC_SOURCE_UNAVAILABLE',
-    });
+    await expect(openVerifiedFile(h.fs, SPEC, 'a/doc.md')).rejects.toBeInstanceOf(
+      FileChangedDuringOpen,
+    );
     expect(h.closed.value).toBe(true);
   });
 
   it('detects a symlink swapped in after the open (second lstat)', async () => {
     const h = harness();
     h.hooks.afterOpen = () => h.world.set(DOC, stat('symlink', 3));
-    await expect(openVerifiedFile(h.fs, SPEC, 'a/doc.md')).rejects.toMatchObject({
-      code: 'SPEC_SOURCE_UNAVAILABLE',
-    });
+    await expect(openVerifiedFile(h.fs, SPEC, 'a/doc.md')).rejects.toBeInstanceOf(
+      FileChangedDuringOpen,
+    );
     expect(h.closed.value).toBe(true);
   });
 

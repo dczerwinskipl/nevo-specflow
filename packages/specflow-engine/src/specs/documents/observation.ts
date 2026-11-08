@@ -20,7 +20,7 @@ const RECENT_WRITE_MS = 2000;
 export type Probe<T> =
   | { readonly kind: 'file'; readonly value: T }
   | { readonly kind: 'vanished' }
-  | { readonly kind: 'skipped' };
+  | { readonly kind: 'skipped'; readonly error?: DocumentError };
 
 /**
  * Analyse one file of the Specification, answering an unchanged old file (same path, size, mtime,
@@ -69,7 +69,7 @@ export async function probeFile<T>(
     return { kind: outcome.state === 'absent' ? 'vanished' : 'skipped' };
   } catch (error) {
     if (error instanceof DocumentError) {
-      return { kind: 'skipped' };
+      return { kind: 'skipped', error };
     }
 
     if (isAbsent(error)) {
@@ -84,7 +84,7 @@ export async function probeFile<T>(
 export type Observation =
   | { readonly kind: 'file'; readonly file: ObservedFile }
   | { readonly kind: 'vanished' }
-  | { readonly kind: 'skipped'; readonly path: string };
+  | { readonly kind: 'skipped'; readonly path: string; readonly error?: DocumentError };
 
 export async function observe(
   loaded: LoadedSpecification,
@@ -107,5 +107,5 @@ export async function observe(
     return { kind: 'file', file: { path, ...probe.value } };
   }
 
-  return probe.kind === 'skipped' ? { kind: 'skipped', path } : probe;
+  return probe.kind === 'skipped' ? { ...probe, path } : probe;
 }

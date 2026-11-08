@@ -40,9 +40,9 @@ implemented in PR #126 (branch `feat/session-ui-integration`). This document is 
 decision record; while PR #126 lands, the exact contracts move into their owning homes
 ([section 15](#15-documentation-homes)) and this document links to them instead of restating them.
 
-**Readiness:** ready for implementation. The UI task T10 implements only behaviour that existing UX
-contracts already place; the UX items in D10 stay with the UX designer and keep today's behaviour
-until decided.
+**Readiness:** ready for implementation. The D10 UX items are decided in the
+[Session association UX contract](../../specflow-ui/session-association-ux/README.md) (owner
+2026-11-08); T10 implements it.
 
 Owner direction: Sessions stay independent of Specification, Task and Workflow (the principle
 restated in commit `8502503b`). A **separate** durable registry records "Session X belongs to
@@ -51,22 +51,22 @@ Specification/Task Y". It is written when a Session is started from a context an
 
 ## 1. Owner decisions (2026-11-08)
 
-| #   | Decision                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D1  | Storage: sidecar association tables in `sessions.sqlite`, owned by an association module outside the core aggregates; list projection columns on `sessions`                                                                                                                                                                                                                                                                |
-| D2  | At most one home Specification per Session, immutable; Tasks append-only within it (orchestrator only); no reassign/unlink                                                                                                                                                                                                                                                                                                 |
-| D3  | **Granular authorization.** An associated Session's scope is `{projectId, specId, sessionId}` for every Session capability (view, manage, delete, view-provider-limits) and create-from-Specification uses `{projectId, specId}`. What a Specification-scoped user may do follows only from the granular capabilities their role carries. **Exception:** `session.execute-write` never carries `specId` until D8 is solved |
-| D4  | Composed `POST /api/specs/:specId/sessions`, atomic; requires the new granular capability **`spec.start-session`** at `{specId}` plus `session.create`; added to the built-in `developer` and `admin` roles. `CreateSession` unchanged                                                                                                                                                                                     |
-| D5  | No cascade on Specification/Task removal; association kept and read as `missing`; the Engine check is time-of-check only                                                                                                                                                                                                                                                                                                   |
-| D6  | Archived Sessions stay associated; hidden from section, navigator and default list; listable via filter                                                                                                                                                                                                                                                                                                                    |
-| D7  | No association backfill (existing Sessions are standalone); list projection columns backfilled once by the schema migration                                                                                                                                                                                                                                                                                                |
-| D8  | Provider `cwd` unchanged in stage 3 (the Runtime's whole verified workspace); a Specification's own worktree comes with the managed execution handshake                                                                                                                                                                                                                                                                    |
-| D9  | Contract accepts `taskIds`; no Task-context start UI until a UX contract places one                                                                                                                                                                                                                                                                                                                                        |
-| D10 | To the UX designer: standalone Session list, post-delete/archive destination, Sessions List paging, Session status when readiness and the Engine attempt disagree; label "associated", never "working on". Until decided: `/sessions/new` after delete, no global list                                                                                                                                                     |
-| D11 | Demo: port, association read and section from the catalogue; no demo managed Sessions                                                                                                                                                                                                                                                                                                                                      |
-| D12 | Workspace section: at most 100 rows with `hasMore`; recommended Session = attention, then active, then most recent; `WorkspaceSession.title` optional with the UI untitled label                                                                                                                                                                                                                                           |
-| D13 | Slug identity accepted in stage 3 (a reused id reads as the associated object); an immutable Engine identity is pinned once the Task resource introduces one                                                                                                                                                                                                                                                               |
-| -   | Internal pre-production project: no release notes or compatibility notices; only the technically required schema migration                                                                                                                                                                                                                                                                                                 |
+| #   | Decision                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1  | Storage: sidecar association tables in `sessions.sqlite`, owned by an association module outside the core aggregates; list projection columns on `sessions`                                                                                                                                                                                                                                                                                                                                               |
+| D2  | At most one home Specification per Session, immutable; Tasks append-only within it (orchestrator only); no reassign/unlink                                                                                                                                                                                                                                                                                                                                                                                |
+| D3  | **Granular authorization.** An associated Session's scope is `{projectId, specId, sessionId}` for every Session capability (view, manage, delete, view-provider-limits) and create-from-Specification uses `{projectId, specId}`. What a Specification-scoped user may do follows only from the granular capabilities their role carries. **Exception:** `session.execute-write` never carries `specId` until D8 is solved                                                                                |
+| D4  | Composed `POST /api/specs/:specId/sessions`, atomic; requires the new granular capability **`spec.start-session`** at `{specId}` plus `session.create`; added to the built-in `developer` and `admin` roles. `CreateSession` unchanged                                                                                                                                                                                                                                                                    |
+| D5  | No cascade on Specification/Task removal; association kept and read as `missing`; the Engine check is time-of-check only                                                                                                                                                                                                                                                                                                                                                                                  |
+| D6  | Archived Sessions stay associated; hidden from section, navigator and default list; listable via filter                                                                                                                                                                                                                                                                                                                                                                                                   |
+| D7  | No association backfill (existing Sessions are standalone); list projection columns backfilled once by the schema migration                                                                                                                                                                                                                                                                                                                                                                               |
+| D8  | Provider `cwd` unchanged in stage 3 (the Runtime's whole verified workspace); a Specification's own worktree comes with the managed execution handshake                                                                                                                                                                                                                                                                                                                                                   |
+| D9  | Contract accepts `taskIds`; no Task-context start UI until a UX contract places one                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| D10 | **Resolved 2026-11-08** by the [Session association UX contract](../../specflow-ui/session-association-ux/README.md): standalone Sessions are removed from the UI (no UI entry to `/sessions/new`, which redirects to `/`; existing standalone Sessions by direct link only; the API stays); delete goes to the Specification's Sessions list or `/`; the Specification Sessions list is paged from `GET /api/sessions`; Session status is Session readiness only; label "associated", never "working on" |
+| D11 | Demo: port, association read and section from the catalogue; no demo managed Sessions                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| D12 | Workspace section: at most 100 rows with `hasMore`; recommended Session = attention, then active, then most recent; `WorkspaceSession.title` optional with the UI untitled label                                                                                                                                                                                                                                                                                                                          |
+| D13 | Slug identity accepted in stage 3 (a reused id reads as the associated object); an immutable Engine identity is pinned once the Task resource introduces one                                                                                                                                                                                                                                                                                                                                              |
+| -   | Internal pre-production project: no release notes or compatibility notices; only the technically required schema migration                                                                                                                                                                                                                                                                                                                                                                                |
 
 ## 2. Problem (observed facts before PR #126)
 
@@ -433,7 +433,7 @@ The read maps one to one onto the UI `ContextFact` states (`ready`, `missing`, `
   recent `updatedAt`.
 - `actions.startSession`: available when the Sessions feature is enabled, a provider is usable and the
   caller has `spec.start-session` at `{specId}` and `session.create` at `{projectId, specId}`; otherwise
-  `reason` (`sessions_disabled`, `no_provider`, `forbidden`).
+  one `reason`, first match wins: `sessions_disabled`, then `forbidden`, then `no_provider`.
 - Freshness: the workspace `revision` is the Engine `sourceRevision` and does not change when Sessions
   change. Clients must not treat an unchanged `revision` as an unchanged Sessions section; the UI
   invalidates the workspace query on Session create/archive/unarchive/delete and on the Session
@@ -441,18 +441,18 @@ The read maps one to one onto the UI `ContextFact` states (`ready`, `missing`, `
 
 ## 8. Lifecycle
 
-| Event                                    | Association behaviour                                                                                                                                                                                                       |
-| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Start from Specification (or Task)       | Session + association + Tasks in one transaction; `origin: user`; idempotent by the project-scoped create key over `{input, association}`                                                                                   |
-| Start standalone (`/sessions/new`)       | No association; stays standalone forever (I1)                                                                                                                                                                               |
-| Workflow start (future F01 `fresh`)      | Internal application operation, `origin: workflow` (section 10)                                                                                                                                                             |
-| Workflow reuse (future F01 `reuse`, F12) | `associate-tasks` appends the Task if new; refused for a Session of another Specification or a standalone one (the orchestrator then starts a fresh Session)                                                                |
-| Archive / unarchive                      | Association untouched. Archived Sessions are excluded from the workspace section, navigator and default list; `archived=include` or `archived=only` lists them                                                              |
-| Delete (hard)                            | Association and Task rows deleted in the same transaction (Session-owned in the delete map). No tombstone. Spec/Task reads then resolve `null` and hide the reference; Engine attempt records keep the `sessionId` as audit |
-| Specification archived / closed          | Association kept; the association read reports `collection: 'archived'`; scope unchanged                                                                                                                                    |
-| Specification or Task removed            | No cascade. The association read reports `missing`; the Session remains readable and listed under that `specId`. A later object reusing the same id is read as the associated one (D13)                                     |
-| Reassign / unlink                        | Not supported. Start a new Session from the other context                                                                                                                                                                   |
-| Workspace rebinding of the Specification | Nothing stored changes; `resolve` returns the current `workspaceId`                                                                                                                                                         |
+| Event                                                          | Association behaviour                                                                                                                                                                                                       |
+| -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Start from Specification (or Task)                             | Session + association + Tasks in one transaction; `origin: user`; idempotent by the project-scoped create key over `{input, association}`                                                                                   |
+| Start standalone (`POST /api/sessions`, no UI entry since D10) | No association; stays standalone forever (I1)                                                                                                                                                                               |
+| Workflow start (future F01 `fresh`)                            | Internal application operation, `origin: workflow` (section 10)                                                                                                                                                             |
+| Workflow reuse (future F01 `reuse`, F12)                       | `associate-tasks` appends the Task if new; refused for a Session of another Specification or a standalone one (the orchestrator then starts a fresh Session)                                                                |
+| Archive / unarchive                                            | Association untouched. Archived Sessions are excluded from the workspace section, navigator and default list; `archived=include` or `archived=only` lists them                                                              |
+| Delete (hard)                                                  | Association and Task rows deleted in the same transaction (Session-owned in the delete map). No tombstone. Spec/Task reads then resolve `null` and hide the reference; Engine attempt records keep the `sessionId` as audit |
+| Specification archived / closed                                | Association kept; the association read reports `collection: 'archived'`; scope unchanged                                                                                                                                    |
+| Specification or Task removed                                  | No cascade. The association read reports `missing`; the Session remains readable and listed under that `specId`. A later object reusing the same id is read as the associated one (D13)                                     |
+| Reassign / unlink                                              | Not supported. Start a new Session from the other context                                                                                                                                                                   |
+| Workspace rebinding of the Specification                       | Nothing stored changes; `resolve` returns the current `workspaceId`                                                                                                                                                         |
 
 ## 9. Demo mode
 
@@ -482,9 +482,11 @@ taskId)`; Task lifecycle states (`cancelled`, `on-hold`) do not change associati
 
 ## 11. UI impact
 
-- **Session Context**: the association read replaces `realRouteSessionContext` (loading -> `loading`,
-  standalone -> `standalone`, Specification without Tasks -> `specification`, with Tasks -> `task`,
-  `forbidden` -> the section says it cannot be viewed, errors -> `unknown / unreadable`).
+- **Session Context**: the association read replaces `realRouteSessionContext` (standalone ->
+  `standalone`; an associated Session is always `specification`, with or without Tasks, never
+  `task`; its associated Tasks fill **Related Tasks**, and Current execution is omitted because an
+  association is not execution, N2; `forbidden` -> an info note; errors -> `unknown / unreadable`).
+  Full state table: [UX contract §7](../../specflow-ui/session-association-ux/README.md#7-session-context-specification-and-tasks-from-the-association-read-u5).
 - **Wording**: the Specification the Session is associated with, never "working on" (N2).
 - **Start handoff**: `StartedSession.specification` is removed; the composed create response seeds
   the association query, so first paint and reload agree.
@@ -494,7 +496,8 @@ taskId)`; Task lifecycle states (`cancelled`, `on-hold`) do not change associati
 - **Navigator**: on `/sessions/:sessionId` the active Specification is the association's home `specId`
   when `available`; standalone or `forbidden` shows no Specification section. No "last opened
   Specification" cache.
-- **Sessions List** and post-delete/archive destinations: unchanged until the D10 UX items are decided.
+- **Standalone Sessions, Sessions List, post-delete destination**: as decided in the
+  [UX contract](../../specflow-ui/session-association-ux/README.md) (D10).
 
 ## 12. Implementation tasks (PR #126)
 
@@ -609,7 +612,12 @@ T8 -> T9 -> T10 -> T11 -> T12.
   (source note), `start/handoff/startedSession.ts`, a new association query hook,
   `features/specs/creation/new-session/NewSessionScreen.tsx` (+ managed start source with the
   Specification), `app/navigation/*` (Specification from the association), workspace query
-  invalidation on Session commands, `mapWorkspaceResponse.ts` (optional title).
+  invalidation on Session commands, `mapWorkspaceResponse.ts` (optional title); the D10 UX contract
+  (`/sessions/new` redirect and removal of `SpecsOverviewHeader` **Utwórz sesję**, Specification
+  Sessions list on `GET /api/sessions`, delete destination, not-found action).
+- **Contract:** section 11 and the
+  [Session association UX contract](../../specflow-ui/session-association-ux/README.md). Associated
+  Tasks map to `relatedTasks`; scope `task` is never produced from the association.
 - **Tests:** unit tests for the association -> `SessionContextViewModel` mapping (all states), reload
   keeps the Specification, navigator shows S's sections on a Session of S and none on a standalone one;
   stories updated for the new Context states.
@@ -647,7 +655,6 @@ T8 -> T9 -> T10 -> T11 -> T12.
 
 ## 14. Remaining open items (not blocking PR #126)
 
-- D10 UX items (UX designer).
 - D8 execution workspace, which would let `execute-write` take the `specId` dimension.
 - D13 immutable identity pinning with the Task resource.
 

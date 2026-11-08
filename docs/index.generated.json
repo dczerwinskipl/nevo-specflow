@@ -5899,6 +5899,48 @@
       ]
     },
     {
+      "id": "ideas.specflow-ui.session-association-ux",
+      "type": "product",
+      "title": "Session association UX — Session lists, post-delete destination, Context and workspace status (D10)",
+      "status": "current",
+      "file": "docs/ideas/specflow-ui/session-association-ux/README.md",
+      "read_when": [
+        "implementing the Specification Sessions list or its paging",
+        "changing where the UI goes after a Session is deleted, or what /sessions/new does",
+        "mapping the Session association read onto the Session Context Specification and Tasks sections",
+        "presenting Session status in the Specification workspace when it disagrees with the Engine attempt"
+      ],
+      "summary": "Accepted UX contract (owner decisions 2026-11-08) for the D10 items of the stage 3 Session association design. Standalone Sessions are removed from the UI (every new Session starts from a Specification; /sessions/new redirects to the Specifications list; existing standalone Sessions stay reachable by direct link). Defines the Specification Sessions list paged from the Session list read with current/archive collections, post-delete destinations derived from the association, Context Specification/Related Tasks sections fed by the association read (never current execution), the workspace Sessions section, New Session gating and Session-owned status that never takes Engine attempt facts.",
+      "related": [
+        "ideas.specflow-runtime.session-association",
+        "ideas.specflow-ui.full-session-screen-structure",
+        "ideas.specflow-ui.session-actions-ux",
+        "ideas.specflow-ui.components.session-chat-v10-design",
+        "ideas.specflow-ui.navigation-route-model",
+        "ideas.specflow-ui.screens.specification-workspace",
+        "ideas.specflow-ui.screens.new-session",
+        "product.specflow.ui.ai-session-ux",
+        "product.specflow.ui.interaction-model",
+        "product.specflow.ui.data-loading-and-integration",
+        "reference.api.sessions"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "ai"
+      ],
+      "tags": [
+        "sessions",
+        "associations",
+        "session-list",
+        "navigation",
+        "context",
+        "workspace",
+        "archive",
+        "delete"
+      ]
+    },
+    {
       "id": "ideas.specflow-ui.spec-task-information-hierarchy",
       "type": "product",
       "title": "Specification and Task information hierarchy",

@@ -328,7 +328,7 @@ the correction.
 | Evidence at authenticated Stop                                                                   | Response and effect                                                                                     |
 | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
 | Pending question, permission or retained file; ordinary completion; continuation still available | `continue` once within the same invocation; no idle receipt, tool approval, answer delivery or new Turn |
-| Duplicate continued Stop or lower execution number                                               | `deny`; no new continuation or idle receipt                                                             |
+| Duplicate conflicting Stop or lower execution number                                             | `deny`; no new continuation or idle receipt                                                             |
 | Earlier fully-idle Stop replayed after a newer tool generation                                   | `deny`; no new idle receipt                                                                             |
 | Cancellation, error, step limit, unknown termination reason or nonempty error                    | Allow termination; permanently disable continuation; never accept idle while work is unresolved         |
 | Native result already observed                                                                   | Disable continuation before buffering the result; still require independent idle and process settlement |
@@ -340,7 +340,7 @@ Only `NO_TOOL_CALL` (observed native) and `model_stop` (documented) with absent 
 empty `error` count as ordinary completion. The first conflicting Stop consumes
 the single continuation opportunity even if termination is required. An earlier
 cancellation/error cannot later be replaced by a normal-looking Stop to resume.
-A continued execution number is never accepted again, including after its work
+A conflicting execution number is never accepted again, including after its work
 clears; a later execution must supply its own positive idle evidence. Native
 background completion without a requested continuation can still change a
 non-idle Stop to an idle Stop at the same execution number.

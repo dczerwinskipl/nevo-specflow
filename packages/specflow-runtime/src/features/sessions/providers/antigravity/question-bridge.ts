@@ -54,7 +54,7 @@ export async function createAntigravityQuestionBridge(
   let continuationAvailable = true;
   let terminalObserved = false;
   let lastStop:
-    { execution: number; generation: number; fullyIdle: boolean; continued: boolean } | undefined;
+    { execution: number; generation: number; fullyIdle: boolean; conflicted: boolean } | undefined;
   function expired() {
     return new SessionError('INTERACTION_EXPIRED', 'The native interaction transport expired.');
   }
@@ -152,7 +152,7 @@ export async function createAntigravityQuestionBridge(
             (execution === lastStop.execution &&
               lastStop.fullyIdle &&
               (hookGeneration !== lastStop.generation || !bound.fullyIdle)) ||
-            (execution === lastStop.execution && lastStop.continued))
+            (execution === lastStop.execution && lastStop.conflicted))
         ) {
           throw new Error('Stale native stop evidence.');
         }
@@ -171,7 +171,7 @@ export async function createAntigravityQuestionBridge(
           // Never reuse its idle evidence or let a retry buy another continuation.
           const resume = continuationAvailable;
           continuationAvailable = false;
-          lastStop = { execution, generation: hookGeneration, fullyIdle: false, continued: resume };
+          lastStop = { execution, generation: hookGeneration, fullyIdle: false, conflicted: true };
 
           hookJson(response, { decision: resume ? 'continue' : 'stop' });
 
@@ -182,7 +182,7 @@ export async function createAntigravityQuestionBridge(
           execution,
           generation: hookGeneration,
           fullyIdle: bound.fullyIdle,
-          continued: false,
+          conflicted: false,
         };
         if (bound.fullyIdle) {
           continuationAvailable = false;

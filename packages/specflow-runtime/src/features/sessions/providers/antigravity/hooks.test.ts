@@ -498,6 +498,9 @@ describe('controlled native hook HTTP/helper boundary', () => {
     });
     await expect(native).resolves.toEqual({ decision: 'deny' });
     await expect(f.post('stop', stop)).resolves.toEqual({ decision: 'deny' });
+    await expect(f.post('stop', { ...stop, executionNum: 2 })).resolves.toEqual({
+      decision: 'deny',
+    });
     await expect(f.post('stop', { ...stop, executionNum: 3 })).resolves.toEqual({
       decision: 'stop',
     });

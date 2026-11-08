@@ -1,6 +1,8 @@
-import type { HttpRequestClient } from '@nevo/http-client';
+import { isHttpClientError, type HttpRequestClient } from '@nevo/http-client';
 import {
+  SessionErrorCodes,
   sessionValidators,
+  type SessionErrorCode,
   type CreateSession,
   type StartTurn,
   type RespondInteraction,
@@ -20,8 +22,11 @@ import {
   type TelemetrySnapshot,
   type RefreshTelemetry,
   type RefreshTelemetryReceipt,
+  type RenameSession,
+  type ArchiveSession,
+  type SessionCommandResult,
 } from '@nevo/specflow-contracts/sessions';
-import { createApiTransport, type ErrorCodeTable } from '../../../api';
+import { createApiTransport, isApiError, readServerCode, type ErrorCodeTable } from '../../../api';
 
 /**
  * A telemetry read: the snapshot with its entity tag, or `not-modified` when the snapshot the
@@ -66,6 +71,17 @@ export interface ManagedSessionsApi {
     interactionId: string,
     input: RespondInteraction,
   ): Promise<RespondInteractionResult>;
+  /** `POST .../rename`; reuse `input.requestId` when retrying an unconfirmed rename. */
+  rename(sessionId: string, input: RenameSession): Promise<SessionCommandResult>;
+  /** `POST .../archive`; reuse `input.requestId` when retrying an unconfirmed archive. */
+  archive(sessionId: string, input: ArchiveSession): Promise<SessionCommandResult>;
+  /** `POST .../unarchive`; reuse `input.requestId` when retrying an unconfirmed unarchive. */
+  unarchive(sessionId: string, input: ArchiveSession): Promise<SessionCommandResult>;
+  /**
+   * `DELETE /api/sessions/:id` (204, no body). A retry after an unconfirmed attempt repeats it; a
+   * 404 `SESSION_NOT_FOUND` for a delete this view sent means it is done.
+   */
+  delete(sessionId: string): Promise<void>;
   watch(
     sessionId: string,
     after: number,
@@ -81,6 +97,22 @@ export interface ManagedSessionsApi {
 export const sessionErrorCodes: ErrorCodeTable = {
   SESSION_RECOVERY_REQUIRED: { kind: 'recovery-required', outcome: 'unknown' },
 };
+/**
+ * The Session error code of a failed call: from the classified `ApiError`, or from the body of a
+ * raw HTTP failure (the event stream is not wrapped by the API transport).
+ */
+export function sessionErrorCode(error: unknown): SessionErrorCode | undefined {
+  const code = isApiError(error)
+    ? error.code
+    : isHttpClientError(error)
+      ? readServerCode(error.data)
+      : undefined;
+
+  return (SessionErrorCodes as readonly string[]).includes(code ?? '')
+    ? (code as SessionErrorCode)
+    : undefined;
+}
+
 export function createManagedSessionsApi(http: HttpRequestClient): ManagedSessionsApi {
   const read = createApiTransport(http, { operation: 'sessions', codes: sessionErrorCodes });
   const path = (id: string) => '/api/sessions/' + encodeURIComponent(id);
@@ -156,6 +188,17 @@ export function createManagedSessionsApi(http: HttpRequestClient): ManagedSessio
       read.post(path(id) + '/interactions/' + encodeURIComponent(interaction) + '/respond', input, {
         isValid: sessionValidators.respondResult,
       }),
+    rename: (id, input) =>
+      read.post(path(id) + '/rename', input, { isValid: sessionValidators.sessionCommandResult }),
+    archive: (id, input) =>
+      read.post(path(id) + '/archive', input, { isValid: sessionValidators.sessionCommandResult }),
+    unarchive: (id, input) =>
+      read.post(path(id) + '/unarchive', input, {
+        isValid: sessionValidators.sessionCommandResult,
+      }),
+    async delete(id) {
+      await read.delete(path(id));
+    },
     async *watch(id, after, signal, onReconnect) {
       const stream = http.sse(path(id) + '/events', {
         signal,

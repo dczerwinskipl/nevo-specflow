@@ -85,6 +85,72 @@ describe('managed Session command responses', () => {
   );
 });
 
+describe('managed Session management commands', () => {
+  const session = {
+    sessionId,
+    projectId: 'project',
+    title: 'Renamed',
+    providerId: 'mock',
+    mode: 'read-only',
+    readiness: 'ready',
+    capabilities: {
+      view: true,
+      manage: true,
+      start: true,
+      cancel: false,
+      questions: true,
+      permissions: true,
+      delete: true,
+    },
+    createdAt: '2026-11-08T10:00:00Z',
+    updatedAt: '2026-11-08T10:00:00Z',
+  };
+
+  it.each([
+    ['rename', { requestId: turnId, title: 'Renamed' }],
+    ['archive', { requestId: turnId }],
+    ['unarchive', { requestId: turnId }],
+  ] as const)('posts %s and validates the returned Session', async (command, input) => {
+    const { api, http } = apiAnswering({ session });
+    const call = {
+      rename: () => api.rename(sessionId, { requestId: turnId, title: 'Renamed' }),
+      archive: () => api.archive(sessionId, { requestId: turnId }),
+      unarchive: () => api.unarchive(sessionId, { requestId: turnId }),
+    }[command];
+    await expect(call()).resolves.toEqual({ session });
+    expect(http.post).toHaveBeenCalledWith('/api/sessions/' + sessionId + '/' + command, input, {});
+  });
+
+  it('treats a Session command answer of the wrong shape as an outcome-unknown error', async () => {
+    await expect(
+      apiAnswering({ session: { sessionId } }).api.archive(sessionId, { requestId: turnId }),
+    ).rejects.toMatchObject({ name: 'ApiError', kind: 'protocol', outcome: 'unknown' });
+  });
+
+  it('deletes with a body-less DELETE and classifies 404 SESSION_NOT_FOUND', async () => {
+    const http = {
+      delete: vi
+        .fn()
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce(
+          new HttpClientError('gone', {
+            kind: 'http',
+            status: 404,
+            data: { error: 'session_error', code: 'SESSION_NOT_FOUND', message: 'gone' },
+          }),
+        ),
+    };
+    const api = createManagedSessionsApi(http as unknown as HttpRequestClient);
+    await expect(api.delete(sessionId)).resolves.toBeUndefined();
+    expect(http.delete).toHaveBeenCalledWith('/api/sessions/' + sessionId, {});
+    await expect(api.delete(sessionId)).rejects.toMatchObject({
+      kind: 'not-found',
+      code: 'SESSION_NOT_FOUND',
+      outcome: 'not-applied',
+    });
+  });
+});
+
 describe('managed Session telemetry', () => {
   const telemetrySessionId = fullTelemetrySnapshot.sessionId;
   const withGet = (getResponse: unknown) => {

@@ -62,6 +62,7 @@ export function sessionFixture(waiting = false): SessionSnapshot {
         cancel: waiting,
         questions: true,
         permissions: true,
+        delete: true,
       },
       createdAt: '2026-10-25T10:00:00Z',
       updatedAt: '2026-10-25T10:00:00Z',
@@ -266,6 +267,12 @@ export function fixtureApi(snapshot: SessionSnapshot, historyError = false): Man
     telemetry: () => Promise.resolve({ kind: 'not-modified' }),
     refreshTelemetry: () => Promise.reject(new Error('No telemetry in this fixture.')),
     reconcile: () => Promise.resolve({ turnId, outcome: 'completed', reconciled: true }),
+    rename: (_id, input) =>
+      Promise.resolve({ session: { ...snapshot.session, title: input.title } }),
+    archive: () =>
+      Promise.resolve({ session: { ...snapshot.session, archivedAt: '2026-10-25T10:05:00Z' } }),
+    unarchive: () => Promise.resolve({ session: snapshot.session }),
+    delete: () => Promise.resolve(),
     respond: (_id, interactionId) => Promise.resolve({ turnId, interactionId }),
     async *watch(_id, _after, signal) {
       await new Promise<void>((resolve) => {

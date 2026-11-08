@@ -115,4 +115,13 @@ describe('liveActivity', () => {
     expect(liveActivity({ ...activeTurn, state: 'waitingForUser' }, undefined)).toBe(undefined);
     expect(liveActivity(undefined, undefined)).toBe(undefined);
   });
+
+  it('shows nothing live for a Turn whose outcome is unknown, whatever the Runtime label says', () => {
+    expect(
+      liveActivity(
+        { ...activeTurn, state: 'unknown' },
+        { kind: 'unknown', turnId: 't', label: 'Outcome unknown' },
+      ),
+    ).toBe(undefined);
+  });
 });

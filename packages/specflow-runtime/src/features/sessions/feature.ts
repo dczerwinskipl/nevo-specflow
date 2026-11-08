@@ -16,6 +16,17 @@ import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import type { SpecFlowEngine } from '@nevo/specflow-engine';
 import { createEngineSessionEffects, workspaceExecutionIdentity } from './effects/engine';
+import type { SessionCoordinator } from './lifecycle/coordinator';
+
+/**
+ * The registered Sessions runtime, read at request time by the features composed over it (the
+ * Session association module). `coordinator` is absent while managed Sessions are disabled.
+ */
+export interface SessionsRuntime {
+  readonly coordinator: SessionCoordinator | undefined;
+  /** The verified Session store project. */
+  readonly projectId: string | undefined;
+}
 
 export function createSessionsFeature(
   options: {
@@ -24,8 +35,17 @@ export function createSessionsFeature(
     driver?: SessionDriver | readonly SessionDriver[];
     engine?: SpecFlowEngine;
   } = {},
-): RuntimeFeature {
+): RuntimeFeature & { readonly runtime: SessionsRuntime } {
+  let registered: SessionCoordinator | undefined;
+  const runtime: SessionsRuntime = {
+    get coordinator() {
+      return registered;
+    },
+    projectId: options.storage?.projectId,
+  };
+
   return {
+    runtime,
     authorizationResources: [SessionCapabilities],
     async register(app) {
       const enabled = options.config?.enabled === true;
@@ -139,6 +159,8 @@ export function createSessionsFeature(
       if (coordinator) {
         app.addHook('onClose', () => coordinator.close());
       }
+
+      registered = coordinator;
 
       if (coordinator) {
         await coordinator.recoverEffects();

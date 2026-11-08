@@ -175,6 +175,9 @@ export function createSessionCoordinator(
       available ? registry.get(providerId)?.describe() : undefined,
     available: (providerId: string) =>
       available && registry.get(providerId)?.describe().readiness === 'ready',
+    /** Some enabled provider is ready now (its last known readiness; no discovery is run). */
+    usable: () =>
+      available && [...registry.values()].some((driver) => driver.describe().readiness === 'ready'),
     async recoverEffects() {
       if (!effects) {
         return;

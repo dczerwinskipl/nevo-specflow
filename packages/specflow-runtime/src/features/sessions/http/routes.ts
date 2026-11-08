@@ -29,6 +29,7 @@ import { authorizeSession, authorizeSessionWrite, authorizedIdentity } from './a
 import { createSessionStreams } from './stream';
 import { registerTelemetryRoutes } from './telemetry';
 import { registerSessionManagementRoutes } from './management';
+import { registerSessionErrorHandling } from './error-handling';
 
 const closed = { additionalProperties: false } as const;
 const params = (extra: Record<string, typeof SessionIdSchema> = {}) =>
@@ -75,45 +76,7 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
 ): void {
   const streams = createSessionStreams(app);
   app.register((feature, _options, registered) => {
-    feature.setErrorHandler((error, _request, reply) => {
-      if (error instanceof SessionError) {
-        return reply
-          .header('Cache-Control', 'no-store')
-          .code(error.statusCode)
-          .send({
-            error: 'session_error',
-            code: error.code,
-            message: error.message,
-            ...(error.details ? { details: error.details } : {}),
-          });
-      }
-
-      if (
-        typeof error === 'object' &&
-        error !== null &&
-        ('validation' in error || ('code' in error && error.code === 'FST_ERR_CTP_BODY_TOO_LARGE'))
-      ) {
-        const tooLarge = 'code' in error && error.code === 'FST_ERR_CTP_BODY_TOO_LARGE';
-
-        return reply
-          .header('Cache-Control', 'no-store')
-          .code(tooLarge ? 413 : 400)
-          .send({
-            error: 'session_error',
-            code: tooLarge ? 'SESSION_PAYLOAD_TOO_LARGE' : 'SESSION_INPUT_INVALID',
-            message: tooLarge ? 'Request exceeds byte budget.' : 'Invalid Session request.',
-          });
-      }
-
-      throw error;
-    });
-    feature.addHook('onSend', (_request, reply, _payload, done) => {
-      if (!reply.hasHeader('Cache-Control')) {
-        reply.header('Cache-Control', 'no-store');
-      }
-
-      done();
-    });
+    registerSessionErrorHandling(feature);
     const coordinator = () => {
       if (!options.coordinator) {
         throw new SessionError('SESSION_DISABLED', 'Managed Sessions are disabled.');

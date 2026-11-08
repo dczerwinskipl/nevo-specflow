@@ -22,6 +22,12 @@ import {
   type DocumentsFeatureDependencies,
 } from '../features/documents';
 import { createSettingsFeature } from '../features/settings';
+import {
+  createEngineAssociationTargets,
+  createSessionAssociationsFeature,
+  createStoreSessionAssociations,
+  type AssociationTargets,
+} from '../features/session-associations';
 import { createSpecsFeature, type SpecsFeatureDependencies } from '../features/specs';
 import {
   createDemoEnvironment,
@@ -53,6 +59,8 @@ export interface RuntimeAppDependencies {
     references?: SessionReferenceOwner;
     storage?: { directory: string; projectId: string; workspace?: string };
     driver?: SessionDriver | readonly SessionDriver[];
+    /** Engine facts of associated Specifications and Tasks (default: the Engine, project mode). */
+    targets?: AssociationTargets;
   };
   readonly auth?: AuthFeatureDependencies;
   readonly specs?: SpecsFeatureDependencies;
@@ -141,13 +149,36 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
       ? { maxWaiting: dependencies.operations.maxWaiting }
       : {}),
   };
+  const engine = dependencies.specs?.engine;
+  const sessionsFeature = createSessionsFeature({
+    ...(engine ? { engine } : {}),
+    config: mode === 'project' ? config.sessions : undefined,
+    storage:
+      dependencies.sessions?.storage ??
+      (mode === 'project' && config.sessions?.enabled && engine
+        ? {
+            directory: join(engine.context.project.stateRoot, 'sessions'),
+            projectId: engine.context.project.projectId,
+            workspace: engine.context.workspace.root,
+          }
+        : undefined),
+    driver: dependencies.sessions?.driver,
+  });
+  // Project mode: the Session store is the association registry behind the reference seam.
+  const associationTargets =
+    mode === 'project'
+      ? (dependencies.sessions?.targets ??
+        createEngineAssociationTargets(engine, dependencies.tasks?.definitions))
+      : undefined;
+  const storeAssociations = associationTargets
+    ? createStoreSessionAssociations(sessionsFeature.runtime, associationTargets)
+    : undefined;
   const sessionReferences: SessionReferenceOwner | undefined =
-    demo?.sessionReferences ?? dependencies.sessions?.references;
+    demo?.sessionReferences ?? dependencies.sessions?.references ?? storeAssociations;
   // Demo mode serves the real document read routes from the demo directories.
   const documentReadSource = dependencies.documents?.readSource ?? demo?.documentReadSource;
   // Project mode: the Engine is the source of the workspace `documents` section, unless a
   // contribution was injected (tests, demo).
-  const engine = dependencies.specs?.engine;
   const specContributions = dependencies.specs?.contributions ?? demo?.contributions;
   const contributions =
     !demo && engine && !specContributions?.documents
@@ -155,7 +186,9 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
       : specContributions;
   // The Runtime's single project: every `spec.*` check runs at `specScope(projectId, specId)`.
   const projectId = () =>
-    demo ? demo.environment.state.catalogue.project.id : engine?.context.project.projectId;
+    demo
+      ? demo.environment.state.catalogue.project.id
+      : (engine?.context.project.projectId ?? dependencies.sessions?.storage?.projectId);
   const productFeatures: readonly RuntimeFeature[] = [
     createSpecsFeature({
       ...(config.specs ? { config: config.specs } : {}),
@@ -201,20 +234,17 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
         ? { writeSource: dependencies.documents.writeSource }
         : {}),
     }),
-    createSessionsFeature({
-      ...(engine ? { engine } : {}),
-      config: mode === 'project' ? config.sessions : undefined,
-      storage:
-        dependencies.sessions?.storage ??
-        (mode === 'project' && config.sessions?.enabled && engine
-          ? {
-              directory: join(engine.context.project.stateRoot, 'sessions'),
-              projectId: engine.context.project.projectId,
-              workspace: engine.context.workspace.root,
-            }
-          : undefined),
-      driver: dependencies.sessions?.driver,
-    }),
+    sessionsFeature,
+    ...(storeAssociations && associationTargets
+      ? [
+          createSessionAssociationsFeature({
+            associations: storeAssociations,
+            targets: associationTargets,
+            projectId,
+            sessions: sessionsFeature.runtime,
+          }),
+        ]
+      : []),
     createSettingsFeature(),
   ];
 

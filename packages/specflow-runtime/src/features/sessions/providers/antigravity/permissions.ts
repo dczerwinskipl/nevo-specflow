@@ -7,6 +7,17 @@ import { prepareMcpQuestion, McpQuestionEndpoint } from '../../interactions/mcp/
 
 const MAX_WAIT_BEFORE_ASYNC_MS = 30_000;
 
+/** Native file tools the hook admits, with the argument naming their target path. */
+export const antigravityFileTools: Readonly<Record<string, { path: string; writable: boolean }>> = {
+  view_file: { path: 'AbsolutePath', writable: false },
+  list_dir: { path: 'DirectoryPath', writable: false },
+  find_by_name: { path: 'SearchDirectory', writable: false },
+  grep_search: { path: 'SearchPath', writable: false },
+  write_to_file: { path: 'TargetFile', writable: true },
+  replace_file_content: { path: 'TargetFile', writable: true },
+  multi_replace_file_content: { path: 'TargetFile', writable: true },
+};
+
 export interface AntigravityPermissionContext {
   nativeSessionId: string;
   nativeTools: readonly string[];
@@ -190,17 +201,8 @@ export async function prepareAntigravityPermission(
   let directory = false;
   let writable = false;
   let interaction: Permission | undefined;
-  const fileTools: Record<string, { path: string; writable: boolean }> = {
-    view_file: { path: 'AbsolutePath', writable: false },
-    list_dir: { path: 'DirectoryPath', writable: false },
-    find_by_name: { path: 'SearchDirectory', writable: false },
-    grep_search: { path: 'SearchPath', writable: false },
-    write_to_file: { path: 'TargetFile', writable: true },
-    replace_file_content: { path: 'TargetFile', writable: true },
-    multi_replace_file_content: { path: 'TargetFile', writable: true },
-  };
   const name = typeof tool.name === 'string' ? tool.name : '';
-  const file = Object.hasOwn(fileTools, name) ? fileTools[name] : undefined;
+  const file = Object.hasOwn(antigravityFileTools, name) ? antigravityFileTools[name] : undefined;
   if (file && (!file.writable || context.writable)) {
     validateAntigravityFileArguments(name, args);
     target = args[file.path];

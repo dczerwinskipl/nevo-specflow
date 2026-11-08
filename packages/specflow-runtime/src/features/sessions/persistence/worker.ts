@@ -1070,6 +1070,7 @@ export async function runSessionWorker(): Promise<void> {
         }
 
         const s = session(c.sessionId);
+        let delivered = false;
         for (const nativeKey of c.nativeKeys) {
           const row = get(
             "SELECT i.data FROM interactions i JOIN work w ON w.id=json_extract(i.data,'$.workId') WHERE i.session=? AND i.turn=? AND i.state='admitted' AND w.native=?",
@@ -1086,6 +1087,7 @@ export async function runSessionWorker(): Promise<void> {
             get('SELECT data FROM work WHERE id=?', interaction.workId),
           );
           run("UPDATE interactions SET state='answered' WHERE id=?", interaction.interactionId);
+          delivered = true;
           if (t.work) {
             t.work = countWorkTransition(t.work, work.state, 'completed');
           }
@@ -1097,7 +1099,9 @@ export async function runSessionWorker(): Promise<void> {
           emit(s, 'work', { turnId: c.turnId, items: [work] });
         }
 
-        saveTurn(c.sessionId, t);
+        if (delivered) {
+          saveTurn(c.sessionId, t);
+        }
 
         return true;
       });

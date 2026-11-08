@@ -5,6 +5,17 @@ import type { EmitFact } from '../driver';
 import { CodexRpcError, rpcObject, type RpcMessage } from './rpc';
 import { nativeToolOperation, type NativeToolOperations } from '../tool-operations';
 
+/** The only Codex ThreadItem types this adapter accepts; any other item fails the protocol. */
+export const codexItemTypes = [
+  'userMessage',
+  'agentMessage',
+  'reasoning',
+  'plan',
+  'contextCompaction',
+  'commandExecution',
+  'fileChange',
+] as const;
+
 /** Codex app-server ThreadItem types that open a ToolAction. A fileChange is a patch, so `edit`. */
 export const codexToolOperations: NativeToolOperations = {
   commandExecution: 'command',
@@ -186,17 +197,7 @@ export function createCodexProtocol(
           return;
         }
 
-        if (
-          ![
-            'userMessage',
-            'agentMessage',
-            'reasoning',
-            'plan',
-            'contextCompaction',
-            'commandExecution',
-            'fileChange',
-          ].includes(kind)
-        ) {
+        if (!(codexItemTypes as readonly string[]).includes(kind)) {
           throw new CodexRpcError('protocol');
         }
 

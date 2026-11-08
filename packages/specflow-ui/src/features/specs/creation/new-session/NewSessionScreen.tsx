@@ -70,6 +70,7 @@ export function NewSessionScreen({
           <DemoNewSession
             key={specId}
             specId={specId}
+            collection={collection}
             onOpenSession={onOpenSession}
             onOpenSpecification={onOpenSpecification}
           />
@@ -197,14 +198,16 @@ function ProjectStartScreen({
 
 function DemoNewSession({
   specId,
+  collection,
   onOpenSession,
   onOpenSpecification,
 }: {
   specId: string;
+  collection: 'current' | 'archive';
   onOpenSession: (sessionId: string) => void;
   onOpenSpecification: (specification: ContextSpecification) => void;
 }) {
-  const source = useDemoStartSource(specId);
+  const source = useDemoStartSource(specId, collection);
 
   return (
     <SessionStartScreen

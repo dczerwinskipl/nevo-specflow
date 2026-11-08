@@ -74,7 +74,11 @@ function submissionOf(choice: AgentChoice): CreateSubmission {
  * outcome checked, never blindly repeated. The Session is started at the workspace's
  * `startSession.path` (the demo Runtime has no composed create).
  */
-export function useDemoStartSource(specId: string): SessionStartSource {
+export function useDemoStartSource(
+  specId: string,
+  /** The Specification's collection the start was opened from: an archived one seeds `archive`. */
+  collection: 'current' | 'archive' = 'current',
+): SessionStartSource {
   const services = useAppServices();
   const owner = useAuthOwner() ?? 'unavailable';
   const runtime = useRuntimeInfo();
@@ -115,13 +119,21 @@ export function useDemoStartSource(specId: string): SessionStartSource {
   const specificationFact = useMemo<PinnedSpecification>(
     () =>
       status === 'available' && title !== undefined
-        ? { status: 'ready', value: { id: specId, key: key ?? '', title } }
+        ? {
+            status: 'ready',
+            value: {
+              id: specId,
+              key: key ?? '',
+              title,
+              collection: collection === 'archive' ? 'archived' : 'current',
+            },
+          }
         : status === 'failed'
           ? { status: 'unreadable' }
           : status === 'denied'
             ? { status: 'missing' }
             : { status: 'loading' },
-    [status, title, key, specId],
+    [status, title, key, specId, collection],
   );
   // What the start resolves with: the Specification pinned when the allocation settles.
   const pinned = useRef(specificationFact);

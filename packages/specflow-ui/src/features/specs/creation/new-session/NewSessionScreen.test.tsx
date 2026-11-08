@@ -59,6 +59,7 @@ function renderScreen(
   dataMode: 'project' | 'demo',
   allocate: (input: DemoSessionInput) => Promise<{ sessionId: string; location: never }>,
   startSession: SpecificationWorkspaceResponse['actions']['startSession'] = { available: true },
+  collection: 'current' | 'archive' = 'current',
 ) {
   const defaults = createSpecFlowAppServices();
   const workspace = createWorkspaceIntegrationApi();
@@ -116,6 +117,7 @@ function renderScreen(
               <AppShell navigation={<div>Nav</div>}>
                 <NewSessionScreen
                   specId="api-integration"
+                  collection={collection}
                   onOpenSession={open}
                   onOpenSpecification={vi.fn()}
                   onBackToSpecification={back}
@@ -245,6 +247,19 @@ describe('NewSessionScreen', () => {
       modelTitle: 'codex model A',
       effort: 'high',
       modeId: 'ask',
+    });
+  });
+
+  it('seeds the association of an archived Specification with its archive collection', async () => {
+    const client = renderScreen('demo', ok, { available: true }, 'archive');
+    await chooseModel('codex model A');
+    await waitFor(() =>
+      expect(client.getQueryData(specificationKeys.detail('api-integration'))).toBeDefined(),
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Start session' }));
+    await waitFor(() => expect(open).toHaveBeenCalledOnce());
+    expect(client.getQueryData(sessionAssociationKeys.read('session-1'))).toMatchObject({
+      association: { specification: { value: { collection: 'archived' } } },
     });
   });
 

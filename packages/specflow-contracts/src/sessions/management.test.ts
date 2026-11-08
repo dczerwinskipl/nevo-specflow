@@ -57,14 +57,12 @@ describe('Session management contract', () => {
     const { archivedAt: _archived, ...active } = session;
     expect(sessionValidators.sessionCommandResult({ session: active })).toBe(true);
   });
-  it('declares SESSION_ARCHIVED and the session.delete capability', () => {
+  it.each(['SESSION_ARCHIVED', 'SESSION_DELETE_BLOCKED'])('declares %s', (code) => {
     expect(
-      Value.Check(SessionErrorSchema, {
-        error: 'session_error',
-        code: 'SESSION_ARCHIVED',
-        message: 'Session is archived.',
-      }),
+      Value.Check(SessionErrorSchema, { error: 'session_error', code, message: 'Refused.' }),
     ).toBe(true);
+  });
+  it('declares the session.delete capability', () => {
     expect(SessionCapabilities.capabilities.Delete).toBe('session.delete');
   });
 });

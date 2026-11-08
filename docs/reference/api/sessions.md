@@ -267,7 +267,8 @@ Schemas: `RenameSessionSchema`, `ArchiveSessionSchema` (archive and unarchive) a
 `SessionCommandResultSchema` in `@nevo/specflow-contracts/sessions`.
 
 - Rename `{requestId, title}`: title is trimmed and must stay 1..256 characters with a
-  non-whitespace character; there is no "clear title". Allowed on an archived Session.
+  non-whitespace character; there is no "clear title". Allowed on an archived Session (owner
+  decision 2026-11-08: metadata, not conversation).
 - Archive `{requestId}` sets `SessionInfo.archivedAt`. It is rejected with 409 TURN_CONFLICT
   (details.turnId) while the Session has a nonterminal Turn, including `unknown`; it never
   cancels implicitly. The check and the write share one transaction, so no Turn can be admitted
@@ -282,12 +283,12 @@ Schemas: `RenameSessionSchema`, `ArchiveSessionSchema` (archive and unarchive) a
 - `DELETE /api/sessions/:sessionId` (no body) hard-deletes every Session-owned Runtime row in
   one transaction: Session, provider correlation, Turns, conversation, Work, actions, content,
   interactions, idempotency records, fact/usage deduplication, telemetry and the event outbox.
-  It is rejected with 409 TURN_CONFLICT while any Turn is nonterminal or `unknown` or a live
-  invocation of the Session is still attached; unsettled Engine evidence therefore always blocks
-  deletion. Engine workspace-execution records and provider-native transcripts are not touched
+  It is rejected with 409 SESSION_DELETE_BLOCKED (details.turnId) while a nonterminal Turn
+  carries unsettled Engine effect evidence, and otherwise with 409 TURN_CONFLICT while any Turn
+  is nonterminal or `unknown` or a live invocation of the Session is still attached. Engine workspace-execution records and provider-native transcripts are not touched
   (only the Runtime's locator is removed). Open SSE streams of the deleted Session close without
-  further payload. There is no tombstone: a repeated delete, and any later read, is 404
-  SESSION_NOT_FOUND. Clients treat 404 after their own delete as done.
+  further payload. There is no tombstone: a repeated delete, and any later read or stream
+  request, is 404 SESSION_NOT_FOUND. Clients treat 404 after their own delete as done.
 
 ## Bounded history and Work
 
@@ -446,14 +447,14 @@ Domain error body: {error:'session_error', code, message, details?}. message is 
 details is code-specific and bounded; never provider-private diagnostics. Existing Auth/rate-limit
 envelopes remain their own contracts. UI branches on code, not message text.
 
-| Status | Codes and permitted details                                                                                                                                                            |
-| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 400    | SESSION_INPUT_INVALID (field?), SESSION_CURSOR_INVALID, INTERACTION_RESPONSE_INVALID                                                                                                   |
-| 404    | SESSION_NOT_FOUND, SESSION_RESOURCE_NOT_FOUND                                                                                                                                          |
-| 409    | TURN_CONFLICT (turnId), SESSION_ARCHIVED, IDEMPOTENCY_CONFLICT, INTERACTION_EXPIRED, SESSION_CURSOR_EXPIRED, CONTENT_REVISION_UNAVAILABLE, SESSION_RECOVERY_REQUIRED (turnId?, reason) |
-| 413    | SESSION_PAYLOAD_TOO_LARGE                                                                                                                                                              |
-| 422    | CAPABILITY_UNSUPPORTED (capability), MODEL_UNSUPPORTED                                                                                                                                 |
-| 503    | SESSION_DISABLED, SESSION_STORE_BUSY, SESSION_STORE_UNAVAILABLE, PROVIDER_UNAVAILABLE, PROVIDER_AUTH_REQUIRED, PROVIDER_CATALOGUE_UNAVAILABLE                                          |
+| Status | Codes and permitted details                                                                                                                                                                                             |
+| ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 400    | SESSION_INPUT_INVALID (field?), SESSION_CURSOR_INVALID, INTERACTION_RESPONSE_INVALID                                                                                                                                    |
+| 404    | SESSION_NOT_FOUND, SESSION_RESOURCE_NOT_FOUND                                                                                                                                                                           |
+| 409    | TURN_CONFLICT (turnId), SESSION_ARCHIVED, SESSION_DELETE_BLOCKED (turnId), IDEMPOTENCY_CONFLICT, INTERACTION_EXPIRED, SESSION_CURSOR_EXPIRED, CONTENT_REVISION_UNAVAILABLE, SESSION_RECOVERY_REQUIRED (turnId?, reason) |
+| 413    | SESSION_PAYLOAD_TOO_LARGE                                                                                                                                                                                               |
+| 422    | CAPABILITY_UNSUPPORTED (capability), MODEL_UNSUPPORTED                                                                                                                                                                  |
+| 503    | SESSION_DISABLED, SESSION_STORE_BUSY, SESSION_STORE_UNAVAILABLE, PROVIDER_UNAVAILABLE, PROVIDER_AUTH_REQUIRED, PROVIDER_CATALOGUE_UNAVAILABLE                                                                           |
 
 Missing/replaced/corrupt store never returns an invented ready/empty snapshot. Store ownership
 failure prevents feature startup and is reported in startup diagnostics using the same code.

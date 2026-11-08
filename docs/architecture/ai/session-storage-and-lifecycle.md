@@ -146,9 +146,9 @@ Archive marks the Session read-only (`archivedAt`); it is admitted only when no 
 or unknown, checked in the same transaction as the write, and new Turn starts and interaction
 responses are refused while archived. Unarchive clears the mark. Neither cancels anything.
 
-Delete is a hard delete inside one Worker transaction. It refuses while any Turn is nonterminal or
-unknown (which also covers every unsettled Engine effect binding) or the coordinator still holds a
-live invocation for the Session. Otherwise it removes every Session-owned row: the Session record,
+Delete is a hard delete inside one Worker transaction. It refuses with SESSION_DELETE_BLOCKED while
+a nonterminal Turn carries an unsettled Engine effect binding, and with TURN_CONFLICT while any other
+Turn is nonterminal or unknown or the coordinator still holds a live invocation for the Session. Otherwise it removes every Session-owned row: the Session record,
 provider context, Turns, conversation entries, Work, actions, content with its chunks and revisions,
 text keys, interactions, idempotency records scoped to the Session (including the create request that
 allocated it), fact/usage/telemetry deduplication rows of its invocations, Session usage, telemetry

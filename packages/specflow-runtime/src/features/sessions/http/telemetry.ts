@@ -62,6 +62,8 @@ export function projectTelemetry(
 export function registerTelemetryRoutes(
   feature: FastifyInstance,
   coordinator: () => SessionCoordinator,
+  /** `snapshot: false`: another owner (the demo reads) serves the telemetry read. */
+  options: { snapshot: boolean } = { snapshot: true },
 ) {
   const params = Type.Object({ sessionId: SessionIdSchema }, { additionalProperties: false });
   const sid = (request: FastifyRequest) => (request.params as { sessionId: string }).sessionId;
@@ -69,38 +71,41 @@ export function registerTelemetryRoutes(
     return telemetryAccess(request, authorizedIdentity(request, sid(request)));
   }
 
-  feature.get(
-    '/api/sessions/:sessionId/telemetry',
-    {
-      preHandler: (request) => authorizeSession(request, coordinator(), sid(request)),
-      schema: { params, response: { 200: TelemetrySnapshotSchema, 304: Type.Null() } },
-    },
-    async (request, reply) => {
-      const value = projectTelemetry(
-        await coordinator().telemetry.snapshot(sid(request)),
-        access(request),
-      );
-      if (!validateTelemetrySnapshot(value)) {
-        throw new SessionError(
-          'SESSION_STORE_UNAVAILABLE',
-          'Telemetry projection violates its bounded contract.',
+  if (options.snapshot) {
+    feature.get(
+      '/api/sessions/:sessionId/telemetry',
+      {
+        preHandler: (request) => authorizeSession(request, coordinator(), sid(request)),
+        schema: { params, response: { 200: TelemetrySnapshotSchema, 304: Type.Null() } },
+      },
+      async (request, reply) => {
+        const value = projectTelemetry(
+          await coordinator().telemetry.snapshot(sid(request)),
+          access(request),
         );
-      }
+        if (!validateTelemetrySnapshot(value)) {
+          throw new SessionError(
+            'SESSION_STORE_UNAVAILABLE',
+            'Telemetry projection violates its bounded contract.',
+          );
+        }
 
-      const etag =
-        '"' + createHash('sha256').update(JSON.stringify(value)).digest('base64url') + '"';
-      reply.header('Cache-Control', 'private, no-cache').header('ETag', etag);
-      const supplied = request.headers['if-none-match'];
-      if (
-        typeof supplied === 'string' &&
-        supplied.split(',').some((item) => item.trim() === etag || item.trim() === '*')
-      ) {
-        return reply.code(304).send();
-      }
+        const etag =
+          '"' + createHash('sha256').update(JSON.stringify(value)).digest('base64url') + '"';
+        reply.header('Cache-Control', 'private, no-cache').header('ETag', etag);
+        const supplied = request.headers['if-none-match'];
+        if (
+          typeof supplied === 'string' &&
+          supplied.split(',').some((item) => item.trim() === etag || item.trim() === '*')
+        ) {
+          return reply.code(304).send();
+        }
 
-      return value;
-    },
-  );
+        return value;
+      },
+    );
+  }
+
   feature.post(
     '/api/sessions/:sessionId/telemetry/refresh',
     {

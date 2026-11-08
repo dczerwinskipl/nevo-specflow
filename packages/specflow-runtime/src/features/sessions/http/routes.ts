@@ -31,6 +31,10 @@ import { registerTelemetryRoutes } from './telemetry';
 import { registerSessionManagementRoutes } from './management';
 import { registerSessionErrorHandling } from './error-handling';
 import { registerSessionListRoute, storeSessionListSource, type SessionListSource } from './list';
+import {
+  registerDemoManagedSessionReads,
+  type DemoManagedSessionReads,
+} from '../demo/managed-reads';
 
 const closed = { additionalProperties: false } as const;
 const params = (extra: Record<string, typeof SessionIdSchema> = {}) =>
@@ -75,9 +79,12 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
     projectId?: string;
     /** Demo mode: the catalogue's Session list, served without managed Sessions. */
     demoList?: { source: SessionListSource; projectId: string };
+    /** Demo mode: the read-only reads of the managed Session screen (no coordinator). */
+    demoReads?: DemoManagedSessionReads;
   },
 ): void {
   const streams = createSessionStreams(app);
+  const demoReads = options.coordinator ? undefined : options.demoReads;
   app.register((feature, _options, registered) => {
     registerSessionErrorHandling(feature);
     const coordinator = () => {
@@ -130,7 +137,11 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
     }
 
     const actor = (request: FastifyRequest) => request.authz.readContext().subject;
-    registerTelemetryRoutes(feature, coordinator);
+    registerTelemetryRoutes(feature, coordinator, { snapshot: !demoReads });
+    if (demoReads) {
+      registerDemoManagedSessionReads(app, feature, demoReads);
+    }
+
     registerSessionManagementRoutes(feature, coordinator);
     registerSessionListRoute(
       feature,
@@ -140,27 +151,30 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
           : options.demoList.source,
       () => (options.coordinator ? options.projectId! : (options.demoList?.projectId ?? '')),
     );
-    feature.get(
-      '/api/session-providers',
-      { preHandler: authorizeCreate, schema: { response: { 200: ProviderCatalogueSchema } } },
-      async (request) => {
-        const items = await coordinator().providers();
-        const permissions = request.authz.resolveCapabilities({
-          resource: SessionCapabilities,
-          scope: { projectId: options.projectId! },
-        });
-        for (const provider of items) {
-          if (provider.providerModes) {
-            provider.providerModes = provider.providerModes.map((mode) => ({
-              ...mode,
-              authorized: mode.mode !== 'workspace-write' || permissions['execute-write'],
-            }));
+    if (!demoReads) {
+      feature.get(
+        '/api/session-providers',
+        { preHandler: authorizeCreate, schema: { response: { 200: ProviderCatalogueSchema } } },
+        async (request) => {
+          const items = await coordinator().providers();
+          const permissions = request.authz.resolveCapabilities({
+            resource: SessionCapabilities,
+            scope: { projectId: options.projectId! },
+          });
+          for (const provider of items) {
+            if (provider.providerModes) {
+              provider.providerModes = provider.providerModes.map((mode) => ({
+                ...mode,
+                authorized: mode.mode !== 'workspace-write' || permissions['execute-write'],
+              }));
+            }
           }
-        }
 
-        return { items };
-      },
-    );
+          return { items };
+        },
+      );
+    }
+
     feature.post(
       '/api/sessions',
       {
@@ -174,111 +188,130 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
           .send(await coordinator().create(actor(request), request.body as CreateSession));
       },
     );
-    feature.get(
-      '/api/sessions/:sessionId',
-      {
-        preHandler: (request) => authorize(request),
-        schema: { params: params(), response: { 200: SessionSnapshotSchema } },
-      },
-      async (request) =>
-        effective(
-          await coordinator().snapshot(ids(request).sessionId, actor(request)),
-          request,
-          coordinator().provider,
-          authorizedIdentity(request, ids(request).sessionId),
-        ),
-    );
-    feature.get(
-      '/api/sessions/:sessionId/history',
-      {
-        preHandler: (request) => authorize(request),
-        schema: { params: params(), querystring: pageQuery, response: { 200: HistoryPageSchema } },
-      },
-      async (request) => {
-        const q = query(request);
-        if (!q.before) {
-          throw new SessionError(
-            'SESSION_CURSOR_INVALID',
-            'History requires a cursor from the Session snapshot.',
-          );
-        }
-
-        return coordinator().store.call({
-          op: 'history',
-          sessionId: ids(request).sessionId,
-          actor: actor(request),
-          before: q.before,
-          limit: count(q.limit, 40, 40),
-        });
-      },
-    );
-    feature.get(
-      '/api/sessions/:sessionId/turns/:turnId/work',
-      {
-        preHandler: (request) => authorize(request),
-        schema: {
-          params: params({ turnId: SessionIdSchema }),
-          querystring: pageQuery,
-          response: { 200: WorkPageSchema },
+    if (!demoReads) {
+      feature.get(
+        '/api/sessions/:sessionId',
+        {
+          preHandler: (request) => authorize(request),
+          schema: { params: params(), response: { 200: SessionSnapshotSchema } },
         },
-      },
-      (request) =>
-        coordinator().store.call({
-          op: 'work',
-          sessionId: ids(request).sessionId,
-          turnId: ids(request).turnId!,
-          actor: actor(request),
-          before: query(request).before,
-          limit: count(query(request).limit, 40, 40),
-        }),
-    );
-    feature.get(
-      '/api/sessions/:sessionId/work/:workId/actions',
-      {
-        preHandler: (request) => authorize(request),
-        schema: {
-          params: params({ workId: SessionIdSchema }),
-          querystring: pageQuery,
-          response: { 200: ActionPageSchema },
-        },
-      },
-      (request) =>
-        coordinator().store.call({
-          op: 'actions',
-          sessionId: ids(request).sessionId,
-          workId: ids(request).workId!,
-          actor: actor(request),
-          before: query(request).before,
-          limit: count(query(request).limit, 40, 40),
-        }),
-    );
-    feature.get(
-      '/api/sessions/:sessionId/content/:contentId',
-      {
-        preHandler: (request) => authorize(request),
-        schema: {
-          params: params({ contentId: SessionIdSchema }),
-          querystring: Type.Object(
-            {
-              revision: Type.String({ pattern: '^[0-9]+$', maxLength: 16 }),
-              offset: Type.Optional(Type.String({ pattern: '^[0-9]+$', maxLength: 16 })),
-              limitBytes: Type.Optional(Type.String({ pattern: '^[0-9]+$', maxLength: 6 })),
-            },
-            closed,
+        async (request) =>
+          effective(
+            await coordinator().snapshot(ids(request).sessionId, actor(request)),
+            request,
+            coordinator().provider,
+            authorizedIdentity(request, ids(request).sessionId),
           ),
-          response: { 200: ContentPageSchema },
+      );
+    }
+
+    if (!demoReads) {
+      feature.get(
+        '/api/sessions/:sessionId/history',
+        {
+          preHandler: (request) => authorize(request),
+          schema: {
+            params: params(),
+            querystring: pageQuery,
+            response: { 200: HistoryPageSchema },
+          },
         },
-      },
-      (request) =>
-        coordinator().store.call({
-          op: 'content',
-          sessionId: ids(request).sessionId,
-          contentId: ids(request).contentId!,
-          revision: query(request).revision!,
-          offset: Number(query(request).offset ?? 0),
-          limitBytes: count(query(request).limitBytes, 65536, 65536),
-        }),
-    );
+        async (request) => {
+          const q = query(request);
+          if (!q.before) {
+            throw new SessionError(
+              'SESSION_CURSOR_INVALID',
+              'History requires a cursor from the Session snapshot.',
+            );
+          }
+
+          return coordinator().store.call({
+            op: 'history',
+            sessionId: ids(request).sessionId,
+            actor: actor(request),
+            before: q.before,
+            limit: count(q.limit, 40, 40),
+          });
+        },
+      );
+    }
+
+    if (!demoReads) {
+      feature.get(
+        '/api/sessions/:sessionId/turns/:turnId/work',
+        {
+          preHandler: (request) => authorize(request),
+          schema: {
+            params: params({ turnId: SessionIdSchema }),
+            querystring: pageQuery,
+            response: { 200: WorkPageSchema },
+          },
+        },
+        (request) =>
+          coordinator().store.call({
+            op: 'work',
+            sessionId: ids(request).sessionId,
+            turnId: ids(request).turnId!,
+            actor: actor(request),
+            before: query(request).before,
+            limit: count(query(request).limit, 40, 40),
+          }),
+      );
+    }
+
+    if (!demoReads) {
+      feature.get(
+        '/api/sessions/:sessionId/work/:workId/actions',
+        {
+          preHandler: (request) => authorize(request),
+          schema: {
+            params: params({ workId: SessionIdSchema }),
+            querystring: pageQuery,
+            response: { 200: ActionPageSchema },
+          },
+        },
+        (request) =>
+          coordinator().store.call({
+            op: 'actions',
+            sessionId: ids(request).sessionId,
+            workId: ids(request).workId!,
+            actor: actor(request),
+            before: query(request).before,
+            limit: count(query(request).limit, 40, 40),
+          }),
+      );
+    }
+
+    if (!demoReads) {
+      feature.get(
+        '/api/sessions/:sessionId/content/:contentId',
+        {
+          preHandler: (request) => authorize(request),
+          schema: {
+            params: params({ contentId: SessionIdSchema }),
+            querystring: Type.Object(
+              {
+                revision: Type.String({ pattern: '^[0-9]+$', maxLength: 16 }),
+                offset: Type.Optional(Type.String({ pattern: '^[0-9]+$', maxLength: 16 })),
+                limitBytes: Type.Optional(Type.String({ pattern: '^[0-9]+$', maxLength: 6 })),
+              },
+              closed,
+            ),
+            response: { 200: ContentPageSchema },
+          },
+        },
+        (request) =>
+          coordinator().store.call({
+            op: 'content',
+            sessionId: ids(request).sessionId,
+            contentId: ids(request).contentId!,
+            revision: query(request).revision!,
+            offset: Number(query(request).offset ?? 0),
+            limitBytes: count(query(request).limitBytes, 65536, 65536),
+          }),
+      );
+    }
+
     feature.post(
       '/api/sessions/:sessionId/turns',
       {
@@ -371,29 +404,32 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
             ),
           ),
     );
-    feature.get(
-      '/api/sessions/:sessionId/events',
-      {
-        preHandler: (request) => authorize(request),
-        schema: {
-          params: params(),
-          querystring: Type.Object(
-            { after: Type.Optional(Type.String({ pattern: '^[0-9]+$', maxLength: 16 })) },
-            closed,
-          ),
+    if (!demoReads) {
+      feature.get(
+        '/api/sessions/:sessionId/events',
+        {
+          preHandler: (request) => authorize(request),
+          schema: {
+            params: params(),
+            querystring: Type.Object(
+              { after: Type.Optional(Type.String({ pattern: '^[0-9]+$', maxLength: 16 })) },
+              closed,
+            ),
+          },
         },
-      },
-      async (request, reply) => {
-        return streams.open(
-          request,
-          reply,
-          coordinator(),
-          ids(request).sessionId,
-          actor(request),
-          query(request).after,
-        );
-      },
-    );
+        async (request, reply) => {
+          return streams.open(
+            request,
+            reply,
+            coordinator(),
+            ids(request).sessionId,
+            actor(request),
+            query(request).after,
+          );
+        },
+      );
+    }
+
     registered();
   });
 }

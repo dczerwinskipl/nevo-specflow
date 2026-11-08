@@ -169,6 +169,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
             source: demo.sessionList,
             projectId: demo.environment.state.catalogue.project.id,
           },
+          demoReads: demo.managedSessionReads,
         }
       : {}),
   });

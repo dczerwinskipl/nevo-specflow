@@ -61,7 +61,7 @@ export function createDemoSessions(state: DemoState) {
 
       const location = state.locations.get(specId) ?? state.catalogue.currentLocation;
       state.fail('session', 'demo_session_allocation_failed');
-      const sessionId = 'session-' + state.id();
+      const sessionId = state.uuid();
       const detail: DemoSessionDetail = {
         sessionId,
         specId,

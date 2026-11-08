@@ -8,6 +8,7 @@ import { createMockDriver } from './providers/mock';
 import type { SessionDriver } from './providers/driver';
 import { registerSessionRoutes } from './http/routes';
 import type { SessionListSource } from './http/list';
+import type { DemoManagedSessionReads } from './demo/managed-reads';
 import { SessionError } from './errors';
 import { createClaudeDriver } from './providers/claude/driver';
 import { createCodexDriver } from './providers/codex/driver';
@@ -36,6 +37,8 @@ export function createSessionsFeature(
     driver?: SessionDriver | readonly SessionDriver[];
     /** Demo mode: the catalogue's Session list, served without managed Sessions. */
     demoList?: { source: SessionListSource; projectId: string };
+    /** Demo mode: the read-only reads of the managed Session screen. */
+    demoReads?: DemoManagedSessionReads;
     engine?: SpecFlowEngine;
   } = {},
 ): RuntimeFeature & { readonly runtime: SessionsRuntime } {
@@ -177,6 +180,7 @@ export function createSessionsFeature(
         coordinator,
         projectId: options.storage?.projectId,
         ...(options.demoList ? { demoList: options.demoList } : {}),
+        ...(options.demoReads ? { demoReads: options.demoReads } : {}),
       });
     },
   };

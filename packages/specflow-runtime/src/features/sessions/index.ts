@@ -28,3 +28,4 @@ export { createDemoSessionReferences } from './demo/references';
 export { buildDemoSessions, buildDemoSessionContribution } from './demo/contribution';
 export { createDemoSessions, type DemoSessions } from './demo/operations';
 export { registerDemoSessionRoutes } from './demo/endpoints';
+export { createDemoManagedSessionReads, type DemoManagedSessionReads } from './demo/managed-reads';

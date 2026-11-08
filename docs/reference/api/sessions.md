@@ -664,6 +664,32 @@ fails the supported authentication/policy or protocol checks. Unlisted compatibl
 Provisional; a missing catalogue entry or unknown hash is not a refusal reason. Each Session is dispatched through its own selected provider;
 enabling the mock does not grant Claude availability. No real adapter is advertised from a demo list.
 
+## Demo Runtime (read-only managed Sessions)
+
+The demo Runtime (`--demo`) has no Session coordinator, but the Full Session screen stays on the
+canonical `/sessions/:sessionId` route and reads the same routes. Demo Session IDs (seeded catalogue
+Sessions and Sessions allocated by `POST /api/demo/specs/:specId/sessions`) are UUIDs like managed
+ones. `features/sessions/demo/managed-reads.ts` serves the read side, authorized like the managed
+reads (`session.view` at the Session's scope from the demo association registry):
+
+- `GET /api/sessions/:sessionId`: a snapshot with `readiness: 'ready'`, `mode: 'read-only'`, no
+  `activeTurn`, no entries, `history.hasOlder: false`, `eventSeq: 0` and `capabilities` granting
+  `view` only (`manage`, `start`, `cancel`, `delete`, `executeWrite` false). Title, provider and
+  model are the Session list row's.
+- `GET /api/session-providers`: the demo catalogue's providers (`session.view` in any scope), every
+  provider capability false and `modes: ['read-only']`, so the screen can name the agent.
+- `GET .../history`: still requires a cursor (`400 SESSION_CURSOR_INVALID` without one); any cursor
+  answers an empty page. `GET .../turns/:turnId/work`, `.../work/:workId/actions` and
+  `.../content/:contentId`: `404 SESSION_RESOURCE_NOT_FOUND` (a demo Session has no Turn).
+- `GET .../telemetry`: every reading `unavailable` with reason `NOT_OBSERVED`, nothing refreshable.
+- `GET .../events`: an SSE stream that only sends `: connected` and heartbeats; only `after=0` (or
+  no cursor) is valid.
+- `GET .../association` and `GET /api/sessions` are the demo catalogue's (sections above).
+
+Every mutation (`POST /api/sessions`, Turn start/cancel/reconcile/respond, rename, archive,
+unarchive, delete, telemetry refresh) stays `SESSION_DISABLED`. The screen presents the Composer
+gated by `capabilities.start` (Send disabled), with no error state.
+
 ## Error contract
 
 Domain error body: {error:'session_error', code, message, details?}. message is safe text <=2 KiB.

@@ -2,8 +2,9 @@ import type { SessionInfo } from '@nevo/specflow-contracts/sessions';
 import type { RequestAuthorization } from '../../auth';
 import {
   SessionError,
+  listedSession,
   type SessionListScan,
-  type SessionListSummary,
+  type StoredListSummary,
   type SessionsRuntime,
 } from '../../sessions';
 import type { ProjectIdSource } from '../../specs';
@@ -12,16 +13,21 @@ import { canStartSession } from '../start-authorization';
 /** At most this many associated Sessions; `hasMore` reports the rest (D12). */
 export const WORKSPACE_SESSION_LIMIT = 100;
 
-type Status = 'active' | 'attention' | 'quiet' | 'unknown';
+type Status = 'active' | 'attention' | 'quiet' | 'authenticationRequired' | 'unknown';
 interface WorkspaceSessionItem {
   id: string;
   title?: string;
   taskIds: string[];
   status: Status;
+  providerId: string;
+  providerTitle?: string;
+  modelId?: string;
+  modelTitle?: string;
+  updatedAt: string;
 }
 export type StartSessionReason = 'sessions_disabled' | 'forbidden' | 'no_provider';
 
-/** Session readiness only; an Engine attempt never colours a Session row. */
+/** Effective Session readiness only; an Engine attempt never colours a Session row. */
 export function workspaceSessionStatus(readiness: SessionInfo['readiness']): Status {
   switch (readiness) {
     case 'busy':
@@ -30,6 +36,8 @@ export function workspaceSessionStatus(readiness: SessionInfo['readiness']): Sta
       return 'attention';
     case 'ready':
       return 'quiet';
+    case 'authenticationRequired':
+      return 'authenticationRequired';
     default:
       return 'unknown';
   }
@@ -93,22 +101,35 @@ export function createWorkspaceSessionContribution(options: {
         filter: { specId, archived: 'exclude' },
         scanBudget: WORKSPACE_SESSION_LIMIT + 1,
       });
-      const rows = scan.rows.slice(0, WORKSPACE_SESSION_LIMIT);
-      const summaries = rows.length
-        ? await coordinator.store.call<SessionListSummary[]>({
+      const scanned = scan.rows.slice(0, WORKSPACE_SESSION_LIMIT);
+      const summaries = scanned.length
+        ? await coordinator.store.call<StoredListSummary[]>({
             op: 'summaries',
-            sessionIds: rows.map((row) => row.sessionId),
+            sessionIds: scanned.map((row) => row.sessionId),
           })
         : [];
-      const titles = new Map(summaries.map((summary) => [summary.sessionId, summary.title]));
+      // The list read's projection: catalogue titles and the effective readiness.
+      const byId = new Map(
+        summaries.map((summary) => [
+          summary.sessionId,
+          listedSession(summary, coordinator.provider),
+        ]),
+      );
+      // A Session deleted between the scan and the decode is simply absent.
+      const rows = scanned.filter((row) => byId.has(row.sessionId));
       const items: WorkspaceSessionItem[] = rows.map((row) => {
-        const title = titles.get(row.sessionId);
+        const summary = byId.get(row.sessionId)!;
 
         return {
           id: row.sessionId,
-          ...(title ? { title } : {}),
+          ...(summary.title ? { title: summary.title } : {}),
           taskIds: row.taskIds ?? [],
-          status: workspaceSessionStatus(row.readiness),
+          status: workspaceSessionStatus(summary.readiness),
+          providerId: summary.providerId,
+          ...(summary.providerTitle ? { providerTitle: summary.providerTitle } : {}),
+          ...(summary.modelId ? { modelId: summary.modelId } : {}),
+          ...(summary.modelTitle ? { modelTitle: summary.modelTitle } : {}),
+          updatedAt: summary.updatedAt,
         };
       });
 

@@ -418,8 +418,10 @@ type SessionListItem = {
   sessionId: string;
   title?: string;
   providerId: string;
+  providerTitle?: string; // the provider catalogue's title; absent when the provider is not listed
   modelId?: string;
-  readiness: Readiness;
+  modelTitle?: string; // the catalogue's model title; absent when the model is not listed
+  readiness: Readiness; // effective, as GET /api/sessions/:sessionId
   activeTurn?: { turnId: string; state: TurnState };
   archivedAt?: string;
   createdAt: string;
@@ -450,6 +452,11 @@ type SessionListPage = { items: SessionListItem[]; nextCursor?: string };
   `409 SESSION_CURSOR_EXPIRED`.
 - A page decodes only the rows it returns; a Session deleted between scan and decode is omitted.
   The demo Runtime serves the same route from its catalogue.
+- `providerTitle` and `modelTitle` are resolved from the Runtime's provider catalogue at read time,
+  so a caller without `session.create` (which `GET /api/session-providers` requires) can still name
+  the agent. `readiness` is the effective readiness of the single-Session read: when the provider
+  (or the Session's provider mode) cannot run a Turn and none is active, it reads
+  `authenticationRequired` if the provider needs a sign-in, otherwise `unavailable`.
 
 ## Bounded history and Work
 

@@ -27,6 +27,7 @@ export type {
   SessionListRow,
   SessionListScan,
   SessionListSummary,
+  StoredListSummary,
 } from './catalogue';
 
 export type MeasurementFact =
@@ -223,7 +224,7 @@ export type StoreCommand =
   | { op: 'list'; filter: SessionListFilter; after?: number; cursor?: string; scanBudget: number }
   /** A signed list cursor continuing after `after`, bound to the store, project and filter. */
   | { op: 'list-cursor'; filter: SessionListFilter; after: number }
-  /** `SessionListSummary[]` for at most 100 Sessions, decoding only those rows. */
+  /** `StoredListSummary[]` for at most 100 Sessions, decoding only those rows. */
   | { op: 'summaries'; sessionIds: string[] }
   | { op: 'history'; sessionId: string; actor: string; before: string; limit: number }
   | { op: 'work'; sessionId: string; turnId: string; actor: string; before?: string; limit: number }

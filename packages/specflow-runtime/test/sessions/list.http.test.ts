@@ -5,10 +5,16 @@ import { randomUUID } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import { Value } from 'typebox/value';
 import { afterEach, describe, expect, it } from 'vitest';
-import { SessionListPageSchema, type SessionListPage } from '@nevo/specflow-contracts/sessions';
+import {
+  SessionListPageSchema,
+  type SessionListPage,
+  type SessionSnapshot,
+} from '@nevo/specflow-contracts/sessions';
 import { createRuntimeApp } from '../../src/server/app';
 import { openSessionStore } from '../../src/features/sessions/persistence/store';
 import type { AssociationWrite } from '../../src/features/sessions/persistence/protocol';
+import { createMockDriver } from '../../src/features/sessions/providers/mock';
+import type { SessionDriver } from '../../src/features/sessions/providers/driver';
 import { passwordConfig } from '../auth/support/config';
 
 type Role = 'viewer' | 'developer' | 'admin';
@@ -36,12 +42,13 @@ async function seed(padding = 0): Promise<Seeded & { padding: string[] }> {
   directory = await mkdtemp(join(tmpdir(), 'nevo-session-list-'));
   const store = await openSessionStore({ directory, projectId: 'project' });
   try {
-    const create = async (association?: AssociationWrite) =>
+    const create = async (association?: AssociationWrite, model: { modelId?: string } = {}) =>
       (
         await store.call<{ sessionId: string }>({
           op: 'create',
           actor: 'someone-else',
-          input: { requestId: randomUUID(), providerId: 'mock', mode: 'read-only' },
+          // The newest Session names the catalogue's model; the others name none.
+          input: { requestId: randomUUID(), providerId: 'mock', mode: 'read-only', ...model },
           ...(association ? { association } : {}),
         })
       ).sessionId;
@@ -68,14 +75,19 @@ async function seed(padding = 0): Promise<Seeded & { padding: string[] }> {
       s1,
       c: await create(),
       t1: await create(spec('T')),
-      s2: await create(spec('S', ['TASK-01'])),
+      s2: await create(spec('S', ['TASK-01']), { modelId: 'mock' }),
     };
   } finally {
     await store.close();
   }
 }
 
-async function open(role: Role | undefined, scope: Record<string, string> = {}, enabled = true) {
+async function open(
+  role: Role | undefined,
+  scope: Record<string, string> = {},
+  enabled = true,
+  driver?: SessionDriver,
+) {
   const config = passwordConfig();
   app = await createRuntimeApp(
     {
@@ -84,7 +96,7 @@ async function open(role: Role | undefined, scope: Record<string, string> = {}, 
       authorization: { assignments: role ? [{ userId: 'demo-user', role, scope }] : [] },
       sessions: { enabled, providers: { mock: { enabled: true } } },
     },
-    { sessions: { storage: { directory, projectId: 'project' } } },
+    { sessions: { storage: { directory, projectId: 'project' }, ...(driver ? { driver } : {}) } },
   );
 
   return app;
@@ -121,6 +133,53 @@ describe('GET /api/sessions', () => {
       createdAt: expect.any(String) as unknown,
       updatedAt: expect.any(String) as unknown,
     });
+  });
+
+  it('names the provider and model by their catalogue titles, also for a viewer', async () => {
+    const seeded = await seed();
+    // A viewer cannot read the provider catalogue (no Create capability) but sees the titles.
+    const server = await open('viewer', { projectId: 'project' });
+    expect((await server.inject('/api/session-providers')).statusCode).toBe(403);
+    const items = page(await list(server)).items;
+    expect(items[0]).toMatchObject({
+      sessionId: seeded.s2,
+      providerId: 'mock',
+      providerTitle: 'Controlled mock (test only)',
+      modelId: 'mock',
+      modelTitle: 'Deterministic test model',
+    });
+    expect(items[1]).toMatchObject({ providerTitle: 'Controlled mock (test only)' });
+    expect(items[1]).not.toHaveProperty('modelId');
+    expect(items[1]).not.toHaveProperty('modelTitle');
+    // The mode facts the effective readiness reads stay internal.
+    expect(items[0]).not.toHaveProperty('mode');
+  });
+
+  it('applies the single-Session read effective readiness to every row', async () => {
+    const seeded = await seed();
+    const mock = createMockDriver();
+    let readiness: 'ready' | 'authenticationRequired' | 'unavailable' = 'authenticationRequired';
+    const driver: SessionDriver = { ...mock, describe: () => ({ ...mock.describe(), readiness }) };
+    const server = await open('viewer', { projectId: 'project' }, true, driver);
+    const rows = async () => page(await list(server, '?archived=include')).items;
+    const single = async (sessionId: string) =>
+      (await server.inject('/api/sessions/' + sessionId)).json<SessionSnapshot>().session.readiness;
+    expect((await rows()).map((item) => item.readiness)).toEqual(
+      Array(4).fill('authenticationRequired'),
+    );
+    expect(await single(seeded.s2)).toBe('authenticationRequired');
+    readiness = 'unavailable';
+    expect((await rows()).map((item) => item.readiness)).toEqual(Array(4).fill('unavailable'));
+    readiness = 'ready';
+    expect((await rows()).map((item) => item.readiness)).toEqual(Array(4).fill('ready'));
+    // Authorization stays per row: the projection never widens a Session-scoped grant.
+    await app!.close();
+    readiness = 'authenticationRequired';
+    const scoped = await open('viewer', { sessionId: seeded.s2 }, true, driver);
+    const scopedItems = page(await list(scoped)).items;
+    expect(scopedItems.map((item) => [item.sessionId, item.readiness])).toEqual([
+      [seeded.s2, 'authenticationRequired'],
+    ]);
   });
 
   it('selects by Specification, Task, standalone and archive state', async () => {

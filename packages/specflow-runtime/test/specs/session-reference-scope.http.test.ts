@@ -130,6 +130,8 @@ async function fixture(role: Role, grant: Scope | undefined) {
                 title: 'Title ' + id,
                 taskIds: [],
                 status: 'active' as const,
+                providerId: 'codex',
+                updatedAt: '2026-11-08T00:00:00.000Z',
               })),
               attention: [],
             },

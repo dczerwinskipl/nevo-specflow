@@ -7,10 +7,10 @@ import type { SessionListSource } from '../http/list';
 import { createSessionCursors } from '../persistence/cursors';
 import { StoreFault } from '../persistence/encoding';
 import type { SessionListRow, SessionListSummary } from '../persistence/protocol';
-import { buildDemoSessions, type SessionSummary } from './contribution';
+import { buildDemoSessions, seededDemoAgent, type SessionSummary } from './contribution';
+import { DEMO_SEEDED_AT } from './seeded-at';
 
-/** Seeded catalogue Sessions carry no clock of their own. */
-export const DEMO_SEEDED_AT = '2026-10-01T12:00:00.000Z';
+export { DEMO_SEEDED_AT } from './seeded-at';
 
 const readiness: Record<SessionSummary['status'], SessionInfo['readiness']> = {
   attention: 'requiresAttention',
@@ -52,7 +52,7 @@ export function createDemoSessionList(options: {
   const cursors = createSessionCursors(randomUUID(), projectId, randomBytes(32));
 
   async function entries(): Promise<DemoListEntry[]> {
-    const provider = options.state.catalogue.providers.find((item) => item.available);
+    const agent = seededDemoAgent(options.state.catalogue);
     const seeded = new Map<string, { specId: string; session: SessionSummary }>();
     for (const record of await options.catalogue.all()) {
       for (const session of buildDemoSessions(record)) {
@@ -77,7 +77,7 @@ export function createDemoSessionList(options: {
       summary: {
         sessionId: session.id,
         title: session.title,
-        providerId: provider?.id ?? 'demo',
+        ...agent,
         readiness: readiness[session.status],
         createdAt: DEMO_SEEDED_AT,
         updatedAt: DEMO_SEEDED_AT,
@@ -99,7 +99,9 @@ export function createDemoSessionList(options: {
           sessionId: detail.sessionId,
           title: detail.title,
           providerId: detail.configuration.providerId,
+          providerTitle: detail.configuration.providerTitle,
           modelId: detail.configuration.modelId,
+          modelTitle: detail.configuration.modelTitle,
           readiness: 'ready',
           createdAt: at,
           updatedAt: at,

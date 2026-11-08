@@ -186,7 +186,26 @@ describe('demo Session list (catalogue source)', () => {
     ).json<DemoSessionResult>().sessionId;
     const first = await list(server, '?specId=admission&limit=2');
     expect(first.items.map((item) => item.sessionId)).toEqual([allocated, 'sample-session-24']);
-    expect(first.items[0]).toMatchObject({ providerId: 'codex', modelId: 'model-a' });
+    expect(first.items[0]).toMatchObject({
+      providerId: 'codex',
+      providerTitle: 'Codex',
+      modelId: 'model-a',
+      modelTitle: 'Model A · demo',
+    });
+    // Seeded catalogue Sessions run on the first available demo provider and its first model.
+    expect(first.items[1]).toMatchObject({
+      providerId: 'codex',
+      providerTitle: 'Codex',
+      modelId: 'model-a',
+      modelTitle: 'Model A · demo',
+    });
+    const section = (
+      await server.inject('/api/specs/admission/workspace')
+    ).json<SpecificationWorkspaceResponse>().sections.sessions;
+    expect(section.state === 'available' ? section.data.items.slice(0, 2) : []).toMatchObject([
+      { id: allocated, providerId: 'codex', modelTitle: 'Model A · demo', status: 'quiet' },
+      { id: 'sample-session-24', providerTitle: 'Codex', updatedAt: expect.any(String) as unknown },
+    ]);
     const second = await list(
       server,
       `?specId=admission&limit=2&cursor=${encodeURIComponent(first.nextCursor!)}`,

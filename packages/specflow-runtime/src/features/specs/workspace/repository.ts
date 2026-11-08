@@ -23,7 +23,12 @@ export interface WorkspaceSessionRecord {
   /** Absent for an untitled Session; the server never invents a title. */
   readonly title?: string;
   readonly taskIds: string[];
-  readonly status: 'active' | 'attention' | 'quiet' | 'unknown';
+  readonly status: 'active' | 'attention' | 'quiet' | 'authenticationRequired' | 'unknown';
+  readonly providerId: string;
+  readonly providerTitle?: string;
+  readonly modelId?: string;
+  readonly modelTitle?: string;
+  readonly updatedAt: string;
 }
 export interface WorkspaceAttentionRecord {
   readonly id: string;

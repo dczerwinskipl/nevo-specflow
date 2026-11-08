@@ -10,7 +10,7 @@ import type {
   AssociationWrite,
   SessionIdentity,
   SessionListScan,
-  SessionListSummary,
+  StoredListSummary,
   StoredAssociation,
 } from './protocol';
 
@@ -307,7 +307,7 @@ describe('Session association store', () => {
       sessionId: b,
       input: { requestId: randomUUID(), title: 'Plan' },
     });
-    const summaries = await store!.call<SessionListSummary[]>({
+    const summaries = await store!.call<StoredListSummary[]>({
       op: 'summaries',
       sessionIds: [b, a],
     });

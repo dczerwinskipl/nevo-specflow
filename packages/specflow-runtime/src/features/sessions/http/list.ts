@@ -15,7 +15,13 @@ import {
 import { SpecCapabilities } from '@nevo/specflow-contracts/specs';
 import { SessionError } from '../errors';
 import type { SessionCoordinator } from '../lifecycle/coordinator';
-import type { SessionListRow, SessionListScan, SessionListSummary } from '../persistence/protocol';
+import type {
+  SessionListRow,
+  SessionListScan,
+  SessionListSummary,
+  StoredListSummary,
+} from '../persistence/protocol';
+import { listedSession } from './projection';
 import { sessionScope } from '../scope';
 import { specScope } from '../../specs';
 
@@ -85,7 +91,10 @@ export interface SessionListSource {
     cursor: string | undefined,
     scanBudget: number,
   ): Promise<SessionListScan>;
-  /** Only the rows a page returns; unknown Session IDs are omitted. */
+  /**
+   * Only the rows a page returns, with catalogue titles and effective readiness; unknown Session
+   * IDs are omitted.
+   */
   summaries(sessionIds: readonly string[]): Promise<SessionListSummary[]>;
   /** A cursor continuing after `after`, bound to the filter. */
   cursor(filter: SessionListFilter, after: number): Promise<string>;
@@ -102,10 +111,12 @@ export function storeSessionListSource(coordinator: SessionCoordinator): Session
         ...(cursor !== undefined ? { cursor } : {}),
         scanBudget,
       }),
-    summaries: (sessionIds) =>
+    summaries: async (sessionIds) =>
       sessionIds.length
-        ? store.call<SessionListSummary[]>({ op: 'summaries', sessionIds: [...sessionIds] })
-        : Promise.resolve([]),
+        ? (
+            await store.call<StoredListSummary[]>({ op: 'summaries', sessionIds: [...sessionIds] })
+          ).map((summary) => listedSession(summary, coordinator.provider))
+        : [],
     cursor: (filter, after) => store.call<string>({ op: 'list-cursor', filter, after }),
   };
 }

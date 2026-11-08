@@ -62,12 +62,46 @@ describe('Specification Workspace Attention contract', () => {
     }
   });
 
+  it('requires the provider and update time of a Session row', () => {
+    const response = workspace();
+    const row = { id: 'session-1', taskIds: [], status: 'quiet', providerId: 'claude' };
+    const check = (item: object) =>
+      Value.Check(SpecificationWorkspaceResponseSchema, {
+        ...response,
+        sections: {
+          ...response.sections,
+          sessions: { state: 'available', data: { items: [item], attention: [] } },
+        },
+      });
+    expect(check({ ...row, updatedAt: '2026-11-08T00:00:00.000Z' })).toBe(true);
+    expect(check(row)).toBe(false);
+    expect(check({ id: 'session-1', taskIds: [], status: 'quiet', updatedAt: 'x' })).toBe(false);
+  });
+
   it('accepts an untitled Session and a bounded Sessions section with hasMore', () => {
     const response = workspace();
     const sessions = {
       state: 'available',
       data: {
-        items: [{ id: 'session-1', taskIds: [], status: 'quiet' }],
+        items: [
+          {
+            id: 'session-1',
+            taskIds: [],
+            status: 'quiet',
+            providerId: 'claude',
+            updatedAt: '2026-11-08T00:00:00.000Z',
+          },
+          {
+            id: 'session-2',
+            taskIds: [],
+            status: 'authenticationRequired',
+            providerId: 'claude',
+            providerTitle: 'Claude',
+            modelId: 'claude-opus-4-1',
+            modelTitle: 'Opus 4.1',
+            updatedAt: '2026-11-08T00:00:00.000Z',
+          },
+        ],
         hasMore: true,
         attention: [],
       },

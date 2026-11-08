@@ -1,4 +1,29 @@
+import type { DemoCatalogue as CreationCatalogue } from '@nevo/specflow-contracts/demo';
 import type { DemoSpecification } from '../../demo-catalogue';
+import { DEMO_SEEDED_AT } from './seeded-at';
+
+/** The provider and model a Session row names, with their catalogue titles. */
+export interface DemoAgent {
+  providerId: string;
+  providerTitle?: string;
+  modelId?: string;
+  modelTitle?: string;
+}
+
+/** Seeded catalogue Sessions run on the first available demo provider and its first model. */
+export function seededDemoAgent(catalogue: Pick<CreationCatalogue, 'providers'>): DemoAgent {
+  const provider = catalogue.providers.find((item) => item.available);
+  const model = provider?.models[0];
+
+  return provider
+    ? {
+        providerId: provider.id,
+        providerTitle: provider.title,
+        ...(model ? { modelId: model.id, modelTitle: model.title } : {}),
+      }
+    : { providerId: 'demo' };
+}
+
 export interface SessionSummary {
   id: string;
   title: string;
@@ -55,8 +80,12 @@ export function rankDemoSessions(
     .map(({ item }) => item.id);
 }
 
-export function buildDemoSessionContribution(record: DemoSpecification) {
-  const items = buildDemoSessions(record);
+export function buildDemoSessionContribution(record: DemoSpecification, agent: DemoAgent) {
+  const items = buildDemoSessions(record).map((session) => ({
+    ...session,
+    ...agent,
+    updatedAt: DEMO_SEEDED_AT,
+  }));
   const attention = (record.signals ?? []).flatMap((signal) =>
     signal.kind === 'attention' && signal.target.kind === 'session'
       ? [

@@ -69,10 +69,14 @@ Availability and action states describe only what actually exists.
   ([Sessions API](sessions.md#session-list-association-read-and-composed-create)), non-archived,
   newest created first, at most 100 rows, with `hasMore: true` when more exist. The full, paged and
   archive-aware list is `GET /api/sessions?specId=`.
-- `WorkspaceSession.status` is Session readiness only, never an Engine attempt fact: `busy` ->
-  `active`, `requiresAttention` -> `attention`, `ready` -> `quiet`, `unavailable` -> `unknown`.
-  `taskIds` come from the association. `title` is optional; the server never invents one (the UI
-  shows its untitled label).
+- `WorkspaceSession.status` is the effective Session readiness only (the provider projection of
+  the single-Session read and the Session list), never an Engine attempt fact: `busy` -> `active`,
+  `requiresAttention` -> `attention`, `ready` -> `quiet`, `authenticationRequired` ->
+  `authenticationRequired`, `unavailable` -> `unknown`. `taskIds` come from the association.
+  `title` is optional; the server never invents one (the UI shows its untitled label).
+- Each row also carries `providerId`, `modelId?`, `updatedAt` and the catalogue titles
+  `providerTitle?` / `modelTitle?` (absent when not listed), as in the Session list, so Continue
+  session names the agent and its age without a provider catalogue read.
 - `recommendedSessionId`: the first visible associated Session by attention, then active, then the
   most recent `updatedAt`.
 - `actions.startSession` is available when the Sessions feature is enabled, a provider is usable and

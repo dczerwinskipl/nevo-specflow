@@ -35,8 +35,8 @@ related:
 
 **Status.** Accepted by the owner on 2026-11-08 (Session association UX, U4) and implemented in
 PR #126 (`features/sessions/list/SpecificationSessionsList.tsx`). The row amendment (provider
-mark, model, effective status, inline facts; §3) was accepted by the owner on 2026-11-08; its
-implementation and backend needs B1/B2 (§3.4) are open. Rationale and rejected alternatives:
+mark, model, effective status, inline facts; §3) was accepted by the owner on 2026-11-08 and is
+implemented together with backend needs B1/B2 (§3.4). Rationale and rejected alternatives:
 [Session association UX](../session-association-ux/README.md) and §9.
 
 ## 1. Purpose and source
@@ -134,10 +134,10 @@ contract:
 
 ### 3.4 Backend needs (Runtime)
 
-Both extend existing reads; no new endpoint and no UI-side join. Integration status: required, not
-yet planned. The exact schemas belong to the [Sessions API](../../../reference/api/sessions.md) and
+Both extend existing reads; no new endpoint and no UI-side join. Integration status: implemented
+(the workspace rows also carry `modelId` and `updatedAt`, for Continue session's agent fact and
+age). The exact schemas belong to the [Sessions API](../../../reference/api/sessions.md) and
 the [Specification Workspace API](../../../reference/api/specification-workspace.md#project-sessions-section).
-Until they land, rows show the raw `modelId` (else `providerId`) and the stored readiness.
 
 | Need                   | Required result                                                                                                                                                                                                                                                                                                |
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

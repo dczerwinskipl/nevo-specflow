@@ -3,6 +3,8 @@ import { AssociationTargetIdSchema, SessionReferenceIdSchema } from './associati
 import { SessionIdSchema, SessionInfoSchema, TurnStateSchema } from './model';
 
 const closed = { additionalProperties: false } as const;
+/** A provider or model title as the provider catalogue names it. */
+export const DisplayTitleSchema = Type.String({ minLength: 1, maxLength: 512 });
 
 export const SessionListLimits = { defaultLimit: 50, maxLimit: 100, scanBudget: 500 } as const;
 
@@ -63,7 +65,12 @@ export const SessionListItemSchema = Type.Object(
     sessionId: SessionReferenceIdSchema,
     title: Type.Optional(SessionInfoSchema.properties.title),
     providerId: SessionInfoSchema.properties.providerId,
+    /** The provider's display title from the Runtime's catalogue; absent when it is not listed. */
+    providerTitle: Type.Optional(DisplayTitleSchema),
     modelId: Type.Optional(SessionInfoSchema.properties.modelId),
+    /** The model's display title from the provider catalogue; absent when it is not listed. */
+    modelTitle: Type.Optional(DisplayTitleSchema),
+    /** Effective readiness: the same provider projection as the single-Session read. */
     readiness: SessionInfoSchema.properties.readiness,
     activeTurn: Type.Optional(
       Type.Object({ turnId: SessionIdSchema, state: TurnStateSchema }, closed),

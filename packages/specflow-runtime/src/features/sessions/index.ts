@@ -15,9 +15,11 @@ export type {
   SessionListRow,
   SessionListScan,
   SessionListSummary,
+  StoredListSummary,
   StoredAssociation,
 } from './persistence/protocol';
 export { registerSessionErrorHandling } from './http/error-handling';
+export { listedSession } from './http/projection';
 export { authorizeSessionWrite } from './http/authorization';
 export { sessionScope, type SessionScopeIdentity, type SessionCapabilityId } from './scope';
 export { createDemoSessionReferences } from './demo/references';

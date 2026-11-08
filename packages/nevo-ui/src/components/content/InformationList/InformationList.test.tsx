@@ -58,6 +58,19 @@ describe('InformationList', () => {
     expect(withLeading).toContain('type="checkbox"');
   });
 
+  it('anchors the leading box at the row top by default and centres it on the row on request', () => {
+    const leading = (align?: 'top' | 'row-center') =>
+      renderToStaticMarkup(<InformationList.Leading align={align}>x</InformationList.Leading>);
+    expect(leading()).toContain('h-control-height-default');
+    expect(leading()).toContain('self-start');
+    expect(leading()).toContain('data-align="top"');
+    // One box per alignment: the classes never conflict (cn does not merge utilities).
+    expect(leading('row-center')).toContain('h-5');
+    expect(leading('row-center')).toContain('self-center');
+    expect(leading('row-center')).not.toContain('self-start');
+    expect(leading('row-center')).not.toContain('h-control-height-default');
+  });
+
   it('renders trailing rail only when InformationList.Trailing is present', () => {
     const withoutTrailing = renderToStaticMarkup(
       <InformationList>

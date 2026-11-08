@@ -98,16 +98,18 @@ not compared down the column; an absent fact takes no space.
 | 1440, row ≥ 40 rem | title on one line (ellipsis); line 2 `5 minut temu · Opus 4.1 · 3 zadania · ⚠ Wymaga uwagi`, the status the last inline item after a separator; mark centred on both lines |
 | 390, row < 40 rem  | title wrapping; facts `5 minut temu · Opus 4.1 · 3 zadania` wrapping; status on its own line; mark centred on all lines                                                    |
 
-A wrapped line breaks between items, never inside the age or the task count. The status shares the
-facts' line box (icon and text centred on it), so it never sits above the facts.
+A wrapped line breaks between items, never inside the age or the task count, and no line starts
+with a separator (each item carries its leading `·`; the one opening a line is clipped). The status
+shares the facts' line box (icon and text centred on it), so it never sits above the facts.
 
 **Component decision.** `OperationalRow` (product-shared, `shared/operational-list`) gains an
 explicit prop, for example `factsLayout="inline"`, never inferred from the fact count. In inline
 mode it accepts up to three facts, places the status as above, honours a per-fact `maxWidth` with
 ellipsis (the agent fact: 16 rem, full name kept in its accessible text; age and task count never
 truncate) and centres the leading mark on the row. The default tracked layout is unchanged for other
-lists. Product-owned extension; Nevo UI unchanged (`InformationList.Leading` accepts a class
-override).
+lists. The row centring is a Nevo UI prop, `InformationList.Leading align="row-center"` (a 20 px
+box centred on the whole row; default `top`), with its own Nevo UI contract story and test; the rest
+is a product-owned extension of `OperationalRow`.
 
 ### 3.3 Status: effective Session readiness only
 

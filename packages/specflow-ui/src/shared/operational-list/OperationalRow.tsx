@@ -168,49 +168,54 @@ export function OperationalRow({
     );
   };
 
+  // Every inline item opens with its separator (a 1.5-unit box and a 1.5-unit gap). The line is
+  // shifted left by both and clipped, so the separator that opens any line, wrapped or not, is
+  // hidden: a line never starts with `·`.
+  const separator = (
+    <span aria-hidden="true" className="w-1.5 shrink-0 text-center" data-inline-separator>
+      ·
+    </span>
+  );
   const inlineSecondary =
     populatedFacts.length > 0 || supportingContent ? (
       <Typography
         as="div"
         variant="body-sm"
-        className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-content-muted"
+        className="min-w-0 overflow-hidden text-content-muted"
         data-spec-secondary="true"
         data-facts-layout="inline"
       >
-        {populatedFacts.map((fact, index) => (
-          <span
-            key={index}
-            className="flex min-w-0 max-w-full items-center gap-1.5"
-            data-inline-fact
-          >
-            {index > 0 ? <span aria-hidden="true">·</span> : null}
-            {renderInlineFact(fact)}
-          </span>
-        ))}
-        {supportingContent ? (
-          // Narrow: the status takes its own line; Wide: the last inline item after a separator.
-          <span
-            className="flex min-w-0 max-w-full basis-full items-center gap-1.5 @min-[40rem]/info-row:basis-auto"
-            data-inline-status
-          >
-            {populatedFacts.length > 0 ? (
-              <span aria-hidden="true" className="hidden @min-[40rem]/info-row:inline">
-                ·
-              </span>
-            ) : null}
-            {supportingContent}
-          </span>
-        ) : null}
+        <div className="-ml-3 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
+          {populatedFacts.map((fact, index) => (
+            <span
+              key={index}
+              className="flex min-w-0 max-w-full items-center gap-1.5"
+              data-inline-fact
+            >
+              {separator}
+              {renderInlineFact(fact)}
+            </span>
+          ))}
+          {supportingContent ? (
+            // Narrow: the status takes its own line; Wide: the last inline item.
+            <span
+              className="flex min-w-0 max-w-full basis-full items-center gap-1.5 @min-[40rem]/info-row:basis-auto"
+              data-inline-status
+            >
+              {separator}
+              {supportingContent}
+            </span>
+          ) : null}
+        </div>
       </Typography>
     ) : null;
 
   const leadingSlot =
     (leading != null && leading !== false) || list?.selectable ? (
       <InformationList.Leading
+        // Inline: a line-height box centred on the whole row at any height.
+        align={inline ? 'row-center' : 'top'}
         className={cn(
-          // Inline: a line-height box centred on the whole row at any height, not the
-          // control-height box anchored at the row top (`!`: Nevo UI's `cn` does not merge).
-          inline && 'h-5! self-center!',
           // Outside a selectable list a click on the mark falls through to the primary action.
           inline && !list?.selectable && 'pointer-events-none',
         )}

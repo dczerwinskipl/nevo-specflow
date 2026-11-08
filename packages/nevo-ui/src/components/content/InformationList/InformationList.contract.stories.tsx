@@ -71,6 +71,53 @@ export const InteractionContract: Story = {
   },
 };
 
+/**
+ * `align="row-center"`: a decorative mark centred on the whole row at any row height (here a
+ * wrapping three-line row); the default `top` box stays anchored at the row top.
+ */
+export const LeadingRowCenter: Story = {
+  render: () => (
+    <div className="w-72">
+      <InformationList>
+        {(['row-center', 'top'] as const).map((align) => (
+          <InformationList.Item key={align} data-testid={`row-${align}`}>
+            <InformationList.Leading align={align}>
+              <span
+                aria-hidden="true"
+                data-testid={`mark-${align}`}
+                className="size-4 bg-current"
+              />
+            </InformationList.Leading>
+            <InformationList.Content data-testid={`content-${align}`}>
+              <Typography variant="title-sm">
+                A long title that wraps over several lines in a narrow row, so the row is much
+                taller than its leading box
+              </Typography>
+              <Typography variant="body-sm">Supporting fact</Typography>
+            </InformationList.Content>
+          </InformationList.Item>
+        ))}
+      </InformationList>
+    </div>
+  ),
+  play: async ({ canvas }) => {
+    const centre = (box: DOMRect) => box.top + box.height / 2;
+    const mark = canvas.getByTestId('mark-row-center').getBoundingClientRect();
+    const content = canvas.getByTestId('content-row-center').getBoundingClientRect();
+    assert(content.height > 70, 'The row must span several lines for the check to mean anything');
+    assert(
+      Math.abs(centre(mark) - centre(content)) <= 1,
+      'A row-centred mark sits on the centre of the whole row',
+    );
+    const topMark = canvas.getByTestId('mark-top').getBoundingClientRect();
+    const topContent = canvas.getByTestId('content-top').getBoundingClientRect();
+    assert(
+      centre(topMark) < centre(topContent) - 10,
+      'The default leading box stays anchored at the row top',
+    );
+  },
+};
+
 export const CompactTextRows: Story = {
   render: () => (
     <div className="w-72">

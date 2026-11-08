@@ -1685,6 +1685,44 @@
       ]
     },
     {
+      "id": "ideas.specflow-runtime.project-mode-spec-overview",
+      "type": "architecture",
+      "title": "Project-mode Specification Overview — gap analysis and minimal-complete scope (PR",
+      "status": "current",
+      "file": "docs/ideas/specflow-runtime/project-mode-spec-overview/README.md",
+      "read_when": [
+        "making the Specification Overview work against a real project Runtime (not --demo)",
+        "changing which workspace sections are not_implemented, empty or available in project mode",
+        "changing the Overview visibility rules that depend on preparationState / isEmpty"
+      ],
+      "summary": "Why the project-mode Specification Overview shows only \"Niedostępne na tym serwerze\" (main pane and Activity history) although Documents and Sessions are real, what the Engine already provides, and the decided minimal-complete scope for PR #126: a Tasks contribution from the verified manifest, a real (partial) activity contribution, an overview-derived summary, Overview visibility rules decoupled from \"no Tasks\", the preparation call-to-action wired to New Session, contract changes, task breakdown, verification and the owner decisions of 2026-11-08 (Tasks EmptyState, partial activity).",
+      "related": [
+        "reference.api.specification-workspace",
+        "ideas.specflow-ui.screens.specification-workspace",
+        "ideas.specflow-runtime.session-association",
+        "ideas.specflow-ui.session-association-ux",
+        "reference.api.specs-overview",
+        "reference.api.specification-documents",
+        "architecture.runtime.task-read-composition"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "server",
+        "ui"
+      ],
+      "tags": [
+        "specification",
+        "workspace",
+        "overview",
+        "tasks",
+        "activity",
+        "sessions",
+        "documents",
+        "planning"
+      ]
+    },
+    {
       "id": "ideas.specflow-runtime.session-association",
       "type": "architecture",
       "title": "Session association registry, Session list and Specification Session integration (stage 3)",

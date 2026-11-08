@@ -192,6 +192,41 @@ export const CurrentSessions: Story = {
   },
 };
 
+/**
+ * Project mode: no row has associated Tasks, so no row reserves a column for the count; the relative
+ * update starts under the title and stays on one line.
+ */
+export const WithoutAssociatedTasks: Story = {
+  args: {
+    pages: {
+      current: [
+        {
+          items: [
+            row('p', { title: 'Migracja tokenów', updatedAt: minutesAgo(1) }),
+            row('q', { title: 'Przegląd przepływu SSO', updatedAt: minutesAgo(60 * 12) }),
+            row('r', { title: 'Długa sesja', readiness: 'busy', updatedAt: minutesAgo(60 * 12) }),
+          ],
+        },
+      ],
+      archive: [],
+    },
+  },
+  play: async ({ canvasElement, canvas }) => {
+    await canvas.findByRole('button', { name: 'Migracja tokenów' });
+    for (const sessionId of ['p', 'q', 'r']) {
+      const rowElement = canvasElement.querySelector(`[data-session-row="${sessionId}"]`)!;
+      const title = rowElement.querySelector('[data-spec-title] button')!.getBoundingClientRect();
+      const facts = rowElement.querySelectorAll('[data-compact-facts] > div');
+      await expect(facts).toHaveLength(1);
+      const updated = facts[0]!.querySelector('span')!;
+      const box = updated.getBoundingClientRect();
+      await expect(Math.abs(box.left - title.left)).toBeLessThan(2);
+      // One line: a relative time never wraps inside the fact column.
+      await expect(box.height).toBeLessThan(parseFloat(getComputedStyle(updated).lineHeight) * 1.5);
+    }
+  },
+};
+
 /** Archived Sessions sit under **Archiwum**, without an archived label; empty says so, no action. */
 export const ArchiveCollection: Story = {
   args: {

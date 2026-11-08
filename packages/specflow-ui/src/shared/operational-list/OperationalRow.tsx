@@ -99,7 +99,9 @@ export function OperationalRow({
       ? 'min-w-0'
       : facts.length === 2
         ? 'grid min-w-0 grid-cols-1 gap-y-0.5 @min-[40rem]/info-row:grid-cols-[calc(var(--spacing)*18)_calc(var(--spacing)*24)_minmax(0,1fr)] @min-[40rem]/info-row:items-baseline @min-[40rem]/info-row:gap-x-2'
-        : 'grid min-w-0 grid-cols-1 gap-y-0.5 @min-[40rem]/info-row:grid-cols-[calc(var(--spacing)*18)_minmax(0,1fr)] @min-[40rem]/info-row:items-baseline @min-[40rem]/info-row:gap-x-2';
+        : // One fact: short facts keep the shared 18-unit column (the fact's min width), a longer
+          // one (a relative time) grows it up to 40 units instead of wrapping inside it.
+          'grid min-w-0 grid-cols-1 gap-y-0.5 @min-[40rem]/info-row:grid-cols-[fit-content(calc(var(--spacing)*40))_minmax(0,1fr)] @min-[40rem]/info-row:items-baseline @min-[40rem]/info-row:gap-x-2';
   const renderFact = (fact: (typeof compactFacts)[number] | undefined) => {
     if (fact === undefined) {
       return null;
@@ -112,7 +114,11 @@ export function OperationalRow({
 
     return (
       <span
-        className={cn('min-w-0 text-content-muted [overflow-wrap:anywhere]', isMono && 'font-mono')}
+        className={cn(
+          'min-w-0 text-content-muted [overflow-wrap:anywhere]',
+          facts.length === 1 && '@min-[40rem]/info-row:min-w-18',
+          isMono && 'font-mono',
+        )}
         {...attrs}
       >
         {accessibleText ? (

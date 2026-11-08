@@ -438,11 +438,15 @@ export const CloseAndReopenRestoresModeAndPosition: Story = {
     view.dispatch({ selection: { anchor: view.state.doc.line(entered + 2).from } });
     view.focus();
     await userEvent.keyboard('SZKIC');
-    await frames();
+    // Typing/focusing can legitimately move the viewport to keep the caret visible.
+    // Closing must retain the position the user actually saw immediately before close.
+    const beforeClose = await settled(() => editorTopLine(view));
     await userEvent.click(canvas.getByRole('button', { name: 'Zamknij panel' }));
     await userEvent.click(canvas.getByRole('button', { name: 'Zamknij panel' }));
     const reopened = await openEditorOnly(canvasElement);
-    await waitFor(() => expect(Math.abs(editorTopLine(reopened) - entered)).toBeLessThanOrEqual(1));
+    await waitFor(() =>
+      expect(Math.abs(editorTopLine(reopened) - beforeClose)).toBeLessThanOrEqual(1),
+    );
     await expect(reopened.state.doc.toString()).toContain('SZKIC');
   },
 };

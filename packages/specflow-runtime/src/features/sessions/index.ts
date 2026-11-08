@@ -1,4 +1,5 @@
 export { createSessionsFeature } from './feature';
+export { runAntigravityHook } from './providers/antigravity/hook-client';
 export { parseSessionsFeatureConfig, type SessionsFeatureConfig } from './configuration';
 export type { SessionDriver } from './providers/driver';
 export { SessionError } from './errors';

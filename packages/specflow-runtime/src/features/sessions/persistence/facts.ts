@@ -6,7 +6,6 @@ import type {
   ConversationEntry,
   WorkSummary,
   Interaction,
-  TurnSummary,
   ToolActionSummary,
   SessionChange,
   LiveProjection,
@@ -15,8 +14,10 @@ import type { StoredSession, StoredTurn, StoreCommand, DriverFact } from './prot
 import type { StoreDatabase } from './database';
 import { transitionWork } from '../lifecycle/reducer';
 import { decode, fail, stable, prefix } from './encoding';
+import type { createSessionTelemetry } from './telemetry';
 
 interface FactDependencies extends Pick<StoreDatabase, 'get' | 'run'> {
+  telemetry: ReturnType<typeof createSessionTelemetry>;
   now(this: void): string;
   session(this: void, id: string): StoredSession;
   turn(this: void, id: string, sessionId: string): StoredTurn;
@@ -58,6 +59,7 @@ export function createProviderFacts({
   body,
   preview,
   entry,
+  telemetry,
 }: FactDependencies) {
   function applyFact(c: Extract<StoreCommand, { op: 'fact' }>, effectVerified = false): boolean {
     const s = session(c.sessionId),
@@ -287,7 +289,13 @@ export function createProviderFacts({
 
     if (f.kind === 'usage') {
       const hash = createHash('sha256')
-        .update(stable({ basis: f.basis, counters: f.counters }))
+        .update(
+          stable({
+            basis: f.basis,
+            counters: f.counters,
+            ...(f.baseline ? { baseline: true } : {}),
+          }),
+        )
         .digest('hex');
       const existing = get(
         'SELECT hash FROM usage_samples WHERE invocation=? AND sample=?',
@@ -300,70 +308,12 @@ export function createProviderFacts({
 
       if (!existing) {
         run('INSERT INTO usage_samples VALUES(?,?,?)', c.invocationId, f.sampleId, hash);
-        const aggregate = JSON.parse(
-          String(
-            get(
-              'SELECT data FROM usage_basis WHERE invocation=? AND basis=?',
-              c.invocationId,
-              f.basis,
-            )?.data ?? '{}',
-          ),
-        ) as Record<string, number>;
-        const previous = JSON.parse(
-          String(get('SELECT data FROM usage_session WHERE session=?', c.sessionId)?.data ?? '{}'),
-        ) as Record<string, number>;
-        for (const [key, value] of Object.entries(f.counters)) {
-          if (value === undefined || !Number.isSafeInteger(value) || value < 0) {
-            fail('SESSION_INPUT_INVALID', 'Invalid usage counter.');
-          }
-
-          if (f.basis === 'turn-total') {
-            aggregate[key] = value;
-          } else if (f.basis === 'delta') {
-            aggregate[key] = (aggregate[key] ?? 0) + value;
-          } else {
-            if (previous[key] !== undefined && value >= previous[key]) {
-              aggregate[key] = (aggregate[key] ?? 0) + value - previous[key];
-            }
-
-            previous[key] = value;
-          }
-
-          if (aggregate[key] !== undefined && !Number.isSafeInteger(aggregate[key])) {
-            fail('SESSION_INPUT_INVALID', 'Usage counter overflow.');
-          }
-        }
-
-        run(
-          'INSERT OR REPLACE INTO usage_basis VALUES(?,?,?)',
-          c.invocationId,
-          f.basis,
-          JSON.stringify(aggregate),
-        );
-        if (f.basis === 'session-cumulative') {
-          run(
-            'INSERT OR REPLACE INTO usage_session VALUES(?,?)',
-            c.sessionId,
-            JSON.stringify(previous),
-          );
-        }
-
-        const basis = (name: string) =>
-          JSON.parse(
-            String(
-              get(
-                'SELECT data FROM usage_basis WHERE invocation=? AND basis=?',
-                c.invocationId,
-                name,
-              )?.data ?? '{}',
-            ),
-          ) as NonNullable<TurnSummary['usage']>;
-        t.summary.usage = {
-          ...basis('session-cumulative'),
-          ...basis('delta'),
-          ...basis('turn-total'),
-        };
+        telemetry.usage(s, t, f);
       }
+    }
+
+    if (f.kind === 'measurement') {
+      telemetry.measurement(s, t, f);
     }
 
     if (f.kind === 'text') {

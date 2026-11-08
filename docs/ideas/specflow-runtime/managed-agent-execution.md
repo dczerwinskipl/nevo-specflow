@@ -20,6 +20,109 @@ related:
 
 # Native modes and managed agent execution
 
+This document owns implemented execution policy. The consolidated
+[provider capability backlog](provider-migration-plan.md#current-scope-and-capability-backlog-ownership)
+owns future settings, tool inventory and platform isolation work, all outside PR #107.
+
+## Common execution-boundary acceptance
+
+The owner's 2026-11-07 decision separates two execution authorities:
+
+- **Workspace execution:** automatic tools must remain within the workspace,
+  including when a path is replaced. Native mode names do not imply this guarantee.
+- **Approved host execution:** the user approves the exact command, its starting
+  directory and an explicit warning that it can affect files outside the workspace.
+  The command runs with the user's account permissions. Every unconfined command
+  requires a separate once-only approval, even a seemingly harmless command.
+
+Approved host execution does not require an OS workspace sandbox. AppContainer
+is deferred, rather than a prerequisite for this delegation. Engine admission,
+process ownership and filesystem containment remain separate responsibilities.
+No mode, resumed context or hook replay may turn a one-operation grant into a
+persistent permission. Codex retains its current sandbox and denial of escalation;
+adding approved Codex host escalation requires a separate protocol contract.
+
+The complete migration requires usable native Agent modes for Claude, Codex and
+Antigravity. Discovery-only Antigravity is an interim containment measure.
+Engine admission coordinates effects and recovery. Filesystem isolation is a
+separate execution prerequisite when a mode promises workspace-scoped writes.
+
+Apply the same acceptance cases to each adapter while preserving native mode
+semantics. In particular, Antigravity Plan currently requests write authority;
+it cannot inherit another provider's read-only Plan guarantee.
+
+For automatic workspace tools, require positive in-workspace controls and negative
+outside-workspace and path-replacement controls. For unconfined commands, verify
+exact one-shot approval, denial, loss of delivery and no reuse. Use synthetic
+credentials and a local deterministic model backend for
+manual native protocol checks. Automated tests use controlled programs and never
+depend on installed providers or a subscription.
+
+Manual observations on Windows x64 on 2026-11-07 are bounded to the exercised
+installations and profiles. Claude reported 2.1.312, Codex reported
+0.166.0-alpha.6 and Antigravity reported 1.3.3. Versions identify observations
+and are not admission pins.
+
+| Surface                                                                            | Observation                                                                                                                                                                                     | Remaining evidence                                                                                        |
+| ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Claude native Write/Edit with the adapter's restricted profile and manual approval | In-workspace controls succeeded. Direct outside writes/edits and writes/edits after junction replacement were refused.                                                                          | Repeat across the other admitted native permission modes.                                                 |
+| Claude native Bash after approval                                                  | `permissions.ask: [Bash]` forces a host request in acceptEdits, auto and manual. dontAsk refuses it. Native commands may affect outside files after explicit approval.                          | Full semantic model acceptance remains separate from local protocol controls.                             |
+| Codex app-server command execution with workspaceWrite sandbox policy              | In-workspace write succeeded. Read-only, outside-workspace, pre-existing junction and post-start junction replacement writes were refused.                                                      | Full normal Turn composition and retained authentication under the final boundary.                        |
+| Codex native apply-patch helper through sandboxed command execution                | An in-workspace patch succeeded and a direct outside patch was refused.                                                                                                                         | The helper's directory replacement race remains unverified.                                               |
+| Antigravity file hooks with Runtime-held native handles                            | Real CLI view/write and PostToolUse succeeded. Directory replacement after pre-tool grant failed with EBUSY; no outside marker was written. New-file reservation and argument overwrite worked. | This is a supported direct-file tool profile, not arbitrary recursive traversal or an OS process sandbox. |
+| Antigravity commands                                                               | Canonical once-only host approval produced exactly one native auto_approve receipt and successful execution.                                                                                    | Host effects are explicitly delegated, not represented as workspace containment.                          |
+
+These manual checks ran outside all automated suites, with owned scratch paths,
+synthetic local model replies where required, and no inference subscription.
+Standalone helper checks do not certify the complete native Turn path.
+
+Windows root-exit notification may arrive before Job Object accounting reaches
+zero. Runtime allows a bounded 100 ms accounting drain after observed root exit,
+then terminates any remaining owned processes and independently verifies zero.
+Root exit alone never proves tree settlement. Explicit cancellation of a running
+root does not wait through this natural-exit drain. Regression tests cover delayed
+accounting, surviving descendants and unavailable termination evidence.
+
+Claude uses `CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR=1` in its fixed settings so
+the displayed starting directory remains the project root. A two-command native
+control changed directory in the first command and confirmed that the second
+started in the workspace, with two separate permission requests.
+
+### Windows isolation prototype (deferred)
+
+A disposable AppContainer prototype started a real Node process, allowed a file
+write in a directory granted to its package SID and refused an outside write with
+`EPERM`. The prototype used a private profile and removed that profile afterward.
+This establishes a candidate OS mechanism; it does not establish provider readiness.
+
+An additional native Win32 probe created a session-only synthetic Credential
+Manager entry on the host. `CredReadW` inside the disposable AppContainer returned
+`ERROR_ACCESS_DENIED`. The host then deleted that exact synthetic entry. This
+check accessed no personal credential. The existing consumer-keyring authentication
+path therefore cannot be assumed to work inside the candidate boundary.
+
+Any future AppContainer integration must settle and implement:
+
+- Provider authentication and refresh under the isolated identity, including
+  compatibility with the existing consumer Credential Manager source.
+- Invocation-local question and permission transport. AppContainer network
+  restrictions affect the existing loopback MCP endpoint.
+- Executable/dependency access and normal tool startup. A direct Node file entry
+  in the prototype encountered denied ancestor metadata access.
+- A process launcher that joins the existing Runtime-owned Job Object before
+  dispatch, restricts inherited handles, and preserves protocol streams.
+- Owned access grants with crash recovery, revocation and cleanup. Tests must
+  prove the boundary persists after path replacement and in descendant processes.
+
+Product setup privileges are an open deployment decision. A local prototype
+must not silently grant broad host access to make an existing CLI start.
+These prototype requirements do not block explicitly approved host execution.
+
+References are the Windows
+[AppContainer execution contract](https://learn.microsoft.com/en-us/windows/win32/secauthz/implementing-an-appcontainer)
+and
+[restricted-token API](https://learn.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-createrestrictedtoken).
+
 The owner explicitly requires an agent capable of edits/tools as the normal task default.
 Read-only remains useful for tests and optional discussion/planning, not the final product default.
 This supersedes the earlier restriction of W1/W2 to a future PR. W1/W2 and writable

@@ -118,7 +118,7 @@ export function specificationSlugFromTitle(title: string, specId: string): strin
     .toLowerCase()
     .replace(/ł/gu, 'l')
     .replace(/[^a-z0-9]+/gu, '-')
-    .replace(/^-+|-+$/gu, '')
+    .replace(/^-|-$/gu, '')
     .slice(0, 80)
     .replace(/-+$/gu, '');
   const candidate = normalized || 'spec-' + specId.slice(0, 8);

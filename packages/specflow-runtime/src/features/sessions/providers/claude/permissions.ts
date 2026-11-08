@@ -41,6 +41,15 @@ export function prepareClaudeRequest(frame: unknown, writable: boolean) {
   }
 
   let summary: string;
+  let action:
+    | {
+        operation: 'command';
+        command: string;
+        cwd: string;
+        authority: 'host-execution';
+        approval: 'once';
+      }
+    | undefined;
   if (request.tool_name === 'Bash') {
     if (
       typeof input.command !== 'string' ||
@@ -58,6 +67,13 @@ export function prepareClaudeRequest(frame: unknown, writable: boolean) {
     }
 
     summary = 'Run command:\n' + input.command;
+    action = {
+      operation: 'command',
+      command: input.command,
+      cwd: '.',
+      authority: 'host-execution',
+      approval: 'once',
+    };
   } else {
     if (
       typeof input.file_path !== 'string' ||
@@ -89,8 +105,11 @@ export function prepareClaudeRequest(frame: unknown, writable: boolean) {
     key: 'permission:' + requestId,
     interaction: {
       kind: 'permission' as const,
-      prompt: 'Claude requests permission for one operation.',
+      prompt: action
+        ? 'Allow this command once with your account permissions? It may modify files outside the workspace.'
+        : 'Claude requests permission for one operation.',
       actionSummary: summary,
+      ...(action ? { action } : {}),
     },
   };
   validateDriverFact({ kind: 'interaction', ...question });

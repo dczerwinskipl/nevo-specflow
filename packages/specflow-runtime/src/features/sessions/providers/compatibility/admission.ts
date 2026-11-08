@@ -3,7 +3,9 @@ import type { ProviderCompatibility } from './catalogue';
 export interface ProviderAdmissionPrerequisites {
   configured: boolean;
   authenticated: boolean;
-  securityVerified: boolean;
+  /** The adapter checked its supported native policy/configuration contract.
+   * This is not per-build certification or proof of an OS sandbox. */
+  executionPolicyChecked: boolean;
   protocolVerified: boolean;
   executionMode: string;
   managedEffectsAvailable?: boolean;
@@ -21,7 +23,7 @@ export function admitProvider(
   if (
     !prerequisites.configured ||
     !prerequisites.authenticated ||
-    !prerequisites.securityVerified ||
+    !prerequisites.executionPolicyChecked ||
     !prerequisites.protocolVerified ||
     !(
       prerequisites.executionMode === 'read-only' ||

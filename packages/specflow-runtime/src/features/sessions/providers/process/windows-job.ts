@@ -10,6 +10,47 @@ import type { ProcessDisposition } from './termination';
 
 let kernelLibrary: ReturnType<typeof Koffi.load> | undefined;
 
+const rootExitAccountingMs = 100;
+const forcedSettlementMs = 2000;
+const accountingPollMs = 20;
+
+/** Root exit notification can precede the Job Object accounting update. Only a
+ * positive zero count proves natural settlement; surviving descendants still
+ * require termination and another authoritative accounting check. */
+export async function settleWindowsJob(options: {
+  rootExited: boolean;
+  active(): number | undefined;
+  terminate(): boolean;
+}): Promise<ProcessDisposition> {
+  let count = options.active();
+  if (options.rootExited && count !== undefined) {
+    const deadline = performance.now() + rootExitAccountingMs;
+    while (count !== undefined && count > 0 && performance.now() < deadline) {
+      await delay(accountingPollMs);
+      count = options.active();
+    }
+  }
+
+  if (count === 0) {
+    return { state: 'stopped', reason: 'group-exited' };
+  }
+
+  if (!options.terminate()) {
+    return { state: 'unknown', reason: 'unverified-tree' };
+  }
+
+  const deadline = performance.now() + forcedSettlementMs;
+  do {
+    if (options.active() === 0) {
+      return { state: 'stopped', reason: 'tree-killed' };
+    }
+
+    await delay(accountingPollMs);
+  } while (performance.now() < deadline);
+
+  return { state: 'unknown', reason: 'unverified-tree' };
+}
+
 // The bootstrap cannot start a provider before joining the Runtime-owned job. Its
 // temporary handle is closed before dispatch, leaving Runtime as the sole owner.
 // Unlike assigning an already running provider, this leaves no unowned dispatch gap.
@@ -158,27 +199,14 @@ export function createWindowsJob(executable: string, args: readonly string[]) {
         child.once('error', onExit);
       });
     },
-    stop(): Promise<ProcessDisposition> {
+    stop(rootExited = false): Promise<ProcessDisposition> {
       settlement ??= (async () => {
         try {
-          if (active() === 0) {
-            return { state: 'stopped', reason: 'group-exited' } as const;
-          }
-
-          if (!terminate(job, 1)) {
-            return { state: 'unknown', reason: 'unverified-tree' } as const;
-          }
-
-          const deadline = performance.now() + 2000;
-          do {
-            if (active() === 0) {
-              return { state: 'stopped', reason: 'tree-killed' } as const;
-            }
-
-            await delay(20);
-          } while (performance.now() < deadline);
-
-          return { state: 'unknown', reason: 'unverified-tree' } as const;
+          return await settleWindowsJob({
+            rootExited,
+            active,
+            terminate: () => !!terminate(job, 1),
+          });
         } finally {
           closed = true;
           close(job);

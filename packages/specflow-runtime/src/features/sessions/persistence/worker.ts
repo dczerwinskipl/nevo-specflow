@@ -10,6 +10,7 @@ import type {
   WorkSummary,
   Interaction,
   ToolActionSummary,
+  RefreshTelemetryReceipt,
 } from '@nevo/specflow-contracts/sessions';
 import type { StoredSession, StoredTurn, StoreCommand, WorkerRequest } from './protocol';
 import { terminalizeTurn } from '../lifecycle/reducer';
@@ -21,6 +22,9 @@ import { createSessionCursors } from './cursors';
 import { createSessionReads } from './reads';
 import { createProviderFacts } from './facts';
 import { createEffectReconciliation } from './reconciliation';
+import { createSessionTelemetry } from './telemetry';
+
+const TELEMETRY_PUBLICATION_RETRY_MS = 1000;
 
 /** Separate Worker entry: imported surface checks must not acquire a database. */
 export async function runSessionWorker(): Promise<void> {
@@ -351,11 +355,58 @@ export async function runSessionWorker(): Promise<void> {
 
     saveTurn(s.snapshot.session.sessionId, t);
     refreshAttention(s, t);
+    telemetry.terminal(s, t);
     emit(s, 'turn', { turn: t.summary, projection: projection(s) });
     entry(s, t.summary.turnId, 'outcome', {
       text: t.summary.state === 'terminal' ? t.summary.outcome : outcome,
       complete: true,
     });
+  }
+
+  let publicationTimer: ReturnType<typeof setTimeout> | undefined;
+  let publicationAt: number | undefined;
+  const telemetry = createSessionTelemetry({
+    get,
+    all,
+    run,
+    now,
+    session,
+    emit,
+    schedulePublication,
+    owner: options.runtimeId,
+  });
+  function schedulePublication(due: number) {
+    if (publicationAt !== undefined && publicationAt <= due) {
+      return;
+    }
+
+    clearTimeout(publicationTimer);
+    publicationAt = due;
+    publicationTimer = setTimeout(
+      () => {
+        publicationAt = undefined;
+        committedChanges.clear();
+        try {
+          transaction(() => telemetry.publishDue(Date.now()));
+          if (committedChanges.size) {
+            port.postMessage({ changed: [...committedChanges] });
+          }
+
+          const next = telemetry.nextPublicationAt();
+          if (next !== undefined) {
+            schedulePublication(next);
+          }
+        } catch (error) {
+          // Pending rows survive a failed transaction and are recovered by the
+          // next owner. This Worker must not keep writing after losing its fence.
+          if (!(error instanceof StoreFault && error.code === 'SESSION_STORE_BUSY')) {
+            schedulePublication(Date.now() + TELEMETRY_PUBLICATION_RETRY_MS);
+          }
+        }
+      },
+      Math.max(0, due - Date.now()),
+    );
+    publicationTimer.unref();
   }
 
   const { applyFact } = createProviderFacts({
@@ -372,6 +423,7 @@ export async function runSessionWorker(): Promise<void> {
     body,
     preview,
     entry,
+    telemetry,
   });
   const effects = createEffectReconciliation({ get, all, run, request, remember, turn, applyFact });
   // Only active records are reconciled; settled conversation/content is not read at boot.
@@ -415,7 +467,171 @@ export async function runSessionWorker(): Promise<void> {
       }
     }
   });
+  const pendingPublication = telemetry.nextPublicationAt();
+  if (pendingPublication !== undefined) {
+    schedulePublication(pendingPublication);
+  }
+
   function execute(c: StoreCommand): unknown {
+    if (c.op === 'telemetry') {
+      return telemetry.read(session(c.sessionId), c.expectedScope);
+    }
+
+    if (c.op === 'telemetry-source') {
+      return {
+        providerId: session(c.sessionId).snapshot.session.providerId,
+        nativeScope: get('SELECT scope FROM provider_contexts WHERE session=?', c.sessionId)?.scope,
+        observationFence: telemetry.observationBinding(session(c.sessionId)),
+      };
+    }
+
+    if (c.op === 'telemetry-migrate') {
+      return transaction(() => telemetry.migrate());
+    }
+
+    if (c.op === 'telemetry-expiry-deadline') {
+      return telemetry.expiryDeadline(session(c.sessionId));
+    }
+
+    if (c.op === 'telemetry-expire') {
+      return transaction(() => telemetry.expire(session(c.sessionId)));
+    }
+
+    if (c.op === 'telemetry-refresh-state') {
+      return transaction(() =>
+        telemetry.refreshState(
+          session(c.sessionId),
+          c.state,
+          c.groups,
+          c.failed,
+          c.expectedGeneration,
+        ),
+      );
+    }
+
+    if (c.op === 'telemetry-observations') {
+      return transaction(() => {
+        const scope = get(
+          'SELECT scope FROM provider_contexts WHERE session=?',
+          c.sessionId,
+        )?.scope;
+        if (scope && c.expectedScope !== scope) {
+          fail('PROVIDER_UNAVAILABLE', 'Provider account binding changed.');
+        }
+
+        return telemetry.observations(
+          session(c.sessionId),
+          c.measurements,
+          c.expectedScope,
+          c.observedAt,
+          c.expectedGeneration,
+        );
+      });
+    }
+
+    if (c.op === 'telemetry-retire-observations') {
+      return transaction(() => {
+        const scope = get(
+          'SELECT scope FROM provider_contexts WHERE session=?',
+          c.sessionId,
+        )?.scope;
+        if (!scope || scope !== c.nativeScope || scope === c.observedScope) {
+          fail('PROVIDER_UNAVAILABLE', 'Provider account binding changed.');
+        }
+
+        return telemetry.retireObservations(
+          session(c.sessionId),
+          c.observedScope,
+          c.observedGeneration,
+          c.expectedFence,
+        );
+      });
+    }
+
+    if (c.op === 'telemetry-observation-fence') {
+      return transaction(() => {
+        const scope = get(
+          'SELECT scope FROM provider_contexts WHERE session=?',
+          c.sessionId,
+        )?.scope;
+        if (scope && scope !== c.scope) {
+          fail('PROVIDER_UNAVAILABLE', 'Provider account binding changed.');
+        }
+
+        return telemetry.observationFence(session(c.sessionId), c.scope, c.generation);
+      });
+    }
+
+    if (c.op === 'telemetry-refresh-replay') {
+      session(c.sessionId);
+      const existing = get(
+        'SELECT hash,data FROM telemetry_refresh_requests WHERE session=? AND actor=? AND id=? AND at>?',
+        c.sessionId,
+        c.actor,
+        c.input.requestId,
+        Date.now() - 86400000,
+      );
+      if (existing && existing.hash !== JSON.stringify([...c.input.groups].sort())) {
+        fail('IDEMPOTENCY_CONFLICT', 'Refresh request changed its payload.');
+      }
+
+      return existing ? JSON.parse(String(existing.data)) : undefined;
+    }
+
+    if (c.op === 'telemetry-refresh-admit') {
+      return transaction(() => {
+        const s = session(c.sessionId);
+        const existing = get(
+          'SELECT hash,data FROM telemetry_refresh_requests WHERE session=? AND actor=? AND id=? AND at>?',
+          c.sessionId,
+          c.actor,
+          c.input.requestId,
+          Date.now() - 86400000,
+        );
+        const hash = JSON.stringify([...c.input.groups].sort());
+        if (existing) {
+          if (existing.hash !== hash) {
+            fail('IDEMPOTENCY_CONFLICT', 'Refresh request changed its payload.');
+          }
+
+          return {
+            fresh: false,
+            receipt: JSON.parse(String(existing.data)) as RefreshTelemetryReceipt,
+          };
+        }
+
+        const { accountScope, credentialGeneration } = c.binding;
+        const nativeScope = get(
+          'SELECT scope FROM provider_contexts WHERE session=?',
+          c.sessionId,
+        )?.scope;
+        if (nativeScope && nativeScope !== accountScope) {
+          fail('PROVIDER_UNAVAILABLE', 'Session provider account binding changed.');
+        }
+
+        telemetry.observationFence(s, accountScope, credentialGeneration);
+        telemetry.refreshState(s, 'queued', c.input.groups);
+        const receipt = {
+          requestId: c.input.requestId,
+          acceptedGroups: c.input.groups,
+          state: 'queued',
+          telemetryRevision: telemetry.read(s).revision,
+        };
+        run(
+          'INSERT OR REPLACE INTO telemetry_refresh_requests VALUES(?,?,?,?,?,?)',
+          c.sessionId,
+          c.actor,
+          c.input.requestId,
+          hash,
+          Date.now(),
+          JSON.stringify(receipt),
+        );
+        run('DELETE FROM telemetry_refresh_requests WHERE at<?', Date.now() - 86400000);
+
+        return { fresh: true, receipt };
+      });
+    }
+
     if (c.op === 'effect-candidates') {
       return effects.candidates(c);
     }
@@ -428,6 +644,7 @@ export async function runSessionWorker(): Promise<void> {
       transaction(() =>
         run("UPDATE owner SET runtime='',pid=0 WHERE id=1 AND runtime=?", options.runtimeId),
       );
+      clearTimeout(publicationTimer);
       db.close();
 
       return null;
@@ -490,6 +707,7 @@ export async function runSessionWorker(): Promise<void> {
           0,
           JSON.stringify(s),
         );
+        telemetry.create(s);
         const result = { sessionId: id };
         remember(c.actor, 'create', options.projectId, c.input.requestId, c.input, result);
 
@@ -640,6 +858,7 @@ export async function runSessionWorker(): Promise<void> {
           },
         };
         run('INSERT INTO turns VALUES(?,?,?,?)', tid, c.sessionId, 'active', JSON.stringify(t));
+        telemetry.start(s, t);
         refreshAttention(s, t);
         entry(s, tid, 'request', t.summary.userMessage);
         emit(s, 'turn', { turn: t.summary, projection: projection(s) });

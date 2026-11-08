@@ -12,13 +12,18 @@ import {
   type WorkPage,
   type ActionPage,
   type ProviderDescriptor,
+  type CreateSessionResult,
+  type StartTurnResult,
+  type CancelTurnResult,
+  type RespondInteractionResult,
+  type ReconcileTurnResult,
 } from '@nevo/specflow-contracts/sessions';
 import { createApiTransport, type ErrorCodeTable } from '../../../api';
 import type { WithWorkCounts } from './workCounts';
 
 export interface ManagedSessionsApi {
   providers(signal?: AbortSignal): Promise<{ items: ProviderDescriptor[] }>;
-  create(input: CreateSession): Promise<{ sessionId: string }>;
+  create(input: CreateSession): Promise<CreateSessionResult>;
   snapshot(sessionId: string, signal?: AbortSignal): Promise<SessionSnapshot>;
   history(sessionId: string, before: string, signal?: AbortSignal): Promise<HistoryPage>;
   // `WithWorkCounts` is the proposed, not-yet-backend-implemented `counts` extension
@@ -43,9 +48,19 @@ export interface ManagedSessionsApi {
     offset: number,
     signal?: AbortSignal,
   ): Promise<ContentPage>;
-  start(sessionId: string, input: StartTurn): Promise<{ turnId: string }>;
-  cancel(sessionId: string, turnId: string, requestId: string): Promise<unknown>;
-  respond(sessionId: string, interactionId: string, input: RespondInteraction): Promise<unknown>;
+  /** An acknowledgement of the wrong shape is an outcome-unknown error, not a success. */
+  start(sessionId: string, input: StartTurn): Promise<StartTurnResult>;
+  cancel(sessionId: string, turnId: string, requestId: string): Promise<CancelTurnResult>;
+  /**
+   * Asks the Runtime to settle a Turn whose outcome is unknown from its positive evidence. Reuse
+   * `requestId` when retrying the same request.
+   */
+  reconcile(sessionId: string, turnId: string, requestId: string): Promise<ReconcileTurnResult>;
+  respond(
+    sessionId: string,
+    interactionId: string,
+    input: RespondInteraction,
+  ): Promise<RespondInteractionResult>;
   watch(
     sessionId: string,
     after: number,
@@ -68,7 +83,8 @@ export function createManagedSessionsApi(http: HttpRequestClient): ManagedSessio
   return {
     providers: (signal) =>
       read.get('/api/session-providers', { signal, isValid: sessionValidators.providers }),
-    create: (input) => read.post('/api/sessions', input),
+    create: (input) =>
+      read.post('/api/sessions', input, { isValid: sessionValidators.createResult }),
     snapshot: (id, signal) => read.get(path(id), { signal, isValid: sessionValidators.snapshot }),
     history: (id, before, signal) =>
       read.get(path(id) + '/history', {
@@ -94,11 +110,24 @@ export function createManagedSessionsApi(http: HttpRequestClient): ManagedSessio
         params: { revision: ref.revision, offset },
         isValid: sessionValidators.content,
       }),
-    start: (id, input) => read.post(path(id) + '/turns', input),
+    start: (id, input) =>
+      read.post(path(id) + '/turns', input, { isValid: sessionValidators.startResult }),
     cancel: (id, turn, requestId) =>
-      read.post(path(id) + '/turns/' + encodeURIComponent(turn) + '/cancel', { requestId }),
+      read.post(
+        path(id) + '/turns/' + encodeURIComponent(turn) + '/cancel',
+        { requestId },
+        { isValid: sessionValidators.cancelResult },
+      ),
+    reconcile: (id, turn, requestId) =>
+      read.post(
+        path(id) + '/turns/' + encodeURIComponent(turn) + '/reconcile',
+        { requestId },
+        { isValid: sessionValidators.reconcileResult },
+      ),
     respond: (id, interaction, input) =>
-      read.post(path(id) + '/interactions/' + encodeURIComponent(interaction) + '/respond', input),
+      read.post(path(id) + '/interactions/' + encodeURIComponent(interaction) + '/respond', input, {
+        isValid: sessionValidators.respondResult,
+      }),
     async *watch(id, after, signal, onReconnect) {
       const stream = http.sse(path(id) + '/events', {
         signal,

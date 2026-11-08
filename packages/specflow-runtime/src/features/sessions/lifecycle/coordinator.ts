@@ -3,6 +3,7 @@ import type {
   StartTurn,
   RespondInteraction,
   SessionSnapshot,
+  ReconcileTurnResult,
 } from '@nevo/specflow-contracts/sessions';
 import { SessionLimits, utf8Bytes } from '@nevo/specflow-contracts/sessions';
 import { SessionError } from '../errors';
@@ -149,7 +150,7 @@ export function createSessionCoordinator(
       );
     }
 
-    return call<{ turnId: string; outcome: string; reconciled: boolean }>({
+    return call<ReconcileTurnResult>({
       op: 'reconcile-effect',
       ...candidate,
       actor,
@@ -203,9 +204,7 @@ export function createSessionCoordinator(
     },
     async reconcile(actor: string, sessionId: string, turnId: string, requestId: string) {
       accepting();
-      const previous = await call<
-        { turnId: string; outcome: string; reconciled: boolean } | undefined
-      >({
+      const previous = await call<ReconcileTurnResult | undefined>({
         op: 'replay',
         actor,
         command: 'reconcile',

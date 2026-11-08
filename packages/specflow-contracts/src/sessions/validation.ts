@@ -7,7 +7,14 @@ import {
   ContentPageSchema,
   SessionChangeSchema,
 } from './model';
-import { ProviderCatalogueSchema } from './commands';
+import {
+  ProviderCatalogueSchema,
+  CreateSessionResultSchema,
+  StartTurnResultSchema,
+  CancelTurnResultSchema,
+  RespondInteractionResultSchema,
+  ReconcileTurnResultSchema,
+} from './commands';
 import { RefreshTelemetryReceiptSchema, validateTelemetrySnapshot } from './telemetry';
 
 export const sessionValidators = {
@@ -20,4 +27,9 @@ export const sessionValidators = {
   content: (value: unknown) => Value.Check(ContentPageSchema, value),
   event: (value: unknown) => Value.Check(SessionChangeSchema, value),
   providers: (value: unknown) => Value.Check(ProviderCatalogueSchema, value),
+  createResult: (value: unknown) => Value.Check(CreateSessionResultSchema, value),
+  startResult: (value: unknown) => Value.Check(StartTurnResultSchema, value),
+  cancelResult: (value: unknown) => Value.Check(CancelTurnResultSchema, value),
+  respondResult: (value: unknown) => Value.Check(RespondInteractionResultSchema, value),
+  reconcileResult: (value: unknown) => Value.Check(ReconcileTurnResultSchema, value),
 };

@@ -443,6 +443,25 @@ describe('Session feed operation lifetime', () => {
       pending,
     );
   });
+  it('keeps the command when the start acknowledgement has the wrong shape (outcome unknown)', async () => {
+    const { storage, api } = setup();
+    const post = vi.fn().mockResolvedValue({ accepted: true });
+    const transport = createManagedSessionsApi({ post } as unknown as HttpRequestClient);
+    const feed = createSessionFeed(
+      { ...api, start: (id, input) => transport.start(id, input) },
+      'session',
+      'actor',
+      storage,
+    );
+    feed.setDraft('Maybe started');
+    await feed.send();
+    const pending = feed.getSnapshot().pending;
+    expect(pending).toMatchObject({ message: 'Maybe started' });
+    expect(feed.getSnapshot()).toMatchObject({ commandError: true, draft: 'Maybe started' });
+    expect(createSessionFeed(api, 'session', 'actor', storage).getSnapshot().pending).toEqual(
+      pending,
+    );
+  });
   it('treats any other 409 as a definite refusal of the command', async () => {
     const { storage, api } = setup();
     const post = vi.fn().mockRejectedValue(
@@ -498,7 +517,7 @@ describe('Session feed operation lifetime', () => {
     const respond = vi
       .fn<ManagedSessionsApi['respond']>()
       .mockRejectedValueOnce(new Error('Lost acknowledgement'))
-      .mockResolvedValue({});
+      .mockResolvedValue({ turnId: 'turn', interactionId: 'interaction' });
     api.respond = respond;
     const feed = createSessionFeed(api, 'session', 'actor', storage);
     await feed.respond('interaction', { kind: 'permission', decision: 'allow' });
@@ -507,7 +526,7 @@ describe('Session feed operation lifetime', () => {
     const lost = vi
       .fn<ManagedSessionsApi['respond']>()
       .mockRejectedValueOnce(new Error('Lost acknowledgement'))
-      .mockResolvedValue({});
+      .mockResolvedValue({ turnId: 'turn', interactionId: 'interaction' });
     api.respond = lost;
     await feed.respond('interaction-2', { kind: 'permission', decision: 'allow' });
     await feed.respond('interaction-2', { kind: 'permission', decision: 'deny' });
@@ -526,7 +545,7 @@ describe('Session feed operation lifetime', () => {
     const respond = vi
       .fn<ManagedSessionsApi['respond']>()
       .mockRejectedValueOnce(expired)
-      .mockResolvedValue({});
+      .mockResolvedValue({ turnId: 'turn', interactionId: 'interaction' });
     api.respond = respond;
     const feed = createSessionFeed(api, 'session', 'actor', storage);
     await feed.respond('interaction', { kind: 'permission', decision: 'allow' });

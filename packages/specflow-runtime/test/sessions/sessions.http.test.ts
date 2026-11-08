@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { SessionSnapshot } from '@nevo/specflow-contracts/sessions';
+import { sessionValidators, type SessionSnapshot } from '@nevo/specflow-contracts/sessions';
 import { createRuntimeApp } from '../../src/server/app';
 import { passwordConfig } from '../auth/support/config';
 
@@ -46,6 +46,7 @@ describe('managed Session HTTP', () => {
       payload: { requestId: randomUUID(), providerId: 'mock', mode: 'read-only' },
     });
     expect(created.statusCode).toBe(201);
+    expect(sessionValidators.createResult(created.json())).toBe(true);
     const { sessionId } = created.json<{ sessionId: string }>();
     const payload = { requestId: randomUUID(), message: 'Hello' };
     const start = await app!.inject({
@@ -54,6 +55,7 @@ describe('managed Session HTTP', () => {
       payload,
     });
     expect(start.statusCode).toBe(202);
+    expect(sessionValidators.startResult(start.json())).toBe(true);
     await vi.waitFor(async () => {
       const s = (await app!.inject('/api/sessions/' + sessionId)).json<SessionSnapshot>();
       expect(s.entries.at(-1)?.kind).toBe('outcome');

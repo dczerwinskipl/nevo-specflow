@@ -451,6 +451,68 @@ describe('controlled Antigravity driver invocation composition', () => {
     });
   });
 
+  it('continues the same invocation around a pending permission and settles without a second dispatch', async () => {
+    const gate = Promise.withResolvers<void>();
+    const test = await invocationFixture(false, gate.promise);
+    const operation = test.start();
+    try {
+      await vi.waitFor(() => expect(test.writes).toHaveLength(1));
+      const configurationPath = test.options().environment.values.NEVO_ANTIGRAVITY_HOOK_CONFIG!;
+      const hook = (role: 'pre-tool-use' | 'stop', body: object) =>
+        runAntigravityHook({
+          hook: role,
+          configurationPath,
+          signal: new AbortController().signal,
+          input: Buffer.from(
+            JSON.stringify({
+              conversationId: test.nativeId,
+              workspacePaths: [test.workspace],
+              ...body,
+            }),
+          ),
+        });
+      const permission = hook('pre-tool-use', {
+        stepIdx: 0,
+        toolCall: {
+          name: 'run_command',
+          args: {
+            CommandLine: 'echo controlled fixture',
+            toolSummary: 'Controlled fixture',
+            toolAction: 'execute',
+            Cwd: test.workspace,
+            WaitMsBeforeAsync: 5000,
+          },
+        },
+      });
+      await vi.waitFor(() =>
+        expect(test.facts.some((fact) => fact.kind === 'interaction')).toBe(true),
+      );
+      const fact = test.facts.find((fact) => fact.kind === 'interaction')!;
+      await expect(
+        hook('stop', { executionNum: 0, terminationReason: 'NO_TOOL_CALL', fullyIdle: true }),
+      ).resolves.toEqual({ decision: 'continue' });
+      expect(test.facts.some((fact) => fact.kind === 'outcome')).toBe(false);
+      await operation.respond(fact.key, {
+        requestId: randomUUID(),
+        kind: 'permission',
+        decision: 'deny',
+      });
+      await expect(permission).resolves.toEqual({ decision: 'deny' });
+    } finally {
+      gate.resolve();
+      await operation.done;
+    }
+
+    expect(test.launch).toHaveBeenCalledOnce();
+    expect(test.beforeDispatch).toHaveBeenCalledOnce();
+    expect(test.writes).toHaveLength(1);
+    expect(await operation.settlement).toMatchObject({
+      process: 'stopped',
+      source: 'native-result',
+      result: { outcome: 'completed' },
+    });
+  });
+
   it('resumes exactly the admitted native conversation without replacing its identity', async () => {
     const test = await invocationFixture(true);
     const operation = test.start();

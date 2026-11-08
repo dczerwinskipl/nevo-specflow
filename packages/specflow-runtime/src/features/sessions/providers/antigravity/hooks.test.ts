@@ -56,10 +56,11 @@ async function fixture(active = true, created = false, nativeFileAccess = false)
     writable: true,
     commandsAllowed: true,
   };
+  const controller = new AbortController();
   const bridge = await createAntigravityQuestionBridge(
     {
       invocation: { sessionId: randomUUID(), turnId: randomUUID(), invocationId: randomUUID() },
-      signal: new AbortController().signal,
+      signal: controller.signal,
       emit: (fact) => {
         facts.push(fact);
 
@@ -113,6 +114,7 @@ async function fixture(active = true, created = false, nativeFileAccess = false)
 
   return {
     root,
+    controller,
     workspace,
     context,
     bridge,
@@ -213,7 +215,7 @@ describe('controlled native hook HTTP/helper boundary', () => {
       terminationReason: 'NO_TOOL_CALL',
       fullyIdle: true,
     };
-    await expect(f.post('stop', stop)).resolves.toEqual({ decision: 'deny' });
+    await expect(f.post('stop', stop)).resolves.toEqual({ decision: 'continue' });
     const effective = {
       ...input,
       toolCall: { ...input.toolCall, args: { ...input.toolCall.args, Overwrite: true } },
@@ -227,7 +229,9 @@ describe('controlled native hook HTTP/helper boundary', () => {
       }),
     ).resolves.toEqual({});
     expect(access.close).toHaveBeenCalledTimes(1);
-    await expect(f.post('stop', stop)).resolves.toEqual({ decision: 'stop' });
+    await expect(f.post('stop', { ...stop, executionNum: 2 })).resolves.toEqual({
+      decision: 'stop',
+    });
     await expect(f.post('pre-tool-use', effective)).resolves.toEqual({ decision: 'deny' });
   });
 
@@ -347,6 +351,15 @@ describe('controlled native hook HTTP/helper boundary', () => {
     });
     const fact = await f.permission();
     expect(fact.interaction.kind).toBe('question');
+    await expect(
+      f.post('stop', {
+        conversationId: f.context.nativeSessionId,
+        workspacePaths: [f.workspace],
+        executionNum: 0,
+        terminationReason: 'NO_TOOL_CALL',
+        fullyIdle: false,
+      }),
+    ).resolves.toEqual({ decision: 'continue' });
     await f.bridge.respond(fact.key, {
       requestId: randomUUID(),
       kind: 'question',
@@ -458,6 +471,126 @@ describe('controlled native hook HTTP/helper boundary', () => {
       }),
     ).rejects.toMatchObject({ code: 'INTERACTION_EXPIRED' });
     await expect(native).resolves.toEqual({ decision: 'deny' });
+  });
+
+  it('continues a pending permission once without granting it or accepting duplicate idle evidence', async () => {
+    const f = await fixture();
+    const native = f.post('pre-tool-use', f.body());
+    const fact = await f.permission();
+    const stop = {
+      conversationId: f.context.nativeSessionId,
+      workspacePaths: [f.workspace],
+      executionNum: 1,
+      terminationReason: 'model_stop',
+      fullyIdle: true,
+    };
+    await expect(f.post('stop', stop)).resolves.toEqual({ decision: 'continue' });
+    await expect(f.post('stop', stop)).resolves.toEqual({ decision: 'deny' });
+    await expect(f.post('stop', { ...stop, executionNum: 2 })).resolves.toEqual({
+      decision: 'stop',
+    });
+    expect(f.facts.filter((entry) => entry.kind === 'interaction')).toHaveLength(1);
+    expect(f.facts.some((entry) => entry.kind === 'outcome')).toBe(false);
+    await f.bridge.respond(fact.key, {
+      requestId: randomUUID(),
+      kind: 'permission',
+      decision: 'deny',
+    });
+    await expect(native).resolves.toEqual({ decision: 'deny' });
+    await expect(f.post('stop', stop)).resolves.toEqual({ decision: 'deny' });
+    await expect(f.post('stop', { ...stop, executionNum: 3 })).resolves.toEqual({
+      decision: 'stop',
+    });
+    await f.bridge.awaitNativeIdle(new AbortController().signal);
+  });
+
+  it.each(['cancelled', 'CANCELLED', 'error', 'max_steps_exceeded', 'unknown'])(
+    'never overrides native termination reason %s with a continuation',
+    async (terminationReason) => {
+      const f = await fixture();
+      await f.post('pre-tool-use', {
+        ...f.body(),
+        toolCall: { name: 'view_file', args: { AbsolutePath: join(f.workspace, 'file.txt') } },
+      });
+      await expect(
+        f.post('stop', {
+          conversationId: f.context.nativeSessionId,
+          workspacePaths: [f.workspace],
+          executionNum: 1,
+          terminationReason,
+          fullyIdle: true,
+        }),
+      ).resolves.toEqual({ decision: 'stop' });
+      await expect(
+        f.post('stop', {
+          conversationId: f.context.nativeSessionId,
+          workspacePaths: [f.workspace],
+          executionNum: 2,
+          terminationReason: 'model_stop',
+          fullyIdle: true,
+        }),
+      ).resolves.toEqual({ decision: 'stop' });
+      expect(f.accesses[0]!.close).not.toHaveBeenCalled();
+      const controller = new AbortController();
+      const idle = f.bridge.awaitNativeIdle(controller.signal);
+      controller.abort(new Error('no-idle-evidence'));
+      await expect(idle).rejects.toThrow('no-idle-evidence');
+    },
+  );
+
+  it.each(['terminal', 'abort', 'error'] as const)(
+    'does not continue after %s while retaining file ownership',
+    async (state) => {
+      const f = await fixture();
+      await f.post('pre-tool-use', {
+        ...f.body(),
+        toolCall: { name: 'view_file', args: { AbsolutePath: join(f.workspace, 'file.txt') } },
+      });
+      if (state === 'terminal') {
+        f.bridge.observeTerminal();
+      }
+
+      if (state === 'abort') {
+        f.controller.abort();
+      }
+
+      await expect(
+        f.post('stop', {
+          conversationId: f.context.nativeSessionId,
+          workspacePaths: [f.workspace],
+          executionNum: 1,
+          terminationReason: 'NO_TOOL_CALL',
+          fullyIdle: true,
+          ...(state === 'error' ? { error: 'controlled failure' } : {}),
+        }),
+      ).resolves.toEqual({ decision: state === 'abort' ? 'deny' : 'stop' });
+      expect(f.accesses[0]!.close).not.toHaveBeenCalled();
+    },
+  );
+
+  it('expires old callbacks on process loss without transferring them to a replacement invocation', async () => {
+    const old = await fixture();
+    await old.post('pre-tool-use', {
+      ...old.body(),
+      toolCall: { name: 'view_file', args: { AbsolutePath: join(old.workspace, 'file.txt') } },
+    });
+    await old.bridge.close();
+    const replacement = await fixture();
+    await expect(
+      old.post('stop', {
+        conversationId: old.context.nativeSessionId,
+        workspacePaths: [old.workspace],
+        executionNum: 1,
+        terminationReason: 'NO_TOOL_CALL',
+        fullyIdle: true,
+      }),
+    ).resolves.toEqual({ decision: 'deny' });
+    expect(old.accesses[0]!.close).not.toHaveBeenCalled();
+    expect(replacement.facts).toEqual([]);
+    const controller = new AbortController();
+    const idle = replacement.bridge.awaitNativeIdle(controller.signal);
+    controller.abort(new Error('replacement-not-idle'));
+    await expect(idle).rejects.toThrow('replacement-not-idle');
   });
 
   it('accepts fullyIdle only from a matching native Stop hook', async () => {

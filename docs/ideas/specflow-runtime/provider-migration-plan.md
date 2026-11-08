@@ -385,20 +385,24 @@ IDs and absent/contradictory evidence never release an uncertain writer or fabri
 
 ### F20 — Antigravity Stop continuation semantics
 
-**Priority:** P2. **Outside PR #107; N02 from the final re-review.**
-**Current/evidence:** `antigravity/question-bridge.ts` answers `deny` when Stop
-conflicts with pending interactions or retained files. Native [Stop documentation](https://antigravity.google/docs/hooks/#stop)
-specifies that only `continue` re-enters the loop. Runtime still requires positive
-idle and process-tree settlement; this does not manufacture success or approve effects.
-**Impact/direction:** A conflicting Stop may unnecessarily end native execution and
-leave an uncertain outcome. Decide when to continue the same native invocation
-versus stop it without replay, then map that decision to the native Stop response.
-**Dependencies/security:** Existing interaction delivery, retained file ownership,
-terminal arbitration and cancellation; continuation must not create unbounded
-model activity or let an old Stop affect a newer tool generation.
-**Minimum acceptance:** Controlled pending-question/file cases, duplicate and stale
-Stop, cancellation and already-observed terminal results preserve one lifecycle
-owner, bounded continuation and honest settlement. No real subscription in tests.
+**Priority:** First post-merge delivery. **Outside PR #107; N02 from the final re-review.**
+**Status:** In progress � implementation and regression evidence prepared;
+independent architectural/security review pending.
+**Original evidence:** `antigravity/question-bridge.ts` returned `deny` for Stop
+conflicting with pending interactions or retained files. The native
+[Stop contract](https://antigravity.google/docs/hooks/#stop) permits termination
+for any response other than `continue`.
+**Implemented direction:** One continuation opportunity per native invocation,
+only for ordinary model completion conflicting with unresolved work. Cancellation,
+errors, terminal results, duplicate/stale Stop evidence and exhausted continuation
+cannot restart execution. Continued Stop evidence cannot settle that invocation;
+new native idle evidence and positive process settlement remain required.
+No new Turn, permission grant, Session owner or persistence schema is introduced.
+**Evidence/limits:** See the [Stop matrix, failing regression and synthetic native
+checks](antigravity-provider.md#f20-stop-continuation--2026-11-08). Repeated conflicts
+beyond the one-shot bound still stop conservatively and can leave execution unknown.
+**Remaining:** Independent review and final integrated verification before marking
+Implemented. F14 and F19 remain independent follow-ups.
 
 [paseo-types]: https://github.com/getpaseo/paseo/blob/ab8e1e61ff7c0bbad08c95e15a09f3ec42333410/packages/server/src/server/agent/agent-sdk-types.ts
 [paseo-provider]: https://github.com/getpaseo/paseo/blob/ab8e1e61ff7c0bbad08c95e15a09f3ec42333410/packages/plugin/src/server/provider.ts

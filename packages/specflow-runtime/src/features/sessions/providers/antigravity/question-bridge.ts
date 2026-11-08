@@ -51,7 +51,10 @@ export async function createAntigravityQuestionBridge(
   let idle = deferred<void>();
   let nativeIdle = false;
   let hookGeneration = 0;
-  let lastStop: { execution: number; generation: number; fullyIdle: boolean } | undefined;
+  let continuationAvailable = true;
+  let terminalObserved = false;
+  let lastStop:
+    { execution: number; generation: number; fullyIdle: boolean; continued: boolean } | undefined;
   function expired() {
     return new SessionError('INTERACTION_EXPIRED', 'The native interaction transport expired.');
   }
@@ -86,7 +89,7 @@ export async function createAntigravityQuestionBridge(
     response: ServerResponse,
   ) {
     const selectedContext = options.permissionContext?.();
-    if (!transport.active || transport.closed || !selectedContext) {
+    if (!transport.active || transport.closed || options.signal.aborted || !selectedContext) {
       hookJson(response, { decision: 'deny' });
 
       return;
@@ -141,23 +144,48 @@ export async function createAntigravityQuestionBridge(
           throw new Error('Invalid native stop evidence.');
         }
 
+        assertCurrent();
         const execution = bound.executionNum as number;
         if (
           lastStop &&
           (execution < lastStop.execution ||
             (execution === lastStop.execution &&
               lastStop.fullyIdle &&
-              (hookGeneration !== lastStop.generation || !bound.fullyIdle)))
+              (hookGeneration !== lastStop.generation || !bound.fullyIdle)) ||
+            (execution === lastStop.execution && lastStop.continued))
         ) {
           throw new Error('Stale native stop evidence.');
         }
 
-        if (transport.hasPendingInteractions() || fileAccess.size) {
-          throw new Error('Native stop conflicts with unresolved interactions.');
+        const ordinaryCompletion =
+          (bound.terminationReason === 'NO_TOOL_CALL' ||
+            bound.terminationReason === 'model_stop') &&
+          (bound.error === undefined || bound.error === '');
+        if (!ordinaryCompletion || terminalObserved) {
+          continuationAvailable = false;
         }
 
-        lastStop = { execution, generation: hookGeneration, fullyIdle: bound.fullyIdle };
+        if (transport.hasPendingInteractions() || fileAccess.size) {
+          // Stop is not a permission gate: deny also permits native termination.
+          // Only ordinary model completion may re-enter this invocation, once.
+          // Never reuse its idle evidence or let a retry buy another continuation.
+          const resume = continuationAvailable;
+          continuationAvailable = false;
+          lastStop = { execution, generation: hookGeneration, fullyIdle: false, continued: resume };
+
+          hookJson(response, { decision: resume ? 'continue' : 'stop' });
+
+          return;
+        }
+
+        lastStop = {
+          execution,
+          generation: hookGeneration,
+          fullyIdle: bound.fullyIdle,
+          continued: false,
+        };
         if (bound.fullyIdle) {
+          continuationAvailable = false;
           nativeIdle = true;
           idle.resolve();
         } else if (nativeIdle) {
@@ -296,6 +324,9 @@ export async function createAntigravityQuestionBridge(
       });
     },
 
+    observeTerminal() {
+      terminalObserved = true;
+    },
     activate: () => transport.activate(),
     respond: transport.respond,
     releaseFileAccess() {

@@ -22,6 +22,7 @@ export type AntigravityProcess = Pick<
 >;
 export interface AntigravityInteractions {
   activate(): void;
+  observeTerminal(): void;
   awaitNativeIdle(signal: AbortSignal): Promise<void>;
   respond(key: string, response: RespondInteraction): Promise<{ deliveredKeys: readonly string[] }>;
   close(): Promise<void>;
@@ -79,6 +80,7 @@ export function createAntigravityOperation(
 
   const publish: EmitFact = async (fact) => {
     if (fact.kind === 'outcome') {
+      interactions?.observeTerminal();
       pendingOutcome = fact;
     } else {
       await emit(fact);

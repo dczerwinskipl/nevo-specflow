@@ -311,6 +311,75 @@ a requirement to test every ordinary CLI update, or a claim about all future hoo
 implementations. N02 Stop/continue semantics remain a separate nonblocking
 [follow-up F20](provider-migration-plan.md#f20--antigravity-stop-continuation-semantics).
 
+### F20 Stop continuation � 2026-11-08
+
+The [native Stop contract](https://antigravity.google/docs/hooks/#stop) uses
+`continue` to re-enter the current execution loop. Every other decision, including
+`deny`, permits termination. Stop is not a tool permission response. `fullyIdle`
+reports completion of background activity; it is not a terminal result and cannot
+settle unresolved Runtime interactions or retained file operations.
+
+The original regression was a Stop with `NO_TOOL_CALL`, `fullyIdle: true` and a
+retained file identity awaiting PostToolUse. Returning `deny` ended the native loop
+instead of allowing it to finish outstanding work. The HTTP/helper regression in
+`antigravity/hooks.test.ts` failed with expected `continue`, received `deny` before
+the correction.
+
+| Evidence at authenticated Stop                                                                   | Response and effect                                                                                     |
+| ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| Pending question, permission or retained file; ordinary completion; continuation still available | `continue` once within the same invocation; no idle receipt, tool approval, answer delivery or new Turn |
+| Duplicate continued Stop or lower execution number                                               | `deny`; no new continuation or idle receipt                                                             |
+| Earlier fully-idle Stop replayed after a newer tool generation                                   | `deny`; no new idle receipt                                                                             |
+| Cancellation, error, step limit, unknown termination reason or nonempty error                    | Allow termination; permanently disable continuation; never accept idle while work is unresolved         |
+| Native result already observed                                                                   | Disable continuation before buffering the result; still require independent idle and process settlement |
+| No pending work, valid `fullyIdle: true`                                                         | `stop`, accept idle for that generation and disable continuation                                        |
+| No pending work, valid `fullyIdle: false`                                                        | `stop`, await later positive idle evidence; do not infer completion                                     |
+| Aborted, closed, inactive, incorrectly bound or malformed request                                | `deny`; no continuation or idle receipt                                                                 |
+
+Only `NO_TOOL_CALL` (observed native) and `model_stop` (documented) with absent or
+empty `error` count as ordinary completion. The first conflicting Stop consumes
+the single continuation opportunity even if termination is required. An earlier
+cancellation/error cannot later be replaced by a normal-looking Stop to resume.
+A continued execution number is never accepted again, including after its work
+clears; a later execution must supply its own positive idle evidence. Native
+background completion without a requested continuation can still change a
+non-idle Stop to an idle Stop at the same execution number.
+
+The limit is one continuation per invocation, not one per tool generation. If
+another Stop conflicts with unresolved work, the adapter allows termination and
+withholds idle evidence. Insufficient settlement remains unknown under the
+existing recovery contract. This deliberately bounds additional native activity;
+it does not promise to repair every inconsistent native completion sequence.
+Handles remain owned until matching PostToolUse or positive stopped-tree cleanup.
+Private endpoints and replay state are invocation-local and are not restored or
+transferred on restart. There is no database/schema migration or public API change.
+
+Controlled tests cover question/permission/file conflicts, one-shot exhaustion,
+duplicates/stale generations, native cancellation/error reasons, Runtime abort,
+observed terminal result, closed old endpoints/replacement invocations and ordinary
+idle/background completion. The production driver composition also proves one
+launch, one dispatch and one input frame across permission conflict, continuation,
+explicit denial and native settlement. Existing operation/recovery tests retain
+unknown outcomes for process loss or missing settlement evidence.
+
+Manual native protocol checks used the Windows x64 CLI fingerprint recorded above,
+a disposable trusted workspace/HOME, synthetic Gemini key and loopback HTTP/SSE
+backend. No personal credentials or paid inference were used. The production
+compressed Stop launcher and owned Job Object process boundary were exercised:
+
+- `continue` at execution 0 (`NO_TOOL_CALL`, `fullyIdle: true`) caused another
+  native iteration, then execution 1 with the same reason/idle state; `stop`
+  ended it. There was one user frame and one final result containing both scripted
+  answers.
+- The `deny` control at execution 0 ended immediately, with one scripted answer
+  and one final result.
+- Both controls exited with code 0 and positive `group-exited` tree settlement.
+  These establish native Stop response semantics, not production OAuth acceptance
+  or a native reproduction of every synthetic conflict/race.
+
+Independent architectural/security review remains pending; author verification
+is not independent review. F14 and capability parity remain separate deliveries.
+
 ### Compatible updates
 
 The owner reaffirmed optimistic compatibility after the 2026-10-31 deep review.

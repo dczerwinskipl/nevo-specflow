@@ -165,6 +165,7 @@
     "startSession": "Start session",
     "prepareSessionsDisabled": "An agent prepares the tasks in a session. Sessions are turned off on this server.",
     "prepareStartForbidden": "You don't have permission to start a session for this specification.",
+    "prepareStartUnavailable": "An agent prepares the tasks in a session. Starting a session is not available here.",
     "tasksHeading": "Tasks",
     "tasksEmptyTitle": "No tasks yet",
     "tasksEmptyDescription": "Tasks appear here once the specification is prepared for work.",

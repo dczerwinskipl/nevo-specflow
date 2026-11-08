@@ -24,14 +24,15 @@ export function PreparationSection({ startSession }: PreparationSectionProps) {
       ? t('specification.prepareSessionsDisabled')
       : startSession?.reason === 'forbidden'
         ? t('specification.prepareStartForbidden')
-        : t('specification.prepareSpecificationDescription');
+        : // Any other reason (or none): explain the path without promising a start here.
+          t('specification.prepareStartUnavailable');
 
   return (
     <section
       aria-labelledby="preparation-heading"
-      className="rounded-control border-l-2 border-primary bg-primary/5 p-4"
+      className="rounded-control border-l-2 border-action-primary p-4"
     >
-      <div className="flex items-center gap-2 text-accent-primary">
+      <div className="flex items-center gap-2 text-status-info">
         <span className="flex size-4 shrink-0 items-center justify-center">
           <Icon name="chat" size="sm" />
         </span>
@@ -44,7 +45,7 @@ export function PreparationSection({ startSession }: PreparationSectionProps) {
           {t('specification.prepareSpecificationHeading')}
         </Typography>
       </div>
-      <Typography variant="body-sm" className="mt-2 text-content-secondary">
+      <Typography as="p" variant="body-sm" className="mt-2 text-content-secondary">
         {description}
       </Typography>
       {/* Without a start only the narrow history link remains, so the row is narrow-only too. */}
@@ -57,7 +58,7 @@ export function PreparationSection({ startSession }: PreparationSectionProps) {
         <button
           type="button"
           onClick={runtime.openHistory}
-          className="text-body-sm font-medium text-accent-primary hover:underline focus-visible:outline-2 focus-visible:outline-focus-ring lg:hidden"
+          className="text-body-sm font-medium text-content-link hover:text-content-link-hover hover:underline focus-visible:outline-2 focus-visible:outline-focus-ring lg:hidden"
         >
           {t('specification.activityHistoryLink')}
         </button>

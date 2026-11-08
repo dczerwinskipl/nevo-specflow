@@ -165,6 +165,7 @@
     "startSession": "Rozpocznij sesję",
     "prepareSessionsDisabled": "Zadania przygotowuje agent w sesji. Sesje są wyłączone na tym serwerze.",
     "prepareStartForbidden": "Nie masz uprawnień do rozpoczęcia sesji dla tej specyfikacji.",
+    "prepareStartUnavailable": "Zadania przygotowuje agent w sesji. Rozpoczęcie sesji nie jest tu dostępne.",
     "tasksHeading": "Zadania",
     "tasksEmptyTitle": "Nie ma jeszcze zadań",
     "tasksEmptyDescription": "Zadania pojawią się tutaj, gdy specyfikacja zostanie przygotowana do realizacji.",

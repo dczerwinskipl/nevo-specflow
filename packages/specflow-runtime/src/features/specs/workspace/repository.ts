@@ -83,6 +83,8 @@ export interface WorkspaceReadModel {
         readonly kind: string;
         readonly summary?: string;
       }[];
+      /** The overview among `items` (the description's source), whatever its position. */
+      readonly overviewDocumentId?: string;
     }>;
     readonly sessions: SourceSection<{
       readonly items: WorkspaceSessionRecord[];

@@ -7,7 +7,7 @@ import type {
   SaveResult,
 } from '@nevo/specflow-contracts/documents';
 import type { DemoFolderInput } from '@nevo/specflow-contracts/demo';
-import { DocumentError, deriveDocumentTitle } from '@nevo/specflow-engine';
+import { DocumentError, OVERVIEW_DOCUMENT_ID, deriveDocumentTitle } from '@nevo/specflow-engine';
 import type { DemoSpecification } from '../../demo-catalogue';
 import type { DemoState } from '../../../demo/state';
 import { allFolders, decodeText, sha256, type DemoSpecDocuments } from './model';
@@ -236,28 +236,34 @@ export function createDemoDocuments(
         return { state: 'unavailable' as const, reason: 'source_unavailable' as const };
       }
 
+      const items = documents.registry.flatMap((entry) => {
+        const file = documents.files.get(entry.path);
+        if (!file) {
+          return [];
+        }
+
+        const text = /\.(md|markdown)$/iu.test(entry.path) ? decodeText(file.bytes) : undefined;
+
+        return [
+          {
+            id: entry.id,
+            title: deriveDocumentTitle(entry.path, text),
+            filename: entry.path,
+            revision: file.revision,
+            kind: entry.type,
+          },
+        ];
+      });
+
       return {
         state: 'available' as const,
         data: {
           folders: allFolders(documents),
-          items: documents.registry.flatMap((entry) => {
-            const file = documents.files.get(entry.path);
-            if (!file) {
-              return [];
-            }
-
-            const text = /\.(md|markdown)$/iu.test(entry.path) ? decodeText(file.bytes) : undefined;
-
-            return [
-              {
-                id: entry.id,
-                title: deriveDocumentTitle(entry.path, text),
-                filename: entry.path,
-                revision: file.revision,
-                kind: entry.type,
-              },
-            ];
-          }),
+          items,
+          // The Engine's overview identity, as in project mode.
+          ...(items.some((item) => item.id === OVERVIEW_DOCUMENT_ID)
+            ? { overviewDocumentId: OVERVIEW_DOCUMENT_ID }
+            : {}),
         },
       };
     },

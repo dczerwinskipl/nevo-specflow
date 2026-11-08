@@ -167,7 +167,7 @@ export interface SpecificationWorkspaceData {
   readonly key?: string;
   readonly title: string;
   readonly intro: string;
-  readonly mainDocumentId?: string;
+  readonly overviewDocumentId?: string;
   readonly isEmpty?: boolean;
   readonly isPreparing?: boolean;
   readonly hasGit?: boolean;

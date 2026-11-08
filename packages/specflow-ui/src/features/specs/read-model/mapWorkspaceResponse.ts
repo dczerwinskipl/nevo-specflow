@@ -130,8 +130,11 @@ export function mapWorkspaceResponse(
         : [],
     documentFolders:
       sections.documents.state === 'available' ? sections.documents.data.folders : undefined,
-    mainDocumentId:
-      sections.documents.state === 'available' ? sections.documents.data.items[0]?.id : undefined,
+    // The expand target is the overview the description comes from, never a substitute document.
+    overviewDocumentId:
+      sections.documents.state === 'available'
+        ? sections.documents.data.overviewDocumentId
+        : undefined,
     sessions: sessionSummaries,
     ...(sections.sessions.state === 'available' && sections.sessions.data.hasMore
       ? { sessionsHasMore: true }

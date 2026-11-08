@@ -4,7 +4,7 @@ import { DocumentContent, DocumentDescription } from '../../../documents';
 export interface SpecificationSummarySectionProps {
   readonly title: string;
   readonly intro?: string;
-  readonly mainDocumentId?: string;
+  readonly overviewDocumentId?: string;
   readonly specId?: string;
 }
 
@@ -12,7 +12,7 @@ export interface SpecificationSummarySectionProps {
 export function SpecificationSummarySection({
   title,
   intro,
-  mainDocumentId,
+  overviewDocumentId,
   specId,
 }: SpecificationSummarySectionProps) {
   return (
@@ -27,15 +27,19 @@ export function SpecificationSummarySection({
         {title}
       </Typography>
       <DocumentDescription
-        key={`${specId}:${mainDocumentId}`}
+        key={`${specId}:${overviewDocumentId}`}
         // `summary` is already plain text bounded by the Runtime (320 graphemes): shown as is,
         // never parsed as Markdown again. A summary equal to the title adds nothing.
         intro={intro && intro.trim() !== title.trim() ? intro.trim() : undefined}
-        hasMore={Boolean(mainDocumentId && specId)}
+        hasMore={Boolean(overviewDocumentId && specId)}
         renderDocument={
-          mainDocumentId && specId
+          overviewDocumentId && specId
             ? () => (
-                <DocumentContent specId={specId} documentId={mainDocumentId} omitTitle={title} />
+                <DocumentContent
+                  specId={specId}
+                  documentId={overviewDocumentId}
+                  omitTitle={title}
+                />
               )
             : undefined
         }

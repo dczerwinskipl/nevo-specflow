@@ -123,6 +123,12 @@ const TaskCollectionSchema = Type.Object({
 const DocumentCollectionSchema = Type.Object({
   items: Type.Array(WorkspaceDocumentSchema),
   folders: Type.Optional(Type.Array(Type.String())),
+  /**
+   * The id of the Specification's overview among `items` (the document the workspace description is
+   * read from), whatever its position. Absent when the overview is not listed; clients then offer no
+   * expand action and never substitute another document.
+   */
+  overviewDocumentId: Type.Optional(IdSchema),
 });
 const SessionCollectionSchema = Type.Object({
   items: Type.Array(WorkspaceSessionSchema),

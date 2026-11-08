@@ -181,6 +181,11 @@ describe('Engine-backed specification workspace read', () => {
         const missing = await app.inject(`/api/specs/${created.specId}/workspace`);
         expect(missing.statusCode, missing.body).toBe(200);
         expect(missing.json<SpecificationWorkspaceResponse>().specification.summary).toBe('');
+        // Nothing stands in for the missing overview as the expand target.
+        const missingDocuments = missing.json<SpecificationWorkspaceResponse>().sections.documents;
+        expect(
+          missingDocuments.state === 'available' && 'overviewDocumentId' in missingDocuments.data,
+        ).toBe(false);
         // The registered documents of the manifest, read through the Engine.
         expect(body.sections.documents.state).toBe('available');
         if (body.sections.documents.state === 'available') {
@@ -193,6 +198,7 @@ describe('Engine-backed specification workspace read', () => {
             kind: 'overview',
           });
           expect(overview?.revision).toMatch(/^[0-9a-f]{64}$/u);
+          expect(body.sections.documents.data.overviewDocumentId).toBe('overview');
         }
 
         expect(body.actions).toEqual({

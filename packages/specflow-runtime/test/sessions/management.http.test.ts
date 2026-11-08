@@ -10,6 +10,8 @@ import {
   type SessionSnapshot,
 } from '@nevo/specflow-contracts/sessions';
 import { createRuntimeApp } from '../../src/server/app';
+import { openSessionStore } from '../../src/features/sessions/persistence/store';
+import type { StartAdmission } from '../../src/features/sessions/persistence/protocol';
 import { passwordConfig } from '../auth/support/config';
 
 let app: FastifyInstance | undefined,
@@ -109,7 +111,11 @@ describe('managed Session rename, archive and delete HTTP', () => {
       decision: 'deny',
     });
     expect(respond.statusCode).toBe(409);
-    expect(respond.json()).toMatchObject({ code: 'SESSION_ARCHIVED' });
+    expect(respond.json()).toEqual({
+      error: 'session_error',
+      code: 'SESSION_ARCHIVED',
+      message: expect.any(String) as string,
+    });
     expect((await app!.inject('/api/sessions/' + sessionId + '/telemetry')).statusCode).toBe(200);
     const restored = await post(sessionId, 'unarchive', { requestId: randomUUID() });
     expect(restored.statusCode).toBe(200);
@@ -146,6 +152,46 @@ describe('managed Session rename, archive and delete HTTP', () => {
     }
 
     expect((await app!.inject('/api/sessions/' + other)).statusCode).toBe(200);
+  });
+
+  it('refuses delete of a recovering write Turn with 409 SESSION_DELETE_BLOCKED', async () => {
+    await open();
+    await app!.close();
+    app = undefined;
+    // Controlled fixture: a writable Turn admitted by a previous owner, never settled.
+    const store = await openSessionStore({ directory, projectId: 'project' });
+    let sessionId: string, turnId: string;
+    try {
+      ({ sessionId } = await store.call<{ sessionId: string }>({
+        op: 'create',
+        actor: 'fixture',
+        input: { requestId: randomUUID(), providerId: 'controlled', mode: 'workspace-write' },
+      }));
+      ({ turnId } = await store.call<StartAdmission>({
+        op: 'start',
+        actor: 'fixture',
+        sessionId,
+        input: { requestId: randomUUID(), message: 'Write' },
+        nativeWorkspace: directory,
+        nativeScope: 'account',
+        nativeWorkspaceIdentity: 'a'.repeat(64),
+        effectBinding: 'b'.repeat(64),
+      }));
+    } finally {
+      await store.close();
+    }
+
+    await open();
+    expect((await snapshot(sessionId)).activeTurn).toMatchObject({ turnId, state: 'unknown' });
+    const refused = await app!.inject({ method: 'DELETE', url: '/api/sessions/' + sessionId });
+    expect(refused.statusCode).toBe(409);
+    expect(refused.json()).toEqual({
+      error: 'session_error',
+      code: 'SESSION_DELETE_BLOCKED',
+      message: expect.any(String) as string,
+      details: { turnId },
+    });
+    expect((await app!.inject('/api/sessions/' + sessionId)).statusCode).toBe(200);
   });
 
   it('requires session.manage for rename/archive and session.delete for delete', async () => {

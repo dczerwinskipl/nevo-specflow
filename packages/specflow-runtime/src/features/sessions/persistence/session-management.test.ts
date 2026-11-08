@@ -343,7 +343,15 @@ describe('Session management store', () => {
       survivor: mentions(db, survivorIds),
       meta: (db.prepare('SELECT COUNT(*) AS n FROM meta').get() as { n: number }).n,
     }));
-    expect(Object.values(after.victim).every((rows) => rows === 0)).toBe(true);
+    // Only the project-scoped create record survives, by design (see SESSION_TABLE_OWNERSHIP).
+    expect(Object.entries(after.victim).filter(([, rows]) => rows > 0)).toEqual([['requests', 1]]);
+    expect(
+      inspect((db) =>
+        db
+          .prepare("SELECT command FROM requests WHERE json_extract(result,'$.sessionId')=?")
+          .all(victim),
+      ),
+    ).toEqual([{ command: 'create' }]);
     expect(after.survivor).toEqual(before.survivor);
     expect(after.meta).toBe(before.total.meta);
 
@@ -354,7 +362,11 @@ describe('Session management store', () => {
       store!.call({ op: 'snapshot', sessionId: victim, actor: 'user' }),
     ).rejects.toMatchObject({ code: 'SESSION_NOT_FOUND' });
     // Idempotency records go with the Session: the old create key no longer replays it.
-    expect(await create('controlled', createRequest)).not.toBe(victim);
+    // A late create retry replays the deleted ID instead of allocating another Session.
+    expect(await create('controlled', createRequest)).toBe(victim);
+    await expect(
+      store!.call({ op: 'snapshot', sessionId: victim, actor: 'user' }),
+    ).rejects.toMatchObject({ code: 'SESSION_NOT_FOUND' });
     await expect(
       store!.call({ op: 'snapshot', sessionId: survivor, actor: 'user' }),
     ).resolves.toMatchObject({

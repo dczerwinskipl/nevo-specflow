@@ -21,10 +21,10 @@ export const SESSION_TABLE_OWNERSHIP: Readonly<Record<string, string | null>> = 
   usage_samples: `invocation IN (${invocations})`,
   usage_basis: `invocation IN (${invocations})`,
   telemetry_samples: `invocation IN (${invocations})`,
-  // Commands are scoped by Session ID, or Session ID plus a child ID; create is project-scoped
-  // and identifies the Session only through its accepted result.
-  requests:
-    "scope=?1 OR substr(scope,1,length(?1)+1)=?1||':' OR (command='create' AND json_extract(result,'$.sessionId')=?1)",
+  // Commands are scoped by Session ID, or Session ID plus a child ID. The project-scoped create
+  // record is intentionally RETAINED: a late retry of an unconfirmed create replays the deleted
+  // sessionId, whose use then answers 404, instead of allocating a second Session.
+  requests: "command!='create' AND (scope=?1 OR substr(scope,1,length(?1)+1)=?1||':')",
   telemetry_refresh_requests: 'session=?1',
   telemetry_publications: 'session=?1',
   telemetry_baselines: 'session=?1',

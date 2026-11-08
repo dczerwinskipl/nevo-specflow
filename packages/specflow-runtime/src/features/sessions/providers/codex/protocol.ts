@@ -63,7 +63,8 @@ function mcpToolTitle(item: Record<string, unknown>): string {
   return String(item.server) + '/' + String(item.tool);
 }
 
-/** Native web-search request: the query, else the structured action (open or find in a page). */
+/** Native web-search request: the query, else the structured action (open or find in a page).
+ * An empty query with no action or an `other` action (how a hosted search starts) is unknown. */
 function webSearchInput(item: Record<string, unknown>): string | undefined {
   const query = textValue(item.query);
   if (query) {
@@ -79,8 +80,17 @@ function webSearchInput(item: Record<string, unknown>): string | undefined {
     throw new CodexRpcError('protocol');
   }
 
-  return textValue(JSON.stringify(action));
+  return action.type === 'other' ? undefined : textValue(JSON.stringify(action));
 }
+
+/** Streaming notifications and the only active item kind each may refer to. */
+const codexItemNotifications: Readonly<Record<string, string>> = {
+  'item/agentMessage/delta': 'agentMessage',
+  'item/reasoning/summaryTextDelta': 'reasoning',
+  'item/reasoning/textDelta': 'reasoning',
+  'item/commandExecution/outputDelta': 'commandExecution',
+  'item/mcpToolCall/progress': 'mcpToolCall',
+};
 
 /** Completed native items are authoritative, not reconstructed delta concatenations.
  * A single bounded pending answer preserves final/commentary separation for older
@@ -98,6 +108,7 @@ export function createCodexProtocol(
   const active = new Map<string, string>();
   const patches = new Map<string, { targets: string[]; hash: string }>();
   const searches = new Map<string, string>();
+  const tools = new Map<string, string>();
   const seen = new Map<string, string>();
   let turnId: string | undefined;
   let terminal = false;
@@ -330,26 +341,24 @@ export function createCodexProtocol(
           }
 
           if (kind === 'mcpToolCall') {
-            if (item.status !== 'inProgress') {
+            if (item.status !== 'inProgress' || !Object.hasOwn(item, 'arguments')) {
               throw new CodexRpcError('protocol');
             }
 
+            const title = mcpToolTitle(item);
+            tools.set(id, title);
             await emit({
               kind: 'action-open',
               key: 'action:' + id,
               parentKey: 'item:' + id,
-              title: mcpToolTitle(item),
+              title,
               operation: nativeToolOperation(codexToolOperations, kind),
             });
-            await text(
-              'action:' + id,
-              'tool-input',
-              textValue(JSON.stringify(item.arguments ?? null)),
-            );
+            await text('action:' + id, 'tool-input', textValue(JSON.stringify(item.arguments)));
           }
 
           if (kind === 'webSearch') {
-            // Codex starts a search with an empty query; the request is known on completion.
+            // A hosted search starts with an empty query; the request is known on completion.
             const input = webSearchInput(item);
             await emit({
               kind: 'action-open',
@@ -468,7 +477,12 @@ export function createCodexProtocol(
             throw new CodexRpcError('protocol');
           }
 
-          mcpToolTitle(item);
+          const title = tools.get(id);
+          tools.delete(id);
+          if (!Object.hasOwn(item, 'arguments') || mcpToolTitle(item) !== title) {
+            throw new CodexRpcError('protocol');
+          }
+
           if (item.error != null) {
             await text('action:' + id, 'tool-output', textValue(rpcObject(item.error).message));
           } else if (item.result != null) {
@@ -514,7 +528,7 @@ export function createCodexProtocol(
           }
 
           // A native web search carries no status; its completion is the only success signal.
-          // A search still open when the Turn settles is failed by Runtime settlement.
+          // A search still open when the Turn ends is settled with the Turn's terminal state.
           await emit({ kind: 'action-update', key: 'action:' + id, state: 'completed' });
           await emit({ kind: 'work-update', key: 'item:' + id, state: 'completed' });
         } else if (kind === 'plan') {
@@ -524,17 +538,9 @@ export function createCodexProtocol(
         return;
       }
 
-      if (
-        [
-          'item/agentMessage/delta',
-          'item/reasoning/summaryTextDelta',
-          'item/reasoning/textDelta',
-          'item/commandExecution/outputDelta',
-          'item/mcpToolCall/progress',
-        ].includes(method)
-      ) {
+      if (Object.hasOwn(codexItemNotifications, method)) {
         const id = identifier(params.itemId);
-        if (!active.has(id)) {
+        if (active.get(id) !== codexItemNotifications[method]) {
           throw new CodexRpcError('protocol');
         }
 
@@ -686,6 +692,7 @@ export function createCodexProtocol(
       active.clear();
       patches.clear();
       searches.clear();
+      tools.clear();
       seen.clear();
       terminal = true;
     },
@@ -699,6 +706,7 @@ export function createCodexProtocol(
       active.clear();
       patches.clear();
       searches.clear();
+      tools.clear();
       seen.clear();
       terminal = true;
     },

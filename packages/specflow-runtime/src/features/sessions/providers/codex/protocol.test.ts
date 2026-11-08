@@ -468,13 +468,61 @@ describe('Codex MCP tool call and web search items', () => {
       g.send('item/completed', { item: { ...search, action: { type: 'browse' } } }),
     ).rejects.toThrow();
   });
-  it('leaves a web search open when the Turn fails, so settlement marks it failed', async () => {
+  it('leaves a web search open when the Turn fails, so settlement applies the terminal state', async () => {
     const f = fixture();
     await f.start();
     await f.send('item/started', { item: search });
     await f.finish('failed');
     expect(f.facts.some((fact) => fact.kind === 'action-update')).toBe(false);
     expect(f.facts.at(-1)).toMatchObject({ kind: 'outcome', outcome: 'failed' });
+  });
+  it('accepts a hosted web search that starts with an `other` action and completes with a query', async () => {
+    const f = fixture();
+    await f.start();
+    await f.send('item/started', { item: { ...search, action: { type: 'other' } } });
+    await f.send('item/completed', {
+      item: { ...search, query: 'hosted', action: { type: 'search', query: 'hosted' } },
+    });
+    await f.finish();
+    expect(f.facts.filter((fact) => fact.kind === 'text')).toEqual([
+      { kind: 'text', key: 'action:web', channel: 'tool-input', text: 'hosted' },
+    ]);
+    expect(f.facts.at(-1)).toEqual({ kind: 'outcome', outcome: 'completed' });
+  });
+  it('refuses MCP completions with a changed identity or missing arguments, and mismatched streaming kinds', async () => {
+    for (const changed of [{ tool: 'other' }, { arguments: undefined }]) {
+      const f = fixture();
+      await f.start();
+      await f.send('item/started', { item: { ...mcp, status: 'inProgress' } });
+      const completed: Record<string, unknown> = { ...mcp, status: 'completed', ...changed };
+      if ('arguments' in changed) {
+        delete completed.arguments;
+      }
+
+      await expect(f.send('item/completed', { item: completed })).rejects.toThrow();
+    }
+
+    const g = fixture();
+    await g.start();
+    await expect(
+      g.send('item/started', {
+        item: {
+          id: 'no-args',
+          type: 'mcpToolCall',
+          server: 'docs',
+          tool: 'x',
+          status: 'inProgress',
+        },
+      }),
+    ).rejects.toThrow();
+    await g.send('item/started', { item: search });
+    await expect(
+      g.send('item/mcpToolCall/progress', { itemId: 'web', message: 'progress' }),
+    ).rejects.toThrow();
+    await g.send('item/started', { item: { ...mcp, status: 'inProgress' } });
+    await expect(
+      g.send('item/agentMessage/delta', { itemId: 'mcp', delta: 'text' }),
+    ).rejects.toThrow();
   });
   it('still refuses ThreadItem types outside the accepted inventory', async () => {
     const f = fixture();

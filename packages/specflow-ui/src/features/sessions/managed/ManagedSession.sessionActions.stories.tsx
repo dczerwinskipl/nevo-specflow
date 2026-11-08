@@ -171,7 +171,10 @@ export const SessionRenameUnconfirmed: Story = {
     await expect(
       await within(dialog).findByText('Nie potwierdzono operacji. Spróbuj ponownie.'),
     ).toBeVisible();
-    await expect(input).toBeDisabled();
+    // Locked without dropping focus: read-only and announced as unavailable.
+    await expect(input).toHaveAttribute('readonly');
+    await expect(input).toHaveAttribute('aria-disabled', 'true');
+    await expect(input).toHaveFocus();
     await expect(within(dialog).getByRole('button', { name: 'Anuluj' })).toBeDisabled();
     await userEvent.keyboard('{Escape}');
     await expect(body().getByRole('dialog')).toBeVisible();
@@ -218,8 +221,17 @@ const archiveBlocked = (note: string): Story['play'] =>
     await choose(canvasElement, 'Archiwizuj');
     const dialog = await body().findByRole('alertdialog');
     await expect(within(dialog).getByText(note)).toBeVisible();
-    await expect(within(dialog).getByRole('button', { name: 'Archiwizuj' })).toBeDisabled();
+    // The note is part of the dialog's description, read on open.
+    const described = (dialog.getAttribute('aria-describedby') ?? '')
+      .split(' ')
+      .map((id) => document.getElementById(id)?.textContent ?? '')
+      .join(' ');
+    await expect(described).toContain(note);
+    const confirm = within(dialog).getByRole('button', { name: 'Archiwizuj' });
+    await expect(confirm).toHaveAttribute('aria-disabled', 'true');
+    await userEvent.click(confirm);
     await expect(scriptedFixture().calls.archive).toHaveLength(0);
+    await expect(within(dialog).getByRole('button', { name: 'Anuluj' })).toBeEnabled();
   };
 
 export const SessionArchiveActiveTurn: Story = {
@@ -325,6 +337,35 @@ export const ArchivedSessionRestore: Story = {
   },
 };
 
+const restoreRefused = (copy: string): Story['play'] =>
+  async function play({ canvasElement }) {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Przywróć' }));
+    const bar = canvasElement.querySelector<HTMLElement>('[data-archived-bar]')!;
+    await expect(await within(bar).findByRole('alert')).toHaveTextContent(copy);
+    await expect(
+      within(bar).queryByText('Nie potwierdzono operacji. Spróbuj ponownie.'),
+    ).toBeNull();
+  };
+
+/** Restore refused: no permission any more. */
+export const ArchivedSessionRestoreForbidden: Story = {
+  tags: ['contract'],
+  render: scriptedRender(() => archivedSnapshot(), {
+    unarchive: [{ status: 403, code: 'forbidden' }],
+  }),
+  play: restoreRefused('Nie masz już uprawnień do tej operacji.'),
+};
+
+/** Restore refused for another reason: the generic copy of its kind, not "not confirmed". */
+export const ArchivedSessionRestoreRefused: Story = {
+  tags: ['contract'],
+  render: scriptedRender(() => archivedSnapshot(), {
+    unarchive: [{ status: 409, code: 'IDEMPOTENCY_CONFLICT' }],
+  }),
+  play: restoreRefused('Konfliktująca zmiana'),
+};
+
 /** Archived in another view: the send is refused as final, with its own note, then the bar. */
 export const SendRefusedArchived: Story = {
   tags: ['contract'],
@@ -388,6 +429,35 @@ export const SessionDeletePending: Story = {
     await expect(scriptedFixture().calls.delete).toHaveLength(1);
     scriptedFixture().release();
     await waitFor(() => expect(onSessionDeleted).toHaveBeenCalledOnce());
+  },
+};
+
+/**
+ * The delete closes the Session's stream and the reconnect answers 404 before the DELETE itself
+ * answers: this view's own success (once), never the deleted-elsewhere view.
+ */
+export const SessionDeleteStreamEndsFirst: Story = {
+  tags: ['contract'],
+  render: scriptedRender(sessionFixture, { delete: ['hold'] }),
+  play: async ({ canvasElement }) => {
+    onSessionDeleted.mockClear();
+    const canvas = within(canvasElement);
+    await choose(canvasElement, 'Usuń');
+    const dialog = await body().findByRole('alertdialog');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Usuń' }));
+    await within(dialog).findByRole('button', { name: 'Usuwanie…' });
+    scriptedFixture().endStream();
+    await waitFor(() => expect(onSessionDeleted).toHaveBeenCalledOnce());
+    await expect(
+      canvas.queryByRole('heading', { name: 'Ta sesja została usunięta lub nie istnieje' }),
+    ).toBeNull();
+    // The DELETE's own answer arrives later: nothing happens twice.
+    scriptedFixture().release();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    await expect(onSessionDeleted).toHaveBeenCalledOnce();
+    await expect(
+      canvas.queryByRole('heading', { name: 'Ta sesja została usunięta lub nie istnieje' }),
+    ).toBeNull();
   },
 };
 

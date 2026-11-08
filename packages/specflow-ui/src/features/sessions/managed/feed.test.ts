@@ -653,8 +653,11 @@ describe('Session feed reconcile of an unknown Turn', () => {
     expect(post.mock.calls[0]![0]).toBe(`/api/sessions/session/turns/${unknownTurnId}/reconcile`);
     expect(post.mock.calls[1]![1]).toEqual(post.mock.calls[0]![1]);
     // Settled: the Turn's new state comes from the stream, nothing is patched locally.
-    expect(feed.getSnapshot().reconcile).toBeUndefined();
+    expect(feed.getSnapshot().reconcile).toEqual({ turnId: unknownTurnId, status: 'settled' });
     expect(feed.getSnapshot().snapshot?.activeTurn?.state).toBe('unknown');
+    // Nothing to press until the stream moves the Turn out of `unknown`.
+    await expect(feed.reconcile()).resolves.toBeUndefined();
+    expect(post).toHaveBeenCalledTimes(2);
     feed.disconnect();
   });
 
@@ -669,6 +672,20 @@ describe('Session feed reconcile of an unknown Turn', () => {
       status: 'noEvidence',
     });
     expect(feed.getSnapshot().snapshot?.activeTurn?.state).toBe('unknown');
+    await feed.reconcile();
+    expect(post.mock.calls[1]![1]).not.toEqual(post.mock.calls[0]![1]);
+    feed.disconnect();
+  });
+
+  it('reports any other definite answer as refused, with a new request next time', async () => {
+    const { feed, post } = connected(() => Promise.reject(sessionError(403, 'forbidden')));
+    await vi.waitFor(() => expect(feed.getSnapshot().snapshot).toBeDefined());
+    await feed.reconcile();
+    expect(feed.getSnapshot().reconcile).toEqual({
+      turnId: unknownTurnId,
+      status: 'refused',
+      errorKind: 'forbidden',
+    });
     await feed.reconcile();
     expect(post.mock.calls[1]![1]).not.toEqual(post.mock.calls[0]![1]);
     feed.disconnect();

@@ -21,7 +21,16 @@ export function UnknownTurnNotice({
 }) {
   const { t } = useTranslation();
   const notify = useNotify();
-  const pending = reconcile?.status === 'pending';
+  // Also after a 200, until the stream moves the Turn out of `unknown` and this notice unmounts.
+  const pending = reconcile?.status === 'pending' || reconcile?.status === 'settled';
+  const alert =
+    reconcile?.status === 'unconfirmed'
+      ? t('managedSession.reconcile.unconfirmed')
+      : reconcile?.status === 'refused'
+        ? reconcile.errorKind === 'forbidden'
+          ? t('managedSession.sessionActions.forbidden')
+          : t(`apiErrors.kind.${reconcile.errorKind ?? 'server'}.title`)
+        : undefined;
   // `aria-disabled` keeps focus on the pressed control; the handler ignores presses while pending.
   const check = () => {
     if (pending) {
@@ -57,11 +66,7 @@ export function UnknownTurnNotice({
           <p className="mt-2">{t('managedSession.reconcile.noEvidence')}</p>
         ) : null}
       </div>
-      <div role="alert">
-        {reconcile?.status === 'unconfirmed' ? (
-          <p className="mt-2">{t('managedSession.reconcile.unconfirmed')}</p>
-        ) : null}
-      </div>
+      <div role="alert">{alert ? <p className="mt-2">{alert}</p> : null}</div>
     </Alert>
   );
 }

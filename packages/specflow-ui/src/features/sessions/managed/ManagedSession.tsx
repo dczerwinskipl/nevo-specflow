@@ -863,226 +863,228 @@ function ManagedSessionConversation({
                     )}
                     {/* Archived in another view: said here until the `session` change brings the
                         archived bar (session-actions-ux §3.4). */}
-                    <div role="status" className="contents">
-                      {state.archivedRefusal && !archived ? (
-                        <InlineNote tone="info">
-                          {t('managedSession.sessionActions.archivedElsewhere')}
-                        </InlineNote>
-                      ) : null}
-                    </div>
-                    {archived ? (
-                      <ArchivedSessionBar
-                        canManage={snapshot.session.capabilities.manage}
-                        unarchive={unarchive}
-                      />
-                    ) : (
-                      <>
-                        {/* Attachments/previews sit above the message text (session-composer-
+                    <div>
+                      <div role="status">
+                        {state.archivedRefusal && !archived ? (
+                          <InlineNote tone="info" className="mb-3">
+                            {t('managedSession.sessionActions.archivedElsewhere')}
+                          </InlineNote>
+                        ) : null}
+                      </div>
+                      {archived ? (
+                        <ArchivedSessionBar
+                          canManage={snapshot.session.capabilities.manage}
+                          unarchive={unarchive}
+                        />
+                      ) : (
+                        <div className="grid gap-3">
+                          {/* Attachments/previews sit above the message text (session-composer-
                             design.md §6 visual order), demo-only chips — see `handleComposerSubmit`
                             and `managedSession.attach.note`. */}
-                        {attachments.length > 0 && (
-                          <div className="grid gap-1.5">
-                            <div
-                              aria-label={t('managedSession.attach.list')}
-                              className="flex flex-wrap gap-2"
-                            >
-                              {attachments.map((attachment) => (
-                                <span
-                                  key={attachment.id}
-                                  className="inline-flex max-w-full items-center gap-1.5 rounded-control border border-border-subtle bg-surface-subtle px-2 py-1 text-body-sm"
-                                >
-                                  <span className="truncate">{attachment.name}</span>
-                                  <IconButton
-                                    aria-label={t('managedSession.attach.remove', {
-                                      name: attachment.name,
-                                    })}
-                                    icon={X}
-                                    size="xs"
-                                    variant="ghost"
-                                    onClick={() => removeAttachment(attachment.id)}
-                                  />
-                                </span>
-                              ))}
+                          {attachments.length > 0 && (
+                            <div className="grid gap-1.5">
+                              <div
+                                aria-label={t('managedSession.attach.list')}
+                                className="flex flex-wrap gap-2"
+                              >
+                                {attachments.map((attachment) => (
+                                  <span
+                                    key={attachment.id}
+                                    className="inline-flex max-w-full items-center gap-1.5 rounded-control border border-border-subtle bg-surface-subtle px-2 py-1 text-body-sm"
+                                  >
+                                    <span className="truncate">{attachment.name}</span>
+                                    <IconButton
+                                      aria-label={t('managedSession.attach.remove', {
+                                        name: attachment.name,
+                                      })}
+                                      icon={X}
+                                      size="xs"
+                                      variant="ghost"
+                                      onClick={() => removeAttachment(attachment.id)}
+                                    />
+                                  </span>
+                                ))}
+                              </div>
+                              <p role="note" className="text-body-sm text-content-muted">
+                                {t('managedSession.attach.note')}
+                              </p>
                             </div>
-                            <p role="note" className="text-body-sm text-content-muted">
-                              {t('managedSession.attach.note')}
-                            </p>
-                          </div>
-                        )}
-                        {/* Visually hidden, not removed: the `<textarea>` still needs an accessible
+                          )}
+                          {/* Visually hidden, not removed: the `<textarea>` still needs an accessible
                         name (the composer's own placeholder/icon already make its
                         purpose obvious to a sighted user, so a visible label is redundant
                         chrome). */}
-                        <label htmlFor="managed-message" className="sr-only">
-                          {t('managedSession.message')}
-                        </label>
-                        <MessageComposer
-                          // `shadow-lg` (a subtle shadow for every floating/elevated surface on this
-                          // screen, this bar included). Shares its literal value with
-                          // the "jump to latest" pill's own `shadow-lg` below and with the mobile
-                          // floating-navigation row's shadow (`AppWorkspace.css`), so all three read as
-                          // one coherent elevation rather than three different weights.
-                          //
-                          // `workspace-floating-pill` (`AppWorkspace.css`), not the DS `standalone`
-                          // variant's own default `bg-surface-raised` (a flat, solid `#121212`): this is
-                          // the same lighter, translucent "floating surface" material the jump-to-latest pill
-                          // and the mobile floating-navigation row already use, declared un-layered so
-                          // it reliably wins over the component's own `@layer`-declared utility
-                          // regardless of Tailwind's internal ordering (see that class's own doc
-                          // comment). Keeps this bar visually consistent with this screen's other
-                          // floating surfaces instead of reading as a separate, darker material.
-                          className="shadow-lg workspace-floating-pill"
-                          // Platform-specific Enter handling. Desktop
-                          // keeps the DS default (`'submit'`): a physical keyboard reliably reports
-                          // `shiftKey`, so Shift+Enter already inserts a newline there
-                          // (`resolveMessageComposerKeyAction`) and plain Enter sends. A mobile virtual
-                          // keyboard has no physical Shift key to combine with Enter at all, so under
-                          // the default behavior its only "Enter" input was swallowed into Send —
-                          // never a newline, with no way to invoke the `shiftKey` branch to begin with.
-                          // `'newline'` makes every Enter (shifted or not) insert a newline instead,
-                          // making Send explicit-button-only, which is what a touch composer needs.
-                          // Reuses the resolved layout (`isSplit`) — already this component's one "is this the
-                          // stacked/mobile layout" signal (the composer's own fixed-vs-sticky
-                          // positioning above, and the compact Model/effort and composer-mode pickers
-                          // below, all branch on it) — rather than a `pointer: coarse` media query:
-                          // this codebase's only existing coarse-pointer checks
-                          // (`treeRowActionClassName`, `ItemTabs`) are Tailwind `pointer-coarse:`/
-                          // `pointer-fine:` CSS variants for hover-affordance visibility, never a
-                          // JS-level behavioral branch, so introducing one here just for this prop
-                          // would be a second, inconsistent "is this mobile" signal for the exact same
-                          // composer this file already branches by the resolved layout throughout.
-                          enterKeyBehavior={isSplit ? 'submit' : 'newline'}
-                          onSubmit={handleComposerSubmit}
-                          presentation="standalone"
-                        >
-                          <MessageComposer.Editor
-                            ref={editorRef}
-                            id="managed-message"
-                            minRows={1}
-                            value={state.draft}
-                            onChange={(event) => feed.setDraft(event.target.value)}
-                            disabled={
-                              !!state.pending || snapshot.session.readiness === 'unavailable'
-                            }
-                          />
-                          <MessageComposer.Toolbar>
-                            {/* Visual order per session-composer-design.md §6: "+", intent/preset,
+                          <label htmlFor="managed-message" className="sr-only">
+                            {t('managedSession.message')}
+                          </label>
+                          <MessageComposer
+                            // `shadow-lg` (a subtle shadow for every floating/elevated surface on this
+                            // screen, this bar included). Shares its literal value with
+                            // the "jump to latest" pill's own `shadow-lg` below and with the mobile
+                            // floating-navigation row's shadow (`AppWorkspace.css`), so all three read as
+                            // one coherent elevation rather than three different weights.
+                            //
+                            // `workspace-floating-pill` (`AppWorkspace.css`), not the DS `standalone`
+                            // variant's own default `bg-surface-raised` (a flat, solid `#121212`): this is
+                            // the same lighter, translucent "floating surface" material the jump-to-latest pill
+                            // and the mobile floating-navigation row already use, declared un-layered so
+                            // it reliably wins over the component's own `@layer`-declared utility
+                            // regardless of Tailwind's internal ordering (see that class's own doc
+                            // comment). Keeps this bar visually consistent with this screen's other
+                            // floating surfaces instead of reading as a separate, darker material.
+                            className="shadow-lg workspace-floating-pill"
+                            // Platform-specific Enter handling. Desktop
+                            // keeps the DS default (`'submit'`): a physical keyboard reliably reports
+                            // `shiftKey`, so Shift+Enter already inserts a newline there
+                            // (`resolveMessageComposerKeyAction`) and plain Enter sends. A mobile virtual
+                            // keyboard has no physical Shift key to combine with Enter at all, so under
+                            // the default behavior its only "Enter" input was swallowed into Send —
+                            // never a newline, with no way to invoke the `shiftKey` branch to begin with.
+                            // `'newline'` makes every Enter (shifted or not) insert a newline instead,
+                            // making Send explicit-button-only, which is what a touch composer needs.
+                            // Reuses the resolved layout (`isSplit`) — already this component's one "is this the
+                            // stacked/mobile layout" signal (the composer's own fixed-vs-sticky
+                            // positioning above, and the compact Model/effort and composer-mode pickers
+                            // below, all branch on it) — rather than a `pointer: coarse` media query:
+                            // this codebase's only existing coarse-pointer checks
+                            // (`treeRowActionClassName`, `ItemTabs`) are Tailwind `pointer-coarse:`/
+                            // `pointer-fine:` CSS variants for hover-affordance visibility, never a
+                            // JS-level behavioral branch, so introducing one here just for this prop
+                            // would be a second, inconsistent "is this mobile" signal for the exact same
+                            // composer this file already branches by the resolved layout throughout.
+                            enterKeyBehavior={isSplit ? 'submit' : 'newline'}
+                            onSubmit={handleComposerSubmit}
+                            presentation="standalone"
+                          >
+                            <MessageComposer.Editor
+                              ref={editorRef}
+                              id="managed-message"
+                              minRows={1}
+                              value={state.draft}
+                              onChange={(event) => feed.setDraft(event.target.value)}
+                              disabled={
+                                !!state.pending || snapshot.session.readiness === 'unavailable'
+                              }
+                            />
+                            <MessageComposer.Toolbar>
+                              {/* Visual order per session-composer-design.md §6: "+", intent/preset,
                                 conditional operation policy, then the trailing Model+effort/Send
                                 cluster (`ml-auto` keeps that cluster right-aligned, as it already
                                 was). */}
-                            {/* One row, never wrapped (at 375px a wrap would put Model above the
+                              {/* One row, never wrapped (at 375px a wrap would put Model above the
                             work mode). Both groups may shrink; the two text
                             pickers truncate instead. */}
-                            <div className="flex min-w-0 items-center gap-1">
-                              <input
-                                ref={fileAttachmentInputRef}
-                                hidden
-                                multiple
-                                type="file"
-                                onChange={(event) =>
-                                  handleAttachmentsSelected(
-                                    event.target.files,
-                                    fileAttachmentInputRef,
-                                  )
-                                }
-                              />
-                              <input
-                                ref={imageAttachmentInputRef}
-                                accept="image/*"
-                                hidden
-                                multiple
-                                type="file"
-                                onChange={(event) =>
-                                  handleAttachmentsSelected(
-                                    event.target.files,
-                                    imageAttachmentInputRef,
-                                  )
-                                }
-                              />
-                              {/* Opens a menu ("Dodaj plik"/"Dodaj obraz"), not a native picker
+                              <div className="flex min-w-0 items-center gap-1">
+                                <input
+                                  ref={fileAttachmentInputRef}
+                                  hidden
+                                  multiple
+                                  type="file"
+                                  onChange={(event) =>
+                                    handleAttachmentsSelected(
+                                      event.target.files,
+                                      fileAttachmentInputRef,
+                                    )
+                                  }
+                                />
+                                <input
+                                  ref={imageAttachmentInputRef}
+                                  accept="image/*"
+                                  hidden
+                                  multiple
+                                  type="file"
+                                  onChange={(event) =>
+                                    handleAttachmentsSelected(
+                                      event.target.files,
+                                      imageAttachmentInputRef,
+                                    )
+                                  }
+                                />
+                                {/* Opens a menu ("Dodaj plik"/"Dodaj obraz"), not a native picker
                               directly: the mockup's own "+" affordance is itself a menu trigger
                               (desktop.html's `c3-plus`/`data-cmp="attach"`), and a
                               bare `IconButton` here — not also wrapped in `Tooltip`/
                               `TooltipTrigger`, see `ComposerModePicker`'s doc comment — avoids
                               the same nested-`asChild` tap bug. */}
-                              <Menu>
-                                <MenuTrigger asChild>
-                                  <IconButton
-                                    aria-label={t('managedSession.attach.action')}
-                                    icon={Plus}
-                                    size="sm"
-                                    title={t('managedSession.attach.action')}
-                                    variant="ghost"
-                                  />
-                                </MenuTrigger>
-                                <MenuContent
-                                  align="start"
-                                  aria-label={t('managedSession.attach.action')}
-                                >
-                                  <MenuItem
-                                    leadingIcon="file"
-                                    onSelect={() => fileAttachmentInputRef.current?.click()}
-                                  >
-                                    {t('managedSession.attach.addFile')}
-                                  </MenuItem>
-                                  <MenuItem
-                                    leadingIcon="image"
-                                    onSelect={() => imageAttachmentInputRef.current?.click()}
-                                  >
-                                    {t('managedSession.attach.addImage')}
-                                  </MenuItem>
-                                </MenuContent>
-                              </Menu>
-                              <ComposerModePicker
-                                options={workModes}
-                                value={workModeId}
-                                onChange={(modeId) =>
-                                  feed.setWorkMode(runtimeWorkModeCommand(provider, modeId))
-                                }
-                                disabled={state.commandBusy || !!state.pending}
-                                compact={!isSplit}
-                              />
-                            </div>
-                            {/* `shrink-0`: Model/effort keeps its full text (capped by its own
-                            max-width); the work-mode picker on the left truncates first. */}
-                            <div className="ml-auto flex shrink-0 items-center justify-end gap-2">
-                              <ModelEffortPicker
-                                provider={provider}
-                                value={
-                                  selectedModelId
-                                    ? { modelId: selectedModelId, effort: selectedEffort }
-                                    : undefined
-                                }
-                                onChange={(modelId, effort) => feed.setModel(modelId, effort)}
-                                disabled={state.commandBusy || !!state.pending}
-                                compact={!isSplit}
-                              />
-                              <TooltipProvider delayDuration={400}>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
+                                <Menu>
+                                  <MenuTrigger asChild>
                                     <IconButton
-                                      aria-label={t(sendActionLabelKey)}
-                                      disabled={canCancel ? state.commandBusy : !canSend}
-                                      icon={canCancel ? Square : Send}
+                                      aria-label={t('managedSession.attach.action')}
+                                      icon={Plus}
                                       size="sm"
-                                      type={canCancel ? 'button' : 'submit'}
-                                      // Bold `primary` only while Send is actually actionable: the
-                                      // disabled `opacity-50` treatment alone reads too close to
-                                      // "primary" at full saturation (the composer's disabled textarea
-                                      // visibly mutes, so the Send icon button must too), so the disabled Send case falls back to the same muted
-                                      // `secondary` treatment Stop/Cancel already uses.
-                                      variant={canCancel || !canSend ? 'secondary' : 'primary'}
-                                      onClick={canCancel ? () => void feed.cancel() : undefined}
+                                      title={t('managedSession.attach.action')}
+                                      variant="ghost"
                                     />
-                                  </TooltipTrigger>
-                                  <TooltipContent>{t(sendActionLabelKey)}</TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            </div>
-                          </MessageComposer.Toolbar>
-                        </MessageComposer>
-                      </>
-                    )}
+                                  </MenuTrigger>
+                                  <MenuContent
+                                    align="start"
+                                    aria-label={t('managedSession.attach.action')}
+                                  >
+                                    <MenuItem
+                                      leadingIcon="file"
+                                      onSelect={() => fileAttachmentInputRef.current?.click()}
+                                    >
+                                      {t('managedSession.attach.addFile')}
+                                    </MenuItem>
+                                    <MenuItem
+                                      leadingIcon="image"
+                                      onSelect={() => imageAttachmentInputRef.current?.click()}
+                                    >
+                                      {t('managedSession.attach.addImage')}
+                                    </MenuItem>
+                                  </MenuContent>
+                                </Menu>
+                                <ComposerModePicker
+                                  options={workModes}
+                                  value={workModeId}
+                                  onChange={(modeId) =>
+                                    feed.setWorkMode(runtimeWorkModeCommand(provider, modeId))
+                                  }
+                                  disabled={state.commandBusy || !!state.pending}
+                                  compact={!isSplit}
+                                />
+                              </div>
+                              {/* `shrink-0`: Model/effort keeps its full text (capped by its own
+                            max-width); the work-mode picker on the left truncates first. */}
+                              <div className="ml-auto flex shrink-0 items-center justify-end gap-2">
+                                <ModelEffortPicker
+                                  provider={provider}
+                                  value={
+                                    selectedModelId
+                                      ? { modelId: selectedModelId, effort: selectedEffort }
+                                      : undefined
+                                  }
+                                  onChange={(modelId, effort) => feed.setModel(modelId, effort)}
+                                  disabled={state.commandBusy || !!state.pending}
+                                  compact={!isSplit}
+                                />
+                                <TooltipProvider delayDuration={400}>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <IconButton
+                                        aria-label={t(sendActionLabelKey)}
+                                        disabled={canCancel ? state.commandBusy : !canSend}
+                                        icon={canCancel ? Square : Send}
+                                        size="sm"
+                                        type={canCancel ? 'button' : 'submit'}
+                                        // Bold `primary` only while Send is actually actionable: the
+                                        // disabled `opacity-50` treatment alone reads too close to
+                                        // "primary" at full saturation (the composer's disabled textarea
+                                        // visibly mutes, so the Send icon button must too), so the disabled Send case falls back to the same muted
+                                        // `secondary` treatment Stop/Cancel already uses.
+                                        variant={canCancel || !canSend ? 'secondary' : 'primary'}
+                                        onClick={canCancel ? () => void feed.cancel() : undefined}
+                                      />
+                                    </TooltipTrigger>
+                                    <TooltipContent>{t(sendActionLabelKey)}</TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              </div>
+                            </MessageComposer.Toolbar>
+                          </MessageComposer>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </>
@@ -1420,7 +1422,18 @@ export function ManagedSession({
     ...(snapshot ? sessionActions.actions : []),
   ].filter(Boolean) as WorkspaceHeaderAction[];
 
-  if (state.notFound) {
+  // The delete closes this Session's stream, and the reconnect answers 404 — often before the
+  // DELETE's own answer. While this view's delete holds, that is its success, not "deleted
+  // elsewhere".
+  const deletion = sessionActions.deletion;
+  const goneByOwnDelete = state.notFound && deletion.holds;
+  useEffect(() => {
+    if (goneByOwnDelete) {
+      deletion.confirmGone();
+    }
+  }, [goneByOwnDelete, deletion]);
+
+  if (state.notFound && !deletion.holds) {
     return <SessionNotFoundView onNewSession={onNewSession} />;
   }
 

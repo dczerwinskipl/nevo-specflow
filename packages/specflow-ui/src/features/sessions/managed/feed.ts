@@ -6,6 +6,7 @@ import type {
   ReconcileTurnResult,
 } from '@nevo/specflow-contracts/sessions';
 import { utf8Bytes, SessionLimits } from '@nevo/specflow-contracts/sessions';
+import { isApiError, type ApiErrorKind } from '../../../api';
 import { writeOutcomeUnknown } from '../../../shared/http/apiErrorCode';
 import { sendRetained, type RequestAttempt } from '../../../shared/operations/retainedRequest';
 import { sessionErrorCode, type ManagedSessionsApi } from './api';
@@ -64,13 +65,16 @@ export interface FeedState {
   reconcile?: ReconcileState;
 }
 /**
- * `pending`: the request is in flight. `noEvidence`: 409 `SESSION_RECOVERY_REQUIRED`, the Turn stays
- * unknown and the next press is a new request. `unconfirmed`: the answer was lost; the next press
- * reuses the same `requestId`.
+ * `pending`: the request is in flight. `settled`: the Runtime answered 200; it stays until the
+ * stream moves the Turn out of `unknown` (nothing to press meanwhile). `noEvidence`: 409
+ * `SESSION_RECOVERY_REQUIRED`, the Turn stays unknown and the next press is a new request.
+ * `unconfirmed`: the answer was lost (network, 5xx); the next press reuses the same `requestId`.
+ * `refused`: any other definite answer (403, 422, …), with its classified kind for the copy.
  */
 export interface ReconcileState {
   readonly turnId: string;
-  readonly status: 'pending' | 'noEvidence' | 'unconfirmed';
+  readonly status: 'pending' | 'settled' | 'noEvidence' | 'unconfirmed' | 'refused';
+  readonly errorKind?: ApiErrorKind;
 }
 /**
  * What the Session stream says about telemetry: a committed `revision`, or `resync` after the feed
@@ -186,6 +190,7 @@ export function createSessionFeed(
   let respondFor: string | undefined;
   // One request id per unknown Turn, kept only across an unconfirmed attempt.
   let reconcileAttempt: { turnId: string; requestId: string } | undefined;
+  let reconcileToken = 0;
 
   let state: FeedState = {
     connection: 'loading',
@@ -687,7 +692,10 @@ export function createSessionFeed(
      */
     async reconcile(): Promise<ReconcileTurnResult | undefined> {
       const turn = state.snapshot?.activeTurn;
-      if (turn?.state !== 'unknown' || state.reconcile?.status === 'pending') {
+      const busy =
+        state.reconcile?.turnId === turn?.turnId &&
+        (state.reconcile?.status === 'pending' || state.reconcile?.status === 'settled');
+      if (turn?.state !== 'unknown' || busy) {
         return undefined;
       }
 
@@ -697,20 +705,12 @@ export function createSessionFeed(
       }
 
       const attempt = reconcileAttempt;
-      const settle = (next: ReconcileState | undefined) => {
-        // A newer check of another Turn owns the state now.
-        if (state.reconcile && state.reconcile.turnId !== turnId) {
-          return;
+      const token = ++reconcileToken;
+      const settle = (next: ReconcileState) => {
+        // A newer check owns the state now.
+        if (token === reconcileToken) {
+          notify({ ...state, reconcile: next });
         }
-
-        const updated: FeedState = { ...state };
-        if (next) {
-          updated.reconcile = next;
-        } else {
-          delete updated.reconcile;
-        }
-
-        notify(updated);
       };
 
       settle({ turnId, status: 'pending' });
@@ -720,7 +720,8 @@ export function createSessionFeed(
           reconcileAttempt = undefined;
         }
 
-        settle(undefined);
+        // Settled: the Turn's new state arrives on the stream; nothing to press until then.
+        settle({ turnId, status: 'settled' });
 
         return result;
       } catch (error) {
@@ -731,7 +732,17 @@ export function createSessionFeed(
           reconcileAttempt = undefined;
         }
 
-        settle({ turnId, status: noEvidence ? 'noEvidence' : 'unconfirmed' });
+        settle(
+          noEvidence
+            ? { turnId, status: 'noEvidence' }
+            : writeOutcomeUnknown(error)
+              ? { turnId, status: 'unconfirmed' }
+              : {
+                  turnId,
+                  status: 'refused',
+                  ...(isApiError(error) ? { errorKind: error.kind } : {}),
+                },
+        );
 
         return undefined;
       }

@@ -14,12 +14,20 @@ export function ArchivedSessionBar({
   unarchive: SessionCommandView & { run: () => void };
 }) {
   const { t } = useTranslation();
-  const failure = unarchive.failure;
+  const failure = unarchive.pending ? undefined : unarchive.failure;
+  const message =
+    failure === 'unconfirmed'
+      ? t('managedSession.sessionActions.unconfirmed')
+      : failure === 'forbidden'
+        ? t('managedSession.sessionActions.forbidden')
+        : failure
+          ? t(`apiErrors.kind.${unarchive.errorKind ?? 'server'}.title`)
+          : undefined;
 
   return (
     <div
       data-archived-bar="true"
-      className="workspace-floating-pill grid gap-2 rounded-composite px-4 py-3 shadow-lg"
+      className="workspace-floating-pill rounded-composite px-4 py-3 shadow-lg"
     >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <InlineNote tone="info" className="min-w-0 flex-1">
@@ -39,13 +47,11 @@ export function ArchivedSessionBar({
           </Button>
         ) : null}
       </div>
-      {/* Always there, without a grid row of its own while empty. */}
-      <div role="alert" className="contents">
-        {failure && !unarchive.pending ? (
-          <InlineNote tone="danger">
-            {failure === 'forbidden'
-              ? t('managedSession.sessionActions.forbidden')
-              : t('managedSession.sessionActions.unconfirmed')}
+      {/* Always there (a block, so an empty region takes no space). */}
+      <div role="alert">
+        {message ? (
+          <InlineNote tone="danger" className="mt-2">
+            {message}
           </InlineNote>
         ) : null}
       </div>

@@ -114,6 +114,11 @@ export function scriptedActionsApi(
     }
   };
 
+  // `endStream()`: the Runtime deleted the Session; its stream closes and every read is 404.
+  const gone = Promise.withResolvers<'gone'>();
+  let isGone = false;
+  const notFound = () => failure({ status: 404, code: 'SESSION_NOT_FOUND' });
+
   const changeSession = (next: SessionSnapshot['session']) => {
     session = next;
     // After the acknowledgement, as the Runtime's change arrives on the stream.
@@ -124,6 +129,26 @@ export function scriptedActionsApi(
 
   const api: ManagedSessionsApi = {
     ...live.api,
+    snapshot: (...args) => (isGone ? Promise.reject(notFound()) : live.api.snapshot(...args)),
+    async *watch(id, after, signal, onReconnect) {
+      if (isGone) {
+        throw notFound();
+      }
+
+      const stream = live.api.watch(id, after, signal, onReconnect)[Symbol.asyncIterator]();
+      for (;;) {
+        const next = await Promise.race([stream.next(), gone.promise]);
+        if (next === 'gone') {
+          throw notFound();
+        }
+
+        if (next.done) {
+          return;
+        }
+
+        yield next.value;
+      }
+    },
     rename: async (_id, input) => {
       await answer('rename', input);
 
@@ -194,6 +219,11 @@ export function scriptedActionsApi(
     calls,
     watched: live.watched,
     pushChange: (change: Parameters<typeof live.pushChange>[0]) => live.pushChange(change),
+    /** The Session is gone on the Runtime: the open stream ends in 404, as do later reads. */
+    endStream() {
+      isGone = true;
+      gone.resolve('gone');
+    },
     /** Lets every held command answer `ok`. */
     release() {
       for (const resolve of held.splice(0)) {

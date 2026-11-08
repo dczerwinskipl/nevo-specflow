@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { HttpClientError, type HttpRequestClient } from '@nevo/http-client';
 import type { SessionSnapshot } from '@nevo/specflow-contracts/sessions';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { LocalizationProvider, createSpecFlowI18n } from '../../../../i18n';
 import { createManagedSessionsApi, type ManagedSessionsApi } from '../api';
+import { ArchivedSessionBar } from './ArchivedSessionBar';
 import { useSessionActions } from './useSessionActions';
 
 afterEach(cleanup);
@@ -53,6 +54,11 @@ function Harness(props: Parameters<typeof useSessionActions>[0]) {
       <output data-testid="unarchive">
         {unarchive.pending ? 'pending' : (unarchive.failure ?? 'idle')}
       </output>
+      {props.session?.archivedAt ? (
+        <section aria-label="bar">
+          <ArchivedSessionBar canManage unarchive={unarchive} />
+        </section>
+      ) : null}
       {dialogs}
     </>
   );
@@ -82,12 +88,13 @@ function renderActions(
     </LocalizationProvider>,
   );
 
-  return { ...view, onDeleted, onUnarchived };
+  return { ...view, api, query, onDeleted, onUnarchived };
 }
 
 const actionLabels = () =>
   [...document.querySelectorAll('[data-action]')].map((node) => node.textContent);
 const press = (name: string) => fireEvent.click(screen.getByRole('button', { name }));
+const bar = () => screen.getByRole('region', { name: 'bar' });
 
 describe('Session actions menu', () => {
   it.each([
@@ -129,7 +136,8 @@ describe('Rename', () => {
       'textContent',
       expect.stringContaining('Nie potwierdzono operacji. Spróbuj ponownie.'),
     );
-    expect(input).toHaveProperty('disabled', true);
+    expect(input).toHaveProperty('readOnly', true);
+    expect(input.getAttribute('aria-disabled')).toBe('true');
     expect(screen.getByRole('button', { name: 'Anuluj' })).toHaveProperty('disabled', true);
     // Escape does not close a locked dialog.
     fireEvent.keyDown(input, { key: 'Escape' });
@@ -181,7 +189,7 @@ describe('Archive', () => {
     const confirm = [...dialog.querySelectorAll('button')].find(
       (button) => button.textContent === 'Archiwizuj',
     )!;
-    expect(confirm.disabled).toBe(true);
+    expect(confirm.getAttribute('aria-disabled')).toBe('true');
     fireEvent.click(confirm);
     expect(post).not.toHaveBeenCalled();
   });
@@ -208,12 +216,67 @@ describe('Restore', () => {
       { post },
       { session: { ...session, archivedAt: '2026-11-08T11:00:00Z' } },
     );
-    press('Przywróć');
+    fireEvent.click(document.querySelector('[data-action="unarchive-session"]')!);
     await waitFor(() => expect(screen.getByTestId('unarchive').textContent).toBe('unconfirmed'));
-    press('Przywróć');
+    // The retry from the archived bar is the same command: the same request id.
+    fireEvent.click(within(bar()).getByRole('button', { name: 'Przywróć' }));
     await waitFor(() => expect(onUnarchived).toHaveBeenCalledOnce());
     expect(post.mock.calls[0]![0]).toBe(`/api/sessions/${sessionId}/unarchive`);
     expect(post.mock.calls[1]![1]).toEqual(post.mock.calls[0]![1]);
+  });
+
+  it.each([
+    ['unconfirmed', lost(), 'Nie potwierdzono operacji. Spróbuj ponownie.'],
+    ['forbidden', sessionError(403, 'forbidden'), 'Nie masz już uprawnień do tej operacji.'],
+    ['refused', sessionError(409, 'IDEMPOTENCY_CONFLICT'), 'Konfliktująca zmiana'],
+  ])('says in the bar why Restore failed: %s', async (_name, error, copy) => {
+    renderActions(
+      { post: vi.fn().mockRejectedValue(error) },
+      { session: { ...session, archivedAt: '2026-11-08T11:00:00Z' } },
+    );
+    fireEvent.click(within(bar()).getByRole('button', { name: 'Przywróć' }));
+    await waitFor(() => expect(within(bar()).getByRole('alert').textContent).toBe(copy));
+  });
+
+  it('reuses the request id when the bar retries its own unconfirmed Restore', async () => {
+    const post = vi.fn().mockRejectedValueOnce(lost()).mockResolvedValue({ session });
+    renderActions({ post }, { session: { ...session, archivedAt: '2026-11-08T11:00:00Z' } });
+    fireEvent.click(within(bar()).getByRole('button', { name: 'Przywróć' }));
+    await waitFor(() => expect(screen.getByTestId('unarchive').textContent).toBe('unconfirmed'));
+    fireEvent.click(within(bar()).getByRole('button', { name: 'Przywróć' }));
+    await waitFor(() => expect(post).toHaveBeenCalledTimes(2));
+    expect(post.mock.calls[1]![1]).toEqual(post.mock.calls[0]![1]);
+  });
+});
+
+describe('Delete with a Turn that has not ended', () => {
+  it('unlocks Cancel after an unconfirmed attempt once a Turn blocks the command', async () => {
+    const remove = vi.fn().mockRejectedValue(lost());
+    const view = renderActions({ delete: remove });
+    press('Usuń');
+    const dialog = screen.getByRole('alertdialog');
+    fireEvent.click([...dialog.querySelectorAll('button')].find((b) => b.textContent === 'Usuń')!);
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Anuluj' })).toHaveProperty('disabled', true),
+    );
+    view.rerender(
+      <LocalizationProvider instance={createSpecFlowI18n('pl')}>
+        <QueryClientProvider client={view.query}>
+          <Harness
+            api={view.api}
+            sessionId={sessionId}
+            session={session}
+            activeTurn={{
+              turnId: sessionId,
+              state: 'active',
+              revision: 1,
+              startedAt: '2026-11-08T10:00:00Z',
+            }}
+          />
+        </QueryClientProvider>
+      </LocalizationProvider>,
+    );
+    expect(screen.getByRole('button', { name: 'Anuluj' })).toHaveProperty('disabled', false);
   });
 });
 

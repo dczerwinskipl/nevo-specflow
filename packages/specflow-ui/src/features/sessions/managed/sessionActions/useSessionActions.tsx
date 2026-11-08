@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { WorkspaceHeaderAction } from '@nevo/ui';
@@ -66,9 +66,19 @@ export function useSessionActions({
   dialogs: ReactNode;
   /** The Unarchive command, also pressed from the archived bar. */
   unarchive: SessionCommandView & { run: () => void };
+  /**
+   * This view's own Delete. While it `holds` (in flight, unconfirmed, or done), a Session that turns
+   * out to be gone (the stream closed by the delete, then 404) is this view's success, never the
+   * deleted-elsewhere view: `confirmGone` finishes it (once).
+   */
+  deletion: { holds: boolean; confirmGone: () => void };
 } {
   const { t } = useTranslation();
   const [open, setOpen] = useState<SessionActionDialog>();
+  const [deleted, setDeleted] = useState(false);
+  // Guards the one-time finish across its two triggers (the DELETE's answer, the 404 on the
+  // stream); owned by this hook for the screen's lifetime.
+  const deleteFinished = useRef(false);
   // Idempotency keys, kept only across an unconfirmed attempt (not UI state).
   const [attempts] = useState(() => {
     const rename: Attempt<RenameSession> = { current: null };
@@ -121,6 +131,17 @@ export function useSessionActions({
       }
     },
   });
+  const finishDelete = () => {
+    if (deleteFinished.current) {
+      return;
+    }
+
+    deleteFinished.current = true;
+    setDeleted(true);
+    close();
+    onDeleted?.();
+  };
+
   const openDialog = (dialog: SessionActionDialog, mutation: { reset: () => void }) => {
     mutation.reset();
     setOpen(dialog);
@@ -191,16 +212,10 @@ export function useSessionActions({
       onClose={close}
       onRename={(title) => rename.mutate(title, { onSuccess: close })}
       onArchive={() => archive.mutate(undefined, { onSuccess: close })}
-      onDelete={() =>
-        remove.mutate(undefined, {
-          onSuccess: () => {
-            close();
-            onDeleted?.();
-          },
-        })
-      }
+      onDelete={() => remove.mutate(undefined, { onSuccess: finishDelete })}
     />
   );
+  const removeView = commandView(remove);
 
   return {
     actions,
@@ -208,6 +223,10 @@ export function useSessionActions({
     unarchive: {
       ...commandView(unarchive),
       run: runUnarchive,
+    },
+    deletion: {
+      holds: deleted || removeView.pending || removeView.failure === 'unconfirmed',
+      confirmGone: finishDelete,
     },
   };
 }

@@ -2,7 +2,9 @@ import type {
   ConversationEntry,
   SessionSnapshot,
   ToolActionSummary,
+  ToolOperation,
   TurnSummary,
+  WorkDigest,
   WorkSummary,
 } from '@nevo/specflow-contracts/sessions';
 import { fixtureSessionId, fixtureApi } from './managedSession.stories-support';
@@ -14,7 +16,6 @@ import {
   hasFixtureContent,
   workInspectorTurnId,
 } from './managedSession.workInspector.stories-support';
-import type { ToolActivityKind, WithWorkDigest, WorkDigest } from './workCounts';
 
 /** Isolated presentation adapters for the Full Session state fixtures: never imported by a
  * production route. Each builds a realistic `SessionSnapshot` for one state validated this pass
@@ -299,7 +300,7 @@ export function longConversationSnapshot(): SessionSnapshot {
 export const longConversationLastMessage = `${longConversationTurns[9]!.answer} (runda 3)`;
 
 /**
- * One step of a fixture Turn's Work: a tool action (`kind` is the proposed demo sub-kind, `state`
+ * One step of a fixture Turn's Work: a tool action (`kind` is its `ToolOperation`, `state`
  * the canonical Work state) or a Commentary line. `turnFixture` turns a list of these into BOTH the
  * conversation entries the real runtime would emit (one `work-summary` entry per tool Work, title
  * only — `specflow-runtime/.../persistence/facts.ts`) AND the Turn's own Work history items, so a
@@ -308,14 +309,14 @@ export const longConversationLastMessage = `${longConversationTurns[9]!.answer} 
 type WorkStep =
   | {
       tool: string;
-      kind: ToolActivityKind;
+      kind: ToolOperation;
       state?: Extract<WorkSummary['state'], 'completed' | 'failed' | 'active' | 'interrupted'>;
     }
   | { commentary: string };
 
 interface TurnFixture {
   turnId: string;
-  entries: WithWorkDigest<ConversationEntry>[];
+  entries: ConversationEntry[];
   items: WorkSummary[];
   /** One ToolAction per tool Work (the real runtime's common case), with real parameters, the
    * tool's actual response and its own timing — what Work history's L4 detail opens. */
@@ -323,7 +324,7 @@ interface TurnFixture {
 }
 
 /** Plausible per-kind call timings (seconds) so every settled step has a real elapsed time. */
-const stepSeconds: Record<ToolActivityKind, number> = {
+const stepSeconds: Record<ToolOperation, number> = {
   read: 0.2,
   list: 0.1,
   search: 0.6,
@@ -337,7 +338,7 @@ const stepSeconds: Record<ToolActivityKind, number> = {
 
 /** What the tool was called with and what it answered, derived from the step's own title so the
  * L2 row and its L4 detail always describe the same call. */
-function toolCall(step: { tool: string; kind: ToolActivityKind }, failed: boolean) {
+function toolCall(step: { tool: string; kind: ToolOperation }, failed: boolean) {
   const subject = step.tool.replace(
     /^(Read file|Edit|Write|Search code|List directory|Bash:)\s*/,
     '',
@@ -389,10 +390,10 @@ src/workspace-writer.ts:118:  // ${subject}
 }
 
 /**
- * Builds one Turn. `withDigest` attaches the proposed, demo-only `WorkDigest` (`workCounts.ts`) to
+ * Builds one Turn. `withDigest` attaches Runtime's `WorkDigest` (`ConversationEntry.digest`) to
  * the Turn's last `work-summary` entry — computed here from the very steps that also become the Work
- * history, standing in for the per-Turn server projection that does not exist yet. Without it the
- * entries look exactly like today's real backend output.
+ * history, as Runtime maintains it per Turn. Without it the entries look like a Turn recorded
+ * before Runtime maintained the digest.
  */
 function turnFixture(
   turnId: string,
@@ -401,7 +402,7 @@ function turnFixture(
   steps: readonly WorkStep[],
   options: { answer?: string; outcome?: string; withDigest?: boolean } = {},
 ): TurnFixture {
-  const entries: WithWorkDigest<ConversationEntry>[] = [];
+  const entries: ConversationEntry[] = [];
   const items: WorkSummary[] = [];
   const actions: Record<string, ToolActionSummary[]> = {};
   const at = '2026-10-29T09:00:00Z';
@@ -664,7 +665,7 @@ export function richDefaultApi(): ManagedSessionsApi {
  * §3.1): settled; settled with a failed test across many kinds (four-kinds cap + "i więcej"); a
  * Turn interrupted mid-work (shown once, in its block — no separate outcome row); a Turn with no
  * tool Work that failed (outcome row alone, the only place that fact exists); a Turn whose entries
- * carry no digest — exactly today's real backend output (honest "N działań narzędzi"); and the live
+ * carry no digest — a Turn recorded before the digest existed (honest "N działań narzędzi"); and the live
  * Turn thinking. Every block opens Work history with that Turn's own items.
  */
 function workSummaryStatesFixture(): { snapshot: SessionSnapshot; turns: TurnFixture[] } {

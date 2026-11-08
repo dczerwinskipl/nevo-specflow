@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import type { ToolActionSummary, WorkSummary } from '@nevo/specflow-contracts/sessions';
+import type { ToolActionSummary, WorkCounts, WorkSummary } from '@nevo/specflow-contracts/sessions';
 import {
   Alert,
   AppContent,
@@ -60,7 +60,6 @@ import {
   type WorkChapter,
   type WorkFilterKind,
 } from './workGrouping';
-import type { WorkCounts } from './workCounts';
 import { WorkOperationsTimeline, chapterEntryMembers } from './WorkOperationsTimeline';
 import { workTabLabel } from './workTabLabel';
 import {
@@ -381,10 +380,10 @@ function WorkChapterSection({
 
 /** The persistent Work summary row (session-chat-v10-design.md §3, mockup's "144 elementy
  * przebiegu · 1 w toku" / "48 odczytów · 24 zapisy · …" counts row): rendered only when the
- * proposed `counts` projection is present — hidden entirely otherwise, never computed from
- * `items.length` (which is only ever a bounded page, not the Turn's true total). `byKind` uses
- * only the real canonical Work kinds; there is no server-provided reads/writes/commands/search
- * sub-kind to break tool counts down further (workGrouping.ts's own header comment). */
+ * Runtime's `WorkPage.counts` aggregate is present — hidden entirely otherwise, never computed
+ * from `items.length` (which is only ever a bounded page, not the Turn's true total). `byKind`
+ * carries only the canonical Work kinds; the aggregate has no reads/writes/commands/search
+ * breakdown of tool Work. */
 function WorkCountsSummary({ counts }: { counts: WorkCounts }) {
   const { t } = useTranslation();
   // A kind with zero items is left out ("0 analiz · 0 odpowiedzi" is noise, not information).
@@ -515,8 +514,8 @@ function Work({ data }: { data: Data }) {
   const olderButton = stalled && !state.busy && !state.error && (
     <OlderHistoryButton searching={searching} onClick={loadMore} />
   );
-  // The proposed, not-yet-backend-implemented `WorkPage.counts` aggregate (workCounts.ts,
-  // docs/reference/api/sessions.md "Proposed Work aggregate counts"): the newest by `eventSeq`
+  // Runtime's Turn-wide `WorkPage.counts` aggregate (docs/reference/api/sessions.md "Work
+  // aggregate counts"), omitted for Turns that predate it: the newest by `eventSeq`
   // among the tail and every page loaded — never derived from `items`, so the summary row is
   // hidden entirely when the field is absent instead of faked from `items.length`
   // (session-chat-v10-design.md §3).

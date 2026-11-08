@@ -1,7 +1,20 @@
 import type { TFunction } from 'i18next';
-import { toolActivityKinds, type ToolActivityKind } from './workCounts';
+import type { ToolOperation, WorkDigest } from '@nevo/specflow-contracts/sessions';
 import type { LiveActivity, WorkBlockModel } from './workBlockModel';
 import { workStateTone } from './workStatus';
+
+/** Display order: what changed the workspace and what verified it first, lookups after. */
+export const toolOperationOrder: readonly ToolOperation[] = [
+  'edit',
+  'write',
+  'command',
+  'test',
+  'read',
+  'search',
+  'list',
+  'web',
+  'other',
+];
 
 /** Breakdown segments beyond this collapse into "i więcej" so the line stays one glance. */
 export const WORK_SUMMARY_MAX_SEGMENTS = 4;
@@ -18,11 +31,11 @@ export interface WorkBlockText {
   live?: string;
 }
 
-function present(counts: Partial<Record<ToolActivityKind, number>> | undefined) {
-  return toolActivityKinds.filter((kind) => (counts?.[kind] ?? 0) > 0);
+function present(counts: WorkDigest['done'] | undefined) {
+  return toolOperationOrder.filter((kind) => (counts?.[kind] ?? 0) > 0);
 }
 
-function kindList(counts: Partial<Record<ToolActivityKind, number>>, t: TFunction) {
+function kindList(counts: WorkDigest['done'], t: TFunction) {
   return present(counts).map((kind) =>
     t(`managedSession.workSummary.kind.${kind}`, { count: counts[kind] }),
   );
@@ -78,7 +91,8 @@ export function describeWorkBlock(block: WorkBlockModel, t: TFunction): WorkBloc
             : '')
         : undefined;
   } else if (block.actionCount > 0) {
-    // Real data today: entries carry no tool sub-kind or state, only "one tool Work was opened".
+    // No digest (a Turn recorded before Runtime maintained one, or before its first ToolAction):
+    // only "one tool Work was opened" per loaded entry is known.
     summary = t(
       block.partial
         ? 'managedSession.workSummary.actionsAtLeast'

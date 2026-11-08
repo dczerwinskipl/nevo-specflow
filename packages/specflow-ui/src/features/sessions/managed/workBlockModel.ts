@@ -1,7 +1,10 @@
-import type { ConversationEntry, SessionSnapshot } from '@nevo/specflow-contracts/sessions';
-import type { WithWorkDigest, WorkDigest } from './workCounts';
+import type {
+  ConversationEntry,
+  SessionSnapshot,
+  WorkDigest,
+} from '@nevo/specflow-contracts/sessions';
 
-type Entry = WithWorkDigest<ConversationEntry>;
+type Entry = ConversationEntry;
 type CurrentActivity = NonNullable<SessionSnapshot['currentActivity']>;
 type ActiveTurn = NonNullable<SessionSnapshot['activeTurn']>;
 
@@ -61,7 +64,8 @@ export interface WorkBlockModel {
   actionCount: number;
   /** The Turn may continue into older, not-yet-loaded history: `actionCount` is a lower bound. */
   partial: boolean;
-  /** Proposed, demo-only by-kind digest (`workCounts.ts`); absent for every real response. */
+  /** Runtime's by-operation ToolAction digest from the Turn's latest `work-summary` entry; absent
+   * for Turns recorded before Runtime maintained it. */
   digest?: WorkDigest;
   /** Present only while this is the Session's active Turn and something is happening in it. */
   live?: LiveActivity;

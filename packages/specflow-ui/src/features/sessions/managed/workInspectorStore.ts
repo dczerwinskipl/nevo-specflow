@@ -1,6 +1,10 @@
 import { useSyncExternalStore } from 'react';
-import type { ToolActionSummary, WorkPage, WorkSummary } from '@nevo/specflow-contracts/sessions';
-import type { WithWorkCounts, WorkCounts } from './workCounts';
+import type {
+  ToolActionSummary,
+  WorkCounts,
+  WorkPage,
+  WorkSummary,
+} from '@nevo/specflow-contracts/sessions';
 import { mergeWorkItems, type WorkFilterKind } from './workGrouping';
 
 // Product state of the Work history tab (secondary-navigation.md "Selection, filters, drafts and
@@ -197,13 +201,13 @@ export function toggleExpanded(state: WorkViewState, workId: string): WorkViewSt
 }
 
 /** The page's counts as a record comparable by `eventSeq`; none when the field is absent. */
-export function workPageCounts(page: WithWorkCounts<WorkPage>): CountsRecord | undefined {
+export function workPageCounts(page: WorkPage): CountsRecord | undefined {
   return page.counts ? { eventSeq: page.eventSeq, value: page.counts } : undefined;
 }
 
 export function absorbWorkPage(
   state: WorkViewState,
-  page: WithWorkCounts<WorkPage>,
+  page: WorkPage,
   source: 'tail' | 'older',
 ): WorkViewState {
   return {

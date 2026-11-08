@@ -4,7 +4,9 @@ import { Value } from 'typebox/value';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   SessionAssociationReadSchema,
+  SessionListPageSchema,
   type SessionAssociationRead,
+  type SessionListPage,
 } from '@nevo/specflow-contracts/sessions';
 import type { DemoCatalogue, DemoSessionResult } from '@nevo/specflow-contracts/demo';
 import type { SpecificationWorkspaceResponse } from '@nevo/specflow-contracts/specs/workspace';
@@ -129,5 +131,88 @@ describe('demo Session association (catalogue port)', () => {
       payload: { requestId: randomUUID(), providerId: 'mock', mode: 'read-only' },
     });
     expect(response.statusCode).toBe(404);
+    // The workspace action names the demo start route instead.
+    const workspace = (
+      await server.inject('/api/specs/admission/workspace')
+    ).json<SpecificationWorkspaceResponse>();
+    expect(workspace.actions.startSession).toEqual({
+      available: true,
+      path: '/api/demo/specs/admission/sessions',
+    });
+  });
+});
+
+describe('demo Session list (catalogue source)', () => {
+  const list = async (server: FastifyInstance, query = '') => {
+    const response = await server.inject(`/api/sessions${query}`);
+    expect(response.statusCode, response.body).toBe(200);
+    const body = response.json<SessionListPage>();
+    expect(Value.Check(SessionListPageSchema, body)).toBe(true);
+
+    return body;
+  };
+
+  it('lists a Specification’s seeded and allocated Sessions newest first, paged', async () => {
+    const server = await open({ specId: 'admission' });
+    const seeded = await list(server, '?specId=admission');
+    expect(seeded.items.map((item) => [item.sessionId, item.readiness, item.association])).toEqual([
+      [
+        'sample-session-24',
+        'busy',
+        { kind: 'specification', specId: 'admission', taskIds: ['TASK-02'] },
+      ],
+      [
+        'sample-session-23',
+        'requiresAttention',
+        { kind: 'specification', specId: 'admission', taskIds: [] },
+      ],
+    ]);
+
+    const catalogue = (
+      await server.inject('/api/demo/specification-creation')
+    ).json<DemoCatalogue>();
+    const allocated = (
+      await server.inject({
+        method: 'POST',
+        url: '/api/demo/specs/admission/sessions',
+        payload: {
+          requestId: 'session-1',
+          catalogueRevision: catalogue.revision,
+          providerId: 'codex',
+          modelId: 'model-a',
+          mode: 'agent',
+        },
+      })
+    ).json<DemoSessionResult>().sessionId;
+    const first = await list(server, '?specId=admission&limit=2');
+    expect(first.items.map((item) => item.sessionId)).toEqual([allocated, 'sample-session-24']);
+    expect(first.items[0]).toMatchObject({ providerId: 'codex', modelId: 'model-a' });
+    const second = await list(
+      server,
+      `?specId=admission&limit=2&cursor=${encodeURIComponent(first.nextCursor!)}`,
+    );
+    expect(second.items.map((item) => item.sessionId)).toEqual(['sample-session-23']);
+    expect(second.nextCursor).toBeUndefined();
+
+    expect((await list(server, '?specId=admission&archived=only')).items).toEqual([]);
+    expect((await list(server, '?standalone=true')).items).toEqual([]);
+    const foreign = await server.inject(
+      `/api/sessions?specId=admission&taskId=TASK-02&cursor=${encodeURIComponent(first.nextCursor!)}`,
+    );
+    expect(foreign.json<{ code: string }>().code).toBe('SESSION_CURSOR_INVALID');
+  });
+
+  it('applies the same scope rules as project mode', async () => {
+    const scoped = await open({ specId: 'admission' });
+    const unfiltered = await scoped.inject('/api/sessions');
+    expect(unfiltered.statusCode).toBe(400);
+    expect(unfiltered.json<{ code: string }>().code).toBe('SESSION_LIST_SCOPE_REQUIRED');
+    await app!.close();
+    // A Session-scoped grant lists that Session, redacted, and cannot filter by Specification.
+    const session = await open({ sessionId: 'sample-session-24' });
+    expect((await list(session)).items.map((item) => item.association)).toEqual([
+      { kind: 'restricted' },
+    ]);
+    expect((await session.inject('/api/sessions?specId=admission')).statusCode).toBe(403);
   });
 });

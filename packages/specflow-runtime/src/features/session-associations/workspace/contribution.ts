@@ -1,5 +1,4 @@
-import { SessionCapabilities, type SessionInfo } from '@nevo/specflow-contracts/sessions';
-import { SpecCapabilities } from '@nevo/specflow-contracts/specs';
+import type { SessionInfo } from '@nevo/specflow-contracts/sessions';
 import type { RequestAuthorization } from '../../auth';
 import {
   SessionError,
@@ -7,7 +6,8 @@ import {
   type SessionListSummary,
   type SessionsRuntime,
 } from '../../sessions';
-import { specScope, type ProjectIdSource } from '../../specs';
+import type { ProjectIdSource } from '../../specs';
+import { canStartSession } from '../start-authorization';
 
 /** At most this many associated Sessions; `hasMore` reports the rest (D12). */
 export const WORKSPACE_SESSION_LIMIT = 100;
@@ -68,18 +68,7 @@ export function createWorkspaceSessionContribution(options: {
       return { available: false, reason: 'sessions_disabled' };
     }
 
-    if (
-      !authz.can({
-        resource: SpecCapabilities,
-        capability: SpecCapabilities.capabilities.StartSession,
-        scope: specScope(options.projectId(), specId),
-      }) ||
-      !authz.can({
-        resource: SessionCapabilities,
-        capability: SessionCapabilities.capabilities.Create,
-        scope: { projectId: options.sessions.projectId!, specId },
-      })
-    ) {
+    if (!canStartSession(authz, options.projectId(), specId)) {
       return { available: false, reason: 'forbidden' };
     }
 
@@ -90,6 +79,8 @@ export function createWorkspaceSessionContribution(options: {
     const action = startSession(specId, context.authz);
     const coordinator = options.sessions.coordinator;
     if (!coordinator) {
+      // Disabled Sessions have no readable registry. Clients read this together with the
+      // `sessions_disabled` reason of `startSession`: Sessions are turned off, not failing.
       return {
         section: { state: 'unavailable' as const, reason: 'source_unavailable' as const },
         startSession: action,
@@ -131,6 +122,12 @@ export function createWorkspaceSessionContribution(options: {
             attention: [],
           },
         },
+        // Store-derived identities: the workspace read authorizes the rows without resolving them.
+        sessionIdentities: rows.map((row) => ({
+          projectId: row.projectId,
+          sessionId: row.sessionId,
+          ...(row.specId !== undefined ? { specId: row.specId } : {}),
+        })),
         recommendedSessionIds: recommendSessions(
           rows.map((row, index) => ({
             id: row.sessionId,

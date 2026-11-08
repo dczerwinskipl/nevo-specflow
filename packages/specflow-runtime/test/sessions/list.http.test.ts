@@ -163,7 +163,8 @@ describe('GET /api/sessions', () => {
     expect(unfiltered.json<{ code: string }>().code).toBe('SESSION_LIST_SCOPE_REQUIRED');
     // The filter selects; it never grants.
     expect(ids(await list(server, '?specId=S&archived=include'))).toEqual([seeded.s2, seeded.s1]);
-    expect(ids(await list(server, '?specId=T'))).toEqual([]);
+    // Another Specification's filter is a read of that Specification: refused.
+    expect((await list(server, '?specId=T')).statusCode).toBe(403);
     expect((await list(server, '?standalone=true')).statusCode).toBe(200);
     expect(ids(await list(server, '?standalone=true'))).toEqual([]);
   });
@@ -176,6 +177,14 @@ describe('GET /api/sessions', () => {
     expect(ids(response)).toEqual([seeded.s2]);
     expect(page(response).items[0]!.association).toEqual({ kind: 'restricted' });
     expect(JSON.stringify(page(response))).not.toContain('"S"');
+  });
+
+  it('refuses a Specification filter without spec.view, so a filter is no membership oracle', async () => {
+    const seeded = await seed();
+    const server = await open('viewer', { sessionId: seeded.s2 });
+    for (const query of ['?specId=S', '?specId=S&taskId=TASK-01', '?specId=T']) {
+      expect((await list(server, query)).statusCode, query).toBe(403);
+    }
   });
 
   it('refuses a caller without session.view and answers SESSION_DISABLED when disabled', async () => {

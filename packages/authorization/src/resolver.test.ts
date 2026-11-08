@@ -205,6 +205,14 @@ describe('createAuthorization', () => {
 
     expect(check('u1')).toBe(false);
     expect(check('u2')).toBe(true);
+    expect(() =>
+      scoped.hasCapabilityInAnyScope({
+        subject: { kind: 'user', id: 'u2' },
+        resource: Order.name,
+        capability: Order.capabilities.View,
+        withoutDimension: ['__', 'proto__'].join(''),
+      }),
+    ).toThrowError(/must contain only letters/);
   });
 
   it('rejects unsafe scope dimension identifiers at the generic boundary', () => {

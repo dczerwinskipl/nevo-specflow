@@ -3,7 +3,8 @@ import type {
   DemoSessionInput,
   DemoSessionResult,
 } from '@nevo/specflow-contracts/demo';
-import type { DemoSpecification } from '../../demo-catalogue';
+import type { DemoCatalogue, DemoSpecification } from '../../demo-catalogue';
+import { createDemoSessionList } from './list';
 import { DemoOperationError, type DemoState } from '../../../demo/state';
 import type { SessionAssociations } from '../reference-owner';
 import { buildDemoSessionContribution, rankDemoSessions } from './contribution';
@@ -17,7 +18,13 @@ type Find = (specId: string) => Promise<DemoSpecification | undefined>;
  * sessions section. Document paths for the context snapshot are supplied by the caller.
  */
 export function createDemoSessions(state: DemoState) {
+  const allocatedAt = new Map<string, string>();
+
   return {
+    /** The demo Session list over the catalogue and the Sessions allocated here. */
+    list(catalogue: DemoCatalogue) {
+      return createDemoSessionList({ state, catalogue, allocatedAt });
+    },
     /** Session context documents are materialized snapshots in this bounded demo; documents report changes here. */
     refreshDocuments(specId: string, paths: readonly string[]) {
       for (const session of state.sessions.values()) {
@@ -80,6 +87,7 @@ export function createDemoSessions(state: DemoState) {
         },
       };
       state.sessions.set(sessionId, detail);
+      allocatedAt.set(sessionId, new Date().toISOString());
       const result = { sessionId, location: detail.location };
       entry.result = result;
 

@@ -30,7 +30,7 @@ import { createSessionStreams } from './stream';
 import { registerTelemetryRoutes } from './telemetry';
 import { registerSessionManagementRoutes } from './management';
 import { registerSessionErrorHandling } from './error-handling';
-import { registerSessionListRoute } from './list';
+import { registerSessionListRoute, storeSessionListSource, type SessionListSource } from './list';
 
 const closed = { additionalProperties: false } as const;
 const params = (extra: Record<string, typeof SessionIdSchema> = {}) =>
@@ -73,6 +73,8 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
   options: {
     coordinator?: SessionCoordinator;
     projectId?: string;
+    /** Demo mode: the catalogue's Session list, served without managed Sessions. */
+    demoList?: { source: SessionListSource; projectId: string };
   },
 ): void {
   const streams = createSessionStreams(app);
@@ -130,7 +132,14 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
     const actor = (request: FastifyRequest) => request.authz.readContext().subject;
     registerTelemetryRoutes(feature, coordinator);
     registerSessionManagementRoutes(feature, coordinator);
-    registerSessionListRoute(feature, coordinator, () => options.projectId!);
+    registerSessionListRoute(
+      feature,
+      () =>
+        options.coordinator || !options.demoList
+          ? storeSessionListSource(coordinator())
+          : options.demoList.source,
+      () => (options.coordinator ? options.projectId! : (options.demoList?.projectId ?? '')),
+    );
     feature.get(
       '/api/session-providers',
       { preHandler: authorizeCreate, schema: { response: { 200: ProviderCatalogueSchema } } },

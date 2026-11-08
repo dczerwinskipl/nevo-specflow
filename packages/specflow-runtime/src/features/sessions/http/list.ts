@@ -77,6 +77,39 @@ function limitOf(value: string | undefined): number {
   return limit;
 }
 
+/** Where the list reads from: the Session store (project) or the demo catalogue. */
+export interface SessionListSource {
+  /** At most `scanBudget` rows, newest first, after the row a cursor of the same filter names. */
+  scan(
+    filter: SessionListFilter,
+    cursor: string | undefined,
+    scanBudget: number,
+  ): Promise<SessionListScan>;
+  /** Only the rows a page returns; unknown Session IDs are omitted. */
+  summaries(sessionIds: readonly string[]): Promise<SessionListSummary[]>;
+  /** A cursor continuing after `after`, bound to the filter. */
+  cursor(filter: SessionListFilter, after: number): Promise<string>;
+}
+
+export function storeSessionListSource(coordinator: SessionCoordinator): SessionListSource {
+  const store = coordinator.store;
+
+  return {
+    scan: (filter, cursor, scanBudget) =>
+      store.call<SessionListScan>({
+        op: 'list',
+        filter,
+        ...(cursor !== undefined ? { cursor } : {}),
+        scanBudget,
+      }),
+    summaries: (sessionIds) =>
+      sessionIds.length
+        ? store.call<SessionListSummary[]>({ op: 'summaries', sessionIds: [...sessionIds] })
+        : Promise.resolve([]),
+    cursor: (filter, after) => store.call<string>({ op: 'list-cursor', filter, after }),
+  };
+}
+
 /**
  * `GET /api/sessions`: newest first, keyset-paged on the creation order. A filter only selects;
  * every scanned row is authorized at its own store-derived scope and its association is redacted
@@ -85,7 +118,7 @@ function limitOf(value: string | undefined): number {
  */
 export function registerSessionListRoute(
   feature: FastifyInstance,
-  coordinator: () => SessionCoordinator,
+  source: () => SessionListSource,
   projectId: () => string,
 ): void {
   feature.get(
@@ -93,7 +126,7 @@ export function registerSessionListRoute(
     { schema: { querystring, response: { 200: SessionListPageSchema } } },
     async (request): Promise<SessionListPage> => {
       request.authz.requireAccess();
-      const store = coordinator().store;
+      const sessions = source();
       request.authz.requireCapabilityInAnyScope({
         resource: SessionCapabilities,
         capability: SessionCapabilities.capabilities.View,
@@ -101,8 +134,15 @@ export function registerSessionListRoute(
       const query = request.query as Query;
       const filter = filterOf(query);
       const limit = limitOf(query.limit);
-      if (
-        !('specId' in filter) &&
+      if ('specId' in filter) {
+        // Selecting by a Specification (or its Task) is a Specification read: without spec.view a
+        // page of matching rows would reveal which Sessions belong to it.
+        request.authz.require({
+          resource: SpecCapabilities,
+          capability: SpecCapabilities.capabilities.View,
+          scope: specScope(projectId(), filter.specId),
+        });
+      } else if (
         !('standalone' in filter) &&
         !request.authz.hasCapabilityInAnyScope({
           resource: SessionCapabilities,
@@ -118,12 +158,7 @@ export function registerSessionListRoute(
         );
       }
 
-      const scan = await store.call<SessionListScan>({
-        op: 'list',
-        filter,
-        ...(query.cursor !== undefined ? { cursor: query.cursor } : {}),
-        scanBudget: SessionListLimits.scanBudget,
-      });
+      const scan = await sessions.scan(filter, query.cursor, SessionListLimits.scanBudget);
       const visible: SessionListRow[] = [];
       let scanned = 0;
       for (const row of scan.rows) {
@@ -139,15 +174,8 @@ export function registerSessionListRoute(
       const more = scanned < scan.rows.length || scan.hasMore;
       const last = scan.rows[scanned - 1];
       const [summaries, nextCursor] = await Promise.all([
-        visible.length
-          ? store.call<SessionListSummary[]>({
-              op: 'summaries',
-              sessionIds: visible.map((row) => row.sessionId),
-            })
-          : Promise.resolve([]),
-        more && last
-          ? store.call<string>({ op: 'list-cursor', filter, after: last.createdSeq })
-          : Promise.resolve(undefined),
+        sessions.summaries(visible.map((row) => row.sessionId)),
+        more && last ? sessions.cursor(filter, last.createdSeq) : Promise.resolve(undefined),
       ]);
       const byId = new Map(summaries.map((summary) => [summary.sessionId, summary]));
       const items: SessionListItem[] = visible.flatMap((row) => {

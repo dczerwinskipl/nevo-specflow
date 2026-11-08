@@ -4,17 +4,16 @@ import { Type } from 'typebox';
 import {
   CreateContextSessionResultSchema,
   CreateContextSessionSchema,
-  SessionCapabilities,
   SessionErrorSchema,
   type CreateContextSession,
 } from '@nevo/specflow-contracts/sessions';
-import { SpecCapabilities } from '@nevo/specflow-contracts/specs';
 import {
   SpecificationReadErrorSchema,
   SpecificationWorkspaceParamsSchema,
 } from '@nevo/specflow-contracts/specs/workspace';
 import { SessionError, authorizeSessionWrite, type SessionsRuntime } from '../../sessions';
-import { specScope, type ProjectIdSource } from '../../specs';
+import type { ProjectIdSource } from '../../specs';
+import { requireStartSession } from '../start-authorization';
 import type { AssociationTargets } from '../targets';
 import { createContextSession } from './create-context-session';
 
@@ -41,18 +40,13 @@ export function registerCreateContextSessionRoute(
   function authorize(request: FastifyRequest, _reply: unknown, done: (error?: Error) => void) {
     request.authz.requireAccess();
     coordinator();
-    const specId = specIdOf(request);
-    const projectId = options.sessions.projectId!;
-    request.authz.require({
-      resource: SpecCapabilities,
-      capability: SpecCapabilities.capabilities.StartSession,
-      scope: specScope(options.projectId(), specId),
-    });
-    request.authz.require({
-      resource: SessionCapabilities,
-      capability: SessionCapabilities.capabilities.Create,
-      scope: { projectId, specId },
-    });
+    // The Runtime's single project, for the Specification and the Session checks alike.
+    const projectId = options.projectId();
+    if (projectId === undefined) {
+      throw new SessionError('SESSION_STORE_UNAVAILABLE', 'The Runtime project is unknown.');
+    }
+
+    requireStartSession(request.authz, projectId, specIdOf(request));
     if ((request.body as CreateContextSession | undefined)?.mode === 'workspace-write') {
       // Never Specification-scoped: the provider cwd is the whole project workspace.
       authorizeSessionWrite(request, { projectId });

@@ -66,6 +66,7 @@ export function createDemoRuntime(environment: DemoEnvironment) {
     environment,
     ...repositories,
     sessionReferences,
+    sessionList: sessions.list(repositories.catalogue),
     associationTargets: createDemoAssociationTargets({
       catalogue: repositories.catalogue,
       isArchived: async (specId) =>

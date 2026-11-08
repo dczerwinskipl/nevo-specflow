@@ -12,6 +12,10 @@ function filterHash(filter: SessionListFilter): string {
   return createHash('sha256').update(JSON.stringify(canonical)).digest('base64url');
 }
 
+/**
+ * Signed Session cursors. Every payload names its kind, so a history token never reads as a list
+ * cursor and the reverse.
+ */
 export function createSessionCursors(generation: string, projectId: string, cursorKey: Buffer) {
   function sign(value: object): string {
     const data = Buffer.from(JSON.stringify(value)).toString('base64url');
@@ -51,6 +55,7 @@ export function createSessionCursors(generation: string, projectId: string, curs
     parent = '',
   ): string {
     return sign({
+      kind: 'history',
       generation,
       project: projectId,
       sid,
@@ -72,7 +77,8 @@ export function createSessionCursors(generation: string, projectId: string, curs
     try {
       const value = verify(token);
       if (
-        value?.generation !== generation ||
+        value?.kind !== 'history' ||
+        value.generation !== generation ||
         value.project !== projectId ||
         value.sid !== sid ||
         value.actor !== actor ||
@@ -100,6 +106,7 @@ export function createSessionCursors(generation: string, projectId: string, curs
   /** A Session list keyset cursor, bound to this store generation, project and exact filter. */
   function listCursor(filter: SessionListFilter, after: number): string {
     return sign({
+      kind: 'list',
       version: LIST_CURSOR_VERSION,
       generation,
       project: projectId,
@@ -113,7 +120,8 @@ export function createSessionCursors(generation: string, projectId: string, curs
   function listBoundary(token: string, filter: SessionListFilter): number {
     const value = verify(token);
     if (
-      value?.version !== LIST_CURSOR_VERSION ||
+      value?.kind !== 'list' ||
+      value.version !== LIST_CURSOR_VERSION ||
       value.generation !== generation ||
       value.project !== projectId ||
       value.filter !== filterHash(filter) ||

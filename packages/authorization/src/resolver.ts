@@ -10,7 +10,7 @@ import type {
   ResolveCapabilitiesInput,
   ResolveCapabilitiesResult,
 } from './types';
-import { validateScope, validateSubject } from './validation';
+import { assertIdentifierSegment, validateScope, validateSubject } from './validation';
 
 export function createAuthorization(definition: AuthorizationDefinition): Authorization {
   const registry = createAuthorizationRegistry(
@@ -57,6 +57,10 @@ export function createAuthorization(definition: AuthorizationDefinition): Author
   const hasCapabilityInAnyScope = (input: HasCapabilityInAnyScopeInput): boolean => {
     validateSubject(input.subject, 'subject');
     assertCapabilityResource(input.resource, input.capability);
+    if (input.withoutDimension !== undefined) {
+      // The same identifier rule as every scope dimension.
+      assertIdentifierSegment(input.withoutDimension, 'withoutDimension');
+    }
 
     return registry.assignments.some(
       (assignment) =>

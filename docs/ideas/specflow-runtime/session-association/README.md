@@ -441,6 +441,10 @@ The read maps one to one onto the UI `ContextFact` states (`ready`, `missing`, `
 - `actions.startSession`: available when the Sessions feature is enabled, a provider is usable and the
   caller has `spec.start-session` at `specScope` and `session.create` at `{projectId, specId}`; otherwise
   one `reason`, first match wins: `sessions_disabled`, then `forbidden`, then `no_provider`.
+  With Sessions disabled the `sessions` section is `unavailable` (`source_unavailable`): the UI
+  reads it together with the `sessions_disabled` reason as "Sessions are turned off", never as a
+  failed read. The demo Runtime has no composed create; its action carries `path`
+  (`/api/demo/specs/:specId/sessions`), the start route the UI posts to there.
 - Freshness: the workspace `revision` is the Engine `sourceRevision` and does not change when Sessions
   change. Clients must not treat an unchanged `revision` as an unchanged Sessions section; the UI
   invalidates the workspace query on Session create/archive/unarchive/delete and on the Session

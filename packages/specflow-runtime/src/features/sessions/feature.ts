@@ -7,6 +7,7 @@ import { createSessionCoordinator } from './lifecycle/coordinator';
 import { createMockDriver } from './providers/mock';
 import type { SessionDriver } from './providers/driver';
 import { registerSessionRoutes } from './http/routes';
+import type { SessionListSource } from './http/list';
 import { SessionError } from './errors';
 import { createClaudeDriver } from './providers/claude/driver';
 import { createCodexDriver } from './providers/codex/driver';
@@ -33,6 +34,8 @@ export function createSessionsFeature(
     config?: SessionsFeatureConfig;
     storage?: { directory: string; projectId: string; workspace?: string };
     driver?: SessionDriver | readonly SessionDriver[];
+    /** Demo mode: the catalogue's Session list, served without managed Sessions. */
+    demoList?: { source: SessionListSource; projectId: string };
     engine?: SpecFlowEngine;
   } = {},
 ): RuntimeFeature & { readonly runtime: SessionsRuntime } {
@@ -173,6 +176,7 @@ export function createSessionsFeature(
       registerSessionRoutes(app, {
         coordinator,
         projectId: options.storage?.projectId,
+        ...(options.demoList ? { demoList: options.demoList } : {}),
       });
     },
   };

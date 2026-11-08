@@ -29,6 +29,7 @@ export async function readWorkspace(
     ...(sessions?.recommendedSessionIds?.length
       ? { recommendedSessionIds: sessions.recommendedSessionIds }
       : {}),
+    ...(sessions?.sessionIdentities ? { sessionIdentities: sessions.sessionIdentities } : {}),
     sections: {
       ...specification.sections,
       tasks: tasks ?? missing,

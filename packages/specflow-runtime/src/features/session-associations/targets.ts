@@ -55,9 +55,9 @@ export async function readTaskTargets(
           return missing;
         }
 
-        // A definition that names another object is not this Task.
+        // A definition naming another Specification or another Task is no Task of this one.
         if (definition.identity.specId !== specId || definition.task.id !== taskId) {
-          return unavailable;
+          return missing;
         }
 
         return { state: 'available', value: { taskId, title: definition.task.title } };
@@ -111,7 +111,14 @@ export function createEngineAssociationTargets(
       }
 
       // The read-path snapshot: no Git process per reference batch.
-      const registry = await readRegistrySnapshot(engine);
+      let registry;
+      try {
+        registry = await readRegistrySnapshot(engine);
+      } catch {
+        // An unreadable registry binds no Specification: every reference stays hidden.
+        return bound;
+      }
+
       const explicit = new Map(
         registry.specBindings.map((binding) => [binding.specId, binding.workspaceId]),
       );

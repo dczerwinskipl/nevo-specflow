@@ -16,6 +16,8 @@ import type { SpecificationWorkspaceRepository } from '../../src/features/specs/
 import { passwordConfig } from '../auth/support/config';
 import { associationTargets } from '../support/association-targets';
 import { sessionReferences } from '../support/session-references';
+import type { SpecFlowEngine } from '@nevo/specflow-engine';
+import { createEngineAssociationTargets } from '../../src/features/session-associations';
 
 type Role = 'viewer' | 'developer' | 'admin';
 
@@ -266,6 +268,68 @@ describe('project-mode workspace sessions section', () => {
         reason: 'source_unavailable',
       });
     }
+  });
+});
+
+describe('workspace Session references when the Engine registry is unreadable', () => {
+  it('keeps the section rows (store identity) and hides the other references', async () => {
+    const archived: string[] = [];
+    const [visible, hidden] = await seed(
+      async (create) => {
+        const ids = [await create(spec('S')), await create(spec('S'))];
+        archived.push(ids[1]!);
+
+        return ids;
+      },
+      { archive: archived, rename: [] },
+    );
+    const failing = {
+      readRegistry: () => Promise.reject(new Error('registry unreadable')),
+    } as unknown as SpecFlowEngine;
+    const config = passwordConfig();
+    app = await createRuntimeApp(
+      {
+        ...config,
+        authentication: { ...config.authentication, mode: 'none', localUserId: 'demo-user' },
+        authorization: {
+          assignments: [{ userId: 'demo-user', role: 'viewer', scope: { projectId: 'project' } }],
+        },
+        sessions: { enabled: true, providers: { mock: { enabled: true } } },
+      },
+      {
+        specs: {
+          workspaceRepository: {
+            async readSpecification(specId) {
+              const read = await workspaceRepository.readSpecification(specId);
+
+              // An Engine attention item naming the archived Session: resolved through the registry.
+              return (
+                read && {
+                  ...read,
+                  specification: {
+                    ...read.specification,
+                    attention: [
+                      { id: 'a', kind: 'session', title: 'Hidden', reason: 'r', targetId: hidden! },
+                    ],
+                  },
+                }
+              );
+            },
+          },
+        },
+        sessions: {
+          storage: { directory, projectId: 'project' },
+          targets: {
+            ...associationTargets(),
+            workspaces: (specIds: readonly string[]) =>
+              createEngineAssociationTargets(failing).workspaces(specIds),
+          },
+        },
+      },
+    );
+    const body = await workspace(app);
+    expect(body.sections.sessions).toMatchObject({ data: { items: [{ id: visible }] } });
+    expect(body.specification.attention).toEqual([]);
   });
 });
 

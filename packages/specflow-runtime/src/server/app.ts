@@ -163,6 +163,14 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
           }
         : undefined),
     driver: dependencies.sessions?.driver,
+    ...(demo
+      ? {
+          demoList: {
+            source: demo.sessionList,
+            projectId: demo.environment.state.catalogue.project.id,
+          },
+        }
+      : {}),
   });
   // The association registry: the demo catalogue, or the Session store behind the Engine facts.
   const associationTargets =

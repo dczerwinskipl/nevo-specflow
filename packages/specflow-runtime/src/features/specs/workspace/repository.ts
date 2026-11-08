@@ -1,4 +1,5 @@
 import type { RequestAuthorization } from '../../auth';
+import type { SessionScopeIdentity } from '../../sessions';
 
 /**
  * Runtime-owned read projection: not an HTTP response.
@@ -54,6 +55,8 @@ export interface WorkspaceReadModel {
   };
   /** Recommendation candidates in order; the first the caller may view is recommended. */
   readonly recommendedSessionIds?: readonly string[];
+  /** Store-derived identities of the section rows, so they are not resolved a second time. */
+  readonly sessionIdentities?: readonly SessionScopeIdentity[];
   readonly sections: {
     readonly tasks: SourceSection<{
       readonly groups: {
@@ -95,12 +98,17 @@ export interface WorkspaceReadModel {
   };
   readonly actions: {
     readonly executeTasks: { readonly available: boolean; readonly reason?: string };
-    readonly startSession: { readonly available: boolean; readonly reason?: string };
+    readonly startSession: {
+      readonly available: boolean;
+      readonly reason?: string;
+      /** The start route when it is not the composed create (the demo Runtime's own). */
+      readonly path?: string;
+    };
   };
 }
 export type SpecificationReadModel = Omit<
   WorkspaceReadModel,
-  'sections' | 'recommendedSessionIds'
+  'sections' | 'recommendedSessionIds' | 'sessionIdentities'
 > & { sections: Pick<WorkspaceReadModel['sections'], 'activity' | 'repository' | 'changes'> };
 export interface SpecificationWorkspaceRepository {
   readSpecification(specId: string): Promise<SpecificationReadModel | null>;
@@ -116,6 +124,8 @@ export interface WorkspaceContributions {
     section: WorkspaceReadModel['sections']['sessions'];
     /** Candidates in recommendation order; the first the caller may view is recommended. */
     recommendedSessionIds?: readonly string[];
+    /** The Session owner's store-derived identity of each section row. */
+    sessionIdentities?: readonly SessionScopeIdentity[];
     /** Overrides the Specification source's `startSession` action. */
     startSession?: WorkspaceReadModel['actions']['startSession'];
   }>;

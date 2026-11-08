@@ -23,6 +23,9 @@ export async function createContextSession(
   body: CreateContextSession,
 ): Promise<CreateContextSessionOutcome> {
   const { taskIds = [], ...input } = body;
+  // Time-of-check only (D5): the verification runs on every request, a replay included, so
+  // replaying a create after its Specification was removed answers 404 instead of the stored
+  // Session. The Session and its association stay; they read as `missing` from then on.
   const specification = await dependencies.targets.specification(specId);
   if (specification.state === 'missing') {
     return { kind: 'specification_not_found' };

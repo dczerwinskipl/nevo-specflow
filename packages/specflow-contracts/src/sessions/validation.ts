@@ -17,6 +17,8 @@ import {
 } from './commands';
 import { SessionCommandResultSchema } from './management';
 import { RefreshTelemetryReceiptSchema, validateTelemetrySnapshot } from './telemetry';
+import { CreateContextSessionResultSchema, SessionAssociationReadSchema } from './associations';
+import { SessionListPageSchema } from './list';
 
 export const sessionValidators = {
   telemetry: validateTelemetrySnapshot,
@@ -34,4 +36,7 @@ export const sessionValidators = {
   cancelResult: (value: unknown) => Value.Check(CancelTurnResultSchema, value),
   respondResult: (value: unknown) => Value.Check(RespondInteractionResultSchema, value),
   reconcileResult: (value: unknown) => Value.Check(ReconcileTurnResultSchema, value),
+  createContextResult: (value: unknown) => Value.Check(CreateContextSessionResultSchema, value),
+  association: (value: unknown) => Value.Check(SessionAssociationReadSchema, value),
+  list: (value: unknown) => Value.Check(SessionListPageSchema, value),
 };

@@ -180,6 +180,38 @@ export const CurrentActivitySchema = Type.Object(
   },
   closed,
 );
+/** Closed ToolAction classification, taken only from the provider's own tool identity. */
+export const ToolOperationSchema = Type.Union([
+  Type.Literal('read'),
+  Type.Literal('edit'),
+  Type.Literal('write'),
+  Type.Literal('list'),
+  Type.Literal('search'),
+  Type.Literal('command'),
+  Type.Literal('test'),
+  Type.Literal('web'),
+  Type.Literal('other'),
+]);
+const operationCounts = Type.Object(
+  {
+    read: Type.Optional(SessionSequenceSchema),
+    edit: Type.Optional(SessionSequenceSchema),
+    write: Type.Optional(SessionSequenceSchema),
+    list: Type.Optional(SessionSequenceSchema),
+    search: Type.Optional(SessionSequenceSchema),
+    command: Type.Optional(SessionSequenceSchema),
+    test: Type.Optional(SessionSequenceSchema),
+    web: Type.Optional(SessionSequenceSchema),
+    other: Type.Optional(SessionSequenceSchema),
+  },
+  closed,
+);
+/** Turn-wide ToolAction tally by operation: `done` counts every opened action, `failed` those
+ * that ended failed. Maintained transactionally by Runtime, never computed at read time. */
+export const WorkDigestSchema = Type.Object(
+  { done: operationCounts, failed: Type.Optional(operationCounts) },
+  closed,
+);
 export const ConversationEntrySchema = Type.Object(
   {
     id: SessionIdSchema,
@@ -195,6 +227,8 @@ export const ConversationEntrySchema = Type.Object(
     ]),
     text: TextPreviewSchema,
     workId: Type.Optional(SessionIdSchema),
+    /** Present only on a Turn's latest `work-summary` entry once it has opened a ToolAction. */
+    digest: Type.Optional(WorkDigestSchema),
     createdAt: text(40),
   },
   closed,
@@ -294,11 +328,29 @@ export const ToolActionSummarySchema = Type.Object(
     revision: SessionSequenceSchema,
     state: WorkStateSchema,
     title: TextPreviewSchema,
+    operation: Type.Optional(ToolOperationSchema),
     input: Type.Optional(ContentRefSchema),
     output: Type.Optional(ContentRefSchema),
     error: Type.Optional(TurnErrorSchema),
     createdAt: text(40),
     updatedAt: text(40),
+  },
+  closed,
+);
+/** Turn-wide Work aggregate, maintained transactionally with each Work open/state change. */
+export const WorkCountsSchema = Type.Object(
+  {
+    total: SessionSequenceSchema,
+    inProgress: SessionSequenceSchema,
+    byKind: Type.Object(
+      {
+        commentary: SessionSequenceSchema,
+        reasoning: SessionSequenceSchema,
+        interaction: SessionSequenceSchema,
+        tool: SessionSequenceSchema,
+      },
+      closed,
+    ),
   },
   closed,
 );
@@ -309,6 +361,8 @@ export const WorkPageSchema = Type.Object(
     eventSeq: SessionSequenceSchema,
     items: Type.Array(WorkSummarySchema, { maxItems: 40 }),
     history: HistoryCursorSchema,
+    /** Omitted for Turns created before Runtime maintained the aggregate. */
+    counts: Type.Optional(WorkCountsSchema),
   },
   closed,
 );
@@ -405,6 +459,9 @@ export type HistoryPage = Static<typeof HistoryPageSchema>;
 export type WorkPage = Static<typeof WorkPageSchema>;
 export type ActionPage = Static<typeof ActionPageSchema>;
 export type WorkSummary = Static<typeof WorkSummarySchema>;
+export type WorkCounts = Static<typeof WorkCountsSchema>;
+export type WorkDigest = Static<typeof WorkDigestSchema>;
+export type ToolOperation = Static<typeof ToolOperationSchema>;
 export type ToolActionSummary = Static<typeof ToolActionSummarySchema>;
 export type TurnSummary = Static<typeof TurnSummarySchema>;
 export type TurnState = Static<typeof TurnStateSchema>;

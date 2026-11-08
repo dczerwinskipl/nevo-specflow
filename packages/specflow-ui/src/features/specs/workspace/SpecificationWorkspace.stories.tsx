@@ -17,6 +17,7 @@ type ProjectState = 'no-session' | 'with-session' | 'sessions-disabled';
 
 const created: ActivityEvent = {
   id: 'specification-created',
+  event: 'specification_created',
   kind: 'info',
   time: '2026-11-08',
   title: 'Specification created',
@@ -60,6 +61,7 @@ function projectMode(state: ProjectState): SpecificationWorkspaceData {
           activityEvents: [
             {
               id: 'session-started.' + session.id,
+              event: 'session_started',
               kind: 'session',
               targetId: session.id,
               time: new Date(Date.now() - 2 * 3_600_000).toISOString(),

@@ -40,8 +40,14 @@ headers; its rows read like Documents). Implemented instead: a new Nevo UI `Empt
 kept variant **A** of the `v4-tasks-empty-{a,b}-*` renders. A second review the same day removed the glyph: the
 **Zadania** header already shows the Tasks icon, so the empty state is the title and description
 alone, starting at the rows' inset (`v5-tasks-empty-*`). This supersedes "icon, title, description"
-in D1 and `icon="list-checks"` in P6. Activity event titles are localized in the UI by
-the events' stable ids (`specification-created`, `session-started.<sessionId>`).
+in D1 and `icon="list-checks"` in P6.
+
+**Amendments after the independent review (2026-11-08):** the activity contract gains the optional
+closed `event: 'specification_created' | 'session_started'`, by which the UI localizes (English
+`title`/`description` stay as fallback), superseding "no schema change" in section 4; the 50-item
+bound applies after authorization; the manifest `tasks` reach the Tasks contribution from the
+Specification source's single manifest read; the UI renders `summary` as plain text (no Markdown
+re-parse); an unknown start reason gets a neutral preparation explanation.
 
 ## Owner decisions (2026-11-08)
 

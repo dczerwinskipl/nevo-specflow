@@ -2,16 +2,11 @@ import type { TFunction } from 'i18next';
 import { formatRelativeTime } from '../../../../shared/operations/panel/relativeTime';
 import type { ActivityEvent } from '../../read-model/model';
 
-/** The Runtime's stable id of the "Specification created" event (project mode). */
-export const SPECIFICATION_CREATED_EVENT_ID = 'specification-created';
-/** The Runtime's id prefix of a "Session started" event (`session-started.<sessionId>`). */
-export const SESSION_STARTED_EVENT_PREFIX = 'session-started.';
-
 const CALENDAR_DATE = /^(\d{4})-(\d{2})-(\d{2})$/u;
 const DATE_TIME = /^\d{4}-\d{2}-\d{2}T/u;
 
 export function isSpecificationCreatedEvent(event: ActivityEvent): boolean {
-  return event.kind === 'info' && event.id === SPECIFICATION_CREATED_EVENT_ID;
+  return event.event === 'specification_created';
 }
 
 /**
@@ -41,8 +36,8 @@ export function formatActivityTime(value: string, now: number, locale: string): 
 }
 
 /**
- * The event as shown: the Runtime's two project-mode events (identified by their stable ids) are
- * localized, an untitled Session gets the Sessions' untitled label and the time is formatted.
+ * The event as shown: the Runtime's known events (their semantic `event`) are localized, an
+ * untitled Session gets the Sessions' untitled label and the time is formatted.
  */
 export function presentActivityEvent(
   event: ActivityEvent,
@@ -51,18 +46,17 @@ export function presentActivityEvent(
   locale: string,
 ): ActivityEvent {
   const time = formatActivityTime(event.time, now, locale);
-  if (isSpecificationCreatedEvent(event)) {
-    return { ...event, time, title: t('specification.activitySpecificationCreated') };
+  switch (event.event) {
+    case 'specification_created':
+      return { ...event, time, title: t('specification.activitySpecificationCreated') };
+    case 'session_started':
+      return {
+        ...event,
+        time,
+        title: event.title || t('sessions.untitled'),
+        description: t('specification.activitySessionStarted'),
+      };
+    default:
+      return { ...event, time };
   }
-
-  if (event.kind === 'session' && event.id.startsWith(SESSION_STARTED_EVENT_PREFIX)) {
-    return {
-      ...event,
-      time,
-      title: event.title || t('sessions.untitled'),
-      description: t('specification.activitySessionStarted'),
-    };
-  }
-
-  return { ...event, time };
 }

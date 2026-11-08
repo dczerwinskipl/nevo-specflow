@@ -129,6 +129,7 @@ describe('Specification Overview Activity history', () => {
   it('keeps the Secondary closed for the Specification-created event alone, open with a Session event', () => {
     const created = {
       id: 'specification-created',
+      event: 'specification_created' as const,
       kind: 'info' as const,
       time: '2026-11-08',
       title: 'Specification created',
@@ -145,6 +146,7 @@ describe('Specification Overview Activity history', () => {
 
     const started = {
       id: 'session-started.s-1',
+      event: 'session_started' as const,
       kind: 'session' as const,
       targetId: 's-1',
       time: new Date(Date.now() - 5 * 60_000).toISOString(),

@@ -249,6 +249,7 @@ describe('SpecificationWorkspace', () => {
         activityEvents: [
           {
             id: 'specification-created',
+            event: 'specification_created',
             kind: 'info',
             time: '2026-11-08',
             title: 'Specification created',

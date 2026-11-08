@@ -32,11 +32,12 @@ describe('formatActivityTime', () => {
 describe('presentActivityEvent', () => {
   const i18n = createSpecFlowI18n('pl');
 
-  it('localizes the two project-mode events by their stable ids', () => {
+  it('localizes the known Runtime events by their semantic event, not by id', () => {
     expect(
       presentActivityEvent(
         {
           id: 'specification-created',
+          event: 'specification_created',
           kind: 'info',
           time: '2026-11-08',
           title: 'Specification created',
@@ -51,6 +52,7 @@ describe('presentActivityEvent', () => {
       presentActivityEvent(
         {
           id: 'session-started.s-1',
+          event: 'session_started',
           kind: 'session',
           targetId: 's-1',
           time: '2026-11-08T11:55:00.000Z',

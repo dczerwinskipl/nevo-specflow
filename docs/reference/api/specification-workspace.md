@@ -74,25 +74,31 @@ Availability and action states describe only what actually exists.
   as the manifest (no second registry resolve). It is `''` when no overview is registered, the file
   is missing, redirected or unreadable, or holds no prose; the response never fails because of it.
   The workspace `revision` stays the manifest `sourceRevision`: an overview-only change does **not**
-  change it (clients refetch after their own document writes).
+  change it (clients refetch after their own document writes). Clients render `summary` as plain
+  text as delivered (never parsed as Markdown again); its only bound is the 600 characters above.
 - `sections.tasks` (temporary source): a verified manifest `tasks: []` is `available` with
   `{groups: [], completed: 0, total: 0, attention: []}`; a non-empty manifest list has no verified
-  schema and stays `unavailable` / `not_implemented`. This rule is **temporary**: on the workflow
+  schema and stays `unavailable` / `not_implemented`. The manifest `tasks` come from the same
+  manifest read as the identity (the Specification source hands them to the contribution). This rule is **temporary**: on the workflow
   kernel Tasks live in `.execution/tasks/<id>.yaml` and the manifest `tasks` stays `[]`; when the
   kernel merges, this section and `preparationState` move to the kernel Task source and the manifest
   rule is deleted.
 - `sections.activity` is `available` and a **partial** history with exactly two event kinds, newest
-  first, at most 50 items:
-  - "Specification created": `id: "specification-created"`, `kind: "info"`, `occurredAt` the
+  first, at most 50 items counted **after** the per-Session authorization (hidden Sessions never
+  shorten the visible history):
+  - "Specification created": `event: "specification_created"`, `id: "specification-created"`, `kind: "info"`, `occurredAt` the
     manifest `created` date (`YYYY-MM-DD`), emitted only when that value is a valid calendar date;
     it sorts as the start of that day (UTC), so same-day Session events sort above it;
   - "Session started": one per row of the `sessions` section (associated, non-archived, so bounded by
-    its 100-row cap), `id: "session-started.<sessionId>"`, `kind: "session"`, `occurredAt` the
+    its 100-row cap), `event: "session_started"`, `id: "session-started.<sessionId>"`,
+    `kind: "session"`, `occurredAt` the
     Session's `createdAt` (ISO date-time), `title` the Session title (`''` when untitled) and
     `targetId = relatedSessionId = sessionId`, so `session.view` filters each event per Session.
 
-  `title` / `description` carry English text; clients localize these two events by their stable
-  `id`. `occurredAt` is an ISO date-time or a `YYYY-MM-DD` date. With Sessions disabled or the
+  `ActivityItem.event` (optional, a closed union in `@nevo/specflow-contracts`) names a known
+  Runtime event; clients localize by it, and `title` / `description` carry English fallback text.
+  An item without `event` is a source-written event shown as delivered. `occurredAt` is an ISO
+  date-time or a `YYYY-MM-DD` date. With Sessions disabled or the
   Session store unreadable only the Specification event remains and the section stays `available`
   (the `sessions` section reports the outage). The demo Runtime's activity stays `available` and
   empty.

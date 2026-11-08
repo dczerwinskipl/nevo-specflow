@@ -169,6 +169,13 @@ describe('Engine-backed specification workspace read', () => {
         ).json<SpecificationWorkspaceResponse>();
         expect(large.specification.summary).toBe('Large overview.');
 
+        // A long paragraph is cut to 320 graphemes at a word boundary, ending with an ellipsis.
+        await writeFile(overviewPath, 'ząb '.repeat(200) + '\n');
+        const long = (
+          await app.inject(`/api/specs/${created.specId}/workspace`)
+        ).json<SpecificationWorkspaceResponse>();
+        expect(long.specification.summary).toBe('ząb '.repeat(78) + 'ząb…');
+
         // A missing overview is an empty summary, never a failed workspace read.
         await rm(overviewPath);
         const missing = await app.inject(`/api/specs/${created.specId}/workspace`);

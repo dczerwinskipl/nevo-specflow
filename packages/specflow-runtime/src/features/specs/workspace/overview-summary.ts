@@ -1,7 +1,10 @@
 /** Bytes of the overview read for the workspace description (a bounded prefix, never the file). */
 export const OVERVIEW_SUMMARY_PREFIX_BYTES = 32 * 1024;
-/** The longest description returned; longer text is cut at a word boundary. */
-export const OVERVIEW_SUMMARY_MAX_CHARS = 600;
+/**
+ * The longest description returned, in graphemes including the trailing ellipsis; longer text is cut
+ * at a word boundary where possible.
+ */
+export const OVERVIEW_SUMMARY_MAX_GRAPHEMES = 320;
 
 const FENCE = /^ {0,3}(`{3,}|~{3,})/u;
 const HEADING = /^ {0,3}#{1,6}(?:\s|$)/u;
@@ -9,6 +12,7 @@ const SETEXT_UNDERLINE = /^ {0,3}(?:=+|-+)\s*$/u;
 const THEMATIC_BREAK = /^ {0,3}(?:(?:\*\s*){3,}|(?:-\s*){3,}|(?:_\s*){3,})$/u;
 const TABLE_DELIMITER = /^\s*\|?\s*:?-+:?\s*(?:\|\s*:?-+:?\s*)+\|?\s*$/u;
 const INDENTED_CODE = /^(?: {4}|\t)/u;
+const GRAPHEMES = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
 const ENTITIES: Record<string, string> = {
   amp: '&',
   lt: '<',
@@ -23,8 +27,9 @@ const ENTITIES: Record<string, string> = {
  *
  * Front matter, headings (so also the first H1), HTML tags and comments, images, fenced and indented
  * code and tables are dropped; links keep their text; emphasis, inline-code, list and quote markers
- * are removed; whitespace is collapsed. The result is cut at a word boundary to
- * {@link OVERVIEW_SUMMARY_MAX_CHARS}. A document with no prose is `''`.
+ * are removed; whitespace is collapsed. Text longer than {@link OVERVIEW_SUMMARY_MAX_GRAPHEMES}
+ * graphemes is cut at a word boundary where possible and ends with `…`, the whole within the bound.
+ * A document with no prose is `''`.
  */
 export function summarizeOverview(markdown: string): string {
   const lines = withoutHtmlComments(withoutFrontMatter(markdown.replace(/\r\n?/gu, '\n'))).split(
@@ -155,11 +160,12 @@ function collapse(text: string): string {
 }
 
 function truncate(text: string): string {
-  if (text.length <= OVERVIEW_SUMMARY_MAX_CHARS) {
+  const graphemes = Array.from(GRAPHEMES.segment(text), (part) => part.segment);
+  if (graphemes.length <= OVERVIEW_SUMMARY_MAX_GRAPHEMES) {
     return text;
   }
 
-  const head = text.slice(0, OVERVIEW_SUMMARY_MAX_CHARS - 1);
+  const head = graphemes.slice(0, OVERVIEW_SUMMARY_MAX_GRAPHEMES - 1).join('');
   const boundary = head.lastIndexOf(' ');
 
   return (boundary > 0 ? head.slice(0, boundary) : head).trimEnd() + '…';

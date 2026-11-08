@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { OVERVIEW_SUMMARY_MAX_CHARS, summarizeOverview } from './overview-summary';
+import { OVERVIEW_SUMMARY_MAX_GRAPHEMES, summarizeOverview } from './overview-summary';
 
 describe('summarizeOverview', () => {
   it('returns the first paragraph after front matter and the H1 as plain text', () => {
@@ -60,7 +60,9 @@ describe('summarizeOverview', () => {
   it('collapses whitespace and cuts long text at a word boundary', () => {
     const summary = summarizeOverview('word   '.repeat(200));
 
-    expect(summary.length).toBeLessThanOrEqual(OVERVIEW_SUMMARY_MAX_CHARS);
+    expect(OVERVIEW_SUMMARY_MAX_GRAPHEMES).toBe(320);
+    expect(summary.length).toBeLessThanOrEqual(OVERVIEW_SUMMARY_MAX_GRAPHEMES);
+    expect(summary.length).toBeGreaterThan(OVERVIEW_SUMMARY_MAX_GRAPHEMES - 'word '.length - 1);
     expect(summary.endsWith('word…')).toBe(true);
     expect(summary).not.toMatch(/\s{2}/u);
   });
@@ -68,7 +70,19 @@ describe('summarizeOverview', () => {
   it('cuts a single unbroken word hard', () => {
     const summary = summarizeOverview('x'.repeat(1000));
 
-    expect(summary).toHaveLength(OVERVIEW_SUMMARY_MAX_CHARS);
+    expect(summary).toHaveLength(OVERVIEW_SUMMARY_MAX_GRAPHEMES);
     expect(summary.endsWith('…')).toBe(true);
+  });
+
+  it('counts graphemes, never splitting one', () => {
+    const summary = summarizeOverview('👩‍💻'.repeat(400));
+    const graphemes = [
+      ...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(summary),
+    ].map((part) => part.segment);
+
+    expect(graphemes).toHaveLength(OVERVIEW_SUMMARY_MAX_GRAPHEMES);
+    expect(graphemes.slice(0, -1).every((grapheme) => grapheme === '👩‍💻')).toBe(true);
+    expect(graphemes.at(-1)).toBe('…');
+    expect(summarizeOverview('👩‍💻'.repeat(320))).toBe('👩‍💻'.repeat(320));
   });
 });

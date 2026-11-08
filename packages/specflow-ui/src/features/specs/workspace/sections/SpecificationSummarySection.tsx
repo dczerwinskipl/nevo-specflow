@@ -28,7 +28,7 @@ export function SpecificationSummarySection({
       </Typography>
       <DocumentDescription
         key={`${specId}:${mainDocumentId}`}
-        // `summary` is already plain text bounded by the Runtime (600 characters): shown as is,
+        // `summary` is already plain text bounded by the Runtime (320 graphemes): shown as is,
         // never parsed as Markdown again. A summary equal to the title adds nothing.
         intro={intro && intro.trim() !== title.trim() ? intro.trim() : undefined}
         hasMore={Boolean(mainDocumentId && specId)}

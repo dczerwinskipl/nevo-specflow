@@ -69,13 +69,13 @@ Availability and action states describe only what actually exists.
 - `specification.summary` is the first non-empty paragraph of the registered overview document as
   plain text: front matter, headings (so the first H1), HTML tags and comments, images, fenced and
   indented code and tables are dropped, links keep their text, emphasis, inline-code, list and quote
-  markers are removed, whitespace is collapsed, and the text is cut at a word boundary to 600
-  characters. It is read as a bounded prefix (32 KB) of the overview within the same canonical read
+  markers are removed, whitespace is collapsed, and text longer than 320 graphemes is cut at a word
+  boundary where possible and ends with `…` (at most 320 graphemes including the ellipsis). It is read as a bounded prefix (32 KB) of the overview within the same canonical read
   as the manifest (no second registry resolve). It is `''` when no overview is registered, the file
   is missing, redirected or unreadable, or holds no prose; the response never fails because of it.
   The workspace `revision` stays the manifest `sourceRevision`: an overview-only change does **not**
   change it (clients refetch after their own document writes). Clients render `summary` as plain
-  text as delivered (never parsed as Markdown again); its only bound is the 600 characters above.
+  text as delivered (never parsed as Markdown again); its only bound is the 320 graphemes above.
 - `sections.tasks` (temporary source): a verified manifest `tasks: []` is `available` with
   `{groups: [], completed: 0, total: 0, attention: []}`; a non-empty manifest list has no verified
   schema and stays `unavailable` / `not_implemented`. The manifest `tasks` come from the same

@@ -3,10 +3,26 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { AppShell } from '@nevo/ui';
 import { appI18n, LocalizationProvider } from '../../../i18n';
 import { SpecificationWorkspace } from './SpecificationWorkspace';
+import type { ReactNode } from 'react';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { createSpecFlowQueryClient } from '../../../app/queryClient';
+import { createSpecFlowAppServices } from '../../../services';
+import { TestServicesRouterContext } from '../../../../test-support/app/TestServicesRouterContext';
 import { UiModulesProvider } from '../../../app/ui-modules/UiModulesProvider';
 import { builtInUiModuleRegistry } from '../../../app/ui-modules/builtInUiModules';
 
 import { createSpecificationWorkspaceFixture } from '../../../../test-support/specs/workspace/fixtures';
+
+/** Documents reads the archetype catalogue (type titles) through the app services and Query. */
+function TestProviders({ children }: { readonly children: ReactNode }) {
+  return (
+    <QueryClientProvider client={createSpecFlowQueryClient()}>
+      <TestServicesRouterContext services={createSpecFlowAppServices({})}>
+        <UiModulesProvider modules={builtInUiModuleRegistry}>{children}</UiModulesProvider>
+      </TestServicesRouterContext>
+    </QueryClientProvider>
+  );
+}
 
 function renderWorkspaceMarkup(
   props: Partial<React.ComponentProps<typeof SpecificationWorkspace>> = {},
@@ -14,13 +30,13 @@ function renderWorkspaceMarkup(
   const data = props.data ?? createSpecificationWorkspaceFixture('working', 'UI-1234');
 
   return renderToStaticMarkup(
-    <UiModulesProvider modules={builtInUiModuleRegistry}>
+    <TestProviders>
       <LocalizationProvider>
         <AppShell navigation={<div>Nav</div>}>
           <SpecificationWorkspace specId="UI-1234" data={data} {...props} />
         </AppShell>
       </LocalizationProvider>
-    </UiModulesProvider>,
+    </TestProviders>,
   );
 }
 

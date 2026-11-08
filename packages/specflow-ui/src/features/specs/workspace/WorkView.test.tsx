@@ -1,6 +1,11 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { useState, type ReactNode } from 'react';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { createSpecFlowQueryClient } from '../../../app/queryClient';
+import { createSpecFlowAppServices } from '../../../services';
+import { TestServicesRouterContext } from '../../../../test-support/app/TestServicesRouterContext';
 import { UiModulesProvider } from '../../../app/ui-modules/UiModulesProvider';
 import { builtInUiModuleRegistry } from '../../../app/ui-modules/builtInUiModules';
 import { LocalizationProvider, createSpecFlowI18n } from '../../../i18n';
@@ -8,6 +13,22 @@ import { createSpecificationWorkspaceFixture } from '../../../../test-support/sp
 import type { SpecificationWorkspaceData } from '../read-model/model';
 import { createFakeWorkspaceRuntime, WorkspaceProvider } from './WorkspaceContext';
 import { OVERVIEW_TWO_COLUMN_MIN_WIDTH, WorkView } from './WorkView';
+
+/** Documents reads the archetype catalogue (type titles) through the app services and Query. */
+function TestProviders({ children }: { readonly children: ReactNode }) {
+  const [setup] = useState(() => ({
+    query: createSpecFlowQueryClient(),
+    services: createSpecFlowAppServices({}),
+  }));
+
+  return (
+    <QueryClientProvider client={setup.query}>
+      <TestServicesRouterContext services={setup.services}>
+        <UiModulesProvider modules={builtInUiModuleRegistry}>{children}</UiModulesProvider>
+      </TestServicesRouterContext>
+    </QueryClientProvider>
+  );
+}
 
 let contentWidth = 0;
 let resizeCallbacks: ResizeObserverCallback[] = [];
@@ -50,13 +71,13 @@ function renderWorkView(width: number, data = createSpecificationWorkspaceFixtur
   contentWidth = width;
 
   return render(
-    <UiModulesProvider modules={builtInUiModuleRegistry}>
+    <TestProviders>
       <LocalizationProvider instance={createSpecFlowI18n('en')}>
         <WorkspaceProvider runtime={createFakeWorkspaceRuntime()}>
           <WorkView data={data} />
         </WorkspaceProvider>
       </LocalizationProvider>
-    </UiModulesProvider>,
+    </TestProviders>,
   );
 }
 
@@ -195,13 +216,13 @@ describe('Specification Overview columns', () => {
     // preparation (Continue session owns the next step), no Tasks; only context sections.
     const working = withoutAttention(createSpecificationWorkspaceFixture('working'));
     const { container } = render(
-      <UiModulesProvider modules={builtInUiModuleRegistry}>
+      <TestProviders>
         <LocalizationProvider instance={createSpecFlowI18n('en')}>
           <WorkspaceProvider runtime={createFakeWorkspaceRuntime()}>
             <WorkView data={{ ...working, isEmpty: true }} />
           </WorkspaceProvider>
         </LocalizationProvider>
-      </UiModulesProvider>,
+      </TestProviders>,
     );
     contentWidth = 2400;
     resizeTo(2400);
@@ -234,13 +255,13 @@ describe('Specification Overview without Tasks', () => {
   function renderEmpty(data: SpecificationWorkspaceData, openNewSession = vi.fn()) {
     contentWidth = 1200;
     const view = render(
-      <UiModulesProvider modules={builtInUiModuleRegistry}>
+      <TestProviders>
         <LocalizationProvider instance={createSpecFlowI18n('en')}>
           <WorkspaceProvider runtime={createFakeWorkspaceRuntime({ openNewSession })}>
             <WorkView data={data} />
           </WorkspaceProvider>
         </LocalizationProvider>
-      </UiModulesProvider>,
+      </TestProviders>,
     );
 
     return { ...view, openNewSession };

@@ -117,6 +117,11 @@ describe('Tasks of a Specification', () => {
       { taskId: 'api', title: 'API and screen', status: 'ready', origin: { attempt: 2 } },
       { taskId: 'screen', status: 'cancelled' },
     ]);
+    // A draft left out of the breakdown is cancelled, never removed from the Task list.
+    expect((await inspectExecution(dependencies, SPEC)).specification?.record.taskIds).toEqual([
+      'api',
+      'screen',
+    ]);
   });
 
   it('gives the planner the allowed task types', async () => {
@@ -320,6 +325,7 @@ describe('waiting for Tasks', () => {
     ]);
 
     await returnToStep(dependencies, {
+      executor: owner,
       subject: specification,
       step: 'breakdown',
       feedback: 'Replace the API Task.',
@@ -358,7 +364,12 @@ describe('waiting for Tasks', () => {
     const dependencies = memoryDependencies(catalogue);
     await specificationWithTasks(dependencies);
     await work(dependencies, task('api'));
-    await returnToStep(dependencies, { subject: specification, step: 'breakdown', feedback: 'x' });
+    await returnToStep(dependencies, {
+      executor: owner,
+      subject: specification,
+      step: 'breakdown',
+      feedback: 'x',
+    });
     await startSpecification(dependencies);
     const edited = memoryDependencies({
       ...catalogue,
@@ -384,6 +395,7 @@ describe('waiting for Tasks', () => {
     const dependencies = memoryDependencies(catalogue);
     await specificationWithTasks(dependencies);
     await returnToStep(dependencies, {
+      executor: owner,
       subject: specification,
       step: 'breakdown',
       feedback: 'Add an audit Task.',

@@ -1,3 +1,5 @@
+import { isDeepStrictEqual } from 'node:util';
+
 import type { WaitTrigger } from '@nevo/specflow-contracts/documents';
 
 import { sha256Hex } from '../../hash';
@@ -229,15 +231,138 @@ function planTransition<TStep extends WorkflowStep>(
     );
   }
 
+  return { step, attempt, transition, next: positionAfter(transition) };
+}
+
+/** Where a transition leads: the next step, ready to start, or the end of the run. */
+function positionAfter(transition: WorkflowTransition): RunPosition {
+  return transition.target.kind === 'step'
+    ? { state: 'ready', step: transition.target.step }
+    : { state: 'terminal', outcome: transition.target.outcome };
+}
+
+/** The transition an attempt of `step` recorded; an unknown one is corrupt state. */
+function recordedTransition(
+  definition: WorkflowDefinition,
+  step: string,
+  id: string,
+): WorkflowTransition {
+  const transition = stepOf(definition, step).transitions.find((candidate) => candidate.id === id);
+  if (!transition) {
+    throw new WorkflowError(
+      'WORKFLOW_STATE_CORRUPT',
+      `The run refers to an unknown transition "${id}" of the step "${step}".`,
+    );
+  }
+
+  return transition;
+}
+
+/** The last event of a run's history (by sequence), read with the run's pinned definition. */
+export type RunArrival =
+  /** The last attempt is still active. */
+  | { readonly kind: 'active' }
+  /** An owner return, recorded on its own or as the outcome of the attempt it ended. */
+  | { readonly kind: 'return'; readonly to: string }
+  /** An attempt finished with this transition. */
+  | {
+      readonly kind: 'transition';
+      readonly transition: WorkflowTransition;
+      readonly finishedBy?: ExecutorRecord;
+    };
+
+/** `undefined` when the run has no history yet. */
+export function lastArrival(
+  run: WorkflowRun,
+  definition: WorkflowDefinition,
+): RunArrival | undefined {
+  const last = [...run.attempts, ...run.returns].reduce<AttemptRecord | ReturnRecord | undefined>(
+    (latest, record) => (latest && latest.sequence > record.sequence ? latest : record),
+    undefined,
+  );
+  if (!last) {
+    return undefined;
+  }
+
+  if ('from' in last) {
+    return { kind: 'return', to: last.to };
+  }
+
+  const outcome = last.outcome;
+  if (!outcome) {
+    return { kind: 'active' };
+  }
+
+  if (outcome.kind === 'returned') {
+    return { kind: 'return', to: outcome.to };
+  }
+
+  const transition = recordedTransition(definition, last.step, outcome.transition);
+
   return {
-    step,
-    attempt,
+    kind: 'transition',
     transition,
-    next:
-      transition.target.kind === 'step'
-        ? { state: 'ready', step: transition.target.step }
-        : { state: 'terminal', outcome: transition.target.outcome },
+    ...(last.finishedBy ? { finishedBy: last.finishedBy } : {}),
   };
+}
+
+/**
+ * The stored position must follow from the history, read with the pinned definition. The records
+ * (attempts and returns) are replayed in sequence order from `not-started`: the first attempt is of
+ * the entry step and every later one of the step the previous record led to (an Engine-entered wait
+ * step included); an open attempt makes the run active on it, so it can only be the last record; a
+ * finished attempt leads where its recorded transition targets, an attempt ended by a return and a
+ * return record (written only while no attempt is active, from the position it records) to the
+ * return's step. The position the replay ends at must be the stored one. Anything else is a
+ * hand-edited or foreign record.
+ */
+export function assertPositionJustified(run: WorkflowRun, definition: WorkflowDefinition): void {
+  const unjustified = (): never => {
+    throw new WorkflowError(
+      'WORKFLOW_STATE_CORRUPT',
+      `The stored position ${JSON.stringify(run.position)} does not follow from the run's history.`,
+    );
+  };
+
+  const records = [...run.attempts, ...run.returns].sort(
+    (left, right) => left.sequence - right.sequence,
+  );
+  let expected: RunPosition = { state: 'not-started' };
+  for (const record of records) {
+    if ('from' in record) {
+      if (
+        expected.state === 'active' ||
+        expected.state === 'terminal' ||
+        !isDeepStrictEqual(record.from, expected)
+      ) {
+        unjustified();
+      }
+
+      expected = { state: 'ready', step: record.to };
+      continue;
+    }
+
+    const starts: string | undefined =
+      expected.state === 'not-started'
+        ? definition.entryStep
+        : expected.state === 'ready'
+          ? expected.step
+          : undefined;
+    if (record.step !== starts) {
+      unjustified();
+    }
+
+    const outcome = record.outcome;
+    expected = !outcome
+      ? { state: 'active', step: record.step, attempt: record.attempt }
+      : outcome.kind === 'returned'
+        ? { state: 'ready', step: outcome.to }
+        : positionAfter(recordedTransition(definition, record.step, outcome.transition));
+  }
+
+  if (!isDeepStrictEqual(expected, run.position)) {
+    unjustified();
+  }
 }
 
 /**

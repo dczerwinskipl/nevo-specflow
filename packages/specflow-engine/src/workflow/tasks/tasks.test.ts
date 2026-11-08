@@ -187,7 +187,7 @@ describe('leaving out a draft another Task depends on', () => {
     const result = materializeTasks(input([], { existing }));
 
     expect(result.changed).toMatchObject([{ taskId: 'api', status: 'cancelled' }]);
-    expect(tasksStuck([existing[1]!, ...result.changed])).toBe(true);
+    expect(tasksStuck([existing[1]!, ...result.changed], [])).toBe(true);
   });
 });
 
@@ -289,30 +289,33 @@ describe('Task status, readiness and the wait', () => {
 
     expect(taskReadiness(screen, tasks)).toEqual({ kind: 'dependencies', waitingFor: ['api'] });
     expect(taskReadiness(third, tasks)).toEqual({ kind: 'dependencies', waitingFor: ['screen'] });
-    expect(tasksStuck(tasks)).toBe(true);
+    expect(tasksStuck(tasks, [])).toBe(true);
   });
 
   it('is stuck only when no open Task can progress without the owner', () => {
     // `screen` waits for a draft, a held or a cancelled Task: nothing can move.
-    expect(tasksStuck([draftApi, screen])).toBe(true);
-    expect(tasksStuck([{ ...api, status: 'on-hold' }, screen])).toBe(true);
-    expect(tasksStuck([{ ...api, status: 'cancelled' }, screen])).toBe(true);
+    expect(tasksStuck([draftApi, screen], [])).toBe(true);
+    expect(tasksStuck([{ ...api, status: 'on-hold' }, screen], [])).toBe(true);
+    expect(tasksStuck([{ ...api, status: 'cancelled' }, screen], [])).toBe(true);
     // `api` can start or is running (also when held while running), so `screen` will follow.
-    expect(tasksStuck([api, screen])).toBe(false);
-    expect(tasksStuck([started, screen])).toBe(false);
-    expect(tasksStuck([{ ...started, status: 'on-hold' }, screen])).toBe(false);
+    expect(tasksStuck([api, screen], [])).toBe(false);
+    expect(tasksStuck([started, screen], [])).toBe(false);
+    expect(tasksStuck([{ ...started, status: 'on-hold' }, screen], [])).toBe(false);
     // Nothing open: the wait completes instead.
-    expect(tasksStuck([ended(api, 'abandoned')])).toBe(false);
+    expect(tasksStuck([ended(api, 'abandoned')], [])).toBe(false);
+    // A broken Task (listed without a record) never progresses.
+    expect(tasksStuck([ended(api, 'completed')], ['screen'])).toBe(true);
   });
 
   it('closes the wait when every Task ended or was cancelled', () => {
-    expect(allTasksClosed([])).toBe(true);
-    expect(allTasksClosed([ended(api, 'completed'), { ...screen, status: 'cancelled' }])).toBe(
+    expect(allTasksClosed([], [])).toBe(true);
+    expect(allTasksClosed([ended(api, 'completed'), { ...screen, status: 'cancelled' }], [])).toBe(
       true,
     );
-    expect(allTasksClosed([ended(api, 'completed'), screen])).toBe(false);
-    expect(allTasksClosed([{ ...screen, status: 'on-hold' }])).toBe(false);
-    expect(allTasksClosed([draftScreen])).toBe(false);
+    expect(allTasksClosed([ended(api, 'completed'), screen], [])).toBe(false);
+    expect(allTasksClosed([{ ...screen, status: 'on-hold' }], [])).toBe(false);
+    expect(allTasksClosed([draftScreen], [])).toBe(false);
+    expect(allTasksClosed([ended(api, 'completed')], ['screen'])).toBe(false);
   });
 
   it('waits for dependencies until they completed', () => {

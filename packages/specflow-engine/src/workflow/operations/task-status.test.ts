@@ -114,8 +114,11 @@ describe('setTaskStatus', () => {
       { subject: specification, reason: 'tasks-stuck' },
     ]);
 
+    // Resumed, the Task again needs what its finished step decided: a model for the review.
     await decide(dependencies, 'api', 'ready');
-    expect((await inspectExecution(dependencies, SPEC)).attention).toEqual([]);
+    expect((await inspectExecution(dependencies, SPEC)).attention).toMatchObject([
+      { subject: task('api'), step: 'review', reason: 'model-missing' },
+    ]);
     await expect(startTask(dependencies, 'api')).resolves.toMatchObject({
       kind: 'started',
       context: { step: { id: 'review' } },
@@ -505,8 +508,12 @@ describe('escalation to the Specification', () => {
       reason: 'task-escalated',
       taskIds: ['web'],
     });
+    // Once no Task is escalated, the Specification just waits; each resumed Task waits for its start.
     await decide(dependencies, 'web', 'ready');
-    expect((await inspectExecution(dependencies, SPEC)).attention).toEqual([]);
+    expect((await inspectExecution(dependencies, SPEC)).attention).toMatchObject([
+      { subject: task('api'), step: 'implement', reason: 'owner-action' },
+      { subject: task('web'), step: 'implement', reason: 'owner-action' },
+    ]);
   });
 
   it('requires feedback', async () => {
@@ -521,7 +528,12 @@ describe('escalation to the Specification', () => {
     const dependencies = memoryDependencies(catalogue);
     await specificationWithTasks(dependencies);
     await work(dependencies, task('api'));
-    await returnToStep(dependencies, { subject: specification, step: 'breakdown', feedback: 'x' });
+    await returnToStep(dependencies, {
+      executor: owner,
+      subject: specification,
+      step: 'breakdown',
+      feedback: 'x',
+    });
     const specificationItem = async () =>
       (await inspectExecution(dependencies, SPEC)).attention.find(
         (item) => item.subject.kind === 'specification',
@@ -545,7 +557,12 @@ describe('escalation to the Specification', () => {
     const dependencies = memoryDependencies(catalogue);
     await specificationWithTasks(dependencies);
     await work(dependencies, task('api'));
-    await returnToStep(dependencies, { subject: specification, step: 'breakdown', feedback: 'x' });
+    await returnToStep(dependencies, {
+      executor: owner,
+      subject: specification,
+      step: 'breakdown',
+      feedback: 'x',
+    });
     await escalate(dependencies, 'Split the API Task.');
 
     const started = await startSpecification(dependencies);
@@ -569,7 +586,12 @@ describe('escalation to the Specification', () => {
     const dependencies = memoryDependencies(await withoutEscalationTransition());
     await specificationWithTasks(dependencies);
     await work(dependencies, task('api'));
-    await returnToStep(dependencies, { subject: specification, step: 'breakdown', feedback: 'x' });
+    await returnToStep(dependencies, {
+      executor: owner,
+      subject: specification,
+      step: 'breakdown',
+      feedback: 'x',
+    });
     await startSpecification(dependencies);
 
     const escalated = await escalate(dependencies, 'Split the API Task.');

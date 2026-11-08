@@ -1,26 +1,26 @@
-import type { AttentionItem } from '../attention/model';
 import { WorkflowError } from '../errors';
 import {
-  subjectKey,
+  brokenTask,
+  brokenTaskIds,
   type SpecificationExecutionRecord,
   type TaskRecord,
   type WorkflowRun,
   type WorkflowSubject,
 } from '../state/model';
 import type { ExecutionChange, ExecutionSnapshot } from '../state/store';
-import { staleAttentionKeys } from './attention';
 
 /**
  * The records one operation reads and rewrites, collected into a single {@link ExecutionChange}.
- * Every write is planned against the revision of the snapshot it was read from.
+ * Every write is planned against the revision of the snapshot it was read from. A Task created here
+ * is added to the Specification's Task list in the same change; a broken Task (listed without a
+ * record) is refused before anything is planned on it.
  */
 export class ExecutionWorkingSet {
   private specificationRecord: SpecificationExecutionRecord | undefined;
   private specificationChanged = false;
   private readonly taskRecords = new Map<string, TaskRecord>();
   private readonly changedTasks = new Set<string>();
-  private readonly attentionSet = new Map<string, AttentionItem>();
-  private readonly attentionClear = new Set<string>();
+  private readonly broken: ReadonlySet<string>;
   private readonly snapshot: ExecutionSnapshot;
 
   constructor(snapshot: ExecutionSnapshot) {
@@ -29,6 +29,8 @@ export class ExecutionWorkingSet {
     for (const entry of snapshot.tasks) {
       this.taskRecords.set(entry.value.taskId, entry.value);
     }
+
+    this.broken = new Set(brokenTaskIds(this.specificationRecord, this.tasks()));
   }
 
   specification(): SpecificationExecutionRecord {
@@ -43,7 +45,16 @@ export class ExecutionWorkingSet {
     return [...this.taskRecords.values()];
   }
 
+  /** The listed Tasks without a record, in list order. */
+  brokenTasks(): string[] {
+    return [...this.broken];
+  }
+
   task(taskId: string): TaskRecord {
+    if (this.broken.has(taskId)) {
+      brokenTask(taskId);
+    }
+
     const task = this.taskRecords.get(taskId);
     if (!task) {
       throw new WorkflowError('WORKFLOW_SUBJECT_NOT_FOUND', `Unknown Task "${taskId}".`);
@@ -70,47 +81,21 @@ export class ExecutionWorkingSet {
   }
 
   setTask(task: TaskRecord): void {
+    if (this.broken.has(task.taskId)) {
+      brokenTask(task.taskId);
+    }
+
+    const specification = this.specification();
+    if (!specification.taskIds.includes(task.taskId)) {
+      this.specificationRecord = {
+        ...specification,
+        taskIds: [...specification.taskIds, task.taskId],
+      };
+      this.specificationChanged = true;
+    }
+
     this.taskRecords.set(task.taskId, task);
     this.changedTasks.add(task.taskId);
-  }
-
-  setAttention(item: AttentionItem): void {
-    const key = subjectKey(item.subject);
-    this.attentionClear.delete(key);
-    this.attentionSet.set(key, item);
-  }
-
-  /** The subject's item as this change would leave it. */
-  attention(subject: WorkflowSubject): AttentionItem | undefined {
-    const key = subjectKey(subject);
-    if (this.attentionSet.has(key)) {
-      return this.attentionSet.get(key);
-    }
-
-    return this.attentionClear.has(key)
-      ? undefined
-      : this.snapshot.attention.find((item) => subjectKey(item.subject) === key);
-  }
-
-  clearAttention(subject: WorkflowSubject): void {
-    const key = subjectKey(subject);
-    this.attentionSet.delete(key);
-    if (this.snapshot.attention.some((item) => subjectKey(item.subject) === key)) {
-      this.attentionClear.add(key);
-    }
-  }
-
-  /** The cleared items and every other stored item the planned state no longer matches. */
-  private attentionToClear(): string[] {
-    const stale = staleAttentionKeys(
-      this.snapshot.attention.filter((item) => !this.attentionSet.has(subjectKey(item.subject))),
-      (subject) =>
-        subject.kind === 'specification'
-          ? this.specificationRecord?.run
-          : this.taskRecords.get(subject.taskId)?.run,
-    );
-
-    return [...new Set([...this.attentionClear, ...stale])];
   }
 
   change(): ExecutionChange {
@@ -133,7 +118,6 @@ export class ExecutionWorkingSet {
         expected: revisions.get(taskId) ?? null,
         next: this.task(taskId),
       })),
-      attention: { set: [...this.attentionSet.values()], clear: this.attentionToClear() },
     };
   }
 }

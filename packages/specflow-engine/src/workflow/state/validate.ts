@@ -1,8 +1,7 @@
-import type { AttentionItem } from '../attention/model';
 import { WorkflowError } from '../errors';
 import { TASKS_PER_SPECIFICATION_MAX } from '../limits';
+import { dependencyCycle } from '../tasks/tasks';
 import {
-  subjectKey,
   type AttemptRecord,
   type SpecificationExecutionRecord,
   type TaskRecord,
@@ -14,20 +13,24 @@ import type { ExecutionSnapshot } from './store';
  * Coherence of the execution state of one Specification, beyond the shape the codec checks: the
  * invariants the operations rely on and never produce otherwise. A store runs it on every read and
  * on the state a change would produce before it writes anything, so an incoherent state is neither
- * interpreted nor stored. Definitions are not consulted (the pin covers step ids).
+ * interpreted nor stored. Definitions are not consulted (the pin covers step ids); whether a position
+ * follows from its history is checked against the pinned definition when a run is loaded
+ * (`assertPositionJustified`).
+ *
+ * The Specification lists its Tasks: a Task record it does not list is corrupt, while a listed Task
+ * without a record is only that Task broken (`brokenTaskIds`). Every dependency names a listed Task,
+ * and the dependencies form no cycle.
  */
 
 export interface ExecutionState {
   readonly specification?: SpecificationExecutionRecord;
   readonly tasks: readonly TaskRecord[];
-  readonly attention: readonly AttentionItem[];
 }
 
 export function stateOfSnapshot(snapshot: ExecutionSnapshot): ExecutionState {
   return {
     ...(snapshot.specification ? { specification: snapshot.specification.value } : {}),
     tasks: snapshot.tasks.map((entry) => entry.value),
-    attention: snapshot.attention,
   };
 }
 
@@ -87,6 +90,7 @@ function validateRun(run: WorkflowRun, owner: string): void {
 }
 
 export function validateExecutionSnapshot(specId: string, state: ExecutionState): void {
+  const listed = new Set(state.specification?.taskIds ?? []);
   if (state.specification) {
     if (state.specification.specId !== specId) {
       corrupt('holds the run of another Specification');
@@ -109,6 +113,10 @@ export function validateExecutionSnapshot(specId: string, state: ExecutionState)
       corrupt(`holds the Task "${task.taskId}" twice`);
     }
 
+    if (!listed.has(task.taskId)) {
+      corrupt(`holds the Task "${task.taskId}", which the Specification does not list`);
+    }
+
     taskIds.add(task.taskId);
     validateRun(task.run, `the Task "${task.taskId}"`);
     // A draft is revised by replacing it, which is only sound while it never ran.
@@ -122,27 +130,15 @@ export function validateExecutionSnapshot(specId: string, state: ExecutionState)
     if (task.status === 'cancelled' && task.run.position.state === 'active') {
       corrupt(`holds the cancelled Task "${task.taskId}" with an active step`);
     }
+
+    const unlisted = task.dependsOn.find((dependency) => !listed.has(dependency));
+    if (unlisted !== undefined) {
+      corrupt(`holds the Task "${task.taskId}" depending on "${unlisted}", which is not listed`);
+    }
   }
 
-  const subjects = new Set<string>();
-  for (const item of state.attention) {
-    const key = subjectKey(item.subject);
-    if (subjects.has(key)) {
-      corrupt(`holds two attention items for ${key}`);
-    }
-
-    subjects.add(key);
-    if ((item.reason === 'task-escalated') !== (item.taskIds !== undefined)) {
-      corrupt(`holds a ${item.reason} item for ${key} with the wrong escalated Tasks`);
-    }
-
-    const exists =
-      item.subject.specId === specId &&
-      (item.subject.kind === 'specification'
-        ? state.specification !== undefined
-        : taskIds.has(item.subject.taskId));
-    if (!exists) {
-      corrupt(`holds attention for ${key}, which has no record`);
-    }
+  const cycle = dependencyCycle(new Map(state.tasks.map((task) => [task.taskId, task.dependsOn])));
+  if (cycle !== undefined) {
+    corrupt(`holds Task dependencies that form a cycle at "${cycle}"`);
   }
 }

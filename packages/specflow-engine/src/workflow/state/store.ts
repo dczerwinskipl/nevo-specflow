@@ -1,11 +1,10 @@
-import type { AttentionItem } from '../attention/model';
 import type { SpecificationExecutionRecord, TaskRecord } from './model';
 
 /**
- * Persistence port of execution state, one Specification at a time. The canonical records (the
- * Specification run and its Tasks) are Git-tracked next to the Specification; attention items and
- * operation journals are local. A store applies one change as a unit: a later read sees all of it or
- * none of it, also after a crash in the middle.
+ * Persistence port of execution state, one Specification at a time: the canonical records (the
+ * Specification run and its Tasks), Git-tracked next to the Specification. Attention is not stored;
+ * it is derived from these records (`inspectExecution`). A store applies one change as a unit: a
+ * later read sees all of it or none of it, also after a crash in the middle.
  */
 
 export interface Versioned<T> {
@@ -16,9 +15,8 @@ export interface Versioned<T> {
 
 export interface ExecutionSnapshot {
   readonly specification?: Versioned<SpecificationExecutionRecord>;
-  /** In Task id order. */
+  /** The Task records that exist, in Task id order (a listed Task without a record is broken). */
   readonly tasks: readonly Versioned<TaskRecord>[];
-  readonly attention: readonly AttentionItem[];
 }
 
 export interface RecordWrite<T> {
@@ -30,11 +28,6 @@ export interface RecordWrite<T> {
 export interface ExecutionChange {
   readonly specification?: RecordWrite<SpecificationExecutionRecord>;
   readonly tasks: readonly (RecordWrite<TaskRecord> & { readonly taskId: string })[];
-  /** Attention items to set (replacing the subject's item) and subject keys to clear. */
-  readonly attention: {
-    readonly set: readonly AttentionItem[];
-    readonly clear: readonly string[];
-  };
 }
 
 export interface WorkflowStore {
@@ -45,13 +38,4 @@ export interface WorkflowStore {
    * state changed outside the Engine.
    */
   apply(specId: string, change: ExecutionChange): Promise<void>;
-}
-
-export function isEmptyChange(change: ExecutionChange): boolean {
-  return (
-    change.specification === undefined &&
-    change.tasks.length === 0 &&
-    change.attention.set.length === 0 &&
-    change.attention.clear.length === 0
-  );
 }

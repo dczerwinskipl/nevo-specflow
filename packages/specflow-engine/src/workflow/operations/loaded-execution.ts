@@ -1,8 +1,9 @@
 import type { ExecutionCatalogue } from '../definitions/catalogue';
 import type { WorkflowDefinition } from '../definitions/model';
 import { WorkflowError } from '../errors';
-import { assertPinned, pinOf } from '../progression/progression';
+import { assertPinned, assertPositionJustified, pinOf } from '../progression/progression';
 import {
+  brokenTask,
   subjectKey,
   type TaskRecord,
   type WorkflowRun,
@@ -31,6 +32,10 @@ export interface LoadedSubject {
   readonly task?: TaskRecord;
 }
 
+/**
+ * The definition the run is pinned to. The run's position is checked against its history with it
+ * (`assertPositionJustified`), so no operation or inspection interprets an unjustified position.
+ */
 export function pinnedDefinition(
   catalogue: ExecutionCatalogue,
   run: WorkflowRun,
@@ -44,11 +49,15 @@ export function pinnedDefinition(
   }
 
   assertPinned(run, definition);
+  assertPositionJustified(run, definition);
 
   return definition;
 }
 
-/** The pinned definition, or `undefined` when it is missing or changed (never throws). */
+/**
+ * The pinned definition, or `undefined` when it is missing or changed. Throws only when the run's
+ * position does not follow from its history (`WORKFLOW_STATE_CORRUPT`).
+ */
 export function pinnedDefinitionIfUnchanged(
   catalogue: ExecutionCatalogue,
   run: WorkflowRun,
@@ -60,9 +69,13 @@ export function pinnedDefinitionIfUnchanged(
 
   const pin = pinOf(definition);
 
-  return pin.id === run.workflow.id && pin.revision === run.workflow.revision
-    ? definition
-    : undefined;
+  if (pin.id !== run.workflow.id || pin.revision !== run.workflow.revision) {
+    return undefined;
+  }
+
+  assertPositionJustified(run, definition);
+
+  return definition;
 }
 
 export function findTask(
@@ -95,6 +108,10 @@ export function loadSubject(
   }
 
   const task = findTask(snapshot, subject.taskId);
+  if (!task && specification.value.taskIds.includes(subject.taskId)) {
+    brokenTask(subject.taskId);
+  }
+
   if (!task) {
     throw new WorkflowError('WORKFLOW_SUBJECT_NOT_FOUND', `Unknown ${subjectKey(subject)}.`);
   }

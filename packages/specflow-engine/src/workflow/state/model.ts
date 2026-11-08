@@ -1,4 +1,5 @@
 import type { TerminalOutcome } from '../definitions/model';
+import { WorkflowError } from '../errors';
 
 /**
  * Canonical execution state of one Specification: the run of its own workflow and one record per Task,
@@ -10,7 +11,7 @@ export type WorkflowSubject =
   | { readonly kind: 'specification'; readonly specId: string }
   | { readonly kind: 'task'; readonly specId: string; readonly taskId: string };
 
-/** Stable text key of a subject, for attention items and error messages. */
+/** Stable text key of a subject, for error messages. */
 export function subjectKey(subject: WorkflowSubject): string {
   return subject.kind === 'specification'
     ? `specification:${subject.specId}`
@@ -105,6 +106,12 @@ export interface SpecificationExecutionRecord {
   readonly archetype: string;
   /** The task types allowed when the run started. */
   readonly taskTypes: TaskTypes;
+  /**
+   * Every Task of the Specification, in creation order: the authoritative Task set. A Task is added
+   * in the same change that creates its record and never removed (a left-out draft is cancelled, not
+   * deleted). A listed Task without a record is broken; a record that is not listed is corrupt state.
+   */
+  readonly taskIds: readonly string[];
   readonly run: WorkflowRun;
 }
 
@@ -176,4 +183,24 @@ export function activeAttempt(run: WorkflowRun): AttemptRecord | undefined {
 
 export function isTerminal(run: WorkflowRun): boolean {
   return run.position.state === 'terminal';
+}
+
+/**
+ * The listed Tasks whose record is missing, in list order. Only such a Task is broken: it never
+ * starts or finishes, keeps the Specification's wait open and blocks its dependents.
+ */
+export function brokenTaskIds(
+  specification: SpecificationExecutionRecord | undefined,
+  tasks: readonly TaskRecord[],
+): string[] {
+  const present = new Set(tasks.map((task) => task.taskId));
+
+  return (specification?.taskIds ?? []).filter((taskId) => !present.has(taskId));
+}
+
+export function brokenTask(taskId: string): never {
+  throw new WorkflowError(
+    'WORKFLOW_STATE_CORRUPT',
+    `The Task "${taskId}" is listed by the Specification but its record is missing; restore it from Git.`,
+  );
 }

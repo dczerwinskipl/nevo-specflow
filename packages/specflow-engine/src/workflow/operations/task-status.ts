@@ -1,9 +1,9 @@
 import type { ContinuationDecision } from '../continuation/resolve';
-import { WorkflowError } from '../errors';
 import { assertTaskDecisionShape } from '../input-schema';
+import { assertOwner } from '../progression/executor';
 import type { ExecutorRecord, TaskStatus, WorkflowSubject } from '../state/model';
 import { decideTaskStatus, type TaskDecisionStatus } from '../tasks/tasks';
-import { settleWait, updateTask, type AdvanceContext } from './advance';
+import { settleWait, type AdvanceContext } from './advance';
 import { isoNow, type WorkflowDependencies } from './loaded-execution';
 import { ExecutionWorkingSet } from './working-set';
 
@@ -19,7 +19,7 @@ export interface SetTaskStatusInput {
 export interface SetTaskStatusResult {
   readonly subject: WorkflowSubject;
   readonly status: TaskStatus;
-  /** What the Specification's attention became, for example the next step after its wait completed. */
+  /** What the Specification needs now, for example the next step after its wait completed. */
   readonly specification?: ContinuationDecision;
 }
 
@@ -27,19 +27,14 @@ export interface SetTaskStatusResult {
  * The owner's decision on a Task's status (approve a draft, hold, resume, cancel), with the same
  * rules as the spec writer's `taskDecisions` (`decideTaskStatus`). The Specification is brought up to
  * date in the same change: cancelling the last open Task completes its wait step, and resuming an
- * escalated Task removes the escalation item.
+ * escalated Task ends the escalation.
  */
 export function setTaskStatus(
   dependencies: WorkflowDependencies,
   request: SetTaskStatusInput,
 ): Promise<SetTaskStatusResult> {
   return dependencies.serialize(async () => {
-    if (request.executor.kind !== 'human') {
-      throw new WorkflowError(
-        'WORKFLOW_EXECUTOR_NOT_ALLOWED',
-        'Only the owner sets the status of a Task directly.',
-      );
-    }
+    assertOwner(request.executor, 'sets the status of a Task directly');
 
     const decision = {
       taskId: request.taskId,
@@ -59,7 +54,7 @@ export function setTaskStatus(
     };
     context.set.specification();
     const task = decideTaskStatus(context.set.task(request.taskId), decision, context.at);
-    updateTask(context, task);
+    context.set.setTask(task);
     const specification = settleWait(context);
     await dependencies.store.apply(request.specId, context.set.change());
 

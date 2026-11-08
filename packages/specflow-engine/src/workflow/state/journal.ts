@@ -15,9 +15,7 @@ const JOURNAL_VERSION = 1;
 
 /** `expected`: sha256 of the text the write replaces, `null` when the file did not exist. */
 export type JournalWrite = { readonly text: string; readonly expected: string | null } & (
-  | { readonly target: 'specification' }
-  | { readonly target: 'task'; readonly taskId: string }
-  | { readonly target: 'attention' }
+  { readonly target: 'specification' } | { readonly target: 'task'; readonly taskId: string }
 );
 
 export interface Journal {
@@ -83,7 +81,6 @@ function isJournalWrite(value: unknown): value is JournalWrite {
     typeof write.text === 'string' &&
     expected &&
     (write.target === 'specification' ||
-      write.target === 'attention' ||
       (write.target === 'task' && typeof write.taskId === 'string' && isValidTaskId(write.taskId)))
   );
 }

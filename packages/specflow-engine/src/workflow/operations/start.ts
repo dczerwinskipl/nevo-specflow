@@ -7,13 +7,11 @@ import { applyStart, newRun, planStart } from '../progression/progression';
 import { isTaskClosed, taskReadiness } from '../tasks/tasks';
 import {
   activeAttempt,
-  subjectKey,
   type ExecutorRecord,
   type SpecificationExecutionRecord,
   type WorkflowSubject,
 } from '../state/model';
 import type { ExecutionChange, ExecutionSnapshot } from '../state/store';
-import { runOf, staleAttentionKeys } from './attention';
 import {
   isoNow,
   loadSubject,
@@ -40,8 +38,8 @@ export interface StartOptions {
 
 /**
  * Start (or resume) the next step of a subject. The single start path: a quick start from an
- * attention item, a manual start and an automatic continuation all end here, and every start removes
- * the subject's attention item.
+ * attention item, a manual start and an automatic continuation all end here. A started subject is
+ * active, so no attention is derived for it any more.
  */
 async function startSubject(
   dependencies: WorkflowDependencies,
@@ -69,14 +67,8 @@ async function startSubject(
 
   const at = isoNow(dependencies);
   const run = applyStart(loaded.run, plan, { at, executor: options.executor });
-  // The started subject's item goes; so does any item another subject's state no longer matches.
-  const key = subjectKey(subject);
-  const clear = staleAttentionKeys(snapshot.attention, (other) =>
-    subjectKey(other) === key ? undefined : runOf(snapshot, other),
-  );
-  const change = changeFor(snapshot, loaded, run, seed, clear);
-  if (run !== loaded.run || seed || clear.length > 0) {
-    await dependencies.store.apply(subject.specId, change);
+  if (run !== loaded.run || seed) {
+    await dependencies.store.apply(subject.specId, changeFor(snapshot, loaded, run, seed));
   }
 
   return {
@@ -100,9 +92,7 @@ function changeFor(
   loaded: LoadedSubject,
   run: LoadedSubject['run'],
   seed: ExecutionChange['specification'] | undefined,
-  clear: readonly string[],
 ): ExecutionChange {
-  const attention = { set: [], clear };
   if (loaded.subject.kind === 'task' && loaded.task) {
     return {
       tasks: [
@@ -112,7 +102,6 @@ function changeFor(
           next: { ...loaded.task, run },
         },
       ],
-      attention,
     };
   }
 
@@ -127,7 +116,6 @@ function changeFor(
       next: { ...record, run },
     },
     tasks: [],
-    attention,
   };
 }
 
@@ -146,9 +134,12 @@ function assertTaskReady(snapshot: ExecutionSnapshot, loaded: LoadedSubject): vo
   }
 
   if (readiness.kind === 'dependencies') {
-    const abandoned = tasks
-      .filter((task) => readiness.waitingFor.includes(task.taskId) && isTaskClosed(task))
-      .map((task) => task.taskId);
+    // A dependency that ended without completing, was cancelled or is broken (no record).
+    const abandoned = readiness.waitingFor.filter((id) => {
+      const dependency = tasks.find((task) => task.taskId === id);
+
+      return !dependency || isTaskClosed(dependency);
+    });
 
     throw new WorkflowError(
       'WORKFLOW_DEPENDENCY_UNSATISFIED',
@@ -203,6 +194,7 @@ function newSpecificationRecord(
     specId: input.specId,
     archetype: input.archetype,
     taskTypes: resolved.taskTypes,
+    taskIds: [],
     run: newRun(resolved.workflow),
   };
 }

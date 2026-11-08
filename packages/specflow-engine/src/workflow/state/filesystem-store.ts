@@ -2,20 +2,16 @@ import { join } from 'node:path';
 
 import { sha256Hex } from '../../hash';
 import { isValidSpecificationId } from '../../specs/model';
-import type { AttentionItem } from '../attention/model';
 import { WorkflowError } from '../errors';
 import {
-  ATTENTION_BYTES_MAX,
   isValidTaskId,
   JOURNAL_BYTES_MAX,
   RECORD_BYTES_MAX,
   TASKS_PER_SPECIFICATION_MAX,
 } from '../limits';
 import {
-  parseAttention,
   parseSpecificationRecord,
   parseTaskRecord,
-  serializeAttention,
   serializeSpecificationRecord,
   serializeTaskRecord,
 } from './codec';
@@ -28,7 +24,7 @@ import {
   type Journal,
   type JournalWrite,
 } from './journal';
-import { subjectKey, type TaskRecord } from './model';
+import type { TaskRecord } from './model';
 import {
   listFolder,
   readRecordFile,
@@ -47,8 +43,8 @@ import { stateOfSnapshot, validateExecutionSnapshot } from './validate';
  * - Canonical, Git-tracked: `<specification>/.execution/specification.yaml` and
  *   `<specification>/.execution/tasks/<taskId>.yaml`. The leading dot keeps the folder out of the
  *   Specification's document tree; it moves with the Specification on archive.
- * - Local: `<stateRoot>/engine/workflow/attention/<specId>.json` and the change journal
- *   `<stateRoot>/engine/operations/workflow/<specId>.json` (`./journal.ts`).
+ * - Local: the change journal `<stateRoot>/engine/operations/workflow/<specId>.json`
+ *   (`./journal.ts`).
  *
  * A change is first written whole to the journal, then to its files; then the journal is removed.
  * Reads overlay a pending journal and the next change finishes it, so a crash between the files
@@ -65,7 +61,7 @@ import { stateOfSnapshot, validateExecutionSnapshot } from './validate';
  * so a read never sees a change in the middle of being published.
  *
  * Every read and every change checks the identity of the records (a Task file holds the Task it is
- * named after, every record belongs to the Specification), their coherence
+ * named after, every record belongs to the Specification and is listed by it), their coherence
  * ({@link validateExecutionSnapshot}), the folders and files (`./record-files.ts`: no links, size
  * bounds) and the number of Tasks; a change is checked whole before its journal is written, so an
  * invalid record is never stored.
@@ -92,7 +88,6 @@ export interface FilesystemWorkflowStoreOptions {
 interface Texts {
   readonly specification: string | undefined;
   readonly tasks: ReadonlyMap<string, string>;
-  readonly attention: string | undefined;
 }
 
 interface LoadedState {
@@ -106,7 +101,6 @@ interface LoadedState {
 interface Folders {
   readonly execution: RecordFolder;
   readonly tasks: RecordFolder;
-  readonly attention: RecordFolder;
   readonly journal: RecordFolder;
 }
 
@@ -125,11 +119,7 @@ function versioned<T>(text: string, parse: (source: string) => T): Versioned<T> 
 }
 
 function currentText(texts: Texts, write: JournalWrite): string | undefined {
-  return write.target === 'specification'
-    ? texts.specification
-    : write.target === 'task'
-      ? texts.tasks.get(write.taskId)
-      : texts.attention;
+  return write.target === 'specification' ? texts.specification : texts.tasks.get(write.taskId);
 }
 
 export function createFilesystemWorkflowStore(
@@ -153,11 +143,7 @@ function createStore(
   options: FilesystemWorkflowStoreOptions,
   beforePublishTarget: (write: JournalWrite) => Promise<void>,
 ): WorkflowStore {
-  const stateFolder = (...segments: string[]): RecordFolder => ({
-    root: options.stateRoot,
-    segments,
-  });
-  /** The attention list and the journal of a Specification share its local file name. */
+  /** The local file name of a Specification's journal. */
   const stateFileName = (specId: string) => `${specId}.json`;
 
   async function foldersOf(specId: string): Promise<Folders> {
@@ -166,13 +152,12 @@ function createStore(
     return {
       execution: { root, segments: [EXECUTION_DIRECTORY] },
       tasks: { root, segments: [EXECUTION_DIRECTORY, TASKS_DIRECTORY] },
-      attention: stateFolder('engine', 'workflow', 'attention'),
-      journal: stateFolder('engine', 'operations', 'workflow'),
+      journal: { root: options.stateRoot, segments: ['engine', 'operations', 'workflow'] },
     };
   }
 
   /** The files as they are, without a pending journal. */
-  async function readFiles(specId: string, folders: Folders): Promise<Texts> {
+  async function readFiles(folders: Folders): Promise<Texts> {
     const tasks = new Map<string, string>();
     // Stage files are dot-files too.
     const names = (await listFolder(folders.tasks))
@@ -201,11 +186,6 @@ function createStore(
     return {
       specification: await readRecordFile(folders.execution, SPECIFICATION_FILE, RECORD_BYTES_MAX),
       tasks,
-      attention: await readRecordFile(
-        folders.attention,
-        stateFileName(specId),
-        ATTENTION_BYTES_MAX,
-      ),
     };
   }
 
@@ -238,7 +218,6 @@ function createStore(
         ? { specification: versioned(texts.specification, parseSpecificationRecord) }
         : {}),
       tasks,
-      attention: texts.attention !== undefined ? parseAttention(texts.attention) : [],
     };
     validateExecutionSnapshot(specId, stateOfSnapshot(snapshot));
 
@@ -250,7 +229,7 @@ function createStore(
     const folders = await foldersOf(specId);
     const journalText = await readJournalText(specId, folders);
     const journal = journalText === undefined ? undefined : parseJournal(journalText, specId);
-    const files = await readFiles(specId, folders);
+    const files = await readFiles(folders);
     const writes = journal?.writes ?? [];
     if (!writes.every((write) => holdsPlannedRevision(currentText(files, write), write))) {
       throw conflictWithJournal(specId, folders);
@@ -258,18 +237,15 @@ function createStore(
 
     const tasks = new Map(files.tasks);
     let specification = files.specification;
-    let attention = files.attention;
     for (const write of writes) {
       if (write.target === 'specification') {
         specification = write.text;
-      } else if (write.target === 'task') {
-        tasks.set(write.taskId, write.text);
       } else {
-        attention = write.text;
+        tasks.set(write.taskId, write.text);
       }
     }
 
-    const texts = { specification, tasks, attention };
+    const texts = { specification, tasks };
 
     return { folders, texts, journal, snapshot: snapshotOf(specId, texts) };
   }
@@ -278,13 +254,11 @@ function createStore(
   async function publish(specId: string, folders: Folders, journal: Journal): Promise<void> {
     for (const write of journal.writes) {
       await beforePublishTarget(write);
-      const [folder, name, maxBytes] =
+      const [folder, name] =
         write.target === 'specification'
-          ? [folders.execution, SPECIFICATION_FILE, RECORD_BYTES_MAX]
-          : write.target === 'task'
-            ? [folders.tasks, taskFileName(write.taskId), RECORD_BYTES_MAX]
-            : [folders.attention, stateFileName(specId), ATTENTION_BYTES_MAX];
-      if (!holdsPlannedRevision(await readRecordFile(folder, name, maxBytes), write)) {
+          ? [folders.execution, SPECIFICATION_FILE]
+          : [folders.tasks, taskFileName(write.taskId)];
+      if (!holdsPlannedRevision(await readRecordFile(folder, name, RECORD_BYTES_MAX), write)) {
         throw conflictWithJournal(specId, folders);
       }
 
@@ -317,8 +291,6 @@ function createStore(
       }
     }
 
-    const changesAttention = change.attention.set.length > 0 || change.attention.clear.length > 0;
-    const attention = nextAttention(current.snapshot.attention, change);
     const tasks = new Map<string, TaskRecord>(
       current.snapshot.tasks.map((entry) => [entry.value.taskId, entry.value]),
     );
@@ -330,7 +302,6 @@ function createStore(
     validateExecutionSnapshot(specId, {
       ...(specification ? { specification } : {}),
       tasks: [...tasks.values()],
-      attention,
     });
 
     // Serializing validates each record against the codec: nothing is written when one fails.
@@ -350,15 +321,6 @@ function createStore(
         text: serializeTaskRecord(write.next),
         expected: revisionOf(texts.tasks.get(write.taskId)),
       })),
-      ...(changesAttention
-        ? [
-            {
-              target: 'attention' as const,
-              text: serializeAttention(attention),
-              expected: revisionOf(texts.attention),
-            },
-          ]
-        : []),
     ];
     if (writes.length === 0) {
       return;
@@ -382,19 +344,4 @@ function createStore(
       await apply(specId, change);
     },
   };
-}
-
-function nextAttention(
-  current: readonly AttentionItem[],
-  change: ExecutionChange,
-): AttentionItem[] {
-  const replaced = new Set([
-    ...change.attention.clear,
-    ...change.attention.set.map((item) => subjectKey(item.subject)),
-  ]);
-
-  return [
-    ...current.filter((item) => !replaced.has(subjectKey(item.subject))),
-    ...change.attention.set,
-  ];
 }

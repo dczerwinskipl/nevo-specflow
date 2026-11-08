@@ -168,7 +168,10 @@ export function materializeTasks(input: MaterializeTasksInput): MaterializedTask
       run: newRun(workflow),
     };
   });
-  assertAcyclic(graph);
+  const cycle = dependencyCycle(graph);
+  if (cycle !== undefined) {
+    invalid(`The Task dependencies form a cycle at "${cycle}".`);
+  }
 
   return {
     changed: [
@@ -183,29 +186,36 @@ export function materializeTasks(input: MaterializeTasksInput): MaterializedTask
   };
 }
 
-function assertAcyclic(graph: ReadonlyMap<string, readonly string[]>): void {
+/** A Task id on a dependency cycle of the graph, or `undefined` when it has none. */
+export function dependencyCycle(graph: ReadonlyMap<string, readonly string[]>): string | undefined {
   const state = new Map<string, 'visiting' | 'done'>();
-  const visit = (id: string): void => {
+  const visit = (id: string): string | undefined => {
     const seen = state.get(id);
-    if (seen === 'done') {
-      return;
-    }
-
-    if (seen === 'visiting') {
-      invalid(`The Task dependencies form a cycle at "${id}".`);
+    if (seen !== undefined) {
+      return seen === 'visiting' ? id : undefined;
     }
 
     state.set(id, 'visiting');
     for (const dependency of graph.get(id) ?? []) {
-      visit(dependency);
+      const cycle = visit(dependency);
+      if (cycle !== undefined) {
+        return cycle;
+      }
     }
 
     state.set(id, 'done');
+
+    return undefined;
   };
 
   for (const id of graph.keys()) {
-    visit(id);
+    const cycle = visit(id);
+    if (cycle !== undefined) {
+      return cycle;
+    }
   }
+
+  return undefined;
 }
 
 /** A status a decision may set; `draft` is only ever the status of a new Task. */
@@ -319,7 +329,10 @@ export type TaskReadiness =
   | { readonly kind: 'status'; readonly status: Exclude<TaskStatus, 'ready'> }
   | { readonly kind: 'dependencies'; readonly waitingFor: readonly string[] };
 
-/** A Task may start when it is `ready` and every direct dependency completed. */
+/**
+ * A Task may start when it is `ready` and every direct dependency completed; a broken dependency
+ * (no record) never completes.
+ */
 export function taskReadiness(task: TaskRecord, tasks: readonly TaskRecord[]): TaskReadiness {
   if (task.status !== 'ready') {
     return { kind: 'status', status: task.status };
@@ -335,22 +348,26 @@ export function taskReadiness(task: TaskRecord, tasks: readonly TaskRecord[]): T
   return waitingFor.length > 0 ? { kind: 'dependencies', waitingFor } : { kind: 'ready' };
 }
 
-/** The Specification's wait step is satisfied when every Task is closed (also when there is none). */
-export function allTasksClosed(tasks: readonly TaskRecord[]): boolean {
-  return tasks.every(isTaskClosed);
+/**
+ * The Specification's wait step is satisfied when every Task is closed (also when there is none). A
+ * broken Task (listed without a record, `brokenTaskIds`) is never closed.
+ */
+export function allTasksClosed(tasks: readonly TaskRecord[], broken: readonly string[]): boolean {
+  return broken.length === 0 && tasks.every(isTaskClosed);
 }
 
 /**
  * True when Tasks are still open but none of them can progress: none is running and none can start
  * (`ready` with its dependencies completed), so the Specification's wait step would wait forever
  * without anyone being told. Every open Task is then a draft, on hold, or waits (directly or through
- * other open Tasks) for one of them or for an abandoned or cancelled Task.
+ * other open Tasks) for one of them, for a broken Task or for an abandoned or cancelled Task; a
+ * broken Task never progresses.
  */
-export function tasksStuck(tasks: readonly TaskRecord[]): boolean {
+export function tasksStuck(tasks: readonly TaskRecord[], broken: readonly string[]): boolean {
   const open = tasks.filter((task) => !isTaskClosed(task));
 
   return (
-    open.length > 0 &&
+    open.length + broken.length > 0 &&
     open.every(
       (task) => task.run.position.state !== 'active' && taskReadiness(task, tasks).kind !== 'ready',
     )

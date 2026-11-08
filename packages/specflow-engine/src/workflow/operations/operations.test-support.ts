@@ -70,14 +70,18 @@ export const owner: ExecutorRecord = { kind: 'human', actorId: 'owner' };
 /** The agent Session that works on the Specification in most tests. */
 export const claude = agent('claude', 'session-a', 'claude-opus-5-5');
 
-export const SPEC = 'spec-1';
+/** A valid Specification id, so the same helpers also run against the filesystem store. */
+export const SPEC = '0b9d2f9e-4f1c-4a8e-9d55-5f2b6c1a7e10';
 export const specification: WorkflowSubject = { kind: 'specification', specId: SPEC };
 export const task = (taskId: string): WorkflowSubject => ({ kind: 'task', specId: SPEC, taskId });
 
 export type Dependencies = ReturnType<typeof memoryDependencies>;
 
 /** Start the Specification's next step (creating its run from the `feature` archetype). */
-export function startSpecification(dependencies: Dependencies, executor: ExecutorRecord = claude) {
+export function startSpecification(
+  dependencies: WorkflowDependencies,
+  executor: ExecutorRecord = claude,
+) {
   return startSpecificationExecution(dependencies, {
     specId: SPEC,
     archetype: 'feature',
@@ -85,7 +89,7 @@ export function startSpecification(dependencies: Dependencies, executor: Executo
   });
 }
 
-export async function positionOf(dependencies: Dependencies, subject: WorkflowSubject) {
+export async function positionOf(dependencies: WorkflowDependencies, subject: WorkflowSubject) {
   const inspection = await inspectExecution(dependencies, SPEC);
   const run =
     subject.kind === 'specification'
@@ -97,7 +101,7 @@ export async function positionOf(dependencies: Dependencies, subject: WorkflowSu
 
 /** Start and finish the subject's next step in one go (what one agent turn does). */
 export async function work(
-  dependencies: Dependencies,
+  dependencies: WorkflowDependencies,
   subject: WorkflowSubject,
   input: FinishStepInput['input'] = {},
   executor: ExecutorRecord = claude,
@@ -129,7 +133,7 @@ export const TWO_TASKS = [
  * Runs the Specification up to the wait step: the breakdown drafts {@link TWO_TASKS} and the
  * review's pass approves them. Returns the finish of the review.
  */
-export async function specificationWithTasks(dependencies: Dependencies) {
+export async function specificationWithTasks(dependencies: WorkflowDependencies) {
   await runToBreakdown(dependencies);
   await finishStep(dependencies, {
     subject: specification,
@@ -143,7 +147,7 @@ export async function specificationWithTasks(dependencies: Dependencies) {
 }
 
 /** Runs the Specification until `breakdown` is active (worked by {@link claude}). */
-export async function runToBreakdown(dependencies: Dependencies) {
+export async function runToBreakdown(dependencies: WorkflowDependencies) {
   for (let index = 0; index < 3; index += 1) {
     await work(dependencies, specification);
   }

@@ -934,7 +934,7 @@
         "wiring the Runtime, CLI or UI to Specification or Task execution",
         "adding a step kind, an effect, an attention reason or a new subject"
       ],
-      "summary": "One deterministic workflow core drives both a Specification and each of its Tasks. Entry points only select the subject. Workflows, agent archetypes (preferred provider and a model per provider) and task types are project definitions. Each Task has its own type, workflow and preparation status (draft, ready, on-hold, cancelled), changed only by explicit decisions, a declared approval effect or its own escalation to the Specification. The Engine decides continuations; anything it cannot carry out becomes a local attention item. Canonical state lives in the Specification's `.execution/` folder; journals and attention are local.",
+      "summary": "One deterministic workflow core drives both a Specification and each of its Tasks. Entry points only select the subject. Workflows, agent archetypes (preferred provider and a model per provider) and task types are project definitions. Each Task has its own type, workflow and preparation status (draft, ready, on-hold, cancelled), changed only by explicit decisions, a declared approval effect or its own escalation to the Specification. The Engine decides continuations; anything it cannot carry out is attention for the owner, derived from the state on every inspection and never stored. Canonical state lives in the Specification's `.execution/` folder, which lists the Task set; only the change journal is local.",
       "related": [
         "architecture.workflow.deterministic-workflow",
         "adr.0019-workflow-kernel-and-automatic-continuation",

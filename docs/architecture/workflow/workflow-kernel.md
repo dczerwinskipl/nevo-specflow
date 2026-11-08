@@ -14,8 +14,9 @@ summary: >
   and task types are project definitions. Each Task has its own type, workflow and preparation status
   (draft, ready, on-hold, cancelled), changed only by explicit decisions, a declared approval effect
   or its own escalation to the Specification. The Engine decides
-  continuations; anything it cannot carry out becomes a local attention item. Canonical state lives in
-  the Specification's `.execution/` folder; journals and attention are local.
+  continuations; anything it cannot carry out is attention for the owner, derived from the state on
+  every inspection and never stored. Canonical state lives in the Specification's `.execution/`
+  folder, which lists the Task set; only the change journal is local.
 related:
   - architecture.workflow.deterministic-workflow
   - adr.0019-workflow-kernel-and-automatic-continuation
@@ -38,10 +39,10 @@ The core is subject-neutral. A **subject** is either the Specification or one of
 ```text
 startSpecificationExecution(specId, archetype, executor) ─┐
 startTaskExecution(specId, taskId, executor)              ─┴─▶ start(subject) ─▶ progression state machine
-finishStep(subject, step, attempt, input, executor)         ─▶ finish ─▶ Tasks, decisions, effects, escalation ─▶ continuation ─▶ attention
-returnToStep(subject, step, feedback)                       ─▶ return ─▶ effects ─▶ continuation ─▶ attention
+finishStep(subject, step, attempt, input, executor)         ─▶ finish ─▶ Tasks, decisions, effects, escalation ─▶ continuation
+returnToStep(subject, step, feedback, executor)             ─▶ return ─▶ effects ─▶ continuation
 setTaskStatus(specId, taskId, status, reason, executor)     ─▶ decision ─▶ settle the Specification
-inspectExecution(specId)                                    ─▶ read-only view
+inspectExecution(specId)                                    ─▶ read-only view, broken Tasks, derived attention
 ```
 
 The entry points differ in only two ways:
@@ -71,7 +72,7 @@ workflow.
 **No cascade.** A broken definition never takes the definitions that refer to it down:
 
 - A workflow does not check the agent archetypes of its steps. They are resolved when a step is
-  continued, and a missing or invalid one becomes the attention item `archetype-missing`.
+  continued, and a missing or invalid one gives the attention reason `archetype-missing`.
 - A Specification archetype does not check its execution binding, so its document templates keep
   working. `startSpecificationExecution` resolves the binding (`resolveSpecificationExecution`). It
   fails with `WORKFLOW_NOT_CONFIGURED` when the workflow is missing or does not drive a Specification,
@@ -118,6 +119,20 @@ Readiness, lanes and statuses are derived from these, never stored.
   name the exact active attempt (`WORKFLOW_ATTEMPT_MISMATCH` otherwise).
 - **Sequence.** Every attempt and return record carries a `sequence` (1, 2, ...) in the order the
   records were made. The handoff takes the latest record by sequence, never by timestamp.
+- **Position follows from the history.** The stored position must be where the history leads, read
+  with the pinned definition (`assertPositionJustified` in `progression/progression.ts`, checked
+  whenever a run is loaded with its definition, by every operation and by `inspectExecution`). The
+  attempts and returns are replayed in sequence order from `not-started`: the first attempt is of the
+  entry step, and every later attempt is of the step the previous record led to (an Engine-entered
+  wait step included); an open attempt makes the run `active` on it, so it can only be the last
+  record; a finished attempt leads where its recorded transition (from that attempt's step) targets;
+  an attempt ended by a return, and a return record (whose `from` must be the replayed position), lead
+  to the return's step. The replay must end at the stored position, whatever its state. A hand-edited
+  position or history that does not follow (for example `ready: acceptance` with an empty history,
+  `active` on `acceptance` right after `requirements`, or an attempt of a step nothing led to) fails
+  with `WORKFLOW_STATE_CORRUPT`. A run whose pinned definition is missing or
+  changed is not checked; `inspectExecution` marks it `definitionChanged: true`, and its next
+  operation fails with `WORKFLOW_DEFINITION_CHANGED`.
 - **Pin.** A run is pinned to `{id, version, revision}`, where `revision` is the sha256 of the resolved
   definition. If the loaded definition differs, the run fails with `WORKFLOW_DEFINITION_CHANGED`.
   Re-pinning is a follow-up (plan 06, F07).
@@ -145,6 +160,9 @@ its executor, from trusted Runtime or CLI context, never from agent-supplied inp
 - An active agent attempt started in a Session (its executor carries a `sessionId`) can be resumed
   and finished only by the same provider and Session id.
 
+The owner operations `returnToStep` and `setTaskStatus` require the owner as executor (a human
+executor, `assertOwner`); anything else, including no executor, is refused the same way.
+
 Breaking a rule fails with `WORKFLOW_EXECUTOR_NOT_ALLOWED` before anything changes. Handing an agent
 step over to the owner (owner takeover) is not supported; it would be an explicit operation of its own
 (plan 06, F17), not a finish.
@@ -156,6 +174,29 @@ step over to the owner (owner takeover) is not supported; it would be an explici
 > [Task resource, lifecycle and context](../../ideas/specflow-engine/task-resource-and-context.md)
 > proposes a Task folder with its own manifest and documents, a Task index and a context list
 > (plan 06, F20). The lifecycle described here (status, decisions, approval, escalation) is current.
+
+### The Task set
+
+The Specification execution record lists every Task id (`taskIds`, in creation order). It is the
+authoritative Task set: a Task is added to it in the same change that creates its record, and never
+removed (a draft left out of a breakdown is cancelled, not deleted). Until the Task index of
+[Task resource, lifecycle and context](../../ideas/specflow-engine/task-resource-and-context.md)
+exists, this list is the registry.
+
+- **A Task file the list does not name** is corrupt state: every read fails with
+  `WORKFLOW_STATE_CORRUPT`.
+- **A listed Task without its file** is broken, and only that Task (`brokenTaskIds`):
+  `inspectExecution` lists it in `brokenTasks`; starting, finishing, returning or deciding it is
+  refused with `WORKFLOW_STATE_CORRUPT` naming it, before anything is written; it counts as open, so
+  the wait step never completes over it; a Task that depends on it never becomes startable
+  (`dependencies {waitingFor}`); and when nothing else can progress, the Specification gets
+  `tasks-stuck`. The Engine never recreates it, and a breakdown that lists its id is refused the
+  same way. Restoring the file from Git makes the Task usable again; if the restored record is
+  already closed (terminal or cancelled) and no Task is open any more, no Task event will complete
+  the wait, so the Specification keeps `tasks-stuck` and the owner returns it (for example to the
+  breakdown).
+- Every `dependsOn` names a listed Task, and the dependencies form no cycle
+  (`validateExecutionSnapshot`); a stored state that breaks this is `WORKFLOW_STATE_CORRUPT`.
 
 ### Creating and revising Tasks
 
@@ -219,8 +260,8 @@ executor})`, which requires a human executor (`WORKFLOW_EXECUTOR_NOT_ALLOWED` ot
   finish;
 - the Task's own **escalation** (below).
 
-A Task that is not `ready` loses its attention item. After a status change, `setTaskStatus` settles
-the Specification in the same change (see "Wait step").
+No attention is derived for a Task that is not `ready`. After a status change, `setTaskStatus`
+settles the Specification in the same change (see "Wait step").
 
 ### Readiness and the step context
 
@@ -228,8 +269,9 @@ Readiness of a Task is derived from the Task and its direct dependencies only: `
 `ready`), `dependencies {waitingFor}` (a direct dependency has not completed) or `ready`. Starting a
 step of a Task that is not ready fails with `WORKFLOW_TASK_BLOCKED` naming the status, and starting a
 Task whose direct dependency ended `abandoned` or was cancelled fails with
-`WORKFLOW_DEPENDENCY_UNSATISFIED` naming that dependency. Only a `ready` Task can be returned. A Task
-that is not `ready` after its own finish gets the continuation `none {on-hold}` and no attention item.
+`WORKFLOW_DEPENDENCY_UNSATISFIED` naming that dependency (also a broken one). Only a `ready` Task can
+be returned. A Task that is not `ready` after its own finish gets the continuation `none {on-hold}`
+and no attention.
 
 The step context of a producing step lists the allowed task types, so the planner chooses among
 them. The step context of every Specification work step lists the existing Tasks (`existingTasks`:
@@ -251,10 +293,10 @@ target (checked at load time). Finishing with it:
   on hold (held while its step ran) gets the same: the escalation replaces its earlier
   `statusChange`;
 - settles the Specification in the same change, only while it is active on its wait step: it
-  takes the wait step's `task-escalated` transition, or, when the workflow declares none, gets the
-  attention item `task-escalated` (see "Wait step"). A Specification at any other position (for
-  example `ready` at its breakdown after a return, with an `owner-action` item, or active on a work
-  step) keeps its item; it cannot enter the wait step again until the escalation is resolved
+  takes the wait step's `task-escalated` transition, or, when the workflow declares none, needs the
+  owner's attention `task-escalated` (see "Wait step"). A Specification at any other position (for
+  example `ready` at its breakdown after a return, needing an `owner-action`, or active on a work
+  step) is left alone; it cannot enter the wait step again until the escalation is resolved
   (see "Draft and escalation guard").
 
 The seeds `task-standard` and `task-ui` declare the result `needs-spec-change` on `review`, with
@@ -267,7 +309,8 @@ the handoff.
 ## Returns ("back to the table")
 
 `returns[]` declares the steps the owner may move the run back to from any non-terminal position. This
-includes a Specification that is waiting for its Tasks. A return goes only to a declared step the run
+includes a Specification that is waiting for its Tasks. A return is an owner action: `returnToStep`
+requires the owner as executor (see "Executors"). A return goes only to a declared step the run
 has already reached (it has an attempt of that step), never ahead; otherwise it fails with
 `WORKFLOW_RETURN_NOT_ALLOWED`. When the owner returns:
 
@@ -305,7 +348,7 @@ The Engine completes the wait step itself, with the transition of the Task event
 
 - **`tasks-finished`** when every Task is **closed** (its run is terminal, or it is `cancelled`), in
   the same change as the finish of the last Task or the `setTaskStatus` that cancels the last open
-  Task. An `on-hold` or `ready` Task that has not finished keeps it waiting. With zero Tasks, the
+  Task. An `on-hold` or `ready` Task that has not finished, and a broken Task, keep it waiting. With zero Tasks, the
   wait step completes as soon as it is entered.
 - **`task-escalated`** when a Task is escalated (on hold by its own escalation), in the same change
   as the escalating finish (the guard keeps escalated Tasks out of the wait step's entry). The next
@@ -316,8 +359,8 @@ The Engine completes the wait step itself, with the transition of the Task event
 
 `FinishStepResult.specification` then says what the Specification does next. Nobody starts or
 resumes a wait step: a start whose next step is a wait step is refused with
-`WORKFLOW_POSITION_INVALID` before anything changes, so its attention item (for example `tasks-stuck`)
-is kept.
+`WORKFLOW_POSITION_INVALID` before anything changes, so its attention (for example `tasks-stuck`)
+still shows.
 
 Settling the wait runs inside a Task's finish or a Task status change and never makes it fail:
 
@@ -333,11 +376,11 @@ Settling the wait runs inside a Task's finish or a Task status change and never 
   subject, and the escalation wins over `tasks-stuck` because it names the cause. The owner resolves
   it with a decision or a return; the item goes once no Task is escalated any more.
 - Otherwise, if Tasks are still open but none can progress (none is running, and none is `ready` with
-  its dependencies completed), the Specification gets the attention item `tasks-stuck`. The dependency
-  graph is acyclic by construction, so this is exactly the case when every open Task is a draft, on
-  hold, or waits, directly or through other open Tasks, for such a Task or for an abandoned or
-  cancelled one. The owner resolves it with a decision (`setTaskStatus`) or a return (for example to
-  the breakdown), which replaces the item like any start or return.
+  its dependencies completed; a broken Task never progresses), the Specification gets `tasks-stuck`.
+  The dependency graph is acyclic (checked on every read and write), so this is exactly the case when
+  every open Task is a draft, on hold, or waits, directly or through other open Tasks, for such a
+  Task, a broken one, or an abandoned or cancelled one. The owner resolves it with a decision
+  (`setTaskStatus`), a return (for example to the breakdown) or by restoring a broken Task's file.
 
 ## Continuation and attention
 
@@ -355,8 +398,8 @@ How a launch is resolved:
   executor context. The model is the archetype's model for that provider.
 - **`session: fresh`.** The provider is the archetype's `preferredProvider`, with its model.
 
-Only an `auto` transition whose launch resolves gives `continue`. Otherwise the result is an attention
-item. The reasons are:
+Only an `auto` transition whose launch resolves gives `continue`. Otherwise the result is attention.
+The reasons are:
 
 | Reason                | When                                                                          |
 | --------------------- | ----------------------------------------------------------------------------- |
@@ -369,19 +412,29 @@ item. The reasons are:
 | `tasks-stuck`         | The Specification waits, but no open Task can progress without the owner.     |
 | `task-escalated`      | Tasks escalated, no declared transition (`taskIds`). Wins over `tasks-stuck`. |
 
-Attention is never a question to the agent. The agent's finish succeeds, and the attention item is
-recorded for the subject. There is at most one item per subject. **Any start of that subject removes
-it**, whether the start comes from a quick screen, a manual start or an automatic continuation, since
-they all use the same start operation. The item also goes when the run ends.
+Attention is never a question to the agent. The agent's finish succeeds, and the finish (or return)
+returns its `ContinuationDecision`.
 
-**Only current attention counts.** Attention is local while the runs are Git-tracked, so a checkout
-(a branch switch, a pull) can change a run under an item that was recorded for another state. An
-item counts only while it matches its subject's position (`operations/attention.ts`,
-`isAttentionCurrent`): the step it names is the subject's `ready` step; for `tasks-stuck` and
-`task-escalated`, the Specification's active wait step. `inspectExecution` never shows an item that
-no longer matches, and the next mutation of the Specification removes every such item.
-`inspectExecution` runs inside the same serialization as the mutations, so it never sees a change
-half-applied.
+**Attention is derived, never stored.** `inspectExecution` computes the attention items
+(`deriveAttention` in `operations/attention.ts`) from the canonical runs, the pinned definitions and
+the current archetypes, with the same functions the operations use for their results
+(`continuationOf`, `waitDecision` in `operations/advance.ts`):
+
+- a subject `ready` on a step gets what its latest event decides: after a finished attempt, the
+  recorded transition (from that attempt's step) with the executor that finished it (`finishedBy`,
+  the Session a `reuse` continues); after an owner return, an owner action;
+- a Specification active on its wait step gets `task-escalated` or `tasks-stuck` (also when every
+  Task is closed but the wait is still active, which only a Task file changed outside the Engine
+  causes);
+- nothing is derived for a subject that is active (being worked on), not started or terminal, for a
+  Task that is not `ready`, or for a run whose pinned workflow is missing or changed (its inspection
+  entry carries `definitionChanged: true`).
+
+So there is at most one item per subject, and **any start removes it** by construction, whether the
+start comes from a quick screen, a manual start or an automatic continuation. Whatever changes the
+runs (an operation, a branch switch, a pull), inspection shows the attention of the current
+position, and a model chosen in an archetype afterwards changes it too. `inspectExecution` runs
+inside the same serialization as the mutations, so it never sees a change half-applied.
 
 "Remember my choice" is `rememberArchetypeModel`: it writes the model, and optionally the preferred
 provider, into the agent archetype file, keeping its comments. Its read-edit-write runs under the
@@ -395,8 +448,8 @@ job (plan 06, F01).
 ### Tasks are started by the owner
 
 A Task has no previous step, so no transition decides how it continues. A Task never starts and never
-gets an attention item just because it is ready: the Engine records attention for a Task only after
-one of its own steps finished or returned. The owner starts Tasks. The intended model (plan 06,
+gets attention just because it is ready: attention is derived for a Task only once one of its own
+steps finished or returned. The owner starts Tasks. The intended model (plan 06,
 "Run selected Tasks") is that the owner selects Tasks and presses "run", and the Runtime orchestrator
 runs that selection with agents in dependency order, recording attention only when the run cannot
 proceed.
@@ -405,9 +458,8 @@ proceed.
 
 | What                                   | Where                                                  | Tracked |
 | -------------------------------------- | ------------------------------------------------------ | ------- |
-| Specification run                      | `<specification>/.execution/specification.yaml`        | Git     |
+| Specification run and Task list        | `<specification>/.execution/specification.yaml`        | Git     |
 | Task records (type, deps, status, run) | `<specification>/.execution/tasks/<taskId>.yaml`       | Git     |
-| Attention items                        | `<stateRoot>/engine/workflow/attention/<specId>.json`  | local   |
 | Change journal                         | `<stateRoot>/engine/operations/workflow/<specId>.json` | local   |
 
 - **Location.** `.execution/` starts with a dot, so the document tree never lists it. It moves with
@@ -420,27 +472,28 @@ proceed.
 - **Consistent reads.** The store does not lock. Its precondition is that callers serialize the reads
   and changes of one Specification; the operations do it with the project control lock, which is
   cross-process. So a read never sees a change in the middle of being published.
-- **Write-side validation.** Every record, and the attention list, is validated against the same
-  codec while the change is built, before the journal is written. A record that would not read back
-  fails with `WORKFLOW_STATE_CORRUPT`, one over its byte budget with `WORKFLOW_INPUT_INVALID`, and
-  nothing is written. The attention list holds at most one
-  item per subject, so its limit is the Task limit plus one.
+- **Write-side validation.** Every record is validated against the same codec while the change is
+  built, before the journal is written. A record that would not read back fails with
+  `WORKFLOW_STATE_CORRUPT`, one over its byte budget with `WORKFLOW_INPUT_INVALID`, and nothing is
+  written.
 - **Identity and coherence.** Every read, and the state a change would produce, is checked before it
   is used or stored: a Task file holds the Task its name says, every record belongs to the
   Specification (`specId`), Task ids are unique, and `validateExecutionSnapshot` (`state/validate.ts`)
   checks the invariants the operations rely on (one open attempt for an active step and none
-  otherwise, attempt numbers without gaps, an ordered history, at most one attention item per subject,
-  attention only for subjects with a record). A failure is `WORKFLOW_STATE_CORRUPT`.
-- **Plain files only.** `.execution/`, `.execution/tasks/`, the attention and journal folders and every
+  otherwise, attempt numbers without gaps, an ordered history, every Task record listed by the
+  Specification, every dependency a listed Task, no dependency cycle). A failure is
+  `WORKFLOW_STATE_CORRUPT`. Whether a position follows from its history needs the definition and is
+  checked when the run is loaded (see "Positions, attempts and the handoff").
+- **Plain files only.** `.execution/`, `.execution/tasks/`, the journal folder and every
   record file must be a plain directory or a regular file at its expected physical path
   (`state/record-files.ts`). A symlink, a junction or a path that resolves elsewhere fails with
   `WORKFLOW_STATE_CORRUPT` before anything is read, written or removed.
 - **Budgets.** A Specification holds at most `TASKS_PER_SPECIFICATION_MAX` (200) Task files, a record
-  file at most `RECORD_BYTES_MAX` (256 KiB), the attention list at most `ATTENTION_BYTES_MAX` (1 MiB)
-  and the journal at most `JOURNAL_BYTES_MAX` (`workflow/limits.ts`). A file's size is checked before
-  it is read; a stored file over its budget fails the read with `WORKFLOW_STATE_CORRUPT`. The record
-  and attention budgets are enforced when a change is serialized (`state/codec.ts`): a change over
-  one is refused with `WORKFLOW_INPUT_INVALID`, and nothing is stored. The journal budget is checked
+  file at most `RECORD_BYTES_MAX` (256 KiB) and the journal at most `JOURNAL_BYTES_MAX`
+  (`workflow/limits.ts`). A file's size is checked before it is read; a stored file over its budget
+  fails the read with `WORKFLOW_STATE_CORRUPT`. The record budget is enforced when a change is
+  serialized (`state/codec.ts`): a change over it is refused with `WORKFLOW_INPUT_INVALID`, and
+  nothing is stored. The journal budget is checked
   when the journal is serialized (`state/journal.ts`); records within their budgets always fit it.
 - **Replay and publish check.** Each journal target records the sha256 of the text it replaces, or
   that the file did not exist. A pending journal is used only while every target still holds that
@@ -475,7 +528,7 @@ are ordinary working-tree changes of the Specification's checkout.
 | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | A Task effect                 | Add a value to `WORKFLOW_EFFECTS` (contracts) and a case to `applyTaskEffects`.                                                                           |
 | A Task status change          | Extend `ALLOWED_DECISIONS` in `tasks/tasks.ts`; the store invariants for statuses live in `state/validate.ts`.                                            |
-| An attention reason           | Add it to `ATTENTION_REASONS` and give `resolveAgentLaunch` / `resolveContinuation` the rule that produces it.                                            |
+| An attention reason           | Add it to `ATTENTION_REASONS` and give `resolveAgentLaunch` / `resolveContinuation` (or `waitDecision`) the rule that produces it.                        |
 | A step kind (e.g. gate)       | Add a union member in the contracts schema and in `definitions/model.ts`, then a rule in `workflow-rules.ts` and handling in `progression` and `advance`. |
 | Gates and finalize actions    | Planned as step fields checked by `planFinish` before the change is built (F03, F04).                                                                     |
 | A store                       | Implement the `WorkflowStore` port (`state/store.ts`).                                                                                                    |

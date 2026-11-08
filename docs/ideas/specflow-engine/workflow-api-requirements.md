@@ -26,10 +26,12 @@ This is a requirements list, not a design. Each item names the Engine operation 
 
 - **R1.** Show the execution of a Specification: its run (step, attempt, position), every Task with its
   type, workflow, status (`draft` / `ready` / `on-hold` / `cancelled`, with its last change), position,
-  readiness (ready / not ready because of the status / waiting for dependencies) and handoff, and the
-  open attention items. Only current attention is shown: an item that no longer matches its subject's
-  position (for example after a branch switch) is never returned. The read is serialized with the
-  mutations, so it never shows a change half-applied. Maps to `inspectExecution`.
+  readiness (ready / not ready because of the status / waiting for dependencies) and handoff, the
+  broken Tasks (listed by the Specification, record missing) and the attention items. Attention is
+  derived from the canonical state, the pinned definitions and the current archetypes on every read,
+  never stored, so it always matches the subjects' current positions (also after a branch switch).
+  The read is serialized with the mutations, so it never shows a change half-applied. Maps to
+  `inspectExecution`.
 - **R2.** Show the step context of an active attempt, the same context the agent gets: purpose,
   instructions, allowed results, handoff and archetype. Maps to `StartResult.context` and must also be
   readable without starting.
@@ -57,7 +59,9 @@ reason?}`; one decision that is not allowed rejects the whole finish).
   Anything else is `WORKFLOW_EXECUTOR_NOT_ALLOWED`. Owner takeover of an agent step is a future
   explicit operation (plan 06, F17), not a finish.
 - **C3.** Return to a declared step with feedback. Only a step the run has already reached (it has an
-  attempt of it) is allowed, otherwise `WORKFLOW_RETURN_NOT_ALLOWED`.
+  attempt of it) is allowed, otherwise `WORKFLOW_RETURN_NOT_ALLOWED`. A return is an owner action: it
+  requires the owner (a human executor) from trusted context, otherwise
+  `WORKFLOW_EXECUTOR_NOT_ALLOWED`.
 - **C3a.** Set the status of a Task as the owner: approve a draft, hold, resume or cancel, with an
   optional reason. Maps to `setTaskStatus` (human executor only, otherwise
   `WORKFLOW_EXECUTOR_NOT_ALLOWED`). Allowed: `draft → ready | cancelled`, `ready → on-hold | cancelled`,
@@ -70,7 +74,8 @@ reason?}`; one decision that is not allowed rejects the whole finish).
 - **C4.** Quick start from an attention item:
   - prefill the provider and model from `suggestion`;
   - when `blocker` or the reason is `model-missing` / `provider-not-chosen`, let the owner choose them;
-  - start through C1, so the item disappears in the same way for every path.
+  - start through C1; the subject is then active, so no item is derived for it, the same way for
+    every path.
 - **C5.** Remember a choice: set the model (and optionally the preferred provider) of an agent
   archetype. Maps to `rememberArchetypeModel`. It changes a definition file, which must become
   committable through the definitions commit flow. It is serialized with the other Engine writes. The
@@ -85,7 +90,8 @@ reason?}`; one decision that is not allowed rejects the whole finish).
   stale attempt, a blocked Task and invalid input apart.
 - **B3.** A `continue` decision is executed only by the Runtime orchestrator. Clients only observe it.
 - **B4.** Attention updates are pushed (SSE or equivalent), and the item disappears after any start.
-  A stale item (one that no longer matches its subject's position) is never shown.
+  Attention is derived, so a stale item (one that no longer matches its subject's position) cannot
+  exist.
 - **B5.** Agents receive only an acceptance and a short continuation summary after their finish, never
   the attention internals or a question about models.
 

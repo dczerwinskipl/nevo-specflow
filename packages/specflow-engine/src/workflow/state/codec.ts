@@ -4,15 +4,11 @@ import { parse, stringify } from 'yaml';
 
 import { CATALOGUE_ID_PATTERN } from '@nevo/specflow-contracts/documents';
 
-import type { AttentionItem } from '../attention/model';
-import { ATTENTION_REASONS } from '../continuation/resolve';
 import { WorkflowError } from '../errors';
 import {
   ARTIFACTS_MAX,
   ARTIFACT_MAX,
   ATTEMPTS_MAX,
-  ATTENTION_BYTES_MAX,
-  ATTENTION_ITEMS_MAX,
   FEEDBACK_MAX,
   RECORD_BYTES_MAX,
   RETURNS_MAX,
@@ -25,12 +21,12 @@ import {
 import { TASK_STATUSES, type SpecificationExecutionRecord, type TaskRecord } from './model';
 
 /**
- * Text format of the stored execution state. The canonical records are YAML (they are reviewed and
- * committed with the Specification); attention items are local JSON. Every read validates the full
+ * Text format of the stored execution state: YAML records, reviewed and committed with the
+ * Specification. Every read validates the full
  * shape, so a hand-edited or truncated file fails closed instead of being interpreted, and every
  * write validates the text it produces the same way, so a record that would not read back is never
  * stored. The limits come from `../limits`, shared with the operations' input checks. A change that
- * would serialize a record or the attention list over its byte budget is refused as invalid input
+ * would serialize a record over its byte budget is refused as invalid input
  * before anything is stored; a stored file over the budget fails a read as corrupt.
  */
 
@@ -118,6 +114,7 @@ const SpecificationFileSchema = closed({
     Type.Tuple([Type.Literal('*')]),
     Type.Array(id(), { minItems: 1, maxItems: 64 }),
   ]),
+  taskIds: Type.Array(TaskIdSchema, { maxItems: TASKS_PER_SPECIFICATION_MAX, uniqueItems: true }),
   run: RunSchema,
 });
 
@@ -139,46 +136,6 @@ const TaskFileSchema = closed({
     }),
   ),
   run: RunSchema,
-});
-
-const SubjectSchema = Type.Union([
-  closed({ kind: Type.Literal('specification'), specId: text(200) }),
-  closed({ kind: Type.Literal('task'), specId: text(200), taskId: TaskIdSchema }),
-]);
-
-const AttentionFileSchema = closed({
-  version: Type.Literal(EXECUTION_STATE_VERSION),
-  items: Type.Array(
-    closed({
-      subject: SubjectSchema,
-      step: id(),
-      reason: Type.Union(ATTENTION_REASONS.map((reason) => Type.Literal(reason))),
-      taskIds: optional(
-        Type.Array(TaskIdSchema, {
-          minItems: 1,
-          maxItems: TASKS_PER_SPECIFICATION_MAX,
-          uniqueItems: true,
-        }),
-      ),
-      archetype: optional(id()),
-      provider: optional(id()),
-      blocker: optional(Type.Union(ATTENTION_REASONS.map((reason) => Type.Literal(reason)))),
-      suggestion: optional(
-        closed({
-          archetype: id(),
-          provider: id(),
-          model: text(200),
-          effort: optional(text(64)),
-          session: Type.Union([
-            closed({ mode: Type.Literal('fresh') }),
-            closed({ mode: Type.Literal('reuse'), sessionId: text(200) }),
-          ]),
-        }),
-      ),
-      createdAt: timestamp(),
-    }),
-    { maxItems: ATTENTION_ITEMS_MAX },
-  ),
 });
 
 function corrupt(what: string): never {
@@ -273,25 +230,4 @@ export function serializeTaskRecord(record: TaskRecord): string {
 
 export function parseTaskRecord(source: string): TaskRecord {
   return withoutVersion(decode(TaskFileSchema, parseYaml(source, 'Task'), 'Task'));
-}
-
-export function serializeAttention(items: readonly AttentionItem[]): string {
-  return checkedText(
-    `${JSON.stringify({ version: EXECUTION_STATE_VERSION, items }, null, 2)}\n`,
-    ATTENTION_BYTES_MAX,
-    parseAttention,
-    'attention list',
-  );
-}
-
-export function parseAttention(source: string): AttentionItem[] {
-  withinBytes(source, ATTENTION_BYTES_MAX, 'attention list');
-  let value: unknown;
-  try {
-    value = JSON.parse(source);
-  } catch {
-    return corrupt('attention list');
-  }
-
-  return (decode(AttentionFileSchema, value, 'attention list') as { items: AttentionItem[] }).items;
 }

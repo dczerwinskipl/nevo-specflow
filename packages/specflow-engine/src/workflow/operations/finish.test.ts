@@ -75,7 +75,7 @@ describe('continuation after a finished step', () => {
     });
   });
 
-  it('removes the attention item when the step is started, whoever starts it', async () => {
+  it('shows no attention once the step is started, whoever starts it', async () => {
     const dependencies = memoryDependencies(catalogue);
     await work(dependencies, specification, {}, agent('antigravity', 'session-g'));
     await startSpecification(dependencies, agent('claude', 'session-b', 'claude-opus-5-5'));

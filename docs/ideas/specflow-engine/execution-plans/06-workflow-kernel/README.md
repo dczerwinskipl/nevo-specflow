@@ -113,9 +113,9 @@ code was copied: the language and the infrastructure differ. Models and rules we
     step's kind, and an active agent attempt started in a Session is resumed and finished only by
     that Session (`progression/executor.ts`, `WORKFLOW_EXECUTOR_NOT_ALLOWED`);
   - a return goes only to a declared step the run has already reached (`WORKFLOW_RETURN_NOT_ALLOWED`);
-  - attention counts only while it matches its subject's position (`operations/attention.ts`):
-    `inspectExecution` hides stale items, the next mutation removes them, and `inspectExecution` is
-    serialized with the mutations;
+  - attention counts only while it matches its subject's position: `inspectExecution` hides stale
+    items, the next mutation removes them, and `inspectExecution` is serialized with the mutations
+    (superseded by W15: attention is derived, never stored);
   - `rememberArchetypeModel` runs its read-edit-write under the project control lock;
     `openWorkflow` is documented as a catalogue snapshot;
   - the store: callers serialize the reads and changes of a Specification (the project control lock,
@@ -170,6 +170,34 @@ code was copied: the language and the infrastructure differ. Models and rules we
 change.`); each reason stays in the Task's `statusChange`, listed in the next step's
     `existingTasks`. Without the transition the wait keeps today's `task-escalated` item. The seed `specification-standard` declares
     `task-escalated` to `breakdown` (owner action).
+
+- **W15 Second deep review of PR #120.** Findings R01–R04, fixed in the kernel PR:
+  - the Task set is authoritative: the Specification execution record lists every Task id
+    (`taskIds`), extended in the same change that creates a Task and never shortened. A Task file
+    it does not list is `WORKFLOW_STATE_CORRUPT`; a listed Task whose file is missing is broken, and
+    only that Task (owner decision Q10): `inspectExecution` shows it in `brokenTasks`, it cannot
+    start, finish, return or change status (`WORKFLOW_STATE_CORRUPT` naming it, before anything is
+    written), it keeps the wait open, its dependents cannot start, and `tasks-stuck` applies. A
+    vanished file can therefore no longer let the wait complete and move on to acceptance;
+  - attention is a projection: the local attention file, its codec, its journal target and budget,
+    `ExecutionChange.attention` and the currency check (`isAttentionCurrent`, which W12 introduced)
+    are removed. `inspectExecution` derives the items from the runs, the pinned definitions and the
+    current archetypes (`deriveAttention`), with the same functions that give the operations their
+    `ContinuationDecision` (`continuationOf`, `waitDecision`), so a start clears attention and a
+    branch switch shows the new position's attention by construction;
+  - `returnToStep` requires the owner as executor, like `setTaskStatus` (shared `assertOwner`,
+    `WORKFLOW_EXECUTOR_NOT_ALLOWED`);
+  - the stored position must follow from the history in the pinned definition
+    (`assertPositionJustified`, on every load of a run with its definition, inspection included),
+    and every Task dependency names a listed Task and the dependencies form no cycle
+    (`state/validate.ts`); a hand-edited record that breaks this is `WORKFLOW_STATE_CORRUPT`.
+
+  Follow-ups of the independent review of these fixes, in the same PR: the position check replays
+  the whole history from `not-started` (entry step first, each attempt of the step the previous
+  record led to, an open attempt only last), so a fabricated `active` position or history is refused
+  too; a Specification still active on its wait step with every Task closed (for example after a
+  restored terminal Task file) derives `tasks-stuck`, so the owner is told to return it; an
+  inspection entry whose pinned workflow is missing or changed carries `definitionChanged: true`.
 
 ## 3. Follow-ups
 

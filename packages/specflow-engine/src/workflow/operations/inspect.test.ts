@@ -4,6 +4,7 @@ import type { ExecutionCatalogue } from '../definitions/catalogue';
 import type { WorkflowStore } from '../state/store';
 import { finishStep } from './finish';
 import { inspectExecution } from './inspect';
+import { startTaskExecution } from './start';
 import {
   SPEC,
   agent,
@@ -23,63 +24,100 @@ beforeAll(async () => {
   catalogue = await seedExecutionCatalogue();
 });
 
-const NO_ATTENTION = { set: [], clear: [] };
-
-describe('attention that no longer matches the state', () => {
-  it('is not shown after the run was replaced by another checkout', async () => {
+describe('attention derived from the state', () => {
+  it('shows the attention of the position a changed checkout holds', async () => {
     const dependencies = memoryDependencies(catalogue);
-    const antigravity = agent('antigravity', 'session-g');
-    await startSpecification(dependencies, antigravity);
-    const before = (await dependencies.store.read(SPEC)).specification;
-    await finishStep(dependencies, {
-      subject: specification,
-      step: 'requirements',
-      attempt: 1,
-      input: {},
-      executor: antigravity,
-    });
+    await work(dependencies, specification, {}, agent('antigravity', 'session-g'));
     expect((await inspectExecution(dependencies, SPEC)).attention).toMatchObject([
       { step: 'specification', reason: 'model-missing' },
     ]);
 
-    // A branch switch: the checkout now holds a run that is still on requirements.
-    const after = (await dependencies.store.read(SPEC)).specification;
-    if (!before || !after) {
+    // A branch switch: the checkout now holds a run that went on to the breakdown review.
+    const other = memoryDependencies(catalogue);
+    for (let index = 0; index < 3; index += 1) {
+      await work(other, specification);
+    }
+
+    await work(other, specification, { tasks: [] });
+    const current = (await dependencies.store.read(SPEC)).specification;
+    const switched = (await other.store.read(SPEC)).specification;
+    if (!current || !switched) {
       throw new Error('No Specification run.');
     }
 
     await dependencies.store.apply(SPEC, {
-      specification: { expected: after.revision, next: before.value },
+      specification: { expected: current.revision, next: switched.value },
       tasks: [],
-      attention: NO_ATTENTION,
     });
 
-    expect((await inspectExecution(dependencies, SPEC)).attention).toEqual([]);
+    expect((await inspectExecution(dependencies, SPEC)).attention).toEqual([
+      {
+        subject: specification,
+        step: 'breakdown-review',
+        reason: 'model-missing',
+        archetype: 'reviewer',
+        provider: 'codex',
+      },
+    ]);
   });
 
-  it('is removed by the next mutation of any subject of the Specification', async () => {
+  it('follows the current archetypes: a chosen model turns the item into a continuation', async () => {
     const dependencies = memoryDependencies(catalogue);
-    await specificationWithTasks(dependencies);
-    // The Task "screen" has not started; an item for its review step is left over.
-    await dependencies.store.apply(SPEC, {
-      tasks: [],
-      attention: {
-        set: [
-          {
-            subject: task('screen'),
-            step: 'review',
-            reason: 'owner-action',
-            createdAt: '2026-11-05T09:00:00.000Z',
-          },
-        ],
-        clear: [],
+    await work(dependencies, specification, {}, agent('antigravity', 'session-g'));
+    const withModel = memoryDependencies({
+      ...catalogue,
+      archetype: (id) => {
+        const archetype = catalogue.archetype(id);
+
+        return archetype && id === 'spec-writer'
+          ? {
+              ...archetype,
+              providers: archetype.providers.map((entry) =>
+                entry.provider === 'antigravity' ? { ...entry, model: 'gemini-x' } : entry,
+              ),
+            }
+          : archetype;
       },
     });
+    Object.assign(withModel, { store: dependencies.store });
+
+    expect((await inspectExecution(withModel, SPEC)).attention).toEqual([]);
+  });
+
+  it('derives nothing for a run whose pinned workflow changed, and says so', async () => {
+    const dependencies = memoryDependencies(catalogue);
+    await work(dependencies, specification, {}, agent('antigravity', 'session-g'));
+    const edited = memoryDependencies({
+      ...catalogue,
+      workflow: (id) => {
+        const definition = catalogue.workflow(id);
+
+        return definition && id === 'specification-standard'
+          ? { ...definition, title: 'Edited' }
+          : definition;
+      },
+    });
+    Object.assign(edited, { store: dependencies.store });
+
+    const inspection = await inspectExecution(edited, SPEC);
+    expect(inspection.attention).toEqual([]);
+    expect(inspection.specification?.definitionChanged).toBe(true);
+    expect((await inspectExecution(dependencies, SPEC)).specification).not.toHaveProperty(
+      'definitionChanged',
+    );
+  });
+
+  it('shows nothing for a subject that is being worked on', async () => {
+    const dependencies = memoryDependencies(catalogue);
+    await specificationWithTasks(dependencies);
+    await work(dependencies, task('api'));
+    expect((await inspectExecution(dependencies, SPEC)).attention).toMatchObject([
+      { subject: task('api'), step: 'review' },
+    ]);
+
+    await startTaskExecution(dependencies, { specId: SPEC, taskId: 'api', executor: claude });
 
     expect((await inspectExecution(dependencies, SPEC)).attention).toEqual([]);
-    await work(dependencies, task('api')); // a mutation of another subject
-    const stored = (await dependencies.store.read(SPEC)).attention;
-    expect(stored.map((item) => item.subject)).toEqual([task('api')]);
   });
 });
 

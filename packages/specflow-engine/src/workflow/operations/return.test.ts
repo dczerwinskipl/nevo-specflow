@@ -7,6 +7,7 @@ import {
   SPEC,
   claude,
   memoryDependencies,
+  owner,
   seedExecutionCatalogue,
   specification,
   specificationWithTasks,
@@ -14,7 +15,7 @@ import {
   task,
   work,
 } from './operations.test-support';
-import { returnToStep } from './return';
+import { returnToStep, type ReturnToStepInput } from './return';
 import { startTaskExecution } from './start';
 
 let catalogue: ExecutionCatalogue;
@@ -30,6 +31,7 @@ describe('return to an earlier step', () => {
     await startTaskExecution(dependencies, { specId: SPEC, taskId: 'api', executor: claude });
 
     const returned = await returnToStep(dependencies, {
+      executor: owner,
       subject: specification,
       step: 'breakdown',
       feedback: 'Add an audit Task.',
@@ -75,14 +77,24 @@ describe('return to an earlier step', () => {
       reason: 'Wait for the audit.',
     });
     await expect(
-      returnToStep(dependencies, { subject: task('screen'), step: 'implement', feedback: 'x' }),
+      returnToStep(dependencies, {
+        executor: owner,
+        subject: task('screen'),
+        step: 'implement',
+        feedback: 'x',
+      }),
     ).rejects.toMatchObject({ code: 'WORKFLOW_TASK_BLOCKED' });
   });
 
   it('rejects the whole finish when one Task decision is not allowed', async () => {
     const dependencies = memoryDependencies(catalogue);
     await specificationWithTasks(dependencies);
-    await returnToStep(dependencies, { subject: specification, step: 'breakdown', feedback: 'x' });
+    await returnToStep(dependencies, {
+      executor: owner,
+      subject: specification,
+      step: 'breakdown',
+      feedback: 'x',
+    });
     await startSpecification(dependencies);
     const applied = dependencies.store.applied.length;
 
@@ -109,10 +121,15 @@ describe('return to an earlier step', () => {
     await work(dependencies, specification);
 
     await expect(
-      returnToStep(dependencies, { subject: specification, step: 'acceptance', feedback: 'x' }),
+      returnToStep(dependencies, {
+        executor: owner,
+        subject: specification,
+        step: 'acceptance',
+        feedback: 'x',
+      }),
     ).rejects.toMatchObject({ code: 'WORKFLOW_RETURN_NOT_ALLOWED' });
     await expect(
-      returnToStep(dependencies, { subject: specification, step: 'requirements' }),
+      returnToStep(dependencies, { executor: owner, subject: specification, step: 'requirements' }),
     ).rejects.toMatchObject({ code: 'WORKFLOW_INPUT_INVALID' });
   });
 
@@ -121,11 +138,35 @@ describe('return to an earlier step', () => {
     await startSpecification(dependencies); // requirements is active
 
     await expect(
-      returnToStep(dependencies, { subject: specification, step: 'breakdown', feedback: 'x' }),
+      returnToStep(dependencies, {
+        executor: owner,
+        subject: specification,
+        step: 'breakdown',
+        feedback: 'x',
+      }),
     ).rejects.toMatchObject({ code: 'WORKFLOW_RETURN_NOT_ALLOWED' });
     expect(dependencies.store.applied).toHaveLength(1);
     expect((await inspectExecution(dependencies, SPEC)).specification?.record.run.position).toEqual(
       { state: 'active', step: 'requirements', attempt: 1 },
     );
+  });
+
+  it('is an owner action: refused without the owner as executor, before anything is written', async () => {
+    const dependencies = memoryDependencies(catalogue);
+    await work(dependencies, specification);
+    const applied = dependencies.store.applied.length;
+
+    for (const executor of [undefined, claude]) {
+      await expect(
+        returnToStep(dependencies, {
+          subject: specification,
+          step: 'requirements',
+          feedback: 'x',
+          ...(executor ? { executor } : {}),
+        } as ReturnToStepInput),
+      ).rejects.toMatchObject({ code: 'WORKFLOW_EXECUTOR_NOT_ALLOWED' });
+    }
+
+    expect(dependencies.store.applied).toHaveLength(applied);
   });
 });

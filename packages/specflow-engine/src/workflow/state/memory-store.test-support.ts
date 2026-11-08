@@ -2,17 +2,15 @@ import { isDeepStrictEqual } from 'node:util';
 
 import { sha256Hex } from '../../hash';
 import { canonicalJson } from '../../specs/definitions/resolved-catalogue';
-import type { AttentionItem } from '../attention/model';
 import { WorkflowError } from '../errors';
-import { serializeAttention, serializeSpecificationRecord, serializeTaskRecord } from './codec';
-import { subjectKey, type SpecificationExecutionRecord, type TaskRecord } from './model';
+import { serializeSpecificationRecord, serializeTaskRecord } from './codec';
+import type { SpecificationExecutionRecord, TaskRecord } from './model';
 import type { ExecutionChange, ExecutionSnapshot, Versioned, WorkflowStore } from './store';
 import { stateOfSnapshot, validateExecutionSnapshot } from './validate';
 
 interface SpecState {
   specification?: Versioned<SpecificationExecutionRecord>;
   tasks: Map<string, Versioned<TaskRecord>>;
-  attention: Map<string, AttentionItem>;
 }
 
 const versioned = <T>(value: T): Versioned<T> => ({
@@ -39,7 +37,7 @@ export function createMemoryWorkflowStore(): WorkflowStore & {
       return existing;
     }
 
-    const created: SpecState = { tasks: new Map(), attention: new Map() };
+    const created: SpecState = { tasks: new Map() };
     specs.set(specId, created);
 
     return created;
@@ -61,7 +59,6 @@ export function createMemoryWorkflowStore(): WorkflowStore & {
           tasks: [...state.tasks.values()].sort((left, right) =>
             left.value.taskId < right.value.taskId ? -1 : 1,
           ),
-          attention: [...state.attention.values()],
         });
         validateExecutionSnapshot(specId, stateOfSnapshot(snapshot));
 
@@ -81,16 +78,6 @@ export function createMemoryWorkflowStore(): WorkflowStore & {
           }
         }
 
-        const replaced = new Set([
-          ...change.attention.clear,
-          ...change.attention.set.map((item) => subjectKey(item.subject)),
-        ]);
-        const attention = [
-          ...[...state.attention.values()].filter(
-            (item) => !replaced.has(subjectKey(item.subject)),
-          ),
-          ...change.attention.set,
-        ];
         const tasks = new Map([...state.tasks].map(([taskId, entry]) => [taskId, entry.value]));
         for (const write of change.tasks) {
           tasks.set(write.taskId, write.next);
@@ -100,7 +87,6 @@ export function createMemoryWorkflowStore(): WorkflowStore & {
         validateExecutionSnapshot(specId, {
           ...(specification ? { specification } : {}),
           tasks: [...tasks.values()],
-          attention,
         });
         if (change.specification) {
           serializeSpecificationRecord(change.specification.next);
@@ -110,8 +96,6 @@ export function createMemoryWorkflowStore(): WorkflowStore & {
           serializeTaskRecord(write.next);
         }
 
-        serializeAttention(attention);
-
         if (change.specification) {
           state.specification = versioned(change.specification.next);
         }
@@ -120,15 +104,7 @@ export function createMemoryWorkflowStore(): WorkflowStore & {
           state.tasks.set(write.taskId, versioned(write.next));
         }
 
-        for (const key of change.attention.clear) {
-          state.attention.delete(key);
-        }
-
-        for (const item of change.attention.set) {
-          state.attention.set(subjectKey(item.subject), structuredClone(item));
-        }
-
-        if (!isDeepStrictEqual(change, { tasks: [], attention: { set: [], clear: [] } })) {
+        if (!isDeepStrictEqual(change, { tasks: [] })) {
           applied.push(structuredClone(change));
         }
       }),

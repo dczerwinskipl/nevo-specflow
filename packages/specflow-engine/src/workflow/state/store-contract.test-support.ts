@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 
-import type { AttentionItem } from '../attention/model';
 import { FEEDBACK_MAX } from '../limits';
 import type { AttemptRecord, SpecificationExecutionRecord, TaskRecord } from './model';
 import type { ExecutionChange, WorkflowStore } from './store';
@@ -12,12 +11,16 @@ import type { ExecutionChange, WorkflowStore } from './store';
 
 export const SPEC = '0b9d2f9e-4f1c-4a8e-9d55-5f2b6c1a7e10';
 export const OTHER_SPEC = '6f3c1d2e-8a4b-4c5d-9e6f-7a8b9c0d1e2f';
-export const noAttention = { set: [], clear: [] };
-
-export const record = (step: string, specId = SPEC): SpecificationExecutionRecord => ({
+/** A Specification ready on `step` that lists `taskIds`. */
+export const record = (
+  step: string,
+  specId = SPEC,
+  taskIds: readonly string[] = [],
+): SpecificationExecutionRecord => ({
   specId,
   archetype: 'feature',
   taskTypes: ['*'],
+  taskIds,
   run: {
     workflow: { id: 'specification-standard', version: 1, revision: 'a'.repeat(64) },
     position: { state: 'ready', step },
@@ -60,30 +63,22 @@ export const endedAttempt = (
   },
 });
 
-export const attention = (
-  subject: AttentionItem['subject'],
-  step = 'requirements',
-): AttentionItem => ({
-  subject,
-  step,
-  reason: 'owner-action',
-  createdAt: '2026-11-05T10:00:00.000Z',
+/** The Specification write that lists `taskIds`, for a store that has no Specification yet. */
+export const listing = (...taskIds: string[]) => ({
+  expected: null,
+  next: record('requirements', SPEC, taskIds),
 });
-
-const specSubject = { kind: 'specification', specId: SPEC } as const;
-const taskSubject = (taskId: string) => ({ kind: 'task', specId: SPEC, taskId }) as const;
 
 export function describeWorkflowStoreContract(name: string, create: () => WorkflowStore): void {
   describe(`${name}: workflow store contract`, () => {
     const seeded = async () => {
       const store = create();
       await store.apply(SPEC, {
-        specification: { expected: null, next: record('requirements') },
+        specification: { expected: null, next: record('requirements', SPEC, ['web', 'api']) },
         tasks: [
           { taskId: 'web', expected: null, next: task('web') },
           { taskId: 'api', expected: null, next: task('api') },
         ],
-        attention: noAttention,
       });
 
       return store;
@@ -92,14 +87,14 @@ export function describeWorkflowStoreContract(name: string, create: () => Workfl
     it('reads back what it applied, Tasks in id order, and accepts writes at the read revision', async () => {
       const store = await seeded();
       const snapshot = await store.read(SPEC);
-      expect(snapshot.specification?.value).toEqual(record('requirements'));
+      expect(snapshot.specification?.value).toEqual(record('requirements', SPEC, ['web', 'api']));
       expect(snapshot.tasks.map((entry) => entry.value.taskId)).toEqual(['api', 'web']);
-      expect(await store.read(OTHER_SPEC)).toEqual({ tasks: [], attention: [] });
+      expect(await store.read(OTHER_SPEC)).toEqual({ tasks: [] });
 
       await store.apply(SPEC, {
         specification: {
           expected: snapshot.specification?.revision ?? null,
-          next: record('solution'),
+          next: record('solution', SPEC, ['web', 'api']),
         },
         tasks: [
           {
@@ -108,7 +103,6 @@ export function describeWorkflowStoreContract(name: string, create: () => Workfl
             next: task('api', 'API'),
           },
         ],
-        attention: noAttention,
       });
       const next = await store.read(SPEC);
       expect(next.specification?.value.run.position).toEqual({ state: 'ready', step: 'solution' });
@@ -123,14 +117,12 @@ export function describeWorkflowStoreContract(name: string, create: () => Workfl
         {
           specification: { expected: null, next: record('solution') },
           tasks: [],
-          attention: noAttention,
         },
         {
           tasks: [
             { taskId: 'api', expected: before.tasks[0]?.revision ?? null, next: task('api', 'x') },
             { taskId: 'web', expected: 'f'.repeat(64), next: task('web', 'y') },
           ],
-          attention: noAttention,
         },
       ] satisfies ExecutionChange[]) {
         await expect(store.apply(SPEC, change)).rejects.toMatchObject({
@@ -145,14 +137,14 @@ export function describeWorkflowStoreContract(name: string, create: () => Workfl
       [
         'a valid Specification next to a Task over the title limit',
         () => ({
-          specification: { expected: null, next: record('requirements') },
+          specification: listing('api'),
           tasks: [{ taskId: 'api', expected: null, next: task('api', 'x'.repeat(201)) }],
-          attention: noAttention,
         }),
       ],
       [
         'a Task with an unknown status',
         () => ({
+          specification: listing('api'),
           tasks: [
             {
               taskId: 'api',
@@ -160,21 +152,20 @@ export function describeWorkflowStoreContract(name: string, create: () => Workfl
               next: { ...task('api'), status: 'blocked' } as unknown as TaskRecord,
             },
           ],
-          attention: noAttention,
         }),
       ],
       [
         'a Task write naming another Task',
         () => ({
+          specification: listing('api', 'web'),
           tasks: [{ taskId: 'api', expected: null, next: task('web') }],
-          attention: noAttention,
         }),
       ],
       [
         'a Task of another Specification',
         () => ({
+          specification: listing('api'),
           tasks: [{ taskId: 'api', expected: null, next: task('api', 'api', OTHER_SPEC) }],
-          attention: noAttention,
         }),
       ],
       [
@@ -182,7 +173,6 @@ export function describeWorkflowStoreContract(name: string, create: () => Workfl
         () => ({
           specification: { expected: null, next: record('requirements', OTHER_SPEC) },
           tasks: [],
-          attention: noAttention,
         }),
       ],
       [
@@ -199,24 +189,18 @@ export function describeWorkflowStoreContract(name: string, create: () => Workfl
             },
           },
           tasks: [],
-          attention: noAttention,
         }),
       ],
       [
-        'attention for a Task that does not exist',
+        'a Task the Specification does not list',
         () => ({
-          specification: { expected: null, next: record('requirements') },
-          tasks: [],
-          attention: { set: [attention(taskSubject('ghost'))], clear: [] },
+          specification: listing('web'),
+          tasks: [{ taskId: 'api', expected: null, next: task('api') }],
         }),
       ],
       [
-        'attention for another Specification',
-        () => ({
-          specification: { expected: null, next: record('requirements') },
-          tasks: [],
-          attention: { set: [attention({ kind: 'specification', specId: OTHER_SPEC })], clear: [] },
-        }),
+        'a Task without a Specification that lists it',
+        () => ({ tasks: [{ taskId: 'api', expected: null, next: task('api') }] }),
       ],
     ])('writes nothing for %s', async (_name, change) => {
       const store = create();
@@ -224,7 +208,7 @@ export function describeWorkflowStoreContract(name: string, create: () => Workfl
       await expect(store.apply(SPEC, change())).rejects.toMatchObject({
         code: 'WORKFLOW_STATE_CORRUPT',
       });
-      expect(await store.read(SPEC)).toEqual({ tasks: [], attention: [] });
+      expect(await store.read(SPEC)).toEqual({ tasks: [] });
     });
 
     it('refuses a record over the byte budget as invalid input and writes nothing', async () => {
@@ -243,13 +227,12 @@ export function describeWorkflowStoreContract(name: string, create: () => Workfl
           },
         },
         tasks: [],
-        attention: noAttention,
       };
 
       await expect(store.apply(SPEC, change)).rejects.toMatchObject({
         code: 'WORKFLOW_INPUT_INVALID',
       });
-      expect(await store.read(SPEC)).toEqual({ tasks: [], attention: [] });
+      expect(await store.read(SPEC)).toEqual({ tasks: [] });
     });
 
     it('keeps a Task status with its last change', async () => {
@@ -260,11 +243,11 @@ export function describeWorkflowStoreContract(name: string, create: () => Workfl
         statusChange: { source: 'escalation', at: '2026-11-05T10:00:00.000Z', reason: 'Unclear.' },
       };
       await store.apply(SPEC, {
+        specification: listing('api', 'web'),
         tasks: [
           { taskId: 'api', expected: null, next: held },
           { taskId: 'web', expected: null, next: { ...task('web'), status: 'draft' } },
         ],
-        attention: noAttention,
       });
 
       expect((await store.read(SPEC)).tasks.map((entry) => entry.value)).toEqual([
@@ -273,18 +256,16 @@ export function describeWorkflowStoreContract(name: string, create: () => Workfl
       ]);
     });
 
-    it('keeps one attention item per subject: set replaces, clear removes', async () => {
-      const store = await seeded();
+    it('reads a listed Task without a record as missing, not as an error', async () => {
+      const store = create();
       await store.apply(SPEC, {
-        tasks: [],
-        attention: { set: [attention(specSubject), attention(taskSubject('api'))], clear: [] },
-      });
-      await store.apply(SPEC, {
-        tasks: [],
-        attention: { set: [attention(specSubject, 'solution')], clear: ['task:' + SPEC + ':api'] },
+        specification: listing('api', 'web'),
+        tasks: [{ taskId: 'api', expected: null, next: task('api') }],
       });
 
-      expect((await store.read(SPEC)).attention).toEqual([attention(specSubject, 'solution')]);
+      const snapshot = await store.read(SPEC);
+      expect(snapshot.specification?.value.taskIds).toEqual(['api', 'web']);
+      expect(snapshot.tasks.map((entry) => entry.value.taskId)).toEqual(['api']);
     });
   });
 }

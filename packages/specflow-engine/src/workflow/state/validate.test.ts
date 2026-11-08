@@ -1,14 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { AttemptRecord, TaskRecord, WorkflowRun } from './model';
-import {
-  attention,
-  endedAttempt,
-  OTHER_SPEC,
-  record,
-  SPEC,
-  task,
-} from './store-contract.test-support';
+import { endedAttempt, OTHER_SPEC, record, SPEC, task } from './store-contract.test-support';
 import { validateExecutionSnapshot, type ExecutionState } from './validate';
 
 const open = (attempt: number, sequence: number, step = 'requirements'): AttemptRecord => ({
@@ -21,28 +14,32 @@ const open = (attempt: number, sequence: number, step = 'requirements'): Attempt
 const withRun = (run: Partial<WorkflowRun>): ExecutionState => ({
   specification: { ...record('requirements'), run: { ...record('requirements').run, ...run } },
   tasks: [],
-  attention: [],
+});
+
+/** The Specification lists `api` and `web`; `tasks` are the records that exist. */
+const withTasks = (...tasks: TaskRecord[]): ExecutionState => ({
+  specification: record('requirements', SPEC, ['api', 'web']),
+  tasks,
 });
 
 const active = { state: 'active', step: 'requirements', attempt: 2 } as const;
 
 describe('validateExecutionSnapshot', () => {
   it('accepts coherent state, including an empty one', () => {
-    expect(() => validateExecutionSnapshot(SPEC, { tasks: [], attention: [] })).not.toThrow();
+    expect(() => validateExecutionSnapshot(SPEC, { tasks: [] })).not.toThrow();
+    const run = {
+      ...record('requirements').run,
+      position: active,
+      attempts: [endedAttempt(1), open(2, 3)],
+    };
     expect(() =>
       validateExecutionSnapshot(SPEC, {
-        ...withRun({ position: active, attempts: [endedAttempt(1), open(2, 3)] }),
-        tasks: [task('api'), task('web')],
-        attention: [
-          {
-            ...attention({ kind: 'specification', specId: SPEC }),
-            reason: 'task-escalated',
-            taskIds: ['api', 'web'],
-          },
-          attention({ kind: 'task', specId: SPEC, taskId: 'web' }),
-        ],
+        specification: { ...record('requirements', SPEC, ['api', 'web']), run },
+        tasks: [task('api'), { ...task('web'), dependsOn: ['api'] }],
       }),
     ).not.toThrow();
+    // A listed Task without a record is that Task broken, not incoherent state.
+    expect(() => validateExecutionSnapshot(SPEC, withTasks(task('api')))).not.toThrow();
     expect(() =>
       validateExecutionSnapshot(
         SPEC,
@@ -101,89 +98,46 @@ describe('validateExecutionSnapshot', () => {
     ],
     [
       'a Specification record of another Specification',
-      { specification: record('x', OTHER_SPEC), tasks: [], attention: [] },
+      { specification: record('x', OTHER_SPEC), tasks: [] },
     ],
-    ['a Task of another Specification', { tasks: [task('api', 'api', OTHER_SPEC)], attention: [] }],
-    ['two Tasks with one id', { tasks: [task('api'), task('api', 'again')], attention: [] }],
+    ['a Task of another Specification', withTasks(task('api', 'api', OTHER_SPEC))],
+    ['two Tasks with one id', withTasks(task('api'), task('api', 'again'))],
+    ['a Task the Specification does not list', withTasks(task('other'))],
+    ['a Task without a Specification', { tasks: [task('api')] }],
+    [
+      'a dependency on a Task that is not listed',
+      withTasks({ ...task('api'), dependsOn: ['ghost'] }),
+    ],
+    [
+      'a dependency cycle',
+      withTasks({ ...task('api'), dependsOn: ['web'] }, { ...task('web'), dependsOn: ['api'] }),
+    ],
     [
       'an invalid Task run',
-      {
-        tasks: [
-          {
-            ...task('api'),
-            run: { ...task('api').run, attempts: [open(1, 1)] },
-          } satisfies TaskRecord,
-        ],
-        attention: [],
-      },
+      withTasks({
+        ...task('api'),
+        run: { ...task('api').run, attempts: [open(1, 1)] },
+      } satisfies TaskRecord),
     ],
     [
       'a draft Task that ran',
-      {
-        tasks: [
-          {
-            ...task('api'),
-            status: 'draft',
-            run: { ...task('api').run, position: { state: 'ready', step: 'implement' } },
-          } satisfies TaskRecord,
-        ],
-        attention: [],
-      },
+      withTasks({
+        ...task('api'),
+        status: 'draft',
+        run: { ...task('api').run, position: { state: 'ready', step: 'implement' } },
+      } satisfies TaskRecord),
     ],
     [
       'a cancelled Task with an active step',
-      {
-        tasks: [
-          {
-            ...task('api'),
-            status: 'cancelled',
-            run: {
-              ...task('api').run,
-              position: { state: 'active', step: 'implement', attempt: 1 },
-              attempts: [open(1, 1, 'implement')],
-            },
-          } satisfies TaskRecord,
-        ],
-        attention: [],
-      },
-    ],
-    [
-      'two attention items for one subject',
-      {
-        ...withRun({}),
-        attention: [
-          attention({ kind: 'specification', specId: SPEC }),
-          attention({ kind: 'specification', specId: SPEC }, 'solution'),
-        ],
-      },
-    ],
-    [
-      'attention for a missing Specification run',
-      { tasks: [], attention: [attention({ kind: 'specification', specId: SPEC })] },
-    ],
-    [
-      'attention for a missing Task',
-      { ...withRun({}), attention: [attention({ kind: 'task', specId: SPEC, taskId: 'api' })] },
-    ],
-    [
-      'attention for another Specification',
-      { ...withRun({}), attention: [attention({ kind: 'specification', specId: OTHER_SPEC })] },
-    ],
-    [
-      'a task-escalated item without its Tasks',
-      {
-        ...withRun({}),
-        attention: [
-          { ...attention({ kind: 'specification', specId: SPEC }), reason: 'task-escalated' },
-        ],
-      },
-    ],
-    [
-      'escalated Tasks on another reason',
-      {
-        ...withRun({}),
-        attention: [{ ...attention({ kind: 'specification', specId: SPEC }), taskIds: ['api'] }],
-      },
+      withTasks({
+        ...task('api'),
+        status: 'cancelled',
+        run: {
+          ...task('api').run,
+          position: { state: 'active', step: 'implement', attempt: 1 },
+          attempts: [open(1, 1, 'implement')],
+        },
+      } satisfies TaskRecord),
     ],
   ])('refuses %s', (_name, state) => {
     expect(() => validateExecutionSnapshot(SPEC, state)).toThrow(

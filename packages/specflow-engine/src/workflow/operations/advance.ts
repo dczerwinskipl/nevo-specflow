@@ -1,7 +1,7 @@
 import type { WorkflowEffect } from '@nevo/specflow-contracts/documents';
 
 import type { ExecutionCatalogue } from '../definitions/catalogue';
-import { findStep, type WorkflowDefinition, type WorkflowTransition } from '../definitions/model';
+import { findStep, type WorkflowDefinition } from '../definitions/model';
 import {
   resolveContinuation,
   type ContinuationDecision,
@@ -11,20 +11,23 @@ import { WorkflowError } from '../errors';
 import {
   applyFinish,
   applyStart,
+  lastArrival,
   planStart,
   planWaitFinish,
   type FinishInput,
   type FinishPlan,
 } from '../progression/progression';
 import { allTasksClosed, applyTaskEffects, isTaskEscalated, tasksStuck } from '../tasks/tasks';
-import type { TaskRecord, WorkflowRun, WorkflowSubject } from '../state/model';
+import type { ExecutorRecord, TaskRecord, WorkflowRun, WorkflowSubject } from '../state/model';
 import { pinnedDefinitionIfUnchanged } from './loaded-execution';
 import type { ExecutionWorkingSet } from './working-set';
 
 /**
  * What happens to a subject right after its position moved (a finish or a return) or a Task status
- * changed: Task effects, entering and settling a wait step, and the continuation decision with its
- * attention item. All of it lands in the same working set, so it becomes durable in one change.
+ * changed: Task effects, entering and settling a wait step, and the continuation decision. All of it
+ * lands in the same working set, so it becomes durable in one change. The decisions are derived
+ * from the planned state ({@link continuationOf}, {@link waitDecision}), exactly as inspection
+ * derives attention, so an operation's result and a later inspection agree.
  */
 
 export interface AdvanceContext {
@@ -33,46 +36,61 @@ export interface AdvanceContext {
   readonly at: string;
 }
 
-/**
- * Store a Task whose status may have changed. A Task that is not `ready` loses its attention item:
- * none of its steps can start until a decision makes it `ready` again.
- */
-export function updateTask(context: AdvanceContext, task: TaskRecord): void {
-  context.set.setTask(task);
-  if (task.status !== 'ready') {
-    context.set.clearAttention({ kind: 'task', specId: task.specId, taskId: task.taskId });
-  }
-}
-
 /** Apply the declared Task effects of a Specification transition or return. */
 export function applyEffects(context: AdvanceContext, effects: readonly WorkflowEffect[]): void {
   for (const task of applyTaskEffects(context.set.tasks(), effects)) {
-    updateTask(context, task);
+    context.set.setTask(task);
   }
 }
 
-/** Record the decision as the subject's attention item, or clear the item when none is needed. */
-export function recordDecision(
-  context: AdvanceContext,
-  subject: WorkflowSubject,
-  decision: ContinuationDecision,
-): void {
-  if (decision.kind !== 'attention') {
-    context.set.clearAttention(subject);
-
-    return;
+function finishingSession(executor: ExecutorRecord | undefined): FinishingSession | undefined {
+  if (executor?.kind !== 'agent') {
+    return undefined;
   }
 
-  context.set.setAttention({
-    subject,
-    step: decision.step,
-    reason: decision.reason,
-    ...(decision.taskIds !== undefined ? { taskIds: decision.taskIds } : {}),
-    ...(decision.archetype !== undefined ? { archetype: decision.archetype } : {}),
-    ...(decision.provider !== undefined ? { provider: decision.provider } : {}),
-    ...(decision.blocker !== undefined ? { blocker: decision.blocker } : {}),
-    ...(decision.suggestion !== undefined ? { suggestion: decision.suggestion } : {}),
-    createdAt: context.at,
+  return {
+    provider: executor.provider,
+    ...(executor.sessionId !== undefined ? { sessionId: executor.sessionId } : {}),
+  };
+}
+
+/**
+ * What follows a `ready` or `terminal` run, from its last event: after a finished attempt, its
+ * transition and the Session that finished it; after an owner return, an owner action. The
+ * archetypes are the current ones. Pure.
+ */
+export function continuationOf(
+  run: WorkflowRun,
+  definition: WorkflowDefinition,
+  catalogue: ExecutionCatalogue,
+): ContinuationDecision {
+  const position = run.position;
+  if (position.state === 'terminal') {
+    return { kind: 'none', reason: 'terminal' };
+  }
+
+  if (position.state !== 'ready') {
+    throw new WorkflowError('WORKFLOW_POSITION_INVALID', 'No step is ready to start.');
+  }
+
+  const next = findStep(definition, position.step);
+  if (!next) {
+    throw new WorkflowError(
+      'WORKFLOW_STATE_CORRUPT',
+      `The run refers to an unknown step "${position.step}".`,
+    );
+  }
+
+  const arrival = lastArrival(run, definition);
+  const transition = arrival?.kind === 'transition' ? arrival.transition : undefined;
+  const finishing =
+    arrival?.kind === 'transition' ? finishingSession(arrival.finishedBy) : undefined;
+
+  return resolveContinuation({
+    ...(transition ? { transition } : {}),
+    next,
+    archetypes: (id) => catalogue.archetype(id),
+    ...(finishing ? { finishing } : {}),
   });
 }
 
@@ -87,31 +105,22 @@ export function advance(
   context: AdvanceContext,
   subject: WorkflowSubject,
   definition: WorkflowDefinition,
-  transition: WorkflowTransition | undefined,
-  finishing: FinishingSession | undefined,
 ): ContinuationDecision {
-  const position = context.set.run(subject).position;
+  const run = context.set.run(subject);
+  const position = run.position;
   const next = position.state === 'ready' ? findStep(definition, position.step) : undefined;
   if (next?.kind === 'wait-for-tasks') {
     assertTasksDecided(context, next.id);
-    const run = context.set.run(subject);
     context.set.setRun(subject, applyStart(run, planStart(run, definition), { at: context.at }));
-    const settled = settleWait(context);
-    if (settled) {
-      return settled;
-    }
+
+    return settleWait(context) ?? { kind: 'none', reason: 'waiting-for-tasks' };
   }
 
-  const decision = resolveContinuation({
-    ...(transition ? { transition } : {}),
-    ...(next ? { next } : {}),
-    archetypes: (id) => context.catalogue.archetype(id),
-    ...(finishing ? { finishing } : {}),
-  });
-  recordDecision(context, subject, decision);
-
-  return decision;
+  return continuationOf(run, definition, context.catalogue);
 }
+
+const escalatedTasks = (tasks: readonly TaskRecord[]) =>
+  tasks.filter(isTaskEscalated).sort((left, right) => (left.taskId < right.taskId ? -1 : 1));
 
 /** Checked on the state the change would produce, before anything is written. */
 function assertTasksDecided(context: AdvanceContext, step: string): void {
@@ -153,24 +162,49 @@ function completeWait(
   context.set.setRun(subject, applyFinish(run, plan, input, context.at));
   applyEffects(context, plan.transition.effects);
 
-  return advance(context, subject, definition, plan.transition, undefined);
+  return advance(context, subject, definition);
+}
+
+/**
+ * What a Specification active on its wait step needs: escalated Tasks give `task-escalated` (all of
+ * them, in id order), otherwise Tasks that can no longer progress (broken Tasks included), or no open
+ * Task at all, give `tasks-stuck`; else it waits. Pure.
+ */
+export function waitDecision(
+  step: string,
+  tasks: readonly TaskRecord[],
+  broken: readonly string[],
+): ContinuationDecision {
+  const escalated = escalatedTasks(tasks);
+  if (escalated.length > 0) {
+    return {
+      kind: 'attention',
+      step,
+      reason: 'task-escalated',
+      taskIds: escalated.map((task) => task.taskId),
+    };
+  }
+
+  // Every Task closed while the wait is still active only happens when a Task file changed outside
+  // the Engine (for example a restored record): no Task event will complete the wait any more.
+  return tasksStuck(tasks, broken) || allTasksClosed(tasks, broken)
+    ? { kind: 'attention', step, reason: 'tasks-stuck' }
+    : { kind: 'none', reason: 'waiting-for-tasks' };
 }
 
 /**
  * Settle the Specification's active wait step. A Task escalated (on hold by its own escalation)
  * takes the declared `task-escalated` transition, with the escalated Tasks named in the handoff;
  * otherwise the wait completes with `tasks-finished` when every Task is closed (terminal or
- * cancelled, also when there is no Task). Returns the Specification's decision, or `undefined` when
- * the Specification is not waiting.
+ * cancelled, also when there is no Task; a broken Task is never closed). Returns the
+ * Specification's decision, or `undefined` when the Specification is not waiting.
  *
  * It runs inside a Task's finish or a Task status change, and when the wait is entered (never
  * with an escalated Task: `advance` refuses that). A Specification that is not active on its wait
- * step (for example one returned to its breakdown) is left alone, its own item included: it cannot
- * enter the wait step again until the escalation is resolved. So is one whose pinned workflow
- * changed: the Task's change succeeds and the next Specification operation fails with
- * `WORKFLOW_DEFINITION_CHANGED`. While Tasks are open and the workflow declares no
- * `task-escalated` transition, escalated Tasks give `task-escalated` (all of them, in id order),
- * otherwise Tasks that can no longer progress give `tasks-stuck`.
+ * step (for example one returned to its breakdown) is left alone: it cannot enter the wait step
+ * again until the escalation is resolved. So is one whose pinned workflow changed: the Task's
+ * change succeeds and the next Specification operation fails with `WORKFLOW_DEFINITION_CHANGED`.
+ * While Tasks are open, see {@link waitDecision}.
  */
 export function settleWait(context: AdvanceContext): ContinuationDecision | undefined {
   const subject: WorkflowSubject = {
@@ -189,9 +223,8 @@ export function settleWait(context: AdvanceContext): ContinuationDecision | unde
   }
 
   const tasks = context.set.tasks();
-  const escalated = tasks
-    .filter(isTaskEscalated)
-    .sort((left, right) => (left.taskId < right.taskId ? -1 : 1));
+  const broken = context.set.brokenTasks();
+  const escalated = escalatedTasks(tasks);
   if (escalated.length > 0) {
     const input = { feedback: escalationFeedback(escalated) };
     const plan = planWaitFinish(run, definition, 'task-escalated', input);
@@ -200,21 +233,8 @@ export function settleWait(context: AdvanceContext): ContinuationDecision | unde
     }
   }
 
-  if (!allTasksClosed(tasks)) {
-    const decision: ContinuationDecision =
-      escalated.length > 0
-        ? {
-            kind: 'attention',
-            step: position.step,
-            reason: 'task-escalated',
-            taskIds: escalated.map((task) => task.taskId),
-          }
-        : tasksStuck(tasks)
-          ? { kind: 'attention', step: position.step, reason: 'tasks-stuck' }
-          : { kind: 'none', reason: 'waiting-for-tasks' };
-    recordDecision(context, subject, decision);
-
-    return decision;
+  if (!allTasksClosed(tasks, broken)) {
+    return waitDecision(position.step, tasks, broken);
   }
 
   const plan = planWaitFinish(run, definition, 'tasks-finished', {});

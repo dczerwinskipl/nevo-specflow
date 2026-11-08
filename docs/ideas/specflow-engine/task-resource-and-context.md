@@ -233,6 +233,14 @@ tasks:
   constraint on what may start.
 - A folder under `tasks/` without an index entry is `unregistered`: reported, never executed, never an
   error (like an unclassified document).
+
+**Interim registry.** Until `tasks/index.yaml` exists, the Specification execution record
+(`.execution/specification.yaml`) lists the Task ids in creation order (`taskIds`, plan 06, W15).
+It plays the index's role for membership: a listed Task without its record is broken (only that
+Task), and, stricter than the index rule above, a Task record that it does not list is refused as
+corrupt state, because the provisional records carry no separate content folder to report. The
+list moves to `tasks/index.yaml` with the Task folders (F20).
+
 - An index entry without a folder or without `task.yaml` is `dangling`: reported, and the Task cannot
   start ([section 8](#8-impact-on-the-kernel-and-the-adrs)).
 - A Task whose execution record exists (it has attempts) but whose folder or index entry is gone is

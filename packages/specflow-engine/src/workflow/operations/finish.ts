@@ -1,4 +1,4 @@
-import type { ContinuationDecision, FinishingSession } from '../continuation/resolve';
+import type { ContinuationDecision } from '../continuation/resolve';
 import { WorkflowError } from '../errors';
 import { assertFinishInputShape } from '../input-schema';
 import { assertExecutorAllowed } from '../progression/executor';
@@ -15,7 +15,7 @@ import {
   type RunPosition,
   type WorkflowSubject,
 } from '../state/model';
-import { advance, applyEffects, settleWait, updateTask, type AdvanceContext } from './advance';
+import { advance, applyEffects, settleWait, type AdvanceContext } from './advance';
 import { isoNow, loadSubject, type WorkflowDependencies } from './loaded-execution';
 import { ExecutionWorkingSet } from './working-set';
 
@@ -50,22 +50,11 @@ export interface FinishStepResult {
   readonly continuation: ContinuationDecision;
   readonly createdTasks: readonly string[];
   /**
-   * After a Task's finish, what the Specification's attention became: what it does next when the
+   * After a Task's finish, what the Specification needs: what it does next when the
    * finish completed its wait step or took its `task-escalated` transition, `tasks-stuck`, or
    * `task-escalated` (listing every escalated Task).
    */
   readonly specification?: ContinuationDecision;
-}
-
-function finishingSession(executor: ExecutorRecord): FinishingSession | undefined {
-  if (executor.kind !== 'agent') {
-    return undefined;
-  }
-
-  return {
-    provider: executor.provider,
-    ...(executor.sessionId !== undefined ? { sessionId: executor.sessionId } : {}),
-  };
 }
 
 /**
@@ -74,10 +63,10 @@ function finishingSession(executor: ExecutorRecord): FinishingSession | undefine
  * its own or the owner has to act.
  *
  * A Task transition that escalates puts the Task on hold with the feedback as its reason; a
- * Specification waiting for its Tasks takes its `task-escalated` transition, or gets the attention
- * item `task-escalated` when it declares none. The finish itself succeeds. A Specification finish
+ * Specification waiting for its Tasks takes its `task-escalated` transition, or needs the owner's
+ * attention (`task-escalated`) when it declares none. The finish itself succeeds. A Specification finish
  * that would enter a wait step while a Task is `draft` or escalated is refused (`advance`). A Task that is
- * not `ready` after its finish gets no continuation (`none {on-hold}`) and no attention item.
+ * not `ready` after its finish gets no continuation (`none {on-hold}`) and no attention.
  */
 export function finishStep(
   dependencies: WorkflowDependencies,
@@ -123,13 +112,13 @@ export function finishStep(
       request.input.taskDecisions ?? [],
       context.at,
     )) {
-      updateTask(context, task);
+      context.set.setTask(task);
     }
 
     applyEffects(context, plan.transition.effects);
     if (subject.kind === 'task' && plan.transition.escalate) {
       const feedback = request.input.feedback?.trim();
-      updateTask(context, {
+      context.set.setTask({
         ...context.set.task(subject.taskId),
         status: 'on-hold',
         statusChange: {
@@ -146,13 +135,7 @@ export function finishStep(
       context.set.task(subject.taskId).status !== 'ready';
     const continuation: ContinuationDecision = held
       ? { kind: 'none', reason: 'on-hold' }
-      : advance(
-          context,
-          subject,
-          loaded.definition,
-          plan.transition,
-          finishingSession(request.executor),
-        );
+      : advance(context, subject, loaded.definition);
     const specification = subject.kind === 'task' ? settleWait(context) : undefined;
     await dependencies.store.apply(subject.specId, context.set.change());
 
@@ -184,7 +167,7 @@ function draftTasks(
     at: context.at,
   });
   for (const task of drafted.changed) {
-    updateTask(context, task);
+    context.set.setTask(task);
   }
 
   return drafted.created;

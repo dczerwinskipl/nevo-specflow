@@ -41,3 +41,13 @@ export function assertExecutorAllowed(
     notAllowed(`Only the Session that works on "${step.id}" can resume or finish it.`);
   }
 }
+
+/**
+ * An owner action (a return, a direct Task status decision) names the owner as its executor, from
+ * trusted Runtime/CLI context; anything else is refused before anything is planned.
+ */
+export function assertOwner(executor: ExecutorRecord | undefined, action: string): void {
+  if (executor?.kind !== 'human') {
+    notAllowed(`Only the owner ${action}.`);
+  }
+}

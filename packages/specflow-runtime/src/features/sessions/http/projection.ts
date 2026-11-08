@@ -106,15 +106,7 @@ export function effectiveEvent(
   available: (providerId: string) => ProviderDescriptor | undefined,
   identity: SessionScopeIdentity,
 ): SessionChange {
-  if (event.kind === 'session') {
-    const session = event.changes.session;
-    effective(
-      { session, revision: 0, eventSeq: event.eventSeq, entries: [], history: { hasOlder: false } },
-      request,
-      available,
-      identity,
-    );
-  } else if ('projection' in event.changes && event.changes.projection) {
+  if ('projection' in event.changes && event.changes.projection) {
     const p: LiveProjection = event.changes.projection;
     effective(
       {

@@ -1,4 +1,4 @@
-import type { SessionChange } from '@nevo/specflow-contracts/sessions';
+import type { LiveProjection, SessionChange } from '@nevo/specflow-contracts/sessions';
 import type { StoreDatabase } from './database';
 import type { StoredSession, StoreCommand, SessionView } from './protocol';
 import { StoreFault, fail } from './encoding';
@@ -50,6 +50,7 @@ interface Dependencies extends StoreDatabase, ReturnType<typeof createRequestJou
   now(this: void): string;
   session(this: void, id: string): StoredSession;
   emit(this: void, s: StoredSession, kind: SessionChange['kind'], changes: unknown): void;
+  projection(this: void, s: StoredSession): LiveProjection;
   /** Wakes the Session's subscribers after commit without an outbox event. */
   changed(this: void, sessionId: string): void;
 }
@@ -102,7 +103,7 @@ export function createSessionManagement(db: Dependencies) {
     const s = db.session(c.sessionId);
     if (!cached) {
       if (apply(s)) {
-        db.emit(s, 'session', { session: s.snapshot.session });
+        db.emit(s, 'session', { projection: db.projection(s) });
       }
 
       db.remember(c.actor, c.op, c.sessionId, c.input.requestId, c.input, {

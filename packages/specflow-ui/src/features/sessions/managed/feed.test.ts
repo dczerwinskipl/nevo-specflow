@@ -805,7 +805,14 @@ describe('Session feed and a deleted or archived Session', () => {
       kind: 'session',
       sessionId: 'session',
       eventSeq: 1,
-      changes: { session: { ...snapshot.session, archivedAt: '2026-11-08T10:00:00Z' } },
+      changes: {
+        projection: {
+          session: { ...snapshot.session, archivedAt: '2026-11-08T10:00:00Z' },
+          activeTurn: null,
+          currentActivity: null,
+          interaction: null,
+        },
+      },
     } as unknown as SessionChange;
     const event = Promise.withResolvers<void>();
     api.watch = async function* (_id, _after, signal) {

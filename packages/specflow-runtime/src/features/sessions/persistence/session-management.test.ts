@@ -152,7 +152,9 @@ describe('Session management store', () => {
     ).toEqual(renamed);
     const changes = (await events(sessionId)).filter((event) => event.kind === 'session');
     expect(changes).toHaveLength(1);
-    expect(changes[0]).toMatchObject({ changes: { session: { title: 'Plan review' } } });
+    expect(changes[0]).toMatchObject({
+      changes: { projection: { session: { title: 'Plan review' }, activeTurn: null } },
+    });
     await expect(
       store!.call({ op: 'rename', actor: 'user', sessionId, input: { ...input, title: 'Other' } }),
     ).rejects.toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
@@ -174,6 +176,24 @@ describe('Session management store', () => {
         input: { requestId: randomUUID(), title: 'Missing' },
       }),
     ).rejects.toMatchObject({ code: 'SESSION_NOT_FOUND' });
+  });
+
+  it('carries the active Turn in the session change of a rename during that Turn', async () => {
+    await open();
+    const sessionId = await create();
+    const turn = await start(sessionId);
+    await store!.call<SessionView>({
+      op: 'rename',
+      actor: 'user',
+      sessionId,
+      input: { requestId: randomUUID(), title: 'While running' },
+    });
+    const change = (await events(sessionId)).find((event) => event.kind === 'session');
+    expect(change).toMatchObject({
+      changes: {
+        projection: { session: { title: 'While running' }, activeTurn: { turnId: turn.turnId } },
+      },
+    });
   });
 
   it('archives only a settled Session, keeps it read-only and unarchives it', async () => {

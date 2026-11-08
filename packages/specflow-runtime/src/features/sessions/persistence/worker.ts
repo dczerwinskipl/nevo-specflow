@@ -496,6 +496,7 @@ export async function runSessionWorker(): Promise<void> {
     now,
     session,
     emit,
+    projection,
     changed: (sessionId) => transactionChanges.add(sessionId),
   });
   // Only active records are reconciled; settled conversation/content is not read at boot.

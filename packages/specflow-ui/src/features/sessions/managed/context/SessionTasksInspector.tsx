@@ -23,12 +23,12 @@ import type { SessionContextTaskRef } from './sessionContextTypes';
  *
  * - `taskStack` is one root tab PER TASK (`instanceId` = the task id, label = the Task key, e.g.
  *   "TASK-03"). Opening a Task from anywhere (the current-execution row, an Attention reference, a
- *   single Related Task, or the Tasks list below) calls `openTab` with that Task: a tab already
+ *   Related Tasks row, or the Tasks list below) calls `openTab` with that Task: a tab already
  *   open for it is activated untouched, otherwise a new tab opens. A tab is never retargeted to
  *   another Task, so selecting Task B can no longer show Task A.
- * - `tasksStack` is the LIST tab ("Zadania", one per Session, reached from a Related Tasks summary
- *   with more than one entry). Selecting a Task in it opens that Task's own tab (rule above), so the
- *   same Task is never both a tab and a page inside the list.
+ * - `tasksStack` is the LIST tab ("Zadania", one per Session). Context lists Related Tasks one row
+ *   each, so it does not open the list itself today. Selecting a Task in it opens that Task's own tab
+ *   (rule above), so the same Task is never both a tab and a page inside the list.
  * - On the narrow runtime Context flow there are no tabs (Context passes its own `navTo` as
  *   `openStack`, and `Root.inFlow` is set): the list and a Task are plain pushes onto that flow, and
  *   Back follows the path the user took, duplicates included (Context -> Task A -> Back -> Context
@@ -43,10 +43,11 @@ import type { SessionContextTaskRef } from './sessionContextTypes';
  * `breadcrumbLabel` see root/page params only), so they carry the Task's stable KEY (and the
  * title the row showed when it was pushed); everything inside the screens is live.
  *
- * Task data is a product-owned mock (`SessionContextTaskRef`), not a Runtime read — the managed
- * Session contract has no Task association yet (see the Full Session UX report). `TaskDetail`
- * below is a deliberate, explicitly-flagged stand-in for that reason (see its own comment) — not
- * an adaptation of the real `TaskDetails`/`TaskInspection` presentation.
+ * The Tasks are the Session's associated Tasks from the association read
+ * (`GET /api/sessions/:sessionId/association`, mapped to `SessionContextTaskRef`: id, key, title).
+ * That read carries no Task detail, so `TaskDetail` below is a deliberate, explicitly-flagged
+ * stand-in (see its own comment), not an adaptation of the real `TaskDetails`/`TaskInspection`
+ * presentation.
  */
 
 export interface TaskStackRoot {
@@ -127,9 +128,9 @@ function TaskDetail({ data, params }: { data: Data; params: { taskId?: string } 
         ) : (
           // Deliberate stand-in, not an adaptation of the real `TaskDetails`/`TaskInspection`
           // presentation: those components require a `FullTaskData`/`TaskSnapshot` from the
-          // Specification/Task read model, and the managed Session contract has no Task
-          // association backend yet (`SessionContextTaskRef` is a 4-field product-owned stub).
-          // `detailNote` below says so honestly to the user rather than faking a full Task page.
+          // Specification/Task read model, while the association read gives only the Task's id,
+          // key and title (`SessionContextTaskRef`). `detailNote` below says so honestly to the
+          // user rather than faking a full Task page.
           <div className="grid w-full gap-2">
             <Typography variant="label-sm" className="text-content-muted">
               {task.key}

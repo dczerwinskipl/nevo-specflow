@@ -117,21 +117,9 @@ export function SessionContext({
   }
 
   /** Opens a specific Task (current-execution Task, Attention's task reference, or a Related Tasks
-   * summary with exactly one entry): its own root tab, activated if already open. */
+   * row): its own root tab, activated if already open. */
   function openTask(task: SessionContextTaskRef) {
     openTasksTab(taskStack, task);
-  }
-
-  /** Related Tasks' summary row: exactly one Task goes straight to it, several to the shared
-   * Tasks list (selecting a Task there opens that Task's own tab). */
-  function openRelatedTasksEntry(tasks: SessionContextTaskRef[]) {
-    if (tasks.length === 1) {
-      openTask(tasks[0]!);
-
-      return;
-    }
-
-    openTasksTab(tasksStack);
   }
 
   /** Planned-area rows open their placeholder tab the same way as Tasks (`openStack`/`openTab`). */
@@ -185,7 +173,7 @@ export function SessionContext({
           />
           <ContextExecutionSection value={value} onOpenTask={openTask} />
           <ContextAttentionSection value={value} onOpenTask={openTask} />
-          <ContextRelatedTasksSection value={value} onOpen={openRelatedTasksEntry} />
+          <ContextRelatedTasksSection value={value} onOpen={openTask} />
           <ContextWorkSection
             workHistory={value.workHistory}
             runningTurnId={value.runningTurnId}

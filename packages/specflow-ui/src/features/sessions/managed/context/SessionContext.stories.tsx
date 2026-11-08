@@ -38,8 +38,8 @@ import type { SessionContextViewModel } from './sessionContextTypes';
 /**
  * Isolated catalog entry for the Context panel (no `ManagedSession` composition — that screen is
  * under separate, parallel edit): visual verification for the live-review fixes —
- * - Related Tasks collapses to one navigational summary row (icon + count + chevron), never the
- *   individual Task list, built from the shared `ContextNavigationRow` geometry;
+ * - Related Tasks lists one row per associated Task (session-association-ux §7), built from the
+ *   shared `ContextNavigationRow` geometry;
  * - consistent `Typography` tokens across every section instead of ad hoc `text-*`/`font-*`
  *   classes;
  * - `SessionTelemetrySection`'s new hierarchy — compact stat cells for cost/tokens, the
@@ -214,8 +214,8 @@ export const Default: Story = {
   },
 };
 
-/** Two related Tasks: the summary row reads "2 Tasks" and opens the shared Tasks list screen —
- * never the individual Task titles rendered inline. Full telemetry snapshot exercises every
+/** Two related Tasks: one row each (title, key), each opening that Task's own tab. Full telemetry
+ * snapshot exercises every
  * `Progress` bar (context occupancy + both rate-limit windows), all comfortably under the
  * attention/danger thresholds. */
 export const GenericWithRelatedTasks: Story = {
@@ -223,9 +223,8 @@ export const GenericWithRelatedTasks: Story = {
   args: { value: genericSpecLevelContext() },
 };
 
-/** Exactly one related Task: the summary row still reads as a count ("1 zadanie"), but clicking it
- * opens that one Task directly (interim behaviour — see `SessionContext.tsx`'s
- * `openRelatedTasksEntry`). Partial telemetry: cost stays absent rather than a fake `$0`. */
+/** Exactly one related Task: its one row opens that Task's own tab. Partial telemetry: cost stays
+ * absent rather than a fake `$0`. */
 export const SingleRelatedTask: Story = {
   tags: ['contract'],
   args: { value: singleTaskContext() },

@@ -123,16 +123,16 @@ export function ContextAttentionSection({
   );
 }
 
-/** "Related Tasks" (Powiązane zadania): the Tasks the Session is associated with, as one
- * navigational summary row, not the Task list inline (Context is an entry point into its subjects).
- * Optional; an empty list is omitted, an unreadable one warns. Tasks that cannot be found are counted
- * in an attention note beside the ones that were found. */
+/** "Related Tasks" (Powiązane zadania, session-association-ux §7): one row per associated Task
+ * that was found (title, key), opening that Task's own tab. Optional; an empty list is omitted, an
+ * unreadable one is one warning. Tasks that cannot be found are counted in an attention note beside
+ * the ones that were found. */
 export function ContextRelatedTasksSection({
   value,
   onOpen,
 }: {
   value: SessionContextViewModel;
-  onOpen: (tasks: SessionContextTaskRef[]) => void;
+  onOpen: (task: SessionContextTaskRef) => void;
 }) {
   const { t } = useTranslation();
   if (!isSectionPresent('relatedTasks', value.scope)) {
@@ -151,11 +151,9 @@ export function ContextRelatedTasksSection({
       {resolved.kind === 'skeleton' && <ContextSkeletonRows rows={['navigation']} />}
       {resolved.kind === 'ready' && (
         <InformationList>
-          <ContextNavigationRow
-            icon="list-checks"
-            label={t('sessions.context.batch', { count: resolved.value.length })}
-            onClick={() => onOpen(resolved.value)}
-          />
+          {resolved.value.map((task) => (
+            <ContextTaskRow key={task.id} task={task} onOpen={onOpen} />
+          ))}
         </InformationList>
       )}
       {missing && (

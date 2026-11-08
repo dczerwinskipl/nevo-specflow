@@ -1,7 +1,12 @@
 import type { ExecutionCatalogue } from '../definitions/catalogue';
 import type { WorkflowDefinition } from '../definitions/model';
 import { WorkflowError } from '../errors';
-import { assertPinned, assertPositionJustified, pinOf } from '../progression/progression';
+import {
+  assertPinned,
+  assertPositionJustified,
+  isPositionJustified,
+  pinOf,
+} from '../progression/progression';
 import {
   brokenTask,
   subjectKey,
@@ -54,11 +59,8 @@ export function pinnedDefinition(
   return definition;
 }
 
-/**
- * The pinned definition, or `undefined` when it is missing or changed. Throws only when the run's
- * position does not follow from its history (`WORKFLOW_STATE_CORRUPT`).
- */
-export function pinnedDefinitionIfUnchanged(
+/** The definition the run is pinned to, or `undefined` when it is missing or changed. */
+function unchangedDefinition(
   catalogue: ExecutionCatalogue,
   run: WorkflowRun,
 ): WorkflowDefinition | undefined {
@@ -69,13 +71,66 @@ export function pinnedDefinitionIfUnchanged(
 
   const pin = pinOf(definition);
 
-  if (pin.id !== run.workflow.id || pin.revision !== run.workflow.revision) {
-    return undefined;
+  return pin.id === run.workflow.id && pin.revision === run.workflow.revision
+    ? definition
+    : undefined;
+}
+
+/**
+ * The pinned definition, or `undefined` when it is missing or changed. Throws only when the run's
+ * position does not follow from its history (`WORKFLOW_STATE_CORRUPT`).
+ */
+export function pinnedDefinitionIfUnchanged(
+  catalogue: ExecutionCatalogue,
+  run: WorkflowRun,
+): WorkflowDefinition | undefined {
+  const definition = unchangedDefinition(catalogue, run);
+  if (definition) {
+    assertPositionJustified(run, definition);
   }
 
-  assertPositionJustified(run, definition);
-
   return definition;
+}
+
+/** The Tasks of a snapshot: the usable ones and the broken ones. */
+export interface ExecutionTasks {
+  /** The Task records that are not broken, in Task id order. */
+  readonly tasks: readonly TaskRecord[];
+  /** The broken Tasks, in list order. */
+  readonly broken: readonly string[];
+}
+
+/**
+ * Split the listed Tasks. A Task is broken when its record is missing or its stored position does
+ * not follow from its history under its pinned definition (`isPositionJustified`); a Task whose
+ * pinned workflow is missing or changed is not broken (its next operation fails with
+ * `WORKFLOW_DEFINITION_CHANGED`). A broken Task is left out of `tasks`, so every decision treats it
+ * alike: it never starts, finishes or changes status, is never closed, keeps the Specification's
+ * wait open and blocks its dependents.
+ */
+export function executionTasks(
+  catalogue: ExecutionCatalogue,
+  snapshot: ExecutionSnapshot,
+): ExecutionTasks {
+  const records = new Map(
+    snapshot.tasks.map((entry) => [entry.value.taskId, entry.value] as const),
+  );
+  const justified = (task: TaskRecord) => {
+    const definition = unchangedDefinition(catalogue, task.run);
+
+    return !definition || isPositionJustified(task.run, definition);
+  };
+
+  const broken = (snapshot.specification?.value.taskIds ?? []).filter((taskId) => {
+    const task = records.get(taskId);
+
+    return !task || !justified(task);
+  });
+
+  return {
+    tasks: [...records.values()].filter((task) => !broken.includes(task.taskId)),
+    broken,
+  };
 }
 
 export function findTask(
@@ -107,10 +162,11 @@ export function loadSubject(
     };
   }
 
-  const task = findTask(snapshot, subject.taskId);
-  if (!task && specification.value.taskIds.includes(subject.taskId)) {
+  if (executionTasks(catalogue, snapshot).broken.includes(subject.taskId)) {
     brokenTask(subject.taskId);
   }
+
+  const task = findTask(snapshot, subject.taskId);
 
   if (!task) {
     throw new WorkflowError('WORKFLOW_SUBJECT_NOT_FOUND', `Unknown ${subjectKey(subject)}.`);

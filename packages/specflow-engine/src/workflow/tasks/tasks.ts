@@ -330,8 +330,8 @@ export type TaskReadiness =
   | { readonly kind: 'dependencies'; readonly waitingFor: readonly string[] };
 
 /**
- * A Task may start when it is `ready` and every direct dependency completed; a broken dependency
- * (no record) never completes.
+ * A Task may start when it is `ready` and every direct dependency completed. `tasks` holds no broken
+ * Task (`executionTasks`), so a broken dependency never completes.
  */
 export function taskReadiness(task: TaskRecord, tasks: readonly TaskRecord[]): TaskReadiness {
   if (task.status !== 'ready') {
@@ -350,7 +350,7 @@ export function taskReadiness(task: TaskRecord, tasks: readonly TaskRecord[]): T
 
 /**
  * The Specification's wait step is satisfied when every Task is closed (also when there is none). A
- * broken Task (listed without a record, `brokenTaskIds`) is never closed.
+ * broken Task (`executionTasks`) is never closed.
  */
 export function allTasksClosed(tasks: readonly TaskRecord[], broken: readonly string[]): boolean {
   return broken.length === 0 && tasks.every(isTaskClosed);

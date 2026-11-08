@@ -185,22 +185,10 @@ export function isTerminal(run: WorkflowRun): boolean {
   return run.position.state === 'terminal';
 }
 
-/**
- * The listed Tasks whose record is missing, in list order. Only such a Task is broken: it never
- * starts or finishes, keeps the Specification's wait open and blocks its dependents.
- */
-export function brokenTaskIds(
-  specification: SpecificationExecutionRecord | undefined,
-  tasks: readonly TaskRecord[],
-): string[] {
-  const present = new Set(tasks.map((task) => task.taskId));
-
-  return (specification?.taskIds ?? []).filter((taskId) => !present.has(taskId));
-}
-
+/** A broken Task (`executionTasks`) is refused by every operation on it. */
 export function brokenTask(taskId: string): never {
   throw new WorkflowError(
     'WORKFLOW_STATE_CORRUPT',
-    `The Task "${taskId}" is listed by the Specification but its record is missing; restore it from Git.`,
+    `The Task "${taskId}" is broken: its record is missing or its position does not follow from its history; restore it from Git.`,
   );
 }

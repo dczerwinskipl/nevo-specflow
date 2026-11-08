@@ -13,6 +13,7 @@ import {
 } from '../state/model';
 import type { ExecutionChange, ExecutionSnapshot } from '../state/store';
 import {
+  executionTasks,
   isoNow,
   loadSubject,
   type LoadedSubject,
@@ -62,7 +63,7 @@ async function startSubject(
   // A resume continues the active attempt: only its own Session may resume an agent attempt.
   assertExecutorAllowed(plan.step, options.executor, activeAttempt(loaded.run));
   if (plan.kind === 'activate') {
-    assertTaskReady(snapshot, loaded);
+    assertTaskReady(dependencies, snapshot, loaded);
   }
 
   const at = isoNow(dependencies);
@@ -82,7 +83,7 @@ async function startSubject(
       catalogue: dependencies.catalogue,
       ...(loaded.task ? { task: loaded.task } : {}),
       allowedTaskTypes: snapshot.specification?.value.taskTypes ?? [ANY_TASK_TYPE],
-      tasks: snapshot.tasks.map((entry) => entry.value),
+      ...executionTasks(dependencies.catalogue, snapshot),
     }),
   };
 }
@@ -119,12 +120,16 @@ function changeFor(
   };
 }
 
-function assertTaskReady(snapshot: ExecutionSnapshot, loaded: LoadedSubject): void {
+function assertTaskReady(
+  dependencies: WorkflowDependencies,
+  snapshot: ExecutionSnapshot,
+  loaded: LoadedSubject,
+): void {
   if (!loaded.task) {
     return;
   }
 
-  const tasks = snapshot.tasks.map((entry) => entry.value);
+  const { tasks } = executionTasks(dependencies.catalogue, snapshot);
   const readiness = taskReadiness(loaded.task, tasks);
   if (readiness.kind === 'status') {
     throw new WorkflowError(
@@ -134,7 +139,7 @@ function assertTaskReady(snapshot: ExecutionSnapshot, loaded: LoadedSubject): vo
   }
 
   if (readiness.kind === 'dependencies') {
-    // A dependency that ended without completing, was cancelled or is broken (no record).
+    // A dependency that ended without completing, was cancelled or is broken (`executionTasks`).
     const abandoned = readiness.waitingFor.filter((id) => {
       const dependency = tasks.find((task) => task.taskId === id);
 

@@ -48,7 +48,10 @@ export function setTaskStatus(
       taskId: request.taskId,
     };
     const context: AdvanceContext = {
-      set: new ExecutionWorkingSet(await dependencies.store.read(request.specId)),
+      set: new ExecutionWorkingSet(
+        await dependencies.store.read(request.specId),
+        dependencies.catalogue,
+      ),
       catalogue: dependencies.catalogue,
       at: isoNow(dependencies),
     };

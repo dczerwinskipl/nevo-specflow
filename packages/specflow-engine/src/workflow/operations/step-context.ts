@@ -73,6 +73,11 @@ export interface StepContext {
     readonly state: RunPosition['state'];
     readonly readiness: TaskReadiness['kind'];
   }[];
+  /**
+   * For a Specification work step: the broken Tasks by id (`executionTasks`), which are not in
+   * `existingTasks`. Nothing can be decided on them until their record is restored from Git.
+   */
+  readonly broken?: readonly string[];
 }
 
 export interface StepContextInput {
@@ -83,8 +88,10 @@ export interface StepContextInput {
   readonly catalogue: ExecutionCatalogue;
   readonly task?: TaskRecord;
   readonly allowedTaskTypes: TaskTypes;
-  /** Every Task of the Specification. */
+  /** The Tasks of the Specification that are not broken (`executionTasks`). */
   readonly tasks: readonly TaskRecord[];
+  /** The broken Tasks, in list order. */
+  readonly broken: readonly string[];
 }
 
 export function compileStepContext(input: StepContextInput): StepContext {
@@ -173,6 +180,7 @@ export function compileStepContext(input: StepContextInput): StepContext {
             state: existing.run.position.state,
             readiness: taskReadiness(existing, input.tasks).kind,
           })),
+          broken: input.broken,
         }
       : {}),
   };

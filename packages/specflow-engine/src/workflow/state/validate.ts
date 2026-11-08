@@ -18,7 +18,7 @@ import type { ExecutionSnapshot } from './store';
  * (`assertPositionJustified`).
  *
  * The Specification lists its Tasks: a Task record it does not list is corrupt, while a listed Task
- * without a record is only that Task broken (`brokenTaskIds`). Every dependency names a listed Task,
+ * without a record is only that Task broken (`executionTasks`). Every dependency names a listed Task,
  * and the dependencies form no cycle.
  */
 

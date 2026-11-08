@@ -127,12 +127,15 @@ Readiness, lanes and statuses are derived from these, never stored.
   wait step included); an open attempt makes the run `active` on it, so it can only be the last
   record; a finished attempt leads where its recorded transition (from that attempt's step) targets;
   an attempt ended by a return, and a return record (whose `from` must be the replayed position), lead
-  to the return's step. The replay must end at the stored position, whatever its state. A hand-edited
+  to the return's step. A replayed return follows the rules of `returnToStep`: its step is one the
+  definition declares in `returns[]`, and an attempt replayed so far (the returned attempt included)
+  was of that step. The replay must end at the stored position, whatever its state. A hand-edited
   position or history that does not follow (for example `ready: acceptance` with an empty history,
-  `active` on `acceptance` right after `requirements`, or an attempt of a step nothing led to) fails
-  with `WORKFLOW_STATE_CORRUPT`. A run whose pinned definition is missing or
-  changed is not checked; `inspectExecution` marks it `definitionChanged: true`, and its next
-  operation fails with `WORKFLOW_DEFINITION_CHANGED`.
+  `active` on `acceptance` right after `requirements`, an attempt of a step nothing led to, or a return
+  from `specification` to the undeclared `acceptance` or to the not yet reached `breakdown`) fails
+  with `WORKFLOW_STATE_CORRUPT` for the Specification, and makes a Task broken (see "The Task set"). A
+  run whose pinned definition is missing or changed is not checked; `inspectExecution` marks it
+  `definitionChanged: true`, and its next operation fails with `WORKFLOW_DEFINITION_CHANGED`.
 - **Pin.** A run is pinned to `{id, version, revision}`, where `revision` is the sha256 of the resolved
   definition. If the loaded definition differs, the run fails with `WORKFLOW_DEFINITION_CHANGED`.
   Re-pinning is a follow-up (plan 06, F07).
@@ -185,8 +188,14 @@ exists, this list is the registry.
 
 - **A Task file the list does not name** is corrupt state: every read fails with
   `WORKFLOW_STATE_CORRUPT`.
-- **A listed Task without its file** is broken, and only that Task (`brokenTaskIds`):
-  `inspectExecution` lists it in `brokenTasks`; starting, finishing, returning or deciding it is
+- **A broken Task** is a listed Task without its file, or one whose stored position does not
+  follow from its history under its pinned definition. A Task whose pinned workflow is missing or
+  changed is not broken: by owner decision it is trusted as stored until re-pinning
+  ([plan 06](../../ideas/specflow-engine/execution-plans/06-workflow-kernel/README.md), F07), and
+  its next operation fails with `WORKFLOW_DEFINITION_CHANGED`. Only that Task breaks, and every decision sees the same list
+  (`executionTasks` in `operations/loaded-execution.ts` leaves broken Tasks out of the Tasks the
+  operations, `deriveAttention` and `inspectExecution` decide on): `inspectExecution` lists it in
+  `brokenTasks`; starting, finishing, returning or deciding it with `setTaskStatus` is
   refused with `WORKFLOW_STATE_CORRUPT` naming it, before anything is written; it counts as open, so
   the wait step never completes over it; a Task that depends on it never becomes startable
   (`dependencies {waitingFor}`); and when nothing else can progress, the Specification gets
@@ -194,7 +203,11 @@ exists, this list is the registry.
   same way. Restoring the file from Git makes the Task usable again; if the restored record is
   already closed (terminal or cancelled) and no Task is open any more, no Task event will complete
   the wait, so the Specification keeps `tasks-stuck` and the owner returns it (for example to the
-  breakdown).
+  breakdown). A Specification finish whose transition ends the run `terminal {completed}` (the owner
+  accepting) is refused with `WORKFLOW_INPUT_INVALID` naming the broken Tasks, before anything is
+  written, while any Task is broken. A Specification step's context lists the broken Tasks by id in
+  `broken`, not in `existingTasks`; a `taskDecisions` entry naming one is refused with
+  `WORKFLOW_INPUT_INVALID` (`Unknown Task`), not `WORKFLOW_STATE_CORRUPT`.
 - Every `dependsOn` names a listed Task, and the dependencies form no cycle
   (`validateExecutionSnapshot`); a stored state that breaks this is `WORKFLOW_STATE_CORRUPT`.
 
@@ -348,8 +361,8 @@ The Engine completes the wait step itself, with the transition of the Task event
 
 - **`tasks-finished`** when every Task is **closed** (its run is terminal, or it is `cancelled`), in
   the same change as the finish of the last Task or the `setTaskStatus` that cancels the last open
-  Task. An `on-hold` or `ready` Task that has not finished, and a broken Task, keep it waiting. With zero Tasks, the
-  wait step completes as soon as it is entered.
+  Task. An `on-hold` or `ready` Task that has not finished, and a broken Task, keep it waiting. With
+  zero Tasks, the wait step completes as soon as it is entered.
 - **`task-escalated`** when a Task is escalated (on hold by its own escalation), in the same change
   as the escalating finish (the guard keeps escalated Tasks out of the wait step's entry). The next
   step's handoff feedback is a bounded Engine text naming the escalated Tasks in id order:

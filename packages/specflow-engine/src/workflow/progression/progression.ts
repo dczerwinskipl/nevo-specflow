@@ -311,31 +311,29 @@ export function lastArrival(
  * (attempts and returns) are replayed in sequence order from `not-started`: the first attempt is of
  * the entry step and every later one of the step the previous record led to (an Engine-entered wait
  * step included); an open attempt makes the run active on it, so it can only be the last record; a
- * finished attempt leads where its recorded transition targets, an attempt ended by a return and a
+ * finished attempt leads where its recorded (declared) transition targets, an attempt ended by a return and a
  * return record (written only while no attempt is active, from the position it records) to the
- * return's step. The position the replay ends at must be the stored one. Anything else is a
- * hand-edited or foreign record.
+ * return's step. A return, like `planReturn`, targets a return the definition declares and a step
+ * an attempt replayed so far (the returned attempt included) was of. The position the replay ends
+ * at must be the stored one. Anything else is a hand-edited or foreign record.
  */
-export function assertPositionJustified(run: WorkflowRun, definition: WorkflowDefinition): void {
-  const unjustified = (): never => {
-    throw new WorkflowError(
-      'WORKFLOW_STATE_CORRUPT',
-      `The stored position ${JSON.stringify(run.position)} does not follow from the run's history.`,
-    );
-  };
-
+export function isPositionJustified(run: WorkflowRun, definition: WorkflowDefinition): boolean {
   const records = [...run.attempts, ...run.returns].sort(
     (left, right) => left.sequence - right.sequence,
   );
+  const reached = new Set<string>();
+  const returnAllowed = (to: string) =>
+    reached.has(to) && definition.returns.some((candidate) => candidate.step === to);
   let expected: RunPosition = { state: 'not-started' };
   for (const record of records) {
     if ('from' in record) {
       if (
         expected.state === 'active' ||
         expected.state === 'terminal' ||
-        !isDeepStrictEqual(record.from, expected)
+        !isDeepStrictEqual(record.from, expected) ||
+        !returnAllowed(record.to)
       ) {
-        unjustified();
+        return false;
       }
 
       expected = { state: 'ready', step: record.to };
@@ -349,19 +347,42 @@ export function assertPositionJustified(run: WorkflowRun, definition: WorkflowDe
           ? expected.step
           : undefined;
     if (record.step !== starts) {
-      unjustified();
+      return false;
     }
 
+    reached.add(record.step);
     const outcome = record.outcome;
-    expected = !outcome
-      ? { state: 'active', step: record.step, attempt: record.attempt }
-      : outcome.kind === 'returned'
-        ? { state: 'ready', step: outcome.to }
-        : positionAfter(recordedTransition(definition, record.step, outcome.transition));
+    if (outcome?.kind === 'returned' && !returnAllowed(outcome.to)) {
+      return false;
+    }
+
+    if (outcome?.kind === 'transition') {
+      const transition = findStep(definition, record.step)?.transitions.find(
+        (candidate) => candidate.id === outcome.transition,
+      );
+      if (!transition) {
+        return false;
+      }
+
+      expected = positionAfter(transition);
+      continue;
+    }
+
+    expected = outcome
+      ? { state: 'ready', step: outcome.to }
+      : { state: 'active', step: record.step, attempt: record.attempt };
   }
 
-  if (!isDeepStrictEqual(expected, run.position)) {
-    unjustified();
+  return isDeepStrictEqual(expected, run.position);
+}
+
+/** {@link isPositionJustified}, failing with `WORKFLOW_STATE_CORRUPT`. */
+export function assertPositionJustified(run: WorkflowRun, definition: WorkflowDefinition): void {
+  if (!isPositionJustified(run, definition)) {
+    throw new WorkflowError(
+      'WORKFLOW_STATE_CORRUPT',
+      `The stored position ${JSON.stringify(run.position)} does not follow from the run's history.`,
+    );
   }
 }
 

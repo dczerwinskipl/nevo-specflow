@@ -199,6 +199,14 @@ change.`); each reason stays in the Task's `statusChange`, listed in the next st
   restored terminal Task file) derives `tasks-stuck`, so the owner is told to return it; an
   inspection entry whose pinned workflow is missing or changed carries `definitionChanged: true`.
 
+  Re-review of these fixes (R05–R07), in the same PR: a listed Task whose stored position does not
+  follow from its history under its unchanged pinned definition is broken exactly like a Task
+  without a file (`executionTasks`, computed once with the catalogue for every operation,
+  `deriveAttention` and `inspectExecution`), so a hand-edited `terminal completed` Task can no
+  longer complete the wait; a replayed return must target a declared return already reached, as
+  `planReturn` requires; and a Specification finish that would end the run `terminal completed` is
+  refused (`WORKFLOW_INPUT_INVALID`, nothing written) while any Task is broken.
+
 ## 3. Follow-ups
 
 Each follow-up is independent unless it says otherwise. All of them reuse the operations; none adds

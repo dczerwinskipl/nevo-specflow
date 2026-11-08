@@ -54,7 +54,7 @@ export function returnToStep(
 
     const entry = planReturn(loaded.run, loaded.definition, request.step, request.feedback);
     const context: AdvanceContext = {
-      set: new ExecutionWorkingSet(snapshot),
+      set: new ExecutionWorkingSet(snapshot, dependencies.catalogue),
       catalogue: dependencies.catalogue,
       at: isoNow(dependencies),
     };

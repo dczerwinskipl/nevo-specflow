@@ -35,6 +35,7 @@ import { setTaskStatus } from '../operations/task-status';
 import { TASKS_PER_SPECIFICATION_MAX } from '../limits';
 import {
   parseSpecificationRecord,
+  parseTaskRecord,
   serializeSpecificationRecord,
   serializeTaskRecord,
 } from './codec';
@@ -675,6 +676,144 @@ describe('filesystem workflow store: the Task set is the one the Specification l
     });
   });
 
+  it('treats a Task whose position its history does not justify as broken', async () => {
+    const dependencies = await operations();
+    await specificationWithTasks(dependencies);
+    const path = join(tasksDirectory(), 'screen.yaml');
+    const stored = parseTaskRecord(await readFile(path, 'utf8'));
+    await writeFile(
+      path,
+      serializeTaskRecord({
+        ...stored,
+        run: { ...stored.run, position: { state: 'terminal', outcome: 'completed' } },
+      }),
+    );
+
+    await work(dependencies, operationTask('api'));
+    const last = await work(dependencies, operationTask('api'), { result: 'pass' });
+
+    expect(last.specification).toEqual({
+      kind: 'attention',
+      step: 'implementation',
+      reason: 'tasks-stuck',
+    });
+    const inspection = await inspectExecution(dependencies, SPEC);
+    expect(inspection.specification?.record.run.position).toMatchObject({
+      state: 'active',
+      step: 'implementation',
+    });
+    expect(inspection.brokenTasks).toEqual(['screen']);
+    expect(inspection.attention).toMatchObject([
+      { subject: { kind: 'specification' }, reason: 'tasks-stuck' },
+    ]);
+    const broken = {
+      code: 'WORKFLOW_STATE_CORRUPT',
+      message: expect.stringContaining('"screen"') as unknown,
+    };
+    await expect(
+      setTaskStatus(dependencies, {
+        specId: SPEC,
+        taskId: 'screen',
+        status: 'cancelled',
+        executor: owner,
+      }),
+    ).rejects.toMatchObject(broken);
+    await expect(
+      returnToStep(dependencies, {
+        subject: operationTask('screen'),
+        step: 'implement',
+        executor: owner,
+      }),
+    ).rejects.toMatchObject(broken);
+  });
+
+  it('keeps a broken Task with a record out of every decision on it', async () => {
+    const dependencies = await operations();
+    await specificationWithTasks(dependencies);
+    const path = join(tasksDirectory(), 'api.yaml');
+    const stored = parseTaskRecord(await readFile(path, 'utf8'));
+    await writeFile(
+      path,
+      serializeTaskRecord({
+        ...stored,
+        run: { ...stored.run, position: { state: 'terminal', outcome: 'completed' } },
+      }),
+    );
+
+    const inspection = await inspectExecution(dependencies, SPEC);
+    expect(inspection.brokenTasks).toEqual(['api']);
+    expect(inspection.tasks.find((entry) => entry.record.taskId === 'screen')?.readiness).toEqual({
+      kind: 'dependencies',
+      waitingFor: ['api'],
+    });
+    await expect(
+      startTaskExecution(dependencies, { specId: SPEC, taskId: 'screen', executor: claude }),
+    ).rejects.toMatchObject({ code: 'WORKFLOW_DEPENDENCY_UNSATISFIED' });
+    const broken = {
+      code: 'WORKFLOW_STATE_CORRUPT',
+      message: expect.stringContaining('"api"') as unknown,
+    };
+    await expect(
+      startTaskExecution(dependencies, { specId: SPEC, taskId: 'api', executor: claude }),
+    ).rejects.toMatchObject(broken);
+    await expect(
+      finishStep(dependencies, {
+        subject: operationTask('api'),
+        step: 'implement',
+        attempt: 1,
+        input: {},
+        executor: claude,
+      }),
+    ).rejects.toMatchObject(broken);
+
+    await returnToStep(dependencies, {
+      subject: operationSpecification,
+      step: 'breakdown',
+      feedback: 'Again.',
+      executor: owner,
+    });
+    const started = await startSpecification(dependencies);
+    expect(started.kind === 'started' && started.context.existingTasks).toMatchObject([
+      { id: 'screen' },
+    ]);
+    expect(started.kind === 'started' && started.context.broken).toEqual(['api']);
+  });
+
+  it('refuses to complete the Specification while a Task is broken', async () => {
+    const dependencies = await operations();
+    await specificationWithTasks(dependencies);
+    for (const id of ['api', 'screen']) {
+      await work(dependencies, operationTask(id));
+      await work(dependencies, operationTask(id), { result: 'pass' });
+    }
+
+    const path = join(tasksDirectory(), 'screen.yaml');
+    const kept = await readFile(path, 'utf8');
+    await rm(path);
+    const started = await startSpecification(dependencies, owner);
+    if (started.kind === 'terminal') {
+      throw new Error('Unexpected end.');
+    }
+
+    const accept = () =>
+      finishStep(dependencies, {
+        subject: operationSpecification,
+        step: 'acceptance',
+        attempt: started.context.attempt,
+        input: {},
+        executor: owner,
+      });
+    const before = await readFile(specificationPath(), 'utf8');
+    await expect(accept()).rejects.toMatchObject({
+      code: 'WORKFLOW_INPUT_INVALID',
+      message: expect.stringContaining('screen') as unknown,
+    });
+    expect(await readFile(specificationPath(), 'utf8')).toBe(before);
+
+    await writeFile(path, kept);
+    expect((await accept()).position).toEqual({ state: 'terminal', outcome: 'completed' });
+  });
+
   it('refuses a Task file the Specification does not list', async () => {
     const dependencies = await operations();
     await specificationWithTasks(dependencies);
@@ -750,11 +889,100 @@ describe('filesystem workflow store: the position follows from the history', () 
         ],
       }),
     ],
+    [
+      'a return to a step the workflow declares no return to',
+      (run) => ({
+        ...run,
+        position: { state: 'ready', step: 'acceptance' },
+        returns: [
+          {
+            sequence: 2,
+            at: '2026-11-05T10:00:05.000Z',
+            from: { state: 'ready', step: 'specification' },
+            to: 'acceptance',
+          },
+        ],
+      }),
+    ],
+    [
+      'a return to a declared step the run has not reached',
+      (run) => ({
+        ...run,
+        position: { state: 'ready', step: 'breakdown' },
+        returns: [
+          {
+            sequence: 2,
+            at: '2026-11-05T10:00:05.000Z',
+            from: { state: 'ready', step: 'specification' },
+            to: 'breakdown',
+          },
+        ],
+      }),
+    ],
+    [
+      'an attempt returned to a step the workflow declares no return to',
+      (run) => ({
+        ...run,
+        position: { state: 'ready', step: 'acceptance' },
+        attempts: [
+          ...run.attempts,
+          {
+            step: 'specification',
+            attempt: 1,
+            sequence: 2,
+            startedAt: '2026-11-05T10:00:05.000Z',
+            endedAt: '2026-11-05T10:00:06.000Z',
+            outcome: { kind: 'returned', to: 'acceptance' },
+          },
+        ],
+      }),
+    ],
+    [
+      'an attempt returned to a declared step the run has not reached',
+      (run) => ({
+        ...run,
+        position: { state: 'ready', step: 'solution' },
+        attempts: [
+          ...run.attempts,
+          {
+            step: 'specification',
+            attempt: 1,
+            sequence: 2,
+            startedAt: '2026-11-05T10:00:05.000Z',
+            endedAt: '2026-11-05T10:00:06.000Z',
+            outcome: { kind: 'returned', to: 'solution' },
+          },
+        ],
+      }),
+    ],
   ])('refuses %s', async (_name, edit) => {
     const dependencies = await editedRun(edit);
 
     await expect(inspectExecution(dependencies, SPEC)).rejects.toMatchObject(corrupt);
     await expect(startSpecification(dependencies)).rejects.toMatchObject(corrupt);
+  });
+
+  it('accepts an attempt returned to its own declared step', async () => {
+    const dependencies = await editedRun((run) => ({
+      ...run,
+      position: { state: 'ready', step: 'specification' },
+      attempts: [
+        ...run.attempts,
+        {
+          step: 'specification',
+          attempt: 1,
+          sequence: 2,
+          startedAt: '2026-11-05T10:00:05.000Z',
+          endedAt: '2026-11-05T10:00:06.000Z',
+          outcome: { kind: 'returned', to: 'specification' },
+        },
+      ],
+    }));
+
+    expect((await inspectExecution(dependencies, SPEC)).specification?.record.run.position).toEqual(
+      { state: 'ready', step: 'specification' },
+    );
+    await expect(startSpecification(dependencies)).resolves.toMatchObject({ kind: 'started' });
   });
 
   it('accepts the unedited history', async () => {

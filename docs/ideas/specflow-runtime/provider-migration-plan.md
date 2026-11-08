@@ -304,9 +304,11 @@ cancel/restart and unsupported clients cannot leave a falsely answered or unfini
 ### F14 — Antigravity recursive search
 
 **Priority:** P1. **Outside PR #107.**
-**Status:** In progress — Runtime-owned discovery implemented; draft PR #125 now includes F14
-at the owner's explicit direction. Delivery, independent review and current-head merge gates
-remain pending. The previously reviewed F20 Stop algorithm is unchanged.
+**Status:** Implemented — independent re-review of `b55943a` approved F14 and closed its
+starting-path filtering R01. The previously reviewed F20 Stop algorithm is unchanged.
+**Delivery:** [PR #125](https://github.com/dczerwinskipl/nevo-specflow/pull/125) includes F14
+and F20 at the owner's explicit direction. Commit-specific checks and review evidence are
+recorded in that PR; supported automatic discovery remains local Windows x64 NTFS only.
 **Current/evidence:** Native `list_dir`, `find_by_name` and `grep_search` remain denied: the hook
 cannot constrain their descendant traversal. A provider-private `specflow-discovery` MCP server
 instead offers `list_directory`, `find_files` and literal `search_text` on local Windows x64 NTFS.
@@ -397,7 +399,9 @@ IDs and absent/contradictory evidence never release an uncertain writer or fabri
 **Priority:** First post-merge delivery. **Outside PR #107; N02 from the final re-review.**
 **Status:** Implemented — R01/R02 closed by independent re-review; targeted
 R03/R04 investigation found no confirmed production blocker. Required CI and
-CodeQL passed on F20 commit `3657763e`; delivery still awaits manual merge.
+CodeQL passed on F20 commit `3657763e`.
+**Delivery:** [PR #125](https://github.com/dczerwinskipl/nevo-specflow/pull/125), together
+with independently approved F14. Current-head verification is recorded in the PR.
 **Original evidence:** `antigravity/question-bridge.ts` returned `deny` for Stop
 conflicting with pending interactions or retained files. The native
 [Stop contract](https://antigravity.google/docs/hooks/#stop) permits termination
@@ -414,10 +418,8 @@ beyond the one-shot bound still stop conservatively and can leave execution unkn
 **Review disposition:** [R03/R04 evidence and limits](antigravity-provider.md#r03r04-targeted-lifecycle-investigation-2026-11-08).
 No production change was required; same-execution background completion remains
 supported under the native final-result/idle contract.
-**Remaining:** Manual delivery. The owner subsequently added F14 to the same PR;
-the expanded draft requires fresh current-head verification and review. Earlier
-F20 checks do not certify F14, and draft skips do not count as passed checks.
-F19 remains independent.
+**Remaining:** No confirmed F20 production finding remains open. F19 positive reconciliation
+of unknown execution remains an independent follow-up; F20 does not implement it.
 
 [paseo-types]: https://github.com/getpaseo/paseo/blob/ab8e1e61ff7c0bbad08c95e15a09f3ec42333410/packages/server/src/server/agent/agent-sdk-types.ts
 [paseo-provider]: https://github.com/getpaseo/paseo/blob/ab8e1e61ff7c0bbad08c95e15a09f3ec42333410/packages/plugin/src/server/provider.ts

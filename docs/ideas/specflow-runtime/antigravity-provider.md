@@ -183,9 +183,13 @@ processes must retain concurrency capacity instead of admitting replacements;
 the corrected budget now does so. All have focused MCP regression coverage. These findings and
 their correction do not reopen the independently reviewed F20 Stop algorithm.
 
-F14 remains **in progress** until current-head verification and independent review
-are recorded in the PR. The implementation-session self-review is not independent
-approval. Required merge checks and manual merge remain separate delivery gates.
+F14 is **implemented**. Owner-supplied independent re-review of `b55943a` approved
+the implementation, closed starting-path filtering R01 and found no new confirmed
+defect. The subsequent `432d1e97` changes only test fixtures to address CodeQL
+code-construction warnings; production behavior is unchanged. Delivery of F14 and
+F20 is tracked in [PR #125](https://github.com/dczerwinskipl/nevo-specflow/pull/125),
+including commit-specific CI evidence. Implementation-session self-review is not
+substituted for that independent approval; required checks apply to the final head.
 
 Protocol references: [native hooks](https://antigravity.google/docs/hooks/),
 [OpenFileById](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-openfilebyid),

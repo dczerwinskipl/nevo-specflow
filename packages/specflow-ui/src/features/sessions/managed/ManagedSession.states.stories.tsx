@@ -121,12 +121,8 @@ const meta = {
     // state story that carries `sessionContext.specification`, without a real router here.
     onOpenSpecification: fn((specification) => console.info('Open Specification', specification)),
     onOpenDocuments: fn((specification) => console.info('Open Documents', specification)),
-    // Story-only stand-ins for the header "⋯" session actions, which have no backend yet (the
-    // real route leaves them unwired, so they render disabled there): wired here so the rename /
-    // archive / delete dialogs can be tried on the browsable states.
-    onRenameSession: fn(),
-    onArchiveSession: fn(),
-    onDeleteSession: fn(),
+    onSessionDeleted: fn(),
+    onNewSession: fn(),
   },
 } satisfies Meta<typeof ManagedSession>;
 export default meta;

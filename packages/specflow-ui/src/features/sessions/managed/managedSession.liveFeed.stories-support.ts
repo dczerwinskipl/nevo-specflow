@@ -7,6 +7,8 @@ import type {
 import type { ManagedSessionsApi } from './api';
 import { fixtureApi } from './managedSession.stories-support';
 
+type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
+
 /**
  * A fixture Session a play function drives live: `push` delivers conversation events on the open
  * watch stream (in order, right after the current snapshot's `eventSeq`), and older history can be
@@ -128,6 +130,15 @@ export function liveFixtureApi(
         kind: 'conversation',
         changes: { entries },
       });
+    },
+    /** Delivers any other Session change (a `session` or `turn` change) on the open watch stream. */
+    pushChange(change: DistributiveOmit<SessionChange, 'sessionId' | 'eventSeq'>) {
+      if (!deliver) {
+        throw new Error('No watch stream is open yet: await watched() first.');
+      }
+
+      eventSeq += 1;
+      deliver({ ...change, sessionId: snapshot.session.sessionId, eventSeq });
     },
     /** How many history pages were requested so far. */
     historyReads: () => historyReads,

@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createSpecFlowRouter } from '../../../app/router';
 import { createAuthStore } from '../../../auth/store';
 import { createSpecFlowAppServices } from '../../../services';
+import { NotificationProvider } from '../../../shared/notifications/notifications';
 import { ManagedSessionRouteView } from './routes';
 
 vi.mock('../../../app/useAppServices', () => ({
@@ -31,7 +32,13 @@ const workStack = defineSecondaryStack<{ turnId: string }, string, { page: { tur
 
 // Stands in for the Session screen: opens a runtime tab and shows which tabs the provider holds.
 vi.mock('./ManagedSession', () => ({
-  ManagedSession: ({ sessionId }: { sessionId: string }) => {
+  ManagedSession: ({
+    sessionId,
+    onSessionDeleted,
+  }: {
+    sessionId: string;
+    onSessionDeleted?: () => void;
+  }) => {
     const navigation = useSecondaryNavigation();
 
     return (
@@ -42,10 +49,21 @@ vi.mock('./ManagedSession', () => ({
         >
           open work
         </button>
+        <button type="button" onClick={onSessionDeleted}>
+          deleted
+        </button>
         <output data-testid="tabs">{navigation.tabs.tabs.map((tab) => tab.id).join(',')}</output>
       </>
     );
   },
+}));
+// The destination's own heading, the focus target after a delete.
+vi.mock('../start/screen/ManagedSessionStart', () => ({
+  ManagedSessionStart: () => (
+    <h1 tabIndex={-1} data-workspace-header-title="true">
+      Nowa sesja
+    </h1>
+  ),
 }));
 
 afterEach(cleanup);
@@ -53,7 +71,9 @@ afterEach(cleanup);
 describe('ManagedSessionRouteView', () => {
   it("does not carry one Session's open tabs into the next one while the route stays mounted", async () => {
     // The router keeps the route component mounted from /sessions/A to /sessions/B: a rerender.
-    const { rerender } = render(<ManagedSessionRouteView sessionId="A" />);
+    const { rerender } = render(<ManagedSessionRouteView sessionId="A" />, {
+      wrapper: NotificationProvider,
+    });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'open work' }));
       await Promise.resolve();
@@ -173,5 +193,37 @@ describe('Session route history', () => {
 
     expect(router.state.location.pathname).toBe('/sessions/A');
     expect(screen.getByTestId('tabs').textContent).toBe('');
+  });
+
+  it('replaces a deleted Session with the new-Session screen, says so and focuses its heading', async () => {
+    const router = routerAt('/sessions/A');
+    await act(async () => {
+      await router.navigate({
+        to: '/sessions/$sessionId',
+        params: { sessionId: 'B' },
+        search: { collection: 'current' },
+      });
+    });
+    render(<RouterProvider router={router} />);
+    await settle();
+    expect(router.state.location.pathname).toBe('/sessions/B');
+
+    fireEvent.click(screen.getByRole('button', { name: 'deleted' }));
+    await settle();
+    await settle();
+
+    expect(router.state.location.pathname).toBe('/sessions/new');
+    expect(
+      await screen.findByText(/^(The session was deleted\.|Sesja została usunięta\.)$/),
+    ).toBeTruthy();
+    await vi.waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Nowa sesja' })),
+    );
+    // Back does not reopen the deleted Session.
+    await act(async () => {
+      router.history.back();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(router.state.location.pathname).toBe('/sessions/A');
   });
 });

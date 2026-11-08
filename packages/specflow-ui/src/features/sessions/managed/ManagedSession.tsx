@@ -798,24 +798,9 @@ function ManagedSessionConversation({
                         key={snapshot.interaction.interactionId}
                         interaction={snapshot.interaction}
                         busy={state.commandBusy || !snapshot.session.capabilities.manage}
-                        onRespond={(answer, optionId, allow) => {
-                          const i = snapshot.interaction!;
-                          void feed.respond(
-                            i.interactionId,
-                            i.kind === 'permission'
-                              ? {
-                                  kind: 'permission',
-                                  decision: allow ? 'allow' : 'deny',
-                                }
-                              : {
-                                  kind: 'question',
-                                  answer: {
-                                    optionIds: optionId ? [optionId] : [],
-                                    ...(answer ? { text: answer } : {}),
-                                  },
-                                },
-                          );
-                        }}
+                        onRespond={(response) =>
+                          void feed.respond(snapshot.interaction!.interactionId, response)
+                        }
                       />
                     )}
                     {state.pendingUnreadable ? (

@@ -44,7 +44,104 @@ describe('command execution permission', () => {
         ),
       ).toBeTruthy();
       fireEvent.click(screen.getByRole('button', { name: 'Allow' }));
-      expect(onRespond).toHaveBeenCalledExactlyOnceWith('', undefined, true);
+      expect(onRespond).toHaveBeenCalledExactlyOnceWith({ kind: 'permission', decision: 'allow' });
     },
   );
+});
+
+function question(
+  overrides: Partial<Extract<Interaction, { kind: 'question' }>> = {},
+): Interaction {
+  return {
+    interactionId: 'question-1',
+    turnId: 'turn-1',
+    workId: 'work-1',
+    revision: 1,
+    kind: 'question',
+    prompt: 'Which areas?',
+    allowText: false,
+    options: [
+      { id: 'a', label: 'Alpha' },
+      { id: 'b', label: 'Beta' },
+      { id: 'c', label: 'Gamma' },
+    ],
+    ...overrides,
+  };
+}
+
+function renderPrompt(interaction: Interaction, busy = false) {
+  const onRespond = vi.fn();
+  render(
+    <StoryLocalization locale="en">
+      <InteractionPrompt interaction={interaction} busy={busy} onRespond={onRespond} />
+    </StoryLocalization>,
+  );
+
+  return onRespond;
+}
+
+describe('single-select question', () => {
+  it.each([undefined, 1])('answers with one click when maxSelections is %s', (maxSelections) => {
+    const onRespond = renderPrompt(question(maxSelections ? { maxSelections } : {}));
+    expect(screen.queryByRole('checkbox')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Beta' }));
+    expect(onRespond).toHaveBeenCalledExactlyOnceWith({
+      kind: 'question',
+      answer: { optionIds: ['b'] },
+    });
+  });
+
+  it('sends free text without options', () => {
+    const onRespond = renderPrompt(question({ allowText: true }));
+    fireEvent.change(screen.getByLabelText('Your answer'), { target: { value: 'Other' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Respond' }));
+    expect(onRespond).toHaveBeenCalledExactlyOnceWith({
+      kind: 'question',
+      answer: { optionIds: [], text: 'Other' },
+    });
+  });
+});
+
+describe('multi-select question', () => {
+  it('caps the selection at maxSelections and sends option IDs once, in declared order', () => {
+    const onRespond = renderPrompt(question({ maxSelections: 2 }));
+    const respond = screen.getByRole('button', { name: 'Respond' });
+    expect(respond).toHaveProperty('disabled', true);
+    expect(screen.getByRole('group', { name: 'Which areas?' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Gamma' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Alpha' }));
+    expect(screen.getByText('Selected 2 of at most 2.')).toBeTruthy();
+    expect(screen.getByRole('checkbox', { name: 'Beta' })).toHaveProperty('disabled', true);
+    // Unchecking frees a slot again.
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Gamma' }));
+    expect(screen.getByRole('checkbox', { name: 'Beta' })).toHaveProperty('disabled', false);
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Gamma' }));
+    fireEvent.click(respond);
+    expect(onRespond).toHaveBeenCalledExactlyOnceWith({
+      kind: 'question',
+      answer: { optionIds: ['a', 'c'] },
+    });
+  });
+
+  it('includes optional text with the selected options, and accepts text alone', () => {
+    const onRespond = renderPrompt(question({ maxSelections: 3, allowText: true }));
+    const respond = screen.getByRole('button', { name: 'Respond' });
+    fireEvent.change(screen.getByLabelText('Your answer'), { target: { value: 'Also docs' } });
+    expect(respond).toHaveProperty('disabled', false);
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Beta' }));
+    fireEvent.click(respond);
+    expect(onRespond).toHaveBeenCalledExactlyOnceWith({
+      kind: 'question',
+      answer: { optionIds: ['b'], text: 'Also docs' },
+    });
+  });
+
+  it('keeps Respond disabled for blank text and while busy', () => {
+    renderPrompt(question({ maxSelections: 2, allowText: true }));
+    fireEvent.change(screen.getByLabelText('Your answer'), { target: { value: '   ' } });
+    expect(screen.getByRole('button', { name: 'Respond' })).toHaveProperty('disabled', true);
+    cleanup();
+    renderPrompt(question({ maxSelections: 2 }), true);
+    expect(screen.getByRole('checkbox', { name: 'Alpha' })).toHaveProperty('disabled', true);
+  });
 });

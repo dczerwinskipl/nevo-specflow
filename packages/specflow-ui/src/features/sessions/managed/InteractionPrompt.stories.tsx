@@ -47,6 +47,6 @@ export const HostExecution: Story = {
     await expect(command).toHaveStyle({ whiteSpace: 'pre-wrap' });
     await expect(canvas.getByText(/It may change files outside the workspace/)).toBeVisible();
     await userEvent.click(canvas.getByRole('button', { name: 'Allow' }));
-    await expect(args.onRespond).toHaveBeenCalledWith('', undefined, true);
+    await expect(args.onRespond).toHaveBeenCalledWith({ kind: 'permission', decision: 'allow' });
   },
 };

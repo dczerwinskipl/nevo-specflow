@@ -1587,7 +1587,7 @@
     "savedRequestUnreadableBody": "This browser kept a request that could not be read. It may already have been applied. Discarding it lets you send a new one.",
     "discardSavedRequest": "Discard saved request",
     "responseRequired": "Response required",
-    "unsupportedQuestion": "This question needs controls that are not available yet.",
+    "selectionCount": "Selected {{count}} of at most {{max}}.",
     "commandDirectory": "Directory relative to the workspace: {{cwd}}",
     "hostExecutionScope": "One-time permission to run this command with your account permissions. It may change files outside the workspace.",
     "workspaceExecutionScope": "One-time permission for this command within the workspace.",

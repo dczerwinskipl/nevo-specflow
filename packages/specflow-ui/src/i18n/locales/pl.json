@@ -1587,7 +1587,7 @@
     "savedRequestUnreadableBody": "Ta przeglądarka zachowała żądanie, którego nie da się odczytać. Mogło już zostać zastosowane. Odrzucenie go pozwala wysłać nowe.",
     "discardSavedRequest": "Odrzuć zapisane żądanie",
     "responseRequired": "Wymagana odpowiedź",
-    "unsupportedQuestion": "To pytanie wymaga kontrolek, które nie są jeszcze dostępne.",
+    "selectionCount": "Wybrano {{count}} z maksymalnie {{max}}.",
     "commandDirectory": "Katalog względem workspace: {{cwd}}",
     "hostExecutionScope": "Jednorazowa zgoda na uruchomienie tej komendy z uprawnieniami Twojego konta. Może zmieniać pliki poza workspace.",
     "workspaceExecutionScope": "Jednorazowa zgoda na tę komendę w obrębie workspace.",

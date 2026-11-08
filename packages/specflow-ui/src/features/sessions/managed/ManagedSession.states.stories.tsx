@@ -43,7 +43,7 @@ import {
  * land on — a generic/spec-level Session (§12), a single-Task execution (§13), a pending
  * interaction (§15), waiting-without-attention (§18), a terminal failure/cancel/interrupt (§19),
  * and an unavailable Session (§20), plus the narrower-fixture states (`WaitingForQuestion`,
- * `QuotaFailure`, `UnsupportedMultipleChoice`) that predate the Full Session Context mock view
+ * `QuotaFailure`, `MultipleChoice`) that predate the Full Session Context mock view
  * model — each paired with a geometry/behavior regression assertion for that exact state. They
  * are tagged `contract` so they stay out of the default sidebar (hidden, not deleted: tags only
  * affect visibility, a `play` function is already part of the Chromium suite via Storybook's own
@@ -377,25 +377,48 @@ export const EmptySession: Story = {
 const multiple = sessionFixture(true);
 if (multiple.interaction?.kind === 'question') {
   multiple.interaction.maxSelections = 2;
+  multiple.interaction.options = [
+    ...(multiple.interaction.options ?? []),
+    { id: 'telemetry', label: 'Telemetria dostawcy' },
+  ];
 }
 
-export const UnsupportedMultipleChoice: Story = {
+const multipleApi = { ...fixtureApi(multiple), respond: fn().mockResolvedValue({}) };
+
+/** A question with `maxSelections > 1`: checkboxes capped at the limit, one Respond, keyboard only. */
+export const MultipleChoice: Story = {
   tags: ['contract'],
-  args: { owner: 'multi-story', api: fixtureApi(multiple) },
+  args: { owner: 'multi-story', api: multipleApi },
   play: async ({ canvasElement }) => {
+    multipleApi.respond.mockClear();
     const canvas = within(canvasElement);
-    await expect(
-      await canvas.findByText('To pytanie wymaga kontrolek, które nie są jeszcze dostępne.'),
-    ).toBeVisible();
-    await expect(
-      canvas.queryByRole('button', { name: 'Wczytywanie starszych wiadomości' }),
-    ).not.toBeInTheDocument();
-    await expect(canvas.queryByRole('button', { name: 'Odpowiedz' })).not.toBeInTheDocument();
+    const history = await canvas.findByRole('checkbox', {
+      name: 'Wczytywanie starszych wiadomości',
+    });
+    const recovery = canvas.getByRole('checkbox', { name: 'Odzyskiwanie sesji po restarcie' });
+    const telemetry = canvas.getByRole('checkbox', { name: 'Telemetria dostawcy' });
+    const respond = canvas.getByRole('button', { name: 'Odpowiedz' });
+    await expect(respond).toBeDisabled();
+    await expect(canvas.getByText('Wybrano 0 z maksymalnie 2.')).toBeVisible();
+    // Keyboard only: focus the last option, then the first, toggling each with Space.
+    telemetry.focus();
+    await userEvent.keyboard(' ');
+    history.focus();
+    await userEvent.keyboard(' ');
+    await expect(canvas.getByText('Wybrano 2 z maksymalnie 2.')).toBeVisible();
+    await expect(recovery).toBeDisabled();
+    await expect(respond).toBeEnabled();
+    respond.focus();
+    await userEvent.keyboard('{Enter}');
+    await waitFor(() => expect(multipleApi.respond).toHaveBeenCalledOnce());
+    // Declared order, not click order.
+    await expect(multipleApi.respond.mock.calls[0]?.[2]).toMatchObject({
+      kind: 'question',
+      answer: { optionIds: ['history', 'telemetry'] },
+    });
     await expect(canvas.getByRole('button', { name: 'Zatrzymaj' })).toBeEnabled();
-    // Status-line/InteractionPrompt overlap regression (owner audit, 320-390px): this story also
-    // renders `snapshot.interaction` (an unsupported multi-select question), so it is one of the
-    // states the audit flagged as likely affected even though it has no dedicated narrow viewport
-    // of its own yet.
+    // Status-line/InteractionPrompt overlap regression (owner audit, 320-390px): the multi-select
+    // prompt is the tallest interaction card.
     await settleViewport(390, 844);
     await verifyNoHeaderOverlapsInteractionPrompt(canvasElement);
     await settleViewport(320, 568);

@@ -39,10 +39,10 @@ related:
 
 **Status.** Owner-requested UX contract, revision 2 (owner decisions 2026-11-04). Revision 1 (a
 separate New Session form page that opened the Session afterwards) is superseded; its naming rules
-(section 7) stay. Implemented on both New Session routes (`/sessions/new` on the managed Runtime and
-`/specs/$specId/sessions/new` on the demo Runtime) and in Create's agent section; no backend or
-contract change is needed for the New Session part (see
-[Integration dependencies](#10-integration-dependencies)).
+(section 7) stay. Implemented on `/specs/$specId/sessions/new` (project Runtime: the composed
+`POST /api/specs/:specId/sessions`; demo Runtime: the demo start route) and in Create's agent
+section. Since 2026-11-08 every UI start is from a Specification: `/sessions/new` has no UI entry
+and redirects to `/` (scenario (h)). See [Integration dependencies](#10-integration-dependencies).
 
 ## 1. Purpose
 
@@ -108,11 +108,23 @@ saved.
   blindly repeated (the shared Create operation semantics).
 - **(g) Leave before Start.** Nothing was saved, so leaving needs no confirmation; the Sessions list
   does not show anything. A reload shows the start state again with fresh defaults.
-- **(h) Without a Specification.** _New session_ outside a Specification (`/sessions/new`, the
-  managed Runtime's own start) is the same screen and form; Context has no Specification row. The
-  providers, models, efforts and work modes are the Runtime's provider catalogue (readiness and
-  reasons included); a provider that lists no models shows **Model** disabled at the provider
-  default.
+- **(h) Without a Specification: no UI entry** (owner, 2026-11-08). Every new Session starts from a
+  Specification. No UI links to `/sessions/new`; opened directly (bookmark, old link) it redirects
+  with `replace` to `/` (the Specifications list), no toast. The shared start screen and the managed
+  start source stay, used with the Specification pinned. On every Runtime the providers, models,
+  efforts and work modes are the Runtime's provider catalogue (readiness and reasons included); a
+  provider that lists no models shows **Model** disabled at the provider default.
+- **(h1) Gating and refusal.** The entry points (the Specification Sessions list header, its empty
+  state, Continue session's start action) follow the workspace `actions.startSession`: shown when
+  available or with reason `no_provider` (the form then states **No executor is available right
+  now**, scenario (e)); omitted with `forbidden` or `sessions_disabled`, and for a removed
+  Specification. With the start route opened directly, the form renders as usual while the
+  workspace read loads or fails; with `forbidden` it is replaced by **Nie możesz rozpoczynać sesji w
+  tej specyfikacji.** / _You can't start sessions in this specification._
+  (`sessionStart.forbiddenSpecification`), with `sessions_disabled` by **Sesje są wyłączone w tym
+  projekcie.** / _Sessions are turned off in this project._ (`sessionStart.sessionsDisabled`); both
+  offer **Wróć do specyfikacji** / _Back to specification_ (`sessionStart.backToSpecification`). A
+  403 from the composed create still shows in the form as a failure (scenario (f)).
 - **(i) Out of scope:** pinning Task or other context, worktree/branch options, delivering the own
   name and agent naming from the Runtime (section 10).
 
@@ -260,14 +272,14 @@ page, that page hands over to the Session the same way instead of to the Specifi
 
 ## 10. Integration dependencies
 
-| Capability                                         | Status                                                                                                                         |
-| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| Allocate a Session (provider, mode, model, effort) | existing: `POST /api/sessions` (`reference.api.sessions`); allocation does not launch the provider, so Start is quick          |
-| Provider catalogue and availability                | existing: `GET /api/session-providers`; the demo uses the creation catalogue                                                   |
-| Start without a visible change of the shell        | UI routing only: history replace into the Session route, the start values handed over in memory (the route remounts the shell) |
-| Own name at creation                               | `CreateSession.title` exists; the demo allocation has no title — missing in the demo path                                      |
-| Agent-generated name and naming state              | missing (no auto-title, no naming status in the Session read model)                                                            |
-| Create with an agent on a real project             | missing: the project Create form and operation do not choose an agent nor allocate a Session                                   |
+| Capability                                         | Status                                                                                                                                                           |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Allocate a Session (provider, mode, model, effort) | existing: `POST /api/specs/:specId/sessions` (`reference.api.sessions`), atomic with the association; allocation does not launch the provider, so Start is quick |
+| Provider catalogue and availability                | existing: `GET /api/session-providers`; the demo uses the creation catalogue                                                                                     |
+| Start without a visible change of the shell        | UI routing only: history replace into the Session route, the start values handed over in memory (the route remounts the shell)                                   |
+| Own name at creation                               | `CreateSession.title` exists; the demo allocation has no title — missing in the demo path                                                                        |
+| Agent-generated name and naming state              | missing (no auto-title, no naming status in the Session read model)                                                                                              |
+| Create with an agent on a real project             | missing: the project Create form and operation do not choose an agent nor allocate a Session                                                                     |
 
 ## 11. Storybook scenarios
 

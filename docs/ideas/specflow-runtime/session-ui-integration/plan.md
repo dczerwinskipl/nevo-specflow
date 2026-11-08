@@ -8,12 +8,14 @@ areas: [ai, runtime, server, security, ui, testing]
 tags: [sessions, telemetry, interactions, work, session-actions, planning, implementation]
 read_when:
   - asking what the feat/session-ui-integration delivery decided and what it left open
-  - planning the Session association registry or the Session list
+  - looking up what stage 3 (Session associations and the Session list) delivered
 summary: >
   Delivered record of the Managed Session UI integration (T1-T13): real telemetry, closed command
   acknowledgements, unknown-Turn reconcile, multi-select questions, Antigravity icon, Work counts
-  and classified digest, Session rename/archive/unarchive/delete end to end. Keeps the owner
-  decisions and the open follow-ups; the behaviour lives in the owning contracts.
+  and classified digest, Session rename/archive/unarchive/delete end to end; plus stage 3 (PR #126,
+  T1-T12): the Session association registry, Session list, composed create from a Specification and
+  their UI. Keeps the owner decisions and the open follow-ups; the behaviour lives in the owning
+  contracts.
 related:
   - reference.api.sessions
   - reference.api.session-telemetry
@@ -23,6 +25,8 @@ related:
   - ideas.specflow-ui.components.session-chat-v10-design
   - ideas.specflow-ui.full-session-screen-structure
   - ideas.specflow-ui.session-actions-ux
+  - ideas.specflow-runtime.session-association
+  - ideas.specflow-ui.session-association-ux
 ---
 
 # Managed Session UI integration — delivery record
@@ -74,12 +78,42 @@ delete transaction, delete map),
 - Minor defaults: a question with options and no `maxSelections` is single-select; a rename title is
   nonblank (no "clear title"); a later naming signal must never overwrite a user rename.
 
+## Stage 3: Session associations (delivered in PR #126)
+
+Design and decision record: [Session association registry](../session-association/README.md)
+(D1-D13) and the [Session association UX](../../specflow-ui/session-association-ux/README.md)
+(U1-U6). Contracts: [Sessions API](../../../reference/api/sessions.md#session-list-association-read-and-composed-create),
+[storage](../../../architecture/ai/session-storage-and-lifecycle.md#authorization-and-associations),
+[authorization](../../../architecture/runtime/auth/authorization.md#specflow-required-scopes),
+[Specification Workspace API](../../../reference/api/specification-workspace.md#project-sessions-section),
+[Full Session structure](../../specflow-ui/full-session-screen-structure.md) §7.6.1 and §22.1,
+[navigation](../../specflow-ui/navigation-and-route-model.md#starting-a-new-session) and the
+[Specification Sessions list](../../specflow-ui/screens/specification-sessions-list-ui-spec.md).
+
+| Task | Delivered as                                                                                                       |
+| ---- | ------------------------------------------------------------------------------------------------------------------ |
+| T1   | Contracts: association read, Session list page and filter, composed create, `SESSION_LIST_SCOPE_REQUIRED`          |
+| T2   | `spec.start-session` for developer and admin; `startSession` in the Specification capability projection            |
+| T3   | Store schema v3: list projection columns, association sidecar tables, atomic create/delete, keyset `list`          |
+| T4   | `sessionScope` for every Session check, execute-write without `specId`; `resolveMany` in Spec/Task projections     |
+| T5   | `POST /api/specs/:specId/sessions`, Engine-verified and atomic                                                     |
+| T6   | `GET /api/sessions/:sessionId/association` and the project-mode `SessionReferenceOwner`                            |
+| T7   | `GET /api/sessions` with per-row authorization, redaction and a signed filter-bound cursor                         |
+| T8   | Project-mode workspace Sessions section, `recommendedSessionId`, `startSession` action                             |
+| T9   | Demo catalogue implements the association port, list and section                                                   |
+| T10  | UI: Context and navigator from the association, Specification New Session, Sessions list, `/sessions/new` redirect |
+| T11  | Cross-boundary HTTP scenario in `packages/specflow-runtime/test/sessions/`                                         |
+| T12  | Contracts moved into their owning documents; the stage 3 idea documents reduced to decision records                |
+
 ## Open follow-ups
 
-- **Stage 3, Session associations:** an authorized association registry (Session to
-  Specification/Task, execution scope, attention) and a bounded Session list/catalogue. Until then
-  Context scope stays `unknown`, archive has no list to leave and post-delete navigation goes to
-  `/sessions/new`.
-- Out of scope and still unplaced by a reviewed UX contract: demo-mode managed Sessions,
-  planned-area tabs, attachments, the naming signal, Tasks/Attention Context sections, and
-  `TurnSummary.usage`/`error` presentation.
+- D8: `session.execute-write` gains the `specId` dimension only after a Specification's Session runs
+  in that Specification's own worktree (managed execution handshake).
+- D13: pin an immutable Engine Task identity once the Task resource introduces one (slugs can be
+  reused today).
+- Engine Task source in project mode: the project Runtime wires no Task definition source into the
+  association targets, so a composed create with `taskIds` answers 503 and associated Tasks read as
+  `unavailable` there.
+- Out of scope and still unplaced by a reviewed UX contract: demo-mode managed Sessions, a
+  Task-context start, planned-area tabs, attachments, the naming signal, the Attention Context
+  section, and `TurnSummary.usage`/`error` presentation.

@@ -210,6 +210,28 @@ for the agent, model, effort, mode and optional own name; Start allocates the Se
 first message is written in its own Composer) and the agent fields it shares with
 Create are specified in the [New Session UI spec](screens/new-session-ui-spec.md).
 
+**Every UI start is from a Specification** (accepted 2026-11-08). New Session opens
+`/specs/:specId/sessions/new` from the Specification Sessions list header, its empty state and
+Continue session's start action, gated by the workspace `actions.startSession`, and posts to the
+composed `POST /api/specs/:specId/sessions`, which records the association. There is no UI entry
+to a standalone Session: the Specifications list has no **Utwórz sesję** action, and
+`/sessions/new` opened directly (bookmark, old link) redirects with `replace` to `/` without a
+toast. Existing standalone Sessions stay reachable by direct link only; their Context and navigator
+show no Specification. The API keeps `POST /api/sessions`.
+
+### Session and its Specification in the navigator
+
+On `/specs/:specId/**` the navigator shows that Specification. On `/sessions/:sessionId` the active
+Specification is the home `specId` of the Session's association read when it is `available`, with
+**Sesje** active; while the association loads, and for `standalone`, `forbidden`, `missing` or
+`unavailable`, no Specification section shows. There is no "last opened Specification" cache. The
+Specification's Session preview comes from the workspace Sessions section (first three
+`active`/`attention` rows, attention first); its count **{{count}} aktywne** shows only when the
+section has no `hasMore` and no row of status `unknown`, otherwise the partial-activity line
+(`applicationNavigation.partialActivity`) says so. **Wszystkie sesje** opens the Specification
+Sessions list `/specs/:specId/sessions`
+([Specification Sessions list UI spec](screens/specification-sessions-list-ui-spec.md)).
+
 ## 8. Full Session navigation — Workspace V2 accepted
 
 Full Session is a first-class routable product surface, not a global sidebar destination.

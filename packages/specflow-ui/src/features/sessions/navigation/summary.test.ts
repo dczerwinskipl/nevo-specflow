@@ -83,4 +83,18 @@ describe('Sessions navigation summary', () => {
       ),
     ).toMatchObject({ state: 'available', count: 0, entries: [] });
   });
+  it('keeps a provider sign-in out of the preview without making the count partial', () => {
+    expect(
+      projectSessionNavigation(
+        {
+          ...base,
+          sessions: [
+            { id: 'sign-in', title: 'Sign-in', navigationStatus: 'authenticationRequired' },
+            { id: 'active', title: 'Active', navigationStatus: 'active', activityCode: 'active' },
+          ],
+        },
+        undefined,
+      ),
+    ).toMatchObject({ state: 'available', count: 1, entries: [{ id: 'active' }] });
+  });
 });

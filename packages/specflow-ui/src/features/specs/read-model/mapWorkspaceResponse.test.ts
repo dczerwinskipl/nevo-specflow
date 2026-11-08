@@ -43,7 +43,26 @@ describe('Workspace response mapping', () => {
         sessions: {
           state: 'available',
           data: {
-            items: [{ id: 's1', taskIds: [], status: 'quiet' }],
+            items: [
+              {
+                id: 's1',
+                taskIds: [],
+                status: 'quiet',
+                providerId: 'claude',
+                updatedAt: '2026-11-08T10:00:00.000Z',
+              },
+              {
+                id: 's2',
+                title: 'Plan',
+                taskIds: ['T1', 'T2'],
+                status: 'authenticationRequired',
+                providerId: 'claude',
+                providerTitle: 'Claude',
+                modelId: 'claude-opus-4-1',
+                modelTitle: 'Opus 4.1',
+                updatedAt: '2026-11-08T11:00:00.000Z',
+              },
+            ],
             hasMore: true,
             attention: [],
           },
@@ -61,6 +80,17 @@ describe('Workspace response mapping', () => {
     });
     expect(mapped.sessionsHasMore).toBe(true);
     expect(mapped.sessions[0]?.title).toBe('Sesja bez nazwy');
+    // The agent and the update time reach Continue session; a sign-in is no activity.
+    expect(mapped.sessions[1]).toMatchObject({
+      navigationStatus: 'authenticationRequired',
+      taskCount: 2,
+      updatedAt: '2026-11-08T11:00:00.000Z',
+      providerId: 'claude',
+      providerTitle: 'Claude',
+      modelId: 'claude-opus-4-1',
+      modelTitle: 'Opus 4.1',
+    });
+    expect(mapped.sessions[1]?.activityCode).toBeUndefined();
   });
 
   it('does not infer Git absence or zero documents when projections are temporarily unavailable', async () => {

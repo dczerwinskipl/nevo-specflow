@@ -57,7 +57,12 @@ export function mapWorkspaceResponse(
     // The server never invents a title; an untitled Session shows the UI's untitled label.
     title: session.title ?? translateNow('sessions.untitled'),
     navigationStatus: session.status,
-    taskCount: session.taskIds.length > 0 ? String(session.taskIds.length) : undefined,
+    taskCount: session.taskIds.length,
+    updatedAt: session.updatedAt,
+    providerId: session.providerId,
+    ...(session.providerTitle ? { providerTitle: session.providerTitle } : {}),
+    ...(session.modelId ? { modelId: session.modelId } : {}),
+    ...(session.modelTitle ? { modelTitle: session.modelTitle } : {}),
     activityCode:
       session.status === 'active' || session.status === 'attention' ? session.status : undefined,
     activity:

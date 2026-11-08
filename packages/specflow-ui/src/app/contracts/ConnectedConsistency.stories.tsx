@@ -283,7 +283,16 @@ function Connected({
               sessions: {
                 state: 'available',
                 data: {
-                  items: [{ id: 'session', title: 'Spec Writer', status: 'quiet', taskIds: [] }],
+                  items: [
+                    {
+                      id: 'session',
+                      title: 'Spec Writer',
+                      status: 'quiet',
+                      taskIds: [],
+                      providerId: 'codex',
+                      updatedAt: '2026-10-01T12:00:00.000Z',
+                    },
+                  ],
                   attention: [],
                 },
               },

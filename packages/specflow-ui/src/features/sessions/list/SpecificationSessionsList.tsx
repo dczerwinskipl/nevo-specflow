@@ -1,44 +1,15 @@
 import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { TFunction } from 'i18next';
 import { Alert, Button, InformationList, SegmentedControl, Typography } from '@nevo/ui';
 import type { SessionListItem } from '@nevo/specflow-contracts/sessions';
 import { LoadingPresentation } from '../../../app/loading/LoadingPresentation';
 import { useAnnouncer } from '../../../shared/a11y/useAnnouncer';
-import { OperationalRow, type CompactFacts } from '../../../shared/operational-list';
-import type { SemanticSupporting } from '../../../shared/operational-list/OperationalRow.types';
-import { formatRelativeTime, useNow } from '../../../shared/operations/panel/relativeTime';
+import { OperationalRow } from '../../../shared/operational-list';
+import { useNow } from '../../../shared/operations/panel/relativeTime';
+import { SessionProviderIcon } from '../shared/SessionProviderIcon';
+import { sessionRowFacts, sessionRowStatus, type SessionRowAgent } from '../shared/sessionRow';
 import type { SessionCollection } from './loadSessions';
 import type { SpecificationSessionListState } from './useSpecificationSessionList';
-
-/**
- * A Session row's status (session-association-ux §6): Session readiness only, never an Engine
- * attempt fact. A ready Session shows none.
- */
-export function sessionRowStatus(
-  readiness: SessionListItem['readiness'],
-  t: TFunction,
-): SemanticSupporting | undefined {
-  switch (readiness) {
-    case 'ready':
-      return undefined;
-    case 'requiresAttention':
-      return {
-        text: t('sessions.list.statusAttention'),
-        tone: 'attention',
-        icon: 'triangle-alert',
-      };
-    case 'busy':
-      return {
-        text: t('sessions.list.statusActive'),
-        tone: 'info',
-        icon: 'loader',
-        iconClassName: 'animate-spin',
-      };
-    default:
-      return { text: t('sessions.list.statusUnknown'), textClassName: 'text-content-muted' };
-  }
-}
 
 /**
  * The heading the list belongs to: the nearest page title (`ViewPageTitle`, focusable with
@@ -55,23 +26,14 @@ function owningHeading(element: HTMLElement | null): HTMLElement | null {
   return null;
 }
 
-/**
- * A row's compact facts: the associated Task count, then the relative update. A row without
- * associated Tasks has no count fact at all, so it reserves no column for one.
- */
-function rowFacts(item: SessionListItem, t: TFunction, now: number, locale: string): CompactFacts {
-  const count = item.association.kind === 'specification' ? item.association.taskIds.length : 0;
-  const updated = formatRelativeTime(item.updatedAt, now, locale) ?? '';
-
-  return count > 0
-    ? [
-        {
-          text: t('sessions.list.taskCount', { count }),
-          accessibleText: t('sessions.list.associatedTasks', { count }),
-        },
-        updated,
-      ]
-    : [updated];
+/** A list row's agent: its ids and the Runtime's display titles. */
+function agentOf(item: SessionListItem): SessionRowAgent {
+  return {
+    providerId: item.providerId,
+    ...(item.providerTitle ? { providerTitle: item.providerTitle } : {}),
+    ...(item.modelId ? { modelId: item.modelId } : {}),
+    ...(item.modelTitle ? { modelTitle: item.modelTitle } : {}),
+  };
 }
 
 /**
@@ -201,10 +163,24 @@ export function SpecificationSessionsList({
               {state.rows.map((item) => (
                 <OperationalRow
                   key={item.sessionId}
+                  leading={<SessionProviderIcon providerId={item.providerId} />}
                   primary={item.title ?? t('sessions.untitled')}
                   onPrimaryClick={() => onOpenSession(item.sessionId)}
-                  compactFacts={rowFacts(item, t, now, i18n.language)}
-                  supporting={sessionRowStatus(item.readiness, t)}
+                  factsLayout="inline"
+                  compactFacts={sessionRowFacts(
+                    {
+                      updatedAt: item.updatedAt,
+                      agent: agentOf(item),
+                      taskCount:
+                        item.association.kind === 'specification'
+                          ? item.association.taskIds.length
+                          : 0,
+                    },
+                    t,
+                    now,
+                    i18n.language,
+                  )}
+                  supporting={sessionRowStatus(item.readiness, agentOf(item), t)}
                   dataAttributes={{ 'data-session-row': item.sessionId }}
                 />
               ))}

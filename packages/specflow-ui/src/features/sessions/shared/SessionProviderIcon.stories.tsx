@@ -6,9 +6,10 @@ const meta = {
   component: SessionProviderIcon,
   render: () => (
     <div className="grid gap-4 p-4 text-content-primary">
-      {['codex', 'claude', 'unknown'].map((id) => (
+      {['codex', 'claude', 'antigravity', 'unknown'].map((id) => (
         <div key={id} className="flex items-center gap-3">
           <SessionProviderIcon providerId={id} />
+          <SessionProviderIcon providerId={id} size="xl" />
           <span>{id}</span>
         </div>
       ))}

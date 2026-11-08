@@ -1,10 +1,12 @@
 import { Icon } from '@nevo/ui';
 import codex from './provider-icons/codex.svg?url';
 import claude from './provider-icons/claude-color.svg?url';
+import antigravity from './provider-icons/antigravity-color.svg?url';
 
 const providerIcons: Readonly<Record<string, { url: string; kind: 'color' | 'mono' }>> = {
   codex: { url: codex, kind: 'mono' },
   claude: { url: claude, kind: 'color' },
+  antigravity: { url: antigravity, kind: 'color' },
 };
 
 /** `default` is the 16px inline mark; `xl` is the design system's large glyph (`Icon` `xl`). */

@@ -14,7 +14,7 @@ import {
   SpecificationWorkspaceParamsSchema,
 } from '@nevo/specflow-contracts/specs/workspace';
 import { SessionError, authorizeSessionWrite, type SessionsRuntime } from '../../sessions';
-import { specScope, type ProjectIdSource } from '../../specs/scope';
+import { specScope, type ProjectIdSource } from '../../specs';
 import type { AssociationTargets } from '../targets';
 import { createContextSession } from './create-context-session';
 

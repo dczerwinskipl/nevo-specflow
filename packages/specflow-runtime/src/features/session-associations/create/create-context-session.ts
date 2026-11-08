@@ -2,7 +2,7 @@ import type {
   CreateContextSession,
   CreateContextSessionResult,
 } from '@nevo/specflow-contracts/sessions';
-import type { SessionCoordinator } from '../../sessions/lifecycle/coordinator';
+import type { SessionCoordinator } from '../../sessions';
 import type { AssociationTargets } from '../targets';
 
 export type CreateContextSessionOutcome =

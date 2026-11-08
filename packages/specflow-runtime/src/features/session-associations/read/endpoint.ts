@@ -3,7 +3,7 @@ import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Type } from 'typebox';
 import { SessionAssociationReadSchema, SessionIdSchema } from '@nevo/specflow-contracts/sessions';
 import type { SessionAssociations } from '../../sessions';
-import type { ProjectIdSource } from '../../specs/scope';
+import type { ProjectIdSource } from '../../specs';
 import type { AssociationTargets } from '../targets';
 import { readSessionAssociation } from './read-association';
 

@@ -739,7 +739,26 @@ export async function runSessionWorker(): Promise<void> {
     }
 
     if (c.op === 'list') {
-      return catalogue.list(c.filter, c.after, c.scanBudget);
+      if (c.cursor !== undefined && c.after !== undefined) {
+        fail(
+          'SESSION_INPUT_INVALID',
+          'A list request continues after a cursor or a row, not both.',
+        );
+      }
+
+      return catalogue.list(
+        c.filter,
+        c.cursor !== undefined ? cursors.listBoundary(c.cursor, c.filter) : c.after,
+        c.scanBudget,
+      );
+    }
+
+    if (c.op === 'list-cursor') {
+      if (!Number.isSafeInteger(c.after) || c.after < 1) {
+        fail('SESSION_INPUT_INVALID', 'Invalid Session list cursor position.');
+      }
+
+      return cursors.listCursor(c.filter, c.after);
     }
 
     if (c.op === 'summaries') {

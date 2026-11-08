@@ -61,6 +61,8 @@ export function createAuthorization(definition: AuthorizationDefinition): Author
     return registry.assignments.some(
       (assignment) =>
         subjectsEqual(assignment.subject, input.subject) &&
+        (input.withoutDimension === undefined ||
+          !Object.hasOwn(assignment.scope, input.withoutDimension)) &&
         registry.capabilitiesForRole(assignment.role).includes(input.capability),
     );
   };

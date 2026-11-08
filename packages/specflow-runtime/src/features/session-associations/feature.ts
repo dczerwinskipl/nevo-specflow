@@ -4,7 +4,7 @@ import {
   type SessionAssociations,
   type SessionsRuntime,
 } from '../sessions';
-import type { ProjectIdSource } from '../specs/scope';
+import type { ProjectIdSource } from '../specs';
 import type { AssociationTargets } from './targets';
 import { registerCreateContextSessionRoute } from './create/endpoint';
 import { registerSessionAssociationReadRoute } from './read/endpoint';

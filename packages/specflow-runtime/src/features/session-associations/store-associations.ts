@@ -5,7 +5,7 @@ import {
   type SessionReference,
   type SessionsRuntime,
 } from '../sessions';
-import type { SessionIdentity, StoredAssociation } from '../sessions/persistence/protocol';
+import type { SessionIdentity, StoredAssociation } from '../sessions';
 import type { AssociationTargets } from './targets';
 
 function coordinatorOf(runtime: SessionsRuntime) {

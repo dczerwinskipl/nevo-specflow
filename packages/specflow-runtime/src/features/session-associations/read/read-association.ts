@@ -6,7 +6,7 @@ import {
 import { SpecCapabilities } from '@nevo/specflow-contracts/specs';
 import type { RequestAuthorization } from '../../auth';
 import { sessionScope, type SessionAssociations } from '../../sessions';
-import { specScope } from '../../specs/scope';
+import { specScope } from '../../specs';
 import type { AssociationTargets, TargetFact } from '../targets';
 
 function fact<T>(target: TargetFact<T>, id: string): AssociatedFact<T> {

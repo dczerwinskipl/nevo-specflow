@@ -216,8 +216,13 @@ export type StoreCommand =
       taskIds: string[];
       origin: 'workflow';
     }
-  /** `SessionListScan`: at most `scanBudget` (<= 500) index rows after `after` (a created_seq). */
-  | { op: 'list'; filter: SessionListFilter; after?: number; scanBudget: number }
+  /**
+   * `SessionListScan`: at most `scanBudget` (<= 500) index rows after `after` (a created_seq) or
+   * after the row a signed `cursor` of the same filter names (never both).
+   */
+  | { op: 'list'; filter: SessionListFilter; after?: number; cursor?: string; scanBudget: number }
+  /** A signed list cursor continuing after `after`, bound to the store, project and filter. */
+  | { op: 'list-cursor'; filter: SessionListFilter; after: number }
   /** `SessionListSummary[]` for at most 100 Sessions, decoding only those rows. */
   | { op: 'summaries'; sessionIds: string[] }
   | { op: 'history'; sessionId: string; actor: string; before: string; limit: number }

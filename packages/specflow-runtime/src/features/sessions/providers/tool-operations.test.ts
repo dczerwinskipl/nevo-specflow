@@ -16,7 +16,12 @@ describe('native tool operation classification', () => {
       Write: 'write',
       Bash: 'command',
     });
-    expect(codexToolOperations).toEqual({ commandExecution: 'command', fileChange: 'edit' });
+    expect(codexToolOperations).toEqual({
+      commandExecution: 'command',
+      fileChange: 'edit',
+      mcpToolCall: 'other',
+      webSearch: 'other',
+    });
     expect(antigravityToolOperations).toEqual({
       view_file: 'read',
       list_dir: 'list',

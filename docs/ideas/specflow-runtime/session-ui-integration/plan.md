@@ -10,7 +10,7 @@ read_when:
   - asking what the feat/session-ui-integration delivery decided and what it left open
   - planning the Session association registry or the Session list
 summary: >
-  Delivered record of the Managed Session UI integration (T1-T12): real telemetry, closed command
+  Delivered record of the Managed Session UI integration (T1-T13): real telemetry, closed command
   acknowledgements, unknown-Turn reconcile, multi-select questions, Antigravity icon, Work counts
   and classified digest, Session rename/archive/unarchive/delete end to end. Keeps the owner
   decisions and the open follow-ups; the behaviour lives in the owning contracts.
@@ -27,7 +27,7 @@ related:
 
 # Managed Session UI integration — delivery record
 
-Branch `feat/session-ui-integration`, one PR. All tasks T1-T12 are delivered. The contracts are
+Branch `feat/session-ui-integration`, one PR. All tasks T1-T13 are delivered. The contracts are
 authoritative and this record does not repeat them:
 [Sessions API](../../../reference/api/sessions.md) (command acknowledgements, Work counts, Work
 digest, rename/archive/unarchive/delete, errors),
@@ -54,6 +54,7 @@ delete transaction, delete map),
 | T10  | Runtime implementation with durable idempotency, delete map characterization, stream close on delete |
 | T11  | Header Session actions, archived bar, post-delete navigation, Session not-found view                 |
 | T12  | Docs reconciled; cross-boundary HTTP scenario `test/sessions/session-lifecycle.http.test.ts`         |
+| T13  | Codex `mcpToolCall`/`webSearch` items open an `other` ToolAction instead of failing the Turn         |
 
 ## Owner decisions (2026-11-08)
 
@@ -79,8 +80,6 @@ delete transaction, delete map),
   Specification/Task, execution scope, attention) and a bounded Session list/catalogue. Until then
   Context scope stays `unknown`, archive has no list to leave and post-delete navigation goes to
   `/sessions/new`.
-- **Codex `webSearch`/`mcpToolCall` items fail the Turn.** Pre-existing on `main`, not introduced
-  here; the Codex adapter must map these item types before they are classified.
 - Out of scope and still unplaced by a reviewed UX contract: demo-mode managed Sessions,
   planned-area tabs, attachments, the naming signal, Tasks/Attention Context sections, and
   `TurnSummary.usage`/`error` presentation.

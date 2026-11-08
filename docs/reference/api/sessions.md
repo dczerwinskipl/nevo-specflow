@@ -400,14 +400,20 @@ Classification comes only from the provider's own tool identity on the driver's 
 fact (`operation`, see [driver protocol](../protocols/session-provider-driver.md)); it is never
 inferred from command text, arguments or titles, and an unmapped identity is `other`. `test` and
 `web` are used only when a provider's native tool itself identifies a test run or a web access;
-no currently supported provider tool does.
+no currently supported provider maps one (the Codex `webSearch` item is `other`, see below).
 
 The digest counts only ToolActions Runtime admitted; it is not a full count of every native tool a
 provider has. Claude web tools (`WebFetch`, `WebSearch`) are unreachable only because the adapter
 restricts Claude with `--tools` to the inventory above; widening that list requires a mapping in
-the same change. Codex `webSearch` and `mcpToolCall` ThreadItems open no Work or ToolAction: they
-are outside the item types the Codex adapter accepts, so the protocol refuses them, and the digest
-never contains them.
+the same change. Codex `mcpToolCall` and `webSearch` ThreadItems each open one tool Work with one
+ToolAction classified `other` (owner decision; `web` is not inferred for a native web search), so
+the digest counts them and the Turn keeps running. An MCP call's state follows its native status
+(`completed` or `failed`); a web search carries no native status and is `completed` when its item
+completes; either one still open when the Turn ends takes the Turn's terminal state (failed,
+cancelled or interrupted). Codex ThreadItem types outside the adapter's accepted inventory still
+fail the protocol. The Codex
+adapter configures no MCP servers and disables web search, and no approval or sandbox path changes
+for these items.
 
 A reader that is not following the live stream (a detached tab, or one that has loaded only
 history pages) holds the digest from the last `work-summary` revision it received, which can be

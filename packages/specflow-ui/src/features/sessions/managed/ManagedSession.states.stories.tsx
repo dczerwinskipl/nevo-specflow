@@ -345,7 +345,7 @@ export const Unavailable: Story = {
  * A Session the caller may only view (the demo Runtime's read-only Sessions, or a viewer): the
  * snapshot grants `view` alone. A quiet bar takes the Composer's place, the empty conversation has
  * no call to action, and there is no Session menu and no error (full-session-screen-structure
- * §22.1, proposed amendment "View-only Session", awaiting owner).
+ * §22.1, View-only Session).
  */
 export const ViewOnlySession: Story = {
   tags: ['contract'],

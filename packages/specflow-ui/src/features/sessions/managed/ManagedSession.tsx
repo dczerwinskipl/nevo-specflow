@@ -63,6 +63,7 @@ import { SessionNamingStatus } from './naming/SessionNamingStatus';
 import { InteractionPrompt } from './InteractionPrompt';
 import { SessionReadyEmptyState } from './empty/SessionReadyEmptyState';
 import { ViewOnlySessionBar } from './ViewOnlySessionBar';
+import { isViewOnlySession } from './viewOnly';
 import { PendingConversation } from '../start/handoff/PendingConversation';
 import type { StartedSession } from '../start/handoff/startedSession';
 import { useStartedSessionFallback } from '../start/handoff/useStartedSessionFallback';
@@ -557,9 +558,7 @@ function ManagedSessionConversation({
   const canCancel =
     !!snapshot?.session.capabilities.cancel && !!snapshot?.activeTurn && !unknownTurn;
   const archived = !!snapshot?.session.archivedAt;
-  // View-only: without Manage no Turn, answer or Stop is ever the caller's. Not `!start`, which is
-  // also false while a Turn runs (the Composer then carries Stop) or the provider is unavailable.
-  const viewOnly = !!snapshot && !archived && !snapshot.session.capabilities.manage;
+  const viewOnly = isViewOnlySession(snapshot, !!state.pending);
   // After a Restore the Composer comes back with the `session` change; focus follows it there.
   const editorRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {

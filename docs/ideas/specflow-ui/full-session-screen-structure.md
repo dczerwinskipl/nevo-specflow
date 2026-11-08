@@ -1302,7 +1302,7 @@ Secondary selection from the URL. Secondary is local Workspace state.
 A direct Session route still exposes parent orientation (for example owning Specification when
 available), but does not invent a previous Secondary state.
 
-### 22.1 Session actions and archived Session (owner accepted 2026-11-08)
+### 22.1 Session actions, archived and view-only Session (owner accepted 2026-11-08)
 
 Rename, Archive/Unarchive and Delete live in the header `⋯` menu (`WorkspaceHeaderAction`,
 `direct: 'never'`), Delete last with `tone: 'danger'`. Commands and errors are the
@@ -1339,15 +1339,18 @@ ją w każdej chwili przywrócić.` (`managedSession.sessionActions.archiveDescr
   Pending `Przywracanie…`; failure is one line in the bar (unconfirmed only for a lost answer,
   forbidden and other refusals with their own copy). On success the Composer returns with its draft
   and focus moves to the editor. Conversation, Work, Context and telemetry stay readable.
-- **View-only Session (proposed amendment, awaiting owner):** when the caller lacks
-  `capabilities.manage` and the Session is not archived (the demo Runtime's read-only Sessions, a
-  viewer), no Turn, answer or Stop can ever be theirs, so the Composer is replaced in its overlay slot
-  by the archived bar's quiet shape without an action: `InlineNote` info `Możesz tylko przeglądać tę
-sesję.` / _You can only view this session._ (`managedSession.viewOnly.note`, `role="status"`). An
-  empty conversation then reads `Brak wiadomości w tej sesji.` (`managedSession.viewOnly.empty`) with
-  no "write a message" call to action. The trigger is the missing Manage, not `!capabilities.start`:
-  Start is also false while a Turn runs (the Composer carries Stop) or the provider is unavailable.
-  Archived takes precedence; conversation, Work, Context and telemetry stay readable.
+- **View-only Session (owner accepted 2026-11-08):** when the caller lacks
+  `capabilities.manage`, the Session is not archived and no pending start is retained (the demo
+  Runtime's read-only Sessions, a viewer), no Turn, answer or Stop can ever be theirs. The Composer
+  is replaced in its overlay slot by the archived bar's quiet shape without an action: `InlineNote`
+  info `Możesz tylko przeglądać tę sesję.` / _You can only view this session._
+  (`managedSession.viewOnly.note`, `role="status"`). An empty conversation then reads
+  `Brak wiadomości w tej sesji.` (`managedSession.viewOnly.empty`) with no "write a message" call
+  to action. The trigger is the missing Manage, not `!capabilities.start`: Start is also false
+  while a Turn runs (the Composer carries Stop) or the provider is unavailable. A retained pending
+  start keeps the Composer, whose Retry owns that request. Archived takes precedence; conversation,
+  Work, Context and telemetry stay readable. Both bars carry the Composer's border
+  (`border-border-default`) so they read as one surface on the split layout.
 - **Archived elsewhere:** 409 `SESSION_ARCHIVED` on send, interaction respond or a retained pending
   start is a definite refusal: the retained command and its `requestId` are dropped, no
   `commandFailed` retry copy, the draft is kept, and the overlay slot says `Sesja została

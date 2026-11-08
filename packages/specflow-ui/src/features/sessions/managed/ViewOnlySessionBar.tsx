@@ -4,7 +4,7 @@ import { InlineNote } from '@nevo/ui';
 /**
  * Takes the Composer's place when the caller may only view the Session (no Manage, so no Turn,
  * answer or Stop is ever theirs): the archived bar's quiet shape without an action
- * (full-session-screen-structure §22.1, proposed amendment "View-only Session").
+ * (full-session-screen-structure §22.1, View-only Session).
  */
 export function ViewOnlySessionBar() {
   const { t } = useTranslation();
@@ -13,7 +13,7 @@ export function ViewOnlySessionBar() {
     <div
       data-view-only-bar="true"
       role="status"
-      className="workspace-floating-pill rounded-composite px-4 py-3 shadow-lg"
+      className="workspace-floating-pill rounded-composite border border-solid border-border-default px-4 py-3 shadow-lg"
     >
       <InlineNote tone="info">{t('managedSession.viewOnly.note')}</InlineNote>
     </div>

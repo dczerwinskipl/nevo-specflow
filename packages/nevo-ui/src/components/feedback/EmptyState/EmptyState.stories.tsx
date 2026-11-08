@@ -101,14 +101,26 @@ export const Recovery: Story = {
   },
 };
 
+function verifyInline(canvasElement: HTMLElement) {
+  const state = canvasElement.querySelector<HTMLElement>('[data-empty-state="inline"]');
+  assert(state !== null, 'The inline empty state renders.');
+  const { borderTopWidth, textAlign } = getComputedStyle(state!);
+  assert(borderTopWidth === '0px', 'The inline empty state has no border.');
+  assert(textAlign === 'left', 'The inline empty state is aligned to the start.');
+  assert(state!.getBoundingClientRect().height < 96, 'The inline empty state is row-sized.');
+
+  return state!;
+}
+
 /**
  * The body of a page section without rows (for example a Tasks section with no Tasks): no border,
- * the height and inset of a list row, aligned to the start under the section header.
+ * the height and inset of a list row, aligned to the start under the section header. Without a
+ * glyph when the section header already shows one; the text starts at the rows' inset.
  */
 export const Inline: Story = {
   args: {
     variant: 'inline',
-    icon: 'list-checks',
+    icon: undefined,
     title: 'No tasks yet',
     description: 'Tasks appear here once the specification is prepared for work.',
   },
@@ -119,12 +131,20 @@ export const Inline: Story = {
     </section>
   ),
   play: ({ canvasElement }) => {
-    const state = canvasElement.querySelector<HTMLElement>('[data-empty-state="inline"]');
-    assert(state !== null, 'The inline empty state renders.');
-    const { borderTopWidth, textAlign } = getComputedStyle(state!);
-    assert(borderTopWidth === '0px', 'The inline empty state has no border.');
-    assert(textAlign === 'left', 'The inline empty state is aligned to the start.');
-    assert(state!.getBoundingClientRect().height < 96, 'The inline empty state is row-sized.');
+    const state = verifyInline(canvasElement);
+    assert(!state.querySelector('svg'), 'Without an icon no glyph is drawn.');
+    const text = state.firstElementChild!.getBoundingClientRect().left;
+    assert(text - state.getBoundingClientRect().left === 8, 'The text starts at the row inset.');
+  },
+};
+
+/** An inline state whose section header has no glyph of its own: a control-sized glyph beside it. */
+export const InlineWithGlyph: Story = {
+  args: { ...Inline.args, icon: 'list-checks' },
+  render: Inline.render,
+  play: ({ canvasElement }) => {
+    const state = verifyInline(canvasElement);
+    assert(state.querySelector('svg') !== null, 'The glyph is drawn beside the text.');
   },
 };
 

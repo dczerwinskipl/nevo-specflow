@@ -7,12 +7,6 @@ import { getGroupTone } from './presentation';
 import { TaskGroupHeader } from './TaskGroupHeader';
 import { TaskRow } from './TaskRow';
 
-/**
- * The empty Tasks body: `inline` (a row-sized, start-aligned state under the header), variant A of
- * the owner's 2026-11-08 review of the Tasks empty state; pending the owner's A/B choice.
- */
-const TASKS_EMPTY_STATE_VARIANT = 'inline';
-
 export interface TasksSectionProps {
   readonly taskGroups: readonly TaskGroup[];
   readonly isPreparing?: boolean;
@@ -149,9 +143,10 @@ export function TasksSection({
 
       {noTasks ? (
         // The next step belongs to the preparation block or Continue session, not to this state.
+        // A row-sized, start-aligned state (owner decision D1, 2026-11-08), without a glyph: the
+        // section header already shows the Tasks icon.
         <EmptyState
-          variant={TASKS_EMPTY_STATE_VARIANT}
-          icon="list-checks"
+          variant="inline"
           title={t('specification.tasksEmptyTitle')}
           description={t('specification.tasksEmptyDescription')}
         />

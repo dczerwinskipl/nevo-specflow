@@ -55,6 +55,16 @@ describe('EmptyState', () => {
     ).toContain('size-icon-md');
   });
 
+  it('draws an inline state without a glyph as the text alone', () => {
+    const html = renderToStaticMarkup(
+      <EmptyState variant="inline" title="No tasks" description="Later" />,
+    );
+    expect(html).not.toContain('aria-hidden');
+    expect(html).not.toContain('size-icon-');
+    expect(html).toContain('No tasks');
+    expect(html).toContain('Later');
+  });
+
   it('takes a custom illustration element in place of the glyph', () => {
     const html = renderToStaticMarkup(
       <EmptyState icon={<span data-illustration="true" />} title="No data" />,

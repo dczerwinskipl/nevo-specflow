@@ -624,10 +624,10 @@ Implemented 2026-11-08 ([project-mode Overview plan](../../specflow-runtime/proj
   The legacy conversation dialog is removed.
 - **Empty Tasks.** The Tasks section keeps its **Zadania** header (the navigator's `#tasks-heading`
   target) without count or execute control, and below it the `EmptyState` **Nie ma jeszcze zadań** /
-  "Zadania pojawią się tutaj, gdy specyfikacja zostanie przygotowana do realizacji." (icon
-  `list-checks`, no actions). The owner rejected the bordered `variant="default"` block as too heavy
-  (2026-11-08); the row-sized, start-aligned `variant="inline"` (A) is implemented pending the
-  owner's choice between it and a centred borderless variant (B).
+  "Zadania pojawią się tutaj, gdy specyfikacja zostanie przygotowana do realizacji." as the
+  row-sized, start-aligned `variant="inline"` without a glyph (the header already shows the Tasks
+  icon) and without actions, its text at the rows' inset. The owner rejected the bordered
+  `variant="default"` block as too heavy and the repeated icon as redundant (2026-11-08).
 - **Activity history.** The "Specification created" event does not open the Secondary by default;
   only a Session (later Task or document) event does. Times render with the relative-time helper;
   the date-only created event renders as its calendar date without a time-zone shift.

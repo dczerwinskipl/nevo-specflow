@@ -36,22 +36,24 @@ related:
 **Amendment to D1/P6 (owner review of the `v3-*` render, 2026-11-08):** the bordered
 `EmptyState variant="default"` block is too heavy for the Tasks body (the section has no column
 headers; its rows read like Documents). Implemented instead: a new Nevo UI `EmptyState`
-`variant="inline"` (no border, no minimum height, row inset and height, start-aligned, `md` glyph
-beside the text), variant **A**, pending the owner's choice between A and a centred borderless
-variant **B** (`v4-tasks-empty-{a,b}-*` renders). Activity event titles are localized in the UI by
+`variant="inline"` (no border, no minimum height, row inset and height, start-aligned): the owner
+kept variant **A** of the `v4-tasks-empty-{a,b}-*` renders. A second review the same day removed the glyph: the
+**Zadania** header already shows the Tasks icon, so the empty state is the title and description
+alone, starting at the rows' inset (`v5-tasks-empty-*`). This supersedes "icon, title, description"
+in D1 and `icon="list-checks"` in P6. Activity event titles are localized in the UI by
 the events' stable ids (`specification-created`, `session-started.<sessionId>`).
 
 ## Owner decisions (2026-11-08)
 
-| #   | Decision                                                                                                                                                                                                                                   |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| D1  | The Tasks section stays with its **Zadania** header; with no Tasks it shows the product's standard section-sized empty state (icon, title, description), not a single muted line. Exact component, copy and sizing in P6                   |
-| D2  | **A**: partial real activity (Specification created, Session started). The Activity history Secondary opens by default only when a Session event exists, never for the created event alone; otherwise it is closed and available on demand |
-| D3  | The preparation block's button opens New Session (`/specs/:specId/sessions/new`), gated by `actions.startSession`; the legacy conversation dialog path is removed                                                                          |
-| D4  | Button label **Rozpocznij sesję** / _Start session_                                                                                                                                                                                        |
-| D5  | Demo `activity` unchanged                                                                                                                                                                                                                  |
-| D6  | `summary` is derived from the overview document (bounded, plain text; P1)                                                                                                                                                                  |
-| -   | Rebase order: PR #124 first (done; merged into this branch at `088c2edc`)                                                                                                                                                                  |
+| #   | Decision                                                                                                                                                                                                                                         |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| D1  | The Tasks section stays with its **Zadania** header; with no Tasks it shows `EmptyState variant="inline"` (variant A): title and description, no glyph, no border, row-sized, start-aligned at the rows' inset (amended after review, see above) |
+| D2  | **A**: partial real activity (Specification created, Session started). The Activity history Secondary opens by default only when a Session event exists, never for the created event alone; otherwise it is closed and available on demand       |
+| D3  | The preparation block's button opens New Session (`/specs/:specId/sessions/new`), gated by `actions.startSession`; the legacy conversation dialog path is removed                                                                                |
+| D4  | Button label **Rozpocznij sesję** / _Start session_                                                                                                                                                                                              |
+| D5  | Demo `activity` unchanged                                                                                                                                                                                                                        |
+| D6  | `summary` is derived from the overview document (bounded, plain text; P1)                                                                                                                                                                        |
+| -   | Rebase order: PR #124 first (done; merged into this branch at `088c2edc`)                                                                                                                                                                        |
 
 ## 1. Problem (observed facts)
 

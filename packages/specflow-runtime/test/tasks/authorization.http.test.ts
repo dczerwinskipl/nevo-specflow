@@ -10,6 +10,7 @@ import { taskReadEndpoint } from '../../src/features/tasks/endpoint';
 import { PageLeases } from '../../src/features/tasks/reads/page-leases';
 import { createDemoTaskSources } from '../../src/features/tasks';
 import { createDemoSpecsRepositories } from '../../src/features/specs';
+import { sessionReferences } from '../support/session-references';
 
 describe('Task read authorization through the real HTTP adapter', () => {
   it('redacts Session metadata and invalidates existing tokens after subject/policy change', async () => {
@@ -76,10 +77,9 @@ describe('Task read authorization through the real HTTP adapter', () => {
       dependencies: {
         ...sources,
         execution: { inspect: () => Promise.resolve(execution) },
-        sessions: {
-          resolve: (sessionId) =>
-            Promise.resolve({ ...definition.identity, specId: 'session-owner', sessionId }),
-        },
+        sessions: sessionReferences((sessionId) =>
+          Promise.resolve({ ...definition.identity, specId: 'session-owner', sessionId }),
+        ),
         leases: new PageLeases(),
       },
     });

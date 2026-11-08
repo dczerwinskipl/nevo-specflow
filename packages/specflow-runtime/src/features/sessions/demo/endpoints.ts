@@ -12,6 +12,7 @@ import type { DemoCatalogue, DemoSpecification } from '../../demo-catalogue';
 import { DemoId, DemoSpecParams, demoErrors, isDemoOperationError } from '../../../demo/http';
 import type { DemoState } from '../../../demo/state';
 import type { SessionReferenceOwner } from '../reference-owner';
+import { sessionScope } from '../scope';
 import type { DemoSessions } from './operations';
 
 const SessionParams = Type.Object({ specId: DemoId, sessionId: DemoId });
@@ -107,7 +108,7 @@ export function registerDemoSessionRoutes<RawServer extends RawServerBase>(
       request.authz.require({
         resource: SessionCapabilities,
         capability: SessionCapabilities.capabilities.View,
-        scope: owner,
+        scope: sessionScope(owner, SessionCapabilities.capabilities.View),
       });
       const detail = await sessions.detail(
         sessionId,

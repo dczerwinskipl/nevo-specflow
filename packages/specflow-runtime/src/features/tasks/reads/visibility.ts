@@ -1,14 +1,48 @@
 import { SessionCapabilities } from '@nevo/specflow-contracts/sessions';
 import type { RequestAuthorization } from '../../auth';
 import type { ReferenceFacts, TaskIdentity } from './facts';
-import type { SessionReferenceOwner } from '../../sessions';
+import { sessionScope, type SessionReference, type SessionReferenceOwner } from '../../sessions';
+
+export interface TaskVisibility {
+  (link: ReferenceFacts): Promise<boolean>;
+  /** Resolves every not yet resolved Session reference of `links` in one batch. */
+  prefetch(links: readonly ReferenceFacts[]): Promise<void>;
+}
 
 export function taskVisibility(
   identity: TaskIdentity,
   authz: RequestAuthorization,
   sessions?: SessionReferenceOwner,
-) {
-  return async (link: ReferenceFacts): Promise<boolean> => {
+): TaskVisibility {
+  const owners = new Map<string, Promise<SessionReference | undefined>>();
+  function prefetch(links: readonly ReferenceFacts[]): Promise<void> {
+    const pending = [
+      ...new Set(
+        links.flatMap((link) =>
+          link.state === 'available' &&
+          link.target.kind === 'session' &&
+          !owners.has(link.target.sessionId)
+            ? [link.target.sessionId]
+            : [],
+        ),
+      ),
+    ];
+    if (!pending.length) {
+      return Promise.resolve();
+    }
+
+    const batch = sessions ? sessions.resolveMany(pending) : Promise.resolve(new Map());
+    for (const sessionId of pending) {
+      owners.set(
+        sessionId,
+        batch.then((resolved: ReadonlyMap<string, SessionReference>) => resolved.get(sessionId)),
+      );
+    }
+
+    return batch.then(() => undefined);
+  }
+
+  const visible = async (link: ReferenceFacts): Promise<boolean> => {
     if (link.state === 'forbidden') {
       return false;
     }
@@ -21,17 +55,21 @@ export function taskVisibility(
       return link.target.specId === identity.specId;
     }
 
-    const owner = await sessions?.resolve(link.target.sessionId);
+    const sessionId = link.target.sessionId;
+    await prefetch([link]);
+    const owner = await owners.get(sessionId);
 
     return (
-      owner?.sessionId === link.target.sessionId &&
+      owner?.sessionId === sessionId &&
       owner.projectId === identity.projectId &&
       owner.workspaceId === identity.workspaceId &&
       authz.can({
         resource: SessionCapabilities,
         capability: SessionCapabilities.capabilities.View,
-        scope: { specId: owner.specId, sessionId: owner.sessionId },
+        scope: sessionScope(owner, SessionCapabilities.capabilities.View),
       })
     );
   };
+
+  return Object.assign(visible, { prefetch });
 }

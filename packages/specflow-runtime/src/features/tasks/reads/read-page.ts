@@ -60,6 +60,13 @@ export async function readTaskPage(
     return { kind: 'expired' };
   }
 
+  await visible.prefetch(
+    kind === 'history'
+      ? (page.items as TaskHistoryPage['items']).flatMap((entry) =>
+          entry.resources.map((item) => item.link),
+        )
+      : (page.items as TaskResourcePage['items']).map((item) => item.link),
+  );
   const items = [];
   // One bounded source page per request. An underfilled visible page retains its continuation.
   if (kind === 'history') {

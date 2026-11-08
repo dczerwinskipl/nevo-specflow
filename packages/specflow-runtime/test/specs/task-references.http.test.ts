@@ -10,6 +10,7 @@ import { PageLeases } from '../../src/features/tasks/reads/page-leases';
 import { createRuntimeApp } from '../../src/server/app';
 import { passwordConfig } from '../auth/support/config';
 import type { SpecificationTaskResponse } from '@nevo/specflow-contracts/tasks';
+import { sessionReferences } from '../support/session-references';
 
 describe('Task reference authorization and incomplete source regression', () => {
   it.each([false, true])(
@@ -97,15 +98,14 @@ describe('Task reference authorization and incomplete source regression', () => 
         leases: new PageLeases(),
         definitions: { resolve: () => Promise.resolve(definition) },
         execution: { inspect: () => Promise.resolve(execution) },
-        sessions: {
-          resolve: (sessionId: string) =>
-            Promise.resolve({
-              sessionId,
-              specId: 'actual-owner',
-              projectId: definition.identity.projectId,
-              workspaceId: definition.identity.workspaceId,
-            }),
-        },
+        sessions: sessionReferences((sessionId: string) =>
+          Promise.resolve({
+            sessionId,
+            specId: 'actual-owner',
+            projectId: definition.identity.projectId,
+            workspaceId: definition.identity.workspaceId,
+          }),
+        ),
       };
       const result = await readTaskDetail(deps, 'admission', 'TASK-03', authz);
       expect(result.kind).toBe('ok');

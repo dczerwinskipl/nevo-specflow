@@ -17,6 +17,8 @@ import type { WorkspaceContributions } from '../../src/features/specs/workspace/
 import { demoTaskResources, demoTaskHistory } from '../../src/features/tasks/demo/execution';
 import type { TaskHistoryPage } from '@nevo/specflow-contracts/tasks';
 import type { ReferenceVisibility } from '../../src/features/tasks/reads/facts';
+import type { SessionReferenceOwner } from '../../src/features/sessions';
+import { sessionReferences } from '../support/session-references';
 
 async function fixture() {
   const demo = createDemoSpecsRepositories(),
@@ -69,9 +71,12 @@ async function fixture() {
 
 async function appFor(
   f: Awaited<ReturnType<typeof fixture>>,
-  sessions: TasksFeatureDependencies['sessions'],
+  owner: Pick<SessionReferenceOwner, 'resolve'>,
   contributions?: WorkspaceContributions,
 ) {
+  const sessions: TasksFeatureDependencies['sessions'] = sessionReferences((id) =>
+    owner.resolve(id),
+  );
   const app = Fastify();
   registerRuntimeErrorHandler(app);
   app.decorateRequest('authz', { getter: () => f.authz });

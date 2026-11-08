@@ -7,6 +7,8 @@ import type {
 } from '@nevo/specflow-contracts/sessions';
 import { effective, effectiveEvent } from './projection';
 
+const identity = { projectId: 'project', sessionId: 'session' };
+
 function fixture(
   mode: 'read-only' | 'workspace-write' = 'workspace-write',
   write = true,
@@ -58,7 +60,7 @@ function fixture(
     snapshot,
     request,
     provider,
-    project: () => effective(snapshot, request, () => provider),
+    project: () => effective(snapshot, request, () => provider, identity),
   };
 }
 
@@ -113,7 +115,7 @@ it('applies the same effective Start rule to streamed Turn projections', () => {
       },
     },
   };
-  const projected = effectiveEvent(event, f.request, () => f.provider);
+  const projected = effectiveEvent(event, f.request, () => f.provider, identity);
   if (projected.kind !== 'interaction') {
     throw new Error('Wrong fixture event');
   }
@@ -151,7 +153,7 @@ it('keeps an archived Session read-only and projects the separate delete grant',
       },
     },
   };
-  const projected = effectiveEvent(event, archived.request, () => archived.provider);
+  const projected = effectiveEvent(event, archived.request, () => archived.provider, identity);
   if (projected.kind !== 'session') {
     throw new Error('Wrong fixture event');
   }
@@ -162,4 +164,35 @@ it('keeps an archived Session read-only and projects the separate delete grant',
     granted.request.authz as unknown as { resolveCapabilities: () => Record<string, boolean> }
   ).resolveCapabilities = () => ({ view: true, manage: true, delete: true });
   expect(granted.project().session.capabilities).toMatchObject({ start: true, delete: true });
+});
+it('resolves an associated Session at its Specification scope, but write execution without it', () => {
+  const f = fixture();
+  const scopes: unknown[] = [];
+  const request = {
+    authz: {
+      resolveCapabilities: ({ scope }: { scope: Record<string, string> }) => {
+        scopes.push(scope);
+
+        // A Specification-scoped developer: covers the specId scope only.
+        return 'specId' in scope
+          ? { view: true, manage: true, delete: true, 'execute-write': true }
+          : { view: false, manage: false, delete: false, 'execute-write': false };
+      },
+    },
+  } as unknown as FastifyRequest;
+  const projected = effective(f.snapshot, request, () => f.provider, {
+    ...identity,
+    specId: 'S1',
+  });
+  expect(scopes).toEqual([
+    { projectId: 'project', specId: 'S1', sessionId: 'session' },
+    { projectId: 'project', sessionId: 'session' },
+  ]);
+  expect(projected.session.capabilities).toMatchObject({
+    view: true,
+    manage: true,
+    delete: true,
+    executeWrite: false,
+    start: false,
+  });
 });

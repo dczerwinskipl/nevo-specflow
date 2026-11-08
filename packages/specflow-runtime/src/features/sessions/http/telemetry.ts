@@ -14,16 +14,17 @@ import {
 import type { SessionCoordinator } from '../lifecycle/coordinator';
 import { TelemetryRateLimited } from '../lifecycle/telemetry';
 import { SessionError } from '../errors';
-import { authorizeSession } from './authorization';
+import { authorizeSession, sessionIdentity } from './authorization';
+import type { SessionIdentity } from '../persistence/protocol';
+import { resolveSessionPermissions, sessionScope } from '../scope';
 
 const accessKey = randomBytes(32);
-type Scope = Record<'projectId' | 'sessionId', string>;
 
 /** An opaque cache/access generation, never a capability or an authorization grant. */
-export function telemetryAccess(request: FastifyRequest, scope: Scope) {
-  const permissions = request.authz.resolveCapabilities({ resource: SessionCapabilities, scope });
+export function telemetryAccess(request: FastifyRequest, identity: SessionIdentity) {
+  const permissions = resolveSessionPermissions(request.authz, identity);
   const accessRevision = createHmac('sha256', accessKey)
-    .update(JSON.stringify([request.authz.readContext().subject, scope, permissions]))
+    .update(JSON.stringify([request.authz.readContext().subject, identity, permissions]))
     .digest('base64url');
 
   return { permissions, accessRevision };
@@ -65,12 +66,7 @@ export function registerTelemetryRoutes(
   const params = Type.Object({ sessionId: SessionIdSchema }, { additionalProperties: false });
   const sid = (request: FastifyRequest) => (request.params as { sessionId: string }).sessionId;
   async function access(request: FastifyRequest) {
-    const scope = await coordinator().store.call<Scope>({
-      op: 'identity',
-      sessionId: sid(request),
-    });
-
-    return telemetryAccess(request, scope);
+    return telemetryAccess(request, await sessionIdentity(coordinator(), sid(request)));
   }
 
   feature.get(
@@ -111,16 +107,12 @@ export function registerTelemetryRoutes(
       bodyLimit: 4096,
       preHandler: async (request) => {
         await authorizeSession(request, coordinator(), sid(request));
-        await authorizeSession(request, coordinator(), sid(request), true);
+        const identity = await authorizeSession(request, coordinator(), sid(request), true);
         if ((request.body as RefreshTelemetry).groups.includes('limits')) {
-          const scope = await coordinator().store.call<Scope>({
-            op: 'identity',
-            sessionId: sid(request),
-          });
           request.authz.require({
             resource: SessionCapabilities,
             capability: SessionCapabilities.capabilities.ViewProviderLimits,
-            scope,
+            scope: sessionScope(identity, SessionCapabilities.capabilities.ViewProviderLimits),
           });
         }
       },

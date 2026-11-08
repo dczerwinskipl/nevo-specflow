@@ -4,7 +4,8 @@ export { parseSessionsFeatureConfig, type SessionsFeatureConfig } from './config
 export type { SessionDriver } from './providers/driver';
 export { SessionError } from './errors';
 export { SessionCapabilities } from '@nevo/specflow-contracts/sessions';
-export type { SessionReferenceOwner } from './reference-owner';
+export type { SessionReference, SessionReferenceOwner } from './reference-owner';
+export { sessionScope, type SessionScopeIdentity, type SessionCapabilityId } from './scope';
 export { createDemoSessionReferences } from './demo/references';
 
 export { buildDemoSessions, buildDemoSessionContribution } from './demo/contribution';

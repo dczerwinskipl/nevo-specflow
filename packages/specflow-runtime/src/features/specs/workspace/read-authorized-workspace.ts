@@ -2,7 +2,7 @@ import type { SpecificationWorkspaceResponse } from '@nevo/specflow-contracts/sp
 import { SpecCapabilities } from '@nevo/specflow-contracts/specs';
 import { SessionCapabilities } from '@nevo/specflow-contracts/sessions';
 import type { RequestAuthorization } from '../../auth';
-import type { SessionReferenceOwner } from '../../sessions';
+import { sessionScope, type SessionReference, type SessionReferenceOwner } from '../../sessions';
 import type { SpecificationWorkspaceRepository, WorkspaceContributions } from './repository';
 import { readWorkspace } from './read-workspace';
 import { presentWorkspace } from './presenter';
@@ -66,16 +66,19 @@ export async function readAuthorizedWorkspace(
     }
   }
 
+  // One batch for every referenced Session; the store-derived identity decides the scope.
+  const owners: ReadonlyMap<string, SessionReference> =
+    ids.size && sessions ? await sessions.resolveMany([...ids]) : new Map();
   const permitted = new Set<string>();
   for (const id of ids) {
-    const owner = await sessions?.resolve(id);
+    const owner = owners.get(id);
     if (
       owner?.sessionId === id &&
       owner.specId === specId &&
       authz.can({
         resource: SessionCapabilities,
         capability: SessionCapabilities.capabilities.View,
-        scope: { specId: owner.specId, sessionId: owner.sessionId },
+        scope: sessionScope(owner, SessionCapabilities.capabilities.View),
       })
     ) {
       permitted.add(id);

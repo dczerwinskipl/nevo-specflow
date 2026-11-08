@@ -118,7 +118,8 @@ Do not select one representative Task for a batch execution merely to simplify p
 
 Session rows, the navigator preview, Continue session and the Session header show **only
 Session-derived readiness** (`busy` → **Aktywna**, `requiresAttention` → **Wymaga uwagi**,
-`unavailable` → **Stan sesji nieznany**, `ready` → no status). Engine attempt and require-attention
+`unavailable` → **Stan sesji nieznany**, `ready` → no status; Session rows also
+`authenticationRequired`, below). Engine attempt and require-attention
 facts stay on their own subjects (the Task row's state, the Specification's Requires attention item
 for that Task); neither re-colours a Session:
 
@@ -128,6 +129,19 @@ for that Task); neither re-colours a Session:
 | attempt requires review, Session `ready`             | no status                       | Requires attention: the Task item, not the Session |
 | attempt finished, Session `busy`                     | **Aktywna**                     | Task row: its finished state                       |
 | readiness `unavailable`                              | **Stan sesji nieznany** (muted) | unchanged                                          |
+
+Session rows (the Specification Sessions list and Continue session) show the **effective**
+readiness, the same provider projection the Session screen applies (Runtime: the list read and the
+workspace Sessions section, a required backend change), so they add one row (accepted 2026-11-08):
+
+| readiness                | Session row shows                                             |
+| ------------------------ | ------------------------------------------------------------- |
+| `authenticationRequired` | **{{provider}}: wymagane ponowne logowanie** (muted, no icon) |
+
+Muted because the condition is provider-wide and resolved in the provider's CLI, not in the Session;
+the copy names the provider so it does not read as the Session needing a login. The navigator preview
+is unchanged and never lists such a Session. Row composition and backend needs:
+[Specification Sessions list §3](../../../ideas/specflow-ui/screens/specification-sessions-list-ui-spec.md#3-rows).
 
 Associated Tasks are context: rows and Context say **powiązana** / **Powiązane zadania**; no surface
 writes "pracuje nad" or "wykonuje" or shows a Task as current execution from the association. A

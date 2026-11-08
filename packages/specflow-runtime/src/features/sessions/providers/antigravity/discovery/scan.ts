@@ -290,7 +290,15 @@ export function scanDiscovery(
 
     let selected = root;
     if (request.path !== '.') {
+      let selectedPath = '';
       for (const part of request.path.split('/')) {
+        selectedPath = selectedPath ? selectedPath + '/' + part : part;
+        if (excluded(selectedPath)) {
+          result.counts.excluded++;
+
+          return result;
+        }
+
         let found = false;
         for (const entry of selected.entries()) {
           if (!visited()) {
@@ -314,7 +322,9 @@ export function scanDiscovery(
     if (selected.directory) {
       walk(selected, request.path === '.' ? '' : request.path, 0);
     } else if (tool === 'search_text') {
-      file(selected, request.path);
+      if (included(request.path)) {
+        file(selected, request.path);
+      }
     } else {
       throw new Error('Discovery requires a directory.');
     }

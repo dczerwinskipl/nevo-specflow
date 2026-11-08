@@ -55,8 +55,14 @@ The invocation-private `specflow-discovery` MCP server advertises exactly:
 Paths are workspace-relative forward-slash paths with exact enumerated long-name
 casing; `.` selects the root. Globs are case-sensitive `*`, `?` and whole-component
 `**`; bare patterns match entry names. Patterns containing slashes match the full
-workspace-relative path. Includes filter returned files/entries; excludes prune
-traversal. `node_modules` is excluded by default to keep ordinary source discovery
+workspace-relative path. Includes filter returned files/entries, including a
+single file selected by `path`; they do not prune directories needed to reach
+matching descendants. Excludes prune traversal, including each component of an
+explicit starting path: selecting a nested path cannot bypass an excluded ancestor.
+A filtered starting path returns a complete empty result without reading content;
+an excluded directory is not opened or enumerated. Explicit private starting
+paths still fail before configurable filtering, rather than returning empty success.
+`node_modules` is excluded by default to keep ordinary source discovery
 useful; explicit `excludes: []` permits bounded dependency discovery. `.git`,
 `.nevo/local` and `.agents/{hooks.json,mcp_config.json,plugins,sidecars,projects}`
 remain unconditionally excluded at any depth. Private execution HOME is outside

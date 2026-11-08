@@ -135,6 +135,60 @@ it('discards a completed read after its native identity changes, even with a mut
 });
 
 it.runIf(process.platform === 'win32' && process.arch === 'x64')(
+  'applies starting-path filters through MCP with real NTFS reads',
+  async () => {
+    const f = await fixture(undefined, true);
+    await mkdir(join(f.workspace, 'node_modules', 'library'), { recursive: true });
+    await writeFile(join(f.workspace, 'node_modules', 'library', 'index.ts'), 'dependency needle');
+    f.bridge.activate();
+    for (const filters of [{ includes: ['**/*.md'] }, { excludes: ['**/*.ts'] }]) {
+      expect(
+        await f.call('search_text', { path: 'nested/code.ts', query: 'needle', ...filters }),
+      ).toMatchObject({
+        error: false,
+        data: { status: 'complete', matches: [], counts: { files: 0, bytes: 0 } },
+      });
+    }
+
+    expect(await f.call('search_text', { path: 'node_modules', query: 'needle' })).toMatchObject({
+      error: false,
+      data: {
+        status: 'complete',
+        matches: [],
+        counts: { visited: 0, files: 0, bytes: 0, excluded: 1 },
+      },
+    });
+    const explicit = await f.call('search_text', {
+      path: 'node_modules',
+      query: 'needle',
+      includes: ['**/*.ts'],
+      excludes: [],
+    });
+    expect(explicit.data.status).toBe('complete');
+    expect(explicit.data.matches).toMatchObject([
+      { path: 'node_modules/library/index.ts', text: 'dependency needle' },
+    ]);
+    expect(
+      await f.call('search_text', {
+        path: 'node_modules/library/index.ts',
+        query: 'needle',
+        excludes: ['node_modules'],
+      }),
+    ).toMatchObject({
+      error: false,
+      data: { status: 'complete', matches: [], counts: { files: 0, bytes: 0, excluded: 1 } },
+    });
+    expect(
+      await f.call('search_text', { path: '.git/secret', query: 'needle', excludes: [] }),
+    ).toMatchObject({
+      error: true,
+      data: { status: 'failed', matches: [], counts: { files: 0, bytes: 0 } },
+    });
+  },
+  20000,
+);
+
+it.runIf(process.platform === 'win32' && process.arch === 'x64')(
   'discovers real nested content over MCP and never reads junction or hardlink targets',
   async () => {
     const f = await fixture(undefined, true);

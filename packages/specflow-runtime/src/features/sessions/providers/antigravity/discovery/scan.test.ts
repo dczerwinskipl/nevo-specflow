@@ -217,6 +217,100 @@ it('skips installed dependency trees by default and permits an explicit bounded 
   ]);
 });
 
+it.each([{ includes: ['**/*.md'] }, { excludes: ['**/*.ts'] }])(
+  'filters an explicitly selected file before reading its content: %j',
+  (filters) => {
+    const result = scanDiscovery(
+      reader({ src: { 'code.ts': 'needle' } }),
+      'search_text',
+      parseDiscoveryRequest('search_text', { path: 'src/code.ts', query: 'needle', ...filters }),
+    );
+    expect(result).toMatchObject({
+      status: 'complete',
+      matches: [],
+      counts: { files: 0, bytes: 0 },
+    });
+  },
+);
+
+it.each(['list_directory', 'find_files', 'search_text'] as const)(
+  '%s prunes an explicitly selected default-excluded directory before opening it',
+  (tool) => {
+    const result = scanDiscovery(
+      reader({ node_modules: new Error('Excluded directory must not be opened') }),
+      tool,
+      parseDiscoveryRequest(tool, {
+        path: 'node_modules',
+        ...(tool === 'find_files'
+          ? { pattern: '*' }
+          : tool === 'search_text'
+            ? { query: 'needle' }
+            : {}),
+      }),
+    );
+    expect(result).toMatchObject({
+      status: 'complete',
+      entries: [],
+      matches: [],
+      counts: { visited: 0, files: 0, bytes: 0, excluded: 1, errors: 0 },
+    });
+  },
+);
+
+it('cannot bypass an excluded ancestor by selecting a nested starting file', () => {
+  const result = scanDiscovery(
+    reader({ node_modules: { library: { 'index.ts': 'needle' } } }),
+    'search_text',
+    parseDiscoveryRequest('search_text', {
+      path: 'node_modules/library/index.ts',
+      query: 'needle',
+      excludes: ['node_modules'],
+    }),
+  );
+  expect(result).toMatchObject({
+    status: 'complete',
+    matches: [],
+    counts: { files: 0, bytes: 0, excluded: 1 },
+  });
+});
+
+it.each(['node_modules', 'node_modules/library/index.ts'])(
+  'permits an explicit dependency start %s when defaults are cleared',
+  (path) => {
+    const result = scanDiscovery(
+      reader({ node_modules: { library: { 'index.ts': 'needle' } } }),
+      'search_text',
+      parseDiscoveryRequest('search_text', {
+        path,
+        query: 'needle',
+        includes: ['**/*.ts'],
+        excludes: [],
+      }),
+    );
+    expect(result.status).toBe('complete');
+    expect(result.matches.map((match) => match.path)).toEqual(['node_modules/library/index.ts']);
+    expect(result.counts.files).toBe(1);
+  },
+);
+
+it.each(['.git/secret', '.nevo/local/secret', '.agents/mcp_config.json'])(
+  'does not override private starting-path denial for %s with custom filters',
+  (path) => {
+    for (const excludes of [[], ['**']]) {
+      const result = scanDiscovery(
+        reader({}),
+        'search_text',
+        parseDiscoveryRequest('search_text', { path, query: 'needle', includes: ['**'], excludes }),
+      );
+      expect(result).toMatchObject({
+        status: 'failed',
+        matches: [],
+        counts: { files: 0, bytes: 0 },
+      });
+    }
+  },
+);
+
 it.each(['../outside', '/absolute', 'C:/outside', 'a\\b', 'name:stream', 'a/../b', 'file.'])(
   'rejects unsupported path %s',
   (path) => {

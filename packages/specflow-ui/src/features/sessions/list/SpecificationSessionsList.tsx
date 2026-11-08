@@ -55,18 +55,23 @@ function owningHeading(element: HTMLElement | null): HTMLElement | null {
   return null;
 }
 
+/**
+ * A row's compact facts: the associated Task count, then the relative update. A row without
+ * associated Tasks has no count fact at all, so it reserves no column for one.
+ */
 function rowFacts(item: SessionListItem, t: TFunction, now: number, locale: string): CompactFacts {
   const count = item.association.kind === 'specification' ? item.association.taskIds.length : 0;
+  const updated = formatRelativeTime(item.updatedAt, now, locale) ?? '';
 
-  return [
-    count > 0
-      ? {
+  return count > 0
+    ? [
+        {
           text: t('sessions.list.taskCount', { count }),
           accessibleText: t('sessions.list.associatedTasks', { count }),
-        }
-      : '',
-    formatRelativeTime(item.updatedAt, now, locale) ?? '',
-  ];
+        },
+        updated,
+      ]
+    : [updated];
 }
 
 /**

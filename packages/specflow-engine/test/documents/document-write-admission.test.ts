@@ -11,6 +11,9 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { onPosix } from '../support/platform';
 
 import { sha256Hex } from '../../src/hash';
+import { nodeVerifiedFs } from '../../src/specs/document-rules/verified-file';
+import { applyDocumentChange } from '../../src/specs/documents/api';
+import { findDocumentChangeJournal } from '../../src/specs/documents/write/journal-store';
 import { withJournalLock, publishJournal, writePayload } from '../../src/specs/durable';
 import { deriveUnclassifiedDocumentId } from '../../src/specs/document-rules/document-ids';
 import { buildJournal } from '../../src/specs/documents/changes/test-support';
@@ -110,6 +113,52 @@ describe('admitDocumentChange: what an admission is', () => {
     );
     expect(result.git).toEqual({ enabled: false });
     expect(count).toBe(0);
+  });
+
+  it('refuses an unstable observation as busy when another writer replaces the file during admission', async () => {
+    const { engine, specId, dir } = await workProject(GIT_OFF);
+    const operationId = randomUUID();
+    const concurrentContent = 'a concurrent save\n';
+    let replaced = false;
+    const error = await failure(
+      applyDocumentChange(engine, specId, operationId, save(), {
+        read: {
+          fs: {
+            ...nodeVerifiedFs,
+            open: async (path, flags) => {
+              if (path === join(dir, 'notes.md') && !replaced) {
+                replaced = true;
+                await applyDocumentChange(engine, specId, randomUUID(), save(concurrentContent));
+              }
+
+              return nodeVerifiedFs.open(path, flags);
+            },
+          },
+        },
+      }),
+    );
+
+    expect(replaced).toBe(true);
+    expect(error).toMatchObject({
+      code: 'SPEC_BUSY',
+      details: { cause: 'source-changed', retryAfterMs: 1000 },
+    });
+    expect(await readFile(join(dir, 'notes.md'), 'utf8')).toBe(concurrentContent);
+    expect(await findDocumentChangeJournal(engine.context, operationId)).toBeUndefined();
+    // Once the file is stable, admission must compare its actual new revision.
+    await expect(applyDocumentChange(engine, specId, operationId, save())).rejects.toMatchObject({
+      code: 'DOCUMENT_REVISION_CONFLICT',
+    });
+  });
+
+  it('still reports a genuinely absent registered file as missing', async () => {
+    const { engine, specId, dir } = await workProject(GIT_OFF);
+    const operationId = randomUUID();
+    await rm(join(dir, 'notes.md'));
+    await expect(applyDocumentChange(engine, specId, operationId, save())).rejects.toMatchObject({
+      code: 'DOCUMENT_FILE_MISSING',
+    });
+    expect(await findDocumentChangeJournal(engine.context, operationId)).toBeUndefined();
   });
 
   it('hashes a file larger than the hash limit that the request renames', async () => {

@@ -401,6 +401,10 @@ export function createWorkInspectorFixtureApi(
     refreshTelemetry: () => Promise.reject(new Error('No telemetry in this fixture.')),
     reconcile: () =>
       Promise.resolve({ turnId: workInspectorTurnId, outcome: 'completed', reconciled: true }),
+    rename: () => Promise.reject(new Error('not used by these stories')),
+    archive: () => Promise.reject(new Error('not used by these stories')),
+    unarchive: () => Promise.reject(new Error('not used by these stories')),
+    delete: () => Promise.reject(new Error('not used by these stories')),
     respond: (_id, interactionId) =>
       Promise.resolve({ turnId: workInspectorTurnId, interactionId }),
     async *watch(_sessionId, _after, signal) {

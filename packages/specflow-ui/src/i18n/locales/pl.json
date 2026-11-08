@@ -1577,10 +1577,25 @@
       "renameTooLong": "Nazwa może mieć maksymalnie {{max}} znaków.",
       "archive": "Archiwizuj",
       "archiveTitle": "Zarchiwizować tę sesję?",
-      "archiveDescription": "Sesja zniknie z list, ale cała jej historia zostanie zachowana. Możesz ją później przywrócić z archiwum.",
+      "archiveDescription": "Sesja zostanie zarchiwizowana. Nie będzie można w niej wysyłać wiadomości; historia, praca i zużycie pozostaną dostępne. Możesz ją w każdej chwili przywrócić.",
       "delete": "Usuń",
       "deleteTitle": "Usunąć tę sesję?",
-      "deleteDescription": "Tej operacji nie można cofnąć. Sesja wraz z całą historią rozmowy zostanie trwale usunięta."
+      "deleteDescription": "Tej operacji nie można cofnąć. Historia rozmowy, praca i zużycie tej sesji zostaną trwale usunięte ze SpecFlow. Odwołania do tej sesji w specyfikacjach i zadaniach przestaną działać. Pliki w repozytorium i lokalna historia dostawcy nie są usuwane.",
+      "unarchive": "Przywróć",
+      "archivedNote": "Sesja jest zarchiwizowana. Nie można w niej wysyłać wiadomości.",
+      "archivedSubtitle": "Zarchiwizowana",
+      "archivedElsewhere": "Sesja została zarchiwizowana.",
+      "renaming": "Zapisywanie…",
+      "archiving": "Archiwizowanie…",
+      "unarchiving": "Przywracanie…",
+      "deleting": "Usuwanie…",
+      "turnActive": "Trwa tura. Zatrzymaj ją lub poczekaj na jej zakończenie.",
+      "turnWaitingForUser": "Tura czeka na Twoją odpowiedź. Odpowiedz lub zatrzymaj turę.",
+      "turnUnknown": "Najpierw ustal wynik ostatniej tury.",
+      "unconfirmed": "Nie potwierdzono operacji. Spróbuj ponownie.",
+      "forbidden": "Nie masz już uprawnień do tej operacji.",
+      "deleteBlocked": "Sesja ma nierozliczone operacje w repozytorium. Spróbuj ponownie później.",
+      "deleted": "Sesja została usunięta."
     },
     "authenticationRequired": "Wymagane ponowne logowanie",
     "authenticationHelp": "Zaloguj się ponownie w CLI dostawcy, a następnie sprawdź dostępność. Wiadomości nie zostaną ponowione automatycznie.",
@@ -1813,6 +1828,22 @@
         "cancelling": "Anuluje…",
         "working": "Pracuje…"
       }
+    },
+    "turnUnknown": "Wynik tury nieznany",
+    "reconcile": {
+      "title": "Nie wiadomo, jak zakończyła się ostatnia tura",
+      "body": "SpecFlow nie otrzymał potwierdzenia wyniku od dostawcy. Polecenie mogło zostać wykonane — nie zostanie wysłane ponownie.",
+      "action": "Sprawdź wynik",
+      "checking": "Sprawdzanie…",
+      "noManage": "Wynik może sprawdzić osoba zarządzająca tą sesją.",
+      "noEvidence": "Dostawca nie ma jeszcze dowodu wyniku. Tura pozostaje nierozstrzygnięta — spróbuj ponownie później.",
+      "unconfirmed": "Nie potwierdzono sprawdzenia. Spróbuj ponownie.",
+      "resolved": "Ustalono wynik tury."
+    },
+    "notFound": {
+      "title": "Ta sesja została usunięta lub nie istnieje",
+      "description": "Historia tej sesji nie jest już dostępna.",
+      "action": "Nowa sesja"
     }
   },
   "sessionStart": {

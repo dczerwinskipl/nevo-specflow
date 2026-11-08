@@ -3,11 +3,13 @@ import type {
   StartTurn,
   RespondInteraction,
   SessionChange,
+  ReconcileTurnResult,
 } from '@nevo/specflow-contracts/sessions';
 import { utf8Bytes, SessionLimits } from '@nevo/specflow-contracts/sessions';
+import { isApiError, type ApiErrorKind } from '../../../api';
 import { writeOutcomeUnknown } from '../../../shared/http/apiErrorCode';
 import { sendRetained, type RequestAttempt } from '../../../shared/operations/retainedRequest';
-import type { ManagedSessionsApi } from './api';
+import { sessionErrorCode, type ManagedSessionsApi } from './api';
 import { applySessionEvent, conversationWindow, mergeEntries, prependHistory } from './model';
 
 /** An interaction answer without its idempotency key, which the feed retains. */
@@ -48,6 +50,31 @@ export interface FeedState {
   /** Next-Turn work mode (engine mode + provider mode id); omitted inherits the Session's own. */
   workModeOverride?: Required<Pick<StartTurn, 'mode' | 'providerModeId'>>;
   pending?: StartTurn;
+  /**
+   * The Session read answered 404 `SESSION_NOT_FOUND`: it was deleted (elsewhere) or never
+   * existed. Final for this feed.
+   */
+  notFound: boolean;
+  /**
+   * A send, an interaction answer or a retained start was refused with 409 `SESSION_ARCHIVED`
+   * (archived in another view). Holds until the next Session projection (snapshot or `session`
+   * change) says what the Session is now.
+   */
+  archivedRefusal: boolean;
+  /** The user's check of the `unknown` Turn `turnId` (absent: nothing asked or it settled). */
+  reconcile?: ReconcileState;
+}
+/**
+ * `pending`: the request is in flight. `settled`: the Runtime answered 200; it stays until the
+ * stream moves the Turn out of `unknown` (nothing to press meanwhile). `noEvidence`: 409
+ * `SESSION_RECOVERY_REQUIRED`, the Turn stays unknown and the next press is a new request.
+ * `unconfirmed`: the answer was lost (network, 5xx); the next press reuses the same `requestId`.
+ * `refused`: any other definite answer (403, 422, …), with its classified kind for the copy.
+ */
+export interface ReconcileState {
+  readonly turnId: string;
+  readonly status: 'pending' | 'settled' | 'noEvidence' | 'unconfirmed' | 'refused';
+  readonly errorKind?: ApiErrorKind;
 }
 /**
  * What the Session stream says about telemetry: a committed `revision`, or `resync` after the feed
@@ -161,6 +188,9 @@ export function createSessionFeed(
   let replaceOnNextSnapshot = false;
   const respondAttempt: { current: RequestAttempt<RespondInteraction> | null } = { current: null };
   let respondFor: string | undefined;
+  // One request id per unknown Turn, kept only across an unconfirmed attempt.
+  let reconcileAttempt: { turnId: string; requestId: string } | undefined;
+  let reconcileToken = 0;
 
   let state: FeedState = {
     connection: 'loading',
@@ -172,6 +202,8 @@ export function createSessionFeed(
     detached: false,
     hasNew: false,
     pendingUnreadable: retention === 'unreadable',
+    notFound: false,
+    archivedRefusal: false,
     draft: read(':draft'),
     ...(pending ? { pending } : {}),
   };
@@ -224,6 +256,8 @@ export function createSessionFeed(
       ...state,
       snapshot,
       connection: 'connected',
+      // The Session's own projection now says whether it is archived.
+      archivedRefusal: event.kind === 'session' ? false : state.archivedRefusal,
       detached,
       hasNew: state.hasNew || dropped,
       latestTurnId: latestTurnAfter(
@@ -295,6 +329,7 @@ export function createSessionFeed(
           ...state,
           snapshot,
           connection: 'connected',
+          archivedRefusal: false,
           detached: keep,
           hasNew,
           latestTurnId: latestTurnAfter(
@@ -339,9 +374,15 @@ export function createSessionFeed(
           return;
         }
       }
-    } catch {
+    } catch (error) {
       if (!signal.aborted && token === generation) {
-        notify({ ...state, connection: 'error' });
+        // A deleted Session closes its stream; the reconnect (or the next snapshot read) answers
+        // 404. Nothing is left to reconnect to.
+        notify(
+          sessionErrorCode(error) === 'SESSION_NOT_FOUND'
+            ? { ...state, connection: 'error', notFound: true }
+            : { ...state, connection: 'error' },
+        );
       }
     }
   }
@@ -420,7 +461,14 @@ export function createSessionFeed(
       // A definite refusal (the server saw the command and said no) could never succeed when
       // replayed, so the Composer is released: the draft and overrides stay editable, the error
       // stays visible. Any answer that leaves the outcome open keeps the exact command.
-      const next: FeedState = { ...state, commandBusy: false, commandError: true };
+      const archived = sessionErrorCode(error) === 'SESSION_ARCHIVED';
+      const next: FeedState = {
+        ...state,
+        commandBusy: false,
+        // Archived elsewhere: a definite refusal with its own note, not the retry copy.
+        commandError: !archived,
+        archivedRefusal: archived || state.archivedRefusal,
+      };
       if (!writeOutcomeUnknown(error) && releaseRetained(JSON.stringify(request))) {
         delete next.pending;
       }
@@ -627,8 +675,76 @@ export function createSessionFeed(
           (error) => !writeOutcomeUnknown(error),
         );
         notify({ ...state, commandBusy: false });
-      } catch {
-        notify({ ...state, commandBusy: false, commandError: true });
+      } catch (error) {
+        const archived = sessionErrorCode(error) === 'SESSION_ARCHIVED';
+        notify({
+          ...state,
+          commandBusy: false,
+          commandError: !archived,
+          archivedRefusal: archived || state.archivedRefusal,
+        });
+      }
+    },
+    /**
+     * Asks the Runtime to settle the active Turn whose outcome is unknown. Live state still comes
+     * from the stream: the result is returned only so the caller can tell the user that this
+     * request settled it (`reconciled`), never applied here.
+     */
+    async reconcile(): Promise<ReconcileTurnResult | undefined> {
+      const turn = state.snapshot?.activeTurn;
+      const busy =
+        state.reconcile?.turnId === turn?.turnId &&
+        (state.reconcile?.status === 'pending' || state.reconcile?.status === 'settled');
+      if (turn?.state !== 'unknown' || busy) {
+        return undefined;
+      }
+
+      const turnId = turn.turnId;
+      if (reconcileAttempt?.turnId !== turnId) {
+        reconcileAttempt = { turnId, requestId: crypto.randomUUID() };
+      }
+
+      const attempt = reconcileAttempt;
+      const token = ++reconcileToken;
+      const settle = (next: ReconcileState) => {
+        // A newer check owns the state now.
+        if (token === reconcileToken) {
+          notify({ ...state, reconcile: next });
+        }
+      };
+
+      settle({ turnId, status: 'pending' });
+      try {
+        const result = await api.reconcile(sessionId, turnId, attempt.requestId);
+        if (reconcileAttempt === attempt) {
+          reconcileAttempt = undefined;
+        }
+
+        // Settled: the Turn's new state arrives on the stream; nothing to press until then.
+        settle({ turnId, status: 'settled' });
+
+        return result;
+      } catch (error) {
+        const noEvidence = sessionErrorCode(error) === 'SESSION_RECOVERY_REQUIRED';
+        // Only a lost answer keeps the request id; "no evidence yet" and any other definite answer
+        // make the next press a new request.
+        if ((noEvidence || !writeOutcomeUnknown(error)) && reconcileAttempt === attempt) {
+          reconcileAttempt = undefined;
+        }
+
+        settle(
+          noEvidence
+            ? { turnId, status: 'noEvidence' }
+            : writeOutcomeUnknown(error)
+              ? { turnId, status: 'unconfirmed' }
+              : {
+                  turnId,
+                  status: 'refused',
+                  ...(isApiError(error) ? { errorKind: error.kind } : {}),
+                },
+        );
+
+        return undefined;
       }
     },
   };

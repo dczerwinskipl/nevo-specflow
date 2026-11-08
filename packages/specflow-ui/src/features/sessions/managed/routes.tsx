@@ -1,10 +1,12 @@
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { createRoute, useNavigate } from '@tanstack/react-router';
 import { AppWorkspaceProvider } from '@nevo/ui';
 import { appRoute } from '../../../app/router/root';
 import { parseSpecificationCollection } from '../../../app/router/search';
 import { useApplicationCollection } from '../../../app/navigation/ApplicationLocation';
 import { useAppServices } from '../../../app/useAppServices';
+import { useNotify } from '../../../shared/notifications/notifications';
 import { useAuthOwner } from './useAuthOwner';
 import { realRouteSessionContext } from './context/sessionContextTypes';
 import { startedSessionContext, startedSessionOf } from '../start/handoff/startedSession';
@@ -43,6 +45,18 @@ export function ManagedSessionRouteView({ sessionId }: { sessionId: string }) {
     () => (started ? startedSessionContext(started) : realRouteSessionContext),
     [started],
   );
+  const navigate = useNavigate();
+  const notify = useNotify();
+  const { t } = useTranslation();
+  const toNewSession = () =>
+    // `replace`: Back does not reopen the deleted Session.
+    navigate({ to: '/sessions/new', search: { collection: 'current' }, replace: true });
+  const onSessionDeleted = () => {
+    void toNewSession().then(() => {
+      notify(t('managedSession.sessionActions.deleted'));
+      focusPrimaryHeading();
+    });
+  };
 
   // `browserHistory`: browser/Android Back steps back inside the Context/Work Secondary (sub-page →
   // parent → hide) before leaving the Session (secondary-navigation.md, "Browser and system Back").
@@ -59,6 +73,8 @@ export function ManagedSessionRouteView({ sessionId }: { sessionId: string }) {
         sessionContext={sessionContext}
         onOpenSpecification={onOpenSpecification}
         onOpenDocuments={onOpenDocuments}
+        onSessionDeleted={onSessionDeleted}
+        onNewSession={() => void toNewSession()}
       />
     </AppWorkspaceProvider>
   );
@@ -90,6 +106,16 @@ function NewManagedSession() {
       }
     />
   );
+}
+
+/**
+ * Focus lands on the destination's page heading after a deleted Session's screen is replaced
+ * (session-actions-ux §3.5): the Primary `WorkspaceHeader` title, once it has rendered.
+ */
+function focusPrimaryHeading() {
+  requestAnimationFrame(() => {
+    document.querySelector<HTMLElement>('h1[data-workspace-header-title="true"]')?.focus();
+  });
 }
 
 export const managedSessionAppRoutes = [managedNewSessionRoute, managedSessionRoute] as const;

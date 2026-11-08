@@ -1577,10 +1577,25 @@
       "renameTooLong": "The name can be at most {{max}} characters.",
       "archive": "Archive",
       "archiveTitle": "Archive this session?",
-      "archiveDescription": "The session will disappear from the lists, but its whole history is kept. You can restore it from the archive later.",
+      "archiveDescription": "The session will be archived. No messages can be sent in it; its history, work and usage stay available. You can restore it at any time.",
       "delete": "Delete",
       "deleteTitle": "Delete this session?",
-      "deleteDescription": "This cannot be undone. The session and its whole conversation history will be permanently deleted."
+      "deleteDescription": "This cannot be undone. The session's conversation history, work and usage will be permanently deleted from SpecFlow. References to this session in specifications and tasks will stop working. Repository files and the provider's local history are not deleted.",
+      "unarchive": "Restore",
+      "archivedNote": "This session is archived. No messages can be sent in it.",
+      "archivedSubtitle": "Archived",
+      "archivedElsewhere": "The session was archived.",
+      "renaming": "Saving…",
+      "archiving": "Archiving…",
+      "unarchiving": "Restoring…",
+      "deleting": "Deleting…",
+      "turnActive": "A Turn is running. Stop it or wait for it to finish.",
+      "turnWaitingForUser": "The Turn is waiting for your answer. Answer or stop the Turn.",
+      "turnUnknown": "First establish the outcome of the last Turn.",
+      "unconfirmed": "The operation was not confirmed. Try again.",
+      "forbidden": "You no longer have permission for this operation.",
+      "deleteBlocked": "The session has unsettled repository operations. Try again later.",
+      "deleted": "The session was deleted."
     },
     "authenticationRequired": "Sign-in required",
     "authenticationHelp": "Sign in again using the provider CLI, then recheck availability. Messages will not be retried automatically.",
@@ -1813,6 +1828,22 @@
       "actions_many": "{{count}} tool actions",
       "actionsAtLeast_few": "at least {{count}} tool actions",
       "actionsAtLeast_many": "at least {{count}} tool actions"
+    },
+    "turnUnknown": "Turn outcome unknown",
+    "reconcile": {
+      "title": "It is not known how the last Turn ended",
+      "body": "SpecFlow did not receive the outcome from the provider. The request may have run — it will not be sent again.",
+      "action": "Check outcome",
+      "checking": "Checking…",
+      "noManage": "Someone who manages this session can check the outcome.",
+      "noEvidence": "The provider has no evidence of the outcome yet. The Turn stays unresolved — try again later.",
+      "unconfirmed": "The check was not confirmed. Try again.",
+      "resolved": "Turn outcome established."
+    },
+    "notFound": {
+      "title": "This session was deleted or does not exist",
+      "description": "This session's history is no longer available.",
+      "action": "New session"
     }
   },
   "sessionStart": {

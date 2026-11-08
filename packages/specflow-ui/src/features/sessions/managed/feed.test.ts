@@ -602,3 +602,229 @@ describe('Session feed operation lifetime', () => {
     expect(signals.every((s) => s.aborted)).toBe(true);
   });
 });
+
+const unknownTurnId = '00000000-0000-4000-8000-0000000000aa';
+const unknownTurnSnapshot = {
+  ...snapshot,
+  activeTurn: {
+    turnId: unknownTurnId,
+    state: 'unknown',
+    revision: 1,
+    startedAt: '2026-11-08T10:00:00Z',
+  },
+} as unknown as SessionSnapshot;
+const sessionError = (status: number, code: string) =>
+  new HttpClientError(code, {
+    kind: 'http',
+    status,
+    data: { error: 'session_error', code, message: code },
+  });
+
+describe('Session feed reconcile of an unknown Turn', () => {
+  function connected(answer: () => Promise<unknown>) {
+    const { storage, api } = setup();
+    api.snapshot = vi.fn().mockResolvedValue(unknownTurnSnapshot);
+    const post = vi.fn((_url: string, _body: unknown) => answer());
+    const transport = createManagedSessionsApi({ post } as unknown as HttpRequestClient);
+    api.reconcile = (id, turnId, requestId) => transport.reconcile(id, turnId, requestId);
+    const feed = createSessionFeed(api, 'session', 'actor', storage);
+    feed.connect();
+
+    return { feed, post };
+  }
+
+  it('reuses the request id after a lost answer and returns the settled result', async () => {
+    const answers = [
+      () => Promise.reject(new HttpClientError('offline', { kind: 'network' })),
+      () => Promise.resolve({ turnId: unknownTurnId, outcome: 'failed', reconciled: true }),
+    ];
+    const { feed, post } = connected(() => answers.shift()!());
+    await vi.waitFor(() => expect(feed.getSnapshot().snapshot).toBeDefined());
+    await expect(feed.reconcile()).resolves.toBeUndefined();
+    expect(feed.getSnapshot().reconcile).toEqual({
+      turnId: unknownTurnId,
+      status: 'unconfirmed',
+    });
+    await expect(feed.reconcile()).resolves.toEqual({
+      turnId: unknownTurnId,
+      outcome: 'failed',
+      reconciled: true,
+    });
+    expect(post.mock.calls[0]![0]).toBe(`/api/sessions/session/turns/${unknownTurnId}/reconcile`);
+    expect(post.mock.calls[1]![1]).toEqual(post.mock.calls[0]![1]);
+    // Settled: the Turn's new state comes from the stream, nothing is patched locally.
+    expect(feed.getSnapshot().reconcile).toEqual({ turnId: unknownTurnId, status: 'settled' });
+    expect(feed.getSnapshot().snapshot?.activeTurn?.state).toBe('unknown');
+    // Nothing to press until the stream moves the Turn out of `unknown`.
+    await expect(feed.reconcile()).resolves.toBeUndefined();
+    expect(post).toHaveBeenCalledTimes(2);
+    feed.disconnect();
+  });
+
+  it('keeps the Turn unknown on 409 SESSION_RECOVERY_REQUIRED and sends a new request next time', async () => {
+    const { feed, post } = connected(() =>
+      Promise.reject(sessionError(409, 'SESSION_RECOVERY_REQUIRED')),
+    );
+    await vi.waitFor(() => expect(feed.getSnapshot().snapshot).toBeDefined());
+    await feed.reconcile();
+    expect(feed.getSnapshot().reconcile).toEqual({
+      turnId: unknownTurnId,
+      status: 'noEvidence',
+    });
+    expect(feed.getSnapshot().snapshot?.activeTurn?.state).toBe('unknown');
+    await feed.reconcile();
+    expect(post.mock.calls[1]![1]).not.toEqual(post.mock.calls[0]![1]);
+    feed.disconnect();
+  });
+
+  it('reports any other definite answer as refused, with a new request next time', async () => {
+    const { feed, post } = connected(() => Promise.reject(sessionError(403, 'forbidden')));
+    await vi.waitFor(() => expect(feed.getSnapshot().snapshot).toBeDefined());
+    await feed.reconcile();
+    expect(feed.getSnapshot().reconcile).toEqual({
+      turnId: unknownTurnId,
+      status: 'refused',
+      errorKind: 'forbidden',
+    });
+    await feed.reconcile();
+    expect(post.mock.calls[1]![1]).not.toEqual(post.mock.calls[0]![1]);
+    feed.disconnect();
+  });
+
+  it('ignores a second press while the check is pending', async () => {
+    const answer = Promise.withResolvers<never>();
+    const { feed, post } = connected(() => answer.promise);
+    await vi.waitFor(() => expect(feed.getSnapshot().snapshot).toBeDefined());
+    const first = feed.reconcile();
+    expect(feed.getSnapshot().reconcile?.status).toBe('pending');
+    await feed.reconcile();
+    expect(post).toHaveBeenCalledOnce();
+    answer.reject(new Error('lost'));
+    await first;
+    feed.disconnect();
+  });
+
+  it('sends nothing when the active Turn is not unknown', async () => {
+    const { storage, api } = setup();
+    const reconcile = vi.fn();
+    api.reconcile = reconcile;
+    const feed = createSessionFeed(api, 'session', 'actor', storage);
+    feed.connect();
+    await vi.waitFor(() => expect(feed.getSnapshot().snapshot).toBeDefined());
+    await feed.reconcile();
+    expect(reconcile).not.toHaveBeenCalled();
+    feed.disconnect();
+  });
+});
+
+describe('Session feed and a deleted or archived Session', () => {
+  it('reports a Session read answered 404 SESSION_NOT_FOUND as not found', async () => {
+    const { storage, api } = setup();
+    const get = vi.fn().mockRejectedValue(sessionError(404, 'SESSION_NOT_FOUND'));
+    const transport = createManagedSessionsApi({ get } as unknown as HttpRequestClient);
+    api.snapshot = (id, signal) => transport.snapshot(id, signal);
+    const feed = createSessionFeed(api, 'session', 'actor', storage);
+    feed.connect();
+    await vi.waitFor(() => expect(feed.getSnapshot().notFound).toBe(true));
+  });
+
+  it('reports a stream that reconnects into 404 SESSION_NOT_FOUND as not found', async () => {
+    const { storage, api } = setup();
+    // eslint-disable-next-line require-yield
+    api.watch = async function* () {
+      await Promise.resolve();
+
+      throw sessionError(404, 'SESSION_NOT_FOUND');
+    };
+
+    const feed = createSessionFeed(api, 'session', 'actor', storage);
+    feed.connect();
+    await vi.waitFor(() => expect(feed.getSnapshot().notFound).toBe(true));
+    expect(feed.getSnapshot().snapshot).toBeDefined();
+  });
+
+  it('treats any other stream failure as a lost connection, not a deleted Session', async () => {
+    const { storage, api } = setup();
+    // eslint-disable-next-line require-yield
+    api.watch = async function* () {
+      await Promise.resolve();
+
+      throw sessionError(503, 'SESSION_STORE_UNAVAILABLE');
+    };
+
+    const feed = createSessionFeed(api, 'session', 'actor', storage);
+    feed.connect();
+    await vi.waitFor(() => expect(feed.getSnapshot().connection).toBe('error'));
+    expect(feed.getSnapshot().notFound).toBe(false);
+  });
+
+  it('drops a retained start refused with 409 SESSION_ARCHIVED, keeps the draft and shows no retry', async () => {
+    const { storage, api } = setup();
+    const post = vi.fn().mockRejectedValue(sessionError(409, 'SESSION_ARCHIVED'));
+    const transport = createManagedSessionsApi({ post } as unknown as HttpRequestClient);
+    api.start = (id, input) => transport.start(id, input);
+    const feed = createSessionFeed(api, 'session', 'actor', storage);
+    feed.setDraft('Archived elsewhere');
+    await feed.send();
+    expect(feed.getSnapshot()).toMatchObject({
+      commandError: false,
+      archivedRefusal: true,
+      draft: 'Archived elsewhere',
+    });
+    expect(feed.getSnapshot().pending).toBeUndefined();
+    expect(storage.getItem('nevo:session:actor:session:pending')).toBeNull();
+  });
+
+  it('drops an interaction answer refused with 409 SESSION_ARCHIVED without the retry copy', async () => {
+    const { storage, api } = setup();
+    const post = vi
+      .fn<(url: string, body: { requestId: string }) => Promise<never>>()
+      .mockRejectedValue(sessionError(409, 'SESSION_ARCHIVED'));
+    const transport = createManagedSessionsApi({ post } as unknown as HttpRequestClient);
+    api.respond = (id, interactionId, input) => transport.respond(id, interactionId, input);
+    const feed = createSessionFeed(api, 'session', 'actor', storage);
+    await feed.respond('interaction', { kind: 'permission', decision: 'allow' });
+    await feed.respond('interaction', { kind: 'permission', decision: 'allow' });
+    expect(feed.getSnapshot()).toMatchObject({ commandError: false, archivedRefusal: true });
+    expect(post.mock.calls[1]![1].requestId).not.toBe(post.mock.calls[0]![1].requestId);
+  });
+
+  it('clears the archived refusal when the Session projection arrives', async () => {
+    const { storage, api } = setup();
+    api.start = vi.fn().mockRejectedValue(
+      new ApiError({
+        kind: 'conflict',
+        operation: 'sessions',
+        outcome: 'not-applied',
+        retryable: false,
+        status: 409,
+        code: 'SESSION_ARCHIVED',
+      }),
+    );
+    const archived = {
+      kind: 'session',
+      sessionId: 'session',
+      eventSeq: 1,
+      changes: { session: { ...snapshot.session, archivedAt: '2026-11-08T10:00:00Z' } },
+    } as unknown as SessionChange;
+    const event = Promise.withResolvers<void>();
+    api.watch = async function* (_id, _after, signal) {
+      await event.promise;
+      yield archived;
+      await new Promise<void>((resolve) =>
+        signal.addEventListener('abort', () => resolve(), { once: true }),
+      );
+    };
+
+    const feed = createSessionFeed(api, 'session', 'actor', storage);
+    feed.connect();
+    await vi.waitFor(() => expect(feed.getSnapshot().snapshot).toBeDefined());
+    feed.setDraft('Too late');
+    await feed.send();
+    expect(feed.getSnapshot().archivedRefusal).toBe(true);
+    event.resolve();
+    await vi.waitFor(() => expect(feed.getSnapshot().archivedRefusal).toBe(false));
+    expect(feed.getSnapshot().snapshot?.session.archivedAt).toBe('2026-11-08T10:00:00Z');
+    feed.disconnect();
+  });
+});

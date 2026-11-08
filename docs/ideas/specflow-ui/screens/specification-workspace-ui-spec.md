@@ -625,13 +625,28 @@ question defined in the responsive contract above.
 
 Session list/history opens deliberate contextual detail instead of expanding all Sessions on the
 main Specification surface. It belongs to this Specification, includes current and settled
-conversations, and offers the shared start action for a new Specification conversation. The exact
-entry label and visible-action placement remain composition decisions.
+conversations, and offers the shared start action for a new Specification conversation. Accepted
+2026-11-08: **Wszystkie sesje** (navigator, Continue session) opens `/specs/:specId/sessions`,
+specified in the [Specification Sessions list UI spec](specification-sessions-list-ui-spec.md).
+
+**Workspace Sessions section** (project and demo mode): the associated, non-archived Sessions, newest
+created first, at most 100 with `hasMore`
+([Specification Workspace API](../../../reference/api/specification-workspace.md#project-sessions-section)).
+It feeds only the navigator preview (first three `active`/`attention` rows, attention first; the
+**{{count}} aktywne** count only without `hasMore` and `unknown` rows, otherwise the partial-activity
+line) and **Continue session**: one fully clickable row for `recommendedSessionId`, title or **Sesja
+bez nazwy**. Session status there is Session readiness only, never an Engine attempt fact
+([AI Session UX](../../../product/specflow/ui/ai-session-ux.md#session-association-vs-current-execution)).
 
 ### New Session
 
 New session -> shared Session-start interaction -> choose agent/provider and optional execution
 details -> normal Session/composer. Do not embed another standalone prompt editor here.
+
+Entry points (the Sessions list header, its empty state and Continue session's start action) open
+`/specs/:specId/sessions/new` and follow `actions.startSession`: shown when available or with
+`no_provider`; omitted with `forbidden` or `sessions_disabled`
+([New Session UI spec](new-session-ui-spec.md), scenario (h1)).
 
 Starting a Session from selected Tasks must preserve the complete selected Task set.
 

@@ -582,10 +582,9 @@ Notes are the DS `InlineNote` in the section's slot, under its label: `info`, `a
 warning and `danger` for an error. They are passive: no live region (Context is an inspector the
 reader opens, not an alert), the text carries the meaning, the icon is decorative. No retry in v1.
 
-- Scope unknown, not provided (the real route today): one panel-level info note under the Executor,
-  no label: "This session's links to a Specification and Tasks aren't available yet." Unreadable:
-  the same slot, attention tone: "Couldn't load this session's links." A standalone Session has no
-  note.
+- Scope unreadable (the association read failed): one panel-level attention note under the
+  Executor, no label: "Couldn't load this session's links." A standalone Session has no note. The
+  former "not provided" note is retired: every Runtime mode serves the association read (§7.6.1).
 - Specification unreadable: "Couldn't load this session's Specification." Missing and required:
   "Can't find Specification {key} that this session belongs to."
 - Execution Task missing and required: "Can't find {key}, the Task this session is executing." For a
@@ -602,6 +601,39 @@ reader opens, not an alert), the text carries the meaning, the icon is decorativ
 The Documents row appears only while the Specification is ready: a loading Specification's skeleton
 covers both rows, an unreadable or missing one shows only its note. Work history is `loading` before
 the first snapshot and absent when the Session has no Turn yet.
+
+#### 7.6.1 Specification and Related Tasks from the association read (accepted 2026-11-08)
+
+Every Runtime mode serves `GET /api/sessions/:sessionId/association`
+([Sessions API](../../reference/api/sessions.md#association-read)); it is the only source of the
+Session's scope, so the scope survives reloads and deep links without a client cache. A Session
+started from a Specification is seeded from the composed create response, so first paint and reload
+agree. `scopeNotProvided` is no longer shown.
+
+An associated Session has scope `specification` with or without Tasks, never `task`: its associated
+Tasks fill **Powiązane zadania** (Related Tasks). **Aktualne wykonanie** (Current execution) is
+omitted, because an association is context, not execution, and no Engine execution fact is read.
+**Uwaga / dalsze działania** (Attention) is omitted too: its Session-owned fact (a pending
+interaction) is owned by Primary. Copy says **powiązana**, never "pracuje nad".
+
+| Association read                    | Specification section                                                                                                                               | Powiązane zadania                                                                                                                                                             |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| loading                             | nothing                                                                                                                                             | nothing                                                                                                                                                                       |
+| `standalone`                        | omitted; no note                                                                                                                                    | omitted                                                                                                                                                                       |
+| `available`, current                | Specification row (key, title) plus Documents row                                                                                                   | one row per `available` Task (key or id, title); none omits the section                                                                                                       |
+| `available`, `collection: archived` | same; row supporting text `sessions.context.specification.archived` **W archiwum**; links carry `collection=archive`                                | as above                                                                                                                                                                      |
+| `forbidden`                         | info note `specificationForbidden` **Nie masz uprawnień do wyświetlenia specyfikacji powiązanej z tą sesją.**; no Documents row                     | omitted                                                                                                                                                                       |
+| `missing`                           | danger note `specificationMissingNamed` **Nie znaleziono specyfikacji {{key}}, z którą powiązana jest ta sesja.** (`specificationMissing` likewise) | omitted (one cause, one note)                                                                                                                                                 |
+| `unavailable`                       | attention note `specificationUnreadable` **Nie udało się wczytać specyfikacji tej sesji.**                                                          | omitted                                                                                                                                                                       |
+| some Tasks `missing`                | per the Specification's state                                                                                                                       | found Tasks plus attention note `relatedTasksMissing` **Nie znaleziono {{count}} z {{total}} powiązanych zadań.** / _{{count}} of {{total}} associated tasks can't be found._ |
+| Tasks `unavailable`                 | per the Specification's state                                                                                                                       | attention note `relatedTasksUnreadable` **Nie udało się wczytać powiązanych zadań.**                                                                                          |
+| read failed (HTTP)                  | panel note `scopeUnreadable` **Nie udało się wczytać powiązań tej sesji.**                                                                          | omitted                                                                                                                                                                       |
+
+Two deliberate deviations from the rules above: while the association loads, no Specification
+skeleton shows (a standalone Session would show a skeleton that then vanishes); and the
+`relatedTasksMissing` note replaces the generic "Couldn't load related Tasks" for missing Tasks.
+Keys live in `sessions.context.availability.*`. Rationale:
+[Session association UX](session-association-ux/README.md).
 
 ### 7.7 Session details: provider-limits refresh (owner accepted 2026-11-08)
 
@@ -1296,9 +1328,11 @@ operacji.`, `TURN_CONFLICT` as above, `SESSION_DELETE_BLOCKED` (unsettled Engine
   not visible beforehand) `Sesja ma nierozliczone operacje w repozytorium. Spróbuj ponownie
 później.` with confirm still enabled. Rename has no optimistic title; validation is nonblank,
   at most 256 characters. Focus after success returns to the `⋯` trigger, except Delete.
-- **Archive dialog:** `Zarchiwizować tę sesję?` — `Sesja zostanie zarchiwizowana. Nie będzie można
-w niej wysyłać wiadomości; historia, praca i zużycie pozostaną dostępne. Możesz ją w każdej
-chwili przywrócić.` (no list exists, so nothing "disappears").
+- **Archive dialog:** `Zarchiwizować tę sesję?` — `Sesja zostanie przeniesiona do archiwum sesji.
+Nie będzie można w niej wysyłać wiadomości; historia, praca i zużycie pozostaną dostępne. Możesz
+ją w każdej chwili przywrócić.` (`managedSession.sessionActions.archiveDescription`; the
+  Specification Sessions list has an **Archiwum** collection). After archive the user stays on the
+  Session.
 - **Archived Session:** the Composer is replaced in its overlay slot by a quiet bar of the same
   width, `InlineNote` info `Sesja jest zarchiwizowana. Nie można w niej wysyłać wiadomości.` plus,
   with Manage, `Button variant="secondary" size="sm"` `Przywróć` (no confirmation: reversible).
@@ -1319,12 +1353,16 @@ trwale usunięte ze SpecFlow. Odwołania do tej sesji w specyfikacjach i zadania
 działać. Pliki w repozytorium i lokalna historia dostawcy nie są usuwane.` No type-to-confirm.
   Success is 204, or 404 `SESSION_NOT_FOUND` for a `DELETE` this view sent, or the stream's 404
   while this view's delete is in flight, unconfirmed or done; it completes once: navigate with
-  `replace` to `/sessions/new` (Back does not reopen it), polite toast `Sesja została usunięta.`,
-  focus on the destination's page heading.
+  `replace` (Back does not reopen it), polite toast `Sesja została usunięta.`, focus on the
+  destination's page heading. The destination follows the association read already on the screen:
+  an `available` Specification goes to `/specs/:specId/sessions` (with `collection=archive` when the
+  Specification is archived); `standalone`, `forbidden`, `missing`, `unavailable` or not yet read
+  goes to `/` (Specifications list). Accepted limit: a Session of a removed Specification is in no
+  list; it stays reachable by URL and from Engine audit links.
 - **Deleted elsewhere or unknown id:** a closed stream and then 404 `SESSION_NOT_FOUND` replace the
   Session screen with the Session not-found view: title `Ta sesja została usunięta lub nie
-istnieje`, description `Historia tej sesji nie jest już dostępna.`, one secondary `Nowa sesja` →
-  `/sessions/new`. It is the not-found composition (header, description, one button) rendered
+istnieje`, description `Historia tej sesji nie jest już dostępna.`, one secondary
+  `managedSession.notFound.action` `Przejdź do specyfikacji` / _Go to specifications_ → `/`. It is the not-found composition (header, description, one button) rendered
   inside the application shell in the Session screen's `AppWorkspace`, not a standalone shell,
   which would add a second `main` landmark. A Composer draft there is lost.
 

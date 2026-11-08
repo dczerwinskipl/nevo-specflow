@@ -20,6 +20,7 @@ import { ProviderTimeouts } from '../providers/driver';
 import { validateDriverFact } from '../providers/facts';
 import { executionBinding, type SessionEffects } from './effects';
 import { createManagedInvocation } from './managed-invocation';
+import { createSessionTelemetryService } from './telemetry';
 
 interface ActiveInvocation {
   invocationId: string;
@@ -43,6 +44,9 @@ export function createSessionCoordinator(
     : [drivers as SessionDriver];
   const registry = new Map<string, SessionDriver>(
     driverList.map((driver) => [driver.describe().providerId, driver]),
+  );
+  const telemetry = createSessionTelemetryService(store, (id) =>
+    available ? registry.get(id) : undefined,
   );
   function driverFor(providerId: string) {
     const driver = available ? registry.get(providerId) : undefined;
@@ -158,6 +162,7 @@ export function createSessionCoordinator(
 
   return {
     store,
+    telemetry,
     snapshot,
     describe: () => [...registry.values()][0]?.describe(),
     provider: (providerId: string) =>
@@ -579,12 +584,15 @@ export function createSessionCoordinator(
       }
 
       closed = true;
+      const telemetryClosing = telemetry.close();
+      void telemetryClosing.catch(() => undefined);
       for (const live of active.values()) {
         live.controller.abort('shutdown');
       }
 
       const timeout = new AbortController();
       try {
+        await telemetryClosing;
         await Promise.race([
           Promise.all([...active.values()].map((live) => live.done)),
           delay(5000, undefined, { signal: timeout.signal }).then(() => {

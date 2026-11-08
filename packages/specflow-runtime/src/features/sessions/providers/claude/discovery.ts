@@ -33,7 +33,7 @@ export function claudeArguments(
     '--setting-sources',
     '',
     '--settings',
-    '{"disableAllHooks":true}',
+    '{"disableAllHooks":true,"permissions":{"ask":["Bash"]},"env":{"CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR":"1"}}',
     '--disable-slash-commands',
     '--no-chrome',
     ...(context ? [context.resume ? '--resume' : '--session-id', context.nativeSessionId] : []),

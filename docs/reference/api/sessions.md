@@ -21,6 +21,9 @@ related:
 
 # Managed Sessions API
 
+Independent telemetry reads, refresh and live invalidation are specified in
+[Session telemetry API](session-telemetry.md). They do not depend on Task/Spec/Workflow.
+
 Plan 04 foundation contract, implemented on `feature/managed-sessions-foundation` in PR #98.
 This document remains draft pending independent review. Schemas/types live in
 `@nevo/specflow-contracts/sessions`. No aliases for legacy /agent-sessions or DemoSession.
@@ -45,7 +48,14 @@ Both flags default to false. Local overrides and unknown provider keys are rejec
 Start the existing product server and open `/sessions/new`; created chats use `/sessions/:sessionId`.
 The explicitly labelled mock performs no external effects. The optional Claude adapter uses this
 same API; see [Claude enablement and supported installations](../../ideas/specflow-runtime/claude-provider.md).
-Imported Nevo history and writable Engine execution remain outside this foundation. Disabling only the provider
+On Windows x64, `sessions.providers.antigravity.enabled: true` enables no-input
+discovery of the consumer CLI, with an optional absolute `executable` path.
+Managed Agent and Plan require Engine write admission. Automatic file access is
+bound to Runtime-held Windows file identities; every shell command requires a
+one-time host-execution approval. See
+[Antigravity implementation and acceptance limits](../../ideas/specflow-runtime/antigravity-provider.md).
+Importing external Nevo history remains outside this API. Writable execution uses
+Engine-owned admission and settlement; it does not imply OS isolation. Disabling only the provider
 keeps stored reads available. Disabling the feature acquires no database owner.
 
 ## Authorization and transport
@@ -153,7 +163,18 @@ Interaction is a discriminated union:
 
 - {interactionId, turnId, workId, revision, kind:'question', prompt, options?: [{id,label}],
   allowText:boolean, maxSelections?:integer};
-- {interactionId, turnId, workId, revision, kind:'permission', prompt, actionSummary}.
+- {interactionId, turnId, workId, revision, kind:'permission', prompt, actionSummary, action?}.
+
+Command approvals may include an `action` with `operation: 'command'`, the exact
+`command`, workspace-relative `cwd` using slash separators (`.` for the root),
+`authority: 'workspace-write' | 'host-execution'`, and `approval: 'once'`.
+`workspace-write` represents execution confined to the workspace. `host-execution`
+delegates the exact command to the user's account permissions and can affect
+files outside the workspace. Clients must show this distinction together with
+the exact command and directory before approval. It never authorizes a subsequent
+command, a native persistent permission or automatic replay. `actionSummary`
+remains a human-readable fallback. The command text can itself contain paths as
+part of what the user is asked to approve.
 
 At most one answerable interaction per Turn. prompt/actionSummary <=8 KiB each, <=20 options,
 each ID <=128 characters and label <=512 bytes; entire Interaction <=24 KiB. The driver must
@@ -164,19 +185,20 @@ allocates a new interactionId and expires the old one; a stale form cannot answe
 
 ## Routes and commands
 
-| Route                                                             | Request                              | Success                       |
-| ----------------------------------------------------------------- | ------------------------------------ | ----------------------------- |
-| GET /api/session-providers                                        | none                                 | {items: ProviderDescriptor[]} |
-| POST /api/sessions                                                | CreateSession                        | 201 {sessionId}               |
-| GET /api/sessions/:sessionId                                      | none                                 | 200 Snapshot (tail)           |
-| GET /api/sessions/:sessionId/history                              | before cursor, optional limit        | 200 HistoryPage               |
-| GET /api/sessions/:sessionId/turns/:turnId/work                   | optional before cursor and limit     | 200 WorkPage                  |
-| GET /api/sessions/:sessionId/work/:workId/actions                 | optional before cursor and limit     | 200 ActionPage                |
-| GET /api/sessions/:sessionId/content/:contentId                   | revision, optional offset/limitBytes | 200 ContentPage               |
-| POST /api/sessions/:sessionId/turns                               | StartTurn                            | 202 {turnId}                  |
-| POST /api/sessions/:sessionId/turns/:turnId/cancel                | {requestId}                          | 202 {turnId}                  |
-| POST /api/sessions/:sessionId/interactions/:interactionId/respond | Respond                              | 202 {turnId, interactionId}   |
-| GET /api/sessions/:sessionId/events                               | optional after sequence              | text/event-stream             |
+| Route                                                             | Request                              | Success                           |
+| ----------------------------------------------------------------- | ------------------------------------ | --------------------------------- |
+| GET /api/session-providers                                        | none                                 | {items: ProviderDescriptor[]}     |
+| POST /api/sessions                                                | CreateSession                        | 201 {sessionId}                   |
+| GET /api/sessions/:sessionId                                      | none                                 | 200 Snapshot (tail)               |
+| GET /api/sessions/:sessionId/history                              | before cursor, optional limit        | 200 HistoryPage                   |
+| GET /api/sessions/:sessionId/turns/:turnId/work                   | optional before cursor and limit     | 200 WorkPage                      |
+| GET /api/sessions/:sessionId/work/:workId/actions                 | optional before cursor and limit     | 200 ActionPage                    |
+| GET /api/sessions/:sessionId/content/:contentId                   | revision, optional offset/limitBytes | 200 ContentPage                   |
+| POST /api/sessions/:sessionId/turns                               | StartTurn                            | 202 {turnId}                      |
+| POST /api/sessions/:sessionId/turns/:turnId/cancel                | {requestId}                          | 202 {turnId}                      |
+| POST /api/sessions/:sessionId/turns/:turnId/reconcile             | {requestId}                          | 200 {turnId, outcome, reconciled} |
+| POST /api/sessions/:sessionId/interactions/:interactionId/respond | Respond                              | 202 {turnId, interactionId}       |
+| GET /api/sessions/:sessionId/events                               | optional after sequence              | text/event-stream                 |
 
 No core spec/task prefix, GET-all-transcript endpoint, attach/import, deletion, list-all count,
 force-recovery or workflow finish endpoint. A new conversation launcher obtains its new ID
@@ -189,12 +211,15 @@ type CreateSession = {
   providerId: string; // bounded identifier 1..128 characters
   modelId?: string; // 1..256 characters
   mode: 'read-only' | 'workspace-write';
+  providerModeId?: string;
   effort?: string; // 1..64 characters
   title?: string;
 };
 type StartTurn = {
   requestId: string;
   message: string; // nonblank, <=128 KiB
+  mode?: 'read-only' | 'workspace-write';
+  providerModeId?: string;
   modelId?: string;
   effort?: string;
 };
@@ -207,8 +232,19 @@ Respond answer text <=16 KiB, option IDs must be declared, duplicate option IDs 
 text only when allowText; an optional maxSelections (1 to 20) limits selected option IDs and is checked
 before durable response admission. Empty answer invalid unless the question explicitly offers an empty
 option (through its ID). Denied permission resolves the interaction; it does not automatically
-fail the Turn. Start inherits pinned Session mode; this foundation exposes no mode-changing command.
-Unsupported model/effort overrides fail CAPABILITY_UNSUPPORTED, never silently ignore.
+fail the Turn. Start may override mode, native providerModeId, model and effort for that Turn;
+the Session's provider remains fixed and its defaults are not rewritten. Unspecified selections
+inherit the Session defaults. Runtime validates the effective native combination and write
+authorization before admission; a running Turn is never reconfigured. Unsupported choices are
+rejected with MODEL_UNSUPPORTED or CAPABILITY_UNSUPPORTED, never silently ignored.
+Snapshot `capabilities.start` and default-mode readiness describe the Session defaults,
+not every possible override. A selection-aware Composer needs Session-scoped admission
+capabilities; project-scoped catalogue authorization alone is not authoritative for an
+existing Session. See [the V10 backend readiness audit](../../ideas/specflow-runtime/session-v10-backend-readiness.md).
+
+Reconcile uses session.manage and the existing positive-evidence recovery path. It accepts no
+caller-supplied outcome, native receipt or force flag, and never resends a possibly executed prompt.
+Unavailable evidence leaves the operation unknown rather than manufacturing a terminal result.
 
 Route bodyLimit: 256 KiB Create/Start, 64 KiB respond/cancel. Exceed -> 413 SESSION_PAYLOAD_TOO_LARGE.
 Session allocate does not launch the provider. Enforce requestId semantics from the storage design

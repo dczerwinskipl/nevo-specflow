@@ -72,3 +72,21 @@ it('denies without forwarding tool input or persistent grant suggestions', () =>
   expect(answer).toMatchObject({ response: { response: { behavior: 'deny' } } });
   expect(JSON.stringify(answer)).not.toMatch(/secret command|updatedInput|updatedPermissions/);
 });
+
+it('describes even a harmless shell command as a one-time host operation', () => {
+  const prepared = prepareClaudeRequest(request('Bash', { command: 'pwd' }), true);
+  if (prepared.kind !== 'questions') {
+    throw new Error('Expected permission');
+  }
+
+  expect(prepared.questions[0]!.interaction).toMatchObject({
+    kind: 'permission',
+    action: {
+      operation: 'command',
+      command: 'pwd',
+      cwd: '.',
+      authority: 'host-execution',
+      approval: 'once',
+    },
+  });
+});

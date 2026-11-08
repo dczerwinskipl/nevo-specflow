@@ -1,49 +1,48 @@
-import { spawn } from 'node:child_process';
-import { once } from 'node:events';
-import { createInterface } from 'node:readline';
 import { expect, it, vi } from 'vitest';
+import { settleWindowsJob } from './windows-job';
 
-it.runIf(process.platform === 'win32')(
-  'kills owned providers and descendants when Runtime is terminated',
-  async () => {
-    const module = new URL('./windows-job.ts', import.meta.url).href;
-    const provider = `
-    const {spawn} = require('node:child_process');
-    const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {stdio:'ignore'});
-    child.once('spawn', () => console.log(child.pid));
-    setInterval(() => {}, 1000);
-  `;
-    const owner = `
-    import {spawn} from 'node:child_process';
-    import {createWindowsJob} from ${JSON.stringify(module)};
-    const job = createWindowsJob(process.execPath, ['-e', ${JSON.stringify(provider)}]);
-    const child = spawn(job.executable, job.args, {stdio:['pipe','inherit','inherit','ipc'],windowsHide:true});
-    await job.ready(child, process.env);
-    setInterval(() => {}, 1000);
-  `;
-    const runtime = spawn(process.execPath, ['--input-type=module', '-e', owner], {
-      windowsHide: true,
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
-    const closed = once(runtime, 'close');
-    const lines = createInterface({ input: runtime.stdout });
-    try {
-      const output = await Promise.race([
-        once(lines, 'line'),
-        closed.then(() => {
-          throw new Error('Runtime exited before provider startup.');
-        }),
-      ]);
-      const pid = Number(output[0]);
-      expect(pid).toBeGreaterThan(0);
-      runtime.kill(); // TerminateProcess: no cooperative cleanup and no taskkill /T.
-      await closed;
-      await vi.waitFor(() => expect(() => process.kill(pid, 0)).toThrow());
-    } finally {
-      runtime.kill();
-      lines.close();
-      await closed;
-    }
+it('allows Job accounting to catch up after root exit without inventing forced termination', async () => {
+  let count = 1;
+  const terminate = vi.fn(() => false);
+  queueMicrotask(() => {
+    count = 0;
+  });
+  await expect(
+    settleWindowsJob({ rootExited: true, active: () => count, terminate }),
+  ).resolves.toEqual({ state: 'stopped', reason: 'group-exited' });
+  expect(terminate).not.toHaveBeenCalled();
+});
+
+it('terminates surviving descendants after root exit and requires positive zero accounting', async () => {
+  let count = 1;
+  const terminate = vi.fn(() => {
+    count = 0;
+
+    return true;
+  });
+  await expect(
+    settleWindowsJob({ rootExited: true, active: () => count, terminate }),
+  ).resolves.toEqual({ state: 'stopped', reason: 'tree-killed' });
+  expect(terminate).toHaveBeenCalledOnce();
+});
+
+it('does not wait for natural exit when cancelling a still-running root', async () => {
+  let count = 1;
+  const terminate = vi.fn(() => {
+    count = 0;
+
+    return true;
+  });
+  const result = settleWindowsJob({ rootExited: false, active: () => count, terminate });
+  expect(terminate).toHaveBeenCalledOnce();
+  await expect(result).resolves.toEqual({ state: 'stopped', reason: 'tree-killed' });
+});
+
+it.each([1, undefined])(
+  'never treats root exit as proof of tree settlement (accounting: %s)',
+  async (count) => {
+    await expect(
+      settleWindowsJob({ rootExited: true, active: () => count, terminate: () => false }),
+    ).resolves.toEqual({ state: 'unknown', reason: 'unverified-tree' });
   },
-  15000,
 );

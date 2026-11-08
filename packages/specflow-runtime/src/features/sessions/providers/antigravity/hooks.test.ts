@@ -1,0 +1,603 @@
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { randomUUID } from 'node:crypto';
+import {
+  mkdtemp,
+  mkdir,
+  readFile,
+  writeFile,
+  rename,
+  realpath,
+  symlink,
+  rm,
+} from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import type { DriverFact } from '../../persistence/protocol';
+import { createAntigravityQuestionBridge } from './question-bridge';
+import { runAntigravityHook } from './hook-client';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { createServer } from 'node:http';
+
+const cleanups: (() => Promise<unknown>)[] = [];
+afterEach(async () => {
+  for (const cleanup of cleanups.splice(0).reverse()) {
+    await cleanup();
+  }
+});
+async function fixture(active = true, created = false, nativeFileAccess = false) {
+  const accesses: { created: boolean; close: ReturnType<typeof vi.fn> }[] = [];
+  const acquireFileAccess = vi.fn(() => {
+    const access = { created, close: vi.fn() };
+    accesses.push(access);
+
+    return access;
+  });
+  // Match installation discovery's physical workspace, including macOS /var aliases.
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'specflow-native-hook-')));
+  cleanups.push(() => rm(root, { recursive: true, force: true }));
+  const workspace = join(root, 'workspace');
+  await mkdir(workspace);
+  const facts: DriverFact[] = [];
+  const context = {
+    nativeSessionId: 'controlled-native-id',
+    workspace,
+    nativeTools: [
+      'view_file',
+      'list_dir',
+      'find_by_name',
+      'grep_search',
+      'write_to_file',
+      'replace_file_content',
+      'multi_replace_file_content',
+      'run_command',
+      'call_mcp_tool',
+    ],
+    writable: true,
+    commandsAllowed: true,
+  };
+  const bridge = await createAntigravityQuestionBridge(
+    {
+      invocation: { sessionId: randomUUID(), turnId: randomUUID(), invocationId: randomUUID() },
+      signal: new AbortController().signal,
+      emit: (fact) => {
+        facts.push(fact);
+
+        return Promise.resolve();
+      },
+      permissionContext: () => context,
+    },
+    nativeFileAccess ? {} : { acquireFileAccess },
+  );
+  cleanups.push(async () => {
+    await bridge.close();
+    bridge.releaseFileAccess();
+  });
+  const configurationPath = join(root, 'hook-private.json');
+  await writeFile(configurationPath, JSON.stringify(bridge.nativeHookClientConfiguration));
+  if (active) {
+    bridge.activate();
+  }
+
+  const body = (stepIdx = 0) => ({
+    conversationId: context.nativeSessionId,
+    workspacePaths: [workspace],
+    stepIdx,
+    toolCall: {
+      name: 'run_command',
+      args: {
+        CommandLine: 'echo controlled fixture',
+        Cwd: workspace,
+        WaitMsBeforeAsync: 5000,
+        toolSummary: 'Controlled fixture',
+        toolAction: 'execute',
+      },
+    },
+  });
+  const post = (
+    hook: 'pre-tool-use' | 'post-tool-use' | 'stop',
+    input: unknown,
+    signal = new AbortController().signal,
+  ) =>
+    runAntigravityHook({
+      hook,
+      configurationPath,
+      input: Buffer.from(JSON.stringify(input)),
+      signal,
+    });
+  const permission = async () => {
+    await vi.waitFor(() => expect(facts.some((fact) => fact.kind === 'interaction')).toBe(true));
+
+    return facts.find((fact) => fact.kind === 'interaction')!;
+  };
+
+  return {
+    root,
+    workspace,
+    context,
+    bridge,
+    facts,
+    configurationPath,
+    body,
+    post,
+    permission,
+    acquireFileAccess,
+    accesses,
+  };
+}
+
+describe('controlled native hook HTTP/helper boundary', () => {
+  it.runIf(process.platform === 'win32' && process.arch === 'x64')(
+    'holds real native path identities across HTTP admission, use and the matching receipt',
+    async () => {
+      // Default production file ownership, rather than the fake leases used for protocol races.
+      const f = await fixture(true, false, true);
+      const parent = join(f.workspace, 'safe');
+      const moved = join(f.workspace, 'moved');
+      await mkdir(parent);
+      const target = join(parent, 'new.txt');
+      const input = {
+        ...f.body(),
+        toolCall: {
+          name: 'write_to_file',
+          args: { TargetFile: target, CodeContent: 'controlled', Overwrite: false },
+        },
+      };
+      await expect(f.post('pre-tool-use', input)).resolves.toEqual({
+        decision: 'allow',
+        overwrite: { Overwrite: true },
+      });
+      await expect(rename(parent, moved)).rejects.toMatchObject({ code: 'EBUSY' });
+      await writeFile(target, 'controlled native write');
+      await expect(
+        f.post('post-tool-use', {
+          ...input,
+          toolCall: { ...input.toolCall, args: { ...input.toolCall.args, Overwrite: true } },
+        }),
+      ).resolves.toEqual({});
+      await rename(parent, moved);
+      expect(await readFile(join(moved, 'new.txt'), 'utf8')).toBe('controlled native write');
+      await f.bridge.close();
+      await expect(f.post('pre-tool-use', input)).resolves.toEqual({ decision: 'deny' });
+    },
+  );
+  it('correlates different calls within one native step and refuses an exact retry', async () => {
+    const f = await fixture();
+    const first = {
+      ...f.body(1),
+      toolCall: { name: 'view_file', args: { AbsolutePath: join(f.workspace, 'first.txt') } },
+    };
+    const second = {
+      ...f.body(1),
+      toolCall: { name: 'view_file', args: { AbsolutePath: join(f.workspace, 'second.txt') } },
+    };
+    await expect(f.post('pre-tool-use', first)).resolves.toEqual({ decision: 'allow' });
+    await expect(f.post('pre-tool-use', second)).resolves.toEqual({ decision: 'allow' });
+    await expect(f.post('pre-tool-use', first)).resolves.toEqual({ decision: 'deny' });
+    expect(f.acquireFileAccess).toHaveBeenCalledTimes(2);
+    const firstAccess = f.accesses[0]!;
+    const secondAccess = f.accesses[1]!;
+    await expect(f.post('post-tool-use', first)).resolves.toEqual({});
+    expect(firstAccess.close).toHaveBeenCalledTimes(1);
+    expect(secondAccess.close).not.toHaveBeenCalled();
+    await f.post('post-tool-use', first);
+    expect(firstAccess.close).toHaveBeenCalledTimes(1);
+    await f.bridge.close();
+    expect(secondAccess.close).not.toHaveBeenCalled();
+    f.bridge.releaseFileAccess();
+    expect(secondAccess.close).toHaveBeenCalledTimes(1);
+  });
+
+  it('retains reserved ownership and rejects replay of effective arguments before and after receipt', async () => {
+    const f = await fixture(true, true);
+    const input = {
+      ...f.body(),
+      toolCall: {
+        name: 'write_to_file',
+        args: {
+          TargetFile: join(f.workspace, 'new.txt'),
+          CodeContent: 'controlled',
+          Overwrite: false,
+        },
+      },
+    };
+    await expect(f.post('pre-tool-use', input)).resolves.toEqual({
+      decision: 'allow',
+      overwrite: { Overwrite: true },
+    });
+    const access = f.accesses[0]!;
+    const stop = {
+      conversationId: f.context.nativeSessionId,
+      workspacePaths: [f.workspace],
+      executionNum: 1,
+      terminationReason: 'NO_TOOL_CALL',
+      fullyIdle: true,
+    };
+    await expect(f.post('stop', stop)).resolves.toEqual({ decision: 'deny' });
+    const effective = {
+      ...input,
+      toolCall: { ...input.toolCall, args: { ...input.toolCall.args, Overwrite: true } },
+    };
+    await expect(f.post('pre-tool-use', effective)).resolves.toEqual({ decision: 'deny' });
+    expect(f.acquireFileAccess).toHaveBeenCalledTimes(1);
+    await expect(
+      f.post('post-tool-use', {
+        ...input,
+        toolCall: { ...input.toolCall, args: { ...input.toolCall.args, Overwrite: true } },
+      }),
+    ).resolves.toEqual({});
+    expect(access.close).toHaveBeenCalledTimes(1);
+    await expect(f.post('stop', stop)).resolves.toEqual({ decision: 'stop' });
+    await expect(f.post('pre-tool-use', effective)).resolves.toEqual({ decision: 'deny' });
+  });
+
+  it('bounds outstanding file ownership without releasing still-active tools', async () => {
+    const f = await fixture();
+    for (let index = 0; index < 33; index++) {
+      await expect(
+        f.post('pre-tool-use', {
+          ...f.body(index),
+          toolCall: {
+            name: 'view_file',
+            args: { AbsolutePath: join(f.workspace, `${index}.txt`) },
+          },
+        }),
+      ).resolves.toEqual({ decision: index < 32 ? 'allow' : 'deny' });
+    }
+
+    expect(f.acquireFileAccess).toHaveBeenCalledTimes(32);
+    for (const access of f.accesses) {
+      expect(access.close).not.toHaveBeenCalled();
+    }
+  });
+  it('does not assign an earlier receipt identity to a new reserved-file operation', async () => {
+    const f = await fixture(true, true);
+    const first = {
+      ...f.body(),
+      toolCall: {
+        name: 'write_to_file',
+        args: {
+          TargetFile: join(f.workspace, 'new.txt'),
+          CodeContent: 'controlled',
+          Overwrite: true,
+        },
+      },
+    };
+    await expect(f.post('pre-tool-use', first)).resolves.toEqual({
+      decision: 'allow',
+      overwrite: { Overwrite: true },
+    });
+    await expect(f.post('post-tool-use', first)).resolves.toEqual({});
+    const second = {
+      ...first,
+      toolCall: { ...first.toolCall, args: { ...first.toolCall.args, Overwrite: false } },
+    };
+    await expect(f.post('pre-tool-use', second)).resolves.toEqual({ decision: 'deny' });
+    expect(f.accesses).toHaveLength(2);
+    for (const access of f.accesses) {
+      expect(access.close).toHaveBeenCalledOnce();
+    }
+
+    // A late old receipt cannot release ownership belonging to a newer call.
+    await expect(f.post('post-tool-use', first)).resolves.toEqual({});
+    for (const access of f.accesses) {
+      expect(access.close).toHaveBeenCalledOnce();
+    }
+
+    await expect(
+      f.post('stop', {
+        conversationId: f.context.nativeSessionId,
+        workspacePaths: [f.workspace],
+        executionNum: 1,
+        terminationReason: 'NO_TOOL_CALL',
+        fullyIdle: true,
+      }),
+    ).resolves.toEqual({ decision: 'stop' });
+  });
+  it('does not consume the MCP request budget for native file hooks', async () => {
+    const f = await fixture();
+    for (let stepIdx = 0; stepIdx <= 256; stepIdx++) {
+      await expect(
+        f.post('pre-tool-use', {
+          ...f.body(stepIdx),
+          toolCall: { name: 'view_file', args: { AbsolutePath: join(f.workspace, 'file.txt') } },
+        }),
+      ).resolves.toEqual({ decision: 'allow' });
+      await expect(
+        f.post('post-tool-use', {
+          ...f.body(stepIdx),
+          toolCall: { name: 'view_file', args: { AbsolutePath: join(f.workspace, 'file.txt') } },
+        }),
+      ).resolves.toEqual({});
+    }
+
+    expect(f.facts.filter((fact) => fact.kind === 'interaction')).toEqual([]);
+  });
+  it('allows the exact native MCP wrapper then admits its question exactly once through the SDK bridge', async () => {
+    const f = await fixture();
+    await expect(
+      f.post('pre-tool-use', {
+        conversationId: f.context.nativeSessionId,
+        workspacePaths: [f.workspace],
+        stepIdx: 0,
+        toolCall: {
+          name: 'call_mcp_tool',
+          args: {
+            ServerName: 'specflow-interactions',
+            ToolName: 'ask_user',
+            Arguments: { question: 'Controlled question' },
+            toolAction: 'ask',
+            toolSummary: 'Controlled question',
+          },
+        },
+      }),
+    ).resolves.toEqual({ decision: 'allow' });
+    expect(f.facts).toEqual([]);
+    const configuration = f.bridge.configuration.mcpServers['specflow-interactions'];
+    const client = new Client({ name: 'controlled-native-hook-fixture', version: '1' });
+    cleanups.push(() => client.close());
+    await client.connect(
+      new StreamableHTTPClientTransport(new URL(configuration.serverUrl), {
+        requestInit: { headers: configuration.headers },
+      }),
+    );
+    const native = client.callTool({
+      name: 'ask_user',
+      arguments: { question: 'Controlled question' },
+    });
+    const fact = await f.permission();
+    expect(fact.interaction.kind).toBe('question');
+    await f.bridge.respond(fact.key, {
+      requestId: randomUUID(),
+      kind: 'question',
+      answer: { optionIds: [], text: 'Controlled answer' },
+    });
+    expect(await native).toMatchObject({
+      content: [
+        { type: 'text', text: JSON.stringify({ selections: [], text: 'Controlled answer' }) },
+      ],
+    });
+    expect(f.facts.filter((entry) => entry.kind === 'interaction')).toHaveLength(1);
+  });
+
+  it('admits one canonical permission and reports delivery only after exact hook response flush', async () => {
+    const f = await fixture();
+    const native = f.post('pre-tool-use', f.body());
+    const fact = await f.permission();
+    expect(fact.interaction.kind).toBe('permission');
+    const response = {
+      requestId: randomUUID(),
+      kind: 'permission' as const,
+      decision: 'allow' as const,
+    };
+    await expect(f.bridge.respond(fact.key, response)).resolves.toEqual({
+      deliveredKeys: [fact.key],
+    });
+    await expect(native).resolves.toEqual({ decision: 'auto_approve' });
+    await expect(f.bridge.respond(fact.key, response)).resolves.toEqual({
+      deliveredKeys: [fact.key],
+    });
+    await expect(
+      f.bridge.respond(fact.key, { ...response, decision: 'deny' }),
+    ).rejects.toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
+    await expect(f.post('pre-tool-use', f.body())).resolves.toEqual({ decision: 'deny' });
+    expect(f.facts.filter((entry) => entry.kind === 'interaction')).toHaveLength(1);
+  });
+
+  it('denies before activation, wrong correlation, malformed input and invalid private authorization', async () => {
+    const f = await fixture(false);
+    await expect(f.post('pre-tool-use', f.body())).resolves.toEqual({ decision: 'deny' });
+    f.bridge.activate();
+    await expect(
+      f.post('pre-tool-use', { ...f.body(), conversationId: 'another' }),
+    ).resolves.toEqual({ decision: 'deny' });
+    await expect(f.post('pre-tool-use', { nonsense: true })).resolves.toEqual({ decision: 'deny' });
+    await writeFile(
+      f.configurationPath,
+      JSON.stringify({
+        ...f.bridge.nativeHookClientConfiguration,
+        token: 'Bearer ' + 'x'.repeat(43),
+      }),
+    );
+    await expect(f.post('pre-tool-use', f.body())).resolves.toEqual({ decision: 'deny' });
+    expect(f.facts).toEqual([]);
+  });
+
+  it('expires a disconnected permission without replaying its answer', async () => {
+    const f = await fixture();
+    const abort = new AbortController();
+    const native = f.post('pre-tool-use', f.body(), abort.signal);
+    const fact = await f.permission();
+    abort.abort();
+    await expect(native).resolves.toEqual({ decision: 'deny' });
+    await vi.waitFor(() =>
+      expect(f.facts.some((entry) => entry.kind === 'interaction-expired')).toBe(true),
+    );
+    await expect(
+      f.bridge.respond(fact.key, {
+        requestId: randomUUID(),
+        kind: 'permission',
+        decision: 'allow',
+      }),
+    ).rejects.toMatchObject({ code: 'INTERACTION_EXPIRED' });
+  });
+
+  it('rechecks physical cwd immediately before grant', async () => {
+    const f = await fixture();
+    const cwd = join(f.workspace, 'cwd');
+    const outside = join(f.root, 'outside');
+    await mkdir(cwd);
+    await mkdir(outside);
+    const input = f.body();
+    input.toolCall.args.Cwd = cwd;
+    const native = f.post('pre-tool-use', input);
+    const fact = await f.permission();
+    await rename(cwd, join(f.workspace, 'original'));
+    await symlink(outside, cwd, process.platform === 'win32' ? 'junction' : 'dir');
+    await expect(
+      f.bridge.respond(fact.key, {
+        requestId: randomUUID(),
+        kind: 'permission',
+        decision: 'allow',
+      }),
+    ).rejects.toThrow();
+    await expect(native).resolves.toEqual({ decision: 'deny' });
+    expect(f.facts.some((entry) => entry.kind === 'interaction-expired')).toBe(true);
+  });
+
+  it('does not grant after the operation-owned context changes while waiting', async () => {
+    const f = await fixture();
+    const native = f.post('pre-tool-use', f.body());
+    const fact = await f.permission();
+    f.context.nativeSessionId = 'changed-native-context';
+    await expect(
+      f.bridge.respond(fact.key, {
+        requestId: randomUUID(),
+        kind: 'permission',
+        decision: 'allow',
+      }),
+    ).rejects.toMatchObject({ code: 'INTERACTION_EXPIRED' });
+    await expect(native).resolves.toEqual({ decision: 'deny' });
+  });
+
+  it('accepts fullyIdle only from a matching native Stop hook', async () => {
+    const f = await fixture();
+    const controller = new AbortController();
+    const waiting = f.bridge.awaitNativeIdle(controller.signal);
+    const stop = {
+      conversationId: f.context.nativeSessionId,
+      workspacePaths: [f.workspace],
+      executionNum: 1,
+      terminationReason: 'model_stop',
+      fullyIdle: false,
+    };
+    await expect(f.post('stop', stop)).resolves.toEqual({ decision: 'stop' });
+    await expect(
+      f.post('stop', { ...stop, conversationId: 'other', fullyIdle: true }),
+    ).resolves.toEqual({ decision: 'deny' });
+    controller.abort(new Error('controlled-stop-not-idle'));
+    await expect(waiting).rejects.toThrow('controlled-stop-not-idle');
+    await expect(f.post('stop', { ...stop, fullyIdle: true })).resolves.toEqual({
+      decision: 'stop',
+    });
+    await f.bridge.awaitNativeIdle(new AbortController().signal);
+  });
+
+  it('revokes idle evidence after another native tool and rejects stale Stop replay', async () => {
+    const f = await fixture();
+    const stop = {
+      conversationId: f.context.nativeSessionId,
+      workspacePaths: [f.workspace],
+      executionNum: 1,
+      terminationReason: 'NO_TOOL_CALL',
+      fullyIdle: true,
+    };
+    await expect(f.post('stop', stop)).resolves.toEqual({ decision: 'stop' });
+    const tool = f.body();
+    tool.toolCall = {
+      name: 'view_file',
+      args: { AbsolutePath: join(f.workspace, 'file.txt') },
+    } as unknown as typeof tool.toolCall;
+    await expect(f.post('pre-tool-use', tool)).resolves.toEqual({ decision: 'allow' });
+    await f.post('post-tool-use', tool);
+    await expect(f.post('stop', stop)).resolves.toEqual({ decision: 'deny' });
+    const controller = new AbortController();
+    const idle = f.bridge.awaitNativeIdle(controller.signal);
+    controller.abort(new Error('not-idle'));
+    await expect(idle).rejects.toThrow('not-idle');
+    await expect(f.post('stop', { ...stop, executionNum: 2 })).resolves.toEqual({
+      decision: 'stop',
+    });
+  });
+
+  it('accepts a final idle Stop after native background continuation within the same execution number', async () => {
+    const f = await fixture();
+    const stop = {
+      conversationId: f.context.nativeSessionId,
+      workspacePaths: [f.workspace],
+      executionNum: 0,
+      terminationReason: 'NO_TOOL_CALL',
+      fullyIdle: false,
+    };
+    await expect(f.post('stop', stop)).resolves.toEqual({ decision: 'stop' });
+    await expect(
+      f.post('pre-tool-use', {
+        conversationId: f.context.nativeSessionId,
+        workspacePaths: [f.workspace],
+        stepIdx: 1,
+        toolCall: {
+          name: 'call_mcp_tool',
+          args: {
+            ServerName: 'specflow-interactions',
+            ToolName: 'ask_user',
+            Arguments: { question: 'Controlled question' },
+            toolAction: 'ask',
+            toolSummary: 'ask',
+          },
+        },
+      }),
+    ).resolves.toEqual({ decision: 'allow' });
+    await expect(f.post('stop', { ...stop, fullyIdle: true })).resolves.toEqual({
+      decision: 'stop',
+    });
+    await f.bridge.awaitNativeIdle(new AbortController().signal);
+    await expect(f.post('stop', stop)).resolves.toEqual({ decision: 'deny' });
+  });
+
+  it('denies untrusted client configuration and oversized helper input without external network calls', async () => {
+    const f = await fixture();
+    await writeFile(
+      f.configurationPath,
+      JSON.stringify({
+        ...f.bridge.nativeHookClientConfiguration,
+        baseUrl: 'https://external.invalid',
+      }),
+    );
+    await expect(f.post('pre-tool-use', f.body())).resolves.toEqual({ decision: 'deny' });
+    await expect(
+      runAntigravityHook({
+        hook: 'pre-tool-use',
+        configurationPath: f.configurationPath,
+        input: Buffer.alloc(65_537),
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toEqual({ decision: 'deny' });
+    expect(f.facts).toEqual([]);
+  });
+
+  it.each([
+    [{ decision: 'auto_approve' }, { decision: 'auto_approve' }],
+    [{ decision: ['auto_approve'] }, { decision: 'deny' }],
+    [{ decision: ['allow'] }, { decision: 'deny' }],
+    [{ decision: 'deny', overwrite: { Overwrite: true } }, { decision: 'deny' }],
+  ])('validates the exact bridge response shape %#', async (payload, expected) => {
+    const f = await fixture();
+    const server = createServer((request, response) => {
+      request.resume();
+      response.writeHead(200, { 'content-type': 'application/json' });
+      response.end(JSON.stringify(payload));
+    });
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    cleanups.push(
+      () =>
+        new Promise<void>((resolve) => {
+          server.closeAllConnections();
+          server.close(() => resolve());
+        }),
+    );
+    const address = server.address();
+    if (!address || typeof address === 'string') {
+      throw new Error('Controlled listener unavailable.');
+    }
+
+    await writeFile(
+      f.configurationPath,
+      JSON.stringify({
+        ...f.bridge.nativeHookClientConfiguration,
+        baseUrl: `http://127.0.0.1:${address.port}`,
+      }),
+    );
+    await expect(f.post('pre-tool-use', f.body())).resolves.toEqual(expected);
+    expect(f.facts).toEqual([]);
+  });
+});

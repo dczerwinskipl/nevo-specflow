@@ -17,6 +17,7 @@ import { UiPlaygroundScreen } from '../../../app/screens';
 import { LoginScreen } from '../../../auth/LoginScreen';
 import { createAuthStore } from '../../../auth/store';
 import { StoryLocalization } from '../../../i18n/StoryLocalization';
+import { settleViewport } from '../../../test-support/viewportSettle.stories-support';
 import type { AppLocale } from '../../../i18n';
 import {
   createLongContentFixture,
@@ -503,6 +504,52 @@ export const CurrentContract: Story = {
     await userEvent.click(
       canvas.getByRole('button', { name: 'Expand Requires attention section' }),
     );
+  },
+};
+
+/**
+ * In the wide Focused frame (1920 px: the frame is at its 90rem maximum) the list spans the frame but
+ * does not spread its columns: Situation starts within the bounded title track (40rem) plus one
+ * column gap, and Progress directly after the Situation track. The search field is no wider than the
+ * title track.
+ */
+export const WideFrameKeepsColumnsTogether: Story = {
+  tags: ['contract', '!autodocs'],
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    await canvas.findByRole('heading', { name: 'Requires attention' });
+    await settleViewport(1920, 1000);
+    try {
+      const root = getComputedStyle(document.documentElement);
+      const rem = parseFloat(root.fontSize);
+      const frame = canvasElement.querySelector<HTMLElement>('main[data-app-shell-region]')!;
+      await expect(Math.abs(frame.getBoundingClientRect().width - 90 * rem)).toBeLessThan(1);
+
+      // The list spans the frame's scroller, less the 16 px inset on each side.
+      const body = frame.querySelector<HTMLElement>('.scroll-area-viewport')!;
+      const list = canvasElement.querySelector<HTMLElement>('[data-spec-layout]')!;
+      await expect(list.getBoundingClientRect().width).toBeGreaterThan(
+        body.clientWidth - 2 * rem - 1,
+      );
+
+      const header = canvasElement.querySelector<HTMLElement>('[data-spec-columns]')!;
+      const gap = parseFloat(getComputedStyle(header).columnGap);
+      const [title, situation, progress] = [...header.children].map((column) =>
+        column.getBoundingClientRect(),
+      );
+      if (!title || !situation || !progress) {
+        throw new Error('The current list has title, situation and progress columns.');
+      }
+
+      await expect(situation.left).toBeLessThanOrEqual(title.left + 40 * rem + gap + 0.5);
+      await expect(progress.left).toBeLessThanOrEqual(situation.left + 15 * rem + gap + 0.5);
+
+      // The archive shows the search field: no wider than the title track.
+      await userEvent.click(canvas.getByRole('radio', { name: 'Archive' }));
+      const search = await canvas.findByRole('textbox', { name: 'Search specifications' });
+      await expect(search.getBoundingClientRect().width).toBeLessThanOrEqual(40 * rem + 0.5);
+    } finally {
+      await settleViewport();
+    }
   },
 };
 

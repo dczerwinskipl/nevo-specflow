@@ -6,6 +6,8 @@ import { createMcpQuestionTransport } from '../../interactions/mcp/question-tran
 import { McpQuestionEndpoint } from '../../interactions/mcp/questions';
 import { stable } from '../../persistence/encoding';
 import { acquireWindowsFileAccess, type NativeFileAccess } from '../process/windows-file-access';
+import { createAntigravityDiscovery } from './discovery/transport';
+import { DiscoveryEndpoint } from './discovery/contract';
 import {
   prepareAntigravityPermission,
   validateAntigravityHookBinding,
@@ -37,6 +39,10 @@ export async function createAntigravityQuestionBridge(
     emit: EmitFact;
     signal: AbortSignal;
     permissionContext?: () => AntigravityPermissionContext | undefined;
+    discovery?: Pick<
+      Parameters<typeof createAntigravityDiscovery>[0],
+      'workspace' | 'temporaryRoot' | 'helper' | 'launch'
+    >;
   },
   dependencies: { acquireFileAccess?: typeof acquireWindowsFileAccess } = {},
 ) {
@@ -51,7 +57,9 @@ export async function createAntigravityQuestionBridge(
   let idle = deferred<void>();
   let nativeIdle = false;
   let hookGeneration = 0;
-  let lastStop: { execution: number; generation: number; fullyIdle: boolean } | undefined;
+  let continuationAvailable = true;
+  let lastStop:
+    { execution: number; generation: number; fullyIdle: boolean; conflicted: boolean } | undefined;
   function expired() {
     return new SessionError('INTERACTION_EXPIRED', 'The native interaction transport expired.');
   }
@@ -64,17 +72,38 @@ export async function createAntigravityQuestionBridge(
     }
   }
 
+  let discovery: ReturnType<typeof createAntigravityDiscovery> | undefined;
   const transport = await createMcpQuestionTransport({
     invocation: options.invocation,
     emit: options.emit,
     signal: options.signal,
     onQuestion: nativeBusy,
-    onClose: () => idle.reject(expired()),
+    onClose: () => {
+      discovery?.cancel();
+      idle.reject(expired());
+    },
     extension: {
-      paths: ['/hooks/pre-tool-use', '/hooks/post-tool-use', '/hooks/stop'],
-      handle: handleHook,
+      paths: [
+        '/hooks/pre-tool-use',
+        '/hooks/post-tool-use',
+        '/hooks/stop',
+        ...(options.discovery ? ['/discovery'] : []),
+      ],
+      handle: (path, envelope, response) =>
+        path === '/discovery' && discovery
+          ? discovery.handle(envelope, response)
+          : handleHook(path, envelope, response),
     },
   });
+  if (options.discovery) {
+    discovery = createAntigravityDiscovery({
+      ...options.discovery,
+      signal: options.signal,
+      admitted: () => transport.active && !transport.closed,
+      context: () => options.permissionContext?.(),
+    });
+  }
+
   function hookJson(response: ServerResponse, value: object) {
     response.writeHead(200, { 'content-type': 'application/json' });
     response.end(JSON.stringify(value));
@@ -86,7 +115,7 @@ export async function createAntigravityQuestionBridge(
     response: ServerResponse,
   ) {
     const selectedContext = options.permissionContext?.();
-    if (!transport.active || transport.closed || !selectedContext) {
+    if (!transport.active || transport.closed || options.signal.aborted || !selectedContext) {
       hookJson(response, { decision: 'deny' });
 
       return;
@@ -104,6 +133,7 @@ export async function createAntigravityQuestionBridge(
         current.nativeTools !== context.nativeTools ||
         current.workspace !== context.workspace ||
         current.writable !== context.writable ||
+        current.discoveryEnabled !== context.discoveryEnabled ||
         current.commandsAllowed !== context.commandsAllowed
       ) {
         throw expired();
@@ -136,28 +166,54 @@ export async function createAntigravityQuestionBridge(
           typeof bound.fullyIdle !== 'boolean' ||
           !Number.isSafeInteger(bound.executionNum) ||
           (bound.executionNum as number) < 0 ||
-          typeof bound.terminationReason !== 'string'
+          typeof bound.terminationReason !== 'string' ||
+          (bound.error !== undefined && typeof bound.error !== 'string')
         ) {
           throw new Error('Invalid native stop evidence.');
         }
 
+        assertCurrent();
         const execution = bound.executionNum as number;
         if (
           lastStop &&
           (execution < lastStop.execution ||
             (execution === lastStop.execution &&
               lastStop.fullyIdle &&
-              (hookGeneration !== lastStop.generation || !bound.fullyIdle)))
+              (hookGeneration !== lastStop.generation || !bound.fullyIdle)) ||
+            (execution === lastStop.execution && lastStop.conflicted))
         ) {
           throw new Error('Stale native stop evidence.');
         }
 
-        if (transport.hasPendingInteractions() || fileAccess.size) {
-          throw new Error('Native stop conflicts with unresolved interactions.');
+        const ordinaryCompletion =
+          (bound.terminationReason === 'NO_TOOL_CALL' ||
+            bound.terminationReason === 'model_stop') &&
+          (bound.error === undefined || bound.error === '');
+        if (!ordinaryCompletion) {
+          continuationAvailable = false;
         }
 
-        lastStop = { execution, generation: hookGeneration, fullyIdle: bound.fullyIdle };
+        if (transport.hasPendingInteractions() || fileAccess.size) {
+          // Stop is not a permission gate: deny also permits native termination.
+          // Only ordinary model completion may re-enter this invocation, once.
+          // Never reuse its idle evidence or let a retry buy another continuation.
+          const resume = continuationAvailable;
+          continuationAvailable = false;
+          lastStop = { execution, generation: hookGeneration, fullyIdle: false, conflicted: true };
+
+          hookJson(response, { decision: resume ? 'continue' : 'stop' });
+
+          return;
+        }
+
+        lastStop = {
+          execution,
+          generation: hookGeneration,
+          fullyIdle: bound.fullyIdle,
+          conflicted: false,
+        };
         if (bound.fullyIdle) {
+          continuationAvailable = false;
           nativeIdle = true;
           idle.resolve();
         } else if (nativeIdle) {
@@ -264,6 +320,16 @@ export async function createAntigravityQuestionBridge(
   return {
     configuration: {
       mcpServers: {
+        ...(discovery
+          ? {
+              [DiscoveryEndpoint.serverName]: {
+                serverUrl: transport.endpoint.baseUrl + '/discovery',
+                headers: { Authorization: transport.endpoint.authorization },
+                enabledTools: [...DiscoveryEndpoint.tools],
+                timeoutSeconds: 15,
+              },
+            }
+          : {}),
         [serverName]: {
           serverUrl: transport.endpoint.baseUrl + '/mcp',
           headers: { Authorization: transport.endpoint.authorization },
@@ -273,6 +339,11 @@ export async function createAntigravityQuestionBridge(
       },
     },
     permissionRule: 'mcp(' + serverName + '/' + toolName + ')',
+    discoveryPermissionRules: discovery
+      ? DiscoveryEndpoint.tools.map(
+          (name) => 'mcp(' + DiscoveryEndpoint.serverName + '/' + name + ')',
+        )
+      : [],
     nativeHookClientConfiguration: {
       baseUrl: transport.endpoint.baseUrl,
       token: transport.endpoint.authorization,
@@ -296,6 +367,9 @@ export async function createAntigravityQuestionBridge(
       });
     },
 
+    disableContinuation() {
+      continuationAvailable = false;
+    },
     activate: () => transport.activate(),
     respond: transport.respond,
     releaseFileAccess() {
@@ -305,7 +379,10 @@ export async function createAntigravityQuestionBridge(
 
       fileAccess.clear();
     },
-    close: transport.close,
+    async close() {
+      await Promise.all([transport.close(), discovery?.close()]);
+    },
+    processSettlementVerified: () => discovery?.processSettlementVerified() ?? true,
     done: transport.done,
   };
 }

@@ -4,6 +4,7 @@ import { validateDriverFact } from '../facts';
 import { validateAntigravityFileArguments } from './tool-arguments';
 import type { DriverFact } from '../../persistence/protocol';
 import { prepareMcpQuestion, McpQuestionEndpoint } from '../../interactions/mcp/questions';
+import { DiscoveryEndpoint, discoveryTool, parseDiscoveryRequest } from './discovery/contract';
 
 const MAX_WAIT_BEFORE_ASYNC_MS = 30_000;
 
@@ -24,6 +25,7 @@ export interface AntigravityPermissionContext {
   workspace: string;
   writable: boolean;
   commandsAllowed?: boolean;
+  discoveryEnabled?: boolean;
 }
 export interface NativeHookDecision {
   decision: 'allow' | 'deny' | 'auto_approve';
@@ -183,8 +185,6 @@ export async function prepareAntigravityPermission(
     if (
       fields.length !== expected.length ||
       !fields.every((key) => expected.includes(key)) ||
-      args.ServerName !== McpQuestionEndpoint.serverName ||
-      args.ToolName !== McpQuestionEndpoint.toolName ||
       typeof args.toolAction !== 'string' ||
       typeof args.toolSummary !== 'string'
     ) {
@@ -192,7 +192,20 @@ export async function prepareAntigravityPermission(
     }
 
     // Validation only: canonical admission remains in the authenticated MCP call.
-    prepareMcpQuestion(args.Arguments);
+    if (
+      args.ServerName === McpQuestionEndpoint.serverName &&
+      args.ToolName === McpQuestionEndpoint.toolName
+    ) {
+      prepareMcpQuestion(args.Arguments);
+    } else if (
+      context.discoveryEnabled &&
+      args.ServerName === DiscoveryEndpoint.serverName &&
+      discoveryTool(args.ToolName)
+    ) {
+      parseDiscoveryRequest(args.ToolName, args.Arguments);
+    } else {
+      throw new Error('Native MCP inventory mismatch.');
+    }
 
     return { step, decision: { decision: 'allow' }, revalidate: () => Promise.resolve() };
   }

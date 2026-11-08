@@ -1,4 +1,8 @@
-import type { CreateOptions } from '@nevo/specflow-contracts/specs';
+import {
+  designatedBaseRef,
+  localBranchRef,
+  type CreateOptions,
+} from '@nevo/specflow-contracts/specs';
 import { message, type Message } from '../../../../../i18n/message';
 import type { Tile, WorkspaceChoice } from './workspaceChoice';
 
@@ -160,16 +164,19 @@ export function inheritedTarget(options: CreateOptions, workspace: Workspace): I
 
 /**
  * Value a freshly enabled "Zacznij od" switch starts with: the effective default, so turning the
- * switch on never shows an empty select. A `HEAD` default maps to the primary workspace branch
- * when that branch is a listed ref; otherwise there is nothing honest to preselect.
+ * switch on never shows an empty select. It is the listed `baseRefs[].ref` (a full ref) that the
+ * default designates: for `HEAD` the primary workspace branch, for a short name the local branch
+ * of that name, for a full ref itself. When that ref is not listed (a commit, a tag, a detached
+ * primary workspace) there is nothing honest to preselect.
  */
 export function defaultBaseValue(options: CreateOptions): string {
-  const listed = (ref?: string) =>
-    ref && options.baseRefs.some((item) => item.ref === ref) ? ref : '';
+  const primaryBranch = primaryWorkspace(options)?.branch;
+  const ref =
+    options.defaultBaseRef === 'HEAD'
+      ? primaryBranch && localBranchRef(primaryBranch)
+      : designatedBaseRef(options.defaultBaseRef);
 
-  return options.defaultBaseRef === 'HEAD'
-    ? listed(primaryWorkspace(options)?.branch)
-    : listed(options.defaultBaseRef);
+  return ref && options.baseRefs.some((item) => item.ref === ref) ? ref : '';
 }
 
 /**

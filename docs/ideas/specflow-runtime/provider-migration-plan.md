@@ -304,11 +304,22 @@ cancel/restart and unsupported clients cannot leave a falsely answered or unfini
 ### F14 — Antigravity recursive search
 
 **Priority:** P1. **Outside PR #107.**
-**Current/evidence:** `antigravity/permissions.ts` denies automatic `list_dir`, `find_by_name` and
-`grep_search`; holding one root handle cannot constrain traversal through uninspected descendants.
-An explicitly approved host command is the existing alternative.
-**Impact/direction:** Routine search needs more user approvals. Investigate a bounded, genuinely
-confined discovery mechanism or evidenced native enforcement, preserving direct-file guarding.
+**Status:** Implemented — independent re-review of `b55943a` approved F14 and closed its
+starting-path filtering R01. The previously reviewed F20 Stop algorithm is unchanged.
+**Delivery:** [PR #125](https://github.com/dczerwinskipl/nevo-specflow/pull/125) includes F14
+and F20 at the owner's explicit direction. Commit-specific checks and review evidence are
+recorded in that PR; supported automatic discovery remains local Windows x64 NTFS only.
+**Current/evidence:** Native `list_dir`, `find_by_name` and `grep_search` remain denied: the hook
+cannot constrain their descendant traversal. A provider-private `specflow-discovery` MCP server
+instead offers `list_directory`, `find_files` and literal `search_text` on local Windows x64 NTFS.
+Every descendant is enumerated by a held directory handle, opened by file ID without reparsing,
+and checked against its expected normalized volume-GUID path before reading through that handle.
+Reparse points, multi-linked files and private execution configuration are refused. Read-only
+helpers have bounded traversal/output and owned-process cancellation/settlement.
+**Impact/direction:** Ordinary nested source discovery no longer requires host-command approval
+within this supported profile. Native argument parity, regex and other filesystems are not claimed.
+See [F14 decision, budgets and evidence](antigravity-provider.md#f14-runtime-owned-workspace-discovery)
+for the exact subset and limitations; exact-command approval remains the fallback.
 **Dependencies/security:** Symlink/junction/hardlink policy, recursion/output budgets, path changes
 during traversal and native tool schemas. Do not solve this by blanket command auto-approval.
 **Minimum acceptance:** Useful nested search and controlled exclusions work; existing and raced
@@ -385,20 +396,30 @@ IDs and absent/contradictory evidence never release an uncertain writer or fabri
 
 ### F20 — Antigravity Stop continuation semantics
 
-**Priority:** P2. **Outside PR #107; N02 from the final re-review.**
-**Current/evidence:** `antigravity/question-bridge.ts` answers `deny` when Stop
-conflicts with pending interactions or retained files. Native [Stop documentation](https://antigravity.google/docs/hooks/#stop)
-specifies that only `continue` re-enters the loop. Runtime still requires positive
-idle and process-tree settlement; this does not manufacture success or approve effects.
-**Impact/direction:** A conflicting Stop may unnecessarily end native execution and
-leave an uncertain outcome. Decide when to continue the same native invocation
-versus stop it without replay, then map that decision to the native Stop response.
-**Dependencies/security:** Existing interaction delivery, retained file ownership,
-terminal arbitration and cancellation; continuation must not create unbounded
-model activity or let an old Stop affect a newer tool generation.
-**Minimum acceptance:** Controlled pending-question/file cases, duplicate and stale
-Stop, cancellation and already-observed terminal results preserve one lifecycle
-owner, bounded continuation and honest settlement. No real subscription in tests.
+**Priority:** First post-merge delivery. **Outside PR #107; N02 from the final re-review.**
+**Status:** Implemented — R01/R02 closed by independent re-review; targeted
+R03/R04 investigation found no confirmed production blocker. Required CI and
+CodeQL passed on F20 commit `3657763e`.
+**Delivery:** [PR #125](https://github.com/dczerwinskipl/nevo-specflow/pull/125), together
+with independently approved F14. Current-head verification is recorded in the PR.
+**Original evidence:** `antigravity/question-bridge.ts` returned `deny` for Stop
+conflicting with pending interactions or retained files. The native
+[Stop contract](https://antigravity.google/docs/hooks/#stop) permits termination
+for any response other than `continue`.
+**Implemented direction:** One continuation opportunity per native invocation,
+only for ordinary model completion conflicting with unresolved work. Cancellation,
+errors, terminal results, duplicate/stale Stop evidence and exhausted continuation
+cannot restart execution. Continued Stop evidence cannot settle that invocation;
+new native idle evidence and positive process settlement remain required.
+No new Turn, permission grant, Session owner or persistence schema is introduced.
+**Evidence/limits:** See the [Stop matrix, failing regression and synthetic native
+checks](antigravity-provider.md#f20-stop-continuation--2026-11-08). Repeated conflicts
+beyond the one-shot bound still stop conservatively and can leave execution unknown.
+**Review disposition:** [R03/R04 evidence and limits](antigravity-provider.md#r03r04-targeted-lifecycle-investigation-2026-11-08).
+No production change was required; same-execution background completion remains
+supported under the native final-result/idle contract.
+**Remaining:** No confirmed F20 production finding remains open. F19 positive reconciliation
+of unknown execution remains an independent follow-up; F20 does not implement it.
 
 [paseo-types]: https://github.com/getpaseo/paseo/blob/ab8e1e61ff7c0bbad08c95e15a09f3ec42333410/packages/server/src/server/agent/agent-sdk-types.ts
 [paseo-provider]: https://github.com/getpaseo/paseo/blob/ab8e1e61ff7c0bbad08c95e15a09f3ec42333410/packages/plugin/src/server/provider.ts

@@ -365,6 +365,18 @@ and it materially helps distinguish Sessions.
 Expose a deliberate **Session history** target for older/relevant Sessions instead of making the main
 Specification surface the history browser.
 
+**Implemented: Continue session row** (owner decision 2026-11-07, A3 scope 3). Continue session is one
+navigation row, not a card: the whole row opens the Session (the title is the row's link, stretched
+over it, with the shared hover and focus tint). It shows the Session name, its linked Tasks as a
+labelled count (`1 task`, `3 tasks`; never a bare number, and nothing when no Task is linked) and a
+readable status (`Active`, `Requires attention`, `Idle` for a quiet Session; no status when the
+Runtime does not know it). Following the row interaction grammar
+(`design-system.principles.information-row-hierarchy`), the row has no trailing arrow: the whole-row
+target is the way through. **All sessions** is a quiet ghost action in the section header, so it
+never outweighs the row; **New conversation** stays in the header's actions menu when a
+conversation can be started. The same Session may also appear in the navigation and in Requires
+attention; that repetition is a separate, deferred information-model scope.
+
 How the product chooses the one recent/relevant Session when several Sessions are plausible resume
 targets remains an open product/UX decision.
 
@@ -405,6 +417,54 @@ Tasks                          3 selected              [ Start session ]
 ```
 
 The exact Task groups and row fields are intentionally not frozen by this draft.
+
+### Wide pane: two columns (implemented)
+
+Owner decisions of 2026-11-07 (A3 scope 3, `side` hierarchy). The arrangement follows the
+Overview's **content width**, not the viewport:
+
+- **Below 1408 px** of content width, Overview is one left-aligned reading column
+  (`content-standard`) in the priority order above: summary, Requires attention, Continue session,
+  the repository section, preparation, Tasks, Documents.
+- **From 1408 px** the summary (title and description) sits above two columns that fill the pane
+  at the workspace's shared 16 px inset; the reading column no longer applies. The **work column**
+  (left, flexible) holds Requires attention, then preparation (an empty Specification only), then
+  Tasks. The **context column** (right, `22rem` to `30rem`) holds Continue session, then Documents
+  and the other related sections, then the repository section and any other context. Continue
+  session has its own section slot (`resume`), so its place never depends on module registration
+  order.
+
+```text
+Specification title
+description... More
+┌ Requires attention ───────────────┐   Continue session        All sessions
+│ ...                               │    Session name
+└───────────────────────────────────┘    3 tasks · Active
+Tasks                                    Documents
+ ▾ Group A                                ...
+```
+
+- **No empty bands.** Each column stacks on its own. A missing section collapses: without Requires
+  attention Tasks open the work column; without a Session the next context section opens the
+  context column. Both columns start on one line under the summary. Two columns need a section on
+  each side: with nothing to show in the work column (Requires attention, preparation, Tasks) or in
+  the context column, Overview stays one column at any width instead of reserving an empty track.
+- **Order.** Keyboard and reading order follow the visible order in both arrangements: one column
+  reads in priority order, two columns read the work column, then the context column. The
+  arrangement is therefore measured (`useContainerMinWidth`, on a zero-height sentinel), not a CSS
+  container query. The work sections move without remounting, so a Task selection survives a
+  crossing. The context sections change parent and remount; their view state lives outside them
+  (Documents' "show all" is kept per Specification for the visit), and focus inside them returns to
+  the same control, found by its row's `data-focus-key` (`document:<id>`, `session:<id>`). Focus
+  is only restored when that crossing removed the focused control; once the user has moved focus
+  away, clicked inside the Overview or blurred to empty space, a later crossing leaves focus alone.
+  A Secondary opened from such a row returns focus to it the same way.
+- **No oscillation.** Two columns start at 1408 px and stay until the content is narrower than
+  1392 px (16 px hysteresis), which also absorbs a classic scrollbar appearing with the new
+  arrangement, so the change cannot flip it back. The scroller keeps the workspace's usual right
+  inset, like Documents and Session.
+- **Secondary.** Opening the Secondary narrows the Overview and may return it to one column; that is
+  the intended responsive behaviour, not a breakpoint to compensate for.
 
 ### Compact
 
@@ -484,6 +544,28 @@ Narrow:
 
 Specs Overview itself does not push Task detail from dynamic summary state; it enters the
 Specification first.
+
+### Activity history
+
+Activity history stays in the Secondary (owner decision 2026-11-07; moving it into the Primary, A3h,
+was rejected). On split-capable layouts it is the declarative Secondary of Overview:
+
+- **An empty history does not reserve the Secondary.** The Secondary is open by default only when
+  the history has entries; otherwise Overview uses the space (and may show two columns). Every
+  state without entries (empty, not provided by this Runtime, unavailable, forbidden) is shown on
+  demand only.
+- **On demand.** A Primary header toggle, **Activity history** (clock icon, `aria-pressed`), shows
+  and hides it; the open Secondary also has its own Close. While a Task or document preview covers
+  the history, the toggle brings the history forward.
+- **The user's choice wins.** Once the user shows or hides the history of a Specification, that
+  choice holds for that Specification for the rest of the app session (in memory only; a reload
+  forgets it), including after leaving the Overview for Documents or a Session and coming back. A
+  history the user opened therefore never closes because it is empty, and one the user closed stays
+  closed even with entries. Other Specifications are unaffected.
+- **Default without a choice.** It is taken when the Overview mounts, so a refresh or a first event
+  never opens or closes the panel.
+- Narrow layouts keep the **Activity history** header action, which opens the history as a
+  contextual flow.
 
 ### Compact Floating Session validation
 

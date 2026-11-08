@@ -76,8 +76,10 @@ contextual Task/Document previews, independent from URL search state.
 Promoting a preview to Full is an explicit Primary route navigation.
 
 The Specification design separates short Task Preview in Secondary from explicit Full Task
-promotion into a main routed page (`/specs/:specId/tasks/:taskId`). Work defaults to
-Specification history in Secondary. A Full Task deep link reads the Task by ID through the
+promotion into a main routed page (`/specs/:specId/tasks/:taskId`). Specification Overview shows
+its Activity history in the Secondary, open by default only when the history has entries; an empty
+history leaves the space to Overview and stays available from the header's Activity history toggle
+(see `ideas.specflow-ui.screens.specification-workspace`, "Activity history"). A Full Task deep link reads the Task by ID through the
 authenticated Runtime detail API, not through the Workspace Task collection.
 
 For the current spec-driven MVP, global product navigation stays deliberately small. The default

@@ -15,6 +15,7 @@ export function CreateWorkspaceSection({
   headingId,
   onRefresh,
   onAnnounce,
+  showRequired = false,
 }: {
   createOptions: CreateOptionsModel;
   place: WorkspacePlace;
@@ -24,6 +25,8 @@ export function CreateWorkspaceSection({
   headingId: string;
   onRefresh: () => void;
   onAnnounce: (message: string) => void;
+  /** Create was tried: opened pickers left empty say so at the field. */
+  showRequired?: boolean;
 }) {
   return (
     <WorkspacePlaceSection
@@ -39,6 +42,7 @@ export function CreateWorkspaceSection({
       title={title}
       conflicts={place.conflicts}
       handleRef={place.handleRef}
+      showRequired={showRequired}
     />
   );
 }

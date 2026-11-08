@@ -67,6 +67,11 @@ function sessionStatus(session: SessionSummary, t: TFunction): SemanticSupportin
   return session.meta ? { text: session.meta } : undefined;
 }
 
+/**
+ * Continue session: one row that opens the recent Session. The whole row is the target and shows
+ * the same content as the Session's row in the Specification Sessions list (age, agent, Tasks and
+ * its effective status). "All sessions" is a quiet header action, so it never outweighs the row.
+ */
 export function ResumeSessionSection({
   session,
   onOpenSession,
@@ -85,16 +90,21 @@ export function ResumeSessionSection({
         title={t('specification.continueSessionHeading')}
         icon="chat"
         actions={
-          canStartSession ? (
-            <OverflowMenu
-              label={t('specification.continueSessionHeading')}
-              triggerLabel={t('specification.sessionActions')}
-            >
-              <MenuItem leadingIcon="plus" onSelect={() => onStartSession()}>
-                {t('sessions.list.newSession')}
-              </MenuItem>
-            </OverflowMenu>
-          ) : undefined
+          <>
+            <Button variant="ghost" size="sm" onClick={onOpenSessionsView}>
+              {t('specification.allSessionsLink')}
+            </Button>
+            {canStartSession ? (
+              <OverflowMenu
+                label={t('specification.continueSessionHeading')}
+                triggerLabel={t('specification.sessionActions')}
+              >
+                <MenuItem leadingIcon="plus" onSelect={() => onStartSession()}>
+                  {t('sessions.list.newSession')}
+                </MenuItem>
+              </OverflowMenu>
+            ) : null}
+          </>
         }
       />
 
@@ -104,6 +114,7 @@ export function ResumeSessionSection({
           leading={<SessionProviderIcon providerId={session.providerId} />}
           primary={session.title}
           onPrimaryClick={canOpenSession ? () => onOpenSession(session.id) : undefined}
+          dataAttributes={{ 'data-focus-key': `session:${session.id}` }}
           // The same row as the Session's row in the Specification Sessions list.
           factsLayout="inline"
           compactFacts={sessionRowFacts(
@@ -119,12 +130,6 @@ export function ResumeSessionSection({
           supporting={sessionStatus(session, t)}
         />
       </InformationList>
-
-      <WorkspaceSection.Footer>
-        <Button variant="secondary" size="sm" onClick={onOpenSessionsView}>
-          {t('specification.allSessionsLink')}
-        </Button>
-      </WorkspaceSection.Footer>
     </WorkspaceSection>
   );
 }

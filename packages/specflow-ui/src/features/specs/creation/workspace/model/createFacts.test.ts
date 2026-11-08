@@ -28,7 +28,8 @@ describe('buildCreateFacts', () => {
     const facts = buildCreateFacts(
       choice({
         tile: 'new',
-        base: { on: true, ref: 'feature/platform' },
+        // The Runtime lists full refs; the facts show the branch name the form showed.
+        base: { on: true, ref: 'refs/heads/feature/platform' },
         branch: { on: true, name: 'feature/mine', edited: true },
         slug: { on: true, value: 'my-slug', edited: true },
         target: { on: true, workspaceId: ids.platform },

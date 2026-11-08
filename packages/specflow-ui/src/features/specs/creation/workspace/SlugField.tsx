@@ -1,14 +1,17 @@
 import type { MutableRefObject } from 'react';
-import { TextInput } from '@nevo/ui';
+import { Field, TextInput } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import { SPEC_SLUG_MAX_LENGTH, deriveSpecSlug } from '@nevo/specflow-contracts/specs';
-import { OwnValueSetting } from '../../../../shared/controls/OwnValueSetting';
 import { useMessage, type Message } from '../../../../i18n/message';
+import { createControlWidth } from '../createFormLayout';
 import type { SettingsUpdate } from './settingsTypes';
-import { initialWorkspaceChoice, type WorkspaceChoice } from './model/workspaceChoice';
+import type { WorkspaceChoice } from './model/workspaceChoice';
 
-/** The specification name (slug) the Engine derives from the title, or the owner's own. */
-export function SlugSetting({
+/**
+ * The specification name (slug) of a changed "Branch name" row: it follows the title until the
+ * owner types their own, and only a typed value that differs is sent.
+ */
+export function SlugField({
   choice,
   title,
   error,
@@ -27,19 +30,8 @@ export function SlugSetting({
   const value = choice.slug.edited ? choice.slug.value : deriveSpecSlug(title);
 
   return (
-    <OwnValueSetting
-      className="grid grid-cols-1 gap-3 py-3"
-      switchLabel={t('create.workspace.settings.slugSwitch')}
-      on={choice.slug.on}
-      switchDescription={t('create.workspace.settings.slugSwitchDescription')}
-      onOnChange={(on) =>
-        update.set({
-          slug: on ? { on: true, value: '', edited: false } : initialWorkspaceChoice.slug,
-        })
-      }
-      fieldLabel={t('create.workspace.settings.slugLabel')}
-      error={error ? text(error) : undefined}
-    >
+    <Field invalid={Boolean(error)} className={createControlWidth}>
+      <Field.Label>{t('create.workspace.settings.slugLabel')}</Field.Label>
       <TextInput
         ref={inputRef}
         value={value}
@@ -52,6 +44,8 @@ export function SlugSetting({
           update.set({ slug: { on: true, value: event.target.value, edited: true } })
         }
       />
-    </OwnValueSetting>
+      <Field.Description>{t('create.workspace.settings.slugDescription')}</Field.Description>
+      {error && <Field.Error>{text(error)}</Field.Error>}
+    </Field>
   );
 }

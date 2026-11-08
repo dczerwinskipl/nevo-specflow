@@ -1,30 +1,37 @@
 import { Alert } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import { useUiModules } from '../../../app/ui-modules/UiModulesProvider';
-import { specificationAttentionItems } from '../extensions/specificationAttentionItems';
+import type { UiRegistry } from '../../../app/ui-modules/registry';
+import {
+  specificationAttentionItems,
+  type SpecificationAttentionEntry,
+} from '../extensions/specificationAttentionItems';
+import type { SpecificationWorkSectionContext } from '../extensions/specificationWorkSections';
 import { useWorkspaceRuntime } from './WorkspaceContext';
 import { AttentionSection } from './sections/AttentionSection';
 import type { SpecificationWorkspaceData } from '../read-model/model';
 
-/** Specification hosts the slot; domain modules supply data, actions and priority. */
-export function SpecificationAttentionOutlet({
-  specId,
-  data,
-}: {
-  readonly specId: string;
-  readonly data: SpecificationWorkspaceData;
-}) {
-  const modules = useUiModules();
-  const actions = useWorkspaceRuntime();
-  const context = { specId, data, actions };
-  const { t } = useTranslation();
-  const failedSources: string[] = [];
+interface CollectedAttention {
+  readonly items: readonly (SpecificationAttentionEntry & { readonly renderKey: string })[];
+  /** Sources that are unavailable or failed; `error` is set when the contribution threw. */
+  readonly failures: readonly { readonly sourceId: string; readonly error?: unknown }[];
+}
+
+/**
+ * Every contributed Attention entry in priority order, and the sources that could not answer.
+ * Pure apart from calling the contributions, so a host can also ask whether Attention shows.
+ */
+export function collectSpecificationAttention(
+  modules: UiRegistry,
+  context: SpecificationWorkSectionContext,
+): CollectedAttention {
+  const failures: { sourceId: string; error?: unknown }[] = [];
   const contributed = modules.get(specificationAttentionItems).flatMap((source) => {
     try {
       const result = source.getItems(context);
       if ('state' in result) {
         if (result.state === 'unavailable') {
-          failedSources.push(source.id);
+          failures.push({ sourceId: source.id });
         }
 
         return [];
@@ -48,8 +55,7 @@ export function SpecificationAttentionOutlet({
       });
     } catch (error) {
       // Never pretend that an unavailable domain source has no Attention.
-      failedSources.push(source.id);
-      console.error(`Specification Attention contribution failed: ${source.id}`, error);
+      failures.push({ sourceId: source.id, error });
 
       return [];
     }
@@ -58,14 +64,49 @@ export function SpecificationAttentionOutlet({
   const items = contributed.sort(
     (a, b) => order[a.item.priority ?? 'normal'] - order[b.item.priority ?? 'normal'],
   );
-  if (!items.length && !failedSources.length) {
+
+  return { items, failures };
+}
+
+/** Whether the Attention region renders anything for this Specification. */
+export function hasSpecificationAttention(
+  modules: UiRegistry,
+  context: SpecificationWorkSectionContext,
+): boolean {
+  const { items, failures } = collectSpecificationAttention(modules, context);
+
+  return items.length > 0 || failures.length > 0;
+}
+
+/** Specification hosts the slot; domain modules supply data, actions and priority. */
+export function SpecificationAttentionOutlet({
+  specId,
+  data,
+}: {
+  readonly specId: string;
+  readonly data: SpecificationWorkspaceData;
+}) {
+  const modules = useUiModules();
+  const actions = useWorkspaceRuntime();
+  const { t } = useTranslation();
+  const { items, failures } = collectSpecificationAttention(modules, { specId, data, actions });
+  for (const failure of failures) {
+    if (failure.error !== undefined) {
+      console.error(
+        `Specification Attention contribution failed: ${failure.sourceId}`,
+        failure.error,
+      );
+    }
+  }
+
+  if (!items.length && !failures.length) {
     return null;
   }
 
   return (
     <div className="pt-3 pb-4 @min-[40rem]/work:pb-5">
       {items.length > 0 ? <AttentionSection items={items} /> : null}
-      {failedSources.length > 0 ? (
+      {failures.length > 0 ? (
         <Alert role="alert" tone="attention" title={t('specification.attentionSourceFailedTitle')}>
           {t('specification.attentionSourceFailedDescription')}
         </Alert>

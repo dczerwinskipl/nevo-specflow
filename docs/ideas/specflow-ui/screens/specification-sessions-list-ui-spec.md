@@ -77,7 +77,8 @@ handler). A page may hold fewer items than requested, or none, while `nextCursor
 
 - One load (the first load or one press) follows `nextCursor` until at least one new row arrives or
   the cursor ends, at most 4 requests.
-- **Rows arrived:** appended below without scrolling; focus stays on the button; polite status
+- **Rows arrived:** appended below without scrolling; focus stays on the button, or moves to the
+  first appended row when the list has ended (the button unmounts); polite status
   `sessions.list.loaded_*` **Wczytano {{count}} sesji**.
 - **4 requests, no rows, cursor remains:** the button stays with one muted line under it,
   `sessions.list.noneInScanned` **Nie znaleziono więcej sesji w tej partii. Możesz szukać dalej.**

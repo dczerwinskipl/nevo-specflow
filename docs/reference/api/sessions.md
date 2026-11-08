@@ -355,7 +355,7 @@ type CreateContextSessionResult = {
 };
 ```
 
-- Refusal precedence: authentication, `503 SESSION_DISABLED`, then `spec.start-session` at
+- Refusal precedence: schema validation (400), authentication, `503 SESSION_DISABLED`, then `spec.start-session` at
   `specScope(projectId, specId)`, `session.create` at `{projectId, specId}` and, for
   `mode: 'workspace-write'`, `session.execute-write` at `{projectId}` (403 `forbidden`); only then
   the Engine verification, so a refused caller never learns whether the Specification exists.

@@ -940,13 +940,13 @@ describe('durable Session store', () => {
     const events = await store!.call<{
       events: { kind: string; changes: { entries?: unknown } }[];
     }>({ op: 'events', sessionId, after: before });
-    const latestDigest = { done: { read: 1, command: 1, other: 1 }, failed: { command: 1 } };
+    const latestDigest = { opened: { read: 1, command: 1, other: 1 }, failed: { command: 1 } };
     expect(events.events.map((event) => event.kind)).toEqual(['work', 'conversation', 'turn']);
     expect(events.events[1]!.changes.entries).toEqual([
       expect.objectContaining({ kind: 'work-summary', revision: 2, digest: latestDigest }),
     ]);
     const [first, latest] = await summaries();
-    expect(first!.digest).toEqual({ done: { read: 1, command: 1 }, failed: { command: 1 } });
+    expect(first!.digest).toEqual({ opened: { read: 1, command: 1 }, failed: { command: 1 } });
     expect(latest).toMatchObject({ revision: 2, digest: latestDigest });
     const live = await work();
     expect(live.counts).toEqual({
@@ -990,7 +990,7 @@ describe('durable Session store', () => {
     });
     expect((await summaries()).at(-1)).toMatchObject({
       turnId: next.turnId,
-      digest: { done: { edit: 1 }, failed: { edit: 1 } },
+      digest: { opened: { edit: 1 }, failed: { edit: 1 } },
     });
   });
   it('counts interaction Work leaving active when answered and expired', async () => {

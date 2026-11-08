@@ -424,7 +424,7 @@ function turnFixture(
   };
 
   push('request', request);
-  const digest: WorkDigest = { done: {}, failed: {} };
+  const digest: WorkDigest = { opened: {}, failed: {} };
   for (const step of steps) {
     const workId = `${turnId}-work-${items.length + 1}`;
     if ('commentary' in step) {
@@ -464,16 +464,16 @@ function turnFixture(
         updatedAt,
       },
     ];
-    // Every state counts toward `done` — the digest total, matching `computeWorkCounts`'s own
+    // Every state counts toward `opened` — the digest total, matching `computeWorkCounts`'s own
     // `items.length`-based `byKind.tool` the history panel renders (owner decision, round two
     // review: "licz wszystko jak w historii"; confirmed again, round four review, after a failed
     // action was found missing from the chat Work block's own top-line total — it must count in
     // BOTH places, not one or the other). `failed` is an ADDITIONAL breakdown layered on top of
-    // `done`, giving the failure its own highlighted line, never a replacement for counting it in
-    // the total: `active`/`interrupted`/`failed` all still fold into `done` since this per-kind
+    // `opened`, giving the failure its own highlighted line, never a replacement for counting it in
+    // the total: `active`/`interrupted`/`failed` all still fold into `opened` since this per-kind
     // tally is "what this kind has happened so far", not strictly "succeeded", and the block's
     // separate live line already carries the currently-running item's own detail.
-    digest.done[step.kind] = (digest.done[step.kind] ?? 0) + 1;
+    digest.opened[step.kind] = (digest.opened[step.kind] ?? 0) + 1;
     if (state === 'failed') {
       digest.failed![step.kind] = (digest.failed![step.kind] ?? 0) + 1;
     }

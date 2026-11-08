@@ -206,10 +206,16 @@ const operationCounts = Type.Object(
   },
   closed,
 );
-/** Turn-wide ToolAction tally by operation: `done` counts every opened action, `failed` those
+/** Turn-wide ToolAction tally by operation: `opened` counts every opened action, `failed` those
  * that ended failed. Maintained transactionally by Runtime, never computed at read time. */
 export const WorkDigestSchema = Type.Object(
-  { done: operationCounts, failed: Type.Optional(operationCounts) },
+  {
+    /** Every ToolAction the Turn opened, per operation, regardless of the state it reached
+     * (active, completed, failed, cancelled or interrupted). */
+    opened: operationCounts,
+    /** The ToolActions whose state became `failed`; each is also counted in `opened`. */
+    failed: Type.Optional(operationCounts),
+  },
   closed,
 );
 export const ConversationEntrySchema = Type.Object(

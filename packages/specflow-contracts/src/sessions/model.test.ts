@@ -137,18 +137,18 @@ describe('independent managed Session contract', () => {
       workId: id,
       createdAt: date,
     };
-    expect(Value.Check(ConversationEntrySchema, { ...entry, digest: { done: { read: 2 } } })).toBe(
-      true,
-    );
+    expect(
+      Value.Check(ConversationEntrySchema, { ...entry, digest: { opened: { read: 2 } } }),
+    ).toBe(true);
     expect(
       Value.Check(ConversationEntrySchema, {
         ...entry,
-        digest: { done: { command: 1 }, failed: { command: 1 } },
+        digest: { opened: { command: 1 }, failed: { command: 1 } },
       }),
     ).toBe(true);
-    expect(Value.Check(ConversationEntrySchema, { ...entry, digest: { done: { bash: 1 } } })).toBe(
-      false,
-    );
+    expect(
+      Value.Check(ConversationEntrySchema, { ...entry, digest: { opened: { bash: 1 } } }),
+    ).toBe(false);
     expect(Value.Check(ConversationEntrySchema, { ...entry, digest: { failed: {} } })).toBe(false);
     const action = {
       actionId: id,

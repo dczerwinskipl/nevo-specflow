@@ -24,7 +24,7 @@ export function emptyWorkAggregate(): WorkAggregate {
       inProgress: 0,
       byKind: { commentary: 0, reasoning: 0, interaction: 0, tool: 0 },
     },
-    digest: { done: {} },
+    digest: { opened: {} },
   };
 }
 
@@ -62,16 +62,19 @@ export function countWorkTransition(
   };
 }
 
-/** `done` counts every opened ToolAction of the Turn, whatever state it later reaches. */
+/** `opened` counts every opened ToolAction of the Turn, whatever state it later reaches. */
 export function countActionOpened(
   aggregate: WorkAggregate,
   operation: ToolOperation,
 ): WorkAggregate {
-  const { done } = aggregate.digest;
+  const { opened } = aggregate.digest;
 
   return {
     ...aggregate,
-    digest: { ...aggregate.digest, done: { ...done, [operation]: (done[operation] ?? 0) + 1 } },
+    digest: {
+      ...aggregate.digest,
+      opened: { ...opened, [operation]: (opened[operation] ?? 0) + 1 },
+    },
   };
 }
 
@@ -99,5 +102,5 @@ export function countActionTransition(
 
 /** A digest is published only once the Turn has opened at least one ToolAction. */
 export function hasToolActions(digest: WorkDigest): boolean {
-  return Object.values(digest.done).some((count) => count > 0);
+  return Object.values(digest.opened).some((count) => count > 0);
 }

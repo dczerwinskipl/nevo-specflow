@@ -21,7 +21,7 @@ describe('describeWorkBlock', () => {
     // separator), so a narrow mobile column can never wrap a number away from its noun (owner
     // review, round four, live on 390px: "· 2 / odczyty" split mid-pair).
     expect(
-      describeWorkBlock(block({ digest: { done: { read: 4, write: 50, command: 3 } } }), pl)
+      describeWorkBlock(block({ digest: { opened: { read: 4, write: 50, command: 3 } } }), pl)
         .summary,
     ).toBe('50 zapisów · 3 polecenia · 4 odczyty');
   });
@@ -29,7 +29,7 @@ describe('describeWorkBlock', () => {
   it('caps the breakdown at four kinds and says there is more', () => {
     expect(
       describeWorkBlock(
-        block({ digest: { done: { edit: 1, write: 2, command: 3, test: 1, read: 5, web: 1 } } }),
+        block({ digest: { opened: { edit: 1, write: 2, command: 3, test: 1, read: 5, web: 1 } } }),
         pl,
       ).summary,
     ).toBe('1 edycja · 2 zapisy · 3 polecenia · 1 uruchomienie testów i więcej');
@@ -37,7 +37,7 @@ describe('describeWorkBlock', () => {
 
   it('lifts failed actions onto their own line', () => {
     expect(
-      describeWorkBlock(block({ digest: { done: { read: 1 }, failed: { test: 1 } } }), en),
+      describeWorkBlock(block({ digest: { opened: { read: 1 }, failed: { test: 1 } } }), en),
     ).toMatchObject({ summary: '1 read', failed: 'Failed: 1 test run' });
   });
 
@@ -83,8 +83,11 @@ describe('describeWorkBlock', () => {
     });
     // An earlier entry keeps the digest it had while it was the latest; the newest one wins.
     const entries = [
-      entry(1, { digest: { done: { read: 1 } } }),
-      entry(2, { revision: 3, digest: { done: { read: 1, command: 2 }, failed: { command: 1 } } }),
+      entry(1, { digest: { opened: { read: 1 } } }),
+      entry(2, {
+        revision: 3,
+        digest: { opened: { read: 1, command: 2 }, failed: { command: 1 } },
+      }),
     ];
     expect(
       sessionValidators.history({

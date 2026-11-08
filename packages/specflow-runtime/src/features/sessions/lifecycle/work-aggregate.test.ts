@@ -30,7 +30,7 @@ describe('Turn Work aggregate', () => {
     aggregate = countWorkTransition(aggregate, 'active', 'failed');
     expect(aggregate.counts).toMatchObject({ total: 3, inProgress: 0 });
   });
-  it('tallies every opened ToolAction as done and failures additionally, once', () => {
+  it('tallies every opened ToolAction and failures additionally, once', () => {
     let aggregate = emptyWorkAggregate();
     expect(hasToolActions(aggregate.digest)).toBe(false);
     aggregate = countActionOpened(aggregate, 'read');
@@ -41,6 +41,6 @@ describe('Turn Work aggregate', () => {
     expect(completed).toBe(aggregate);
     aggregate = countActionTransition(aggregate, 'command', 'active', 'failed');
     expect(countActionTransition(aggregate, 'command', 'failed', 'failed')).toBe(aggregate);
-    expect(aggregate.digest).toEqual({ done: { read: 2, command: 1 }, failed: { command: 1 } });
+    expect(aggregate.digest).toEqual({ opened: { read: 2, command: 1 }, failed: { command: 1 } });
   });
 });

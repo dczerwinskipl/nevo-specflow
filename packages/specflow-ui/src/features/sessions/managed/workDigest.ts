@@ -31,11 +31,11 @@ export interface WorkBlockText {
   live?: string;
 }
 
-function present(counts: WorkDigest['done'] | undefined) {
+function present(counts: WorkDigest['opened'] | undefined) {
   return toolOperationOrder.filter((kind) => (counts?.[kind] ?? 0) > 0);
 }
 
-function kindList(counts: WorkDigest['done'], t: TFunction) {
+function kindList(counts: WorkDigest['opened'], t: TFunction) {
   return present(counts).map((kind) =>
     t(`managedSession.workSummary.kind.${kind}`, { count: counts[kind] }),
   );
@@ -82,7 +82,7 @@ export function describeWorkBlock(block: WorkBlockModel, t: TFunction): WorkBloc
   let summary: string | undefined;
 
   if (digest) {
-    const segments = kindList(digest.done, t);
+    const segments = kindList(digest.opened, t);
     summary =
       segments.length > 0
         ? segments.slice(0, WORK_SUMMARY_MAX_SEGMENTS).join(' · ') +

@@ -124,7 +124,7 @@ from `ConversationEntry.digest` (`WorkDigest`, [Sessions API](../../../reference
 "Work digest"), which Runtime keeps on the Turn's latest `work-summary` entry and revises as
 ToolActions open and fail; kinds are the contract `ToolOperation`
 (`read | edit | write | list | search | command | test | web | other`), classified only from each
-provider's own tool identity. `done` counts every opened action, `failed` those that failed. A Turn
+provider's own tool identity. `opened` counts every opened action, `failed` those that failed. A Turn
 whose entries carry no digest (recorded before Runtime maintained it) shows the honest count of
 tool Work it has loaded ("12 działań narzędzi", "co najmniej N…" when the Turn may continue into
 older, not-yet-loaded history) plus the live line and the folded outcome.

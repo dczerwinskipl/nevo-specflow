@@ -35,6 +35,12 @@ export interface SessionListScan {
 }
 /** A list item's Session facts; the caller adds the (possibly redacted) association. */
 export type SessionListSummary = Omit<SessionListItem, 'association'>;
+/**
+ * A summary as stored: the stored readiness plus the mode facts its effective readiness reads, and
+ * no catalogue titles. Never returned as is (`listedSession` projects it).
+ */
+export type StoredListSummary = Omit<SessionListSummary, 'providerTitle' | 'modelTitle'> &
+  Pick<SessionInfo, 'mode' | 'providerModeId'>;
 
 const IDENTITIES_MAX = SessionListLimits.scanBudget;
 const SUMMARIES_MAX = SessionListLimits.maxLimit;
@@ -159,7 +165,7 @@ export function createSessionCatalogue({ get, all, projectId, associations }: De
       };
     },
     /** Decodes only the Sessions a page returns; unknown Session IDs are omitted. */
-    summaries(sessionIds: readonly string[]): SessionListSummary[] {
+    summaries(sessionIds: readonly string[]): StoredListSummary[] {
       ids(sessionIds, SUMMARIES_MAX);
       if (!sessionIds.length) {
         return [];
@@ -180,6 +186,8 @@ export function createSessionCatalogue({ get, all, projectId, associations }: De
             ...(session.title ? { title: session.title } : {}),
             providerId: session.providerId,
             ...(session.modelId ? { modelId: session.modelId } : {}),
+            mode: session.mode,
+            ...(session.providerModeId ? { providerModeId: session.providerModeId } : {}),
             readiness: session.readiness,
             ...(activeTurn
               ? { activeTurn: { turnId: activeTurn.turnId, state: activeTurn.state } }

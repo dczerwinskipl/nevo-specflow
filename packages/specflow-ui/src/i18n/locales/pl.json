@@ -1509,6 +1509,8 @@
       "statusUnknown": "Stan sesji nieznany",
       "statusAttention": "Wymaga uwagi",
       "statusActive": "Aktywna",
+      "statusAuthentication": "{{provider}}: wymagane ponowne logowanie",
+      "agent": "{{provider}}, model {{model}}",
       "loaded_one": "Wczytano {{count}} sesję",
       "loaded_few": "Wczytano {{count}} sesje",
       "loaded_many": "Wczytano {{count}} sesji",

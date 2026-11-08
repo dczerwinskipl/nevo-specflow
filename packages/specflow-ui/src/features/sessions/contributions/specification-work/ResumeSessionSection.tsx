@@ -1,8 +1,17 @@
 import { Button, InformationList, MenuItem, OverflowMenu } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { sessionActivityLabel, type SessionSummary } from '../../../specs/read-model';
-import { OperationalRow, type CompactFacts } from '../../../../shared/operational-list';
+import { OperationalRow, type SemanticSupporting } from '../../../../shared/operational-list';
+import { useNow } from '../../../../shared/operations/panel/relativeTime';
 import { WorkspaceSection } from '../../../../shared/workspace-section';
+import { SessionProviderIcon } from '../../shared/SessionProviderIcon';
+import {
+  sessionRowFacts,
+  sessionRowStatus,
+  type SessionRowAgent,
+  type SessionRowReadiness,
+} from '../../shared/sessionRow';
 
 export interface ResumeSessionSectionProps {
   readonly session: SessionSummary;
@@ -15,20 +24,47 @@ export interface ResumeSessionSectionProps {
   readonly canOpenSession: boolean;
 }
 
-function sessionFacts({ taskCount, age }: SessionSummary): CompactFacts {
-  if (taskCount && age) {
-    return [taskCount, age];
+/** The workspace section's status, as the effective readiness it projects. */
+const readinessOf: Record<NonNullable<SessionSummary['navigationStatus']>, SessionRowReadiness> = {
+  active: 'busy',
+  attention: 'requiresAttention',
+  quiet: 'ready',
+  authenticationRequired: 'authenticationRequired',
+  unknown: 'unavailable',
+};
+
+/** The agent of a workspace row; a summary without a provider names none. */
+function agentOf(session: SessionSummary): SessionRowAgent | undefined {
+  return session.providerId
+    ? {
+        providerId: session.providerId,
+        ...(session.providerTitle ? { providerTitle: session.providerTitle } : {}),
+        ...(session.modelId ? { modelId: session.modelId } : {}),
+        ...(session.modelTitle ? { modelTitle: session.modelTitle } : {}),
+      }
+    : undefined;
+}
+
+/**
+ * The status of the Session's row in the list, from the workspace row's effective readiness; a
+ * summary without one keeps its activity label.
+ */
+function sessionStatus(session: SessionSummary, t: TFunction): SemanticSupporting | undefined {
+  const agent = agentOf(session);
+  if (session.navigationStatus && agent) {
+    return sessionRowStatus(readinessOf[session.navigationStatus], agent, t);
   }
 
-  if (taskCount) {
-    return [taskCount];
+  if (session.activity) {
+    return {
+      text: sessionActivityLabel(session, t),
+      tone: session.activity.tone ?? 'neutral',
+      icon: session.activity.icon,
+      iconClassName: session.activity.animate ? 'animate-spin' : undefined,
+    };
   }
 
-  if (age) {
-    return [age];
-  }
-
-  return [];
+  return session.meta ? { text: session.meta } : undefined;
 }
 
 export function ResumeSessionSection({
@@ -39,7 +75,8 @@ export function ResumeSessionSection({
   canStartSession,
   canOpenSession,
 }: ResumeSessionSectionProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const now = useNow();
 
   return (
     <WorkspaceSection aria-labelledby="resume-heading">
@@ -64,21 +101,22 @@ export function ResumeSessionSection({
       <InformationList>
         <OperationalRow
           titleAs="span"
+          leading={<SessionProviderIcon providerId={session.providerId} />}
           primary={session.title}
           onPrimaryClick={canOpenSession ? () => onOpenSession(session.id) : undefined}
-          compactFacts={sessionFacts(session)}
-          supporting={
-            session.activity
-              ? {
-                  text: sessionActivityLabel(session, t),
-                  tone: session.activity.tone ?? 'neutral',
-                  icon: session.activity.icon,
-                  iconClassName: session.activity.animate ? 'animate-spin' : undefined,
-                }
-              : session.meta
-                ? { text: session.meta }
-                : undefined
-          }
+          // The same row as the Session's row in the Specification Sessions list.
+          factsLayout="inline"
+          compactFacts={sessionRowFacts(
+            {
+              ...(session.updatedAt ? { updatedAt: session.updatedAt } : {}),
+              agent: agentOf(session),
+              taskCount: session.taskCount ?? 0,
+            },
+            t,
+            now,
+            i18n.language,
+          )}
+          supporting={sessionStatus(session, t)}
         />
       </InformationList>
 

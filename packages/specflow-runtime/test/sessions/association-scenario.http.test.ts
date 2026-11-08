@@ -205,6 +205,9 @@ describe('Session association across the Runtime HTTP boundary (project mode)', 
         title: 'Scenario Session',
         taskIds: [],
         status: 'quiet',
+        providerId: 'mock',
+        providerTitle: 'Controlled mock (test only)',
+        updatedAt: expect.any(String) as unknown,
       });
       expect(sessions?.hasMore).not.toBe(true);
       expect(section.recommendedSessionId).toBe(sessionId);

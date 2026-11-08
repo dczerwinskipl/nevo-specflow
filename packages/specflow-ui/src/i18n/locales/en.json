@@ -1509,6 +1509,8 @@
       "statusUnknown": "Session state unknown",
       "statusAttention": "Requires attention",
       "statusActive": "Active",
+      "statusAuthentication": "{{provider}}: sign-in required",
+      "agent": "{{provider}}, model {{model}}",
       "loaded_one": "Loaded {{count}} session",
       "loaded_other": "Loaded {{count}} sessions",
       "taskCount_one": "{{count}} task",

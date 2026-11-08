@@ -36,12 +36,24 @@ export interface SessionActivity {
 }
 
 export interface SessionSummary {
-  readonly navigationStatus?: 'active' | 'attention' | 'quiet' | 'unknown';
+  /** Effective Session readiness as the workspace section projects it. */
+  readonly navigationStatus?:
+    'active' | 'attention' | 'quiet' | 'authenticationRequired' | 'unknown';
   readonly id: string;
   readonly title: string;
   readonly meta?: string;
-  readonly taskCount?: string;
-  readonly age?: string;
+  /** Associated Tasks; absent or zero shows no count. */
+  readonly taskCount?: number;
+  readonly updatedAt?: string;
+  /**
+   * The agent: ids from the Session, display titles resolved by the Runtime. Every workspace row
+   * carries `providerId`; only the navigator, which never names the agent, reads summaries
+   * without it.
+   */
+  readonly providerId?: string;
+  readonly providerTitle?: string;
+  readonly modelId?: string;
+  readonly modelTitle?: string;
   readonly activity?: SessionActivity;
   readonly activityCode?: 'active' | 'attention';
 }

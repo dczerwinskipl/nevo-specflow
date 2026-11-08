@@ -1,5 +1,9 @@
 import { Icon, InformationList, Typography, cn, useOptionalInformationListContext } from '@nevo/ui';
-import type { OperationalRowProps, SemanticSupporting } from './OperationalRow.types';
+import type {
+  CompactFactItem,
+  OperationalRowProps,
+  SemanticSupporting,
+} from './OperationalRow.types';
 function isSemanticSupporting(value: unknown): value is SemanticSupporting {
   return (
     typeof value === 'object' &&
@@ -18,6 +22,7 @@ export function OperationalRow({
   onPrimaryClick,
   primaryAriaLabel,
   compactFacts = [],
+  factsLayout = 'tracked',
   supporting,
   metadata,
   trailing,
@@ -29,6 +34,7 @@ export function OperationalRow({
   dataAttributes = {},
 }: OperationalRowProps) {
   const list = useOptionalInformationListContext();
+  const inline = factsLayout === 'inline';
   const isRowInteractive =
     interactive || Boolean(primaryLink) || Boolean(primaryHref) || Boolean(onPrimaryClick);
   const fallbackPrimary = primaryHref ? (
@@ -63,7 +69,9 @@ export function OperationalRow({
       supportingContent = (
         <span
           className={cn(
-            'inline-flex min-w-0 items-start gap-1.5 [overflow-wrap:anywhere] text-content-secondary',
+            'inline-flex min-w-0 gap-1.5 [overflow-wrap:anywhere] text-content-secondary',
+            // Inline: the status shares the facts' line box, its icon centred on it.
+            inline ? 'items-center' : 'items-start',
             supporting.tone === 'attention' && 'text-status-attention font-medium',
             supporting.tone === 'danger' && 'text-status-danger font-medium',
             supporting.tone === 'success' && 'text-status-success',
@@ -133,9 +141,87 @@ export function OperationalRow({
     );
   };
 
+  const renderInlineFact = (fact: CompactFactItem) => {
+    const text = typeof fact === 'string' ? fact : fact.text;
+    const details = typeof fact === 'object' ? fact : undefined;
+
+    return (
+      <span
+        className={cn(
+          'min-w-0 text-content-muted',
+          // A capped fact truncates; any other fact never breaks inside itself.
+          details?.maxWidth ? 'truncate' : 'whitespace-nowrap',
+          details?.mono && 'font-mono',
+        )}
+        style={details?.maxWidth ? { maxWidth: `min(${details.maxWidth}, 100%)` } : undefined}
+        {...details?.dataAttributes}
+      >
+        {details?.accessibleText ? (
+          <>
+            <span aria-hidden="true">{text}</span>
+            <span className="sr-only">{details.accessibleText}</span>
+          </>
+        ) : (
+          text
+        )}
+      </span>
+    );
+  };
+
+  // Every inline item opens with its separator (a 1.5-unit box and a 1.5-unit gap). The line is
+  // shifted left by both and clipped, so the separator that opens any line, wrapped or not, is
+  // hidden: a line never starts with `·`.
+  const separator = (
+    <span aria-hidden="true" className="w-1.5 shrink-0 text-center" data-inline-separator>
+      ·
+    </span>
+  );
+  const inlineSecondary =
+    populatedFacts.length > 0 || supportingContent ? (
+      <Typography
+        as="div"
+        variant="body-sm"
+        className="min-w-0 overflow-hidden text-content-muted"
+        data-spec-secondary="true"
+        data-facts-layout="inline"
+      >
+        <div className="-ml-3 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
+          {populatedFacts.map((fact, index) => (
+            <span
+              key={index}
+              className="flex min-w-0 max-w-full items-center gap-1.5"
+              data-inline-fact
+            >
+              {separator}
+              {renderInlineFact(fact)}
+            </span>
+          ))}
+          {supportingContent ? (
+            // Narrow: the status takes its own line; Wide: the last inline item.
+            <span
+              className="flex min-w-0 max-w-full basis-full items-center gap-1.5 @min-[40rem]/info-row:basis-auto"
+              data-inline-status
+            >
+              {separator}
+              {supportingContent}
+            </span>
+          ) : null}
+        </div>
+      </Typography>
+    ) : null;
+
   const leadingSlot =
     (leading != null && leading !== false) || list?.selectable ? (
-      <InformationList.Leading>{leading}</InformationList.Leading>
+      <InformationList.Leading
+        // Inline: a line-height box centred on the whole row at any height.
+        align={inline ? 'row-center' : 'top'}
+        className={cn(
+          // Outside a selectable list a click on the mark falls through to the primary action.
+          inline && !list?.selectable && 'pointer-events-none',
+        )}
+      >
+        {leading}
+      </InformationList.Leading>
     ) : null;
 
   return (
@@ -165,7 +251,9 @@ export function OperationalRow({
               {primaryContent}
             </Typography>
             {/* Line 2: Compact facts + supporting */}
-            {populatedFacts.length > 0 || supportingContent ? (
+            {inline ? (
+              inlineSecondary
+            ) : populatedFacts.length > 0 || supportingContent ? (
               <Typography
                 as="div"
                 variant="body-sm"

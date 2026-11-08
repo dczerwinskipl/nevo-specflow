@@ -1,11 +1,74 @@
 import type { FastifyRequest } from 'fastify';
 import {
+  type SessionInfo,
   type SessionSnapshot,
   type SessionChange,
   type LiveProjection,
   type ProviderDescriptor,
 } from '@nevo/specflow-contracts/sessions';
+import type { SessionListSummary, StoredListSummary } from '../persistence/protocol';
 import { resolveSessionPermissions, type SessionScopeIdentity } from '../scope';
+
+type ProviderFacts = Pick<SessionInfo, 'providerId' | 'providerModeId' | 'mode'>;
+
+/** The Session's provider, and its provider mode when it has one, can run a Turn now. */
+function providerAvailable(
+  session: ProviderFacts,
+  provider: ProviderDescriptor | undefined,
+): boolean {
+  const modeAvailable =
+    !session.providerModeId ||
+    provider?.providerModes?.some(
+      (mode) =>
+        mode.modeId === session.providerModeId &&
+        mode.mode === session.mode &&
+        mode.readiness === 'ready' &&
+        mode.authorized !== false,
+    ) === true;
+
+  return provider?.readiness === 'ready' && modeAvailable;
+}
+
+/**
+ * Effective readiness: the stored readiness, unless the provider cannot run a Turn and none is
+ * active, which reads `authenticationRequired` or `unavailable`. Every Session read applies it.
+ */
+export function effectiveReadiness(
+  session: ProviderFacts & Pick<SessionInfo, 'readiness'>,
+  activeTurn: boolean,
+  provider: ProviderDescriptor | undefined,
+): SessionInfo['readiness'] {
+  if (providerAvailable(session, provider) || activeTurn) {
+    return session.readiness;
+  }
+
+  return provider?.readiness === 'authenticationRequired'
+    ? 'authenticationRequired'
+    : 'unavailable';
+}
+
+/**
+ * A list row of a stored summary: the provider and model titles of the Runtime's catalogue (absent
+ * when not listed) and the effective readiness. The mode facts stay internal.
+ */
+export function listedSession(
+  summary: StoredListSummary,
+  providerFor: (providerId: string) => ProviderDescriptor | undefined,
+): SessionListSummary {
+  const { mode: _mode, providerModeId: _providerModeId, ...row } = summary;
+  const provider = providerFor(summary.providerId);
+  const modelTitle =
+    summary.modelId === undefined
+      ? undefined
+      : provider?.models.find((model) => model.modelId === summary.modelId)?.title;
+
+  return {
+    ...row,
+    ...(provider ? { providerTitle: provider.title } : {}),
+    ...(modelTitle ? { modelTitle } : {}),
+    readiness: effectiveReadiness(summary, summary.activeTurn !== undefined, provider),
+  };
+}
 
 /** `identity` is the store-derived identity of `s`; it decides the scope of every capability. */
 export function effective(
@@ -15,16 +78,7 @@ export function effective(
   identity: SessionScopeIdentity,
 ): SessionSnapshot {
   const provider = providerFor(s.session.providerId);
-  const modeAvailable =
-    !s.session.providerModeId ||
-    provider?.providerModes?.some(
-      (mode) =>
-        mode.modeId === s.session.providerModeId &&
-        mode.mode === s.session.mode &&
-        mode.readiness === 'ready' &&
-        mode.authorized !== false,
-    ) === true;
-  const available = provider?.readiness === 'ready' && modeAvailable;
+  const available = providerAvailable(s.session, provider);
   const permissions = resolveSessionPermissions(request.authz, identity);
   s.session.capabilities.view = permissions.view;
   s.session.capabilities.manage = permissions.manage;
@@ -41,10 +95,7 @@ export function effective(
     (s.session.mode !== 'workspace-write' || permissions['execute-write']);
   s.session.capabilities.cancel =
     permissions.manage && !!s.activeTurn && s.activeTurn.state !== 'unknown';
-  if (!available && !s.activeTurn) {
-    s.session.readiness =
-      provider?.readiness === 'authenticationRequired' ? 'authenticationRequired' : 'unavailable';
-  }
+  s.session.readiness = effectiveReadiness(s.session, !!s.activeTurn, provider);
 
   return s;
 }

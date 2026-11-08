@@ -1,44 +1,15 @@
-import { useRef } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { TFunction } from 'i18next';
 import { Alert, Button, InformationList, SegmentedControl, Typography } from '@nevo/ui';
 import type { SessionListItem } from '@nevo/specflow-contracts/sessions';
 import { LoadingPresentation } from '../../../app/loading/LoadingPresentation';
 import { useAnnouncer } from '../../../shared/a11y/useAnnouncer';
-import { OperationalRow, type CompactFacts } from '../../../shared/operational-list';
-import type { SemanticSupporting } from '../../../shared/operational-list/OperationalRow.types';
-import { formatRelativeTime, useNow } from '../../../shared/operations/panel/relativeTime';
+import { OperationalRow } from '../../../shared/operational-list';
+import { useNow } from '../../../shared/operations/panel/relativeTime';
+import { SessionProviderIcon } from '../shared/SessionProviderIcon';
+import { sessionRowFacts, sessionRowStatus, type SessionRowAgent } from '../shared/sessionRow';
 import type { SessionCollection } from './loadSessions';
 import type { SpecificationSessionListState } from './useSpecificationSessionList';
-
-/**
- * A Session row's status (session-association-ux §6): Session readiness only, never an Engine
- * attempt fact. A ready Session shows none.
- */
-export function sessionRowStatus(
-  readiness: SessionListItem['readiness'],
-  t: TFunction,
-): SemanticSupporting | undefined {
-  switch (readiness) {
-    case 'ready':
-      return undefined;
-    case 'requiresAttention':
-      return {
-        text: t('sessions.list.statusAttention'),
-        tone: 'attention',
-        icon: 'triangle-alert',
-      };
-    case 'busy':
-      return {
-        text: t('sessions.list.statusActive'),
-        tone: 'info',
-        icon: 'loader',
-        iconClassName: 'animate-spin',
-      };
-    default:
-      return { text: t('sessions.list.statusUnknown'), textClassName: 'text-content-muted' };
-  }
-}
 
 /**
  * The heading the list belongs to: the nearest page title (`ViewPageTitle`, focusable with
@@ -55,23 +26,14 @@ function owningHeading(element: HTMLElement | null): HTMLElement | null {
   return null;
 }
 
-/**
- * A row's compact facts: the associated Task count, then the relative update. A row without
- * associated Tasks has no count fact at all, so it reserves no column for one.
- */
-function rowFacts(item: SessionListItem, t: TFunction, now: number, locale: string): CompactFacts {
-  const count = item.association.kind === 'specification' ? item.association.taskIds.length : 0;
-  const updated = formatRelativeTime(item.updatedAt, now, locale) ?? '';
-
-  return count > 0
-    ? [
-        {
-          text: t('sessions.list.taskCount', { count }),
-          accessibleText: t('sessions.list.associatedTasks', { count }),
-        },
-        updated,
-      ]
-    : [updated];
+/** A list row's agent: its ids and the Runtime's display titles. */
+function agentOf(item: SessionListItem): SessionRowAgent {
+  return {
+    providerId: item.providerId,
+    ...(item.providerTitle ? { providerTitle: item.providerTitle } : {}),
+    ...(item.modelId ? { modelId: item.modelId } : {}),
+    ...(item.modelTitle ? { modelTitle: item.modelTitle } : {}),
+  };
 }
 
 /**
@@ -105,6 +67,30 @@ export function SpecificationSessionsList({
     </Button>
   ) : null;
 
+  // Where focus goes once a press has ended the list: taken when the rendered list shows it (the
+  // rows arrived and **Show more** is gone), whichever comes first, the commit or the press's end.
+  const pendingFocus = useRef<{ kind: 'row'; index: number } | { kind: 'heading' } | null>(null);
+  const consumePendingFocus = () => {
+    const target = pendingFocus.current;
+    if (!target || root.current?.querySelector('[data-show-more]')) {
+      return;
+    }
+
+    const element =
+      target.kind === 'heading'
+        ? owningHeading(root.current)
+        : list.current?.querySelectorAll<HTMLElement>('[data-session-row] button')[target.index];
+    if (element) {
+      pendingFocus.current = null;
+      element.focus();
+    }
+  };
+
+  const rowCount = state.status === 'ready' ? state.rows.length : 0;
+  const hasMore = state.status === 'ready' && state.hasMore;
+  // After each commit that adds rows or ends the cursor, take a pending focus target.
+  useLayoutEffect(consumePendingFocus, [rowCount, hasMore]);
+
   // Cleared first, so the same text said twice (two empty batches in a row) is announced again.
   const announce = (message: string) => {
     setAnnouncement('');
@@ -126,18 +112,16 @@ export function SpecificationSessionsList({
         announce(t('sessions.list.loaded', { count: outcome.arrived }));
         // The button goes away with the cursor: focus moves to the first row that arrived.
         if (outcome.ended) {
-          requestAnimationFrame(() =>
-            list.current
-              ?.querySelectorAll<HTMLElement>('[data-session-row] button')
-              [firstAppended]?.focus(),
-          );
+          pendingFocus.current = { kind: 'row', index: firstAppended };
+          consumePendingFocus();
         }
       } else if (!outcome.ended) {
         announce(t('sessions.list.noneInScanned'));
       } else {
         // The press ended the list without a row: the focused button goes away with the cursor,
         // so focus moves to the list's heading instead of falling back to the document.
-        requestAnimationFrame(() => owningHeading(root.current)?.focus());
+        pendingFocus.current = { kind: 'heading' };
+        consumePendingFocus();
       }
     } finally {
       loading.current = false;
@@ -201,17 +185,31 @@ export function SpecificationSessionsList({
               {state.rows.map((item) => (
                 <OperationalRow
                   key={item.sessionId}
+                  leading={<SessionProviderIcon providerId={item.providerId} />}
                   primary={item.title ?? t('sessions.untitled')}
                   onPrimaryClick={() => onOpenSession(item.sessionId)}
-                  compactFacts={rowFacts(item, t, now, i18n.language)}
-                  supporting={sessionRowStatus(item.readiness, t)}
+                  factsLayout="inline"
+                  compactFacts={sessionRowFacts(
+                    {
+                      updatedAt: item.updatedAt,
+                      agent: agentOf(item),
+                      taskCount:
+                        item.association.kind === 'specification'
+                          ? item.association.taskIds.length
+                          : 0,
+                    },
+                    t,
+                    now,
+                    i18n.language,
+                  )}
+                  supporting={sessionRowStatus(item.readiness, agentOf(item), t)}
                   dataAttributes={{ 'data-session-row': item.sessionId }}
                 />
               ))}
             </InformationList>
           ) : null}
           {state.hasMore ? (
-            <div className="grid justify-items-start gap-2">
+            <div className="grid justify-items-start gap-2" data-show-more>
               <Button
                 variant="secondary"
                 aria-disabled={state.loadingMore || undefined}

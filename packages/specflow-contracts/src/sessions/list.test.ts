@@ -59,11 +59,15 @@ describe('Session list contract', () => {
         ...item,
         title: 'Plan',
         modelId: 'm',
+        providerTitle: 'Claude',
+        modelTitle: 'Opus 4.1',
+        readiness: 'authenticationRequired',
         archivedAt: date,
         activeTurn: { turnId: id, state: 'active' },
       }),
     ).toBe(true);
     expect(Value.Check(SessionListItemSchema, { ...item, projectId: 'P' })).toBe(false);
+    expect(Value.Check(SessionListItemSchema, { ...item, modelTitle: '' })).toBe(false);
     expect(Value.Check(SessionListPageSchema, { items: [], nextCursor: 'c' })).toBe(true);
     expect(Value.Check(SessionListPageSchema, { items: [item] })).toBe(true);
   });

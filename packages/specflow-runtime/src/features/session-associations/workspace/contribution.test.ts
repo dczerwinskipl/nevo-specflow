@@ -7,7 +7,7 @@ describe('workspace Session section policy', () => {
     expect(workspaceSessionStatus('requiresAttention')).toBe('attention');
     expect(workspaceSessionStatus('ready')).toBe('quiet');
     expect(workspaceSessionStatus('unavailable')).toBe('unknown');
-    expect(workspaceSessionStatus('authenticationRequired')).toBe('unknown');
+    expect(workspaceSessionStatus('authenticationRequired')).toBe('authenticationRequired');
   });
 
   it('recommends attention, then active, then the most recently updated Session', () => {

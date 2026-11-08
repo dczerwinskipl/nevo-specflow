@@ -7,7 +7,8 @@ import type { DemoCatalogue, DemoSpecification } from '../../demo-catalogue';
 import { createDemoSessionList } from './list';
 import { DemoOperationError, type DemoState } from '../../../demo/state';
 import type { SessionAssociations } from '../reference-owner';
-import { buildDemoSessionContribution, rankDemoSessions } from './contribution';
+import { buildDemoSessionContribution, rankDemoSessions, seededDemoAgent } from './contribution';
+import { DEMO_SEEDED_AT } from './seeded-at';
 import { buildCatalogueSessionDetail } from './seeded-detail';
 
 type Find = (specId: string) => Promise<DemoSpecification | undefined>;
@@ -182,7 +183,7 @@ export function createDemoSessions(state: DemoState) {
 
       const original = state.specifications.has(specId)
         ? { section: { state: 'available' as const, data: { items: [], attention: [] } } }
-        : buildDemoSessionContribution(record);
+        : buildDemoSessionContribution(record, seededDemoAgent(state.catalogue));
 
       // Sessions allocated in this environment are the newest, newest first.
       const items = [
@@ -194,6 +195,11 @@ export function createDemoSessions(state: DemoState) {
             title: session.title,
             taskIds: [],
             status: 'quiet' as const,
+            providerId: session.configuration.providerId,
+            providerTitle: session.configuration.providerTitle,
+            modelId: session.configuration.modelId,
+            modelTitle: session.configuration.modelTitle,
+            updatedAt: allocatedAt.get(session.sessionId) ?? DEMO_SEEDED_AT,
           })),
         ...original.section.data.items,
       ];

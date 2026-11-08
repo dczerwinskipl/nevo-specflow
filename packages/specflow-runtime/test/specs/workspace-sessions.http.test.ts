@@ -13,6 +13,8 @@ import { createRuntimeApp } from '../../src/server/app';
 import { openSessionStore } from '../../src/features/sessions/persistence/store';
 import type { AssociationWrite } from '../../src/features/sessions/persistence/protocol';
 import type { SpecificationWorkspaceRepository } from '../../src/features/specs/workspace/repository';
+import { createMockDriver } from '../../src/features/sessions/providers/mock';
+import type { SessionDriver } from '../../src/features/sessions/providers/driver';
 import { passwordConfig } from '../auth/support/config';
 import { associationTargets } from '../support/association-targets';
 import { sessionReferences } from '../support/session-references';
@@ -78,6 +80,8 @@ async function seed(
               providerId: 'mock',
               mode: 'read-only',
               ...(title ? { title } : {}),
+              // A titled Session names the catalogue's model; an untitled one names none.
+              ...(title ? { modelId: 'mock' } : {}),
             },
             ...(association ? { association } : {}),
           })
@@ -110,7 +114,7 @@ async function seed(
 async function open(
   role: Role | undefined,
   scope: Record<string, string> = {},
-  sessions: { enabled?: boolean; mock?: boolean } = {},
+  sessions: { enabled?: boolean; mock?: boolean; driver?: SessionDriver } = {},
 ) {
   directory ||= await mkdtemp(join(tmpdir(), 'nevo-workspace-sessions-'));
   const config = passwordConfig();
@@ -126,7 +130,11 @@ async function open(
     },
     {
       specs: { workspaceRepository },
-      sessions: { storage: { directory, projectId: 'project' }, targets: associationTargets() },
+      sessions: {
+        storage: { directory, projectId: 'project' },
+        targets: associationTargets(),
+        ...(sessions.driver ? { driver: sessions.driver } : {}),
+      },
     },
   );
 
@@ -142,6 +150,15 @@ async function workspace(server: FastifyInstance, specId = 'S') {
   return body;
 }
 
+const row = { providerId: 'mock', updatedAt: '2026-11-08T00:00:00.000Z' };
+/** A stored mock Session row: the catalogue's provider title, no model, its own update time. */
+const mockRow = {
+  providerId: 'mock',
+  providerTitle: 'Controlled mock (test only)',
+  updatedAt: expect.any(String) as unknown,
+};
+/** The catalogue's model of a titled seeded Session. */
+const mockModel = { modelId: 'mock', modelTitle: 'Deterministic test model' };
 const spec = (specId: string, taskIds: string[] = []): AssociationWrite => ({
   specId,
   taskIds,
@@ -172,8 +189,8 @@ describe('project-mode workspace sessions section', () => {
       data: {
         items: [
           // Untitled: the server never invents a title.
-          { id: newer, taskIds: ['TASK-01'], status: 'quiet' },
-          { id: older, title: 'Older', taskIds: [], status: 'quiet' },
+          { id: newer, taskIds: ['TASK-01'], status: 'quiet', ...mockRow },
+          { id: older, title: 'Older', taskIds: [], status: 'quiet', ...mockRow, ...mockModel },
         ],
         attention: [],
       },
@@ -181,6 +198,24 @@ describe('project-mode workspace sessions section', () => {
     expect(JSON.stringify(body)).not.toContain(archivedOne!);
     // Equal status: the most recently updated Session.
     expect(body.recommendedSessionId).toBe(newer);
+  });
+
+  it('applies the effective readiness and keeps the provider facts for Continue session', async () => {
+    const [session] = await seed(async (create) => [await create(spec('S'), 'Plan')]);
+    const mock = createMockDriver();
+    const driver: SessionDriver = {
+      ...mock,
+      describe: () => ({ ...mock.describe(), readiness: 'authenticationRequired' }),
+    };
+    const body = await workspace(await open('viewer', { projectId: 'project' }, { driver }));
+    expect(body.sections.sessions).toMatchObject({
+      state: 'available',
+      data: {
+        items: [{ id: session, status: 'authenticationRequired', ...mockRow, ...mockModel }],
+      },
+    });
+    // A sign-in is no reason to recommend, but the only Session is still the recommendation.
+    expect(body.recommendedSessionId).toBe(session);
   });
 
   it('recommends the most recently updated Session', async () => {
@@ -352,8 +387,8 @@ describe('workspace Session recommendation', () => {
                   state: 'available',
                   data: {
                     items: [
-                      { id: 'hidden', taskIds: [], status: 'attention' },
-                      { id: 'visible', taskIds: [], status: 'quiet' },
+                      { id: 'hidden', taskIds: [], status: 'attention', ...row },
+                      { id: 'visible', taskIds: [], status: 'quiet', ...row },
                     ],
                     attention: [],
                   },

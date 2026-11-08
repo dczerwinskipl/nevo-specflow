@@ -304,11 +304,20 @@ cancel/restart and unsupported clients cannot leave a falsely answered or unfini
 ### F14 — Antigravity recursive search
 
 **Priority:** P1. **Outside PR #107.**
-**Current/evidence:** `antigravity/permissions.ts` denies automatic `list_dir`, `find_by_name` and
-`grep_search`; holding one root handle cannot constrain traversal through uninspected descendants.
-An explicitly approved host command is the existing alternative.
-**Impact/direction:** Routine search needs more user approvals. Investigate a bounded, genuinely
-confined discovery mechanism or evidenced native enforcement, preserving direct-file guarding.
+**Status:** In progress — Runtime-owned discovery implemented; draft PR #125 now includes F14
+at the owner's explicit direction. Delivery, independent review and current-head merge gates
+remain pending. The previously reviewed F20 Stop algorithm is unchanged.
+**Current/evidence:** Native `list_dir`, `find_by_name` and `grep_search` remain denied: the hook
+cannot constrain their descendant traversal. A provider-private `specflow-discovery` MCP server
+instead offers `list_directory`, `find_files` and literal `search_text` on local Windows x64 NTFS.
+Every descendant is enumerated by a held directory handle, opened by file ID without reparsing,
+and checked against its expected normalized volume-GUID path before reading through that handle.
+Reparse points, multi-linked files and private execution configuration are refused. Read-only
+helpers have bounded traversal/output and owned-process cancellation/settlement.
+**Impact/direction:** Ordinary nested source discovery no longer requires host-command approval
+within this supported profile. Native argument parity, regex and other filesystems are not claimed.
+See [F14 decision, budgets and evidence](antigravity-provider.md#f14-runtime-owned-workspace-discovery)
+for the exact subset and limitations; exact-command approval remains the fallback.
 **Dependencies/security:** Symlink/junction/hardlink policy, recursion/output budgets, path changes
 during traversal and native tool schemas. Do not solve this by blanket command auto-approval.
 **Minimum acceptance:** Useful nested search and controlled exclusions work; existing and raced
@@ -387,8 +396,8 @@ IDs and absent/contradictory evidence never release an uncertain writer or fabri
 
 **Priority:** First post-merge delivery. **Outside PR #107; N02 from the final re-review.**
 **Status:** Implemented — R01/R02 closed by independent re-review; targeted
-R03/R04 investigation found no confirmed production blocker. Conditional approval;
-required merge checks remain unresolved.
+R03/R04 investigation found no confirmed production blocker. Required CI and
+CodeQL passed on F20 commit `3657763e`; delivery still awaits manual merge.
 **Original evidence:** `antigravity/question-bridge.ts` returned `deny` for Stop
 conflicting with pending interactions or retained files. The native
 [Stop contract](https://antigravity.google/docs/hooks/#stop) permits termination
@@ -405,8 +414,10 @@ beyond the one-shot bound still stop conservatively and can leave execution unkn
 **Review disposition:** [R03/R04 evidence and limits](antigravity-provider.md#r03r04-targeted-lifecycle-investigation-2026-11-08).
 No production change was required; same-execution background completion remains
 supported under the native final-result/idle contract.
-**Remaining:** Required CI/merge-gate verification; draft skips do not count as
-passed checks. F14 and F19 remain independent follow-ups.
+**Remaining:** Manual delivery. The owner subsequently added F14 to the same PR;
+the expanded draft requires fresh current-head verification and review. Earlier
+F20 checks do not certify F14, and draft skips do not count as passed checks.
+F19 remains independent.
 
 [paseo-types]: https://github.com/getpaseo/paseo/blob/ab8e1e61ff7c0bbad08c95e15a09f3ec42333410/packages/server/src/server/agent/agent-sdk-types.ts
 [paseo-provider]: https://github.com/getpaseo/paseo/blob/ab8e1e61ff7c0bbad08c95e15a09f3ec42333410/packages/plugin/src/server/provider.ts

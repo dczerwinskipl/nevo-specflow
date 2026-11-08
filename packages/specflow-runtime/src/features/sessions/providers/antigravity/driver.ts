@@ -360,6 +360,13 @@ export function createAntigravityDriver(
             );
             let launched = false;
             try {
+              const helper =
+                dependencies.helper ??
+                fileURLToPath(
+                  import.meta.url.endsWith('.ts')
+                    ? import.meta.resolve('@nevo/specflow-runtime/antigravity-hook')
+                    : new URL('./antigravity-hook.js', import.meta.url),
+                );
               const bridge = await createAntigravityQuestionBridge({
                 invocation: {
                   sessionId: invocation.sessionId,
@@ -368,6 +375,12 @@ export function createAntigravityDriver(
                 },
                 emit,
                 signal: operationSignal,
+                discovery: {
+                  workspace: options.workspace,
+                  temporaryRoot: options.homeRoot,
+                  helper,
+                  launch,
+                },
                 permissionContext: () =>
                   nativeSessionId
                     ? {
@@ -378,6 +391,7 @@ export function createAntigravityDriver(
                         // Every command requires an explicit, one-shot host grant.
                         // File tools use Runtime-held path identities instead.
                         commandsAllowed: true,
+                        discoveryEnabled: true,
                       }
                     : undefined,
               });
@@ -386,13 +400,6 @@ export function createAntigravityDriver(
                 'hook-client.json',
                 JSON.stringify(bridge.nativeHookClientConfiguration),
               );
-              const helper =
-                dependencies.helper ??
-                fileURLToPath(
-                  import.meta.url.endsWith('.ts')
-                    ? import.meta.resolve('@nevo/specflow-runtime/antigravity-hook')
-                    : new URL('./antigravity-hook.js', import.meta.url),
-                );
               const hooks = antigravityHooks({
                 systemRoot: installation.host.SYSTEMROOT ?? installation.host.SystemRoot ?? '',
                 node: process.execPath,
@@ -407,6 +414,7 @@ export function createAntigravityDriver(
                 home,
                 mcp: bridge.configuration,
                 permissionRule: bridge.permissionRule,
+                discoveryPermissionRules: bridge.discoveryPermissionRules,
                 hooks,
               });
               const environment = {

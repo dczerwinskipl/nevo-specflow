@@ -263,6 +263,46 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
     expect(JSON.parse(output)).toEqual({ decision: 'deny' });
   });
 
+  it('runs confined discovery through the installed helper without workspace dependencies', () => {
+    const workspace = join(prefix, 'controlled-discovery');
+    mkdirSync(join(workspace, 'nested'), { recursive: true });
+    writeFileSync(join(workspace, 'nested', 'code.txt'), 'controlled needle');
+    const helper = join(prefix, 'node_modules', '@nevo', 'specflow', 'dist', 'antigravity-hook.js');
+    const output = execFileSync(process.execPath, [helper, 'workspace-discovery'], {
+      cwd: prefix,
+      env: { SystemRoot: process.env.SystemRoot ?? process.env.SYSTEMROOT },
+      input: JSON.stringify({
+        workspace: realpathSync(workspace),
+        tool: 'search_text',
+        request: {
+          path: '.',
+          query: 'needle',
+          includes: [],
+          excludes: [],
+          maxDepth: 16,
+          type: 'file',
+          caseInsensitive: false,
+          matchPerLine: true,
+        },
+      }),
+      encoding: 'utf8',
+      timeout: 10000,
+    });
+    const result = JSON.parse(output) as {
+      status: string;
+      matches: { path: string; text: string }[];
+    };
+    if (process.platform === 'win32' && process.arch === 'x64') {
+      expect(result.status).toBe('complete');
+      expect(result.matches).toMatchObject([
+        { path: 'nested/code.txt', text: 'controlled needle' },
+      ]);
+    } else {
+      expect(result.status).toBe('failed');
+      expect(result.matches).toEqual([]);
+    }
+  });
+
   it.runIf(process.platform === 'win32')(
     'loads the installed Windows Job Object binding without workspace dependencies',
     () => {

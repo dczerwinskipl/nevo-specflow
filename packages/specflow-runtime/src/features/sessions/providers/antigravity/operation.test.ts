@@ -15,6 +15,7 @@ function fixture(
     withoutInteractions?: boolean;
     nativeExitCode?: number;
     forcedSettlement?: boolean;
+    discoveryUnverified?: boolean;
   } = {},
 ) {
   const facts: DriverFact[] = [];
@@ -112,6 +113,7 @@ function fixture(
     awaitNativeIdle: vi.fn(options.nativeIdle ?? (() => Promise.resolve())),
     respond: vi.fn((key: string) => Promise.resolve({ deliveredKeys: [key] })),
     releaseFileAccess: vi.fn(),
+    processSettlementVerified: () => !options.discoveryUnverified,
     close: vi.fn(() => {
       bridgeDone.resolve();
 
@@ -510,4 +512,23 @@ describe('Antigravity operation lifecycle', () => {
       result: { outcome: 'cancelled' },
     });
   });
+
+  it.each(['completion', 'cancellation'])(
+    'preserves unknown discovery process settlement after native %s',
+    async (ending) => {
+      const f = fixture({ discoveryUnverified: true });
+      f.init();
+      await f.ready();
+      if (ending === 'completion') {
+        f.result();
+      } else {
+        f.controller.abort('user-cancel');
+      }
+
+      await f.operation.done;
+      expect(await f.operation.settlement).toEqual({ process: 'unknown', source: 'unverified' });
+      expect(f.facts.some((fact) => fact.kind === 'outcome')).toBe(false);
+      expect(f.facts.at(-1)).toMatchObject({ kind: 'lost' });
+    },
+  );
 });

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, rm, writeFile, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, relative, sep } from 'node:path';
 import { createAntigravityDriver } from './driver';
@@ -440,6 +440,24 @@ describe('controlled Antigravity driver invocation composition', () => {
     const hookFile = test.options().environment.values.NEVO_ANTIGRAVITY_HOOK_CONFIG!;
     expect(relative(test.workspace, hookFile).split(sep)[0]).toBe('..');
     expect(test.options().args).not.toContain('--conversation');
+    const home = test.options().environment.values.HOME!;
+    const configuration = JSON.parse(
+      await readFile(join(home, '.gemini', 'config', 'mcp_config.json'), 'utf8'),
+    ) as { mcpServers: Record<string, { enabledTools: string[] }> };
+    expect(configuration.mcpServers['specflow-discovery']?.enabledTools).toEqual([
+      'list_directory',
+      'find_files',
+      'search_text',
+    ]);
+    const settings = JSON.parse(
+      await readFile(join(home, '.gemini', 'antigravity-cli', 'settings.json'), 'utf8'),
+    ) as { permissions: { allow: string[] } };
+    expect(settings.permissions.allow).toEqual([
+      'mcp(specflow-interactions/ask_user)',
+      'mcp(specflow-discovery/list_directory)',
+      'mcp(specflow-discovery/find_files)',
+      'mcp(specflow-discovery/search_text)',
+    ]);
     expect(test.facts.find((fact) => fact.kind === 'correlation')).toMatchObject({
       providerSessionId: test.nativeId,
     });

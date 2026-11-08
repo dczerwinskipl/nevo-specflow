@@ -21,15 +21,161 @@ related:
 
 # Antigravity managed Session provider
 
-Continue in PR #107, branch `feature/antigravity-provider`. PR #98 is merged.
+PR #107 delivered the native adapter; PR #125 adds F20 and, at the owner's explicit
+direction, F14 on the existing branch `fix/antigravity-stop-continuation`.
 The adapter uses the existing Session driver, Engine execution admission and
 settlement, SQLite lifecycle and HTTP/SSE/history contracts. It introduces no
 second lifecycle authority, credential broker or global MCP installation.
 
 Future capabilities are consolidated in the
 [provider capability backlog](provider-migration-plan.md#current-scope-and-capability-backlog-ownership),
-especially recursive search (F14), effort discovery (F15) and interaction parity (F13).
+including recursive search (F14), effort discovery (F15) and interaction parity (F13).
 They are outside PR #107; this document describes the admitted native profile.
+
+## F14: Runtime-owned workspace discovery
+
+**Decision:** use one narrow provider-private MCP capability (option B). Native
+`list_dir`, `find_by_name` and `grep_search` stay denied. Their hooks expose input
+and decisions/argument overwrite, not control over every descendant or replacement
+of the native result. The documented native contract does not establish recursive
+confinement (option A). Retaining approved commands alone (option C) preserves
+safety but does not address routine project exploration. No generic MCP admission,
+shell execution, write authority, public Session API or database migration is added.
+
+### Supported contract
+
+The invocation-private `specflow-discovery` MCP server advertises exactly:
+
+| Tool             | Arguments and behavior                                                                                                                                                             |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `list_directory` | `path`, `includes`, `excludes`; immediate entries only.                                                                                                                            |
+| `find_files`     | Common arguments plus required `pattern`, `type` (`file`, `directory`, `any`) and `maxDepth`.                                                                                      |
+| `search_text`    | Common arguments plus required literal `query`, `maxDepth`, `caseInsensitive` and `matchPerLine`. UTF-8 text without NUL only; invalid UTF-8/binary files are counted and skipped. |
+
+Paths are workspace-relative forward-slash paths with exact enumerated long-name
+casing; `.` selects the root. Globs are case-sensitive `*`, `?` and whole-component
+`**`; bare patterns match entry names. Patterns containing slashes match the full
+workspace-relative path. Includes filter returned files/entries; excludes prune
+traversal. `node_modules` is excluded by default to keep ordinary source discovery
+useful; explicit `excludes: []` permits bounded dependency discovery. `.git`,
+`.nevo/local` and `.agents/{hooks.json,mcp_config.json,plugins,sidecars,projects}`
+remain unconditionally excluded at any depth. Private execution HOME is outside
+the admitted workspace, as required by existing profile preparation.
+
+Text search returns the first match on each matching line, or the first matching
+line per file when `matchPerLine: false`. Case-insensitive search folds ASCII only
+and preserves original columns. Query length is at most 256 UTF-16 code units;
+queries cannot contain newlines or NUL. Match snippets are bounded to 256 code units.
+Unknown arguments fail validation. This is intentionally not the native schema:
+`SearchDirectory`, `SearchPath`, `Pattern`, `Query`, `Extensions`, `FullPath`,
+`IsRegex` and other native dictionaries are not accepted. Extensions can be
+selected with includes such as `**/*.ts`; results always use relative paths.
+
+### Filesystem boundary and concurrent changes
+
+The supported automatic profile is **local Windows x64 NTFS**. Other platforms,
+remote/device paths and unsupported filesystems fail closed; F08 remains separate.
+The fixed helper first captures the root component by component from the drive.
+It enumerates long names through held directory handles, never follows an 8.3
+alias, and rejects reparse points. After root capture, ancestor locks are released:
+the captured root object owns subsequent traversal, not a repeated path lookup.
+
+For every descendant, `GetFileInformationByHandleEx` supplies the NTFS file ID.
+`OpenFileById` with `FILE_FLAG_OPEN_REPARSE_POINT` opens that identity without
+following a substituted path. `GetFileInformationByHandle` rejects reparse points
+and non-directory entries whose link count is not exactly one.
+`GetFinalPathNameByHandleW` must equal the exact expected normalized volume-GUID
+parent path plus enumerated long name. A moved/stale identity is refused before
+content read. Ancestors stay held through child use. `ReadFile` uses the same
+validated handle; no child is reopened by pathname. Handles share read only,
+excluding content writers and deletion while held. Existing incompatible writers
+make acquisition fail rather than permitting an unguarded read.
+
+Share flags alone do not exclude attribute-only reparse mutation. F14 deliberately
+does not rely on that assumption or on pinning just the root. A Windows-native
+test successfully applies `FSCTL_SET_REPARSE_POINT` to an already-held ordinary
+directory: its existing handle still enumerates the original empty directory,
+reopening its ID is rejected as reparse, and no outside content is returned.
+Concurrent ordinary changes can produce partial/failure results; discovery is not
+an atomic filesystem snapshot. Kernel/administrator compromise is outside this
+user-process execution profile.
+
+This complements `physicalInRoot()` and existing `acquireWindowsFileAccess()`:
+their direct-file permissions and editing lifetime remain intact; neither is
+treated as proof that unrestricted native recursion is safe. Shared ordinary
+Windows component validation rejects streams, traversal and DOS/device aliases.
+
+### Resource ownership and results
+
+Each read runs in a fixed owned Node helper role, `workspace-discovery`, using the
+existing packaged hook entry and Koffi artifact. No caller-selected executable,
+command, environment or tool installation is admitted. Synchronous filesystem
+calls run outside the Runtime event loop. The helper inherits the existing process
+ownership boundary; cancellation/deadline stops its process tree and releases
+handles. Process ownership is used for cleanup, not as filesystem confinement.
+
+Budgets support focused source exploration, not an entire generated dependency
+tree in one answer: default depth 16, maximum depth 32, 10,000 visited entries,
+1,000 searched files, 256 KiB per file, 8 MiB total content, 200 results and 48 KiB
+JSON output. At most eight 128-code-unit globs are accepted per pattern list.
+The helper has a 128 MiB V8 heap and a ten-second execution deadline, followed by
+existing bounded process cleanup. A Runtime-process-wide limit admits two active
+searches across Sessions with no queue. These are source/result budgets, not a
+claim that V8 heap size caps total operating-system RSS. Glob evaluation uses
+bounded dynamic programming; arbitrary regular expressions are not evaluated.
+
+Results distinguish `complete`, `partial`, `truncated`, `cancelled` and `failed`,
+with counters, reasons and bounded issues. Inaccessible/changed/link entries are
+reported as partial; root/traversal failure is failure, not empty success.
+Depth/byte/file/output limits explicitly truncate. Tool errors, process loss,
+expired native identity and cancellation cannot fabricate successful completion.
+
+The endpoint reuses invocation-local authenticated HTTP admission and adds no
+generic question contract or durable ledger. It implements the MCP initialization,
+tool inventory, call, ping and cancellation subset used by the native CLI, with
+bounded per-invocation RPC replay tracking (256 request IDs). Native hooks allow
+only this exact server, these three tools and validated arguments. Account/profile
+affinity stays with existing driver admission. Native identity/workspace/tool
+binding is captured at call start and rechecked before returning data.
+The endpoint emits no Work/ToolAction records; the existing native protocol owns
+those records. Helpers must positively settle before a successful tool response.
+Unverified helper cleanup also makes whole-operation process settlement unknown,
+including during cancellation; it does not release the Engine claim as a verified
+forced stop. No second Turn or input dispatch is introduced. F20's Stop decisions
+and one-shot continuation state machine are unchanged.
+
+### Evidence and remaining review
+
+Co-located scanner tests exercise nested discovery, includes/excludes, binary and
+inaccessible files, invalid requests, empty results and truncation. MCP tests cover
+SDK initialization/inventory, inactive calls, private credentials, native recursion
+and arbitrary MCP denial, exact-command permission, cross-Session capacity,
+cancellation and immutable native identity binding. Windows-native tests use real
+NTFS handles, external junctions/hardlinks, directory/file replacement, content
+write exclusion and successful in-place reparse mutation. Symbolic-link cases
+explicitly skip if Windows denies symlink creation; junction proof is independent
+of that privilege. Linux tests do not certify Windows confinement.
+
+`discovery/native-cli.test.ts` is opt-in with `NEVO_TEST_ANTIGRAVITY_EXE` pointing
+to an installed Windows CLI. It always uses a disposable HOME, synthetic Gemini
+key and loopback backend; no personal login or paid inference is used. It proves
+the native prompt advertises the three tools and executes directory listing,
+filename discovery, content search and an existing native file read through
+production operation/bridge/hooks, with one Work/ToolAction per native tool and
+one positively settled final outcome. It is not proof of native write formatting
+or every asynchronous filesystem race. Existing editing/permission suites remain
+required. Installed-package verification must include the fixed helper role.
+
+F14 remains **in progress** until current-head verification and independent review
+are recorded in the PR. The implementation-session self-review is not independent
+approval. Required merge checks and manual merge remain separate delivery gates.
+
+Protocol references: [native hooks](https://antigravity.google/docs/hooks/),
+[OpenFileById](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-openfilebyid),
+[directory identity records](https://learn.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-file_id_both_dir_info),
+[normalized handle paths](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfinalpathnamebyhandlew),
+[CreateFile sharing](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilew),
+[reparse mutation](https://learn.microsoft.com/en-us/windows/win32/api/winioctl/ni-winioctl-fsctl_set_reparse_point).
 
 Production Runtime enables managed Agent and Plan with Engine write admission.
 Supported automatic file tools retain native file identities through completion;
@@ -95,17 +241,18 @@ dispatch barriers in a manually instrumented check that prevented model input.
 
 Workspace `.agents` hooks, MCP configuration, plugins, sidecars and project
 customizations are rejected rather than deleted. Native global user configuration
-is untouched. The updater is disabled. Only the invocation-private MCP server is
-registered, with the exact `mcp(specflow-interactions/ask_user)` permission.
+is untouched. The updater is disabled. Only the invocation-private question and
+F14 discovery servers are registered, with exact server/tool permission rules.
 
 ## Interactive questions and permissions
 
 The shared implementation is owned by Sessions `interactions/mcp/`: MCP/HTTP,
 `ask_user` schema, per-Invocation authentication, limits, canonical interaction
 delivery, expiry and cleanup. It imports no Antigravity policy. The Antigravity
-bridge owns only native configuration/permission registration, hook decisions,
-native correlation and Stop/idle evidence. Hook extensions share the same bounded
-invocation transport and delivery ledger; SQLite remains the canonical owner.
+bridge owns native configuration/permission registration, hook decisions,
+native correlation, Stop/idle evidence and private discovery composition. Hook
+and discovery extensions share bounded invocation HTTP admission; the canonical
+question delivery ledger is unchanged. SQLite remains the canonical owner.
 Claude and Codex retain their native question protocols and do not use MCP merely
 for uniformity.
 
@@ -127,7 +274,7 @@ Lost delivery acknowledgement never causes automatic retransmission. Transport
 flush is delivery evidence, not evidence the model consumed the answer.
 
 Native MCP calls pass through `PreToolUse` as `call_mcp_tool`. The adapter admits
-only the exact server/tool pair and validated question arguments. It does not
+only the exact question pair and three F14 discovery pairs with validated arguments. It does not
 allow arbitrary MCP, resource, browser, scheduling, messaging or other unknown
 native tools. Hook metadata must identify the admitted native conversation and
 exactly one normalized workspace. Immutable native step and argument identity
@@ -138,8 +285,9 @@ an exact retry is denied, never granted from a previous answer. Matching
 PostToolUse receipts release that call's file ownership. The reserved-file
 Overwrite variant is correlated privately to the same owned operation.
 The native-hook ledger has its own 1024-call budget, independent of JSON-RPC
-request IDs and HTTP admission. One invocation accepts one initialized MCP
-session; attempted reinitialization closes it rather than replaying client IDs.
+request IDs and HTTP admission. The question endpoint accepts one initialized MCP
+session per invocation; attempted reinitialization closes it rather than replaying client IDs.
+The separate F14 endpoint rejects repeat initialization and replayed request IDs.
 
 The native permission profile is `proceed-in-sandbox`, including for Agent and
 Plan. Direct native file operations retain Agent auto-edit behavior. Runtime opens
@@ -400,7 +548,8 @@ array, null, number and boolean errors without releasing idle or advancing the
 execution ledger, and preserve continuation after malformed evidence. The owner
 supplied independent re-review of `b78380ac` closed R01/R02 without a new confirmed
 blocker. The targeted R03/R04 investigation below adds tests and evidence only.
-F14 and capability parity remain separate deliveries.
+At that F20 review, F14 and capability parity remained separate deliveries. The
+owner subsequently requested F14 on this same PR; its decision is recorded above.
 
 ### R03/R04 targeted lifecycle investigation (2026-11-08)
 
@@ -492,7 +641,8 @@ checks failed in Figma on both PR `a4b7ed3d` and base `main`
 `8502503b96e81fd2add5cae2b711332f1f23c5a6`; isolated Figma checks passed. This
 separates the observed base failure from F20 but does not identify its cause or
 waive the repository merge gate. Final commit-specific verification is reported
-in the PR. F14, F19, permission policy and CI infrastructure are unchanged.
+in the PR. That investigation did not change F14, F19, permission policy or CI
+infrastructure; later F14 work is recorded separately above.
 
 ### Compatible updates
 

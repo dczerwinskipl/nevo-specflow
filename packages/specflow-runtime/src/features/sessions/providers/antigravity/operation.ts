@@ -27,6 +27,8 @@ export interface AntigravityInteractions {
   respond(key: string, response: RespondInteraction): Promise<{ deliveredKeys: readonly string[] }>;
   close(): Promise<void>;
   releaseFileAccess?(): void;
+  /** Invocation-private discovery processes must settle as well as the native CLI. */
+  processSettlementVerified?(): boolean;
   done: Promise<void>;
 }
 
@@ -240,6 +242,7 @@ export function createAntigravityOperation(
       );
       await reader?.return?.().catch(() => undefined);
       const unknown =
+        interactions?.processSettlementVerified?.() === false ||
         (launched && disposition?.process.state !== 'stopped') ||
         (failure instanceof ProviderProcessError &&
           failure.cleanup.some((issue) => issue.code === 'PROCESS_NOT_STOPPED'));

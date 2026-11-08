@@ -6,6 +6,8 @@ import { createMcpQuestionTransport } from '../../interactions/mcp/question-tran
 import { McpQuestionEndpoint } from '../../interactions/mcp/questions';
 import { stable } from '../../persistence/encoding';
 import { acquireWindowsFileAccess, type NativeFileAccess } from '../process/windows-file-access';
+import { createAntigravityDiscovery } from './discovery/transport';
+import { DiscoveryEndpoint } from './discovery/contract';
 import {
   prepareAntigravityPermission,
   validateAntigravityHookBinding,
@@ -37,6 +39,10 @@ export async function createAntigravityQuestionBridge(
     emit: EmitFact;
     signal: AbortSignal;
     permissionContext?: () => AntigravityPermissionContext | undefined;
+    discovery?: Pick<
+      Parameters<typeof createAntigravityDiscovery>[0],
+      'workspace' | 'temporaryRoot' | 'helper' | 'launch'
+    >;
   },
   dependencies: { acquireFileAccess?: typeof acquireWindowsFileAccess } = {},
 ) {
@@ -66,17 +72,38 @@ export async function createAntigravityQuestionBridge(
     }
   }
 
+  let discovery: ReturnType<typeof createAntigravityDiscovery> | undefined;
   const transport = await createMcpQuestionTransport({
     invocation: options.invocation,
     emit: options.emit,
     signal: options.signal,
     onQuestion: nativeBusy,
-    onClose: () => idle.reject(expired()),
+    onClose: () => {
+      discovery?.cancel();
+      idle.reject(expired());
+    },
     extension: {
-      paths: ['/hooks/pre-tool-use', '/hooks/post-tool-use', '/hooks/stop'],
-      handle: handleHook,
+      paths: [
+        '/hooks/pre-tool-use',
+        '/hooks/post-tool-use',
+        '/hooks/stop',
+        ...(options.discovery ? ['/discovery'] : []),
+      ],
+      handle: (path, envelope, response) =>
+        path === '/discovery' && discovery
+          ? discovery.handle(envelope, response)
+          : handleHook(path, envelope, response),
     },
   });
+  if (options.discovery) {
+    discovery = createAntigravityDiscovery({
+      ...options.discovery,
+      signal: options.signal,
+      admitted: () => transport.active && !transport.closed,
+      context: () => options.permissionContext?.(),
+    });
+  }
+
   function hookJson(response: ServerResponse, value: object) {
     response.writeHead(200, { 'content-type': 'application/json' });
     response.end(JSON.stringify(value));
@@ -106,6 +133,7 @@ export async function createAntigravityQuestionBridge(
         current.nativeTools !== context.nativeTools ||
         current.workspace !== context.workspace ||
         current.writable !== context.writable ||
+        current.discoveryEnabled !== context.discoveryEnabled ||
         current.commandsAllowed !== context.commandsAllowed
       ) {
         throw expired();
@@ -292,6 +320,16 @@ export async function createAntigravityQuestionBridge(
   return {
     configuration: {
       mcpServers: {
+        ...(discovery
+          ? {
+              [DiscoveryEndpoint.serverName]: {
+                serverUrl: transport.endpoint.baseUrl + '/discovery',
+                headers: { Authorization: transport.endpoint.authorization },
+                enabledTools: [...DiscoveryEndpoint.tools],
+                timeoutSeconds: 15,
+              },
+            }
+          : {}),
         [serverName]: {
           serverUrl: transport.endpoint.baseUrl + '/mcp',
           headers: { Authorization: transport.endpoint.authorization },
@@ -301,6 +339,11 @@ export async function createAntigravityQuestionBridge(
       },
     },
     permissionRule: 'mcp(' + serverName + '/' + toolName + ')',
+    discoveryPermissionRules: discovery
+      ? DiscoveryEndpoint.tools.map(
+          (name) => 'mcp(' + DiscoveryEndpoint.serverName + '/' + name + ')',
+        )
+      : [],
     nativeHookClientConfiguration: {
       baseUrl: transport.endpoint.baseUrl,
       token: transport.endpoint.authorization,
@@ -336,7 +379,10 @@ export async function createAntigravityQuestionBridge(
 
       fileAccess.clear();
     },
-    close: transport.close,
+    async close() {
+      await Promise.all([transport.close(), discovery?.close()]);
+    },
+    processSettlementVerified: () => discovery?.processSettlementVerified() ?? true,
     done: transport.done,
   };
 }

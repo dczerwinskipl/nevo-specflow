@@ -212,6 +212,7 @@ export async function prepareAntigravityProfile(
     home?: string;
     mcp?: { mcpServers: Record<string, unknown> };
     permissionRule?: string;
+    discoveryPermissionRules?: readonly string[];
     hooks?: Record<string, unknown>;
   } = {},
 ) {
@@ -325,7 +326,12 @@ export async function prepareAntigravityProfile(
     allowNonWorkspaceAccess: false,
     enableTerminalSandbox: true,
     useG1Credits: false,
-    permissions: { allow: options.permissionRule ? [options.permissionRule] : [] },
+    permissions: {
+      allow: [
+        ...(options.permissionRule ? [options.permissionRule] : []),
+        ...(options.discoveryPermissionRules ?? []),
+      ],
+    },
     trustedWorkspaces: [installation.workspace],
   });
   await json(join(config, 'mcp_config.json'), options.mcp ?? { mcpServers: {} });

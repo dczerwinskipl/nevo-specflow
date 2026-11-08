@@ -1,5 +1,5 @@
 import { Type, type Static } from 'typebox';
-import { AssociationTargetIdSchema, SessionReferenceIdSchema } from './associations';
+import { AssociationTargetIdSchema } from './associations';
 import { SessionIdSchema, SessionInfoSchema, TurnStateSchema } from './model';
 
 const closed = { additionalProperties: false } as const;
@@ -62,7 +62,7 @@ export const ListAssociationSchema = Type.Union([
 export const SessionListItemSchema = Type.Object(
   {
     // A managed Session UUID or a demo catalogue Session id.
-    sessionId: SessionReferenceIdSchema,
+    sessionId: SessionIdSchema,
     title: Type.Optional(SessionInfoSchema.properties.title),
     providerId: SessionInfoSchema.properties.providerId,
     /** The provider's display title from the Runtime's catalogue; absent when it is not listed. */

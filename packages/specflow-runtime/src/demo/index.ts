@@ -6,6 +6,7 @@ import {
 } from '../features/documents';
 import {
   createDemoSessionReferences,
+  createDemoManagedSessionReads,
   createDemoSessions,
   registerDemoSessionRoutes,
 } from '../features/sessions';
@@ -61,12 +62,18 @@ export function createDemoRuntime(environment: DemoEnvironment) {
     createDemoSessionReferences(repositories.catalogue),
   );
   const taskSources = createDemoTaskSources(repositories.catalogue);
+  const sessionList = sessions.list(repositories.catalogue);
 
   return {
     environment,
     ...repositories,
     sessionReferences,
-    sessionList: sessions.list(repositories.catalogue),
+    sessionList,
+    managedSessionReads: createDemoManagedSessionReads({
+      state,
+      list: sessionList,
+      references: sessionReferences,
+    }),
     associationTargets: createDemoAssociationTargets({
       catalogue: repositories.catalogue,
       isArchived: async (specId) =>

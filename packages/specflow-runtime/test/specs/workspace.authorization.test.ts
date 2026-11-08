@@ -37,14 +37,14 @@ describe('Workspace Session authorization projection', () => {
                   kind: 'session',
                   title: 'Secret title',
                   reason: 'Secret reason',
-                  targetId: 'sample-session-23',
+                  targetId: '00000000-0000-4000-8000-000000000023',
                 },
                 {
                   id: 'allowed',
                   kind: 'session',
                   title: 'Visible title',
                   reason: 'Visible reason',
-                  targetId: 'sample-session-24',
+                  targetId: '00000000-0000-4000-8000-000000000024',
                 },
               ],
             },
@@ -56,7 +56,7 @@ describe('Workspace Session authorization projection', () => {
                 {
                   id: 'hidden',
                   kind: 'session',
-                  targetId: 'sample-session-23',
+                  targetId: '00000000-0000-4000-8000-000000000023',
                   occurredAt: '2026-10-09',
                   title: 'Hidden session activity',
                   description: 'Secret',
@@ -64,7 +64,7 @@ describe('Workspace Session authorization projection', () => {
                 {
                   id: 'visible',
                   kind: 'session',
-                  targetId: 'sample-session-24',
+                  targetId: '00000000-0000-4000-8000-000000000024',
                   occurredAt: '2026-10-09',
                   title: 'Visible session activity',
                   description: 'Public',
@@ -72,7 +72,7 @@ describe('Workspace Session authorization projection', () => {
                 {
                   id: 'generic-hidden',
                   kind: 'info',
-                  relatedSessionId: 'sample-session-23',
+                  relatedSessionId: '00000000-0000-4000-8000-000000000023',
                   occurredAt: '2026-10-09',
                   title: 'Generic secret',
                   description: 'Secret',
@@ -82,7 +82,7 @@ describe('Workspace Session authorization projection', () => {
           },
         },
       },
-      'sample-session-23',
+      '00000000-0000-4000-8000-000000000023',
     );
     // Domain sources are independent. A Session reference accidentally placed
     // in another section must not bypass Session-level authorization.
@@ -91,7 +91,7 @@ describe('Workspace Session authorization projection', () => {
       kind: 'session' as const,
       title: 'Secret cross-section item',
       reason: 'Hidden Session',
-      targetId: 'sample-session-23',
+      targetId: '00000000-0000-4000-8000-000000000023',
     };
     const withCrossSectionItems: SpecificationWorkspaceResponse = {
       ...snapshot,
@@ -122,11 +122,11 @@ describe('Workspace Session authorization projection', () => {
         },
       },
     };
-    const permitted = (id: string) => id === 'sample-session-24';
+    const permitted = (id: string) => id === '00000000-0000-4000-8000-000000000024';
     const check = (value: SpecificationWorkspaceResponse) => {
       const filtered = authorizeSessionReferences(value, permitted);
       const serialized = JSON.stringify(filtered);
-      expect(serialized).not.toContain('sample-session-23');
+      expect(serialized).not.toContain('00000000-0000-4000-8000-000000000023');
       expect(serialized).not.toContain('Secret');
       expect(serialized).not.toContain('Generic secret');
       expect(serialized).toContain('Visible session activity');
@@ -151,7 +151,7 @@ describe('Workspace Session authorization projection', () => {
     expect(filtered.sections.sessions.state).toBe('available');
     const unavailable = check({
       ...snapshot,
-      recommendedSessionId: 'sample-session-24',
+      recommendedSessionId: '00000000-0000-4000-8000-000000000024',
       sections: {
         ...snapshot.sections,
         sessions: { state: 'unavailable', reason: 'source_unavailable' },
@@ -182,6 +182,6 @@ describe('Workspace Session authorization projection', () => {
     const filtered = authorizeSessionReferences(presentWorkspace(source), () => false);
     expect(filtered.sections.sessions).toEqual({ state: 'forbidden' });
     expect(filtered.recommendedSessionId).toBeUndefined();
-    expect(JSON.stringify(filtered)).not.toContain('sample-session-23');
+    expect(JSON.stringify(filtered)).not.toContain('00000000-0000-4000-8000-000000000023');
   });
 });

@@ -342,6 +342,53 @@ export const Unavailable: Story = {
 };
 
 /**
+ * A Session the caller may only view (the demo Runtime's read-only Sessions, or a viewer): the
+ * snapshot grants `view` alone. A quiet bar takes the Composer's place, the empty conversation has
+ * no call to action, and there is no Session menu and no error (full-session-screen-structure
+ * §22.1, View-only Session).
+ */
+export const ViewOnlySession: Story = {
+  tags: ['contract'],
+  args: {
+    api: fixtureApi({
+      ...genericSpecLevelSnapshot(),
+      entries: [],
+      history: { hasOlder: false },
+      session: {
+        ...genericSpecLevelSnapshot().session,
+        readiness: 'ready',
+        capabilities: {
+          view: true,
+          manage: false,
+          start: false,
+          cancel: false,
+          questions: false,
+          permissions: false,
+          executeWrite: false,
+          delete: false,
+        },
+      },
+    }),
+    sessionContext: genericSpecLevelContext(),
+  },
+  globals: WIDE_VIEWPORT,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('Możesz tylko przeglądać tę sesję.')).toBeVisible();
+    await expect(canvasElement.querySelector('[data-view-only-bar]')).not.toBeNull();
+    await expect(await canvas.findByText('Brak wiadomości w tej sesji.')).toBeVisible();
+    await expect(canvas.queryByText(/Napisz wiadomość/)).toBeNull();
+    await expect(canvas.queryByRole('textbox', { name: 'Wiadomość' })).toBeNull();
+    await expect(canvas.queryByRole('button', { name: 'Wyślij' })).toBeNull();
+    // The live regions stay mounted empty; none may carry an error.
+    await expect(
+      canvas.queryAllByRole('alert').filter((alert) => alert.textContent?.trim()),
+    ).toHaveLength(0);
+    await expect(canvas.queryByRole('button', { name: /Więcej akcji|Akcje sesji/ })).toBeNull();
+  },
+};
+
+/**
  * A Session without a message, however it was opened (new-session-ui-spec.md, section 5): the DS
  * ready empty state with the provider's logo and name, centred in the free height above the Composer,
  * which is docked at the bottom. It replaces the former plain "start the conversation" line.

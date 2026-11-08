@@ -50,13 +50,17 @@ const currentItems: readonly CurrentSpecRecord[] = [
         'attention',
         'Agent asks for input',
         110,
-        { kind: 'session', specId: 'admission', sessionId: 'sample-session-23' },
+        { kind: 'session', specId: 'admission', sessionId: '00000000-0000-4000-8000-000000000023' },
         'Choose how queued work should behave after a recovery.',
         'input',
       ),
     ],
     currentExecutions: [
-      { sessionId: 'sample-session-24', agentRole: 'Implementer', taskIds: ['TASK-02'] },
+      {
+        sessionId: '00000000-0000-4000-8000-000000000024',
+        agentRole: 'Implementer',
+        taskIds: ['TASK-02'],
+      },
     ],
   },
   {
@@ -125,7 +129,7 @@ const currentItems: readonly CurrentSpecRecord[] = [
     signals: [signal('providers', 'working', 'working', 'Implementation in progress', 40)],
     currentExecutions: [
       {
-        sessionId: 'sample-session-42',
+        sessionId: '00000000-0000-4000-8000-000000000042',
         agentRole: 'Implementer',
         taskIds: ['TASK-02', 'TASK-04', 'TASK-05'],
       },

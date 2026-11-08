@@ -44,10 +44,10 @@ async function read(server: FastifyInstance, sessionId: string) {
 
 describe('demo Session association (catalogue port)', () => {
   it('reads a seeded Session with its Specification and execution Tasks', async () => {
-    const response = await read(await open(), 'sample-session-24');
+    const response = await read(await open(), '00000000-0000-4000-8000-000000000024');
     expect(response.statusCode).toBe(200);
     expect(response.json<SessionAssociationRead>()).toEqual({
-      sessionId: 'sample-session-24',
+      sessionId: '00000000-0000-4000-8000-000000000024',
       association: {
         kind: 'specification',
         specification: {
@@ -102,23 +102,25 @@ describe('demo Session association (catalogue port)', () => {
     if (workspace.sections.sessions.state === 'available') {
       expect(workspace.sections.sessions.data.items.map((item) => item.id)).toEqual([
         sessionId,
-        'sample-session-24',
-        'sample-session-23',
+        '00000000-0000-4000-8000-000000000024',
+        '00000000-0000-4000-8000-000000000023',
       ]);
     }
 
     // Attention first: the seeded Session asking for input.
-    expect(workspace.recommendedSessionId).toBe('sample-session-23');
+    expect(workspace.recommendedSessionId).toBe('00000000-0000-4000-8000-000000000023');
   });
 
   it('answers forbidden without spec.view and 404 for an unknown Session', async () => {
-    const scoped = await open({ sessionId: 'sample-session-24' });
-    expect((await read(scoped, 'sample-session-24')).json<SessionAssociationRead>()).toEqual({
-      sessionId: 'sample-session-24',
+    const scoped = await open({ sessionId: '00000000-0000-4000-8000-000000000024' });
+    expect(
+      (await read(scoped, '00000000-0000-4000-8000-000000000024')).json<SessionAssociationRead>(),
+    ).toEqual({
+      sessionId: '00000000-0000-4000-8000-000000000024',
       association: { kind: 'specification', specification: { state: 'forbidden' }, tasks: [] },
     });
     await app!.close();
-    const unknown = await read(await open(), 'sample-session-0');
+    const unknown = await read(await open(), '00000000-0000-4000-8000-0000000000ff');
     expect(unknown.statusCode).toBe(404);
     expect(unknown.json<{ code: string }>().code).toBe('SESSION_NOT_FOUND');
   });
@@ -157,12 +159,12 @@ describe('demo Session list (catalogue source)', () => {
     const seeded = await list(server, '?specId=admission');
     expect(seeded.items.map((item) => [item.sessionId, item.readiness, item.association])).toEqual([
       [
-        'sample-session-24',
+        '00000000-0000-4000-8000-000000000024',
         'busy',
         { kind: 'specification', specId: 'admission', taskIds: ['TASK-02'] },
       ],
       [
-        'sample-session-23',
+        '00000000-0000-4000-8000-000000000023',
         'requiresAttention',
         { kind: 'specification', specId: 'admission', taskIds: [] },
       ],
@@ -185,7 +187,10 @@ describe('demo Session list (catalogue source)', () => {
       })
     ).json<DemoSessionResult>().sessionId;
     const first = await list(server, '?specId=admission&limit=2');
-    expect(first.items.map((item) => item.sessionId)).toEqual([allocated, 'sample-session-24']);
+    expect(first.items.map((item) => item.sessionId)).toEqual([
+      allocated,
+      '00000000-0000-4000-8000-000000000024',
+    ]);
     expect(first.items[0]).toMatchObject({
       providerId: 'codex',
       providerTitle: 'Codex',
@@ -204,13 +209,19 @@ describe('demo Session list (catalogue source)', () => {
     ).json<SpecificationWorkspaceResponse>().sections.sessions;
     expect(section.state === 'available' ? section.data.items.slice(0, 2) : []).toMatchObject([
       { id: allocated, providerId: 'codex', modelTitle: 'Model A · demo', status: 'quiet' },
-      { id: 'sample-session-24', providerTitle: 'Codex', updatedAt: expect.any(String) as unknown },
+      {
+        id: '00000000-0000-4000-8000-000000000024',
+        providerTitle: 'Codex',
+        updatedAt: expect.any(String) as unknown,
+      },
     ]);
     const second = await list(
       server,
       `?specId=admission&limit=2&cursor=${encodeURIComponent(first.nextCursor!)}`,
     );
-    expect(second.items.map((item) => item.sessionId)).toEqual(['sample-session-23']);
+    expect(second.items.map((item) => item.sessionId)).toEqual([
+      '00000000-0000-4000-8000-000000000023',
+    ]);
     expect(second.nextCursor).toBeUndefined();
 
     expect((await list(server, '?specId=admission&archived=only')).items).toEqual([]);
@@ -228,7 +239,7 @@ describe('demo Session list (catalogue source)', () => {
     expect(unfiltered.json<{ code: string }>().code).toBe('SESSION_LIST_SCOPE_REQUIRED');
     await app!.close();
     // A Session-scoped grant lists that Session, redacted, and cannot filter by Specification.
-    const session = await open({ sessionId: 'sample-session-24' });
+    const session = await open({ sessionId: '00000000-0000-4000-8000-000000000024' });
     expect((await list(session)).items.map((item) => item.association)).toEqual([
       { kind: 'restricted' },
     ]);

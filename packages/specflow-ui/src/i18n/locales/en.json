@@ -1665,6 +1665,10 @@
     "answer": "Your answer",
     "respond": "Respond",
     "message": "Message",
+    "viewOnly": {
+      "note": "You can only view this session.",
+      "empty": "This session has no messages."
+    },
     "readyState": {
       "title": "{{provider}} is ready",
       "description": "Write a message below to start the conversation."

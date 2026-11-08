@@ -1665,6 +1665,10 @@
     "answer": "Twoja odpowiedź",
     "respond": "Odpowiedz",
     "message": "Wiadomość",
+    "viewOnly": {
+      "note": "Możesz tylko przeglądać tę sesję.",
+      "empty": "Brak wiadomości w tej sesji."
+    },
     "readyState": {
       "title": "{{provider}} jest gotowy",
       "description": "Napisz wiadomość poniżej, aby rozpocząć rozmowę."

@@ -1,5 +1,6 @@
 import { Type, type Static } from 'typebox';
 import { WorkspaceTaskSchema } from '../../tasks';
+import { SessionIdSchema } from '../../sessions/model';
 export * from '../../tasks';
 export * from '../../documents';
 
@@ -42,7 +43,7 @@ export const WorkspaceDocumentSchema = Type.Object({
 });
 export const WorkspaceSessionSchema = Type.Object(
   {
-    id: IdSchema,
+    id: SessionIdSchema,
     /** Absent for an untitled Session; the server never invents a title. */
     title: Type.Optional(Type.String()),
     taskIds: Type.Array(IdSchema),
@@ -99,7 +100,7 @@ const ActivitySchema = Type.Object({
   description: Type.String(),
   targetId: Type.Optional(IdSchema),
   /** Session provenance for generic events carrying Session data. */
-  relatedSessionId: Type.Optional(IdSchema),
+  relatedSessionId: Type.Optional(SessionIdSchema),
 });
 const RepoSchema = Type.Object({
   repositoryName: Type.Optional(Type.String()),
@@ -144,7 +145,7 @@ const StartSessionActionSchema = Type.Object({
 });
 export const SpecificationWorkspaceResponseSchema = Type.Object({
   revision: Type.String(),
-  recommendedSessionId: Type.Optional(IdSchema),
+  recommendedSessionId: Type.Optional(SessionIdSchema),
   specification: Type.Object({
     id: IdSchema,
     /** Optional human-facing Specification key (for example `UI-1234`). */

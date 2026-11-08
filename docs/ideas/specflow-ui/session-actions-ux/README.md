@@ -27,11 +27,11 @@ related:
   - design-system.principles.layout-and-containment
 ---
 
-# Session refresh, reconcile and Session actions — UX proposal
+# Session refresh, reconcile and Session actions — UX contract
 
-**Status: proposal, not accepted.** The owner accepts it (plan, "Owner decisions", D1/D2/D10)
-before T2's refresh control, T4 and T11 UI are implemented. Each item has a **Recommended**
-option and at most one **Alternative**. On acceptance, move the accepted behaviour into the
+**Status: accepted by the owner on 2026-11-08** (plan, "Owner decisions", D1/D2/D10), with every
+**Recommended** option; Rename stays allowed on an archived Session. The **Alternative** options are
+kept only as rationale. With the implementation, move the accepted behaviour into the
 owning contracts (`full-session-screen-structure.md` §7.2/§17/§23, `session-chat-v10-design.md`)
 and keep this file only as rationale. Revised after independent review (accept with changes).
 

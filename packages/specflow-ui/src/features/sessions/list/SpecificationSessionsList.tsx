@@ -40,6 +40,21 @@ export function sessionRowStatus(
   }
 }
 
+/**
+ * The heading the list belongs to: the nearest page title (`ViewPageTitle`, focusable with
+ * `tabIndex={-1}`) found walking up from the list. The list renders no heading of its own.
+ */
+function owningHeading(element: HTMLElement | null): HTMLElement | null {
+  for (let node = element?.parentElement; node; node = node.parentElement) {
+    const heading = node.querySelector<HTMLElement>('[data-page-title]');
+    if (heading) {
+      return heading;
+    }
+  }
+
+  return null;
+}
+
 function rowFacts(item: SessionListItem, t: TFunction, now: number, locale: string): CompactFacts {
   const count = item.association.kind === 'specification' ? item.association.taskIds.length : 0;
 
@@ -75,6 +90,7 @@ export function SpecificationSessionsList({
   const { t, i18n } = useTranslation();
   const now = useNow();
   const { announce: setAnnouncement, region } = useAnnouncer();
+  const root = useRef<HTMLDivElement>(null);
   const list = useRef<HTMLDivElement>(null);
   // The guarded handler of "Show more": one load at a time, whatever the button's state shows.
   const loading = useRef(false);
@@ -113,6 +129,10 @@ export function SpecificationSessionsList({
         }
       } else if (!outcome.ended) {
         announce(t('sessions.list.noneInScanned'));
+      } else {
+        // The press ended the list without a row: the focused button goes away with the cursor,
+        // so focus moves to the list's heading instead of falling back to the document.
+        requestAnimationFrame(() => owningHeading(root.current)?.focus());
       }
     } finally {
       loading.current = false;
@@ -131,7 +151,7 @@ export function SpecificationSessionsList({
   }
 
   return (
-    <div className="grid max-w-content-standard gap-6 py-2">
+    <div ref={root} className="grid max-w-content-standard gap-6 py-2">
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
         <SegmentedControl
           aria-label={t('sessions.list.collection')}

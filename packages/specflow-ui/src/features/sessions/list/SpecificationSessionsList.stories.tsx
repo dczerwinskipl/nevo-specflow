@@ -7,6 +7,7 @@ import type { SessionListItem, SessionListPage } from '@nevo/specflow-contracts/
 import { withLocale } from '../../../i18n/StoryLocalization';
 import { createSpecFlowAppServices } from '../../../services';
 import { TestServicesRouterContext } from '../../../../test-support/app/TestServicesRouterContext';
+import { ViewPageTitle } from '../../../app/navigation/ApplicationLocation';
 import type { SessionAssociationsApi } from '../associations/api';
 import type { SessionCollection } from './loadSessions';
 import { SpecificationSessionsList } from './SpecificationSessionsList';
@@ -73,6 +74,7 @@ function ListPreview({
   offersNewSession = true,
   sessionsDisabled = false,
   refusal,
+  pageTitle,
 }: {
   pages: Pages;
   /** The n-th request (1-based) fails. */
@@ -82,6 +84,8 @@ function ListPreview({
   sessionsDisabled?: boolean;
   /** Every list read is refused: 403, or Sessions turned off (`SESSION_DISABLED`). */
   refusal?: 'forbidden' | 'disabled';
+  /** The page title the route renders above the list (`ViewPageTitle`). */
+  pageTitle?: string;
 }) {
   const [client] = useState(
     () => new QueryClient({ defaultOptions: { queries: { retry: false } } }),
@@ -117,6 +121,7 @@ function ListPreview({
     <QueryClientProvider client={client}>
       <TestServicesRouterContext services={services}>
         <div className="p-6">
+          {pageTitle ? <ViewPageTitle>{pageTitle}</ViewPageTitle> : null}
           <Harness offersNewSession={offersNewSession} sessionsDisabled={sessionsDisabled} />
         </div>
       </TestServicesRouterContext>
@@ -297,6 +302,36 @@ export const ShowMoreNoneInBatch: Story = {
         'Nie znaleziono więcej sesji w tej partii. Możesz szukać dalej.',
       ),
     );
+  },
+};
+
+/**
+ * A press that ends the cursor without a new row: the focused button goes away, so focus moves to
+ * the list's page heading instead of falling back to the document.
+ */
+export const ShowMoreEndsWithoutRows: Story = {
+  args: {
+    pageTitle: 'Sesje',
+    pages: {
+      current: [
+        { items: currentRows.slice(0, 2), nextCursor: 'p1' },
+        { items: [], nextCursor: 'p2' },
+        { items: [] },
+      ],
+      archive: [],
+    },
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(await canvas.findByRole('button', { name: 'Pokaż więcej' }));
+    await waitFor(() => expect(canvas.queryByRole('button', { name: 'Pokaż więcej' })).toBeNull());
+    await waitFor(() => expect(canvas.getByRole('heading', { name: 'Sesje' })).toHaveFocus());
+    await expect(requests).toHaveLength(3);
+    // The loaded rows stay; no empty state, no batch line.
+    await expect(canvas.getByRole('button', { name: 'Migracja sesji' })).toBeVisible();
+    await expect(canvas.queryByText('Ta specyfikacja nie ma jeszcze sesji.')).toBeNull();
+    await expect(
+      canvas.queryByText('Nie znaleziono więcej sesji w tej partii. Możesz szukać dalej.'),
+    ).toBeNull();
   },
 };
 

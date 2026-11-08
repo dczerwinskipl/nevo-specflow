@@ -8,6 +8,8 @@ import type {
   HttpClientOptions,
   HttpRequestConfig,
   HttpRequestOptions,
+  HttpResponse,
+  HttpResponseOptions,
   SseEvent,
   SseRequestConfig,
   SseStream,
@@ -85,6 +87,36 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
         >(url, toAxiosConfig<unknown, TParams>(config));
 
         return response.data;
+      });
+    },
+
+    async getResponse<TResponse, TParams>(
+      url: string,
+      config?: HttpResponseOptions<TParams>,
+    ): Promise<HttpResponse<TResponse>> {
+      return execute(async () => {
+        const response = await instance.get<
+          TResponse,
+          AxiosResponse<TResponse, unknown, unknown, TParams>,
+          unknown,
+          TParams
+        >(url, {
+          ...toAxiosConfig<unknown, TParams>(config),
+          validateStatus: (status) => (status >= 200 && status < 300) || status === 304,
+        });
+
+        const headers = AxiosHeaders.from(response.headers as AxiosHeaders);
+        const picked: Record<string, string> = {};
+        for (const name of config?.responseHeaders ?? []) {
+          const value = headers.get(name);
+          if (typeof value === 'string') {
+            picked[name.toLowerCase()] = value;
+          }
+        }
+
+        return response.status === 304
+          ? { status: response.status, headers: picked }
+          : { status: response.status, data: response.data, headers: picked };
       });
     },
 

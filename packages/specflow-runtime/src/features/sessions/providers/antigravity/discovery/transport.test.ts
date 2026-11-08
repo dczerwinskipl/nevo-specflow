@@ -1,84 +1,9 @@
-import { afterEach, expect, it, vi } from 'vitest';
-import { randomUUID } from 'node:crypto';
-import { mkdtemp, mkdir, writeFile, readFile, rm, realpath, symlink, link } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { expect, it, vi } from 'vitest';
+import { mkdir, writeFile, readFile, symlink, link } from 'node:fs/promises';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { launchOwnedProcess, ProviderProcessError } from '../../process';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import type { DriverFact } from '../../../persistence/protocol';
-import { createAntigravityQuestionBridge } from '../question-bridge';
 import { prepareAntigravityPermission } from '../permissions';
-import { emptyDiscoveryResult, type DiscoveryResult } from './scan';
-
-const cleanups: (() => Promise<unknown>)[] = [];
-afterEach(async () => {
-  for (const cleanup of cleanups.splice(0).reverse()) {
-    await cleanup();
-  }
-});
-
-async function fixture(
-  helperBody?: string,
-  realHelper = false,
-  launch?: typeof launchOwnedProcess,
-) {
-  const root = await realpath(await mkdtemp(join(tmpdir(), 'f14-transport-')));
-  cleanups.push(() => rm(root, { recursive: true, force: true }));
-  const workspace = join(root, 'workspace');
-  await mkdir(join(workspace, 'nested'), { recursive: true });
-  await writeFile(join(workspace, 'nested', 'code.ts'), 'controlled needle');
-  const helper = realHelper
-    ? fileURLToPath(import.meta.resolve('@nevo/specflow-runtime/antigravity-hook'))
-    : join(root, 'controlled.mjs');
-  if (!realHelper) {
-    await writeFile(
-      helper,
-      helperBody ??
-        `process.stdin.resume(); process.stdin.on('end',()=>console.log(${JSON.stringify(JSON.stringify(emptyDiscoveryResult('complete')))}));`,
-    );
-  }
-
-  const controller = new AbortController();
-  const context = {
-    workspace,
-    nativeSessionId: 'synthetic-native-session',
-    nativeTools: ['call_mcp_tool', 'run_command', 'list_dir', 'grep_search', 'find_by_name'],
-    writable: true,
-    commandsAllowed: true,
-    discoveryEnabled: true,
-  };
-  const facts: DriverFact[] = [];
-  const bridge = await createAntigravityQuestionBridge({
-    invocation: { sessionId: randomUUID(), turnId: randomUUID(), invocationId: randomUUID() },
-    signal: controller.signal,
-    emit: (fact) => {
-      facts.push(fact);
-
-      return Promise.resolve();
-    },
-    permissionContext: () => context,
-    discovery: { workspace, temporaryRoot: join(root, 'private'), helper, launch },
-  });
-  cleanups.push(() => bridge.close());
-  const config = bridge.configuration.mcpServers['specflow-discovery']!;
-  const client = new Client({ name: 'synthetic-discovery-fixture', version: '1' });
-  cleanups.push(() => client.close());
-  await client.connect(
-    new StreamableHTTPClientTransport(new URL(config.serverUrl), {
-      requestInit: { headers: config.headers },
-    }),
-  );
-  const call = async (name: string, args: Record<string, unknown>) => {
-    const result = await client.callTool({ name, arguments: args });
-    const text = (result.content as { type: string; text: string }[])[0]!.text;
-
-    return { error: result.isError, data: JSON.parse(text) as DiscoveryResult };
-  };
-
-  return { root, workspace, controller, context, bridge, config, client, facts, call };
-}
+import { emptyDiscoveryResult } from './scan';
+import { discoveryFixture as fixture } from './transport.fixture';
 
 it('advertises the narrow MCP inventory, rejects unadmitted calls, then runs an owned helper', async () => {
   const f = await fixture();
@@ -207,50 +132,6 @@ it('discards a completed read after its native identity changes, even with a mut
     error: true,
     data: { status: 'cancelled', reasons: ['discovery-expired'] },
   });
-});
-
-it('refuses successful tool and bridge settlement when a helper stopped-tree receipt is unknown', async () => {
-  const launch: typeof launchOwnedProcess = async (options) => {
-    const owner = await launchOwnedProcess(options);
-
-    return {
-      ...owner,
-      async dispose() {
-        const receipt = await owner.dispose();
-
-        return {
-          ...receipt,
-          process: { state: 'unknown' as const, reason: 'unverified-tree' as const },
-        };
-      },
-    };
-  };
-
-  const f = await fixture(undefined, false, launch);
-  f.bridge.activate();
-  await expect(f.call('find_files', { pattern: '*.ts' })).rejects.toThrow();
-  await expect(f.bridge.close()).rejects.toThrow('settlement is unverified');
-  expect(f.bridge.processSettlementVerified()).toBe(false);
-  // The real controlled process was disposed above; only its receipt was fault-
-  // injected. Avoid repeating the deliberately rejected close in fixture cleanup.
-  vi.spyOn(f.bridge, 'close').mockResolvedValue();
-});
-
-it('retains unknown process settlement reported during partial helper startup', async () => {
-  const launch: typeof launchOwnedProcess = async (options) => {
-    await options.scope.close();
-
-    throw new ProviderProcessError('START_FAILED', 'Controlled partial startup failure', [
-      { resource: 'temporary-files', code: 'PROCESS_NOT_STOPPED' },
-    ]);
-  };
-
-  const f = await fixture(undefined, false, launch);
-  f.bridge.activate();
-  await expect(f.call('find_files', { pattern: '*.ts' })).rejects.toThrow();
-  await expect(f.bridge.close()).rejects.toThrow('settlement is unverified');
-  expect(f.bridge.processSettlementVerified()).toBe(false);
-  vi.spyOn(f.bridge, 'close').mockResolvedValue();
 });
 
 it.runIf(process.platform === 'win32' && process.arch === 'x64')(

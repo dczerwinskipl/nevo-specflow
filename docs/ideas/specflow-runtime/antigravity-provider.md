@@ -120,8 +120,10 @@ tree in one answer: default depth 16, maximum depth 32, 10,000 visited entries,
 JSON output. At most eight 128-code-unit globs are accepted per pattern list.
 The helper has a 128 MiB V8 heap and a ten-second execution deadline, followed by
 existing bounded process cleanup. A Runtime-process-wide limit admits two active
-searches across Sessions with no queue. These are source/result budgets, not a
-claim that V8 heap size caps total operating-system RSS. Glob evaluation uses
+searches across Sessions with no queue. An unverified helper keeps its concurrency slot for the
+Runtime lifetime and disables further discovery in its invocation. Two unknown
+helpers exhaust automatic discovery capacity; no speculative replacement is launched.
+These budgets do not claim that V8 heap size caps total operating-system RSS. Glob evaluation uses
 bounded dynamic programming; arbitrary regular expressions are not evaluated.
 
 Results distinguish `complete`, `partial`, `truncated`, `cancelled` and `failed`,
@@ -168,9 +170,11 @@ required. Installed-package verification must include the fixed helper role.
 
 Implementation-session review corrected two F14 settlement boundaries: capture an
 immutable native identity even when a context getter returns a mutable object,
-and retain `PROCESS_NOT_STOPPED` evidence from partial helper startup even before
+retain `PROCESS_NOT_STOPPED` evidence from partial helper startup even before
 an owner handle is returned. The latter regression was demonstrated failing
-before correction; both have focused MCP regression coverage. These findings and
+before correction. A separate failing regression demonstrated that unknown
+processes must retain concurrency capacity instead of admitting replacements;
+the corrected budget now does so. All have focused MCP regression coverage. These findings and
 their correction do not reopen the independently reviewed F20 Stop algorithm.
 
 F14 remains **in progress** until current-head verification and independent review

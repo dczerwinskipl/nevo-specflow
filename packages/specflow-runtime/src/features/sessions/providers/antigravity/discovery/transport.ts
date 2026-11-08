@@ -43,6 +43,7 @@ export function createAntigravityDiscovery(options: {
 
     return (
       !closed &&
+      !cleanupFailed &&
       options.admitted() &&
       !options.signal.aborted &&
       selected?.discoveryEnabled === true &&
@@ -62,7 +63,7 @@ export function createAntigravityDiscovery(options: {
   ): Promise<DiscoveryResult> {
     const selected = options.context();
     const binding = selected ? Object.freeze({ ...selected }) : undefined;
-    if (!binding || !current(binding) || !discoveryTool(tool)) {
+    if (!binding || !current(binding) || response.destroyed || !discoveryTool(tool)) {
       throw new Error('Discovery is not admitted for this invocation.');
     }
 
@@ -158,11 +159,16 @@ export function createAntigravityDiscovery(options: {
       const receipt = await owner?.dispose().catch(() => undefined);
       response.removeListener('close', onClose);
       controllers.delete(id);
-      runningSearches--;
       forced = receipt?.process.state === 'stopped' && receipt.process.reason === 'tree-killed';
       if (owner && receipt?.process.state !== 'stopped') {
         cleanupFailed = true;
         verified = false;
+      }
+
+      // An unverified process may still own resources. Keep its capacity slot
+      // for this Runtime lifetime; another Session cannot replace it with more work.
+      if (verified) {
+        runningSearches--;
       }
     }
 

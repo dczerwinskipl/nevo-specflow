@@ -4,7 +4,7 @@ import { mkdtemp, mkdir, writeFile, readFile, rm, realpath, symlink, link } from
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { launchOwnedProcess } from '../../process';
+import { launchOwnedProcess, ProviderProcessError } from '../../process';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import type { DriverFact } from '../../../persistence/protocol';
@@ -233,6 +233,23 @@ it('refuses successful tool and bridge settlement when a helper stopped-tree rec
   expect(f.bridge.processSettlementVerified()).toBe(false);
   // The real controlled process was disposed above; only its receipt was fault-
   // injected. Avoid repeating the deliberately rejected close in fixture cleanup.
+  vi.spyOn(f.bridge, 'close').mockResolvedValue();
+});
+
+it('retains unknown process settlement reported during partial helper startup', async () => {
+  const launch: typeof launchOwnedProcess = async (options) => {
+    await options.scope.close();
+
+    throw new ProviderProcessError('START_FAILED', 'Controlled partial startup failure', [
+      { resource: 'temporary-files', code: 'PROCESS_NOT_STOPPED' },
+    ]);
+  };
+
+  const f = await fixture(undefined, false, launch);
+  f.bridge.activate();
+  await expect(f.call('find_files', { pattern: '*.ts' })).rejects.toThrow();
+  await expect(f.bridge.close()).rejects.toThrow('settlement is unverified');
+  expect(f.bridge.processSettlementVerified()).toBe(false);
   vi.spyOn(f.bridge, 'close').mockResolvedValue();
 });
 

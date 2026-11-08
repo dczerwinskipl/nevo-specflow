@@ -5,6 +5,7 @@ import {
   createInvocationScope,
   launchOwnedProcess,
   projectProviderEnvironment,
+  ProviderProcessError,
 } from '../../process';
 import type { AntigravityPermissionContext } from '../permissions';
 import { DiscoveryLimits, discoveryTool, discoveryTools, parseDiscoveryRequest } from './contract';
@@ -140,7 +141,15 @@ export function createAntigravityDiscovery(options: {
 
         outcome = result;
       }
-    } catch {
+    } catch (error) {
+      if (
+        error instanceof ProviderProcessError &&
+        error.cleanup.some((issue) => issue.code === 'PROCESS_NOT_STOPPED')
+      ) {
+        cleanupFailed = true;
+        verified = false;
+      }
+
       outcome = emptyDiscoveryResult(
         signal.aborted ? 'cancelled' : 'failed',
         signal.aborted ? 'discovery-cancelled-or-time-limit' : 'discovery-process-failed',

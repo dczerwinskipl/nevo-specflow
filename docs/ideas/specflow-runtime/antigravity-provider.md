@@ -166,6 +166,13 @@ one positively settled final outcome. It is not proof of native write formatting
 or every asynchronous filesystem race. Existing editing/permission suites remain
 required. Installed-package verification must include the fixed helper role.
 
+Implementation-session review corrected two F14 settlement boundaries: capture an
+immutable native identity even when a context getter returns a mutable object,
+and retain `PROCESS_NOT_STOPPED` evidence from partial helper startup even before
+an owner handle is returned. The latter regression was demonstrated failing
+before correction; both have focused MCP regression coverage. These findings and
+their correction do not reopen the independently reviewed F20 Stop algorithm.
+
 F14 remains **in progress** until current-head verification and independent review
 are recorded in the PR. The implementation-session self-review is not independent
 approval. Required merge checks and manual merge remain separate delivery gates.

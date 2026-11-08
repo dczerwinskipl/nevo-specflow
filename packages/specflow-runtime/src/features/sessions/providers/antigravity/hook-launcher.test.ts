@@ -90,7 +90,9 @@ process.stdin.on('end', () => {
           expect((await owner.dispose()).process.state).toBe('stopped');
         }
       } finally {
-        await rm(root, { recursive: true, force: true });
+        // The owned process tree has settled above. Retry only transient Windows
+        // filesystem cleanup, never native execution or settlement evidence.
+        await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
       }
     },
     // Let the bounded operation abort and settle before the test harness interrupts cleanup.
@@ -146,7 +148,7 @@ process.stdin.on('end', () => {
           expect((await owner.dispose()).process.state).toBe('stopped');
         }
       } finally {
-        await rm(root, { recursive: true, force: true });
+        await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
       }
     },
     17000,

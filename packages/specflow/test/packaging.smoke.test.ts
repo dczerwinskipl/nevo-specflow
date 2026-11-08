@@ -263,45 +263,100 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
     expect(JSON.parse(output)).toEqual({ decision: 'deny' });
   });
 
-  it('runs confined discovery through the installed helper without workspace dependencies', () => {
-    const workspace = join(prefix, 'controlled-discovery');
-    mkdirSync(join(workspace, 'nested'), { recursive: true });
-    writeFileSync(join(workspace, 'nested', 'code.txt'), 'controlled needle');
-    const helper = join(prefix, 'node_modules', '@nevo', 'specflow', 'dist', 'antigravity-hook.js');
-    const output = execFileSync(process.execPath, [helper, 'workspace-discovery'], {
-      cwd: prefix,
-      env: { SystemRoot: process.env.SystemRoot ?? process.env.SYSTEMROOT },
-      input: JSON.stringify({
-        workspace: realpathSync(workspace),
-        tool: 'search_text',
-        request: {
-          path: '.',
-          query: 'needle',
-          includes: [],
-          excludes: [],
-          maxDepth: 16,
-          type: 'file',
-          caseInsensitive: false,
-          matchPerLine: true,
-        },
-      }),
-      encoding: 'utf8',
-      timeout: 10000,
-    });
-    const result = JSON.parse(output) as {
-      status: string;
-      matches: { path: string; text: string }[];
-    };
-    if (process.platform === 'win32' && process.arch === 'x64') {
-      expect(result.status).toBe('complete');
-      expect(result.matches).toMatchObject([
-        { path: 'nested/code.txt', text: 'controlled needle' },
-      ]);
-    } else {
-      expect(result.status).toBe('failed');
-      expect(result.matches).toEqual([]);
-    }
-  });
+  it.for(['physical', 'short-name'] as const)(
+    'runs confined discovery through the installed helper without workspace dependencies (%s)',
+    (pathKind, { skip }) => {
+      if (pathKind === 'short-name' && process.platform !== 'win32') {
+        skip('NTFS short names are Windows-specific.');
+
+        return;
+      }
+
+      const workspace = join(prefix, 'controlled-discovery');
+      mkdirSync(join(workspace, 'nested'), { recursive: true });
+      writeFileSync(join(workspace, 'nested', 'code.txt'), 'controlled needle');
+      const helper = join(
+        prefix,
+        'node_modules',
+        '@nevo',
+        'specflow',
+        'dist',
+        'antigravity-hook.js',
+      );
+      let suppliedPath = workspace;
+      if (pathKind === 'short-name') {
+        const binding = join(
+          prefix,
+          'node_modules',
+          '@nevo',
+          'specflow',
+          'dist',
+          'native',
+          'koffi',
+          'index.cjs',
+        );
+        suppliedPath = execFileSync(
+          process.execPath,
+          [
+            '-e',
+            `
+        const koffi = require(process.argv[1]);
+        const kernel = koffi.load(require('node:path').join(process.env.SystemRoot, 'System32', 'kernel32.dll'));
+        const shortPath = kernel.func('uint32_t __stdcall GetShortPathNameW(const char16_t *, _Out_ void *, uint32_t)');
+        const buffer = Buffer.alloc(65536);
+        const length = shortPath(process.argv[2], buffer, 32768);
+        if (!length || length >= 32768) throw Error('Controlled NTFS short path unavailable.');
+        process.stdout.write(buffer.subarray(0, length * 2).toString('utf16le'));
+      `,
+            binding,
+            workspace,
+          ],
+          { encoding: 'utf8', cwd: prefix },
+        );
+        if (!suppliedPath.includes('~')) {
+          skip('This volume does not provide an 8.3 alias for the controlled directory.');
+
+          return;
+        }
+      }
+
+      const output = execFileSync(process.execPath, [helper, 'workspace-discovery'], {
+        cwd: prefix,
+        env: { SystemRoot: process.env.SystemRoot ?? process.env.SYSTEMROOT },
+        input: JSON.stringify({
+          // Unlike the JS implementation, native realpath expands NTFS 8.3
+          // ancestors such as the GitHub runner's RUNNER~1 temp directory.
+          workspace: realpathSync.native(suppliedPath),
+          tool: 'search_text',
+          request: {
+            path: '.',
+            query: 'needle',
+            includes: [],
+            excludes: [],
+            maxDepth: 16,
+            type: 'file',
+            caseInsensitive: false,
+            matchPerLine: true,
+          },
+        }),
+        encoding: 'utf8',
+        timeout: 10000,
+      });
+      const result = JSON.parse(output) as {
+        status: string;
+        matches: { path: string; text: string }[];
+      };
+      if (process.platform === 'win32' && process.arch === 'x64') {
+        expect(result.status).toBe('complete');
+        expect(result.matches).toMatchObject([
+          { path: 'nested/code.txt', text: 'controlled needle' },
+        ]);
+      } else {
+        expect(result.status).toBe('failed');
+        expect(result.matches).toEqual([]);
+      }
+    },
+  );
 
   it.runIf(process.platform === 'win32')(
     'loads the installed Windows Job Object binding without workspace dependencies',

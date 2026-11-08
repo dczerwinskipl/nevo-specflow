@@ -6,6 +6,6 @@ Vendored SVGs from LobeHub lobe-icons, revision bcdb7c82792a854c2967f7328e11a302
 - Claude: https://github.com/lobehub/lobe-icons/blob/bcdb7c82792a854c2967f7328e11a30205ea584d/packages/static-svg/icons/claude-color.svg
 - Antigravity: https://github.com/lobehub/lobe-icons/blob/bcdb7c82792a854c2967f7328e11a30205ea584d/packages/static-svg/icons/antigravity-color.svg
 
-MIT copyright and license are preserved in LICENSE. These marks identify their respective products; no affiliation is implied. Brand references: https://openai.com/brand/ and https://www.anthropic.com/brand.
+MIT copyright and license are preserved in LICENSE. These marks identify their respective products; no affiliation is implied. Brand references: https://openai.com/brand/, https://www.anthropic.com/brand and https://antigravity.google/press.
 
 SessionProviderIcon renders Claude's and Antigravity's original color SVGs as images, preserving their artwork (Claude #D97757; Antigravity's multi-colour gradient). Codex uses the SVG alpha mask in the surrounding semantic icon color because its artwork is monochrome. All retain the same 16px identity box. Provider IDs are explicit association data; labels and unknown-provider fallback remain visible. No brand library dependency.

@@ -75,6 +75,8 @@ describe('Specification Workspace Attention contract', () => {
       });
     expect(check({ ...row, updatedAt: '2026-11-08T00:00:00.000Z' })).toBe(true);
     expect(check(row)).toBe(false);
+    // Closed: no field outside the contract (no provider mode, no internal facts).
+    expect(check({ ...row, updatedAt: '2026-11-08T00:00:00.000Z', mode: 'read-only' })).toBe(false);
     expect(check({ id: 'session-1', taskIds: [], status: 'quiet', updatedAt: 'x' })).toBe(false);
   });
 

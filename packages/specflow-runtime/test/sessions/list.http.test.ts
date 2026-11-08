@@ -153,6 +153,35 @@ describe('GET /api/sessions', () => {
     expect(items[1]).not.toHaveProperty('modelTitle');
     // The mode facts the effective readiness reads stay internal.
     expect(items[0]).not.toHaveProperty('mode');
+    expect(items[0]).not.toHaveProperty('providerModeId');
+  });
+
+  it('reads a Session whose provider mode is not offered as unavailable, like the single read', async () => {
+    directory = await mkdtemp(join(tmpdir(), 'nevo-session-list-'));
+    const store = await openSessionStore({ directory, projectId: 'project' });
+    let sessionId: string;
+    try {
+      ({ sessionId } = await store.call<{ sessionId: string }>({
+        op: 'create',
+        actor: 'someone-else',
+        input: {
+          requestId: randomUUID(),
+          providerId: 'mock',
+          mode: 'read-only',
+          providerModeId: 'plan',
+        },
+      }));
+    } finally {
+      await store.close();
+    }
+
+    // The mock provider is ready but offers no provider mode `plan`.
+    const server = await open('viewer', { projectId: 'project' });
+    const [item] = page(await list(server)).items;
+    expect(item).toMatchObject({ sessionId, readiness: 'unavailable' });
+    expect(item).not.toHaveProperty('providerModeId');
+    const single = (await server.inject('/api/sessions/' + sessionId)).json<SessionSnapshot>();
+    expect(single.session.readiness).toBe('unavailable');
   });
 
   it('applies the single-Session read effective readiness to every row', async () => {

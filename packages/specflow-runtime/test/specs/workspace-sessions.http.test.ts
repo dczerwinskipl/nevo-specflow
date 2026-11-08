@@ -80,6 +80,8 @@ async function seed(
               providerId: 'mock',
               mode: 'read-only',
               ...(title ? { title } : {}),
+              // A titled Session names the catalogue's model; an untitled one names none.
+              ...(title ? { modelId: 'mock' } : {}),
             },
             ...(association ? { association } : {}),
           })
@@ -155,6 +157,8 @@ const mockRow = {
   providerTitle: 'Controlled mock (test only)',
   updatedAt: expect.any(String) as unknown,
 };
+/** The catalogue's model of a titled seeded Session. */
+const mockModel = { modelId: 'mock', modelTitle: 'Deterministic test model' };
 const spec = (specId: string, taskIds: string[] = []): AssociationWrite => ({
   specId,
   taskIds,
@@ -186,7 +190,7 @@ describe('project-mode workspace sessions section', () => {
         items: [
           // Untitled: the server never invents a title.
           { id: newer, taskIds: ['TASK-01'], status: 'quiet', ...mockRow },
-          { id: older, title: 'Older', taskIds: [], status: 'quiet', ...mockRow },
+          { id: older, title: 'Older', taskIds: [], status: 'quiet', ...mockRow, ...mockModel },
         ],
         attention: [],
       },
@@ -207,7 +211,7 @@ describe('project-mode workspace sessions section', () => {
     expect(body.sections.sessions).toMatchObject({
       state: 'available',
       data: {
-        items: [{ id: session, status: 'authenticationRequired', ...mockRow }],
+        items: [{ id: session, status: 'authenticationRequired', ...mockRow, ...mockModel }],
       },
     });
     // A sign-in is no reason to recommend, but the only Session is still the recommendation.

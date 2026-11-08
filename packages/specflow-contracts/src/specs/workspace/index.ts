@@ -40,27 +40,30 @@ export const WorkspaceDocumentSchema = Type.Object({
   kind: Type.String(),
   summary: Type.Optional(Type.String()),
 });
-export const WorkspaceSessionSchema = Type.Object({
-  id: IdSchema,
-  /** Absent for an untitled Session; the server never invents a title. */
-  title: Type.Optional(Type.String()),
-  taskIds: Type.Array(IdSchema),
-  /** Effective Session readiness only (the single-Session read's provider projection). */
-  status: Type.Union([
-    Type.Literal('active'),
-    Type.Literal('attention'),
-    Type.Literal('quiet'),
-    /** The provider needs a sign-in and no Turn is active. */
-    Type.Literal('authenticationRequired'),
-    Type.Literal('unknown'),
-  ]),
-  providerId: Type.String({ minLength: 1, maxLength: 128 }),
-  /** Display titles from the Runtime's provider catalogue; absent when not listed. */
-  providerTitle: Type.Optional(Type.String({ minLength: 1, maxLength: 512 })),
-  modelId: Type.Optional(Type.String({ minLength: 1, maxLength: 256 })),
-  modelTitle: Type.Optional(Type.String({ minLength: 1, maxLength: 512 })),
-  updatedAt: Type.String({ minLength: 1, maxLength: 40 }),
-});
+export const WorkspaceSessionSchema = Type.Object(
+  {
+    id: IdSchema,
+    /** Absent for an untitled Session; the server never invents a title. */
+    title: Type.Optional(Type.String()),
+    taskIds: Type.Array(IdSchema),
+    /** Effective Session readiness only (the single-Session read's provider projection). */
+    status: Type.Union([
+      Type.Literal('active'),
+      Type.Literal('attention'),
+      Type.Literal('quiet'),
+      /** The provider needs a sign-in and no Turn is active. */
+      Type.Literal('authenticationRequired'),
+      Type.Literal('unknown'),
+    ]),
+    providerId: Type.String({ minLength: 1, maxLength: 128 }),
+    /** Display titles from the Runtime's provider catalogue; absent when not listed. */
+    providerTitle: Type.Optional(Type.String({ minLength: 1, maxLength: 512 })),
+    modelId: Type.Optional(Type.String({ minLength: 1, maxLength: 256 })),
+    modelTitle: Type.Optional(Type.String({ minLength: 1, maxLength: 512 })),
+    updatedAt: Type.String({ minLength: 1, maxLength: 40 }),
+  },
+  { additionalProperties: false },
+);
 export const WorkspaceAttentionSchema = Type.Object({
   id: IdSchema,
   kind: Type.Union([

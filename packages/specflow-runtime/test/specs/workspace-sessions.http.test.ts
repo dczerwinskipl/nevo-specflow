@@ -49,7 +49,7 @@ const workspaceRepository: SpecificationWorkspaceRepository = {
               preparationState: 'prepared',
               attention: [],
             },
-            sections: { activity: unavailable, repository: unavailable, changes: unavailable },
+            sections: { repository: unavailable, changes: unavailable },
             actions: {
               executeTasks: { available: false, reason: 'not_implemented' },
               startSession: { available: false, reason: 'sessions_disabled' },
@@ -198,6 +198,30 @@ describe('project-mode workspace sessions section', () => {
     expect(JSON.stringify(body)).not.toContain(archivedOne!);
     // Equal status: the most recently updated Session.
     expect(body.recommendedSessionId).toBe(newer);
+    // One "Session started" event per listed Session, bound to it, newest first.
+    expect(body.sections.activity).toEqual({
+      state: 'available',
+      data: {
+        items: [
+          {
+            id: 'session-started.' + newer,
+            occurredAt: expect.any(String) as unknown,
+            kind: 'session',
+            event: 'session_started',
+            title: '',
+            description: 'Session started',
+            targetId: newer,
+            relatedSessionId: newer,
+          },
+          expect.objectContaining({
+            id: 'session-started.' + older,
+            title: 'Older',
+            targetId: older,
+            relatedSessionId: older,
+          }),
+        ],
+      },
+    });
   });
 
   it('applies the effective readiness and keeps the provider facts for Continue session', async () => {
@@ -394,6 +418,10 @@ describe('workspace Session recommendation', () => {
                   },
                 },
                 recommendedSessionIds: ['hidden', 'visible'],
+                sessionStarts: [
+                  { sessionId: 'hidden', title: 'Hidden', createdAt: '2026-11-08T10:00:00.000Z' },
+                  { sessionId: 'visible', createdAt: '2026-11-08T09:00:00.000Z' },
+                ],
               }),
           },
         },
@@ -411,6 +439,12 @@ describe('workspace Session recommendation', () => {
     );
     const body = await workspace(app);
     expect(body.recommendedSessionId).toBe('visible');
+    // The activity history is authorized per Session: the caller sees the other event, not this one.
+    expect(body.sections.activity).toEqual({
+      state: 'available',
+      data: { items: [expect.objectContaining({ id: 'session-started.visible' })] },
+    });
     expect(JSON.stringify(body)).not.toContain('hidden');
+    expect(JSON.stringify(body)).not.toContain('Hidden');
   });
 });

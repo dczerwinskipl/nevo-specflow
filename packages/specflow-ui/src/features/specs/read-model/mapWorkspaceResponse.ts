@@ -148,6 +148,7 @@ export function mapWorkspaceResponse(
             const core = {
               id: event.id,
               time: event.occurredAt,
+              ...(event.event ? { event: event.event } : {}),
               title: event.title,
               description: event.description,
             };

@@ -14,7 +14,7 @@ function isSemanticSupporting(value: unknown): value is SemanticSupporting {
 }
 
 export const operationalPrimaryLinkClassName =
-  'pointer-events-auto static cursor-pointer whitespace-normal [overflow-wrap:anywhere] @min-[40rem]/info-row:truncate outline-none after:absolute after:inset-0 after:rounded-control focus-visible:after:outline-2 focus-visible:after:outline-focus-ring hover:text-accent-primary';
+  'pointer-events-auto static cursor-pointer whitespace-normal [overflow-wrap:anywhere] @min-[40rem]/info-row:truncate outline-none after:absolute after:inset-0 after:rounded-control focus-visible:after:outline-2 focus-visible:after:outline-focus-ring hover:text-content-link';
 export function OperationalRow({
   primary,
   primaryHref,
@@ -51,7 +51,7 @@ export function OperationalRow({
     <button
       type="button"
       data-focus-ring="delegated"
-      className="pointer-events-auto static block w-full whitespace-normal [overflow-wrap:anywhere] @min-[40rem]/info-row:truncate text-left cursor-pointer outline-none after:absolute after:inset-0 after:rounded-control focus-visible:after:outline-2 focus-visible:after:outline-focus-ring hover:text-accent-primary"
+      className="pointer-events-auto static block w-full whitespace-normal [overflow-wrap:anywhere] @min-[40rem]/info-row:truncate text-left cursor-pointer outline-none after:absolute after:inset-0 after:rounded-control focus-visible:after:outline-2 focus-visible:after:outline-focus-ring hover:text-content-link"
       aria-label={primaryAriaLabel}
       onClick={onPrimaryClick}
     >
@@ -75,7 +75,7 @@ export function OperationalRow({
             supporting.tone === 'attention' && 'text-status-attention font-medium',
             supporting.tone === 'danger' && 'text-status-danger font-medium',
             supporting.tone === 'success' && 'text-status-success',
-            supporting.tone === 'info' && 'text-accent-primary font-medium',
+            supporting.tone === 'info' && 'text-status-info font-medium',
             supporting.textClassName,
           )}
         >

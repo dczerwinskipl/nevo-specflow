@@ -106,6 +106,8 @@ export type ActivityEventKind = 'task' | 'session' | 'doc' | 'info';
 export interface BaseActivityEvent {
   readonly id: string;
   readonly time: string;
+  /** A known Runtime event the UI localizes; `title`/`description` are then English fallbacks. */
+  readonly event?: 'specification_created' | 'session_started';
   readonly title: string;
   readonly description: string;
 }

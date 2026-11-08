@@ -15,7 +15,11 @@ import {
   type SessionReferenceOwner,
   type SessionDriver,
 } from '../features/sessions';
-import { createTasksFeature, type TasksFeatureDependencies } from '../features/tasks';
+import {
+  manifestWorkspaceTasks,
+  createTasksFeature,
+  type TasksFeatureDependencies,
+} from '../features/tasks';
 import {
   createDocumentsFeature,
   createEngineWorkspaceDocuments,
@@ -29,7 +33,11 @@ import {
   createWorkspaceSessionContribution,
   type AssociationTargets,
 } from '../features/session-associations';
-import { createSpecsFeature, type SpecsFeatureDependencies } from '../features/specs';
+import {
+  composeWorkspaceActivity,
+  createSpecsFeature,
+  type SpecsFeatureDependencies,
+} from '../features/specs';
 import {
   createDemoEnvironment,
   createDemoRuntime,
@@ -189,15 +197,23 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
     demo
       ? demo.environment.state.catalogue.project.id
       : (engine?.context.project.projectId ?? dependencies.sessions?.storage?.projectId);
-  // Project mode: the Engine is the source of the workspace `documents` section and the Session
-  // association registry of the `sessions` section, unless a contribution was injected (tests).
+  // Project mode: the Engine is the source of the workspace `tasks` (temporarily, the verified
+  // manifest) and `documents` sections, the Session association registry of the `sessions`
+  // section, and both feed the partial `activity` history, unless a contribution was injected (tests).
   const specContributions = dependencies.specs?.contributions ?? demo?.contributions;
   const contributions = demo
     ? specContributions
     : {
         ...specContributions,
+        ...(engine && !specContributions?.tasks ? { tasks: manifestWorkspaceTasks } : {}),
         ...(engine && !specContributions?.documents
           ? { documents: createEngineWorkspaceDocuments(engine) }
+          : {}),
+        ...(!specContributions?.activity
+          ? {
+              activity: (_specId: string, input: Parameters<typeof composeWorkspaceActivity>[0]) =>
+                Promise.resolve(composeWorkspaceActivity(input)),
+            }
           : {}),
         ...(!specContributions?.sessions
           ? {

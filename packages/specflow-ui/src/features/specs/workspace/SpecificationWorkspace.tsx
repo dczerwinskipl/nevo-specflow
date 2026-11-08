@@ -21,8 +21,8 @@ import { useTranslation } from 'react-i18next';
 import type { SpecificationWorkspaceData } from '../read-model/model';
 import { WorkView } from './WorkView';
 import { ActivityHistory } from './ActivityHistory';
+import { isSpecificationCreatedEvent } from './activity/presentActivity';
 import { ExecuteModal } from './ExecuteModal';
-import { NewConversationModal } from './NewConversationModal';
 import { WorkspaceProvider, type WorkspaceRuntime } from './WorkspaceContext';
 import {
   SpecificationSecondaryDataContext,
@@ -57,7 +57,6 @@ export interface SpecificationWorkspaceProps {
   readonly onOpenFullDocument?: (documentId: string) => void;
   readonly onRefresh?: () => void | Promise<void>;
   readonly onExecute?: (agent: string, tasks: readonly string[]) => void | Promise<void>;
-  readonly onNewConversation?: (agent: string) => void | Promise<void>;
   readonly onOpenSession?: (sessionId: string) => void;
   /** Opens the Specification's New Session (`/specs/$specId/sessions/new`). */
   readonly onNewSession?: () => void;
@@ -93,7 +92,6 @@ function SpecificationWorkspaceInner({
   onOpenFullDocument,
   onRefresh,
   onExecute,
-  onNewConversation,
   onOpenSession,
   onNewSession,
   refreshFailed,
@@ -102,21 +100,21 @@ function SpecificationWorkspaceInner({
   const { t } = useTranslation();
   const secondaryNavigation = useSecondaryNavigation();
   const { supportsSplit } = useWorkspaceCapabilities();
-  const historyPanel = useActivityHistoryPanel(specId, data.activityEvents.length > 0);
+  // The created event alone is no reason to open the history: only a Session (later Task or
+  // document) event is.
+  const historyPanel = useActivityHistoryPanel(
+    specId,
+    data.activityEvents.some((event) => !isSpecificationCreatedEvent(event)),
+  );
 
   const {
     executeDialogOpen,
-    conversationDialogOpen,
     tasksToExecute,
     openExecuteDialog,
     closeExecuteDialog,
     handleConfirmExecute,
-    openConversationDialog,
-    closeConversationDialog,
-    handleConfirmConversation,
   } = useSpecificationDialogs({
     onExecute,
-    onNewConversation,
   });
 
   const handlePreviewTask = useCallback(
@@ -192,7 +190,6 @@ function SpecificationWorkspaceInner({
       openRepository: () => onOpenRepository?.(),
       openChanges: (source) => onOpenChanges?.(source),
       openHistory: handleOpenHistory,
-      startConversation: (_agent) => openConversationDialog(),
       openNewSession: () => onNewSession?.(),
       executeTasks: (taskIds, _agent) => openExecuteDialog(taskIds),
       refresh: () => {
@@ -201,7 +198,6 @@ function SpecificationWorkspaceInner({
         }
       },
       canExecute: Boolean(onExecute),
-      canStartConversation: Boolean(onNewConversation),
       canOpenSession: Boolean(onOpenSession),
       fullTaskHref: (taskId) => fullTaskHref(specId, taskId, collection),
     }),
@@ -215,12 +211,10 @@ function SpecificationWorkspaceInner({
       onOpenChanges,
       handleOpenDoc,
       handleOpenHistory,
-      openConversationDialog,
       openExecuteDialog,
       onRefresh,
       refreshing,
       onExecute,
-      onNewConversation,
       onNewSession,
       collection,
       specId,
@@ -360,12 +354,6 @@ function SpecificationWorkspaceInner({
           executionReadiness={data.executionReadiness}
           onClose={closeExecuteDialog}
           onExecute={onExecute ? handleConfirmExecute : undefined}
-        />
-
-        <NewConversationModal
-          open={conversationDialogOpen}
-          onClose={closeConversationDialog}
-          onStart={onNewConversation ? handleConfirmConversation : undefined}
         />
       </WorkspaceProvider>
     </SpecificationSecondaryDataContext.Provider>

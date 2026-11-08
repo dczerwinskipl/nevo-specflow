@@ -185,43 +185,28 @@ describe('Reference identity and projection integrity HTTP', () => {
   });
   it('rejects substituted identities in Workspace summaries, attention and activity as well', async () => {
     const f = await fixture();
-    const readSpecification = f.demo.workspaceRepository.readSpecification.bind(
-      f.demo.workspaceRepository,
-    );
-    f.demo.workspaceRepository.readSpecification = async (specId) => {
-      const data = await readSpecification(specId);
-
-      return data
-        ? {
-            ...data,
-            sections: {
-              ...data.sections,
-              activity: {
-                state: 'available',
-                data: {
-                  items: [
-                    {
-                      id: 'private-activity',
-                      kind: 'info',
-                      relatedSessionId: 'protected-session',
-                      occurredAt: '2026-10-13',
-                      title: 'Protected activity',
-                      description: 'Private',
-                    },
-                  ],
-                },
-              },
-            },
-          }
-        : null;
-    };
-
     const app = await appFor(
       f,
       {
         resolve: () => Promise.resolve({ ...f.definition.identity, sessionId: 'allowed-session' }),
       },
       {
+        activity: () =>
+          Promise.resolve({
+            state: 'available',
+            data: {
+              items: [
+                {
+                  id: 'private-activity',
+                  kind: 'info',
+                  relatedSessionId: 'protected-session',
+                  occurredAt: '2026-10-13',
+                  title: 'Protected activity',
+                  description: 'Private',
+                },
+              ],
+            },
+          }),
         sessions: () =>
           Promise.resolve({
             recommendedSessionIds: ['protected-session'],

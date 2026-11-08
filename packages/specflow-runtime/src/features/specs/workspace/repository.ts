@@ -1,5 +1,6 @@
 import type { RequestAuthorization } from '../../auth';
 import type { SessionScopeIdentity } from '../../sessions';
+import type { WorkspaceActivityInput, WorkspaceSessionStart } from './activity';
 
 /**
  * Runtime-owned read projection: not an HTTP response.
@@ -42,6 +43,8 @@ export interface WorkspaceActivityRecord {
   readonly id: string;
   readonly occurredAt: string;
   readonly kind: 'task' | 'session' | 'doc' | 'info';
+  /** A known Runtime event that clients localize; `title`/`description` are English fallbacks. */
+  readonly event?: 'specification_created' | 'session_started';
   readonly title: string;
   readonly description: string;
   readonly targetId?: string;
@@ -114,13 +117,37 @@ export interface WorkspaceReadModel {
 export type SpecificationReadModel = Omit<
   WorkspaceReadModel,
   'sections' | 'recommendedSessionIds' | 'sessionIdentities'
-> & { sections: Pick<WorkspaceReadModel['sections'], 'activity' | 'repository' | 'changes'> };
+> & {
+  sections: Pick<WorkspaceReadModel['sections'], 'repository' | 'changes'>;
+  /**
+   * The manifest `created` value as stored, an input of the `activity` contribution. Never
+   * presented; the contribution decides whether it is a valid calendar date.
+   */
+  readonly created?: string;
+  /**
+   * The verified manifest `tasks`, an input of the (temporary) `tasks` contribution, so the
+   * manifest is read once per workspace read. Never presented.
+   */
+  readonly manifestTasks?: readonly unknown[];
+};
+/** Facts the Specification source already read, handed to the contributions that need them. */
+export interface WorkspaceSourceFacts {
+  readonly manifestTasks?: readonly unknown[];
+}
 export interface SpecificationWorkspaceRepository {
   readSpecification(specId: string): Promise<SpecificationReadModel | null>;
 }
 export interface WorkspaceContributions {
-  tasks?(specId: string): Promise<WorkspaceReadModel['sections']['tasks']>;
+  tasks?(
+    specId: string,
+    facts: WorkspaceSourceFacts,
+  ): Promise<WorkspaceReadModel['sections']['tasks']>;
   documents?(specId: string): Promise<WorkspaceReadModel['sections']['documents']>;
+  /** Composed after the other reads, from the facts they already returned (no foreign read). */
+  activity?(
+    specId: string,
+    input: WorkspaceActivityInput,
+  ): Promise<WorkspaceReadModel['sections']['activity']>;
   /** The caller's authorization decides the `startSession` action, never the section. */
   sessions?(
     specId: string,
@@ -131,6 +158,8 @@ export interface WorkspaceContributions {
     recommendedSessionIds?: readonly string[];
     /** The Session owner's store-derived identity of each section row. */
     sessionIdentities?: readonly SessionScopeIdentity[];
+    /** The section rows' creation facts: the Session events of the `activity` contribution. */
+    sessionStarts?: readonly WorkspaceSessionStart[];
     /** Overrides the Specification source's `startSession` action. */
     startSession?: WorkspaceReadModel['actions']['startSession'];
   }>;

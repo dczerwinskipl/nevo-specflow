@@ -285,6 +285,14 @@ and the `actions` 24 px below.
   column or has a definite height) and centres the group on both axes. Do not draw table or column
   headers above it: they describe rows that do not exist.
 - `variant="default"`: an empty block inside a page that keeps its own quiet border (`min-h-40`).
+- `variant="inline"`: the body of a page section that has no rows yet, under the section's own
+  header (for example the Specification Overview's Tasks with no Tasks). No border and no minimum
+  height: it has the inset and about the height of a list row (`px-2 py-2`), aligned to the start;
+  a `body-md` medium title and a `body-sm` description in `content-secondary`. The glyph is
+  optional and control-sized (`md`, `content-muted`, beside the text; `iconSize` does not apply);
+  omit it when the section header already shows the section's icon, so the text starts at the rows'
+  inset. Use it where the section header stays and a block-sized empty state would outweigh the
+  neighbouring sections.
 - `actions` takes nodes in order. At most **one primary** action (the filled default `Button`), first;
   every other action is `variant="secondary"`. A state that only offers a way out (clear the search,
   go back) has no primary. The component does not enforce this, because actions can be buttons or

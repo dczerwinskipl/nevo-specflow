@@ -1,17 +1,17 @@
 import { Typography } from '@nevo/ui';
-import { DocumentContent, DocumentDescription, markdownIntro } from '../../../documents';
+import { DocumentContent, DocumentDescription } from '../../../documents';
 
 export interface SpecificationSummarySectionProps {
   readonly title: string;
   readonly intro?: string;
-  readonly isEmpty?: boolean;
   readonly mainDocumentId?: string;
   readonly specId?: string;
 }
+
+/** The title and, whenever they exist, the description and the main document preview. */
 export function SpecificationSummarySection({
   title,
   intro,
-  isEmpty = false,
   mainDocumentId,
   specId,
 }: SpecificationSummarySectionProps) {
@@ -26,22 +26,20 @@ export function SpecificationSummarySection({
       >
         {title}
       </Typography>
-      {!isEmpty ? (
-        <DocumentDescription
-          key={`${specId}:${mainDocumentId}`}
-          intro={
-            intro && intro.trim() !== title.trim() ? markdownIntro(intro, title).intro : undefined
-          }
-          hasMore={Boolean(mainDocumentId && specId)}
-          renderDocument={
-            mainDocumentId && specId
-              ? () => (
-                  <DocumentContent specId={specId} documentId={mainDocumentId} omitTitle={title} />
-                )
-              : undefined
-          }
-        />
-      ) : null}
+      <DocumentDescription
+        key={`${specId}:${mainDocumentId}`}
+        // `summary` is already plain text bounded by the Runtime (600 characters): shown as is,
+        // never parsed as Markdown again. A summary equal to the title adds nothing.
+        intro={intro && intro.trim() !== title.trim() ? intro.trim() : undefined}
+        hasMore={Boolean(mainDocumentId && specId)}
+        renderDocument={
+          mainDocumentId && specId
+            ? () => (
+                <DocumentContent specId={specId} documentId={mainDocumentId} omitTitle={title} />
+              )
+            : undefined
+        }
+      />
     </div>
   );
 }

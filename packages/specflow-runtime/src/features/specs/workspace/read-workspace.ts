@@ -12,17 +12,24 @@ export async function readWorkspace(
   specId: string,
   authz: RequestAuthorization,
 ): Promise<WorkspaceReadModel | null> {
-  const specification = await source.readSpecification(specId);
-  if (!specification) {
+  const read = await source.readSpecification(specId);
+  if (!read) {
     return null;
   }
 
+  const { created, manifestTasks, ...specification } = read;
   const missing = { state: 'unavailable' as const, reason: 'not_implemented' as const };
   const [tasks, documents, sessions] = await Promise.all([
-    contributions?.tasks?.(specId),
+    contributions?.tasks?.(specId, manifestTasks ? { manifestTasks } : {}),
     contributions?.documents?.(specId),
     contributions?.sessions?.(specId, { authz }),
   ]);
+  // Activity is composed from facts the reads above already returned; authorization of its
+  // Session events happens with every other Session reference at the endpoint.
+  const activity = await contributions?.activity?.(specId, {
+    ...(created !== undefined ? { created } : {}),
+    sessionStarts: sessions?.sessionStarts ?? [],
+  });
 
   return {
     ...specification,
@@ -35,6 +42,7 @@ export async function readWorkspace(
       tasks: tasks ?? missing,
       documents: documents ?? missing,
       sessions: sessions?.section ?? missing,
+      activity: activity ?? missing,
     },
     actions: {
       ...specification.actions,

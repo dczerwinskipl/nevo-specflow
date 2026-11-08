@@ -5,6 +5,8 @@ import { type DocumentItem } from '../../../specs/read-model';
 import { OperationalRow } from '../../../../shared/operational-list';
 import { WorkspaceSection } from '../../../../shared/workspace-section';
 import { useTranslation } from 'react-i18next';
+import { typeTitle } from '../../catalogue/documentTypePolicy';
+import { useDocumentCatalogue } from '../../catalogue/useDocumentCatalogue';
 
 export interface DocumentsSummarySectionProps {
   readonly specId: string;
@@ -23,6 +25,7 @@ export function DocumentsSummarySection({
   const id = useId();
   // Outside the section: it survives Overview remounting it at a column change.
   const [expanded, setExpanded] = useDocumentsSummaryExpanded(specId);
+  const catalogue = useDocumentCatalogue();
 
   return (
     <WorkspaceSection aria-labelledby="documents-summary-heading">
@@ -48,7 +51,8 @@ export function DocumentsSummarySection({
           <OperationalRow
             key={doc.id}
             primary={doc.title}
-            compactFacts={[doc.kind]}
+            // The type's catalogue title; the type id while the catalogue loads or is unreadable.
+            compactFacts={[typeTitle(catalogue.data, doc.kind)]}
             supporting={doc.summary}
             onPrimaryClick={() => onOpenDocument(doc.id)}
             // A stable identity, so focus finds the row again when Overview remounts it.

@@ -31,7 +31,8 @@ export const sessionsUiModule: UiModule = {
     contributeTo(specificationWorkSections, {
       id: 'specflow.sessions.resume',
       slot: 'resume',
-      isVisible: ({ data }) => !data.isEmpty && Boolean(data.resumeSession),
+      // Independent of Tasks: the recommended Session is the next step whenever it exists.
+      isVisible: ({ data }) => Boolean(data.resumeSession),
       Component: SpecificationResumeSession,
     }),
     contributeTo(specificationAttentionItems, {

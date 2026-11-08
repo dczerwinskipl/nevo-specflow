@@ -90,6 +90,7 @@ export {
   readCanonicalSpecSources,
   type CanonicalDocumentRead,
   type CanonicalSpecSource,
+  type CanonicalSpecSourceReadOptions,
 } from './specs/canonical-source';
 
 export { CreateOperationError } from './specs/create';

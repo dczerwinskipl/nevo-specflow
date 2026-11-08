@@ -1,17 +1,38 @@
-import { Button, Icon, Typography } from '@nevo/ui';
+import { Button, Icon, Typography, cn } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
+import { startSessionOffered } from '../../../sessions';
+import type { StartSessionAction } from '../../read-model/model';
 import { useWorkspaceRuntime } from '../WorkspaceContext';
 
-export function PreparationSection() {
+export interface PreparationSectionProps {
+  /** `actions.startSession` of the workspace read: it decides the button or the explanation. */
+  readonly startSession?: StartSessionAction;
+}
+
+/**
+ * The way from a Specification without Tasks to Tasks: an agent prepares them in a Session. With
+ * the start offered the block opens New Session; when Sessions are turned off or not permitted it
+ * only explains why there is no start here.
+ */
+export function PreparationSection({ startSession }: PreparationSectionProps) {
   const { t } = useTranslation();
   const runtime = useWorkspaceRuntime();
+  const offered = startSessionOffered(startSession);
+  const description = offered
+    ? t('specification.prepareSpecificationDescription')
+    : startSession?.reason === 'sessions_disabled'
+      ? t('specification.prepareSessionsDisabled')
+      : startSession?.reason === 'forbidden'
+        ? t('specification.prepareStartForbidden')
+        : // Any other reason (or none): explain the path without promising a start here.
+          t('specification.prepareStartUnavailable');
 
   return (
     <section
       aria-labelledby="preparation-heading"
-      className="rounded-control border-l-2 border-primary bg-primary/5 p-4"
+      className="rounded-control border-l-2 border-action-primary p-4"
     >
-      <div className="flex items-center gap-2 text-accent-primary">
+      <div className="flex items-center gap-2 text-status-info">
         <span className="flex size-4 shrink-0 items-center justify-center">
           <Icon name="chat" size="sm" />
         </span>
@@ -24,22 +45,20 @@ export function PreparationSection() {
           {t('specification.prepareSpecificationHeading')}
         </Typography>
       </div>
-      <Typography variant="body-sm" className="mt-2 text-content-secondary">
-        {t('specification.prepareSpecificationDescription')}
+      <Typography as="p" variant="body-sm" className="mt-2 text-content-secondary">
+        {description}
       </Typography>
-      <div className="mt-4 flex flex-wrap items-center gap-4">
-        <Button
-          leadingIcon="chat"
-          disabled={!runtime.canStartConversation}
-          title={!runtime.canStartConversation ? t('common.notImplemented') : undefined}
-          onClick={() => runtime.startConversation()}
-        >
-          {t('specification.startConversation')}
-        </Button>
+      {/* Without a start only the narrow history link remains, so the row is narrow-only too. */}
+      <div className={cn('mt-4 flex flex-wrap items-center gap-4', !offered && 'lg:hidden')}>
+        {offered ? (
+          <Button leadingIcon="chat" onClick={runtime.openNewSession}>
+            {t('specification.startSession')}
+          </Button>
+        ) : null}
         <button
           type="button"
           onClick={runtime.openHistory}
-          className="text-body-sm font-medium text-accent-primary hover:underline focus-visible:outline-2 focus-visible:outline-focus-ring lg:hidden"
+          className="text-body-sm font-medium text-content-link hover:text-content-link-hover hover:underline focus-visible:outline-2 focus-visible:outline-focus-ring lg:hidden"
         >
           {t('specification.activityHistoryLink')}
         </button>

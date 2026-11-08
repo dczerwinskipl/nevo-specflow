@@ -123,8 +123,10 @@ export function ContextAttentionSection({
   );
 }
 
-/** "Related Tasks": one navigational summary row, not the Task list inline (Context is an entry
- * point into its subjects). Optional; an empty list is omitted, an unreadable/missing one warns. */
+/** "Related Tasks" (Powiązane zadania): the Tasks the Session is associated with, as one
+ * navigational summary row, not the Task list inline (Context is an entry point into its subjects).
+ * Optional; an empty list is omitted, an unreadable one warns. Tasks that cannot be found are counted
+ * in an attention note beside the ones that were found. */
 export function ContextRelatedTasksSection({
   value,
   onOpen,
@@ -138,7 +140,9 @@ export function ContextRelatedTasksSection({
   }
 
   const resolved = resolveSection(value.relatedTasks, isRequired('relatedTasks', value.scope));
-  if (resolved.kind === 'omit') {
+  const missing = value.relatedTasksMissing;
+  // Every associated Task is gone: the note alone still says so.
+  if (resolved.kind === 'omit' && !missing) {
     return null;
   }
 
@@ -154,7 +158,12 @@ export function ContextRelatedTasksSection({
           />
         </InformationList>
       )}
-      {(resolved.kind === 'warning' || resolved.kind === 'error') && (
+      {missing && (
+        <ContextNote kind="warning">
+          {t('sessions.context.availability.relatedTasksMissing', missing)}
+        </ContextNote>
+      )}
+      {(resolved.kind === 'warning' || resolved.kind === 'error' || resolved.kind === 'info') && (
         <ContextNote kind="warning">
           {t('sessions.context.availability.relatedTasksUnreadable')}
         </ContextNote>

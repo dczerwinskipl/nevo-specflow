@@ -122,7 +122,7 @@ const meta = {
     onOpenSpecification: fn((specification) => console.info('Open Specification', specification)),
     onOpenDocuments: fn((specification) => console.info('Open Documents', specification)),
     onSessionDeleted: fn(),
-    onNewSession: fn(),
+    onGoToSpecifications: fn(),
   },
 } satisfies Meta<typeof ManagedSession>;
 export default meta;
@@ -508,9 +508,9 @@ async function openContextOnNarrow(canvasElement: HTMLElement) {
   await userEvent.click(await canvas.findByRole('button', { name: 'Kontekst' }));
 }
 
-/** The real route today: no `sessionContext` prop at all. Executor from the provider catalogue, the
- * scope-unknown info note under it, Work history derived from the snapshot, then Planned areas.
- * No Specification/Execution/Attention/Related Tasks (nothing is promised there). */
+/** A standalone Session (no `sessionContext` prop): executor from the provider catalogue, Work
+ * history derived from the snapshot, then Planned areas, and no note. No Specification/Execution/
+ * Attention/Related Tasks (nothing is promised there). */
 export const RealRouteContext: Story = {
   tags: ['contract'],
   args: { api: richDefaultApi() },
@@ -518,12 +518,8 @@ export const RealRouteContext: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Wykonawca')).toBeVisible();
-    await expect(
-      await canvas.findByText(
-        'Powiązania tej sesji ze specyfikacją i zadaniami nie są jeszcze dostępne.',
-      ),
-    ).toBeVisible();
     await expect(await canvas.findByRole('button', { name: /^Historia pracy/ })).toBeVisible();
+    await expect(canvas.queryByText(/Nie udało się wczytać powiązań/)).toBeNull();
     await expect(canvas.getByText('Planowane obszary')).toBeVisible();
     await expect(canvas.queryByText('Specyfikacja')).toBeNull();
     await expect(canvas.queryByText('Aktualne wykonanie')).toBeNull();
@@ -537,12 +533,8 @@ export const RealRouteContextNarrow: Story = {
   play: async ({ canvasElement }) => {
     await openContextOnNarrow(canvasElement);
     const canvas = within(canvasElement);
-    await expect(
-      await canvas.findByText(
-        'Powiązania tej sesji ze specyfikacją i zadaniami nie są jeszcze dostępne.',
-      ),
-    ).toBeVisible();
     await expect(await canvas.findByRole('button', { name: /^Historia pracy/ })).toBeVisible();
+    await expect(canvas.queryByText('Specyfikacja')).toBeNull();
   },
 };
 
@@ -555,7 +547,7 @@ export const ContextRequiredMissing: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const note = await canvas.findByText(
-      'Nie znaleziono specyfikacji SPEC-A, do której należy ta sesja.',
+      'Nie znaleziono specyfikacji SPEC-A, z którą powiązana jest ta sesja.',
     );
     await expect(note).toBeVisible();
     await expect(note.closest('p')?.querySelector('.text-status-danger')).not.toBeNull();
@@ -571,7 +563,7 @@ export const ContextRequiredMissingNarrow: Story = {
     await openContextOnNarrow(canvasElement);
     await expect(
       await within(canvasElement).findByText(
-        'Nie znaleziono specyfikacji SPEC-A, do której należy ta sesja.',
+        'Nie znaleziono specyfikacji SPEC-A, z którą powiązana jest ta sesja.',
       ),
     ).toBeVisible();
   },

@@ -172,13 +172,9 @@ export function SessionContext({
         {/* Takes focus when a focused control inside Context goes away (never the document). */}
         <div className="grid w-full gap-6 outline-none" tabIndex={-1} data-context-focus-fallback>
           <ContextExecutorSection executor={value.executor} scope={scope}>
-            {scope.kind === 'unknown' && (
-              <ContextNote kind={scope.reason === 'unreadable' ? 'warning' : 'info'}>
-                {t(
-                  scope.reason === 'unreadable'
-                    ? 'sessions.context.availability.scopeUnreadable'
-                    : 'sessions.context.availability.scopeNotProvided',
-                )}
+            {scope.kind === 'unknown' && scope.reason === 'unreadable' && (
+              <ContextNote kind="warning">
+                {t('sessions.context.availability.scopeUnreadable')}
               </ContextNote>
             )}
           </ContextExecutorSection>

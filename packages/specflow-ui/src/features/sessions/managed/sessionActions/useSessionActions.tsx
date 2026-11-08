@@ -51,6 +51,7 @@ export function useSessionActions({
   activeTurn,
   onUnarchived,
   onDeleted,
+  onChanged,
 }: {
   api: ManagedSessionsApi;
   sessionId: string;
@@ -60,6 +61,8 @@ export function useSessionActions({
   onUnarchived?: () => void;
   /** The Session is gone (204, or 404 for a delete this view sent). */
   onDeleted?: () => void;
+  /** A rename, archive or unarchive was applied: lists showing the Session refresh. */
+  onChanged?: () => void;
 }): {
   /** Header overflow actions, in menu order (Delete last, danger); empty without capabilities. */
   actions: WorkspaceHeaderAction[];
@@ -97,6 +100,7 @@ export function useSessionActions({
         'requestId',
         releaseOnDefiniteAnswer,
       ),
+    onSuccess: () => onChanged?.(),
   });
   const archive = useMutation({
     mutationFn: () =>
@@ -107,6 +111,7 @@ export function useSessionActions({
         'requestId',
         releaseOnDefiniteAnswer,
       ),
+    onSuccess: () => onChanged?.(),
   });
   const unarchive = useMutation({
     mutationFn: () =>
@@ -117,6 +122,7 @@ export function useSessionActions({
         'requestId',
         releaseOnDefiniteAnswer,
       ),
+    onSuccess: () => onChanged?.(),
   });
   const remove = useMutation({
     // No body and no request id: a retry repeats the DELETE, and a 404 for it means the earlier,

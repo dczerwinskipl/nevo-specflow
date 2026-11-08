@@ -6,11 +6,15 @@ import { useWorkspaceLabels } from '../../../../app/navigation/useWorkspaceLabel
 /**
  * A Session that was deleted (here or in another view) or never existed (full-session-screen-structure §22.1):
  * the product's not-found composition (`NotFoundView`: header, description, one secondary button)
- * with one way on to a new Session. It replaces the Session screen inside the application shell,
+ * with one way on: the Specifications list (every new Session starts from a Specification). It replaces the Session screen inside the application shell,
  * in the workspace the Session screen used, rather than opening a second standalone shell (which
  * would nest a second `main` landmark in the shell's).
  */
-export function SessionNotFoundView({ onNewSession }: { onNewSession?: () => void }) {
+export function SessionNotFoundView({
+  onGoToSpecifications,
+}: {
+  onGoToSpecifications?: () => void;
+}) {
   const { t } = useTranslation();
   const labels = useWorkspaceLabels();
 
@@ -22,9 +26,9 @@ export function SessionNotFoundView({ onNewSession }: { onNewSession?: () => voi
             title={t('managedSession.notFound.title')}
             description={t('managedSession.notFound.description')}
           />
-          {onNewSession ? (
+          {onGoToSpecifications ? (
             <div>
-              <Button variant="secondary" onClick={onNewSession}>
+              <Button variant="secondary" onClick={onGoToSpecifications}>
                 {t('managedSession.notFound.action')}
               </Button>
             </div>

@@ -1,10 +1,12 @@
-import { useCallback, useMemo, useRef, type ReactNode } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useBlocker } from '@tanstack/react-router';
 import {
   chosenSessionName,
+  invalidateSpecificationSessions,
   providerDefaultEffort,
   startCatalogueFromDemo,
+  startedAssociation,
   useAuthOwner,
   type AgentChoice,
   type SentStart,
@@ -15,6 +17,7 @@ import { useRuntimeInfo } from '../../../../app/useRuntimeMode';
 import { useAppServices } from '../../../../app/useAppServices';
 import { useAnnouncer } from '../../../../shared/a11y/useAnnouncer';
 import { useSpecificationNavigationSource } from '../../overview/useSpecificationNavigationMetadata';
+import { useSpecificationWorkspace } from '../../read-model';
 import { demoCreationKeys } from '../api/api.demo';
 import { CreateFailurePanel } from '../errors/CreateFailurePanel';
 import {
@@ -32,6 +35,8 @@ const startSnapshot = 'session-start';
 interface StartCall {
   resolve: (sessionId: string) => void;
 }
+
+type PinnedSpecification = NonNullable<SessionStartSource['specification']>;
 
 function sentStartOf(choice: AgentChoice, name: SessionNameChoice): SentStart {
   const title = chosenSessionName(name);
@@ -66,7 +71,8 @@ function submissionOf(choice: AgentChoice): CreateSubmission {
  * The start source of a Specification's New Session on a demo Runtime (`/specs/$specId/sessions/new`):
  * the demo creation catalogue and the Session allocation through the shared Create operation
  * (`useCreateDemoSpecification` with `specId`), which retains the request and keeps an unknown
- * outcome checked, never blindly repeated.
+ * outcome checked, never blindly repeated. The Session is started at the workspace's
+ * `startSession.path` (the demo Runtime has no composed create).
  */
 export function useDemoStartSource(specId: string): SessionStartSource {
   const services = useAppServices();
@@ -78,6 +84,8 @@ export function useDemoStartSource(specId: string): SessionStartSource {
     queryFn: ({ signal }) => services.demoCreationApi.catalogue(specId, signal),
   });
   const specification = useSpecificationNavigationSource(specId);
+  const sessionPath = useSpecificationWorkspace(specId).data?.startSession?.path;
+  const queryClient = useQueryClient();
   // The Session start settles through `onSession`, which resolves the promise `start` returned.
   // `current` is the one start in flight: each call owns its own resolvers and only ever clears
   // itself, so a late settlement of an earlier call cannot drop a later one.
@@ -89,6 +97,7 @@ export function useDemoStartSource(specId: string): SessionStartSource {
   }, []);
   const { state, flags, actions } = useCreateDemoSpecification({
     specId,
+    ...(sessionPath ? { sessionPath } : {}),
     catalogueRevision: catalogue.data?.revision ?? '',
     snapshot: startSnapshot,
     onCreated: () => undefined,
@@ -99,6 +108,26 @@ export function useDemoStartSource(specId: string): SessionStartSource {
   // recovery on return within it. Closing or reloading the tab is the one way to lose it (a demo
   // allocation is not persisted), which the browser's own prompt covers.
   useBlocker({ shouldBlockFn: () => false, enableBeforeUnload: flags.unfinished });
+
+  const status = specification.status;
+  const title = specification.metadata?.title;
+  const key = specification.metadata?.key;
+  const specificationFact = useMemo<PinnedSpecification>(
+    () =>
+      status === 'available' && title !== undefined
+        ? { status: 'ready', value: { id: specId, key: key ?? '', title } }
+        : status === 'failed'
+          ? { status: 'unreadable' }
+          : status === 'denied'
+            ? { status: 'missing' }
+            : { status: 'loading' },
+    [status, title, key, specId],
+  );
+  // What the start resolves with: the Specification pinned when the allocation settles.
+  const pinned = useRef(specificationFact);
+  useEffect(() => {
+    pinned.current = specificationFact;
+  }, [specificationFact]);
 
   const start = useCallback(
     (choice: AgentChoice, name: SessionNameChoice) =>
@@ -113,7 +142,17 @@ export function useDemoStartSource(specId: string): SessionStartSource {
         // A replay (an unknown outcome checked) resends the retained request, and the form is locked
         // meanwhile, so the choices are what was sent.
         const sent = sentStartOf(choice, name);
-        const call: StartCall = { resolve: (sessionId) => resolve({ sessionId, sent }) };
+        const call: StartCall = {
+          resolve: (sessionId) => {
+            void invalidateSpecificationSessions(queryClient, specId);
+            const association = startedAssociation(
+              sessionId,
+              { specId, taskIds: [] },
+              pinned.current,
+            );
+            resolve({ sessionId, sent, ...(association ? { association } : {}) });
+          },
+        };
         current.current = call;
         const fail = (error: Error) => {
           if (current.current === call) {
@@ -136,7 +175,7 @@ export function useDemoStartSource(specId: string): SessionStartSource {
             fail(error instanceof Error ? error : new Error('The Session was not started.')),
         );
       }),
-    [actions],
+    [actions, queryClient, specId],
   );
   const refresh = useCallback(
     () => void Promise.all([runtime.refetch(), catalogue.refetch()]),
@@ -161,21 +200,6 @@ export function useDemoStartSource(specId: string): SessionStartSource {
       onUseCustomName={actions.dismissFailure}
     />
   ) : undefined;
-  const specificationFact: SessionStartSource['specification'] =
-    specification.status === 'available'
-      ? {
-          status: 'ready',
-          value: {
-            id: specId,
-            key: specification.metadata.key ?? '',
-            title: specification.metadata.title,
-          },
-        }
-      : specification.status === 'failed'
-        ? { status: 'unreadable' }
-        : specification.status === 'denied'
-          ? { status: 'missing' }
-          : { status: 'loading' };
 
   return {
     owner,

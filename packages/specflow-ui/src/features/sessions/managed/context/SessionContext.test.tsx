@@ -462,17 +462,16 @@ describe('data states', () => {
     expect(screen.getByRole('region', { name: 'Provider limits' })).toBeTruthy();
   });
 
-  it('real route: executor, the scope-unknown info note under it, then planned areas; never a full-pane EmptyState', () => {
+  it('association loading: executor and planned areas, no note and no Specification skeleton; never a full-pane EmptyState', () => {
     const { container } = renderContext({
-      scope: { kind: 'unknown', reason: 'not-provided' },
+      scope: { kind: 'unknown', reason: 'loading' },
       executor,
     });
 
     expect(container.querySelector('[data-empty-state="pane"]')).toBeNull();
     expect(screen.getByText('Claude')).toBeTruthy();
-    expect(
-      screen.getByText('This session’s links to a Specification and Tasks aren’t available yet.'),
-    ).toBeTruthy();
+    expect(container.querySelector('[data-context-skeleton-row]')).toBeNull();
+    expect(screen.queryByText(/Couldn’t load this session’s links/)).toBeNull();
     for (const absent of ['Specification', 'Current execution', 'Attention / next actions']) {
       expect(screen.queryByText(absent)).toBeNull();
     }
@@ -483,8 +482,8 @@ describe('data states', () => {
   it('a standalone Session shows no scope note at all', () => {
     renderContext({ scope: { kind: 'standalone' }, executor });
 
-    expect(screen.queryByText(/aren’t available yet/)).toBeNull();
     expect(screen.queryByText(/Couldn’t load this session’s links/)).toBeNull();
+    expect(screen.queryByText('Specification')).toBeNull();
   });
 
   it('unreadable associations warn with the attention tone, not the info note', () => {
@@ -519,7 +518,7 @@ describe('data states', () => {
 
   it('loading sections keep their label, are aria-busy and show skeleton rows (executor)', () => {
     renderContext({
-      scope: { kind: 'unknown', reason: 'not-provided' },
+      scope: { kind: 'unknown', reason: 'loading' },
       executor: { status: 'loading' },
     });
 
@@ -567,15 +566,61 @@ describe('data states', () => {
       { onOpenSpecification: vi.fn() },
     );
     expect(
-      screen.getByText('Can’t find Specification SPEC-A that this session belongs to.'),
+      screen.getByText('Can’t find specification SPEC-A associated with this session.'),
     ).toBeTruthy();
     expect(missing.container.querySelector('.text-status-danger')).toBeTruthy();
+  });
+
+  it('a forbidden Specification is an info note without the Documents row', () => {
+    const { container } = renderContext(
+      { scope: { kind: 'specification' }, specification: { status: 'forbidden' } },
+      { onOpenSpecification: vi.fn(), onOpenDocuments: vi.fn() },
+    );
+
+    expect(
+      screen.getByText(
+        'You don’t have permission to view the specification associated with this session.',
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText('Documents')).toBeNull();
+    expect(container.querySelector('.text-status-danger')).toBeNull();
+  });
+
+  it('an archived Specification says so on its row', () => {
+    renderContext(
+      {
+        scope: { kind: 'specification' },
+        specification: ready({ id: 's', key: 'SPEC-1', title: 'Auth', collection: 'archived' }),
+      },
+      { onOpenSpecification: vi.fn() },
+    );
+
+    expect(screen.getByRole('button', { name: /Auth.*Archived/ })).toBeTruthy();
+  });
+
+  it('counts associated Tasks that cannot be found beside the found ones, and alone when none is', () => {
+    const { unmount } = renderContext({
+      scope: { kind: 'specification' },
+      relatedTasks: ready([task02]),
+      relatedTasksMissing: { count: 1, total: 2 },
+    });
+    expect(screen.getByText('1 of 2 associated tasks can’t be found.')).toBeTruthy();
+    expect(screen.getByText('1 Task')).toBeTruthy();
+    unmount();
+
+    renderContext({
+      scope: { kind: 'specification' },
+      relatedTasks: ready([]),
+      relatedTasksMissing: { count: 2, total: 2 },
+    });
+    expect(screen.getByText('2 of 2 associated tasks can’t be found.')).toBeTruthy();
+    expect(screen.getByText('Related Tasks')).toBeTruthy();
   });
 
   it('a missing Specification stays a warning when the scope does not require it', () => {
     // Task/specification scope require it; a missing optional reference must not be an error.
     const { container } = renderContext({
-      scope: { kind: 'unknown', reason: 'not-provided' },
+      scope: { kind: 'unknown', reason: 'loading' },
       specification: { status: 'missing' },
     });
 

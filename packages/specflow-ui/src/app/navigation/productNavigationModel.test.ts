@@ -27,6 +27,12 @@ describe('product navigation model', () => {
       'documents',
     ]);
   });
+  it('marks Sessions active on a Session of the Specification, off its own route', () => {
+    const items = productNavigationItems('spec-s', '/sessions/B', undefined, '', true, 'sessions');
+
+    expect(items.filter((item) => item.active).map((item) => item.id)).toEqual(['sessions']);
+    expect(items.find((item) => item.id === 'sessions')?.to).toBe('/specs/$specId/sessions');
+  });
   it('matches complete path boundaries and selects only exact Overview', () => {
     expect(
       productNavigationItems('a', '/specs/a/documents-other').some((item) => item.active),

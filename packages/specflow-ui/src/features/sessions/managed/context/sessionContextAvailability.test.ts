@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { isRequired, isSectionPresent, resolveSection } from './sessionContextAvailability';
 import type { SessionScope } from './sessionContextTypes';
 
-const unknown: SessionScope = { kind: 'unknown', reason: 'not-provided' };
+const unknown: SessionScope = { kind: 'unknown', reason: 'loading' };
 const standalone: SessionScope = { kind: 'standalone' };
 const specification: SessionScope = { kind: 'specification' };
 const task: SessionScope = { kind: 'task', taskCount: 2 };

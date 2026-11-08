@@ -30,7 +30,6 @@ export interface SpecsOverviewProps {
   readonly onCreate?: () => void;
   /** Create is offered but cannot be used yet (for example the Runtime mode is still unknown). */
   readonly createDisabled?: boolean;
-  readonly onCreateSession?: () => void;
   /**
    * Background operations above the list (the operations panel). The host builds it from API data
    * and decides which collections show it; it renders nothing while it has nothing to say.
@@ -52,7 +51,6 @@ export function SpecsOverview({
   onOpenTarget,
   onCreate,
   createDisabled = false,
-  onCreateSession,
   operationsPanel,
   sample = false,
   specificationHref,
@@ -90,7 +88,6 @@ export function SpecsOverview({
             busy={busy}
             onCreate={emptyOffersCreate ? undefined : onCreate}
             createDisabled={createDisabled}
-            onCreateSession={onCreateSession}
             onRefresh={onRefresh}
           />
         }

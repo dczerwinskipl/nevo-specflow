@@ -25,8 +25,64 @@ import {
 } from '../../../sessions/start/screen/sessionStart.stories-support';
 import { startCatalogue } from './demoStartCatalogue.stories-support';
 import { useDemoStartSource } from './useDemoStartSource';
+import { NewSessionScreen } from './NewSessionScreen';
 
 export const startSpecId = 'api-integration';
+
+/**
+ * The New Session route opened directly in a project Runtime whose workspace refuses the start
+ * (session-association-ux §5): `forbidden` or Sessions turned off replace the start form.
+ */
+export function StartRefusedPreview({
+  reason,
+  onBack,
+}: {
+  reason: 'forbidden' | 'sessions_disabled';
+  onBack: () => void;
+}) {
+  const client = useMemo(
+    () => new QueryClient({ defaultOptions: { queries: { staleTime: Infinity, retry: false } } }),
+    [],
+  );
+  const services = useMemo(() => {
+    const workspace = createWorkspaceIntegrationApi();
+
+    return createSpecFlowAppServices({
+      runtimeInfoApi: { getInfo: () => Promise.resolve({ dataMode: 'project' }) },
+      specificationApi: {
+        getSpecificationWorkspace: async (specId, signal) => {
+          const dto = await workspace.getSpecificationWorkspace(specId, signal);
+
+          return {
+            ...dto,
+            specification: { ...dto.specification, title: 'Logowanie SSO' },
+            actions: { ...dto.actions, startSession: { available: false, reason } },
+          };
+        },
+      },
+    });
+  }, [reason]);
+
+  return (
+    <QueryClientProvider client={client}>
+      <TestServicesRouterContext services={services}>
+        <div style={{ width: '100%', height: '100vh' }}>
+          <AppShell navigation={<div>Projekt</div>} style={{ height: '100%', width: '100%' }}>
+            <AppWorkspaceProvider>
+              <NewSessionScreen
+                specId={startSpecId}
+                onOpenSession={() => undefined}
+                onOpenSpecification={() => undefined}
+                onBackToSpecification={onBack}
+              />
+            </AppWorkspaceProvider>
+          </AppShell>
+        </div>
+      </TestServicesRouterContext>
+    </QueryClientProvider>
+  );
+}
+
 /** The Session allocations the screen sent (reset by every preview mount). */
 export const allocations: DemoSessionInput[] = [];
 
@@ -172,8 +228,9 @@ export function DemoStartedPreview({
   return (
     <StartedSessionPreview
       snapshot={snapshot}
-      started={{
-        ...started,
+      started={started}
+      context={{
+        scope: { kind: 'specification' },
         specification: {
           status: 'ready',
           value: { id: startSpecId, key: 'SPEC-1', title: 'Logowanie SSO' },

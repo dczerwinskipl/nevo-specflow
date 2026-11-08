@@ -19,7 +19,7 @@ import { scriptedFixture, scriptedRender } from './sessionActions/scriptedSessio
  * `session` change arrives on the stream, as in the product.
  */
 const onSessionDeleted = fn();
-const onNewSession = fn();
+const onGoToSpecifications = fn();
 
 const meta = {
   title: 'SpecFlow/Screens/Managed Session',
@@ -37,7 +37,7 @@ const meta = {
     owner: 'actions-story',
     api: fixtureApi(sessionFixture()),
     onSessionDeleted,
-    onNewSession,
+    onGoToSpecifications,
   },
   render: scriptedRender(sessionFixture),
 } satisfies Meta<typeof ManagedSession>;
@@ -529,7 +529,7 @@ export const SessionDeletedElsewhere: Story = {
     />
   ),
   play: async ({ canvasElement }) => {
-    onNewSession.mockClear();
+    onGoToSpecifications.mockClear();
     const canvas = within(canvasElement);
     await expect(
       await canvas.findByRole('heading', {
@@ -538,8 +538,9 @@ export const SessionDeletedElsewhere: Story = {
       }),
     ).toBeVisible();
     await expect(canvas.getByText('Historia tej sesji nie jest już dostępna.')).toBeVisible();
-    await userEvent.click(canvas.getByRole('button', { name: 'Nowa sesja' }));
-    await expect(onNewSession).toHaveBeenCalledOnce();
+    // Every new Session starts from a Specification: the way on is the Specifications list.
+    await userEvent.click(canvas.getByRole('button', { name: 'Przejdź do specyfikacji' }));
+    await expect(onGoToSpecifications).toHaveBeenCalledOnce();
   },
 };
 

@@ -19,4 +19,5 @@ export type {
   SpecificationSectionId,
   SpecificationSectionState,
   SpecificationWorkspaceData,
+  StartSessionAction,
 } from './model';

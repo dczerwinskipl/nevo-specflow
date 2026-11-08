@@ -33,6 +33,36 @@ describe('Workspace response mapping', () => {
     });
   });
 
+  it('carries the startSession action, the section bound and the untitled label', async () => {
+    const dto = await createWorkspaceIntegrationApi().getSpecificationWorkspace('api-integration');
+    await appI18n.changeLanguage('pl');
+    const mapped = mapWorkspaceResponse({
+      ...dto,
+      sections: {
+        ...dto.sections,
+        sessions: {
+          state: 'available',
+          data: {
+            items: [{ id: 's1', taskIds: [], status: 'quiet' }],
+            hasMore: true,
+            attention: [],
+          },
+        },
+      },
+      actions: {
+        ...dto.actions,
+        startSession: { available: true, path: '/api/demo/specs/api-integration/sessions' },
+      },
+    });
+
+    expect(mapped.startSession).toEqual({
+      available: true,
+      path: '/api/demo/specs/api-integration/sessions',
+    });
+    expect(mapped.sessionsHasMore).toBe(true);
+    expect(mapped.sessions[0]?.title).toBe('Sesja bez nazwy');
+  });
+
   it('does not infer Git absence or zero documents when projections are temporarily unavailable', async () => {
     const dto = await createWorkspaceIntegrationApi().getSpecificationWorkspace('api-integration');
     const mapped = mapWorkspaceResponse({

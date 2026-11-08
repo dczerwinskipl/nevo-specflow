@@ -127,6 +127,17 @@ export interface SpecificationChangesData {
   readonly mr?: readonly string[];
 }
 
+/**
+ * `actions.startSession` of the workspace read: whether this user may start a Session in the
+ * Specification, else one reason (`sessions_disabled`, then `forbidden`, then `no_provider`). `path`
+ * is the start route when it is not the composed create (the demo Runtime).
+ */
+export interface StartSessionAction {
+  readonly available: boolean;
+  readonly reason?: string;
+  readonly path?: string;
+}
+
 export type SpecificationSectionId =
   'tasks' | 'documents' | 'sessions' | 'activity' | 'repository' | 'changes';
 export type SpecificationSectionState = 'available' | 'unavailable' | 'forbidden';
@@ -156,6 +167,9 @@ export interface SpecificationWorkspaceData {
   readonly documents: readonly DocumentItem[];
   readonly documentFolders?: readonly string[];
   readonly sessions: readonly SessionSummary[];
+  /** More associated Sessions exist than the bounded workspace section returns. */
+  readonly sessionsHasMore?: boolean;
+  readonly startSession?: StartSessionAction;
   readonly activityEvents: readonly ActivityEvent[];
   readonly completedTasksCount?: number;
   readonly totalTasksCount?: number;

@@ -4,7 +4,6 @@ import {
   consumeStartFocus,
   forgetStartedSessions,
   rememberStartedSession,
-  startedSessionContext,
   startedSessionFrom,
   startedSessionOf,
   type StartedSession,
@@ -41,14 +40,10 @@ describe('startedSessionFrom', () => {
     expect(started).not.toHaveProperty('title');
   });
 
-  it('keeps the own name that was sent, and the pinned Specification', () => {
-    const specification = {
-      status: 'ready',
-      value: { id: 's', key: 'SPEC-1', title: 'Logowanie SSO' },
-    } as const;
-    expect(
-      startedSessionFrom({ ...input, sent: { ...sent, title: 'Review SSO' }, specification }),
-    ).toMatchObject({ title: 'Review SSO', specification });
+  it('keeps the own name that was sent', () => {
+    expect(startedSessionFrom({ ...input, sent: { ...sent, title: 'Review SSO' } })).toMatchObject({
+      title: 'Review SSO',
+    });
   });
 
   it('is what was sent, not what any form holds: the ids stand in where the catalogue lacks them', () => {
@@ -62,25 +57,6 @@ describe('startedSessionFrom', () => {
       providerTitle: 'gone',
       modelTitle: 'model-a',
     });
-  });
-});
-
-describe('startedSessionContext', () => {
-  const base: StartedSession = { providerId: 'p', providerIcon: undefined, providerTitle: 'P' };
-
-  it('is the Specification scope with its Specification when one was pinned', () => {
-    const specification = {
-      status: 'ready',
-      value: { id: 's', key: 'SPEC-1', title: 'T' },
-    } as const;
-    expect(startedSessionContext({ ...base, specification })).toEqual({
-      scope: { kind: 'specification' },
-      specification,
-    });
-  });
-
-  it('is standalone, not "unknown", for a Session without a Specification', () => {
-    expect(startedSessionContext(base)).toEqual({ scope: { kind: 'standalone' } });
   });
 });
 

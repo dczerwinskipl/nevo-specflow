@@ -217,6 +217,29 @@ function Connected({
       // Managed-Sessions snapshot lets contract stories navigate there and see real content instead
       // of an error/not-found state.
       managedSessionsApi: managedSessionFixtureApi(managedSessionFixture()),
+      // The Full Session's Context reads the Session's association: this Session belongs to the
+      // fixture's (archived) Specification.
+      sessionAssociationsApi: {
+        association: (sessionId) =>
+          Promise.resolve({
+            sessionId,
+            association: {
+              kind: 'specification',
+              specification: {
+                state: 'available',
+                value: {
+                  specId: 'api-integration',
+                  key: 'SPEC-01',
+                  title: 'Logowanie SSO',
+                  collection: 'archived',
+                },
+              },
+              tasks: [],
+            },
+          }),
+        list: () => Promise.resolve({ items: [] }),
+        createInSpecification: () => Promise.reject(new Error('Not offered in this fixture.')),
+      },
       specsOverviewApi: {
         getOverview: async (collection, signal) => {
           const data = await overview.getOverview(collection, signal);
@@ -1013,9 +1036,8 @@ export const HashAnchorClearsTheFloatingRow: Story = {
 };
 /**
  * Full Session -> Context -> the Specification's Documents -> the Documents "Back to the Session"
- * link, with the Specification's collection kept on every hop. The Session is opened the way the
- * app opens a Session it started (`rememberStartedSession`), because only such a Session carries
- * a Specification for Context to link to. Context's Documents row remembers the Session
+ * link, with the Specification's collection kept on every hop. Context links to the Specification
+ * its association read names (archived here). Context's Documents row remembers the Session
  * (`useSessionContextNavigation` -> `useRememberSessionReturn`), which is what makes the link show.
  * The composer draft must also outlive the round trip.
  */
@@ -1028,10 +1050,6 @@ export const SessionContextRoundTrip: Story = {
         providerId: 'codex',
         providerIcon: 'codex',
         providerTitle: 'Codex',
-        specification: {
-          status: 'ready',
-          value: { id: 'api-integration', key: 'SPEC-01', title: 'Logowanie SSO' },
-        },
       });
     },
   ],

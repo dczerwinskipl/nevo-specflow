@@ -2,7 +2,7 @@
 import { StrictMode } from 'react';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AppShell } from '@nevo/ui';
+import { AppShell, AppWorkspaceProvider } from '@nevo/ui';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type {
   CreateSession as CreateSessionInput,
@@ -10,8 +10,17 @@ import type {
 } from '@nevo/specflow-contracts/sessions';
 import { LocalizationProvider, createSpecFlowI18n } from '../../../../i18n';
 import type { ManagedSessionsApi } from '../../managed/api';
+import type { SessionAssociationsApi } from '../../associations/api';
+import { sessionAssociationKeys } from '../../associations/queries';
 import { forgetStartedSessions, startedSessionOf } from '../handoff/startedSession';
-import { ManagedSessionStart } from './ManagedSessionStart';
+import { useManagedStartSource } from '../source/useManagedStartSource';
+import { SessionStartScreen } from './SessionStartScreen';
+
+/** A Specification's New Session in a project Runtime: the managed start source, Specification pinned. */
+const pinned = {
+  specId: 'spec',
+  fact: { status: 'ready', value: { id: 'spec', key: 'SPEC-1', title: 'Login' } },
+} as const;
 
 const open = vi.fn<(sessionId: string) => void>();
 beforeEach(() => {
@@ -72,11 +81,30 @@ function fixture() {
     .fn<ManagedSessionsApi['providers']>()
     .mockResolvedValue({ items: [provider] });
   const create = vi
-    .fn<ManagedSessionsApi['create']>()
+    .fn<(input: CreateSessionInput) => Promise<{ sessionId: string }>>()
     .mockRejectedValueOnce(new Error('Lost response'))
     .mockResolvedValue({ sessionId: 'created' });
 
-  return { providers, create, api: { providers, create } as unknown as ManagedSessionsApi };
+  return { providers, create, api: { providers, create } };
+}
+
+type TestApi = ReturnType<typeof fixture>['api'];
+
+function ManagedSpecificationStart({ owner, api }: { owner: string; api: TestApi }) {
+  const associations = {
+    createInSpecification: async (specId: string, input: CreateSessionInput) => ({
+      ...(await api.create(input)),
+      association: { specId, taskIds: [] },
+    }),
+  } as unknown as SessionAssociationsApi;
+  const source = useManagedStartSource(
+    owner,
+    { providers: api.providers } as unknown as ManagedSessionsApi,
+    associations,
+    pinned,
+  );
+
+  return <SessionStartScreen source={source} onOpenSession={open} />;
 }
 
 const writer = {
@@ -96,15 +124,18 @@ const plan = {
   authorized: true,
 };
 
-function view(api: ManagedSessionsApi, owner = 'alice') {
+let client: QueryClient;
+function view(api: TestApi, owner = 'alice') {
+  client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
   return render(
     <StrictMode>
       <LocalizationProvider instance={createSpecFlowI18n('en')}>
-        <QueryClientProvider
-          client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
-        >
+        <QueryClientProvider client={client}>
           <AppShell navigation={<div>Navigation</div>}>
-            <ManagedSessionStart owner={owner} api={api} onOpenSession={open} />
+            <AppWorkspaceProvider>
+              <ManagedSpecificationStart key={owner} owner={owner} api={api} />
+            </AppWorkspaceProvider>
           </AppShell>
         </QueryClientProvider>
       </LocalizationProvider>
@@ -205,7 +236,7 @@ it('retries a retained create after remount even when the provider becomes unava
   fireEvent.click(retry);
   await waitFor(() => expect(open).toHaveBeenCalledWith('created'));
   expect(create.mock.calls[1]![0]).toEqual(input);
-  expect(sessionStorage.getItem('nevo:session-create:alice')).toBeNull();
+  expect(sessionStorage.getItem('nevo:session-create:alice:spec:spec')).toBeNull();
 });
 
 it.each(['unavailable', 'unauthorized'] as const)(
@@ -315,6 +346,18 @@ it('sends the chosen model, effort and an own name, and opens the Session with t
     providerModeId: 'agent',
     title: 'Review SSO',
   });
+  // The composed create's association seeds the Session's association read.
+  expect(client.getQueryData(sessionAssociationKeys.read('created'))).toEqual({
+    sessionId: 'created',
+    association: {
+      kind: 'specification',
+      specification: {
+        state: 'available',
+        value: { specId: 'spec', key: 'SPEC-1', title: 'Login', collection: 'current' },
+      },
+      tasks: [],
+    },
+  });
   // What the Session was started with is handed to the screen that opens it.
   expect(startedSessionOf('alice', 'created')).toMatchObject({
     providerTitle: 'Claude',
@@ -337,7 +380,7 @@ it('keeps a lost acknowledgement isolated when another identity creates a Sessio
   await waitFor(() => expect(open).toHaveBeenCalledOnce());
   expect(create.mock.calls[1]![0].requestId).not.toBe(input.requestId);
   const retained = JSON.parse(
-    sessionStorage.getItem('nevo:session-create:alice')!,
+    sessionStorage.getItem('nevo:session-create:alice:spec:spec')!,
   ) as CreateSessionInput;
   expect(retained.requestId).toBe(input.requestId);
 });

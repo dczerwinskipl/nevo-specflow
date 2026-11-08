@@ -2,6 +2,7 @@ import type { TFunction } from 'i18next';
 import type { SessionListItem } from '@nevo/specflow-contracts/sessions';
 import type {
   CompactFactItem,
+  CompactFacts,
   InlineFacts,
   SemanticSupporting,
 } from '../../../shared/operational-list';
@@ -62,24 +63,34 @@ export function sessionRowFacts(
   locale: string,
 ): InlineFacts {
   const age = row.updatedAt ? formatRelativeTime(row.updatedAt, now, locale) : undefined;
-  const facts: CompactFactItem[] = [];
-  if (age) {
-    facts.push(age);
+  const tasks: readonly [] | readonly [CompactFactItem] =
+    row.taskCount > 0
+      ? [
+          {
+            text: t('sessions.list.taskCount', { count: row.taskCount }),
+            accessibleText: t('sessions.list.associatedTasks', { count: row.taskCount }),
+          },
+        ]
+      : [];
+  const agentAndTasks: CompactFacts = row.agent
+    ? prepend(sessionAgentFact(row.agent, t), tasks)
+    : tasks;
+
+  return age ? prepend(age, agentAndTasks) : agentAndTasks;
+}
+
+/** One fact before at most two: the tuple length stays known, so no cast is needed. */
+function prepend(
+  fact: CompactFactItem,
+  rest: readonly [] | readonly [CompactFactItem],
+): readonly [CompactFactItem] | readonly [CompactFactItem, CompactFactItem];
+function prepend(fact: CompactFactItem, rest: CompactFacts): InlineFacts;
+function prepend(fact: CompactFactItem, rest: CompactFacts): InlineFacts {
+  if (rest.length === 0) {
+    return [fact];
   }
 
-  if (row.agent) {
-    facts.push(sessionAgentFact(row.agent, t));
-  }
-
-  if (row.taskCount > 0) {
-    facts.push({
-      text: t('sessions.list.taskCount', { count: row.taskCount }),
-      accessibleText: t('sessions.list.associatedTasks', { count: row.taskCount }),
-    });
-  }
-
-  // At most three facts by construction.
-  return facts as unknown as InlineFacts;
+  return rest.length === 1 ? [fact, rest[0]] : [fact, rest[0], rest[1]];
 }
 
 /**
@@ -115,5 +126,10 @@ export function sessionRowStatus(
       };
     case 'unavailable':
       return { text: t('sessions.list.statusUnknown'), textClassName: 'text-content-muted' };
+    default: {
+      const unhandled: never = readiness;
+
+      return unhandled;
+    }
   }
 }

@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Button, InformationList, SegmentedControl, Typography } from '@nevo/ui';
 import type { SessionListItem } from '@nevo/specflow-contracts/sessions';
@@ -67,6 +67,30 @@ export function SpecificationSessionsList({
     </Button>
   ) : null;
 
+  // Where focus goes once a press has ended the list: taken when the rendered list shows it (the
+  // rows arrived and **Show more** is gone), whichever comes first, the commit or the press's end.
+  const pendingFocus = useRef<{ kind: 'row'; index: number } | { kind: 'heading' } | null>(null);
+  const consumePendingFocus = () => {
+    const target = pendingFocus.current;
+    if (!target || root.current?.querySelector('[data-show-more]')) {
+      return;
+    }
+
+    const element =
+      target.kind === 'heading'
+        ? owningHeading(root.current)
+        : list.current?.querySelectorAll<HTMLElement>('[data-session-row] button')[target.index];
+    if (element) {
+      pendingFocus.current = null;
+      element.focus();
+    }
+  };
+
+  const rowCount = state.status === 'ready' ? state.rows.length : 0;
+  const hasMore = state.status === 'ready' && state.hasMore;
+  // After each commit that adds rows or ends the cursor, take a pending focus target.
+  useLayoutEffect(consumePendingFocus, [rowCount, hasMore]);
+
   // Cleared first, so the same text said twice (two empty batches in a row) is announced again.
   const announce = (message: string) => {
     setAnnouncement('');
@@ -88,18 +112,16 @@ export function SpecificationSessionsList({
         announce(t('sessions.list.loaded', { count: outcome.arrived }));
         // The button goes away with the cursor: focus moves to the first row that arrived.
         if (outcome.ended) {
-          requestAnimationFrame(() =>
-            list.current
-              ?.querySelectorAll<HTMLElement>('[data-session-row] button')
-              [firstAppended]?.focus(),
-          );
+          pendingFocus.current = { kind: 'row', index: firstAppended };
+          consumePendingFocus();
         }
       } else if (!outcome.ended) {
         announce(t('sessions.list.noneInScanned'));
       } else {
         // The press ended the list without a row: the focused button goes away with the cursor,
         // so focus moves to the list's heading instead of falling back to the document.
-        requestAnimationFrame(() => owningHeading(root.current)?.focus());
+        pendingFocus.current = { kind: 'heading' };
+        consumePendingFocus();
       }
     } finally {
       loading.current = false;
@@ -187,7 +209,7 @@ export function SpecificationSessionsList({
             </InformationList>
           ) : null}
           {state.hasMore ? (
-            <div className="grid justify-items-start gap-2">
+            <div className="grid justify-items-start gap-2" data-show-more>
               <Button
                 variant="secondary"
                 aria-disabled={state.loadingMore || undefined}

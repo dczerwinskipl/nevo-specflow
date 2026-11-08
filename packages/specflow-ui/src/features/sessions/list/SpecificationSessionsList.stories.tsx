@@ -239,6 +239,33 @@ function rowParts(canvasElement: HTMLElement, sessionId: string) {
  * The mark is no dead click zone: the browser's hit test at its centre lands on the row's primary
  * button (its stretched area), so a click there opens the Session like the rest of the row.
  */
+/**
+ * No facts line, wrapped or not, starts with `·`: a separator is either clipped entirely left of
+ * the facts box (it opens a line) or follows visible text on its own line.
+ */
+async function expectNoLineStartsWithSeparator(canvasElement: HTMLElement) {
+  for (const secondary of canvasElement.querySelectorAll<HTMLElement>('[data-spec-secondary]')) {
+    const clip = secondary.getBoundingClientRect();
+    const texts = [
+      ...secondary.querySelectorAll<HTMLElement>('[data-inline-fact], [data-inline-status]'),
+    ].map((item) => item.lastElementChild!.getBoundingClientRect());
+    for (const separator of secondary.querySelectorAll<HTMLElement>('[data-inline-separator]')) {
+      const box = separator.getBoundingClientRect();
+      if (box.right <= clip.left + 0.5) {
+        continue;
+      }
+
+      await expect(box.left, 'a visible separator is never cut by the clip').toBeGreaterThan(
+        clip.left + 1,
+      );
+      const before = texts.some(
+        (text) => Math.abs(text.top - box.top) < 4 && text.right <= box.left + 0.5,
+      );
+      await expect(before, `separator at ${box.left},${box.top} opens a line`).toBe(true);
+    }
+  }
+}
+
 async function expectMarkOpensSession(canvasElement: HTMLElement, sessionId: string) {
   const parts = rowParts(canvasElement, sessionId);
   const mark = parts.row.firstElementChild!.firstElementChild!.getBoundingClientRect();
@@ -283,6 +310,7 @@ export const CurrentSessions: Story = {
     await expect(Math.abs(status.top - age.top)).toBeLessThanOrEqual(0.5);
     await expect(status.left).toBeGreaterThan(first.facts.at(-1)!.getBoundingClientRect().right);
     await expectMarksCentred(canvasElement);
+    await expectNoLineStartsWithSeparator(canvasElement);
     await expect(canvas.queryByRole('button', { name: 'Pokaż więcej' })).toBeNull();
     await expectMarkOpensSession(canvasElement, 'a');
     onOpenSession.mockClear();
@@ -649,14 +677,56 @@ export const Mobile: Story = {
     for (const sessionId of ['a', 'b', 'c']) {
       const parts = rowParts(canvasElement, sessionId);
       const lastFact = parts.facts.at(-1)!.getBoundingClientRect();
-      const status = parts.status!.getBoundingClientRect();
+      const status = parts.status!.lastElementChild!.getBoundingClientRect();
       await expect(status.top).toBeGreaterThanOrEqual(lastFact.bottom - 0.5);
       await expect(Math.abs(status.left - parts.title.left)).toBeLessThan(1);
-      // No separator leads the status line.
-      await expect(parts.status!.firstElementChild).not.toBeVisible();
     }
 
+    await expectNoLineStartsWithSeparator(canvasElement);
     await expectMarksCentred(canvasElement);
     await expectMarkOpensSession(canvasElement, 'b');
+  },
+};
+
+/**
+ * 390 px with facts that wrap (a long model title and Tasks): the line breaks between items and
+ * neither the wrapped line nor the status line starts with `·`.
+ */
+export const WrappedFactsAt390: Story = {
+  args: {
+    pages: {
+      current: [
+        {
+          items: [
+            row('x', {
+              ...claude,
+              modelTitle: 'Opus 4.1 with an extended context window preview',
+              readiness: 'requiresAttention',
+              taskCount: 12,
+              updatedAt: minutesAgo(60 * 24 * 21),
+            }),
+          ],
+        },
+      ],
+      archive: [],
+    },
+  },
+  parameters: {
+    viewport: {
+      options: {
+        phone390: { name: '390 px', styles: { width: '390px', height: '844px' }, type: 'mobile' },
+      },
+    },
+  },
+  globals: { viewport: { value: 'phone390', isRotated: false } },
+  play: async ({ canvasElement, canvas }) => {
+    await canvas.findByRole('button', { name: 'Sesja x' });
+    await waitFor(() => expect(window.innerWidth).toBe(390));
+    const parts = rowParts(canvasElement, 'x');
+    const tops = new Set(parts.facts.map((fact) => Math.round(fact.getBoundingClientRect().top)));
+    await expect(tops.size, 'the facts wrap at 390').toBeGreaterThan(1);
+    await expectNoLineStartsWithSeparator(canvasElement);
+    await expectMarksCentred(canvasElement);
+    await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
   },
 };

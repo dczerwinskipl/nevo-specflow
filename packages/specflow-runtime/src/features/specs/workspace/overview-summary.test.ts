@@ -42,7 +42,8 @@ describe('summarizeOverview', () => {
       'Before <scr<b>ipt>alert(1)</scr</b>ipt> and <!<!-- x -->-- y --> after.',
     );
 
-    expect(summary).not.toMatch(/<script|<!--/u);
+    expect(summary.toLowerCase()).not.toContain('<script');
+    expect(summary).not.toContain('<!--');
     expect(summary).toBe('Before alert(1) and after.');
   });
 

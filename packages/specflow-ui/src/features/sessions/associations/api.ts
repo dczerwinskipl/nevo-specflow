@@ -7,7 +7,7 @@ import {
   type SessionListArchived,
   type SessionListPage,
 } from '@nevo/specflow-contracts/sessions';
-import { createApiTransport } from '../../../api';
+import { asApiError, createApiTransport } from '../../../api';
 import { sessionErrorCodes } from '../managed/api';
 
 /** The Session list read a Specification's Sessions list pages through (`GET /api/sessions`). */
@@ -36,6 +36,19 @@ export interface SessionAssociationsApi {
 }
 
 export const sessionAssociationsOperation = 'sessions.associations';
+
+/**
+ * A read refused for good (403 or 404): the principal may no longer see what an earlier read
+ * returned, so that data leaves the view. Any other failure is transient and keeps it.
+ */
+export function isDefinitiveAssociationRefusal(error: unknown): boolean {
+  const status = asApiError(error, {
+    operation: sessionAssociationsOperation,
+    method: 'GET',
+  })?.status;
+
+  return status === 403 || status === 404;
+}
 
 export function createSessionAssociationsApi(http: HttpRequestClient): SessionAssociationsApi {
   const api = createApiTransport(http, {

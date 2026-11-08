@@ -409,7 +409,9 @@ export const SessionChangeSchema = Type.Union([
     {
       ...event,
       kind: Type.Literal('session'),
-      changes: Type.Object({ session: SessionInfoSchema }, closed),
+      // The full projection, not the bare SessionInfo: Turn-dependent capabilities (Start,
+      // Cancel) and effective readiness are only correct with the activeTurn of this eventSeq.
+      changes: Type.Object({ projection: LiveProjectionSchema }, closed),
     },
     closed,
   ),

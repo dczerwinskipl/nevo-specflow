@@ -618,7 +618,8 @@ interaction. changes carries bounded upserts/references for that kind, using the
 and the current Session/activeTurn/currentActivity/interaction projection as needed.
 The changes object is discriminated by kind:
 
-- session: {session: SessionInfo};
+- session: {projection: LiveProjection} (a rename/archive/unarchive carries the current activeTurn,
+  so Turn-dependent capabilities such as Cancel stay correct);
 - turn: {turn: TurnSummary, projection: LiveProjection};
 - conversation: {entries: ConversationEntry[], projection?: LiveProjection}, at most 8 entries;
 - work: {turnId, items: WorkSummary[], projection?: LiveProjection}, at most 8 items;

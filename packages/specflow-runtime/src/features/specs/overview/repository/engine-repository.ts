@@ -86,10 +86,10 @@ function project(item: Extract<CanonicalSpecSource, { status: 'available' }>) {
     ...common,
     status: facts.status,
     readyForWork: facts.readyForWork,
-    // No execution or attention can belong to a Specification in project mode: a managed Session is
-    // created without any Specification or Task association (the Sessions contract refuses one) and
-    // project mode composes no Session reference owner. The empty lists are that answer, not a guess;
-    // they become real evidence once Sessions can be bound to a Specification.
+    // A project-mode Session can be associated with a Specification (and its Tasks), but an
+    // association is not an execution: it says what the Session is about, not that it runs a step
+    // of this Specification, and it carries no attention. So neither list is derived from
+    // associations; both stay empty until project mode has an execution evidence owner.
     signals: [],
     currentExecutions: [],
   };

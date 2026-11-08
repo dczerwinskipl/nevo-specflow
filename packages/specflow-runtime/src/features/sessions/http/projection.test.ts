@@ -147,9 +147,14 @@ it('keeps an archived Session read-only and projects the separate delete grant',
     eventSeq: 2,
     kind: 'session',
     changes: {
-      session: {
-        ...archived.snapshot.session,
-        capabilities: { ...archived.snapshot.session.capabilities, start: true },
+      projection: {
+        session: {
+          ...archived.snapshot.session,
+          capabilities: { ...archived.snapshot.session.capabilities, start: true },
+        },
+        activeTurn: null,
+        currentActivity: null,
+        interaction: null,
       },
     },
   };
@@ -158,7 +163,7 @@ it('keeps an archived Session read-only and projects the separate delete grant',
     throw new Error('Wrong fixture event');
   }
 
-  expect(projected.changes.session.capabilities.start).toBe(false);
+  expect(projected.changes.projection.session.capabilities.start).toBe(false);
   const granted = fixture('read-only');
   (
     granted.request.authz as unknown as { resolveCapabilities: () => Record<string, boolean> }
@@ -193,6 +198,31 @@ it('resolves an associated Session at its Specification scope, but write executi
     manage: true,
     delete: true,
     executeWrite: false,
+    start: false,
+  });
+});
+it('keeps Cancel on a Session change (rename) emitted during an active Turn', () => {
+  const f = fixture();
+  const event: SessionChange = {
+    sessionId: 'session',
+    eventSeq: 2,
+    kind: 'session',
+    changes: {
+      projection: {
+        session: { ...f.snapshot.session, title: 'Renamed' },
+        activeTurn: { turnId: 'turn', state: 'active', revision: 1, startedAt: 'now' },
+        currentActivity: null,
+        interaction: null,
+      },
+    },
+  };
+  const projected = effectiveEvent(event, f.request, () => f.provider, identity);
+  if (projected.kind !== 'session') {
+    throw new Error('Wrong fixture event');
+  }
+
+  expect(projected.changes.projection.session.capabilities).toMatchObject({
+    cancel: true,
     start: false,
   });
 });

@@ -384,7 +384,12 @@ export const SendRefusedArchived: Story = {
     await expect(canvas.queryByRole('button', { name: 'Ponów wysyłanie' })).toBeNull();
     await expect(editor).toHaveValue('Uruchom testy');
     const session = archivedSnapshot().session;
-    scriptedFixture().pushChange({ kind: 'session', changes: { session } });
+    scriptedFixture().pushChange({
+      kind: 'session',
+      changes: {
+        projection: { session, activeTurn: null, currentActivity: null, interaction: null },
+      },
+    });
     await expect(
       await canvas.findByText('Sesja jest zarchiwizowana. Nie można w niej wysyłać wiadomości.'),
     ).toBeVisible();

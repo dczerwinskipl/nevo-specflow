@@ -122,7 +122,13 @@ export function scriptedActionsApi(
   const changeSession = (next: SessionSnapshot['session']) => {
     session = next;
     // After the acknowledgement, as the Runtime's change arrives on the stream.
-    setTimeout(() => live.pushChange({ kind: 'session', changes: { session } }), 0);
+    const projection = {
+      session,
+      activeTurn: snapshot.activeTurn ?? null,
+      currentActivity: snapshot.currentActivity ?? null,
+      interaction: snapshot.interaction ?? null,
+    };
+    setTimeout(() => live.pushChange({ kind: 'session', changes: { projection } }), 0);
 
     return { session };
   };

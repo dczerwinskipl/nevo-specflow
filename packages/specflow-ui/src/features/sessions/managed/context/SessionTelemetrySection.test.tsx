@@ -9,6 +9,7 @@ import {
   staleTelemetrySnapshot,
   unavailableTelemetrySnapshot,
   telemetryMeasuredTurnId,
+  staleTelemetryMeasuredTurnId,
   limitsTelemetry,
 } from './sessionTelemetry.stories-support';
 import type { LimitsRefreshControl } from './sessionContextTypes';
@@ -37,6 +38,7 @@ function control(overrides: Partial<LimitsRefreshControl> = {}): LimitsRefreshCo
     sending: false,
     coolingDown: false,
     unconfirmed: false,
+    rejected: false,
     refused: false,
     refusedNote: false,
     refresh: vi.fn().mockResolvedValue('sent'),
@@ -110,7 +112,7 @@ describe('SessionTelemetrySection', () => {
     renderSection(fullTelemetrySnapshot, telemetryMeasuredTurnId);
 
     expect(screen.getByText('Current Turn · claude-sonnet-5')).toBeTruthy();
-    expect(screen.queryByText(telemetryMeasuredTurnId)).toBeNull();
+    expect(document.body.textContent).not.toContain(telemetryMeasuredTurnId);
   });
 
   it('labels the measurement as the last Turn when no Turn is running', () => {
@@ -133,7 +135,7 @@ describe('SessionTelemetrySection', () => {
     renderSection(staleTelemetrySnapshot);
 
     expect(screen.getByText('Last Turn')).toBeTruthy();
-    expect(screen.queryByText(/0000-4000/)).toBeNull();
+    expect(document.body.textContent).not.toContain(staleTelemetryMeasuredTurnId);
   });
 
   it('shows no context-window value or Turn caption when there is no measurement', () => {
@@ -333,6 +335,56 @@ describe('SessionTelemetrySection', () => {
       await vi.waitFor(() => expect(document.activeElement).toBe(heading));
       expect(refreshButton()).toBeNull();
       expect(screen.getByRole('status').textContent).toBe('Refreshing limits is unavailable.');
+    });
+
+    it('renders nothing for a refusal note once the snapshot is gone', () => {
+      const { container } = renderSection(
+        undefined,
+        undefined,
+        control({ refused: true, refusedNote: true }),
+      );
+      expect(container.firstChild).toBeNull();
+    });
+
+    it('says a definitely rejected refresh politely, never as unconfirmed', () => {
+      renderSection(fullTelemetrySnapshot, undefined, control({ rejected: true }));
+      expect(screen.getByRole('status').textContent).toBe('The limits refresh was rejected.');
+      expect(screen.getByRole('alert').textContent).toBe('');
+    });
+
+    it('keeps one status and one alert region mounted, changing only their text', () => {
+      const view = renderSection(fullTelemetrySnapshot, undefined, control());
+      const status = screen.getByRole('status');
+      const alert = screen.getByRole('alert');
+      expect(status.textContent).toBe('');
+      view.rerender(
+        <StoryLocalization locale="en">
+          <SessionTelemetrySection
+            telemetry={fullTelemetrySnapshot}
+            limitsRefresh={control({ unconfirmed: true, coolingDown: true })}
+          />
+        </StoryLocalization>,
+      );
+      expect(screen.getByRole('status')).toBe(status);
+      expect(screen.getByRole('alert')).toBe(alert);
+      expect(alert.textContent).toBe('The refresh was not confirmed. Try again.');
+    });
+
+    it('moves focus to the Context region when the focused limits heading goes away', () => {
+      const tree = (limitsRefresh: LimitsRefreshControl, telemetry: TelemetrySnapshot) => (
+        <StoryLocalization locale="en">
+          <div tabIndex={-1} data-context-focus-fallback data-testid="context">
+            <SessionTelemetrySection telemetry={telemetry} limitsRefresh={limitsRefresh} />
+          </div>
+        </StoryLocalization>
+      );
+      const refused = control({ refused: true, refusedNote: true });
+      const view = render(tree(refused, limitsTelemetry.notRead));
+      screen.getByRole('heading', { name: 'Provider limits' }).focus();
+      // The next snapshot clears the note; without the control the empty section disappears.
+      view.rerender(tree(control({ refused: true }), limitsTelemetry.notRead));
+      expect(screen.queryByRole('heading', { name: 'Provider limits' })).toBeNull();
+      expect(document.activeElement).toBe(screen.getByTestId('context'));
     });
   });
 });

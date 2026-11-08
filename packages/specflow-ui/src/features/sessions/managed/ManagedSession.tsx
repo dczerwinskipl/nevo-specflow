@@ -1218,7 +1218,7 @@ export function ManagedSession({
     [snapshot, workHistoryTurnId, fallback.pending, firstSnapshotFailed],
   );
   // Live telemetry from the same feed's stream; a supplied Context view model (Storybook) wins.
-  const telemetry = useSessionTelemetry(api, sessionId, feed.subscribeTelemetry);
+  const telemetry = useSessionTelemetry(api, sessionId, owner, feed.subscribeTelemetry);
   const canManage = !!snapshot?.session.capabilities.manage;
   const limitsRefresh = useMemo<LimitsRefreshControl | undefined>(
     () =>

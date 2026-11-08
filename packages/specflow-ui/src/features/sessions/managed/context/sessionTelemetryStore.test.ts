@@ -289,3 +289,144 @@ describe('provider-limits refresh', () => {
     );
   });
 });
+
+describe('telemetry review fixes', () => {
+  const receipt = {
+    requestId: '00000000-0000-4000-8000-000000000099',
+    acceptedGroups: ['limits' as const],
+    state: 'queued' as const,
+    telemetryRevision: 1,
+  };
+  const refusal = (kind: 'forbidden' | 'not-found', status: number) =>
+    new ApiError({ kind, operation: 'sessions', outcome: 'not-applied', retryable: false, status });
+
+  it('clears the refusal note when a later read loses access, leaving no snapshot', async () => {
+    const { store, telemetry, refreshTelemetry, emit } = setup();
+    telemetry.mockResolvedValueOnce(snapshotRead(at(3)));
+    emit({ kind: 'resync' });
+    await vi.runAllTimersAsync();
+    refreshTelemetry.mockRejectedValueOnce(refusal('forbidden', 403));
+    await store.refreshLimits();
+    telemetry.mockRejectedValueOnce(refusal('forbidden', 403));
+    emit({ kind: 'resync' });
+    await vi.runAllTimersAsync();
+    expect(store.getSnapshot()).toEqual({
+      refresh: expect.objectContaining({ refused: true, refusedNote: false }) as unknown,
+    });
+  });
+
+  it('starts the snapshot cooldown once per revision, not on every revalidation', async () => {
+    const { store, telemetry, emit } = setup();
+    const cooling = {
+      ...at(5),
+      refresh: { state: 'idle' as const, groups: [], retryAfterSeconds: 10 },
+    };
+    telemetry.mockResolvedValue(snapshotRead(cooling));
+    emit({ kind: 'resync' });
+    await vi.advanceTimersByTimeAsync(6_000);
+    // The same revision again (a revalidation answered 200) does not extend the cooldown.
+    emit({ kind: 'resync' });
+    await vi.advanceTimersByTimeAsync(4_000);
+    expect(telemetry).toHaveBeenCalledTimes(2);
+    expect(store.getSnapshot().refresh.coolingDown).toBe(false);
+  });
+
+  it('forgets a refusal and the retained requestId on a new access generation', async () => {
+    const { store, telemetry, refreshTelemetry, emit } = setup();
+    telemetry.mockResolvedValueOnce(snapshotRead(at(3)));
+    emit({ kind: 'resync' });
+    await vi.runAllTimersAsync();
+    refreshTelemetry
+      .mockRejectedValueOnce(
+        new ApiError({
+          kind: 'network',
+          operation: 'sessions',
+          outcome: 'unknown',
+          retryable: true,
+        }),
+      )
+      .mockRejectedValueOnce(refusal('forbidden', 403));
+    await store.refreshLimits();
+    await store.refreshLimits();
+    expect(store.getSnapshot().refresh.refused).toBe(true);
+    telemetry.mockResolvedValueOnce(snapshotRead(at(1, 'rev-granted')));
+    emit({ kind: 'resync' });
+    await vi.runAllTimersAsync();
+    expect(store.getSnapshot().refresh).toMatchObject({ refused: false, unconfirmed: false });
+    refreshTelemetry.mockResolvedValueOnce(receipt);
+    await expect(store.refreshLimits()).resolves.toBe('sent');
+    expect(refreshTelemetry.mock.calls[2]![1].requestId).not.toBe(
+      refreshTelemetry.mock.calls[0]![1].requestId,
+    );
+  });
+
+  it('reports a definite rejection (409) without the unconfirmed note, with a new requestId next', async () => {
+    const { store, refreshTelemetry } = setup();
+    refreshTelemetry
+      .mockRejectedValueOnce(
+        new ApiError({
+          kind: 'conflict',
+          operation: 'sessions',
+          outcome: 'not-applied',
+          retryable: false,
+          status: 409,
+          code: 'IDEMPOTENCY_CONFLICT',
+        }),
+      )
+      .mockResolvedValueOnce(receipt);
+    await expect(store.refreshLimits()).resolves.toBe('rejected');
+    expect(store.getSnapshot().refresh).toMatchObject({ rejected: true, unconfirmed: false });
+    await expect(store.refreshLimits()).resolves.toBe('sent');
+    expect(store.getSnapshot().refresh.rejected).toBe(false);
+    expect(refreshTelemetry.mock.calls[1]![1].requestId).not.toBe(
+      refreshTelemetry.mock.calls[0]![1].requestId,
+    );
+  });
+
+  it('treats a 404 refresh as lost access', async () => {
+    const { store, telemetry, refreshTelemetry, emit } = setup();
+    telemetry.mockResolvedValueOnce(snapshotRead(at(3)));
+    emit({ kind: 'resync' });
+    await vi.runAllTimersAsync();
+    refreshTelemetry.mockRejectedValueOnce(refusal('not-found', 404));
+    await expect(store.refreshLimits()).resolves.toBe('access-lost');
+    expect(store.getSnapshot().snapshot).toBeUndefined();
+    expect(store.getSnapshot().refresh).toMatchObject({ refused: true, refusedNote: false });
+  });
+
+  it('cools down for 30 s when a 429 has no Retry-After', async () => {
+    const { store, refreshTelemetry } = setup();
+    refreshTelemetry.mockRejectedValueOnce(
+      new ApiError({
+        kind: 'rate-limited',
+        operation: 'sessions',
+        outcome: 'not-applied',
+        retryable: true,
+        status: 429,
+      }),
+    );
+    await expect(store.refreshLimits()).resolves.toBe('cooldown');
+    await vi.advanceTimersByTimeAsync(29_999);
+    expect(store.getSnapshot().refresh.coolingDown).toBe(true);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(store.getSnapshot().refresh.coolingDown).toBe(false);
+  });
+
+  it('clears a running cooldown on disconnect', async () => {
+    const { store, refreshTelemetry, disconnect } = setup();
+    refreshTelemetry.mockRejectedValueOnce(
+      new ApiError({
+        kind: 'rate-limited',
+        operation: 'sessions',
+        outcome: 'not-applied',
+        retryable: true,
+        status: 429,
+        retryAfterMs: 20_000,
+      }),
+    );
+    await store.refreshLimits();
+    disconnect();
+    expect(vi.getTimerCount()).toBe(0);
+    expect(store.getSnapshot().refresh.coolingDown).toBe(false);
+  });
+});

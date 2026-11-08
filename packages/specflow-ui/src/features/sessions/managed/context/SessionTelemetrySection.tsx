@@ -1,5 +1,5 @@
 import type { TFunction } from 'i18next';
-import { useId, useRef, type CSSProperties } from 'react';
+import { useCallback, useId, useRef, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Badge,
@@ -85,14 +85,28 @@ export function SessionTelemetrySection({
   const { t, i18n } = useTranslation();
   const usageTitleId = useId();
   const limitsTitleId = useId();
-  const limitsHeading = useRef<HTMLHeadingElement>(null);
+  const limitsHeading = useRef<HTMLHeadingElement | null>(null);
+  // Focus on the heading (after a refusal) must not fall to the document when the section goes.
+  const attachLimitsHeading = useCallback((node: HTMLHeadingElement | null) => {
+    limitsHeading.current = node;
+    if (!node) {
+      return;
+    }
+
+    return () => {
+      limitsHeading.current = null;
+      if (node.ownerDocument.activeElement === node) {
+        node.closest<HTMLElement>('[data-context-focus-fallback]')?.focus();
+      }
+    };
+  }, []);
   const canRefresh = !!limitsRefresh && !limitsRefresh.refused;
 
-  if (!isTelemetryVisible(telemetry, canRefresh) && !limitsRefresh?.refusedNote) {
+  if (!telemetry || (!isTelemetryVisible(telemetry, canRefresh) && !limitsRefresh?.refusedNote)) {
     return null;
   }
 
-  const snapshot = telemetry!;
+  const snapshot = telemetry;
   const costStat = formatCostStat(snapshot.cost.session, t, i18n.language);
   const tokensStat = formatTokensStat(snapshot.usage.session, i18n.language);
   const tokenBreakdown = formatTokenBreakdown(snapshot.usage.session, t, i18n.language);
@@ -107,8 +121,12 @@ export function SessionTelemetrySection({
     !!limitsRefresh?.sending ||
     (snapshot.refresh.state !== 'idle' && snapshot.refresh.groups.includes('limits'));
   const refreshBlocked = refreshPending || !!limitsRefresh?.coolingDown;
-  const readingNote = limitsReadingNote(snapshot.limits, !!limits, refreshOffered);
-  const commandNote = limitsCommandNote(limitsRefresh);
+  const notes = [
+    limitsReadingNote(snapshot.limits, !!limits, refreshOffered),
+    limitsCommandNote(limitsRefresh),
+  ].filter((note) => note !== undefined);
+  const politeNotes = notes.filter((note) => note.tone !== 'danger');
+  const alertNotes = notes.filter((note) => note.tone === 'danger');
 
   const hasUsageSection = !!costStat || !!tokensStat || !!contextStat || !!tokenBreakdown;
   if (!hasUsageSection && !showLimits) {
@@ -193,10 +211,11 @@ export function SessionTelemetrySection({
         </section>
       )}
       {showLimits && (
-        <section className="grid gap-3" aria-labelledby={limitsTitleId}>
+        // Spacing by margins, not `gap`: the two live regions below stay mounted while empty.
+        <section className="grid" aria-labelledby={limitsTitleId}>
           <div className="flex flex-wrap items-baseline gap-2">
             <Typography
-              ref={limitsHeading}
+              ref={attachLimitsHeading}
               as="h3"
               id={limitsTitleId}
               tabIndex={-1}
@@ -229,7 +248,7 @@ export function SessionTelemetrySection({
           {limits && (
             // One full-width row per window (label + value header, then the bar), never two
             // cramped columns: at ~330 px the side-by-side split left each bar a few dozen px.
-            <div className="grid gap-4">
+            <div className="mt-3 grid gap-4">
               {limits.windows.map((window) => (
                 <LimitRow
                   key={window.id}
@@ -242,12 +261,21 @@ export function SessionTelemetrySection({
             </div>
           )}
           {limits && limits.extra > 0 && (
-            <Typography variant="body-sm" className="text-content-muted tabular-nums">
+            <Typography variant="body-sm" className="mt-3 text-content-muted tabular-nums">
               {t('sessions.context.sessionDetails.moreLimitWindows', { value: limits.extra })}
             </Typography>
           )}
-          {readingNote && <LiveNote note={readingNote} />}
-          {commandNote && <LiveNote note={commandNote} />}
+          {/* One persistent region per politeness; only the text inside changes. */}
+          <div role="status">
+            {politeNotes.map((note) => (
+              <LimitsNoteLine key={note.key} note={note} />
+            ))}
+          </div>
+          <div role="alert">
+            {alertNotes.map((note) => (
+              <LimitsNoteLine key={note.key} note={note} />
+            ))}
+          </div>
         </section>
       )}
     </div>
@@ -260,6 +288,7 @@ type LimitsNoteKey =
   | 'limitsReadFailed'
   | 'refreshCooldown'
   | 'refreshUnavailable'
+  | 'refreshRejected'
   | 'refreshUnconfirmed';
 interface LimitsNote {
   key: LimitsNoteKey;
@@ -295,18 +324,22 @@ function limitsCommandNote(refresh: LimitsRefreshControl | undefined): LimitsNot
     return { key: 'refreshUnconfirmed', tone: 'danger' };
   }
 
+  if (refresh?.rejected) {
+    return { key: 'refreshRejected', tone: 'attention' };
+  }
+
   return refresh?.coolingDown ? { key: 'refreshCooldown', tone: 'info' } : undefined;
 }
 
-/** `InlineNote` has no live region of its own: info and attention notes are polite statuses, only
- * an unconfirmed request is an alert (session-actions-ux ground rules). */
-function LiveNote({ note }: { note: LimitsNote }) {
+/** `InlineNote` has no live region of its own: info and attention notes go to the section's polite
+ * status region, only an unconfirmed request to its alert region (session-actions-ux rules). */
+function LimitsNoteLine({ note }: { note: LimitsNote }) {
   const { t } = useTranslation();
 
   return (
-    <div role={note.tone === 'danger' ? 'alert' : 'status'}>
-      <InlineNote tone={note.tone}>{t(`sessions.context.sessionDetails.${note.key}`)}</InlineNote>
-    </div>
+    <InlineNote tone={note.tone} className="mt-3">
+      {t(`sessions.context.sessionDetails.${note.key}`)}
+    </InlineNote>
   );
 }
 

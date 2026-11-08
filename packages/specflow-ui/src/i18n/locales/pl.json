@@ -1434,6 +1434,7 @@
         "limitsReadFailed": "Nie udało się odczytać limitów.",
         "refreshCooldown": "Limity odświeżono przed chwilą. Odświeżenie będzie znów możliwe za moment.",
         "refreshUnavailable": "Odświeżanie limitów jest niedostępne.",
+        "refreshRejected": "Odrzucono odświeżenie limitów.",
         "refreshUnconfirmed": "Nie potwierdzono odświeżenia. Spróbuj ponownie.",
         "costLabel": "Koszt",
         "tokensStatLabel": "Tokeny wej. / wyj.",

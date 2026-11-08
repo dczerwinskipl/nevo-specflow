@@ -1434,6 +1434,7 @@
         "limitsReadFailed": "Could not read limits.",
         "refreshCooldown": "Limits were just refreshed. You can refresh again shortly.",
         "refreshUnavailable": "Refreshing limits is unavailable.",
+        "refreshRejected": "The limits refresh was rejected.",
         "refreshUnconfirmed": "The refresh was not confirmed. Try again.",
         "costLabel": "Cost",
         "tokensStatLabel": "Input / output tokens",

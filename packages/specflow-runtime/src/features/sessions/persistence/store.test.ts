@@ -884,4 +884,192 @@ describe('durable Session store', () => {
       }),
     ).toBe(false);
   });
+  it('maintains Work counts and the Turn digest in the same write and settles them on restart', async () => {
+    const { sessionId } = await create();
+    const start = await store!.call<StartAdmission>({
+      op: 'start',
+      actor: 'user',
+      sessionId,
+      input: { requestId: randomUUID(), message: 'Inspect' },
+    });
+    let driverSeq = 0;
+    const emit = (fact: DriverFact, admitted = start) => {
+      validateDriverFact(fact);
+
+      return store!.call({ op: 'fact', sessionId, ...admitted, driverSeq: ++driverSeq, fact });
+    };
+
+    const work = async (turnId = start.turnId) => {
+      const page = await store!.call<WorkPage>({
+        op: 'work',
+        sessionId,
+        turnId,
+        actor: 'user',
+        limit: 40,
+      });
+      expect(sessionValidators.work(page)).toBe(true);
+
+      return page;
+    };
+
+    const summaries = async () =>
+      (await snap(sessionId)).entries.filter((entry) => entry.kind === 'work-summary');
+    await emit({ kind: 'work-open', key: 'c', workKind: 'commentary', title: 'Plan' });
+    await emit({ kind: 'work-open', key: 't1', workKind: 'tool', title: 'Tools' });
+    expect((await summaries())[0]!.digest).toBeUndefined();
+    await emit({
+      kind: 'action-open',
+      key: 'a1',
+      parentKey: 't1',
+      title: 'Read',
+      operation: 'read',
+    });
+    await emit({
+      kind: 'action-open',
+      key: 'a2',
+      parentKey: 't1',
+      title: 'Bash',
+      operation: 'command',
+    });
+    await emit({ kind: 'action-update', key: 'a2', state: 'failed' });
+    await emit({ kind: 'action-update', key: 'a1', state: 'completed' });
+    await emit({ kind: 'work-update', key: 't1', state: 'completed' });
+    await emit({ kind: 'work-open', key: 't2', workKind: 'tool', title: 'More tools' });
+    const before = (await snap(sessionId)).eventSeq;
+    await emit({ kind: 'action-open', key: 'a3', parentKey: 't2', title: 'Unknown' });
+    const events = await store!.call<{
+      events: { kind: string; changes: { entries?: unknown } }[];
+    }>({ op: 'events', sessionId, after: before });
+    const latestDigest = { done: { read: 1, command: 1, other: 1 }, failed: { command: 1 } };
+    expect(events.events.map((event) => event.kind)).toEqual(['work', 'conversation', 'turn']);
+    expect(events.events[1]!.changes.entries).toEqual([
+      expect.objectContaining({ kind: 'work-summary', revision: 2, digest: latestDigest }),
+    ]);
+    const [first, latest] = await summaries();
+    expect(first!.digest).toEqual({ done: { read: 1, command: 1 }, failed: { command: 1 } });
+    expect(latest).toMatchObject({ revision: 2, digest: latestDigest });
+    const live = await work();
+    expect(live.counts).toEqual({
+      total: 3,
+      inProgress: 2,
+      byKind: { commentary: 1, reasoning: 0, interaction: 0, tool: 2 },
+    });
+    const actions = await store!.call<ActionPage>({
+      op: 'actions',
+      sessionId,
+      workId: live.items[2]!.workId,
+      actor: 'user',
+      limit: 40,
+    });
+    expect(actions.items.map((action) => action.operation)).toEqual(['other']);
+
+    // Restart recovery interrupts the open mock Work and action; nothing is counted as failed.
+    await store!.close();
+    store = await openSessionStore({ directory, projectId: 'project' });
+    expect((await work()).counts).toMatchObject({ total: 3, inProgress: 0 });
+    expect((await summaries()).at(-1)!.digest).toEqual(latestDigest);
+
+    // A failed Turn fails its open action, which the digest counts once.
+    const next = await store.call<StartAdmission>({
+      op: 'start',
+      actor: 'user',
+      sessionId,
+      input: { requestId: randomUUID(), message: 'Edit' },
+    });
+    driverSeq = 0;
+    await emit({ kind: 'work-open', key: 't', workKind: 'tool', title: 'Edit' }, next);
+    await emit(
+      { kind: 'action-open', key: 'a', parentKey: 't', title: 'Edit', operation: 'edit' },
+      next,
+    );
+    await emit({ kind: 'outcome', outcome: 'failed' }, next);
+    expect((await work(next.turnId)).counts).toEqual({
+      total: 1,
+      inProgress: 0,
+      byKind: { commentary: 0, reasoning: 0, interaction: 0, tool: 1 },
+    });
+    expect((await summaries()).at(-1)).toMatchObject({
+      turnId: next.turnId,
+      digest: { done: { edit: 1 }, failed: { edit: 1 } },
+    });
+  });
+  it('counts interaction Work leaving active when answered and expired', async () => {
+    const { sessionId } = await create();
+    const start = await store!.call<StartAdmission>({
+      op: 'start',
+      actor: 'user',
+      sessionId,
+      input: { requestId: randomUUID(), message: 'Ask' },
+    });
+    let driverSeq = 0;
+    const emit = (fact: DriverFact) =>
+      store!.call({ op: 'fact', sessionId, ...start, driverSeq: ++driverSeq, fact });
+    const counts = async () =>
+      (
+        await store!.call<WorkPage>({
+          op: 'work',
+          sessionId,
+          turnId: start.turnId,
+          actor: 'user',
+          limit: 40,
+        })
+      ).counts;
+    for (const key of ['q1', 'q2']) {
+      await emit({ kind: 'work-open', key, workKind: 'interaction', title: 'Question' });
+      await emit({
+        kind: 'interaction',
+        key,
+        interaction: { kind: 'question', prompt: 'Continue?', allowText: true },
+      });
+    }
+
+    expect(await counts()).toMatchObject({ inProgress: 2, byKind: { interaction: 2 } });
+    await store!.call({
+      op: 'respond',
+      actor: 'user',
+      sessionId,
+      interactionId: (await snap(sessionId)).interaction!.interactionId,
+      input: { kind: 'question', requestId: randomUUID(), answer: { text: 'yes', optionIds: [] } },
+    });
+    expect(await counts()).toMatchObject({ inProgress: 1 });
+    await emit({ kind: 'interaction-expired', key: 'q2' });
+    expect(await counts()).toMatchObject({ total: 2, inProgress: 0 });
+  });
+  it('omits Work counts and digest for a Turn recorded before the aggregate existed', async () => {
+    const { sessionId } = await create('controlled');
+    const start = await store!.call<StartAdmission>({
+      op: 'start',
+      actor: 'user',
+      sessionId,
+      input: { requestId: randomUUID(), message: 'Old' },
+    });
+    await store!.close();
+    const db = new DatabaseSync(join(directory, 'sessions.sqlite'));
+    try {
+      db.prepare(
+        "UPDATE turns SET data=json_remove(data,'$.work','$.workSummaryEntryId') WHERE id=?",
+      ).run(start.turnId);
+    } finally {
+      db.close();
+    }
+
+    store = await openSessionStore({ directory, projectId: 'project' });
+    let driverSeq = 0;
+    const emit = (fact: DriverFact) =>
+      store!.call({ op: 'fact', sessionId, ...start, driverSeq: ++driverSeq, fact });
+    await emit({ kind: 'work-open', key: 't', workKind: 'tool', title: 'Tools' });
+    await emit({ kind: 'action-open', key: 'a', parentKey: 't', title: 'Read', operation: 'read' });
+    const page = await store.call<WorkPage>({
+      op: 'work',
+      sessionId,
+      turnId: start.turnId,
+      actor: 'user',
+      limit: 40,
+    });
+    expect(page.items).toHaveLength(1);
+    expect(page).not.toHaveProperty('counts');
+    const entry = (await snap(sessionId)).entries.find((e) => e.kind === 'work-summary');
+    expect(entry).toMatchObject({ revision: 1 });
+    expect(entry).not.toHaveProperty('digest');
+  });
 });

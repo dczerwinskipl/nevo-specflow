@@ -1,6 +1,19 @@
 import { createHash } from 'node:crypto';
 import type { DriverFact } from '../../persistence/protocol';
 import type { EmitFact } from '../driver';
+import { nativeToolOperation, type NativeToolOperations } from '../tool-operations';
+
+/** Antigravity's own native tool names. `call_mcp_tool` and undeclared names stay `other`. */
+export const antigravityToolOperations: NativeToolOperations = {
+  view_file: 'read',
+  list_dir: 'list',
+  find_by_name: 'search',
+  grep_search: 'search',
+  write_to_file: 'write',
+  replace_file_content: 'edit',
+  multi_replace_file_content: 'edit',
+  run_command: 'command',
+};
 
 const frameBytes = 1024 * 1024;
 const chunkBytes = 16384;
@@ -373,6 +386,7 @@ export function createAntigravityProtocol(
             key: 'tool:' + index,
             parentKey: 'step:' + index,
             title: name,
+            operation: nativeToolOperation(antigravityToolOperations, name),
           });
         }
 

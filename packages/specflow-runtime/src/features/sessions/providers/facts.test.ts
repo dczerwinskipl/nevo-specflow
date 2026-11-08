@@ -3,6 +3,14 @@ import type { DriverFact } from '../persistence/protocol';
 import { validateDriverFact } from './facts';
 
 describe('provider fact boundary', () => {
+  it('accepts only a closed canonical operation on action-open', () => {
+    const open: DriverFact = { kind: 'action-open', key: 'a', parentKey: 'w', title: 'Read' };
+    expect(() => validateDriverFact(open)).not.toThrow();
+    expect(() => validateDriverFact({ ...open, operation: 'read' })).not.toThrow();
+    expect(() =>
+      validateDriverFact({ ...open, operation: 'Read' } as unknown as DriverFact),
+    ).toThrow('protocol');
+  });
   it('accepts explicit zero cumulative origins but rejects nonzero, noncumulative or false baselines', () => {
     const baseline: DriverFact = {
       kind: 'usage',

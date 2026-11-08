@@ -103,10 +103,14 @@ export function createSessionReads({
           .map((r) => decode<{ ordinal: number }>(r))
           .reverse(),
         hasOlder = rows.length > c.limit;
+      const stored = isWork ? turn(parent, c.sessionId) : undefined;
+      // The aggregate is maintained with every Work write; omitted for Turns that predate it.
       const envelope = {
         sessionId: c.sessionId,
         eventSeq: s.snapshot.eventSeq,
-        ...(isWork ? { turn: turn(parent, c.sessionId).summary } : { workId: parent }),
+        ...(stored
+          ? { turn: stored.summary, ...(stored.work ? { counts: stored.work.counts } : {}) }
+          : { workId: parent }),
       };
 
       return boundedPage(items, hasOlder, (pageItems, older) => ({

@@ -227,7 +227,8 @@ export const ConversationEntrySchema = Type.Object(
     ]),
     text: TextPreviewSchema,
     workId: Type.Optional(SessionIdSchema),
-    /** Present only on a Turn's latest `work-summary` entry once it has opened a ToolAction. */
+    /** The Turn's latest `work-summary` entry carries the current digest once a ToolAction opened;
+     * an earlier entry keeps the value it had while it was the latest. */
     digest: Type.Optional(WorkDigestSchema),
     createdAt: text(40),
   },

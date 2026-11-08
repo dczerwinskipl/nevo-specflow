@@ -12,7 +12,9 @@ import type {
   TelemetryGroup,
   TelemetryContextUsage,
   TelemetryLimitWindow,
+  ToolOperation,
 } from '@nevo/specflow-contracts/sessions';
+import type { WorkAggregate } from '../lifecycle/work-aggregate';
 
 export type MeasurementFact =
   | {
@@ -45,7 +47,14 @@ export type DriverFact =
   | { kind: 'correlation'; providerSessionId: string }
   | { kind: 'work-open'; key: string; workKind: WorkSummary['kind']; title: string }
   | { kind: 'work-update'; key: string; state: WorkSummary['state'] }
-  | { kind: 'action-open'; key: string; parentKey: string; title: string }
+  | {
+      kind: 'action-open';
+      key: string;
+      parentKey: string;
+      title: string;
+      /** Only from the provider's own tool identity; Runtime records `other` when absent. */
+      operation?: ToolOperation;
+    }
   | { kind: 'action-update'; key: string; state: WorkSummary['state'] }
   | {
       kind: 'usage';
@@ -240,6 +249,10 @@ export interface StoredTurn {
   summary: TurnSummary;
   invocationId: string;
   cancelRequested: boolean;
+  /** Absent for Turns created before Runtime maintained it (never backfilled). */
+  work?: WorkAggregate;
+  /** The Turn's latest `work-summary` entry, which carries the current Work digest. */
+  workSummaryEntryId?: string;
 }
 export interface EffectRecoveryCandidate {
   sessionId: string;

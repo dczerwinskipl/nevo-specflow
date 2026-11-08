@@ -691,6 +691,55 @@ describe('controlled native hook HTTP/helper boundary', () => {
     });
   });
 
+  it('accepts same-execution background completion without a new tool generation', async () => {
+    const f = await fixture();
+    const stop = {
+      conversationId: f.context.nativeSessionId,
+      workspacePaths: [f.workspace],
+      executionNum: 0,
+      terminationReason: 'NO_TOOL_CALL',
+      fullyIdle: false,
+    };
+    await expect(f.post('stop', stop)).resolves.toEqual({ decision: 'stop' });
+    await expect(f.post('stop', { ...stop, fullyIdle: true })).resolves.toEqual({
+      decision: 'stop',
+    });
+    await f.bridge.awaitNativeIdle(new AbortController().signal);
+  });
+
+  it('does not settle a newer retained file from a same-execution idle callback or its replay', async () => {
+    const f = await fixture();
+    const stop = {
+      conversationId: f.context.nativeSessionId,
+      workspacePaths: [f.workspace],
+      executionNum: 0,
+      terminationReason: 'NO_TOOL_CALL',
+      fullyIdle: false,
+    };
+    await f.post('stop', stop);
+    const tool = {
+      ...f.body(1),
+      toolCall: { name: 'view_file', args: { AbsolutePath: join(f.workspace, 'file.txt') } },
+    };
+    await expect(f.post('pre-tool-use', tool)).resolves.toEqual({ decision: 'allow' });
+    await expect(f.post('stop', { ...stop, fullyIdle: true })).resolves.toEqual({
+      decision: 'continue',
+    });
+    expect(f.accesses[0]!.close).not.toHaveBeenCalled();
+    const controller = new AbortController();
+    const idle = f.bridge.awaitNativeIdle(controller.signal);
+    controller.abort(new Error('new-generation-still-owned'));
+    await expect(idle).rejects.toThrow('new-generation-still-owned');
+    await expect(f.post('post-tool-use', tool)).resolves.toEqual({});
+    await expect(f.post('stop', { ...stop, fullyIdle: true })).resolves.toEqual({
+      decision: 'deny',
+    });
+    await expect(f.post('stop', { ...stop, executionNum: 1, fullyIdle: true })).resolves.toEqual({
+      decision: 'stop',
+    });
+    await f.bridge.awaitNativeIdle(new AbortController().signal);
+  });
+
   it('accepts a final idle Stop after native background continuation within the same execution number', async () => {
     const f = await fixture();
     const stop = {
@@ -747,11 +796,15 @@ describe('controlled native hook HTTP/helper boundary', () => {
   });
 
   it.each([
-    [{ decision: 'auto_approve' }, { decision: 'auto_approve' }],
-    [{ decision: ['auto_approve'] }, { decision: 'deny' }],
-    [{ decision: ['allow'] }, { decision: 'deny' }],
-    [{ decision: 'deny', overwrite: { Overwrite: true } }, { decision: 'deny' }],
-  ])('validates the exact bridge response shape %#', async (payload, expected) => {
+    ['pre-tool-use', { decision: 'auto_approve' }, { decision: 'auto_approve' }],
+    ['pre-tool-use', { decision: ['auto_approve'] }, { decision: 'deny' }],
+    ['pre-tool-use', { decision: ['allow'] }, { decision: 'deny' }],
+    ['pre-tool-use', { decision: 'deny', overwrite: { Overwrite: true } }, { decision: 'deny' }],
+    ['pre-tool-use', { decision: 'continue' }, { decision: 'deny' }],
+    ['post-tool-use', { decision: 'continue' }, { decision: 'deny' }],
+    ['stop', { decision: 'continue' }, { decision: 'continue' }],
+    ['stop', { decision: 'auto_approve' }, { decision: 'deny' }],
+  ] as const)('validates the exact bridge response shape %#', async (hook, payload, expected) => {
     const f = await fixture();
     const server = createServer((request, response) => {
       request.resume();
@@ -778,7 +831,7 @@ describe('controlled native hook HTTP/helper boundary', () => {
         baseUrl: `http://127.0.0.1:${address.port}`,
       }),
     );
-    await expect(f.post('pre-tool-use', f.body())).resolves.toEqual(expected);
+    await expect(f.post(hook, f.body())).resolves.toEqual(expected);
     expect(f.facts).toEqual([]);
   });
 });

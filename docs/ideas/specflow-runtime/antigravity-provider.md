@@ -397,8 +397,102 @@ Independent review of `a4b7ed3d` requested R01 (validate optional Stop `error` a
 a string before any state change) and R02 (repair two replacement characters in
 documentation). Both are corrected. Six added HTTP/helper cases reject object,
 array, null, number and boolean errors without releasing idle or advancing the
-execution ledger, and preserve continuation after malformed evidence. Targeted
-re-review remains pending. F14 and capability parity remain separate deliveries.
+execution ledger, and preserve continuation after malformed evidence. The owner
+supplied independent re-review of `b78380ac` closed R01/R02 without a new confirmed
+blocker. The targeted R03/R04 investigation below adds tests and evidence only.
+F14 and capability parity remain separate deliveries.
+
+### R03/R04 targeted lifecycle investigation (2026-11-08)
+
+**Verdict: Conditional approval.** No new production defect was confirmed. The
+functional F20 implementation is complete; required merge checks remain a separate,
+unresolved gate. The owner-supplied independent review closed R01/R02. This
+follow-up investigation was performed in the implementation session and is not
+an additional independent approval. Production lifecycle code is unchanged from
+`b78380ac`; the follow-up adds controlled tests and documents their interpretation.
+
+#### R03: terminal result versus continuation
+
+The [headless stream contract](https://antigravity.google/docs/cli/headless/)
+concludes each input Turn with one final `result`. Another input produces another
+Turn/result. The adapter sends one input frame and closes stdin on result. The
+[Stop contract](https://antigravity.google/docs/hooks/#stop) places continuation
+inside the execution loop. A result followed by a newly continued execution for
+the same single input is outside that declared contract; a synthetic producer
+can violate it, but this is not evidence that the native CLI does so.
+
+`operation.ts:81-84` disables continuation when buffering the native result;
+`operation.ts:162-223` separates terminal parsing, bounded shutdown draining,
+positive idle and native exit. The drain is not a second protocol reader: it
+consumes trailing diagnostics without creating execution facts. It does not
+validate an arbitrary second execution injected after the terminal result.
+This remains a limitation of the admitted native protocol, not a new guarantee
+that all possible future protocol violations are detected.
+
+`stop-settlement.test.ts` exercises the real operation and authenticated bridge
+with separate input, EOF-request and native-exit barriers:
+
+- Pending permission -> Stop 0 / continue -> explicit permission denial -> further
+  native answer activity -> Stop 1 / stop -> final result -> diagnostics -> exit:
+  exactly one outcome, dispatch and user frame. Outcome is withheld until exit.
+- Result before a conflicting Stop: continuation is disabled; no positive idle
+  evidence is recorded. Cancellation leaves execution without a confirmed result.
+- Continued execution followed by missing later idle, cancellation or process loss:
+  no completed outcome is emitted. A replayed Stop 0 cannot supply missing idle;
+  the existing settlement deadline bounds waiting even after a natural exit.
+
+A manual native control added explicit barriers before returning both Stop hook
+responses. Stop 0 had already selected `continue` while the file remained pinned;
+a rename attempt failed with Win32 `EBUSY`. The CLI had emitted zero results.
+After returning continue and delivering the delayed PostToolUse, another native
+iteration reached Stop 1, still with zero results observed. Returning stop then
+produced exactly one result, zero post-result frames and positive `group-exited`
+settlement. It used the previously recorded Windows CLI fingerprint, production
+bridge/launcher/guards, synthetic loopback backend/key and one input. This supports
+the documented ordering for the recorded native profile; it is not proof for every
+future CLI or an OAuth/in-flight-write test. **R03: no confirmed defect; no fix.**
+
+#### R04: same-execution background completion and generation fencing
+
+`executionNum` identifies an execution attempt, not each native tool generation.
+The Stop payload has no tool-generation counter. Native `fullyIdle: true` asserts
+that all background/asynchronous activity has finished; it is stronger than merely
+finishing the foreground model loop. A non-idle attempt can therefore legitimately
+have more tool activity before its final same-number idle callback.
+
+The A-E matrix in `hooks.test.ts`, plus the cross-boundary settlement tests, proves:
+
+- A: false -> true at the same execution number without a new tool is accepted.
+- B/C: after false and a new tool, a true callback cannot clear outstanding file
+  ownership or a pending interaction. It can only consume the one continuation.
+- D: after the matching file receipt releases ownership, the previously conflicting
+  Stop still cannot be replayed as idle evidence.
+- E: a later execution's valid positive idle can settle normally; lower execution
+  numbers and idle replays after a previously accepted idle/new generation fail.
+- A resolved newer interaction followed by a fresh, nonconflicting same-number true
+  callback remains supported. Final outcome still requires native result and exit.
+
+Relevant guards are `question-bridge.ts:61-66` (busy generation), `:147-155`
+(execution/conflict replay), `:168-194` (ownership and idle), and
+`operation.ts:204-223,246-260` (independent settlement evidence).
+
+A never-before-observed old true payload and a fresh true payload can be byte
+identical. The adapter cannot infer their creation time from `executionNum` alone.
+It relies on the native idle assertion and final-result contract, rather than
+inventing an unsupported generation field or rejecting legitimate background
+completion. An old endpoint cannot affect a replacement invocation. Within a live
+invocation, current ownership, known replay evidence, final result and stopped-tree
+evidence remain independently required. If those receipts are absent, execution
+stays unknown; idle alone cannot settle it. No native-contract-compliant sequence
+was found that supersedes a result and incorrectly settles newer owned work.
+**R04: no confirmed defect; protocol ambiguity documented; no production fix.**
+
+Required CI/CodeQL skips on a draft PR are not successes. Earlier full-repository
+checks failed in Figma on both PR `a4b7ed3d` and base `main`
+`8502503b96e81fd2add5cae2b711332f1f23c5a6`; isolated Figma checks passed. This
+separates the observed base failure from F20 but does not identify its cause or
+waive the repository merge gate. Final commit-specific verification is reported
+in the PR. F14, F19, permission policy and CI infrastructure are unchanged.
 
 ### Compatible updates
 

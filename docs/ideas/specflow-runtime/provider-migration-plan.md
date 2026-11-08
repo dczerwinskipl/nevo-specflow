@@ -386,8 +386,9 @@ IDs and absent/contradictory evidence never release an uncertain writer or fabri
 ### F20 — Antigravity Stop continuation semantics
 
 **Priority:** First post-merge delivery. **Outside PR #107; N02 from the final re-review.**
-**Status:** In progress — implementation and regression evidence prepared;
-independent review R01/R02 corrected; targeted re-review pending.
+**Status:** Implemented — R01/R02 closed by independent re-review; targeted
+R03/R04 investigation found no confirmed production blocker. Conditional approval;
+required merge checks remain unresolved.
 **Original evidence:** `antigravity/question-bridge.ts` returned `deny` for Stop
 conflicting with pending interactions or retained files. The native
 [Stop contract](https://antigravity.google/docs/hooks/#stop) permits termination
@@ -401,8 +402,11 @@ No new Turn, permission grant, Session owner or persistence schema is introduced
 **Evidence/limits:** See the [Stop matrix, failing regression and synthetic native
 checks](antigravity-provider.md#f20-stop-continuation--2026-11-08). Repeated conflicts
 beyond the one-shot bound still stop conservatively and can leave execution unknown.
-**Remaining:** Targeted re-review and final integrated verification before marking
-Implemented. F14 and F19 remain independent follow-ups.
+**Review disposition:** [R03/R04 evidence and limits](antigravity-provider.md#r03r04-targeted-lifecycle-investigation-2026-11-08).
+No production change was required; same-execution background completion remains
+supported under the native final-result/idle contract.
+**Remaining:** Required CI/merge-gate verification; draft skips do not count as
+passed checks. F14 and F19 remain independent follow-ups.
 
 [paseo-types]: https://github.com/getpaseo/paseo/blob/ab8e1e61ff7c0bbad08c95e15a09f3ec42333410/packages/server/src/server/agent/agent-sdk-types.ts
 [paseo-provider]: https://github.com/getpaseo/paseo/blob/ab8e1e61ff7c0bbad08c95e15a09f3ec42333410/packages/plugin/src/server/provider.ts

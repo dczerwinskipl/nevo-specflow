@@ -100,7 +100,7 @@ export function WorkView({ specId, data }: WorkViewProps) {
         title={data.title}
         specId={id}
         intro={data.intro}
-        mainDocumentId={data.mainDocumentId}
+        overviewDocumentId={data.overviewDocumentId}
       />
     </div>
   );

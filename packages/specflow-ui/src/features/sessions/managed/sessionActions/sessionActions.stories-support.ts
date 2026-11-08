@@ -4,7 +4,11 @@ import { ApiError } from '../../../../api';
 import type { ManagedSessionsApi } from '../api';
 import { sessionErrorCodes } from '../api';
 import { liveFixtureApi } from '../managedSession.liveFeed.stories-support';
-import { fixtureSessionId, sessionFixture } from '../managedSession.stories-support';
+import {
+  fixtureSessionId,
+  sessionFixture,
+  withRuntimeTitles,
+} from '../managedSession.stories-support';
 
 export const unknownTurnId = '00000000-0000-4000-8000-0000000000a1';
 
@@ -88,7 +92,8 @@ export function scriptedActionsApi(
   script: Partial<Record<Command, ScriptedAnswer[]>> = {},
 ) {
   const live = liveFixtureApi(snapshot);
-  let session = snapshot.session;
+  // The Runtime names the executor in every Session projection, the live changes included.
+  let session = withRuntimeTitles(snapshot).session;
   const held: (() => void)[] = [];
   const calls: Record<Command, unknown[]> = {
     rename: [],

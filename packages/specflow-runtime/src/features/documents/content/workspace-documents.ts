@@ -1,5 +1,6 @@
 import {
   DocumentError,
+  OVERVIEW_DOCUMENT_ID,
   readRegisteredDocumentSummaries,
   type SpecFlowEngine,
 } from '@nevo/specflow-engine';
@@ -18,6 +19,7 @@ export type WorkspaceDocumentsSource = (specId: string) => Promise<
           readonly revision: string;
           readonly kind: string;
         }[];
+        readonly overviewDocumentId?: string;
       };
     }
   | { readonly state: 'unavailable'; readonly reason: 'source_unavailable' }
@@ -44,6 +46,10 @@ export function createEngineWorkspaceDocuments(engine: SpecFlowEngine): Workspac
             revision: summary.revision,
             kind: summary.type,
           })),
+          // The Engine's overview identity, the same one the workspace description is read by.
+          ...(summaries.some((summary) => summary.id === OVERVIEW_DOCUMENT_ID)
+            ? { overviewDocumentId: OVERVIEW_DOCUMENT_ID }
+            : {}),
         },
       };
     } catch (error) {

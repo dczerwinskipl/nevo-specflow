@@ -5,7 +5,7 @@ import type {
   SessionSnapshot,
 } from '@nevo/specflow-contracts/sessions';
 import type { ManagedSessionsApi } from './api';
-import { fixtureApi } from './managedSession.stories-support';
+import { fixtureApi, withRuntimeTitles } from './managedSession.stories-support';
 
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 
@@ -52,7 +52,9 @@ export function liveFixtureApi(
     snapshot: async (...args) => {
       reads += 1;
       const fresh =
-        reads > 1 && options.nextSnapshot ? options.nextSnapshot() : await base.snapshot(...args);
+        reads > 1 && options.nextSnapshot
+          ? withRuntimeTitles(options.nextSnapshot())
+          : await base.snapshot(...args);
       eventSeq = fresh.eventSeq;
 
       return fresh;

@@ -37,7 +37,7 @@ function projectMode(state: ProjectState): SpecificationWorkspaceData {
   return {
     ...base,
     documents: working.documents.slice(0, 2),
-    mainDocumentId: working.documents[0]?.id,
+    overviewDocumentId: working.documents[0]?.id,
     sectionAvailability: {
       tasks: 'available',
       documents: 'available',

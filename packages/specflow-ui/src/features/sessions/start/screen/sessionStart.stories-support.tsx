@@ -9,7 +9,11 @@ import type {
 } from '@nevo/specflow-contracts/sessions';
 import type { ManagedSessionsApi } from '../../managed/api';
 import { ManagedSession } from '../../managed/ManagedSession';
-import { fixtureApi, sessionFixture } from '../../managed/managedSession.stories-support';
+import {
+  fixtureApi,
+  sessionFixture,
+  withRuntimeTitles,
+} from '../../managed/managedSession.stories-support';
 import type {
   ContextSpecification,
   SessionContextViewModel,
@@ -158,7 +162,7 @@ export function StartedSessionView({
           ? new Promise(() => undefined)
           : snapshot === 'failed'
             ? Promise.reject(new Error('Session unavailable'))
-            : Promise.resolve(empty),
+            : Promise.resolve(withRuntimeTitles(empty, provider)),
       start: (_id, input) => {
         turns.push(structuredClone(input));
 

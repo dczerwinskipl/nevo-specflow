@@ -144,7 +144,9 @@ type SessionInfo = {
   projectId: string; // trusted hosting scope; not a Specification
   title?: string; // <=256 characters
   providerId: string;
+  providerTitle?: string; // presentational, the catalogue's title; absent when not listed
   modelId?: string;
+  modelTitle?: string; // presentational, the catalogue's model title; absent when not listed
   mode: 'read-only' | 'workspace-write';
   effort?: string;
   readiness: Readiness;
@@ -179,6 +181,14 @@ type Snapshot = {
   history: { hasOlder: boolean; before?: string };
 };
 ```
+
+`SessionInfo.providerTitle` and `modelTitle` are presentational and resolved on every Session read
+(the snapshot, the management answers and every `LiveProjection.session` on the event stream)
+from the Runtime's provider catalogue, exactly as for a list row; a title no longer listed is
+dropped, never kept from an earlier read. A caller with `session.view` alone therefore names the
+executor without `GET /api/session-providers` (which requires `session.create`); clients read
+that catalogue only for the composer's model, effort and mode pickers, when they can manage the
+Session.
 
 Turn summaries (from Work pages/events) include turnId, state, revision, createdAt, updatedAt,
 optional completedAt/outcome/error, userMessage and finalAnswer TextPreview, and usage.
@@ -678,10 +688,10 @@ answer 403 to a caller without it), then the identity from the demo association 
   the Sessions navigator), `mode: 'read-only'`, no
   `activeTurn`, no entries, `history.hasOlder: false`, `eventSeq: 0` and `capabilities` granting
   `view` only (`manage`, `start`, `cancel`, `delete`, `executeWrite` false). Title, provider and
-  model are the Session list row's.
+  model, with their `providerTitle` and `modelTitle`, are the Session list row's.
 - `GET /api/session-providers`: the demo catalogue's providers, requiring `session.create` at the
-  project as in project mode; every provider capability false and `modes: ['read-only']`. Without it
-  the screen names the agent by its provider id, as in project mode.
+  project as in project mode; every provider capability false and `modes: ['read-only']`. The
+  screen does not need it to name the executor: the snapshot's titles do, as in project mode.
 - `GET .../history`: still requires a cursor (`400 SESSION_CURSOR_INVALID` without one); any cursor
   answers an empty page. `GET .../turns/:turnId/work`, `.../work/:workId/actions` and
   `.../content/:contentId`: `404 SESSION_RESOURCE_NOT_FOUND` (a demo Session has no Turn).

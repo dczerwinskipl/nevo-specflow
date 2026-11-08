@@ -160,6 +160,7 @@ describe('Temporary Specification creation HTTP boundary', () => {
       kind: 'overview',
       title: 'New capability',
     });
+    expect(before.sections.documents.data.overviewDocumentId).toBe('overview');
     expect(await read(app, specId, 'overview')).toMatchObject({
       path: 'overview.md',
       title: 'New capability',

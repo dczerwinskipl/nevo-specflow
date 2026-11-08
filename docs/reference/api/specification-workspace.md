@@ -76,6 +76,12 @@ Availability and action states describe only what actually exists.
   The workspace `revision` stays the manifest `sourceRevision`: an overview-only change does **not**
   change it (clients refetch after their own document writes). Clients render `summary` as plain
   text as delivered (never parsed as Markdown again); its only bound is the 320 graphemes above.
+- `sections.documents.data.overviewDocumentId` names the overview among `items` by the Engine's
+  overview identity (document id `overview`, the one the summary is read from), whatever its
+  position in the manifest. It is present only when the overview is listed (registered and its file
+  exists), in project and demo mode alike. Clients expand the summary into this document only; when
+  it is absent they offer no expand action and never substitute another document (for example the
+  first item).
 - `sections.tasks` (temporary source): a verified manifest `tasks: []` is `available` with
   `{groups: [], completed: 0, total: 0, attention: []}`; a non-empty manifest list has no verified
   schema and stays `unavailable` / `not_implemented`. The manifest `tasks` come from the same

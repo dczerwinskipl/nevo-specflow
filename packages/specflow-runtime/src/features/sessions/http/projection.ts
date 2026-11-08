@@ -48,6 +48,26 @@ export function effectiveReadiness(
 }
 
 /**
+ * The presentational provider and model titles of the Runtime's catalogue, each absent when it is
+ * not listed. Every Session read (list rows, the snapshot, change projections) resolves them here,
+ * so a caller with `session.view` alone never needs the provider catalogue to name the executor.
+ */
+function catalogueTitles(
+  modelId: string | undefined,
+  provider: ProviderDescriptor | undefined,
+): { providerTitle?: string; modelTitle?: string } {
+  const modelTitle =
+    modelId === undefined
+      ? undefined
+      : provider?.models.find((model) => model.modelId === modelId)?.title;
+
+  return {
+    ...(provider ? { providerTitle: provider.title } : {}),
+    ...(modelTitle ? { modelTitle } : {}),
+  };
+}
+
+/**
  * A list row of a stored summary: the provider and model titles of the Runtime's catalogue (absent
  * when not listed) and the effective readiness. The mode facts stay internal.
  */
@@ -57,15 +77,10 @@ export function listedSession(
 ): SessionListSummary {
   const { mode: _mode, providerModeId: _providerModeId, ...row } = summary;
   const provider = providerFor(summary.providerId);
-  const modelTitle =
-    summary.modelId === undefined
-      ? undefined
-      : provider?.models.find((model) => model.modelId === summary.modelId)?.title;
 
   return {
     ...row,
-    ...(provider ? { providerTitle: provider.title } : {}),
-    ...(modelTitle ? { modelTitle } : {}),
+    ...catalogueTitles(summary.modelId, provider),
     readiness: effectiveReadiness(summary, summary.activeTurn !== undefined, provider),
   };
 }
@@ -96,6 +111,10 @@ export function effective(
   s.session.capabilities.cancel =
     permissions.manage && !!s.activeTurn && s.activeTurn.state !== 'unknown';
   s.session.readiness = effectiveReadiness(s.session, !!s.activeTurn, provider);
+  // Resolved on every read, never kept from an earlier one: a title no longer listed drops.
+  delete s.session.providerTitle;
+  delete s.session.modelTitle;
+  Object.assign(s.session, catalogueTitles(s.session.modelId, provider));
 
   return s;
 }

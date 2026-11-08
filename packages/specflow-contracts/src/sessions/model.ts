@@ -117,7 +117,14 @@ export const SessionInfoSchema = Type.Object(
     projectId: Type.String({ minLength: 1, maxLength: 256 }),
     title: Type.Optional(text(256)),
     providerId: Type.String({ minLength: 1, maxLength: 128 }),
+    /**
+     * Presentational: the provider's display title from the Runtime's catalogue, resolved like a
+     * list row's, so `session.view` alone can name the executor. Absent when it is not listed.
+     */
+    providerTitle: Type.Optional(Type.String({ minLength: 1, maxLength: 512 })),
     modelId: Type.Optional(text(256)),
+    /** Presentational: the display title of `modelId` in that catalogue; absent when not listed. */
+    modelTitle: Type.Optional(Type.String({ minLength: 1, maxLength: 512 })),
     mode: SessionModeSchema,
     providerModeId: Type.Optional(text(128)),
     effort: Type.Optional(text(64)),

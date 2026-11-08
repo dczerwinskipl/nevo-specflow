@@ -1,8 +1,10 @@
+import { DemoCreateOptionsSchema } from '@nevo/specflow-contracts/demo';
 import {
   BRANCH_NAME_MAX_LENGTH,
   deriveSpecSlug,
   isValidBranchName,
 } from '@nevo/specflow-contracts/specs';
+import { Value } from 'typebox/value';
 import { describe, expect, it } from 'vitest';
 import { DemoTargetError, demoSlugFor, resolveTarget } from './create-target';
 import { applyOptionsScenario, demoOptionsScenarios, parseScenarios } from './scenarios';
@@ -51,6 +53,21 @@ describe('seed registry', () => {
     expect(seed.defaultBaseRef).toBe('develop');
     expect(seed.integrationTargetBranch).toBe('develop');
     expect(seed.baseRefs).toHaveLength(7);
+  });
+  it('serves every scenario in the contract format (full base refs, short branch names)', () => {
+    const seed = options();
+    for (const name of [undefined, ...demoOptionsScenarios]) {
+      const value = name ? applyOptionsScenario(seed, name) : seed;
+      expect(Value.Check(DemoCreateOptionsSchema, value), name ?? 'seed').toBe(true);
+      for (const w of value.workspaces) {
+        expect(w.branch ?? '').not.toMatch(/^refs\//u);
+      }
+    }
+
+    expect(seed.baseRefs[0]).toEqual({
+      ref: 'refs/heads/develop',
+      checkedOutWorkspaceId: ids.main,
+    });
   });
   it('mirrors the Engine integration invariants (pin only on linked, never self, derived selectability)', () => {
     const seed = options();
@@ -237,9 +254,9 @@ describe('resolveTarget', () => {
   });
   it('validates baseRef and integration target', () => {
     const fresh = { kind: 'new-worktree' as const };
-    expect(resolveTarget(options(), { ...fresh, baseRef: 'release/1.4' }, 's').baseRef).toBe(
-      'release/1.4',
-    );
+    expect(
+      resolveTarget(options(), { ...fresh, baseRef: 'refs/heads/release/1.4' }, 's').baseRef,
+    ).toBe('refs/heads/release/1.4');
     expect(code(() => resolveTarget(options(), { ...fresh, baseRef: 'nope' }, 's'))).toEqual([
       422,
       'BASE_REF_NOT_FOUND',

@@ -1,6 +1,10 @@
 import { Button, InformationList, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import { sessionActivityLabel, type SessionSummary } from '../../specs/read-model';
+import {
+  sessionActivityLabel,
+  sessionTaskCountLabel,
+  type SessionSummary,
+} from '../../specs/read-model';
 import { OperationalRow } from '../../../shared/operational-list';
 
 export interface SessionsViewProps {
@@ -50,7 +54,10 @@ export function SessionsView({
               ? { text: session.meta }
               : undefined;
 
-          const compactFacts: [string, string] = [session.taskCount ?? '', session.age ?? ''];
+          const compactFacts: [string, string] = [
+            sessionTaskCountLabel(session, t),
+            session.age ?? '',
+          ];
 
           return (
             <OperationalRow

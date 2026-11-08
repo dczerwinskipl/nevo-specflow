@@ -39,14 +39,18 @@ export function ArchetypeSection({
   choice,
   locked,
   onChange,
+  error,
 }: {
   state: ArchetypeCatalogueState;
   choice: ArchetypeChoice;
   locked: boolean;
   onChange: (choice: ArchetypeChoice) => void;
+  /** Why the choice blocks Create (none chosen once Create was tried), shown under the options. */
+  error?: string;
 }) {
   const { t } = useTranslation();
   const headingId = useId();
+  const errorId = useId();
   const catalogue = state.status === 'ready' ? state.catalogue : undefined;
   const archetype = selectedArchetype(catalogue, choice);
   const typeTitle = (typeId: string) =>
@@ -94,6 +98,8 @@ export function ArchetypeSection({
             value={archetype?.id ?? ''}
             onValueChange={(id) => onChange(chooseArchetype(choice, id))}
             aria-labelledby={headingId}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? errorId : undefined}
             disabled={locked}
           >
             {catalogue.archetypes.map((item) => (
@@ -105,6 +111,11 @@ export function ArchetypeSection({
               />
             ))}
           </RadioGroup>
+          {error && (
+            <p id={errorId} className="m-0 text-body-sm text-content-error">
+              {error}
+            </p>
+          )}
           {!archetype ? (
             // A neutral state, not an error: the documents follow from the archetype.
             <p className="m-0 border-l border-border-subtle pl-4 text-body-sm text-content-muted">

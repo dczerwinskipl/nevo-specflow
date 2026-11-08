@@ -1,24 +1,28 @@
-import { useId, useState } from 'react';
+import { useId } from 'react';
 import { Button, InformationList, MenuItem, OverflowMenu } from '@nevo/ui';
+import { useDocumentsSummaryExpanded } from '../../../specs';
 import { type DocumentItem } from '../../../specs/read-model';
 import { OperationalRow } from '../../../../shared/operational-list';
 import { WorkspaceSection } from '../../../../shared/workspace-section';
 import { useTranslation } from 'react-i18next';
 
 export interface DocumentsSummarySectionProps {
+  readonly specId: string;
   readonly documents: readonly DocumentItem[];
   readonly onOpenDocument: (id: string) => void;
   readonly onOpenDocumentsView: () => void;
 }
 
 export function DocumentsSummarySection({
+  specId,
   documents,
   onOpenDocument,
   onOpenDocumentsView,
 }: DocumentsSummarySectionProps) {
   const { t } = useTranslation();
   const id = useId();
-  const [expanded, setExpanded] = useState(false);
+  // Outside the section: it survives Overview remounting it at a column change.
+  const [expanded, setExpanded] = useDocumentsSummaryExpanded(specId);
 
   return (
     <WorkspaceSection aria-labelledby="documents-summary-heading">
@@ -47,6 +51,8 @@ export function DocumentsSummarySection({
             compactFacts={[doc.kind]}
             supporting={doc.summary}
             onPrimaryClick={() => onOpenDocument(doc.id)}
+            // A stable identity, so focus finds the row again when Overview remounts it.
+            dataAttributes={{ 'data-focus-key': `document:${doc.id}` }}
           />
         ))}
       </InformationList>

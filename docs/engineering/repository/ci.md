@@ -169,7 +169,7 @@ read `process.platform` to decide whether to run. A test that must adapt its inp
 | `onWindows`                               | adapt an input to Windows (never to skip a check that Windows can run)                                      |
 | `hardLinksAvailable`, `symlinksAvailable` | the temporary directory accepted the link (Windows needs a privilege or Developer Mode)                     |
 | `realGitAvailable`                        | a `git` executable answers `--version`                                                                      |
-| `SLOW_GIT_TEST_TIMEOUT_MS`                | 240 s: `vi.setConfig({ testTimeout })` of a file whose tests take seconds on Linux                          |
+| `useSlowGitTestTimeouts()`                | 240 s (`SLOW_GIT_TEST_TIMEOUT_MS`) per test and hook of a file whose tests take seconds on Linux            |
 
 The helper has a unit test (`test/support/platform.test.ts`) with injected platforms and capability
 probes.
@@ -199,7 +199,7 @@ under `packages/specflow-engine/test` (a new file is placed automatically with a
 cases are not covered once; the `plan tests` job runs it on every pull request. The shards pass
 `--testTimeout=120000` (Linux seconds are minutes on a Windows runner); a test that needs more sets
 its own timeout, and a file of real-Git tests that take seconds on Linux calls
-`vi.setConfig({ testTimeout: SLOW_GIT_TEST_TIMEOUT_MS })`.
+`useSlowGitTestTimeouts()` (tests and hooks, whose teardown removes the repositories).
 
 **Windows assumptions of the document write path.** What the code assumes, and how it is checked
 without a Windows runner in the pull request:

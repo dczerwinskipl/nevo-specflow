@@ -545,9 +545,9 @@ export const Refused: Story = {
 };
 
 /**
- * The progress page and the form share one content width (`content-form`, 880 px, centred by
- * the bounded workspace): the layout does not jump on submit, running or refused alike. Narrower
- * screens fill the workspace; a drawer layout a little wider than the form centres it.
+ * The progress page and the form share one content width (`content-form`, 880 px) in the shared
+ * Focused frame, left-aligned within it: the layout does not jump on submit, running or refused
+ * alike. Narrower screens fill the workspace.
  */
 async function expectFormWidth() {
   const standard =
@@ -555,18 +555,20 @@ async function expectFormWidth() {
       getComputedStyle(document.documentElement).getPropertyValue('--spacing-content-form'),
     ) * parseFloat(getComputedStyle(document.documentElement).fontSize);
   const heading = await within(document.body).findByRole('heading', { level: 1 });
-  // The form column, centred inside the full-width scroll area (`CreateShell`).
+  // The form column inside the full-width scroll area (`CreateShell`).
   const content = heading.closest<HTMLElement>('.w-content-form')!;
   const surface =
     content.closest<HTMLElement>('[data-workspace-surface]') ?? content.parentElement!;
+  // The scroll viewport the column sits in: its client width excludes a classic scrollbar's gutter.
+  const viewport = content.closest<HTMLElement>('.scroll-area-viewport') ?? surface;
   for (const width of [1440, 1920, 2560, 900, 390]) {
     await settleViewport(width, 900);
     const box = content.getBoundingClientRect(),
       host = surface.getBoundingClientRect();
-    // One width everywhere: the form width, or the whole surface when it is narrower; centred, so a
-    // surface a little wider than the form (a drawer layout) leaves equal gutters, no strip.
-    await expect(Math.abs(box.width - Math.min(standard, host.width))).toBeLessThan(2);
-    await expect(Math.abs(box.left - host.left - (host.right - box.right))).toBeLessThan(2);
+    // One width everywhere: the form width, or the whole scrollable width when it is narrower; it
+    // starts at the surface's leading edge (its own padding is inside), never centred in a wider frame.
+    await expect(Math.abs(box.width - Math.min(standard, viewport.clientWidth))).toBeLessThan(2);
+    await expect(Math.abs(box.left - host.left)).toBeLessThan(2);
   }
 
   await settleViewport();

@@ -3,12 +3,18 @@ import type { ArchetypeInfo } from '@nevo/specflow-contracts/documents';
 import { message, type Message } from '../../../../i18n/message';
 import { providerDefaultEffort, type AgentChoice } from '../../../sessions';
 import type { WorkspaceOptionsState } from '../workspace/model/workspaceChoice';
-import { problems as workspaceProblems } from '../workspace/model/workspaceValidation';
+import { workspaceProblems } from '../workspace/model/workspaceValidation';
 import { type WorkspaceChoice } from '../workspace/model/workspaceChoice';
+import type { CreateProblemField } from './createGuide';
 
 export interface CreateReadiness {
   /** Why Create is not available yet (first blocking reason), else undefined. */
   prerequisite: Message | undefined;
+  /**
+   * The field that reason belongs to, in the form's order (name, archetype, the agent, then the
+   * workspace fields); absent when no field can fix it.
+   */
+  problemField?: CreateProblemField;
   canSubmit: boolean;
 }
 
@@ -27,24 +33,16 @@ export function createReadiness(input: {
   forbiddenCreate: boolean;
 }): CreateReadiness {
   const { specId, method, title, catalogue, agent, workspaceState, choice, archetype } = input;
-  const provider = catalogue.providers.find((p) => p.id === agent.providerId);
-  const model = provider?.models.find((m) => m.id === agent.modelId);
-  // A provider that lists no model has nothing to choose (the start rule): its Session runs the
-  // provider's default model, so the modes are the provider's own and only the default effort fits.
-  // (Same predicate as the sessions start rule `offersModelChoice`, which the sessions barrel does not export.)
-  const modelChoice = (provider?.models.length ?? 0) > 0;
-  const modeIds = modelChoice ? model?.modes : provider?.modes.map((mode) => mode.id);
-  const effortFits =
-    agent.effort === providerDefaultEffort || Boolean(model?.efforts.includes(agent.effort));
-  const workspaceProblem: Message | undefined = specId
+  const workspaceProblem: { message: Message; field?: CreateProblemField } | undefined = specId
     ? undefined
     : workspaceState.status === 'loading'
-      ? message('create.prerequisite.workspaceLoading')
+      ? { message: message('create.prerequisite.workspaceLoading') }
       : workspaceState.status === 'error'
-        ? message('create.prerequisite.workspaceError')
+        ? { message: message('create.prerequisite.workspaceError') }
         : workspaceState.status === 'forbidden'
-          ? message('create.prerequisite.forbidden')
+          ? { message: message('create.prerequisite.forbidden') }
           : workspaceProblems(choice, workspaceState.options, title)[0];
+  const agentIssue = method === 'ai' ? agentProblem(catalogue, agent) : undefined;
   const canSubmit =
     !input.configurationUnavailable &&
     !input.forbiddenCreate &&
@@ -52,33 +50,62 @@ export function createReadiness(input: {
     Boolean(method) &&
     Boolean(specId ?? title.trim()) &&
     !workspaceProblem &&
-    (method === 'manual' ||
-      Boolean(
-        provider?.available &&
-        (!modelChoice || model) &&
-        modeIds?.includes(agent.mode) &&
-        effortFits,
-      ));
-  const prerequisite = input.forbiddenCreate
-    ? message('create.prerequisite.forbidden')
-    : input.configurationUnavailable
-      ? message('create.prerequisite.refreshConfiguration')
-      : !title.trim() && !specId
-        ? message('create.prerequisite.title')
-        : !archetype && !specId
-          ? catalogue.archetypes.length === 0
-            ? message('create.prerequisite.noArchetypes')
-            : message('create.prerequisite.archetype')
-          : (workspaceProblem ??
-            (method === 'ai'
-              ? !provider?.available
-                ? message('create.prerequisite.provider')
-                : modelChoice && !model
-                  ? message('create.prerequisite.model')
-                  : !modeIds?.includes(agent.mode)
-                    ? message('create.prerequisite.mode')
-                    : undefined
-              : undefined));
+    (method === 'manual' || !agentIssue);
+  // The first problem in the form's own order, so the footer names the field a blocked Create
+  // leads to: name, archetype, the agent (right column, first), then where it is created.
+  const problem: { message: Message; field?: CreateProblemField } | undefined =
+    input.forbiddenCreate
+      ? { message: message('create.prerequisite.forbidden') }
+      : input.configurationUnavailable
+        ? { message: message('create.prerequisite.refreshConfiguration') }
+        : !title.trim() && !specId
+          ? { message: message('create.prerequisite.title'), field: 'name' }
+          : !archetype && !specId
+            ? catalogue.archetypes.length === 0
+              ? { message: message('create.prerequisite.noArchetypes') }
+              : { message: message('create.prerequisite.archetype'), field: 'archetype' }
+            : (agentIssue ?? workspaceProblem);
 
-  return { prerequisite, canSubmit };
+  return {
+    prerequisite: problem?.message,
+    ...(problem?.field ? { problemField: problem.field } : {}),
+    canSubmit,
+  };
+}
+
+/**
+ * The first problem of the agent of a first Session, in the order of its fields: an unavailable
+ * provider, a missing model (when the provider lists models), an effort the model does not offer
+ * (the Effort field comes before Work mode), a work mode the choice does not run.
+ * The form shows it at that field once Create was tried, and a blocked Create leads there.
+ */
+export function agentProblem(
+  catalogue: DemoCatalogue,
+  agent: AgentChoice,
+): { message: Message; field: 'provider' | 'model' | 'effort' | 'mode' } | undefined {
+  const provider = catalogue.providers.find((p) => p.id === agent.providerId);
+  const model = provider?.models.find((m) => m.id === agent.modelId);
+  // A provider that lists no model has nothing to choose (the start rule): its Session runs the
+  // provider's default model, so the modes are the provider's own.
+  // (Same predicate as the sessions start rule `offersModelChoice`, which the sessions barrel does not export.)
+  const modelChoice = (provider?.models.length ?? 0) > 0;
+  const modeIds = modelChoice ? model?.modes : provider?.modes.map((mode) => mode.id);
+  if (!provider?.available) {
+    return { message: message('create.prerequisite.provider'), field: 'provider' };
+  }
+
+  if (modelChoice && !model) {
+    return { message: message('create.prerequisite.model'), field: 'model' };
+  }
+
+  // Only the provider's default fits a model without efforts (or a provider without models).
+  if (agent.effort !== providerDefaultEffort && !model?.efforts.includes(agent.effort)) {
+    return { message: message('create.prerequisite.effort'), field: 'effort' };
+  }
+
+  if (!modeIds?.includes(agent.mode)) {
+    return { message: message('create.prerequisite.mode'), field: 'mode' };
+  }
+
+  return undefined;
 }

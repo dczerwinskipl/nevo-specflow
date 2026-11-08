@@ -4783,14 +4783,14 @@
     {
       "id": "ideas.specflow-runtime.antigravity-provider",
       "type": "engineering",
-      "title": "Antigravity Session provider discovery and admission prerequisites",
+      "title": "Antigravity managed Session provider",
       "status": "draft",
       "file": "docs/ideas/specflow-runtime/antigravity-provider.md",
       "read_when": [
-        "implementing the Antigravity Session adapter",
-        "checking native context allocation, cancellation and sandbox prerequisites"
+        "implementing or reviewing the Antigravity Session adapter",
+        "checking account binding, interactive tools and process settlement"
       ],
-      "summary": "Verified installed CLI surface, primary protocol evidence, and explicit gaps that must be closed before advertising managed Antigravity execution.",
+      "summary": "Native Antigravity protocol, private configuration, account affinity and interactive bridge implementation, with separate controlled and native evidence.",
       "related": [
         "ideas.specflow-runtime.provider-migration-plan",
         "ideas.specflow-runtime.provider-process-boundary",
@@ -4966,14 +4966,14 @@
     {
       "id": "ideas.specflow-runtime.provider-migration-plan",
       "type": "engineering",
-      "title": "Real provider migration after the independent Session foundation",
+      "title": "Provider integration migration and capability backlog",
       "status": "draft",
       "file": "docs/ideas/specflow-runtime/provider-migration-plan.md",
       "read_when": [
         "continuing migration after Plan 04",
         "planning real provider parity and managed writer integration"
       ],
-      "summary": "Bounded follow-on deliveries for Claude, Codex and Antigravity against the fixed Session driver contract, with explicit Engine prerequisites for writable execution.",
+      "summary": "Consolidated provider capability follow-ups, source evidence and acceptance boundaries, alongside historical migration checkpoints. Future capabilities are outside PR 107.",
       "related": [
         "ideas.specflow-engine.plan-04",
         "ideas.specflow-engine.plan-05",
@@ -4991,6 +4991,7 @@
       "tags": [
         "providers",
         "migration",
+        "backlog",
         "claude",
         "codex",
         "antigravity"
@@ -5025,6 +5026,70 @@
         "review",
         "recovery",
         "migration"
+      ]
+    },
+    {
+      "id": "ideas.specflow-runtime.session-telemetry-delivery",
+      "type": "engineering",
+      "title": "Session telemetry backend delivery plan",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/session-telemetry-delivery.md",
+      "read_when": [
+        "implementing or reviewing the Session telemetry API delivery"
+      ],
+      "summary": "Dependency-complete backend implementation and verification plan for live Session telemetry, without UI or Task/Specification/Workflow dependencies.",
+      "related": [
+        "reference.api.session-telemetry",
+        "ideas.specflow-runtime.ai-adapters.usage-accounting"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "server",
+        "security",
+        "testing"
+      ],
+      "tags": [
+        "sessions",
+        "telemetry",
+        "planning",
+        "implementation"
+      ]
+    },
+    {
+      "id": "ideas.specflow-runtime.session-v10-backend-readiness",
+      "type": "engineering",
+      "title": "Session migration remainder and V10 backend readiness",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/session-v10-backend-readiness.md",
+      "read_when": [
+        "implementing Session Workspace V2 or Session Chat V10 against real Runtime APIs",
+        "checking which old Nevo Session functionality remains to migrate",
+        "planning bounded Work inspection and product association follow-ups"
+      ],
+      "summary": "Evidence-based remaining legacy functionality and backend capability gaps for accepted Workspace V2 and Chat V10, without promoting prototype fixtures to APIs.",
+      "related": [
+        "ideas.specflow-runtime.provider-migration-plan",
+        "ideas.specflow-ui.components.session-chat-v10-design",
+        "ideas.specflow-ui.components.session-composer-design",
+        "reference.api.sessions",
+        "architecture.ai.canonical-session-turn-work"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "ui",
+        "testing"
+      ],
+      "tags": [
+        "sessions",
+        "migration",
+        "work",
+        "context",
+        "providers",
+        "composer"
       ]
     },
     {
@@ -5740,7 +5805,7 @@
         "reviewing Specification creation and manual or AI preparation in the demo",
         "reviewing the Documents explorer and editor interactions"
       ],
-      "summary": "Owner-approved Create and Documents contract of the bounded demo: workflow-led single-column creation, first-session configuration, branch/worktree choice, preview-first documents in a larger Secondary, and folder-context inline file operations through bounded Runtime demo capabilities.",
+      "summary": "Owner-approved Create and Documents contract of the bounded demo: workflow-led creation in one column, or two from a 992 px form column, first-session configuration, branch/worktree choice, preview-first documents in a larger Secondary, and folder-context inline file operations through bounded Runtime demo capabilities.",
       "related": [
         "ideas.specflow-ui.screens.specs-overview",
         "ideas.specflow-ui.navigation-route-model",
@@ -6175,6 +6240,26 @@
       ]
     },
     {
+      "id": "product.specflow.ui.shell-geometry",
+      "type": "product",
+      "title": "App Shell geometry decisions",
+      "status": "current",
+      "file": "docs/product/specflow/ui/shell-geometry.md",
+      "read_when": [
+        "changing the width or position of the Specifications list, Create Specification or a Specification screen",
+        "changing AppWorkspace fit, the Focused frame or the Bounded workspace rule",
+        "adding a section to Specification Overview or changing its columns",
+        "picking up an open UX finding about the shell, the navigator or mobile"
+      ],
+      "summary": "Owner decisions of November 2026 on SpecFlow screen geometry: one Focused frame that grows to 1440 px for the Specifications list and Create, full width inside a Specification, a two-column Create and Specification Overview, the alternatives that were rejected and why, and the UX findings left open for later work.",
+      "related": [
+        "design-system.principles.layout-and-containment",
+        "design-system.implementation.react.secondary-navigation",
+        "product.specflow.specification-creation",
+        "product.specflow.ui.interaction-model"
+      ]
+    },
+    {
       "id": "ideas.specflow-engine.acceptance",
       "type": "reference",
       "title": "Engine worktree foundation acceptance criteria",
@@ -6337,6 +6422,40 @@
         "runtime",
         "server",
         "ui"
+      ]
+    },
+    {
+      "id": "reference.api.session-telemetry",
+      "type": "reference",
+      "title": "Session telemetry HTTP and live update contract",
+      "status": "draft",
+      "file": "docs/reference/api/session-telemetry.md",
+      "read_when": [
+        "designing provider telemetry producers and Session telemetry readers",
+        "implementing live UI consumption of token usage, costs, limits and context size"
+      ],
+      "summary": "Bounded Session telemetry snapshot, explicit refresh and existing-stream invalidation contract, with provider provenance, freshness and partial availability.",
+      "related": [
+        "reference.api.sessions",
+        "ideas.specflow-runtime.ai-adapters.usage-accounting",
+        "ideas.specflow-runtime.session-v10-backend-readiness"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "server",
+        "security",
+        "ui"
+      ],
+      "tags": [
+        "sessions",
+        "telemetry",
+        "usage",
+        "cost",
+        "limits",
+        "context",
+        "sse"
       ]
     },
     {

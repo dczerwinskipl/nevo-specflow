@@ -92,6 +92,7 @@ describe('authorization HTTP API', () => {
       expect(sessions.json<CapabilityDiscoveryResponse>().capabilities).toEqual({
         create: true,
         'execute-write': true,
+        'view-provider-limits': false,
         view: true,
         manage: true,
       });

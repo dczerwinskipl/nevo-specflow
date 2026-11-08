@@ -70,6 +70,10 @@ export async function openSessionStore(options: {
       }
     }
 
+    if (message.id === undefined) {
+      return;
+    }
+
     if (message.metrics) {
       metrics = message.metrics;
     }

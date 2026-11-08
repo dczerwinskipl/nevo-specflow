@@ -87,6 +87,12 @@ export const CreateOptionsSchema = Type.Object(
       },
       { additionalProperties: false },
     ),
+    /**
+     * The configured base ref as written: `HEAD`, a full commit SHA, `refs/heads/...` or
+     * `refs/tags/...`, or a short local branch name without `/` (which designates
+     * `refs/heads/<name>`; a short tag name such as `v1.0` is therefore read as a branch). Not
+     * necessarily one of `baseRefs`; {@link designatedBaseRef} gives the ref it designates.
+     */
     defaultBaseRef: Type.String({ minLength: 1 }),
     /** Effective pattern; `{shortId}` is optional, so `feature/{slug}` previews as `feature/<slug>`. */
     branchPattern: Type.String({ minLength: 1 }),
@@ -97,10 +103,19 @@ export const CreateOptionsSchema = Type.Object(
     ),
     integrationTargetBranch: Type.Optional(Type.String({ minLength: 1 })),
     commits: Type.Optional(CreateCommitsSchema),
+    /**
+     * Local branches a new worktree can start from. Every other branch in this document
+     * (`workspaces[].branch`, `integrationTargetBranch`, `integrationDestination.branch`) is a
+     * short name; these are not.
+     */
     baseRefs: Type.Array(
       Type.Object(
         {
-          ref: Type.String({ minLength: 1 }),
+          /**
+           * Always the full ref `refs/heads/<branch>`: the identity of the option and the value a
+           * `target.baseRef` override sends. Its display name is `<branch>`.
+           */
+          ref: Type.String({ pattern: '^refs/heads/.+$' }),
           checkedOutWorkspaceId: Type.Optional(Uuid),
         },
         { additionalProperties: false },
@@ -111,3 +126,29 @@ export const CreateOptionsSchema = Type.Object(
 );
 
 export type CreateOptions = Static<typeof CreateOptionsSchema>;
+
+const LOCAL_BRANCH_REF_PREFIX = 'refs/heads/';
+
+/** The full ref of the local branch with this short name, written like `baseRefs[].ref`. */
+export function localBranchRef(branch: string): string {
+  return LOCAL_BRANCH_REF_PREFIX + branch;
+}
+
+const COMMIT = /^[a-f0-9]{40}(?:[a-f0-9]{24})?$/iu;
+
+/**
+ * The ref a configured base ref (`defaultBaseRef`) designates, in the same order as the Engine's
+ * `normalizeBaseRef` (`version-control/git/refs.ts`): `HEAD`, a full commit SHA and a `refs/...`
+ * name as written, anything else as the local branch of that name. It does not validate: the
+ * value comes from a policy the Engine has already validated.
+ */
+export function designatedBaseRef(value: string): string {
+  return value === 'HEAD' || COMMIT.test(value) || value.startsWith('refs/')
+    ? value
+    : localBranchRef(value);
+}
+
+/** How a ref is shown: a local branch by its short name, any other ref (`HEAD`, a tag) as is. */
+export function refDisplayName(ref: string): string {
+  return ref.startsWith(LOCAL_BRANCH_REF_PREFIX) ? ref.slice(LOCAL_BRANCH_REF_PREFIX.length) : ref;
+}

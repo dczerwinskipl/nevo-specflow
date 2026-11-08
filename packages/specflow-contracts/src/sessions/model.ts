@@ -70,6 +70,16 @@ export const TextPreviewSchema = Type.Union([
     closed,
   ),
 ]);
+export const CommandPermissionActionSchema = Type.Object(
+  {
+    operation: Type.Literal('command'),
+    command: Type.String({ minLength: 1, maxLength: 7000 }),
+    cwd: Type.String({ minLength: 1, maxLength: 1024 }),
+    authority: Type.Union([Type.Literal('workspace-write'), Type.Literal('host-execution')]),
+    approval: Type.Literal('once'),
+  },
+  closed,
+);
 export const InteractionSchema = Type.Union([
   Type.Object(
     {
@@ -96,6 +106,7 @@ export const InteractionSchema = Type.Union([
       kind: Type.Literal('permission'),
       prompt: text(8192),
       actionSummary: text(8192),
+      action: Type.Optional(CommandPermissionActionSchema),
     },
     closed,
   ),
@@ -242,6 +253,7 @@ const turnFields = {
         inputTokens: Type.Optional(SessionSequenceSchema),
         outputTokens: Type.Optional(SessionSequenceSchema),
         cachedTokens: Type.Optional(SessionSequenceSchema),
+        cacheWriteTokens: Type.Optional(SessionSequenceSchema),
         reasoningTokens: Type.Optional(SessionSequenceSchema),
       },
       closed,
@@ -321,6 +333,14 @@ export const LiveProjectionSchema = Type.Object(
 );
 const event = { sessionId: SessionIdSchema, eventSeq: SessionSequenceSchema };
 export const SessionChangeSchema = Type.Union([
+  Type.Object(
+    {
+      ...event,
+      kind: Type.Literal('telemetry'),
+      changes: Type.Object({ telemetryRevision: SessionSequenceSchema }, closed),
+    },
+    closed,
+  ),
   Type.Object(
     {
       ...event,

@@ -1,4 +1,5 @@
 import type { DemoCreateOptions } from '@nevo/specflow-contracts/demo';
+import { localBranchRef } from '@nevo/specflow-contracts/specs';
 
 import {
   demoWorkspaceIds,
@@ -213,10 +214,11 @@ export function applyOptionsScenario(
         ),
       );
       next.baseRefs = [
-        { ref: 'develop', checkedOutWorkspaceId: demoWorkspaceIds.platform },
-        { ref: 'release/1.4', checkedOutWorkspaceId: demoWorkspaceIds.main },
+        { ref: localBranchRef('develop'), checkedOutWorkspaceId: demoWorkspaceIds.platform },
+        { ref: localBranchRef('release/1.4'), checkedOutWorkspaceId: demoWorkspaceIds.main },
         ...next.baseRefs.filter(
-          (b) => !['develop', 'feature/platform', 'release/1.4'].includes(b.ref),
+          (b) =>
+            !['develop', 'feature/platform', 'release/1.4'].map(localBranchRef).includes(b.ref),
         ),
       ];
       break;
@@ -274,7 +276,7 @@ export function applyOptionsScenario(
           integrationSelectable: true,
           branch,
         });
-        next.baseRefs.push({ ref: branch, checkedOutWorkspaceId: workspaceId });
+        next.baseRefs.push({ ref: localBranchRef(branch), checkedOutWorkspaceId: workspaceId });
       }
 
       break;
@@ -293,9 +295,9 @@ export function applyOptionsScenario(
         ),
       );
       next.baseRefs = next.baseRefs.map((b) =>
-        b.ref === 'develop'
+        b.ref === localBranchRef('develop')
           ? { ref: b.ref }
-          : b.ref === 'main'
+          : b.ref === localBranchRef('main')
             ? { ...b, checkedOutWorkspaceId: demoWorkspaceIds.main }
             : b,
       );
@@ -324,7 +326,7 @@ export function applyOptionsScenario(
         strip(w.workspaceId === demoWorkspaceIds.platform ? { ...w, branch: long } : w),
       );
       next.baseRefs = next.baseRefs.map((b) =>
-        b.ref === 'feature/platform' ? { ...b, ref: long } : b,
+        b.ref === localBranchRef('feature/platform') ? { ...b, ref: localBranchRef(long) } : b,
       );
       break;
     }

@@ -27,6 +27,9 @@ describe('project Session feature configuration', () => {
       { providers: { codex: { allowUnsafe: true } } },
       { providers: { codex: { enabled: 'true' } } },
       { providers: { codex: { executable: 'codex' } } },
+      { providers: { antigravity: { enabled: 'true' } } },
+      { providers: { antigravity: { executable: 'agy' } } },
+      { providers: { antigravity: { allowUnsafe: true } } },
     ]) {
       expect(() => parseSessionsFeatureConfig(input)).toThrow();
     }
@@ -37,6 +40,14 @@ describe('project Session feature configuration', () => {
     ).toEqual({
       enabled: true,
       providers: { mock: { enabled: false }, codex: { enabled: true } },
+    });
+  });
+  it('supports explicit Antigravity enablement through the existing provider configuration', () => {
+    expect(
+      parseSessionsFeatureConfig({ enabled: true, providers: { antigravity: { enabled: true } } }),
+    ).toEqual({
+      enabled: true,
+      providers: { mock: { enabled: false }, antigravity: { enabled: true } },
     });
   });
   it('supports explicit Claude enablement independently of the mock', () => {

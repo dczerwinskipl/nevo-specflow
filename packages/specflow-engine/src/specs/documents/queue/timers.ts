@@ -23,11 +23,17 @@ export const systemQueueTimers: QueueTimers = {
 };
 
 export type DeadlineOutcome<T> =
-  { readonly kind: 'done'; readonly value: T } | { readonly kind: 'deadline' };
+  | { readonly kind: 'done'; readonly value: T }
+  | {
+      readonly kind: 'deadline';
+      /** `work`, still running (it cannot be cancelled): resolves once it, and all it started, ends. */
+      readonly overrun: Promise<void>;
+    };
 
 /**
  * Waits for `work` for at most `ms`. When the deadline wins, `work` keeps running (a Git commit
- * cannot be cancelled) and its eventual failure is swallowed here: the caller no longer waits for it.
+ * cannot be cancelled); the outcome's `overrun` is how a caller that needs to know learns when it ends.
+ * `work`'s own eventual failure is otherwise swallowed here: the caller no longer waits for it.
  */
 export async function withDeadline<T>(
   work: Promise<T>,
@@ -38,7 +44,13 @@ export async function withDeadline<T>(
   const deadline = new Promise<DeadlineOutcome<T>>((resolve) => {
     handle = timers.set(
       () => {
-        resolve({ kind: 'deadline' });
+        resolve({
+          kind: 'deadline',
+          overrun: work.then(
+            () => undefined,
+            () => undefined,
+          ),
+        });
       },
       Math.max(0, ms),
     );

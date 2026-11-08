@@ -1,3 +1,4 @@
+import type { MutableRefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Field } from '@nevo/ui';
 import { LocalizedOptionPicker } from '../../../../shared/controls/LocalizedOptionPicker';
@@ -13,11 +14,17 @@ export function EffortField({
   value,
   disabled,
   onChange,
+  error,
+  controlRef,
 }: {
   efforts: readonly string[];
   value: string;
   disabled: boolean;
   onChange: (effort: string) => void;
+  /** Why the effort blocks the owner's form (Create, once tried); shown under the field. */
+  error?: string;
+  /** The picker's control, so the owner can lead focus to it. */
+  controlRef?: MutableRefObject<HTMLElement | null>;
 }) {
   const { t } = useTranslation();
   const off = disabled || efforts.length === 0;
@@ -29,9 +36,17 @@ export function EffortField({
   });
 
   return (
-    <Field disabled={off}>
+    <Field disabled={off} invalid={Boolean(error)}>
       <Field.Label>{t('sessionStart.fields.effort')}</Field.Label>
-      <LocalizedOptionPicker value={value} disabled={off} onValueChange={onChange} items={items} />
+      <LocalizedOptionPicker
+        value={value}
+        disabled={off}
+        invalid={Boolean(error)}
+        controlRef={controlRef}
+        onValueChange={onChange}
+        items={items}
+      />
+      {error && <Field.Error>{error}</Field.Error>}
     </Field>
   );
 }

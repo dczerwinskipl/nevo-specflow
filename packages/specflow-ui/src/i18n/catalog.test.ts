@@ -78,6 +78,7 @@ describe('message catalogues', () => {
     // Product names and message templates that are the same in both languages.
     const sameInBoth = new Set([
       'create.workspace.settings.unavailableReason',
+      'create.workspace.rows.actionLabel',
       'documents.tree.skippedItem',
       'documents.tabs.typeAndPath',
       'common.pullRequestNumber',

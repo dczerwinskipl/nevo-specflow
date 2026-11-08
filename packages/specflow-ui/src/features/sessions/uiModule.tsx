@@ -28,7 +28,7 @@ export const sessionsUiModule: UiModule = {
   contributions: [
     contributeTo(specificationWorkSections, {
       id: 'specflow.sessions.resume',
-      slot: 'context',
+      slot: 'resume',
       isVisible: ({ data }) => !data.isEmpty && Boolean(data.resumeSession),
       Component: SpecificationResumeSession,
     }),

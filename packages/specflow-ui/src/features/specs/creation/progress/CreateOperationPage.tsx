@@ -247,7 +247,6 @@ export function CreateOperationPage({
                 {
                   choice: (choice) => ({
                     ...choice,
-                    settingsOpen: true,
                     branch: choice.branch.on
                       ? choice.branch
                       : { on: true, name: '', edited: false },

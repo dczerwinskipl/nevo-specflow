@@ -1,6 +1,7 @@
 import {
   branchNameProblem,
   engineCommitRefusal,
+  localBranchRef,
   specSlugProblem,
 } from '@nevo/specflow-contracts/specs';
 import type { CreateOptions } from '@nevo/specflow-contracts/specs';
@@ -8,6 +9,7 @@ import { message, type Message } from '../../../../../i18n/message';
 import type { WorkspaceChoice } from './workspaceChoice';
 import {
   branchPreview,
+  readableBranchName,
   createOverrides,
   effectiveSlug,
   generatedBranchRefusal,
@@ -75,63 +77,77 @@ export function revalidate(choice: WorkspaceChoice, options: CreateOptions): Wor
   return errors;
 }
 
-/** The blocking problems of the active tile, ordered like the footer prerequisite. */
-export function problems(choice: WorkspaceChoice, options: CreateOptions, title = ''): Message[] {
+/** The field of the workspace section a blocking problem belongs to. */
+export type WorkspaceProblemField = 'tile' | 'existing' | 'base' | 'target' | 'slug' | 'branch';
+
+export interface WorkspaceProblem {
+  readonly field: WorkspaceProblemField;
+  readonly message: Message;
+}
+
+/**
+ * The blocking problems of the active tile, in the section's own order (the tiles, then the fields
+ * of the chosen place from top to bottom), each with the field that has to change. The first one
+ * is the footer prerequisite and the field a blocked Create leads to.
+ */
+export function workspaceProblems(
+  choice: WorkspaceChoice,
+  options: CreateOptions,
+  title = '',
+): WorkspaceProblem[] {
   const tile = activeTile(choice, options);
   const availability = tileAvailability(options);
   if (!tile) {
-    return [message('create.workspace.errors.noWorkspace')];
+    return [{ field: 'tile', message: message('create.workspace.errors.noWorkspace') }];
   }
 
   if (!availability[tile].ok) {
-    return [staleMessages.tile];
+    return [{ field: 'tile', message: staleMessages.tile }];
   }
 
   const errors = revalidate(choice, options);
-  const list: Message[] = [];
-  if (tile === 'existing') {
-    if (!choice.existingWorkspaceId) {
-      list.push(message('create.workspace.errors.pickWorkspace'));
-    } else if (errors.existing) {
-      list.push(errors.existing);
+  const list: WorkspaceProblem[] = [];
+  const add = (field: WorkspaceProblemField, problem: Message | undefined) => {
+    if (problem) {
+      list.push({ field, message: problem });
     }
+  };
+
+  if (tile === 'existing') {
+    add('existing', choice.existingWorkspaceId ? errors.existing : requiredMessages.existing);
   }
 
   if (tile === 'new') {
-    if (choice.base.on && !choice.base.ref) {
-      list.push(message('create.workspace.errors.pickBase'));
-    } else if (errors.base) {
-      list.push(errors.base);
-    }
-
-    if (choice.target.on && !choice.target.workspaceId) {
-      list.push(message('create.workspace.errors.pickTarget'));
-    } else if (errors.target) {
-      list.push(errors.target);
-    }
-
+    add('base', choice.base.on && !choice.base.ref ? requiredMessages.base : errors.base);
+    add(
+      'target',
+      choice.target.on && !choice.target.workspaceId ? requiredMessages.target : errors.target,
+    );
     if (choice.slug.on && choice.slug.edited) {
-      const error = slugError(choice.slug.value);
-      if (error) {
-        list.push(error);
-      }
+      add('slug', slugError(choice.slug.value));
     }
 
     if (choice.branch.on && choice.branch.edited) {
-      const error = branchNameError(choice.branch.name, options);
-      if (error) {
-        list.push(error);
-      }
+      add('branch', branchNameError(choice.branch.name, options));
     }
 
-    const generated = generatedBranchProblem(choice, options, title);
-    if (generated) {
-      list.push(generated);
-    }
+    add('branch', generatedBranchProblem(choice, options, title));
   }
 
   return list;
 }
+
+/** The blocking problems of the active tile as messages, in the section's order. */
+export function problems(choice: WorkspaceChoice, options: CreateOptions, title = ''): Message[] {
+  return workspaceProblems(choice, options, title).map((problem) => problem.message);
+}
+
+/** What a picker that was opened but left empty says (shown once Create was tried). */
+export const requiredMessages = {
+  existing: message('create.workspace.errors.pickWorkspace'),
+  base: message('create.workspace.errors.pickBase'),
+  target: message('create.workspace.errors.pickTarget'),
+} as const;
 
 /**
  * The generated branch is one the Engine will not commit on and the owner has not typed another
@@ -153,7 +169,7 @@ export function generatedBranchProblem(
     refusal === 'branch-protected'
       ? 'create.workspace.errors.generatedBranchProtected'
       : 'create.workspace.errors.generatedBranchNotAllowed',
-    { branch: branchPreview(options, slug) },
+    { branch: readableBranchName(branchPreview(options, slug)) },
   );
 }
 
@@ -189,8 +205,9 @@ export function branchNameError(name: string, options: CreateOptions): Message |
       break;
   }
 
+  // `baseRefs` hold full refs, workspaces short branch names.
   if (
-    options.baseRefs.some((item) => item.ref === branch) ||
+    options.baseRefs.some((item) => item.ref === localBranchRef(branch)) ||
     options.workspaces.some((item) => item.branch === branch)
   ) {
     return message('create.workspace.errors.branchExists');
@@ -232,8 +249,13 @@ export function workspaceFieldErrors(
               : 'create.workspace.errors.branchExists',
         )
       : undefined;
+  const typedBranch = choice.branch.on && choice.branch.edited;
   const branch =
     (errors.branch && choice.branch.name.trim() ? errors.branch : undefined) ??
+    // A name typed and then cleared blocks Create: say so at the field, not only in the footer.
+    (typedBranch && !choice.branch.name.trim()
+      ? message('create.workspace.errors.branchEmpty')
+      : undefined) ??
     branchConflict ??
     generatedBranchProblem(choice, options, title);
   const typedSlug = choice.slug.edited ? slugError(choice.slug.value) : undefined;

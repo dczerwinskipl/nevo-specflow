@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Typography } from '../../components';
 import { AppShell } from '../shell/AppShell';
-import { AppContent, AppWorkspace, AppWorkspaceBody } from './AppWorkspace';
+import { AppContent, AppContentContainer, AppWorkspace, AppWorkspaceBody } from './AppWorkspace';
 import { WorkspaceHeader } from './WorkspaceHeader';
 import type { AppWorkspaceFit } from './workspaceSizing';
 
@@ -13,6 +13,9 @@ const viewports = {
   w1366: { name: '1366', styles: { width: '1366px', height: '768px' }, type: 'desktop' },
   w1440: { name: '1440', styles: { width: '1440px', height: '900px' }, type: 'desktop' },
   w1600: { name: '1600', styles: { width: '1600px', height: '900px' }, type: 'desktop' },
+  // Either side of the Focused maximum (90rem + 260 navigation + 8 gap = 1708 px).
+  w1700: { name: '1700', styles: { width: '1700px', height: '900px' }, type: 'desktop' },
+  w1720: { name: '1720', styles: { width: '1720px', height: '900px' }, type: 'desktop' },
   w1920: { name: '1920', styles: { width: '1920px', height: '1080px' }, type: 'desktop' },
   w2560: { name: '2560', styles: { width: '2560px', height: '1440px' }, type: 'desktop' },
 } as const;
@@ -27,21 +30,32 @@ function Navigation() {
   );
 }
 
-function Rows({ label }: { label: string }) {
+function Rows({ label, column = false }: { label: string; column?: boolean }) {
+  const rows = (
+    <div className="grid gap-2">
+      {Array.from({ length: 6 }, (_, index) => (
+        <div
+          className="rounded-control border border-border-subtle bg-surface-subtle p-3"
+          key={index}
+        >
+          <Typography className="text-content-secondary" variant="body-sm">
+            {label} row {index + 1}
+          </Typography>
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <AppWorkspaceBody>
-      <div className="grid gap-2">
-        {Array.from({ length: 6 }, (_, index) => (
-          <div
-            className="rounded-control border border-border-subtle bg-surface-subtle p-3"
-            key={index}
-          >
-            <Typography className="text-content-secondary" variant="body-sm">
-              {label} row {index + 1}
-            </Typography>
-          </div>
-        ))}
-      </div>
+      {column ? (
+        // A reading column inside the full-width pane, as a Focused page composes it.
+        <AppContentContainer align="start" data-fit-column="primary">
+          {rows}
+        </AppContentContainer>
+      ) : (
+        rows
+      )}
     </AppWorkspaceBody>
   );
 }
@@ -65,8 +79,8 @@ function FitFixture({ fit, secondary = false, primaryMaxPx }: FitFixtureProps) {
         <AppWorkspace.Primary
           header={<WorkspaceHeader actions={headerActions} title="Collection" />}
         >
-          <AppContent className="w-content-standard max-w-full" data-fit-content="primary">
-            <Rows label="Collection" />
+          <AppContent className="w-full" data-fit-content="primary">
+            <Rows column label="Collection" />
           </AppContent>
         </AppWorkspace.Primary>
         {secondary ? (
@@ -152,54 +166,123 @@ function assertFullWidth(layoutRect: DOMRect, message: string) {
   assert(layoutRect.width >= window.innerWidth - 2 * layoutRect.left - 1, message);
 }
 
-const contentStandardPx = 68.75 * 16;
+/** The Focused frame maximum, read from the design token so the contract follows it. */
+function focusedFramePx() {
+  const root = getComputedStyle(document.documentElement);
+  const token = root.getPropertyValue('--spacing-workspace-focused').trim();
+  assert(token.endsWith('rem'), `The workspace-focused token is a rem length (${token}).`);
 
-async function verifyBoundedWide(canvasElement: HTMLElement, width: number) {
-  const { mainRect, borders, layout, content, navigation } = await measure(canvasElement, width);
+  return Number.parseFloat(token) * Number.parseFloat(root.fontSize);
+}
+
+/** Below the maximum the Focused frame fills the available width exactly like `available`. */
+async function verifyFocusedFills(canvasElement: HTMLElement, width: number) {
+  const { mainRect, layout, navigation } = await measure(canvasElement, width);
+  assert(layout.dataset.workspaceFit === 'bounded', 'Bounded Primary-only is the Focused frame.');
+  assert(navigation, 'Wide layouts keep persistent navigation.');
   assert(
-    layout.dataset.workspaceFit === 'content',
-    'Bounded Primary-only resolves to a content fit.',
+    Math.abs(navigation.getBoundingClientRect().left) <= 0.5,
+    'Below its maximum the frame is not centred: the navigation stays at the edge.',
   );
-  const contentWidth = content.getBoundingClientRect().width;
   assert(
-    Math.abs(contentWidth - contentStandardPx) <= 1,
-    `The Primary keeps content-standard width (${contentWidth}).`,
+    Math.abs(mainRect.right - window.innerWidth) <= 0.5,
+    `The frame fills to the viewport edge (${mainRect.right} of ${window.innerWidth}).`,
   );
   assert(
-    Math.abs(mainRect.width - borders - contentWidth) <= 1,
-    `The workspace is bounded to the Primary content (${mainRect.width} vs ${contentWidth}).`,
+    mainRect.width < focusedFramePx(),
+    `The frame is below its maximum (${mainRect.width} < ${focusedFramePx()}).`,
+  );
+  const main = canvasElement.querySelector<HTMLElement>('main[data-app-shell-region="workspace"]')!;
+  assert(main.dataset.appShellWorkspaceFit === 'edge', 'A filling frame keeps the edge surface.');
+}
+
+/** At its maximum the Focused frame is the token width, border included, and centred. */
+async function verifyFocusedCentred(canvasElement: HTMLElement, width: number) {
+  const { mainRect, layout, navigation } = await measure(canvasElement, width);
+  assert(layout.dataset.workspaceFit === 'bounded', 'Bounded Primary-only is the Focused frame.');
+  assert(
+    Math.abs(mainRect.width - focusedFramePx()) <= 0.5,
+    `The frame stops at the workspace-focused token (${mainRect.width} vs ${focusedFramePx()}).`,
   );
   assertCentredGroup(navigation, mainRect);
+  const main = canvasElement.querySelector<HTMLElement>('main[data-app-shell-region="workspace"]')!;
+  assert(main.dataset.appShellWorkspaceFit === 'inset', 'A centred frame is an inset surface.');
+  assert(
+    getComputedStyle(main).borderRightWidth !== '0px',
+    'An inset frame restores its right edge.',
+  );
 }
 
 export const BoundedPrimaryOnly: Story = {
   globals: { viewport: { value: 'w1920', isRotated: false } },
 };
 
-export const BoundedPrimaryOnly1440Contract: Story = {
+export const BoundedFocusedFills1366Contract: Story = {
+  tags: ['contract', '!autodocs'],
+  globals: { viewport: { value: 'w1366', isRotated: false } },
+  play: async ({ canvasElement }) => verifyFocusedFills(canvasElement, 1366),
+};
+
+export const BoundedFocusedFills1440Contract: Story = {
   tags: ['contract', '!autodocs'],
   globals: { viewport: { value: 'w1440', isRotated: false } },
-  play: async ({ canvasElement }) => verifyBoundedWide(canvasElement, 1440),
+  play: async ({ canvasElement }) => verifyFocusedFills(canvasElement, 1440),
 };
 
-export const BoundedPrimaryOnly1920Contract: Story = {
+export const BoundedFocusedFills1600Contract: Story = {
+  tags: ['contract', '!autodocs'],
+  globals: { viewport: { value: 'w1600', isRotated: false } },
+  play: async ({ canvasElement }) => verifyFocusedFills(canvasElement, 1600),
+};
+
+/**
+ * Continuity across the maximum (about 1708 px): just below it the frame still equals the
+ * available width with the navigation at the edge; just above it the frame is the token width and
+ * centred. Nothing jumps in between, the frame only stops growing.
+ */
+export const BoundedFocusedFills1700Contract: Story = {
+  tags: ['contract', '!autodocs'],
+  globals: { viewport: { value: 'w1700', isRotated: false } },
+  play: async ({ canvasElement }) => {
+    await verifyFocusedFills(canvasElement, 1700);
+    const { mainRect, navigation } = await measure(canvasElement, 1700);
+    assert(navigation, 'Wide layouts keep persistent navigation.');
+    // The shell's gap custom property, inherited by the navigation.
+    const gap = Number.parseFloat(getComputedStyle(navigation).getPropertyValue('--app-shell-gap'));
+    assert(Number.isFinite(gap), 'The shell publishes its --app-shell-gap.');
+    const available = window.innerWidth - navigation.getBoundingClientRect().right - gap;
+    assert(
+      Math.abs(mainRect.width - available) <= 0.5,
+      `At 1700 the frame is the available width (${mainRect.width} vs ${available}).`,
+    );
+  },
+};
+
+export const BoundedFocusedCentred1720Contract: Story = {
+  tags: ['contract', '!autodocs'],
+  globals: { viewport: { value: 'w1720', isRotated: false } },
+  play: async ({ canvasElement }) => verifyFocusedCentred(canvasElement, 1720),
+};
+
+export const BoundedFocusedCentred1920Contract: Story = {
   tags: ['contract', '!autodocs'],
   globals: { viewport: { value: 'w1920', isRotated: false } },
-  play: async ({ canvasElement }) => verifyBoundedWide(canvasElement, 1920),
+  play: async ({ canvasElement }) => verifyFocusedCentred(canvasElement, 1920),
 };
 
-export const BoundedPrimaryOnly2560Contract: Story = {
+export const BoundedFocusedCentred2560Contract: Story = {
   tags: ['contract', '!autodocs'],
   globals: { viewport: { value: 'w2560', isRotated: false } },
-  play: async ({ canvasElement }) => verifyBoundedWide(canvasElement, 2560),
+  play: async ({ canvasElement }) => verifyFocusedCentred(canvasElement, 2560),
 };
 
 export const BoundedPrimaryOnly1024Contract: Story = {
   tags: ['contract', '!autodocs'],
   globals: { viewport: { value: 'w1024', isRotated: false } },
   play: async ({ canvasElement }) => {
-    const { navigation, content, layoutRect } = await measure(canvasElement, 1024);
+    const { navigation, content, layout, layoutRect } = await measure(canvasElement, 1024);
     assert(!navigation, 'At 1024 navigation is a drawer.');
+    assert(layout.dataset.workspaceFit === 'available', 'A drawer layout fills.');
     assertFullWidth(layoutRect, 'The bounded workspace spans the viewport in drawer mode.');
     assert(
       content.getBoundingClientRect().width <= layoutRect.width + 0.5,
@@ -218,17 +301,193 @@ export const BoundedPrimaryOnly390Contract: Story = {
   },
 };
 
-export const BoundedWithSecondary1440Contract: Story = {
+export const BoundedWithSecondary1920Contract: Story = {
   tags: ['contract', '!autodocs'],
   args: { secondary: true },
-  globals: { viewport: { value: 'w1440', isRotated: false } },
+  globals: { viewport: { value: 'w1920', isRotated: false } },
   play: async ({ canvasElement }) => {
-    const { layout, mainRect, navigation } = await measure(canvasElement, 1440);
+    const { layout, mainRect, navigation } = await measure(canvasElement, 1920);
+    assert(
+      layout.dataset.workspaceFit === 'available',
+      'A bounded workspace that shows a Secondary fills.',
+    );
+    assertFillsWide(navigation, mainRect, 'The split workspace fills beyond the Focused maximum');
+    // The regions are sized like `available`: Primary is exactly its 75% share of the group.
+    const primary = canvasElement.querySelector<HTMLElement>('[data-workspace-surface="primary"]');
+    const secondary = canvasElement.querySelector<HTMLElement>(
+      '[data-workspace-surface="secondary"]',
+    );
+    assert(primary && secondary, 'Primary and Secondary are split side by side.');
+    const group = layout.getBoundingClientRect().width;
+    const primaryWidth = primary.getBoundingClientRect().width;
+    const secondaryWidth = secondary.getBoundingClientRect().width;
+    assert(
+      Math.abs(primaryWidth - group * 0.75) <= 1.5,
+      `Primary keeps its 75% share: ${primaryWidth} of ${group}.`,
+    );
+    assert(
+      Math.abs(primaryWidth + secondaryWidth - group) <= 1.5,
+      `Secondary takes the rest: ${primaryWidth} + ${secondaryWidth} of ${group}.`,
+    );
+  },
+};
+
+/**
+ * A Focused page whose Primary hosts its own workspace (for example an editor region) with
+ * `fit="available"`. The shell reads only the outermost fit marker, so the outer frame stays the
+ * Focused frame and the nested workspace fills its own region.
+ */
+function NestedAvailableFixture() {
+  return (
+    <AppShell navigation={<Navigation />}>
+      <AppWorkspace fit="bounded" split="primary">
+        <AppWorkspace.Primary header={<WorkspaceHeader title="Focused page" />}>
+          <AppContent className="w-full" data-fit-content="primary">
+            <AppWorkspace fit="available">
+              <AppWorkspace.Primary header={<WorkspaceHeader title="Nested editor" />}>
+                <AppContent className="w-full" data-fit-content="nested">
+                  <Rows label="Nested" />
+                </AppContent>
+              </AppWorkspace.Primary>
+            </AppWorkspace>
+          </AppContent>
+        </AppWorkspace.Primary>
+      </AppWorkspace>
+    </AppShell>
+  );
+}
+
+async function verifyNestedAvailable(canvasElement: HTMLElement, width: number) {
+  const markers = [...canvasElement.querySelectorAll<HTMLElement>('[data-workspace-fit]')];
+  assert(markers.length === 2, 'The fixture renders an outer and a nested workspace.');
+  const [outer, nested] = markers as [HTMLElement, HTMLElement];
+  assert(outer.contains(nested), 'The second workspace is nested in the first.');
+  assert(nested.dataset.workspaceFit === 'available', 'The nested workspace fills.');
+  if (width > 1708) {
+    await verifyFocusedCentred(canvasElement, width);
+  } else {
+    await verifyFocusedFills(canvasElement, width);
+  }
+
+  const region = canvasElement.querySelector<HTMLElement>('[data-fit-content="primary"]')!;
+  const regionRect = region.getBoundingClientRect();
+  const nestedRect = nested.getBoundingClientRect();
+  assert(
+    Math.abs(nestedRect.width - regionRect.width) <= 0.5 &&
+      Math.abs(nestedRect.left - regionRect.left) <= 0.5,
+    `The nested workspace fills its region (${nestedRect.width} of ${regionRect.width}).`,
+  );
+}
+
+export const NestedAvailableInBounded1600Contract: StoryObj<typeof NestedAvailableFixture> = {
+  render: () => <NestedAvailableFixture />,
+  tags: ['contract', '!autodocs'],
+  globals: { viewport: { value: 'w1600', isRotated: false } },
+  play: async ({ canvasElement }) => verifyNestedAvailable(canvasElement, 1600),
+};
+
+export const NestedAvailableInBounded1920Contract: StoryObj<typeof NestedAvailableFixture> = {
+  render: () => <NestedAvailableFixture />,
+  tags: ['contract', '!autodocs'],
+  globals: { viewport: { value: 'w1920', isRotated: false } },
+  play: async ({ canvasElement }) => verifyNestedAvailable(canvasElement, 1920),
+};
+
+/**
+ * The reverse nesting: a full-width (`available`) page that hosts a `bounded` workspace in its
+ * Primary. The nested marker must not turn the outer surface into a Focused frame.
+ */
+function NestedBoundedFixture() {
+  return (
+    <AppShell navigation={<Navigation />}>
+      <AppWorkspace fit="available" split="primary">
+        <AppWorkspace.Primary header={<WorkspaceHeader title="Detail page" />}>
+          <AppContent className="w-full" data-fit-content="primary">
+            <AppWorkspace fit="bounded">
+              <AppWorkspace.Primary header={<WorkspaceHeader title="Nested region" />}>
+                <AppContent className="w-full">
+                  <Rows label="Nested" />
+                </AppContent>
+              </AppWorkspace.Primary>
+            </AppWorkspace>
+          </AppContent>
+        </AppWorkspace.Primary>
+      </AppWorkspace>
+    </AppShell>
+  );
+}
+
+export const NestedBoundedInAvailable1920Contract: StoryObj<typeof NestedBoundedFixture> = {
+  render: () => <NestedBoundedFixture />,
+  tags: ['contract', '!autodocs'],
+  globals: { viewport: { value: 'w1920', isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const { mainRect, layout, navigation } = await measure(canvasElement, 1920);
+    assert(layout.dataset.workspaceFit === 'available', 'The outer workspace fills.');
+    assertFillsWide(navigation, mainRect, 'A nested bounded workspace leaves the outer frame full');
+    const main = canvasElement.querySelector<HTMLElement>(
+      'main[data-app-shell-region="workspace"]',
+    )!;
+    assert(main.dataset.appShellWorkspaceFit === 'edge', 'The outer surface stays on the edge.');
+  },
+};
+
+/**
+ * A plain `fit="content"` consumer (the default) with a Secondary and small intrinsic content keeps
+ * its old behaviour: the workspace is as wide as its regions, centred with the navigation, with the
+ * inset edge. The Focused frame changed only `bounded`.
+ */
+function ContentIntrinsicFixture() {
+  return (
+    <AppShell navigation={<Navigation />}>
+      <AppWorkspace split="primary">
+        <AppWorkspace.Primary header={<WorkspaceHeader title="List" />}>
+          <div data-intrinsic="primary" style={{ width: 420 }}>
+            <Rows label="List" />
+          </div>
+        </AppWorkspace.Primary>
+        <AppWorkspace.Secondary header={<WorkspaceHeader title="Context" />}>
+          <div data-intrinsic="secondary" style={{ width: 300 }}>
+            <Rows label="Context" />
+          </div>
+        </AppWorkspace.Secondary>
+      </AppWorkspace>
+    </AppShell>
+  );
+}
+
+export const ContentIntrinsicWithSecondary1920Contract: StoryObj<typeof ContentIntrinsicFixture> = {
+  render: () => <ContentIntrinsicFixture />,
+  tags: ['contract', '!autodocs'],
+  globals: { viewport: { value: 'w1920', isRotated: false } },
+  play: async ({ canvasElement }) => {
+    await settle();
+    const main = canvasElement.querySelector<HTMLElement>(
+      'main[data-app-shell-region="workspace"]',
+    )!;
+    const layout = canvasElement.querySelector<HTMLElement>('[data-workspace-fit]')!;
+    const navigation = canvasElement.querySelector<HTMLElement>(
+      '[data-app-shell-region="navigation"]',
+    );
     assert(
       layout.dataset.workspaceFit === 'content',
-      'Bounded with a Secondary also fits content.',
+      'The default fit with a Secondary is content.',
     );
+    const mainRect = main.getBoundingClientRect();
+    const style = getComputedStyle(main);
+    const borders =
+      Number.parseFloat(style.borderLeftWidth) + Number.parseFloat(style.borderRightWidth);
+    const regions = [...canvasElement.querySelectorAll<HTMLElement>('[data-intrinsic]')].reduce(
+      (sum, region) => sum + region.getBoundingClientRect().width,
+      0,
+    );
+    assert(
+      Math.abs(mainRect.width - borders - regions - 1) <= 1.5,
+      `The workspace is as wide as its regions (${mainRect.width} vs ${regions} + borders).`,
+    );
+    assert(mainRect.width < focusedFramePx(), 'An intrinsic workspace is not the Focused frame.');
     assertCentredGroup(navigation, mainRect);
+    assert(main.dataset.appShellWorkspaceFit === 'inset', 'An intrinsic workspace is inset.');
   },
 };
 

@@ -36,6 +36,13 @@ interface AppWorkspaceContextValue {
   /** Content-box width inside the surface borders: the width slot sizes must add up to. */
   contentWidth?: number;
   navigationMode: AppNavigationMode;
+  /**
+   * Re-reads the workspace surface width before paint. `AppWorkspace` calls it from a layout
+   * effect whenever its resolved fit changes (for example on a route change between a Focused and
+   * a full-width screen), so the inset edge (`border-r`, top-right corner) is right in the first
+   * paint instead of one coalesced `ResizeObserver` frame later.
+   */
+  syncWorkspaceWidth?: () => void;
 }
 
 const AppWorkspaceContext = createContext<AppWorkspaceContextValue>({
@@ -66,6 +73,7 @@ function useDescendantWidth<T extends HTMLElement>(
   enabled: boolean,
 ) {
   const [width, setWidth] = useState<number>();
+  const measureNow = useRef<(() => void) | undefined>(undefined);
 
   useLayoutEffect(() => {
     if (!enabled) {
@@ -82,11 +90,19 @@ function useDescendantWidth<T extends HTMLElement>(
     const update = () => setWidth(element.getBoundingClientRect().width);
 
     update();
+    measureNow.current = update;
+    const stopObserving = observeWidthCoalesced(element, update);
 
-    return observeWidthCoalesced(element, update);
+    return () => {
+      measureNow.current = undefined;
+      stopObserving?.();
+    };
   }, [enabled, root, selector]);
 
-  return width;
+  // Stable identity: consumers call it from layout effects keyed on their own sizing inputs.
+  const sync = useCallback(() => measureNow.current?.(), []);
+
+  return { width, sync };
 }
 
 export interface AppShellProps extends Omit<HTMLAttributes<HTMLDivElement>, 'children'> {
@@ -142,7 +158,7 @@ export function AppShell({
     resolveAppShellLayout(shellWidth);
   const labels = { ...defaultAppShellLabels, ...labelsProp };
   const capture = useDesignMetadata('AppShell', { viewport: 'desktop' });
-  const workspaceWidth = useDescendantWidth(
+  const { width: workspaceWidth, sync: syncWorkspaceWidth } = useDescendantWidth(
     shellElement,
     '[data-app-shell-region="workspace"]',
     wide,
@@ -172,8 +188,8 @@ export function AppShell({
     inset: workspaceIsInset,
   });
   const workspaceContext = useMemo<AppWorkspaceContextValue>(
-    () => ({ availableWidth, contentWidth, navigationMode }),
-    [availableWidth, contentWidth, navigationMode],
+    () => ({ availableWidth, contentWidth, navigationMode, syncWorkspaceWidth }),
+    [availableWidth, contentWidth, navigationMode, syncWorkspaceWidth],
   );
   const geometryStyle = {
     '--app-navigation-width': `${APP_NAVIGATION_WIDTH}px`,
@@ -233,10 +249,17 @@ export function AppShell({
                 <WorkspaceSurface
                   as="main"
                   material={workspaceMaterialOwner === 'shell'}
+                  // The workspace fit decides the surface width in CSS: `content` is intrinsic,
+                  // `available` fills, and `bounded` (the Focused frame) asks for the
+                  // `workspace-focused` token, which the max-width clamps to the available width.
+                  // The row's `justify-center` then centres navigation and workspace only while
+                  // the frame is narrower than the available width. Only the outermost workspace
+                  // marker counts (`:not([data-workspace-fit] *)`): a nested workspace never
+                  // changes the frame.
                   className={cn(
                     workspaceMaterialOwner === 'shell'
                       ? cn(
-                          'mt-4 h-[calc(100%-1rem)] w-max has-[[data-workspace-fit=available]]:w-full min-w-0 max-w-[calc(100%-var(--app-navigation-width)-var(--app-shell-gap))] flex-none overflow-hidden rounded-tl-surface border-t border-l border-workspace-edge',
+                          'mt-4 h-[calc(100%-1rem)] w-max has-[[data-workspace-fit=available]:not([data-workspace-fit]_*)]:w-full has-[[data-workspace-fit=bounded]:not([data-workspace-fit]_*)]:w-workspace-focused min-w-0 max-w-[calc(100%-var(--app-navigation-width)-var(--app-shell-gap))] flex-none overflow-hidden rounded-tl-surface border-t border-l border-workspace-edge',
                           workspaceIsInset && 'rounded-tr-surface border-r',
                         )
                       : 'h-full w-full min-w-0 flex-none overflow-hidden',

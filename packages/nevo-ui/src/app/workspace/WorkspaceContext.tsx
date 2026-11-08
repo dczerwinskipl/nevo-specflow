@@ -73,6 +73,12 @@ interface RuntimeDefinition {
 
 interface WorkspaceFocusTarget {
   element: HTMLElement;
+  /**
+   * The opener's stable identity, from its closest `data-focus-key` ancestor (for example a row
+   * keyed by its object id). It finds the same control again when the product remounted it while
+   * the Secondary was open.
+   */
+  focusKey: string | null;
   ariaLabel: string | null;
   layerKey: string | null;
   name: string | null;
@@ -366,6 +372,7 @@ function getActiveElement(): WorkspaceFocusTarget | null {
 
   return {
     element,
+    focusKey: element.closest<HTMLElement>('[data-focus-key]')?.dataset.focusKey ?? null,
     ariaLabel: element.getAttribute('aria-label'),
     layerKey:
       element.closest<HTMLElement>('[data-workspace-layer]')?.dataset.workspaceLayer ?? null,
@@ -384,6 +391,30 @@ function resolveFocusTarget(target: WorkspaceFocusTarget) {
     return target.element;
   }
 
+  const inTargetLayer = (candidate: HTMLElement) =>
+    !target.layerKey ||
+    candidate.closest<HTMLElement>('[data-workspace-layer]')?.dataset.workspaceLayer ===
+      target.layerKey;
+
+  // A remounted opener: prefer its stable identity (in the same layer), then the same control
+  // inside it.
+  const keyed = target.focusKey
+    ? Array.from(document.querySelectorAll<HTMLElement>('[data-focus-key]')).find(
+        (candidate) => candidate.dataset.focusKey === target.focusKey && inTargetLayer(candidate),
+      )
+    : undefined;
+  if (keyed) {
+    const within = [keyed, ...keyed.querySelectorAll<HTMLElement>(target.tagName)].filter(
+      (candidate) => candidate.tagName === target.tagName && isInteractiveLayerElement(candidate),
+    );
+    const match =
+      within.find((candidate) => candidate.getAttribute('aria-label') === target.ariaLabel) ??
+      within[0];
+    if (match) {
+      return match;
+    }
+  }
+
   const candidates = Array.from(document.querySelectorAll<HTMLElement>(target.tagName));
 
   return candidates.find((candidate) => {
@@ -391,11 +422,7 @@ function resolveFocusTarget(target: WorkspaceFocusTarget) {
       return false;
     }
 
-    if (
-      target.layerKey &&
-      candidate.closest<HTMLElement>('[data-workspace-layer]')?.dataset.workspaceLayer !==
-        target.layerKey
-    ) {
+    if (!inTargetLayer(candidate)) {
       return false;
     }
 

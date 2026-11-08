@@ -7,3 +7,4 @@ export { specificationAttentionItems } from './extensions/specificationAttention
 export { specificationWorkSections } from './extensions/specificationWorkSections';
 export type { SpecificationWorkSectionContext } from './extensions/specificationWorkSections';
 export { SpecificationAggregatePage } from './pages/SpecificationAggregatePage';
+export { useDocumentsSummaryExpanded } from './SpecificationStateProvider';

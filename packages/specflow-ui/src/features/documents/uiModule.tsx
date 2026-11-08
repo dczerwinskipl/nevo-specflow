@@ -2,9 +2,10 @@ import { contributeTo, type UiModule } from '../../app/ui-modules/contracts';
 import { specificationWorkSections, type SpecificationWorkSectionContext } from '../specs';
 import { DocumentsSummarySection } from './contributions/specification-work/DocumentsSummarySection';
 
-function SpecificationDocuments({ data, actions }: SpecificationWorkSectionContext) {
+function SpecificationDocuments({ specId, data, actions }: SpecificationWorkSectionContext) {
   return (
     <DocumentsSummarySection
+      specId={specId}
       documents={data.documents}
       onOpenDocument={actions.openDoc}
       onOpenDocumentsView={actions.openDocumentsView}

@@ -31,6 +31,38 @@ stay visible at the bottom of the screen at every width, on one line (the hint f
 the end), in a bar as high as the navigation's account row; only the form above them scrolls. What
 went wrong after a submit is explained at the end of the form, above that action.
 
+**Layout.** The form is shown in the Focused frame (the design-system Bounded workspace rule). It is
+one column below a 992 px form column (`62rem`) and two columns from it. The threshold is a container
+query on the form column, never a viewport breakpoint: whether the navigation is open or closed,
+at any window width or zoom, the form is two columns exactly when its column is at least 992 px
+wide (a phone or 200% zoom is always one column). The left
+column holds what is created: the name, the goal and the archetype with its documents. The right
+column holds where it is created: the workspace place and its Git settings. DOM order is the reading
+and keyboard order: Tab moves through the whole left column, then the right column, then the Create
+button. Below the threshold the form keeps its reading column (`content-form`, left-aligned); from it
+the form grows to at most two control widths and the gap between them (72rem), left-aligned, and the
+Create button still ends on the form's edge. There is no preview panel and no Secondary. Controls
+keep their maximum widths however wide the frame is: text inputs and text areas, the Git rows and
+their fields, and the agent's provider cards and fields stop at about 34rem. In two columns each
+column is at most 34rem, so everything in it, the workspace tiles included, shares one edge; in one
+column the workspace tiles span the reading column (three side by side when it is wide enough).
+
+**When Create is blocked.** A Create blocked by the form's own values stays a focusable submit button
+marked `aria-disabled="true"` (it is announced as unavailable, never `disabled`). Activating it
+(click, Enter or Space), or pressing Enter in a field, never submits and sends nothing: it announces
+the blocking reason in the form's live region and moves focus to the first faulty field in the
+form's order (the name, the archetype, then the workspace and Git fields: the tile, the existing
+workspace, Start from, Merge into, the slug, the branch name), brought into view with its message.
+The pinned footer sits under the scrolling form, never over it, so a field in view is never
+covered.
+The footer hint has a quiet **Go to the field** action that does the same. With several problems at
+once it always leads to the first one in that order. Fields validate inline with `aria-invalid` and
+a message tied to them by `aria-describedby`; a missing value (the empty name, an empty picker) is
+flagged only once the owner typed and left the field empty, or tried Create, never before. A reason
+no field can fix (options or archetypes loading, no permission, nothing installed) is named in the
+footer without the action. Locked states (no permission, an operation in progress) still disable the
+button.
+
 Display branch, Spec count and availability from `create-options`. Disabled, detached and
 (Git enabled) protected-branch workspaces cannot be selected. A dirty existing checkout can still be suitable for adding another
 Spec, while future integration requires an eligible clean attached destination. A missing branch
@@ -46,11 +78,22 @@ following the configured default if primary currently uses another branch.
 **Merge into** names a **workspace** (the contract's `integrationTargetWorkspaceId` is a workspace
 pin; the default is the primary workspace on the project's integration target branch): show the
 workspace as the primary text and its branch as a secondary branch chip. **Start from** and
-**Branch name** are branches. The collapsed "default settings" summary is one definition list with
-exactly three rows (Start from, Merge into, Branch name), and every branch in the section uses one
-shared presentational piece (`BranchRef`: one icon size, the `code-md` token, no parenthesised or
-colon variants). A caveat about the default merge target (for example uncommitted changes in the
-primary workspace) is a quiet inline note on the Merge row; it never blocks Create.
+**Branch name** are branches. The settings of a new workspace are **three decision rows**: Start
+from, Merge into and Branch name, under a quiet label that says whether Create uses the defaults or
+which of them were changed. Each row shows its label, the value Create will use and one quiet text
+action: **Change**, or **Restore default** while the row is changed. Changing Start from or Merge into
+replaces the value with its picker in the row; changing Branch name reveals the slug and branch
+fields under the row directly (no further switches). All three actions look the same, and each is
+named for its row, starting with its visible text (for example _"Change: Start from"_). On a narrow
+screen the label and the action share the first line and the value takes the second. The rows sit
+in the section without an accent container, new separators or switches. Every branch in the section
+uses one shared presentational piece (`BranchRef`: one icon size, the `code-md` token, no
+parenthesised or colon variants). A caveat about the default merge target (for example uncommitted
+changes in the primary workspace) is a quiet inline note on the Merge row; it never blocks Create.
+A row with nothing to choose from (no local branch to start from, no workspace that can be a merge
+target) has no action and says why on the row. Under the rows, quietly: where the files are
+committed (Git enabled, see below) and the worktree folder as one truncated line with the full path
+as its tooltip.
 
 **Uncommitted changes in a merge target.** Creating the specification is not affected. What it
 affects is closing/integrating the specification into that workspace later: the Engine refuses to
@@ -62,12 +105,14 @@ target (the Merge row note, the unavailable item in the target select, the "unav
 target" list, and the merge-back suggestion); there is no vague "not
 available now" wording, and it stays a quiet inline note, never an alert.
 
-Each optional setting (Start from, Merge into, slug, branch name) is switched on with the
-**effective default prefilled** (current branch of the folder, the default target workspace, the
-slug derived from the name and the generated branch), so the user only adjusts it. An untouched
-or default-equal value is never sent as an override (an explicit merge target would become an
-immutable pin, omission follows the project); only a value that differs is. Switching a setting
-off restores the default.
+**Change** starts each setting (Start from, Merge into, slug and branch name) from the **effective
+default prefilled** (the listed ref of the default base, the default target workspace, the slug
+derived from the name and the generated branch), so the user only adjusts it. An untouched or
+default-equal value is never sent as an override (an explicit merge target would become an
+immutable pin, omission follows the project); only a value that differs is. **Restore default**
+restores the default and forgets the typed or picked value. A message about a value the owner has
+to fix names the row action, never a switch, for example _"Choose a starting branch or use
+“Restore default”."_
 
 The optional `slug` names the Specification folder, the worktree folder and the generated branch
 (`branchPattern` with `{slug}`). It is lowercase kebab-case ASCII (at most 80 characters, the
@@ -75,8 +120,13 @@ rule the Engine uses for derived slugs, shared as `deriveSpecSlug`/`specSlugProb
 `@nevo/specflow-contracts/specs`). The UI previews the slug live from the name until the user
 edits it and validates a typed one inline; a taken slug answers `CREATE_CONFLICT` and is shown at
 the field. The final branch and worktree location still belong to Engine: the UI shows only a
-**preview** built from `branchPattern` and the slug (the default `feature/{slug}` previews exactly
-as `feature/<slug>`; only a pattern containing the optional `{shortId}` shows it as `<id>`), and it never promises that later integration will succeed.
+**preview** built from `branchPattern` and the slug, and it never promises that later integration
+will succeed. The preview never shows template tokens such as `<key>`: a part that exists only once
+the Specification is created (the key `{key}`, numbered at reservation, the optional random id
+`{shortId}`, or the slug before there is a name) is written as a word in its own quiet style
+(_feature/key-payment-limits_, with _key_ set apart) and a quiet note says what it is (_"The
+specification key is assigned when it is created."_). In a sentence the same part is an ellipsis
+(`feature/…-payment-limits`). The preview wraps rather than hiding its end.
 
 **Goal** is sent as `goal`, persisted in the Create journal and written to the Specification
 overview scaffold. The progress page shows it shortened (the first 160 characters, as one line of
@@ -111,18 +161,19 @@ text:
   a merge target (it is not evaluated), so the merge-target logic and its muted dirty note are
   unchanged.
 - **Generated or typed branch name.** `newWorktree.branchProtected: true` means the branch the
-  pattern generates is protected. The tile stays selectable, the generated branch row states
+  pattern generates is protected. The tile stays selectable, the Branch name row states
   _"The generated branch X is protected: Nevo does not commit there. Use your own branch name."_ and
-  Create stays unavailable (the footer prerequisite names the same problem) until the owner types a
-  branch name of their own. A typed branch name is checked in the browser with the contracts rule
+  Create stays unavailable (the footer prerequisite names the same problem, and a blocked Create
+  opens the row and leads to its branch field) until the owner types a branch name of their own. A typed branch name is checked in the browser with the contracts rule
   (`engineCommitRefusal`, the exact predicate the Engine uses) and a protected or not-allowed name is
   a field-level error _before_ submit. The server remains authoritative.
 - **Invalid Git configuration.** `newWorktree.reason: git-policy-invalid` disables only the
   **New workspace** tile, calmly: _"The project's Git configuration is invalid. Check
   .nevo/config.yaml."_ Current folder and Existing workspace keep working.
-- **Commit row.** The new-workspace summary has a **Commit** row, and the current-folder and
-  existing-workspace summaries a quiet line: _"The specification files will be committed to branch
-  X."_ The progress page lists it (_Commit_: the branch) among its **Technical details**, not in
+- **Commit note.** Under the decision rows of a new workspace a quiet note refers to the branch
+  shown above instead of repeating it: _"The specification files will be committed to this
+  branch."_ The current-folder and existing-workspace summaries have a quiet line that names the
+  branch: _"The specification files will be committed to branch X."_ The progress page lists it (_Commit_: the branch) among its **Technical details**, not in
   the configuration summary, from facts the form saved with the draft.
 
 ### Errors (code to copy; server text is never shown)
@@ -181,9 +232,11 @@ entered, and continues on a dedicated page, `/specs/new/creating/:operationId` (
 safe to reload). The page sends the request when the server has not seen it, follows the operation
 and tells the owner clearly what is going on. **Progress is the primary content**; the
 configuration is a compact secondary summary below it. The page is a focused single-task page,
-stacked vertically, and works from 320 px. It has the same content width and alignment as the form
-(one focused column of about 880 px, the `content-form` width, centred; narrower screens fill the
-workspace), so the layout does not jump on submit.
+stacked vertically, and works from 320 px. It is shown in the same Focused frame as the form and
+the Specifications list (the design-system Bounded workspace rule), so nothing moves on submit: the
+frame and the left edge stay where the form had them. Its content, dividers included, stays at one
+focused column of about 880 px (the `content-form` width), left-aligned with the form, also when the
+form above used two columns; narrower screens fill the workspace.
 
 From top to bottom:
 

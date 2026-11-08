@@ -251,10 +251,12 @@ interface CommonAppWorkspaceProps {
    * How the workspace is sized in split-capable (Wide/Compact) layouts. Stacked layouts always
    * fill the available width.
    * - `content` (default): fit intrinsic content when a Secondary is shown; Primary-only fills.
-   * - `available`: always fill the measured available workspace (editors, creation flows).
-   * - `bounded`: always fit intrinsic content, with or without a Secondary, so a Primary-only page
-   *   whose readable unit has a fixed optimal width (a bounded `AppContent`) is centred with the
-   *   navigation instead of stretching.
+   * - `available`: always fill the measured available workspace (editors, detail workspaces).
+   * - `bounded`: the Focused frame for a Primary-only page. The workspace is
+   *   `min(available width, --spacing-workspace-focused)` wide, border included: it fills like
+   *   `available` until it reaches that maximum and is then centred with the navigation, so it
+   *   never jumps while the window is resized. The content inside keeps its own reading widths.
+   *   With a drawer navigation or a shown Secondary it fills like `available`.
    */
   fit?: AppWorkspaceFit;
   split?: AppWorkspaceSplitMode;
@@ -708,7 +710,7 @@ function RuntimeSurfaceRegion({
     <div
       className={cn(
         'min-w-0 flex-none overflow-clip outline-none',
-        'w-max max-w-full group-data-[workspace-fit=available]/workspace:w-full',
+        'w-max max-w-full group-data-[workspace-fit=available]/workspace:w-full group-data-[workspace-fit=bounded]/workspace:w-full',
         divider && (dividerSide === 'end' ? 'border-r' : 'border-l'),
         divider && 'border-border-subtle',
       )}
@@ -1086,7 +1088,7 @@ function AppWorkspaceRoot({
 
   const workspace = useOptionalWorkspace();
   const secondaryTabsScope = `${SECONDARY_TABS_SCOPE_PREFIX}-${useId()}`;
-  const { navigationMode } = useAppWorkspace();
+  const { navigationMode, syncWorkspaceWidth } = useAppWorkspace();
   const runtimeSecondary = workspace?.secondary ?? null;
   const defaultSecondary = staticSurfaces.defaultSecondary;
   const defaultSecondaryOpen = defaultSecondary?.open ?? false;
@@ -1190,6 +1192,11 @@ function AppWorkspaceRoot({
         }
       : secondaryPresentationBase;
   const resolvedFit = resolveWorkspaceFit(fit, state.mode, state.showSecondary, navigationMode);
+  // The shell's inset edge follows the surface width; re-read it before paint when this
+  // workspace mounts or changes its fit, so a route change never paints a stale edge.
+  useLayoutEffect(() => {
+    syncWorkspaceWidth?.();
+  }, [resolvedFit, syncWorkspaceWidth]);
   const mobileRuntime = useMobileWorkspaceTransition({
     secondaryInstanceKey:
       state.mode === 'stacked' && state.showSecondary ? secondaryPresentation?.key : undefined,
@@ -1353,7 +1360,7 @@ function AppWorkspaceRoot({
       instanceKey="primary"
       key="primary"
       leadingAction={primaryNavigationAction}
-      fitAvailable={fit === 'available'}
+      fitAvailable={resolvedFit === 'available'}
       maxWidth={state.primaryMaxWidth}
       mobileRuntime={state.mode === 'stacked' ? mobileRuntime.primary : undefined}
       onMobileMotionComplete={mobileRuntime.completeMotion}
@@ -1397,7 +1404,7 @@ function AppWorkspaceRoot({
         contentNavigation={secondaryLocalNavigationRow}
         headerVariant={splitRailHeader ? 'tab-rail' : 'header'}
         detailHeaderHosted={detailHeaderHosted}
-        fitAvailable={fit === 'available'}
+        fitAvailable={resolvedFit === 'available'}
         maxWidth={state.mode === 'split' ? state.secondaryMaxWidth : undefined}
         mobileRuntime={state.mode === 'stacked' ? mobileRuntime.secondary : undefined}
         onMobileMotionComplete={mobileRuntime.completeMotion}

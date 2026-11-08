@@ -1,25 +1,16 @@
-import { FolderPlus, Layers } from 'lucide-react';
+import { Layers } from 'lucide-react';
 import { type Dispatch, type MutableRefObject, type ReactNode, type SetStateAction } from 'react';
-import type { TFunction } from 'i18next';
 import { Trans, useTranslation } from 'react-i18next';
 import { useMessage } from '../../../../i18n/message';
-import { Badge, DescriptionList, Field, Icon, InlineNote, Typography, cn } from '@nevo/ui';
+import { Badge, DescriptionList, Field, Icon, InlineNote, Typography } from '@nevo/ui';
 import { LocalizedOptionPicker } from '../../../../shared/controls/LocalizedOptionPicker';
 import type { CreateOptions } from '@nevo/specflow-contracts/specs';
 import { BranchRef } from './BranchRef';
 import { NewWorkspaceSettings, type WorkspaceSettingsControls } from './NewWorkspaceSettings';
-import { WorkspaceLabel, WorkspaceRef } from './WorkspaceRef';
-import { branchPreview, createOverrides, effectiveSlug } from './model/createRequest';
-import { generatedBranchProblem } from './model/workspaceValidation';
+import { WorkspaceLabel } from './WorkspaceRef';
+import type { SettingsFocusRequest } from './settingsTypes';
+import { inheritedTarget, primaryWorkspace } from './model/workspaceTiles';
 import {
-  inheritedTarget,
-  primaryWorkspace,
-  targetStatus,
-  defaultTargetWorkspaceId,
-} from './model/workspaceTiles';
-import {
-  defaultSettingsSummary,
-  mergeUnavailableNote,
   noBranchLabel,
   reasonText,
   settingsSummary,
@@ -71,85 +62,11 @@ export function SummaryRow({
   );
 }
 
-/** Where the changes will be merged back: a workspace (never a bare branch) and, quietly, a caveat. */
-function mergeRow(
-  options: CreateOptions,
-  choice: WorkspaceChoice,
-  t: TFunction,
-  text: ReturnType<typeof useMessage>,
-): { value: ReactNode; note?: ReactNode; override: boolean } {
-  if (choice.target.on) {
-    const picked = options.workspaces.find((w) => w.workspaceId === choice.target.workspaceId);
-
-    return picked
-      ? {
-          value: <WorkspaceRef workspace={picked} />,
-          override: choice.target.workspaceId !== defaultTargetWorkspaceId(options),
-        }
-      : {
-          value: (
-            <span className="text-status-attention">{t('create.workspace.merge.pickTarget')}</span>
-          ),
-          override: false,
-        };
-  }
-
-  const status = targetStatus(options);
-  switch (status.kind) {
-    case 'ok':
-      return { value: <WorkspaceRef workspace={status.workspace} />, override: false };
-    case 'unavailable':
-      return {
-        value: <WorkspaceRef workspace={status.workspace} />,
-        override: false,
-        note: text(mergeUnavailableNote(status.workspace.reason)),
-      };
-    case 'other-branch':
-      return {
-        value: t('create.workspace.merge.notAvailable'),
-        override: false,
-        note: status.primary?.branch ? (
-          <Trans
-            i18nKey="create.workspace.merge.noteOtherBranch"
-            components={{
-              target: <BranchRef name={status.branch} />,
-              current: <BranchRef name={status.primary.branch} />,
-            }}
-          />
-        ) : (
-          <Trans
-            i18nKey="create.workspace.merge.noteOtherBranchNone"
-            components={{ target: <BranchRef name={status.branch} /> }}
-          />
-        ),
-      };
-    case 'none':
-      return {
-        value: t('create.workspace.merge.notConfigured'),
-        override: false,
-        note: t('create.workspace.merge.noteNoTarget'),
-      };
-  }
-}
-
-function BaseValue({ options, base }: { options: CreateOptions; base?: string }) {
-  const { t } = useTranslation();
-  if (base) {
-    return <BranchRef name={base} />;
-  }
-
-  const primary = primaryWorkspace(options);
-  if (options.defaultBaseRef === 'HEAD') {
-    return primary?.branch ? (
-      <BranchRef name={primary.branch} />
-    ) : (
-      <>{t('create.workspace.baseHead')}</>
-    );
-  }
-
-  return <BranchRef name={options.defaultBaseRef} />;
-}
-
+/**
+ * The new workspace: its settings as three decision rows (`NewWorkspaceSettings`) under a quiet
+ * label that says whether Create uses the defaults or which of them were changed. No accent
+ * container: the rows sit in the section like the rest of the form.
+ */
 export function NewSummary({
   options,
   choice,
@@ -170,75 +87,20 @@ export function NewSummary({
   conflicts?: WorkspaceConflicts;
   onAnnounce: (message: string) => void;
   controls: WorkspaceSettingsControls;
-  onRequestFocus: (field: 'base' | 'target') => void;
+  onRequestFocus: SettingsFocusRequest;
 }) {
   const { t } = useTranslation();
   const text = useMessage();
-  const overrides = createOverrides(choice, options, title);
-  const summary = settingsSummary(choice, options, title);
-  const merge = mergeRow(options, choice, t, text);
-  const slug = effectiveSlug(choice, title);
-  const branch = overrides.branch ?? branchPreview(options, slug);
-  const generatedProblem = generatedBranchProblem(choice, options, title);
 
   return (
-    <>
-      <Icon name={FolderPlus} className="text-status-info" />
-      <Typography
-        as="p"
-        variant="body-sm"
-        className={cn(
-          'min-w-0',
-          summary === defaultSettingsSummary ? 'text-content-muted' : 'text-content-link',
-        )}
-      >
-        {text(summary)}
+    <div
+      role="group"
+      aria-label={t('create.workspace.summaryLabel')}
+      className="grid min-w-0 gap-3"
+    >
+      <Typography as="p" variant="section-label" className="text-content-secondary">
+        {text(settingsSummary(choice, options, title))}
       </Typography>
-      <DescriptionList className="col-start-2" aria-label={t('create.workspace.summaryLabel')}>
-        <SummaryRow label={t('create.workspace.fact.base')} override={Boolean(overrides.baseRef)}>
-          <BaseValue
-            options={options}
-            base={choice.base.on && choice.base.ref ? choice.base.ref : undefined}
-          />
-        </SummaryRow>
-        <SummaryRow
-          label={t('create.workspace.fact.target')}
-          override={merge.override}
-          note={merge.note}
-        >
-          {merge.value}
-        </SummaryRow>
-        <SummaryRow
-          label={t('create.workspace.fact.branch')}
-          override={Boolean(overrides.branch ?? overrides.slug)}
-          note={
-            generatedProblem ? (
-              <span className="text-status-attention">{text(generatedProblem)}</span>
-            ) : undefined
-          }
-        >
-          <BranchRef name={branch} />
-        </SummaryRow>
-        {options.commits && (
-          <SummaryRow label={t('create.workspace.fact.commit')} override={false}>
-            <Trans
-              i18nKey="create.workspace.commit.willCommit"
-              components={{ branch: <BranchRef name={branch} /> }}
-            />
-          </SummaryRow>
-        )}
-        <SummaryRow
-          label={t('create.workspace.fact.folder')}
-          override={false}
-          note={
-            options.worktreesRoot.exists ? undefined : t('create.workspace.folderWillBeCreated')
-          }
-        >
-          <Typography as="span" variant="code-md" className="wrap-anywhere">
-            {options.worktreesRoot.path}
-          </Typography>
-        </SummaryRow>
-      </DescriptionList>
       <NewWorkspaceSettings
         options={options}
         choice={choice}
@@ -250,7 +112,7 @@ export function NewSummary({
         controls={controls}
         onRequestFocus={onRequestFocus}
       />
-    </>
+    </div>
   );
 }
 

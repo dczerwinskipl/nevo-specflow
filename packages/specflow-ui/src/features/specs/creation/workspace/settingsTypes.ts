@@ -8,4 +8,4 @@ export interface SettingsUpdate {
 }
 
 /** Focus a control once the render this event causes is done (its field may not exist yet). */
-export type SettingsFocusRequest = (field: 'base' | 'target') => void;
+export type SettingsFocusRequest = (field: 'base' | 'target' | 'slug' | 'branch') => void;

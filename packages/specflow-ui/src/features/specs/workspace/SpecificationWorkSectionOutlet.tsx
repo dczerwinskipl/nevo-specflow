@@ -43,6 +43,27 @@ export class SectionBoundary extends Component<SectionBoundaryProps, SectionBoun
   }
 }
 
+function isSectionVisible(
+  contribution: SpecificationWorkSectionContribution,
+  context: SpecificationWorkSectionContext,
+) {
+  return !contribution.isVisible || contribution.isVisible(context);
+}
+
+/** Whether any registered section of these slots shows for this Specification. */
+export function hasVisibleWorkSections(
+  modules: UiRegistry,
+  slots: readonly SpecificationWorkSlot[],
+  context: SpecificationWorkSectionContext,
+): boolean {
+  return modules
+    .get(specificationWorkSections)
+    .some(
+      (contribution) =>
+        slots.includes(contribution.slot) && isSectionVisible(contribution, context),
+    );
+}
+
 function RegisteredWorkSection({
   contribution,
   context,
@@ -50,7 +71,7 @@ function RegisteredWorkSection({
   readonly contribution: SpecificationWorkSectionContribution;
   readonly context: SpecificationWorkSectionContext;
 }) {
-  if (contribution.isVisible && !contribution.isVisible(context)) {
+  if (!isSectionVisible(contribution, context)) {
     return null;
   }
 

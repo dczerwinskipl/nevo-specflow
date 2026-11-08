@@ -2,22 +2,16 @@ import cookie from '@fastify/cookie';
 import { join } from 'node:path';
 import { RuntimeInfoResponseSchema } from '@nevo/specflow-contracts/runtime';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
-import type { CapabilityId } from '@nevo/authorization';
 import Fastify, {
   type FastifyInstance,
   type FastifyServerOptions,
   type RawServerBase,
 } from 'fastify';
 
-import {
-  createAuthFeature,
-  type AuthFeatureDependencies,
-  type SpecFlowRoleId,
-} from '../features/auth';
+import { createAuthFeature, type AuthFeatureDependencies } from '../features/auth';
 import type { RuntimeConfig } from '../config/types';
 import {
   createSessionsFeature,
-  SessionCapabilities,
   type SessionReferenceOwner,
   type SessionDriver,
 } from '../features/sessions';
@@ -27,13 +21,8 @@ import {
   createEngineWorkspaceDocuments,
   type DocumentsFeatureDependencies,
 } from '../features/documents';
-import { createSettingsFeature, SettingsCapabilities } from '../features/settings';
-import {
-  createSpecsFeature,
-  SpecCapabilities,
-  ProjectGitCapabilities,
-  type SpecsFeatureDependencies,
-} from '../features/specs';
+import { createSettingsFeature } from '../features/settings';
+import { createSpecsFeature, type SpecsFeatureDependencies } from '../features/specs';
 import {
   createDemoEnvironment,
   createDemoRuntime,
@@ -51,6 +40,7 @@ import { registerEndpointPolicy } from './endpoint-policy';
 import { serializeRuntimeRequest } from './logging';
 import { isRequestAtPublicOrigin } from './origin';
 import { registerRuntimeWebApp, type RuntimeWebApp } from './web-app';
+import { specFlowRoleCapabilities } from './roles';
 
 export interface RuntimeAppDependencies {
   readonly demoEnvironment?: DemoEnvironment;
@@ -277,36 +267,4 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
       message: 'This address serves the Runtime API, not the SpecFlow web UI.',
     };
   });
-}
-
-function specFlowRoleCapabilities(): Readonly<Record<SpecFlowRoleId, readonly CapabilityId[]>> {
-  const viewer = [
-    SpecCapabilities.capabilities.View,
-    SessionCapabilities.capabilities.View,
-  ] as const;
-
-  const developer = [
-    ...viewer,
-    SpecCapabilities.capabilities.Create,
-    SpecCapabilities.capabilities.Manage,
-    SpecCapabilities.capabilities.CloseWorktree,
-    SpecCapabilities.capabilities.CloseSpecification,
-    SessionCapabilities.capabilities.Create,
-    SessionCapabilities.capabilities.Manage,
-    SessionCapabilities.capabilities.Delete,
-    SessionCapabilities.capabilities.ExecuteWrite,
-  ] as const;
-
-  return {
-    viewer,
-    developer,
-    admin: [
-      ...developer,
-      SessionCapabilities.capabilities.ViewProviderLimits,
-      SettingsCapabilities.capabilities.View,
-      SettingsCapabilities.capabilities.Manage,
-      ProjectGitCapabilities.capabilities.Integrate,
-      ProjectGitCapabilities.capabilities.CloseWorkspace,
-    ],
-  };
 }

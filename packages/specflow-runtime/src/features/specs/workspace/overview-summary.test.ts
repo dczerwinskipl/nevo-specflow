@@ -37,6 +37,15 @@ describe('summarizeOverview', () => {
     expect(summarizeOverview(markdown)).toBe('Read the guide and run the tool now with care.');
   });
 
+  it('never uncovers a tag or comment by removing a nested one', () => {
+    const summary = summarizeOverview(
+      'Before <scr<b>ipt>alert(1)</scr</b>ipt> and <!<!-- x -->-- y --> after.',
+    );
+
+    expect(summary).not.toMatch(/<script|<!--/u);
+    expect(summary).toBe('Before alert(1) and after.');
+  });
+
   it('removes list and quote markers and keeps identifiers with underscores', () => {
     expect(summarizeOverview('> Quoted\n> text\n')).toBe('Quoted text');
     expect(summarizeOverview('- first item\n- [x] second item\n')).toBe('first item second item');

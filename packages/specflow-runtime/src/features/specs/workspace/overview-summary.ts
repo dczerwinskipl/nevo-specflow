@@ -127,32 +127,74 @@ function withoutFrontMatter(text: string): string {
   return end ? text.slice(3 + end.index + end[0].length) : '';
 }
 
+/** Removes HTML comments until none is left, so a removal cannot uncover a new comment. */
 function withoutHtmlComments(text: string): string {
-  const stripped = text.replace(/<!--[\s\S]*?-->/gu, '');
-  const open = stripped.indexOf('<!--');
+  let current = text;
 
-  return open === -1 ? stripped : stripped.slice(0, open);
+  for (;;) {
+    const next = withoutHtmlCommentsOnce(current);
+
+    if (next === current) {
+      return next;
+    }
+
+    current = next;
+  }
+}
+
+function withoutHtmlCommentsOnce(text: string): string {
+  let result = '';
+  let from = 0;
+
+  for (;;) {
+    const open = text.indexOf('<!--', from);
+    if (open === -1) {
+      return result + text.slice(from);
+    }
+
+    result += text.slice(from, open);
+    const close = text.indexOf('-->', open + 4);
+    // An unterminated comment hides everything after it.
+    if (close === -1) {
+      return result;
+    }
+
+    from = close + 3;
+  }
+}
+
+/** Removes HTML tags until none is left, so a removal cannot uncover a new tag. */
+function withoutHtmlTags(text: string): string {
+  let current = text;
+
+  for (;;) {
+    const next = current.replace(/<\/?[A-Za-z][^<>]*>/gu, '');
+    if (next === current) {
+      return next;
+    }
+
+    current = next;
+  }
 }
 
 function inlineText(line: string): string {
-  return (
-    line
-      // Quote, list and task markers at the start of a line.
-      .replace(/^\s*(?:>\s?)+/u, '')
-      .replace(/^\s*(?:[-*+]|\d{1,9}[.)])\s+(?:\[[ xX]\]\s+)?/u, '')
-      // Images (inline and reference) disappear; links keep their text.
-      .replace(/!\[[^\]]*\](?:\([^)]*\)|\[[^\]]*\])?/gu, '')
-      .replace(/\[([^\]]+)\](?:\([^)]*\)|\[[^\]]*\])/gu, '$1')
-      .replace(/<(https?:\/\/[^>\s]+)>/gu, '$1')
-      .replace(/<\/?[A-Za-z][^>]*>/gu, '')
-      .replace(/(`+)([^`]*?)\1/gu, '$2')
-      .replace(/(\*\*|__)(?=\S)([\s\S]*?\S)\1/gu, '$2')
-      .replace(/(^|[^\w*])\*(?=\S)([^*]*?\S)\*(?![\w*])/gu, '$1$2')
-      .replace(/(^|[^\w])_(?=\S)([^_]*?\S)_(?!\w)/gu, '$1$2')
-      .replace(/~~(?=\S)([\s\S]*?\S)~~/gu, '$1')
-      .replace(/\\([\\`*_{}[\]()#+\-.!|>~<])/gu, '$1')
-      .replace(/&(amp|lt|gt|quot|apos|nbsp);/gu, (_, name: string) => ENTITIES[name]!)
-  );
+  const linked = line
+    // Quote, list and task markers at the start of a line.
+    .replace(/^\s*(?:>\s?)+/u, '')
+    .replace(/^\s*(?:[-*+]|\d{1,9}[.)])\s+(?:\[[ xX]\]\s+)?/u, '')
+    // Images (inline and reference) disappear; links keep their text.
+    .replace(/!\[[^\]]*\](?:\([^)]*\)|\[[^\]]*\])?/gu, '')
+    .replace(/\[([^\]]+)\](?:\([^)]*\)|\[[^\]]*\])/gu, '$1')
+    .replace(/<(https?:\/\/[^>\s]+)>/gu, '$1');
+
+  return withoutHtmlTags(linked)
+    .replace(/(`+)([^`]*?)\1/gu, '$2')
+    .replace(/(\*\*|__)(?=\S)([\s\S]*?\S)\1/gu, '$2')
+    .replace(/(^|[^\w*])\*(?=\S)([^*]*?\S)\*(?![\w*])/gu, '$1$2')
+    .replace(/(^|[^\w])_(?=\S)([^_]*?\S)_(?!\w)/gu, '$1$2')
+    .replace(/~~(?=\S)([\s\S]*?\S)~~/gu, '$1')
+    .replace(/\\([\\`*_{}[\]()#+\-.!|>~<])/gu, '$1')
+    .replace(/&(amp|lt|gt|quot|apos|nbsp);/gu, (_, name: string) => ENTITIES[name]!);
 }
 
 function collapse(text: string): string {

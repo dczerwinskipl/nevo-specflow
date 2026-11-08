@@ -101,6 +101,33 @@ export const Recovery: Story = {
   },
 };
 
+/**
+ * The body of a page section without rows (for example a Tasks section with no Tasks): no border,
+ * the height and inset of a list row, aligned to the start under the section header.
+ */
+export const Inline: Story = {
+  args: {
+    variant: 'inline',
+    icon: 'list-checks',
+    title: 'No tasks yet',
+    description: 'Tasks appear here once the specification is prepared for work.',
+  },
+  render: (args) => (
+    <section className="grid max-w-2xl gap-3">
+      <h3 className="text-body-sm font-semibold text-content-primary">Tasks</h3>
+      <EmptyState {...args} />
+    </section>
+  ),
+  play: ({ canvasElement }) => {
+    const state = canvasElement.querySelector<HTMLElement>('[data-empty-state="inline"]');
+    assert(state !== null, 'The inline empty state renders.');
+    const { borderTopWidth, textAlign } = getComputedStyle(state!);
+    assert(borderTopWidth === '0px', 'The inline empty state has no border.');
+    assert(textAlign === 'left', 'The inline empty state is aligned to the start.');
+    assert(state!.getBoundingClientRect().height < 96, 'The inline empty state is row-sized.');
+  },
+};
+
 /** Without icon and actions: the title and the description alone. */
 export const TextOnly: Story = {
   args: { icon: undefined, description: 'Nothing was recorded yet.' },

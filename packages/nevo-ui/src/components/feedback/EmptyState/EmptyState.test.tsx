@@ -37,6 +37,24 @@ describe('EmptyState', () => {
     expect(smaller).toContain('size-icon-lg');
   });
 
+  it('draws an inline section body: borderless, row-sized, start-aligned, control-sized glyph', () => {
+    const html = renderToStaticMarkup(
+      <EmptyState variant="inline" icon="list-checks" title="No tasks" description="Later" />,
+    );
+    expect(html).toContain('data-empty-state="inline"');
+    expect(html).toContain('flex-row');
+    expect(html).toContain('text-left');
+    expect(html).toContain('size-icon-md');
+    expect(html).not.toContain('border-border-default');
+    expect(html).not.toContain('min-h-');
+    expect(html).not.toContain('text-center');
+    expect(html).not.toContain('text-title-md');
+    // Illustration sizes do not apply to the inline glyph.
+    expect(
+      renderToStaticMarkup(<EmptyState variant="inline" icon="inbox" iconSize="xl" title="x" />),
+    ).toContain('size-icon-md');
+  });
+
   it('takes a custom illustration element in place of the glyph', () => {
     const html = renderToStaticMarkup(
       <EmptyState icon={<span data-illustration="true" />} title="No data" />,

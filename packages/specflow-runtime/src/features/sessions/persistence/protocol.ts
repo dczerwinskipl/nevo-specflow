@@ -12,6 +12,9 @@ import type {
   TelemetryGroup,
   TelemetryContextUsage,
   TelemetryLimitWindow,
+  RenameSession,
+  ArchiveSession,
+  SessionInfo,
 } from '@nevo/specflow-contracts/sessions';
 
 export type MeasurementFact =
@@ -137,6 +140,10 @@ export type StoreCommand =
       input: RespondInteraction;
     }
   | { op: 'snapshot'; sessionId: string; actor: string }
+  | { op: 'rename'; actor: string; sessionId: string; input: RenameSession }
+  | { op: 'archive'; actor: string; sessionId: string; input: ArchiveSession }
+  | { op: 'unarchive'; actor: string; sessionId: string; input: ArchiveSession }
+  | { op: 'delete'; sessionId: string }
   | { op: 'telemetry'; sessionId: string; expectedScope?: string }
   | { op: 'telemetry-source'; sessionId: string }
   | { op: 'telemetry-migrate' }
@@ -202,6 +209,11 @@ export interface StartAdmission {
   invocationId: string;
   fresh: boolean;
   providerContext?: { nativeSessionId: string; resume: boolean; scope: string };
+}
+/** Current stored Session projection after a management command, before HTTP authorization. */
+export interface SessionView {
+  session: SessionInfo;
+  activeTurn?: SessionSnapshot['activeTurn'];
 }
 export interface SnapshotSource {
   snapshot: SessionSnapshot;

@@ -37,6 +37,8 @@ export class SessionError extends Error {
     if (
       [
         'TURN_CONFLICT',
+        'SESSION_ARCHIVED',
+        'SESSION_DELETE_BLOCKED',
         'IDEMPOTENCY_CONFLICT',
         'INTERACTION_EXPIRED',
         'SESSION_CURSOR_EXPIRED',

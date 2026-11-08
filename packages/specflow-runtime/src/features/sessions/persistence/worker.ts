@@ -23,6 +23,7 @@ import { createSessionReads } from './reads';
 import { createProviderFacts } from './facts';
 import { createEffectReconciliation } from './reconciliation';
 import { createSessionTelemetry } from './telemetry';
+import { createSessionManagement } from './session-management';
 
 const TELEMETRY_PUBLICATION_RETRY_MS = 1000;
 
@@ -426,6 +427,17 @@ export async function runSessionWorker(): Promise<void> {
     telemetry,
   });
   const effects = createEffectReconciliation({ get, all, run, request, remember, turn, applyFact });
+  const management = createSessionManagement({
+    get,
+    all,
+    run,
+    request,
+    remember,
+    now,
+    session,
+    emit,
+    changed: (sessionId) => transactionChanges.add(sessionId),
+  });
   // Only active records are reconciled; settled conversation/content is not read at boot.
   transaction(() => {
     for (const row of all("SELECT session,data FROM turns WHERE state!='terminal'")) {
@@ -632,6 +644,10 @@ export async function runSessionWorker(): Promise<void> {
       });
     }
 
+    if (c.op === 'rename' || c.op === 'archive' || c.op === 'unarchive' || c.op === 'delete') {
+      return transaction(() => management.execute(c));
+    }
+
     if (c.op === 'effect-candidates') {
       return effects.candidates(c);
     }
@@ -725,6 +741,7 @@ export async function runSessionWorker(): Promise<void> {
 
         const s = session(c.sessionId),
           active = get("SELECT id FROM turns WHERE session=? AND state!='terminal'", c.sessionId);
+        management.assertWritable(s);
         if (active) {
           throw new StoreFault('TURN_CONFLICT', 'Session already has a nonterminal Turn.', {
             turnId: String(active.id),
@@ -951,6 +968,7 @@ export async function runSessionWorker(): Promise<void> {
 
         const s = session(c.sessionId),
           i = s.snapshot.interaction;
+        management.assertWritable(s);
         if (i?.interactionId !== c.interactionId) {
           fail('INTERACTION_EXPIRED', 'Interaction is no longer answerable.');
         }

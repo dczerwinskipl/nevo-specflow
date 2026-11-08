@@ -19,22 +19,26 @@ export async function authorizeSession(
   sessionId: string,
   manage = false,
 ) {
+  await authorizeSessionCapability(
+    request,
+    c,
+    sessionId,
+    manage ? SessionCapabilities.capabilities.Manage : SessionCapabilities.capabilities.View,
+  );
+}
+
+/** Any-scope precheck, store-derived identity lookup, then the target-scoped check. */
+export async function authorizeSessionCapability(
+  request: FastifyRequest,
+  c: SessionCoordinator,
+  sessionId: string,
+  capability: (typeof SessionCapabilities.capabilities)[keyof typeof SessionCapabilities.capabilities],
+) {
   request.authz.requireAccess();
-  request.authz.requireCapabilityInAnyScope({
-    resource: SessionCapabilities,
-    capability: manage
-      ? SessionCapabilities.capabilities.Manage
-      : SessionCapabilities.capabilities.View,
-  });
+  request.authz.requireCapabilityInAnyScope({ resource: SessionCapabilities, capability });
   const identity = await c.store.call<{ projectId: string; sessionId: string }>({
     op: 'identity',
     sessionId,
   });
-  request.authz.require({
-    resource: SessionCapabilities,
-    capability: manage
-      ? SessionCapabilities.capabilities.Manage
-      : SessionCapabilities.capabilities.View,
-    scope: identity,
-  });
+  request.authz.require({ resource: SessionCapabilities, capability, scope: identity });
 }

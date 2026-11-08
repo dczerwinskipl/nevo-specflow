@@ -136,3 +136,30 @@ it('requires the pinned native mode to be available even when another mode keeps
   expect(f.project().session.capabilities.start).toBe(false);
   expect(f.snapshot.session.readiness).toBe('unavailable');
 });
+it('keeps an archived Session read-only and projects the separate delete grant', () => {
+  const archived = fixture('read-only');
+  archived.snapshot.session.archivedAt = 'now';
+  expect(archived.project().session.capabilities).toMatchObject({ start: false, manage: true });
+  const event: SessionChange = {
+    sessionId: 'session',
+    eventSeq: 2,
+    kind: 'session',
+    changes: {
+      session: {
+        ...archived.snapshot.session,
+        capabilities: { ...archived.snapshot.session.capabilities, start: true },
+      },
+    },
+  };
+  const projected = effectiveEvent(event, archived.request, () => archived.provider);
+  if (projected.kind !== 'session') {
+    throw new Error('Wrong fixture event');
+  }
+
+  expect(projected.changes.session.capabilities.start).toBe(false);
+  const granted = fixture('read-only');
+  (
+    granted.request.authz as unknown as { resolveCapabilities: () => Record<string, boolean> }
+  ).resolveCapabilities = () => ({ view: true, manage: true, delete: true });
+  expect(granted.project().session.capabilities).toMatchObject({ start: true, delete: true });
+});

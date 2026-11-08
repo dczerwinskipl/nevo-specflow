@@ -115,7 +115,9 @@ saved.
   efforts and work modes are the Runtime's provider catalogue (readiness and reasons included); a
   provider that lists no models shows **Model** disabled at the provider default.
 - **(h1) Gating and refusal.** The entry points (the Specification Sessions list header, its empty
-  state, Continue session's start action) follow the workspace `actions.startSession`: shown when
+  state, Continue session's start action, and the Overview's preparation block **Rozpocznij sesję**
+  / _Start session_ for a Specification without Tasks or Sessions) follow the workspace
+  `actions.startSession`: shown when
   available or with reason `no_provider` (the form then states **No executor is available right
   now**, scenario (e)); omitted with `forbidden` or `sessions_disabled`, and for a removed
   Specification. With the start route opened directly, the form renders as usual while the

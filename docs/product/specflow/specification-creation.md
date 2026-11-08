@@ -400,6 +400,12 @@ repository folder) and a `path`; the UI shows the name instead of a generic "Cur
 
 ## Overview right after Create in project mode
 
-A Runtime that answers the workspace read with `unavailable` / `not_implemented` sections shows a
-calm "Not available on this server yet" state (no warning tone, no Retry). Actions that cannot work
-there, such as "Start conversation", are hidden instead of shown disabled. Demo mode is unchanged.
+A freshly created Specification opens on an Overview that shows everything that exists: the
+overview's first paragraph as the description, the registered documents, the empty Tasks section
+(an inline empty state under the **Tasks** header) and the preparation block. The block's
+**Start session** opens New Session when the caller may start one; with Sessions turned off or not
+permitted it only explains the preparation path. Activity history holds the "Specification created"
+event and opens by default only once a Session event exists. A section whose source this Runtime
+does not implement still shows the calm "Not available on this server" state (no warning tone, no
+Retry); actions that cannot work are hidden instead of shown disabled. See the
+[Specification Workspace API](../../reference/api/specification-workspace.md) for the sources.

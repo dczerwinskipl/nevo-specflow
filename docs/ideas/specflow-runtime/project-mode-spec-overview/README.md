@@ -30,10 +30,16 @@ related:
 # Project-mode Specification Overview (PR #126)
 
 **Status:** decided by the owner on 2026-11-08 ([Owner decisions](#owner-decisions-2026-11-08));
-**ready for implementation** in PR #126 on the merged #124 geometry. No product code was changed by
-this analysis. Rendered evidence: `C:/Users/domin/nevo-verify/project-overview/HANDOVER.md`
-(`v3-*` screenshots for the accepted Tasks empty state; the scratch story used to render them has
-been deleted).
+**implemented** in PR #126 on the merged #124 geometry. Rendered evidence:
+`C:/Users/domin/nevo-verify/project-overview/HANDOVER.md`.
+
+**Amendment to D1/P6 (owner review of the `v3-*` render, 2026-11-08):** the bordered
+`EmptyState variant="default"` block is too heavy for the Tasks body (the section has no column
+headers; its rows read like Documents). Implemented instead: a new Nevo UI `EmptyState`
+`variant="inline"` (no border, no minimum height, row inset and height, start-aligned, `md` glyph
+beside the text), variant **A**, pending the owner's choice between A and a centred borderless
+variant **B** (`v4-tasks-empty-{a,b}-*` renders). Activity event titles are localized in the UI by
+the events' stable ids (`specification-created`, `session-started.<sessionId>`).
 
 ## Owner decisions (2026-11-08)
 

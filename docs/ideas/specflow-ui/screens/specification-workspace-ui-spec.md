@@ -611,6 +611,27 @@ Before Tasks exist, expose a readable Specification-content target and the norma
 Do not simulate deterministic Specification phases or present Add Task as the expected path.
 An empty Specification must explain the preparation path rather than imply that no work is possible.
 
+Implemented 2026-11-08 ([project-mode Overview plan](../../specflow-runtime/project-mode-spec-overview/README.md)):
+
+- **Sections independent of Tasks.** The description and main-document preview, Documents (when it
+  has documents) and Continue session render whenever their data exists; "no Tasks"
+  (`preparationState: empty`) only selects the preparation block and the empty Tasks state.
+- **Preparation block** (work column): shown when there are no Tasks and no recommended Session.
+  With the start offered (`actions.startSession` available or `no_provider`) its **Rozpocznij
+  sesję** button opens `/specs/:specId/sessions/new`. With `sessions_disabled` it keeps the heading
+  and explains "Zadania przygotowuje agent w sesji. Sesje są wyłączone na tym serwerze.", with
+  `forbidden` "Nie masz uprawnień do rozpoczęcia sesji dla tej specyfikacji.", without a button.
+  The legacy conversation dialog is removed.
+- **Empty Tasks.** The Tasks section keeps its **Zadania** header (the navigator's `#tasks-heading`
+  target) without count or execute control, and below it the `EmptyState` **Nie ma jeszcze zadań** /
+  "Zadania pojawią się tutaj, gdy specyfikacja zostanie przygotowana do realizacji." (icon
+  `list-checks`, no actions). The owner rejected the bordered `variant="default"` block as too heavy
+  (2026-11-08); the row-sized, start-aligned `variant="inline"` (A) is implemented pending the
+  owner's choice between it and a centred borderless variant (B).
+- **Activity history.** The "Specification created" event does not open the Secondary by default;
+  only a Session (later Task or document) event does. Times render with the relative-time helper;
+  the date-only created event renders as its calendar date without a time-zone shift.
+
 ### Return, inspect and execute Tasks
 
 ```text
@@ -725,9 +746,9 @@ bez nazwy**. Session status there is Session readiness only, never an Engine att
 New session -> shared Session-start interaction -> choose agent/provider and optional execution
 details -> normal Session/composer. Do not embed another standalone prompt editor here.
 
-Entry points (the Sessions list header, its empty state and Continue session's start action) open
-`/specs/:specId/sessions/new` and follow `actions.startSession`: shown when available or with
-`no_provider`; omitted with `forbidden` or `sessions_disabled`
+Entry points (the Sessions list header, its empty state, Continue session's start action and the
+Overview's preparation block) open `/specs/:specId/sessions/new` and follow `actions.startSession`:
+shown when available or with `no_provider`; omitted with `forbidden` or `sessions_disabled`
 ([New Session UI spec](new-session-ui-spec.md), scenario (h1)).
 
 Starting a Session from selected Tasks must preserve the complete selected Task set.

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, rm, writeFile, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, relative, sep } from 'node:path';
 import { createAntigravityDriver } from './driver';
@@ -440,6 +440,24 @@ describe('controlled Antigravity driver invocation composition', () => {
     const hookFile = test.options().environment.values.NEVO_ANTIGRAVITY_HOOK_CONFIG!;
     expect(relative(test.workspace, hookFile).split(sep)[0]).toBe('..');
     expect(test.options().args).not.toContain('--conversation');
+    const home = test.options().environment.values.HOME!;
+    const configuration = JSON.parse(
+      await readFile(join(home, '.gemini', 'config', 'mcp_config.json'), 'utf8'),
+    ) as { mcpServers: Record<string, { enabledTools: string[] }> };
+    expect(configuration.mcpServers['specflow-discovery']?.enabledTools).toEqual([
+      'list_directory',
+      'find_files',
+      'search_text',
+    ]);
+    const settings = JSON.parse(
+      await readFile(join(home, '.gemini', 'antigravity-cli', 'settings.json'), 'utf8'),
+    ) as { permissions: { allow: string[] } };
+    expect(settings.permissions.allow).toEqual([
+      'mcp(specflow-interactions/ask_user)',
+      'mcp(specflow-discovery/list_directory)',
+      'mcp(specflow-discovery/find_files)',
+      'mcp(specflow-discovery/search_text)',
+    ]);
     expect(test.facts.find((fact) => fact.kind === 'correlation')).toMatchObject({
       providerSessionId: test.nativeId,
     });
@@ -448,6 +466,68 @@ describe('controlled Antigravity driver invocation composition', () => {
     expect(await operation.settlement).toMatchObject({
       process: 'stopped',
       source: 'native-result',
+    });
+  });
+
+  it('continues the same invocation around a pending permission and settles without a second dispatch', async () => {
+    const gate = Promise.withResolvers<void>();
+    const test = await invocationFixture(false, gate.promise);
+    const operation = test.start();
+    try {
+      await vi.waitFor(() => expect(test.writes).toHaveLength(1));
+      const configurationPath = test.options().environment.values.NEVO_ANTIGRAVITY_HOOK_CONFIG!;
+      const hook = (role: 'pre-tool-use' | 'stop', body: object) =>
+        runAntigravityHook({
+          hook: role,
+          configurationPath,
+          signal: new AbortController().signal,
+          input: Buffer.from(
+            JSON.stringify({
+              conversationId: test.nativeId,
+              workspacePaths: [test.workspace],
+              ...body,
+            }),
+          ),
+        });
+      const permission = hook('pre-tool-use', {
+        stepIdx: 0,
+        toolCall: {
+          name: 'run_command',
+          args: {
+            CommandLine: 'echo controlled fixture',
+            toolSummary: 'Controlled fixture',
+            toolAction: 'execute',
+            Cwd: test.workspace,
+            WaitMsBeforeAsync: 5000,
+          },
+        },
+      });
+      await vi.waitFor(() =>
+        expect(test.facts.some((fact) => fact.kind === 'interaction')).toBe(true),
+      );
+      const fact = test.facts.find((fact) => fact.kind === 'interaction')!;
+      await expect(
+        hook('stop', { executionNum: 0, terminationReason: 'NO_TOOL_CALL', fullyIdle: true }),
+      ).resolves.toEqual({ decision: 'continue' });
+      expect(test.facts.some((fact) => fact.kind === 'outcome')).toBe(false);
+      await operation.respond(fact.key, {
+        requestId: randomUUID(),
+        kind: 'permission',
+        decision: 'deny',
+      });
+      await expect(permission).resolves.toEqual({ decision: 'deny' });
+    } finally {
+      gate.resolve();
+      await operation.done;
+    }
+
+    expect(test.launch).toHaveBeenCalledOnce();
+    expect(test.beforeDispatch).toHaveBeenCalledOnce();
+    expect(test.writes).toHaveLength(1);
+    expect(await operation.settlement).toMatchObject({
+      process: 'stopped',
+      source: 'native-result',
+      result: { outcome: 'completed' },
     });
   });
 

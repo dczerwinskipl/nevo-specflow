@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import { realpathSync } from 'node:fs';
-import { runAntigravityHook } from './features/sessions';
+import { runAntigravityHook, runAntigravityDiscovery } from './features/sessions';
 
 function invokedAsMain() {
   if (!process.argv[1]) {
@@ -19,9 +19,14 @@ function invokedAsMain() {
 // Import-safe package entry: build surface validation imports every export.
 if (invokedAsMain()) {
   const hook = process.argv[2];
-  let result: Awaited<ReturnType<typeof runAntigravityHook>>;
+  let result: Awaited<ReturnType<typeof runAntigravityHook>> | undefined;
   try {
-    if (hook !== 'pre-tool-use' && hook !== 'post-tool-use' && hook !== 'stop') {
+    if (
+      hook !== 'pre-tool-use' &&
+      hook !== 'post-tool-use' &&
+      hook !== 'stop' &&
+      hook !== 'workspace-discovery'
+    ) {
       throw new Error('Invalid hook role.');
     }
 
@@ -43,17 +48,26 @@ if (invokedAsMain()) {
       clearTimeout(inputDeadline);
     }
 
-    result = await runAntigravityHook({
-      hook,
-      configurationPath: process.env.NEVO_ANTIGRAVITY_HOOK_CONFIG ?? '',
-      input: Buffer.concat(chunks),
-      signal,
-    });
+    if (hook === 'workspace-discovery') {
+      process.stdout.write(
+        JSON.stringify(runAntigravityDiscovery(Buffer.concat(chunks).toString('utf8'))) + '\n',
+      );
+      result = undefined;
+    } else {
+      result = await runAntigravityHook({
+        hook,
+        configurationPath: process.env.NEVO_ANTIGRAVITY_HOOK_CONFIG ?? '',
+        input: Buffer.concat(chunks),
+        signal,
+      });
+    }
   } catch {
     result = { decision: 'deny' };
   }
 
-  process.stdout.write(JSON.stringify(result) + '\n');
+  if (result) {
+    process.stdout.write(JSON.stringify(result) + '\n');
+  }
 }
 
 export {};

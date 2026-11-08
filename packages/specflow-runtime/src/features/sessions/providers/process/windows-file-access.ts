@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { isAbsolute, join, parse, relative, resolve, sep } from 'node:path';
 import type Koffi from 'koffi';
+import { assertWindowsPathComponent } from './windows-path';
 
 export interface NativeFileAccess {
   created: boolean;
@@ -51,6 +52,8 @@ export function acquireWindowsFileAccess(
   ) {
     throw new Error('A local workspace path is required.');
   }
+
+  within.split(sep).filter(Boolean).forEach(assertWindowsPathComponent);
 
   const systemRoot = process.env.SystemRoot ?? process.env.SYSTEMROOT;
   if (!systemRoot || !isAbsolute(systemRoot)) {

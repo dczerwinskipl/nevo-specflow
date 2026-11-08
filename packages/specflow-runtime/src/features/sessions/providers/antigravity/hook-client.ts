@@ -8,7 +8,7 @@ export async function runAntigravityHook(options: {
   input: Uint8Array;
   signal: AbortSignal;
 }): Promise<{
-  decision?: 'allow' | 'deny' | 'auto_approve' | 'stop';
+  decision?: 'allow' | 'deny' | 'auto_approve' | 'stop' | 'continue';
   overwrite?: { Overwrite: true };
 }> {
   try {
@@ -118,9 +118,9 @@ export async function runAntigravityHook(options: {
     if (
       Object.keys(output).some((key) => key !== 'decision' && key !== 'overwrite') ||
       typeof output.decision !== 'string' ||
-      !(options.hook === 'stop' ? ['stop', 'deny'] : ['allow', 'deny', 'auto_approve']).includes(
-        output.decision,
-      ) ||
+      !(
+        options.hook === 'stop' ? ['stop', 'deny', 'continue'] : ['allow', 'deny', 'auto_approve']
+      ).includes(output.decision) ||
       (output.overwrite !== undefined &&
         (options.hook !== 'pre-tool-use' ||
           output.decision !== 'allow' ||

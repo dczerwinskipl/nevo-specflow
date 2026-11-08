@@ -22,10 +22,13 @@ export type AntigravityProcess = Pick<
 >;
 export interface AntigravityInteractions {
   activate(): void;
+  disableContinuation(): void;
   awaitNativeIdle(signal: AbortSignal): Promise<void>;
   respond(key: string, response: RespondInteraction): Promise<{ deliveredKeys: readonly string[] }>;
   close(): Promise<void>;
   releaseFileAccess?(): void;
+  /** Invocation-private discovery processes must settle as well as the native CLI. */
+  processSettlementVerified?(): boolean;
   done: Promise<void>;
 }
 
@@ -79,6 +82,7 @@ export function createAntigravityOperation(
 
   const publish: EmitFact = async (fact) => {
     if (fact.kind === 'outcome') {
+      interactions?.disableContinuation();
       pendingOutcome = fact;
     } else {
       await emit(fact);
@@ -223,6 +227,7 @@ export function createAntigravityOperation(
       failure = error;
     } finally {
       clearTimeout(deadline);
+      interactions?.disableContinuation();
       closed = true;
       signal.removeEventListener('abort', cancel);
       // Quiesce native execution before waiting on canonical interaction cleanup.
@@ -237,6 +242,7 @@ export function createAntigravityOperation(
       );
       await reader?.return?.().catch(() => undefined);
       const unknown =
+        interactions?.processSettlementVerified?.() === false ||
         (launched && disposition?.process.state !== 'stopped') ||
         (failure instanceof ProviderProcessError &&
           failure.cleanup.some((issue) => issue.code === 'PROCESS_NOT_STOPPED'));

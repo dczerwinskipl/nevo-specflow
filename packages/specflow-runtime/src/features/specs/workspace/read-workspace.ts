@@ -1,3 +1,4 @@
+import type { RequestAuthorization } from '../../auth';
 import type {
   SpecificationWorkspaceRepository,
   WorkspaceContributions,
@@ -9,6 +10,7 @@ export async function readWorkspace(
   source: SpecificationWorkspaceRepository,
   contributions: WorkspaceContributions | undefined,
   specId: string,
+  authz: RequestAuthorization,
 ): Promise<WorkspaceReadModel | null> {
   const specification = await source.readSpecification(specId);
   if (!specification) {
@@ -19,19 +21,23 @@ export async function readWorkspace(
   const [tasks, documents, sessions] = await Promise.all([
     contributions?.tasks?.(specId),
     contributions?.documents?.(specId),
-    contributions?.sessions?.(specId),
+    contributions?.sessions?.(specId, { authz }),
   ]);
 
   return {
     ...specification,
-    ...(sessions?.recommendedSessionId
-      ? { recommendedSessionId: sessions.recommendedSessionId }
+    ...(sessions?.recommendedSessionIds?.length
+      ? { recommendedSessionIds: sessions.recommendedSessionIds }
       : {}),
     sections: {
       ...specification.sections,
       tasks: tasks ?? missing,
       documents: documents ?? missing,
       sessions: sessions?.section ?? missing,
+    },
+    actions: {
+      ...specification.actions,
+      ...(sessions?.startSession ? { startSession: sessions.startSession } : {}),
     },
   };
 }

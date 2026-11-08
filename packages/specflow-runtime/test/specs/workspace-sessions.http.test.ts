@@ -1,0 +1,317 @@
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { randomUUID } from 'node:crypto';
+import type { FastifyInstance } from 'fastify';
+import { Value } from 'typebox/value';
+import { afterEach, describe, expect, it } from 'vitest';
+import {
+  SpecificationWorkspaceResponseSchema,
+  type SpecificationWorkspaceResponse,
+} from '@nevo/specflow-contracts/specs/workspace';
+import { createRuntimeApp } from '../../src/server/app';
+import { openSessionStore } from '../../src/features/sessions/persistence/store';
+import type { AssociationWrite } from '../../src/features/sessions/persistence/protocol';
+import type { SpecificationWorkspaceRepository } from '../../src/features/specs/workspace/repository';
+import { passwordConfig } from '../auth/support/config';
+import { associationTargets } from '../support/association-targets';
+import { sessionReferences } from '../support/session-references';
+
+type Role = 'viewer' | 'developer' | 'admin';
+
+let app: FastifyInstance | undefined,
+  directory = '';
+afterEach(async () => {
+  await app?.close();
+  app = undefined;
+  if (directory) {
+    await rm(directory, { recursive: true, force: true });
+    directory = '';
+  }
+});
+
+const unavailable = { state: 'unavailable', reason: 'not_implemented' } as const;
+/** The Specification identity of `S` and `T`; Sessions come from the association contribution. */
+const workspaceRepository: SpecificationWorkspaceRepository = {
+  readSpecification(specId) {
+    return Promise.resolve(
+      specId === 'S' || specId === 'T'
+        ? {
+            revision: 'revision-1',
+            specification: {
+              id: specId,
+              title: 'Specification ' + specId,
+              summary: '',
+              preparationState: 'prepared',
+              attention: [],
+            },
+            sections: { activity: unavailable, repository: unavailable, changes: unavailable },
+            actions: {
+              executeTasks: { available: false, reason: 'not_implemented' },
+              startSession: { available: false, reason: 'sessions_disabled' },
+            },
+          }
+        : null,
+    );
+  },
+};
+
+async function seed(
+  build: (
+    create: (association?: AssociationWrite, title?: string) => Promise<string>,
+  ) => Promise<string[]>,
+  store = { archive: [] as string[], rename: [] as string[] },
+) {
+  directory = await mkdtemp(join(tmpdir(), 'nevo-workspace-sessions-'));
+  const opened = await openSessionStore({ directory, projectId: 'project' });
+  try {
+    const ids = await build(
+      async (association, title) =>
+        (
+          await opened.call<{ sessionId: string }>({
+            op: 'create',
+            actor: 'someone-else',
+            input: {
+              requestId: randomUUID(),
+              providerId: 'mock',
+              mode: 'read-only',
+              ...(title ? { title } : {}),
+            },
+            ...(association ? { association } : {}),
+          })
+        ).sessionId,
+    );
+    for (const sessionId of store.archive) {
+      await opened.call({
+        op: 'archive',
+        actor: 'someone-else',
+        sessionId,
+        input: { requestId: randomUUID() },
+      });
+    }
+
+    for (const sessionId of store.rename) {
+      await opened.call({
+        op: 'rename',
+        actor: 'someone-else',
+        sessionId,
+        input: { requestId: randomUUID(), title: 'Renamed later' },
+      });
+    }
+
+    return ids;
+  } finally {
+    await opened.close();
+  }
+}
+
+async function open(
+  role: Role | undefined,
+  scope: Record<string, string> = {},
+  sessions: { enabled?: boolean; mock?: boolean } = {},
+) {
+  directory ||= await mkdtemp(join(tmpdir(), 'nevo-workspace-sessions-'));
+  const config = passwordConfig();
+  app = await createRuntimeApp(
+    {
+      ...config,
+      authentication: { ...config.authentication, mode: 'none', localUserId: 'demo-user' },
+      authorization: { assignments: role ? [{ userId: 'demo-user', role, scope }] : [] },
+      sessions: {
+        enabled: sessions.enabled ?? true,
+        providers: { mock: { enabled: sessions.mock ?? true } },
+      },
+    },
+    {
+      specs: { workspaceRepository },
+      sessions: { storage: { directory, projectId: 'project' }, targets: associationTargets() },
+    },
+  );
+
+  return app;
+}
+
+async function workspace(server: FastifyInstance, specId = 'S') {
+  const response = await server.inject(`/api/specs/${specId}/workspace`);
+  expect(response.statusCode, response.body).toBe(200);
+  const body = response.json<SpecificationWorkspaceResponse>();
+  expect(Value.Check(SpecificationWorkspaceResponseSchema, body)).toBe(true);
+
+  return body;
+}
+
+const spec = (specId: string, taskIds: string[] = []): AssociationWrite => ({
+  specId,
+  taskIds,
+  origin: 'user',
+});
+
+describe('project-mode workspace sessions section', () => {
+  it('lists the associated, non-archived Sessions newest first with readiness status', async () => {
+    const archived: string[] = [];
+    const [older, , archivedOne, newer] = await seed(
+      async (create) => {
+        const ids = [
+          await create(spec('S'), 'Older'),
+          await create(spec('T')),
+          await create(spec('S')),
+          await create(spec('S', ['TASK-01'])),
+          await create(),
+        ];
+        archived.push(ids[2]!);
+
+        return ids;
+      },
+      { archive: archived, rename: [] },
+    );
+    const body = await workspace(await open('viewer', { projectId: 'project' }));
+    expect(body.sections.sessions).toEqual({
+      state: 'available',
+      data: {
+        items: [
+          // Untitled: the server never invents a title.
+          { id: newer, taskIds: ['TASK-01'], status: 'quiet' },
+          { id: older, title: 'Older', taskIds: [], status: 'quiet' },
+        ],
+        attention: [],
+      },
+    });
+    expect(JSON.stringify(body)).not.toContain(archivedOne!);
+    // Equal status: the most recently updated Session.
+    expect(body.recommendedSessionId).toBe(newer);
+  });
+
+  it('recommends the most recently updated Session', async () => {
+    const renamed: string[] = [];
+    const [older] = await seed(
+      async (create) => {
+        const ids = [await create(spec('S')), await create(spec('S'))];
+        renamed.push(ids[0]!);
+
+        return ids;
+      },
+      { archive: [], rename: renamed },
+    );
+    expect(
+      (await workspace(await open('viewer', { projectId: 'project' }))).recommendedSessionId,
+    ).toBe(older);
+  });
+
+  it('caps the section at 100 rows and reports hasMore', async () => {
+    await seed(async (create) => {
+      const ids: string[] = [];
+      for (let index = 0; index < 101; index += 1) {
+        ids.push(await create(spec('S')));
+      }
+
+      return ids;
+    });
+    const body = await workspace(await open('viewer', { specId: 'S' }));
+    expect(body.sections.sessions.state).toBe('available');
+    if (body.sections.sessions.state === 'available') {
+      expect(body.sections.sessions.data.items).toHaveLength(100);
+      expect(body.sections.sessions.data.hasMore).toBe(true);
+    }
+  }, 120000);
+
+  it.each<{
+    name: string;
+    role: Role;
+    scope: Record<string, string>;
+    sessions: { enabled?: boolean; mock?: boolean };
+    action: { available: boolean; reason?: string };
+  }>([
+    {
+      name: 'available to a developer with a ready provider',
+      role: 'developer',
+      scope: { specId: 'S' },
+      sessions: {},
+      action: { available: true },
+    },
+    {
+      name: 'forbidden to a viewer',
+      role: 'viewer',
+      scope: { projectId: 'project' },
+      sessions: {},
+      action: { available: false, reason: 'forbidden' },
+    },
+    {
+      name: 'no_provider without a usable provider',
+      role: 'developer',
+      scope: { projectId: 'project' },
+      sessions: { mock: false },
+      action: { available: false, reason: 'no_provider' },
+    },
+    {
+      name: 'forbidden before no_provider',
+      role: 'viewer',
+      scope: { projectId: 'project' },
+      sessions: { mock: false },
+      action: { available: false, reason: 'forbidden' },
+    },
+    {
+      name: 'sessions_disabled before forbidden',
+      role: 'viewer',
+      scope: { projectId: 'project' },
+      sessions: { enabled: false },
+      action: { available: false, reason: 'sessions_disabled' },
+    },
+  ])('startSession is $name', async ({ role, scope, sessions, action }) => {
+    await seed(() => Promise.resolve([]));
+    const body = await workspace(await open(role, scope, sessions));
+    expect(body.actions.startSession).toEqual(action);
+    if (action.reason === 'sessions_disabled') {
+      expect(body.sections.sessions).toEqual({
+        state: 'unavailable',
+        reason: 'source_unavailable',
+      });
+    }
+  });
+});
+
+describe('workspace Session recommendation', () => {
+  it('recommends the first candidate the caller may view', async () => {
+    const config = passwordConfig();
+    app = await createRuntimeApp(
+      {
+        ...config,
+        authentication: { ...config.authentication, mode: 'none', localUserId: 'demo-user' },
+        authorization: { assignments: [{ userId: 'demo-user', role: 'viewer', scope: {} }] },
+      },
+      {
+        specs: {
+          workspaceRepository,
+          contributions: {
+            sessions: () =>
+              Promise.resolve({
+                section: {
+                  state: 'available',
+                  data: {
+                    items: [
+                      { id: 'hidden', taskIds: [], status: 'attention' },
+                      { id: 'visible', taskIds: [], status: 'quiet' },
+                    ],
+                    attention: [],
+                  },
+                },
+                recommendedSessionIds: ['hidden', 'visible'],
+              }),
+          },
+        },
+        // `hidden` resolves to no association, so no grant can view it here.
+        sessions: {
+          references: sessionReferences((sessionId) =>
+            Promise.resolve(
+              sessionId === 'visible'
+                ? { sessionId, specId: 'S', projectId: 'project', workspaceId: 'workspace' }
+                : null,
+            ),
+          ),
+        },
+      },
+    );
+    const body = await workspace(app);
+    expect(body.recommendedSessionId).toBe('visible');
+    expect(JSON.stringify(body)).not.toContain('hidden');
+  });
+});

@@ -8,11 +8,14 @@ function presentSection<T>(section: SourceSection<T>) {
 }
 
 /** The Runtime read model already assigns Attention to its owning domain section. */
-export function presentWorkspace(data: WorkspaceReadModel): SpecificationWorkspaceResponse {
+export function presentWorkspace(
+  data: WorkspaceReadModel,
+  recommendedSessionId?: string,
+): SpecificationWorkspaceResponse {
   return {
     revision: data.revision,
     specification: data.specification,
-    ...(data.recommendedSessionId ? { recommendedSessionId: data.recommendedSessionId } : {}),
+    ...(recommendedSessionId ? { recommendedSessionId } : {}),
     sections: {
       tasks: presentSection(data.sections.tasks),
       documents: presentSection(data.sections.documents),

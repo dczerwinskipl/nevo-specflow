@@ -115,7 +115,8 @@ describe('Engine-backed specification workspace read', () => {
         expect(body.sections).toEqual({
           tasks: unavailable,
           documents: body.sections.documents,
-          sessions: unavailable,
+          // Managed Sessions are disabled in this Runtime: the registry is unreadable.
+          sessions: { state: 'unavailable', reason: 'source_unavailable' },
           activity: unavailable,
           repository: unavailable,
           changes: unavailable,
@@ -136,7 +137,7 @@ describe('Engine-backed specification workspace read', () => {
 
         expect(body.actions).toEqual({
           executeTasks: { available: false, reason: 'not_implemented' },
-          startSession: { available: false, reason: 'not_implemented' },
+          startSession: { available: false, reason: 'sessions_disabled' },
         });
 
         // The revision follows the canonical manifest and the title follows the file.

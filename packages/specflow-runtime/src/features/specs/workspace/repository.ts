@@ -1,3 +1,5 @@
+import type { RequestAuthorization } from '../../auth';
+
 /**
  * Runtime-owned read projection: not an HTTP response.
  * Authorization/redaction and transport availability are applied at the endpoint.
@@ -17,7 +19,8 @@ export interface WorkspaceTaskRecord {
 }
 export interface WorkspaceSessionRecord {
   readonly id: string;
-  readonly title: string;
+  /** Absent for an untitled Session; the server never invents a title. */
+  readonly title?: string;
   readonly taskIds: string[];
   readonly status: 'active' | 'attention' | 'quiet' | 'unknown';
 }
@@ -49,7 +52,8 @@ export interface WorkspaceReadModel {
     readonly preparationState: 'empty' | 'preparing' | 'prepared';
     readonly attention: WorkspaceAttentionRecord[];
   };
-  readonly recommendedSessionId?: string;
+  /** Recommendation candidates in order; the first the caller may view is recommended. */
+  readonly recommendedSessionIds?: readonly string[];
   readonly sections: {
     readonly tasks: SourceSection<{
       readonly groups: {
@@ -71,6 +75,8 @@ export interface WorkspaceReadModel {
     }>;
     readonly sessions: SourceSection<{
       readonly items: WorkspaceSessionRecord[];
+      /** More associated Sessions exist than the bounded section returns. */
+      readonly hasMore?: boolean;
       readonly attention: WorkspaceAttentionRecord[];
     }>;
     readonly activity: SourceSection<{ readonly items: WorkspaceActivityRecord[] }>;
@@ -94,7 +100,7 @@ export interface WorkspaceReadModel {
 }
 export type SpecificationReadModel = Omit<
   WorkspaceReadModel,
-  'sections' | 'recommendedSessionId'
+  'sections' | 'recommendedSessionIds'
 > & { sections: Pick<WorkspaceReadModel['sections'], 'activity' | 'repository' | 'changes'> };
 export interface SpecificationWorkspaceRepository {
   readSpecification(specId: string): Promise<SpecificationReadModel | null>;
@@ -102,8 +108,15 @@ export interface SpecificationWorkspaceRepository {
 export interface WorkspaceContributions {
   tasks?(specId: string): Promise<WorkspaceReadModel['sections']['tasks']>;
   documents?(specId: string): Promise<WorkspaceReadModel['sections']['documents']>;
-  sessions?(specId: string): Promise<{
+  /** The caller's authorization decides the `startSession` action, never the section. */
+  sessions?(
+    specId: string,
+    context: { readonly authz: RequestAuthorization },
+  ): Promise<{
     section: WorkspaceReadModel['sections']['sessions'];
-    recommendedSessionId?: string;
+    /** Candidates in recommendation order; the first the caller may view is recommended. */
+    recommendedSessionIds?: readonly string[];
+    /** Overrides the Specification source's `startSession` action. */
+    startSession?: WorkspaceReadModel['actions']['startSession'];
   }>;
 }

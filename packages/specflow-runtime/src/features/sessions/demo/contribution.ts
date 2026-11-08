@@ -58,6 +58,6 @@ export function buildDemoSessionContribution(record: DemoSpecification) {
 
   return {
     section: { state: 'available' as const, data: { items, attention } },
-    recommendedSessionId: items[0]?.id,
+    recommendedSessionIds: items.map((item) => item.id),
   };
 }

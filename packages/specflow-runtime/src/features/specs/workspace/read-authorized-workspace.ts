@@ -28,7 +28,7 @@ export async function readAuthorizedWorkspace(
     return { kind: 'unavailable' };
   }
 
-  const data = await readWorkspace(source, contributions, specId);
+  const data = await readWorkspace(source, contributions, specId, authz);
   if (!data) {
     return { kind: 'not_found' };
   }
@@ -54,6 +54,10 @@ export async function readAuthorizedWorkspace(
     for (const session of sections.sessions.data.items) {
       ids.add(session.id);
     }
+  }
+
+  for (const id of data.recommendedSessionIds ?? []) {
+    ids.add(id);
   }
 
   if (sections.activity.state === 'available') {
@@ -89,6 +93,13 @@ export async function readAuthorizedWorkspace(
 
   return {
     kind: 'ok',
-    value: authorizeSessionReferences(presentWorkspace(data), (id) => permitted.has(id)),
+    value: authorizeSessionReferences(
+      // The first candidate the caller may view, so a hidden Session never hides the next one.
+      presentWorkspace(
+        data,
+        data.recommendedSessionIds?.find((id) => permitted.has(id)),
+      ),
+      (id) => permitted.has(id),
+    ),
   };
 }

@@ -224,7 +224,7 @@ describe('Reference identity and projection integrity HTTP', () => {
       {
         sessions: () =>
           Promise.resolve({
-            recommendedSessionId: 'protected-session',
+            recommendedSessionIds: ['protected-session'],
             section: {
               state: 'available',
               data: {

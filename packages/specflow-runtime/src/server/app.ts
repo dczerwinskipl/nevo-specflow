@@ -26,6 +26,7 @@ import {
   createEngineAssociationTargets,
   createSessionAssociationsFeature,
   createStoreSessionAssociations,
+  createWorkspaceSessionContribution,
   type AssociationTargets,
 } from '../features/session-associations';
 import { createSpecsFeature, type SpecsFeatureDependencies } from '../features/specs';
@@ -177,18 +178,30 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
     demo?.sessionReferences ?? dependencies.sessions?.references ?? storeAssociations;
   // Demo mode serves the real document read routes from the demo directories.
   const documentReadSource = dependencies.documents?.readSource ?? demo?.documentReadSource;
-  // Project mode: the Engine is the source of the workspace `documents` section, unless a
-  // contribution was injected (tests, demo).
-  const specContributions = dependencies.specs?.contributions ?? demo?.contributions;
-  const contributions =
-    !demo && engine && !specContributions?.documents
-      ? { ...specContributions, documents: createEngineWorkspaceDocuments(engine) }
-      : specContributions;
   // The Runtime's single project: every `spec.*` check runs at `specScope(projectId, specId)`.
   const projectId = () =>
     demo
       ? demo.environment.state.catalogue.project.id
       : (engine?.context.project.projectId ?? dependencies.sessions?.storage?.projectId);
+  // Project mode: the Engine is the source of the workspace `documents` section and the Session
+  // association registry of the `sessions` section, unless a contribution was injected (tests).
+  const specContributions = dependencies.specs?.contributions ?? demo?.contributions;
+  const contributions = demo
+    ? specContributions
+    : {
+        ...specContributions,
+        ...(engine && !specContributions?.documents
+          ? { documents: createEngineWorkspaceDocuments(engine) }
+          : {}),
+        ...(!specContributions?.sessions
+          ? {
+              sessions: createWorkspaceSessionContribution({
+                sessions: sessionsFeature.runtime,
+                projectId,
+              }),
+            }
+          : {}),
+      };
   const productFeatures: readonly RuntimeFeature[] = [
     createSpecsFeature({
       ...(config.specs ? { config: config.specs } : {}),

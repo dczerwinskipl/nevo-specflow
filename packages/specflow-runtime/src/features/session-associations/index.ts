@@ -3,6 +3,7 @@ export {
   type SessionAssociationsFeatureOptions,
 } from './feature';
 export { createStoreSessionAssociations } from './store-associations';
+export { createWorkspaceSessionContribution } from './workspace/contribution';
 export {
   createEngineAssociationTargets,
   readTaskTargets,

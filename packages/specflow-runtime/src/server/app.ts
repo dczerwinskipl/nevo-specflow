@@ -16,7 +16,7 @@ import {
   type SessionDriver,
 } from '../features/sessions';
 import {
-  createManifestWorkspaceTasks,
+  manifestWorkspaceTasks,
   createTasksFeature,
   type TasksFeatureDependencies,
 } from '../features/tasks';
@@ -205,9 +205,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
     ? specContributions
     : {
         ...specContributions,
-        ...(engine && !specContributions?.tasks
-          ? { tasks: createManifestWorkspaceTasks(engine) }
-          : {}),
+        ...(engine && !specContributions?.tasks ? { tasks: manifestWorkspaceTasks } : {}),
         ...(engine && !specContributions?.documents
           ? { documents: createEngineWorkspaceDocuments(engine) }
           : {}),

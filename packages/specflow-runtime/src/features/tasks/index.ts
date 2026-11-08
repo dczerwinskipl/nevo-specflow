@@ -13,4 +13,4 @@ export type {
 } from './reads/facts';
 export { createDemoTaskSources, buildDemoTasks } from './demo/sources';
 export { buildDemoTaskContribution } from './demo/contribution';
-export { createManifestWorkspaceTasks } from './workspace/manifest-contribution';
+export { manifestWorkspaceTasks } from './workspace/manifest-contribution';

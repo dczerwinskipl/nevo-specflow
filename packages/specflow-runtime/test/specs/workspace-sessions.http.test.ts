@@ -207,6 +207,7 @@ describe('project-mode workspace sessions section', () => {
             id: 'session-started.' + newer,
             occurredAt: expect.any(String) as unknown,
             kind: 'session',
+            event: 'session_started',
             title: '',
             description: 'Session started',
             targetId: newer,

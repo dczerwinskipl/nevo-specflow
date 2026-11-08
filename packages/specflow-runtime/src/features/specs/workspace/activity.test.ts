@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
+import type { SpecificationWorkspaceResponse } from '@nevo/specflow-contracts/specs/workspace';
+
 import { WORKSPACE_ACTIVITY_LIMIT, composeWorkspaceActivity, isCalendarDate } from './activity';
+import { authorizeSessionReferences } from './authorize-projection';
 
 function items(result: ReturnType<typeof composeWorkspaceActivity>) {
   if (result.state !== 'available') {
@@ -27,6 +30,7 @@ describe('composeWorkspaceActivity', () => {
         id: 'session-started.session-a',
         occurredAt: '2026-11-08T09:00:00.000Z',
         kind: 'session',
+        event: 'session_started',
         title: 'Przygotowanie',
         description: 'Session started',
         targetId: 'session-a',
@@ -37,6 +41,7 @@ describe('composeWorkspaceActivity', () => {
         id: 'specification-created',
         occurredAt: '2026-11-08',
         kind: 'info',
+        event: 'specification_created',
         title: 'Specification created',
         description: '',
       },
@@ -60,16 +65,42 @@ describe('composeWorkspaceActivity', () => {
     });
   });
 
-  it('returns at most the newest 50 events', () => {
+  it('cuts to the newest 50 events after authorization, so hidden Sessions never shorten it', () => {
     const sessionStarts = Array.from({ length: 100 }, (_, index) => ({
       sessionId: 'session-' + index,
       createdAt: new Date(Date.UTC(2026, 0, 1, 0, index)).toISOString(),
     }));
-    const events = items(composeWorkspaceActivity({ created: '2025-12-31', sessionStarts }));
+    const composed = composeWorkspaceActivity({ created: '2025-12-31', sessionStarts });
+    // Composition keeps every event, newest first.
+    expect(items(composed)).toHaveLength(101);
+    expect(items(composed)[0]?.id).toBe('session-started.session-99');
 
-    expect(events).toHaveLength(WORKSPACE_ACTIVITY_LIMIT);
-    expect(events[0]?.id).toBe('session-started.session-99');
-    expect(events.some((event) => event.kind === 'info')).toBe(false);
+    const response = {
+      revision: 'r',
+      specification: { id: 's', title: 'S', summary: '', preparationState: 'empty', attention: [] },
+      sections: {
+        tasks: { state: 'unavailable', reason: 'not_implemented' },
+        documents: { state: 'unavailable', reason: 'not_implemented' },
+        sessions: { state: 'unavailable', reason: 'source_unavailable' },
+        activity: composed,
+        repository: { state: 'unavailable', reason: 'not_implemented' },
+        changes: { state: 'unavailable', reason: 'not_implemented' },
+      },
+      actions: {
+        executeTasks: { available: false },
+        startSession: { available: false },
+      },
+    } satisfies SpecificationWorkspaceResponse;
+    // The caller may view only the even Sessions: 50 of them remain, plus the created event.
+    const visible = authorizeSessionReferences(response, (id) => Number(id.split('-')[1]) % 2 === 0)
+      .sections.activity;
+
+    expect(visible.state === 'available' && visible.data.items).toHaveLength(
+      WORKSPACE_ACTIVITY_LIMIT,
+    );
+    expect(visible.state === 'available' && visible.data.items[0]?.id).toBe(
+      'session-started.session-98',
+    );
   });
 });
 

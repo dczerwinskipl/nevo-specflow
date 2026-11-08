@@ -1,11 +1,9 @@
 import type { WorkspaceActivityRecord, WorkspaceReadModel } from './repository';
 
-/** At most this many activity events are returned, newest first. */
+/** At most this many activity events are returned (newest first), counted after authorization. */
 export const WORKSPACE_ACTIVITY_LIMIT = 50;
-/** Stable id of the "Specification created" event; clients localize the event by it. */
-export const SPECIFICATION_CREATED_EVENT_ID = 'specification-created';
-/** Prefix of a "Session started" event id (`session-started.<sessionId>`); clients localize by it. */
-export const SESSION_STARTED_EVENT_PREFIX = 'session-started.';
+const SPECIFICATION_CREATED_EVENT_ID = 'specification-created';
+const SESSION_STARTED_EVENT_PREFIX = 'session-started.';
 
 const CALENDAR_DATE = /^(\d{4})-(\d{2})-(\d{2})$/u;
 
@@ -42,6 +40,7 @@ export function composeWorkspaceActivity(
         id: SESSION_STARTED_EVENT_PREFIX + session.sessionId,
         occurredAt: session.createdAt,
         kind: 'session',
+        event: 'session_started',
         title: session.title ?? '',
         description: 'Session started',
         targetId: session.sessionId,
@@ -57,6 +56,7 @@ export function composeWorkspaceActivity(
         id: SPECIFICATION_CREATED_EVENT_ID,
         occurredAt: input.created,
         kind: 'info',
+        event: 'specification_created',
         title: 'Specification created',
         description: '',
       },
@@ -66,7 +66,6 @@ export function composeWorkspaceActivity(
 
   const items = events
     .sort((a, b) => compareInstants(b.sortKey, a.sortKey))
-    .slice(0, WORKSPACE_ACTIVITY_LIMIT)
     .map((event) => event.record);
 
   return { state: 'available', data: { items } };

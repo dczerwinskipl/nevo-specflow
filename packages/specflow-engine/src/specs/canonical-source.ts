@@ -270,11 +270,12 @@ async function readPhysicalDocument(
  * read. Any failure (missing, redirected, unreadable) is `undefined`: the prefix is optional data.
  * A multi-byte character cut by the bound is dropped rather than decoded as a replacement character.
  */
-async function readOverviewPrefix(
-  found: AvailableSpec,
-  limit: number,
-): Promise<string | undefined> {
-  const path = join(found.workspaceRoot, found.specification.relativeOverviewPath);
+function readOverviewPrefix(found: AvailableSpec, limit: number): Promise<string | undefined> {
+  return readTextPrefix(join(found.workspaceRoot, found.specification.relativeOverviewPath), limit);
+}
+
+/** The first `limit` bytes of the regular, non-redirected file at `path` as text (module-internal). */
+export async function readTextPrefix(path: string, limit: number): Promise<string | undefined> {
   try {
     const stat = await lstat(path);
     if (!stat.isFile() || stat.isSymbolicLink() || (await realpath(path)) !== path) {

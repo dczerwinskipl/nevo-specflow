@@ -88,6 +88,13 @@ const ActivitySchema = Type.Object({
     Type.Literal('doc'),
     Type.Literal('info'),
   ]),
+  /**
+   * The semantic event of a known Runtime event, which clients localize; `title` and `description`
+   * then carry English fallback text. Absent for a source-written event shown as delivered.
+   */
+  event: Type.Optional(
+    Type.Union([Type.Literal('specification_created'), Type.Literal('session_started')]),
+  ),
   title: Type.String(),
   description: Type.String(),
   targetId: Type.Optional(IdSchema),

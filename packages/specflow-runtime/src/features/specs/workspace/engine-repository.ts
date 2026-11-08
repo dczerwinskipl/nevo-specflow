@@ -58,6 +58,7 @@ export function createEngineWorkspaceRepository(
         ...(source.specification.created !== undefined
           ? { created: source.specification.created }
           : {}),
+        manifestTasks: source.specification.tasks,
         sections: {
           repository: notImplemented,
           changes: notImplemented,

@@ -141,6 +141,7 @@ describe('Engine-backed specification workspace read', () => {
                       id: 'specification-created',
                       occurredAt: manifestCreated,
                       kind: 'info',
+                      event: 'specification_created',
                       title: 'Specification created',
                       description: '',
                     },

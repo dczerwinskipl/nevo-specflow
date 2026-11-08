@@ -2,7 +2,6 @@ import { expect, it, vi } from 'vitest';
 import { mkdir, writeFile, readFile, symlink, link } from 'node:fs/promises';
 import { join } from 'node:path';
 import { prepareAntigravityPermission } from '../permissions';
-import { emptyDiscoveryResult } from './scan';
 import { discoveryFixture as fixture } from './transport.fixture';
 
 it('advertises the narrow MCP inventory, rejects unadmitted calls, then runs an owned helper', async () => {
@@ -63,7 +62,7 @@ it('keeps native recursion and arbitrary MCP denied and commands explicitly appr
 it('isolates invocation credentials and cancels expired helpers without returning success', async () => {
   const marker = 'started.json';
   const f = await fixture(
-    `import{writeFileSync}from'node:fs';process.stdin.resume();process.stdin.on('end',()=>{writeFileSync(${JSON.stringify(marker)},JSON.stringify({pid:process.pid}));setInterval(()=>{},1000);});`,
+    `import{writeFileSync}from'node:fs';process.stdin.resume();process.stdin.on('end',()=>{writeFileSync('started.json',JSON.stringify({pid:process.pid}));setInterval(()=>{},1000);});`,
   );
   const other = await fixture();
   f.bridge.activate();
@@ -119,7 +118,7 @@ it('bounds active searches across Sessions and releases capacity on cancellation
 
 it('discards a completed read after its native identity changes, even with a mutable context getter', async () => {
   const f = await fixture(
-    `import{writeFileSync,existsSync}from'node:fs';process.stdin.resume();process.stdin.on('end',()=>{writeFileSync('started','ready');const timer=setInterval(()=>{if(existsSync('release')){clearInterval(timer);console.log(${JSON.stringify(JSON.stringify(emptyDiscoveryResult('complete')))});}},10);});`,
+    `import{writeFileSync,existsSync,readFileSync}from'node:fs';process.stdin.resume();process.stdin.on('end',()=>{writeFileSync('started','ready');const timer=setInterval(()=>{if(existsSync('release')){clearInterval(timer);console.log(readFileSync(new URL('./controlled-result.json',import.meta.url),'utf8'));}},10);});`,
   );
   f.bridge.activate();
   const pending = f.call('search_text', { query: 'needle' });

@@ -32,10 +32,15 @@ export async function discoveryFixture(
     ? fileURLToPath(import.meta.resolve('@nevo/specflow-runtime/antigravity-hook'))
     : join(root, 'controlled.mjs');
   if (!realHelper) {
+    // Keep protocol data separate from the executable fixture source.
+    await writeFile(
+      join(root, 'controlled-result.json'),
+      JSON.stringify(emptyDiscoveryResult('complete')),
+    );
     await writeFile(
       helper,
       helperBody ??
-        `process.stdin.resume(); process.stdin.on('end',()=>console.log(${JSON.stringify(JSON.stringify(emptyDiscoveryResult('complete')))}));`,
+        `import{readFileSync}from'node:fs';process.stdin.resume();process.stdin.on('end',()=>console.log(readFileSync(new URL('./controlled-result.json',import.meta.url),'utf8')));`,
     );
   }
 

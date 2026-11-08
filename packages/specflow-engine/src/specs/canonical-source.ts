@@ -9,7 +9,8 @@ import {
   type DiscoveredSpecification,
 } from './discovery';
 import { runReadRequest } from '../project/request-verification-memo';
-import { readManifestTextBounded } from './bounded-read';
+import { readBoundedBytes, readManifestTextBounded } from './bounded-read';
+import { OVERVIEW_DOCUMENT_ID } from './documents';
 import { parseSpecificationManifestText, SpecificationError } from './model';
 
 type AvailableSpec = Extract<DiscoveredSpecification, { readonly status: 'available' }>;
@@ -19,7 +20,19 @@ export type CanonicalSpecSource =
   | (AvailableSpec & {
       readonly sourceUpdatedAt: string;
       readonly sourceRevision: string;
+      /**
+       * The first bytes of the registered overview, decoded as text, when the caller asked for them
+       * (`overviewPrefixBytes`). Absent when not requested, not registered, missing or unreadable:
+       * an overview problem never fails the manifest read.
+       */
+      readonly overviewPrefix?: string;
     });
+
+/** Bounded extras read within the same canonical read (no second registry resolve). */
+export interface CanonicalSpecSourceReadOptions {
+  /** Read at most this many bytes of each included Specification's overview, never the whole file. */
+  readonly overviewPrefixBytes?: number;
+}
 
 export type CanonicalDocumentRead =
   | {
@@ -40,14 +53,16 @@ export type CanonicalDocumentRead =
 export function readCanonicalSpecSources(
   engine: SpecFlowEngine,
   isIncluded?: (specId: string) => boolean,
+  options?: CanonicalSpecSourceReadOptions,
 ): Promise<readonly CanonicalSpecSource[]> {
   // Read-only: verify each workspace once for this request.
-  return runReadRequest(() => readSourcesInRequest(engine, isIncluded));
+  return runReadRequest(() => readSourcesInRequest(engine, isIncluded, options));
 }
 
 async function readSourcesInRequest(
   engine: SpecFlowEngine,
   isIncluded?: (specId: string) => boolean,
+  options?: CanonicalSpecSourceReadOptions,
 ): Promise<readonly CanonicalSpecSource[]> {
   // Discovery validates a registry snapshot, but files are opened afterwards.
   // Detect a new binding/registration published during that second stage.
@@ -88,6 +103,12 @@ async function readSourcesInRequest(
         );
       }
 
+      const overviewPrefix =
+        options?.overviewPrefixBytes !== undefined &&
+        latest.documents.some((document) => document.id === OVERVIEW_DOCUMENT_ID)
+          ? await readOverviewPrefix(item, options.overviewPrefixBytes)
+          : undefined;
+
       return {
         ...item,
         specification: {
@@ -97,6 +118,7 @@ async function readSourcesInRequest(
         },
         sourceUpdatedAt: source.updatedAt,
         sourceRevision: source.revision,
+        ...(overviewPrefix !== undefined ? { overviewPrefix } : {}),
       };
     }),
   );
@@ -240,6 +262,40 @@ async function readPhysicalDocument(
       'SPEC_SOURCE_INVALID',
       'Canonical document source is unavailable.',
     );
+  }
+}
+
+/**
+ * The first `limit` bytes of the overview, with the same redirect checks as a canonical document
+ * read. Any failure (missing, redirected, unreadable) is `undefined`: the prefix is optional data.
+ * A multi-byte character cut by the bound is dropped rather than decoded as a replacement character.
+ */
+async function readOverviewPrefix(
+  found: AvailableSpec,
+  limit: number,
+): Promise<string | undefined> {
+  const path = join(found.workspaceRoot, found.specification.relativeOverviewPath);
+  try {
+    const stat = await lstat(path);
+    if (!stat.isFile() || stat.isSymbolicLink() || (await realpath(path)) !== path) {
+      return undefined;
+    }
+
+    const handle = await open(path, 'r');
+    try {
+      if (!(await handle.stat()).isFile()) {
+        return undefined;
+      }
+
+      const bytes = (await readBoundedBytes(handle, limit)).subarray(0, limit);
+
+      // `stream: true` holds back an incomplete trailing sequence instead of emitting U+FFFD.
+      return new TextDecoder('utf-8').decode(bytes, { stream: true });
+    } finally {
+      await handle.close();
+    }
+  } catch {
+    return undefined;
   }
 }
 

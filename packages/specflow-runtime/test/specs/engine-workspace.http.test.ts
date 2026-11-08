@@ -88,7 +88,7 @@ describe('Engine-backed specification workspace read', () => {
   });
 
   it(
-    'returns the identity and registered documents of an existing specification with the other sections not implemented, 404 for an unknown one',
+    'returns the identity, overview summary, empty Tasks, registered documents and partial activity of an existing specification, 404 for an unknown one',
     async () => {
       const { root, engine } = await fixture();
       const created = await createSpecificationFromRequest(engine, {
@@ -97,6 +97,15 @@ describe('Engine-backed specification workspace read', () => {
         title: 'Actual canonical Spec',
         target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
       });
+      const manifestPath = join(root, created.relativeManifestPath);
+      const overviewPath = join(manifestPath, '..', 'overview.md');
+      await writeFile(
+        overviewPath,
+        '# Actual canonical Spec\n\n<!-- note -->\nSign in with the **company** [identity provider](https://idp.example).\n\nSecond paragraph.\n',
+      );
+      const manifestCreated = /^created: ['"]?(\d{4}-\d{2}-\d{2})/mu.exec(
+        await readFile(manifestPath, 'utf8'),
+      )?.[1];
       const app = await createRuntimeApp(trustedLocalConfig(), { specs: { engine } });
       try {
         const response = await app.inject(`/api/specs/${created.specId}/workspace`);
@@ -107,20 +116,63 @@ describe('Engine-backed specification workspace read', () => {
         expect(body.specification).toEqual({
           id: created.specId,
           title: 'Actual canonical Spec',
-          summary: '',
+          // The overview's first paragraph as plain text, from the same canonical read.
+          summary: 'Sign in with the company identity provider.',
           preparationState: 'empty',
           attention: [],
         });
         const unavailable = { state: 'unavailable', reason: 'not_implemented' };
         expect(body.sections).toEqual({
-          tasks: unavailable,
+          // Temporary manifest source: no Tasks is a verified, available empty section.
+          tasks: {
+            state: 'available',
+            data: { groups: [], completed: 0, total: 0, attention: [] },
+          },
           documents: body.sections.documents,
           // Managed Sessions are disabled in this Runtime: the registry is unreadable.
           sessions: { state: 'unavailable', reason: 'source_unavailable' },
-          activity: unavailable,
+          // Sessions disabled: only the Specification-created event.
+          activity: {
+            state: 'available',
+            data: {
+              items: manifestCreated
+                ? [
+                    {
+                      id: 'specification-created',
+                      occurredAt: manifestCreated,
+                      kind: 'info',
+                      title: 'Specification created',
+                      description: '',
+                    },
+                  ]
+                : [],
+            },
+          },
           repository: unavailable,
           changes: unavailable,
         });
+        expect(manifestCreated).toMatch(/^\d{4}-\d{2}-\d{2}$/u);
+
+        // An overview-only change updates the summary but not the manifest revision.
+        await writeFile(overviewPath, 'Rewritten overview.\n');
+        const rewritten = (
+          await app.inject(`/api/specs/${created.specId}/workspace`)
+        ).json<SpecificationWorkspaceResponse>();
+        expect(rewritten.specification.summary).toBe('Rewritten overview.');
+        expect(rewritten.revision).toBe(body.revision);
+
+        // A file far larger than the bounded prefix still yields its first paragraph.
+        await writeFile(overviewPath, 'Large overview.\n\n' + 'x '.repeat(100_000));
+        const large = (
+          await app.inject(`/api/specs/${created.specId}/workspace`)
+        ).json<SpecificationWorkspaceResponse>();
+        expect(large.specification.summary).toBe('Large overview.');
+
+        // A missing overview is an empty summary, never a failed workspace read.
+        await rm(overviewPath);
+        const missing = await app.inject(`/api/specs/${created.specId}/workspace`);
+        expect(missing.statusCode, missing.body).toBe(200);
+        expect(missing.json<SpecificationWorkspaceResponse>().specification.summary).toBe('');
         // The registered documents of the manifest, read through the Engine.
         expect(body.sections.documents.state).toBe('available');
         if (body.sections.documents.state === 'available') {
@@ -141,7 +193,6 @@ describe('Engine-backed specification workspace read', () => {
         });
 
         // The revision follows the canonical manifest and the title follows the file.
-        const manifestPath = join(root, created.relativeManifestPath);
         await writeFile(
           manifestPath,
           (await readFile(manifestPath, 'utf8')).replace(

@@ -149,6 +149,16 @@ export function createWorkspaceSessionContribution(options: {
           sessionId: row.sessionId,
           ...(row.specId !== undefined ? { specId: row.specId } : {}),
         })),
+        // The "Session started" events of the activity history: bounded by the same 100 rows.
+        sessionStarts: rows.map((row) => {
+          const summary = byId.get(row.sessionId)!;
+
+          return {
+            sessionId: row.sessionId,
+            ...(summary.title ? { title: summary.title } : {}),
+            createdAt: summary.createdAt,
+          };
+        }),
         recommendedSessionIds: recommendSessions(
           rows.map((row, index) => ({
             id: row.sessionId,

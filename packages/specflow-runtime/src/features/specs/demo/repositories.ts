@@ -65,7 +65,6 @@ function buildSpecification(record: DemoSpec): SpecificationReadModel {
       attention,
     },
     sections: {
-      activity: { state: 'available', data: { items: [] } },
       repository: { state: 'unavailable', reason: 'not_implemented' },
       changes: { state: 'unavailable', reason: 'not_implemented' },
     },
@@ -169,6 +168,8 @@ export function createDemoSpecsRepositories(deps?: DemoSpecsRepositoriesDeps): {
       async sessions(specId) {
         return sessions.contribution(specId, find);
       },
+      // The demo has no activity source: an empty success, unchanged (owner decision D5).
+      activity: () => Promise.resolve({ state: 'available', data: { items: [] } }),
     },
     catalogue: {
       find,

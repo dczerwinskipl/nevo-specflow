@@ -148,7 +148,8 @@ export function ContextRelatedTasksSection({
 
   return (
     <ContextSection title={t('sessions.context.relatedTasks')} busy={resolved.kind === 'skeleton'}>
-      {resolved.kind === 'skeleton' && <ContextSkeletonRows rows={['navigation']} />}
+      {/* Shaped like the Task row (title, key) that replaces it, so nothing below moves. */}
+      {resolved.kind === 'skeleton' && <ContextSkeletonRows rows={['identity']} />}
       {resolved.kind === 'ready' && (
         <InformationList>
           {resolved.value.map((task) => (

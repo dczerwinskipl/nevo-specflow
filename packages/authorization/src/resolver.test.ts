@@ -185,6 +185,36 @@ describe('createAuthorization', () => {
     ).toBe(false);
   });
 
+  it('counts only grants without a dimension when asked to', () => {
+    const scoped = createAuthorization({
+      resources: [Order],
+      roles: { reader: [Order.capabilities.View] },
+      assignments: [
+        { subject: { kind: 'user', id: 'u1' }, role: 'reader', scope: { orderId: 'O1' } },
+        { subject: { kind: 'user', id: 'u2' }, role: 'reader', scope: { orderId: 'O1' } },
+        { subject: { kind: 'user', id: 'u2' }, role: 'reader', scope: { tenantId: 'T' } },
+      ],
+    });
+    const check = (id: string) =>
+      scoped.hasCapabilityInAnyScope({
+        subject: { kind: 'user', id },
+        resource: Order.name,
+        capability: Order.capabilities.View,
+        withoutDimension: 'orderId',
+      });
+
+    expect(check('u1')).toBe(false);
+    expect(check('u2')).toBe(true);
+    expect(() =>
+      scoped.hasCapabilityInAnyScope({
+        subject: { kind: 'user', id: 'u2' },
+        resource: Order.name,
+        capability: Order.capabilities.View,
+        withoutDimension: ['__', 'proto__'].join(''),
+      }),
+    ).toThrowError(/must contain only letters/);
+  });
+
   it('rejects unsafe scope dimension identifiers at the generic boundary', () => {
     const auth = authorization();
     const prototypeSensitiveKey = ['__', 'proto__'].join('');

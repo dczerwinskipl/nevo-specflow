@@ -115,6 +115,14 @@ const ActionSchema = Type.Object({
   available: Type.Boolean(),
   reason: Type.Optional(Type.String()),
 });
+const StartSessionActionSchema = Type.Object({
+  ...ActionSchema.properties,
+  /**
+   * The start route when it is not the composed `POST /api/specs/:specId/sessions`: the demo
+   * Runtime starts Sessions at `/api/demo/specs/:specId/sessions`.
+   */
+  path: Type.Optional(Type.String()),
+});
 export const SpecificationWorkspaceResponseSchema = Type.Object({
   revision: Type.String(),
   recommendedSessionId: Type.Optional(IdSchema),
@@ -141,7 +149,7 @@ export const SpecificationWorkspaceResponseSchema = Type.Object({
   }),
   actions: Type.Object({
     executeTasks: ActionSchema,
-    startSession: ActionSchema,
+    startSession: StartSessionActionSchema,
   }),
 });
 export const SpecificationReadErrorSchema = Type.Object({

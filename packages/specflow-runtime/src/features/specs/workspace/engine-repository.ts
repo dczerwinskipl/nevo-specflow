@@ -13,8 +13,8 @@ const notImplemented = {
  *
  * The Engine owns the manifest (title, task list) and its provenance; it does not yet own a
  * verified projection of Git state, activity, tasks, documents or Sessions. Those sections are
- * therefore `not_implemented` rather than guessed or reported as an empty success, and no action
- * is available. An unknown `specId` is `null` (404), distinct from a bound but unreadable
+ * therefore `not_implemented` rather than guessed or reported as an empty success. Sessions and
+ * the `startSession` action come from the Session association contribution. An unknown `specId` is `null` (404), distinct from a bound but unreadable
  * source (a typed error the endpoint answers with 503).
  */
 export function createEngineWorkspaceRepository(
@@ -57,7 +57,8 @@ export function createEngineWorkspaceRepository(
         },
         actions: {
           executeTasks: { available: false, reason: 'not_implemented' },
-          startSession: { available: false, reason: 'not_implemented' },
+          // The Session association contribution decides; without one there are no Sessions.
+          startSession: { available: false, reason: 'sessions_disabled' },
         },
       };
     },

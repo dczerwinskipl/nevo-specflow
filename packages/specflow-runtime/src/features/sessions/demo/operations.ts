@@ -3,10 +3,11 @@ import type {
   DemoSessionInput,
   DemoSessionResult,
 } from '@nevo/specflow-contracts/demo';
-import type { DemoSpecification } from '../../demo-catalogue';
+import type { DemoCatalogue, DemoSpecification } from '../../demo-catalogue';
+import { createDemoSessionList } from './list';
 import { DemoOperationError, type DemoState } from '../../../demo/state';
-import type { SessionReferenceOwner } from '../reference-owner';
-import { buildDemoSessionContribution } from './contribution';
+import type { SessionAssociations } from '../reference-owner';
+import { buildDemoSessionContribution, rankDemoSessions } from './contribution';
 import { buildCatalogueSessionDetail } from './seeded-detail';
 
 type Find = (specId: string) => Promise<DemoSpecification | undefined>;
@@ -17,7 +18,13 @@ type Find = (specId: string) => Promise<DemoSpecification | undefined>;
  * sessions section. Document paths for the context snapshot are supplied by the caller.
  */
 export function createDemoSessions(state: DemoState) {
+  const allocatedAt = new Map<string, string>();
+
   return {
+    /** The demo Session list over the catalogue and the Sessions allocated here. */
+    list(catalogue: DemoCatalogue) {
+      return createDemoSessionList({ state, catalogue, allocatedAt });
+    },
     /** Session context documents are materialized snapshots in this bounded demo; documents report changes here. */
     refreshDocuments(specId: string, paths: readonly string[]) {
       for (const session of state.sessions.values()) {
@@ -80,6 +87,7 @@ export function createDemoSessions(state: DemoState) {
         },
       };
       state.sessions.set(sessionId, detail);
+      allocatedAt.set(sessionId, new Date().toISOString());
       const result = { sessionId, location: detail.location };
       entry.result = result;
 
@@ -117,7 +125,7 @@ export function createDemoSessions(state: DemoState) {
         : null;
     },
     /** Resolves allocated sessions first, then the seeded references. */
-    overlayReferences(seeded: SessionReferenceOwner): SessionReferenceOwner {
+    overlayReferences(seeded: SessionAssociations): SessionAssociations {
       const allocated = (sessionId: string) => {
         const session = state.sessions.get(sessionId);
 
@@ -148,6 +156,19 @@ export function createDemoSessions(state: DemoState) {
 
           return resolved;
         },
+        async identity(sessionId) {
+          const session = state.sessions.get(sessionId);
+
+          return session
+            ? { projectId: state.catalogue.project.id, sessionId, specId: session.specId }
+            : seeded.identity(sessionId);
+        },
+        async association(sessionId) {
+          const session = state.sessions.get(sessionId);
+
+          // An allocated demo Session belongs to its Specification and names no Task.
+          return session ? { specId: session.specId, taskIds: [] } : seeded.association(sessionId);
+        },
       };
     },
     /** Workspace sessions section: seeded sessions plus the ones allocated in this environment. */
@@ -163,25 +184,26 @@ export function createDemoSessions(state: DemoState) {
         ? { section: { state: 'available' as const, data: { items: [], attention: [] } } }
         : buildDemoSessionContribution(record);
 
+      // Sessions allocated in this environment are the newest, newest first.
+      const items = [
+        ...[...state.sessions.values()]
+          .filter((session) => session.specId === specId)
+          .reverse()
+          .map((session) => ({
+            id: session.sessionId,
+            title: session.title,
+            taskIds: [],
+            status: 'quiet' as const,
+          })),
+        ...original.section.data.items,
+      ];
+
       return {
-        ...original,
         section: {
           state: 'available' as const,
-          data: {
-            ...original.section.data,
-            items: [
-              ...original.section.data.items,
-              ...[...state.sessions.values()]
-                .filter((session) => session.specId === specId)
-                .map((session) => ({
-                  id: session.sessionId,
-                  title: session.title,
-                  taskIds: [],
-                  status: 'quiet' as const,
-                })),
-            ],
-          },
+          data: { ...original.section.data, items },
         },
+        recommendedSessionIds: rankDemoSessions(items),
       };
     },
   };

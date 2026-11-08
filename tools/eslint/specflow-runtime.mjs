@@ -16,7 +16,15 @@ const runtimeSharedPatterns = [
     message: 'Production Runtime must use Engine application APIs, not the testing backdoor.',
   },
 ];
-const runtimeFeatures = ['auth', 'documents', 'sessions', 'settings', 'specs', 'tasks'];
+const runtimeFeatures = [
+  'auth',
+  'documents',
+  'session-associations',
+  'sessions',
+  'settings',
+  'specs',
+  'tasks',
+];
 
 function runtimeBoundaryBlocks() {
   const nonProduction = ['src/**/*.test.ts'];

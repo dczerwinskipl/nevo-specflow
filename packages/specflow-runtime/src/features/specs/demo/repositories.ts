@@ -144,7 +144,14 @@ export function createDemoSpecsRepositories(deps?: DemoSpecsRepositoriesDeps): {
                 : 'empty'
               : specification.specification.preparationState,
           },
-          actions: { ...specification.actions, startSession: { available: !!state } },
+          actions: {
+            ...specification.actions,
+            startSession: {
+              available: !!state,
+              // The demo starts Sessions at its own route; it has no composed create.
+              path: '/api/demo/specs/' + encodeURIComponent(specId) + '/sessions',
+            },
+          },
         };
       },
     },

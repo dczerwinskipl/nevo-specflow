@@ -2,7 +2,11 @@ import type { SpecificationWorkspaceResponse } from '@nevo/specflow-contracts/sp
 import { SpecCapabilities } from '@nevo/specflow-contracts/specs';
 import { SessionCapabilities } from '@nevo/specflow-contracts/sessions';
 import type { RequestAuthorization } from '../../auth';
-import { sessionScope, type SessionReference, type SessionReferenceOwner } from '../../sessions';
+import {
+  sessionScope,
+  type SessionReferenceOwner,
+  type SessionScopeIdentity,
+} from '../../sessions';
 import type { SpecificationWorkspaceRepository, WorkspaceContributions } from './repository';
 import { readWorkspace } from './read-workspace';
 import { specScope } from '../scope';
@@ -28,7 +32,7 @@ export async function readAuthorizedWorkspace(
     return { kind: 'unavailable' };
   }
 
-  const data = await readWorkspace(source, contributions, specId);
+  const data = await readWorkspace(source, contributions, specId, authz);
   if (!data) {
     return { kind: 'not_found' };
   }
@@ -56,6 +60,10 @@ export async function readAuthorizedWorkspace(
     }
   }
 
+  for (const id of data.recommendedSessionIds ?? []) {
+    ids.add(id);
+  }
+
   if (sections.activity.state === 'available') {
     for (const item of sections.activity.data.items) {
       if (item.kind === 'session' && item.targetId) {
@@ -68,9 +76,18 @@ export async function readAuthorizedWorkspace(
     }
   }
 
-  // One batch for every referenced Session; the store-derived identity decides the scope.
-  const owners: ReadonlyMap<string, SessionReference> =
-    ids.size && sessions ? await sessions.resolveMany([...ids]) : new Map();
+  // The section rows carry their store-derived identity; one batch resolves every other
+  // referenced Session. The identity alone decides the scope.
+  const owners = new Map<string, SessionScopeIdentity>(
+    (data.sessionIdentities ?? []).map((identity) => [identity.sessionId, identity]),
+  );
+  const unresolved = [...ids].filter((id) => !owners.has(id));
+  if (unresolved.length && sessions) {
+    for (const [id, reference] of await sessions.resolveMany(unresolved)) {
+      owners.set(id, reference);
+    }
+  }
+
   const permitted = new Set<string>();
   for (const id of ids) {
     const owner = owners.get(id);
@@ -89,6 +106,13 @@ export async function readAuthorizedWorkspace(
 
   return {
     kind: 'ok',
-    value: authorizeSessionReferences(presentWorkspace(data), (id) => permitted.has(id)),
+    value: authorizeSessionReferences(
+      // The first candidate the caller may view, so a hidden Session never hides the next one.
+      presentWorkspace(
+        data,
+        data.recommendedSessionIds?.find((id) => permitted.has(id)),
+      ),
+      (id) => permitted.has(id),
+    ),
   };
 }

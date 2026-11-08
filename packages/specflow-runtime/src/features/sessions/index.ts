@@ -1,10 +1,24 @@
-export { createSessionsFeature } from './feature';
+export { createSessionsFeature, type SessionsRuntime } from './feature';
 export { runAntigravityHook } from './providers/antigravity/hook-client';
 export { parseSessionsFeatureConfig, type SessionsFeatureConfig } from './configuration';
 export type { SessionDriver } from './providers/driver';
 export { SessionError } from './errors';
 export { SessionCapabilities } from '@nevo/specflow-contracts/sessions';
-export type { SessionReference, SessionReferenceOwner } from './reference-owner';
+export type {
+  SessionAssociations,
+  SessionReference,
+  SessionReferenceOwner,
+} from './reference-owner';
+export type { SessionCoordinator } from './lifecycle/coordinator';
+export type {
+  SessionIdentity,
+  SessionListRow,
+  SessionListScan,
+  SessionListSummary,
+  StoredAssociation,
+} from './persistence/protocol';
+export { registerSessionErrorHandling } from './http/error-handling';
+export { authorizeSessionWrite } from './http/authorization';
 export { sessionScope, type SessionScopeIdentity, type SessionCapabilityId } from './scope';
 export { createDemoSessionReferences } from './demo/references';
 

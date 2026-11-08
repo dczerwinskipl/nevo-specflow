@@ -4,78 +4,86 @@ import { createDemoSpecsRepositories } from '../../src/features/specs/demo/repos
 import { authorizeSessionReferences } from '../../src/features/specs/workspace/authorize-projection';
 import { presentWorkspace } from '../../src/features/specs/workspace/presenter';
 import { readWorkspace } from '../../src/features/specs/workspace/read-workspace';
+import type { RequestAuthorization } from '../../src/features/auth';
 
 describe('Workspace Session authorization projection', () => {
   it('filters all Session references, independently of visibility of the Sessions section', async () => {
     const demo = createDemoSpecsRepositories();
-    const source = await readWorkspace(demo.workspaceRepository, demo.contributions, 'admission');
+    const source = await readWorkspace(
+      demo.workspaceRepository,
+      demo.contributions,
+      'admission',
+      {} as RequestAuthorization,
+    );
     if (!source) {
       throw new Error('Missing demonstration Specification');
     }
 
-    const snapshot = presentWorkspace({
-      ...source,
-      recommendedSessionId: 'sample-session-23',
-      sections: {
-        ...source.sections,
-        sessions: {
-          state: 'available',
-          data: {
-            items:
-              source.sections.sessions.state === 'available'
-                ? source.sections.sessions.data.items
-                : [],
-            attention: [
-              {
-                id: 'blocked',
-                kind: 'session',
-                title: 'Secret title',
-                reason: 'Secret reason',
-                targetId: 'sample-session-23',
-              },
-              {
-                id: 'allowed',
-                kind: 'session',
-                title: 'Visible title',
-                reason: 'Visible reason',
-                targetId: 'sample-session-24',
-              },
-            ],
+    const snapshot = presentWorkspace(
+      {
+        ...source,
+        sections: {
+          ...source.sections,
+          sessions: {
+            state: 'available',
+            data: {
+              items:
+                source.sections.sessions.state === 'available'
+                  ? source.sections.sessions.data.items
+                  : [],
+              attention: [
+                {
+                  id: 'blocked',
+                  kind: 'session',
+                  title: 'Secret title',
+                  reason: 'Secret reason',
+                  targetId: 'sample-session-23',
+                },
+                {
+                  id: 'allowed',
+                  kind: 'session',
+                  title: 'Visible title',
+                  reason: 'Visible reason',
+                  targetId: 'sample-session-24',
+                },
+              ],
+            },
           },
-        },
-        activity: {
-          state: 'available',
-          data: {
-            items: [
-              {
-                id: 'hidden',
-                kind: 'session',
-                targetId: 'sample-session-23',
-                occurredAt: '2026-10-09',
-                title: 'Hidden session activity',
-                description: 'Secret',
-              },
-              {
-                id: 'visible',
-                kind: 'session',
-                targetId: 'sample-session-24',
-                occurredAt: '2026-10-09',
-                title: 'Visible session activity',
-                description: 'Public',
-              },
-              {
-                id: 'generic-hidden',
-                kind: 'info',
-                relatedSessionId: 'sample-session-23',
-                occurredAt: '2026-10-09',
-                title: 'Generic secret',
-                description: 'Secret',
-              },
-            ],
+          activity: {
+            state: 'available',
+            data: {
+              items: [
+                {
+                  id: 'hidden',
+                  kind: 'session',
+                  targetId: 'sample-session-23',
+                  occurredAt: '2026-10-09',
+                  title: 'Hidden session activity',
+                  description: 'Secret',
+                },
+                {
+                  id: 'visible',
+                  kind: 'session',
+                  targetId: 'sample-session-24',
+                  occurredAt: '2026-10-09',
+                  title: 'Visible session activity',
+                  description: 'Public',
+                },
+                {
+                  id: 'generic-hidden',
+                  kind: 'info',
+                  relatedSessionId: 'sample-session-23',
+                  occurredAt: '2026-10-09',
+                  title: 'Generic secret',
+                  description: 'Secret',
+                },
+              ],
+            },
           },
         },
       },
-    });
+      'sample-session-23',
+    );
     // Domain sources are independent. A Session reference accidentally placed
     // in another section must not bypass Session-level authorization.
     const hiddenCrossSection = {
@@ -161,7 +169,12 @@ describe('Workspace Session authorization projection', () => {
 
   it('never returns an unauthorized Session detail when none are permitted', async () => {
     const demo = createDemoSpecsRepositories();
-    const source = await readWorkspace(demo.workspaceRepository, demo.contributions, 'admission');
+    const source = await readWorkspace(
+      demo.workspaceRepository,
+      demo.contributions,
+      'admission',
+      {} as RequestAuthorization,
+    );
     if (!source) {
       throw new Error('Missing demonstration Specification');
     }

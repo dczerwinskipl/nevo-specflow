@@ -39,6 +39,22 @@ export function buildDemoSessions(record: DemoSpecification): SessionSummary[] {
   return [...sessions.values()];
 }
 
+/**
+ * Recommendation candidates: attention, then active, then the rest in section order (the demo
+ * catalogue has no update time, so section order stands in for recency).
+ */
+export function rankDemoSessions(
+  items: readonly Pick<SessionSummary, 'id' | 'status'>[],
+): string[] {
+  const rank = (status: SessionSummary['status']) =>
+    status === 'attention' ? 0 : status === 'active' ? 1 : 2;
+
+  return items
+    .map((item, index) => ({ item, index }))
+    .sort((a, b) => rank(a.item.status) - rank(b.item.status) || a.index - b.index)
+    .map(({ item }) => item.id);
+}
+
 export function buildDemoSessionContribution(record: DemoSpecification) {
   const items = buildDemoSessions(record);
   const attention = (record.signals ?? []).flatMap((signal) =>
@@ -58,6 +74,6 @@ export function buildDemoSessionContribution(record: DemoSpecification) {
 
   return {
     section: { state: 'available' as const, data: { items, attention } },
-    recommendedSessionId: items[0]?.id,
+    recommendedSessionIds: rankDemoSessions(items),
   };
 }

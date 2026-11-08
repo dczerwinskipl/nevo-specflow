@@ -39,6 +39,9 @@ export const SESSION_TABLE_OWNERSHIP: Readonly<Record<string, string | null>> = 
   entries: 'session=?1',
   turns: 'session=?1',
   provider_contexts: 'session=?1',
+  // Association sidecar: Tasks before their association row, both before the Session row.
+  session_association_tasks: 'session=?1',
+  session_associations: 'session=?1',
   sessions: 'id=?1',
 };
 

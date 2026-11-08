@@ -11,6 +11,7 @@ import { SessionLimits, utf8Bytes } from '@nevo/specflow-contracts/sessions';
 import { SessionError } from '../errors';
 import { setTimeout as delay } from 'node:timers/promises';
 import type { SessionStore } from '../persistence/store';
+import { createFingerprint, type AssociationWrite } from '../persistence/associations';
 import type {
   DriverFact,
   SnapshotSource,
@@ -257,8 +258,14 @@ export function createSessionCoordinator(
         }),
       );
     },
-    async create(actor: string, input: CreateSession): Promise<{ sessionId: string }> {
+    /** `association` is written verbatim with the Session; it never steers lifecycle decisions. */
+    async create(
+      actor: string,
+      input: CreateSession,
+      association?: AssociationWrite,
+    ): Promise<{ sessionId: string }> {
       input = Object.freeze(structuredClone(input));
+      association = association && Object.freeze(structuredClone(association));
       accepting();
       const cached = await call<{ sessionId: string } | undefined>({
         op: 'replay',
@@ -266,7 +273,7 @@ export function createSessionCoordinator(
         command: 'create',
         scope: projectId,
         requestId: input.requestId,
-        input,
+        input: createFingerprint(input, association),
       });
       if (cached) {
         return cached;
@@ -279,7 +286,7 @@ export function createSessionCoordinator(
       const driver = driverFor(input.providerId);
       await validate(driver, input);
 
-      return call({ op: 'create', actor, input });
+      return call({ op: 'create', actor, input, ...(association ? { association } : {}) });
     },
     async start(actor: string, sessionId: string, input: StartTurn): Promise<{ turnId: string }> {
       input = Object.freeze(structuredClone(input));

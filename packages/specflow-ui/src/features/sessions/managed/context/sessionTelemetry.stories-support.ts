@@ -276,7 +276,7 @@ function withLimits(
 
 const lastLimitsReading = fullTelemetrySnapshot.limits;
 
-/** Refresh-control states (session-actions-ux §1.2). */
+/** Refresh-control states (full-session-screen-structure §7.7). */
 export const limitsTelemetry = {
   /** Codex before its first account read: refreshable, nothing observed yet. */
   notRead: withLimits({

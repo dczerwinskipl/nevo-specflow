@@ -4,7 +4,7 @@ import { writeOutcomeUnknown } from '../../../../shared/http/apiErrorCode';
 import { sessionErrorCode } from '../api';
 
 /**
- * What a failed Session command means for its dialog (session-actions-ux §3.3):
+ * What a failed Session command means for its dialog (full-session-screen-structure §22.1):
  * - `unconfirmed`: the answer was lost; the dialog stays locked and the confirm retries;
  * - `forbidden`, `turnConflict`, `deleteBlocked`, `refused`: definite refusals that unlock Cancel.
  */

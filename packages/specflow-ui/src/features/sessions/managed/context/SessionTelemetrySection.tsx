@@ -65,7 +65,7 @@ type MoneyReading = TelemetrySnapshot['cost']['session'];
  * already populated data, unlike `usage.turn`/`cost.turn` above) instead of silently inheriting
  * the section's "for the whole session" claim.
  *
- * Provider limits carry the only refresh (session-actions-ux §1): a ghost "Odśwież" in their
+ * Provider limits carry the only refresh (full-session-screen-structure §7.7): a ghost "Odśwież" in their
  * heading row, offered when the reading is `refreshable` and the user may manage the Session
  * (`limitsRefresh` present). With the control the section stays even without rows, saying why;
  * `NOT_AUTHORIZED` limits render nothing at all. `migration` is not shown (§1.3).
@@ -332,7 +332,7 @@ function limitsCommandNote(refresh: LimitsRefreshControl | undefined): LimitsNot
 }
 
 /** `InlineNote` has no live region of its own: info and attention notes go to the section's polite
- * status region, only an unconfirmed request to its alert region (session-actions-ux rules). */
+ * status region, only an unconfirmed request to its alert region (full-session-screen-structure §7.7). */
 function LimitsNoteLine({ note }: { note: LimitsNote }) {
   const { t } = useTranslation();
 

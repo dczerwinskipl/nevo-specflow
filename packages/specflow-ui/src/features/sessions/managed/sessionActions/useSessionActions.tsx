@@ -39,7 +39,7 @@ function commandView(mutation: { isPending: boolean; error: Error | null }): Ses
 }
 
 /**
- * Rename, Archive, Unarchive and Delete of one Session (session-actions-ux §3): the header menu
+ * Rename, Archive, Unarchive and Delete of one Session (full-session-screen-structure §22.1): the header menu
  * items, their dialogs and the one owner of each command, shared by every trigger (Unarchive is
  * pressed from the menu or from the archived bar). Nothing is patched locally: the Session's new
  * state arrives as a `session` change on the stream.

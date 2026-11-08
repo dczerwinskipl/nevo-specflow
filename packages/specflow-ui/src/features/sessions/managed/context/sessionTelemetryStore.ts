@@ -5,7 +5,7 @@ import { writeOutcomeUnknown } from '../../../../shared/http/apiErrorCode';
 import type { ManagedSessionsApi } from '../api';
 import type { TelemetrySignal } from '../feed';
 
-/** The provider-limits refresh command as the control shows it (session-actions-ux §1.2). */
+/** The provider-limits refresh command as the control shows it (full-session-screen-structure §7.7). */
 export interface LimitsRefreshState {
   /** The refresh POST is in flight. */
   readonly sending: boolean;

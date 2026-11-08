@@ -862,7 +862,7 @@ function ManagedSessionConversation({
                       )
                     )}
                     {/* Archived in another view: said here until the `session` change brings the
-                        archived bar (session-actions-ux §3.4). */}
+                        archived bar (full-session-screen-structure §22.1). */}
                     <div>
                       <div role="status">
                         {state.archivedRefusal && !archived ? (
@@ -1121,7 +1121,7 @@ export function ManagedSession({
   namingPending = false,
 }: {
   /**
-   * This view deleted the Session (session-actions-ux §3.5); the route composition leaves it
+   * This view deleted the Session (full-session-screen-structure §22.1); the route composition leaves it
    * (replace navigation, toast, focus). `ManagedSession` itself stays router-agnostic.
    */
   onSessionDeleted?: () => void;
@@ -1326,7 +1326,7 @@ export function ManagedSession({
   // appears once, in the block, never twice.
   const liveInConversation =
     !!snapshot && !!liveActivity(snapshot.activeTurn, snapshot.currentActivity);
-  // One fact, first match wins (session-actions-ux §3.4): a connection that is not up, then
+  // One fact, first match wins (full-session-screen-structure §22.1): a connection that is not up, then
   // archived, then an unknown Turn outcome, then the current activity / readiness.
   const archived = !!snapshot?.session.archivedAt;
   const unknownTurn = snapshot?.activeTurn?.state === 'unknown';

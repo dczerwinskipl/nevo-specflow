@@ -100,7 +100,9 @@ not drown in the conversation text.
   `currentActivity` (tool → its own label, reasoning → "Myśli…", responding, commentary,
   waiting, cancelling), else from `activeTurn.state` when Runtime cleared `currentActivity`
   between Work items. Never inferred from the last entry. `attention`/`waitingForUser` produce
-  no live line — the pending interaction prompt owns that. While the block shows the live line,
+  no live line — the pending interaction prompt owns that. `unknown` produces no live line and no
+  spinner — the unknown-outcome notice above the Composer owns it
+  ([structure §17.1](../full-session-screen-structure.md#171-turn-whose-outcome-is-unknown-owner-accepted-2026-11-08)). While the block shows the live line,
   the header subtitle keeps only the coarse Session state ("Praca trwa") and drops its own
   spinner, so the live fact appears once.
 - **Single owner for terminal state.** When a Turn has a Work block, the block shows its
@@ -178,6 +180,10 @@ only when attachments exist. Its toolbar is inside the same frame: plus/attachme
 approval if relevant, model, effort if supported, Send/Stop. It is wider but capped on
 desktop; mobile can use icons when distinguishable. Do not use an extra settings row
 below Composer.
+
+An archived Session has no Composer: a quiet archived bar with Restore takes its overlay slot, and
+an unknown Turn outcome adds its notice above the Composer
+([structure §17.1 and §22.1](../full-session-screen-structure.md#221-session-actions-and-archived-session-owner-accepted-2026-11-08)).
 
 Provider (Claude Code/Codex/Cursor/Antigravity) is fixed per Session. The **next Turn**
 may change model, effort, certified work intent (Ask/Plan/Agent) or operation approval

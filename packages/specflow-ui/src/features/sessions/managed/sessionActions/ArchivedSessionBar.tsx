@@ -3,7 +3,7 @@ import { Button, InlineNote } from '@nevo/ui';
 import type { SessionCommandView } from './SessionActionDialogs';
 
 /**
- * Takes the Composer's place while the Session is archived (session-actions-ux §3.4): a quiet note
+ * Takes the Composer's place while the Session is archived (full-session-screen-structure §22.1): a quiet note
  * and, with Manage, a direct Restore (reversible, so no confirmation).
  */
 export function ArchivedSessionBar({

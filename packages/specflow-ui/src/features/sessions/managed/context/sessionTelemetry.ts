@@ -2,7 +2,7 @@ import type { TelemetrySnapshot } from '@nevo/specflow-contracts/sessions';
 
 /**
  * Whether the provider-limits refresh control is offered for this snapshot
- * (session-actions-ux §1.1): the reading says it can be refreshed, the user may manage the Session,
+ * (full-session-screen-structure §7.7): the reading says it can be refreshed, the user may manage the Session,
  * and the user may see account limits at all (`NOT_AUTHORIZED` masks the whole limits section).
  */
 export function isLimitsRefreshOffered(telemetry: TelemetrySnapshot, canRefresh: boolean): boolean {

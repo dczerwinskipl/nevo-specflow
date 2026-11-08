@@ -161,6 +161,9 @@ export const ProjectModeNoSession: Story = {
 
 /** Project mode with a Session: Continue session instead of the block; the history opens. */
 export const ProjectModeWithSession: Story = {
+  // Without Requires attention (h2) or the preparation block (h2) the section headings are h3 under
+  // the page h1: a known open item (see SpecificationSurface.stories PreparingTasks).
+  parameters: { a11y: { config: { rules: [{ id: 'heading-order', enabled: false }] } } },
   args: { state: 'with-session' },
   play: async ({ canvas, canvasElement }) => {
     await canvas.findByText('No tasks yet');

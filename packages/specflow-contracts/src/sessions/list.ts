@@ -1,10 +1,9 @@
 import { Type, type Static } from 'typebox';
 import { AssociationTargetIdSchema } from './associations';
-import { SessionIdSchema, SessionInfoSchema, TurnStateSchema } from './model';
+import { DisplayTitleSchema, SessionIdSchema, SessionInfoSchema, TurnStateSchema } from './model';
 
 const closed = { additionalProperties: false } as const;
 /** A provider or model title as the provider catalogue names it. */
-export const DisplayTitleSchema = Type.String({ minLength: 1, maxLength: 512 });
 
 export const SessionListLimits = { defaultLimit: 50, maxLimit: 100, scanBudget: 500 } as const;
 

@@ -1,5 +1,8 @@
 import { Type, type Static } from 'typebox';
 
+/** A human-readable display title resolved by the Runtime (provider or model name). */
+export const DisplayTitleSchema = Type.String({ minLength: 1, maxLength: 512 });
+
 const closed = { additionalProperties: false } as const;
 export const SessionLimits = {
   page: 40,
@@ -121,10 +124,10 @@ export const SessionInfoSchema = Type.Object(
      * Presentational: the provider's display title from the Runtime's catalogue, resolved like a
      * list row's, so `session.view` alone can name the executor. Absent when it is not listed.
      */
-    providerTitle: Type.Optional(Type.String({ minLength: 1, maxLength: 512 })),
+    providerTitle: Type.Optional(DisplayTitleSchema),
     modelId: Type.Optional(text(256)),
     /** Presentational: the display title of `modelId` in that catalogue; absent when not listed. */
-    modelTitle: Type.Optional(Type.String({ minLength: 1, maxLength: 512 })),
+    modelTitle: Type.Optional(DisplayTitleSchema),
     mode: SessionModeSchema,
     providerModeId: Type.Optional(text(128)),
     effort: Type.Optional(text(64)),

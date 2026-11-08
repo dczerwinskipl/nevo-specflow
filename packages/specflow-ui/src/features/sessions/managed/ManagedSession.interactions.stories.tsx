@@ -537,13 +537,13 @@ function selectedRootTabLabel(canvasElement: HTMLElement) {
 }
 
 /**
- * Root tab identity is the object (full-session-screen-structure.md §7.4/§10.1): the Related Tasks
- * summary (2 Tasks) opens the Tasks LIST tab "Zadania"; selecting a Task there opens that Task as
- * its own tab named by its key, beside the list; a Task already open is activated, never
- * duplicated. Context stays the pinned, non-closable first tab throughout, and closing the opened
- * tabs returns the Secondary to the DOM-identical single-pinned-tab baseline.
+ * Root tab identity is the object (full-session-screen-structure.md §7.4/§10.1): each Related Tasks
+ * row (session-association-ux §7, one row per associated Task) opens that Task as its own tab named
+ * by its key; a Task already open is activated, never duplicated. Context stays the pinned,
+ * non-closable first tab throughout, and closing the opened tabs returns the Secondary to the
+ * DOM-identical single-pinned-tab baseline.
  */
-export const RelatedTasksListOpensTaskTabs: Story = {
+export const RelatedTasksOpenTaskTabs: Story = {
   tags: ['integration'],
   args: {
     owner: 'full-session-story',
@@ -563,19 +563,6 @@ export const RelatedTasksListOpensTaskTabs: Story = {
     const baselineSecondaryHTML = normalizeAutoIds(secondaryRegion()?.outerHTML ?? '');
     await expect(baselineSecondaryHTML).toBeTruthy();
 
-    // The Related Tasks summary row (2 Tasks) opens the list tab, not a Task.
-    const relatedTasksRow = canvas.getByText('2 zadania').closest('button');
-    if (!relatedTasksRow) {
-      throw new Error('The Related Tasks summary row should render as a button.');
-    }
-
-    await userEvent.click(relatedTasksRow);
-    await waitFor(() => expect(rootTabLabels(canvasElement)).toEqual(['Kontekst', 'Zadania']));
-    await expect(selectedRootTabLabel(canvasElement)).toBe('Zadania');
-    await expect(canvas.queryByText('Powiązane zadania')).not.toBeInTheDocument();
-    await expect(await canvas.findByText('Deterministic admission')).toBeVisible();
-
-    // A Task row of the list opens that Task's own tab; the list tab stays as it was.
     // `findByText` only guarantees the text node exists, not that the row's interactive `<button>`
     // wrapper finished its render pass — wait for the button itself.
     const taskRow = (title: string) =>
@@ -587,10 +574,10 @@ export const RelatedTasksListOpensTaskTabs: Story = {
 
         return row;
       });
+
+    // A Related Tasks row opens that Task's own tab.
     await userEvent.click(await taskRow('Document the admission guard'));
-    await waitFor(() =>
-      expect(rootTabLabels(canvasElement)).toEqual(['Kontekst', 'Zadania', 'TASK-02']),
-    );
+    await waitFor(() => expect(rootTabLabels(canvasElement)).toEqual(['Kontekst', 'TASK-02']));
     await expect(selectedRootTabLabel(canvasElement)).toBe('TASK-02');
     await expect(
       await canvas.findByRole('heading', { name: 'Document the admission guard' }),
@@ -598,11 +585,11 @@ export const RelatedTasksListOpensTaskTabs: Story = {
     // A root tab is its own surface: nothing to go back to, so no detail header row either.
     await expect(canvasElement.querySelector('[data-workspace-detail-header]')).toBeNull();
 
-    // Back in the list, another Task gets its own, distinctly labelled tab.
-    await activateRootTab(canvasElement, 'Zadania');
+    // Back in Context, another Task gets its own, distinctly labelled tab.
+    await activateRootTab(canvasElement, 'Kontekst', true);
     await userEvent.click(await taskRow('Deterministic admission'));
     await waitFor(() =>
-      expect(rootTabLabels(canvasElement)).toEqual(['Kontekst', 'Zadania', 'TASK-02', 'TASK-03']),
+      expect(rootTabLabels(canvasElement)).toEqual(['Kontekst', 'TASK-02', 'TASK-03']),
     );
     await expect(selectedRootTabLabel(canvasElement)).toBe('TASK-03');
     await expect(
@@ -610,15 +597,10 @@ export const RelatedTasksListOpensTaskTabs: Story = {
     ).toBeVisible();
 
     // The first Task again: its tab is activated and still shows that Task, not the last one.
-    await activateRootTab(canvasElement, 'Zadania');
+    await activateRootTab(canvasElement, 'Kontekst', true);
     await userEvent.click(await taskRow('Document the admission guard'));
     await waitFor(() => expect(selectedRootTabLabel(canvasElement)).toBe('TASK-02'));
-    await expect(rootTabLabels(canvasElement)).toEqual([
-      'Kontekst',
-      'Zadania',
-      'TASK-02',
-      'TASK-03',
-    ]);
+    await expect(rootTabLabels(canvasElement)).toEqual(['Kontekst', 'TASK-02', 'TASK-03']);
     await expect(
       await canvas.findByRole('heading', { name: 'Document the admission guard' }),
     ).toBeVisible();
@@ -630,7 +612,6 @@ export const RelatedTasksListOpensTaskTabs: Story = {
     // Closing every opened tab returns to the single-pinned-tab baseline, DOM-identical.
     await closeRootTab(canvasElement, 'TASK-03');
     await closeRootTab(canvasElement, 'TASK-02');
-    await closeRootTab(canvasElement, 'Zadania');
     await waitFor(() => expect(rootTabLabels(canvasElement)).toEqual(['Kontekst']));
     // Closing a tab moves focus to its neighbour (item-tabs.md, "Focus after close"): the last
     // close lands on the pinned Context tab, whose focus tooltip then describes it

@@ -14,6 +14,8 @@ export type CompactFactItem =
   | {
       readonly text: string;
       readonly mono?: boolean;
+      /** What assistive technology reads instead of the short visible `text` (`3 tasks` → …). */
+      readonly accessibleText?: string;
       readonly dataAttributes?: Record<string, string | undefined>;
     };
 

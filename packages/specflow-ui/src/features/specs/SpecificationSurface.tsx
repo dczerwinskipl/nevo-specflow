@@ -41,6 +41,7 @@ export interface SpecificationSurfaceProps {
   readonly onExecute?: (agent: string, tasks: readonly string[]) => void | Promise<void>;
   readonly onNewConversation?: (agent: string) => void | Promise<void>;
   readonly onOpenSession?: (sessionId: string) => void;
+  readonly onNewSession?: () => void;
 }
 
 /** Specification workspace screen. */
@@ -72,6 +73,7 @@ function SpecificationSurfaceConnected({
   onExecute,
   onNewConversation,
   onOpenSession,
+  onNewSession,
 }: SpecificationSurfaceProps) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -226,6 +228,7 @@ function SpecificationSurfaceConnected({
       onExecute={onExecute}
       onNewConversation={onNewConversation}
       onOpenSession={onOpenSession}
+      onNewSession={onNewSession}
       refreshFailed={isError && Boolean(data)}
       refreshing={isRefetching}
     />

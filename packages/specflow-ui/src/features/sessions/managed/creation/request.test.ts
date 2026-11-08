@@ -20,14 +20,14 @@ function storageFixture() {
 const body = { providerId: 'claude', modelId: 'default', mode: 'read-only' as const };
 it('retains the exact writable native mode across an uncertain acknowledgement and remount', async () => {
   const storage = storageFixture();
-  const first = createSessionRequest('alice', storage);
+  const first = createSessionRequest('alice', storage, 'spec');
   const input = {
     providerId: 'claude',
     mode: 'workspace-write' as const,
     providerModeId: 'acceptEdits',
   };
   await expect(first.send(input, () => Promise.reject(new Error('Lost')))).rejects.toThrow('Lost');
-  const next = createSessionRequest('alice', storage);
+  const next = createSessionRequest('alice', storage, 'spec');
   expect(next.pending()).toMatchObject(input);
   const send = vi.fn(() => Promise.resolve({ sessionId: 'created' }));
   await next.send({ ...input, providerModeId: 'plan' }, send);
@@ -36,39 +36,41 @@ it('retains the exact writable native mode across an uncertain acknowledgement a
 
 it('reuses the exact create after a lost response and remount, then clears confirmed success', async () => {
   const storage = storageFixture();
-  const first = createSessionRequest('alice', storage);
+  const first = createSessionRequest('alice', storage, 'spec');
   const send = vi
     .fn<(input: CreateSession) => Promise<{ sessionId: string }>>()
     .mockRejectedValueOnce(new Error('Lost response'))
     .mockResolvedValue({ sessionId: 'created' });
   await expect(first.send(body, send)).rejects.toThrow('Lost response');
   const request = first.pending();
-  const remounted = createSessionRequest('alice', storage);
+  const remounted = createSessionRequest('alice', storage, 'spec');
   expect(remounted.pending()).toEqual(request);
   await remounted.send({ ...body, providerId: 'changed-discovery' }, send);
   expect(send.mock.calls[1]?.[0]).toEqual(request);
   expect(remounted.pending()).toBeUndefined();
-  expect(createSessionRequest('alice', storage).pending()).toBeUndefined();
+  expect(createSessionRequest('alice', storage, 'spec').pending()).toBeUndefined();
   await remounted.send(body, send);
   expect(send.mock.calls[2]?.[0].requestId).not.toBe(request?.requestId);
 });
 
 it('isolates identities and refuses to dispatch without retained storage', async () => {
   const storage = storageFixture();
-  const alice = createSessionRequest('alice', storage);
+  const alice = createSessionRequest('alice', storage, 'spec');
   await expect(alice.send(body, () => Promise.reject(new Error('Lost')))).rejects.toThrow('Lost');
-  expect(createSessionRequest('bob', storage).pending()).toBeUndefined();
+  expect(createSessionRequest('bob', storage, 'spec').pending()).toBeUndefined();
   const send = vi.fn();
-  await expect(createSessionRequest('bob', undefined).send(body, send)).rejects.toThrow();
+  await expect(createSessionRequest('bob', undefined, 'spec').send(body, send)).rejects.toThrow();
   const failing = {
     ...storage,
     setItem: () => {
       throw new Error('Quota');
     },
   };
-  await expect(createSessionRequest('bob', failing).send(body, send)).rejects.toThrow('Quota');
+  await expect(createSessionRequest('bob', failing, 'spec').send(body, send)).rejects.toThrow(
+    'Quota',
+  );
   expect(send).not.toHaveBeenCalled();
-  expect(createSessionRequest('alice', storage).pending()).toEqual(alice.pending());
+  expect(createSessionRequest('alice', storage, 'spec').pending()).toEqual(alice.pending());
 });
 
 const refused = () =>
@@ -82,15 +84,15 @@ const refused = () =>
 
 it('releases a definitely refused create so the form can be edited, and keeps an unknown one', async () => {
   const storage = storageFixture();
-  const request = createSessionRequest('alice', storage);
+  const request = createSessionRequest('alice', storage, 'spec');
   await expect(request.send(body, () => Promise.reject(refused()))).rejects.toThrow();
   expect(request.pending()).toBeUndefined();
-  expect(createSessionRequest('alice', storage).pending()).toBeUndefined();
+  expect(createSessionRequest('alice', storage, 'spec').pending()).toBeUndefined();
   const send = vi.fn<(input: CreateSession) => Promise<{ sessionId: string }>>();
   send.mockResolvedValue({ sessionId: 'created' });
   await request.send({ ...body, modelId: 'edited' }, send);
   expect(send.mock.calls[0]?.[0]).toMatchObject({ modelId: 'edited' });
-  const unknown = createSessionRequest('bob', storage);
+  const unknown = createSessionRequest('bob', storage, 'spec');
   await expect(unknown.send(body, () => Promise.reject(new Error('Lost')))).rejects.toThrow();
   expect(unknown.pending()).toBeDefined();
 });
@@ -116,7 +118,7 @@ it.each(['write-ignored', 'readback-throws'] as const)(
         return storage.getItem(key);
       },
     };
-    const request = createSessionRequest('alice', blocked);
+    const request = createSessionRequest('alice', blocked, 'spec');
     const send = vi.fn();
     await expect(request.send(body, send)).rejects.toThrow();
     expect(send).not.toHaveBeenCalled();
@@ -126,13 +128,13 @@ it.each(['write-ignored', 'readback-throws'] as const)(
 
 it('blocks on an unreadable create record until it is discarded explicitly', async () => {
   const storage = storageFixture();
-  storage.setItem('nevo:session-create:alice', '{broken');
-  const request = createSessionRequest('alice', storage);
+  storage.setItem('nevo:session-create:alice:spec:spec', '{broken');
+  const request = createSessionRequest('alice', storage, 'spec');
   expect(request.state()).toBe('unreadable');
   const send = vi.fn(() => Promise.resolve({ sessionId: 'created' }));
   await expect(request.send(body, send)).rejects.toThrow();
   expect(send).not.toHaveBeenCalled();
-  expect(storage.getItem('nevo:session-create:alice')).toBe('{broken');
+  expect(storage.getItem('nevo:session-create:alice:spec:spec')).toBe('{broken');
   expect(request.discard()).toBe(true);
   expect(request.state()).toBe('ready');
   await request.send(body, send);
@@ -140,13 +142,17 @@ it('blocks on an unreadable create record until it is discarded explicitly', asy
 });
 
 it('keeps blocking, with no discard, while storage itself is unavailable', async () => {
-  const request = createSessionRequest('alice', {
-    getItem: () => {
-      throw new Error('Storage denied');
+  const request = createSessionRequest(
+    'alice',
+    {
+      getItem: () => {
+        throw new Error('Storage denied');
+      },
+      setItem: () => undefined,
+      removeItem: () => undefined,
     },
-    setItem: () => undefined,
-    removeItem: () => undefined,
-  });
+    'spec',
+  );
   expect(request.state()).toBe('unavailable');
   expect(request.discard()).toBe(false);
   await expect(request.send(body, vi.fn())).rejects.toThrow();
@@ -185,7 +191,7 @@ describe('a confirmed create whose record cannot be cleaned up', () => {
     'never replays the spent request after a remount, and the next create is new: %s',
     async (failure) => {
       const { storage, flags } = failingCleanup(failure);
-      const first = createSessionRequest('alice', storage);
+      const first = createSessionRequest('alice', storage, 'spec');
       const requests: CreateSession[] = [];
       const send = (input: CreateSession) => {
         requests.push(input);
@@ -198,7 +204,7 @@ describe('a confirmed create whose record cannot be cleaned up', () => {
       flags.failing = false;
       expect(first.pending()).toBeUndefined();
 
-      const remounted = createSessionRequest('alice', storage);
+      const remounted = createSessionRequest('alice', storage, 'spec');
       expect(remounted.state()).toBe('ready');
       expect(remounted.pending()).toBeUndefined();
       await remounted.send(body, send);
@@ -233,9 +239,9 @@ describe('a confirmed create whose record cannot be cleaned up', () => {
       return ok();
     };
 
-    await createSessionRequest('alice', wrapped).send(body, send);
+    await createSessionRequest('alice', wrapped, 'spec').send(body, send);
     broken = false;
-    const remounted = createSessionRequest('alice', wrapped);
+    const remounted = createSessionRequest('alice', wrapped, 'spec');
     expect(remounted.pending()).toBeUndefined();
     await remounted.send(body, send);
     expect(requests[1]?.requestId).not.toBe(requests[0]?.requestId);
@@ -243,10 +249,10 @@ describe('a confirmed create whose record cannot be cleaned up', () => {
 
   it('still resumes an unknown outcome and an unreadable record is not mistaken for a spent one', async () => {
     const storage = storageFixture();
-    const first = createSessionRequest('alice', storage);
+    const first = createSessionRequest('alice', storage, 'spec');
     await expect(first.send(body, () => Promise.reject(new Error('Lost')))).rejects.toThrow();
-    expect(createSessionRequest('alice', storage).pending()).toEqual(first.pending());
-    storage.setItem('nevo:session-create:bob', '{"consumed":"not-an-id"}');
-    expect(createSessionRequest('bob', storage).state()).toBe('unreadable');
+    expect(createSessionRequest('alice', storage, 'spec').pending()).toEqual(first.pending());
+    storage.setItem('nevo:session-create:bob:spec:spec', '{"consumed":"not-an-id"}');
+    expect(createSessionRequest('bob', storage, 'spec').state()).toBe('unreadable');
   });
 });

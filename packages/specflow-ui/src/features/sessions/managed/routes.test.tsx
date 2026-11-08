@@ -1,8 +1,11 @@
 // @vitest-environment jsdom
+import type { ReactNode } from 'react';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { defineSecondaryStack, useSecondaryNavigation } from '@nevo/ui';
 import { RouterProvider, createMemoryHistory } from '@tanstack/react-router';
 import type { AuthSessionResponse } from '@nevo/specflow-contracts/authentication';
+import type { SessionAssociationRead } from '@nevo/specflow-contracts/sessions';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createSpecFlowRouter } from '../../../app/router';
 import { createAuthStore } from '../../../auth/store';
@@ -10,9 +13,29 @@ import { createSpecFlowAppServices } from '../../../services';
 import { NotificationProvider } from '../../../shared/notifications/notifications';
 import { ManagedSessionRouteView } from './routes';
 
+/** Session `B` is associated with the archived Specification `spec-s`; every other is standalone. */
+const association = (sessionId: string): SessionAssociationRead =>
+  sessionId === 'B'
+    ? {
+        sessionId,
+        association: {
+          kind: 'specification',
+          specification: {
+            state: 'available',
+            value: { specId: 'spec-s', title: 'Auth', collection: 'archived' },
+          },
+          tasks: [],
+        },
+      }
+    : { sessionId, association: { kind: 'standalone' } };
 vi.mock('../../../app/useAppServices', () => ({
   useAppServices: () => ({ managedSessionsApi: {} }),
 }));
+const sessionAssociationsApi = {
+  association: (sessionId: string) => Promise.resolve(association(sessionId)),
+  list: () => Promise.resolve({ items: [] }),
+  createInSpecification: () => Promise.reject(new Error('unused')),
+};
 // The application shell is not what these tests are about: only its Outlet.
 vi.mock('../../../app/SpecFlowShell', () => ({
   SpecFlowShell: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -57,22 +80,33 @@ vi.mock('./ManagedSession', () => ({
     );
   },
 }));
-// The destination's own heading, the focus target after a delete.
-vi.mock('../start/screen/ManagedSessionStart', () => ({
-  ManagedSessionStart: () => (
+vi.mock('../../../app/ui-modules/UiModulesProvider', () => ({
+  useUiModules: () => ({ get: () => [] }),
+}));
+// The Specifications list's own heading, the focus target after a delete that lands there.
+vi.mock('../../specs/overview/SpecsOverview', () => ({
+  SpecsOverview: () => (
     <h1 tabIndex={-1} data-workspace-header-title="true">
-      Nowa sesja
+      Specyfikacje
     </h1>
   ),
 }));
 
 afterEach(cleanup);
 
+function QueryWrapper({ children }: { children: ReactNode }) {
+  return (
+    <QueryClientProvider client={new QueryClient()}>
+      <NotificationProvider>{children}</NotificationProvider>
+    </QueryClientProvider>
+  );
+}
+
 describe('ManagedSessionRouteView', () => {
   it("does not carry one Session's open tabs into the next one while the route stays mounted", async () => {
     // The router keeps the route component mounted from /sessions/A to /sessions/B: a rerender.
     const { rerender } = render(<ManagedSessionRouteView sessionId="A" />, {
-      wrapper: NotificationProvider,
+      wrapper: QueryWrapper,
     });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'open work' }));
@@ -146,6 +180,7 @@ describe('Session route history', () => {
     return createSpecFlowRouter(
       createMemoryHistory({ initialEntries: [url] }),
       createSpecFlowAppServices({
+        sessionAssociationsApi,
         authStore: createAuthStore(
           {
             getSession: () => Promise.resolve(local),
@@ -164,9 +199,23 @@ describe('Session route history', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
 
+  const renderRouter = (router: ReturnType<typeof routerAt>) =>
+    render(<RouterProvider router={router} />, {
+      wrapper: ({ children }) => (
+        <QueryClientProvider client={new QueryClient()}>{children}</QueryClientProvider>
+      ),
+    });
+
+  it('redirects the retired standalone start to the Specifications list', async () => {
+    const router = routerAt('/sessions/new');
+    await router.load();
+
+    expect(router.state.location.pathname).toBe('/');
+  });
+
   it('Back from Session B lands on Session A without a Secondary tab left over from B', async () => {
     const router = routerAt('/sessions/A');
-    render(<RouterProvider router={router} />);
+    renderRouter(router);
     await settle();
     expect(router.state.location.pathname).toBe('/sessions/A');
 
@@ -195,35 +244,51 @@ describe('Session route history', () => {
     expect(screen.getByTestId('tabs').textContent).toBe('');
   });
 
-  it('replaces a deleted Session with the new-Session screen, says so and focuses its heading', async () => {
-    const router = routerAt('/sessions/A');
+  it('replaces a deleted standalone Session with the Specifications list, says so and focuses its heading', async () => {
+    const router = routerAt('/sessions/B');
     await act(async () => {
       await router.navigate({
         to: '/sessions/$sessionId',
-        params: { sessionId: 'B' },
+        params: { sessionId: 'A' },
         search: { collection: 'current' },
       });
     });
-    render(<RouterProvider router={router} />);
+    renderRouter(router);
     await settle();
-    expect(router.state.location.pathname).toBe('/sessions/B');
+    expect(router.state.location.pathname).toBe('/sessions/A');
 
     fireEvent.click(screen.getByRole('button', { name: 'deleted' }));
     await settle();
     await settle();
 
-    expect(router.state.location.pathname).toBe('/sessions/new');
+    expect(router.state.location.pathname).toBe('/');
     expect(
       await screen.findByText(/^(The session was deleted\.|Sesja została usunięta\.)$/),
     ).toBeTruthy();
     await vi.waitFor(() =>
-      expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Nowa sesja' })),
+      expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Specyfikacje' })),
     );
     // Back does not reopen the deleted Session.
     await act(async () => {
       router.history.back();
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
-    expect(router.state.location.pathname).toBe('/sessions/A');
+    expect(router.state.location.pathname).toBe('/sessions/B');
+  });
+
+  it("replaces a deleted Session of a Specification with that Specification's Sessions list", async () => {
+    const router = routerAt('/sessions/B');
+    renderRouter(router);
+    await settle();
+    // The association is read before the delete: its Specification is the destination.
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'deleted' })).toBeTruthy());
+    await settle();
+
+    fireEvent.click(screen.getByRole('button', { name: 'deleted' }));
+    await settle();
+
+    expect(router.state.location.pathname).toBe('/specs/spec-s/sessions');
+    // The Specification is archived: its list opens under the archive collection.
+    expect(router.state.location.search).toMatchObject({ collection: 'archive' });
   });
 });

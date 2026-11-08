@@ -9,14 +9,12 @@ export function SpecsOverviewHeader({
   busy,
   onCreate,
   createDisabled,
-  onCreateSession,
   onRefresh,
 }: {
   readonly refreshing: boolean;
   readonly busy: boolean;
   readonly onCreate?: () => void;
   readonly createDisabled: boolean;
-  readonly onCreateSession?: () => void;
   readonly onRefresh: () => void;
 }) {
   const { t } = useTranslation();
@@ -50,13 +48,6 @@ export function SpecsOverviewHeader({
               },
             ]
           : []),
-        {
-          id: 'create-session',
-          icon: 'chat-plus',
-          label: t('specifications.createSession'),
-          disabled: !onCreateSession,
-          onPress: () => onCreateSession?.(),
-        },
         {
           id: 'refresh',
           icon: 'refresh',

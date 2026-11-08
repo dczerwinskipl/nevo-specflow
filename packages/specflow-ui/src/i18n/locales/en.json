@@ -173,8 +173,6 @@
     "documentsHeading": "Documents",
     "allDocumentsLink": "All documents",
     "openFullDocument": "Open full document",
-    "sessionsOfThisSpec": "Sessions of this specification",
-    "sessionsFutureNotice": "In the future this collection may include sessions executing the specification workflow.",
     "changesHeading": "Changes",
     "changesWorktreeContext": "Repository crm · worktree of this specification",
     "changesSourceLabel": "Changes source",
@@ -245,7 +243,6 @@
     "noResults": "No matching specifications",
     "noResultsDescription": "Try another title or clear the search to see this collection.",
     "openSpec": "Open specification: {{title}}",
-    "createSession": "Create session",
     "openPullRequest": "PR #{{number}}: Open pull request — {{title}}",
     "progress": "{{completed}} / {{total}} Tasks",
     "updated": "Updated {{date}}",
@@ -1412,7 +1409,8 @@
       },
       "specification": {
         "sectionTitle": "Specification",
-        "documents": "Documents"
+        "documents": "Documents",
+        "archived": "Archived"
       },
       "placeholders": {
         "sectionTitle": "Planned areas",
@@ -1472,11 +1470,10 @@
       "batch_few": "{{count}} Tasks",
       "batch_many": "{{count}} Tasks",
       "availability": {
-        "scopeNotProvided": "This session’s links to a Specification and Tasks aren’t available yet.",
         "scopeUnreadable": "Couldn’t load this session’s links.",
         "specificationUnreadable": "Couldn’t load this session’s Specification.",
-        "specificationMissing": "Can’t find the Specification that this session belongs to.",
-        "specificationMissingNamed": "Can’t find Specification {{key}} that this session belongs to.",
+        "specificationMissing": "Can’t find the specification associated with this session.",
+        "specificationMissingNamed": "Can’t find specification {{key}} associated with this session.",
         "executionUnreadable": "Couldn’t load the Tasks being executed.",
         "taskMissing": "Can’t find the Task this session is executing.",
         "taskMissingNamed": "Can’t find {{key}}, the Task this session is executing.",
@@ -1485,13 +1482,45 @@
         "relatedTasksUnreadable": "Couldn’t load related Tasks.",
         "executorUnreadable": "Couldn’t load executor details.",
         "workUnreadable": "Couldn’t load the work history.",
-        "executorMissing": "This session’s executor is no longer available."
+        "executorMissing": "This session’s executor is no longer available.",
+        "specificationForbidden": "You don’t have permission to view the specification associated with this session.",
+        "relatedTasksMissing": "{{count}} of {{total}} associated tasks can’t be found."
       },
       "work": {
         "sectionTitle": "Work",
         "currentTurn": "Current Turn",
         "lastTurn": "Last Turn"
       }
+    },
+    "untitled": "Untitled session",
+    "list": {
+      "newSession": "New session",
+      "collection": "Session collection",
+      "current": "Current",
+      "archive": "Archive",
+      "loadMore": "Show more",
+      "loadingMore": "Loading…",
+      "noneInScanned": "No more sessions in this batch. You can keep looking.",
+      "loadMoreFailed": "Couldn’t load more sessions.",
+      "emptySpecification": "This specification has no sessions yet.",
+      "emptyArchive": "No archived sessions",
+      "failed": "Couldn’t load sessions.",
+      "forbiddenSpecification": "You don’t have access to this specification’s sessions.",
+      "statusUnknown": "Session state unknown",
+      "statusAttention": "Requires attention",
+      "statusActive": "Active",
+      "loaded_one": "Loaded {{count}} session",
+      "loaded_other": "Loaded {{count}} sessions",
+      "taskCount_one": "{{count}} task",
+      "taskCount_other": "{{count}} tasks",
+      "associatedTasks_one": "Associated with {{count}} task",
+      "associatedTasks_other": "Associated with {{count}} tasks",
+      "loaded_few": "Loaded {{count}} sessions",
+      "loaded_many": "Loaded {{count}} sessions",
+      "taskCount_few": "{{count}} tasks",
+      "taskCount_many": "{{count}} tasks",
+      "associatedTasks_few": "Associated with {{count}} tasks",
+      "associatedTasks_many": "Associated with {{count}} tasks"
     }
   },
   "apiErrors": {
@@ -1577,7 +1606,7 @@
       "renameTooLong": "The name can be at most {{max}} characters.",
       "archive": "Archive",
       "archiveTitle": "Archive this session?",
-      "archiveDescription": "The session will be archived. No messages can be sent in it; its history, work and usage stay available. You can restore it at any time.",
+      "archiveDescription": "The session will be moved to the session archive. No messages can be sent in it; its history, work and usage stay available. You can restore it at any time.",
       "delete": "Delete",
       "deleteTitle": "Delete this session?",
       "deleteDescription": "This cannot be undone. The session's conversation history, work and usage will be permanently deleted from SpecFlow. References to this session in specifications and tasks will stop working. Repository files and the provider's local history are not deleted.",
@@ -1843,7 +1872,7 @@
     "notFound": {
       "title": "This session was deleted or does not exist",
       "description": "This session's history is no longer available.",
-      "action": "New session"
+      "action": "Go to specifications"
     }
   },
   "sessionStart": {
@@ -1896,7 +1925,10 @@
     },
     "provider": {
       "noMode": "No work mode is available"
-    }
+    },
+    "forbiddenSpecification": "You can’t start sessions in this specification.",
+    "sessionsDisabled": "Sessions are turned off in this project.",
+    "backToSpecification": "Back to specification"
   },
   "sessionNaming": {
     "pending": "Naming…",

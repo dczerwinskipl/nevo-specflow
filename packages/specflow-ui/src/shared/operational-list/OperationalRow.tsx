@@ -108,13 +108,21 @@ export function OperationalRow({
     const text = typeof fact === 'string' ? fact : fact.text;
     const isMono = typeof fact === 'object' && fact.mono;
     const attrs = typeof fact === 'object' ? fact.dataAttributes : undefined;
+    const accessibleText = typeof fact === 'object' ? fact.accessibleText : undefined;
 
     return (
       <span
         className={cn('min-w-0 text-content-muted [overflow-wrap:anywhere]', isMono && 'font-mono')}
         {...attrs}
       >
-        {text}
+        {accessibleText ? (
+          <>
+            <span aria-hidden="true">{text}</span>
+            <span className="sr-only">{accessibleText}</span>
+          </>
+        ) : (
+          text
+        )}
       </span>
     );
   };

@@ -53,7 +53,6 @@ import { createWorkInspector } from './WorkInspector';
 import { SessionContext, sessionContextStack } from './context/SessionContext';
 import { SessionContextSourceProvider } from './context/sessionContextValue';
 import { useDropNarrowContextOnSplit, useSessionSidePanel } from './context/useSessionSidePanel';
-import { realRouteSessionContext } from './context/sessionContextTypes';
 import { useSessionTelemetry } from './context/sessionTelemetryStore';
 import { useSessionActions } from './sessionActions/useSessionActions';
 import { ArchivedSessionBar } from './sessionActions/ArchivedSessionBar';
@@ -1109,15 +1108,19 @@ function ManagedSessionConversation({
   );
 }
 
+/** A Session the route passes no Context for: no Specification and no note. */
+const standaloneContext: SessionContextViewModel = { scope: { kind: 'standalone' } };
+
 export function ManagedSession({
   sessionId,
   owner,
   api,
-  sessionContext = realRouteSessionContext,
+  sessionContext = standaloneContext,
   onOpenSpecification,
   onOpenDocuments,
   onSessionDeleted,
-  onNewSession,
+  onSessionChanged,
+  onGoToSpecifications,
   namingPending = false,
 }: {
   /**
@@ -1125,8 +1128,13 @@ export function ManagedSession({
    * (replace navigation, toast, focus). `ManagedSession` itself stays router-agnostic.
    */
   onSessionDeleted?: () => void;
-  /** The deleted/unknown Session view's way on (full-session-screen-structure §22.1): a new Session. */
-  onNewSession?: () => void;
+  /** This view renamed, archived or unarchived the Session: the route refreshes lists showing it. */
+  onSessionChanged?: () => void;
+  /**
+   * The deleted/unknown Session view's way on (full-session-screen-structure §22.1): the
+   * Specifications list.
+   */
+  onGoToSpecifications?: () => void;
   sessionId: string;
   owner: string;
   /**
@@ -1136,11 +1144,10 @@ export function ManagedSession({
   namingPending?: boolean;
   api: ManagedSessionsApi;
   /**
-   * Context Secondary content (full-session-screen-structure.md §7). Optional because the real
-   * managed-Sessions contract has no Specification/Task association projection yet: the default is
-   * the honest "scope unknown, not provided" Context, which still shows what this screen derives
-   * itself (executor, Work history). Callers with a real/mock projection (Storybook fixtures
-   * today) pass it explicitly; an `executor`/`workHistory` fact it carries wins over the derived one.
+   * Context Secondary content (full-session-screen-structure.md §7): the route maps the Session's
+   * association read onto it (`associationContext`). Without one the Session shows as standalone,
+   * with what this screen derives itself (executor, Work history). An `executor`/`workHistory` fact
+   * it carries wins over the derived one.
    */
   sessionContext?: SessionContextViewModel;
   /**
@@ -1409,6 +1416,7 @@ export function ManagedSession({
     session: snapshot?.session,
     activeTurn: snapshot?.activeTurn,
     onUnarchived: () => setComposerFocusRequested(true),
+    onChanged: onSessionChanged,
     onDeleted: () => {
       // Nothing is left to stream; the route leaves this screen.
       feed.disconnect();
@@ -1434,7 +1442,7 @@ export function ManagedSession({
   }, [goneByOwnDelete, deletion]);
 
   if (state.notFound && !deletion.holds) {
-    return <SessionNotFoundView onNewSession={onNewSession} />;
+    return <SessionNotFoundView onGoToSpecifications={onGoToSpecifications} />;
   }
 
   return (

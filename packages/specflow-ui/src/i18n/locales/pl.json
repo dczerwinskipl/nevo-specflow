@@ -173,8 +173,6 @@
     "documentsHeading": "Dokumenty",
     "allDocumentsLink": "Wszystkie dokumenty",
     "openFullDocument": "Otwórz pełny dokument",
-    "sessionsOfThisSpec": "Sesje tej specyfikacji",
-    "sessionsFutureNotice": "W przyszłości ta sama kolekcja może zawierać sesje wykonujące workflow specyfikacji.",
     "changesHeading": "Zmiany",
     "changesWorktreeContext": "Repozytorium crm · worktree tej specyfikacji",
     "changesSourceLabel": "Źródło zmian",
@@ -245,7 +243,6 @@
     "noResults": "Brak pasujących specyfikacji",
     "noResultsDescription": "Wpisz inny tytuł lub wyczyść wyszukiwanie, aby zobaczyć tę kolekcję.",
     "openSpec": "Otwórz specyfikację: {{title}}",
-    "createSession": "Utwórz sesję",
     "openPullRequest": "PR #{{number}}: Otwórz pull request — {{title}}",
     "progress": "{{completed}} / {{total}} zadań",
     "updated": "Aktualizacja: {{date}}",
@@ -1412,7 +1409,8 @@
       },
       "specification": {
         "sectionTitle": "Specyfikacja",
-        "documents": "Dokumenty"
+        "documents": "Dokumenty",
+        "archived": "W archiwum"
       },
       "placeholders": {
         "sectionTitle": "Planowane obszary",
@@ -1472,11 +1470,10 @@
       "batch_many": "{{count}} zadań",
       "batch_other": "{{count}} zadania",
       "availability": {
-        "scopeNotProvided": "Powiązania tej sesji ze specyfikacją i zadaniami nie są jeszcze dostępne.",
         "scopeUnreadable": "Nie udało się wczytać powiązań tej sesji.",
         "specificationUnreadable": "Nie udało się wczytać specyfikacji tej sesji.",
-        "specificationMissing": "Nie znaleziono specyfikacji, do której należy ta sesja.",
-        "specificationMissingNamed": "Nie znaleziono specyfikacji {{key}}, do której należy ta sesja.",
+        "specificationMissing": "Nie znaleziono specyfikacji, z którą powiązana jest ta sesja.",
+        "specificationMissingNamed": "Nie znaleziono specyfikacji {{key}}, z którą powiązana jest ta sesja.",
         "executionUnreadable": "Nie udało się wczytać wykonywanych zadań.",
         "taskMissing": "Nie znaleziono zadania, które wykonuje ta sesja.",
         "taskMissingNamed": "Nie znaleziono zadania {{key}}, które wykonuje ta sesja.",
@@ -1485,13 +1482,45 @@
         "relatedTasksUnreadable": "Nie udało się wczytać powiązanych zadań.",
         "executorUnreadable": "Nie udało się wczytać danych wykonawcy.",
         "workUnreadable": "Nie udało się wczytać historii pracy.",
-        "executorMissing": "Wykonawca tej sesji nie jest już dostępny."
+        "executorMissing": "Wykonawca tej sesji nie jest już dostępny.",
+        "specificationForbidden": "Nie masz uprawnień do wyświetlenia specyfikacji powiązanej z tą sesją.",
+        "relatedTasksMissing": "Nie znaleziono {{count}} z {{total}} powiązanych zadań."
       },
       "work": {
         "sectionTitle": "Praca",
         "currentTurn": "Bieżąca tura",
         "lastTurn": "Ostatnia tura"
       }
+    },
+    "untitled": "Sesja bez nazwy",
+    "list": {
+      "newSession": "Nowa sesja",
+      "collection": "Kolekcja sesji",
+      "current": "Bieżące",
+      "archive": "Archiwum",
+      "loadMore": "Pokaż więcej",
+      "loadingMore": "Wczytywanie…",
+      "noneInScanned": "Nie znaleziono więcej sesji w tej partii. Możesz szukać dalej.",
+      "loadMoreFailed": "Nie udało się wczytać kolejnych sesji.",
+      "emptySpecification": "Ta specyfikacja nie ma jeszcze sesji.",
+      "emptyArchive": "Brak zarchiwizowanych sesji",
+      "failed": "Nie udało się wczytać sesji.",
+      "forbiddenSpecification": "Nie masz dostępu do sesji tej specyfikacji.",
+      "statusUnknown": "Stan sesji nieznany",
+      "statusAttention": "Wymaga uwagi",
+      "statusActive": "Aktywna",
+      "loaded_one": "Wczytano {{count}} sesję",
+      "loaded_few": "Wczytano {{count}} sesje",
+      "loaded_many": "Wczytano {{count}} sesji",
+      "loaded_other": "Wczytano {{count}} sesji",
+      "taskCount_one": "{{count}} zadanie",
+      "taskCount_few": "{{count}} zadania",
+      "taskCount_many": "{{count}} zadań",
+      "taskCount_other": "{{count}} zadania",
+      "associatedTasks_one": "Powiązana z {{count}} zadaniem",
+      "associatedTasks_few": "Powiązana z {{count}} zadaniami",
+      "associatedTasks_many": "Powiązana z {{count}} zadaniami",
+      "associatedTasks_other": "Powiązana z {{count}} zadaniami"
     }
   },
   "apiErrors": {
@@ -1577,7 +1606,7 @@
       "renameTooLong": "Nazwa może mieć maksymalnie {{max}} znaków.",
       "archive": "Archiwizuj",
       "archiveTitle": "Zarchiwizować tę sesję?",
-      "archiveDescription": "Sesja zostanie zarchiwizowana. Nie będzie można w niej wysyłać wiadomości; historia, praca i zużycie pozostaną dostępne. Możesz ją w każdej chwili przywrócić.",
+      "archiveDescription": "Sesja zostanie przeniesiona do archiwum sesji. Nie będzie można w niej wysyłać wiadomości; historia, praca i zużycie pozostaną dostępne. Możesz ją w każdej chwili przywrócić.",
       "delete": "Usuń",
       "deleteTitle": "Usunąć tę sesję?",
       "deleteDescription": "Tej operacji nie można cofnąć. Historia rozmowy, praca i zużycie tej sesji zostaną trwale usunięte ze SpecFlow. Odwołania do tej sesji w specyfikacjach i zadaniach przestaną działać. Pliki w repozytorium i lokalna historia dostawcy nie są usuwane.",
@@ -1843,7 +1872,7 @@
     "notFound": {
       "title": "Ta sesja została usunięta lub nie istnieje",
       "description": "Historia tej sesji nie jest już dostępna.",
-      "action": "Nowa sesja"
+      "action": "Przejdź do specyfikacji"
     }
   },
   "sessionStart": {
@@ -1896,7 +1925,10 @@
     },
     "provider": {
       "noMode": "Brak dostępnego trybu pracy"
-    }
+    },
+    "forbiddenSpecification": "Nie możesz rozpoczynać sesji w tej specyfikacji.",
+    "sessionsDisabled": "Sesje są wyłączone w tym projekcie.",
+    "backToSpecification": "Wróć do specyfikacji"
   },
   "sessionNaming": {
     "pending": "Nadawanie nazwy…",

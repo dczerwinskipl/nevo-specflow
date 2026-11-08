@@ -147,22 +147,22 @@ export function terminalOutcomeContext(): SessionContextViewModel {
   };
 }
 
-/** The real route today: the Runtime carries no Specification/Task association, so the scope is
- * unknown (not provided) and only the executor and Work history (derived from the Session's own
- * snapshot) show. */
+/** A standalone Session on the real route: its association read says `standalone`, so only the
+ * executor and Work history (derived from the Session's own snapshot) show, with no note. */
 export function realRouteContext(): SessionContextViewModel {
   return {
-    scope: { kind: 'unknown', reason: 'not-provided' },
+    scope: { kind: 'standalone' },
     executor: ready(claudeExecutor),
     workHistory,
     runningTurnId: workInspectorTurnId,
   };
 }
 
-/** The real route before the first snapshot and the provider catalogue arrive. */
+/** The real route before the first snapshot, the provider catalogue and the association read
+ * arrive: no Specification section yet (no skeleton that could vanish for a standalone Session). */
 export function realRouteLoadingContext(): SessionContextViewModel {
   return {
-    scope: { kind: 'unknown', reason: 'not-provided' },
+    scope: { kind: 'unknown', reason: 'loading' },
     executor: { status: 'loading' },
     workHistory: { status: 'loading' },
   };

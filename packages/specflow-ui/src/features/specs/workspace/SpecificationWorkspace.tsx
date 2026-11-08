@@ -57,6 +57,8 @@ export interface SpecificationWorkspaceProps {
   readonly onExecute?: (agent: string, tasks: readonly string[]) => void | Promise<void>;
   readonly onNewConversation?: (agent: string) => void | Promise<void>;
   readonly onOpenSession?: (sessionId: string) => void;
+  /** Opens the Specification's New Session (`/specs/$specId/sessions/new`). */
+  readonly onNewSession?: () => void;
   readonly refreshFailed?: boolean;
   readonly refreshing?: boolean;
 }
@@ -89,6 +91,7 @@ function SpecificationWorkspaceInner({
   onExecute,
   onNewConversation,
   onOpenSession,
+  onNewSession,
   refreshFailed,
   refreshing = false,
 }: SpecificationWorkspaceProps) {
@@ -185,6 +188,7 @@ function SpecificationWorkspaceInner({
       openChanges: (source) => onOpenChanges?.(source),
       openHistory: handleOpenHistory,
       startConversation: (_agent) => openConversationDialog(),
+      openNewSession: () => onNewSession?.(),
       executeTasks: (taskIds, _agent) => openExecuteDialog(taskIds),
       refresh: () => {
         if (!refreshing) {
@@ -212,6 +216,7 @@ function SpecificationWorkspaceInner({
       refreshing,
       onExecute,
       onNewConversation,
+      onNewSession,
       collection,
       specId,
     ],

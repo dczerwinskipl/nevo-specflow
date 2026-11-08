@@ -22,6 +22,7 @@ import { AccountMenu } from '../AccountMenu';
 import { NevoBrandLogo, defaultNevoBrand } from '../../brand';
 import { useSpecificationNavigationSource } from '../../features/specs/overview/useSpecificationNavigationMetadata';
 import { useSessionNavigationSummary } from '../../features/sessions/navigation/summary';
+import { useSessionHomeSpecification } from '../../features/sessions/associations/useSessionHomeSpecification';
 import { SpecificationSwitcher } from './SpecificationSwitcher';
 import { useNoSpecifications } from './useNoSpecifications';
 import { SessionNavigationPreview } from '../../features/sessions/navigation/SessionNavigationPreview';
@@ -47,14 +48,29 @@ export function ProductNavigation({
     previousLocation.current = location;
     closeNavigation(() => document.querySelector<HTMLElement>('[data-workspace-active="true"] h1'));
   }, [closeNavigation, location]);
-  const collection =
-    location.search.collection === 'archive' ? ('archive' as const) : ('current' as const);
-  const specId =
+  const routeSpecId =
     useMatch({
       from: '/_app/specs/$specId',
       shouldThrow: false,
       select: (match) => match.params.specId,
     }) ?? null;
+  const sessionId =
+    useMatch({
+      from: '/_app/sessions/$sessionId',
+      shouldThrow: false,
+      select: (match) => match.params.sessionId,
+    }) ?? null;
+  // On a Session, the Specification its association names (only when the user may open it); no
+  // "last opened Specification" is remembered (session-association-ux §3).
+  const sessionHome = useSessionHomeSpecification(routeSpecId ? null : sessionId);
+  const specId = routeSpecId ?? sessionHome?.specId ?? null;
+  const collection = sessionHome
+    ? sessionHome.collection === 'archived'
+      ? ('archive' as const)
+      : ('current' as const)
+    : location.search.collection === 'archive'
+      ? ('archive' as const)
+      : ('current' as const);
   const navigation = useSpecificationNavigationSource(specId);
   const identity = navigation.metadata;
   const summary = useSessionNavigationSummary(specId);
@@ -78,6 +94,8 @@ export function ProductNavigation({
     identity?.hasGit,
     location.hash,
     navigation.status !== 'loading',
+    // A Session of the Specification: **Sesje** is the active view.
+    sessionHome ? 'sessions' : undefined,
   );
 
   return (

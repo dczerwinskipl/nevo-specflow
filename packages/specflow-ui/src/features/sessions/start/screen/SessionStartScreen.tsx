@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   AppWorkspace,
   WorkspaceHeader,
@@ -20,6 +21,7 @@ import type { ContextSpecification } from '../../managed/context/sessionContextT
 import { initialAgentChoice, type AgentChoice } from '../choice/agentChoice';
 import { initialSessionName, type SessionNameChoice } from '../choice/sessionName';
 import type { SessionStartStatus } from '../form/SessionStartForm';
+import { seedSessionAssociation } from '../../associations/queries';
 import { rememberStartedSession, startedSessionFrom } from '../handoff/startedSession';
 import type { SessionStartSource } from '../source/sessionStartSource';
 import { SessionStartColumn } from './SessionStartColumn';
@@ -70,6 +72,7 @@ export function SessionStartScreen({
   const { supportsSplit } = useWorkspaceCapabilities();
   const navigation = useSecondaryNavigation();
   const labels = useWorkspaceLabels();
+  const queryClient = useQueryClient();
   const [contextOpen, setContextOpen] = useState(true);
   // One press hides the whole side panel (Context and a visible tab), the next restores it.
   const sidePanel = useSessionSidePanel(contextOpen, setContextOpen);
@@ -105,7 +108,12 @@ export function SessionStartScreen({
     const submitted = { agent, name };
     setStatus('starting');
     source.start(submitted.agent, submitted.name).then(
-      ({ sessionId, sent }) => {
+      ({ sessionId, sent, association }) => {
+        if (association) {
+          // Whether or not this screen is still here: the read it seeds belongs to the Session.
+          seedSessionAssociation(queryClient, association);
+        }
+
         if (!mounted.current) {
           return;
         }
@@ -117,7 +125,6 @@ export function SessionStartScreen({
           startedSessionFrom({
             catalogue,
             sent,
-            specification: source.specification,
             modeTitle: text,
           }),
         );

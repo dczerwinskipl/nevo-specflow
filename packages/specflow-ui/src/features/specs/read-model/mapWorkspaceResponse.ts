@@ -55,7 +55,7 @@ export function mapWorkspaceResponse(
   const sessionSummaries = sessions.map((session) => ({
     id: session.id,
     // The server never invents a title; an untitled Session shows the UI's untitled label.
-    title: session.title ?? translateNow('managedSession.title'),
+    title: session.title ?? translateNow('sessions.untitled'),
     navigationStatus: session.status,
     taskCount: session.taskIds.length > 0 ? String(session.taskIds.length) : undefined,
     activityCode:
@@ -128,6 +128,14 @@ export function mapWorkspaceResponse(
     mainDocumentId:
       sections.documents.state === 'available' ? sections.documents.data.items[0]?.id : undefined,
     sessions: sessionSummaries,
+    ...(sections.sessions.state === 'available' && sections.sessions.data.hasMore
+      ? { sessionsHasMore: true }
+      : {}),
+    startSession: {
+      available: dto.actions.startSession.available,
+      ...(dto.actions.startSession.reason ? { reason: dto.actions.startSession.reason } : {}),
+      ...(dto.actions.startSession.path ? { path: dto.actions.startSession.path } : {}),
+    },
     resumeSession: sessionSummaries.find((session) => session.id === dto.recommendedSessionId),
     activityEvents:
       sections.activity.state === 'available'

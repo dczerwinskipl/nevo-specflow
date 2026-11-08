@@ -1,17 +1,16 @@
 /**
- * Product-owned mock view model for the Full Session Context Secondary (V1 scope).
+ * Product-owned view model of the Full Session Context Secondary.
  *
- * The real Managed Sessions contract (`@nevo/specflow-contracts/sessions`) has no
- * Specification/Task association today: `SessionInfo.projectId` is a trusted hosting scope,
- * not a Specification, and there is no execution-scope/attention/related-Task projection.
- * This shape is therefore NOT a backend contract — it is the product-level read model Context
- * needs, used here with representative fixtures (see `sessionContextFixtures.ts`) until a real
- * Runtime projection exists. See the Full Session UX report for the flagged backend dependency.
+ * The Specification and Tasks sections come from the Session association read
+ * (`GET /api/sessions/:sessionId/association`, mapped by `associationContext`); the executor, Work
+ * history and telemetry are derived by the Session screen itself. Execution scope and Attention stay
+ * in the shape for fixtures and future projections: an association is context, never current
+ * execution, so the association read never fills them (session-association-ux §7).
  *
  * Every section is optional and carries a `ContextFact`: a section the Session has no association
- * with is absent (it simply does not render), while a section whose data is loading, unreadable or
- * missing says so (see `sessionContextAvailability.ts`, full-session-screen-structure.md §7.6).
- * Adding a future section (Handovers, Evidence, …) must not require reworking this shape.
+ * with is absent (it simply does not render), while a section whose data is loading, unreadable,
+ * missing or forbidden says so (see `sessionContextAvailability.ts`, full-session-screen-structure.md
+ * §7.6). Adding a future section (Handovers, Evidence, …) must not require reworking this shape.
  */
 
 import type { TelemetrySnapshot } from '@nevo/specflow-contracts/sessions';
@@ -66,30 +65,35 @@ export interface SessionExecutor {
  * One piece of Context data together with what we know about it. `loading`: the read is in flight;
  * `ready`: we have the value; `unreadable`: the association exists but its data could not be read;
  * `missing`: the association exists but the referenced object cannot be found (`ref.key` names it
- * when the reference itself is known).
+ * when the reference itself is known); `forbidden`: the association exists but the user may not view
+ * the referenced object (no id, no title).
  */
 export type ContextFact<T> =
   | { status: 'loading' }
   | { status: 'ready'; value: T }
   | { status: 'unreadable' }
-  | { status: 'missing'; ref?: { key?: string } };
+  | { status: 'missing'; ref?: { key?: string } }
+  | { status: 'forbidden' };
 
 /**
  * What kind of Session this is, which decides which sections are present and which are required.
- * `unknown` is the real route today: the Runtime contract carries no Specification/Task
- * association yet, so we must not infer one (`not-provided`) or could not read it (`unreadable`).
+ * `unknown` while the association read is in flight (`loading`: nothing is shown, a standalone
+ * Session would otherwise flash sections that then vanish) or when it failed (`unreadable`).
+ * An associated Session is always `specification`; `task` is never produced from the association.
  */
 export type SessionScope =
-  | { kind: 'unknown'; reason: 'not-provided' | 'unreadable' }
+  | { kind: 'unknown'; reason: 'loading' | 'unreadable' }
   | { kind: 'standalone' }
   | { kind: 'specification' }
   | { kind: 'task'; taskCount: number };
 
-/** The Specification a Specification-/Task-scoped Session belongs to. */
+/** The Specification a Specification-/Task-scoped Session is associated with. */
 export interface ContextSpecification {
   id: string;
   key: string;
   title: string;
+  /** Its collection when known: links into an archived Specification carry `collection=archive`. */
+  collection?: 'current' | 'archived';
 }
 
 export interface SessionContextViewModel {
@@ -102,6 +106,8 @@ export interface SessionContextViewModel {
   executionScope?: ContextFact<SessionContextExecutionScope>;
   attention?: ContextFact<SessionContextAttentionItem[]>;
   relatedTasks?: ContextFact<SessionContextTaskRef[]>;
+  /** How many associated Tasks could not be found, of how many; the found ones still show. */
+  relatedTasksMissing?: { count: number; total: number };
   /**
    * The Session's current/most-recent Turn — the id `SessionContext`'s own "Work history" row
    * opens (the same per-Turn Work tab Conversation's Work blocks open, full-session-screen-structure.md
@@ -127,12 +133,3 @@ export interface SessionContextViewModel {
    */
   limitsRefresh?: LimitsRefreshControl;
 }
-
-/**
- * Honest default for the real `ManagedSession` route: the managed Sessions contract has no
- * Specification/Task association projection, so the scope is unknown (not provided) and only the
- * facts the screen can derive itself (executor, work history) are shown.
- */
-export const realRouteSessionContext: SessionContextViewModel = {
-  scope: { kind: 'unknown', reason: 'not-provided' },
-};

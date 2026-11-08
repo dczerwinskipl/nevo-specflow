@@ -8,8 +8,10 @@ export interface ResumeSessionSectionProps {
   readonly session: SessionSummary;
   readonly onOpenSession: (sessionId: string) => void;
   readonly onOpenSessionsView: () => void;
-  readonly onStartConversation: () => void;
-  readonly canStartConversation: boolean;
+  /** Opens the Specification's New Session (`/specs/$specId/sessions/new`). */
+  readonly onStartSession: () => void;
+  /** The workspace's `startSession` offers the start (session-association-ux §5). */
+  readonly canStartSession: boolean;
   readonly canOpenSession: boolean;
 }
 
@@ -33,8 +35,8 @@ export function ResumeSessionSection({
   session,
   onOpenSession,
   onOpenSessionsView,
-  onStartConversation,
-  canStartConversation,
+  onStartSession,
+  canStartSession,
   canOpenSession,
 }: ResumeSessionSectionProps) {
   const { t } = useTranslation();
@@ -46,13 +48,13 @@ export function ResumeSessionSection({
         title={t('specification.continueSessionHeading')}
         icon="chat"
         actions={
-          canStartConversation ? (
+          canStartSession ? (
             <OverflowMenu
               label={t('specification.continueSessionHeading')}
               triggerLabel={t('specification.sessionActions')}
             >
-              <MenuItem leadingIcon="plus" onSelect={() => onStartConversation()}>
-                {t('specification.newConversation')}
+              <MenuItem leadingIcon="plus" onSelect={() => onStartSession()}>
+                {t('sessions.list.newSession')}
               </MenuItem>
             </OverflowMenu>
           ) : undefined

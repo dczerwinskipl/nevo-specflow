@@ -112,6 +112,7 @@ type ConversationEntry = {
   kind: 'request' | 'commentary' | 'work-summary' | 'answer' | 'outcome';
   text: TextPreview;
   workId?: string;
+  digest?: WorkDigest; // work-summary entries only; see "Work digest"
   createdAt: string;
 };
 type SessionInfo = {
@@ -293,42 +294,77 @@ actionCount?:number, createdAt, updatedAt}. Interaction status maps to this boun
 but answerability is only the canonical Interaction projection. actionCount, when present,
 is transactionally maintained, never a scan at read time.
 ActionPage = {sessionId, workId, eventSeq, items: ToolActionSummary[], history}.
-ToolActionSummary = {actionId, ordinal, revision, state, title:TextPreview,
+ToolActionSummary = {actionId, ordinal, revision, state, title:TextPreview, operation?:ToolOperation,
 input?:ContentRef, output?:ContentRef, error?:{code,message}, createdAt, updatedAt}.
+ToolOperation = 'read'|'edit'|'write'|'list'|'search'|'command'|'test'|'web'|'other', immutable,
+recorded at action open from the provider's own tool identity only (see "Work digest");
+omitted for actions recorded before Runtime classified them.
 state uses the Work state vocabulary. Error message <=2 KiB. Only tool Work owns actions.
 Work/action limits match HistoryPage. Exact Work identity/kind is immutable; no raw SDK objects.
 
-### Proposed Work aggregate counts (not implemented)
+### Work aggregate counts
 
-Not part of the contract above — `WorkPage` today exposes only the bounded `items` page, with no
-server-side aggregate. The Work (L2) UI summary row described in session-chat-v10-design.md §3 (a
-total count, an in-progress count, and a per-kind breakdown) must come from a bounded server
-projection, never from scanning only the client's currently loaded page, which is a tail/page
-window and never the Turn's true total. This follows the same "contract ahead of backend
-capability" documentation pattern already used elsewhere for a capability under active
-development in another branch (for example the Session telemetry contract): written here,
-explicitly flagged as proposed, and implemented today only as a local, product-owned fixture/demo
-mirror (`workCounts.ts` under `specflow-ui`'s managed Session feature) until the real projection
-exists.
-
-Illustrative additive shape:
+`WorkPage.counts` is the Turn-wide Work aggregate, independent of which page is returned:
 
 ```ts
 type WorkCounts = {
-  total: number; // Turn-wide, not this page's items.length
-  inProgress: number; // Work currently in the 'active' state
-  byKind: Record<WorkKind, number>; // commentary | reasoning | interaction | tool only — there is
-  // no finer server-side read/write/command/search sub-kind
+  total: number; // every Work the Turn opened, not this page's items.length
+  inProgress: number; // Work currently in the 'active' state only
+  byKind: { commentary: number; reasoning: number; interaction: number; tool: number };
 };
 type WorkPage = {
-  // ...existing fields above...
-  counts?: WorkCounts; // proposed; omitted until the real backend projection exists
+  // ...fields above...
+  counts?: WorkCounts;
 };
 ```
 
-Do not block the first Work (L2) summary-row UI on this. The UI MUST hide the whole summary row
-when `counts` is absent — never derive it from `items.length`, which would misrepresent the Turn's
-true totals whenever older pages are not yet loaded.
+Runtime keeps the aggregate in the Turn record and updates it in the same transaction as every Work
+open and Work state change (provider facts, interaction admission and delivery, Turn settlement,
+restart recovery), like `actionCount`; the `work` read projects it and never scans Work at read
+time. `counts` is omitted for Turns recorded before Runtime maintained the aggregate; they are not
+backfilled. The UI MUST hide its summary row when `counts` is absent and MUST NOT derive it from
+`items.length`, which is only a bounded page. Among pages of the same Turn, the one with the higher
+`eventSeq` carries the newer counts.
+
+### Work digest
+
+A digest tallies the Turn's ToolActions by operation:
+
+```ts
+type OperationCounts = Partial<Record<ToolOperation, number>>; // closed keys, omitted when 0
+type WorkDigest = {
+  done: OperationCounts; // every ToolAction the Turn opened, whatever state it reached
+  failed?: OperationCounts; // the ToolActions whose state became 'failed' (also counted in done)
+};
+```
+
+Runtime maintains it in the Turn record in the same transaction as each ToolAction open and state
+change, including actions that Turn settlement marks failed. The Turn's latest `work-summary`
+entry carries the current digest: a new tool Work's entry starts with the digest at that moment,
+and each later change revises that entry (`revision` increments) and emits one `conversation`
+change with that single entry. An earlier `work-summary` entry keeps the digest it had while it
+was the latest; clients use the Turn's latest entry that carries one. No digest is attached
+before the Turn's first ToolAction, and none for Turns recorded before Runtime maintained it.
+
+Classification comes only from the provider's own tool identity on the driver's `action-open`
+fact (`operation`, see [driver protocol](../protocols/session-provider-driver.md)); it is never
+inferred from command text, arguments or titles, and an unmapped identity is `other`. `test` and
+`web` are used only when a provider's native tool itself identifies a test run or a web access;
+no currently supported provider tool does.
+
+| Provider    | Native identity                                                                       | Operation    |
+| ----------- | ------------------------------------------------------------------------------------- | ------------ |
+| Claude      | `Read`                                                                                | read         |
+| Claude      | `Glob`, `Grep`                                                                        | search       |
+| Claude      | `Edit` / `Write`                                                                      | edit / write |
+| Claude      | `Bash`                                                                                | command      |
+| Codex       | ThreadItem `commandExecution` (one action, parsed fragments ignored)                  | command      |
+| Codex       | ThreadItem `fileChange` (one patch)                                                   | edit         |
+| Antigravity | `view_file` / `list_dir`                                                              | read / list  |
+| Antigravity | `find_by_name`, `grep_search`                                                         | search       |
+| Antigravity | `write_to_file` / `replace_file_content`, `multi_replace_file_content`                | write / edit |
+| Antigravity | `run_command`                                                                         | command      |
+| any         | anything else (`call_mcp_tool`, undeclared names, mock scenarios without `operation`) | other        |
 
 ContentPage = {contentId, revision, offset, text, nextOffset?, complete}.
 revision is required and immutable. offset defaults 0; limitBytes defaults/max 64 KiB.

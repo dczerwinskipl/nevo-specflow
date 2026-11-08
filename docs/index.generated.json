@@ -4920,6 +4920,44 @@
       ]
     },
     {
+      "id": "ideas.specflow-runtime.session-ui-integration.plan",
+      "type": "engineering",
+      "title": "Managed Session UI integration and Session actions task plan",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/session-ui-integration/plan.md",
+      "read_when": [
+        "implementing or reviewing the feat/session-ui-integration pull request",
+        "deciding Session rename, archive or delete semantics"
+      ],
+      "summary": "Ordered, dependency-complete task plan for wiring the managed Session screen to the real Session API (telemetry, reconcile, multi-select questions, Antigravity icon) and for adding Work counts/digest, command response schemas and Session rename/archive/delete end to end, with the owner decisions that still block parts of it.",
+      "related": [
+        "reference.api.sessions",
+        "reference.api.session-telemetry",
+        "architecture.ai.session-storage-and-lifecycle",
+        "architecture.runtime.authorization",
+        "ideas.specflow-runtime.session-v10-backend-readiness",
+        "ideas.specflow-ui.components.session-chat-v10-design"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "server",
+        "security",
+        "ui",
+        "testing"
+      ],
+      "tags": [
+        "sessions",
+        "telemetry",
+        "interactions",
+        "work",
+        "session-actions",
+        "planning",
+        "implementation"
+      ]
+    },
+    {
       "id": "ideas.specflow-runtime.session-v10-backend-readiness",
       "type": "engineering",
       "title": "Session migration remainder and V10 backend readiness",

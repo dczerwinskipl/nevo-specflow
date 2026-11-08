@@ -1,9 +1,11 @@
 import type { TFunction } from 'i18next';
-import { useId, type CSSProperties } from 'react';
+import { useCallback, useId, useRef, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Badge,
+  Button,
   Collapsible,
+  InlineNote,
   Progress,
   Tooltip,
   TooltipContent,
@@ -11,20 +13,18 @@ import {
   TooltipTrigger,
   Typography,
 } from '@nevo/ui';
-import type {
-  LimitWindow,
-  MoneyUsage,
-  Reading,
-  TelemetrySnapshot,
-  TokenUsage,
-} from './sessionTelemetry';
-import { isTelemetryVisible } from './sessionTelemetry';
+import type { TelemetryLimitWindow, TelemetrySnapshot } from '@nevo/specflow-contracts/sessions';
+import { isLimitsRefreshOffered, isTelemetryVisible } from './sessionTelemetry';
+import type { LimitsRefreshControl } from './sessionContextTypes';
+
+type TokenReading = TelemetrySnapshot['usage']['session'];
+type MoneyReading = TelemetrySnapshot['cost']['session'];
 
 /**
  * Low-emphasis "Session details" (full-session-screen-structure.md §7.2/§23): token usage, cost,
  * context occupancy and rate limits, placed last in Context — after Related Tasks — and never
- * competing visually with the three Primary-adjacent sections above it. Demo data today (see
- * `sessionTelemetry.ts`); the real contract is PR #107, not yet merged.
+ * competing visually with the three Primary-adjacent sections above it. Data comes from the
+ * Session telemetry API (reference.api.session-telemetry) through `sessionTelemetryStore.ts`.
  *
  * Every dimension degrades independently: a `Reading` with `status: 'unavailable'` (or with no
  * meaningful sub-values even when `available`/`partial`) simply omits its own line, never a
@@ -52,8 +52,8 @@ import { isTelemetryVisible } from './sessionTelemetry';
  * wykorzystane" / "47% used") instead of a bare, directionless "43%".
  *
  * "Zużycie sesji" is session-scoped by its title: `TelemetrySnapshot.usage`/
- * `.cost` already carry an optional sibling `turn` reading next to `session` (see
- * `sessionTelemetry.ts`), but no fixture populates it and nothing else in this UI reads it yet.
+ * `.cost` carry an optional sibling `turn` reading next to `session`, but no reviewed UX places
+ * it and nothing else in this UI reads it yet.
  * This section still only ever reads `.session` labelled honestly as
  * such rather than inventing a Turn/Session split the data/product has not decided on.
  *
@@ -64,52 +64,96 @@ import { isTelemetryVisible } from './sessionTelemetry';
  * measures (`formatContextWindowScope`, reading `ContextUsage.turnId`/`.modelId` — already real,
  * already populated data, unlike `usage.turn`/`cost.turn` above) instead of silently inheriting
  * the section's "for the whole session" claim.
+ *
+ * Provider limits carry the only refresh (session-actions-ux §1): a ghost "Odśwież" in their
+ * heading row, offered when the reading is `refreshable` and the user may manage the Session
+ * (`limitsRefresh` present). With the control the section stays even without rows, saying why;
+ * `NOT_AUTHORIZED` limits render nothing at all. `migration` is not shown (§1.3).
  */
 export function SessionTelemetrySection({
   telemetry,
   runningTurnId,
+  limitsRefresh,
 }: {
   telemetry?: TelemetrySnapshot;
   /** The Turn in flight right now, if any (`SessionContextViewModel.runningTurnId`). Decides
    * whether the context-window measurement is captioned as the current or the last Turn. */
   runningTurnId?: string;
+  /** The limits refresh command; absent when the user may not manage the Session. */
+  limitsRefresh?: LimitsRefreshControl;
 }) {
   const { t, i18n } = useTranslation();
   const usageTitleId = useId();
   const limitsTitleId = useId();
+  const limitsHeading = useRef<HTMLHeadingElement | null>(null);
+  // Focus on the heading (after a refusal) must not fall to the document when the section goes.
+  const attachLimitsHeading = useCallback((node: HTMLHeadingElement | null) => {
+    limitsHeading.current = node;
+    if (!node) {
+      return;
+    }
 
-  if (!isTelemetryVisible(telemetry)) {
+    return () => {
+      limitsHeading.current = null;
+      if (node.ownerDocument.activeElement === node) {
+        node.closest<HTMLElement>('[data-context-focus-fallback]')?.focus();
+      }
+    };
+  }, []);
+  const canRefresh = !!limitsRefresh && !limitsRefresh.refused;
+
+  if (!telemetry || (!isTelemetryVisible(telemetry, canRefresh) && !limitsRefresh?.refusedNote)) {
     return null;
   }
 
-  const snapshot = telemetry!;
+  const snapshot = telemetry;
   const costStat = formatCostStat(snapshot.cost.session, t, i18n.language);
   const tokensStat = formatTokensStat(snapshot.usage.session, i18n.language);
   const tokenBreakdown = formatTokenBreakdown(snapshot.usage.session, t, i18n.language);
   const contextStat = formatContextOccupancy(snapshot.context);
   const limits = formatLimitWindows(snapshot.limits, t, i18n.language);
+  const limitsMasked =
+    snapshot.limits.status === 'unavailable' && snapshot.limits.reason === 'NOT_AUTHORIZED';
+  const refreshOffered = isLimitsRefreshOffered(snapshot, canRefresh);
+  const showLimits = !limitsMasked && (!!limits || refreshOffered || !!limitsRefresh?.refusedNote);
+  // One indicator for a refresh in flight: the control's own label (§1.2).
+  const refreshPending =
+    !!limitsRefresh?.sending ||
+    (snapshot.refresh.state !== 'idle' && snapshot.refresh.groups.includes('limits'));
+  const refreshBlocked = refreshPending || !!limitsRefresh?.coolingDown;
+  const notes = [
+    limitsReadingNote(snapshot.limits, !!limits, refreshOffered),
+    limitsCommandNote(limitsRefresh),
+  ].filter((note) => note !== undefined);
+  const politeNotes = notes.filter((note) => note.tone !== 'danger');
+  const alertNotes = notes.filter((note) => note.tone === 'danger');
 
   const hasUsageSection = !!costStat || !!tokensStat || !!contextStat || !!tokenBreakdown;
-  if (!hasUsageSection && !limits) {
+  if (!hasUsageSection && !showLimits) {
     return null;
   }
+
+  // `aria-disabled` keeps focus on the control while it waits; the handler ignores presses.
+  const pressRefresh = async () => {
+    if (!limitsRefresh || refreshBlocked) {
+      return;
+    }
+
+    if ((await limitsRefresh.refresh()) === 'refused') {
+      // The control is gone for this mount: focus lands on its section instead of the document.
+      limitsHeading.current?.focus();
+    }
+  };
 
   return (
     <div className="grid gap-6">
       {hasUsageSection && (
         <section className="grid gap-3" aria-labelledby={usageTitleId}>
-          <div className="flex flex-wrap items-baseline gap-2">
-            {/* The title alone says it is session-wide ("Zużycie sesji"); a "w całej sesji" caption
-                next to it only repeated it. */}
-            <Typography as="h3" id={usageTitleId} variant="section-label">
-              {t('sessions.context.sessionDetails.usageTitle')}
-            </Typography>
-            {snapshot.refresh.state === 'running' && (
-              <Typography variant="label-sm" className="text-content-muted">
-                {t('sessions.context.sessionDetails.refreshing')}
-              </Typography>
-            )}
-          </div>
+          {/* The title alone says it is session-wide ("Zużycie sesji"); a "w całej sesji" caption
+              next to it only repeated it. */}
+          <Typography as="h3" id={usageTitleId} variant="section-label">
+            {t('sessions.context.sessionDetails.usageTitle')}
+          </Typography>
           {(costStat ?? tokensStat) && (
             // Cost sizes to its (short) value; tokens take the rest, so neither column wraps.
             <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-8">
@@ -166,32 +210,136 @@ export function SessionTelemetrySection({
           )}
         </section>
       )}
-      {limits && (
-        <section className="grid gap-3" aria-labelledby={limitsTitleId}>
-          <Typography as="h3" id={limitsTitleId} variant="section-label">
-            {t('sessions.context.sessionDetails.limitsTitle')}
-          </Typography>
-          {/* One full-width row per window (label + value header, then the bar), never two
-              cramped columns: at ~330 px the side-by-side split left each bar a few dozen px. */}
-          <div className="grid gap-4">
-            {limits.windows.map((window) => (
-              <LimitRow
-                key={window.id}
-                label={window.label}
-                percentage={window.percentage}
-                valueText={window.valueText}
-                stale={window.stale}
-              />
-            ))}
+      {showLimits && (
+        // Spacing by margins, not `gap`: the two live regions below stay mounted while empty.
+        <section className="grid" aria-labelledby={limitsTitleId}>
+          <div className="flex flex-wrap items-baseline gap-2">
+            <Typography
+              ref={attachLimitsHeading}
+              as="h3"
+              id={limitsTitleId}
+              tabIndex={-1}
+              variant="section-label"
+              className="outline-none"
+            >
+              {t('sessions.context.sessionDetails.limitsTitle')}
+            </Typography>
+            {refreshOffered && (
+              <Button
+                variant="ghost"
+                size="sm"
+                leadingIcon="refresh"
+                className="ml-auto"
+                aria-disabled={refreshBlocked || undefined}
+                // The visible "Odśwież" relies on the heading; the name says what it refreshes.
+                aria-label={
+                  refreshPending
+                    ? undefined
+                    : t('sessions.context.sessionDetails.refreshLimitsLabel')
+                }
+                onClick={() => void pressRefresh()}
+              >
+                {refreshPending
+                  ? t('sessions.context.sessionDetails.refreshingLimits')
+                  : t('sessions.context.sessionDetails.refreshLimits')}
+              </Button>
+            )}
           </div>
-          {limits.extra > 0 && (
-            <Typography variant="body-sm" className="text-content-muted tabular-nums">
+          {limits && (
+            // One full-width row per window (label + value header, then the bar), never two
+            // cramped columns: at ~330 px the side-by-side split left each bar a few dozen px.
+            <div className="mt-3 grid gap-4">
+              {limits.windows.map((window) => (
+                <LimitRow
+                  key={window.id}
+                  label={window.label}
+                  percentage={window.percentage}
+                  valueText={window.valueText}
+                  stale={window.stale}
+                />
+              ))}
+            </div>
+          )}
+          {limits && limits.extra > 0 && (
+            <Typography variant="body-sm" className="mt-3 text-content-muted tabular-nums">
               {t('sessions.context.sessionDetails.moreLimitWindows', { value: limits.extra })}
             </Typography>
           )}
+          {/* One persistent region per politeness; only the text inside changes. */}
+          <div role="status">
+            {politeNotes.map((note) => (
+              <LimitsNoteLine key={note.key} note={note} />
+            ))}
+          </div>
+          <div role="alert">
+            {alertNotes.map((note) => (
+              <LimitsNoteLine key={note.key} note={note} />
+            ))}
+          </div>
         </section>
       )}
     </div>
+  );
+}
+
+type LimitsNoteKey =
+  | 'limitsNotRead'
+  | 'refreshFailed'
+  | 'limitsReadFailed'
+  | 'refreshCooldown'
+  | 'refreshUnavailable'
+  | 'refreshRejected'
+  | 'refreshUnconfirmed';
+interface LimitsNote {
+  key: LimitsNoteKey;
+  tone: 'info' | 'attention' | 'danger';
+}
+
+/** What the limits reading itself says when it has no rows or its last refresh failed. */
+function limitsReadingNote(
+  reading: TelemetrySnapshot['limits'],
+  hasRows: boolean,
+  refreshOffered: boolean,
+): LimitsNote | undefined {
+  if (reading.reason === 'REFRESH_FAILED') {
+    if (hasRows) {
+      return { key: 'refreshFailed', tone: 'attention' };
+    }
+
+    if (reading.status === 'unavailable' && refreshOffered) {
+      return { key: 'limitsReadFailed', tone: 'attention' };
+    }
+  }
+
+  return !hasRows && refreshOffered ? { key: 'limitsNotRead', tone: 'info' } : undefined;
+}
+
+/** What the last refresh command left for the user to know (refusal, unconfirmed, cooldown). */
+function limitsCommandNote(refresh: LimitsRefreshControl | undefined): LimitsNote | undefined {
+  if (refresh?.refusedNote) {
+    return { key: 'refreshUnavailable', tone: 'info' };
+  }
+
+  if (refresh?.unconfirmed) {
+    return { key: 'refreshUnconfirmed', tone: 'danger' };
+  }
+
+  if (refresh?.rejected) {
+    return { key: 'refreshRejected', tone: 'attention' };
+  }
+
+  return refresh?.coolingDown ? { key: 'refreshCooldown', tone: 'info' } : undefined;
+}
+
+/** `InlineNote` has no live region of its own: info and attention notes go to the section's polite
+ * status region, only an unconfirmed request to its alert region (session-actions-ux rules). */
+function LimitsNoteLine({ note }: { note: LimitsNote }) {
+  const { t } = useTranslation();
+
+  return (
+    <InlineNote tone={note.tone} className="mt-3">
+      {t(`sessions.context.sessionDetails.${note.key}`)}
+    </InlineNote>
   );
 }
 
@@ -296,7 +444,7 @@ function LimitRow({
 /**
  * Usage threshold tiers (a product default — see module header: `Reading`/`LimitWindow` have
  * no server-provided tone/threshold field today, so this is a hardcoded client-side cutoff, not a
- * value read from the telemetry contract. Revisit once PR #107 or a successor documents one).
+ * value read from the telemetry contract. Revisit if the contract documents one).
  */
 type ProgressTone = 'default' | 'attention' | 'danger';
 
@@ -352,7 +500,7 @@ interface FormattedLine {
 /** Big-number stat cell for input/output tokens — locale-compact notation (`12.4K`/`12,4 tys.`),
  * never the full joined breakdown sentence (that moved to `formatTokenBreakdown`, behind the
  * collapsed disclosure). `undefined` when neither figure was observed at all. */
-function formatTokensStat(reading: Reading<TokenUsage>, locale: string): FormattedLine | undefined {
+function formatTokensStat(reading: TokenReading, locale: string): FormattedLine | undefined {
   if (reading.status === 'unavailable' || !reading.value) {
     return undefined;
   }
@@ -381,7 +529,7 @@ function formatTokensStat(reading: Reading<TokenUsage>, locale: string): Formatt
  * the disclosure itself then does not render at all, same "missing data hides the row" rule as
  * every other dimension here. */
 function formatTokenBreakdown(
-  reading: Reading<TokenUsage>,
+  reading: TokenReading,
   t: TFunction,
   locale: string,
 ): FormattedLine | undefined {
@@ -417,11 +565,7 @@ interface CostStat {
   stale: boolean;
 }
 
-function formatCostStat(
-  reading: Reading<MoneyUsage>,
-  t: TFunction,
-  locale: string,
-): CostStat | undefined {
+function formatCostStat(reading: MoneyReading, t: TFunction, locale: string): CostStat | undefined {
   if (reading.status === 'unavailable' || !reading.value) {
     return undefined;
   }
@@ -539,7 +683,7 @@ function formatContextWindowScope(
  * `unit: 'percent'` the schema's only percent-shaped field is `used` itself (there is no
  * `remaining`-as-percent reading), and for every other unit this is explicitly `used / limit`,
  * never `remaining / limit`. */
-function limitWindowPercentage(window: LimitWindow): number | undefined {
+function limitWindowPercentage(window: TelemetryLimitWindow): number | undefined {
   if (window.unit === 'percent') {
     const used = Number(window.used);
 

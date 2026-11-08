@@ -13,6 +13,11 @@ import {
   ActionPageSchema,
   ContentPageSchema,
   ProviderCatalogueSchema,
+  CreateSessionResultSchema,
+  StartTurnResultSchema,
+  CancelTurnResultSchema,
+  RespondInteractionResultSchema,
+  ReconcileTurnResultSchema,
   type CreateSession,
   type StartTurn,
   type RespondInteraction,
@@ -186,7 +191,11 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
     );
     feature.post(
       '/api/sessions',
-      { bodyLimit: 256 * 1024, preHandler: authorizeCreate, schema: { body: CreateSessionSchema } },
+      {
+        bodyLimit: 256 * 1024,
+        preHandler: authorizeCreate,
+        schema: { body: CreateSessionSchema, response: { 201: CreateSessionResultSchema } },
+      },
       async (request, reply) => {
         return reply
           .code(201)
@@ -302,7 +311,11 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
       {
         bodyLimit: 256 * 1024,
         preHandler: (request) => authorizeExecution(request),
-        schema: { params: params(), body: StartTurnSchema },
+        schema: {
+          params: params(),
+          body: StartTurnSchema,
+          response: { 202: StartTurnResultSchema },
+        },
       },
       async (request, reply) => {
         return reply
@@ -321,7 +334,11 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
       {
         bodyLimit: 65536,
         preHandler: (request) => authorize(request, true),
-        schema: { params: params({ turnId: SessionIdSchema }), body: CancelTurnSchema },
+        schema: {
+          params: params({ turnId: SessionIdSchema }),
+          body: CancelTurnSchema,
+          response: { 202: CancelTurnResultSchema },
+        },
       },
       async (request, reply) =>
         reply
@@ -340,7 +357,11 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
       {
         bodyLimit: 65536,
         preHandler: (request) => authorize(request, true),
-        schema: { params: params({ turnId: SessionIdSchema }), body: CancelTurnSchema },
+        schema: {
+          params: params({ turnId: SessionIdSchema }),
+          body: CancelTurnSchema,
+          response: { 200: ReconcileTurnResultSchema },
+        },
       },
       async (request, reply) =>
         reply
@@ -362,6 +383,7 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
         schema: {
           params: params({ interactionId: SessionIdSchema }),
           body: RespondInteractionSchema,
+          response: { 202: RespondInteractionResultSchema },
         },
       },
       async (request, reply) =>

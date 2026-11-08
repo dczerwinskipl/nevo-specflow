@@ -255,6 +255,14 @@ Reconcile uses session.manage and the existing positive-evidence recovery path. 
 caller-supplied outcome, native receipt or force flag, and never resends a possibly executed prompt.
 Unavailable evidence leaves the operation unknown rather than manufacturing a terminal result.
 
+Every command acknowledgement is a closed contract schema (`CreateSessionResult`,
+`StartTurnResult`, `CancelTurnResult`, `RespondInteractionResult`, `ReconcileTurnResult`, with
+`sessionValidators.createResult` ... `reconcileResult`); the Reconcile `outcome` is a
+`TurnOutcome`. A client treats a 2xx body of another shape as an unknown outcome, never as success:
+a Start command stays retained for replay with the same `requestId`. Because the schemas are
+closed, adding a field to a 2xx acknowledgement is a breaking change for deployed clients: it needs
+a coordinated UI release that accepts the field first.
+
 Route bodyLimit: 256 KiB Create/Start, 64 KiB respond/cancel/reconcile/rename/archive/unarchive.
 Exceed -> 413 SESSION_PAYLOAD_TOO_LARGE.
 Session allocate does not launch the provider. Enforce requestId semantics from the storage design

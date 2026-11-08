@@ -2,6 +2,8 @@ import {
   isHttpClientError,
   type HttpRequestClient,
   type HttpRequestOptions,
+  type HttpResponse,
+  type HttpResponseOptions,
 } from '@nevo/http-client';
 import { ApiError } from './ApiError';
 import { classifyHttpError } from './classify';
@@ -14,12 +16,23 @@ export interface ApiRequestOptions<TParams = unknown> extends HttpRequestOptions
   readonly isValid?: (data: unknown) => boolean;
 }
 
+export interface ApiResponseOptions<TParams = unknown>
+  extends HttpResponseOptions<TParams>, Pick<ApiRequestOptions<TParams>, 'operation' | 'isValid'> {}
+
 /** Typed Runtime access whose every failure is an {@link ApiError} (or the original cancellation). */
 export interface ApiTransport {
   get<T = unknown, TParams = unknown>(
     url: string,
     options?: ApiRequestOptions<TParams>,
   ): Promise<T>;
+  /**
+   * GET returning status and the requested headers; `304` is a result without `data`. `isValid`
+   * applies to the body of a 2xx answer only.
+   */
+  getResponse<T = unknown, TParams = unknown>(
+    url: string,
+    options?: ApiResponseOptions<TParams>,
+  ): Promise<HttpResponse<T>>;
   delete<T = unknown, TParams = unknown>(
     url: string,
     options?: ApiRequestOptions<TParams>,
@@ -63,10 +76,14 @@ export function createApiTransport(
 ): ApiTransport {
   const isOnline = context.isOnline ?? browserOnline;
 
-  async function run<T, TParams>(
+  async function run<T, TParams, TOptions extends ApiRequestOptions<TParams>>(
     method: string,
-    options: ApiRequestOptions<TParams> | undefined,
-    send: (forwarded: HttpRequestOptions<TParams>) => Promise<T>,
+    options: TOptions | undefined,
+    send: (forwarded: Omit<TOptions, 'operation' | 'isValid'>) => Promise<T>,
+    body: (result: T) => { readonly present: boolean; readonly data?: unknown } = (data) => ({
+      present: true,
+      data,
+    }),
   ): Promise<T> {
     const operation = options?.operation ?? context.operation;
     const isRead = method === 'GET' || method === 'HEAD';
@@ -75,7 +92,7 @@ export function createApiTransport(
     }
 
     // `operation` and `isValid` are transport-level and must not reach the HTTP client.
-    const { operation: _operation, isValid: _isValid, ...forwarded } = options ?? {};
+    const { operation: _operation, isValid: _isValid, ...forwarded } = options ?? ({} as TOptions);
     let data: T;
     try {
       data = await send(forwarded);
@@ -87,7 +104,8 @@ export function createApiTransport(
       throw classifyHttpError(error, { operation, method, codes: context.codes });
     }
 
-    if (options?.isValid && !options.isValid(data)) {
+    const checked = body(data);
+    if (options?.isValid && checked.present && !options.isValid(checked.data)) {
       throw new ApiError({
         kind: 'protocol',
         operation,
@@ -101,6 +119,13 @@ export function createApiTransport(
 
   return {
     get: (url, options) => run('GET', options, (config) => http.get(url, config)),
+    getResponse: <T, TParams>(url: string, options?: ApiResponseOptions<TParams>) =>
+      run(
+        'GET',
+        options,
+        (config) => http.getResponse<T, TParams>(url, config),
+        (response) => ({ present: response.status !== 304, data: response.data }),
+      ),
     delete: (url, options) => run('DELETE', options, (config) => http.delete(url, config)),
     post: (url, body, options) => run('POST', options, (config) => http.post(url, body, config)),
     put: (url, body, options) => run('PUT', options, (config) => http.put(url, body, config)),

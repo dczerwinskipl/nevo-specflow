@@ -169,7 +169,8 @@ export function SessionContext({
     <AppContent className="h-full w-full">
       <AppWorkspaceBody scroll="area" contentClassName="flex min-h-full flex-col">
         {/* Starts at the top and scrolls once content overflows (no vertical centring). */}
-        <div className="grid w-full gap-6">
+        {/* Takes focus when a focused control inside Context goes away (never the document). */}
+        <div className="grid w-full gap-6 outline-none" tabIndex={-1} data-context-focus-fallback>
           <ContextExecutorSection executor={value.executor} scope={scope}>
             {scope.kind === 'unknown' && (
               <ContextNote kind={scope.reason === 'unreadable' ? 'warning' : 'info'}>
@@ -198,6 +199,7 @@ export function SessionContext({
           <SessionTelemetrySection
             telemetry={value.telemetry}
             runningTurnId={value.runningTurnId}
+            limitsRefresh={value.limitsRefresh}
           />
         </div>
       </AppWorkspaceBody>

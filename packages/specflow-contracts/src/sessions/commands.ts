@@ -1,5 +1,5 @@
 import { Type, type Static } from 'typebox';
-import { SessionIdSchema, SessionModeSchema } from './model';
+import { SessionIdSchema, SessionModeSchema, TurnOutcomeSchema } from './model';
 
 const closed = { additionalProperties: false } as const;
 const choice = (maxLength: number) => Type.String({ minLength: 1, maxLength });
@@ -51,6 +51,25 @@ export const RespondInteractionSchema = Type.Union([
     closed,
   ),
 ]);
+/** `201` of `POST /api/sessions`. */
+export const CreateSessionResultSchema = Type.Object({ sessionId: SessionIdSchema }, closed);
+/** `202` of `POST /api/sessions/:id/turns`. */
+export const StartTurnResultSchema = Type.Object({ turnId: SessionIdSchema }, closed);
+/** `202` of `POST /api/sessions/:id/turns/:turnId/cancel`. */
+export const CancelTurnResultSchema = Type.Object({ turnId: SessionIdSchema }, closed);
+/** `202` of `POST /api/sessions/:id/interactions/:interactionId/respond`. */
+export const RespondInteractionResultSchema = Type.Object(
+  { turnId: SessionIdSchema, interactionId: SessionIdSchema },
+  closed,
+);
+/**
+ * `200` of `POST /api/sessions/:id/turns/:turnId/reconcile`: the settled outcome, and whether this
+ * request settled it (`false` when the Turn was already terminal with the same outcome).
+ */
+export const ReconcileTurnResultSchema = Type.Object(
+  { turnId: SessionIdSchema, outcome: TurnOutcomeSchema, reconciled: Type.Boolean() },
+  closed,
+);
 export const SessionErrorCodes = [
   'SESSION_INPUT_INVALID',
   'SESSION_CURSOR_INVALID',
@@ -189,6 +208,11 @@ export type CreateSession = Static<typeof CreateSessionSchema>;
 export type StartTurn = Static<typeof StartTurnSchema>;
 export type RespondInteraction = Static<typeof RespondInteractionSchema>;
 export type ProviderDescriptor = Static<typeof ProviderDescriptorSchema>;
+export type CreateSessionResult = Static<typeof CreateSessionResultSchema>;
+export type StartTurnResult = Static<typeof StartTurnResultSchema>;
+export type CancelTurnResult = Static<typeof CancelTurnResultSchema>;
+export type RespondInteractionResult = Static<typeof RespondInteractionResultSchema>;
+export type ReconcileTurnResult = Static<typeof ReconcileTurnResultSchema>;
 export type SessionErrorCode = (typeof SessionErrorCodes)[number];
 
 /** JSON Schema bounds characters; application validation also enforces UTF-8 byte budgets. */

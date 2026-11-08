@@ -396,7 +396,13 @@ export function createWorkInspectorFixtureApi(
     content: (_sessionId, ref, offset) => fixtureContentPage(ref, offset),
     start: () => Promise.resolve({ turnId: workInspectorTurnId }),
     cancel: () => Promise.resolve({ turnId: workInspectorTurnId }),
-    respond: () => Promise.resolve({ turnId: workInspectorTurnId }),
+    // No telemetry in these fixtures: Context stories supply their own snapshot.
+    telemetry: () => Promise.resolve({ kind: 'not-modified' }),
+    refreshTelemetry: () => Promise.reject(new Error('No telemetry in this fixture.')),
+    reconcile: () =>
+      Promise.resolve({ turnId: workInspectorTurnId, outcome: 'completed', reconciled: true }),
+    respond: (_id, interactionId) =>
+      Promise.resolve({ turnId: workInspectorTurnId, interactionId }),
     async *watch(_sessionId, _after, signal) {
       await new Promise<void>((resolve) => {
         if (signal.aborted) {

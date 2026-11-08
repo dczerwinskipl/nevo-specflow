@@ -14,7 +14,13 @@
  * Adding a future section (Handovers, Evidence, …) must not require reworking this shape.
  */
 
-import type { TelemetrySnapshot } from './sessionTelemetry';
+import type { TelemetrySnapshot } from '@nevo/specflow-contracts/sessions';
+import type { LimitsRefreshOutcome, LimitsRefreshState } from './sessionTelemetryStore';
+
+/** The provider-limits refresh command, offered only to a user who may manage the Session. */
+export interface LimitsRefreshControl extends LimitsRefreshState {
+  readonly refresh: () => Promise<LimitsRefreshOutcome>;
+}
 
 export interface SessionContextTaskRef {
   id: string;
@@ -111,10 +117,15 @@ export interface SessionContextViewModel {
   runningTurnId?: string;
   /**
    * Low-emphasis "Session details" (§7.2/§23): token usage, cost, context occupancy, rate
-   * limits. Demo data against the not-yet-merged PR #107 contract — see `sessionTelemetry.ts`.
+   * limits, from `GET /api/sessions/:id/telemetry` (reference.api.session-telemetry).
    * Absent/fully-`unavailable` telemetry renders nothing.
    */
   telemetry?: TelemetrySnapshot;
+  /**
+   * The provider-limits refresh (session-actions-ux §1). Present only when the user may manage
+   * the Session; the control itself also needs a `refreshable` limits reading.
+   */
+  limitsRefresh?: LimitsRefreshControl;
 }
 
 /**

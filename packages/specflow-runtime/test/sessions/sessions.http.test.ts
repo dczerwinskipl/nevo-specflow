@@ -47,6 +47,7 @@ describe('managed Session HTTP', () => {
       payload: { requestId: randomUUID(), providerId: 'mock', mode: 'read-only' },
     });
     expect(created.statusCode).toBe(201);
+    expect(sessionValidators.createResult(created.json())).toBe(true);
     const { sessionId } = created.json<{ sessionId: string }>();
     const payload = { requestId: randomUUID(), message: 'Hello' };
     const start = await app!.inject({
@@ -55,6 +56,7 @@ describe('managed Session HTTP', () => {
       payload,
     });
     expect(start.statusCode).toBe(202);
+    expect(sessionValidators.startResult(start.json())).toBe(true);
     await vi.waitFor(async () => {
       const s = (await app!.inject('/api/sessions/' + sessionId)).json<SessionSnapshot>();
       expect(s.entries.at(-1)?.kind).toBe('outcome');

@@ -262,7 +262,11 @@ export function fixtureApi(snapshot: SessionSnapshot, historyError = false): Man
       }),
     start: () => Promise.resolve({ turnId }),
     cancel: () => Promise.resolve({ turnId }),
-    respond: () => Promise.resolve({ turnId }),
+    // No telemetry in these fixtures: Context stories supply their own snapshot.
+    telemetry: () => Promise.resolve({ kind: 'not-modified' }),
+    refreshTelemetry: () => Promise.reject(new Error('No telemetry in this fixture.')),
+    reconcile: () => Promise.resolve({ turnId, outcome: 'completed', reconciled: true }),
+    respond: (_id, interactionId) => Promise.resolve({ turnId, interactionId }),
     async *watch(_id, _after, signal) {
       await new Promise<void>((resolve) => {
         if (signal.aborted) {

@@ -7,6 +7,7 @@ function fakeHttp(overrides: Partial<HttpRequestClient> = {}): HttpRequestClient
   return {
     request: vi.fn(),
     get: vi.fn().mockResolvedValue({ ok: true }),
+    getResponse: vi.fn().mockResolvedValue({ status: 200, data: { ok: true }, headers: {} }),
     delete: vi.fn().mockResolvedValue({ ok: true }),
     post: vi.fn().mockResolvedValue({ ok: true }),
     put: vi.fn().mockResolvedValue({ ok: true }),
@@ -119,5 +120,40 @@ describe('createApiTransport', () => {
     await expect(
       api.get('/api/x', { isValid: (data) => typeof data === 'object' }),
     ).rejects.toMatchObject({ kind: 'protocol', outcome: 'not-applied' });
+  });
+
+  describe('getResponse', () => {
+    const isObject = (data: unknown) => typeof data === 'object' && data !== null;
+
+    it('forwards response options and validates a 2xx body', async () => {
+      const http = fakeHttp();
+      const api = createApiTransport(http, { operation: 'x' });
+      await expect(
+        api.getResponse('/api/x', { responseHeaders: ['etag'], isValid: isObject }),
+      ).resolves.toEqual({ status: 200, data: { ok: true }, headers: {} });
+      expect(http.getResponse).toHaveBeenCalledWith('/api/x', { responseHeaders: ['etag'] });
+    });
+
+    it('does not validate the empty body of a 304', async () => {
+      const http = fakeHttp({
+        getResponse: vi.fn().mockResolvedValue({ status: 304, headers: { etag: '"a"' } }),
+      });
+      const api = createApiTransport(http, { operation: 'x' });
+      await expect(api.getResponse('/api/x', { isValid: isObject })).resolves.toEqual({
+        status: 304,
+        headers: { etag: '"a"' },
+      });
+    });
+
+    it('rejects a 2xx body of the wrong shape as a protocol error', async () => {
+      const http = fakeHttp({
+        getResponse: vi.fn().mockResolvedValue({ status: 200, data: 'spa', headers: {} }),
+      });
+      const api = createApiTransport(http, { operation: 'x' });
+      await expect(api.getResponse('/api/x', { isValid: isObject })).rejects.toMatchObject({
+        kind: 'protocol',
+        outcome: 'not-applied',
+      });
+    });
   });
 });

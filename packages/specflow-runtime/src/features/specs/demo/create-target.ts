@@ -2,6 +2,7 @@ import {
   deriveSpecSlug,
   engineCommitRefusal,
   isValidBranchName,
+  localBranchRef,
 } from '@nevo/specflow-contracts/specs';
 import type {
   DemoCreateErrorCode,
@@ -47,8 +48,9 @@ export interface ResolvedTarget {
   integrationTargetWorkspaceId?: string;
 }
 
+/** `baseRefs` hold full refs, workspaces short branch names. */
 const taken = (options: DemoCreateOptions, branch: string) =>
-  options.baseRefs.some((b) => b.ref === branch) ||
+  options.baseRefs.some((b) => b.ref === localBranchRef(branch)) ||
   options.workspaces.some((w) => w.branch === branch);
 
 /**

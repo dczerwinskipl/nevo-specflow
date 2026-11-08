@@ -87,7 +87,7 @@ describe('create-options endpoint', () => {
       branchPattern: 'feature/{slug}',
       integrationTargetBranch: 'develop',
     });
-    expect(data.baseRefs.map((b) => b.ref)).toContain('release/1.4');
+    expect(data.baseRefs.map((b) => b.ref)).toContain('refs/heads/release/1.4');
   });
   it('reaches state variants through the demoScenario query and the x-demo-scenario header', async () => {
     const app = await runtime();
@@ -214,7 +214,7 @@ describe('create with target', () => {
       selectable: true,
     });
     expect(after.workspaces).toHaveLength(7);
-    expect(after.baseRefs.map((b) => b.ref)).toContain('feature/nowa-obsluga-platnosci');
+    expect(after.baseRefs.map((b) => b.ref)).toContain('refs/heads/feature/nowa-obsluga-platnosci');
   });
   it('new tile accepts baseRef, integration target and own branch', async () => {
     const app = await runtime();
@@ -223,7 +223,7 @@ describe('create with target', () => {
       await body(app, 1, {
         target: {
           kind: 'new-worktree',
-          baseRef: 'feature/platform',
+          baseRef: 'refs/heads/feature/platform',
           integrationTargetWorkspaceId: ids.platform,
         },
       }),

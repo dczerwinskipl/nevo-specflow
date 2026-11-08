@@ -68,7 +68,6 @@ export function MergeSuggestionNotice({
             onRequestFocus('target');
             update.update((current) => ({
               ...current,
-              settingsOpen: true,
               target: { on: true, workspaceId: suggestion.workspaceId },
             }));
             onAnnounce(t('create.workspace.suggestion.announceSet', { branch: suggestion.branch }));

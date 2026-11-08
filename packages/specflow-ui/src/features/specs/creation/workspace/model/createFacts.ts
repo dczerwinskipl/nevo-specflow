@@ -1,4 +1,4 @@
-import type { CreateOptions } from '@nevo/specflow-contracts/specs';
+import { refDisplayName, type CreateOptions } from '@nevo/specflow-contracts/specs';
 import { branchPreview, createOverrides, effectiveSlug } from './createRequest';
 import type { WorkspaceChoice } from './workspaceChoice';
 import { activeTile, primaryWorkspace, targetStatus } from './workspaceTiles';
@@ -67,9 +67,12 @@ export function buildCreateFacts(
 
   const overrides = createOverrides(choice, options, title);
   const primary = primaryWorkspace(options);
-  const base =
-    overrides.baseRef ??
-    (options.defaultBaseRef === 'HEAD' ? primary?.branch : options.defaultBaseRef);
+  // Shown, not sent: a branch by its name, like the form shows it.
+  const base = overrides.baseRef
+    ? refDisplayName(overrides.baseRef)
+    : options.defaultBaseRef === 'HEAD'
+      ? primary?.branch
+      : refDisplayName(options.defaultBaseRef);
   const picked = choice.target.on
     ? options.workspaces.find((w) => w.workspaceId === choice.target.workspaceId)
     : undefined;

@@ -1,3 +1,4 @@
+import type { MutableRefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Field } from '@nevo/ui';
 import { LocalizedOptionPicker } from '../../../../shared/controls/LocalizedOptionPicker';
@@ -31,20 +32,28 @@ export function ModelField({
   value,
   disabled,
   onChange,
+  error,
+  controlRef,
 }: {
   provider: StartProvider;
   value: string;
   disabled: boolean;
   onChange: (modelId: string) => void;
+  /** Why the missing model blocks the form (Create, once tried); shown under the field. */
+  error?: string;
+  /** The picker's control, so the owner can lead focus to it. */
+  controlRef?: MutableRefObject<HTMLElement | null>;
 }) {
   const { t } = useTranslation();
 
   return (
-    <Field disabled={disabled}>
+    <Field disabled={disabled} invalid={Boolean(error)}>
       <Field.Label>{t('managedSession.model.sectionLabel')}</Field.Label>
       <LocalizedOptionPicker
         value={value}
         disabled={disabled}
+        invalid={Boolean(error)}
+        controlRef={controlRef}
         placeholder={
           offersModelChoice(provider)
             ? t('managedSession.model.placeholder')
@@ -53,6 +62,7 @@ export function ModelField({
         onValueChange={onChange}
         items={modelItems(provider)}
       />
+      {error && <Field.Error>{error}</Field.Error>}
     </Field>
   );
 }

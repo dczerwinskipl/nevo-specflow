@@ -192,12 +192,47 @@ already provides containment.
 
 ## Bounded workspace rule
 
-A Primary-only collection page whose readable unit has a fixed optimal width (for example a list
-whose rows are designed for `content-standard`) bounds the workspace rather than stretching rows
-or leaving the content left-anchored in a wide workspace. Use `AppWorkspace fit="bounded"` with the
-existing width token on `AppContent`; do not add a new width token or a local maximum width. The
-workspace and navigation are then centred as one group, and header actions stay aligned with the
-content. Narrow and drawer layouts fill the workspace (a bounded `AppContent` centres itself inside it), so no bare strip is left beside a content-wide surface.
+A Primary-only page whose content has its own reading or scanning widths, such as a collection list
+or a focused creation flow, uses the **Focused frame** instead of a workspace that keeps growing on
+wide screens: `AppWorkspace fit="bounded"`. The frame is `min(available width, workspace-focused)`,
+border included, where `workspace-focused` is the one design token for every Focused screen
+(`--spacing-workspace-focused`, 90rem). Below that maximum the frame fills the available width like
+a full-width workspace; once it reaches the maximum it is centred together with the navigation. So
+nothing jumps while the window is resized, and every Focused screen shares the same geometry, so
+moving between them changes nothing. Do not add a local maximum width, a per-screen width token or a
+measured width to the workspace.
+
+Inside the frame the content keeps its own widths instead of stretching with it:
+
+- a form keeps its reading column (for example `content-form`) and its controls keep their maximum
+  widths; a form that lays out a second column from a threshold on its own container (as Create does
+  from a 992 px form column) may grow to two control widths and their gap, but its controls still
+  keep their maximum widths and a single column keeps the reading column;
+- a list fills the frame: its title, toolbar, group headers and rows span the frame's content width,
+  and bounded scan columns (see the [scan-column rule](#scan-column-rule)) keep related values
+  together, so the rest of a wide row stays empty instead of pushing them apart. Text blocks above
+  the rows, such as a search field or a notice, stay as wide as the title track they lead to.
+
+Detail workspaces whose screens share one context, for example a Specification with its Overview,
+Documents and Sessions, use `fit="available"` so the whole context keeps one geometry; do not bound
+them. Narrow and drawer layouts fill the workspace, and so does a Focused page while it shows a
+Secondary.
+
+**A reading column inside a wider pane.** A form or a detail page's sections sit in a reading
+column, left-aligned inside a scroller that fills the pane, in a Focused frame and in a full-width
+detail pane alike (a list instead fills the pane with bounded column tracks, as above). Do not make
+the column a narrower box around the scroller: the scrollbar would sit in the middle of the pane and
+the band beside the column would not scroll. Every such column and list starts at the workspace's
+content inset, the 16 px of the header (`px-4`) and `AppWorkspaceBody` (`p-4`), so moving between
+screens never shifts the content edge. A detail pane may fill that space with more columns once the
+pane is wide enough; until then the space beside the column stays empty rather than stretching it.
+When it does, the reading column no longer applies: the columns fill the pane at the same 16 px
+inset, each column stacks on its own (a missing section leaves no gap), and a summary above them
+spans both (Specification Overview: two columns from 1408 px of content width). Decide such a
+switch on the pane's content width, never the viewport; when the DOM order has to change with it,
+see the width-dependent structure rule in
+[React component guidelines](../implementation/react/component-guidelines.md#accessibility--responsive).
+This does not apply to a conversation: a Session conversation column keeps its centred measure.
 
 ## Nested-containment rule
 

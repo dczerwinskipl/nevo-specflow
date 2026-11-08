@@ -368,6 +368,26 @@ describe('CreateOperationPage', () => {
     expect(screen.getByText(/The specification files are committed to/)).toBeTruthy();
   });
 
+  it('writes the parts of a generated branch that exist only once created as words, never as <key>', async () => {
+    store({ target: { kind: 'new-worktree' } });
+    storage().saveDraft({
+      operationId,
+      title: 'Payment limits',
+      goal: '',
+      choice: initialWorkspaceChoice,
+      facts: { place: 'new', branch: 'feature/<key>-payment-limits', commit: true },
+    });
+    renderPage({
+      post: vi.fn().mockResolvedValue(accepted),
+      get: vi.fn().mockResolvedValue(accepted),
+    });
+    const settings = await screen.findByLabelText('Creation settings');
+    expect(settings.textContent).toContain('feature/key-payment-limits');
+    expect(within(settings).getByTitle('feature/…-payment-limits')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Technical details' }));
+    expect(document.body.textContent).not.toContain('<key>');
+  });
+
   it('while it runs: steps in user language with a description each, waiting steps muted, no merge-target warning', async () => {
     store({ target: { kind: 'new-worktree' } });
     storage().saveDraft({

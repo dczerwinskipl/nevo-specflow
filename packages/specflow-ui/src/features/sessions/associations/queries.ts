@@ -4,6 +4,7 @@ import { useRouter } from '@tanstack/react-router';
 import type { SpecFlowAppServices } from '../../../services';
 import { invalidateSpecificationWorkspace } from '../../specs/read-model';
 import type { SessionListLoad } from '../list/loadSessions';
+import { isDefinitiveAssociationRefusal } from './api';
 
 export const sessionAssociationKeys = {
   all: ['session-associations'] as const,
@@ -17,19 +18,25 @@ export const sessionAssociationKeys = {
 /**
  * The association of one Session (`GET /api/sessions/:sessionId/association`). `null` reads
  * nothing (no Session route). The Session screen, its Context, the navigator and the delete
- * destination all read this one query.
+ * destination all read this one query. A transiently failed refetch keeps the association already
+ * understood; a 403/404 drops it, since the principal may no longer see that Specification and its
+ * Tasks.
  */
-export function useSessionAssociation(sessionId: string | null) {
+export function useSessionAssociation(sessionId: string | null): {
+  data: SessionAssociationRead | undefined;
+  isError: boolean;
+} {
   // Services are resolved inside the query function, so a disabled observer (the navigator off a
   // Session route) never needs them.
   const router = useRouter({ warn: false });
-
-  return useQuery({
+  const { data, isError, error } = useQuery({
     queryKey: sessionAssociationKeys.read(sessionId ?? ''),
     queryFn: ({ signal }) =>
       requireServices(router).sessionAssociationsApi.association(sessionId!, signal),
     enabled: sessionId !== null,
   });
+
+  return { data: isError && isDefinitiveAssociationRefusal(error) ? undefined : data, isError };
 }
 
 function requireServices(router: ReturnType<typeof useRouter> | undefined): SpecFlowAppServices {

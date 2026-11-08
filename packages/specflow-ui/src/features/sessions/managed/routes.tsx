@@ -51,7 +51,6 @@ export function ManagedSessionRouteView({ sessionId }: { sessionId: string }) {
   const association = useSessionAssociation(sessionId);
   const queryClient = useQueryClient();
   const { data, isError } = association;
-  // A failed refetch keeps the association already understood.
   const sessionContext = useMemo(
     () =>
       associationContext(

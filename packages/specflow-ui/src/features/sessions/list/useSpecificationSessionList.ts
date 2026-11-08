@@ -3,7 +3,7 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { useAppServices } from '../../../app/useAppServices';
 import { asApiError } from '../../../api';
 import { sessionAssociationKeys } from '../associations/queries';
-import { sessionAssociationsOperation } from '../associations/api';
+import { isDefinitiveAssociationRefusal, sessionAssociationsOperation } from '../associations/api';
 import { sessionErrorCode } from '../managed/api';
 import { loadSessions, type SessionCollection, type SessionListLoad } from './loadSessions';
 import type { SessionListItem } from '@nevo/specflow-contracts/sessions';
@@ -42,7 +42,8 @@ export interface SessionListLoadOutcome {
  * The paged Session list read of one Specification and collection. Each page of the query is one
  * load ({@link loadSessions}); appended pages stay until an invalidation resets the list to its
  * first page. Once the workspace says Sessions are turned off (`disabled`), nothing is read; a list
- * read refused with `SESSION_DISABLED` says the same.
+ * read refused with `SESSION_DISABLED` says the same. Rows already shown stay through a transient
+ * failure, but not through a 403/404: the principal may no longer see them.
  */
 export function useSpecificationSessionList(
   specId: string,
@@ -78,7 +79,8 @@ export function useSpecificationSessionList(
     return { status: 'disabled' };
   }
 
-  if (!data) {
+  // A refetch refused for good drops the rows read before; a transient failure keeps them.
+  if (!data || (query.isError && isDefinitiveAssociationRefusal(query.error))) {
     if (query.isError) {
       return asApiError(query.error, { operation: sessionAssociationsOperation, method: 'GET' })
         ?.status === 403

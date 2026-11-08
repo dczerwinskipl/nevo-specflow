@@ -117,6 +117,9 @@ and consolidation. 0013 receives a pointer to this relaxation.
    manifest changed in between, the Engine re-plans once and then answers `SPEC_BUSY` (`cause: 'manifest-changed'`); an
    operation that is still writing its files (`reserved`, `files-writing`) and changes the manifest makes admission
    answer `SPEC_BUSY` (`manifest-changed`) at once, because the manifest on disk is moving rather than dirty.
+   A verified file identity that changes during the planning read MUST NOT be treated as proof that the
+   document is absent: admission refuses it as `SPEC_BUSY` (`source-changed`) before reservation, without
+   automatically retrying the write. A genuinely absent registered file remains `DOCUMENT_FILE_MISSING`.
    The file replacement re-hashes the target immediately before the rename; an external editor between that check and
    the rename is the stated limit of cooperative locking.
 9. **Bounded, journaled dirty window.** The healthy bound is the settle period plus the commit time: **settle 300 ms**

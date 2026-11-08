@@ -1,4 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { expect } from 'storybook/test';
+import type { SessionAssociationRead } from '@nevo/specflow-contracts/sessions';
+import { associationContext } from '../../associations/associationContext';
 import {
   AppShell,
   AppWorkspace,
@@ -399,4 +402,94 @@ export const AssociationsUnreadableMobile: Story = {
   args: { value: associationsUnreadableContext() },
   globals: mobile,
   play: settleNarrow,
+};
+
+type SpecificationAssociation = Extract<
+  SessionAssociationRead['association'],
+  { kind: 'specification' }
+>;
+
+/** The Context of an associated Session, mapped from its association read as the route maps it. */
+function associated(
+  specification: SpecificationAssociation['specification'],
+  tasks: SpecificationAssociation['tasks'] = [],
+): SessionContextViewModel {
+  return {
+    ...associationContext({
+      status: 'success',
+      data: { sessionId, association: { kind: 'specification', specification, tasks } },
+    }),
+    executor: realRouteContext().executor,
+  };
+}
+
+const authSpecification = {
+  state: 'available',
+  value: { specId: 'auth', key: 'SPEC-7', title: 'Logowanie SSO', collection: 'current' },
+} as const;
+
+/** A viewer without `spec.view` at the Specification: an info note, no Documents row, no Tasks. */
+export const AssociationForbiddenInSecondary: Story = {
+  tags: ['contract'],
+  args: { value: associated({ state: 'forbidden' }) },
+  render: (args) => <SecondaryContextHost {...args} />,
+  play: async ({ canvas }) => {
+    await settleWide();
+    await expect(
+      canvas.getByText('Nie masz uprawnień do wyświetlenia specyfikacji powiązanej z tą sesją.'),
+    ).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: 'Dokumenty' })).toBeNull();
+    await expect(canvas.queryByText('Powiązane zadania')).toBeNull();
+  },
+};
+
+/** An archived Specification: its row says so; its links carry the archive collection. */
+export const AssociationArchivedInSecondary: Story = {
+  tags: ['contract'],
+  args: {
+    value: associated({
+      ...authSpecification,
+      value: { ...authSpecification.value, collection: 'archived' },
+    }),
+  },
+  render: (args) => <SecondaryContextHost {...args} />,
+  play: async ({ canvas }) => {
+    await settleWide();
+    await expect(canvas.getByRole('button', { name: /Logowanie SSO.*W archiwum/ })).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Dokumenty' })).toBeVisible();
+  },
+};
+
+/** One of two associated Tasks removed: the found one, a count of the missing, and never Current
+ * execution or Attention (an association is context, not execution). */
+export const AssociationTasksPartlyMissingInSecondary: Story = {
+  tags: ['contract'],
+  args: {
+    value: associated(authSpecification, [
+      { state: 'available', value: { taskId: 'task-01', key: 'TASK-01', title: 'Logowanie' } },
+      { state: 'missing', id: 'task-02' },
+    ]),
+  },
+  render: (args) => <SecondaryContextHost {...args} />,
+  play: async ({ canvas }) => {
+    await settleWide();
+    await expect(canvas.getByText('Powiązane zadania')).toBeVisible();
+    await expect(canvas.getByText('Nie znaleziono 1 z 2 powiązanych zadań.')).toBeVisible();
+    await expect(canvas.queryByText('Aktualne wykonanie')).toBeNull();
+    await expect(canvas.queryByText('Uwaga / dalsze działania')).toBeNull();
+  },
+};
+
+/** The associated Specification was removed: one danger note naming its id, no Tasks section. */
+export const AssociationSpecificationMissingMobile: Story = {
+  tags: ['contract'],
+  args: { value: associated({ state: 'missing', id: 'auth' }, [{ state: 'missing', id: 't1' }]) },
+  globals: mobile,
+  play: async ({ canvas }) => {
+    await settleNarrow();
+    await expect(
+      canvas.getByText('Can’t find specification auth associated with this session.'),
+    ).toBeVisible();
+    await expect(canvas.queryByText('Related Tasks')).toBeNull();
+  },
 };

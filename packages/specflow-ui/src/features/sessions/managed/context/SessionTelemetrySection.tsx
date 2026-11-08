@@ -68,7 +68,7 @@ type MoneyReading = TelemetrySnapshot['cost']['session'];
  * Provider limits carry the only refresh (full-session-screen-structure §7.7): a ghost "Odśwież" in their
  * heading row, offered when the reading is `refreshable` and the user may manage the Session
  * (`limitsRefresh` present). With the control the section stays even without rows, saying why;
- * `NOT_AUTHORIZED` limits render nothing at all. `migration` is not shown (§1.3).
+ * `NOT_AUTHORIZED` limits render nothing at all. `migration` is not shown (full-session-screen-structure §7.7).
  */
 export function SessionTelemetrySection({
   telemetry,
@@ -116,7 +116,7 @@ export function SessionTelemetrySection({
     snapshot.limits.status === 'unavailable' && snapshot.limits.reason === 'NOT_AUTHORIZED';
   const refreshOffered = isLimitsRefreshOffered(snapshot, canRefresh);
   const showLimits = !limitsMasked && (!!limits || refreshOffered || !!limitsRefresh?.refusedNote);
-  // One indicator for a refresh in flight: the control's own label (§1.2).
+  // One indicator for a refresh in flight: the control's own label (full-session-screen-structure §7.7).
   const refreshPending =
     !!limitsRefresh?.sending ||
     (snapshot.refresh.state !== 'idle' && snapshot.refresh.groups.includes('limits'));

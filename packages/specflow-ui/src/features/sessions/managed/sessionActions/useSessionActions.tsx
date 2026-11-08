@@ -159,7 +159,7 @@ export function useSessionActions({
   const canDelete = !!session?.capabilities.delete;
   const archived = !!session?.archivedAt;
   const base = { direct: 'never', group: 'actions' } as const;
-  // An unavailable action is omitted, never shown disabled (§3.1).
+  // An unavailable action is omitted, never shown disabled (full-session-screen-structure §22.1).
   const actions: WorkspaceHeaderAction[] = [];
   if (manage) {
     actions.push({

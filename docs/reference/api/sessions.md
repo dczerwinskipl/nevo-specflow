@@ -266,8 +266,8 @@ a coordinated UI release that accepts the field first.
 Route bodyLimit: 256 KiB Create/Start, 64 KiB respond/cancel/reconcile/rename/archive/unarchive.
 Exceed -> 413 SESSION_PAYLOAD_TOO_LARGE.
 Session allocate does not launch the provider. Enforce requestId semantics from the storage design
-for every command with a requestId, including create, cancel, rename, archive and unarchive. Duplicate cancel after terminal is accepted
-as no-op for that Turn; it must never cancel a later Turn. Respond duplicate with same accepted
+for every command with a requestId, including create, cancel, rename, archive and unarchive.
+Duplicate cancel after terminal is accepted as no-op for that Turn; it must never cancel a later Turn. Respond duplicate with same accepted
 requestId returns its original response; a fresh response to an already resolved interaction conflicts.
 
 ### Rename, archive, unarchive and delete

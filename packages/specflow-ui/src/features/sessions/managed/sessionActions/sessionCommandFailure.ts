@@ -28,7 +28,7 @@ export function sessionCommandFailure(error: unknown): SessionCommandFailure {
   return writeOutcomeUnknown(error) ? 'unconfirmed' : 'refused';
 }
 
-/** The reason an Archive or Delete cannot be confirmed while a Turn has not ended (§3.2). */
+/** The reason an Archive or Delete cannot be confirmed while a Turn has not ended (full-session-screen-structure §22.1). */
 export type TurnBlockNote = 'turnActive' | 'turnWaitingForUser' | 'turnUnknown';
 
 export function turnBlockNote(

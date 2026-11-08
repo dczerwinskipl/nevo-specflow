@@ -1125,7 +1125,7 @@ export function ManagedSession({
    * (replace navigation, toast, focus). `ManagedSession` itself stays router-agnostic.
    */
   onSessionDeleted?: () => void;
-  /** The deleted/unknown Session view's way on (§3.6): a new Session. */
+  /** The deleted/unknown Session view's way on (full-session-screen-structure §22.1): a new Session. */
   onNewSession?: () => void;
   sessionId: string;
   owner: string;

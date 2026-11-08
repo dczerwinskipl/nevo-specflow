@@ -11,6 +11,7 @@ import {
 } from '@nevo/specflow-contracts/authorization';
 import { SpecCapabilities } from '@nevo/specflow-contracts/specs';
 import { requireCapability } from '../../auth';
+import { specScope, type ProjectIdSource } from '../scope';
 import { isSpecsSourceError } from '../read/error';
 import type { SpecificationWorkspaceRepository, WorkspaceContributions } from './repository';
 import { readAuthorizedWorkspace } from './read-authorized-workspace';
@@ -20,6 +21,8 @@ export interface SpecificationWorkspaceEndpointOptions {
   readonly repository?: SpecificationWorkspaceRepository;
   readonly contributions?: WorkspaceContributions;
   readonly sessions?: SessionReferenceOwner;
+  /** The Runtime's project; see `specScope`. */
+  readonly projectId?: ProjectIdSource;
 }
 
 export const specificationWorkspaceEndpoint: FastifyPluginCallback<
@@ -28,7 +31,8 @@ export const specificationWorkspaceEndpoint: FastifyPluginCallback<
   const authorization = requireCapability({
     resource: SpecCapabilities,
     capability: SpecCapabilities.capabilities.View,
-    scope: (request) => ({ specId: (request.params as { specId: string }).specId }),
+    scope: (request) =>
+      specScope(options.projectId?.(), (request.params as { specId: string }).specId),
   });
 
   app.withTypeProvider<TypeBoxTypeProvider>().get(
@@ -56,6 +60,7 @@ export const specificationWorkspaceEndpoint: FastifyPluginCallback<
           request.params.specId,
           request.authz,
           options.sessions,
+          options.projectId?.(),
         );
       } catch (error) {
         // Authorization failures and defects keep their own handling; only a failing canonical

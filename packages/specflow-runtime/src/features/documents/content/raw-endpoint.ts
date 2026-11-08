@@ -5,9 +5,13 @@ import { SpecificationDocumentParamsSchema } from '@nevo/specflow-contracts/docu
 import { DocumentError } from '@nevo/specflow-engine';
 
 import { matchesEtag, sendNotModified } from '../../../server/etag';
-import { documentReadErrorResponses, documentRoute, viewGuard } from './route-support';
+import {
+  documentReadErrorResponses,
+  documentRoute,
+  viewGuard,
+  type DocumentReadEndpointOptions,
+} from './route-support';
 import { rawEtag, rawNotModifiedHeaders, rawResponseHeaders } from './raw-headers';
-import type { DocumentReadSource } from './document-read-source';
 
 const RawQuerySchema = Type.Object(
   { download: Type.Optional(Type.Union([Type.Literal('0'), Type.Literal('1')])) },
@@ -19,7 +23,7 @@ const RawQuerySchema = Type.Object(
  * headers of the reference. Every check that can refuse happens before the first byte is sent; the
  * stream is destroyed (releasing the file) on a 304, on a client abort and on any error.
  */
-export const rawDocumentEndpoint: FastifyPluginCallback<{ source?: DocumentReadSource }> = (
+export const rawDocumentEndpoint: FastifyPluginCallback<DocumentReadEndpointOptions> = (
   app,
   options,
   done,
@@ -27,7 +31,7 @@ export const rawDocumentEndpoint: FastifyPluginCallback<{ source?: DocumentReadS
   app.withTypeProvider<TypeBoxTypeProvider>().get(
     '/api/specs/:specId/documents/:documentId/raw',
     {
-      preHandler: viewGuard(),
+      preHandler: viewGuard(options.projectId),
       schema: {
         params: SpecificationDocumentParamsSchema,
         querystring: RawQuerySchema,

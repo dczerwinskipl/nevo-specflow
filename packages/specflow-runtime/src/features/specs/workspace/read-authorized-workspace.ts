@@ -5,6 +5,7 @@ import type { RequestAuthorization } from '../../auth';
 import { sessionScope, type SessionReference, type SessionReferenceOwner } from '../../sessions';
 import type { SpecificationWorkspaceRepository, WorkspaceContributions } from './repository';
 import { readWorkspace } from './read-workspace';
+import { specScope } from '../scope';
 import { presentWorkspace } from './presenter';
 import { authorizeSessionReferences } from './authorize-projection';
 
@@ -14,13 +15,14 @@ export async function readAuthorizedWorkspace(
   specId: string,
   authz: RequestAuthorization,
   sessions?: SessionReferenceOwner,
+  projectId?: string,
 ): Promise<
   { kind: 'ok'; value: SpecificationWorkspaceResponse } | { kind: 'unavailable' | 'not_found' }
 > {
   authz.require({
     resource: SpecCapabilities,
     capability: SpecCapabilities.capabilities.View,
-    scope: { specId },
+    scope: specScope(projectId, specId),
   });
   if (!source) {
     return { kind: 'unavailable' };

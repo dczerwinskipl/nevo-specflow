@@ -185,7 +185,7 @@ time (grant mutation and revocation sync).
 | `session.view`, `session.manage`, `session.delete`, `session.view-provider-limits` | `{projectId, sessionId}` | `{projectId, specId, sessionId}`       |
 | `session.create` (standalone, `POST /api/sessions`)                                | `{projectId}`            | not applicable                         |
 | `session.create` (from a Specification)                                            | not applicable           | `{projectId, specId}`                  |
-| `spec.start-session` (from a Specification)                                        | not applicable           | `{specId}`                             |
+| `spec.start-session` (from a Specification)                                        | not applicable           | `specScope` = `{projectId, specId}`    |
 | `session.execute-write` (create in write mode)                                     | `{projectId}`            | `{projectId}`                          |
 | `session.execute-write` (Turn start/respond in write mode)                         | `{projectId, sessionId}` | `{projectId, sessionId}` (no `specId`) |
 
@@ -205,6 +205,13 @@ Directional coverage (unchanged resolver) then gives:
 | `{sessionId: sid}` | yes                | yes                     | no            | yes, that Session only (unchanged) |
 
 "yes" means: the capabilities the assigned role carries apply there; nothing beyond them.
+
+Every `spec.*` check (`spec.view`, `spec.manage`, `spec.start-session`, the close capabilities) runs
+at `specScope(projectId, specId)` = `{projectId, specId}` (`features/specs/scope.ts`), with the
+Runtime's own project. A `{projectId}` grant therefore covers the project's Specifications, and a
+`{specId}` grant still covers its own; a bare `{specId}` target would leave a `{projectId}` grant
+without any Specification. T5 (`spec.start-session`), T6 (association read) and T7 (list redaction)
+must use `specScope`, never a hand-built `{specId}`.
 
 ### 6.2 New capability and built-in roles
 
@@ -230,7 +237,7 @@ and admin. There is no creator ACL: creator stays audit metadata.
 - One builder, `sessionScope(identity, capability)`, fed only by store-derived identity (`identity` /
   `identities` join the association row). Route parameters, bodies, list filters and the UI are never
   a scope source; a list filter selects, it never grants.
-- Composed create: `spec.view` is not enough; it requires `spec.start-session` at `{specId}` and
+- Composed create: `spec.view` is not enough; it requires `spec.start-session` at `specScope` and
   `session.create` at `{projectId, specId}`, plus `session.execute-write` at `{projectId}` for
   `workspace-write`.
 - List: `session.view` in any scope, then per-row `session.view` at `sessionScope(row, 'view')` and
@@ -240,8 +247,8 @@ and admin. There is no creator ACL: creator stays audit metadata.
 ### 6.4 Redaction
 
 - A list row's `association` names `specId`/`taskIds` only when the caller has `spec.view` at
-  `{specId}`; otherwise it is `{ kind: 'restricted' }`.
-- The association read checks `spec.view` at `{specId}` **before** any Engine existence lookup, so
+  `specScope(projectId, specId)`; otherwise it is `{ kind: 'restricted' }`.
+- The association read checks `spec.view` at `specScope(projectId, specId)` **before** any Engine existence lookup, so
   `forbidden` never reveals whether the Specification or a Task still exists.
 
 ## 7. Contracts
@@ -341,13 +348,13 @@ export function sessionScope(identity: SessionIdentity, capability: SessionCapab
 
 ### 7.4 HTTP routes
 
-| Route                                      | Owner              | Authorization                                                                                                                          |
-| ------------------------------------------ | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `POST /api/specs/:specId/sessions`         | Association module | `spec.start-session` at `{specId}`; `session.create` at `{projectId, specId}`; `session.execute-write` at `{projectId}` for write mode |
-| `GET /api/sessions`                        | Sessions (list)    | `session.view` in any scope, then per row at `sessionScope(row, 'view')`; association redaction                                        |
-| `GET /api/sessions/:sessionId/association` | Association module | `session.view` at `sessionScope`; Specification/Task facts need `spec.view` at `{specId}`                                              |
-| existing `/api/sessions/:sessionId/**`     | Sessions           | unchanged capabilities, scope from `sessionScope(identity, capability)`                                                                |
-| `POST /api/sessions`                       | Sessions           | unchanged: standalone create at `{projectId}`                                                                                          |
+| Route                                      | Owner              | Authorization                                                                                                                           |
+| ------------------------------------------ | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /api/specs/:specId/sessions`         | Association module | `spec.start-session` at `specScope`; `session.create` at `{projectId, specId}`; `session.execute-write` at `{projectId}` for write mode |
+| `GET /api/sessions`                        | Sessions (list)    | `session.view` in any scope, then per row at `sessionScope(row, 'view')`; association redaction                                         |
+| `GET /api/sessions/:sessionId/association` | Association module | `session.view` at `sessionScope`; Specification/Task facts need `spec.view` at `specScope`                                              |
+| existing `/api/sessions/:sessionId/**`     | Sessions           | unchanged capabilities, scope from `sessionScope(identity, capability)`                                                                 |
+| `POST /api/sessions`                       | Sessions           | unchanged: standalone create at `{projectId}`                                                                                           |
 
 ```ts
 // POST /api/specs/:specId/sessions
@@ -377,7 +384,7 @@ type SessionListItem = {
 };
 type ListAssociation =
   | { kind: 'standalone' }
-  | { kind: 'specification'; specId: string; taskIds: string[] } // only with spec.view at {specId}
+  | { kind: 'specification'; specId: string; taskIds: string[] } // only with spec.view at specScope
   | { kind: 'restricted' }; // associated, caller lacks spec.view
 type SessionAssociationRef = { specId: string; taskIds: string[] };
 type SessionListPage = { items: SessionListItem[]; nextCursor?: string };
@@ -432,7 +439,7 @@ The read maps one to one onto the UI `ContextFact` states (`ready`, `missing`, `
 - `recommendedSessionId`: first non-archived associated Session by attention, then active, then most
   recent `updatedAt`.
 - `actions.startSession`: available when the Sessions feature is enabled, a provider is usable and the
-  caller has `spec.start-session` at `{specId}` and `session.create` at `{projectId, specId}`; otherwise
+  caller has `spec.start-session` at `specScope` and `session.create` at `{projectId, specId}`; otherwise
   `reason` (`sessions_disabled`, `no_provider`, `forbidden`).
 - Freshness: the workspace `revision` is the Engine `sourceRevision` and does not change when Sessions
   change. Clients must not treat an unchanged `revision` as an unchanged Sessions section; the UI

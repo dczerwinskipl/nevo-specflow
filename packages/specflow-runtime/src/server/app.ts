@@ -153,6 +153,9 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
     !demo && engine && !specContributions?.documents
       ? { ...specContributions, documents: createEngineWorkspaceDocuments(engine) }
       : specContributions;
+  // The Runtime's single project: every `spec.*` check runs at `specScope(projectId, specId)`.
+  const projectId = () =>
+    demo ? demo.environment.state.catalogue.project.id : engine?.context.project.projectId;
   const productFeatures: readonly RuntimeFeature[] = [
     createSpecsFeature({
       ...(config.specs ? { config: config.specs } : {}),
@@ -162,6 +165,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
         workspaceRepository: dependencies.specs?.workspaceRepository ?? demo?.workspaceRepository,
         contributions,
         sessions: sessionReferences,
+        projectId,
         // The demo Runtime serves its own Create routes (and events route) below.
         ...(demo
           ? {}
@@ -181,10 +185,12 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
       ...(demo ? demo.taskSources : {}),
       ...dependencies.tasks,
       sessions: dependencies.tasks?.sessions ?? sessionReferences,
+      projectId,
     }),
     createDocumentsFeature({
       ...(documentReadSource ? { readSource: documentReadSource } : {}),
       ...(engine ? { engine } : {}),
+      projectId,
       // The demo emulates the writes under `/api/demo/...`; the real write routes are project-only.
       ...(demo ? { writeRoutes: false } : {}),
       operations: {

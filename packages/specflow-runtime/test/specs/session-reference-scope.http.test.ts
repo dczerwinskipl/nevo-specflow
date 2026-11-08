@@ -28,6 +28,8 @@ const grants: Record<string, Scope | undefined> = {
   project: { projectId: 'demo-project' },
   spec: { specId: SPEC },
   session: { sessionId: 'session-a' },
+  otherProject: { projectId: 'other-project' },
+  otherSpec: { specId: 'other' },
   none: undefined,
 };
 
@@ -110,6 +112,7 @@ async function fixture(role: Role, grant: Scope | undefined) {
       definitions: { resolve: () => Promise.resolve(definition) },
       execution: { inspect: () => Promise.resolve(execution) },
       leases: new PageLeases(),
+      projectId: () => 'demo-project',
       sessions,
     },
   });
@@ -134,6 +137,7 @@ async function fixture(role: Role, grant: Scope | undefined) {
         }),
     },
     sessions,
+    projectId: () => 'demo-project',
   });
 
   return { app, batches };
@@ -151,8 +155,9 @@ describe('Session references in Specification and Task reads', () => {
       try {
         const workspace = await app.inject(`/api/specs/${SPEC}/workspace`);
         const task = await app.inject(`/api/specs/${SPEC}/tasks/TASK-03`);
-        // spec.view at {specId} (no projectId dimension) gates both reads.
-        const readable = grant === 'global' || grant === 'spec';
+        // spec.view at specScope = {projectId, specId} gates both reads: a project grant covers
+        // the Specification, a Session-only, other-project or other-Specification grant does not.
+        const readable = grant === 'global' || grant === 'project' || grant === 'spec';
         expect([workspace.statusCode, task.statusCode]).toEqual(readable ? [200, 200] : [403, 403]);
         if (!readable) {
           return;
@@ -164,7 +169,7 @@ describe('Session references in Specification and Task reads', () => {
         // The workspace lists only its own Specification's Sessions; a Task may reference another
         // Specification's Session, visible only where the grant covers that Specification.
         expect(workspace.body).not.toContain('session-b');
-        expect(task.body.includes('session-b')).toBe(grant === 'global');
+        expect(task.body.includes('session-b')).toBe(grant !== 'spec');
         // A standalone or unknown Session never resolves to a reference.
         expect(workspace.body).not.toContain('session-c');
         expect(task.body).not.toContain('session-c');

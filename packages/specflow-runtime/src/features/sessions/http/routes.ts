@@ -138,20 +138,8 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
 
     const actor = (request: FastifyRequest) => request.authz.readContext().subject;
     registerTelemetryRoutes(feature, coordinator, { snapshot: !demoReads });
-    if (demoReads) {
-      registerDemoManagedSessionReads(app, feature, demoReads);
-    }
-
-    registerSessionManagementRoutes(feature, coordinator);
-    registerSessionListRoute(
-      feature,
-      () =>
-        options.coordinator || !options.demoList
-          ? storeSessionListSource(coordinator())
-          : options.demoList.source,
-      () => (options.coordinator ? options.projectId! : (options.demoList?.projectId ?? '')),
-    );
-    if (!demoReads) {
+    /** The coordinator-backed reads of the Session screen; demo mode serves its own instead. */
+    function registerManagedReads() {
       feature.get(
         '/api/session-providers',
         { preHandler: authorizeCreate, schema: { response: { 200: ProviderCatalogueSchema } } },
@@ -173,22 +161,6 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
           return { items };
         },
       );
-    }
-
-    feature.post(
-      '/api/sessions',
-      {
-        bodyLimit: 256 * 1024,
-        preHandler: authorizeCreate,
-        schema: { body: CreateSessionSchema, response: { 201: CreateSessionResultSchema } },
-      },
-      async (request, reply) => {
-        return reply
-          .code(201)
-          .send(await coordinator().create(actor(request), request.body as CreateSession));
-      },
-    );
-    if (!demoReads) {
       feature.get(
         '/api/sessions/:sessionId',
         {
@@ -203,9 +175,6 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
             authorizedIdentity(request, ids(request).sessionId),
           ),
       );
-    }
-
-    if (!demoReads) {
       feature.get(
         '/api/sessions/:sessionId/history',
         {
@@ -234,9 +203,6 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
           });
         },
       );
-    }
-
-    if (!demoReads) {
       feature.get(
         '/api/sessions/:sessionId/turns/:turnId/work',
         {
@@ -257,9 +223,6 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
             limit: count(query(request).limit, 40, 40),
           }),
       );
-    }
-
-    if (!demoReads) {
       feature.get(
         '/api/sessions/:sessionId/work/:workId/actions',
         {
@@ -280,9 +243,6 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
             limit: count(query(request).limit, 40, 40),
           }),
       );
-    }
-
-    if (!demoReads) {
       feature.get(
         '/api/sessions/:sessionId/content/:contentId',
         {
@@ -310,7 +270,60 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
             limitBytes: count(query(request).limitBytes, 65536, 65536),
           }),
       );
+      feature.get(
+        '/api/sessions/:sessionId/events',
+        {
+          preHandler: (request) => authorize(request),
+          schema: {
+            params: params(),
+            querystring: Type.Object(
+              { after: Type.Optional(Type.String({ pattern: '^[0-9]+$', maxLength: 16 })) },
+              closed,
+            ),
+          },
+        },
+        async (request, reply) => {
+          return streams.open(
+            request,
+            reply,
+            coordinator(),
+            ids(request).sessionId,
+            actor(request),
+            query(request).after,
+          );
+        },
+      );
     }
+
+    if (demoReads) {
+      registerDemoManagedSessionReads(feature, demoReads, streams);
+    } else {
+      registerManagedReads();
+    }
+
+    registerSessionManagementRoutes(feature, coordinator);
+    registerSessionListRoute(
+      feature,
+      () =>
+        options.coordinator || !options.demoList
+          ? storeSessionListSource(coordinator())
+          : options.demoList.source,
+      () => (options.coordinator ? options.projectId! : (options.demoList?.projectId ?? '')),
+    );
+
+    feature.post(
+      '/api/sessions',
+      {
+        bodyLimit: 256 * 1024,
+        preHandler: authorizeCreate,
+        schema: { body: CreateSessionSchema, response: { 201: CreateSessionResultSchema } },
+      },
+      async (request, reply) => {
+        return reply
+          .code(201)
+          .send(await coordinator().create(actor(request), request.body as CreateSession));
+      },
+    );
 
     feature.post(
       '/api/sessions/:sessionId/turns',
@@ -404,31 +417,6 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
             ),
           ),
     );
-    if (!demoReads) {
-      feature.get(
-        '/api/sessions/:sessionId/events',
-        {
-          preHandler: (request) => authorize(request),
-          schema: {
-            params: params(),
-            querystring: Type.Object(
-              { after: Type.Optional(Type.String({ pattern: '^[0-9]+$', maxLength: 16 })) },
-              closed,
-            ),
-          },
-        },
-        async (request, reply) => {
-          return streams.open(
-            request,
-            reply,
-            coordinator(),
-            ids(request).sessionId,
-            actor(request),
-            query(request).after,
-          );
-        },
-      );
-    }
 
     registered();
   });

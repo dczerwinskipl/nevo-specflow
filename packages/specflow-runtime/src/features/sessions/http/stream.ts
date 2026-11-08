@@ -22,7 +22,41 @@ export function createSessionStreams<RawServer extends RawServerBase>(
     done();
   });
 
+  /**
+   * Admits one stream within the caps (32 open, 8 per principal); `undefined` when over them.
+   * The controller aborts at server shutdown; `release` frees the slot exactly once.
+   */
+  function admit(principal: string) {
+    if (streams.size >= 32 || (perActor.get(principal) ?? 0) >= 8) {
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    streams.add(controller);
+    perActor.set(principal, (perActor.get(principal) ?? 0) + 1);
+    let released = false;
+
+    return {
+      controller,
+      release() {
+        if (released) {
+          return;
+        }
+
+        released = true;
+        streams.delete(controller);
+        const left = (perActor.get(principal) ?? 1) - 1;
+        if (left) {
+          perActor.set(principal, left);
+        } else {
+          perActor.delete(principal);
+        }
+      },
+    };
+  }
+
   return {
+    admit,
     async open(
       request: FastifyRequest,
       reply: FastifyReply,
@@ -50,18 +84,17 @@ export function createSessionStreams<RawServer extends RawServerBase>(
         throw new SessionError('SESSION_CURSOR_INVALID', 'Invalid replay sequence.');
       }
 
-      if (streams.size >= 32 || (perActor.get(principal) ?? 0) >= 8) {
-        return reply.code(429).header('Retry-After', '5').send({ error: 'rate_limited' });
-      }
-
-      const controller = new AbortController();
       // Immutable for the Session's life: the home Specification never changes.
       const identity = authorizedIdentity(request, sid);
       const initialAccess = telemetryAccess(request, identity).accessRevision;
+      const admission = admit(principal);
+      if (!admission) {
+        return reply.code(429).header('Retry-After', '5').send({ error: 'rate_limited' });
+      }
+
+      const { controller } = admission;
       const unwatchTelemetry = coordinator.telemetry.watch(sid);
       const wakeup = createStreamWakeup((listener) => coordinator.store.subscribe(sid, listener));
-      streams.add(controller);
-      perActor.set(principal, (perActor.get(principal) ?? 0) + 1);
       const raw = reply.raw;
       reply.hijack();
       const disconnected = () => controller.abort();
@@ -136,14 +169,7 @@ export function createSessionStreams<RawServer extends RawServerBase>(
       } finally {
         unwatchTelemetry();
         wakeup.close();
-        streams.delete(controller);
-        const left = (perActor.get(principal) ?? 1) - 1;
-        if (left) {
-          perActor.set(principal, left);
-        } else {
-          perActor.delete(principal);
-        }
-
+        admission.release();
         raw.off('close', disconnected);
         if (!raw.writableEnded) {
           raw.end();
@@ -152,3 +178,5 @@ export function createSessionStreams<RawServer extends RawServerBase>(
     },
   };
 }
+
+export type SessionStreams = ReturnType<typeof createSessionStreams>;

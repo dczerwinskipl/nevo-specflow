@@ -1,19 +1,11 @@
 import { Type, type Static, type TSchema } from 'typebox';
 import { CreateSessionResultSchema, CreateSessionSchema } from './commands';
+import { SessionIdSchema } from './model';
 
 const closed = { additionalProperties: false } as const;
 
 /** Engine Specification and Task identifiers (the same shape as the Specification read routes). */
 export const AssociationTargetIdSchema = Type.String({
-  minLength: 1,
-  maxLength: 200,
-  pattern: '^[a-zA-Z0-9][a-zA-Z0-9._-]*$',
-});
-/**
- * A Session as Specification reads reference it (workspace section, Task links): a managed
- * Session's UUID or a demo catalogue Session id. The association read is keyed by it in both modes.
- */
-export const SessionReferenceIdSchema = Type.String({
   minLength: 1,
   maxLength: 200,
   pattern: '^[a-zA-Z0-9][a-zA-Z0-9._-]*$',
@@ -76,7 +68,7 @@ const AssociatedTaskSchema = Type.Object(
 /** `200` of `GET /api/sessions/:sessionId/association`. */
 export const SessionAssociationReadSchema = Type.Object(
   {
-    sessionId: SessionReferenceIdSchema,
+    sessionId: SessionIdSchema,
     association: Type.Union([
       Type.Object({ kind: Type.Literal('standalone') }, closed),
       Type.Object(

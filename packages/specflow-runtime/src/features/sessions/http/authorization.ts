@@ -60,9 +60,22 @@ export async function authorizeSessionCapability(
   sessionId: string,
   capability: SessionCapabilityId,
 ): Promise<SessionIdentity> {
+  return authorizeSessionIdentity(request, () => sessionIdentity(c, sessionId), capability);
+}
+
+/**
+ * The same three steps over any identity source (the demo registry): the any-scope precheck runs
+ * before the lookup, so a caller without the capability anywhere cannot tell an unknown Session
+ * (404) from a refused one (403).
+ */
+export async function authorizeSessionIdentity(
+  request: FastifyRequest,
+  lookup: () => Promise<SessionIdentity>,
+  capability: SessionCapabilityId,
+): Promise<SessionIdentity> {
   request.authz.requireAccess();
   request.authz.requireCapabilityInAnyScope({ resource: SessionCapabilities, capability });
-  const identity = await sessionIdentity(c, sessionId);
+  const identity = await lookup();
   request.authz.require({
     resource: SessionCapabilities,
     capability,

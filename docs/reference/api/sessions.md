@@ -669,21 +669,26 @@ enabling the mock does not grant Claude availability. No real adapter is adverti
 The demo Runtime (`--demo`) has no Session coordinator, but the Full Session screen stays on the
 canonical `/sessions/:sessionId` route and reads the same routes. Demo Session IDs (seeded catalogue
 Sessions and Sessions allocated by `POST /api/demo/specs/:specId/sessions`) are UUIDs like managed
-ones. `features/sessions/demo/managed-reads.ts` serves the read side, authorized like the managed
-reads (`session.view` at the Session's scope from the demo association registry):
+ones. `features/sessions/demo/managed-reads.ts` serves the read side, authorized exactly like the
+managed reads: `session.view` in any scope first (so an unknown Session and a refused one both
+answer 403 to a caller without it), then the identity from the demo association registry, then
+`session.view` at the Session's scope (unknown: 404):
 
-- `GET /api/sessions/:sessionId`: a snapshot with `readiness: 'ready'`, `mode: 'read-only'`, no
+- `GET /api/sessions/:sessionId`: a snapshot with the list row's `readiness` (so the header matches
+  the Sessions navigator), `mode: 'read-only'`, no
   `activeTurn`, no entries, `history.hasOlder: false`, `eventSeq: 0` and `capabilities` granting
   `view` only (`manage`, `start`, `cancel`, `delete`, `executeWrite` false). Title, provider and
   model are the Session list row's.
-- `GET /api/session-providers`: the demo catalogue's providers (`session.view` in any scope), every
-  provider capability false and `modes: ['read-only']`, so the screen can name the agent.
+- `GET /api/session-providers`: the demo catalogue's providers, requiring `session.create` at the
+  project as in project mode; every provider capability false and `modes: ['read-only']`. Without it
+  the screen names the agent by its provider id, as in project mode.
 - `GET .../history`: still requires a cursor (`400 SESSION_CURSOR_INVALID` without one); any cursor
   answers an empty page. `GET .../turns/:turnId/work`, `.../work/:workId/actions` and
   `.../content/:contentId`: `404 SESSION_RESOURCE_NOT_FOUND` (a demo Session has no Turn).
 - `GET .../telemetry`: every reading `unavailable` with reason `NOT_OBSERVED`, nothing refreshable.
 - `GET .../events`: an SSE stream that only sends `: connected` and heartbeats; only `after=0` (or
-  no cursor) is valid.
+  no cursor) is valid. It counts against the managed stream caps (32 open, 8 per principal, then
+  `429` with `Retry-After: 5`).
 - `GET .../association` and `GET /api/sessions` are the demo catalogue's (sections above).
 
 Every mutation (`POST /api/sessions`, Turn start/cancel/reconcile/respond, rename, archive,

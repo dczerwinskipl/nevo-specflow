@@ -120,7 +120,7 @@ describe('demo Session association (catalogue port)', () => {
       association: { kind: 'specification', specification: { state: 'forbidden' }, tasks: [] },
     });
     await app!.close();
-    const unknown = await read(await open(), 'sample-session-0');
+    const unknown = await read(await open(), '00000000-0000-4000-8000-0000000000ff');
     expect(unknown.statusCode).toBe(404);
     expect(unknown.json<{ code: string }>().code).toBe('SESSION_NOT_FOUND');
   });

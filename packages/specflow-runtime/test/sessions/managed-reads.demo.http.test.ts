@@ -24,13 +24,20 @@ afterEach(async () => {
   app = undefined;
 });
 
-async function open() {
+interface Assignment {
+  role: 'developer' | 'viewer' | 'admin';
+  scope: Record<string, string>;
+}
+
+async function open(assignments: Assignment[] = [{ role: 'developer', scope: {} }]) {
   const config = passwordConfig();
   app = await createRuntimeApp(
     {
       ...config,
       authentication: { ...config.authentication, mode: 'none', localUserId: 'demo-user' },
-      authorization: { assignments: [{ userId: 'demo-user', role: 'developer', scope: {} }] },
+      authorization: {
+        assignments: assignments.map((assignment) => ({ userId: 'demo-user', ...assignment })),
+      },
     },
     { dataMode: 'demo' },
   );
@@ -38,19 +45,24 @@ async function open() {
   return app;
 }
 
-async function listed(server: FastifyInstance): Promise<string> {
+async function listedRow(server: FastifyInstance) {
   const page = await server.inject('/api/sessions?specId=admission');
   expect(page.statusCode, page.body).toBe(200);
   const first = page.json<SessionListPage>().items[0];
   expect(first).toBeDefined();
 
-  return first!.sessionId;
+  return first!;
 }
+
+const listed = async (server: FastifyInstance) => (await listedRow(server)).sessionId;
+const seeded = '00000000-0000-4000-8000-000000000024';
+const otherSeeded = '00000000-0000-4000-8000-000000000023';
 
 describe('demo managed Session reads (read-only, no coordinator)', () => {
   it('opens a listed Session read-only with every read the Session screen makes', async () => {
     const server = await open();
-    const sessionId = await listed(server);
+    const row = await listedRow(server);
+    const sessionId = row.sessionId;
     const base = `/api/sessions/${sessionId}`;
 
     const snapshot = await server.inject(base);
@@ -60,7 +72,8 @@ describe('demo managed Session reads (read-only, no coordinator)', () => {
     expect(body).toMatchObject({
       session: {
         sessionId,
-        readiness: 'ready',
+        // The header says what the list row (and the Sessions navigator) says.
+        readiness: row.readiness,
         capabilities: { view: true, manage: false, start: false, cancel: false },
       },
       eventSeq: 0,
@@ -102,6 +115,29 @@ describe('demo managed Session reads (read-only, no coordinator)', () => {
     expect((await server.inject(base + '/content/' + unknown + '?revision=1')).statusCode).toBe(
       404,
     );
+  });
+
+  it('authorizes like the managed reads, without telling an unknown Session from a refused one', async () => {
+    // No Session grant anywhere: refused before the lookup, unknown or not.
+    const none = await open([]);
+    expect((await none.inject('/api/sessions/' + seeded)).statusCode).toBe(403);
+    expect((await none.inject('/api/sessions/' + unknown)).statusCode).toBe(403);
+    expect((await none.inject('/api/sessions/' + seeded + '/events')).statusCode).toBe(403);
+    await app!.close();
+
+    // A grant on one Session: that one reads, another is refused, an unknown one is not found.
+    const scoped = await open([{ role: 'viewer', scope: { sessionId: seeded } }]);
+    const own = await scoped.inject('/api/sessions/' + seeded);
+    expect(own.statusCode, own.body).toBe(200);
+    expect(own.json<SessionSnapshot>().session.capabilities).toMatchObject({
+      view: true,
+      start: false,
+    });
+    expect((await scoped.inject('/api/sessions/' + otherSeeded)).statusCode).toBe(403);
+    expect((await scoped.inject('/api/sessions/' + unknown)).statusCode).toBe(404);
+    expect((await scoped.inject('/api/sessions/' + seeded + '/telemetry')).statusCode).toBe(200);
+    // The provider catalogue is a creator's read, as in project mode.
+    expect((await scoped.inject('/api/session-providers')).statusCode).toBe(403);
   });
 
   it('keeps every mutation refused as disabled', async () => {
@@ -165,6 +201,18 @@ describe('demo managed Session reads (read-only, no coordinator)', () => {
     const reader = response.body!.getReader();
     const first = new TextDecoder().decode((await reader.read()).value as Uint8Array);
     expect(first).toBe(': connected\n\n');
+    // The managed stream caps: 8 open streams per principal, the next one waits.
+    const more = await Promise.all(
+      Array.from({ length: 7 }, () =>
+        fetch(`http://127.0.0.1:${port}/api/sessions/${sessionId}/events`, {
+          signal: controller.signal,
+        }),
+      ),
+    );
+    expect(more.map((item) => item.status)).toEqual(Array(7).fill(200));
+    const refused = await fetch(`http://127.0.0.1:${port}/api/sessions/${sessionId}/events`);
+    expect(refused.status).toBe(429);
+    expect(refused.headers.get('retry-after')).toBe('5');
     controller.abort();
   });
 });

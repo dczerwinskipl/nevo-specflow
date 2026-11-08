@@ -67,13 +67,14 @@ describe('Session association contract', () => {
     );
   });
 
-  it('keys the association read by a Session reference id (managed UUID or demo catalogue id)', () => {
+  it('keys the association read by a Session UUID in every Runtime mode', () => {
     const read = (sessionId: string) =>
       Value.Check(SessionAssociationReadSchema, {
         sessionId,
         association: { kind: 'standalone' },
       });
-    expect(read('sample-session-23')).toBe(true);
+    expect(read('00000000-0000-4000-8000-000000000023')).toBe(true);
+    expect(read('sample-session-23')).toBe(false);
     expect(read('../escape')).toBe(false);
     expect(read('')).toBe(false);
   });

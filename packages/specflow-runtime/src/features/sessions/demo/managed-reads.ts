@@ -1,4 +1,4 @@
-import type { FastifyInstance, FastifyReply, FastifyRequest, RawServerBase } from 'fastify';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { Type } from 'typebox';
 import {
   ActionPageSchema,
@@ -18,11 +18,14 @@ import type { DemoState } from '../../../demo/state';
 import { SessionError } from '../errors';
 import type { SessionListSource } from '../http/list';
 import type { SessionAssociations } from '../reference-owner';
-import { sessionScope, type SessionScopeIdentity } from '../scope';
+import type { SessionScopeIdentity } from '../scope';
+import { authorizeSessionIdentity } from '../http/authorization';
+import type { SessionStreams } from '../http/stream';
 
 /**
  * The read side of the managed Session screen in demo mode. A demo Session (seeded in the
- * catalogue or allocated here) is shown read-only: the snapshot grants `view` and nothing else,
+ * catalogue or allocated here) is shown read-only: the snapshot grants `view` and nothing else
+ * and carries the list row's readiness,
  * there is no Turn, no history, no Work and no telemetry, and the event stream only heartbeats.
  * Every mutation stays refused with `SESSION_DISABLED` by the managed routes (no coordinator).
  */
@@ -72,7 +75,8 @@ export function createDemoManagedSessionReads(options: {
           providerId: summary.providerId,
           ...(summary.modelId ? { modelId: summary.modelId } : {}),
           mode: 'read-only',
-          readiness: 'ready',
+          // The list row's readiness, so the header says what the Sessions navigator says.
+          readiness: summary.readiness,
           capabilities: { ...inert },
           createdAt: summary.createdAt,
           updatedAt: summary.updatedAt,
@@ -144,33 +148,19 @@ const HEARTBEAT_MS = 15000;
 
 /**
  * Registers the demo read routes on the managed Session paths, in place of the coordinator's
- * reads. `app` owns the stream shutdown: an open heartbeat stream ends before the server closes.
+ * reads. Authorization and the stream caps are the managed routes' own.
  */
-export function registerDemoManagedSessionReads<RawServer extends RawServerBase>(
-  app: FastifyInstance<RawServer>,
+export function registerDemoManagedSessionReads(
   feature: FastifyInstance,
   reads: DemoManagedSessionReads,
+  streams: Pick<SessionStreams, 'admit'>,
 ): void {
-  const streams = new Set<() => void>();
-  app.addHook('preClose', (done) => {
-    for (const stop of streams) {
-      stop();
-    }
-
-    done();
-  });
-
-  async function authorize(request: FastifyRequest): Promise<SessionScopeIdentity> {
-    request.authz.requireAccess();
-    const identity = await reads.identity(sid(request));
-    request.authz.require({
-      resource: SessionCapabilities,
-      capability: SessionCapabilities.capabilities.View,
-      scope: sessionScope(identity, SessionCapabilities.capabilities.View),
-    });
-
-    return identity;
-  }
+  const authorize = (request: FastifyRequest) =>
+    authorizeSessionIdentity(
+      request,
+      () => reads.identity(sid(request)),
+      SessionCapabilities.capabilities.View,
+    );
 
   const noResource = () => {
     throw new SessionError('SESSION_RESOURCE_NOT_FOUND', 'A demo Session has no Turns.');
@@ -180,10 +170,12 @@ export function registerDemoManagedSessionReads<RawServer extends RawServerBase>
     '/api/session-providers',
     { schema: { response: { 200: ProviderCatalogueSchema } } },
     (request) => {
+      // As in project mode: the catalogue is what a Session creator chooses from.
       request.authz.requireAccess();
-      request.authz.requireCapabilityInAnyScope({
+      request.authz.require({
         resource: SessionCapabilities,
-        capability: SessionCapabilities.capabilities.View,
+        capability: SessionCapabilities.capabilities.Create,
+        scope: { projectId: reads.projectId },
       });
 
       return { items: reads.providers() };
@@ -283,12 +275,20 @@ export function registerDemoManagedSessionReads<RawServer extends RawServerBase>
         throw new SessionError('SESSION_CURSOR_INVALID', 'Invalid replay sequence.');
       }
 
-      heartbeat(reply, streams);
+      const admission = streams.admit(request.authz.readContext().subject);
+      if (!admission) {
+        return reply.code(429).header('Retry-After', '5').send({ error: 'rate_limited' });
+      }
+
+      heartbeat(reply, admission);
     },
   );
 }
 
-function heartbeat(reply: FastifyReply, streams: Set<() => void>) {
+function heartbeat(
+  reply: FastifyReply,
+  admission: { controller: AbortController; release: () => void },
+) {
   const raw = reply.raw;
   reply.hijack();
   raw.writeHead(200, {
@@ -301,13 +301,15 @@ function heartbeat(reply: FastifyReply, streams: Set<() => void>) {
   const timer = setInterval(() => raw.write(': heartbeat\n\n'), HEARTBEAT_MS);
   const stop = () => {
     clearInterval(timer);
-    streams.delete(stop);
+    admission.release();
     raw.off('close', stop);
+    admission.controller.signal.removeEventListener('abort', stop);
     if (!raw.writableEnded) {
       raw.end();
     }
   };
 
-  streams.add(stop);
   raw.on('close', stop);
+  // Server shutdown aborts every admitted stream.
+  admission.controller.signal.addEventListener('abort', stop, { once: true });
 }

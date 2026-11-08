@@ -67,6 +67,17 @@ describe('Session association contract', () => {
     );
   });
 
+  it('keys the association read by a Session reference id (managed UUID or demo catalogue id)', () => {
+    const read = (sessionId: string) =>
+      Value.Check(SessionAssociationReadSchema, {
+        sessionId,
+        association: { kind: 'standalone' },
+      });
+    expect(read('sample-session-23')).toBe(true);
+    expect(read('../escape')).toBe(false);
+    expect(read('')).toBe(false);
+  });
+
   it('never lets a forbidden or unavailable fact carry an identifier', () => {
     const fact = (specification: unknown) =>
       Value.Check(SessionAssociationReadSchema, {

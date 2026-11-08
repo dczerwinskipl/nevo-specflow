@@ -190,7 +190,8 @@ describe('Temporary Specification creation HTTP boundary', () => {
     expect(workspace.sections.sessions.data.items).toEqual([
       expect.objectContaining({ id: sessionId, status: 'quiet' }),
     ]);
-    expect(workspace.recommendedSessionId).toBeUndefined();
+    // The only associated Session is the recommended one (attention, active, then most recent).
+    expect(workspace.recommendedSessionId).toBe(sessionId);
     const next = await allocate(
       app,
       specId,

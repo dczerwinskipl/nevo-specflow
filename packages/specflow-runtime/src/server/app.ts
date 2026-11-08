@@ -129,7 +129,6 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
               showcase: true,
               scenarios: dependencies.demoScenarios === true,
             }),
-          { references: dependencies.sessions?.references },
         )
       : undefined;
   const progressRegistry = dependencies.operations?.registry ?? createOperationProgressRegistry();
@@ -165,17 +164,16 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
         : undefined),
     driver: dependencies.sessions?.driver,
   });
-  // Project mode: the Session store is the association registry behind the reference seam.
+  // The association registry: the demo catalogue, or the Session store behind the Engine facts.
   const associationTargets =
-    mode === 'project'
-      ? (dependencies.sessions?.targets ??
-        createEngineAssociationTargets(engine, dependencies.tasks?.definitions))
-      : undefined;
-  const storeAssociations = associationTargets
-    ? createStoreSessionAssociations(sessionsFeature.runtime, associationTargets)
-    : undefined;
-  const sessionReferences: SessionReferenceOwner | undefined =
-    demo?.sessionReferences ?? dependencies.sessions?.references ?? storeAssociations;
+    demo?.associationTargets ??
+    dependencies.sessions?.targets ??
+    createEngineAssociationTargets(engine, dependencies.tasks?.definitions);
+  const associations =
+    demo?.sessionReferences ??
+    createStoreSessionAssociations(sessionsFeature.runtime, associationTargets);
+  const sessionReferences: SessionReferenceOwner =
+    (demo ? undefined : dependencies.sessions?.references) ?? associations;
   // Demo mode serves the real document read routes from the demo directories.
   const documentReadSource = dependencies.documents?.readSource ?? demo?.documentReadSource;
   // The Runtime's single project: every `spec.*` check runs at `specScope(projectId, specId)`.
@@ -248,16 +246,13 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
         : {}),
     }),
     sessionsFeature,
-    ...(storeAssociations && associationTargets
-      ? [
-          createSessionAssociationsFeature({
-            associations: storeAssociations,
-            targets: associationTargets,
-            projectId,
-            sessions: sessionsFeature.runtime,
-          }),
-        ]
-      : []),
+    createSessionAssociationsFeature({
+      associations,
+      targets: associationTargets,
+      projectId,
+      // Demo mode reads associations from the catalogue; it has no composed create.
+      ...(demo ? {} : { sessions: sessionsFeature.runtime }),
+    }),
     createSettingsFeature(),
   ];
 

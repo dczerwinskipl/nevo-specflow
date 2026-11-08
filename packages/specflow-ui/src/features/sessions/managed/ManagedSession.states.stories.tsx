@@ -343,8 +343,9 @@ export const Unavailable: Story = {
 
 /**
  * A Session the caller may only view (the demo Runtime's read-only Sessions, or a viewer): the
- * snapshot grants `view` alone. The Composer stays and is gated by `capabilities.start`
- * (full-session-screen-structure §17.1), Send is disabled, there is no Session menu and no error.
+ * snapshot grants `view` alone. A quiet bar takes the Composer's place, the empty conversation has
+ * no call to action, and there is no Session menu and no error (full-session-screen-structure
+ * §22.1, proposed amendment "View-only Session", awaiting owner).
  */
 export const ViewOnlySession: Story = {
   tags: ['contract'],
@@ -373,9 +374,12 @@ export const ViewOnlySession: Story = {
   globals: WIDE_VIEWPORT,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const editor = await canvas.findByRole('textbox', { name: 'Wiadomość' });
-    await userEvent.type(editor, 'Hello');
-    await expect(canvas.getByRole('button', { name: 'Wyślij' })).toBeDisabled();
+    await expect(await canvas.findByText('Możesz tylko przeglądać tę sesję.')).toBeVisible();
+    await expect(canvasElement.querySelector('[data-view-only-bar]')).not.toBeNull();
+    await expect(await canvas.findByText('Brak wiadomości w tej sesji.')).toBeVisible();
+    await expect(canvas.queryByText(/Napisz wiadomość/)).toBeNull();
+    await expect(canvas.queryByRole('textbox', { name: 'Wiadomość' })).toBeNull();
+    await expect(canvas.queryByRole('button', { name: 'Wyślij' })).toBeNull();
     // The live regions stay mounted empty; none may carry an error.
     await expect(
       canvas.queryAllByRole('alert').filter((alert) => alert.textContent?.trim()),

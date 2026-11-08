@@ -692,8 +692,9 @@ answer 403 to a caller without it), then the identity from the demo association 
 - `GET .../association` and `GET /api/sessions` are the demo catalogue's (sections above).
 
 Every mutation (`POST /api/sessions`, Turn start/cancel/reconcile/respond, rename, archive,
-unarchive, delete, telemetry refresh) stays `SESSION_DISABLED`. The screen presents the Composer
-gated by `capabilities.start` (Send disabled), with no error state.
+unarchive, delete, telemetry refresh) stays `SESSION_DISABLED`. Without Manage the screen shows the
+view-only bar in the Composer's place and no error state (Full Session structure §22.1, proposed
+amendment "View-only Session").
 
 ## Error contract
 

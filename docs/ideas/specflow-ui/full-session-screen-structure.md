@@ -1339,6 +1339,15 @@ ją w każdej chwili przywrócić.` (`managedSession.sessionActions.archiveDescr
   Pending `Przywracanie…`; failure is one line in the bar (unconfirmed only for a lost answer,
   forbidden and other refusals with their own copy). On success the Composer returns with its draft
   and focus moves to the editor. Conversation, Work, Context and telemetry stay readable.
+- **View-only Session (proposed amendment, awaiting owner):** when the caller lacks
+  `capabilities.manage` and the Session is not archived (the demo Runtime's read-only Sessions, a
+  viewer), no Turn, answer or Stop can ever be theirs, so the Composer is replaced in its overlay slot
+  by the archived bar's quiet shape without an action: `InlineNote` info `Możesz tylko przeglądać tę
+sesję.` / _You can only view this session._ (`managedSession.viewOnly.note`, `role="status"`). An
+  empty conversation then reads `Brak wiadomości w tej sesji.` (`managedSession.viewOnly.empty`) with
+  no "write a message" call to action. The trigger is the missing Manage, not `!capabilities.start`:
+  Start is also false while a Turn runs (the Composer carries Stop) or the provider is unavailable.
+  Archived takes precedence; conversation, Work, Context and telemetry stay readable.
 - **Archived elsewhere:** 409 `SESSION_ARCHIVED` on send, interaction respond or a retained pending
   start is a definite refusal: the retained command and its `requestId` are dropped, no
   `commandFailed` retry copy, the draft is kept, and the overlay slot says `Sesja została

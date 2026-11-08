@@ -333,8 +333,8 @@ A digest tallies the Turn's ToolActions by operation:
 ```ts
 type OperationCounts = Partial<Record<ToolOperation, number>>; // closed keys, omitted when 0
 type WorkDigest = {
-  done: OperationCounts; // every ToolAction the Turn opened, whatever state it reached
-  failed?: OperationCounts; // the ToolActions whose state became 'failed' (also counted in done)
+  opened: OperationCounts; // every ToolAction the Turn opened, whatever state it reached
+  failed?: OperationCounts; // the ToolActions whose state became 'failed' (also counted in opened)
 };
 ```
 
@@ -351,6 +351,19 @@ fact (`operation`, see [driver protocol](../protocols/session-provider-driver.md
 inferred from command text, arguments or titles, and an unmapped identity is `other`. `test` and
 `web` are used only when a provider's native tool itself identifies a test run or a web access;
 no currently supported provider tool does.
+
+The digest counts only ToolActions Runtime admitted; it is not a full count of every native tool a
+provider has. Claude web tools (`WebFetch`, `WebSearch`) are unreachable only because the adapter
+restricts Claude with `--tools` to the inventory above; widening that list requires a mapping in
+the same change. Codex `webSearch` and `mcpToolCall` ThreadItems open no Work or ToolAction: they
+are outside the item types the Codex adapter accepts, so the protocol refuses them, and the digest
+never contains them.
+
+A reader that is not following the live stream (a detached tab, or one that has loaded only
+history pages) holds the digest from the last `work-summary` revision it received, which can be
+behind the current one: for example, a new tool Work's entry is created with the digest before
+that Work's first ToolAction and is revised only when that action opens. Such a reader catches up
+on its next snapshot/resync or `conversation` change; it MUST NOT add its own counts to the digest.
 
 | Provider    | Native identity                                                                       | Operation    |
 | ----------- | ------------------------------------------------------------------------------------- | ------------ |

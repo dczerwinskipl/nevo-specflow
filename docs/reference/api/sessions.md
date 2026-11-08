@@ -282,11 +282,15 @@ Schemas: `RenameSessionSchema`, `ArchiveSessionSchema` (archive and unarchive) a
   same requestId is 409 IDEMPOTENCY_CONFLICT. A change emits one `session` event.
 - `DELETE /api/sessions/:sessionId` (no body) hard-deletes every Session-owned Runtime row in
   one transaction: Session, provider correlation, Turns, conversation, Work, actions, content,
-  interactions, idempotency records, fact/usage deduplication, telemetry and the event outbox.
-  It is rejected with 409 SESSION_DELETE_BLOCKED (details.turnId) while a nonterminal Turn
-  carries unsettled Engine effect evidence, and otherwise with 409 TURN_CONFLICT while any Turn
-  is nonterminal or `unknown` or a live invocation of the Session is still attached. Engine workspace-execution records and provider-native transcripts are not touched
-  (only the Runtime's locator is removed). Open SSE streams of the deleted Session close without
+  interactions, Session-scoped idempotency records, fact/usage deduplication, telemetry and the
+  event outbox. The project-scoped create record is kept, so a late create retry with the old
+  requestId replays the deleted sessionId, whose use answers 404.
+  It is rejected with 409 TURN_CONFLICT (details.turnId) while any Turn is nonterminal or
+  `unknown` or a live invocation of the Session is still attached, so a running write Turn gets
+  TURN_CONFLICT. 409 SESSION_DELETE_BLOCKED (details.turnId) occurs only for an `unknown` or
+  recovering write Turn whose invocation has detached while its Engine effect evidence is
+  unsettled; that Turn is visible as `activeTurn`. Engine workspace-execution records and
+  provider-native transcripts are not touched (only the Runtime's locator is removed). Open SSE streams of the deleted Session close without
   further payload. There is no tombstone: a repeated delete, and any later read or stream
   request, is 404 SESSION_NOT_FOUND. Clients treat 404 after their own delete as done.
 

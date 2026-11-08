@@ -92,9 +92,11 @@ not support wildcard scope values. Values must be non-empty strings.
 ## Current roles
 
 - `viewer`: `spec.view`, `session.view`;
-- `developer`: viewer capabilities plus `spec.create`, `spec.manage`, `session.create`,
-  `session.manage`;
-- `admin`: developer capabilities plus `settings.view`, `settings.manage`.
+- `developer`: viewer capabilities plus `spec.create`, `spec.manage`, `spec.close-worktree`,
+  `spec.close-specification`, `session.create`, `session.manage`, `session.delete`,
+  `session.execute-write`;
+- `admin`: developer capabilities plus `session.view-provider-limits`, `settings.view`,
+  `settings.manage`, `project-git.integrate`, `project-git.close-workspace`.
 
 Roles contain capabilities only. Scope belongs to the assignment, not to the role.
 

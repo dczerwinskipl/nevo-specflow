@@ -45,6 +45,7 @@ import { SessionContext, sessionContextStack } from './context/SessionContext';
 import { SessionContextSourceProvider } from './context/sessionContextValue';
 import { useDropNarrowContextOnSplit, useSessionSidePanel } from './context/useSessionSidePanel';
 import { realRouteSessionContext } from './context/sessionContextTypes';
+import { useSessionTelemetry } from './context/sessionTelemetryStore';
 import { useSessionActions, type SessionActionHandlers } from './sessionActions/useSessionActions';
 import { SessionNamingStatus } from './naming/SessionNamingStatus';
 import { InteractionPrompt } from './InteractionPrompt';
@@ -55,6 +56,7 @@ import { useStartedSessionFallback } from '../start/handoff/useStartedSessionFal
 import type {
   ContextFact,
   ContextSpecification,
+  LimitsRefreshControl,
   SessionContextViewModel,
   SessionExecutor,
 } from './context/sessionContextTypes';
@@ -1215,14 +1217,23 @@ export function ManagedSession({
             : { status: 'loading' },
     [snapshot, workHistoryTurnId, fallback.pending, firstSnapshotFailed],
   );
+  // Live telemetry from the same feed's stream; a supplied Context view model (Storybook) wins.
+  const telemetry = useSessionTelemetry(api, sessionId, feed.subscribeTelemetry);
+  const canManage = !!snapshot?.session.capabilities.manage;
+  const limitsRefresh = useMemo<LimitsRefreshControl | undefined>(
+    () =>
+      canManage ? { ...telemetry.state.refresh, refresh: telemetry.refreshLimits } : undefined,
+    [canManage, telemetry.state.refresh, telemetry.refreshLimits],
+  );
   const contextValue = useMemo<SessionContextViewModel>(
     () => ({
       ...sessionContext,
       runningTurnId,
       executor: sessionContext.executor ?? executor,
       workHistory: sessionContext.workHistory ?? workHistory,
+      ...(sessionContext.telemetry ? {} : { telemetry: telemetry.state.snapshot, limitsRefresh }),
     }),
-    [sessionContext, runningTurnId, executor, workHistory],
+    [sessionContext, runningTurnId, executor, workHistory, telemetry.state.snapshot, limitsRefresh],
   );
 
   // Folded into the real page header's own low-emphasis `status`/`subtitle` slots (a dedicated, bordered

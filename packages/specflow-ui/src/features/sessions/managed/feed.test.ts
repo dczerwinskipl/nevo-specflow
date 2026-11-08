@@ -260,6 +260,36 @@ describe('Session feed operation lifetime', () => {
       feed.disconnect();
     }
   });
+  it('signals telemetry: resync after each snapshot load, then each telemetry revision', async () => {
+    const { storage, api } = setup();
+    api.watch = async function* (_id, _after, signal) {
+      yield {
+        sessionId: 'session',
+        eventSeq: 1,
+        kind: 'telemetry',
+        changes: { telemetryRevision: 7 },
+      } satisfies SessionChange;
+      await new Promise<void>((resolve) =>
+        signal.addEventListener('abort', () => resolve(), { once: true }),
+      );
+    };
+
+    const feed = createSessionFeed(api, 'session', 'actor', storage);
+    const telemetry = vi.fn();
+    feed.subscribeTelemetry(telemetry);
+    feed.connect();
+    try {
+      await vi.waitFor(() =>
+        expect(telemetry.mock.calls).toEqual([
+          [{ kind: 'resync' }],
+          [{ kind: 'revision', revision: 7 }],
+        ]),
+      );
+      expect(feed.getSnapshot().snapshot?.eventSeq).toBe(1);
+    } finally {
+      feed.disconnect();
+    }
+  });
   it('does not clear a newer owner draft or command when an unmounted request settles', async () => {
     const { storage, api } = setup();
     let accept: () => void = () => {

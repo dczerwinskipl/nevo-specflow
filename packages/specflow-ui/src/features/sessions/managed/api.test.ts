@@ -1,6 +1,7 @@
-import type { HttpRequestClient } from '@nevo/http-client';
+import { HttpClientError, type HttpRequestClient } from '@nevo/http-client';
 import { describe, expect, it, vi } from 'vitest';
 import { createManagedSessionsApi } from './api';
+import { fullTelemetrySnapshot } from './context/sessionTelemetry.stories-support';
 
 const sessionId = '00000000-0000-4000-8000-000000000001';
 const turnId = '00000000-0000-4000-8000-000000000002';
@@ -82,4 +83,99 @@ describe('managed Session command responses', () => {
       });
     },
   );
+});
+
+describe('managed Session telemetry', () => {
+  const telemetrySessionId = fullTelemetrySnapshot.sessionId;
+  const withGet = (getResponse: unknown) => {
+    const http = { getResponse: vi.fn().mockResolvedValue(getResponse) };
+
+    return { http, api: createManagedSessionsApi(http as unknown as HttpRequestClient) };
+  };
+
+  it('reads the snapshot with its entity tag', async () => {
+    const { api, http } = withGet({
+      status: 200,
+      data: fullTelemetrySnapshot,
+      headers: { etag: '"t42"' },
+    });
+    await expect(api.telemetry(telemetrySessionId)).resolves.toEqual({
+      kind: 'snapshot',
+      snapshot: fullTelemetrySnapshot,
+      etag: '"t42"',
+    });
+    expect(http.getResponse).toHaveBeenCalledWith(
+      '/api/sessions/' + telemetrySessionId + '/telemetry',
+      { signal: undefined, responseHeaders: ['etag'] },
+    );
+  });
+
+  it('revalidates with If-None-Match and reports 304 as not modified', async () => {
+    const { api, http } = withGet({ status: 304, headers: { etag: '"t42"' } });
+    await expect(api.telemetry(telemetrySessionId, '"t42"')).resolves.toEqual({
+      kind: 'not-modified',
+    });
+    expect(http.getResponse.mock.calls[0]![1]).toMatchObject({
+      headers: { 'If-None-Match': '"t42"' },
+    });
+  });
+
+  it('rejects a snapshot that breaks the contract', async () => {
+    const { api } = withGet({
+      status: 200,
+      data: { ...fullTelemetrySnapshot, extra: true },
+      headers: {},
+    });
+    await expect(api.telemetry(telemetrySessionId)).rejects.toMatchObject({ kind: 'protocol' });
+  });
+
+  const receipt = {
+    requestId: turnId,
+    acceptedGroups: ['limits'],
+    state: 'queued',
+    telemetryRevision: 43,
+  };
+
+  it('posts a limits refresh and validates the 202 receipt', async () => {
+    const { api, http } = apiAnswering(receipt);
+    await expect(
+      api.refreshTelemetry(telemetrySessionId, { requestId: turnId, groups: ['limits'] }),
+    ).resolves.toEqual(receipt);
+    expect(http.post).toHaveBeenCalledWith(
+      '/api/sessions/' + telemetrySessionId + '/telemetry/refresh',
+      { requestId: turnId, groups: ['limits'] },
+      {},
+    );
+  });
+
+  it.each([
+    [
+      429,
+      { error: 'rate_limited' },
+      { 'retry-after': '20' },
+      { kind: 'rate-limited', retryAfterMs: 20_000 },
+    ],
+    [403, { error: 'forbidden' }, {}, { kind: 'forbidden' }],
+    [
+      422,
+      { error: 'session_error', code: 'CAPABILITY_UNSUPPORTED', message: 'unsupported' },
+      {},
+      { code: 'CAPABILITY_UNSUPPORTED' },
+    ],
+  ] as const)('classifies a %s refresh refusal', async (status, data, headers, expected) => {
+    const http = {
+      post: vi.fn().mockRejectedValue(
+        new HttpClientError('refused', {
+          kind: 'http',
+          status,
+          headers,
+          data,
+        }),
+      ),
+    };
+    const api = createManagedSessionsApi(http as unknown as HttpRequestClient);
+    await expect(
+      api.refreshTelemetry(telemetrySessionId, { requestId: turnId, groups: ['limits'] }),
+    ).rejects.toMatchObject({ name: 'ApiError', ...expected });
+  });
 });

@@ -17,9 +17,20 @@ import {
   type CancelTurnResult,
   type RespondInteractionResult,
   type ReconcileTurnResult,
+  type TelemetrySnapshot,
+  type RefreshTelemetry,
+  type RefreshTelemetryReceipt,
 } from '@nevo/specflow-contracts/sessions';
 import { createApiTransport, type ErrorCodeTable } from '../../../api';
 import type { WithWorkCounts } from './workCounts';
+
+/**
+ * A telemetry read: the snapshot with its entity tag, or `not-modified` when the snapshot the
+ * caller revalidated (`etag`) is still current.
+ */
+export type TelemetryRead =
+  | { readonly kind: 'snapshot'; readonly snapshot: TelemetrySnapshot; readonly etag?: string }
+  | { readonly kind: 'not-modified' };
 
 export interface ManagedSessionsApi {
   providers(signal?: AbortSignal): Promise<{ items: ProviderDescriptor[] }>;
@@ -49,6 +60,10 @@ export interface ManagedSessionsApi {
     signal?: AbortSignal,
   ): Promise<ContentPage>;
   /** An acknowledgement of the wrong shape is an outcome-unknown error, not a success. */
+  /** `GET .../telemetry`, revalidating `etag` when given (304 keeps the caller's snapshot). */
+  telemetry(sessionId: string, etag?: string, signal?: AbortSignal): Promise<TelemetryRead>;
+  /** `POST .../telemetry/refresh`: asks for a new native reading of `input.groups`. */
+  refreshTelemetry(sessionId: string, input: RefreshTelemetry): Promise<RefreshTelemetryReceipt>;
   start(sessionId: string, input: StartTurn): Promise<StartTurnResult>;
   cancel(sessionId: string, turnId: string, requestId: string): Promise<CancelTurnResult>;
   /**
@@ -109,6 +124,29 @@ export function createManagedSessionsApi(http: HttpRequestClient): ManagedSessio
         signal,
         params: { revision: ref.revision, offset },
         isValid: sessionValidators.content,
+      }),
+    async telemetry(id, etag, signal) {
+      const response = await read.getResponse<TelemetrySnapshot>(path(id) + '/telemetry', {
+        signal,
+        responseHeaders: ['etag'],
+        ...(etag ? { headers: { 'If-None-Match': etag } } : {}),
+        isValid: sessionValidators.telemetry,
+      });
+      if (response.status === 304 || !response.data) {
+        return { kind: 'not-modified' };
+      }
+
+      const received = response.headers.etag;
+
+      return {
+        kind: 'snapshot',
+        snapshot: response.data,
+        ...(received ? { etag: received } : {}),
+      };
+    },
+    refreshTelemetry: (id, input) =>
+      read.post(path(id) + '/telemetry/refresh', input, {
+        isValid: sessionValidators.refreshTelemetryReceipt,
       }),
     start: (id, input) =>
       read.post(path(id) + '/turns', input, { isValid: sessionValidators.startResult }),

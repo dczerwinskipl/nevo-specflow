@@ -49,6 +49,12 @@ export interface FeedState {
   workModeOverride?: Required<Pick<StartTurn, 'mode' | 'providerModeId'>>;
   pending?: StartTurn;
 }
+/**
+ * What the Session stream says about telemetry: a committed `revision`, or `resync` after the feed
+ * (re)loaded its snapshot (bootstrap, reconnect, replay gap), when invalidations may have been missed.
+ */
+export type TelemetrySignal =
+  { readonly kind: 'revision'; readonly revision: number } | { readonly kind: 'resync' };
 interface BrowserStorage {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
@@ -171,6 +177,13 @@ export function createSessionFeed(
   };
   const listeners = new Set<() => void>();
   const workListeners = new Set<(turnId: string) => void>();
+  const telemetryListeners = new Set<(signal: TelemetrySignal) => void>();
+  const signalTelemetry = (signal: TelemetrySignal) => {
+    for (const listener of telemetryListeners) {
+      listener(signal);
+    }
+  };
+
   let controller: AbortController | undefined,
     generation = 0;
   const notify = (next: FeedState) => {
@@ -232,6 +245,10 @@ export function createSessionFeed(
         listener(changedTurn);
       }
     }
+
+    if (event.kind === 'telemetry') {
+      signalTelemetry({ kind: 'revision', revision: event.changes.telemetryRevision });
+    }
   }
 
   async function run(signal: AbortSignal, token: number) {
@@ -286,6 +303,7 @@ export function createSessionFeed(
             fresh.activeTurn?.turnId,
           ),
         });
+        signalTelemetry({ kind: 'resync' });
         let restart = false;
         for await (const event of api.watch(sessionId, fresh.eventSeq, signal, () => {
           if (token === generation) {
@@ -417,6 +435,14 @@ export function createSessionFeed(
       listeners.add(listener);
 
       return () => listeners.delete(listener);
+    },
+    /** Telemetry invalidations from this feed's own stream (no second stream per panel). */
+    subscribeTelemetry: (listener: (signal: TelemetrySignal) => void) => {
+      telemetryListeners.add(listener);
+
+      return () => {
+        telemetryListeners.delete(listener);
+      };
     },
     subscribeWork(listener: (turnId: string) => void) {
       workListeners.add(listener);

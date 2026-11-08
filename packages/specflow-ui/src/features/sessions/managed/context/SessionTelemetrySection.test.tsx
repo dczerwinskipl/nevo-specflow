@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { StoryLocalization } from '../../../../i18n/StoryLocalization';
 import { SessionTelemetrySection } from './SessionTelemetrySection';
 import {
@@ -8,18 +8,43 @@ import {
   partialAntigravityTelemetrySnapshot,
   staleTelemetrySnapshot,
   unavailableTelemetrySnapshot,
-  type TelemetrySnapshot,
-} from './sessionTelemetry';
+  telemetryMeasuredTurnId,
+  limitsTelemetry,
+} from './sessionTelemetry.stories-support';
+import type { LimitsRefreshControl } from './sessionContextTypes';
+import type { TelemetrySnapshot } from '@nevo/specflow-contracts/sessions';
 
 afterEach(cleanup);
 
-function renderSection(telemetry?: TelemetrySnapshot, runningTurnId?: string) {
+function renderSection(
+  telemetry?: TelemetrySnapshot,
+  runningTurnId?: string,
+  limitsRefresh?: LimitsRefreshControl,
+) {
   return render(
     <StoryLocalization locale="en">
-      <SessionTelemetrySection telemetry={telemetry} runningTurnId={runningTurnId} />
+      <SessionTelemetrySection
+        telemetry={telemetry}
+        runningTurnId={runningTurnId}
+        limitsRefresh={limitsRefresh}
+      />
     </StoryLocalization>,
   );
 }
+
+function control(overrides: Partial<LimitsRefreshControl> = {}): LimitsRefreshControl {
+  return {
+    sending: false,
+    coolingDown: false,
+    unconfirmed: false,
+    refused: false,
+    refusedNote: false,
+    refresh: vi.fn().mockResolvedValue('sent'),
+    ...overrides,
+  };
+}
+
+const refreshButton = () => screen.queryByRole('button', { name: /Refresh/ });
 
 describe('SessionTelemetrySection', () => {
   it('renders cost/tokens as big-number stat cells, scoped to the whole session', () => {
@@ -76,16 +101,16 @@ describe('SessionTelemetrySection', () => {
   });
 
   it('attributes context-window occupancy to the actual Turn/model it measures, not the section\'s ambient "whole session" caption (live owner review, second pass)', () => {
-    // `fullTelemetrySnapshot.context.value` carries both `turnId: 'turn-37'` and
+    // `fullTelemetrySnapshot.context.value` carries both `turnId` and
     // `modelId: 'claude-sonnet-5'` — real, already-observed data (unlike `usage.turn`/`cost.turn`,
     // which no fixture populates), so the row can name its actual scope instead of silently
     // reading as part of "Session usage" / "for the whole session" above it.
     // The technical Turn id itself stays out of the primary view (owner visual-refinement brief).
     // Here the measured Turn is the one still running.
-    renderSection(fullTelemetrySnapshot, 'turn-37');
+    renderSection(fullTelemetrySnapshot, telemetryMeasuredTurnId);
 
     expect(screen.getByText('Current Turn · claude-sonnet-5')).toBeTruthy();
-    expect(screen.queryByText(/turn-37/)).toBeNull();
+    expect(screen.queryByText(telemetryMeasuredTurnId)).toBeNull();
   });
 
   it('labels the measurement as the last Turn when no Turn is running', () => {
@@ -98,17 +123,17 @@ describe('SessionTelemetrySection', () => {
   });
 
   it('labels the measurement as the last Turn while a newer, not yet measured Turn runs', () => {
-    renderSection(fullTelemetrySnapshot, 'turn-38');
+    renderSection(fullTelemetrySnapshot, '00000000-0000-4000-8000-0000000007b9');
 
     expect(screen.getByText('Last Turn · claude-sonnet-5')).toBeTruthy();
   });
 
   it('falls back to naming just the Turn when the reading has no model id', () => {
-    // `staleTelemetrySnapshot.context.value` carries `turnId: 'turn-20'` but no `modelId`.
+    // `staleTelemetrySnapshot.context.value` carries a `turnId` but no `modelId`.
     renderSection(staleTelemetrySnapshot);
 
     expect(screen.getByText('Last Turn')).toBeTruthy();
-    expect(screen.queryByText(/turn-20/)).toBeNull();
+    expect(screen.queryByText(/0000-4000/)).toBeNull();
   });
 
   it('shows no context-window value or Turn caption when there is no measurement', () => {
@@ -195,5 +220,119 @@ describe('SessionTelemetrySection', () => {
     // Cost is `estimated`/`api-equivalent` on this fixture — must say so, not read as billed.
     expect(screen.getByText('$1.08')).toBeTruthy();
     expect(screen.getByText('estimated, API-equivalent')).toBeTruthy();
+  });
+  describe('provider-limits refresh', () => {
+    it('offers a ghost Refresh in the limits heading row to a manager of refreshable limits', () => {
+      const limitsRefresh = control();
+      renderSection(fullTelemetrySnapshot, undefined, limitsRefresh);
+      const button = screen.getByRole('button', { name: 'Refresh provider limits' });
+      expect(button.textContent).toBe('Refresh');
+      expect(button.closest('section')?.textContent).toContain('Provider limits');
+      fireEvent.click(button);
+      expect(limitsRefresh.refresh).toHaveBeenCalledOnce();
+      // No other refresh, and no "Refreshing…" status next to the usage title.
+      expect(screen.getAllByRole('button', { name: /Refresh/ })).toHaveLength(1);
+      expect(screen.queryByText('Refreshing…')).toBeNull();
+    });
+
+    it('omits the control without Manage and for limits that cannot be refreshed', () => {
+      renderSection(fullTelemetrySnapshot);
+      expect(refreshButton()).toBeNull();
+      cleanup();
+      renderSection(limitsTelemetry.notRefreshable, undefined, control());
+      expect(refreshButton()).toBeNull();
+      expect(screen.getByText('Provider limits')).toBeTruthy();
+    });
+
+    it('renders no limits section at all for NOT_AUTHORIZED limits', () => {
+      renderSection(limitsTelemetry.notAuthorized, undefined, control());
+      expect(screen.queryByText('Provider limits')).toBeNull();
+      expect(refreshButton()).toBeNull();
+      expect(screen.getByText('Session usage')).toBeTruthy();
+    });
+
+    it.each([
+      ['not read yet', limitsTelemetry.notRead],
+      ['zero windows', limitsTelemetry.zeroWindows],
+    ])('keeps the section with its control and a note when %s', (_name, telemetry) => {
+      renderSection(telemetry, undefined, control());
+      expect(screen.getByText('Provider limits')).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Refresh provider limits' })).toBeTruthy();
+      expect(screen.getByRole('status').textContent).toBe('Limits have not been read yet.');
+    });
+
+    it('stays visible for unread limits even when nothing else is observed', () => {
+      const unread = { ...unavailableTelemetrySnapshot, limits: limitsTelemetry.notRead.limits };
+      renderSection(unread, undefined, control());
+      expect(screen.getByText('Provider limits')).toBeTruthy();
+      cleanup();
+      const { container } = renderSection(unread);
+      expect(container.firstChild).toBeNull();
+    });
+
+    it.each([
+      ['sending', fullTelemetrySnapshot, { sending: true }],
+      ['running in the Runtime', limitsTelemetry.running, {}],
+    ] as const)(
+      'marks the control aria-disabled and ignores presses while %s',
+      (_name, telemetry, state) => {
+        const limitsRefresh = control(state);
+        renderSection(telemetry, undefined, limitsRefresh);
+        const button = screen.getByRole('button', { name: 'Refreshing…' });
+        expect(button.getAttribute('aria-disabled')).toBe('true');
+        expect(button.hasAttribute('disabled')).toBe(false);
+        fireEvent.click(button);
+        expect(limitsRefresh.refresh).not.toHaveBeenCalled();
+      },
+    );
+
+    it('cools down after a rate limit with a polite note and no countdown', () => {
+      const limitsRefresh = control({ coolingDown: true });
+      renderSection(fullTelemetrySnapshot, undefined, limitsRefresh);
+      const button = screen.getByRole('button', { name: 'Refresh provider limits' });
+      expect(button.getAttribute('aria-disabled')).toBe('true');
+      fireEvent.click(button);
+      expect(limitsRefresh.refresh).not.toHaveBeenCalled();
+      expect(screen.getByRole('status').textContent).toBe(
+        'Limits were just refreshed. You can refresh again shortly.',
+      );
+    });
+
+    it('says a failed refresh keeps the last reading, or that nothing could be read', () => {
+      renderSection(limitsTelemetry.failedWithValues, undefined, control());
+      expect(screen.getByRole('status').textContent).toBe(
+        'Could not refresh limits. Showing the last reading.',
+      );
+      expect(screen.getByText('42% used')).toBeTruthy();
+      cleanup();
+      renderSection(limitsTelemetry.failedWithoutValues, undefined, control());
+      expect(screen.getByRole('status').textContent).toBe('Could not read limits.');
+    });
+
+    it('announces an unconfirmed refresh as an alert and keeps the control enabled', () => {
+      renderSection(fullTelemetrySnapshot, undefined, control({ unconfirmed: true }));
+      expect(screen.getByRole('alert').textContent).toBe(
+        'The refresh was not confirmed. Try again.',
+      );
+      const button = screen.getByRole('button', { name: 'Refresh provider limits' });
+      expect(button.getAttribute('aria-disabled')).toBeNull();
+    });
+
+    it('after a definite refusal removes the control, focuses the heading and says why', async () => {
+      const refused = control({ refused: true, refusedNote: true });
+      const limitsRefresh = control({ refresh: vi.fn().mockResolvedValue('refused') });
+      const view = renderSection(fullTelemetrySnapshot, undefined, limitsRefresh);
+      fireEvent.click(screen.getByRole('button', { name: 'Refresh provider limits' }));
+      // The store reports the refusal before the press settles.
+      view.rerender(
+        <StoryLocalization locale="en">
+          <SessionTelemetrySection telemetry={fullTelemetrySnapshot} limitsRefresh={refused} />
+        </StoryLocalization>,
+      );
+      const heading = screen.getByRole('heading', { name: 'Provider limits' });
+      await vi.waitFor(() => expect(document.activeElement).toBe(heading));
+      expect(refreshButton()).toBeNull();
+      expect(screen.getByRole('status').textContent).toBe('Refreshing limits is unavailable.');
+    });
   });
 });

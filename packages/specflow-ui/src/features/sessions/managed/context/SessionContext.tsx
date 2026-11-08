@@ -198,6 +198,7 @@ export function SessionContext({
           <SessionTelemetrySection
             telemetry={value.telemetry}
             runningTurnId={value.runningTurnId}
+            limitsRefresh={value.limitsRefresh}
           />
         </div>
       </AppWorkspaceBody>

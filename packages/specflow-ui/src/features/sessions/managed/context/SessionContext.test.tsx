@@ -12,7 +12,7 @@ import {
 import { StoryLocalization } from '../../../../i18n/StoryLocalization';
 import { SessionContext } from './SessionContext';
 import { SessionContextSourceProvider } from './sessionContextValue';
-import { fullTelemetrySnapshot } from './sessionTelemetry';
+import { fullTelemetrySnapshot } from './sessionTelemetry.stories-support';
 import type { ContextFact } from './sessionContextTypes';
 import type { SessionContextTaskRef, SessionContextViewModel } from './sessionContextTypes';
 

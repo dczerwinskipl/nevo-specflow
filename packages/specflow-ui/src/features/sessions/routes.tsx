@@ -59,13 +59,13 @@ function SessionsListScreen({
   const { collection, sessionCollection = 'current' } = sessionsRoute.useSearch();
   const navigate = sessionsRoute.useNavigate();
   const disabled = data ? sessionsDisabled(data) : false;
-  const state = useSpecificationSessionList(specId, sessionCollection);
+  // Sessions turned off (the workspace says so): the list read is not even sent.
+  const state = useSpecificationSessionList(specId, sessionCollection, disabled);
 
   return (
     <SpecificationSessionsList
       state={state}
       collection={sessionCollection}
-      sessionsDisabled={disabled}
       onCollectionChange={(next) =>
         void navigate({
           search: (previous) => ({

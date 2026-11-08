@@ -72,14 +72,16 @@ function ListPreview({
   failAt,
   offersNewSession = true,
   sessionsDisabled = false,
-  forbidden = false,
+  refusal,
 }: {
   pages: Pages;
   /** The n-th request (1-based) fails. */
   failAt?: number;
   offersNewSession?: boolean;
+  /** The workspace says Sessions are turned off: the list read is never sent. */
   sessionsDisabled?: boolean;
-  forbidden?: boolean;
+  /** Every list read is refused: 403, or Sessions turned off (`SESSION_DISABLED`). */
+  refusal?: 'forbidden' | 'disabled';
 }) {
   const [client] = useState(
     () => new QueryClient({ defaultOptions: { queries: { retry: false } } }),
@@ -92,15 +94,24 @@ function ListPreview({
       sessionAssociationsApi: {
         association: () => Promise.reject(new Error('unused')),
         createInSpecification: () => Promise.reject(new Error('unused')),
-        list: forbidden
-          ? () =>
-              Promise.reject(
-                new HttpClientError('forbidden', { kind: 'http', status: 403, data: {} }),
-              )
+        list: refusal
+          ? () => {
+              requests.push({ archived: 'refused' });
+
+              return Promise.reject(
+                refusal === 'forbidden'
+                  ? new HttpClientError('forbidden', { kind: 'http', status: 403, data: {} })
+                  : new HttpClientError('disabled', {
+                      kind: 'http',
+                      status: 503,
+                      data: { code: 'SESSION_DISABLED' },
+                    }),
+              );
+            }
           : list,
       },
     });
-  }, [pages, failAt, forbidden]);
+  }, [pages, failAt, refusal]);
 
   return (
     <QueryClientProvider client={client}>
@@ -124,7 +135,7 @@ function Harness({
   sessionsDisabled: boolean;
 }) {
   const [collection, setCollection] = useState<SessionCollection>('current');
-  const state = useSpecificationSessionList('auth', collection);
+  const state = useSpecificationSessionList('auth', collection, sessionsDisabled);
 
   return (
     <SpecificationSessionsList
@@ -132,7 +143,6 @@ function Harness({
       collection={collection}
       onCollectionChange={setCollection}
       onNewSession={offersNewSession ? onNewSession : undefined}
-      sessionsDisabled={sessionsDisabled}
       onOpenSession={onOpenSession}
     />
   );
@@ -234,7 +244,7 @@ export const ShowMoreFollowsSparsePages: Story = {
         { items: [], nextCursor: 'p2' },
         { items: [], nextCursor: 'p3' },
         { items: [row('e', { title: 'Późna sesja' })], nextCursor: 'p4' },
-        { items: [] },
+        { items: [row('h', { title: 'Ostatnia sesja' })] },
       ],
       archive: [],
     },
@@ -244,11 +254,14 @@ export const ShowMoreFollowsSparsePages: Story = {
     await userEvent.click(more);
     await expect(await canvas.findByRole('button', { name: 'Późna sesja' })).toBeVisible();
     await expect(requests).toHaveLength(4);
-    await expect(canvas.getByRole('status')).toHaveTextContent('Wczytano 1 sesję');
+    await waitFor(() => expect(canvas.getByRole('status')).toHaveTextContent('Wczytano 1 sesję'));
     await expect(canvas.getByRole('button', { name: 'Pokaż więcej' })).toHaveFocus();
-    // The last page ends the cursor: the button goes, and no empty state shows.
+    // The last page ends the cursor: the button goes and focus moves to the first row that came.
     await userEvent.click(canvas.getByRole('button', { name: 'Pokaż więcej' }));
     await waitFor(() => expect(canvas.queryByRole('button', { name: 'Pokaż więcej' })).toBeNull());
+    await waitFor(() =>
+      expect(canvas.getByRole('button', { name: 'Ostatnia sesja' })).toHaveFocus(),
+    );
     await expect(canvas.queryByText('Ta specyfikacja nie ma jeszcze sesji.')).toBeNull();
   },
 };
@@ -271,11 +284,19 @@ export const ShowMoreNoneInBatch: Story = {
   play: async ({ canvas }) => {
     await userEvent.click(await canvas.findByRole('button', { name: 'Pokaż więcej' }));
     await expect(
-      await canvas.findByText('Nie znaleziono więcej sesji w tej partii. Możesz szukać dalej.'),
+      await canvas.findByText('Nie znaleziono więcej sesji w tej partii. Możesz szukać dalej.', {
+        selector: ':not([role="status"])',
+      }),
     ).toBeVisible();
     // The first load plus at most four requests for the press.
     await expect(requests).toHaveLength(5);
     await expect(canvas.getByRole('button', { name: 'Pokaż więcej' })).toBeVisible();
+    // Said politely too, and again for the next empty batch.
+    await waitFor(() =>
+      expect(canvas.getByRole('status')).toHaveTextContent(
+        'Nie znaleziono więcej sesji w tej partii. Możesz szukać dalej.',
+      ),
+    );
   },
 };
 
@@ -312,7 +333,16 @@ export const ShowMoreFailed: Story = {
   },
   play: async ({ canvas }) => {
     await userEvent.click(await canvas.findByRole('button', { name: 'Pokaż więcej' }));
-    await expect(await canvas.findByText('Nie udało się wczytać kolejnych sesji.')).toBeVisible();
+    await expect(
+      await canvas.findByText('Nie udało się wczytać kolejnych sesji.', {
+        selector: ':not([role="status"])',
+      }),
+    ).toBeVisible();
+    await waitFor(() =>
+      expect(canvas.getByRole('status')).toHaveTextContent(
+        'Nie udało się wczytać kolejnych sesji.',
+      ),
+    );
     await expect(canvas.getByRole('button', { name: 'Przegląd logowania SSO' })).toBeVisible();
     await userEvent.click(canvas.getByRole('button', { name: 'Pokaż więcej' }));
     await expect(await canvas.findByRole('button', { name: 'Sesja g' })).toBeVisible();
@@ -337,7 +367,7 @@ export const Failed: Story = {
 };
 
 export const Forbidden: Story = {
-  args: { pages: { current: [], archive: [] }, forbidden: true, offersNewSession: false },
+  args: { pages: { current: [], archive: [] }, refusal: 'forbidden', offersNewSession: false },
   play: async ({ canvas }) => {
     await expect(
       await canvas.findByText('Nie masz dostępu do sesji tej specyfikacji.'),
@@ -355,6 +385,19 @@ export const SessionsDisabled: Story = {
   play: async ({ canvas }) => {
     await expect(canvas.getByText('Sesje są wyłączone w tym projekcie.')).toBeVisible();
     await expect(canvas.queryByText('Nie udało się wczytać sesji.')).toBeNull();
+    await expect(canvas.queryByRole('radio', { name: 'Bieżące' })).toBeNull();
+    // Known from the workspace: the list read is never sent.
+    await expect(requests).toHaveLength(0);
+  },
+};
+
+/** The list read itself answers `SESSION_DISABLED`: the same turned-off state, never a failure. */
+export const SessionsDisabledByListRead: Story = {
+  args: { pages: { current: [], archive: [] }, refusal: 'disabled', offersNewSession: false },
+  play: async ({ canvas }) => {
+    await expect(await canvas.findByText('Sesje są wyłączone w tym projekcie.')).toBeVisible();
+    await expect(canvas.queryByText('Nie udało się wczytać sesji.')).toBeNull();
+    await expect(canvas.queryByRole('radio', { name: 'Archiwum' })).toBeNull();
   },
 };
 

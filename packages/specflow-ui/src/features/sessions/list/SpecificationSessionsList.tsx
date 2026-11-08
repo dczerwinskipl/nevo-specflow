@@ -64,20 +64,18 @@ export function SpecificationSessionsList({
   collection,
   onCollectionChange,
   onNewSession,
-  sessionsDisabled = false,
   onOpenSession,
 }: {
   state: SpecificationSessionListState;
   collection: SessionCollection;
   onCollectionChange: (collection: SessionCollection) => void;
   onNewSession?: () => void;
-  /** Sessions are turned off in the project: said once, instead of a list. */
-  sessionsDisabled?: boolean;
   onOpenSession: (sessionId: string) => void;
 }) {
   const { t, i18n } = useTranslation();
   const now = useNow();
-  const { announce, region } = useAnnouncer();
+  const { announce: setAnnouncement, region } = useAnnouncer();
+  const list = useRef<HTMLDivElement>(null);
   // The guarded handler of "Show more": one load at a time, whatever the button's state shows.
   const loading = useRef(false);
   const newSession = onNewSession ? (
@@ -86,21 +84,51 @@ export function SpecificationSessionsList({
     </Button>
   ) : null;
 
+  // Cleared first, so the same text said twice (two empty batches in a row) is announced again.
+  const announce = (message: string) => {
+    setAnnouncement('');
+    requestAnimationFrame(() => setAnnouncement(message));
+  };
+
   const showMore = async () => {
     if (state.status !== 'ready' || loading.current) {
       return;
     }
 
     loading.current = true;
+    const firstAppended = state.rows.length;
     try {
-      const arrived = await state.loadMore();
-      if (arrived > 0) {
-        announce(t('sessions.list.loaded', { count: arrived }));
+      const outcome = await state.loadMore();
+      if (outcome.failed) {
+        announce(t('sessions.list.loadMoreFailed'));
+      } else if (outcome.arrived > 0) {
+        announce(t('sessions.list.loaded', { count: outcome.arrived }));
+        // The button goes away with the cursor: focus moves to the first row that arrived.
+        if (outcome.ended) {
+          requestAnimationFrame(() =>
+            list.current
+              ?.querySelectorAll<HTMLElement>('[data-session-row] button')
+              [firstAppended]?.focus(),
+          );
+        }
+      } else if (!outcome.ended) {
+        announce(t('sessions.list.noneInScanned'));
       }
     } finally {
       loading.current = false;
     }
   };
+
+  if (state.status === 'disabled') {
+    // Sessions are turned off in the project: said once, without collections (not a failure).
+    return (
+      <div className="grid max-w-content-standard gap-6 py-2">
+        <Typography variant="body-sm" className="text-content-secondary">
+          {t('sessionStart.sessionsDisabled')}
+        </Typography>
+      </div>
+    );
+  }
 
   return (
     <div className="grid max-w-content-standard gap-6 py-2">
@@ -120,11 +148,7 @@ export function SpecificationSessionsList({
         {newSession}
       </div>
 
-      {sessionsDisabled ? (
-        <Typography variant="body-sm" className="text-content-secondary">
-          {t('sessionStart.sessionsDisabled')}
-        </Typography>
-      ) : state.status === 'loading' ? (
+      {state.status === 'loading' ? (
         <LoadingPresentation shape="list" label={t('sessions.list.loadingMore')} fetching />
       ) : state.status === 'forbidden' ? (
         <Alert role="status" tone="attention" title={t('sessions.list.forbiddenSpecification')} />
@@ -146,7 +170,7 @@ export function SpecificationSessionsList({
           {collection === 'current' ? newSession : null}
         </div>
       ) : (
-        <>
+        <div ref={list} className="grid gap-6">
           {state.rows.length > 0 ? (
             <InformationList>
               {state.rows.map((item) => (
@@ -156,6 +180,7 @@ export function SpecificationSessionsList({
                   onPrimaryClick={() => onOpenSession(item.sessionId)}
                   compactFacts={rowFacts(item, t, now, i18n.language)}
                   supporting={sessionRowStatus(item.readiness, t)}
+                  dataAttributes={{ 'data-session-row': item.sessionId }}
                 />
               ))}
             </InformationList>
@@ -180,7 +205,7 @@ export function SpecificationSessionsList({
               ) : null}
             </div>
           ) : null}
-        </>
+        </div>
       )}
       {region}
     </div>

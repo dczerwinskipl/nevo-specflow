@@ -4,6 +4,7 @@ import { useAppServices } from '../../../app/useAppServices';
 import { asApiError } from '../../../api';
 import { sessionAssociationKeys } from '../associations/queries';
 import { sessionAssociationsOperation } from '../associations/api';
+import { sessionErrorCode } from '../managed/api';
 import { loadSessions, type SessionCollection, type SessionListLoad } from './loadSessions';
 import type { SessionListItem } from '@nevo/specflow-contracts/sessions';
 
@@ -12,6 +13,8 @@ export type SpecificationSessionListState =
   | { status: 'loading' }
   | { status: 'failed'; retry: () => void }
   | { status: 'forbidden' }
+  /** Sessions are turned off in the project: not a failed read. */
+  | { status: 'disabled' }
   | {
       status: 'ready';
       rows: readonly SessionListItem[];
@@ -22,21 +25,33 @@ export type SpecificationSessionListState =
       noneInScanned: boolean;
       /** The last "Show more" failed; the button retries the same cursor. */
       loadMoreFailed: boolean;
-      /** Follows the cursor; resolves with how many rows arrived (0 when none or failed). */
-      loadMore: () => Promise<number>;
+      /** Follows the cursor once (one press). */
+      loadMore: () => Promise<SessionListLoadOutcome>;
     };
+
+/** What one press of "Show more" brought. */
+export interface SessionListLoadOutcome {
+  /** Rows appended (0 when none arrived or the load failed). */
+  arrived: number;
+  failed: boolean;
+  /** The cursor ended with this load: "Show more" goes away. */
+  ended: boolean;
+}
 
 /**
  * The paged Session list read of one Specification and collection. Each page of the query is one
  * load ({@link loadSessions}); appended pages stay until an invalidation resets the list to its
- * first page.
+ * first page. Once the workspace says Sessions are turned off (`disabled`), nothing is read; a list
+ * read refused with `SESSION_DISABLED` says the same.
  */
 export function useSpecificationSessionList(
   specId: string,
   collection: SessionCollection,
+  disabled = false,
 ): SpecificationSessionListState {
   const { sessionAssociationsApi } = useAppServices();
   const query = useInfiniteQuery({
+    enabled: !disabled,
     queryKey: sessionAssociationKeys.list(specId, collection),
     queryFn: ({ pageParam, signal }) =>
       loadSessions(sessionAssociationsApi, specId, collection, pageParam, signal),
@@ -45,15 +60,23 @@ export function useSpecificationSessionList(
   });
   const { data, fetchNextPage, refetch } = query;
   const rows = useMemo(() => data?.pages.flatMap((page) => page.items) ?? [], [data]);
-  const loadMore = useCallback(async () => {
+  const loadMore = useCallback(async (): Promise<SessionListLoadOutcome> => {
     const before = data?.pages.length ?? 0;
     const result = await fetchNextPage({ cancelRefetch: false });
     const pages = result.data?.pages ?? [];
+    const failed = result.isFetchNextPageError;
+    const added = !failed && pages.length > before ? pages.at(-1) : undefined;
 
-    return result.isFetchNextPageError || pages.length === before
-      ? 0
-      : (pages.at(-1)?.items.length ?? 0);
+    return {
+      arrived: added?.items.length ?? 0,
+      failed,
+      ended: !!added && added.nextCursor === undefined,
+    };
   }, [data, fetchNextPage]);
+
+  if (disabled || sessionErrorCode(query.error) === 'SESSION_DISABLED') {
+    return { status: 'disabled' };
+  }
 
   if (!data) {
     if (query.isError) {

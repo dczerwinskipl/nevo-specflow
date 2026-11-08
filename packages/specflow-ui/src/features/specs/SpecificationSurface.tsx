@@ -39,7 +39,6 @@ export interface SpecificationSurfaceProps {
   readonly data?: SpecificationWorkspaceData;
   readonly onRefresh?: () => void | Promise<void>;
   readonly onExecute?: (agent: string, tasks: readonly string[]) => void | Promise<void>;
-  readonly onNewConversation?: (agent: string) => void | Promise<void>;
   readonly onOpenSession?: (sessionId: string) => void;
   readonly onNewSession?: () => void;
 }
@@ -71,7 +70,6 @@ function SpecificationSurfaceConnected({
   onOpenFullDocument,
   onRefresh,
   onExecute,
-  onNewConversation,
   onOpenSession,
   onNewSession,
 }: SpecificationSurfaceProps) {
@@ -226,7 +224,6 @@ function SpecificationSurfaceConnected({
       onOpenFullDocument={onOpenFullDocument}
       onRefresh={onRefresh ?? refreshWorkspace}
       onExecute={onExecute}
-      onNewConversation={onNewConversation}
       onOpenSession={onOpenSession}
       onNewSession={onNewSession}
       refreshFailed={isError && Boolean(data)}

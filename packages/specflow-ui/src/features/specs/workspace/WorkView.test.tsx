@@ -191,13 +191,13 @@ describe('Specification Overview columns', () => {
   });
 
   it('stays one column at any width when no work section shows', () => {
-    // An empty Specification whose Runtime cannot start a conversation: no attention, no
-    // preparation, no Tasks; only the repository on the context side.
+    // An empty Specification with a Session to continue and no Tasks source: no attention, no
+    // preparation (Continue session owns the next step), no Tasks; only context sections.
     const working = withoutAttention(createSpecificationWorkspaceFixture('working'));
     const { container } = render(
       <UiModulesProvider modules={builtInUiModuleRegistry}>
         <LocalizationProvider instance={createSpecFlowI18n('en')}>
-          <WorkspaceProvider runtime={createFakeWorkspaceRuntime({ canStartConversation: false })}>
+          <WorkspaceProvider runtime={createFakeWorkspaceRuntime()}>
             <WorkView data={{ ...working, isEmpty: true }} />
           </WorkspaceProvider>
         </LocalizationProvider>
@@ -207,8 +207,80 @@ describe('Specification Overview columns', () => {
     resizeTo(2400);
 
     expect(container.querySelector('#tasks-heading')).toBeNull();
+    expect(container.querySelector('#preparation-heading')).toBeNull();
     // The context side alone would fill a column: the repository is there.
     expect([...container.querySelectorAll('h3')].map((h) => h.textContent)).toContain('Repository');
     expect(columns(container)).toBe('1');
+  });
+});
+
+describe('Specification Overview without Tasks', () => {
+  /** An empty Specification as project mode reads it: Tasks available and empty, documents. */
+  function emptySpecification(
+    overrides: Partial<SpecificationWorkspaceData> = {},
+  ): SpecificationWorkspaceData {
+    const base = createSpecificationWorkspaceFixture('empty');
+    const working = createSpecificationWorkspaceFixture('working');
+
+    return {
+      ...base,
+      documents: working.documents,
+      sectionAvailability: { tasks: 'available', documents: 'available', sessions: 'available' },
+      startSession: { available: true },
+      ...overrides,
+    };
+  }
+
+  function renderEmpty(data: SpecificationWorkspaceData, openNewSession = vi.fn()) {
+    contentWidth = 1200;
+    const view = render(
+      <UiModulesProvider modules={builtInUiModuleRegistry}>
+        <LocalizationProvider instance={createSpecFlowI18n('en')}>
+          <WorkspaceProvider runtime={createFakeWorkspaceRuntime({ openNewSession })}>
+            <WorkView data={data} />
+          </WorkspaceProvider>
+        </LocalizationProvider>
+      </UiModulesProvider>,
+    );
+
+    return { ...view, openNewSession };
+  }
+
+  it('shows the description, the preparation block opening New Session, empty Tasks and Documents', () => {
+    const { container, openNewSession } = renderEmpty(emptySpecification());
+
+    expect(screen.getByText(/Utrzymać kontekst pracy/u)).not.toBeNull();
+    expect(container.querySelector('#preparation-heading')).not.toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Start session' }));
+    expect(openNewSession).toHaveBeenCalledTimes(1);
+    // Tasks keep their header (the navigator's target) with the inline empty state, no count.
+    const tasks = container.querySelector('#tasks-heading');
+    expect(tasks?.textContent).toBe('Tasks');
+    const empty = container.querySelector('[data-empty-state]');
+    expect(empty?.getAttribute('data-empty-state')).toBe('inline');
+    expect(empty?.textContent).toContain('No tasks yet');
+    expect(headingOrder(container)).toEqual(['Tasks', 'Documents']);
+  });
+
+  it.each([
+    ['sessions_disabled', 'Sessions are turned off on this server.'],
+    ['forbidden', "You don't have permission to start a session for this specification."],
+  ])('explains the preparation path without a button when the start is %s', (reason, text) => {
+    const { container } = renderEmpty(
+      emptySpecification({ startSession: { available: false, reason } }),
+    );
+
+    expect(container.querySelector('#preparation-heading')).not.toBeNull();
+    expect(screen.getByText(new RegExp(text.replace(/[.']/gu, '.'), 'u'))).not.toBeNull();
+    expect(screen.queryByRole('button', { name: 'Start session' })).toBeNull();
+  });
+
+  it('shows Continue session instead of the preparation block once a Session exists', () => {
+    const working = createSpecificationWorkspaceFixture('working');
+    const { container } = renderEmpty(emptySpecification({ resumeSession: working.resumeSession }));
+
+    expect(container.querySelector('#preparation-heading')).toBeNull();
+    expect(container.querySelector('#resume-heading')).not.toBeNull();
+    expect(container.querySelector('#tasks-heading')).not.toBeNull();
   });
 });

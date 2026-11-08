@@ -4,14 +4,14 @@ import { DocumentContent, DocumentDescription, markdownIntro } from '../../../do
 export interface SpecificationSummarySectionProps {
   readonly title: string;
   readonly intro?: string;
-  readonly isEmpty?: boolean;
   readonly mainDocumentId?: string;
   readonly specId?: string;
 }
+
+/** The title and, whenever they exist, the description and the main document preview. */
 export function SpecificationSummarySection({
   title,
   intro,
-  isEmpty = false,
   mainDocumentId,
   specId,
 }: SpecificationSummarySectionProps) {
@@ -26,22 +26,20 @@ export function SpecificationSummarySection({
       >
         {title}
       </Typography>
-      {!isEmpty ? (
-        <DocumentDescription
-          key={`${specId}:${mainDocumentId}`}
-          intro={
-            intro && intro.trim() !== title.trim() ? markdownIntro(intro, title).intro : undefined
-          }
-          hasMore={Boolean(mainDocumentId && specId)}
-          renderDocument={
-            mainDocumentId && specId
-              ? () => (
-                  <DocumentContent specId={specId} documentId={mainDocumentId} omitTitle={title} />
-                )
-              : undefined
-          }
-        />
-      ) : null}
+      <DocumentDescription
+        key={`${specId}:${mainDocumentId}`}
+        intro={
+          intro && intro.trim() !== title.trim() ? markdownIntro(intro, title).intro : undefined
+        }
+        hasMore={Boolean(mainDocumentId && specId)}
+        renderDocument={
+          mainDocumentId && specId
+            ? () => (
+                <DocumentContent specId={specId} documentId={mainDocumentId} omitTitle={title} />
+              )
+            : undefined
+        }
+      />
     </div>
   );
 }

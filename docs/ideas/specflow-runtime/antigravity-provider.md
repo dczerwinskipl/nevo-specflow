@@ -311,7 +311,7 @@ a requirement to test every ordinary CLI update, or a claim about all future hoo
 implementations. N02 Stop/continue semantics remain a separate nonblocking
 [follow-up F20](provider-migration-plan.md#f20--antigravity-stop-continuation-semantics).
 
-### F20 Stop continuation � 2026-11-08
+### F20 Stop continuation — 2026-11-08
 
 The [native Stop contract](https://antigravity.google/docs/hooks/#stop) uses
 `continue` to re-enter the current execution loop. Every other decision, including
@@ -379,8 +379,26 @@ compressed Stop launcher and owned Job Object process boundary were exercised:
   These establish native Stop response semantics, not production OAuth acceptance
   or a native reproduction of every synthetic conflict/race.
 
-Independent architectural/security review remains pending; author verification
-is not independent review. F14 and capability parity remain separate deliveries.
+The post-review native conflict control used the same synthetic profile and real
+CLI, production bridge, real Windows file guards and compressed hook launcher.
+A scripted `view_file` was admitted and executed. The manual helper deliberately
+buffered its authentic PostToolUse payload instead of delivering it to the bridge,
+so the native Stop arrived while Runtime still retained that file's ownership.
+Execution 0 reported `NO_TOOL_CALL` and `fullyIdle: true`; the production bridge
+returned `continue`. Only then did the helper deliver the buffered PostToolUse
+receipt, releasing ownership. Execution 1 returned `stop`, followed by one native
+final result and positive `group-exited` settlement. No permission was requested
+or granted and only one user frame was sent. This is deterministic delayed-receipt
+fault injection, not evidence that an actively executing file write naturally
+overlaps Stop in this CLI build; the reported idle state alone cannot clear a
+Runtime-retained operation.
+
+Independent review of `a4b7ed3d` requested R01 (validate optional Stop `error` as
+a string before any state change) and R02 (repair two replacement characters in
+documentation). Both are corrected. Six added HTTP/helper cases reject object,
+array, null, number and boolean errors without releasing idle or advancing the
+execution ledger, and preserve continuation after malformed evidence. Targeted
+re-review remains pending. F14 and capability parity remain separate deliveries.
 
 ### Compatible updates
 

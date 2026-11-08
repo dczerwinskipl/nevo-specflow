@@ -596,6 +596,51 @@ describe('controlled native hook HTTP/helper boundary', () => {
     await expect(idle).rejects.toThrow('replacement-not-idle');
   });
 
+  it.each([{}, [], null, 42, true].map((error) => [error]))(
+    'rejects malformed Stop error %j without recording idle or replay evidence',
+    async (error) => {
+      const f = await fixture();
+      const controller = new AbortController();
+      const resolved = vi.fn();
+      const waiting = f.bridge.awaitNativeIdle(controller.signal).then(resolved);
+      const stop = {
+        conversationId: f.context.nativeSessionId,
+        workspacePaths: [f.workspace],
+        executionNum: 2,
+        terminationReason: 'model_stop',
+        fullyIdle: true,
+        error,
+      };
+      await expect(f.post('stop', stop)).resolves.toEqual({ decision: 'deny' });
+      expect(resolved).not.toHaveBeenCalled();
+      controller.abort(new Error('malformed-stop-is-not-idle'));
+      await expect(waiting).rejects.toThrow('malformed-stop-is-not-idle');
+      // Malformed evidence must not advance the execution ledger either.
+      await expect(f.post('stop', { ...stop, executionNum: 1, error: '' })).resolves.toEqual({
+        decision: 'stop',
+      });
+      await f.bridge.awaitNativeIdle(new AbortController().signal);
+    },
+  );
+
+  it('does not consume continuation for a malformed Stop error', async () => {
+    const f = await fixture();
+    await f.post('pre-tool-use', {
+      ...f.body(),
+      toolCall: { name: 'view_file', args: { AbsolutePath: join(f.workspace, 'file.txt') } },
+    });
+    const stop = {
+      conversationId: f.context.nativeSessionId,
+      workspacePaths: [f.workspace],
+      executionNum: 1,
+      terminationReason: 'model_stop',
+      fullyIdle: true,
+    };
+    await expect(f.post('stop', { ...stop, error: {} })).resolves.toEqual({ decision: 'deny' });
+    await expect(f.post('stop', stop)).resolves.toEqual({ decision: 'continue' });
+    expect(f.accesses[0]!.close).not.toHaveBeenCalled();
+  });
+
   it('accepts fullyIdle only from a matching native Stop hook', async () => {
     const f = await fixture();
     const controller = new AbortController();

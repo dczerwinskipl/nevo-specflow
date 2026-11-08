@@ -138,7 +138,8 @@ export async function createAntigravityQuestionBridge(
           typeof bound.fullyIdle !== 'boolean' ||
           !Number.isSafeInteger(bound.executionNum) ||
           (bound.executionNum as number) < 0 ||
-          typeof bound.terminationReason !== 'string'
+          typeof bound.terminationReason !== 'string' ||
+          (bound.error !== undefined && typeof bound.error !== 'string')
         ) {
           throw new Error('Invalid native stop evidence.');
         }

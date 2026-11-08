@@ -386,8 +386,8 @@ IDs and absent/contradictory evidence never release an uncertain writer or fabri
 ### F20 — Antigravity Stop continuation semantics
 
 **Priority:** First post-merge delivery. **Outside PR #107; N02 from the final re-review.**
-**Status:** In progress � implementation and regression evidence prepared;
-independent architectural/security review pending.
+**Status:** In progress — implementation and regression evidence prepared;
+independent review R01/R02 corrected; targeted re-review pending.
 **Original evidence:** `antigravity/question-bridge.ts` returned `deny` for Stop
 conflicting with pending interactions or retained files. The native
 [Stop contract](https://antigravity.google/docs/hooks/#stop) permits termination
@@ -401,7 +401,7 @@ No new Turn, permission grant, Session owner or persistence schema is introduced
 **Evidence/limits:** See the [Stop matrix, failing regression and synthetic native
 checks](antigravity-provider.md#f20-stop-continuation--2026-11-08). Repeated conflicts
 beyond the one-shot bound still stop conservatively and can leave execution unknown.
-**Remaining:** Independent review and final integrated verification before marking
+**Remaining:** Targeted re-review and final integrated verification before marking
 Implemented. F14 and F19 remain independent follow-ups.
 
 [paseo-types]: https://github.com/getpaseo/paseo/blob/ab8e1e61ff7c0bbad08c95e15a09f3ec42333410/packages/server/src/server/agent/agent-sdk-types.ts

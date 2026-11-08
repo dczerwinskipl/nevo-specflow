@@ -1685,6 +1685,50 @@
       ]
     },
     {
+      "id": "ideas.specflow-runtime.session-association",
+      "type": "architecture",
+      "title": "Session association registry, Session list and Specification Session integration (stage 3)",
+      "status": "current",
+      "file": "docs/ideas/specflow-runtime/session-association/README.md",
+      "read_when": [
+        "planning or implementing the durable Session-to-Specification/Task association",
+        "adding a Session list/catalogue API or the project-mode workspace Sessions section",
+        "changing the Session authorization scope or the spec.start-session capability",
+        "making the Session Context or the navigator keep the Specification after a reload"
+      ],
+      "summary": "Accepted stage 3 design (owner decisions 2026-11-08, delivered in PR #126). Sessions stay independent; a separate durable association registry in the Session SQLite records which Specification (and Tasks) a Session belongs to, is written atomically when a Session is started from a Specification, backs the SessionReferenceOwner seam, and gives every Session capability except execute-write one Spec-bearing scope, so granular role capabilities at {specId} apply to that Specification's Sessions. Also defines spec.start-session, the bounded Session list, the project-mode workspace Sessions section, the association read and the UI integration tasks.",
+      "related": [
+        "ideas.specflow-runtime.session-ui-integration.plan",
+        "reference.api.sessions",
+        "architecture.ai.session-storage-and-lifecycle",
+        "architecture.runtime.authorization",
+        "reference.api.specification-workspace",
+        "reference.api.task-reads",
+        "ideas.specflow-engine.managed-session-integration",
+        "ideas.specflow-engine.ownership",
+        "product.specflow.ui.ai-session-ux",
+        "ideas.specflow-ui.full-session-screen-structure",
+        "ideas.specflow-ui.screens.full-session"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "server",
+        "security",
+        "ui"
+      ],
+      "tags": [
+        "sessions",
+        "associations",
+        "authorization",
+        "navigation",
+        "session-list",
+        "workspace",
+        "planning"
+      ]
+    },
+    {
       "id": "product.specflow.ui.application-architecture",
       "type": "architecture",
       "title": "SpecFlow UI application architecture",

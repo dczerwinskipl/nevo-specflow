@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import type { SpecFlowEngine } from '../../../application';
 import { mapBounded } from '../../../concurrency';
 import { isReservedRootName } from '../../document-rules/document-paths';
-import { readAt, withOpenFile } from '../../document-rules/verified-file';
+import { FileChangedDuringOpen, readAt, withOpenFile } from '../../document-rules/verified-file';
 import { documentChangeError } from '../changes/errors';
 import type { ObservedFile as PlanObservedFile, PlanningSnapshot } from '../changes/plan/snapshot';
 import { listSpecificationFiles } from '../directory-scan';
@@ -56,6 +56,11 @@ export async function readSpecificationSnapshot(
   );
   const files: PlanObservedFile[] = [];
   for (const observation of observations) {
+    // A tree may omit an unstable file, but a plan must not mistake it for an absent one.
+    if (observation.kind === 'skipped' && observation.error instanceof FileChangedDuringOpen) {
+      throw observation.error;
+    }
+
     if (observation.kind !== 'file') {
       continue;
     }

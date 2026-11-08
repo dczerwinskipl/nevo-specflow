@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { mkdtemp, mkdir, rm, writeFile, readFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, rm, writeFile, readFile, symlink, realpath } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, relative, sep } from 'node:path';
 import { createAntigravityDriver } from './driver';
@@ -16,11 +16,15 @@ const roots: string[] = [];
 afterEach(async () => {
   vi.useRealTimers();
   vi.restoreAllMocks();
-  await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
+  vi.unstubAllEnvs();
+  for (const root of roots.splice(0).reverse()) {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 async function fixture(managedWrites = true, launch?: typeof launchOwnedProcess) {
-  const root = await mkdtemp(join(tmpdir(), 'specflow-agy-driver-'));
+  // Model Engine admission with a physical workspace, including aliased OS temp paths.
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'agy-')));
   roots.push(root);
   const workspace = join(root, 'workspace');
   const executable = join(root, 'fixture.exe');
@@ -326,6 +330,7 @@ async function invocationFixture(
   const test = await fixture(managedWrites, launch);
   await test.refresh();
   const facts: DriverFact[] = [];
+  const firstInteraction = Promise.withResolvers<Extract<DriverFact, { kind: 'interaction' }>>();
   const invocationId = randomUUID();
   const beforeDispatch = vi.fn(() => {
     order.push('before-dispatch');
@@ -365,6 +370,10 @@ async function invocationFixture(
       invocation,
       (fact) => {
         facts.push(fact);
+        if (fact.kind === 'interaction') {
+          firstInteraction.resolve(fact);
+        }
+
         order.push(fact.kind);
 
         return Promise.resolve();
@@ -378,6 +387,8 @@ async function invocationFixture(
     facts,
     order,
     writes,
+    input: input.promise,
+    firstInteraction: firstInteraction.promise,
     launch,
     nativeId,
     beforeDispatch,
@@ -469,67 +480,83 @@ describe('controlled Antigravity driver invocation composition', () => {
     });
   });
 
-  it('continues the same invocation around a pending permission and settles without a second dispatch', async () => {
-    const gate = Promise.withResolvers<void>();
-    const test = await invocationFixture(false, gate.promise);
-    const operation = test.start();
-    try {
-      await vi.waitFor(() => expect(test.writes).toHaveLength(1));
-      const configurationPath = test.options().environment.values.NEVO_ANTIGRAVITY_HOOK_CONFIG!;
-      const hook = (role: 'pre-tool-use' | 'stop', body: object) =>
-        runAntigravityHook({
-          hook: role,
-          configurationPath,
-          signal: new AbortController().signal,
-          input: Buffer.from(
-            JSON.stringify({
-              conversationId: test.nativeId,
-              workspacePaths: [test.workspace],
-              ...body,
-            }),
-          ),
-        });
-      const permission = hook('pre-tool-use', {
-        stepIdx: 0,
-        toolCall: {
-          name: 'run_command',
-          args: {
-            CommandLine: 'echo controlled fixture',
-            toolSummary: 'Controlled fixture',
-            toolAction: 'execute',
-            Cwd: test.workspace,
-            WaitMsBeforeAsync: 5000,
-          },
-        },
-      });
-      await vi.waitFor(() =>
-        expect(test.facts.some((fact) => fact.kind === 'interaction')).toBe(true),
-      );
-      const fact = test.facts.find((fact) => fact.kind === 'interaction')!;
-      await expect(
-        hook('stop', { executionNum: 0, terminationReason: 'NO_TOOL_CALL', fullyIdle: true }),
-      ).resolves.toEqual({ decision: 'continue' });
-      expect(test.facts.some((fact) => fact.kind === 'outcome')).toBe(false);
-      await operation.respond(fact.key, {
-        requestId: randomUUID(),
-        kind: 'permission',
-        decision: 'deny',
-      });
-      await expect(permission).resolves.toEqual({ decision: 'deny' });
-    } finally {
-      gate.resolve();
-      await operation.done;
-    }
+  it.each([false, true])(
+    'continues the same invocation around a pending permission without a second dispatch (linked temp: %s)',
+    async (linkedTemp) => {
+      if (linkedTemp) {
+        const parent = await mkdtemp(join(tmpdir(), 'agy-tmp-'));
+        roots.push(parent);
+        const physical = join(parent, 'p');
+        const alias = join(parent, 'l');
+        await mkdir(physical);
+        await symlink(physical, alias, process.platform === 'win32' ? 'junction' : 'dir');
+        vi.stubEnv(process.platform === 'win32' ? 'TEMP' : 'TMPDIR', alias);
+      }
 
-    expect(test.launch).toHaveBeenCalledOnce();
-    expect(test.beforeDispatch).toHaveBeenCalledOnce();
-    expect(test.writes).toHaveLength(1);
-    expect(await operation.settlement).toMatchObject({
-      process: 'stopped',
-      source: 'native-result',
-      result: { outcome: 'completed' },
-    });
-  });
+      const gate = Promise.withResolvers<void>();
+      const test = await invocationFixture(false, gate.promise);
+      const operation = test.start();
+      try {
+        await Promise.race([test.input, operation.done]);
+        expect(test.writes, JSON.stringify(test.facts)).toHaveLength(1);
+        const configurationPath = test.options().environment.values.NEVO_ANTIGRAVITY_HOOK_CONFIG!;
+        const hook = (role: 'pre-tool-use' | 'stop', body: object) =>
+          runAntigravityHook({
+            hook: role,
+            configurationPath,
+            signal: new AbortController().signal,
+            input: Buffer.from(
+              JSON.stringify({
+                conversationId: test.nativeId,
+                workspacePaths: [test.workspace],
+                ...body,
+              }),
+            ),
+          });
+        const permission = hook('pre-tool-use', {
+          stepIdx: 0,
+          toolCall: {
+            name: 'run_command',
+            args: {
+              CommandLine: 'echo controlled fixture',
+              toolSummary: 'Controlled fixture',
+              toolAction: 'execute',
+              Cwd: test.workspace,
+              WaitMsBeforeAsync: 5000,
+            },
+          },
+        });
+        const fact = await Promise.race([
+          test.firstInteraction,
+          permission.then(() => {
+            throw new Error('The permission hook settled before emitting its Interaction.');
+          }),
+        ]);
+        await expect(
+          hook('stop', { executionNum: 0, terminationReason: 'NO_TOOL_CALL', fullyIdle: true }),
+        ).resolves.toEqual({ decision: 'continue' });
+        expect(test.facts.some((fact) => fact.kind === 'outcome')).toBe(false);
+        await operation.respond(fact.key, {
+          requestId: randomUUID(),
+          kind: 'permission',
+          decision: 'deny',
+        });
+        await expect(permission).resolves.toEqual({ decision: 'deny' });
+      } finally {
+        gate.resolve();
+        await operation.done;
+      }
+
+      expect(test.launch).toHaveBeenCalledOnce();
+      expect(test.beforeDispatch).toHaveBeenCalledOnce();
+      expect(test.writes).toHaveLength(1);
+      expect(await operation.settlement).toMatchObject({
+        process: 'stopped',
+        source: 'native-result',
+        result: { outcome: 'completed' },
+      });
+    },
+  );
 
   it('resumes exactly the admitted native conversation without replacing its identity', async () => {
     const test = await invocationFixture(true);

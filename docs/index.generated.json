@@ -2789,6 +2789,339 @@
       ]
     },
     {
+      "id": "ideas.semantic-docs.execution-plan",
+      "type": "engineering",
+      "title": "Temporary execution plan — Documentation capability and AI semantic search",
+      "status": "draft",
+      "file": "docs/ideas/semantic-docs/execution-plan/README.md",
+      "read_when": [
+        "implementing the SpecFlow documentation capability or the AI semantic search package",
+        "selecting the next dependency-complete task of the semantic documentation search feature"
+      ],
+      "summary": "Decomposition of the semantic documentation search ideas into nine reviewable tasks delivered in one pull request: ADRs and contracts, the neutral @nevo/ai-semantic-search package and its local index, the @nevo/specflow-docs product capability with configurable taxonomy, semantic search and configuration, init contribution, Runtime endpoint, repository dogfooding and final promotion.",
+      "related": [
+        "ideas.semantic-docs",
+        "ideas.semantic-docs.semantic-search-package",
+        "ideas.semantic-docs.docs-capability",
+        "ideas.semantic-docs.configuration-and-init",
+        "ideas.semantic-docs.index-freshness",
+        "ideas.semantic-docs.ai-package-naming",
+        "ideas.semantic-docs.local-embeddings-playground",
+        "ideas.specflow-runtime.execution-plans.openapi-publication",
+        "adr.0005-repository-tooling-is-separate-from-the-product-api",
+        "adr.0011-product-artifact-packaging-and-pnpm-compatibility",
+        "adr.0012-product-package-topology-and-dependency-direction",
+        "architecture.runtime.configuration"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "docs",
+        "cli",
+        "runtime",
+        "configuration",
+        "testing"
+      ],
+      "tags": [
+        "execution-plan",
+        "temporary",
+        "semantic-search",
+        "embeddings",
+        "documentation"
+      ]
+    },
+    {
+      "id": "ideas.semantic-docs.execution-plan.task-b01",
+      "type": "engineering",
+      "title": "B01 — ADRs and authoritative contracts for documentation capability and semantic search",
+      "status": "draft",
+      "file": "docs/ideas/semantic-docs/execution-plan/tasks/B01-adrs-and-contracts.md",
+      "read_when": [
+        "implementing B01 of the semantic documentation search plan"
+      ],
+      "summary": "Record the owner answers to B-D1..B-D11 as ADRs (deliberate promotion of documentation discovery into the product, the neutral semantic search engine and its disposable local index) and update the architecture documents whose contracts the later tasks implement.",
+      "related": [
+        "ideas.semantic-docs.execution-plan",
+        "ideas.semantic-docs",
+        "adr.0005-repository-tooling-is-separate-from-the-product-api",
+        "adr.0007-documentation-architecture-and-taxonomy",
+        "adr.0012-product-package-topology-and-dependency-direction",
+        "architecture.runtime.configuration"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "docs",
+        "configuration"
+      ],
+      "tags": [
+        "execution-task",
+        "temporary",
+        "adr",
+        "documentation"
+      ]
+    },
+    {
+      "id": "ideas.semantic-docs.execution-plan.task-b02",
+      "type": "engineering",
+      "title": "B02 — Semantic search engine core (@nevo/ai-semantic-search)",
+      "status": "draft",
+      "file": "docs/ideas/semantic-docs/execution-plan/tasks/B02-semantic-search-core.md",
+      "read_when": [
+        "implementing B02 of the semantic documentation search plan"
+      ],
+      "summary": "Create the product-neutral @nevo/ai-semantic-search package: ports, OpenAI-compatible embeddings adapter with probe, heading-aware versioned markdown chunking, chunk-level BM25 and hybrid ranking fused by RRF, with an in-memory vector store for tests.",
+      "related": [
+        "ideas.semantic-docs.execution-plan",
+        "ideas.semantic-docs.execution-plan.task-b01",
+        "ideas.semantic-docs.semantic-search-package",
+        "adr.0006-product-ships-as-a-single-bundled-artifact",
+        "adr.0012-product-package-topology-and-dependency-direction"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "testing"
+      ],
+      "tags": [
+        "execution-task",
+        "temporary",
+        "implementation",
+        "semantic-search",
+        "embeddings"
+      ]
+    },
+    {
+      "id": "ideas.semantic-docs.execution-plan.task-b03",
+      "type": "engineering",
+      "title": "B03 — Local file-backed vector index store",
+      "status": "draft",
+      "file": "docs/ideas/semantic-docs/execution-plan/tasks/B03-local-vector-index.md",
+      "read_when": [
+        "implementing B03 of the semantic documentation search plan"
+      ],
+      "summary": "Add the file-backed VectorStore of @nevo/ai-semantic-search (manifest.json + vectors.f32) with atomic writes, a single-writer lock safe on Windows, incremental refresh by content hash and full rebuild on any manifest mismatch.",
+      "related": [
+        "ideas.semantic-docs.execution-plan",
+        "ideas.semantic-docs.execution-plan.task-b02",
+        "ideas.semantic-docs.semantic-search-package",
+        "ideas.semantic-docs.index-freshness"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "testing"
+      ],
+      "tags": [
+        "execution-task",
+        "temporary",
+        "implementation",
+        "vector-index",
+        "windows"
+      ]
+    },
+    {
+      "id": "ideas.semantic-docs.execution-plan.task-b04",
+      "type": "engineering",
+      "title": "B04 — Documentation capability package (@nevo/specflow-docs) and nevo-specflow docs",
+      "status": "draft",
+      "file": "docs/ideas/semantic-docs/execution-plan/tasks/B04-docs-capability-package.md",
+      "read_when": [
+        "implementing B04 of the semantic documentation search plan"
+      ],
+      "summary": "Create @nevo/specflow-docs with the product frontmatter contract, project-configured taxonomy and deterministic list/find/get/context/check, expose its Commander adapter at ./cli and mount it in the product shell as nevo-specflow docs, with behavioral parity to today's tools/docs.",
+      "related": [
+        "ideas.semantic-docs.execution-plan",
+        "ideas.semantic-docs.execution-plan.task-b01",
+        "ideas.semantic-docs.docs-capability",
+        "adr.0005-repository-tooling-is-separate-from-the-product-api",
+        "adr.0007-documentation-architecture-and-taxonomy",
+        "adr.0012-product-package-topology-and-dependency-direction"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "docs",
+        "cli",
+        "configuration",
+        "testing"
+      ],
+      "tags": [
+        "execution-task",
+        "temporary",
+        "implementation",
+        "documentation"
+      ]
+    },
+    {
+      "id": "ideas.semantic-docs.execution-plan.task-b05",
+      "type": "engineering",
+      "title": "B05 — Semantic docs search, configuration and result contract",
+      "status": "draft",
+      "file": "docs/ideas/semantic-docs/execution-plan/tasks/B05-semantic-docs-search.md",
+      "read_when": [
+        "implementing B05 of the semantic documentation search plan"
+      ],
+      "summary": "Add docs search and docs semantic status|index|eval to @nevo/specflow-docs on top of the semantic engine, parse and validate docs.search and ai.embeddings with ownership rules, keep the index in the disposable cache, and define the search result contract in @nevo/specflow-contracts.",
+      "related": [
+        "ideas.semantic-docs.execution-plan",
+        "ideas.semantic-docs.execution-plan.task-b03",
+        "ideas.semantic-docs.execution-plan.task-b04",
+        "ideas.semantic-docs.configuration-and-init",
+        "ideas.semantic-docs.docs-capability",
+        "ideas.semantic-docs.index-freshness",
+        "architecture.runtime.configuration"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "docs",
+        "cli",
+        "configuration",
+        "security",
+        "testing"
+      ],
+      "tags": [
+        "execution-task",
+        "temporary",
+        "implementation",
+        "semantic-search",
+        "embeddings"
+      ]
+    },
+    {
+      "id": "ideas.semantic-docs.execution-plan.task-b06",
+      "type": "engineering",
+      "title": "B06 — Semantic documentation search step in nevo-specflow init",
+      "status": "draft",
+      "file": "docs/ideas/semantic-docs/execution-plan/tasks/B06-init-contribution.md",
+      "read_when": [
+        "implementing B06 of the semantic documentation search plan"
+      ],
+      "summary": "Contribute an optional semantic documentation search step to nevo-specflow init that asks for the endpoint and model, probes it immediately, and writes docs.search to project config and endpoint details to local config.",
+      "related": [
+        "ideas.semantic-docs.execution-plan",
+        "ideas.semantic-docs.execution-plan.task-b05",
+        "ideas.semantic-docs.configuration-and-init",
+        "architecture.runtime.configuration"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "cli",
+        "configuration",
+        "ai",
+        "testing"
+      ],
+      "tags": [
+        "execution-task",
+        "temporary",
+        "implementation",
+        "init",
+        "embeddings"
+      ]
+    },
+    {
+      "id": "ideas.semantic-docs.execution-plan.task-b07",
+      "type": "engineering",
+      "title": "B07 — Runtime documentation search endpoint and start refresh",
+      "status": "draft",
+      "file": "docs/ideas/semantic-docs/execution-plan/tasks/B07-runtime-docs-endpoint.md",
+      "read_when": [
+        "implementing B07 of the semantic documentation search plan"
+      ],
+      "summary": "Add the Runtime docs feature serving GET /api/docs/search with the docs.search authorization resource granted to viewer, validate docs and ai sections in Runtime config loading, refresh the index in the background on start, and regenerate the committed OpenAPI document.",
+      "related": [
+        "ideas.semantic-docs.execution-plan",
+        "ideas.semantic-docs.execution-plan.task-b05",
+        "ideas.semantic-docs.docs-capability",
+        "ideas.semantic-docs.index-freshness",
+        "ideas.specflow-runtime.execution-plans.openapi-publication",
+        "architecture.runtime.endpoint-policy",
+        "architecture.runtime.authorization",
+        "architecture.runtime.ownership-and-lifecycle"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "server",
+        "security",
+        "configuration",
+        "testing"
+      ],
+      "tags": [
+        "execution-task",
+        "temporary",
+        "implementation",
+        "semantic-search",
+        "authorization"
+      ]
+    },
+    {
+      "id": "ideas.semantic-docs.execution-plan.task-b08",
+      "type": "engineering",
+      "title": "B08 — Repository dogfooding, agent routing and local embeddings compose",
+      "status": "draft",
+      "file": "docs/ideas/semantic-docs/execution-plan/tasks/B08-repository-dogfooding.md",
+      "read_when": [
+        "implementing B08 of the semantic documentation search plan"
+      ],
+      "summary": "Switch this repository's pnpm docs scripts to the product documentation capability through a thin tools/docs launcher, declare the repository taxonomy in .nevo/config.yaml, add the search versus find routing rule to agent instructions, and ship compose.yaml for a local Ollama embedding model.",
+      "related": [
+        "ideas.semantic-docs.execution-plan",
+        "ideas.semantic-docs.execution-plan.task-b04",
+        "ideas.semantic-docs.execution-plan.task-b05",
+        "ideas.semantic-docs.docs-capability",
+        "ideas.semantic-docs.local-embeddings-playground",
+        "adr.0005-repository-tooling-is-separate-from-the-product-api",
+        "engineering.repository.dogfooding"
+      ],
+      "scope": "repo",
+      "areas": [
+        "docs",
+        "cli",
+        "configuration",
+        "ai",
+        "testing"
+      ],
+      "tags": [
+        "execution-task",
+        "temporary",
+        "implementation",
+        "dogfooding",
+        "agents"
+      ]
+    },
+    {
+      "id": "ideas.semantic-docs.execution-plan.task-b09",
+      "type": "engineering",
+      "title": "B09 — Promotion, supersession and feature verification",
+      "status": "draft",
+      "file": "docs/ideas/semantic-docs/execution-plan/tasks/B09-promotion-and-verification.md",
+      "read_when": [
+        "implementing B09 of the semantic documentation search plan",
+        "reviewing the semantic documentation search pull request as a whole"
+      ],
+      "summary": "Promote the remaining durable rules of the semantic docs ideas into authoritative documents, mark the ideas superseded with successor links, and verify the whole pull request end to end against the ideas and ADRs before merge.",
+      "related": [
+        "ideas.semantic-docs.execution-plan",
+        "ideas.semantic-docs.execution-plan.task-b01",
+        "ideas.semantic-docs.execution-plan.task-b08",
+        "ideas.semantic-docs",
+        "ideas.readme"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "docs",
+        "testing",
+        "release"
+      ],
+      "tags": [
+        "execution-task",
+        "temporary",
+        "verification",
+        "documentation"
+      ]
+    },
+    {
       "id": "ideas.specflow-engine.legacy-migration",
       "type": "engineering",
       "title": "Legacy Nevo migration — modules not yet ported",
@@ -3801,6 +4134,101 @@
         "resume",
         "recovery",
         "context"
+      ]
+    },
+    {
+      "id": "ideas.specflow-runtime.execution-plans.openapi-publication",
+      "type": "engineering",
+      "title": "Temporary execution plan — OpenAPI publication for the Runtime API",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/execution-plans/openapi-publication/README.md",
+      "read_when": [
+        "implementing OpenAPI publication for the Runtime HTTP API",
+        "selecting the next dependency-complete task of the OpenAPI publication feature"
+      ],
+      "summary": "Decomposition of the OpenAPI publication idea into two reviewable tasks delivered in one pull request: generation and serving of the document by Runtime, then the committed generated copy, its CI drift check and the promotion of the durable rules into reference and engineering docs.",
+      "related": [
+        "ideas.specflow-runtime.openapi-publication",
+        "ideas.semantic-docs.execution-plan",
+        "architecture.runtime.endpoint-policy",
+        "architecture.runtime.authorization",
+        "engineering.repository.ci"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "server",
+        "security",
+        "docs",
+        "testing"
+      ],
+      "tags": [
+        "execution-plan",
+        "temporary",
+        "openapi",
+        "fastify",
+        "typebox"
+      ]
+    },
+    {
+      "id": "ideas.specflow-runtime.execution-plans.openapi-publication.task-a01",
+      "type": "engineering",
+      "title": "A01 — Runtime OpenAPI generation and endpoint",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/execution-plans/openapi-publication/tasks/A01-runtime-openapi.md",
+      "read_when": [
+        "implementing A01 of the OpenAPI publication plan"
+      ],
+      "summary": "Register OpenAPI generation in the Runtime composition root, derive an OpenAPI 3.1 document from the existing TypeBox route schemas and serve it at GET /api/openapi.json with the decided visibility.",
+      "related": [
+        "ideas.specflow-runtime.execution-plans.openapi-publication",
+        "ideas.specflow-runtime.openapi-publication",
+        "architecture.runtime.endpoint-policy",
+        "architecture.runtime.authorization"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "server",
+        "security",
+        "testing"
+      ],
+      "tags": [
+        "execution-task",
+        "temporary",
+        "implementation",
+        "openapi"
+      ]
+    },
+    {
+      "id": "ideas.specflow-runtime.execution-plans.openapi-publication.task-a02",
+      "type": "engineering",
+      "title": "A02 — Committed OpenAPI document, CI drift check and docs promotion",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/execution-plans/openapi-publication/tasks/A02-drift-and-docs.md",
+      "read_when": [
+        "implementing A02 of the OpenAPI publication plan"
+      ],
+      "summary": "Write docs/reference/api/openapi.generated.json from the Runtime generation function, fail CI when it is stale, document the endpoint and the regeneration workflow, and mark the idea superseded.",
+      "related": [
+        "ideas.specflow-runtime.execution-plans.openapi-publication",
+        "ideas.specflow-runtime.execution-plans.openapi-publication.task-a01",
+        "ideas.specflow-runtime.openapi-publication",
+        "engineering.repository.ci"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "docs",
+        "release",
+        "testing"
+      ],
+      "tags": [
+        "execution-task",
+        "temporary",
+        "implementation",
+        "openapi",
+        "ci"
       ]
     },
     {

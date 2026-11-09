@@ -73,6 +73,10 @@ be obtained, the semantic mode is disabled and search keeps working lexically, r
 - [AI package naming](ai-package-naming.md) — the `@nevo/ai-*` family and the existing session provider adapters.
 - [Local embeddings playground](local-embeddings-playground.md) — running a model in Docker and trying the CLI/API.
 
+## Execution plan
+
+Temporary task decomposition of delivery step 2: [execution plan](execution-plan/README.md).
+
 ## Proposed delivery order
 
 1. OpenAPI publication (small, independent; makes the later endpoint visible immediately).

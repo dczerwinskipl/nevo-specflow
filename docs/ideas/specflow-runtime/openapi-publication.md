@@ -52,6 +52,10 @@ writing). An OpenAPI document can therefore be generated from what exists, not h
   in pull request diffs.
 - Routes without schemas show up as gaps; closing them is a follow-up, not a precondition.
 
+## Execution plan
+
+Temporary task decomposition: [OpenAPI publication execution plan](execution-plans/openapi-publication/README.md).
+
 ## Using it
 
 Open the JSON in Swagger UI, Scalar, Bruno or Postman; or browse the viewer while

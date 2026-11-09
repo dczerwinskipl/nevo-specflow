@@ -58,6 +58,8 @@ does not know documentation frontmatter, taxonomies or Specifications.
 - It MUST NOT use native modules. Vector math is plain TypeScript over typed arrays.
 - It MUST NOT use a provider SDK. The adapter uses Node `fetch`.
 - It receives resolved settings from its consumer; it does not read SpecFlow configuration files.
+- It is `private: true` and bundled into the `@nevo/specflow` artifact, like `@nevo/specflow-runtime`;
+  it is not published on its own.
 
 ### 2. Ports
 

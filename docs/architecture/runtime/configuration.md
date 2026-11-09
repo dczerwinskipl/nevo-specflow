@@ -111,8 +111,11 @@ version-control capability owns `git`, whose keys and defaults are in
 [SpecFlow Git/worktree configuration](../../reference/configuration/specflow-git-worktrees.md). The documentation
 capability (`@nevo/specflow-docs`,
 [ADR 0020](../decisions/0020-documentation-discovery-is-a-product-capability.md)) owns the `docs`
-namespace and, while it is the only consumer, `ai.embeddings`; the `nevo-specflow docs` command and
-Runtime use the same parsers from that package.
+namespace and, while it is the only consumer, `ai.embeddings`. Runtime config loading invokes that
+package's parsers for these namespaces like any other feature parser. The `nevo-specflow docs`
+command uses the same parsers but is not Runtime config loading: it works without either config
+file (using the defaults in ADR 0020), reads and validates only `docs` and `ai.embeddings`, and does
+not require the `runtime` section.
 
 Configuration dependencies flow in one direction:
 
@@ -172,16 +175,18 @@ Current ownership is explicit:
   `commits.protectedBranches`/`allowedBranches`/`auto`); local owns `worktreesRoot` and may override
   `commits.auto.<capability>` (the local value wins; any other local `git.commits` key is rejected).
 - `docs`: project-owned (documentation root, taxonomy, non-authoritative path prefixes, the
-  `search.semantic` opt-in); local `docs` configuration is rejected.
+  `search.semantic` opt-in); local `docs` configuration is rejected, both by Runtime config loading
+  and by the `nevo-specflow docs` command.
 - `ai.embeddings`: allowed in both files; project config may hold a team default endpoint and local
   config overrides it, the local value winning per key. The embedding API key is never stored in
   either file: configuration holds only the name of the environment variable that contains it.
+  Either file may be absent; the local file alone may configure the endpoint.
 
 A local file that attempts to set project-owned policy is rejected before composition. Likewise,
 project config cannot contain local-owned credentials or workstation-specific TLS paths.
 
-`.nevo/local/state/` is reserved for persistent application-owned data such as Session bindings,
-transcript/read-model caches, workflow operation records, human-verification records, provider
+`.nevo/local/state/` is reserved for persistent application-owned data that cannot be rebuilt, such as
+Session bindings, transcript and read-model records, workflow operation records, human-verification records, provider
 aliases, and bounded diagnostics. Users should not treat that state as editable configuration, and
 it MUST NOT be deleted to recover from a problem.
 

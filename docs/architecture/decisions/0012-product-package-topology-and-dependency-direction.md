@@ -81,10 +81,10 @@ The diagram shows allowed direction, not a requirement that every package direct
 package reachable below it.
 
 - Product-neutral packages such as `@nevo/authorization`, `@nevo/http-client` and
-  `@nevo/ai-semantic-search` MUST NOT depend on SpecFlow product packages. They MAY depend on other neutral Nevo packages if a real shared
-  dependency is introduced later.
+  `@nevo/ai-semantic-search` MUST NOT depend on SpecFlow product packages. They MAY depend on
+  other neutral Nevo packages if a real shared dependency is introduced later.
 - `@nevo/specflow-contracts` MAY depend on neutral primitives but MUST NOT depend on Runtime, UI,
-  or the product composition root.
+  `@nevo/specflow-docs`, any other SpecFlow capability package, or the product composition root.
 - `@nevo/specflow-engine` MAY import the neutral documents vocabulary and schemas from
   `@nevo/specflow-contracts/documents` (archetype and template definitions, document ids, limits and
   error codes) and nothing else from that package. It MUST NOT import Runtime, UI, the product

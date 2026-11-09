@@ -43,6 +43,9 @@ Current. The decisions below were taken by the product owner on 2026-11-09.
   this repository's `scope` and `areas` values as fixed vocabulary.
 - **Commands agents run on every task must be cheap.** Starting Runtime, loading UI assets or
   requiring the UI build for a documentation lookup is not acceptable.
+- **No SpecFlow component writes corpus documents.** Engine-owned document commits write
+  Specification documents, which are not under the documentation root; `check --write` writes
+  generated files that are not part of the corpus.
 
 ## Decision
 
@@ -59,6 +62,9 @@ Current. The decisions below were taken by the product owner on 2026-11-09.
 - the configuration namespaces `docs` and, until a second consumer exists, `ai.embeddings` (parsing
   and ownership validation in a self-contained module; the engine receives resolved settings);
 - the Commander adapter at `./cli`, which `@nevo/specflow` mounts as `nevo-specflow docs`.
+
+Like `@nevo/specflow-runtime`, the package is `private: true` and bundled into the `@nevo/specflow`
+artifact; it is not published on its own.
 
 Dependency direction (ADR 0012): `@nevo/specflow-docs` MAY depend on `@nevo/ai-semantic-search`,
 `@nevo/specflow-contracts` and neutral foundations. It MUST NOT depend on `@nevo/specflow-runtime`,
@@ -77,18 +83,35 @@ namespace:
 - `docs.root` — the documentation root, relative to the project root (default `docs`);
 - `docs.taxonomy.scopes` and `docs.taxonomy.areas` — when declared, `scope` and `areas` values
   outside them are validation errors; when absent, the values are unrestricted;
-- a list of **non-authoritative path prefixes** under `docs.root`. Documents under them are excluded
-  from `context` and from search results unless the caller asks to include them (default: none).
+- a list of **non-authoritative path prefixes** under `docs.root`. `context` always excludes
+  documents under them, as it does today. `search` (CLI and HTTP) excludes them unless the caller
+  sets its include switch, which is the only such switch. `list`, `find` and `get` still return
+  them.
 
 Document types, required fields, statuses and inactive statuses are the product frontmatter
-contract and MUST NOT become configuration. The exact keys are defined by the configuration
-reference; ownership rules are in
-[project configuration and local state](../runtime/configuration.md).
+contract and MUST NOT become configuration.
+
+**Defaults.** These are the defaults of the `docs` and `ai.embeddings` settings, stated only here:
+
+| Setting                                                               | Default when absent              |
+| --------------------------------------------------------------------- | -------------------------------- |
+| `docs.root`                                                           | `docs`                           |
+| `docs.taxonomy.scopes` and `.areas`                                   | unrestricted                     |
+| non-authoritative path prefixes                                       | none                             |
+| `docs.search.semantic`                                                | off (`search` answers lexically) |
+| `ai.embeddings`                                                       | no endpoint configured           | The exact keys are defined by the configuration |
+| reference; ownership rules are in                                     |
+| [project configuration and local state](../runtime/configuration.md). |
 
 ### 3. Command surface
 
 `nevo-specflow docs` is an ordinary CLI command. It MUST NOT start Runtime, require a running
 Runtime, load UI assets or require the UI build.
+
+Every `docs` command MUST work in a Git repository without `.nevo/config.yaml` and without
+`.nevo/local/config.yaml`; a missing file means the defaults above. When the files exist, the
+command reads and validates only the `docs` and `ai.embeddings` namespaces. It MUST NOT require the
+`runtime` section or validate other capabilities' namespaces.
 
 ```text
 nevo-specflow docs list | find | get | context | check
@@ -101,8 +124,9 @@ nevo-specflow docs semantic index
   closed on inactive documents.
 - `search` is the only model-dependent command. Its results are content chunks grouped by
   document: document id, title, heading path, snippet and score. Every result carries a top-level
-  `mode` (`hybrid` or `lexical`) and, when `lexical`, a `reason`. Inactive documents and documents
-  under non-authoritative prefixes are excluded unless the caller asks to include the latter.
+  `mode` (`hybrid` or `lexical`) and, when `lexical`, a `reason`. Inactive documents are always
+  excluded; documents under non-authoritative prefixes are excluded unless the include switch is
+  set.
 - `semantic status` reports whether semantic search is enabled, the endpoint's reachability, the
   model and dimensions, and index freshness. It exits non-zero when semantic search is enabled but
   unavailable.
@@ -136,12 +160,10 @@ The index is refreshed incrementally, never rebuilt on every run (rebuild rules 
 1. **Runtime start** refreshes in the background. Startup MUST NOT wait for it; until the index is
    complete, the endpoint answers `mode: lexical` with reason "index building".
 2. **On read**: every `search` (CLI and HTTP) checks the corpus for changes and re-embeds only the
-   changed units before answering. The CLI can skip this check explicitly.
+   changed units before answering. A CLI caller MAY skip this check explicitly.
 
-There is no file watcher and no invalidation API. No SpecFlow component writes documents under
-`docs.root` today (Engine-owned document commits write Specification documents; `check --write`
-writes generated files that are not part of the corpus). A future SpecFlow writer of corpus
-documents MUST invalidate the units it changes.
+There is no file watcher and no invalidation API. A SpecFlow component that writes corpus documents
+MUST invalidate the units it changes.
 
 The CLI and a running Runtime share one index in `.nevo/local/cache/docs-index/`; the index is
 disposable cache, not state ([project configuration and local state](../runtime/configuration.md)).
@@ -190,7 +212,8 @@ and schemas live in `@nevo/specflow-contracts`.
   and `ideas/` as the non-authoritative prefix. Its root `pnpm docs:*` scripts build only
   `@nevo/specflow-docs` and its dependencies and run the same `docs` command adapter the product
   shell mounts, so agent lookups stay fast and do not need the UI build.
-- `find`, `get`, `context`, `check` and the generated index keep their behavior; agents and
+- `find`, `get`, `context`, `check` and the generated index keep their behavior, including
+  `context` excluding non-authoritative documents; agents and
   `tools/agents` that depend on them keep working.
 - Agents route natural-language questions to `search`, known vocabulary to `find`, and always read
   selected documents in full with `get`.

@@ -30,7 +30,7 @@ related:
 nevo-specflow/
   apps/                 optional standalone hosts     (workspace glob; currently empty)
   packages/             product packages (@nevo/* scope)
-    ai-semantic-search/  @nevo/ai-semantic-search       — product-neutral chunking, embeddings, local vector index and hybrid ranking
+    ai-semantic-search/  @nevo/ai-semantic-search       — product-neutral chunking, embeddings, local vector index and hybrid ranking; private, bundled into specflow
     authorization/       @nevo/authorization            — product-neutral scoped capability resolver
     figma-capture/       @nevo/figma-capture             — React metadata for opt-in design capture
     figma-core/          @nevo/figma-core               — neutral Figma authoring and canonical IR contracts
@@ -39,7 +39,7 @@ nevo-specflow/
     specflow-contracts/  @nevo/specflow-contracts       — shared SpecFlow resource/capability contracts
     specflow-engine/     @nevo/specflow-engine          — offline Engine: Project Home, Specifications, documents, Git, claims, workflow kernel; private
     specflow/            @nevo/specflow                 — the `nevo-specflow` CLI shell + command composition
-    specflow-docs/       @nevo/specflow-docs            — documentation capability: frontmatter contract, discovery, semantic search (.) + CLI adapter (./cli)
+    specflow-docs/       @nevo/specflow-docs            — documentation capability: frontmatter contract, discovery, semantic search (.) + CLI adapter (./cli); private, bundled into specflow
     specflow-runtime/    @nevo/specflow-runtime         — Runtime vertical: capability (.) + CLI adapter (./cli); private, bundled into specflow
     specflow-ui/         @nevo/specflow-ui              — product UI capability and React application; private
   tools/                repository-internal tooling — never published, all TypeScript

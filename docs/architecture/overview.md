@@ -43,11 +43,12 @@ Nevo SpecFlow is one local product, `nevo-specflow`, installed into a Git reposi
 
 - A **person** works mainly in the browser UI, and uses the CLI to initialise a project, start
   SpecFlow and recover interrupted operations.
-- An **external agent** that the person runs in a terminal (for example Claude Code) reads and
-  changes Specifications only through offline CLI commands; it never talks to the Runtime.
-- **Managed agents** are provider CLIs that the Runtime starts for a Session. They work in the
-  bound workspace and reach the person only through the Runtime, which shows their questions and
-  permission requests in the UI.
+- An **external agent** that the person runs in a terminal (for example Claude Code) uses offline
+  CLI commands for SpecFlow operations on Specifications and documents, and edits files in its
+  checkout with its own tools; it never talks to the Runtime.
+- **Managed agents** are provider CLIs that the Runtime starts for a Session. They edit files in the
+  bound workspace with their own native tools, within their mode's write authority, and reach the
+  person only through the Runtime, which shows their questions and permission requests in the UI.
 
 There are two kinds of process. An offline command opens the Engine in its own short-lived
 process. `nevo-specflow start` keeps its process running as the Runtime host: the same process
@@ -92,14 +93,17 @@ Owners: [CLI contract](../reference/cli/nevo-specflow-contract.md),
 
 ## Responsibility boundaries
 
-- **Engine** is the only place that changes Specification and workspace state: Project Home and
-  workspace bindings, Specification Create and Close, documents and Engine-owned commits,
+- **Engine** owns every SpecFlow product operation on project state: Project Home and workspace
+  bindings, Specification Create and Close, document operations and Engine-owned commits,
   definitions, workspace execution claims and the workflow kernel. It is a library without a
-  server; mutations are serialized by the project control lock and shared resources.
+  server; these operations are serialized by the project control lock and shared resources. The
+  Engine does not own every physical write: agents edit workspace files with their own tools, and a
+  writing managed Turn first takes a workspace execution claim so that it excludes the Engine's own
+  writers for its duration.
 - **Runtime** is the lifecycle owner of long-lived resources: the HTTP server, Sessions and their
   store, provider processes, operation progress and authentication. HTTP and SSE are adapters over
-  its feature modules. Specifications, documents, commits and workspace bindings change only
-  through the Engine; Runtime itself writes only its own local state, such as the Session store.
+  its feature modules. Runtime performs Specification, document, commit and binding operations only
+  through the Engine, and itself writes only its own local state, such as the Session store.
 - **UI** talks to the Runtime only through the `/api` contracts in `@nevo/specflow-contracts`; it
   never imports Runtime internals. Reusable components come from the `@nevo/ui` design system.
 - **CLI** (`@nevo/specflow`) is the composition root: it composes the commands and packages the

@@ -21,13 +21,13 @@ const FENCE_OPEN = /^ {0,3}(`{3,}|~{3,})/;
 const blank = (text: string): string => text.replace(/[^\n]/g, ' ');
 
 /**
- * Blank out what is not prose, keeping line structure: fenced code blocks (CommonMark fences: up to
- * three spaces of indent, three or more backticks or tildes, closed only by a fence of the same
- * character at least as long; an unclosed fence runs to the end), HTML comments and inline code.
- * Indented (four-space) code blocks are not detected: they cannot be told apart from list-item
- * continuation without a full parser.
+ * Blank out code blocks and HTML comments, keeping line structure: fenced code blocks (CommonMark
+ * fences: up to three spaces of indent, three or more backticks or tildes, closed only by a fence of
+ * the same character at least as long; an unclosed fence runs to the end) and `<!-- -->`. Indented
+ * (four-space) code blocks are not detected: they cannot be told apart from list-item continuation
+ * without a full parser. Inline code is kept, because heading slugs include its text.
  */
-function stripNonProse(body: string): string {
+function stripBlocks(body: string): string {
   const lines = body.split('\n');
   let fence: { char: string; length: number } | undefined;
   for (const [i, line] of lines.entries()) {
@@ -50,10 +50,14 @@ function stripNonProse(body: string): string {
     }
   }
 
-  return lines
-    .join('\n')
-    .replace(/<!--[\s\S]*?-->/g, blank)
-    .replace(/(`+)[^`\n][\s\S]*?\1/g, (m) => (m.includes('\n\n') ? m : blank(m)));
+  return lines.join('\n').replace(/<!--[\s\S]*?-->/g, blank);
+}
+
+/** {@link stripBlocks}, then inline code spans too: what remains is prose that can hold links. */
+function stripNonProse(body: string): string {
+  return stripBlocks(body).replace(/(`+)[^`\n][\s\S]*?\1/g, (m) =>
+    m.includes('\n\n') ? m : blank(m),
+  );
 }
 
 /**
@@ -141,8 +145,7 @@ function headings(text: string): string[] {
 /** Every anchor a document defines: heading slugs (with GitHub duplicate suffixes) and HTML ids. */
 export function documentAnchors(body: string): Set<string> {
   const anchors = new Set<string>();
-  const text = stripNonProse(body);
-  for (const heading of headings(text)) {
+  for (const heading of headings(stripBlocks(body))) {
     const base = slugifyHeading(heading);
     let slug = base;
     for (let n = 1; anchors.has(slug); n++) {
@@ -152,7 +155,9 @@ export function documentAnchors(body: string): Set<string> {
     anchors.add(slug);
   }
 
-  for (const m of text.matchAll(/<a\b[^>]*?\s(?:name|id)\s*=\s*(?:"([^"]+)"|'([^']+)')/gi)) {
+  for (const m of stripNonProse(body).matchAll(
+    /<a\b[^>]*?\s(?:name|id)\s*=\s*(?:"([^"]+)"|'([^']+)')/gi,
+  )) {
     anchors.add(m[1] ?? m[2] ?? '');
   }
 

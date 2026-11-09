@@ -144,6 +144,13 @@ describe('validateLinks', () => {
     ]);
   });
 
+  it('keeps inline code text in heading anchors, as GitHub does', () => {
+    const coded = doc('docs/coded.md', '## Use `openWorkflow` and `inspectExecution`\n');
+    const source = doc('docs/source.md', '[d](coded.md#use-openworkflow-and-inspectexecution)');
+
+    expect(validateLinks([coded, source], nothingElse)).toEqual([]);
+  });
+
   it('ignores query strings and decodes reserved characters', () => {
     const source = doc('docs/source.md', '[q](a/target.md?plain=1#known%2Dpart)');
 

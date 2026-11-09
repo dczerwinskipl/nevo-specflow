@@ -84,7 +84,7 @@ namespace:
 - `docs.taxonomy.scopes` and `docs.taxonomy.areas` — when declared, `scope` and `areas` values
   outside them are validation errors; when absent, the values are unrestricted;
 - a list of **non-authoritative path prefixes** under `docs.root`. `context` always excludes
-  documents under them, as it does today. `search` (CLI and HTTP) excludes them unless the caller
+  documents under them. `search` (CLI and HTTP) excludes them unless the caller
   sets its include switch, which is the only such switch. `list`, `find` and `get` still return
   them.
 
@@ -93,15 +93,16 @@ contract and MUST NOT become configuration.
 
 **Defaults.** These are the defaults of the `docs` and `ai.embeddings` settings, stated only here:
 
-| Setting                                                               | Default when absent              |
-| --------------------------------------------------------------------- | -------------------------------- |
-| `docs.root`                                                           | `docs`                           |
-| `docs.taxonomy.scopes` and `.areas`                                   | unrestricted                     |
-| non-authoritative path prefixes                                       | none                             |
-| `docs.search.semantic`                                                | off (`search` answers lexically) |
-| `ai.embeddings`                                                       | no endpoint configured           | The exact keys are defined by the configuration |
-| reference; ownership rules are in                                     |
-| [project configuration and local state](../runtime/configuration.md). |
+| Setting                             | Default when absent              |
+| ----------------------------------- | -------------------------------- |
+| `docs.root`                         | `docs`                           |
+| `docs.taxonomy.scopes` and `.areas` | unrestricted                     |
+| non-authoritative path prefixes     | none                             |
+| `docs.search.semantic`              | off (`search` answers lexically) |
+| `ai.embeddings`                     | no endpoint configured           |
+
+The exact keys are defined by the configuration reference; ownership rules are in
+[project configuration and local state](../runtime/configuration.md).
 
 ### 3. Command surface
 

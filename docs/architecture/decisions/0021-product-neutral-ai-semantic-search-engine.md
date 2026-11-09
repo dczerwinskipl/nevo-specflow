@@ -102,17 +102,20 @@ engine does not fail a search because embeddings are unavailable.
 
 ### 6. Local index
 
-- The local `VectorStore` keeps two files: a manifest (schema version, chunker version, protocol,
-  model, dimensions, and per chunk id its content hash and vector offset) and a binary `Float32`
-  vector file.
-- Refresh is incremental: only units whose content hash changed are re-chunked and re-embedded, and
-  removed units are deleted.
-- A mismatch of schema version, chunker version, protocol, model or dimensions discards the index
-  and rebuilds it in full. There is no index migration.
-- Writes are atomic: a complete manifest and vector pair is written to temporary files and renamed
-  into place, so a reader always sees a complete pair from one write.
-- One writer at a time holds a lock in the index directory; concurrent writers in the CLI and a
-  running Runtime serialize on it.
+- The local `VectorStore` keeps each index generation as a pair of files: a manifest (schema
+  version, chunker version, protocol, model, dimensions, and per chunk id its content hash and
+  vector offset) and a binary `Float32` vector file.
+- Refresh is incremental: only chunks that are new or whose content hash changed are re-embedded,
+  and chunks that no longer exist are deleted.
+- A mismatch of schema version, chunker version, protocol, model or dimensions, and an incomplete
+  or damaged pair, discards the index and rebuilds it in full. There is no index migration.
+- Writes are atomic: each write creates a new generation pair (the vectors first, then the manifest
+  through a temporary file renamed to a new name) and never replaces an existing file, so a reader
+  always sees a complete pair from one write and an open reader cannot make a write fail on
+  Windows. Readers take the highest generation; superseded pairs are removed.
+- One writer at a time holds a lock in the index directory. A second writer in the CLI or a running
+  Runtime does not wait: it gets `busy`, and its consumer degrades to lexical search. A lock whose
+  owner process is gone, or that its holder stopped refreshing, is stale and reclaimed.
 - The consumer chooses the index directory. It is disposable cache: deleting it loses nothing but
   the embedding cost of rebuilding.
 

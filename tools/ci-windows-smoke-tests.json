@@ -39,6 +39,17 @@
       "dir": "packages/specflow-engine",
       "file": "test/create/create-options.test.ts",
       "tests": ["treats an unreadable worktree folder as not existing"]
+    },
+    {
+      "package": "@nevo/ai-semantic-search",
+      "dir": "packages/ai-semantic-search",
+      "file": "src/file-vector-store.test.ts",
+      "tests": [
+        "writes pairs another instance reads while a reader holds the current manifest open",
+        "keeps readers on a complete pair and removes an abandoned write only once it is stale",
+        "reads a damaged index as missing so a writer resets it, and an unopenable one as unreadable",
+        "lets one writer in at a time and reclaims dead, reused-pid and unrefreshed locks"
+      ]
     }
   ]
 }

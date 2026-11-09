@@ -7,6 +7,7 @@ import type {
   IndexManifest,
   ManifestOutcome,
   StoreUnreadable,
+  StoreWriteFailed,
   VectorStore,
 } from './ports';
 import { sameIdentity } from './vector-store-contract';
@@ -33,6 +34,7 @@ export interface RefreshRequest {
  * - `busy`: another writer holds or changed the index; nothing was embedded or written.
  * - `embedding-failed`: the provider failed; the index is unchanged.
  * - `unreadable`: the index cannot be read right now; nothing was written.
+ * - `write-failed`: the lock or the index could not be written; the index is unchanged.
  */
 export type RefreshOutcome =
   | { readonly status: 'current'; readonly generation: number }
@@ -45,7 +47,8 @@ export type RefreshOutcome =
     }
   | { readonly status: 'busy'; readonly message: string }
   | { readonly status: 'embedding-failed'; readonly failure: EmbeddingFailure }
-  | StoreUnreadable;
+  | StoreUnreadable
+  | StoreWriteFailed;
 
 /**
  * Diffs the current chunks against a manifest. No manifest or another identity means a full
@@ -79,13 +82,29 @@ export function planRefresh(
 
 /**
  * Brings the store up to date with the chunks. The plan is first computed without the lock, so an
- * up-to-date index costs one manifest read; otherwise the refresh opens the single writer (a held
- * lock answers `busy` without waiting), re-reads the manifest, embeds only the planned chunks in one
- * provider call and applies them with the manifest generation it read as the compare-and-swap base.
- * A provider without configured dimensions is probed for them. Write failures are thrown.
+ * up-to-date index costs one manifest read (a provider without configured dimensions is then
+ * checked against the stored ones, without a probe). Otherwise the refresh resolves the dimensions
+ * (probing when not configured), opens the single writer (a held lock answers `busy` without
+ * waiting), re-reads the manifest, embeds only the planned chunks in one provider call and applies
+ * them with the manifest generation it read as the compare-and-swap base. Only a contract violation
+ * throws.
  */
 export async function refreshIndex(request: RefreshRequest): Promise<RefreshOutcome> {
   const { chunks, provider, store } = request;
+
+  const unlocked = await store.readManifest();
+  if (unlocked.status === 'unreadable') {
+    return unlocked;
+  }
+
+  const unlockedManifest = manifestOf(unlocked);
+  if (unlockedManifest) {
+    const stored = unlockedManifest.identity;
+    const assumed = identityFor(provider, provider.dimensions ?? stored.dimensions);
+    if (isCurrent(planRefresh(chunks, assumed, unlockedManifest))) {
+      return { status: 'current', generation: unlockedManifest.generation };
+    }
+  }
 
   let dimensions = provider.dimensions;
   if (dimensions === undefined) {
@@ -97,25 +116,9 @@ export async function refreshIndex(request: RefreshRequest): Promise<RefreshOutc
     dimensions = probe.dimensions;
   }
 
-  const identity: IndexIdentity = {
-    chunkerVersion: CHUNKER_VERSION,
-    protocol: provider.protocol,
-    model: provider.model,
-    dimensions,
-  };
-
-  const unlocked = await store.readManifest();
-  if (unlocked.status === 'unreadable') {
-    return unlocked;
-  }
-
-  const unlockedManifest = manifestOf(unlocked);
-  if (unlockedManifest && isCurrent(planRefresh(chunks, identity, unlockedManifest))) {
-    return { status: 'current', generation: unlockedManifest.generation };
-  }
-
+  const identity = identityFor(provider, dimensions);
   const opened = await store.openWriter();
-  if (opened.status === 'busy') {
+  if (opened.status !== 'opened') {
     return opened;
   }
 
@@ -161,6 +164,10 @@ export async function refreshIndex(request: RefreshRequest): Promise<RefreshOutc
       return { status: 'busy', message: 'Another writer changed the index during the refresh.' };
     }
 
+    if (outcome.status === 'write-failed') {
+      return outcome;
+    }
+
     return {
       status: 'refreshed',
       generation: outcome.generation,
@@ -171,6 +178,15 @@ export async function refreshIndex(request: RefreshRequest): Promise<RefreshOutc
   } finally {
     await opened.writer.close();
   }
+}
+
+function identityFor(provider: EmbeddingProvider, dimensions: number): IndexIdentity {
+  return {
+    chunkerVersion: CHUNKER_VERSION,
+    protocol: provider.protocol,
+    model: provider.model,
+    dimensions,
+  };
 }
 
 function manifestOf(outcome: Exclude<ManifestOutcome, StoreUnreadable>): IndexManifest | undefined {

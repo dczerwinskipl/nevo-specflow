@@ -115,12 +115,24 @@ export interface VectorStoreChange {
   readonly delete: readonly string[];
 }
 
+/**
+ * A write the store could not carry out (for example the lock file or index directory cannot be
+ * written, or the index cannot be read before writing); nothing was applied.
+ */
+export interface StoreWriteFailed {
+  readonly status: 'write-failed';
+  readonly message: string;
+}
+
 export type ApplyOutcome =
-  { readonly status: 'applied'; readonly generation: number } | { readonly status: 'conflict' };
+  | { readonly status: 'applied'; readonly generation: number }
+  | { readonly status: 'conflict' }
+  | StoreWriteFailed;
 
 /**
- * The single writer of a store. It holds the store's write lock until `close`; `apply` after
- * `close` violates the contract and throws.
+ * The single writer of a store. It holds the store's write lock until `close`. `apply` calls must
+ * not overlap, and `apply` after `close` violates the contract and throws. `close` does not throw:
+ * a lock it could not remove becomes stale and is reclaimed by the next writer.
  */
 export interface VectorStoreWriter {
   apply(change: VectorStoreChange): Promise<ApplyOutcome>;
@@ -130,7 +142,8 @@ export interface VectorStoreWriter {
 /** `busy`: another writer holds the lock; the caller does not wait for it. */
 export type OpenWriterOutcome =
   | { readonly status: 'opened'; readonly writer: VectorStoreWriter }
-  | { readonly status: 'busy'; readonly message: string };
+  | { readonly status: 'busy'; readonly message: string }
+  | StoreWriteFailed;
 
 /** A store that cannot be read answers this instead of throwing (for example a locked file). */
 export interface StoreUnreadable {
@@ -171,9 +184,9 @@ export interface VectorQuery {
 /**
  * Stores vectors by chunk id. Read methods never throw for store state or I/O problems: they answer
  * `missing` or `unreadable`, and never wait for a writer. Writes go through the one writer
- * `openWriter` hands out at a time; `openWriter` and `apply` throw only for a change that violates
- * the contract (see `validateChange`) or a failed write; a change computed from a state the store
- * has left surfaces as `conflict`.
+ * `openWriter` hands out at a time. A lock or write I/O failure answers `write-failed`, a change
+ * computed from a state the store has left answers `conflict`; only a contract violation (see
+ * `validateChange` and `VectorStoreWriter`) throws.
  */
 export interface VectorStore {
   readManifest(): Promise<ManifestOutcome>;

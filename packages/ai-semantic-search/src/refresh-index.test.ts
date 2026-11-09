@@ -1,11 +1,11 @@
-import { mkdtemp, readFile, rm, truncate } from 'node:fs/promises';
+import { mkdtemp, readdir, rm, truncate } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
 import { createFakeEmbeddingProvider } from './fake-embedding-provider';
-import { MANIFEST_FILE, createFileVectorStore } from './file-vector-store';
+import { createFileVectorStore } from './file-vector-store';
 import { createInMemoryVectorStore } from './in-memory-vector-store';
 import { chunkMarkdownUnit } from './markdown-chunker';
 import type { SourceUnit } from './ports';
@@ -40,6 +40,12 @@ describe('refreshIndex', () => {
       deleted: 0,
     });
     expect(await refreshIndex({ chunks: initial, provider, store })).toEqual({
+      status: 'current',
+      generation: 1,
+    });
+    // A provider without configured dimensions is not probed while the index is current.
+    const unconfigured = { ...provider, dimensions: undefined };
+    expect(await refreshIndex({ chunks: initial, provider: unconfigured, store })).toEqual({
       status: 'current',
       generation: 1,
     });
@@ -85,13 +91,11 @@ describe('refreshIndex', () => {
         embedded: chunks.length,
       });
 
-      const { vectorsFile } = JSON.parse(await readFile(join(root, MANIFEST_FILE), 'utf8')) as {
-        vectorsFile: string;
-      };
-      await truncate(join(root, vectorsFile), 5);
+      const current = (await readdir(root)).find((name) => name.startsWith('vectors-2-'))!;
+      await truncate(join(root, current), 5);
       expect(await refreshIndex({ chunks, provider: other, store })).toMatchObject({
         status: 'refreshed',
-        generation: 1,
+        generation: 3,
         rebuilt: true,
         embedded: chunks.length,
       });

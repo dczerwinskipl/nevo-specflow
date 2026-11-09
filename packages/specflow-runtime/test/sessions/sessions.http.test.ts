@@ -4,7 +4,8 @@ import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { SessionSnapshot } from '@nevo/specflow-contracts/sessions';
+import { sessionValidators } from '@nevo/specflow-contracts/sessions';
+import type { SessionSnapshot, WorkPage } from '@nevo/specflow-contracts/sessions';
 import { createRuntimeApp } from '../../src/server/app';
 import { passwordConfig } from '../auth/support/config';
 
@@ -46,6 +47,7 @@ describe('managed Session HTTP', () => {
       payload: { requestId: randomUUID(), providerId: 'mock', mode: 'read-only' },
     });
     expect(created.statusCode).toBe(201);
+    expect(sessionValidators.createResult(created.json())).toBe(true);
     const { sessionId } = created.json<{ sessionId: string }>();
     const payload = { requestId: randomUUID(), message: 'Hello' };
     const start = await app!.inject({
@@ -54,6 +56,7 @@ describe('managed Session HTTP', () => {
       payload,
     });
     expect(start.statusCode).toBe(202);
+    expect(sessionValidators.startResult(start.json())).toBe(true);
     await vi.waitFor(async () => {
       const s = (await app!.inject('/api/sessions/' + sessionId)).json<SessionSnapshot>();
       expect(s.entries.at(-1)?.kind).toBe('outcome');
@@ -69,6 +72,12 @@ describe('managed Session HTTP', () => {
     );
     expect(work.statusCode).toBe(200);
     expect(work.json<{ items: unknown[] }>().items).toHaveLength(1);
+    expect(sessionValidators.work(work.json())).toBe(true);
+    expect(work.json<WorkPage>().counts).toEqual({
+      total: 1,
+      inProgress: 0,
+      byKind: { commentary: 1, reasoning: 0, interaction: 0, tool: 0 },
+    });
     const snapshot = (await app!.inject('/api/sessions/' + sessionId)).json<SessionSnapshot>();
     expect(snapshot.session.capabilities.start).toBe(true);
     const ref = snapshot.entries.find((e) => e.kind === 'answer')!.text.content!;

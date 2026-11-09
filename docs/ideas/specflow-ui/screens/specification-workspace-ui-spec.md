@@ -611,6 +611,27 @@ Before Tasks exist, expose a readable Specification-content target and the norma
 Do not simulate deterministic Specification phases or present Add Task as the expected path.
 An empty Specification must explain the preparation path rather than imply that no work is possible.
 
+Implemented 2026-11-08 ([project-mode Overview plan](../../specflow-runtime/project-mode-spec-overview/README.md)):
+
+- **Sections independent of Tasks.** The description and main-document preview, Documents (when it
+  has documents) and Continue session render whenever their data exists; "no Tasks"
+  (`preparationState: empty`) only selects the preparation block and the empty Tasks state.
+- **Preparation block** (work column): shown when there are no Tasks and no recommended Session.
+  With the start offered (`actions.startSession` available or `no_provider`) its **Rozpocznij
+  sesję** button opens `/specs/:specId/sessions/new`. With `sessions_disabled` it keeps the heading
+  and explains "Zadania przygotowuje agent w sesji. Sesje są wyłączone na tym serwerze.", with
+  `forbidden` "Nie masz uprawnień do rozpoczęcia sesji dla tej specyfikacji.", without a button.
+  The legacy conversation dialog is removed.
+- **Empty Tasks.** The Tasks section keeps its **Zadania** header (the navigator's `#tasks-heading`
+  target) without count or execute control, and below it the `EmptyState` **Nie ma jeszcze zadań** /
+  "Zadania pojawią się tutaj, gdy specyfikacja zostanie przygotowana do realizacji." as the
+  row-sized, start-aligned `variant="inline"` without a glyph (the header already shows the Tasks
+  icon) and without actions, its text at the rows' inset. The owner rejected the bordered
+  `variant="default"` block as too heavy and the repeated icon as redundant (2026-11-08).
+- **Activity history.** The "Specification created" event does not open the Secondary by default;
+  only a Session (later Task or document) event does. Times render with the relative-time helper;
+  the date-only created event renders as its calendar date without a time-zone shift.
+
 ### Return, inspect and execute Tasks
 
 ```text
@@ -707,13 +728,28 @@ question defined in the responsive contract above.
 
 Session list/history opens deliberate contextual detail instead of expanding all Sessions on the
 main Specification surface. It belongs to this Specification, includes current and settled
-conversations, and offers the shared start action for a new Specification conversation. The exact
-entry label and visible-action placement remain composition decisions.
+conversations, and offers the shared start action for a new Specification conversation. Accepted
+2026-11-08: **Wszystkie sesje** (navigator, Continue session) opens `/specs/:specId/sessions`,
+specified in the [Specification Sessions list UI spec](specification-sessions-list-ui-spec.md).
+
+**Workspace Sessions section** (project and demo mode): the associated, non-archived Sessions, newest
+created first, at most 100 with `hasMore`
+([Specification Workspace API](../../../reference/api/specification-workspace.md#project-sessions-section)).
+It feeds only the navigator preview (first three `active`/`attention` rows, attention first; the
+**{{count}} aktywne** count only without `hasMore` and `unknown` rows, otherwise the partial-activity
+line) and **Continue session**: one fully clickable row for `recommendedSessionId`, title or **Sesja
+bez nazwy**. Session status there is Session readiness only, never an Engine attempt fact
+([AI Session UX](../../../product/specflow/ui/ai-session-ux.md#session-association-vs-current-execution)).
 
 ### New Session
 
 New session -> shared Session-start interaction -> choose agent/provider and optional execution
 details -> normal Session/composer. Do not embed another standalone prompt editor here.
+
+Entry points (the Sessions list header, its empty state, Continue session's start action and the
+Overview's preparation block) open `/specs/:specId/sessions/new` and follow `actions.startSession`:
+shown when available or with `no_provider`; omitted with `forbidden` or `sessions_disabled`
+([New Session UI spec](new-session-ui-spec.md), scenario (h1)).
 
 Starting a Session from selected Tasks must preserve the complete selected Task set.
 

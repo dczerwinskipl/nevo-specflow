@@ -1706,6 +1706,87 @@
       ]
     },
     {
+      "id": "ideas.specflow-runtime.project-mode-spec-overview",
+      "type": "architecture",
+      "title": "Project-mode Specification Overview — gap analysis and minimal-complete scope (PR",
+      "status": "current",
+      "file": "docs/ideas/specflow-runtime/project-mode-spec-overview/README.md",
+      "read_when": [
+        "making the Specification Overview work against a real project Runtime (not --demo)",
+        "changing which workspace sections are not_implemented, empty or available in project mode",
+        "changing the Overview visibility rules that depend on preparationState / isEmpty"
+      ],
+      "summary": "Why the project-mode Specification Overview shows only \"Niedostępne na tym serwerze\" (main pane and Activity history) although Documents and Sessions are real, what the Engine already provides, and the decided minimal-complete scope for PR #126: a Tasks contribution from the verified manifest, a real (partial) activity contribution, an overview-derived summary, Overview visibility rules decoupled from \"no Tasks\", the preparation call-to-action wired to New Session, contract changes, task breakdown, verification and the owner decisions of 2026-11-08 (Tasks EmptyState, partial activity).",
+      "related": [
+        "reference.api.specification-workspace",
+        "ideas.specflow-ui.screens.specification-workspace",
+        "ideas.specflow-runtime.session-association",
+        "ideas.specflow-ui.session-association-ux",
+        "reference.api.specs-overview",
+        "reference.api.specification-documents",
+        "architecture.runtime.task-read-composition"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "server",
+        "ui"
+      ],
+      "tags": [
+        "specification",
+        "workspace",
+        "overview",
+        "tasks",
+        "activity",
+        "sessions",
+        "documents",
+        "planning"
+      ]
+    },
+    {
+      "id": "ideas.specflow-runtime.session-association",
+      "type": "architecture",
+      "title": "Session association registry, Session list and Specification Session integration (stage 3)",
+      "status": "current",
+      "file": "docs/ideas/specflow-runtime/session-association/README.md",
+      "read_when": [
+        "asking why the Session-to-Specification/Task association is designed the way it is",
+        "changing the association storage, the composed create, the Session scope or spec.start-session",
+        "picking up a stage 3 follow-up (execute-write with specId, Task identity, Engine Task source)"
+      ],
+      "summary": "Decision record of stage 3 (owner decisions 2026-11-08, delivered in PR #126). Sessions stay independent; a separate durable association registry in the Session SQLite records which Specification (and Tasks) a Session belongs to, is written atomically by the composed create, backs the SessionReferenceOwner seam, and gives every Session capability except execute-write one Spec-bearing scope, so granular role capabilities at {specId} apply to that Specification's Sessions. Keeps the decisions, options, rationale and open follow-ups; the contracts live in the Sessions API, storage, authorization and workspace documents.",
+      "related": [
+        "ideas.specflow-runtime.session-ui-integration.plan",
+        "reference.api.sessions",
+        "architecture.ai.session-storage-and-lifecycle",
+        "architecture.runtime.authorization",
+        "reference.api.specification-workspace",
+        "reference.api.task-reads",
+        "ideas.specflow-engine.managed-session-integration",
+        "ideas.specflow-engine.ownership",
+        "product.specflow.ui.ai-session-ux",
+        "ideas.specflow-ui.full-session-screen-structure",
+        "ideas.specflow-ui.screens.full-session"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "server",
+        "security",
+        "ui"
+      ],
+      "tags": [
+        "sessions",
+        "associations",
+        "authorization",
+        "navigation",
+        "session-list",
+        "workspace",
+        "planning"
+      ]
+    },
+    {
       "id": "product.specflow.ui.application-architecture",
       "type": "architecture",
       "title": "SpecFlow UI application architecture",
@@ -5058,6 +5139,48 @@
       ]
     },
     {
+      "id": "ideas.specflow-runtime.session-ui-integration.plan",
+      "type": "engineering",
+      "title": "Managed Session UI integration and Session actions — delivery record",
+      "status": "current",
+      "file": "docs/ideas/specflow-runtime/session-ui-integration/plan.md",
+      "read_when": [
+        "asking what the feat/session-ui-integration delivery decided and what it left open",
+        "looking up what stage 3 (Session associations and the Session list) delivered"
+      ],
+      "summary": "Delivered record of the Managed Session UI integration (T1-T13): real telemetry, closed command acknowledgements, unknown-Turn reconcile, multi-select questions, Antigravity icon, Work counts and classified digest, Session rename/archive/unarchive/delete end to end; plus stage 3 (PR #126, T1-T12): the Session association registry, Session list, composed create from a Specification and their UI. Keeps the owner decisions and the open follow-ups; the behaviour lives in the owning contracts.",
+      "related": [
+        "reference.api.sessions",
+        "reference.api.session-telemetry",
+        "architecture.ai.session-storage-and-lifecycle",
+        "architecture.runtime.authorization",
+        "ideas.specflow-runtime.session-v10-backend-readiness",
+        "ideas.specflow-ui.components.session-chat-v10-design",
+        "ideas.specflow-ui.full-session-screen-structure",
+        "ideas.specflow-ui.session-actions-ux",
+        "ideas.specflow-runtime.session-association",
+        "ideas.specflow-ui.session-association-ux"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "server",
+        "security",
+        "ui",
+        "testing"
+      ],
+      "tags": [
+        "sessions",
+        "telemetry",
+        "interactions",
+        "work",
+        "session-actions",
+        "planning",
+        "implementation"
+      ]
+    },
+    {
       "id": "ideas.specflow-runtime.session-v10-backend-readiness",
       "type": "engineering",
       "title": "Session migration remainder and V10 backend readiness",
@@ -5828,6 +5951,39 @@
       ]
     },
     {
+      "id": "ideas.specflow-ui.screens.specification-sessions-list",
+      "type": "product",
+      "title": "Specification Sessions list UI spec",
+      "status": "draft",
+      "file": "docs/ideas/specflow-ui/screens/specification-sessions-list-ui-spec.md",
+      "read_when": [
+        "implementing or reviewing the Sessions list of a Specification (/specs/:specId/sessions)",
+        "changing its rows, current/archive collections, paging or refusal states"
+      ],
+      "summary": "Screen contract of a Specification's Sessions list: rows of the Sessions associated with the Specification read from the paged Session list API, Current/Archive collections, explicit Show more paging that tolerates short and empty pages, states, gating of New session and refresh-on-action freshness.",
+      "related": [
+        "ideas.specflow-ui.screens",
+        "ideas.specflow-ui.screens.specification-workspace",
+        "ideas.specflow-ui.screens.new-session",
+        "ideas.specflow-ui.navigation-route-model",
+        "ideas.specflow-ui.session-association-ux",
+        "reference.api.sessions",
+        "product.specflow.ui.ai-session-ux"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "ai"
+      ],
+      "tags": [
+        "sessions",
+        "session-list",
+        "paging",
+        "archive",
+        "associations"
+      ]
+    },
+    {
       "id": "ideas.specflow-ui.screens.specification-workspace",
       "type": "product",
       "title": "Specification UI spec",
@@ -5914,6 +6070,84 @@
         "review",
         "evidence",
         "actions"
+      ]
+    },
+    {
+      "id": "ideas.specflow-ui.session-actions-ux",
+      "type": "product",
+      "title": "Session telemetry refresh, unknown-Turn reconcile and Session actions — decision record",
+      "status": "current",
+      "file": "docs/ideas/specflow-ui/session-actions-ux/README.md",
+      "read_when": [
+        "asking why the provider-limits refresh, the unknown-Turn notice or the Session actions look the way they do",
+        "reconsidering an alternative rejected for plan decisions D1, D2 or D10"
+      ],
+      "summary": "Rationale and decision record for plan decisions D1, D2 and D10 of the Managed Session UI integration, accepted by the owner on 2026-11-08 and implemented. The behaviour itself lives in full-session-screen-structure.md §7.7, §17.1 and §22.1 and Chat V10 §3.1/§6.",
+      "related": [
+        "ideas.specflow-ui.full-session-screen-structure",
+        "ideas.specflow-ui.components.session-chat-v10-design",
+        "ideas.specflow-ui.components.session-composer-design",
+        "product.specflow.ui.documents-archetypes",
+        "reference.api.session-telemetry",
+        "reference.api.sessions"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "ai",
+        "runtime"
+      ],
+      "tags": [
+        "sessions",
+        "telemetry",
+        "reconcile",
+        "recovery",
+        "rename",
+        "archive",
+        "delete",
+        "session-actions"
+      ]
+    },
+    {
+      "id": "ideas.specflow-ui.session-association-ux",
+      "type": "product",
+      "title": "Session association UX — Session lists, post-delete destination, Context and workspace status (D10)",
+      "status": "current",
+      "file": "docs/ideas/specflow-ui/session-association-ux/README.md",
+      "read_when": [
+        "asking why standalone Sessions left the UI, or why delete goes where it goes",
+        "asking why the Specification Sessions list pages explicitly with current/archive collections",
+        "asking why Session status never takes Engine attempt facts"
+      ],
+      "summary": "Decision record (owner decisions 2026-11-08, delivered in PR #126) for the D10 UX items of the stage 3 Session association design: standalone Sessions removed from the UI, the Specification Sessions list on the paged Session list read, post-delete destination from the association, Context Specification/Related Tasks from the association read, New Session gating and Session-owned status. Keeps decisions, rationale and rejected alternatives; the behaviour lives in the owning screen and structure documents.",
+      "related": [
+        "ideas.specflow-runtime.session-association",
+        "ideas.specflow-ui.full-session-screen-structure",
+        "ideas.specflow-ui.session-actions-ux",
+        "ideas.specflow-ui.components.session-chat-v10-design",
+        "ideas.specflow-ui.navigation-route-model",
+        "ideas.specflow-ui.screens.specification-workspace",
+        "ideas.specflow-ui.screens.new-session",
+        "ideas.specflow-ui.screens.specification-sessions-list",
+        "product.specflow.ui.ai-session-ux",
+        "product.specflow.ui.interaction-model",
+        "product.specflow.ui.data-loading-and-integration",
+        "reference.api.sessions"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "ai"
+      ],
+      "tags": [
+        "sessions",
+        "associations",
+        "session-list",
+        "navigation",
+        "context",
+        "workspace",
+        "archive",
+        "delete"
       ]
     },
     {
@@ -6466,10 +6700,13 @@
       "file": "docs/reference/api/sessions.md",
       "read_when": [
         "implementing Session schemas, HTTP or UI clients",
-        "implementing tail/history cursors and replay"
+        "implementing tail/history cursors and replay",
+        "listing Sessions, reading a Session's association or starting a Session from a Specification"
       ],
-      "summary": "Implementation contract for independent Session commands, bounded snapshots, conversation and Work paging, content ranges, scoped authorization and SSE resync.",
+      "summary": "Implementation contract for independent Session commands, bounded snapshots, conversation and Work paging, content ranges, scoped authorization and SSE resync, plus the Session list, the association read and the composed create from a Specification.",
       "related": [
+        "ideas.specflow-runtime.session-association",
+        "architecture.runtime.authorization",
         "architecture.ai.session-storage-and-lifecycle",
         "architecture.ai.canonical-session-turn-work",
         "reference.protocols.session-provider-driver",

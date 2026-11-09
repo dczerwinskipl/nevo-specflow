@@ -12,12 +12,12 @@ import {
 import { DocumentError } from '@nevo/specflow-engine';
 
 import { matchesEtag, sendNotModified } from '../../../server/etag';
-import type { DocumentReadSource } from './document-read-source';
 import {
   documentReadErrorResponses,
   documentRoute,
   replyWithDocumentFailure,
   viewGuard,
+  type DocumentReadEndpointOptions,
 } from './route-support';
 
 export const DocumentTreeParamsSchema = Type.Object(
@@ -25,7 +25,7 @@ export const DocumentTreeParamsSchema = Type.Object(
   { additionalProperties: false },
 );
 
-export const documentContentEndpoint: FastifyPluginCallback<{ source?: DocumentReadSource }> = (
+export const documentContentEndpoint: FastifyPluginCallback<DocumentReadEndpointOptions> = (
   app,
   options,
   done,
@@ -35,7 +35,7 @@ export const documentContentEndpoint: FastifyPluginCallback<{ source?: DocumentR
   typed.get(
     '/api/specs/:specId/document-tree',
     {
-      preHandler: viewGuard(),
+      preHandler: viewGuard(options.projectId),
       schema: {
         params: DocumentTreeParamsSchema,
         response: { 200: DocumentTreeSchema, 304: Type.Null(), ...documentReadErrorResponses },
@@ -61,7 +61,7 @@ export const documentContentEndpoint: FastifyPluginCallback<{ source?: DocumentR
   typed.get(
     '/api/specs/:specId/documents/:documentId',
     {
-      preHandler: viewGuard(),
+      preHandler: viewGuard(options.projectId),
       schema: {
         params: SpecificationDocumentParamsSchema,
         querystring: DocumentQuerySchema,

@@ -61,4 +61,70 @@ describe('Specification Workspace Attention contract', () => {
       expect(Value.Check(SpecificationWorkspaceResponseSchema, projection)).toBe(true);
     }
   });
+
+  it('requires the provider and update time of a Session row', () => {
+    const response = workspace();
+    const row = {
+      id: '00000000-0000-4000-8000-000000000001',
+      taskIds: [],
+      status: 'quiet',
+      providerId: 'claude',
+    };
+    const check = (item: object) =>
+      Value.Check(SpecificationWorkspaceResponseSchema, {
+        ...response,
+        sections: {
+          ...response.sections,
+          sessions: { state: 'available', data: { items: [item], attention: [] } },
+        },
+      });
+    expect(check({ ...row, updatedAt: '2026-11-08T00:00:00.000Z' })).toBe(true);
+    expect(check(row)).toBe(false);
+    // Closed: no field outside the contract (no provider mode, no internal facts).
+    expect(check({ ...row, updatedAt: '2026-11-08T00:00:00.000Z', mode: 'read-only' })).toBe(false);
+    expect(
+      check({
+        id: '00000000-0000-4000-8000-000000000001',
+        taskIds: [],
+        status: 'quiet',
+        updatedAt: 'x',
+      }),
+    ).toBe(false);
+  });
+
+  it('accepts an untitled Session and a bounded Sessions section with hasMore', () => {
+    const response = workspace();
+    const sessions = {
+      state: 'available',
+      data: {
+        items: [
+          {
+            id: '00000000-0000-4000-8000-000000000001',
+            taskIds: [],
+            status: 'quiet',
+            providerId: 'claude',
+            updatedAt: '2026-11-08T00:00:00.000Z',
+          },
+          {
+            id: '00000000-0000-4000-8000-000000000002',
+            taskIds: [],
+            status: 'authenticationRequired',
+            providerId: 'claude',
+            providerTitle: 'Claude',
+            modelId: 'claude-opus-4-1',
+            modelTitle: 'Opus 4.1',
+            updatedAt: '2026-11-08T00:00:00.000Z',
+          },
+        ],
+        hasMore: true,
+        attention: [],
+      },
+    };
+    expect(
+      Value.Check(SpecificationWorkspaceResponseSchema, {
+        ...response,
+        sections: { ...response.sections, sessions },
+      }),
+    ).toBe(true);
+  });
 });

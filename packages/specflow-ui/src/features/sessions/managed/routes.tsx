@@ -1,21 +1,31 @@
 import { useMemo } from 'react';
-import { createRoute, useNavigate } from '@tanstack/react-router';
+import { useTranslation } from 'react-i18next';
+import { useQueryClient } from '@tanstack/react-query';
+import { createRoute, redirect, useNavigate } from '@tanstack/react-router';
 import { AppWorkspaceProvider } from '@nevo/ui';
 import { appRoute } from '../../../app/router/root';
 import { parseSpecificationCollection } from '../../../app/router/search';
-import { useApplicationCollection } from '../../../app/navigation/ApplicationLocation';
 import { useAppServices } from '../../../app/useAppServices';
+import { useNotify } from '../../../shared/notifications/notifications';
 import { useAuthOwner } from './useAuthOwner';
-import { realRouteSessionContext } from './context/sessionContextTypes';
-import { startedSessionContext, startedSessionOf } from '../start/handoff/startedSession';
-import { ManagedSessionStart } from '../start/screen/ManagedSessionStart';
+import { associationContext } from '../associations/associationContext';
+import {
+  invalidateSpecificationSessions,
+  sessionAssociationKeys,
+  useSessionAssociation,
+} from '../associations/queries';
+import { homeSpecification } from '../associations/useSessionHomeSpecification';
 import { ManagedSession } from './ManagedSession';
 import { useSessionContextNavigation } from './useSessionContextNavigation';
 
+/**
+ * Retired standalone start (session-association-ux §2, U1): every new Session starts from a
+ * Specification, so an old link or bookmark lands on the Specifications list, without a toast.
+ */
 export const managedNewSessionRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/sessions/new',
-  component: NewManagedSession,
+  beforeLoad: () => redirect({ to: '/', search: { collection: 'current' }, replace: true }),
 });
 export const managedSessionRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -38,11 +48,49 @@ export function ManagedSessionRouteView({ sessionId }: { sessionId: string }) {
   const services = useAppServices();
   const owner = useAuthOwner() ?? 'unavailable';
   const { onOpenSpecification, onOpenDocuments } = useSessionContextNavigation(sessionId);
-  const started = startedSessionOf(owner, sessionId);
+  const association = useSessionAssociation(sessionId);
+  const queryClient = useQueryClient();
+  const { data, isError } = association;
   const sessionContext = useMemo(
-    () => (started ? startedSessionContext(started) : realRouteSessionContext),
-    [started],
+    () =>
+      associationContext(
+        data ? { status: 'success', data } : isError ? { status: 'error' } : { status: 'pending' },
+      ),
+    [data, isError],
   );
+  const navigate = useNavigate();
+  const notify = useNotify();
+  const { t } = useTranslation();
+  const toSpecifications = () =>
+    navigate({ to: '/', search: { collection: 'current' }, replace: true });
+  const home = homeSpecification(data);
+  const onSessionChanged = () => {
+    if (home) {
+      void invalidateSpecificationSessions(queryClient, home.specId);
+    }
+  };
+
+  const onSessionDeleted = () => {
+    // The destination follows the association read when the delete succeeded
+    // (session-association-ux §4); `replace`: Back does not reopen the deleted Session.
+    const destination = home
+      ? navigate({
+          to: '/specs/$specId/sessions',
+          params: { specId: home.specId },
+          search: { collection: home.collection === 'archived' ? 'archive' : 'current' },
+          replace: true,
+        })
+      : toSpecifications();
+    if (home) {
+      void invalidateSpecificationSessions(queryClient, home.specId);
+    }
+
+    void destination.then(() => {
+      queryClient.removeQueries({ queryKey: sessionAssociationKeys.read(sessionId), exact: true });
+      notify(t('managedSession.sessionActions.deleted'));
+      focusPrimaryHeading();
+    });
+  };
 
   // `browserHistory`: browser/Android Back steps back inside the Context/Work Secondary (sub-page →
   // parent → hide) before leaving the Session (secondary-navigation.md, "Browser and system Back").
@@ -55,41 +103,26 @@ export function ManagedSessionRouteView({ sessionId }: { sessionId: string }) {
         api={services.managedSessionsApi}
         sessionId={sessionId}
         owner={owner}
-        // A Session started here keeps the context it was started with (its Specification, or none).
+        // The association read (seeded by a start here) is the one source of the Specification.
         sessionContext={sessionContext}
         onOpenSpecification={onOpenSpecification}
         onOpenDocuments={onOpenDocuments}
+        onSessionDeleted={onSessionDeleted}
+        onSessionChanged={onSessionChanged}
+        onGoToSpecifications={() => void toSpecifications()}
       />
     </AppWorkspaceProvider>
   );
 }
 
-function NewManagedSession() {
-  const services = useAppServices();
-  const navigate = useNavigate();
-  const collection = useApplicationCollection();
-  const owner = useAuthOwner();
-  if (owner === undefined) {
-    return null;
-  }
-
-  return (
-    <ManagedSessionStart
-      key={owner}
-      owner={owner}
-      api={services.managedSessionsApi}
-      // The start screen is replaced by the Session (history replace): Back does not return to an
-      // empty start state.
-      onOpenSession={(sessionId) =>
-        void navigate({
-          to: '/sessions/$sessionId',
-          params: { sessionId },
-          search: { collection },
-          replace: true,
-        })
-      }
-    />
-  );
+/**
+ * Focus lands on the destination's page heading after a deleted Session's screen is replaced
+ * (full-session-screen-structure §22.1): the Primary `WorkspaceHeader` title, once it has rendered.
+ */
+function focusPrimaryHeading() {
+  requestAnimationFrame(() => {
+    document.querySelector<HTMLElement>('h1[data-workspace-header-title="true"]')?.focus();
+  });
 }
 
 export const managedSessionAppRoutes = [managedNewSessionRoute, managedSessionRoute] as const;

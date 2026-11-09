@@ -160,6 +160,7 @@ describe('Temporary Specification creation HTTP boundary', () => {
       kind: 'overview',
       title: 'New capability',
     });
+    expect(before.sections.documents.data.overviewDocumentId).toBe('overview');
     expect(await read(app, specId, 'overview')).toMatchObject({
       path: 'overview.md',
       title: 'New capability',
@@ -190,7 +191,8 @@ describe('Temporary Specification creation HTTP boundary', () => {
     expect(workspace.sections.sessions.data.items).toEqual([
       expect.objectContaining({ id: sessionId, status: 'quiet' }),
     ]);
-    expect(workspace.recommendedSessionId).toBeUndefined();
+    // The only associated Session is the recommended one (attention, active, then most recent).
+    expect(workspace.recommendedSessionId).toBe(sessionId);
     const next = await allocate(
       app,
       specId,
@@ -743,19 +745,23 @@ describe('demo showcase seed', () => {
 
   it('serves read-only details for seeded catalogue sessions', async () => {
     const app = await runtime(createDemoEnvironment({ showcase: true }));
-    const response = await app.inject('/api/demo/specs/admission/sessions/sample-session-24');
+    const response = await app.inject(
+      '/api/demo/specs/admission/sessions/00000000-0000-4000-8000-000000000024',
+    );
     expect(response.statusCode).toBe(200);
     expect(response.json<DemoSessionDetail>()).toMatchObject({
-      sessionId: 'sample-session-24',
+      sessionId: '00000000-0000-4000-8000-000000000024',
       specId: 'admission',
       configuration: { profile: 'Implementer' },
       context: { specification: 'Deterministic admission and execution boundaries' },
     });
     expect(
-      (await app.inject('/api/demo/specs/admission/sessions/sample-session-23')).statusCode,
+      (await app.inject('/api/demo/specs/admission/sessions/00000000-0000-4000-8000-000000000023'))
+        .statusCode,
     ).toBe(200);
     expect(
-      (await app.inject('/api/demo/specs/security/sessions/sample-session-24')).statusCode,
+      (await app.inject('/api/demo/specs/security/sessions/00000000-0000-4000-8000-000000000024'))
+        .statusCode,
     ).toBe(404);
   });
 });

@@ -2,6 +2,9 @@ import type { TaskWorkspaceData, WorkspaceHandoff, WorkspaceMaterial } from './t
 import imageUrl from './fixtures/session-return.jpg?url';
 import archiveUrl from './fixtures/review-evidence-demo.zip?url';
 
+/** Session IDs are UUIDs, as the Runtime issues them. */
+const sessionUuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
+
 export type WorkspaceScenario =
   | 'draft'
   | 'ready'
@@ -134,8 +137,8 @@ export function createWorkspaceFixture(
       : 'implementation';
   const sessions: TaskWorkspaceData['sessions'][number][] = history
     .filter((event) => event.from !== names.human)
-    .map((event) => ({
-      id: `session-${event.id}`,
+    .map((event, index) => ({
+      id: sessionUuid(index + 1),
       title: `${event.from} zachowania sesji`,
       provider: 'Codex',
       role: event.from === 'Review' ? 'reviewer' : event.attempt === 1 ? 'implementer' : 'refiner',
@@ -146,7 +149,7 @@ export function createWorkspaceFixture(
     }));
   if (active) {
     sessions.unshift({
-      id: `session-${step}-3`,
+      id: sessionUuid(900),
       title: scenario === 'review' ? 'Review zachowania sesji' : 'Poprawki zachowania sesji',
       provider: 'Codex',
       role: scenario === 'review' ? 'reviewer' : 'refiner',

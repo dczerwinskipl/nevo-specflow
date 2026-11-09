@@ -160,8 +160,12 @@ the collection/page contract. Permission-filtered records cannot affect recommen
 ## Authorization and typed application outcomes
 
 HTTP authentication and the existing capability vocabulary are retained. Task/document scope uses
-`spec.view` at `{ specId }`; Session references additionally use real Session-owner scope and
-`session.view`. Do not introduce `task.execute` or a Document capability just because modules move.
+`spec.view` at `specScope(projectId, specId)` = `{ projectId, specId }`; Session references
+additionally need `session.view` at the store-derived Session scope (`sessionScope`:
+`{ projectId, specId, sessionId }` for a Session associated with the Specification, see
+[Runtime authorization](../../architecture/runtime/auth/authorization.md#session-scope)). All links of
+one read resolve through one `resolveMany` batch; an unknown, standalone or deleted Session resolves
+to nothing and its reference is hidden. Do not introduce `task.execute` or a Document capability just because modules move.
 Independent document permissions, if required later, are a separate policy change.
 
 Application functions return typed outcomes, never Fastify replies:

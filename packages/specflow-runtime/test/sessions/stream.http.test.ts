@@ -243,6 +243,67 @@ describe('live Session stream authorization and replay', { timeout: 20000 }, () 
       (await app!.inject({ url: '/api/sessions/' + sessionId, headers: { cookie } })).statusCode,
     ).toBe(401);
   });
+  it('streams rename and archive as session changes and closes the stream on delete', async () => {
+    const { cookie, sessionId, origin } = await setup();
+    const controller = new AbortController();
+    controllers.push(controller);
+    const response = await fetch(origin + '/api/sessions/' + sessionId + '/events', {
+      headers: { cookie },
+      signal: controller.signal,
+    });
+    expect(response.status).toBe(200);
+    const reader = response.body!.getReader();
+    let text = '';
+    const readUntil = (expected: string) =>
+      vi.waitFor(
+        async () => {
+          const value: unknown = (await reader.read()).value;
+          if (value instanceof Uint8Array) {
+            text += new TextDecoder().decode(value);
+          }
+
+          expect(text).toContain(expected);
+        },
+        { timeout: 3000 },
+      );
+    const command = (path: string, payload: object) =>
+      app!.inject({
+        method: 'POST',
+        url: '/api/sessions/' + sessionId + '/' + path,
+        headers: { cookie },
+        payload: { requestId: randomUUID(), ...payload },
+      });
+    expect((await command('rename', { title: 'Streamed title' })).statusCode).toBe(200);
+    await readUntil('"title":"Streamed title"');
+    expect(text).toContain('"kind":"session"');
+    expect((await command('archive', {})).statusCode).toBe(200);
+    await readUntil('"archivedAt"');
+    // Archived Sessions project start=false to live subscribers as well.
+    expect(text.split('event: session-change').at(-1)).toContain('"start":false');
+    const before = text.length;
+    const deleted = await app!.inject({
+      method: 'DELETE',
+      url: '/api/sessions/' + sessionId,
+      headers: { cookie },
+    });
+    expect(deleted.statusCode).toBe(204);
+    const deadline = setTimeout(() => controller.abort(), 3000);
+    try {
+      for (;;) {
+        const chunk = await reader.read();
+        if (chunk.done) {
+          break;
+        }
+
+        text += new TextDecoder().decode(chunk.value as Uint8Array);
+      }
+    } finally {
+      clearTimeout(deadline);
+    }
+
+    expect(controller.signal.aborted).toBe(false);
+    expect(text.slice(before)).not.toContain('session-change');
+  });
   it('rejects conflicting replay cursors before opening a stream', async () => {
     const { cookie, sessionId } = await setup();
     const response = await app!.inject({

@@ -46,6 +46,7 @@ import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import type { FastifyPluginCallback, FastifyRequest } from 'fastify';
 
 import { requireCapability } from '../../auth';
+import { specScope } from '../scope';
 import { documentFailure } from '../../documents';
 
 export interface SpecsCloseEndpointOptions {
@@ -220,15 +221,16 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
   done,
 ) => {
   const typed = app.withTypeProvider<TypeBoxTypeProvider>();
+  const projectId = () => options.engine?.context.project.projectId;
   const authWorktree = requireCapability({
     resource: SpecCapabilities,
     capability: SpecCapabilities.capabilities.CloseWorktree,
-    scope: (request) => ({ specId: (request.params as { specId: string }).specId }),
+    scope: (request) => specScope(projectId(), (request.params as { specId: string }).specId),
   });
   const authSpec = requireCapability({
     resource: SpecCapabilities,
     capability: SpecCapabilities.capabilities.CloseSpecification,
-    scope: (request) => ({ specId: (request.params as { specId: string }).specId }),
+    scope: (request) => specScope(projectId(), (request.params as { specId: string }).specId),
   });
 
   for (const kind of ['worktree-close', 'specification-close'] as const) {

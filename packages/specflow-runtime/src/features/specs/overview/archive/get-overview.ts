@@ -11,17 +11,20 @@ import type { SpecsOverviewRepository } from '../repository/read-repository';
 export interface GetArchiveOverviewDependencies {
   readonly authorization: RequestAuthorization;
   readonly repository: SpecsOverviewRepository;
+  readonly projectId?: string | undefined;
 }
 
 export async function getArchiveOverview(
   dependencies: GetArchiveOverviewDependencies,
 ): Promise<ArchiveSpecsOverview> {
   const snapshot = await dependencies.repository.readArchive((specId) =>
-    canViewSpec(dependencies.authorization, specId),
+    canViewSpec(dependencies.authorization, dependencies.projectId, specId),
   );
-  const items = filterAuthorizedSpecs(dependencies.authorization, snapshot.items).map(
-    toOverviewItem,
-  );
+  const items = filterAuthorizedSpecs(
+    dependencies.authorization,
+    dependencies.projectId,
+    snapshot.items,
+  ).map(toOverviewItem);
 
   return {
     revision: snapshot.revision,

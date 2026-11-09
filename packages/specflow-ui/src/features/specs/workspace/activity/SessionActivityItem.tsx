@@ -15,7 +15,7 @@ export function SessionActivityItem({ event, active, onOpenSession }: SessionAct
     <button
       type="button"
       onClick={() => onOpenSession(event.targetId)}
-      className="text-left text-content-primary hover:text-accent-primary hover:underline focus-visible:outline-2 focus-visible:outline-focus-ring [overflow-wrap:anywhere]"
+      className="text-left text-content-primary hover:text-content-link hover:underline focus-visible:outline-2 focus-visible:outline-focus-ring [overflow-wrap:anywhere]"
       aria-label={t('specification.openSessionAria', { title: event.title })}
     >
       {event.title}

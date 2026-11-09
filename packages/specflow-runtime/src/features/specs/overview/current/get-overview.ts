@@ -14,15 +14,20 @@ export interface GetCurrentOverviewDependencies {
   readonly authorization: RequestAuthorization;
   readonly repository: SpecsOverviewRepository;
   readonly sections: readonly CurrentSpecSectionId[];
+  readonly projectId?: string | undefined;
 }
 
 export async function getCurrentOverview(
   dependencies: GetCurrentOverviewDependencies,
 ): Promise<CurrentSpecsOverview> {
   const snapshot = await dependencies.repository.readCurrent((specId) =>
-    canViewSpec(dependencies.authorization, specId),
+    canViewSpec(dependencies.authorization, dependencies.projectId, specId),
   );
-  const visible = filterAuthorizedSpecs(dependencies.authorization, snapshot.items);
+  const visible = filterAuthorizedSpecs(
+    dependencies.authorization,
+    dependencies.projectId,
+    snapshot.items,
+  );
   const candidates = visible.map(toOverviewItem);
   // Unknown sources must never disappear merely because a legacy project
   // configured the four pre-E2.T06 sections explicitly.

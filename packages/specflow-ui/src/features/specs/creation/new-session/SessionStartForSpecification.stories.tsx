@@ -1,5 +1,5 @@
 import type { Meta, StoryContext, StoryObj } from '@storybook/react-vite';
-import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 import { withLocale } from '../../../../i18n/StoryLocalization';
 import { browserPage } from '../../../../test-support/browserPage';
 import { settleViewport } from '../../../../test-support/viewportSettle.stories-support';
@@ -8,6 +8,7 @@ import {
   allocations,
   DemoStartedPreview,
   DemoStartPreview,
+  StartRefusedPreview,
   turns,
 } from './demoStart.stories-support';
 
@@ -18,7 +19,7 @@ import {
  * inactive until Start. The real demo start source runs over a mocked allocation (the shared Create
  * operation); a started Session opens as in the route. Every state is rendered from the story's
  * args, so it is visible in the plain Storybook UI; the plays only assert it and walk the flow.
- * Starting without a Specification is `Session Start`'s managed stories.
+ * The project Runtime's start (the composed create) is `Session Start`'s managed stories.
  */
 const meta = {
   decorators: [withLocale('pl')],
@@ -335,6 +336,33 @@ export const NoProviderAvailable: Story = {
     await expect(startButton(canvas)).toBeDisabled();
     await expect(composer(canvas)).toBeDisabled();
     await expect(canvas.getByText('nie wybrano')).toBeVisible();
+  },
+};
+
+const onBackToSpecification = fn();
+
+/** The start route opened directly by a viewer: the form is replaced, with the way back. */
+export const StartForbidden: Story = {
+  render: () => <StartRefusedPreview reason="forbidden" onBack={onBackToSpecification} />,
+  play: async ({ canvas }) => {
+    await settle();
+    await expect(
+      await canvas.findByText('Nie możesz rozpoczynać sesji w tej specyfikacji.'),
+    ).toBeVisible();
+    await expect(canvas.queryByRole('heading', { name: 'Rozpocznij sesję' })).toBeNull();
+    onBackToSpecification.mockClear();
+    await userEvent.click(canvas.getByRole('button', { name: 'Wróć do specyfikacji' }));
+    await expect(onBackToSpecification).toHaveBeenCalledOnce();
+  },
+};
+
+/** Sessions are turned off in the project: said instead of the form, never as a failure. */
+export const StartSessionsDisabled: Story = {
+  render: () => <StartRefusedPreview reason="sessions_disabled" onBack={onBackToSpecification} />,
+  play: async ({ canvas }) => {
+    await settle();
+    await expect(await canvas.findByText('Sesje są wyłączone w tym projekcie.')).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Wróć do specyfikacji' })).toBeVisible();
   },
 };
 

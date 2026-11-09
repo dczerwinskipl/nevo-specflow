@@ -38,13 +38,11 @@ export function applySessionEvent(
     eventSeq: event.eventSeq,
     revision: Math.max(snapshot.revision, event.eventSeq),
   };
-  if (event.kind === 'session') {
-    next.session = event.changes.session;
-  } else if (event.kind === 'conversation') {
+  if (event.kind === 'conversation') {
     next.entries = mergeEntries(snapshot.entries, event.changes.entries);
   }
 
-  if (event.kind !== 'session' && 'projection' in event.changes && event.changes.projection) {
+  if ('projection' in event.changes && event.changes.projection) {
     const p = event.changes.projection;
     next.session = p.session;
     if (p.activeTurn) {

@@ -5,7 +5,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
-import type { SessionSnapshot, ProviderDescriptor } from '@nevo/specflow-contracts/sessions';
+import {
+  sessionValidators,
+  type SessionSnapshot,
+  type ProviderDescriptor,
+} from '@nevo/specflow-contracts/sessions';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createRuntimeApp } from '../../src/server/app';
 import { passwordConfig } from '../auth/support/config';
@@ -400,6 +404,11 @@ describe('Claude driver through the real process/store/HTTP boundary', () => {
       payload: { requestId: randomUUID(), kind: 'question', answer: { optionIds: ['0'] } },
     });
     expect(response.statusCode).toBe(202);
+    expect(response.json()).toEqual({
+      turnId: interaction.turnId,
+      interactionId: interaction.interactionId,
+    });
+    expect(sessionValidators.respondResult(response.json())).toBe(true);
     await vi.waitFor(
       async () => {
         const state = await snapshot(sessionId);
@@ -444,6 +453,8 @@ describe('Claude driver through the real process/store/HTTP boundary', () => {
       payload: { requestId: randomUUID() },
     });
     expect(response.statusCode).toBe(202);
+    expect(response.json()).toEqual({ turnId });
+    expect(sessionValidators.cancelResult(response.json())).toBe(true);
     await vi.waitFor(
       async () => expect((await snapshot(sessionId)).entries.at(-1)?.text.text).toBe('cancelled'),
       { timeout: 5000 },

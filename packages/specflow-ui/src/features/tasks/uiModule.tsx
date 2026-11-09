@@ -51,10 +51,9 @@ export const tasksUiModule: UiModule = {
     contributeTo(specificationWorkSections, {
       id: 'specflow.tasks.task-groups',
       slot: 'main',
-      isVisible: ({ data }) =>
-        !data.isEmpty ||
-        data.sectionAvailability?.tasks === 'forbidden' ||
-        data.sectionAvailability?.tasks === 'unavailable',
+      // Also with no Tasks: an available empty section shows its empty state under the header, so
+      // the navigator's Zadania (`#tasks-heading`) always has a target.
+      isVisible: ({ data }) => !data.isEmpty || data.sectionAvailability?.tasks !== undefined,
       Component: TaskGroupsWorkSection,
     }),
     contributeTo(specificationAttentionItems, {

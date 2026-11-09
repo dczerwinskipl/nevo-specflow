@@ -81,6 +81,7 @@ Therefore:
 - [Accepted Session Workspace V2 examples — mobile](examples/session-workspace-v2/mobile.html)
 - [Accepted Session Chat V10 mock — desktop](examples/session-chat-v10/desktop.html)
 - [Accepted Session Chat V10 mock — mobile](examples/session-chat-v10/mobile.html)
+- [Session association UX (stage 3 D10, accepted)](session-association-ux/README.md)
 - [Design-system and composition gaps](design-system-component-composition-gaps.md)
 - [Data loading, refresh, batching, and eventing](data-loading-refresh-and-eventing.md)
 - [Screen specifications index](screens/README.md)

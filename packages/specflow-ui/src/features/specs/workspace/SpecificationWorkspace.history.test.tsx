@@ -126,6 +126,44 @@ describe('Specification Overview Activity history', () => {
     expect(historyToggle().getAttribute('aria-pressed')).toBe('true');
   });
 
+  it('keeps the Secondary closed for the Specification-created event alone, open with a Session event', () => {
+    const created = {
+      id: 'specification-created',
+      event: 'specification_created' as const,
+      kind: 'info' as const,
+      time: '2026-11-08',
+      title: 'Specification created',
+      description: '',
+    };
+    const { unmount } = render(<Workspace data={{ ...withHistory, activityEvents: [created] }} />);
+
+    expect(historyPanel()).toBeNull();
+    fireEvent.click(historyToggle());
+    // On demand it shows the localized event and its calendar date, without a time-zone shift.
+    expect(screen.getByText('Specification created')).not.toBeNull();
+    expect(screen.getByText('Nov 8, 2026')).not.toBeNull();
+    unmount();
+
+    const started = {
+      id: 'session-started.s-1',
+      event: 'session_started' as const,
+      kind: 'session' as const,
+      targetId: 's-1',
+      time: new Date(Date.now() - 5 * 60_000).toISOString(),
+      title: '',
+      description: 'Session started',
+    };
+    render(
+      <Workspace data={{ ...withHistory, activityEvents: [started, created] }} specId="SPEC-2" />,
+    );
+
+    expect(historyPanel()).not.toBeNull();
+    expect(screen.getByText('Untitled session')).not.toBeNull();
+    // The Continue session row shows its own relative time as well.
+    expect(screen.getAllByText('5 minutes ago').length).toBeGreaterThan(0);
+    expect(screen.queryByText(started.time)).toBeNull();
+  });
+
   it('never opens or closes the panel because the history changed', () => {
     const { rerender } = render(<Workspace data={withHistory} />);
     rerender(<Workspace data={emptyHistory} />);

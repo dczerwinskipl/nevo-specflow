@@ -1,5 +1,6 @@
 import type { SpecificationTaskResponse, TaskSnapshot } from '@nevo/specflow-contracts/tasks';
 import { SpecCapabilities } from '@nevo/specflow-contracts/specs';
+import { specScope, type ProjectIdSource } from '../../specs';
 import type { RequestAuthorization } from '../../auth';
 import type { SessionReferenceOwner } from '../../sessions';
 import type {
@@ -21,6 +22,8 @@ export interface TaskReadDependencies {
   resources?: ResourceSource;
   sessions?: SessionReferenceOwner;
   leases: PageLeases;
+  /** The Runtime's project; every `spec.*` check runs at `specScope(projectId, specId)`. */
+  projectId?: ProjectIdSource;
 }
 export async function readTaskDetail(
   deps: TaskReadDependencies,
@@ -31,7 +34,7 @@ export async function readTaskDetail(
   authz.require({
     resource: SpecCapabilities,
     capability: SpecCapabilities.capabilities.View,
-    scope: { specId },
+    scope: specScope(deps.projectId?.(), specId),
   });
   if (!deps.definitions) {
     return { kind: 'unavailable' };
@@ -53,6 +56,16 @@ export async function readTaskDetail(
     execution &&
     sameTask(execution.identity, identity) &&
     execution.definitionVersion === definition.version;
+  // Every Session reference known up front resolves in one batch.
+  await visible.prefetch([
+    ...definition.dependencies.map((dependency) => dependency.link),
+    ...(coherent
+      ? execution.requirements.flatMap((requirement) =>
+          requirement.evidence.map((item) => item.link),
+        )
+      : []),
+    ...(coherent && execution.recovery ? [execution.recovery.link] : []),
+  ]);
   const missing = { state: 'unavailable' as const, reason: 'not_implemented' as const };
   const snapshot: TaskSnapshot = {
     revision: JSON.stringify([definition.version, coherent ? execution.version : null]),

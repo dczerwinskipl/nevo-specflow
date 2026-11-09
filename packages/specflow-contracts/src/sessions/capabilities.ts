@@ -6,6 +6,7 @@ export const SessionCapabilities = defineResource({
     Create: 'create',
     View: 'view',
     Manage: 'manage',
+    Delete: 'delete',
     ExecuteWrite: 'execute-write',
     ViewProviderLimits: 'view-provider-limits',
   },

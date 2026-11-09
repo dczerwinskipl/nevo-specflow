@@ -5,6 +5,8 @@ import {
   type SpecificationWorkSectionContext,
 } from '../specs';
 import { ResumeSessionSection } from './contributions/specification-work/ResumeSessionSection';
+import { sessionsDisabled } from './navigation/summary';
+import { startSessionOffered } from './associations/startSessionGate';
 
 function SpecificationResumeSession({ data, actions }: SpecificationWorkSectionContext) {
   if (!data.resumeSession) {
@@ -16,8 +18,8 @@ function SpecificationResumeSession({ data, actions }: SpecificationWorkSectionC
       session={data.resumeSession}
       onOpenSession={actions.openSession}
       onOpenSessionsView={actions.openSessionsView}
-      onStartConversation={actions.startConversation}
-      canStartConversation={actions.canStartConversation !== false}
+      onStartSession={actions.openNewSession}
+      canStartSession={startSessionOffered(data.startSession)}
       canOpenSession={actions.canOpenSession !== false}
     />
   );
@@ -29,13 +31,19 @@ export const sessionsUiModule: UiModule = {
     contributeTo(specificationWorkSections, {
       id: 'specflow.sessions.resume',
       slot: 'resume',
-      isVisible: ({ data }) => !data.isEmpty && Boolean(data.resumeSession),
+      // Independent of Tasks: the recommended Session is the next step whenever it exists.
+      isVisible: ({ data }) => Boolean(data.resumeSession),
       Component: SpecificationResumeSession,
     }),
     contributeTo(specificationAttentionItems, {
       id: 'specflow.sessions.attention',
       getItems: ({ data, actions }) => {
         const source = data.featureAttention?.sessions;
+        // Turned-off Sessions have nothing to attend to; it is not a failed read.
+        if (sessionsDisabled(data)) {
+          return { state: 'excluded' };
+        }
+
         if (!source || (source.state === 'unavailable' && source.reason === 'source_unavailable')) {
           return { state: 'unavailable' };
         }

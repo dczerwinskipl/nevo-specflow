@@ -7,6 +7,7 @@ import type { ProviderDescriptor } from '@nevo/specflow-contracts/sessions';
 import { LocalizationProvider, createSpecFlowI18n } from '../../../../i18n';
 import { installWorkspaceWidth } from '../../../../test-support/workspaceWidth.test-support';
 import type { ManagedSessionsApi } from '../../managed/api';
+import type { SessionAssociationsApi } from '../../associations/api';
 import { forgetStartedSessions } from '../handoff/startedSession';
 import { useManagedStartSource } from '../source/useManagedStartSource';
 import { SessionStartScreen } from './SessionStartScreen';
@@ -60,8 +61,14 @@ function TabProbe() {
   );
 }
 
+const associations = {} as SessionAssociationsApi;
+const pinned = {
+  specId: 'spec',
+  fact: { status: 'ready', value: { id: 'spec', key: 'SPEC-1', title: 'Login' } },
+} as const;
+
 function Start({ api }: { api: ManagedSessionsApi }) {
-  const source = useManagedStartSource('alice', api);
+  const source = useManagedStartSource('alice', api, associations, pinned);
 
   return <SessionStartScreen source={source} onOpenSession={vi.fn()} />;
 }

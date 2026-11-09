@@ -49,6 +49,32 @@ describe('Sessions navigation summary', () => {
       entries: [sessions[3], sessions[0], sessions[1]],
     });
   });
+  it('withholds the count while the bounded section has more Sessions', () => {
+    const sessions = [{ id: 'a', title: 'A', activityCode: 'active' as const }];
+    expect(
+      projectSessionNavigation({ ...base, sessions, sessionsHasMore: true }, undefined),
+    ).toMatchObject({ state: 'partial', count: undefined, entries: sessions });
+    expect(
+      projectSessionNavigation(
+        { ...base, sessions: [...sessions, { id: 'u', title: 'U', navigationStatus: 'unknown' }] },
+        undefined,
+      ),
+    ).toMatchObject({ state: 'partial', count: undefined });
+  });
+  it('reads turned-off Sessions as disabled, not as a failed read', () => {
+    const off = {
+      ...base,
+      sectionAvailability: { sessions: 'unavailable' as const },
+      sectionUnavailableReason: { sessions: 'source_unavailable' as const },
+    };
+    expect(
+      projectSessionNavigation(
+        { ...off, startSession: { available: false, reason: 'sessions_disabled' } },
+        undefined,
+      ),
+    ).toEqual({ state: 'disabled' });
+    expect(projectSessionNavigation(off, undefined)).toEqual({ state: 'unavailable' });
+  });
   it('does not label known quiet history as active or infer its completion', () => {
     expect(
       projectSessionNavigation(
@@ -56,5 +82,19 @@ describe('Sessions navigation summary', () => {
         undefined,
       ),
     ).toMatchObject({ state: 'available', count: 0, entries: [] });
+  });
+  it('keeps a provider sign-in out of the preview without making the count partial', () => {
+    expect(
+      projectSessionNavigation(
+        {
+          ...base,
+          sessions: [
+            { id: 'sign-in', title: 'Sign-in', navigationStatus: 'authenticationRequired' },
+            { id: 'active', title: 'Active', navigationStatus: 'active', activityCode: 'active' },
+          ],
+        },
+        undefined,
+      ),
+    ).toMatchObject({ state: 'available', count: 1, entries: [{ id: 'active' }] });
   });
 });

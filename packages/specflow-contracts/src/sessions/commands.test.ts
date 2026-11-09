@@ -1,6 +1,7 @@
 import { Value } from 'typebox/value';
-import { expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { ProviderDescriptorSchema } from './commands';
+import { sessionValidators } from './validation';
 
 it.each(['tested', 'provisional', 'unsupported'])(
   'exposes bounded provider compatibility: %s',
@@ -45,3 +46,37 @@ it.each(['tested', 'provisional', 'unsupported'])(
     ).toBe(false);
   },
 );
+
+describe('command result schemas', () => {
+  const id = '00000000-0000-4000-8000-000000000001';
+  const other = '00000000-0000-4000-8000-000000000002';
+
+  it.each([
+    ['createResult', { sessionId: id }],
+    ['startResult', { turnId: id }],
+    ['cancelResult', { turnId: id }],
+    ['respondResult', { turnId: id, interactionId: other }],
+    ['reconcileResult', { turnId: id, outcome: 'completed', reconciled: true }],
+  ] as const)('%s accepts its closed shape and rejects extra keys', (name, value) => {
+    const check = sessionValidators[name];
+    expect(check(value)).toBe(true);
+    expect(check({ ...value, extra: 1 })).toBe(false);
+    expect(check({})).toBe(false);
+  });
+
+  it('rejects ids that are not Session ids', () => {
+    expect(sessionValidators.startResult({ turnId: 'turn-1' })).toBe(false);
+  });
+
+  it('types the reconcile outcome as a Turn outcome', () => {
+    for (const outcome of ['completed', 'failed', 'cancelled', 'interrupted']) {
+      expect(sessionValidators.reconcileResult({ turnId: id, outcome, reconciled: false })).toBe(
+        true,
+      );
+    }
+
+    expect(
+      sessionValidators.reconcileResult({ turnId: id, outcome: 'unknown', reconciled: true }),
+    ).toBe(false);
+  });
+});

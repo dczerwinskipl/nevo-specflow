@@ -11,6 +11,7 @@ describe('SpecFlow authorization contracts', () => {
       Manage: 'spec.manage',
       CloseWorktree: 'spec.close-worktree',
       CloseSpecification: 'spec.close-specification',
+      StartSession: 'spec.start-session',
     });
     expect(ProjectGitCapabilities.capabilities).toEqual({
       Integrate: 'project-git.integrate',
@@ -20,6 +21,7 @@ describe('SpecFlow authorization contracts', () => {
       Create: 'session.create',
       View: 'session.view',
       Manage: 'session.manage',
+      Delete: 'session.delete',
       ExecuteWrite: 'session.execute-write',
       ViewProviderLimits: 'session.view-provider-limits',
     });

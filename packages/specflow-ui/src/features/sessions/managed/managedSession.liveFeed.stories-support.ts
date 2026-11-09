@@ -5,7 +5,9 @@ import type {
   SessionSnapshot,
 } from '@nevo/specflow-contracts/sessions';
 import type { ManagedSessionsApi } from './api';
-import { fixtureApi } from './managedSession.stories-support';
+import { fixtureApi, withRuntimeTitles } from './managedSession.stories-support';
+
+type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 
 /**
  * A fixture Session a play function drives live: `push` delivers conversation events on the open
@@ -50,7 +52,9 @@ export function liveFixtureApi(
     snapshot: async (...args) => {
       reads += 1;
       const fresh =
-        reads > 1 && options.nextSnapshot ? options.nextSnapshot() : await base.snapshot(...args);
+        reads > 1 && options.nextSnapshot
+          ? withRuntimeTitles(options.nextSnapshot())
+          : await base.snapshot(...args);
       eventSeq = fresh.eventSeq;
 
       return fresh;
@@ -128,6 +132,15 @@ export function liveFixtureApi(
         kind: 'conversation',
         changes: { entries },
       });
+    },
+    /** Delivers any other Session change (a `session` or `turn` change) on the open watch stream. */
+    pushChange(change: DistributiveOmit<SessionChange, 'sessionId' | 'eventSeq'>) {
+      if (!deliver) {
+        throw new Error('No watch stream is open yet: await watched() first.');
+      }
+
+      eventSeq += 1;
+      deliver({ ...change, sessionId: snapshot.session.sessionId, eventSeq });
     },
     /** How many history pages were requested so far. */
     historyReads: () => historyReads,

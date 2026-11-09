@@ -117,21 +117,9 @@ export function SessionContext({
   }
 
   /** Opens a specific Task (current-execution Task, Attention's task reference, or a Related Tasks
-   * summary with exactly one entry): its own root tab, activated if already open. */
+   * row): its own root tab, activated if already open. */
   function openTask(task: SessionContextTaskRef) {
     openTasksTab(taskStack, task);
-  }
-
-  /** Related Tasks' summary row: exactly one Task goes straight to it, several to the shared
-   * Tasks list (selecting a Task there opens that Task's own tab). */
-  function openRelatedTasksEntry(tasks: SessionContextTaskRef[]) {
-    if (tasks.length === 1) {
-      openTask(tasks[0]!);
-
-      return;
-    }
-
-    openTasksTab(tasksStack);
   }
 
   /** Planned-area rows open their placeholder tab the same way as Tasks (`openStack`/`openTab`). */
@@ -169,15 +157,12 @@ export function SessionContext({
     <AppContent className="h-full w-full">
       <AppWorkspaceBody scroll="area" contentClassName="flex min-h-full flex-col">
         {/* Starts at the top and scrolls once content overflows (no vertical centring). */}
-        <div className="grid w-full gap-6">
+        {/* Takes focus when a focused control inside Context goes away (never the document). */}
+        <div className="grid w-full gap-6 outline-none" tabIndex={-1} data-context-focus-fallback>
           <ContextExecutorSection executor={value.executor} scope={scope}>
-            {scope.kind === 'unknown' && (
-              <ContextNote kind={scope.reason === 'unreadable' ? 'warning' : 'info'}>
-                {t(
-                  scope.reason === 'unreadable'
-                    ? 'sessions.context.availability.scopeUnreadable'
-                    : 'sessions.context.availability.scopeNotProvided',
-                )}
+            {scope.kind === 'unknown' && scope.reason === 'unreadable' && (
+              <ContextNote kind="warning">
+                {t('sessions.context.availability.scopeUnreadable')}
               </ContextNote>
             )}
           </ContextExecutorSection>
@@ -188,7 +173,7 @@ export function SessionContext({
           />
           <ContextExecutionSection value={value} onOpenTask={openTask} />
           <ContextAttentionSection value={value} onOpenTask={openTask} />
-          <ContextRelatedTasksSection value={value} onOpen={openRelatedTasksEntry} />
+          <ContextRelatedTasksSection value={value} onOpen={openTask} />
           <ContextWorkSection
             workHistory={value.workHistory}
             runningTurnId={value.runningTurnId}
@@ -198,6 +183,7 @@ export function SessionContext({
           <SessionTelemetrySection
             telemetry={value.telemetry}
             runningTurnId={value.runningTurnId}
+            limitsRefresh={value.limitsRefresh}
           />
         </div>
       </AppWorkspaceBody>

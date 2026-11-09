@@ -42,12 +42,15 @@ export type ResolvedSection<T> =
   | { kind: 'skeleton' }
   | { kind: 'ready'; value: T }
   | { kind: 'warning' }
-  | { kind: 'error'; ref?: { key?: string } };
+  | { kind: 'error'; ref?: { key?: string } }
+  /** The reference exists but may not be viewed: an info note, never an error. */
+  | { kind: 'info' };
 
 /**
  * What a section renders for a fact: an absent fact or an empty ready list is omitted (no
  * association, or nothing to show); loading shows the section label with skeleton rows;
- * unreadable is a warning; missing is a warning, or an error when the reference is required.
+ * unreadable is a warning; missing is a warning, or an error when the reference is required;
+ * forbidden is an info note.
  */
 export function resolveSection<T>(
   fact: ContextFact<T> | undefined,
@@ -68,5 +71,7 @@ export function resolveSection<T>(
       return { kind: 'warning' };
     case 'missing':
       return required ? { kind: 'error', ref: fact.ref } : { kind: 'warning' };
+    case 'forbidden':
+      return { kind: 'info' };
   }
 }

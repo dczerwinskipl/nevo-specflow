@@ -2,36 +2,40 @@ import cookie from '@fastify/cookie';
 import { join } from 'node:path';
 import { RuntimeInfoResponseSchema } from '@nevo/specflow-contracts/runtime';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
-import type { CapabilityId } from '@nevo/authorization';
 import Fastify, {
   type FastifyInstance,
   type FastifyServerOptions,
   type RawServerBase,
 } from 'fastify';
 
-import {
-  createAuthFeature,
-  type AuthFeatureDependencies,
-  type SpecFlowRoleId,
-} from '../features/auth';
+import { createAuthFeature, type AuthFeatureDependencies } from '../features/auth';
 import type { RuntimeConfig } from '../config/types';
 import {
   createSessionsFeature,
-  SessionCapabilities,
   type SessionReferenceOwner,
   type SessionDriver,
 } from '../features/sessions';
-import { createTasksFeature, type TasksFeatureDependencies } from '../features/tasks';
+import {
+  manifestWorkspaceTasks,
+  createTasksFeature,
+  type TasksFeatureDependencies,
+} from '../features/tasks';
 import {
   createDocumentsFeature,
   createEngineWorkspaceDocuments,
   type DocumentsFeatureDependencies,
 } from '../features/documents';
-import { createSettingsFeature, SettingsCapabilities } from '../features/settings';
+import { createSettingsFeature } from '../features/settings';
 import {
+  createEngineAssociationTargets,
+  createSessionAssociationsFeature,
+  createStoreSessionAssociations,
+  createWorkspaceSessionContribution,
+  type AssociationTargets,
+} from '../features/session-associations';
+import {
+  composeWorkspaceActivity,
   createSpecsFeature,
-  SpecCapabilities,
-  ProjectGitCapabilities,
   type SpecsFeatureDependencies,
 } from '../features/specs';
 import {
@@ -51,6 +55,7 @@ import { registerEndpointPolicy } from './endpoint-policy';
 import { serializeRuntimeRequest } from './logging';
 import { isRequestAtPublicOrigin } from './origin';
 import { registerRuntimeWebApp, type RuntimeWebApp } from './web-app';
+import { specFlowRoleCapabilities } from './roles';
 
 export interface RuntimeAppDependencies {
   readonly demoEnvironment?: DemoEnvironment;
@@ -63,6 +68,8 @@ export interface RuntimeAppDependencies {
     references?: SessionReferenceOwner;
     storage?: { directory: string; projectId: string; workspace?: string };
     driver?: SessionDriver | readonly SessionDriver[];
+    /** Engine facts of associated Specifications and Tasks (default: the Engine, project mode). */
+    targets?: AssociationTargets;
   };
   readonly auth?: AuthFeatureDependencies;
   readonly specs?: SpecsFeatureDependencies;
@@ -130,7 +137,6 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
               showcase: true,
               scenarios: dependencies.demoScenarios === true,
             }),
-          { references: dependencies.sessions?.references },
         )
       : undefined;
   const progressRegistry = dependencies.operations?.registry ?? createOperationProgressRegistry();
@@ -151,18 +157,74 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
       ? { maxWaiting: dependencies.operations.maxWaiting }
       : {}),
   };
-  const sessionReferences: SessionReferenceOwner | undefined =
-    demo?.sessionReferences ?? dependencies.sessions?.references;
+  const engine = dependencies.specs?.engine;
+  const sessionsFeature = createSessionsFeature({
+    ...(engine ? { engine } : {}),
+    config: mode === 'project' ? config.sessions : undefined,
+    storage:
+      dependencies.sessions?.storage ??
+      (mode === 'project' && config.sessions?.enabled && engine
+        ? {
+            directory: join(engine.context.project.stateRoot, 'sessions'),
+            projectId: engine.context.project.projectId,
+            workspace: engine.context.workspace.root,
+          }
+        : undefined),
+    driver: dependencies.sessions?.driver,
+    ...(demo
+      ? {
+          demoList: {
+            source: demo.sessionList,
+            projectId: demo.environment.state.catalogue.project.id,
+          },
+          demoReads: demo.managedSessionReads,
+        }
+      : {}),
+  });
+  // The association registry: the demo catalogue, or the Session store behind the Engine facts.
+  const associationTargets =
+    demo?.associationTargets ??
+    dependencies.sessions?.targets ??
+    createEngineAssociationTargets(engine, dependencies.tasks?.definitions);
+  const associations =
+    demo?.sessionReferences ??
+    createStoreSessionAssociations(sessionsFeature.runtime, associationTargets);
+  const sessionReferences: SessionReferenceOwner =
+    (demo ? undefined : dependencies.sessions?.references) ?? associations;
   // Demo mode serves the real document read routes from the demo directories.
   const documentReadSource = dependencies.documents?.readSource ?? demo?.documentReadSource;
-  // Project mode: the Engine is the source of the workspace `documents` section, unless a
-  // contribution was injected (tests, demo).
-  const engine = dependencies.specs?.engine;
+  // The Runtime's single project: every `spec.*` check runs at `specScope(projectId, specId)`.
+  const projectId = () =>
+    demo
+      ? demo.environment.state.catalogue.project.id
+      : (engine?.context.project.projectId ?? dependencies.sessions?.storage?.projectId);
+  // Project mode: the Engine is the source of the workspace `tasks` (temporarily, the verified
+  // manifest) and `documents` sections, the Session association registry of the `sessions`
+  // section, and both feed the partial `activity` history, unless a contribution was injected (tests).
   const specContributions = dependencies.specs?.contributions ?? demo?.contributions;
-  const contributions =
-    !demo && engine && !specContributions?.documents
-      ? { ...specContributions, documents: createEngineWorkspaceDocuments(engine) }
-      : specContributions;
+  const contributions = demo
+    ? specContributions
+    : {
+        ...specContributions,
+        ...(engine && !specContributions?.tasks ? { tasks: manifestWorkspaceTasks } : {}),
+        ...(engine && !specContributions?.documents
+          ? { documents: createEngineWorkspaceDocuments(engine) }
+          : {}),
+        ...(!specContributions?.activity
+          ? {
+              activity: (_specId: string, input: Parameters<typeof composeWorkspaceActivity>[0]) =>
+                Promise.resolve(composeWorkspaceActivity(input)),
+            }
+          : {}),
+        ...(!specContributions?.sessions
+          ? {
+              sessions: createWorkspaceSessionContribution({
+                sessions: sessionsFeature.runtime,
+                projectId,
+              }),
+            }
+          : {}),
+      };
   const productFeatures: readonly RuntimeFeature[] = [
     createSpecsFeature({
       ...(config.specs ? { config: config.specs } : {}),
@@ -172,6 +234,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
         workspaceRepository: dependencies.specs?.workspaceRepository ?? demo?.workspaceRepository,
         contributions,
         sessions: sessionReferences,
+        projectId,
         // The demo Runtime serves its own Create routes (and events route) below.
         ...(demo
           ? {}
@@ -191,10 +254,12 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
       ...(demo ? demo.taskSources : {}),
       ...dependencies.tasks,
       sessions: dependencies.tasks?.sessions ?? sessionReferences,
+      projectId,
     }),
     createDocumentsFeature({
       ...(documentReadSource ? { readSource: documentReadSource } : {}),
       ...(engine ? { engine } : {}),
+      projectId,
       // The demo emulates the writes under `/api/demo/...`; the real write routes are project-only.
       ...(demo ? { writeRoutes: false } : {}),
       operations: {
@@ -205,19 +270,13 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
         ? { writeSource: dependencies.documents.writeSource }
         : {}),
     }),
-    createSessionsFeature({
-      ...(engine ? { engine } : {}),
-      config: mode === 'project' ? config.sessions : undefined,
-      storage:
-        dependencies.sessions?.storage ??
-        (mode === 'project' && config.sessions?.enabled && engine
-          ? {
-              directory: join(engine.context.project.stateRoot, 'sessions'),
-              projectId: engine.context.project.projectId,
-              workspace: engine.context.workspace.root,
-            }
-          : undefined),
-      driver: dependencies.sessions?.driver,
+    sessionsFeature,
+    createSessionAssociationsFeature({
+      associations,
+      targets: associationTargets,
+      projectId,
+      // Demo mode reads associations from the catalogue; it has no composed create.
+      ...(demo ? {} : { sessions: sessionsFeature.runtime }),
     }),
     createSettingsFeature(),
   ];
@@ -277,35 +336,4 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
       message: 'This address serves the Runtime API, not the SpecFlow web UI.',
     };
   });
-}
-
-function specFlowRoleCapabilities(): Readonly<Record<SpecFlowRoleId, readonly CapabilityId[]>> {
-  const viewer = [
-    SpecCapabilities.capabilities.View,
-    SessionCapabilities.capabilities.View,
-  ] as const;
-
-  const developer = [
-    ...viewer,
-    SpecCapabilities.capabilities.Create,
-    SpecCapabilities.capabilities.Manage,
-    SpecCapabilities.capabilities.CloseWorktree,
-    SpecCapabilities.capabilities.CloseSpecification,
-    SessionCapabilities.capabilities.Create,
-    SessionCapabilities.capabilities.Manage,
-    SessionCapabilities.capabilities.ExecuteWrite,
-  ] as const;
-
-  return {
-    viewer,
-    developer,
-    admin: [
-      ...developer,
-      SessionCapabilities.capabilities.ViewProviderLimits,
-      SettingsCapabilities.capabilities.View,
-      SettingsCapabilities.capabilities.Manage,
-      ProjectGitCapabilities.capabilities.Integrate,
-      ProjectGitCapabilities.capabilities.CloseWorkspace,
-    ],
-  };
 }

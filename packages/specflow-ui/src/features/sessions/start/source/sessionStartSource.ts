@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import type { SessionAssociationRead } from '@nevo/specflow-contracts/sessions';
 import type { StartCatalogue } from '../catalogue/startCatalogue';
 import type { AgentChoice } from '../choice/agentChoice';
 import type { SessionNameChoice } from '../choice/sessionName';
@@ -30,7 +31,7 @@ export interface SessionStartPending {
 /**
  * Where a new Session is started from. The start screen only presents and collects; the source owns
  * the catalogue, the request (with its retention, replay and recovery) and the pinned context, so
- * the same screen serves the managed Runtime's `/sessions/new` and a Specification's demo start.
+ * the same screen serves a Specification's New Session in a project Runtime and in the demo.
  */
 export interface SessionStartSource {
   /** The signed-in identity the started Session (and its handoff) belongs to. */
@@ -41,13 +42,14 @@ export interface SessionStartSource {
   /**
    * Starts the Session with what was chosen. Resolves with its id once it exists, and with what the
    * request actually carried (`sent`; a kept request is resent unchanged, whatever the form holds
-   * now). Rejects when it was not started (the choices stay and the form unlocks, or the pending
-   * outcome says why not).
+   * now). `association` is the Session's association as the start established it: it seeds the
+   * association read, so the Session's first paint and a reload show the same Context. Rejects when
+   * it was not started (the choices stay and the form unlocks, or the pending outcome says why not).
    */
   start: (
     choice: AgentChoice,
     name: SessionNameChoice,
-  ) => Promise<{ sessionId: string; sent: SentStart }>;
+  ) => Promise<{ sessionId: string; sent: SentStart; association?: SessionAssociationRead }>;
   /** Retires the failure the source shows (called when the user edits the choices after it). */
   dismissFailure?: () => void;
   /** An earlier start is unresolved (see {@link SessionStartPending}). */

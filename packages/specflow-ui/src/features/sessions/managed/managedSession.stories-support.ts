@@ -62,6 +62,7 @@ export function sessionFixture(waiting = false): SessionSnapshot {
         cancel: waiting,
         questions: true,
         permissions: true,
+        delete: true,
       },
       createdAt: '2026-10-25T10:00:00Z',
       updatedAt: '2026-10-25T10:00:00Z',
@@ -189,8 +190,31 @@ export function staggeredContentApi(snapshot: SessionSnapshot, delayMs = 120): M
   };
 }
 
+/**
+ * The snapshot as the Runtime serves it: the Session names its provider and model by the
+ * catalogue's titles (absent when not listed), whatever the caller may read of the catalogue.
+ */
+export function withRuntimeTitles(
+  snapshot: SessionSnapshot,
+  provider: ProviderDescriptor | undefined = providerFixture(snapshot.session.providerId),
+): SessionSnapshot {
+  const { providerTitle: _provider, modelTitle: _model, ...session } = snapshot.session;
+  const modelTitle = provider?.models.find((model) => model.modelId === session.modelId)?.title;
+
+  return {
+    ...snapshot,
+    session: {
+      ...session,
+      ...(provider ? { providerTitle: provider.title } : {}),
+      ...(modelTitle ? { modelTitle } : {}),
+    },
+  };
+}
+
 /** Isolated presentation adapter: never imported by a production route. */
-export function fixtureApi(snapshot: SessionSnapshot, historyError = false): ManagedSessionsApi {
+export function fixtureApi(served: SessionSnapshot, historyError = false): ManagedSessionsApi {
+  const snapshot = withRuntimeTitles(served);
+
   return {
     providers: () => Promise.resolve({ items: [providerFixture(snapshot.session.providerId)] }),
     create: () => Promise.resolve({ sessionId: fixtureSessionId }),
@@ -262,7 +286,17 @@ export function fixtureApi(snapshot: SessionSnapshot, historyError = false): Man
       }),
     start: () => Promise.resolve({ turnId }),
     cancel: () => Promise.resolve({ turnId }),
-    respond: () => Promise.resolve({ turnId }),
+    // No telemetry in these fixtures: Context stories supply their own snapshot.
+    telemetry: () => Promise.resolve({ kind: 'not-modified' }),
+    refreshTelemetry: () => Promise.reject(new Error('No telemetry in this fixture.')),
+    reconcile: () => Promise.resolve({ turnId, outcome: 'completed', reconciled: true }),
+    rename: (_id, input) =>
+      Promise.resolve({ session: { ...snapshot.session, title: input.title } }),
+    archive: () =>
+      Promise.resolve({ session: { ...snapshot.session, archivedAt: '2026-10-25T10:05:00Z' } }),
+    unarchive: () => Promise.resolve({ session: snapshot.session }),
+    delete: () => Promise.resolve(),
+    respond: (_id, interactionId) => Promise.resolve({ turnId, interactionId }),
     async *watch(_id, _after, signal) {
       await new Promise<void>((resolve) => {
         if (signal.aborted) {

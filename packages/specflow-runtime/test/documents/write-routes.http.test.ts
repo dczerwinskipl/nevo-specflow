@@ -661,17 +661,33 @@ describe('the operation status read', () => {
     const head = await fx.app.inject({ method: 'HEAD', url: route.url, headers: fx.headers });
     expect(head.statusCode).toBe(200);
     expect(head.body).toBe('');
+  });
+
+  it('requires authentication for an operation status HEAD request', async () => {
     const anonymous = await listen({ authenticated: false });
     expect(
-      (await anonymous.app.inject({ method: 'HEAD', url: route.url, headers: anonymous.headers }))
-        .statusCode,
+      (
+        await anonymous.app.inject({
+          method: 'HEAD',
+          url: ROUTES[5]!.url,
+          headers: anonymous.headers,
+        })
+      ).statusCode,
     ).toBe(401);
+  });
+
+  it('enforces the Specification scope for an operation status HEAD request', async () => {
     const noAccess = await listen({
       assignments: [{ role: 'developer', scope: { specId: OTHER_SPEC } }],
     });
     expect(
-      (await noAccess.app.inject({ method: 'HEAD', url: route.url, headers: noAccess.headers }))
-        .statusCode,
+      (
+        await noAccess.app.inject({
+          method: 'HEAD',
+          url: ROUTES[5]!.url,
+          headers: noAccess.headers,
+        })
+      ).statusCode,
     ).toBe(403);
   });
 

@@ -3,6 +3,7 @@ import type { SpecFlowEngine } from '@nevo/specflow-engine';
 import type { OperationListConfig, OperationProgressRegistry } from '../operations';
 import { createOperationProgressRegistry } from '../operations';
 import type { RuntimeFeature } from '../runtime-feature';
+import type { ProjectIdSource } from '../specs';
 import { documentContentEndpoint } from './content/endpoint';
 import type { DocumentReadSource } from './content/document-read-source';
 import { createEngineDocumentReadSource } from './content/engine-source';
@@ -28,6 +29,8 @@ export interface DocumentsFeatureDependencies {
   writeRoutes?: boolean;
   /** Explicit write source of the document write routes (tests). Wins over the Engine. */
   writeSource?: DocumentWriteSource;
+  /** The Runtime's project when there is no Engine to read it from (demo); see `specScope`. */
+  projectId?: ProjectIdSource;
   /** The document-operations list: the shared registry and the injectable clock and thresholds. */
   operations?: {
     registry?: OperationProgressRegistry;
@@ -46,8 +49,10 @@ export function createDocumentsFeature(
       const source =
         dependencies.readSource ??
         (dependencies.engine ? createEngineDocumentReadSource(dependencies.engine) : undefined);
-      app.register(documentContentEndpoint, { source });
-      app.register(rawDocumentEndpoint, { source });
+      const projectId: ProjectIdSource = () =>
+        dependencies.projectId?.() ?? dependencies.engine?.context.project.projectId;
+      app.register(documentContentEndpoint, { source, projectId });
+      app.register(rawDocumentEndpoint, { source, projectId });
       if (dependencies.writeRoutes === false) {
         return;
       }
@@ -56,7 +61,10 @@ export function createDocumentsFeature(
       const writeSource =
         dependencies.writeSource ??
         (dependencies.engine ? createEngineDocumentWriteSource(dependencies.engine) : undefined);
-      app.register(documentWriteEndpoint, { source: writeSource });
+      app.register(documentWriteEndpoint, {
+        source: writeSource,
+        projectId,
+      });
       registerDocumentOperationList(app, {
         engine: dependencies.engine,
         registry: dependencies.operations?.registry ?? createOperationProgressRegistry(),

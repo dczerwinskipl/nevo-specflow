@@ -12,6 +12,13 @@ describe('provider identity artwork', () => {
     expect(html).not.toContain('mask-image');
     expect(html).not.toContain('bg-current');
   });
+  it('renders the multi-colour Antigravity asset as an image, never as a mask', () => {
+    const html = renderToStaticMarkup(<SessionProviderIcon providerId="antigravity" />);
+    expect(html).toContain('<img');
+    expect(html).toMatch(/antigravity-color|%233186FF/i);
+    expect(html).not.toContain('mask-image');
+    expect(html).not.toContain('bg-current');
+  });
   it('keeps monochrome Codex in the surrounding theme color', () => {
     const html = renderToStaticMarkup(<SessionProviderIcon providerId="codex" />);
     expect(html).toContain('mask-image');

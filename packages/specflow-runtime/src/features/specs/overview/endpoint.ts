@@ -21,6 +21,7 @@ import {
 } from '@nevo/specflow-contracts/specs/overview';
 
 import { requireCapabilityInAnyScope } from '../../auth';
+import type { ProjectIdSource } from '../scope';
 import type { SpecsOverviewRepository } from './repository/read-repository';
 import { SpecsReadError, type SpecsReadErrorCode } from '../read/error';
 import { getArchiveOverview } from './archive/get-overview';
@@ -29,6 +30,8 @@ import { getCurrentOverview } from './current/get-overview';
 export interface SpecsOverviewEndpointOptions {
   readonly repository?: SpecsOverviewRepository;
   readonly currentSections: readonly CurrentSpecSectionId[];
+  /** The Runtime's project; see `specScope`. */
+  readonly projectId?: ProjectIdSource;
 }
 
 export const specsOverviewEndpoint: FastifyPluginCallback<SpecsOverviewEndpointOptions> = (
@@ -64,11 +67,13 @@ export const specsOverviewEndpoint: FastifyPluginCallback<SpecsOverviewEndpointO
           ? getArchiveOverview({
               authorization: request.authz,
               repository: options.repository,
+              projectId: options.projectId?.(),
             })
           : getCurrentOverview({
               authorization: request.authz,
               repository: options.repository,
               sections: options.currentSections,
+              projectId: options.projectId?.(),
             }));
       } catch (error) {
         const code = readErrorCode(error);

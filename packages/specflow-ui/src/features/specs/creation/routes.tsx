@@ -119,12 +119,9 @@ function NewSession() {
   return (
     <NewSessionRouteView
       specId={specId}
-      onBack={() =>
-        void navigate({
-          to: '/specs/$specId/sessions',
-          params: { specId },
-          search: { collection },
-        })
+      collection={collection}
+      onBackToSpecification={() =>
+        void navigate({ to: '/specs/$specId', params: { specId }, search: { collection } })
       }
       // The start screen is replaced by the Session (history replace): Back does not return to an
       // empty start state.

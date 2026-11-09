@@ -9,6 +9,10 @@ import {
 import { createSpecErrorCodes } from '../features/specs/creation/errors/createSpecErrors';
 import { createApiTransport } from '../api';
 import type { SessionsApi } from '../features/sessions/api';
+import {
+  createSessionAssociationsApi,
+  type SessionAssociationsApi,
+} from '../features/sessions/associations/api';
 import { createDemoSessionsApi } from '../features/sessions/api.demo';
 import { createHttpClient, type HttpClient } from '@nevo/http-client';
 
@@ -36,6 +40,8 @@ import { createProjectDocumentsApi } from '../features/documents/api.project';
 
 export interface SpecFlowAppServices {
   readonly managedSessionsApi: ManagedSessionsApi;
+  /** Session associations of a project Runtime: association read, Session list, composed create. */
+  readonly sessionAssociationsApi: SessionAssociationsApi;
   readonly runtimeInfoApi: RuntimeInfoApi;
   readonly authApi: AuthApi;
   readonly authStore: AuthStore;
@@ -61,6 +67,7 @@ export interface SpecFlowAppServices {
 
 export interface SpecFlowServicesOptions {
   readonly managedSessionsApi?: ManagedSessionsApi;
+  readonly sessionAssociationsApi?: SessionAssociationsApi;
   readonly http?: HttpClient;
   readonly runtimeInfoApi?: RuntimeInfoApi;
   readonly authApi?: AuthApi;
@@ -100,6 +107,8 @@ export function createSpecFlowAppServices(
 
   return {
     managedSessionsApi: options.managedSessionsApi ?? createManagedSessionsApi(runtimeHttp),
+    sessionAssociationsApi:
+      options.sessionAssociationsApi ?? createSessionAssociationsApi(runtimeHttp),
     runtimeInfoApi: options.runtimeInfoApi ?? createRuntimeInfoApi(runtimeHttp),
     authApi,
     authStore,

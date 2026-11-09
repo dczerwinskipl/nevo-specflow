@@ -3,10 +3,12 @@ import type {
   DemoSessionInput,
   DemoSessionResult,
 } from '@nevo/specflow-contracts/demo';
-import type { DemoSpecification } from '../../demo-catalogue';
+import type { DemoCatalogue, DemoSpecification } from '../../demo-catalogue';
+import { createDemoSessionList } from './list';
 import { DemoOperationError, type DemoState } from '../../../demo/state';
-import type { SessionReferenceOwner } from '../reference-owner';
-import { buildDemoSessionContribution } from './contribution';
+import type { SessionAssociations } from '../reference-owner';
+import { buildDemoSessionContribution, rankDemoSessions, seededDemoAgent } from './contribution';
+import { DEMO_SEEDED_AT } from './seeded-at';
 import { buildCatalogueSessionDetail } from './seeded-detail';
 
 type Find = (specId: string) => Promise<DemoSpecification | undefined>;
@@ -17,7 +19,13 @@ type Find = (specId: string) => Promise<DemoSpecification | undefined>;
  * sessions section. Document paths for the context snapshot are supplied by the caller.
  */
 export function createDemoSessions(state: DemoState) {
+  const allocatedAt = new Map<string, string>();
+
   return {
+    /** The demo Session list over the catalogue and the Sessions allocated here. */
+    list(catalogue: DemoCatalogue) {
+      return createDemoSessionList({ state, catalogue, allocatedAt });
+    },
     /** Session context documents are materialized snapshots in this bounded demo; documents report changes here. */
     refreshDocuments(specId: string, paths: readonly string[]) {
       for (const session of state.sessions.values()) {
@@ -53,7 +61,7 @@ export function createDemoSessions(state: DemoState) {
 
       const location = state.locations.get(specId) ?? state.catalogue.currentLocation;
       state.fail('session', 'demo_session_allocation_failed');
-      const sessionId = 'session-' + state.id();
+      const sessionId = state.uuid();
       const detail: DemoSessionDetail = {
         sessionId,
         specId,
@@ -80,6 +88,7 @@ export function createDemoSessions(state: DemoState) {
         },
       };
       state.sessions.set(sessionId, detail);
+      allocatedAt.set(sessionId, new Date().toISOString());
       const result = { sessionId, location: detail.location };
       entry.result = result;
 
@@ -117,19 +126,49 @@ export function createDemoSessions(state: DemoState) {
         : null;
     },
     /** Resolves allocated sessions first, then the seeded references. */
-    overlayReferences(seeded: SessionReferenceOwner): SessionReferenceOwner {
+    overlayReferences(seeded: SessionAssociations): SessionAssociations {
+      const allocated = (sessionId: string) => {
+        const session = state.sessions.get(sessionId);
+
+        return session
+          ? {
+              sessionId,
+              specId: session.specId,
+              projectId: state.catalogue.project.id,
+              workspaceId: 'demo-workspace',
+            }
+          : undefined;
+      };
+
       return {
         async resolve(sessionId) {
+          return allocated(sessionId) ?? seeded.resolve(sessionId);
+        },
+        async resolveMany(sessionIds) {
+          const resolved = new Map(
+            await seeded.resolveMany(sessionIds.filter((id) => !state.sessions.has(id))),
+          );
+          for (const sessionId of sessionIds) {
+            const reference = allocated(sessionId);
+            if (reference) {
+              resolved.set(sessionId, reference);
+            }
+          }
+
+          return resolved;
+        },
+        async identity(sessionId) {
           const session = state.sessions.get(sessionId);
 
           return session
-            ? {
-                sessionId,
-                specId: session.specId,
-                projectId: state.catalogue.project.id,
-                workspaceId: 'demo-workspace',
-              }
-            : seeded.resolve(sessionId);
+            ? { projectId: state.catalogue.project.id, sessionId, specId: session.specId }
+            : seeded.identity(sessionId);
+        },
+        async association(sessionId) {
+          const session = state.sessions.get(sessionId);
+
+          // An allocated demo Session belongs to its Specification and names no Task.
+          return session ? { specId: session.specId, taskIds: [] } : seeded.association(sessionId);
         },
       };
     },
@@ -144,27 +183,33 @@ export function createDemoSessions(state: DemoState) {
 
       const original = state.specifications.has(specId)
         ? { section: { state: 'available' as const, data: { items: [], attention: [] } } }
-        : buildDemoSessionContribution(record);
+        : buildDemoSessionContribution(record, seededDemoAgent(state.catalogue));
+
+      // Sessions allocated in this environment are the newest, newest first.
+      const items = [
+        ...[...state.sessions.values()]
+          .filter((session) => session.specId === specId)
+          .reverse()
+          .map((session) => ({
+            id: session.sessionId,
+            title: session.title,
+            taskIds: [],
+            status: 'quiet' as const,
+            providerId: session.configuration.providerId,
+            providerTitle: session.configuration.providerTitle,
+            modelId: session.configuration.modelId,
+            modelTitle: session.configuration.modelTitle,
+            updatedAt: allocatedAt.get(session.sessionId) ?? DEMO_SEEDED_AT,
+          })),
+        ...original.section.data.items,
+      ];
 
       return {
-        ...original,
         section: {
           state: 'available' as const,
-          data: {
-            ...original.section.data,
-            items: [
-              ...original.section.data.items,
-              ...[...state.sessions.values()]
-                .filter((session) => session.specId === specId)
-                .map((session) => ({
-                  id: session.sessionId,
-                  title: session.title,
-                  taskIds: [],
-                  status: 'quiet' as const,
-                })),
-            ],
-          },
+          data: { ...original.section.data, items },
         },
+        recommendedSessionIds: rankDemoSessions(items),
       };
     },
   };

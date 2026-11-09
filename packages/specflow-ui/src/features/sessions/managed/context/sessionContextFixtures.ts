@@ -3,7 +3,8 @@ import {
   fullTelemetrySnapshot,
   partialAntigravityTelemetrySnapshot,
   staleTelemetrySnapshot,
-} from './sessionTelemetry';
+  telemetryMeasuredTurnId,
+} from './sessionTelemetry.stories-support';
 import type {
   ContextFact,
   SessionContextTaskRef,
@@ -51,7 +52,7 @@ export const claudeExecutor: SessionExecutor = {
 const workHistory = ready({ turnId: workInspectorTurnId });
 
 /** State A — generic/spec-level Session (full-session-screen-structure.md §12). Also carries a
- * full/available telemetry snapshot (§23/PR #107 demo data) to exercise `SessionTelemetrySection`
+ * full/available telemetry snapshot (§23, `sessionTelemetry.stories-support.ts`) to exercise `SessionTelemetrySection`
  * with every dimension present. Shows the Documents row once a handler is wired. */
 export function genericSpecLevelContext(): SessionContextViewModel {
   return {
@@ -62,7 +63,7 @@ export function genericSpecLevelContext(): SessionContextViewModel {
     telemetry: fullTelemetrySnapshot,
     workHistory,
     // The measured Turn is the one still running, so the context window reads "Current Turn".
-    runningTurnId: fullTelemetrySnapshot.context.value?.turnId,
+    runningTurnId: telemetryMeasuredTurnId,
   };
 }
 
@@ -140,28 +141,28 @@ export function terminalOutcomeContext(): SessionContextViewModel {
         task: task03,
       },
     ]),
-    // Stale telemetry (§23/PR #107 demo data): observed before this outcome settled and not yet
+    // Stale telemetry (§23, `sessionTelemetry.stories-support.ts`): observed before this outcome settled and not yet
     // reconfirmed, so every telemetry line must show the subtle "stale" cue, not read as live.
     telemetry: staleTelemetrySnapshot,
   };
 }
 
-/** The real route today: the Runtime carries no Specification/Task association, so the scope is
- * unknown (not provided) and only the executor and Work history (derived from the Session's own
- * snapshot) show. */
+/** A standalone Session on the real route: its association read says `standalone`, so only the
+ * executor and Work history (derived from the Session's own snapshot) show, with no note. */
 export function realRouteContext(): SessionContextViewModel {
   return {
-    scope: { kind: 'unknown', reason: 'not-provided' },
+    scope: { kind: 'standalone' },
     executor: ready(claudeExecutor),
     workHistory,
     runningTurnId: workInspectorTurnId,
   };
 }
 
-/** The real route before the first snapshot and the provider catalogue arrive. */
+/** The real route before the first snapshot, the provider catalogue and the association read
+ * arrive: no Specification section yet (no skeleton that could vanish for a standalone Session). */
 export function realRouteLoadingContext(): SessionContextViewModel {
   return {
-    scope: { kind: 'unknown', reason: 'not-provided' },
+    scope: { kind: 'unknown', reason: 'loading' },
     executor: { status: 'loading' },
     workHistory: { status: 'loading' },
   };

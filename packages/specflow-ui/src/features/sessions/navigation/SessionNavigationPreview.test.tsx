@@ -36,7 +36,13 @@ describe('Sessions navigation presentation', () => {
     const html = renderToStaticMarkup(
       <StoryLocalization locale="en">
         <SessionNavigationPreview
-          entries={[{ id: 'sample-session-24', title: 'Implementer', activityCode: 'active' }]}
+          entries={[
+            {
+              id: '00000000-0000-4000-8000-000000000024',
+              title: 'Implementer',
+              activityCode: 'active',
+            },
+          ]}
           renderEntryLink={(sessionId, className, children) => (
             <a href={`/sessions/${sessionId}`} className={className}>
               {children}
@@ -47,7 +53,9 @@ describe('Sessions navigation presentation', () => {
         </SessionNavigationPreview>
       </StoryLocalization>,
     );
-    expect(html).toMatch(/<a href="\/sessions\/sample-session-24" class="[^"]*grid[^"]*">/);
+    expect(html).toMatch(
+      /<a href="\/sessions\/00000000-0000-4000-8000-000000000024" class="[^"]*grid[^"]*">/,
+    );
     expect(html).toContain('Implementer');
   });
 });

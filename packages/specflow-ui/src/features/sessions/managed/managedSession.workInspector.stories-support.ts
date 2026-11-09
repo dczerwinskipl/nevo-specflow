@@ -5,12 +5,12 @@ import type {
   ProviderDescriptor,
   ToolActionSummary,
   TurnSummary,
+  WorkCounts,
   WorkPage,
   WorkSummary,
 } from '@nevo/specflow-contracts/sessions';
 import type { ManagedSessionsApi } from './api';
 import { fixtureSessionId } from './managedSession.stories-support';
-import type { WorkCounts, WorkKind } from './workCounts';
 
 /** Isolated Storybook fixtures for the Work L2 timeline (WorkInspector.tsx): never imported by a
  * production route. Kept independent from `ManagedSession.tsx`/`managedSession.stories-support.ts`
@@ -317,14 +317,14 @@ export function largeWorkTimelineItems(count = 144): WorkSummary[] {
 }
 
 /**
- * Demo stand-in for the proposed, not-yet-backend-implemented `WorkPage.counts` aggregate
- * (workCounts.ts, docs/reference/api/sessions.md "Proposed Work aggregate counts"): computed once
+ * Fixture value of Runtime's `WorkPage.counts` aggregate (docs/reference/api/sessions.md "Work
+ * aggregate counts"): computed once
  * from the FULL fixture `items` array, never per-page, so it keeps demonstrating a true Turn-wide
  * total even while `createWorkInspectorFixtureApi` only ever serves one bounded page at a time —
  * exactly the server-side projection this is standing in for.
  */
 function computeWorkCounts(items: readonly WorkSummary[]): WorkCounts {
-  const byKind: Record<WorkKind, number> = {
+  const byKind: WorkCounts['byKind'] = {
     commentary: 0,
     reasoning: 0,
     interaction: 0,
@@ -383,7 +383,7 @@ export function createWorkInspectorFixtureApi(
         items: pageItems,
         history: { hasOlder, before: hasOlder ? String(index - 1) : undefined },
         counts,
-      } satisfies WorkPage & { counts: WorkCounts });
+      } satisfies WorkPage);
     },
     actions: (_sessionId, workId) =>
       Promise.resolve({
@@ -396,7 +396,17 @@ export function createWorkInspectorFixtureApi(
     content: (_sessionId, ref, offset) => fixtureContentPage(ref, offset),
     start: () => Promise.resolve({ turnId: workInspectorTurnId }),
     cancel: () => Promise.resolve({ turnId: workInspectorTurnId }),
-    respond: () => Promise.resolve({ turnId: workInspectorTurnId }),
+    // No telemetry in these fixtures: Context stories supply their own snapshot.
+    telemetry: () => Promise.resolve({ kind: 'not-modified' }),
+    refreshTelemetry: () => Promise.reject(new Error('No telemetry in this fixture.')),
+    reconcile: () =>
+      Promise.resolve({ turnId: workInspectorTurnId, outcome: 'completed', reconciled: true }),
+    rename: () => Promise.reject(new Error('not used by these stories')),
+    archive: () => Promise.reject(new Error('not used by these stories')),
+    unarchive: () => Promise.reject(new Error('not used by these stories')),
+    delete: () => Promise.reject(new Error('not used by these stories')),
+    respond: (_id, interactionId) =>
+      Promise.resolve({ turnId: workInspectorTurnId, interactionId }),
     async *watch(_sessionId, _after, signal) {
       await new Promise<void>((resolve) => {
         if (signal.aborted) {

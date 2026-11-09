@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import { Value } from 'typebox/value';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ProviderCatalogueSchema,
   type CreateContextSessionResult,
@@ -13,6 +13,44 @@ import {
 import { createRuntimeApp } from '../../src/server/app';
 import { passwordConfig } from '../auth/support/config';
 import { associationTargets } from '../support/association-targets';
+
+// The mock driver (a test seam) additionally lists a provider-native read-only and writer mode, so
+// the catalogue's `authorized` marking of a `workspace-write` mode is observable. Sessions here
+// are created read-only and never run a Turn, so the mock's own validation is unchanged.
+vi.mock('../../src/features/sessions/providers/mock', async (importOriginal) => {
+  const original =
+    await importOriginal<typeof import('../../src/features/sessions/providers/mock')>();
+
+  return {
+    ...original,
+    createMockDriver: (...args: Parameters<typeof original.createMockDriver>) => {
+      const driver = original.createMockDriver(...args);
+
+      return {
+        ...driver,
+        describe: () => ({
+          ...driver.describe(),
+          providerModes: [
+            {
+              modeId: 'plan',
+              title: 'Plan',
+              nativeMode: 'plan',
+              mode: 'read-only' as const,
+              readiness: 'ready' as const,
+            },
+            {
+              modeId: 'agent',
+              title: 'Agent',
+              nativeMode: 'agent',
+              mode: 'workspace-write' as const,
+              readiness: 'ready' as const,
+            },
+          ],
+        }),
+      };
+    },
+  };
+});
 
 type Role = 'viewer' | 'developer' | 'admin';
 
@@ -128,6 +166,30 @@ describe('GET /api/session-providers by start context', () => {
     // The query is closed and its values are bounded.
     expect((await catalogue(server, '?projectId=project')).statusCode).toBe(400);
     expect((await catalogue(server, '?sessionId=not-a-session')).statusCode).toBe(400);
+  });
+
+  it('authorizes a writer mode by execute-write, never through a Specification grant', async () => {
+    const { inS } = await seed();
+    const writer = async (server: FastifyInstance, query: string) => {
+      const read = await catalogue(server, query);
+      expect(read.statusCode, read.body).toBe(200);
+      const modes = read
+        .json<{ items: ProviderDescriptor[] }>()
+        .items.find((item) => item.providerId === 'mock')?.providerModes;
+      // A read-only mode is always authorized.
+      expect(modes?.find((mode) => mode.modeId === 'plan')?.authorized).toBe(true);
+
+      return modes?.find((mode) => mode.modeId === 'agent')?.authorized;
+    };
+
+    expect(await writer(await open('developer', { projectId: 'project' }), '')).toBe(true);
+    expect(await writer(await open('developer', { sessionId: inS }), `?sessionId=${inS}`)).toBe(
+      true,
+    );
+    // As a Turn start refuses execute-write to a Specification-scoped grant.
+    const inSpec = await open('developer', { specId: 'S' });
+    expect(await writer(inSpec, '?specId=S')).toBe(false);
+    expect(await writer(inSpec, `?sessionId=${inS}`)).toBe(false);
   });
 
   it('lets developer@S read the catalogue and start a Session in S, and refuses T', async () => {

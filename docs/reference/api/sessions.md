@@ -464,8 +464,9 @@ type SessionListPage = { items: SessionListItem[]; nextCursor?: string };
 - A page decodes only the rows it returns; a Session deleted between scan and decode is omitted.
   The demo Runtime serves the same route from its catalogue.
 - `providerTitle` and `modelTitle` are resolved from the Runtime's provider catalogue at read time,
-  so a caller who may not read `GET /api/session-providers` (a viewer) can still name the agent. `readiness` is the effective readiness of the single-Session read: when the provider
-  (or the Session's provider mode) cannot run a Turn and none is active, it reads
+  so a caller who may not read `GET /api/session-providers` (a viewer) can still name the agent.
+  `readiness` is the effective readiness of the single-Session read: when the provider (or the
+  Session's provider mode) cannot run a Turn and none is active, it reads
   `authenticationRequired` if the provider needs a sign-in, otherwise `unavailable`.
 
 ## Bounded history and Work
@@ -672,7 +673,8 @@ source beyond selecting which check runs:
 | `?sessionId=X` | the composer of Session X (model/mode/retry) | `session.manage` at X's store-derived `sessionScope`: any-scope precheck first (403 for an unknown Session too), then the identity (404 unknown) |
 
 Both parameters together are `400 SESSION_INPUT_INVALID`, as is any other parameter or a malformed
-id. A `workspace-write` provider mode is `authorized` when the caller holds `session.execute-write`
+id. `?specId` is a pure authorization check: it does not verify that the Specification exists
+(the catalogue is not sensitive and names no Specification; the composed create verifies it). A `workspace-write` provider mode is `authorized` when the caller holds `session.execute-write`
 at `{projectId}` (no context, `?specId`) or at the Session's own execute-write scope
 (`?sessionId`); it never carries `specId`. The UI's New Session in a Specification reads `?specId`,
 the Full Session composer `?sessionId`, so a Specification-scoped developer can start and steer

@@ -84,6 +84,8 @@ export interface IndexIdentity {
 
 export interface IndexManifest {
   readonly identity: IndexIdentity;
+  /** Increases with every applied change; the compare-and-swap token of `VectorStore.apply`. */
+  readonly generation: number;
   /** Chunk id -> content hash of the chunk the stored vector was computed from. */
   readonly chunks: ReadonlyMap<string, string>;
 }
@@ -95,27 +97,68 @@ export interface VectorEntry {
 }
 
 /**
- * One write to a vector store. It is applied as a whole: a reader sees the store either before or
- * after it. `reset` discards every stored vector first (a full rebuild under a new identity); without
- * it, `identity` must equal the stored identity.
+ * One write to a vector store, applied as a whole: a reader sees the store either before or after
+ * it. `baseGeneration` is the manifest generation the change was computed from (`undefined` for a
+ * store that held no index); when the store has moved on, the change is not applied and `apply`
+ * answers `conflict`, so the writer re-reads the manifest and recomputes. `reset` discards every
+ * stored vector first (a full rebuild, possibly under a new identity); without it, `identity` must
+ * equal the stored identity.
  */
 export interface VectorStoreChange {
+  readonly baseGeneration: number | undefined;
   readonly identity: IndexIdentity;
   readonly reset: boolean;
   readonly upsert: readonly VectorEntry[];
   readonly delete: readonly string[];
 }
 
+export type ApplyOutcome =
+  { readonly status: 'applied'; readonly generation: number } | { readonly status: 'conflict' };
+
+/** A store that cannot be read answers this instead of throwing (for example a locked file). */
+export interface StoreUnreadable {
+  readonly status: 'unreadable';
+  readonly message: string;
+}
+
+export type ManifestOutcome =
+  | { readonly status: 'ok'; readonly manifest: IndexManifest }
+  | { readonly status: 'missing' }
+  | StoreUnreadable;
+
 export interface VectorMatch {
   readonly chunkId: string;
+  /** Content hash stored with the vector, from the same snapshot as the score. */
+  readonly contentHash: string;
   /** Cosine similarity in [-1, 1]. */
   readonly score: number;
 }
 
+/**
+ * Answer of one query, taken from one consistent snapshot of the store. `mismatch` means the stored
+ * identity differs from the expected one; the store then compares no vectors.
+ */
+export type VectorQueryOutcome =
+  | { readonly status: 'ok'; readonly matches: readonly VectorMatch[] }
+  | { readonly status: 'missing' }
+  | { readonly status: 'mismatch'; readonly stored: IndexIdentity }
+  | StoreUnreadable;
+
+export interface VectorQuery {
+  /** Identity the query vector was produced under; its `dimensions` equal the vector length. */
+  readonly identity: IndexIdentity;
+  readonly vector: Float32Array;
+  readonly limit: number;
+}
+
+/**
+ * Stores vectors by chunk id. Read methods never throw for store state or I/O problems: they answer
+ * `missing` or `unreadable`. `apply` throws only for a change that violates the contract (see
+ * `validateChange`) or a failed write; a concurrent writer surfaces as `conflict`.
+ */
 export interface VectorStore {
-  /** `undefined` when the store holds no index yet. */
-  readManifest(): Promise<IndexManifest | undefined>;
-  apply(change: VectorStoreChange): Promise<void>;
+  readManifest(): Promise<ManifestOutcome>;
+  apply(change: VectorStoreChange): Promise<ApplyOutcome>;
   /** Nearest neighbours by cosine similarity, ordered by score then chunk id. */
-  query(vector: Float32Array, limit: number): Promise<readonly VectorMatch[]>;
+  query(query: VectorQuery): Promise<VectorQueryOutcome>;
 }

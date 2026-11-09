@@ -1,71 +1,85 @@
-import type { IndexIdentity, IndexManifest, VectorStore, VectorStoreChange } from './ports';
-import { nearestNeighbours } from './vector-math';
-import { validateChange } from './vector-store-contract';
+import type {
+  ApplyOutcome,
+  IndexManifest,
+  ManifestOutcome,
+  VectorQuery,
+  VectorQueryOutcome,
+  VectorStore,
+  VectorStoreChange,
+} from './ports';
+import { nearestNeighbours, type VectorCandidate } from './vector-math';
+import { sameIdentity, validateChange } from './vector-store-contract';
 
-interface StoredVector {
-  readonly contentHash: string;
-  readonly vector: Float32Array;
+interface Snapshot {
+  readonly manifest: IndexManifest;
+  readonly vectors: ReadonlyMap<string, VectorCandidate>;
 }
 
 /**
- * Reference `VectorStore` that keeps everything in memory. It enforces the port contract that every
- * store implements (see `validateChange`) and applies a change as a whole.
+ * Reference `VectorStore` that keeps everything in memory. Every change replaces one immutable
+ * snapshot, so each read answers from a single consistent state; it enforces the port contract
+ * (`validateChange`) and the compare-and-swap on `baseGeneration`.
  */
 export function createInMemoryVectorStore(): VectorStore {
-  let identity: IndexIdentity | undefined;
-  let vectors = new Map<string, StoredVector>();
+  let snapshot: Snapshot | undefined;
 
   return {
-    readManifest(): Promise<IndexManifest | undefined> {
-      if (!identity) {
-        return Promise.resolve(undefined);
-      }
-
-      const chunks = new Map([...vectors].map(([id, stored]) => [id, stored.contentHash]));
-
-      return Promise.resolve({ identity, chunks });
+    readManifest(): Promise<ManifestOutcome> {
+      return Promise.resolve(
+        snapshot ? { status: 'ok', manifest: snapshot.manifest } : { status: 'missing' },
+      );
     },
 
-    apply(change: VectorStoreChange): Promise<void> {
+    apply(change: VectorStoreChange): Promise<ApplyOutcome> {
+      if (change.baseGeneration !== snapshot?.manifest.generation) {
+        return Promise.resolve({ status: 'conflict' });
+      }
+
       try {
-        validateChange(change, identity);
+        validateChange(change, snapshot?.manifest.identity);
       } catch (error) {
         return Promise.reject(error instanceof Error ? error : new Error(String(error)));
       }
 
-      const next = change.reset ? new Map<string, StoredVector>() : new Map(vectors);
+      const vectors = new Map<string, VectorCandidate>(
+        change.reset || !snapshot ? [] : snapshot.vectors,
+      );
       for (const chunkId of change.delete) {
-        next.delete(chunkId);
+        vectors.delete(chunkId);
       }
 
       for (const entry of change.upsert) {
-        next.set(entry.chunkId, {
+        vectors.set(entry.chunkId, {
+          chunkId: entry.chunkId,
           contentHash: entry.contentHash,
           vector: Float32Array.from(entry.vector),
         });
       }
 
-      identity = change.identity;
-      vectors = next;
+      const generation = (snapshot?.manifest.generation ?? 0) + 1;
+      const chunks = new Map(
+        [...vectors.values()].map((entry) => [entry.chunkId, entry.contentHash]),
+      );
+      snapshot = { manifest: { identity: change.identity, generation, chunks }, vectors };
 
-      return Promise.resolve();
+      return Promise.resolve({ status: 'applied', generation });
     },
 
-    query(vector, limit) {
-      if (identity && vector.length !== identity.dimensions) {
-        return Promise.reject(
-          new RangeError(
-            `Query vector has ${vector.length} dimensions; the index has ${identity.dimensions}.`,
-          ),
-        );
+    query({ identity, vector, limit }: VectorQuery): Promise<VectorQueryOutcome> {
+      const current = snapshot;
+      if (!current) {
+        return Promise.resolve({ status: 'missing' });
       }
 
-      const candidates = [...vectors].map(([chunkId, stored]) => ({
-        chunkId,
-        vector: stored.vector,
-      }));
+      const stored = current.manifest.identity;
+      if (!sameIdentity(stored, identity) || vector.length !== stored.dimensions) {
+        return Promise.resolve({ status: 'mismatch', stored });
+      }
 
-      return Promise.resolve(nearestNeighbours(vector, candidates, limit));
+      return Promise.resolve({
+        status: 'ok',
+        matches: nearestNeighbours(vector, current.vectors.values(), limit),
+      });
     },
   };
 }

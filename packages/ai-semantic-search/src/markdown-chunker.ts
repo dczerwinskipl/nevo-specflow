@@ -29,12 +29,14 @@ interface Section {
  * empty path; sections without content besides their heading produce no chunk. A section longer
  * than `CHUNK_MAX_CHARS` is split into parts that overlap by `CHUNK_OVERLAP_CHARS`.
  *
- * Chunk ids are `<unit id>#<heading path>`, with `~<n>` for repeated heading paths and `/<part>` for
- * parts of an oversize section, so editing one section does not change the ids of the others.
+ * Chunk ids are `<unit id>#<heading path>`, with `/<part>` for parts of an oversize section, so
+ * editing one section does not change the ids of the others. When that id (or one of its part ids)
+ * is already taken, by a repeated heading path or a heading that spells a suffix literally, the
+ * section id gets the first free `~<n>` (n >= 2): ids are unique within a unit by construction.
  */
 export function chunkMarkdownUnit(unit: SourceUnit): Chunk[] {
   const chunks: Chunk[] = [];
-  const occurrences = new Map<string, number>();
+  const used = new Set<string>();
 
   for (const section of splitSections(unit.text)) {
     const text = trimBlankLines(section.lines).join('\n');
@@ -43,17 +45,25 @@ export function chunkMarkdownUnit(unit: SourceUnit): Chunk[] {
     }
 
     const pathKey = section.headingPath.join(HEADING_PATH_SEPARATOR);
-    const occurrence = occurrences.get(pathKey) ?? 0;
-    occurrences.set(pathKey, occurrence + 1);
-    const baseId = `${unit.id}#${pathKey}${occurrence === 0 ? '' : `~${occurrence + 1}`}`;
-
     const parts = splitOversize(text);
+    const idsFor = (sectionId: string) =>
+      parts.length === 1 ? [sectionId] : parts.map((_, index) => `${sectionId}/${index + 1}`);
+    const baseId = `${unit.id}#${pathKey}`;
+    let ids = idsFor(baseId);
+    for (let occurrence = 2; ids.some((id) => used.has(id)); occurrence += 1) {
+      ids = idsFor(`${baseId}~${occurrence}`);
+    }
+
+    for (const id of ids) {
+      used.add(id);
+    }
+
     parts.forEach((part, index) => {
       const embeddingText = [unit.header, pathKey, part]
         .filter((value) => value.trim().length > 0)
         .join('\n\n');
       chunks.push({
-        id: parts.length === 1 ? baseId : `${baseId}/${index + 1}`,
+        id: ids[index]!,
         unitId: unit.id,
         headingPath: section.headingPath,
         text: part,

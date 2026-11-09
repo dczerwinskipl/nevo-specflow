@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { createFakeEmbeddingProvider } from './fake-embedding-provider';
 import { createInMemoryVectorStore } from './in-memory-vector-store';
 import { CHUNKER_VERSION, chunkMarkdownUnit } from './markdown-chunker';
-import type { Chunk, IndexIdentity, VectorStore } from './ports';
+import type { Chunk, IndexIdentity, VectorStore, VectorStoreChange } from './ports';
 import { RRF_K } from './rrf';
 import { SEARCH_REASON, createSearchEngine } from './search';
 
@@ -38,6 +38,7 @@ async function indexedStore(
     dimensions: provider.dimensions!,
   };
   await store.apply({
+    baseGeneration: undefined,
     identity,
     reset: true,
     delete: [],
@@ -136,6 +137,28 @@ describe('createSearchEngine', () => {
     expect(failed.hits).not.toHaveLength(0);
   });
 
+  it('degrades to lexical when the store cannot be read', async () => {
+    const unreadable: VectorStore = {
+      readManifest: () => Promise.resolve({ status: 'unreadable', message: 'EBUSY' }),
+      apply: () => Promise.reject(new Error('read-only')),
+      query: () => Promise.resolve({ status: 'unreadable', message: 'EBUSY' }),
+    };
+    const result = await engine.search({
+      query: 'lock',
+      limit: 5,
+      vectors: { provider: createFakeEmbeddingProvider(), store: unreadable },
+    });
+
+    expect(result).toMatchObject({
+      mode: 'lexical',
+      reason: {
+        code: SEARCH_REASON.indexUnreadable,
+        message: expect.stringContaining('EBUSY') as unknown,
+      },
+    });
+    expect(result.hits.map((hit) => hit.unitId)).toEqual(['locks']);
+  });
+
   it('rejects duplicate chunk ids and invalid limits at the boundary', async () => {
     expect(() => createSearchEngine([chunks[0]!, chunks[0]!])).toThrow(/Duplicate chunk id/);
     await expect(
@@ -152,31 +175,59 @@ describe('in-memory vector store contract', () => {
     vector: Float32Array.from(vector),
   });
 
-  it('upserts, deletes and resets under one identity', async () => {
-    const store = createInMemoryVectorStore();
-    await store.apply({
-      identity,
-      reset: true,
-      delete: [],
-      upsert: [entry('a', [1, 0]), entry('b', [0, 1])],
-    });
-    await store.apply({ identity, reset: false, delete: ['a'], upsert: [entry('c', [1, 1])] });
+  const change = (baseGeneration: number | undefined, rest: Partial<VectorStoreChange> = {}) => ({
+    baseGeneration,
+    identity,
+    reset: false,
+    delete: [],
+    upsert: [],
+    ...rest,
+  });
 
-    expect([...(await store.readManifest())!.chunks.keys()]).toEqual(['b', 'c']);
-    expect((await store.query(Float32Array.of(0, 1), 1)).map((match) => match.chunkId)).toEqual([
-      'b',
-    ]);
+  it('upserts, deletes and resets under one identity, answering from one snapshot', async () => {
+    const store = createInMemoryVectorStore();
+    expect(
+      await store.apply(
+        change(undefined, { reset: true, upsert: [entry('a', [1, 0]), entry('b', [0, 1])] }),
+      ),
+    ).toEqual({ status: 'applied', generation: 1 });
+    await store.apply(change(1, { delete: ['a'], upsert: [entry('c', [1, 1])] }));
+
+    const manifest = await store.readManifest();
+    expect(manifest.status === 'ok' && [...manifest.manifest.chunks.keys()]).toEqual(['b', 'c']);
+    expect(await store.query({ identity, vector: Float32Array.of(0, 1), limit: 1 })).toEqual({
+      status: 'ok',
+      matches: [{ chunkId: 'b', contentHash: 'b', score: 1 }],
+    });
+    expect(
+      await store.query({
+        identity: { ...identity, model: 'x' },
+        vector: Float32Array.of(0, 1),
+        limit: 1,
+      }),
+    ).toEqual({ status: 'mismatch', stored: identity });
+  });
+
+  it('answers conflict to a change computed from an older generation', async () => {
+    const store = createInMemoryVectorStore();
+    await store.apply(change(undefined, { reset: true }));
+    await store.apply(change(1, { reset: true, identity: { ...identity, model: 'new' } }));
+
+    expect(await store.apply(change(1, { upsert: [entry('a', [1, 0])] }))).toEqual({
+      status: 'conflict',
+    });
+    expect(await store.apply(change(undefined, { reset: true }))).toEqual({ status: 'conflict' });
   });
 
   it('rejects a first change without reset, another identity without reset and wrong dimensions', async () => {
     const store = createInMemoryVectorStore();
-    await expect(store.apply({ identity, reset: false, delete: [], upsert: [] })).rejects.toThrow();
-    await store.apply({ identity, reset: true, delete: [], upsert: [] });
-    await expect(
-      store.apply({ identity: { ...identity, model: 'x' }, reset: false, delete: [], upsert: [] }),
-    ).rejects.toThrow(/reset/);
-    await expect(
-      store.apply({ identity, reset: false, delete: [], upsert: [entry('a', [1, 2, 3])] }),
-    ).rejects.toThrow(RangeError);
+    await expect(store.apply(change(undefined))).rejects.toThrow();
+    await store.apply(change(undefined, { reset: true }));
+    await expect(store.apply(change(1, { identity: { ...identity, model: 'x' } }))).rejects.toThrow(
+      /reset/,
+    );
+    await expect(store.apply(change(1, { upsert: [entry('a', [1, 2, 3])] }))).rejects.toThrow(
+      RangeError,
+    );
   });
 });

@@ -144,6 +144,48 @@ describe('OpenAI-compatible embeddings adapter', () => {
     expect(!probe.ok && probe.failure.message).toContain('1234 ms');
   });
 
+  it('maps an abort while the body streams to timeout, not malformed-response', async () => {
+    const controller = new AbortController();
+    handler = (_, response) => {
+      response.writeHead(200, { 'content-type': 'application/json' });
+      response.write('{"data":[');
+    };
+
+    const provider = createOpenAiCompatibleEmbeddingProvider(
+      { baseUrl, model: 'm' },
+      {
+        timeoutSignal: () => controller.signal,
+        fetch: async (...args) => {
+          const response = await fetch(...args);
+          controller.abort();
+
+          return response;
+        },
+      },
+    );
+
+    expect(await provider.embed(['a'], 'document')).toMatchObject({
+      ok: false,
+      failure: { code: 'timeout' },
+    });
+  });
+
+  it('keeps a query string of the base URL and hides it in messages', async () => {
+    handler = (_, response) => {
+      response.statusCode = 500;
+      response.end();
+    };
+
+    const provider = createOpenAiCompatibleEmbeddingProvider({
+      baseUrl: `${baseUrl}/?api-version=1&key=hidden`,
+      model: 'm',
+    });
+
+    const result = await provider.embed(['a'], 'document');
+    expect(received.at(-1)!.url).toBe('/v1/embeddings?api-version=1&key=hidden');
+    expect(!result.ok && result.failure.message).not.toContain('hidden');
+  });
+
   it('maps a connection failure to unreachable', async () => {
     const closed = createServer();
     await new Promise<void>((resolve) => closed.listen(0, '127.0.0.1', resolve));
@@ -161,6 +203,9 @@ describe('OpenAI-compatible embeddings adapter', () => {
     expect(() =>
       createOpenAiCompatibleEmbeddingProvider({ baseUrl: 'ftp://x', model: 'm' }),
     ).toThrow(TypeError);
+    expect(() =>
+      createOpenAiCompatibleEmbeddingProvider({ baseUrl: 'http://u:secret@host/v1', model: 'm' }),
+    ).toThrow(/^(?!.*secret).*credentials/u);
     expect(() =>
       createOpenAiCompatibleEmbeddingProvider({ baseUrl, model: 'm', batchSize: 0 }),
     ).toThrow(RangeError);

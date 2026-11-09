@@ -23,6 +23,7 @@ export function cosineSimilarity(a: Float32Array, b: Float32Array): number {
 
 export interface VectorCandidate {
   readonly chunkId: string;
+  readonly contentHash: string;
   readonly vector: Float32Array;
 }
 
@@ -37,7 +38,11 @@ export function nearestNeighbours(
 ): VectorMatch[] {
   const matches: VectorMatch[] = [];
   for (const candidate of candidates) {
-    matches.push({ chunkId: candidate.chunkId, score: cosineSimilarity(query, candidate.vector) });
+    matches.push({
+      chunkId: candidate.chunkId,
+      contentHash: candidate.contentHash,
+      score: cosineSimilarity(query, candidate.vector),
+    });
   }
 
   return matches

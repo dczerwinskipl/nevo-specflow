@@ -1,4 +1,5 @@
 export type {
+  ApplyOutcome,
   Chunk,
   ChunkSource,
   EmbeddingFailure,
@@ -8,12 +9,16 @@ export type {
   EmbeddingResult,
   IndexIdentity,
   IndexManifest,
+  ManifestOutcome,
   ProbeResult,
   SourceUnit,
+  StoreUnreadable,
   UnitMetadata,
   UnitMetadataValue,
   VectorEntry,
   VectorMatch,
+  VectorQuery,
+  VectorQueryOutcome,
   VectorStore,
   VectorStoreChange,
 } from './ports';
@@ -34,6 +39,7 @@ export {
 } from './openai-compatible-embeddings';
 export {
   SEARCH_REASON,
+  VECTOR_CANDIDATES_PER_RESULT,
   createSearchEngine,
   type ChunkHit,
   type SearchEngine,

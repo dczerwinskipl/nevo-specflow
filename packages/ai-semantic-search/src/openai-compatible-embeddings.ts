@@ -50,7 +50,7 @@ export function createOpenAiCompatibleEmbeddingProvider(
   settings: OpenAiCompatibleEmbeddingSettings,
   dependencies: OpenAiCompatibleEmbeddingDependencies = {},
 ): EmbeddingProvider {
-  const endpoint = embeddingsEndpoint(settings.baseUrl);
+  const { href: endpointHref, display: endpoint } = embeddingsEndpoint(settings.baseUrl);
   const batchSize = positiveInteger(
     'batchSize',
     settings.batchSize ?? DEFAULT_EMBEDDING_BATCH_SIZE,
@@ -76,12 +76,15 @@ export function createOpenAiCompatibleEmbeddingProvider(
     headers.authorization = `Bearer ${settings.apiKey}`;
   }
 
+  const timedOut = () =>
+    failure({ code: 'timeout', message: `${endpoint} did not answer within ${timeoutMs} ms.` });
+
   async function requestBatch(input: readonly string[]): Promise<EmbeddingResult> {
     const signal = timeoutSignal(timeoutMs);
     let response: Response;
     let body: unknown;
     try {
-      response = await fetchImpl(endpoint, {
+      response = await fetchImpl(endpointHref, {
         method: 'POST',
         headers,
         body: JSON.stringify({ model: settings.model, input }),
@@ -98,12 +101,13 @@ export function createOpenAiCompatibleEmbeddingProvider(
       }
 
       body = await response.json().catch(() => malformedBody);
+      // An abort while the body streams rejects the JSON read; it is a timeout, not a bad body.
+      if (signal.aborted) {
+        return timedOut();
+      }
     } catch (error) {
       if (signal.aborted) {
-        return failure({
-          code: 'timeout',
-          message: `${endpoint} did not answer within ${timeoutMs} ms.`,
-        });
+        return timedOut();
       }
 
       return failure({
@@ -206,19 +210,32 @@ function parseEmbeddings(body: unknown, expectedCount: number): EmbeddingResult 
   return { ok: true, vectors: vectors as Float32Array[] };
 }
 
-function embeddingsEndpoint(baseUrl: string): string {
+/**
+ * `{baseUrl}/embeddings`, keeping a query string (for example Azure's `api-version`). Credentials in
+ * the URL are rejected: fetch cannot send them and they would leak into messages. `display` (origin
+ * and path only) is what failure messages show.
+ */
+function embeddingsEndpoint(baseUrl: string): { readonly href: string; readonly display: string } {
   let url: URL;
   try {
-    url = new URL(baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`);
+    url = new URL(baseUrl);
   } catch {
-    throw new TypeError(`Embedding baseUrl is not a valid URL: ${baseUrl}`);
+    throw new TypeError('Embedding baseUrl is not a valid URL.');
   }
 
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-    throw new TypeError(`Embedding baseUrl must use http or https: ${baseUrl}`);
+    throw new TypeError(`Embedding baseUrl must use http or https, got ${url.protocol}`);
   }
 
-  return new URL('embeddings', url).href;
+  if (url.username || url.password) {
+    throw new TypeError(
+      'Embedding baseUrl must not contain credentials; pass the token as apiKey.',
+    );
+  }
+
+  url.pathname = `${url.pathname.replace(/\/+$/u, '')}/embeddings`;
+
+  return { href: url.href, display: `${url.origin}${url.pathname}` };
 }
 
 function positiveInteger(name: string, value: number): number {

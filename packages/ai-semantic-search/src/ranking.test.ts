@@ -44,9 +44,9 @@ describe('cosine similarity', () => {
     const matches = nearestNeighbours(
       Float32Array.of(1, 0),
       [
-        { chunkId: 'z', vector: Float32Array.of(1, 0) },
-        { chunkId: 'y', vector: Float32Array.of(0, 1) },
-        { chunkId: 'x', vector: Float32Array.of(3, 0) },
+        { chunkId: 'z', contentHash: 'z', vector: Float32Array.of(1, 0) },
+        { chunkId: 'y', contentHash: 'y', vector: Float32Array.of(0, 1) },
+        { chunkId: 'x', contentHash: 'x', vector: Float32Array.of(3, 0) },
       ],
       2,
     );

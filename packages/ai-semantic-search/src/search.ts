@@ -18,9 +18,14 @@ export const SEARCH_REASON = {
   indexMissing: 'index-missing',
   /** The stored index was built with another chunker version, protocol, model or dimension. */
   indexMismatch: 'index-mismatch',
+  /** The store could not be read (for example a locked or damaged index). */
+  indexUnreadable: 'index-unreadable',
   /** The provider failed to embed the query. */
   queryEmbeddingFailed: 'query-embedding-failed',
 } as const;
+
+/** Vector candidates fused per requested unit; bounds the vector list before fusion. */
+export const VECTOR_CANDIDATES_PER_RESULT = 10;
 
 /** Either vectors to search, or the consumer's reason why there are none. */
 export type SearchVectors =
@@ -61,11 +66,12 @@ export interface SearchEngine {
 
 /**
  * Builds a search engine over the current chunks of a corpus. Lexical ranking is BM25 over each
- * chunk's heading path and text. With vectors, the query embedding is ranked against the store and
- * both lists are fused by reciprocal rank fusion; vector matches with a non-positive similarity, and
- * stored vectors whose chunk no longer exists or whose content hash differs from the current chunk,
- * are ignored. Without usable vectors the same call
- * returns BM25 results with `mode: 'lexical'` and a reason; it never fails because of embeddings.
+ * chunk's heading path and text. With vectors, the query embedding is ranked against one snapshot of
+ * the store (at most `limit * VECTOR_CANDIDATES_PER_RESULT` matches) and both lists are fused by
+ * reciprocal rank fusion; vector matches with a non-positive similarity, and stored vectors whose
+ * chunk no longer exists or whose content hash differs from the current chunk, are ignored. Without
+ * usable vectors the same call returns BM25 results with `mode: 'lexical'` and a reason; it never
+ * fails because embeddings or the index are unavailable.
  */
 export function createSearchEngine(chunks: readonly Chunk[]): SearchEngine {
   const byId = new Map<string, Chunk>();
@@ -119,18 +125,6 @@ async function rankByVectors(
     return { reason: vectors.reason };
   }
 
-  const manifest = await vectors.store.readManifest();
-  if (!manifest) {
-    return {
-      reason: { code: SEARCH_REASON.indexMissing, message: 'No vector index has been built yet.' },
-    };
-  }
-
-  const mismatch = identityMismatch(manifest.identity, vectors.provider);
-  if (mismatch) {
-    return { reason: { code: SEARCH_REASON.indexMismatch, message: mismatch } };
-  }
-
   const embedded = await vectors.provider.embed([request.query], 'query');
   if (!embedded.ok) {
     return {
@@ -141,48 +135,61 @@ async function rankByVectors(
     };
   }
 
-  const queryVector = embedded.vectors[0]!;
-  if (queryVector.length !== manifest.identity.dimensions) {
-    return {
-      reason: {
-        code: SEARCH_REASON.indexMismatch,
-        message: `The query embedding has ${queryVector.length} dimensions; the index has ${manifest.identity.dimensions}.`,
-      },
-    };
+  const vector = embedded.vectors[0]!;
+  const identity: IndexIdentity = {
+    chunkerVersion: CHUNKER_VERSION,
+    protocol: vectors.provider.protocol,
+    model: vectors.provider.model,
+    dimensions: vector.length,
+  };
+  const outcome = await vectors.store.query({
+    identity,
+    vector,
+    limit: request.limit * VECTOR_CANDIDATES_PER_RESULT,
+  });
+
+  switch (outcome.status) {
+    case 'missing':
+      return {
+        reason: {
+          code: SEARCH_REASON.indexMissing,
+          message: 'No vector index has been built yet.',
+        },
+      };
+    case 'unreadable':
+      return {
+        reason: {
+          code: SEARCH_REASON.indexUnreadable,
+          message: `The vector index cannot be read: ${outcome.message}`,
+        },
+      };
+    case 'mismatch':
+      return {
+        reason: {
+          code: SEARCH_REASON.indexMismatch,
+          message: describeMismatch(outcome.stored, identity),
+        },
+      };
+    case 'ok':
+      return {
+        ids: outcome.matches
+          .filter(
+            (match) =>
+              match.score > 0 && byId.get(match.chunkId)?.contentHash === match.contentHash,
+          )
+          .map((match) => match.chunkId),
+      };
   }
-
-  const matches = await vectors.store.query(queryVector, manifest.chunks.size);
-  const ids = matches
-    .filter((match) => {
-      const chunk = byId.get(match.chunkId);
-
-      return (
-        match.score > 0 &&
-        chunk !== undefined &&
-        manifest.chunks.get(match.chunkId) === chunk.contentHash
-      );
-    })
-    .map((match) => match.chunkId);
-
-  return { ids };
 }
 
-function identityMismatch(stored: IndexIdentity, provider: EmbeddingProvider): string | undefined {
-  const expected: Partial<IndexIdentity> = {
-    chunkerVersion: CHUNKER_VERSION,
-    protocol: provider.protocol,
-    model: provider.model,
-    ...(provider.dimensions === undefined ? {} : { dimensions: provider.dimensions }),
-  };
-
-  for (const [field, value] of Object.entries(expected)) {
-    const actual = stored[field as keyof IndexIdentity];
-    if (actual !== value) {
-      return `The index was built with ${field} ${String(actual)}; the current value is ${String(value)}.`;
+function describeMismatch(stored: IndexIdentity, expected: IndexIdentity): string {
+  for (const field of ['chunkerVersion', 'protocol', 'model', 'dimensions'] as const) {
+    if (stored[field] !== expected[field]) {
+      return `The index was built with ${field} ${String(stored[field])}; the current value is ${String(expected[field])}.`;
     }
   }
 
-  return undefined;
+  return 'The index identity differs from the current one.';
 }
 
 function group(

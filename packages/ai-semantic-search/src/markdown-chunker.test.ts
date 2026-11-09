@@ -63,6 +63,19 @@ describe('chunkMarkdownUnit', () => {
     expect(chunks[0]!.text).toContain('# not a heading');
   });
 
+  it('keeps ids unique when headings spell the suffixes literally', () => {
+    const big = Array.from({ length: 900 }, (_, index) => `w${index}`).join(' ');
+    const chunks = chunkMarkdownUnit(
+      unit(['# A', 'x', '# A', 'y', '# A~2', 'z', `# B`, big, '# B/1', 'q'].join('\n')),
+    );
+    const ids = chunks.map((chunk) => chunk.id);
+
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids).toEqual(
+      expect.arrayContaining(['guide#A', 'guide#A~2', 'guide#A~2~2', 'guide#B/1', 'guide#B/1~2']),
+    );
+  });
+
   it('splits an oversize section into overlapping parts within the bound', () => {
     const words = Array.from({ length: 900 }, (_, index) => `word${index}`).join(' ');
     const chunks = chunkMarkdownUnit(unit(`# Big\n${words}\n# Small\nTiny.`));

@@ -5,6 +5,7 @@ import type {
   EmbeddingResult,
   ProbeResult,
 } from './ports';
+import { PROBE_TEXT } from './openai-compatible-embeddings';
 import { tokenize } from './tokenize';
 
 export const FAKE_EMBEDDING_PROTOCOL = 'fake';
@@ -57,7 +58,7 @@ export function createFakeEmbeddingProvider(
     },
     embed,
     async probe(): Promise<ProbeResult> {
-      const result = await embed(['probe'], 'document');
+      const result = await embed([PROBE_TEXT], 'document');
 
       return result.ok
         ? { ok: true, latencyMs: 0, dimensions }

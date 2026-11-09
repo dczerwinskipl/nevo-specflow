@@ -168,6 +168,31 @@ describe('Runtime OpenAPI document', () => {
     expect(openApiOperationId('POST', '/api/specs/:specId/document-commits/flush')).toBe(
       'postSpecsBySpecIdDocumentCommitsFlush',
     );
+    // Provider ids that differ only by a hyphen still boot with distinct ids.
+    const providers = oidcConfig({});
+    const company = providers.authentication.providers.oidc.instances.company!;
+    await withApp(
+      {
+        ...providers,
+        authentication: {
+          ...providers.authentication,
+          providers: {
+            ...providers.authentication.providers,
+            oidc: { instances: { 'sso-1': company, sso1: { ...company, name: 'Other SSO' } } },
+          },
+        },
+      },
+      {},
+      async (app) => {
+        const document = await generateOpenApiDocument(app);
+        expect(operation(document, '/api/auth/oidc/sso-1/start', 'post').operationId).toBe(
+          'postAuthOidcSso_1Start',
+        );
+        expect(operation(document, '/api/auth/oidc/sso1/start', 'post').operationId).toBe(
+          'postAuthOidcSso1Start',
+        );
+      },
+    );
 
     const app = Fastify();
     try {

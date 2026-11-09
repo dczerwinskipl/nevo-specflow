@@ -85,28 +85,51 @@ function openApiPath(url: string): string {
 }
 
 /**
- * The `operationId` of a route: the lower-case method followed by the path below `/api/` in
- * PascalCase, a path parameter as `By<Name>` (`GET /api/specs/:specId/workspace` is
+ * The `operationId` of a route: the lower-case method followed by each path segment below `/api/`,
+ * a path parameter as `By<Name>` (`GET /api/specs/:specId/workspace` is
  * `getSpecsBySpecIdWorkspace`). It depends only on the method and path, never on registration
- * order; two routes with the same id are refused at registration.
+ * order. The segment encoding is reversible for segments of `[a-z0-9-]`, which covers the one
+ * configured segment (the OIDC provider id), so a valid configuration cannot produce two equal ids;
+ * two code-defined routes with the same id are refused at registration.
  */
 export function openApiOperationId(method: string, url: string): string {
   const words = url
     .replace(/^\/api\//, '')
     .split('/')
     .map((segment) =>
-      segment.startsWith(':') ? `By${pascalCase(segment.slice(1))}` : pascalCase(segment),
+      segment.startsWith(':') ? `By${upperFirst(segment.slice(1))}` : segmentWords(segment),
     );
 
   return `${method.toLowerCase()}${words.join('')}`;
 }
 
-function pascalCase(segment: string): string {
-  return segment
-    .split(/[^A-Za-z0-9]+/)
-    .filter((word) => word.length > 0)
-    .map((word) => `${word[0]!.toUpperCase()}${word.slice(1)}`)
-    .join('');
+function upperFirst(name: string): string {
+  return `${name.charAt(0).toUpperCase()}${name.slice(1)}`;
+}
+
+const LOWER_LETTER = /^[a-z]$/;
+
+/**
+ * A path segment in PascalCase: a letter that starts the segment or follows a separator (`-`, `.`)
+ * is upper-cased and that separator dropped; a separator not followed by a letter becomes `_`
+ * (`sso-1` is `Sso_1`, `sso1` is `Sso1`, `a--b` is `A_B`). For `[a-z0-9-]` this is reversible:
+ * an upper-case letter after the start is `-` and the letter, `_` is `-`.
+ */
+function segmentWords(segment: string): string {
+  let words = '';
+  for (let index = 0; index < segment.length; index += 1) {
+    const char = segment.charAt(index);
+    if (char === '-' || char === '.') {
+      words += LOWER_LETTER.test(segment.charAt(index + 1)) ? '' : '_';
+      continue;
+    }
+
+    const previous = segment.charAt(index - 1);
+    const startsWord = index === 0 || previous === '-' || previous === '.';
+    words += startsWord && LOWER_LETTER.test(char) ? char.toUpperCase() : char;
+  }
+
+  return words;
 }
 
 /**
@@ -250,7 +273,9 @@ function withDocumentedResponses(
     Object.entries((schema?.response ?? {}) as Record<string, Record<string, unknown>>).map(
       ([status, response]) => [
         status,
-        response.description === undefined && STATUS_DESCRIPTIONS[status]
+        response.description === undefined &&
+        response['x-response-description'] === undefined &&
+        STATUS_DESCRIPTIONS[status]
           ? {
               ...response,
               // `@fastify/swagger` reads `x-response-description` of an inline schema and drops it

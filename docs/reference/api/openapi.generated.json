@@ -2741,7 +2741,7 @@
             }
           },
           "401": {
-            "description": "Not authenticated.",
+            "description": "The login is refused: the credentials are invalid (`invalid_credentials`).",
             "content": {
               "application/json": {
                 "schema": {

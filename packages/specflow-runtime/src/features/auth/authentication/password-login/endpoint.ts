@@ -49,7 +49,12 @@ export const passwordLoginEndpoint: FastifyPluginCallback<PasswordLoginEndpointO
         body: PasswordLoginRequestSchema,
         response: {
           200: contractRef(AuthSessionResponseSchema),
-          401: PasswordLoginErrorResponseSchema,
+          // The contract is also the 429 and 503 body; the description is the document's only.
+          401: {
+            ...PasswordLoginErrorResponseSchema,
+            'x-response-description':
+              'The login is refused: the credentials are invalid (`invalid_credentials`).',
+          },
           429: PasswordLoginErrorResponseSchema,
           503: PasswordLoginErrorResponseSchema,
         },

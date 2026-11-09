@@ -117,18 +117,26 @@ its `401` and `403` responses.
 ## Operation ids
 
 Every operation has an `operationId` made from its method and path: the lower-case method, then
-each path segment below `/api/` in PascalCase, with a path parameter written as `By<Name>`.
+each path segment below `/api/`, with a path parameter written as `By<Name>`. A segment is written
+in PascalCase: a letter at the start of the segment or after a `-` (or `.`) is upper-cased and that
+separator dropped, and a separator that is not followed by a letter becomes `_`.
 
 | Operation                                         | `operationId`                           |
 | ------------------------------------------------- | --------------------------------------- |
 | `GET /api/specs/{specId}/workspace`               | `getSpecsBySpecIdWorkspace`             |
 | `POST /api/specs/{specId}/document-commits/flush` | `postSpecsBySpecIdDocumentCommitsFlush` |
 | `DELETE /api/sessions/{sessionId}`                | `deleteSessionsBySessionId`             |
+| `POST /api/auth/oidc/sso-1/start`                 | `postAuthOidcSso_1Start`                |
+| `POST /api/auth/oidc/sso1/start`                  | `postAuthOidcSso1Start`                 |
 
 The id depends only on the method and the path, never on registration order, so it changes only
-when the route does. Two routes whose paths produce the same id (such as `/api/a-b` and
-`/api/a/b`) are refused when the second is registered. An OIDC provider route carries the provider
-id (`postAuthOidcExampleStart` in the committed document).
+when the route does. For a segment of lower-case letters, digits and hyphens the encoding is
+reversible (an upper-case letter after the first is a `-` and that letter, `_` is a `-`). The only
+segment that comes from configuration is the OIDC provider id, which is such a segment, so every
+valid configuration has distinct ids; an OIDC provider route carries its provider id
+(`postAuthOidcExampleStart` in the committed document). All other segments are fixed in code; two
+code-defined routes whose paths produce the same id (such as `/api/a-b` and `/api/a/b`) are
+refused when the second is registered.
 
 ## Response descriptions
 
@@ -136,7 +144,10 @@ A response documented by a schema without its own `description` is described by 
 for the status codes whose meaning is the same on every Runtime route (`200` Success, `202`
 Accepted: the operation continues asynchronously, `304` Not modified, `401` Not authenticated,
 `403` The principal lacks a required capability, `409`, `422`, `429`, `503` and so on; the list is
-`STATUS_DESCRIPTIONS` in `src/server/openapi.ts`). A documentation-only response carries the
+`STATUS_DESCRIPTIONS` in `src/server/openapi.ts`). A route whose response means something more
+specific gives it its own description with `x-response-description` on the response schema (which
+only the document reads); password login describes its `401` this way, since that `401` means
+rejected credentials. A documentation-only response carries the
 description written in its route `config` (see below). The description belongs to the response,
 not to the schema: a shared component keeps no description of its own.
 

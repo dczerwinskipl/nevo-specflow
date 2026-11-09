@@ -23,56 +23,56 @@ related:
 
 # Delivery plan E0–E5 (proposal)
 
-This is **not** an implementation instruction. Each phase requires its listed decisions and test evidence before the next dependent slice starts. Actual tasks/PRs should be drafted after reconciling the current main branch and accepting architecture decisions. Keep high-risk journal, identity and recovery changes independently reviewable.
+This is **not** an implementation instruction. Each phase requires only the decisions it consumes and its own test evidence before the next dependent slice starts. Actual tasks/PRs should be drafted after reconciling the current main branch and accepting architecture decisions. Keep high-risk journal, identity and recovery changes independently reviewable.
 
 ## E0 — Boundary audit and accepted design
 
 - Map actual imports of `workflow/{progression,state,definitions,operations,continuation,tasks}`, Engine Documents, Task reads, definition-kind registration and Spec Close. Explicitly list cycles and public package exports.
-- Decide [D01–D08](boundaries-and-decisions.md), including neutral special-step semantics, compiled-definition compatibility/pins, one recoverable cross-resource write, manual run mode and actor rights, Task CRUD vs Breakdown, and Close policy. Record the chosen alternatives, rejected ones and the limits of the MVP.
+- Inventory [D01–D09](boundaries-and-decisions.md#2-decision-register-and-gates) with alternatives, expected first consumer, rejected paths and test evidence. **Approve D01, D02 and D09 before E1**; reserve the minimal D03 effect/storage boundary and D05 backward-compatible Run policy seam. Detailed Task journal, UI authorization, Close and typed form decisions stay gated by E2/E3/E4/E5 respectively.
 - Capture baseline fixtures: v1 YAML/compiled hash and stored record replay, task status/dependency, approval, escalation, wait, errors, process-crash journal replay. Add import-boundary and package-artifact requirements compatible with ADR 0012.
 - Promote approved architecture into current ADR/architecture documents **before coding**; the draft idea itself is never normative.
 
-**Exit:** named owner per data/operation, acyclic import matrix, pin compatibility strategy, executable test fixtures, chosen Task status authority, accepted manual dispatch policy, and specific recovery proof for Task/index/document/write transaction.
+**Exit:** named owner per data/operation, acyclic import matrix, pin compatibility test fixtures, stable Run identity/host keys, and an explicit neutral intent/host boundary. Later gates retain concrete Task status authority, cross-resource recovery proof, manual authorization and typed input rules; do not pretend they are already decided.
 
 ## E1a — Separate neutral progression inside Engine
 
-- Isolate deterministic Run, attempts/history, transition selection, replay and planning from SpecFlow Subject, Task state, document/FS, agent-provider/session semantics.
-- Define a **minimal neutral** `work/wait` and host-effect protocol sufficient to express existing `wait-for-tasks` as a SpecFlow adapter, including event identity and replay evidence. No second state machine or general plugin registry.
+- Isolate deterministic Run, attempts/history, transition selection, replay and planning from SpecFlow Subject, Task state, document/FS, agent-provider/session semantics. Provide the **coordinator contract** from the boundaries proposal: command/event plus resolved definition and Run produces a lawful next execution/attention/wait intent, not just low-level progression functions.
+- Define a **minimal neutral** `work/wait` and host-effect protocol sufficient to express existing `wait-for-tasks` as a SpecFlow adapter, including event identity and replay evidence. Host/Runtime selects when to initiate a Run and provides actual drivers; neutral coordination decides what action is legal and next. No second state machine, automatic Session dispatch or general plugin registry.
 - Keep v1 source YAML/schema and old revision algorithm stable; use a versioned compiled/adapted form where necessary. Preserve Engine application APIs `startSpecificationExecution`, `startTaskExecution`, `finishStep`, `returnToStep`, `setTaskStatus`.
 - Plan all declared Task effects, updates and wait settlement in one Engine-controlled mutation before persisting. Move definition-kind registration to a composition root (F18), avoid Task ↔ Workflow application import cycles.
 
-**Exit:** old tests/fixtures unchanged, including exact SHA/replay, one atomic finish with effects, and source-level dependency checks. Do not call this a generic orchestrator until there is a usable host contract.
+**Exit:** old tests/fixtures unchanged, including exact SHA/replay, one atomic finish with effects, and source-level dependency checks. A minimal real host consumes coordinator intents; a forwarding wrapper around `planStart` / `planFinish` alone fails this gate.
 
 ## E1b — Create `@nevo/workflow` when extraction boundary holds
 
-- Move only neutral verified code; public exports limited to resolved definition, Run/position/history, progression operations, validation and host-facing result contracts. No SpecFlow contracts, Task CRUD, SDK/FS/HTTP/UI imports.
+- Move only neutral verified code; public exports limited to compiled definition, opaque host Run key, Run/position/history, deterministic coordinator intents, progression/validation and host-facing results. Do not bake `specId`, `taskId`, provider or Session identity into the neutral model. No SpecFlow contracts, Task CRUD, SDK/FS/HTTP/UI imports.
 - Engine depends on the neutral package. Amend ADR 0012, package manifests/exports, lint boundaries and single-artifact build packaging.
 - Retain existing public Engine operations as the SpecFlow adapters; a separate `startWorkflow` API for generic consumers is allowed only if it has a concrete caller and stable semantics.
 
-**Exit:** existing Specification and Task workflows use the package; one tiny unrelated test host exercises work, wait, finish, return and replay; no change of stored revision or new forwarding-only layers. Explicitly state which future orchestration/dispatch capabilities E1 does **not** implement.
+**Exit:** existing Specification and Task workflows use the package; one tiny unrelated test host exercises work, wait, finish, return and replay for **two independent Runs of one definition**; no change of stored revision or new forwarding-only layers. E1 coordinates intents; actual driver dispatch, persistent invocation claims and F01 automated provider sessions remain host responsibilities and future integration.
 
 ## E2 — Task Resource F20 and one Task application API
 
 Suggested slices:
 
-1. **Resource authority:** `<spec>/tasks/index.yaml` registry; `<spec>/tasks/<id>/task.yaml` (type, title, summary, dependencies, preparation status, provenance); `task.md` required; optional Task documents. `.execution/tasks/<id>.yaml` contains the Run **only after first start**. No duplicate status or membership authority. Final layout follows accepted F20 ADR, not this draft alone.
+1. **Resource authority:** `<spec>/tasks/index.yaml` registry; `<spec>/tasks/<id>/task.yaml` (type, title, summary, dependencies, preparation status, provenance); `task.md` required; optional Task documents. `.execution/tasks/<id>.yaml` contains the Run **only after first start**. Validate allowed Task Types against the Specification archetype execution binding without creating a SpecRun. Decide and expose the selected Task Type Workflow revision at first start so definition drift between creation and start is explicit. No duplicate status or membership authority. Final layout follows accepted F20 ADR, not this draft alone.
 2. **Atomic write:** create/edit/delete operations with expected revision + idempotent operation identity. Extend existing Engine journaling/recovery to write index, manifest, body and any affected Run as **one logical change**. Integrate document commit/admission rules without inventing a second journal that can commit independently.
 3. **Lifecycle and context:** shared Task policy for manual UI CRUD and Breakdown proposals; status decisions and dependency graph/cycle/refusal; typed ordered context references including `task.md` and Specification overview, bounds and stable evidence according to F20.
 4. **Integration:** `setTaskStatus` and Task start/finish no longer require a SpecificationRun; `settleWait` only acts on a relevant active SpecRun. Preserve behavior for Tasks already started, missing folders and broken Tasks.
 5. **Draft ownership:** explicitly scoped proposals from a producing attempt; finish never silently cancels a distinct manual draft. Handle allowed create/edit/status during wait, after terminal, and before/after technical Close.
 
-**Exit:** Create Spec -> create Task -> edit `task.md` -> approve -> Task start/finish with **no SpecRun**; conflict and crash-fault tests; 3 manual drafts survive an empty Breakdown result; started Task with missing folder is broken without corrupting unrelated Tasks; no dual write authority.
+**Exit:** Create Spec -> create Task -> edit `task.md` -> approve -> Task start/finish with **no SpecRun**; rejected disallowed Task Type, invalid/revised Task Type Workflow handled explicitly at first start; conflict and crash-fault tests; 3 manual drafts survive an empty Breakdown result; started Task with missing folder is broken without corrupting unrelated Tasks; no dual write authority.
 
 ## E3 — Manual Specification and Task authoring in UI
 
 Deliver **per use case** through Engine → authenticated HTTP → existing UI, with offline CLI over the same Engine use cases where meaningful. Do not implement all CLI, then all HTTP, then all UI.
 
-| Slice | User-visible proof | Backend/CLI alignment |
-| --- | --- | --- |
-| E3a: list/inspect/create | Owner opens Specification and creates a typed Task | Existing Task read model + one Engine create operation; CLI create/list/inspect |
-| E3b: edit Task | Owner edits `task.md`, title, summary, dependencies and sees revision conflict | Task-scoped Documents operations and shared update validation; CLI same case |
-| E3c: lifecycle | Owner approves, holds, resumes, cancels or removes never-started Task where allowed | Existing `setTaskStatus`, resource rules, human attribution, CLI where trusted |
-| E3d: integrations | Existing Spec editor and Task detail show canonical state without Session | Authorization, real project mode, narrow/mobile UX, recovery and skills documentation |
+| Slice                    | User-visible proof                                                                  | Backend/CLI alignment                                                                 |
+| ------------------------ | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| E3a: list/inspect/create | Owner opens Specification and creates a typed Task                                  | Existing Task read model + one Engine create operation; CLI create/list/inspect       |
+| E3b: edit Task           | Owner edits `task.md`, title, summary, dependencies and sees revision conflict      | Task-scoped Documents operations and shared update validation; CLI same case          |
+| E3c: lifecycle           | Owner approves, holds, resumes, cancels or removes never-started Task where allowed | Existing `setTaskStatus`, resource rules, human attribution, CLI where trusted        |
+| E3d: integrations        | Existing Spec editor and Task detail show canonical state without Session           | Authorization, real project mode, narrow/mobile UX, recovery and skills documentation |
 
 Use existing Documents UI and Design System, not a duplicate Markdown editor. Preserve current Task details/resources/history endpoints and extend their concrete Engine adapter; no parallel `TaskV2` DTO. Reject stale revisions and unauthorized owner actions in Engine and HTTP; UI does not own validation.
 
@@ -80,7 +80,7 @@ Use existing Documents UI and Design System, not a duplicate Markdown editor. Pr
 
 ## E4 — Manual Workflow execution via UI, with no AI session
 
-- Introduce/persist accepted manual Run policy and per-step executor permissions without reinterpreting old runs. Display current step, allowed actions/results, required feedback, handoff, dependencies, attention, attempt identity and history. Use a small **canonical** action descriptor that already supports E5 extension; Engine computes allowed actions.
+- Introduce/persist accepted manual Run policy and per-step executor permissions without reinterpreting old runs. Display current step, allowed actions/results, required feedback, handoff, dependencies, attention, attempt identity and history. Publish a **read-only Engine action projection** covering `not-started`, `ready`, `active`, blocked and terminal positions; today's `StepContext.finish.transitions` exists only for an active step. The UI must never mutate a Run merely to discover its possible actions. Keep the projection extensible for E5, without inventing a contract name before it is implemented.
 - Generic UI `Start step`, `Finish step`, `Return to step` and status decisions call authenticated Runtime HTTP adapters over Engine. They do not branch on literal names `implementation`/`review`/`acceptance` or invent `pass` rules.
 - Allow a person to do agent-oriented work **only where explicitly permitted by the pinned definition/policy**. Record actual human actor, not a forged agent Session. Active agent attempts require separate F17 takeover; implement the narrowest safe behavior or refuse while occupied.
 - In manual mode, even a transition with `continuation: auto` does **not** spawn a Session. The Run stays ready for the owner's next step, after refresh/restart too. Don't rewrite transition definitions or use React-only state to enforce this.
@@ -92,9 +92,9 @@ Use existing Documents UI and Design System, not a duplicate Markdown editor. Pr
 
 ## E5 — Definition-driven transition input forms
 
-Use current `TransitionActionDescriptor`/step projection as an initial consumer, but approve [D08](boundaries-and-decisions.md) before extending storage/definitions.
+Use the **new read-only action projection from E4**, grounded in today's `StepContext.finish.transitions` and the existing definition rules; no current `TransitionActionDescriptor` type exists. Approve [D08](boundaries-and-decisions.md) before extending storage/definitions.
 
-- A typed, versioned input schema is authoritative for the Engine and history/effects. Proposed primitives: string, boolean, integer, decimal (explicit precision), enum, Markdown and bounded collections. Unknown or invalid inputs refuse before any mutation.
+- A typed, versioned input schema is authoritative for the Engine and history/effects, not merely a UI rendering description. Proposed primitives: string, boolean, integer, decimal (explicit precision), enum, Markdown and bounded collections. Unknown or invalid inputs refuse before any mutation.
 - Renderer maps semantic types to Design System components; optional `ui.component` **hint** chooses from a registered allowlist (e.g. Markdown editor, textarea, select, number input), not arbitrary React imports or executable code.
 - Define retention, next-step handoff, effect consumption, read projection, revisions, permissions and history visibility for inputs. Do not build a form that captures data the engine discards.
 - Start with a single reusable form in UI; use two unrelated user-defined workflow definitions to prove step-name independence. Support required/optional fields, defaults, choices, disabled and error states and mobile layouts.
@@ -108,12 +108,12 @@ F01 automatic provider Session lifecycle, F12 automatic selection/batches, sched
 ## Full user acceptance scenario
 
 1. Create a Specification in the UI without a provider and author required documents manually.
-2. Create a Task **before** starting the SpecificationRun. Edit and approve it; verify reads/operations work with no SpecRun.
+2. Create a Task **before** starting the SpecificationRun. Edit and approve it; verify archetype Task Type policy and the chosen Task Workflow definition at first start, while reads/operations work with no SpecRun.
 3. Start manual Specification workflow; complete requirements/specification/solution with human evidence, then Breakdown. Create spike/backend/UI Tasks with **different** Task-Type workflows and dependency edges. No pre-existing manual draft is cancelled by an unrelated finish.
 4. Approve drafts and enter wait. Execute each Task's user-defined steps in UI; one deliberately fails review, returns to work with required feedback and then passes. Dependencies unblock deterministically.
 5. Complete or explicitly waive outstanding/cancelled work; provide owner acceptance; verify a premature Technical Close is blocked and then execute a legal Close without bypassing Git/workspace checks.
 6. Restart Runtime mid-run and retry the same finish after injected ambiguous response; observe the same durable outcome and no new Session.
 7. Confirm external CLI can read and perform its supported Task operations offline, with the same rules and no invented owner identity.
-8. Extend a Task workflow with typed inputs and verify the generic E5 renderer, Engine validation, stored values and handoff.
+8. Extend a Task workflow with typed inputs and verify the generic E5 renderer, Engine validation, stored values and handoff. Separately prove two independent runs of one user definition in the E1 neutral test host.
 
 **Test environments:** actual production project mode and repository/worktree; demo-only coverage is insufficient. Include fault injection for multi-file publication, stale revisions, race with external writer, pinned legacy fixtures and boundary enforcement. UI verification should include narrow/medium/wide layouts and screenshots compared with approved design.

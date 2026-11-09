@@ -62,8 +62,10 @@ is written, so implementers and reviewers check against ADRs instead of ideas.
   `probe()`, heading-aware versioned chunking, hybrid BM25 + cosine + RRF, local file-backed index
   under the disposable cache namespace with atomic writes, single-writer lock and full rebuild on
   any manifest mismatch (no migration).
-- `architecture.runtime.configuration`: the disposable `.nevo/local/cache/` namespace (B-D5:
-  rebuildable, never migrated, safe to delete) next to `config.yaml` and `state/`; the `docs` and
+- `architecture.runtime.configuration`: the generic disposable `.nevo/local/cache/` namespace
+  (B-D5: rebuildable, never migrated, safe to delete) next to persistent `state/` and `config.yaml`,
+  with the rule that features add subdirectories inside `cache/` or `state/` and never new top-level
+  folders under `.nevo/local/`; the `docs` and
   `ai` capability namespaces with their ownership rules (`docs.*` project-only; `ai.embeddings` in
   both, local wins per key; secrets only through an environment variable name).
 - `repository-structure.md`: the two new packages and their dependency direction.

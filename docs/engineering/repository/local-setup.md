@@ -95,14 +95,13 @@ pnpm docs:semantic status   # endpoint reachable; exits 1 while it is not
 pnpm docs:search "how are document commits owned by the engine"
 ```
 
-The first hybrid search (or `pnpm docs:semantic index`) embeds the whole corpus into
-`.nevo/local/cache/docs-index/` (disposable; delete it to rebuild). On CPU this first run is slow
-for a corpus of this size (about 20 minutes for about 2100 chunks on an 8-core CPU), so prefer
-running `pnpm docs:semantic index` once up front: it prints its progress to stderr and writes every
-slice it embeds, so an interrupted run resumes where it stopped. Until the index is complete,
-`pnpm docs:search --no-refresh` embeds no documents and ranks with the chunks embedded so far.
-Later searches re-embed only changed documents. `docker compose down` stops the model and keeps the
-volume. Keys and their validation:
+Build the index once with `pnpm docs:semantic index`; it embeds the whole corpus into
+`.nevo/local/cache/docs-index/` (disposable; delete it to rebuild). On CPU this is slow for a corpus
+of this size (about 20 minutes for about 2100 chunks on an 8-core CPU). It prints its progress to
+stderr and writes every slice it embeds, so an interrupted run resumes where it stopped. A search
+never builds the index: until it is complete, `pnpm docs:search` answers lexically at once
+(`index-building`). Later searches re-embed only changed documents (up to 16 sections per search).
+`docker compose down` stops the model and keeps the volume. Keys and their validation:
 [documentation and embeddings configuration](../../reference/configuration/documentation-and-embeddings.md).
 
 ## Running slow tests on Linux

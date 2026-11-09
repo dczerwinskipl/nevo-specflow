@@ -76,7 +76,7 @@ frontmatter. It is the only model-dependent command.
 | ----------------------------- | ---------------------------------------------------------------------------- |
 | `--limit <n>`                 | Maximum documents (default 10); each shows up to 3 matching sections         |
 | `--include-non-authoritative` | Also return documents under `docs.nonAuthoritative` prefixes                 |
-| `--no-refresh`                | Answer from the index as it is, without re-embedding changed documents       |
+| `--no-refresh`                | Embed no documents; answer lexically unless the index is already complete    |
 | `--json`                      | Print the result contract (`DocsSearchResult` in `@nevo/specflow-contracts`) |
 
 Inactive documents (`deprecated`, `superseded`) are never returned. The corpus frontmatter is
@@ -89,21 +89,24 @@ hybrid: BM25 over section text fused with vector similarity
 Otherwise the same call ranks by BM25 alone and states why. Every result carries `mode`; a lexical
 result carries `reason.code` and a `reason.message` with the cause. A lexical answer still exits 0.
 
-| `reason.code`          | When                                                                                                                                                        |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `semantic-disabled`    | `docs.search.semantic` is absent or `false`                                                                                                                 |
-| `no-endpoint`          | semantic search is enabled but `ai.embeddings` is not configured                                                                                            |
-| `endpoint-unreachable` | the endpoint failed, timed out or returned unusable vectors, or the `apiKeyEnv` variable is not set                                                         |
-| `index-building`       | the index does not cover the current documents yet: another process is updating it, or it is not built yet or was built with another model (`--no-refresh`) |
-| `index-unavailable`    | the index cannot be read or written (for example a permission problem); waiting does not help                                                               |
+| `reason.code`          | When                                                                                                                                                      |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `semantic-disabled`    | `docs.search.semantic` is absent or `false`                                                                                                               |
+| `no-endpoint`          | semantic search is enabled but `ai.embeddings` is not configured                                                                                          |
+| `endpoint-unreachable` | the endpoint failed, timed out or returned unusable vectors, or the `apiKeyEnv` variable is not set                                                       |
+| `index-building`       | the index does not cover the current documents yet: another process is updating it, or more sections lack vectors than a search embeds, or `--no-refresh` |
+| `index-unavailable`    | the index cannot be read or written (for example a permission problem); waiting does not help                                                             |
 
 **Freshness.** Before answering, `search` brings the index up to date: unchanged files (same size
 and modification time) are not read, changed files are re-chunked only when their content changed,
 and only new or changed sections are embedded. A current index costs no endpoint call besides the
 query. When the index needs work, a short reachability probe runs first, so an unreachable endpoint
 falls back to lexical within the query timeout (at most 3000 ms) instead of the document timeout.
-The first search after enabling semantic search embeds the whole corpus. `--no-refresh` skips this
-step.
+A search embeds at most 16 sections (one request at the default batch size). When more lack
+vectors, for example before the first build, after a model change or while a build was
+interrupted, it embeds nothing, answers lexically with `index-building` and names
+`nevo-specflow docs semantic index`, which builds the rest. Search is hybrid only once every current
+section has a vector. `--no-refresh` skips the embedding step entirely.
 
 Text output, hybrid:
 
@@ -172,8 +175,8 @@ index: current  generation 3, 812 chunks, qwen3-embedding:0.6b / 1024 dimensions
 search mode: hybrid
 ```
 
-`semantic index` updates the index now, the same way a search does (everything after a model or
-chunker change), and prints what it did, for example
+`semantic index` updates the index now like a search does, but without its 16-section bound
+(everything after a model or chunker change), and prints what it did, for example
 `Index refreshed: embedded 4, deleted 1 chunks (generation 4).` It embeds in slices of 128 chunks
 and writes each slice to the index as soon as it is embedded, printing `embedded 256/2130 chunks`
 to stderr after each, so an interrupted or failed run keeps its progress and the next run embeds

@@ -64,6 +64,11 @@ export function embeddingFailureReason(failure: EmbeddingFailure): DocsSearchRea
   );
 }
 
+/** The index lacks vectors for current chunks and this search does not embed them. */
+export function indexIncompleteReason(message: string): DocsSearchReason {
+  return reason('index-building', message);
+}
+
 /** A read-time or explicit refresh; `undefined` when the index is current for the documents. */
 export function refreshReason(outcome: RefreshOutcome): DocsSearchReason | undefined {
   switch (outcome.status) {

@@ -166,7 +166,10 @@ The index is refreshed incrementally, never rebuilt on every run (rebuild rules 
 1. **Runtime start** refreshes in the background. Startup MUST NOT wait for it; until the index is
    complete, the endpoint answers `mode: lexical` with reason "index building".
 2. **On read**: every `search` (CLI and HTTP) checks the corpus for changes and re-embeds only the
-   changed units before answering. A CLI caller MAY skip this check explicitly.
+   changed units before answering. The embedding a search does is bounded: a larger gap (a first
+   build, a model change) is left to `semantic index` or the Runtime start refresh, and the search
+   answers `mode: lexical` with reason "index building" meanwhile. A CLI caller MAY skip the
+   re-embedding explicitly.
 
 There is no file watcher and no invalidation API. A SpecFlow component that writes corpus documents
 MUST invalidate the units it changes.

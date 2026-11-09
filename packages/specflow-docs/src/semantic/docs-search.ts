@@ -23,6 +23,7 @@ import { createDocsChunkSource, type DocsChunk, type DocsChunkSource } from './d
 import { openDocsIndex, type DocsIndex } from './docs-index';
 import {
   embeddingFailureReason,
+  indexIncompleteReason,
   refreshReason,
   searchReason,
   semanticEndpoint,
@@ -36,6 +37,17 @@ import {
 
 /** Matching sections shown per document. */
 export const CHUNKS_PER_RESULT = 3;
+
+/**
+ * Most chunks a search embeds before answering (the read-time refresh). It is one request at the
+ * default batch size, about 10 s on a local CPU model and far less on a hosted API, and covers a
+ * typical edit of a few sections. A larger gap (a first build: about 20 minutes on CPU for this
+ * repository) is left to `semantic index` or the Runtime start refresh.
+ */
+export const READ_REFRESH_MAX_CHUNKS = 16;
+
+/** The product command that builds the index, named in `index-building` messages. */
+const SEMANTIC_INDEX_COMMAND = 'nevo-specflow docs semantic index';
 const SNIPPET_MAX_CHARS = 280;
 
 /** Vectors for a search, or why there are none. */
@@ -99,7 +111,10 @@ export interface DocsSearchRequest {
   readonly limit: number;
   /** Include documents under the project's non-authoritative prefixes. */
   readonly includeNonAuthoritative: boolean;
-  /** Re-embed changed documents before answering (ADR 0020 read-time refresh). */
+  /**
+   * Re-embed changed documents before answering (ADR 0020 read-time refresh), at most
+   * `READ_REFRESH_MAX_CHUNKS`; a larger gap answers lexically with `index-building`.
+   */
   readonly refresh: boolean;
 }
 
@@ -133,24 +148,25 @@ async function vectorsFor(
     return { reason: vectors.reason };
   }
 
-  if (refresh) {
-    const notReady = await refreshForRead(vectors, chunks);
-    if (notReady !== undefined) {
-      return { reason: notReady };
-    }
+  const notReady = await prepareIndex(vectors, chunks, refresh);
+  if (notReady !== undefined) {
+    return { reason: notReady };
   }
 
   return { provider: vectors.providers.query, store: vectors.store };
 }
 
 /**
- * Read-time refresh. The manifest is checked first, so an up-to-date index costs no endpoint call
- * here. Otherwise a short probe gates the refresh: an unreachable endpoint answers lexically after
- * at most the query timeout instead of the document timeout.
+ * Hybrid ranking needs a vector for every current chunk (ADR 0020: an index that is not complete
+ * for the current data answers lexically with `index-building`). The manifest is checked first, so
+ * a complete index costs no endpoint call here. Otherwise a small gap is embedded before answering,
+ * after a short probe (an unreachable endpoint answers lexically after at most the query timeout);
+ * a gap above `READ_REFRESH_MAX_CHUNKS`, or any gap with `refresh` off, is not embedded.
  */
-async function refreshForRead(
+async function prepareIndex(
   vectors: Exclude<DocsSearchVectors, { readonly reason: DocsSearchReason }>,
   chunks: readonly DocsChunk[],
+  refresh: boolean,
 ): Promise<DocsSearchReason | undefined> {
   const { store, providers } = vectors;
   const manifest = await store.readManifest();
@@ -158,6 +174,8 @@ async function refreshForRead(
     return unreadableIndexReason(manifest.message);
   }
 
+  let missing = chunks.length;
+  let deletes = 0;
   if (manifest.status === 'ok') {
     const plan = planRefresh(
       chunks,
@@ -169,9 +187,26 @@ async function refreshForRead(
       },
       manifest.manifest,
     );
-    if (!plan.reset && plan.embed.length === 0 && plan.delete.length === 0) {
-      return undefined;
-    }
+    missing = plan.reset ? chunks.length : plan.embed.length;
+    deletes = plan.reset ? 0 : plan.delete.length;
+  }
+
+  // Vectors of deleted chunks are never ranked (the engine matches chunk ids and hashes), so an
+  // index that only has extra vectors is complete; the refresh drops them when it runs.
+  if (missing === 0 && (deletes === 0 || !refresh)) {
+    return undefined;
+  }
+
+  if (!refresh) {
+    return indexIncompleteReason(
+      `The index lacks ${String(missing)} of ${String(chunks.length)} chunks and this search does not refresh it; search without skipping the refresh, or run \`${SEMANTIC_INDEX_COMMAND}\`.`,
+    );
+  }
+
+  if (missing > READ_REFRESH_MAX_CHUNKS) {
+    return indexIncompleteReason(
+      `The index lacks ${String(missing)} of ${String(chunks.length)} chunks, more than a search embeds (${String(READ_REFRESH_MAX_CHUNKS)}); run \`${SEMANTIC_INDEX_COMMAND}\`.`,
+    );
   }
 
   const probe = await providers.query.probe();

@@ -32,7 +32,7 @@ export function addSearchCommand(docs: Command, ctx: DocsCommandContext, open: O
     )
     .option(
       '--no-refresh',
-      'answer from the index as it is, without re-embedding changed documents',
+      'embed no documents; answer lexically unless the index is already complete',
     )
     .option('--json', 'emit JSON on stdout', false);
 

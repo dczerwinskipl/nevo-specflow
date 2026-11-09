@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync }
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { refreshIndex } from '@nevo/ai-semantic-search';
 import {
   createFakeEmbeddingProvider,
   createInMemoryVectorStore,
@@ -11,7 +12,12 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { DEFAULT_DOCS_SETTINGS, parseDocsConfig } from '../config/docs-settings';
 import { openFileSystemCorpus } from '../corpus/corpus';
 import { createDocsChunkSource } from './docs-chunk-source';
-import { openDocsSearch, searchDocumentation, type DocsSearch } from './docs-search';
+import {
+  openDocsSearch,
+  READ_REFRESH_MAX_CHUNKS,
+  searchDocumentation,
+  type DocsSearch,
+} from './docs-search';
 
 const root = mkdtempSync(join(tmpdir(), 'specflow-docs-search-'));
 mkdirSync(join(root, 'docs', 'ideas'), { recursive: true });
@@ -104,7 +110,35 @@ describe('searchDocumentation', () => {
     const { provider, search } = semanticSearch();
     const result = await searchDocumentation(search, { ...request, refresh: false });
     expect(result).toMatchObject({ mode: 'lexical', reason: { code: 'index-building' } });
-    expect(provider.calls.map((call) => call.purpose)).toEqual(['query']);
+    expect(provider.calls).toEqual([]);
+  });
+
+  it('does not build a large gap on read: lexical index-building until the index is complete', async () => {
+    const { provider, store } = semanticSearch();
+    const base = createDocsChunkSource({ corpus }).load().chunks;
+    const many = Array.from({ length: 2 * READ_REFRESH_MAX_CHUNKS + 2 }, (_, index) => ({
+      ...base[index % base.length]!,
+      id: `${base[index % base.length]!.id}/${String(index)}`,
+    }));
+    const search: DocsSearch = {
+      chunks: { load: () => ({ chunks: many, reparsed: 0 }) },
+      vectors: { store, providers: { query: provider, documents: provider } },
+    };
+
+    const empty = await searchDocumentation(search, request);
+    expect(empty).toMatchObject({ mode: 'lexical', reason: { code: 'index-building' } });
+    expect(empty.mode === 'lexical' && empty.reason.message).toMatch(/docs semantic index/);
+    expect(empty.results).not.toHaveLength(0);
+    expect(provider.calls).toEqual([]);
+
+    // A partial index (an interrupted build) is not complete either; once it is, search is hybrid.
+    await refreshIndex({ chunks: many.slice(0, 2), provider, store });
+    expect(await searchDocumentation(search, request)).toMatchObject({
+      mode: 'lexical',
+      reason: { code: 'index-building' },
+    });
+    await refreshIndex({ chunks: many, provider, store });
+    expect((await searchDocumentation(search, request)).mode).toBe('hybrid');
   });
 });
 

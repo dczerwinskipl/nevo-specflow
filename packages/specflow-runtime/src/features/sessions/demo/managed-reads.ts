@@ -4,6 +4,7 @@ import {
   ActionPageSchema,
   ContentPageSchema,
   HistoryPageSchema,
+  ProviderCatalogueQuerySchema,
   ProviderCatalogueSchema,
   SessionCapabilities,
   SessionIdSchema,
@@ -20,6 +21,7 @@ import type { SessionListSource } from '../http/list';
 import type { SessionAssociations } from '../reference-owner';
 import type { SessionScopeIdentity } from '../scope';
 import { authorizeSessionIdentity } from '../http/authorization';
+import { authorizeProviderCatalogue } from '../http/catalogue-authorization';
 import type { SessionStreams } from '../http/stream';
 
 /**
@@ -171,15 +173,19 @@ export function registerDemoManagedSessionReads(
 
   feature.get(
     '/api/session-providers',
-    { schema: { response: { 200: ProviderCatalogueSchema } } },
-    (request) => {
-      // As in project mode: the catalogue is what a Session creator chooses from.
+    {
+      schema: {
+        querystring: ProviderCatalogueQuerySchema,
+        response: { 200: ProviderCatalogueSchema },
+      },
+    },
+    async (request) => {
+      // As in project mode: authorized by the start it is read for. The demo catalogue offers no
+      // provider mode of its own, so the write scope decides nothing here.
       request.authz.requireAccess();
-      request.authz.require({
-        resource: SessionCapabilities,
-        capability: SessionCapabilities.capabilities.Create,
-        scope: { projectId: reads.projectId },
-      });
+      await authorizeProviderCatalogue(request, reads.projectId, (sessionId) =>
+        reads.identity(sessionId),
+      );
 
       return { items: reads.providers() };
     },

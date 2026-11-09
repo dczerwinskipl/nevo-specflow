@@ -53,6 +53,8 @@ describe('Session feed operation lifetime', () => {
     await feed.recheckProvider();
     await vi.waitFor(() => expect(feed.getSnapshot().connection).toBe('connected'));
     expect(providers).toHaveBeenCalledOnce();
+    // Read for this Session, which its manager may do without session.create.
+    expect(providers.mock.calls[0]![0]).toEqual({ sessionId: 'session' });
     expect(start).toHaveBeenCalledOnce();
     expect(feed.getSnapshot().pending).toEqual(pending);
     expect(feed.getSnapshot().draft).toBe('Explicit user intent');

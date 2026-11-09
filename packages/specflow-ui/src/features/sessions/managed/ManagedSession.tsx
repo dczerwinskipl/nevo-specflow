@@ -1228,12 +1228,13 @@ export function ManagedSession({
     hasSnapshot: !!snapshot,
     connection: state.connection,
   });
-  // The provider catalogue is a Session creator's read: it feeds the composer's pickers only, so
-  // it is read only for a caller who can manage this Session (or who has just started it). The
-  // executor is named by the snapshot's own titles, which `session.view` alone can read.
+  // The provider catalogue feeds the composer's pickers only, so it is read for this Session, which
+  // `session.manage` here authorizes (not `session.create`), and only by a caller who can manage
+  // it (or who has just started it). The executor is named by the snapshot's own titles, which
+  // `session.view` alone can read.
   const providers = useQuery({
-    queryKey: ['managed-session-providers', owner],
-    queryFn: ({ signal }) => api.providers(signal),
+    queryKey: ['managed-session-providers', owner, { sessionId }],
+    queryFn: ({ signal }) => api.providers({ sessionId }, signal),
     enabled: snapshot ? snapshot.session.capabilities.manage : !!fallback.pending,
   });
   const sessionProviderId = snapshot?.session.providerId ?? fallback.providerId;

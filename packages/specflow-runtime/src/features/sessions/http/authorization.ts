@@ -37,7 +37,7 @@ export function authorizeSession(
 }
 
 /** The store-derived identity of a Session, including its home Specification. */
-function sessionIdentity(c: SessionCoordinator, sessionId: string) {
+export function sessionIdentity(c: SessionCoordinator, sessionId: string) {
   return c.store.call<SessionIdentity>({ op: 'identity', sessionId });
 }
 

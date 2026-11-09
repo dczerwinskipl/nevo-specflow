@@ -2,13 +2,13 @@ import type { SessionInfo } from '@nevo/specflow-contracts/sessions';
 import type { RequestAuthorization } from '../../auth';
 import {
   SessionError,
+  canStartSession,
   listedSession,
   type SessionListScan,
   type StoredListSummary,
   type SessionsRuntime,
 } from '../../sessions';
 import type { ProjectIdSource } from '../../specs';
-import { canStartSession } from '../start-authorization';
 
 /** At most this many associated Sessions; `hasMore` reports the rest (D12). */
 export const WORKSPACE_SESSION_LIMIT = 100;

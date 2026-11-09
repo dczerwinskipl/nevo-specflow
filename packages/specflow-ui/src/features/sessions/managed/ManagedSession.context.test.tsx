@@ -109,7 +109,7 @@ describe('a viewer with session.view only', () => {
         },
       },
     });
-    // The catalogue needs session.create: the Runtime refuses it to a viewer.
+    // The catalogue needs session.manage on this Session: the Runtime refuses it to a viewer.
     const providers = vi.fn(() => Promise.reject(new Error('403 Forbidden')));
     const api = { ...fixtureApi(viewer), providers } as ManagedSessionsApi;
     renderSession(api, 1400);
@@ -120,6 +120,21 @@ describe('a viewer with session.view only', () => {
     expect(screen.getAllByText('Standard').length).toBeGreaterThan(0);
     expect(screen.queryByText('Couldn’t load executor details.')).toBeNull();
     expect(providers).not.toHaveBeenCalled();
+  });
+});
+
+describe('a manager of the Session', () => {
+  it('reads the catalogue for this Session, which Manage authorizes without Create', async () => {
+    const base = fixtureApi(withRuntimeTitles(sessionFixture()));
+    const providers = vi.fn<ManagedSessionsApi['providers']>((context, signal) =>
+      base.providers(context, signal),
+    );
+    renderSession({ ...base, providers }, 1400);
+
+    await waitFor(() => expect(providers).toHaveBeenCalled());
+    for (const [context] of providers.mock.calls) {
+      expect(context).toEqual({ sessionId: fixtureSessionId });
+    }
   });
 });
 

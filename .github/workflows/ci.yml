@@ -282,8 +282,8 @@ jobs:
         id: affected
         shell: bash
         run: |
-          matcher='^(packages/(specflow-engine|specflow-runtime|specflow-contracts|specflow)/|tools/ci-engine-|\.github/workflows/(ci|engine-filesystem)\.yml$|\.github/actions/setup(/|$)|\.github/actions/[^/]+/action\.yml$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|package\.json$|\.npmrc$|\.node-version$|\.nvmrc$|turbo\.json$|tools/(build-package|build-config)\.mjs$)'
-          for path in packages/specflow-engine/src/index.ts packages/specflow-runtime/test/specs/create.http.test.ts packages/specflow/src/specs/command.ts packages/specflow-contracts/src/specs/close.ts tools/ci-engine-hot-shard.mjs .github/workflows/ci.yml pnpm-lock.yaml pnpm-workspace.yaml package.json .github/actions/setup/action.yml; do
+          matcher='^(packages/(specflow-engine|specflow-runtime|specflow-contracts|specflow)/|docs/reference/api/openapi\.generated\.json$|tools/ci-engine-|\.github/workflows/(ci|engine-filesystem)\.yml$|\.github/actions/setup(/|$)|\.github/actions/[^/]+/action\.yml$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|package\.json$|\.npmrc$|\.node-version$|\.nvmrc$|turbo\.json$|tools/(build-package|build-config)\.mjs$)'
+          for path in packages/specflow-engine/src/index.ts docs/reference/api/openapi.generated.json packages/specflow-runtime/test/specs/create.http.test.ts packages/specflow/src/specs/command.ts packages/specflow-contracts/src/specs/close.ts tools/ci-engine-hot-shard.mjs .github/workflows/ci.yml pnpm-lock.yaml pnpm-workspace.yaml package.json .github/actions/setup/action.yml; do
             printf '%s\n' "$path" | grep -Eq "$matcher" || exit 1
           done
           for path in docs/README.md packages/specflow-ui/src/index.ts tools/storybook/package.json; do
@@ -308,6 +308,10 @@ jobs:
       - name: Build CLI and Runtime test dependencies
         if: steps.affected.outputs.run == 'true'
         run: pnpm exec turbo run build --filter=@nevo/specflow-runtime --filter=@nevo/specflow
+      # The committed Runtime OpenAPI document must match the route schemas (`pnpm api:openapi`).
+      - name: Runtime OpenAPI document is current
+        if: steps.affected.outputs.run == 'true'
+        run: pnpm api:openapi --check
       - name: Engine real-Git lifecycle smoke
         if: steps.affected.outputs.run == 'true'
         run: pnpm --filter @nevo/specflow-engine exec vitest run test/lifecycle/close-worktree-lifecycle.test.ts test/lifecycle/close-specification-lifecycle.test.ts test/integration-destination.test.ts test/operation-projections.test.ts --maxWorkers=1 --no-file-parallelism

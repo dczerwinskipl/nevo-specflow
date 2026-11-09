@@ -103,6 +103,21 @@ Pull requests run the official Dependency Review Action and fail when a newly in
 has a known vulnerability of moderate severity or higher. Its stable check name is
 `dependency review`.
 
+## Runtime OpenAPI document
+
+`docs/reference/api/openapi.generated.json` is the committed copy of the Runtime OpenAPI document
+(see [Runtime OpenAPI document](../../reference/api/openapi.md)). The `engine transport smoke` job
+runs `pnpm api:openapi --check` right after it builds `@nevo/specflow-runtime`, so the check adds
+no build. It runs when that job's relevance gate matches, which includes every change under
+`packages/specflow-runtime/` or `packages/specflow-contracts/` (where the route schemas live) and
+the generated file itself; the failure counts towards `verify tests`.
+
+The check regenerates the document and fails with
+``docs/reference/api/openapi.generated.json is stale: run `pnpm api:openapi`.`` when the committed
+bytes differ. Fix it by running `pnpm api:openapi` and committing the result; the API change is then
+visible in the pull request diff (`.gitattributes` keeps this generated file diffable). Routes
+without a response schema are printed to stderr as information and never fail the check.
+
 ## Packaged product smoke
 
 A dedicated matrix runs `packages/specflow/test/packaging.smoke.test.ts` on:
@@ -304,4 +319,5 @@ pnpm turbo run lint --filter=...[origin/main]
 pnpm --filter @nevo/specflow-ui lint
 pnpm exec turbo run build test typecheck --affected --dry
 pnpm --filter @nevo/specflow test:packaged
+pnpm api:openapi --check
 ```

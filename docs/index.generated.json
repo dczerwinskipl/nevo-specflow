@@ -4675,6 +4675,37 @@
       ]
     },
     {
+      "id": "reference.api.openapi",
+      "type": "reference",
+      "title": "Runtime OpenAPI document",
+      "status": "current",
+      "file": "docs/reference/api/openapi.md",
+      "read_when": [
+        "reading or importing the Runtime HTTP API description",
+        "changing a Runtime route schema and regenerating the committed OpenAPI document",
+        "the `pnpm api:openapi --check` drift check fails"
+      ],
+      "summary": "Runtime serves an OpenAPI 3.1 document of its HTTP API at GET /api/openapi.json, generated from the TypeBox route schemas; a committed copy of the project-mode surface lives in docs/reference/api/openapi.generated.json and is regenerated with pnpm api:openapi.",
+      "related": [
+        "architecture.runtime.endpoint-policy",
+        "architecture.runtime.authorization",
+        "engineering.repository.ci"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "server",
+        "security",
+        "docs"
+      ],
+      "tags": [
+        "openapi",
+        "fastify",
+        "typebox",
+        "generated"
+      ]
+    },
+    {
       "id": "reference.api.operation-progress",
       "type": "reference",
       "title": "Operation progress events (SSE) HTTP reference",

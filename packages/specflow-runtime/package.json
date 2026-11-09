@@ -18,6 +18,10 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./openapi-document": {
+      "types": "./dist/openapi-document.d.ts",
+      "default": "./dist/openapi-document.js"
+    },
     "./cli": {
       "types": "./dist/cli/command.d.ts",
       "default": "./dist/cli/command.js"

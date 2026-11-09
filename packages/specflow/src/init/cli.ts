@@ -1,5 +1,6 @@
 import { join, relative, dirname, basename } from 'node:path';
 
+import { initDocs } from '@nevo/specflow-docs';
 import {
   GitCapabilityError,
   assertInitialDefinitionsCommittable,
@@ -122,12 +123,15 @@ export function createProjectInitCommand(context: ProjectInitCommandContext): Co
         }
       }
 
+      // Last before the review: its prompt defaults to no, and a probe failure is reported, not thrown.
+      const docs = await initDocs({ ui, env: process.env });
+
       const protectedNote =
         gitConfig.integrationTargetBranch !== undefined
           ? integrationTargetProtectedNote(gitConfig.integrationTargetBranch, protectedBranches)
           : undefined;
       const contribution = {
-        projectConfig: { runtime: runtime.projectConfig, git: gitConfig },
+        projectConfig: { runtime: runtime.projectConfig, git: gitConfig, ...docs.projectConfig },
         localConfig: {
           runtime: runtime.localConfig,
           // Opting in is a personal workflow choice: it goes to the workstation-local config (which
@@ -141,6 +145,7 @@ export function createProjectInitCommand(context: ProjectInitCommandContext): Co
                 },
               }
             : {}),
+          ...docs.localConfig,
         },
       };
 
@@ -171,6 +176,7 @@ export function createProjectInitCommand(context: ProjectInitCommandContext): Co
                   ? 'install and commit them'
                   : 'install them'
               : (definitionsNote ?? 'not installed (--no-definitions)')),
+          ...docs.summary,
           '',
           `Project config: ${relative(layout.root, layout.projectConfigPath)}`,
           `Local config: ${relative(layout.root, layout.localConfigPath)}`,

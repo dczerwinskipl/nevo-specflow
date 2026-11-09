@@ -5117,6 +5117,7 @@
       "read_when": [
         "configuring the documentation root, taxonomy or non-authoritative paths of a project",
         "enabling semantic documentation search or configuring an embedding endpoint",
+        "changing the semantic search step of nevo-specflow init",
         "diagnosing a docs or ai.embeddings configuration error"
       ],
       "summary": "The docs namespace (root, taxonomy, non-authoritative prefixes, search.semantic) and the ai.embeddings endpoint (protocol, baseUrl, model, dimensions, apiKeyEnv, queryInstruction, batchSize, timeoutMs): which file may hold them, how they merge, their validation and defaults.",

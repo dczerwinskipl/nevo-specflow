@@ -8,6 +8,7 @@ areas: [configuration, docs, ai, security]
 read_when:
   - configuring the documentation root, taxonomy or non-authoritative paths of a project
   - enabling semantic documentation search or configuring an embedding endpoint
+  - changing the semantic search step of nevo-specflow init
   - diagnosing a docs or ai.embeddings configuration error
 summary: >
   The docs namespace (root, taxonomy, non-authoritative prefixes, search.semantic) and the
@@ -110,8 +111,57 @@ loaded, with a message naming the file and key:
 - an `apiKeyEnv` value that is not an upper-case variable name (a pasted key is never one);
 - credentials, a query string or a fragment in `baseUrl`.
 
+Endpoints that need a query string are therefore not supported, including classic Azure OpenAI
+deployments (an `api-version` query parameter and an `api-key` header); use an endpoint that accepts
+`POST {baseUrl}/embeddings` with a bearer token.
+
 A named variable that is not set is not a configuration error: `search` answers lexically with
 reason `endpoint-unreachable` and `semantic status` reports it.
+
+## Enabling it in `nevo-specflow init`
+
+`init` of a new project asks, after the Git questions and before the review, **Enable semantic
+documentation search?** (default **No**). Declining writes no `docs` or `ai` section; the review
+shows `Semantic docs search: off`. On **Yes** it asks:
+
+| Prompt                                   | Default                     | Written as                        |
+| ---------------------------------------- | --------------------------- | --------------------------------- |
+| Embedding endpoint (OpenAI-compatible)   | `http://127.0.0.1:11434/v1` | `ai.embeddings.baseUrl` (local)   |
+| Embedding model                          | `qwen3-embedding:0.6b`      | `ai.embeddings.model` (local)     |
+| Environment variable holding the API key | empty (no key sent)         | `ai.embeddings.apiKeyEnv` (local) |
+
+The key itself is never asked for or written. The answers are validated with the same rules as
+above before anything else happens; an invalid answer (for example a pasted key instead of a
+variable name) is explained and the three questions are asked again, at most three times. Init then
+writes:
+
+```yaml
+# .nevo/config.yaml
+docs:
+  search:
+    semantic: true
+```
+
+```yaml
+# .nevo/local/config.yaml
+ai:
+  embeddings:
+    protocol: openai-compatible
+    baseUrl: http://127.0.0.1:11434/v1
+    model: qwen3-embedding:0.6b
+    apiKeyEnv: EMBEDDINGS_API_KEY # only when a variable was named
+```
+
+Before the review it probes the endpoint once (one document embedding with the configured timeout)
+and shows the latency and vector dimension, or why it failed (unreachable, timeout, HTTP status, or
+the named variable not set). A failed probe does not fail `init`: the configuration is still written
+and the review says `Semantic docs search: configured but unavailable, lexical for now (...)`;
+`search` answers lexically until `docs semantic status` reports the endpoint available. On success
+the review says `Semantic docs search: enabled (<model> at <baseUrl>, <n> dimensions)`. The probe
+writes no index; the first `search` or `docs semantic index` builds it.
+
+Enabling semantic search in an already initialized project is not offered by any command yet: edit
+the two files as shown.
 
 ## Effective search mode
 

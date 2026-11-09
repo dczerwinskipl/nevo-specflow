@@ -88,13 +88,20 @@ describe('init: automatic commit of documents', () => {
 
   it('writes nothing when the choice is declined or left to its default (non-interactive)', async () => {
     await repository();
-    const { ui } = scripted({ confirm: [true, false, true], select: ['trunk', 'feature/{slug}'] });
+    const { ui, asked } = scripted({
+      confirm: [true, false, true],
+      select: ['trunk', 'feature/{slug}'],
+    });
     await runInit(ui);
 
     const local = await readFile(join(root, '.nevo', 'local', 'config.yaml'), 'utf8');
     const project = await readFile(join(root, '.nevo', 'config.yaml'), 'utf8');
     expect(local).not.toContain('auto');
     expect(project).not.toContain('auto');
+    // Semantic docs search is offered and, left to its default (no), writes nothing either.
+    expect(asked.at(-1)).toBe('Enable semantic documentation search?');
+    expect(project).not.toContain('docs:');
+    expect(local).not.toContain('ai:');
   });
 
   it('is not asked while Git is disabled', async () => {

@@ -35,6 +35,15 @@ export {
 } from './config/docs-configuration';
 export { loadDocsSettings, type DocsConfigPaths } from './config/load-docs-settings';
 export {
+  DEFAULT_EMBEDDINGS_BASE_URL,
+  DEFAULT_EMBEDDINGS_MODEL,
+  initDocs,
+  type DocsInitChoice,
+  type DocsInitContribution,
+  type DocsInitOptions,
+  type DocsInitUi,
+} from './init/docs-init';
+export {
   createFileSystemDocRepository,
   type DocRepository,
   type MarkdownFileStat,

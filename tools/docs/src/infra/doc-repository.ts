@@ -95,6 +95,10 @@ export function createFileSystemDocRepository({
       rmSync(join(repoRoot, repoRelPath), { force: true });
     },
 
+    pathExists(repoRelPath): boolean {
+      return existsSync(join(repoRoot, ...repoRelPath.split('/')));
+    },
+
     readIndex(): OnDiskIndex {
       const jsonPath = join(docsDir, 'index.generated.json');
       const mdPath = join(docsDir, 'index.generated.md');

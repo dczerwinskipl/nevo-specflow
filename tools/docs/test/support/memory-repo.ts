@@ -74,6 +74,12 @@ export function createMemoryRepo(files: Record<string, string> = {}): MemoryRepo
       removes.push(path);
     },
 
+    pathExists(path): boolean {
+      const prefix = `${path.replace(/\/$/, '')}/`;
+
+      return map.has(path) || [...map.keys()].some((f) => f.startsWith(prefix));
+    },
+
     readIndex: () => index,
 
     writeIndex(built: BuiltIndex): void {

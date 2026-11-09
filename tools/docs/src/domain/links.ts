@@ -99,6 +99,18 @@ function decodeEntities(text: string): string {
   });
 }
 
+/** HTML tags removed repeatedly until none is left, so a removal cannot form a new tag. */
+function withoutTags(text: string): string {
+  let previous: string;
+  let current = text;
+  do {
+    previous = current;
+    current = current.replace(/<[^<>]*>/g, '');
+  } while (current !== previous);
+
+  return current;
+}
+
 /**
  * GitHub-style heading slug (github-slugger on the rendered text): link syntax, inline code
  * markers, emphasis and HTML tags removed, entities decoded, lower-cased, punctuation dropped,
@@ -106,9 +118,7 @@ function decodeEntities(text: string): string {
  */
 export function slugifyHeading(heading: string): string {
   return decodeEntities(
-    heading
-      .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
-      .replace(/<[^>]+>/g, '')
+    withoutTags(heading.replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1'))
       .replace(/`/g, '')
       .replace(/(^|[^\p{L}\p{N}])[*_]+|[*_]+(?=[^\p{L}\p{N}]|$)/gu, '$1'),
   )

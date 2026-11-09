@@ -71,6 +71,11 @@ describe('slugifyHeading and documentAnchors', () => {
     expect(slugifyHeading('Kontekst: kto używa')).toBe('kontekst-kto-używa');
   });
 
+  it('removes HTML tags, including ones a single pass would leave behind', () => {
+    expect(slugifyHeading('Use <code>tv</code> styles')).toBe('use-tv-styles');
+    expect(slugifyHeading('A <<b>i>B')).toBe('a-b');
+  });
+
   it('drops emphasis and decodes entities but keeps snake_case', () => {
     expect(slugifyHeading('The _real_ thing')).toBe('the-real-thing');
     expect(slugifyHeading('A &amp; B')).toBe('a--b');

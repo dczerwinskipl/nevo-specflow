@@ -18,6 +18,10 @@ export default defineConfig({
   ],
   test: {
     name: 'storybook',
+    // Story files run one after another. In parallel, timing-sensitive interaction and geometry
+    // contracts failed at random under load (a different story each run), while the serial run is
+    // stable and takes about as long: the single browser is the bottleneck either way.
+    fileParallelism: false,
     browser: {
       enabled: true,
       provider: playwright({}),

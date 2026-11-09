@@ -305,6 +305,43 @@
       ]
     },
     {
+      "id": "ideas.semantic-docs",
+      "type": "hub",
+      "title": "Semantic documentation search (RAG) ideas",
+      "status": "draft",
+      "file": "docs/ideas/semantic-docs/README.md",
+      "read_when": [
+        "planning semantic or RAG-style search over project documentation",
+        "promoting repository documentation discovery into a SpecFlow product capability",
+        "designing configuration for embedding model providers",
+        "designing contextual help that shows related documentation"
+      ],
+      "summary": "Non-authoritative direction for an optional AI semantic search mode over documentation: a product-neutral semantic-search package, documentation discovery promoted into a SpecFlow capability, `ai.embeddings` configuration with a lexical fallback, index freshness without a file watcher, CLI-first delivery with a later HTTP API and contextual help in the UI.",
+      "related": [
+        "ideas.readme",
+        "adr.0005-repository-tooling-is-separate-from-the-product-api",
+        "adr.0006-product-ships-as-a-single-bundled-artifact",
+        "adr.0012-product-package-topology-and-dependency-direction",
+        "ideas.specflow-runtime.ai-adapters",
+        "ideas.specflow-runtime.openapi-publication"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "docs",
+        "cli",
+        "runtime",
+        "configuration"
+      ],
+      "tags": [
+        "rag",
+        "semantic-search",
+        "embeddings",
+        "documentation",
+        "knowledge"
+      ]
+    },
+    {
       "id": "ideas.specflow-engine",
       "type": "hub",
       "title": "Open SpecFlow Engine proposals",
@@ -1181,6 +1218,163 @@
       ]
     },
     {
+      "id": "ideas.semantic-docs.ai-package-naming",
+      "type": "architecture",
+      "title": "AI package naming family",
+      "status": "draft",
+      "file": "docs/ideas/semantic-docs/ai-package-naming.md",
+      "read_when": [
+        "naming a new AI-related package",
+        "considering extraction of session provider adapters out of Runtime"
+      ],
+      "summary": "Proposal for a consistent `@nevo/ai-*` package family: agent drivers (today inside Runtime sessions), model endpoint adapters, and semantic search, without extracting anything yet.",
+      "related": [
+        "ideas.semantic-docs",
+        "ideas.specflow-runtime.ai-adapters",
+        "architecture.ai.provider-boundary",
+        "adr.0012-product-package-topology-and-dependency-direction"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime"
+      ],
+      "tags": [
+        "naming",
+        "packages",
+        "providers",
+        "embeddings"
+      ]
+    },
+    {
+      "id": "ideas.semantic-docs.configuration-and-init",
+      "type": "architecture",
+      "title": "Semantic docs configuration and init",
+      "status": "draft",
+      "file": "docs/ideas/semantic-docs/configuration-and-init.md",
+      "read_when": [
+        "designing `ai.embeddings` or `docs` configuration sections",
+        "adding a semantic search step to `nevo-specflow init`",
+        "deciding when semantic search is enabled or falls back to lexical"
+      ],
+      "summary": "Proposal for configuring embedding endpoints once under `ai.embeddings` (project + local), feature opt-in under `docs.search.semantic`, an init contribution with a connectivity probe, and explicit lexical fallback whenever vectors cannot be obtained.",
+      "related": [
+        "ideas.semantic-docs",
+        "ideas.semantic-docs.docs-capability",
+        "architecture.runtime.configuration"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "configuration",
+        "ai",
+        "cli",
+        "security"
+      ],
+      "tags": [
+        "embeddings",
+        "init",
+        "semantic-search",
+        "providers"
+      ]
+    },
+    {
+      "id": "ideas.semantic-docs.docs-capability",
+      "type": "architecture",
+      "title": "Documentation capability in SpecFlow",
+      "status": "draft",
+      "file": "docs/ideas/semantic-docs/docs-capability.md",
+      "read_when": [
+        "promoting repository documentation discovery into the SpecFlow product",
+        "designing `nevo-specflow docs` commands or a documentation search endpoint",
+        "updating agent instructions for documentation search"
+      ],
+      "summary": "Proposal to promote documentation discovery from `tools/docs` into a `@nevo/specflow-docs` capability with configurable taxonomy, `nevo-specflow docs` commands including semantic `search`, a Runtime search endpoint, agent instructions, and a later contextual help surface.",
+      "related": [
+        "ideas.semantic-docs",
+        "ideas.semantic-docs.semantic-search-package",
+        "ideas.semantic-docs.configuration-and-init",
+        "adr.0005-repository-tooling-is-separate-from-the-product-api",
+        "adr.0007-documentation-architecture-and-taxonomy",
+        "engineering.repository.dogfooding"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "docs",
+        "cli",
+        "runtime",
+        "ai",
+        "ui"
+      ],
+      "tags": [
+        "documentation",
+        "semantic-search",
+        "agents",
+        "dogfooding",
+        "contextual-help"
+      ]
+    },
+    {
+      "id": "ideas.semantic-docs.index-freshness",
+      "type": "architecture",
+      "title": "Semantic docs index freshness",
+      "status": "draft",
+      "file": "docs/ideas/semantic-docs/index-freshness.md",
+      "read_when": [
+        "deciding when the semantic documentation index is rebuilt or refreshed",
+        "considering a file watcher for documentation changes"
+      ],
+      "summary": "Proposal to keep the semantic index fresh through refresh on Runtime start, immediate invalidation on writes SpecFlow owns, and a cheap staleness check on every read, instead of a file watcher.",
+      "related": [
+        "ideas.semantic-docs",
+        "ideas.semantic-docs.semantic-search-package",
+        "architecture.runtime.ownership-and-lifecycle"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "docs"
+      ],
+      "tags": [
+        "semantic-search",
+        "vector-index",
+        "lifecycle",
+        "windows"
+      ]
+    },
+    {
+      "id": "ideas.semantic-docs.semantic-search-package",
+      "type": "architecture",
+      "title": "Semantic search engine package",
+      "status": "draft",
+      "file": "docs/ideas/semantic-docs/semantic-search-package.md",
+      "read_when": [
+        "designing the product-neutral semantic search package",
+        "choosing chunking, ranking or vector storage for documentation search",
+        "adding an embedding provider adapter"
+      ],
+      "summary": "Proposal for `@nevo/ai-semantic-search`: a product-neutral package with embedding provider and chunk-source ports, an OpenAI-compatible embeddings adapter, heading-aware markdown chunking, hybrid BM25 + vector ranking fused by RRF, and a local file-backed index without native modules.",
+      "related": [
+        "ideas.semantic-docs",
+        "ideas.semantic-docs.index-freshness",
+        "ideas.semantic-docs.ai-package-naming",
+        "adr.0006-product-ships-as-a-single-bundled-artifact",
+        "adr.0012-product-package-topology-and-dependency-direction"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "docs"
+      ],
+      "tags": [
+        "rag",
+        "semantic-search",
+        "embeddings",
+        "vector-index",
+        "hybrid-search"
+      ]
+    },
+    {
       "id": "ideas.specflow-engine.decisions",
       "type": "architecture",
       "title": "Open Engine workflow decisions",
@@ -1526,6 +1720,37 @@
         "rebind",
         "relocation",
         "repair"
+      ]
+    },
+    {
+      "id": "ideas.specflow-runtime.openapi-publication",
+      "type": "architecture",
+      "title": "OpenAPI publication for the Runtime API",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/openapi-publication.md",
+      "read_when": [
+        "wanting an overview of the Runtime HTTP API shape",
+        "adding route schemas or changing Runtime endpoints",
+        "designing API documentation generation or CI drift checks"
+      ],
+      "summary": "Proposal to generate an OpenAPI document from the existing Fastify TypeBox route schemas, serve it from Runtime under a restrictive visibility policy, commit a generated copy, and check it for drift in CI.",
+      "related": [
+        "ideas.readme",
+        "ideas.semantic-docs",
+        "architecture.runtime.endpoint-policy"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "server",
+        "docs",
+        "security"
+      ],
+      "tags": [
+        "openapi",
+        "api",
+        "fastify",
+        "typebox"
       ]
     },
     {
@@ -4617,6 +4842,34 @@
         "readiness",
         "search",
         "archive"
+      ]
+    },
+    {
+      "id": "ideas.semantic-docs.local-embeddings-playground",
+      "type": "reference",
+      "title": "Local embeddings playground",
+      "status": "draft",
+      "file": "docs/ideas/semantic-docs/local-embeddings-playground.md",
+      "read_when": [
+        "running a local embedding model for semantic documentation search",
+        "manually trying semantic search through the CLI or HTTP API"
+      ],
+      "summary": "How to run a local embedding model in Docker (Ollama or Hugging Face TEI), verify the OpenAI-compatible endpoint, and what to try once the CLI and API exist.",
+      "related": [
+        "ideas.semantic-docs",
+        "ideas.semantic-docs.configuration-and-init",
+        "ideas.specflow-runtime.openapi-publication"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "testing"
+      ],
+      "tags": [
+        "embeddings",
+        "docker",
+        "ollama",
+        "local-setup"
       ]
     },
     {

@@ -68,6 +68,8 @@ rationale whose premise no longer holds is marked superseded or removed.
 - [SpecFlow Runtime / server-side Work history filter](specflow-runtime/work-history-server-filter.md)
 - [Developer workspace / code inspection and IDE integration](developer-workspace/README.md)
 - [SpecFlow UI / open screen and component ideas](specflow-ui/README.md)
+- [Semantic documentation search (RAG)](semantic-docs/README.md)
+- [SpecFlow Runtime / OpenAPI publication](specflow-runtime/openapi-publication.md)
 
 Non-authoritative decision records with open follow-ups:
 [Session association registry](specflow-runtime/session-association/README.md),

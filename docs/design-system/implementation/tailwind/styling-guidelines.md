@@ -9,7 +9,7 @@ read_when:
   - mapping domain state to visual tone
   - deciding whether to use @apply or a CSS file
 summary: >
-  Class-composition pipeline: static local layout inline, reusable variants via cva,
+  Class-composition pipeline: static local layout inline, reusable variants via tailwind-variants (`tv`),
   domain state resolved to a semantic tone before classes, explicit conditional
   composition, and a narrow @apply policy.
 related:
@@ -33,7 +33,7 @@ abstraction.
 ## 2. Reusable component variants
 
 A component with real variants (size, tone, emphasis) uses a variant utility
-(`cva` / `tailwind-variants`) with named variants, not a pile of ternaries in JSX.
+(`tv` from `tailwind-variants/lite`) with named variants, not a pile of ternaries in JSX.
 
 ## 3. Domain state → tone → classes
 

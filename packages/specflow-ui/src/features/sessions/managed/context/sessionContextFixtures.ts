@@ -51,8 +51,9 @@ export const claudeExecutor: SessionExecutor = {
  * lands on the same Work its chat Work block opens (same tab either way). */
 const workHistory = ready({ turnId: workInspectorTurnId });
 
-/** State A — generic/spec-level Session (full-session-screen-structure.md §12). Also carries a
- * full/available telemetry snapshot (§23, `sessionTelemetry.stories-support.ts`) to exercise `SessionTelemetrySection`
+/** State A — generic/spec-level Session (full-session-screen-structure.md §1). Also carries a
+ * full/available telemetry snapshot (full-session.md "Context";
+ * `sessionTelemetry.stories-support.ts`) to exercise `SessionTelemetrySection`
  * with every dimension present. Shows the Documents row once a handler is wired. */
 export function genericSpecLevelContext(): SessionContextViewModel {
   return {

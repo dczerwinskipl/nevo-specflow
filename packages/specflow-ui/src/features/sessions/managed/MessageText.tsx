@@ -15,7 +15,7 @@ import type { ManagedSessionsApi } from './api';
 /** Imperative handle exposed by {@link ReadableText}: the one owner of the message's fully
  * resolved text (initial preview plus every auto-stitched page), for actions that need the whole
  * authored message rather than just the capped initial preview — e.g. the Copy message action in
- * `ManagedSession`'s `EntryRow` (session-chat-v10-design.md §2). */
+ * `ManagedSession`'s `EntryRow` (full-session.md "Conversation"). */
 export interface ReadableTextHandle {
   /** Writes the full resolved text to the clipboard. Resolves to whether it succeeded; resolves to
    * `false`, writing nothing, while the text is still loading or after its load failed, so a
@@ -170,7 +170,7 @@ const RevisionText = forwardRef<
     // specific render also happened to receive a new (but equal-behavior) callback instance.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [text]);
-  // The Copy message action (session-chat-v10-design.md §2) acts on this exact resolved text —
+  // The Copy message action (full-session.md "Conversation") acts on this exact resolved text —
   // the whole stitched text — not the capped initial preview alone — and only once it is complete.
   useImperativeHandle(
     ref,

@@ -7,11 +7,13 @@ scope: specflow
 areas: [workflow, runtime, cli, ai, security]
 tags: [execution-scope, ownership, claims, recovery]
 read_when:
-  - admitting external CLI or managed AI work without assuming a Task
-  - recovering abandoned or uncertain writer claims
+  - deciding which workflow steps need a writer claim (plan 06 F05)
+  - designing operator inspect, reconcile, release or takeover of a claim
+  - admitting a dirty checkout or a Task batch to a workflow step
 summary: >
-  Distinguishes workflow attempt, Turn, execution effects and physical ownership; proposes
-  evidence-driven inspect/reconcile/release flows that also work without a running Runtime.
+  Open proposals beyond the implemented managed-execution claims: which workflow steps need a
+  writer claim, the operator inspect/reconcile/release/takeover protocol, dirty-baseline admission
+  and batch/handover rules, all usable without a running Runtime.
 related:
   - ideas.specflow-engine
   - ideas.specflow-engine.locking
@@ -19,16 +21,22 @@ related:
   - ideas.specflow-engine.managed-session-integration
   - ideas.specflow-engine.local-actors
   - architecture.workflow.deterministic-workflow
+  - architecture.runtime.workspace-execution-claims
 ---
 
 # Execution scopes and recovery
+
+Runtime already admits every native agent process through a project-wide
+[workspace execution claim](../../architecture/runtime/workspace-execution-claims.md) and settles it
+only on proof. The Engine has no operator release or takeover, workflow steps do not take claims yet
+(plan 06 F05), and external CLI agents hold none. This document proposes those parts.
 
 ## Four orthogonal axes
 
 1. **Business target:** ad-hoc conversation, specification authoring, a Task, or an explicit Task batch. An authoring operation may exist **before Task IDs exist**.
 2. **Execution owner:** Runtime-managed Turn, external agent using skills+CLI, or trusted operator CLI action.
 3. **Effect capability:** enforced read-only, workspace file writer, Git/ref mutator, or mixed. A declared intent is not proof that a provider cannot write.
-4. **Deterministic workflow identity:** optional `(change, task, step, attempt)` per task, independent of Session and claim.
+4. **Deterministic workflow identity:** optional `(specId[, taskId], step, attempt)` per subject, independent of Session and claim.
 
 **Writer admission is determined by actual/potential side effects on a physical workspace, not by agent archetype or presence of workflow.** A read-only execution may omit a claim only if tools/transport are truly write-restricted; otherwise conservatively request ownership or reject unsupported unsafe mode.
 
@@ -44,9 +52,9 @@ related:
 
 Do not create a durable workflow attempt for every Turn. Execution claim is an admission/coordination resource; workflow step and provider Turn have separate lifecycles.
 
-## Required claim identity
+## Claim identity for workflow and external writers
 
-A candidate record includes `projectId`, `workspaceId`, opaque `executionId`, verified owner kind and ownership proof, declared scope/effects, current associated `turnId` **if managed**, optional set of task attempt refs, reservation/operation identity and observed settlement evidence. Do not persist duplicated canonical task status in the claim.
+Beyond the implemented intent `{operationId, ownerId, binding}`, a workflow or external claim needs `workspaceId`, verified owner kind and ownership proof, declared scope/effects, current associated `turnId` **if managed**, optional set of task attempt refs, reservation/operation identity and observed settlement evidence. Do not persist duplicated canonical task status in the claim.
 
 Short exclusive control locks protect inspect/compare-and-set. Long execution claims survive short CLI termination. The claim protects **cooperating** writers; a process with OS-level access can edit directly regardless of token.
 
@@ -86,14 +94,9 @@ Do not make every dirty checkout categorically fatal. Resolve admission at the _
 
 Batch scope is explicit, ordered, per-Task, never inferred from historical Session bindings. Releasing a Turn claim does not finish all Task attempts. Handover creates a new possible owner/Session after previous writer is safely released or fenced. It cannot silently transfer an opaque claim or auto-activate the next workflow transition.
 
-## Multi-instance scope (future; distinct from task batch)
+## Acceptance
 
-A `task-batch` covers multiple Task attempts. Multi-instance execution instead has **one user-defined step attempt** and several Engine-assigned contribution slots, each with independent execution runs and retries. Step instructions, output schema, effect requirements and declared reducer determine result semantics. Do not infer slot count from Sessions, concurrent Turns or `maxConcurrency`, or allocate a new workflow attempt just because one run failed.
-
-Read-only instances skip writer claims only when enforced capabilities prove that safe; write-producing instances need admission or isolation. Instance starts/submissions/finalization still use short Engine state coordination. Terminal Turns without validated contributions are not workflow results; stale runs and ambiguous effects cannot cause aggregate `finish`. See [multi-instance execution](multi-instance-execution.md). Foundation B remains single-instance.
-
-## Acceptance and stage ownership
-
-Foundation A proves project/worktree resource serialization for Spec creation; it does **not** need a fake `workflow step start`. Foundation B implements one real minimal workflow transition/claim plus inspect/reconcile/release for CLI without Runtime and tests collision/abandonment. Sessions integration later exercises Runtime managed owner against this same coordinator.
-
-See [test plan](test-plan.md) for L, R, W, S stages. Claim outcome cannot be accepted if the only tested behavior is 'block forever'.
+Foundation B implements one real workflow transition with a claim plus inspect/reconcile/release for
+the CLI without Runtime, and tests collision and abandonment. Multi-instance scopes are in
+[multi-instance execution](multi-instance-execution.md). See the [test plan](test-plan.md) for the L,
+R, W and S rows. A claim outcome cannot be accepted if the only tested behaviour is 'block forever'.

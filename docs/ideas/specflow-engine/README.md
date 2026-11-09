@@ -1,32 +1,57 @@
 ---
 id: ideas.specflow-engine
 type: hub
-title: Future Engine proposals and E1-E2 historical evidence
+title: Open SpecFlow Engine proposals
 status: draft
 scope: specflow
 areas: [workflow, runtime, cli, configuration]
-tags: [engine, worktree, offline, migration]
+tags: [engine, workflow, claims, offline, migration]
 read_when:
-  - evaluating deferred E3 E4 E5 work
-  - distinguishing implemented E1 E2 from old candidate designs
+  - evaluating open offline workflow, writer claim or managed execution work
+  - finding which Engine proposals are still open after the kernel and Sessions shipped
 summary: >
-  Deferred E3-E5 proposals and dated E1-E2 design evidence; accepted foundations now have current architecture and reference docs.
+  Index of the open Engine proposals: offline workflow coordination, writer claims and recovery,
+  managed execution integration, human gates, Task resources and context, multi-instance execution,
+  and the remaining execution plans. Implemented foundations have current architecture docs.
 related:
   - ideas.readme
   - architecture.runtime.specflow-engine
+  - architecture.runtime.workspace-execution-claims
+  - architecture.workflow.workflow-kernel
   - architecture.runtime.specflow-project-home
   - architecture.runtime.specflow-lifecycle
 ---
 
-# Future Engine ideas and historical E1/E2 evidence
+# Open SpecFlow Engine proposals
 
-**Implemented E1/E2 authority has been promoted** to [Engine architecture](../../architecture/runtime/specflow-engine.md), [Project Home/workspaces](../../architecture/runtime/project-home-and-workspaces.md), [Specification lifecycle](../../architecture/runtime/specification-lifecycle.md), [HTTP API](../../reference/api/specflow-specification-operations.md), [configuration](../../reference/configuration/specflow-git-worktrees.md) and [durable recovery](../../engineering/shared/specflow-git-recovery.md).
+**Implemented and promoted:** the Engine, Project Home and workspaces, Specification Create and
+Close, documents and Engine-owned commits, managed Sessions with
+[workspace execution claims](../../architecture/runtime/workspace-execution-claims.md), and the
+[workflow kernel](../../architecture/workflow/workflow-kernel.md) in the Engine. See
+[Engine architecture](../../architecture/runtime/specflow-engine.md),
+[Project Home/workspaces](../../architecture/runtime/project-home-and-workspaces.md),
+[Specification lifecycle](../../architecture/runtime/specification-lifecycle.md) and
+[durable recovery](../../engineering/shared/specflow-git-recovery.md). The kernel is not yet wired to
+the Runtime, CLI or UI.
 
-Remaining **draft, not implemented** stages:
+Open proposals (draft, non-authoritative; current documentation and code win):
 
-- [E3 Offline Workflow](execution-plans/03-offline-workflow-execution/README.md): deterministic step execution, claims, local actors and gates.
-- [E4 Managed Sessions](execution-plans/04-managed-sessions-foundation/README.md): canonical Session/Turn/Work and mocked provider.
-- [E5 Managed execution integration](execution-plans/05-managed-execution-integration/README.md): provider dispatch, claim settlement, explicit workflow finish.
-- [Future multi-instance design](multi-instance-execution.md) and its [separate tasks](multi-instance-plan/README.md).
+| Document                                                                                              | Open subject                                                                   |
+| ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| [Offline CLI and external agents](offline-cli-and-external-agents.md)                                 | Workflow commands for agents outside Runtime                                   |
+| [Workflow API requirements](workflow-api-requirements.md)                                             | Runtime HTTP surface for the kernel                                            |
+| [Execution scopes and recovery](execution-scopes-and-recovery.md)                                     | Which steps need a claim; operator inspect/reconcile/release/takeover; batches |
+| [Locking and admission](locking-and-admission.md)                                                     | Workflow step claims, external agent liveness, lock ordering                   |
+| [Durable operations](durable-operations-and-recovery.md)                                              | Git stages in the finish journal; external writer recovery                     |
+| [Managed Session integration](managed-session-integration.md)                                         | Sessions driving workflow steps; batch, handover, rebind                       |
+| [Workspace binding lifecycle](workspace-binding-lifecycle.md)                                         | Relocate, repair, active Turn blocking rebind                                  |
+| [Ownership and state](ownership-and-state.md)                                                         | Human approval provenance; external claim reconciliation on boot               |
+| [Local actor and human gates](local-actor-and-human-gates.md)                                         | Local trust model for human approvals                                          |
+| [Task resource and context](task-resource-and-context.md)                                             | Task folders, index, documents and context lists (plan 06 F20)                 |
+| [Legacy Nevo migration](legacy-nevo-migration.md)                                                     | Legacy modules not yet ported                                                  |
+| [Decisions](decisions-and-promotion.md)                                                               | Open decision register                                                         |
+| [Acceptance criteria](acceptance-criteria.md) and [test plan](test-plan.md)                           | Open gates FB01–FB09, SI04–SI08 and their test rows                            |
+| [Multi-instance execution](multi-instance-execution.md) and [its plan](multi-instance-plan/README.md) | Deferred same-step multi-instance runs                                         |
 
-[Remaining runbook](execution-plans/README.md) includes only E3–E5. Historical proposal documents in this folder are **non-authoritative** and can contain obsolete API payloads or earlier lifecycle assumptions; current documentation and code win. Do not implement a future workflow or Session capability merely because E1/E2 established Engine infrastructure.
+The temporary [execution plans](execution-plans/README.md) (03, 05, 06) order the remaining work.
+Do not implement a workflow or Session capability merely because the Engine infrastructure exists.

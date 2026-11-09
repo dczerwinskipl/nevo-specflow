@@ -14,7 +14,7 @@ import {
 
 /**
  * Starting a new Session on a Specification inside the Session screen itself
- * (`docs/ideas/specflow-ui/screens/new-session-ui-spec.md`): the full shell at once, the pinned
+ * (full-session.md "Starting a Session"): the full shell at once, the pinned
  * Specification in Context, the start form in the conversation column and the Composer visible but
  * inactive until Start. The real demo start source runs over a mocked allocation (the shared Create
  * operation); a started Session opens as in the route. Every state is rendered from the story's

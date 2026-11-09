@@ -15,6 +15,7 @@ summary: >
 related:
   - ideas.specflow-ui.screens
   - ideas.specflow-ui.full-session-screen-structure
+  - product.specflow.ui.full-session
   - product.specflow.ui.ai-session-ux
   - product.specflow.ui.interaction-model
 ---
@@ -292,7 +293,7 @@ Opening/closing/minimizing the floating window does not refetch the Session mere
 presentation changed.
 
 Floating Session reuses the same conversation semantics defined in
-[Session conversation UI spec](../components/session-conversation-ui-spec.md). It does not invent a
+[Full Session contract](../../../product/specflow/ui/full-session.md#conversation). It does not invent a
 second compact-chat renderer.
 
 ## 13. Component / composition map

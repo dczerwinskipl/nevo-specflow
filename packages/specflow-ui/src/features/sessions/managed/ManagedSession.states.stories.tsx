@@ -344,8 +344,8 @@ export const Unavailable: Story = {
 /**
  * A Session the caller may only view (the demo Runtime's read-only Sessions, or a viewer): the
  * snapshot grants `view` alone. A quiet bar takes the Composer's place, the empty conversation has
- * no call to action, and there is no Session menu and no error (full-session-screen-structure
- * §22.1, View-only Session).
+ * no call to action, and there is no Session menu and no error (full-session.md
+ * "Session actions, archived, view-only and deleted Sessions").
  */
 export const ViewOnlySession: Story = {
   tags: ['contract'],
@@ -389,7 +389,7 @@ export const ViewOnlySession: Story = {
 };
 
 /**
- * A Session without a message, however it was opened (new-session-ui-spec.md, section 5): the DS
+ * A Session without a message, however it was opened (full-session.md "Starting a Session"): the DS
  * ready empty state with the provider's logo and name, centred in the free height above the Composer,
  * which is docked at the bottom. It replaces the former plain "start the conversation" line.
  */
@@ -479,7 +479,7 @@ export const MultipleChoice: Story = {
   },
 };
 
-/** One Work block per Turn in every state (session-chat-v10-design.md §3.1), inside one realistic
+/** One Work block per Turn in every state (full-session.md "Work block"), inside one realistic
  * conversation shaped like real runtime output (one `work-summary` entry per tool Work). Checks:
  * exactly one block per Turn that has Work, one focus target per block, no overflow, the interrupted
  * fact shown once (in its block, no separate outcome row), the Turn without Work keeps its outcome

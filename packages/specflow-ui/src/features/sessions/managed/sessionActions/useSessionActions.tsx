@@ -39,10 +39,10 @@ function commandView(mutation: { isPending: boolean; error: Error | null }): Ses
 }
 
 /**
- * Rename, Archive, Unarchive and Delete of one Session (full-session-screen-structure §22.1): the header menu
- * items, their dialogs and the one owner of each command, shared by every trigger (Unarchive is
- * pressed from the menu or from the archived bar). Nothing is patched locally: the Session's new
- * state arrives as a `session` change on the stream.
+ * Rename, Archive, Unarchive and Delete of one Session (full-session.md "Session actions"): the
+ * header menu items, their dialogs and the one owner of each command, shared by every trigger
+ * (Unarchive is pressed from the menu or from the archived bar). Nothing is patched locally: the
+ * Session's new state arrives as a `session` change on the stream.
  */
 export function useSessionActions({
   api,
@@ -165,7 +165,7 @@ export function useSessionActions({
   const canDelete = !!session?.capabilities.delete;
   const archived = !!session?.archivedAt;
   const base = { direct: 'never', group: 'actions' } as const;
-  // An unavailable action is omitted, never shown disabled (full-session-screen-structure §22.1).
+  // An unavailable action is omitted, never shown disabled (full-session.md "Session actions").
   const actions: WorkspaceHeaderAction[] = [];
   if (manage) {
     actions.push({

@@ -117,7 +117,7 @@ export function ManagedSessionRouteView({ sessionId }: { sessionId: string }) {
 
 /**
  * Focus lands on the destination's page heading after a deleted Session's screen is replaced
- * (full-session-screen-structure §22.1): the Primary `WorkspaceHeader` title, once it has rendered.
+ * (full-session.md "Session actions"): the Primary `WorkspaceHeader` title, once it has rendered.
  */
 function focusPrimaryHeading() {
   requestAnimationFrame(() => {

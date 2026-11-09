@@ -12,10 +12,16 @@ The package is not published independently. It is bundled into `@nevo/specflow`.
 - `@nevo/specflow-runtime`: narrow Runtime capability API used by product composition.
 - `@nevo/specflow-runtime/cli`: Commander adapters owned by Runtime capabilities, currently
   `start` and auth utilities.
+- `@nevo/specflow-runtime/session-worker`: the Worker-thread entry of the Session store. The product
+  bundles it as `dist/session-worker.js` beside the CLI.
+- `@nevo/specflow-runtime/antigravity-hook`: the hook subprocess entry of the Antigravity provider,
+  bundled as `dist/antigravity-hook.js`.
 
-Shared HTTP schemas and their inferred TypeScript types live together in
-`@nevo/specflow-contracts`. Runtime consumes those schemas directly from Fastify rather than
-maintaining a second server-only schema surface.
+Runtime calls `@nevo/specflow-engine` for every Project Home, Specification, document and Git
+operation and for workspace execution claims; it owns no mutation logic of its own. Shared HTTP
+schemas and their inferred TypeScript types live together in `@nevo/specflow-contracts`. Runtime
+consumes those schemas directly from Fastify rather than maintaining a second server-only schema
+surface.
 
 ## Architecture conventions
 
@@ -24,51 +30,24 @@ Runtime separates product features from infrastructure and composition:
 ```text
 src/
   features/
-    auth/
-      index.ts
-      feature.ts
-      authentication/
-        configuration/
-        password-login/
-        oidc-login/
-        session/
-        store/
-      authorization/
-        configuration/
-        capability-discovery/
-        request-context.ts
-        request-authorization.ts
-        guards.ts
-    specs/
-      index.ts
-      feature.ts
-      overview/
-        endpoint.ts
-        filter-authorized-specs.ts
-        current/
-          configuration.ts
-          classify-spec.ts
-          get-overview.ts
-        archive/
-          get-overview.ts
-        repository/
-          read-repository.ts
-          model.ts
-          sample-repository.ts
-    sessions/
-      index.ts
-      feature.ts
+    auth/                 authentication (password, OIDC, sessions, store) and authorization
+    specs/                overview (current, archive, repository), read, workspace, create, close
+    documents/            document content reads and document writes over the Engine
+    operations/           operation lists and live operation progress events
+    tasks/                Task reads, detail and Specification workspace contribution
+    sessions/             managed agent Sessions: lifecycle, persistence, providers, effects, http
+    session-associations/ Session association with Specifications and Tasks
     settings/
-      index.ts
-      feature.ts
     runtime-feature.ts
+    demo-catalogue.ts
   config/
-    parsing/
-      runtime-config-error.ts
-      value-parsers.ts
   server/
   init/
   cli/
+  demo/
+  runtime.ts
+  session-worker.ts       Session store Worker entry
+  antigravity-hook.ts     Antigravity hook subprocess entry
 ```
 
 `features/<name>/index.ts` is the Runtime-facing feature boundary. `feature.ts` owns feature
@@ -86,7 +65,7 @@ the capability they serve. Specs Overview is intentionally split into `current` 
 sub-slices because they have different read models and behavior even though they share one HTTP
 endpoint.
 
-Replaceable effects/state use narrow capability contracts. Specs Overview uses `SpecsOverviewRepository` as its read port; the current sample catalogue is only its default adapter. Repository models are internal
+Replaceable effects/state use narrow capability contracts. Specs Overview uses `SpecsOverviewRepository` as its read port; production composition supplies the Engine-backed adapter (`createEngineSpecsOverviewRepository`), demo data is only an explicitly injected repository, and an absent Engine is an unavailable source, never a sample list. Repository models are internal
 to the Specs feature and do not reuse HTTP response DTOs.
 
 Authentication and authorization are one Runtime Auth feature. Shared Auth HTTP concerns such as

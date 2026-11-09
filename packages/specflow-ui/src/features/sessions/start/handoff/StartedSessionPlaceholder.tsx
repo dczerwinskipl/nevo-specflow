@@ -13,7 +13,7 @@ import type { StartedSession } from './startedSession';
  * The conversation of a Session just started here while its first snapshot loads: the ready empty
  * state and the Composer, in the very place of the real ones, with the model and mode the Session
  * was started with in disabled pickers. The real Composer replaces it as it is, so nothing moves
- * and no loading text shows (new-session-ui-spec.md, section 3(c)).
+ * and no loading text shows (full-session.md "Starting a Session").
  */
 export function StartedSessionPlaceholder({ started }: { started: StartedSession }) {
   const { t } = useTranslation();

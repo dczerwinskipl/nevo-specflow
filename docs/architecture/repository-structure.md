@@ -36,6 +36,7 @@ nevo-specflow/
     http-client/         @nevo/http-client              — product-neutral HTTP client and credential transport boundary
     nevo-ui/             @nevo/ui                       — reusable design-system components and workspace mechanics
     specflow-contracts/  @nevo/specflow-contracts       — shared SpecFlow resource/capability contracts
+    specflow-engine/     @nevo/specflow-engine          — offline Engine: Project Home, Specifications, documents, Git, claims, workflow kernel; private
     specflow/            @nevo/specflow                 — the `nevo-specflow` CLI shell + command composition
     specflow-runtime/    @nevo/specflow-runtime         — Runtime vertical: capability (.) + CLI adapter (./cli); private, bundled into specflow
     specflow-ui/         @nevo/specflow-ui              — product UI capability and React application; private
@@ -44,8 +45,15 @@ nevo-specflow/
     docs/               nevo-repo-docs    — doc discovery, index, ADR authoring
     release/            nevo-repo-release — version model, cut-release-line, promote, release
     github/             nevo-repo-github  — idempotent GitHub governance apply/verify (gh API)
-    figma-*/            generic Figma export/import and project capture tooling
-    storybook/          shared Storybook composition and visual test host
+    figma-export/       nevo-figma-export  — source-agnostic browser capture and canonical Figma IR export
+    figma-import/       nevo-figma-import  — canonical IR to Figma importer and reconciliation plugin
+    figma-project/      nevo-figma-project — composition root for Nevo UI, SpecFlow and example captures
+    storybook/          nevo-repo-storybook — shared Storybook composition and visual test host
+    eslint/             shared ESLint boundaries, import-cycle and coverage checks (no package)
+    git/                staged-file formatting for the pre-commit hook (no package)
+    dev/                developer scripts, e.g. linux-test.sh for real-Git suites in Docker (no package)
+    *.mjs               build-package and CI shard/smoke helpers
+  examples/             example applications used as Storybook and Figma capture sources (workspace glob)
   docs/                 this documentation set
   version.json          { channel, version } for the current branch
   .artifacts/           generated product tarballs (git-ignored)
@@ -75,14 +83,15 @@ dependencies ([ADR 0011](decisions/0011-product-artifact-packaging-and-pnpm-comp
 [product packaging](../engineering/repository/product-packaging.md)).
 
 The SpecFlow UI follows the same source-boundary model: it lives under `packages/specflow-ui` as
-`@nevo/specflow-ui`, not under `apps/`. Its React application and
-frontend build will be part of the same local product composed by `nevo-specflow start`; the final
-artifact may embed the built UI and Runtime may serve it. This placement does not make UI a reusable
+`@nevo/specflow-ui`, not under `apps/`. Its React application and frontend build are part of the
+same local product: the artifact embeds the built UI and Runtime serves it on the origin of
+`nevo-specflow start`. This placement does not make UI a reusable
 design-system package — reusable UI behavior remains owned by the Nevo UI design-system boundary.
 
 Package dependencies flow toward neutral foundations and shared contracts, never from a capability
-back into the composition root. Runtime and UI may share `@nevo/specflow-contracts`; UI does not
-import Runtime internals. The enforceable directions and the `apps/*` criterion are defined by
+back into the composition root. `@nevo/specflow-engine` (private, bundled like Runtime) is the offline
+application boundary that both the CLI shell and Runtime call. Runtime and UI may share
+`@nevo/specflow-contracts`; UI does not import Runtime internals. The enforceable directions and the `apps/*` criterion are defined by
 [ADR 0012](decisions/0012-product-package-topology-and-dependency-direction.md).
 
 ## Task graph (Turborepo)

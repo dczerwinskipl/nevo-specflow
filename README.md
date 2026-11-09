@@ -9,7 +9,7 @@
 **Nevo SpecFlow** is a spec-driven development framework for AI-assisted software
 engineering: a human-led, spec-anchored workflow designed around a CLI (`nevo-specflow`), a local Runtime, and an interactive UI.
 
-The repository currently contains the public CLI, a real local Runtime server, and the authentication foundation. The deterministic SpecFlow workflow and product UI are still being migrated. The exact implemented CLI surface is documented in [`docs/reference/cli/nevo-specflow-contract.md`](docs/reference/cli/nevo-specflow-contract.md).
+The repository contains the public CLI, the offline Engine (Project Home, Specifications, documents, Git commits and worktrees), the local Runtime server with authentication and managed agent Sessions, and the SpecFlow UI that `nevo-specflow start` serves. The deterministic workflow kernel for Specifications and Tasks exists in the Engine but is not yet wired to the Runtime, CLI or UI. The exact implemented CLI surface is documented in [`docs/reference/cli/nevo-specflow-contract.md`](docs/reference/cli/nevo-specflow-contract.md).
 
 - **Human-led.** The repository owner makes the architectural and scope calls; AI agents
   propose options and implement approved work inside an explicitly declared context.

@@ -19,12 +19,10 @@ summary: >
   the owning screen and structure documents.
 related:
   - ideas.specflow-runtime.session-association
-  - ideas.specflow-ui.full-session-screen-structure
+  - product.specflow.ui.full-session
   - ideas.specflow-ui.session-actions-ux
-  - ideas.specflow-ui.components.session-chat-v10-design
   - ideas.specflow-ui.navigation-route-model
   - ideas.specflow-ui.screens.specification-workspace
-  - ideas.specflow-ui.screens.new-session
   - ideas.specflow-ui.screens.specification-sessions-list
   - product.specflow.ui.ai-session-ux
   - product.specflow.ui.interaction-model
@@ -39,10 +37,9 @@ behaviour lives in its owning contracts ([section 2](#2-owning-documents)); this
 decisions and rationale, like the [Session actions decision record](../session-actions-ux/README.md).
 
 **Inputs:** [stage 3 design](../../specflow-runtime/session-association/README.md) §1, §7.4–7.5 and
-§11; [Full Session structure](../full-session-screen-structure.md) §7.2, §7.6, §22.1;
-[Chat V10](../components/session-chat-v10-design.md) §3.1 (one owner per fact);
-[navigation and route model](../navigation-and-route-model.md) §3–5, §10;
-[New Session UI spec](../screens/new-session-ui-spec.md);
+§11; [Full Session](../../../product/specflow/ui/full-session.md) Context, Session actions and Work block (one owner per fact);
+the navigation and route model (since promoted to the [interaction model](../../../product/specflow/ui/interaction-model.md#reachability));
+[Full Session, Starting a Session](../../../product/specflow/ui/full-session.md#starting-a-session);
 [AI Session UX](../../../product/specflow/ui/ai-session-ux.md#session-association-vs-current-execution);
 the App Shell geometry decision record `product.specflow.ui.shell-geometry` (PR #124; open findings
 "Session loses the Specification context", "same Session three times", "Sessions list shows developer
@@ -55,14 +52,14 @@ client cache of a "last opened Specification".
 
 ## 1. Owner decisions (2026-11-08)
 
-| #   | Decision                                                                                                                                                                                                                                                                                                         |
-| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| U1  | **Standalone Sessions are removed from the UI for now.** Every new Session starts from a Specification. The API (`POST /api/sessions`, `GET /api/sessions`) stays. No standalone list, no navigator row; [navigation model §3](../navigation-and-route-model.md#3-global-entry-and-navigation) stays as accepted |
-| U2  | Existing standalone Sessions stay reachable by direct link only (accepted limit)                                                                                                                                                                                                                                 |
-| U3  | Delete destination follows the association; everything that is not an available Specification goes to `/`. A Session of a removed Specification is in no list (accepted limit)                                                                                                                                   |
-| U4  | The Specification Sessions list reads the paged Session list read, with current/archive collections                                                                                                                                                                                                              |
-| U5  | Associated Tasks fill **Powiązane zadania**; an associated Session never has scope `task` (edits stage 3 §11 and T10)                                                                                                                                                                                            |
-| U6  | `actions.startSession` reason precedence and start-route refusal states                                                                                                                                                                                                                                          |
+| #   | Decision                                                                                                                                                                                                                                                                                                                       |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| U1  | **Standalone Sessions are removed from the UI for now.** Every new Session starts from a Specification. The API (`POST /api/sessions`, `GET /api/sessions`) stays. No standalone list, no navigator row; [interaction model](../../../product/specflow/ui/interaction-model.md#starting-a-session-and-the-navigator) states it |
+| U2  | Existing standalone Sessions stay reachable by direct link only (accepted limit)                                                                                                                                                                                                                                               |
+| U3  | Delete destination follows the association; everything that is not an available Specification goes to `/`. A Session of a removed Specification is in no list (accepted limit)                                                                                                                                                 |
+| U4  | The Specification Sessions list reads the paged Session list read, with current/archive collections                                                                                                                                                                                                                            |
+| U5  | Associated Tasks fill **Powiązane zadania**; an associated Session never has scope `task` (edits stage 3 §11 and T10)                                                                                                                                                                                                          |
+| U6  | `actions.startSession` reason precedence and start-route refusal states                                                                                                                                                                                                                                                        |
 
 Dropped proposals: a global navigator entry and a `/sessions` list of Sessions without a
 Specification (and its Focused-mode assignment); the project-level Session capability projection
@@ -71,15 +68,15 @@ Specification (and its Focused-mode assignment); the project-level Session capab
 
 ## 2. Owning documents
 
-| Decision                                                                                 | Owning document                                                                                                                                                          |
-| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| U1, U2: no standalone UI entry, `/sessions/new` redirect, navigator from the association | [Navigation and route model](../navigation-and-route-model.md#starting-a-new-session), [New Session UI spec](../screens/new-session-ui-spec.md) (h)                      |
-| U3, not-found action, archive dialog copy                                                | [Full Session structure](../full-session-screen-structure.md) §22.1                                                                                                      |
-| U4: rows, collections, paging, states                                                    | [Specification Sessions list UI spec](../screens/specification-sessions-list-ui-spec.md)                                                                                 |
-| Workspace section, Continue session, navigator count                                     | [Specification UI spec](../screens/specification-workspace-ui-spec.md#session-history)                                                                                   |
-| U5 and its two Context deviations                                                        | [Full Session structure](../full-session-screen-structure.md) §7.6.1, [Full Session UI spec](../screens/full-session-ui-spec.md)                                         |
-| U6: reason precedence, start-route refusal states                                        | [Specification Workspace API](../../../reference/api/specification-workspace.md#project-sessions-section), [New Session UI spec](../screens/new-session-ui-spec.md) (h1) |
-| Session status ownership                                                                 | [AI Session UX](../../../product/specflow/ui/ai-session-ux.md#session-status-ownership-accepted-2026-11-08)                                                              |
+| Decision                                                                                 | Owning document                                                                                                                                                                              |
+| ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| U1, U2: no standalone UI entry, `/sessions/new` redirect, navigator from the association | [Interaction model](../../../product/specflow/ui/interaction-model.md#starting-a-session-and-the-navigator), [Full Session](../../../product/specflow/ui/full-session.md#starting-a-session) |
+| U3, not-found action, archive dialog copy                                                | [Full Session](../../../product/specflow/ui/full-session.md#session-actions)                                                                                                                 |
+| U4: rows, collections, paging, states                                                    | [Specification Sessions list UI spec](../screens/specification-sessions-list-ui-spec.md)                                                                                                     |
+| Workspace section, Continue session, navigator count                                     | [Specification Overview](../../../product/specflow/ui/specification-overview.md#sections-and-order)                                                                                          |
+| U5 and its two Context deviations                                                        | [Full Session](../../../product/specflow/ui/full-session.md#context)                                                                                                                         |
+| U6: reason precedence, start-route refusal states                                        | [Specification Workspace API](../../../reference/api/specification-workspace.md#project-sessions-section), [Full Session](../../../product/specflow/ui/full-session.md#starting-a-session)   |
+| Session status ownership                                                                 | [AI Session UX](../../../product/specflow/ui/ai-session-ux.md#session-status-ownership-accepted-2026-11-08)                                                                                  |
 
 ## 3. Rationale and rejected alternatives
 

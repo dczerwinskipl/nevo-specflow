@@ -4,7 +4,7 @@ import { writeOutcomeUnknown } from '../../../../shared/http/apiErrorCode';
 import { sessionErrorCode } from '../api';
 
 /**
- * What a failed Session command means for its dialog (full-session-screen-structure §22.1):
+ * What a failed Session command means for its dialog (full-session.md "Session actions"):
  * - `unconfirmed`: the answer was lost; the dialog stays locked and the confirm retries;
  * - `forbidden`, `turnConflict`, `deleteBlocked`, `refused`: definite refusals that unlock Cancel.
  */
@@ -28,7 +28,8 @@ export function sessionCommandFailure(error: unknown): SessionCommandFailure {
   return writeOutcomeUnknown(error) ? 'unconfirmed' : 'refused';
 }
 
-/** The reason an Archive or Delete cannot be confirmed while a Turn has not ended (full-session-screen-structure §22.1). */
+/** The reason an Archive or Delete cannot be confirmed while a Turn has not ended (full-session.md
+ * "Session actions"). */
 export type TurnBlockNote = 'turnActive' | 'turnWaitingForUser' | 'turnUnknown';
 
 export function turnBlockNote(

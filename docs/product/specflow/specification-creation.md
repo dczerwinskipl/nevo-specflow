@@ -409,3 +409,30 @@ event and opens by default only once a Session event exists. A section whose sou
 does not implement still shows the calm "Not available on this server" state (no warning tone, no
 Retry); actions that cannot work are hidden instead of shown disabled. See the
 [Specification Workspace API](../../reference/api/specification-workspace.md) for the sources.
+
+## Demo mode
+
+A Runtime started with `--demo` serves Create through the bounded in-memory
+[demo creation API](../../reference/api/specification-creation-demo.md): no real Git, worktree or
+provider execution. The project Runtime never receives these capabilities. The demo Create keeps the
+layout, blocked-Create and recovery rules above and adds a method choice and a first Session.
+
+- **Method choice.** The first step (**Creation method**) is two fully active cards, **With an
+  agent** (start a Spec Writer session) and **On my own** (create the archetype's documents and edit
+  them). Wide: equal columns; narrow: stacked. No segments, radios or selects. **Change the way of
+  working** returns to the choice and keeps the name, archetype, workspace choice and the last agent
+  setup. Leaving the method choice returns to the Specifications list.
+- **Form.** Name, archetype and the workspace place as in project mode; with an agent also the
+  **first Session**: provider tiles and the labelled Model, Effort and Work mode fields shared with
+  the Session start form ([Full Session](ui/full-session.md)). The agent applies to the first
+  Session only; a Specification can later have many Sessions with other agents. Provider facts
+  (availability, limits) come only from a confirmed source; unknown stays unknown. No prompt is sent
+  from the form: the first message is written in the opened Session.
+- **Action and outcome.** The button reads **Create and open session** or **Create specification**.
+  On success the user goes straight to the destination with a short toast **Specification
+  created**: with an agent to the allocated Session (`/sessions/:sessionId`,
+  an idle Session with an empty Composer; no Turn starts automatically), on my own to the
+  Specification's Documents, opening the first editable required document when there is one. An
+  unknown outcome reconciles the same operation and never sends a second Create. When the
+  Specification exists but the Session could not be opened, the user lands in its Documents with a
+  Session recovery notice that retries only the Session.

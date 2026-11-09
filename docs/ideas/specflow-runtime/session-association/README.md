@@ -29,7 +29,7 @@ related:
   - ideas.specflow-engine.ownership
   - product.specflow.ui.ai-session-ux
   - ideas.specflow-ui.full-session-screen-structure
-  - ideas.specflow-ui.screens.full-session
+  - product.specflow.ui.full-session
 ---
 
 # Session association registry and Session list (stage 3)
@@ -199,8 +199,8 @@ of matching rows reveals which Sessions belong to the Specification.
 | Role list and what an assignment scope covers                                                 | [Authorization configuration](../../../reference/configuration/authorization.md)                                          |
 | Project Sessions section, `startSession`, `recommendedSessionId`, optional title, freshness   | [Specification Workspace API](../../../reference/api/specification-workspace.md#project-sessions-section)                 |
 | Session reference scope in Task reads                                                         | [Task reads](../../../reference/api/task-reads.md#authorization-and-typed-application-outcomes)                           |
-| Context from the association read, delete destination, not-found action, archive copy         | [Full Session structure](../../specflow-ui/full-session-screen-structure.md) §7.6.1, §22.1                                |
-| UI starts only from a Specification, `/sessions/new` redirect, navigator Specification        | [Navigation and route model](../../specflow-ui/navigation-and-route-model.md#starting-a-new-session)                      |
+| Context from the association read, delete destination, not-found action, archive copy         | [Full Session — Session actions](../../../product/specflow/ui/full-session.md#session-actions)                            |
+| UI starts only from a Specification, `/sessions/new` redirect, navigator Specification        | [Interaction model](../../../product/specflow/ui/interaction-model.md#starting-a-session-and-the-navigator)               |
 | Specification Sessions list                                                                   | [Specification Sessions list UI spec](../../specflow-ui/screens/specification-sessions-list-ui-spec.md)                   |
 | Session status ownership                                                                      | [AI Session UX](../../../product/specflow/ui/ai-session-ux.md#session-status-ownership-accepted-2026-11-08)               |
 

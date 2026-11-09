@@ -8,9 +8,10 @@ summary: >
   Specifications and Tasks run through one deterministic workflow core and differ only in their entry
   points. Every Task has its own type and workflow, and the Specification archetype only restricts the
   types. Each step names a preferred agent archetype, which holds a preferred provider and a model per
-  provider. A transition may continue automatically. When the Engine cannot resolve the next launch, it
-  records a local attention item instead of asking the agent. Canonical execution state is Git-tracked
-  in the Specification's .execution/ folder.
+  provider. A transition may continue automatically. When the Engine cannot resolve the next launch, the
+  owner gets an attention item, derived from the state and never stored, instead of asking the agent.
+  Canonical execution state is Git-tracked in the Specification's .execution/ folder; only the change
+  journal is local.
 related:
   - architecture.workflow.workflow-kernel
   - architecture.workflow.deterministic-workflow
@@ -25,6 +26,11 @@ related:
 ## Status
 
 Current. The decisions below were taken by the product owner on 2026-11-05.
+
+**Amended.** Attention is a projection: it is derived from the runs,
+the pinned definitions and the current archetypes on every inspection and is never stored, so no
+local attention file exists. The reasons were extended (the full list is in
+`architecture.workflow.workflow-kernel`). Decisions 8 and 9 below are written in their amended form.
 
 ## Context
 
@@ -73,16 +79,19 @@ Current. The decisions below were taken by the product owner on 2026-11-05.
    migration note.
 
 8. **An unresolved launch becomes an attention item, never a question to the agent.** The agent's
-   finish succeeds. The Engine records an attention item for the subject: model missing, provider not
-   chosen, no Session to continue, owner action, or human step. Every start of that subject removes
-   the item, so a quick screen, a manual start and an automatic continuation behave the same. A
-   "remember" choice writes the model into the agent archetype file.
+   finish succeeds. The owner sees an attention item for the subject, for example model missing,
+   provider not chosen, no Session to continue, archetype missing, owner action, human step, or, for
+   a Specification waiting for its Tasks, Tasks stuck or escalated. The item is derived from the
+   current position on every inspection, never stored, so every start of that subject removes it and
+   a quick screen, a manual start and an automatic continuation behave the same. A "remember" choice
+   writes the model into the agent archetype file.
 9. **Canonical state is Git-tracked next to the Specification.**
    - `.execution/specification.yaml` holds the Specification run, and
      `.execution/tasks/<taskId>.yaml` holds one Task each.
    - These files store only position, attempts and returns. They are not named `change.yaml`, and they
      are not a change log.
-   - Attention items and change journals are local state (`.nevo/local/state`).
+   - Only the change journal is local state
+     (`<stateRoot>/engine/operations/workflow/<specId>.json`). Attention is derived, not stored.
    - A run is pinned to its definition revision.
 
 ## Consequences

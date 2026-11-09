@@ -50,6 +50,13 @@ When an idea is accepted for implementation:
 - [Multi-project hosting, Docker, and future cross-project work](multi-project-hosting.md)
 - [Authorization follow-ups](authorization/README.md)
 - [SpecFlow Runtime / AI adapter hardening](specflow-runtime/ai-adapters/README.md)
+- [SpecFlow Runtime / provider capability backlog](specflow-runtime/provider-migration-plan.md)
+- [SpecFlow Runtime / Session backend gaps](specflow-runtime/session-v10-backend-readiness.md)
+- [SpecFlow Runtime / server-side Work history filter](specflow-runtime/work-history-server-filter.md)
 - [Developer workspace / code inspection and IDE integration](developer-workspace/README.md)
-- [SpecFlow UI / information and navigation inventory](specflow-ui/README.md)
-- [Nevo UI / design-system implementation ideas](nevo-ui/README.md)
+- [SpecFlow UI / open screen and component ideas](specflow-ui/README.md)
+
+Decision records of delivered work, kept until their open follow-ups land:
+[Session UI integration](specflow-runtime/session-ui-integration/plan.md),
+[Session association registry](specflow-runtime/session-association/README.md),
+[Project-mode Specification Overview](specflow-runtime/project-mode-spec-overview/README.md).

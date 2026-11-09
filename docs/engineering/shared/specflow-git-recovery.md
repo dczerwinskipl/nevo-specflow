@@ -54,4 +54,6 @@ journal cut points, cross-transport HTTP/CLI parity and exact post-crash state a
 Checks for format, lint, typecheck, build, CodeQL, docs index and cross-platform lifecycle must
 apply to the final reviewed SHA. An unexecuted test or queued CI check is not PASS.
 
-Do not assume E3 workflow writer claims or E4/E5 provider/Turn states exist yet.
+Managed agent Turns are fenced by
+[workspace execution claims](../../architecture/runtime/workspace-execution-claims.md); do not
+assume writer claims for workflow steps or for external agents started outside Runtime exist yet.

@@ -17,6 +17,7 @@ related:
   - design-system.implementation.ownership-and-tooling
   - product.specflow.ui.interaction-model
   - product.specflow.ui.data-loading-and-integration
+  - product.specflow.ui.specs-overview
   - product.shared.localization
 ---
 
@@ -95,7 +96,7 @@ responsive layouts and extension-point behavior; it does not become the owner of
   `features/documents/` owns the Documents explorer and editor, and `features/sessions/` the Session
   screens, composer and recovery, even though Create and the Specification surfaces display them.
   Module ownership, barrels and shared code rules: see
-  [Code organization](../../../engineering/shared/code-organization.md#ui-module-ownership-and-boundaries).
+  [Code organization](../../../engineering/shared/code-organization.md#module-ownership-and-boundaries).
 - The existing backend `RuntimeFeature` is a separate composition boundary from `UiModule`.
   HTTP contracts connect those layers; neither UI modules nor plugins instantiate independent
   application HTTP transports or QueryClient lifecycles.
@@ -135,10 +136,10 @@ different typed contribution contracts without modifying generic registry infras
 Tasks registers its work contribution in `features/tasks/uiModule.tsx`; WorkView does not
 import the Tasks implementation.
 
-### Specification feature contributions (stacked migration)
+### Specification feature contributions
 
-The next UI composition increment, stacked on #45, adds two other **Specs-owned** extension
-points without changing the generic registry:
+Besides `specification.work.sections`, Specs owns these extension points, without changing the
+generic registry:
 
 - The previous `specification.views` tab registry is removed. Full Primary
   pages are owned by feature-specific TanStack Router routes, including
@@ -225,15 +226,22 @@ TanStack Query is the canonical remote server-state architecture. The applicatio
 Existing pre-Query request lifecycles are migration debt and MUST NOT be treated as architectural
 precedent for new remote feature work.
 
-The current product routes under the guarded layout remain:
+The current product routes under the guarded layout are:
 
-- `/` for the read-only Specs Overview (`?collection=current|archive`);
+- `/` for the Specifications list (Specs Overview, `?collection=current|archive`), with
+  **New specification** when creation is available;
+- `/specs/new` for Create Specification and `/specs/new/creating/:operationId` for the page of one
+  Create operation (bookmarkable progress and recovery);
 - `/specs/:specId` for the owning Specification, with `?collection=current|archive` as parent return
   context; loads server state via TanStack Query and renders the Specification Workspace;
 - `/specs/:specId/documents` and `/specs/:specId/documents/:documentId` for Documents List and Full Document;
 - `/specs/:specId/sessions`, `/specs/:specId/changes`, `/specs/:specId/repository` for feature-owned pages (list data temporarily reads the Workspace projection);
 - `/specs/:specId/tasks/:taskId` for Full Task detail, with the collection as optional return context;
   reads Task detail directly, independently of Workspace Task groups or Workspace read availability;
+- `/specs/:specId/sessions/new` for New Session of that Specification;
+- `/sessions/:sessionId` for the Session (Full Session), a top-level route; the nested
+  `/specs/:specId/sessions/:sessionId` only redirects there with `replace`;
+- `/sessions/new`, which has no UI entry and redirects with `replace` to `/`;
 - `/ui-playground` for a directly routable development/integration screen, not a persistent product
   navigation item.
 
@@ -257,14 +265,14 @@ Screen composition (`SpecificationSurfaceConnected`, `SpecsRouteScreen`)
 Presentational components (`SpecificationWorkspace`, `WorkView`, `SpecsOverview`)
 ```
 
-### Application services boundary (`SpecFlowServices`)
+### Application services boundary (`SpecFlowAppServices`)
 
 The browser/application-level HTTP transport (`HttpClient`) is created once at the application composition root.
 Feature APIs are composed once and exposed to guarded routes and connected components through TanStack Router context (`useAppServices()`):
 
-- `SpecFlowServices` exposes `authApi`, `authStore`, `specsOverviewApi`,
-  `specificationApi`, `taskApi` and `runtimeInfoApi`. The one shared `HttpClient` stays private
-  to the composition root.
+- `SpecFlowAppServices` exposes the feature APIs, for example `authApi`, `specsOverviewApi`,
+  `specificationApi`, `taskApi`, `documentApi`, `managedSessionsApi`, `projectCreationApi` and
+  `runtimeInfoApi`. The one shared `HttpClient` stays private to the composition root.
 - `SpecificationApi` reads the Runtime Workspace endpoint, while feature-owned `DocumentApi` and `TaskApi`
   read their independent Detail endpoints through typed adapters and query keys.
   Both use the shared application HTTP client, and missing project-side sources produce
@@ -298,12 +306,11 @@ Presentational components (`SpecificationWorkspace`, `WorkView`, `TaskRow`, `Ses
 - **No fixture scenarios in route search**: Query parameters like `?scenario=...` are forbidden in production routes. Scenario-driven fixtures are restricted to Storybook and tests, including test-owned typed API adapters and network interception.
 - **No fabricated domain logic**: Execution readiness, completion counts, file changes, and repository status are consumed as typed semantic fields from authoritative models, never fabricated by matching task IDs or parsing localized UI text.
 
-## Specs Overview increment
+## Specifications list (Specs Overview)
 
 `src/features/specs/overview/` owns the typed collection projection, product steering rows,
 Current/Archive presentation, collection search, and loading/refresh/error composition. The
-screen follows the [Specs Overview contract](../../../ideas/specflow-ui/screens/specs-overview-ui-spec.md)
-and its shared steering contract. Signal priority, concrete targets, human attention, and current
+screen follows the [Specifications list](specs-overview.md) contract. Signal priority, concrete targets, human attention, and current
 execution membership are supplied by the projection, not reconstructed from workflow lifecycle.
 
 The `SpecsOverviewApi` reads `GET /api/specs/overview?collection=current|archive`.
@@ -318,7 +325,8 @@ permitted projection on transient failures; collection changes hide the previous
 The application provides real Specification URLs for Current and Archive records. The guarded
 `/specs/:specId` route reads the Runtime Workspace projection and separately loads Markdown
 documents and Task detail through real HTTP, while unknown sources remain explicitly unavailable.
-Creation, execution and archive/delete commands are not implemented by this increment.
+Creation is implemented ([Specification creation](../specification-creation.md)); Task execution
+from the UI and archive/delete commands for Specifications are not.
 Specification-local main views now use canonical child routes (Documents, Sessions, Git, Full Task). URL search carries validated collection and source/return context; legacy `?view=...` links only redirect to those routes.
 Full Task has a canonical resource path rather than `?view=task&task=...`; legacy links redirect.
 Full Task uses its own detail query and presentation model, and Workspace list membership is never
@@ -360,9 +368,11 @@ Locale resolution, persistence, stable-key rules, and CLI/UI ownership are defin
 
 `SpecFlowShell` owns the product navigation composition. Its layout has three structural regions:
 
-Normal global product navigation contains Specs. Within a selected Specification it also
-shows an expandable, non-navigating Specification folder, with Overview first, then feature-owned
-Documents, Sessions, Changes and Repository quick links. Full Task is not a sidebar list page.
+Product navigation starts with the Specification switcher (`SpecificationSwitcher`, with **Browse
+all specifications** leading to the list). Within a selected Specification it shows that
+Specification's views in this order: Overview, Sessions, Tasks (an anchor to the Overview's Tasks
+section), Documents, then Changes and Repository when Git is available (`productNavigationModel.ts`).
+Full Task is not a sidebar list page.
 Project Settings earns a global entry when its real surface exists. UI Playground remains available
 by direct URL for development, never as a persistent product entry.
 

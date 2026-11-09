@@ -12,11 +12,9 @@ read_when:
 summary: >
   Rationale and decision record for plan decisions D1, D2 and D10 of the Managed Session UI
   integration, accepted by the owner on 2026-11-08 and implemented. The behaviour itself lives in
-  full-session-screen-structure.md §7.7, §17.1 and §22.1 and Chat V10 §3.1/§6.
+  the Full Session product contract.
 related:
-  - ideas.specflow-ui.full-session-screen-structure
-  - ideas.specflow-ui.components.session-chat-v10-design
-  - ideas.specflow-ui.components.session-composer-design
+  - product.specflow.ui.full-session
   - product.specflow.ui.documents-archetypes
   - reference.api.session-telemetry
   - reference.api.sessions
@@ -24,11 +22,9 @@ related:
 
 # Session refresh, reconcile and Session actions — decision record
 
-The accepted behaviour is owned by
-[Full Session screen structure](../full-session-screen-structure.md) — §7.7 provider-limits refresh,
-§17.1 Turn whose outcome is unknown, §22.1 Session actions and archived Session — and
-[Chat V10](../components/session-chat-v10-design.md) §3.1 (no live line for `unknown`) and §6
-(archived bar in the Composer slot). This file keeps only why.
+The accepted behaviour is owned by the [Full Session contract](../../../product/specflow/ui/full-session.md) — Context
+(Session details: provider-limits refresh), Unknown Turn outcome, Session actions (archived bar in
+the Composer slot) and Work block (no live line for `unknown`). This file keeps only why.
 
 ## Decision
 
@@ -46,7 +42,7 @@ succeeds.
 ## Ground rules applied
 
 - Primary owns what the user must act on now; Context does not duplicate Primary controls
-  (structure §7.2); one owner per fact (Chat V10 §3.1).
+  (Full Session "Context"); one owner per fact (Full Session "Work block").
 - Unavailable choices are omitted, not shown disabled (by analogy with Composer decision 4); a
   read-only reason is one quiet line on open, not a hover tooltip (Documents D7).
 - Pending commands use the `…ing` label with `aria-disabled` and a guarded handler (nevo-ui `Button`
@@ -60,7 +56,7 @@ succeeds.
 - **Showing `migration.status === 'failed'`** as "Historyczne zużycie jest niepełne.": an
   operational diagnostic with no user action; its effect already shows as absent/partial readings.
 - **Reconcile action in Context "Attention / next actions":** hidden behind Context on Narrow, and
-  §17 puts recovery in Primary.
+  recovery belongs in Primary.
 - **Archive/Delete menu items disabled with no reason while a Turn runs:** hover-only, discovered
   late. The dialog opens and explains instead, which prevents the request rather than recovering
   from a 409.

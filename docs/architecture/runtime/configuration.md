@@ -68,11 +68,28 @@ specs:
         - active
         - ready
         - draft
+
+sessions:
+  enabled: false # managed Sessions feature; default false
+  providers:
+    mock: { enabled: false }
+    claude: { enabled: false } # optional absolute `executable`
+    codex: { enabled: false } # optional absolute `executable`
+    antigravity: { enabled: false } # optional absolute `executable`
+
+git:
+  enabled: true
+  worktrees: ...
+  integrationTargetBranch: ...
+  commits: ...
 ```
 
 Runtime infrastructure owns composition and file loading, while feature modules own the meaning of
 their configuration. Auth owns `runtime.authentication` and `runtime.authorization`; server
-composition owns `runtime.server`; Specs owns the top-level `specs` namespace.
+composition owns `runtime.server`; Specs owns the top-level `specs` namespace; Runtime Sessions
+owns the top-level `sessions` namespace (`features/sessions/configuration.ts`); the Engine's
+version-control capability owns `git`, whose keys and defaults are in
+[SpecFlow Git/worktree configuration](../../reference/configuration/specflow-git-worktrees.md).
 
 Configuration dependencies flow in one direction:
 
@@ -124,7 +141,10 @@ Current ownership is explicit:
 - `authorization`: project-owned role assignments; workstation-local authorization is rejected.
 - `specs.overview.current.sections`: project-owned ordered Current Overview sections; local Specs
   configuration is rejected.
-
+- `sessions`: entirely project-owned (`enabled`, `providers.{mock,claude,codex,antigravity}` with
+  boolean `enabled` and, for real providers, an optional absolute `executable`); unknown keys and
+  any local `sessions` section are rejected. Provider details are in the
+  [provider reference](../../reference/providers/README.md).
 - `git`: project owns everything shareable (`enabled`, `worktrees`, `integrationTargetBranch`,
   `commits.protectedBranches`/`allowedBranches`/`auto`); local owns `worktreesRoot` and may override
   `commits.auto.<capability>` (the local value wins; any other local `git.commits` key is rejected).

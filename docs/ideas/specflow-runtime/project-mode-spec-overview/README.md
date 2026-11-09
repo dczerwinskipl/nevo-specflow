@@ -165,7 +165,7 @@ belongs to the work column.
 - **P5 Preparation block.** Shown when there are no Tasks and no recommended Session. With
   `startSessionOffered(data.startSession)` it carries the button that opens
   `/specs/:specId/sessions/new` (`actions.openNewSession`), a fourth New Session entry point beside
-  the three in the [New Session UI spec](../../specflow-ui/screens/new-session-ui-spec.md). With
+  the three in the [Full Session — Starting a Session](../../../product/specflow/ui/full-session.md#starting-a-session). With
   `sessions_disabled` or `forbidden` it still renders the heading and an explanation of the
   preparation path (§10: an empty Specification must explain it) without a button; new copy, e.g.
   "Zadania przygotowuje agent w sesji. Sesje są wyłączone na tym serwerze." and, for `forbidden`,
@@ -222,7 +222,7 @@ commit events in activity, Task-context Session start, overview-change freshness
 - [Specification UI spec](../../specflow-ui/screens/specification-workspace-ui-spec.md) §10/§11:
   record P4–P7 (sections independent of Tasks; preparation block including the no-start copy; empty
   Tasks state; the created event does not open the Secondary).
-- [New Session UI spec](../../specflow-ui/screens/new-session-ui-spec.md): add the preparation block
+- [Full Session — Starting a Session](../../../product/specflow/ui/full-session.md#starting-a-session): add the preparation block
   as an entry point following `actions.startSession`.
 - `pl.json`/`en.json`: keys `specification.tasksEmptyTitle` / `specification.tasksEmptyDescription` (P6), the two activity titles, the no-start
   preparation copy and the button label (D4).

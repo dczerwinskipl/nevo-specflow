@@ -12,6 +12,7 @@ summary: >
   "thinking" needs evidence, "waiting" is not "needs attention", and the four Work
   information levels.
 related:
+  - product.specflow.ui.full-session
   - product.specflow.ui.interaction-model
   - product.shared.vocabulary
   - design-system.principles.ui-ux-guidelines
@@ -20,8 +21,8 @@ related:
 
 # AI session UX
 
-`status: draft` — working guidance, expanded as the code it governs lands. The canonical UI
-model and exact component specs are defined with the implementation.
+`status: draft` — working guidance, expanded as the code it governs lands. The concrete,
+implemented Session screen rules are the [Full Session](full-session.md) contract.
 
 ## Model
 

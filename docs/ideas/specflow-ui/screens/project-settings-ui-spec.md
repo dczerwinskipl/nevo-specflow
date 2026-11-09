@@ -25,7 +25,6 @@ summary: >
   semantic token roles, borderless containment rules, states, and acceptance scenarios.
 related:
   - ideas.specflow-ui.screens
-  - ideas.specflow-ui.information-navigation-inventory
   - product.specflow.ui.interaction-model
   - design-system.principles.ui-ux-guidelines
   - design-system.principles.layout-and-containment

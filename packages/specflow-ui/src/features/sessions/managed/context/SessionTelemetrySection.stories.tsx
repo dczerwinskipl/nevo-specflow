@@ -18,7 +18,7 @@ type RefreshAnswer = ManagedSessionsApi['refreshTelemetry'];
 
 /**
  * "Session details" in Context with the real telemetry store behind it: the snapshot comes from a
- * fake `GET .../telemetry`, and the provider-limits refresh (full-session-screen-structure §7.7) calls the
+ * fake `GET .../telemetry`, and the provider-limits refresh (full-session.md "Context") calls the
  * story's `refresh` answer. `manage: false` is a user without Session Manage (no control).
  */
 function TelemetryHarness({

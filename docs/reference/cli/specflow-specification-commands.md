@@ -37,7 +37,14 @@ nevo-specflow specs workspace close <workspace-id> --preview
 nevo-specflow specs workspace close <workspace-id> --yes
 nevo-specflow specs workspace inspect <workspace-id> <operation-id>
 nevo-specflow specs close-inspect <operation-id>
+nevo-specflow specs close-reconcile-scratch <operation-id> --confirmed-git-stopped --yes
+nevo-specflow specs recover <operation-id> --confirmed-stopped [--confirmed-git-stopped]
 ```
+
+`specs close-reconcile-scratch` is the operator step after a Worktree Close archived the linked
+Specification but kept a conflicting integration scratch checkout: once the operator removed the
+scratch and confirmed that no Git process uses it, it records the scratch as retired, so a new
+Worktree Close can run. `specs recover` resumes an interrupted Create with the intent it recorded.
 
 `specs create` requires `--archetype <id>` (`minimal`, `feature`, `architecture`; there is no default, a missing
 option is a usage error naming it). `--with <templateId>` is repeatable (each id once) and selects suggested

@@ -27,7 +27,7 @@ Distinguish nonmutating `inspect/check` from `verify/execute`. Verification comm
 
 ## Prerequisites
 
-- [E3.T03](T03-readiness-step-state.md)
+- Workflow kernel, implemented (former E3.T01–T03): [architecture](../../../../../architecture/workflow/workflow-kernel.md)
 
 Original planning dependency: T03. The linked IDs above are the **executable** dependency graph; a separate spec-level gate still applies.
 

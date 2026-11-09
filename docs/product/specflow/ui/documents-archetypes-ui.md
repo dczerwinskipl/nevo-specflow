@@ -2,7 +2,7 @@
 id: product.specflow.ui.documents-archetypes
 type: product
 title: Documents and Create with archetypes (UI)
-status: draft
+status: current
 scope: specflow
 areas: [ui]
 tags: [documents, archetypes, requirements, create, editor]
@@ -29,20 +29,19 @@ related:
 
 # Documents and Create with archetypes (UI)
 
-`status: draft`. Recommended design, prepared for owner review. The product behaviour is owned by
+The product behaviour is owned by
 [Specification archetypes and documents](../specification-documents.md) and the exact shapes by
-[the HTTP contract](../../../reference/api/specification-documents.md) (both draft, PR #92); this
-document owns only how the existing screens present them. It extends
-[Documents editor mode](documents-editor-mode.md) and
+[the HTTP contract](../../../reference/api/specification-documents.md); this document owns only how
+the existing screens present them. It extends [Documents editor mode](documents-editor-mode.md) and
 [Create Specification](../specification-creation.md); everything those documents say stays in force
 unless a section below replaces it.
 
-Mock: Storybook `SpecFlow/Screens/Documents archetypes (mock)`
-(`packages/specflow-ui/src/mocks/documents-archetypes/`). It uses the real AppShell, AppWorkspace,
-WorkspaceHeader, ItemTabs, Dialog and tree recipes with static data; the Narrow stacked document page and
-the Create shell are hand-composed approximations. **The Narrow stacked document page must be checked
-against the real AppWorkspace during implementation:** there, Back is an icon button in the stacked
-Secondary header, not the text button the mock draws above the content.
+Implemented in `features/documents` and in both Create forms (`features/specs/creation`). The
+Storybook mock `SpecFlow/Screens/Documents archetypes (mock)`
+(`packages/specflow-ui/src/mocks/documents-archetypes/`) remains the design reference; where it
+differs from the real screens (it hand-composes the Narrow stacked document page and the Create
+shell), the real `AppWorkspace` composition wins: on Narrow, Back is the icon button in the stacked
+Secondary header.
 
 ## 1. Scope
 
@@ -290,7 +289,7 @@ How to work with the archetype (instructions) is available behind a disclosure.
 
 Placed after Name and Goal and before **Where do you want to work?**, separated by the form's existing
 `Separator`s (project form: new section between the name/goal group and the workspace section; demo form:
-replaces the Workflow select and `ArchetypeSummary` inside `CreateBasicsSection`). Below a 992 px form
+the same `ArchetypeSection`, after `CreateBasicsSection`). Below a 992 px form
 column the form keeps its reading width (`content-form`, left-aligned in the Focused frame); from it the
 section is the last one of the left column, beside the workspace section (see
 [Specification creation](../specification-creation.md#user-choices)).
@@ -396,10 +395,9 @@ You can add, remove or classify documents later.             body-md secondary
 ### 5.3 Image and binary
 
 - **Image** (`kind: image`): the image from `raw` (`<img src>`, never inline SVG markup) fitted to the area;
-  Fit ↔ Actual size in the Display group (text label, no zoom glyph in the registry), **Download**
-  as a text action (no download glyph in the registry). It is the only action of an image tab, so it is
-  marked `primary: true`: the header renders every direct text action as a filled button, so this is
-  honest. No Edit, no Save, never dirty.
+  a checked **Actual size** item in the Display group (fitted when unchecked), and **Download**
+  (`download` icon), the promoted action of an image tab, marked `primary: true`. No Edit, no Save,
+  never dirty.
 - **Binary** (`kind: binary`): left-aligned on the reading measure: "This file cannot be shown here.
   Download it to open it in another program.", a description list (Path, Type or No type, Size,
   Format = `mediaType`) and **Download** (secondary text button in the body only; the header action is

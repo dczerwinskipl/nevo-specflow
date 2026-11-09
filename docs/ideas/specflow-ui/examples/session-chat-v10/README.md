@@ -13,7 +13,7 @@ summary: >
   Synthetic content is illustrative and must not be used as a Runtime contract.
 related:
   - ideas.specflow-ui.components.session-chat-v10-design
-  - ideas.specflow-ui.full-session-screen-structure
+  - product.specflow.ui.full-session
 ---
 
 # Session Chat V10 — approved UX example, not production
@@ -23,8 +23,8 @@ Interactive examples:
 
 - [Desktop](desktop.html)
 - [Mobile](mobile.html)
-- [Design and behavior specification](../../components/session-chat-v10-design.md)
-- [Workspace V2](../../full-session-screen-structure.md#10-secondary-navigation-model--owner-approved-workspace-v2)
+- [Implemented Full Session contract](../../../../product/specflow/ui/full-session.md)
+- [Open V10 directions](../../components/session-chat-v10-design.md)
 
 These HTML pages contain synthetic Session/Task/provider data and a generated 144-entry Work
 timeline. They are **mockups, not production components, APIs, security guarantees or an
@@ -43,5 +43,7 @@ Commentary-grouped Work timeline with separately identified thinking summaries a
 loading, origin-aware mobile Back, composer settings and attachments within one frame, and the
 existing Workspace V2 layout.
 
-Review the design specification before implementing. Missing Runtime/adapter capabilities
+Most of the approved direction is implemented; its rules now live in the
+[Full Session contract](../../../../product/specflow/ui/full-session.md). These pages remain the
+reference for the parts not built yet (workflow annotations, Quote, attachments, file tabs). Missing Runtime/adapter capabilities
 must be handled as separate implementation work; the mock is not evidence of readiness.

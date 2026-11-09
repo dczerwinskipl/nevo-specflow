@@ -28,13 +28,17 @@ related:
 nevo-specflow <noun> <verb> [target] [--flags]
 
 nevo-specflow init
-nevo-specflow status
 nevo-specflow start
-nevo-specflow task next
-nevo-specflow task start <change> <task>
+nevo-specflow project inspect
+nevo-specflow specs list
+nevo-specflow specs create
+nevo-specflow specs documents status <operation-id>
+nevo-specflow definitions validate
+nevo-specflow commit status
 ```
 
-Product lifecycle commands (`start`, and later `stop` / `status`) live at the executable root.
+These are existing commands (`packages/specflow/src/program.ts`). Product lifecycle commands
+(`init`, `start`, and later `stop` / `status`) live at the executable root.
 Resource-oriented commands use short, guessable `<noun> <verb>` forms where a resource has more
 than one operation. The full command set is defined with the implementation; this is only the
 shape it must follow. Whether

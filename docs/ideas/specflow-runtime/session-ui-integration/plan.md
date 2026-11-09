@@ -39,8 +39,7 @@ digest, rename/archive/unarchive/delete, errors),
 [storage and lifecycle](../../../architecture/ai/session-storage-and-lifecycle.md) (archive and
 delete transaction, delete map),
 [authorization](../../../architecture/runtime/auth/authorization.md) (`session.delete`),
-[Full Session structure](../../specflow-ui/full-session-screen-structure.md) §7.7, §17.1, §22.1 and
-[Chat V10](../../specflow-ui/components/session-chat-v10-design.md) §3.1, §6 (UI behaviour).
+[Full Session](../../../product/specflow/ui/full-session.md) (UI behaviour).
 
 ## Delivered
 
@@ -86,8 +85,8 @@ Design and decision record: [Session association registry](../session-associatio
 [storage](../../../architecture/ai/session-storage-and-lifecycle.md#authorization-and-associations),
 [authorization](../../../architecture/runtime/auth/authorization.md#specflow-required-scopes),
 [Specification Workspace API](../../../reference/api/specification-workspace.md#project-sessions-section),
-[Full Session structure](../../specflow-ui/full-session-screen-structure.md) §7.6.1 and §22.1,
-[navigation](../../specflow-ui/navigation-and-route-model.md#starting-a-new-session) and the
+[Full Session](../../../product/specflow/ui/full-session.md),
+[navigation](../../../product/specflow/ui/interaction-model.md#starting-a-session-and-the-navigator) and the
 [Specification Sessions list](../../specflow-ui/screens/specification-sessions-list-ui-spec.md).
 
 | Task | Delivered as                                                                                                       |

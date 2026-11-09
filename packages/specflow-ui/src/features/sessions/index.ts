@@ -5,8 +5,9 @@ export { SessionProviderIcon } from './shared/SessionProviderIcon';
 export { createManagedSessionsApi, type ManagedSessionsApi } from './managed/api';
 export { SessionReadyEmptyState } from './managed/empty/SessionReadyEmptyState';
 export { SessionNamingStatus } from './managed/naming/SessionNamingStatus';
-// Starting a Session (new-session-ui-spec.md): the start screen, the provider-neutral catalogue and
-// choice model, and the labelled agent fields that Create with an agent shares with the start form.
+// Starting a Session (full-session.md "Starting a Session"): the start screen, the provider-neutral
+// catalogue and choice model, and the labelled agent fields that Create with an agent shares with
+// the start form.
 export { startCatalogueFromDemo } from './start/catalogue/fromDemoCatalogue';
 export {
   initialAgentChoice,

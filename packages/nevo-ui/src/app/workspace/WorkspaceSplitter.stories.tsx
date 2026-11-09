@@ -128,7 +128,7 @@ export const SecondaryOnStartSideContract: Story = {
     const splitter = canvas.getByRole('separator', { name: 'Resize secondary panel' });
     splitter.focus();
 
-    // W06: with Secondary on the start side, direction flips from the default-side contract above —
+    // With Secondary on the start side, direction flips from the default-side contract above —
     // ArrowRight now grows Secondary's share instead of shrinking it.
     await userEvent.keyboard('{ArrowRight}');
     assert(

@@ -5,12 +5,13 @@ import { useMessage } from '../../../../i18n/message';
 import { LocalizedOptionPicker } from '../../../../shared/controls/LocalizedOptionPicker';
 import type { StartMode } from '../catalogue/startCatalogue';
 
-/** A segmented control only for a small, fixed set; a longer list is a picker (new-session-ui-spec.md section 6). */
+/** A segmented control only for a small, fixed set; a longer list is a picker (full-session.md
+ * "Starting a Session"). */
 const segmentedMax = 4;
 
 /**
  * The provider catalogue's own work modes under its own titles, usable ones only: an unavailable
- * mode is omitted, not shown disabled (session-composer-design.md §7 item 4). A provider with no
+ * mode is omitted, not shown disabled (full-session.md "Composer"). A provider with no
  * usable mode is itself unavailable, with the reason on the provider.
  */
 export function WorkModeField({

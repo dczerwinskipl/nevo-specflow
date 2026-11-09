@@ -103,6 +103,11 @@ Session capabilities at `{projectId, sessionId}` for a standalone Session and
 - a `{sessionId}` assignment covers that one Session (a `developer` there reads the provider
   catalogue for it to steer its Turns) and cannot create another.
 
+Two Session capabilities gate provider authority rather than Session access:
+`session.execute-write` admits write-mode create, Turn start and interaction responses (denial,
+cancel and reconcile need only `session.manage`), and `session.view-provider-limits` admits reading
+and refreshing provider account-limit telemetry.
+
 The exact rule is in [Runtime authorization](../../architecture/runtime/auth/authorization.md#specflow-required-scopes).
 
 ## Current roles

@@ -250,7 +250,7 @@ export function mixedWorkTimelineActions(): ToolActionSummary[] {
 
 /**
  * A single chapter built specifically to demonstrate live owner review #2's adaptive grouping
- * (session-work-inspector-ui-spec.md's grouping algorithm, rule 3 of the structural pass): a run
+ * (full-session.md "Work history (L2)"'s tool-burst rule, rule 3 of the structural pass): a run
  * of adjacent happy-path tool items long enough to actually compact into one burst `Timeline.Item`
  * (`workGrouping.TOOL_BURST_MIN_SIZE`+ — see `WorkInspector.stories.tsx`'s `LongRunGrouping`),
  * immediately followed by a failed tool and one more ordinary tool. The failed tool chronologically
@@ -280,8 +280,8 @@ export function longRunWorkTimelineItems(): WorkSummary[] {
 }
 
 /**
- * The design doc's own synthetic scalability scenario (session-chat-v10-design.md §4: "the
- * 144-item example is synthetic scalability test data"): repeating Commentary/Reasoning/tool
+ * The V10 mock's synthetic scalability scenario (its 144-item Work timeline; bounded loading is
+ * full-session.md "Work history (L2)"): repeating Commentary/Reasoning/tool
  * phases until `count` canonical Work items exist, used to demonstrate that WorkInspector pages
  * this bounded instead of fetching/mounting all of it up front.
  */

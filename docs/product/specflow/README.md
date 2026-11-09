@@ -14,3 +14,4 @@ summary: >
 - [UI](ui/)
 
 - [Create Specification and workspace selection](specification-creation.md)
+- [Specification documents and archetypes](specification-documents.md)

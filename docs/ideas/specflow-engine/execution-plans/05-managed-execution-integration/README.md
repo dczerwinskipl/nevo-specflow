@@ -20,7 +20,7 @@ related:
 
 # Plan 05 — Managed Execution Integration
 
-**Lifecycle: temporary implementation plan.** Final integration slice of the first testable program. Requires Plan 03's **real** Engine admission/Workflow Kernel and Plan 04's **real** Runtime Session/Turn persistence and mock provider. The mock is a deliberate constraint, not a substitute for native-adapter certification.
+**Lifecycle: temporary implementation plan.** Final integration slice of the first testable program. Requires Plan 03's **real** Engine workflow surface; the Runtime Session/Turn persistence, mock provider and the Session-level dispatch intent, dispatch phases and claim settlement (former T03–T05) are implemented, see [workspace execution claims](../../../../architecture/runtime/workspace-execution-claims.md). The mock is a deliberate constraint, not a substitute for native-adapter certification.
 
 ## Demonstration boundary
 
@@ -35,28 +35,22 @@ Each task has its own Markdown file. **Batch** means sequential tasks in one age
 ### Recommended waves
 
 1. T01 solo (shared contract)
-2. T02 solo (auth/admission)
-3. T03 solo (durable intent)
-4. T04 solo (dispatch uncertainty)
-5. T05 solo (settlement)
-6. T06 solo (workflow finish)
-7. T07 solo (batch/handover)
-8. T08 solo (fault regression)
-9. T09 solo (architecture review)
+2. T02 solo (auth/admission; Session-level admission exists, the workflow-readiness part is open)
+3. T06 solo (workflow finish)
+4. T07 solo (batch/handover)
+5. T08 solo (fault regression; Session-level restart and auth regressions exist, workflow cases are open)
+6. T09 solo (architecture review)
 
 ### Tasks
 
-| Task                                                                                                 | Depends on                                     | Run mode |
-| ---------------------------------------------------------------------------------------------------- | ---------------------------------------------- | -------- |
-| [E5.T01 — Cross-owner contract](tasks/T01-cross-owner-contract.md)                                   | E3.T10, E4.T08                                 | Solo     |
-| [E5.T02 — Preparation and authorization](tasks/T02-preparation-and-authorization.md)                 | E5.T01                                         | Solo     |
-| [E5.T03 — Atomic-enough intent protocol](tasks/T03-atomic-enough-intent-protocol.md)                 | E5.T02                                         | Solo     |
-| [E5.T04 — Mock dispatch phases](tasks/T04-mock-dispatch-phases.md)                                   | E5.T03                                         | Solo     |
-| [E5.T05 — Turn/claim settlement](tasks/T05-turn-claim-settlement.md)                                 | E5.T04                                         | Solo     |
-| [E5.T06 — Explicit workflow interaction](tasks/T06-explicit-workflow-interaction.md)                 | E5.T05                                         | Solo     |
-| [E5.T07 — Bounded batch and handover](tasks/T07-bounded-batch-and-handover.md)                       | E5.T05, E5.T06                                 | Solo     |
-| [E5.T08 — Restart and auth regressions](tasks/T08-restart-and-auth-regressions.md)                   | E5.T02, E5.T03, E5.T04, E5.T05, E5.T06, E5.T07 | Solo     |
-| [E5.T09 — Architecture audit + promotion backlog](tasks/T09-architecture-audit-promotion-backlog.md) | E5.T08                                         | Solo     |
+| Task                                                                                                 | Depends on             | Run mode |
+| ---------------------------------------------------------------------------------------------------- | ---------------------- | -------- |
+| [E5.T01 — Cross-owner contract](tasks/T01-cross-owner-contract.md)                                   | E3.T10                 | Solo     |
+| [E5.T02 — Preparation and authorization](tasks/T02-preparation-and-authorization.md)                 | E5.T01                 | Solo     |
+| [E5.T06 — Explicit workflow interaction](tasks/T06-explicit-workflow-interaction.md)                 | E5.T02                 | Solo     |
+| [E5.T07 — Bounded batch and handover](tasks/T07-bounded-batch-and-handover.md)                       | E5.T06                 | Solo     |
+| [E5.T08 — Restart and auth regressions](tasks/T08-restart-and-auth-regressions.md)                   | E5.T02, E5.T06, E5.T07 | Solo     |
+| [E5.T09 — Architecture audit + promotion backlog](tasks/T09-architecture-audit-promotion-backlog.md) | E5.T08                 | Solo     |
 
 **Batch policy:** never auto-batch a high-risk solo gate with dependent tasks; re-evaluate shared file ownership at dispatch. In particular, lock/claim, security, HTTP scopes, durability/recovery and dispatch uncertainty need an explicit review checkpoint. If a task uncovers an architecture conflict, stop dependent tasks but continue unaffected, disjoint work.
 
@@ -73,9 +67,9 @@ Each task has its own Markdown file. **Batch** means sequential tasks in one age
 
 ## Integration acceptance — what is demonstrable now
 
-Use real Engine + Runtime + controlled mock provider to prove **SI01–SI05, SI07 and SI08** and appropriate S01–S06/S08, R06 and H09 cases; in particular test S06 at every intent/spawn/correlation crash cut. Validate basic S04 sequential batch and S05 explicit handover without broad production orchestration.
+Use real Engine + Runtime + controlled mock provider to prove **SI04, SI05, SI07 and SI08** and the S03–S05, S08 and R06 cases (SI01–SI03 and the dispatch crash cuts are covered by the implemented Session foundation and claims). Validate basic S04 sequential batch and S05 explicit handover without broad production orchestration.
 
-**Deliberately deferred:** **SI06/S07** (provider-native resume or moved/rebound worktree during a managed Session), real adapter timeouts and side-effect fencing, cross-worktree provider execution, active-Session rebind cleanup (B03), full provider parity, nontrivial auto-batch routing and complete workflow catalogue. A mock passing S06 does not imply real provider replay safety.
+**Deliberately deferred:** **SI06/S07** (provider-native resume or moved/rebound worktree during a managed Session), real adapter timeouts and side-effect fencing, cross-worktree provider execution, active-Session rebind cleanup (B03), full provider parity, nontrivial auto-batch routing and complete workflow catalogue. A mock passing the dispatch crash cuts does not imply real provider replay safety.
 
 Plan 02's optional **non-session** rebind/cleanup can use real Git evidence separately. Do not call this integration complete for provider/worktree behavior that was deliberately not tested.
 

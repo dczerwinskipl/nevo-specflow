@@ -82,7 +82,7 @@ export const ManagedInSpecification: Story = {
 };
 
 /** Claude's own native modes: only the usable ones are listed; the catalogue's unavailable one is
- * omitted, with no reason line (session-composer-design.md §7 item 4). */
+ * omitted, with no reason line (full-session.md "Composer"). */
 export const NativeModesWithUnavailableOne: Story = {
   args: {
     defaults: {

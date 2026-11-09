@@ -3,15 +3,22 @@
 The public **Nevo SpecFlow** product package. It ships the single installable
 `nevo-specflow` CLI and acts as the composition root for product capabilities.
 
-## Implemented CLI
+## CLI
 
 ```bash
 nevo-specflow --help
 nevo-specflow --version
 nevo-specflow init
-nevo-specflow start
+nevo-specflow project inspect|bootstrap
+nevo-specflow specs ...           # Specifications, worktrees, workspaces and documents
+nevo-specflow commit [status]
+nevo-specflow definitions list|show|validate|install
+nevo-specflow start [--demo]
 nevo-specflow auth hash-password --password-stdin
 ```
+
+The exact commands and options are owned by the
+[CLI contract](../../docs/reference/cli/nevo-specflow-contract.md); this list is only an overview.
 
 `init` owns repository bootstrap and composes capability initialization. Runtime owns the server/auth configuration contribution it returns; the product shell writes that contribution to `.nevo/config.yaml` and ignored `.nevo/local/config.yaml` without duplicating Runtime config semantics. `start` starts the configured long-running local SpecFlow server. With the default local
 configuration, open `http://127.0.0.1:4318`: the built UI is served at that product origin and
@@ -21,14 +28,14 @@ running either command from a nested repository directory uses the same project 
 The auth utility generates the supported password hash from one password line
 read from stdin, keeping the plaintext password out of command arguments.
 
-Command semantics belong to their capability verticals. The public package owns only the
-root CLI conventions, version/output behavior, process lifecycle, and command composition.
-The exact public surface is tracked in
-[`docs/reference/cli/nevo-specflow-contract.md`](../../docs/reference/cli/nevo-specflow-contract.md).
+Command semantics belong to their capability verticals and the Engine. The public package owns
+only the root CLI conventions, version/output behavior, process lifecycle, and command
+composition.
 
 ## Distribution
 
-The product ships as one self-contained CLI bundle plus the built UI assets under `dist/ui`.
+The product ships as one self-contained CLI bundle plus the built UI assets under `dist/ui` and the
+other runtime files listed in product packaging.
 Repository packages such as
 `@nevo/specflow-runtime` are build-time workspace boundaries and are bundled into
 `@nevo/specflow`; an installed product does not depend on the repository workspace.

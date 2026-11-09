@@ -18,7 +18,7 @@ import { useSessionContextSource } from './sessionContextValue';
 import type { SessionContextTaskRef } from './sessionContextTypes';
 
 /**
- * Task root tabs opened from Session Context (full-session-screen-structure.md §7.4/§10.1): a root
+ * Task root tabs opened from Session Context (full-session.md "Secondary tabs"): a root
  * tab is an independently revisitable working surface, and its identity is the OBJECT it shows.
  *
  * - `taskStack` is one root tab PER TASK (`instanceId` = the task id, label = the Task key, e.g.

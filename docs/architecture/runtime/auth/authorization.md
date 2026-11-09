@@ -184,6 +184,13 @@ grant scoped to one Specification must never admit writes that reach every Speci
 project's own files. The dimension is added only when the managed execution handshake confines a
 Specification's Session to that Specification's worktree.
 
+**What the two provider capabilities admit.** `session.execute-write` is required to create a
+`workspace-write` Session and to start a Turn or deliver an interaction response in write mode.
+Denying a pending permission, cancelling and reconciling need only `session.manage`, so a user
+without write authority can always stop or refuse writable work. `session.view-provider-limits`
+gates provider account-limit telemetry: stored limit readings are hidden without it, and an explicit
+telemetry refresh that includes the `limits` group requires it in addition to `session.manage`.
+
 Directional coverage then gives, for the capabilities the assigned role carries:
 
 | Assignment scope   | Standalone Session | Associated Session of S | Start from S | Write execution   |

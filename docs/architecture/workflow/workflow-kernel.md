@@ -155,7 +155,7 @@ Readiness, lanes and statuses are derived from these, never stored.
   A record file is also bounded to 256 KiB (see the budgets under "State and storage"). Known limit: a
   history that grows over that byte budget is refused only when the change is serialized
   (`WORKFLOW_INPUT_INVALID`, nothing is stored); no operation checks it earlier, and bounding the run
-  history is a follow-up (plan 06, F16).
+  history is a follow-up (plan 06, F19).
 
 ## Executors
 
@@ -523,7 +523,8 @@ proceed.
   conflict found in the middle of publishing also leaves the journal pending, and deleting it then may
   keep a partly applied change; only a concurrent external writer can cause that (F05). This
   narrows, but does not close, the window against a concurrent external writer such as Git between the
-  check and the write; full protection needs writer admission (plan 06, F05).
+  check and the write; full protection needs writer admission (plan 06, F05) through
+  [workspace execution claims](../runtime/workspace-execution-claims.md).
 - **Stage files.** An atomic write that crashed leaves a `.<record>.<uuid>.tmp` file. Reads skip
   dot-files, and the next change removes only the stage files of known record names
   (`specification.yaml` in `.execution/`, valid Task file names in `.execution/tasks/`); every other

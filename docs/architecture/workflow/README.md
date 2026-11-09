@@ -11,3 +11,4 @@ summary: >
 # Workflow architecture
 
 - [Deterministic workflow](deterministic-workflow.md)
+- [Workflow kernel](workflow-kernel.md)

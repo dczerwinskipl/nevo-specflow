@@ -6,7 +6,7 @@ import { describeWorkBlock } from './workDigest';
 import { workStateTextClassName } from './workStatus';
 
 /**
- * One Turn's Work in the Conversation (session-chat-v10-design.md §3.1, owner direction: "widzę co
+ * One Turn's Work in the Conversation (full-session.md "Work block", owner direction: "widzę co
  * aktualnie robi, widzę ile już zrobił"). Top line: cumulative work so far by kind; under it, while
  * the Turn is live, what is happening right now with a spinner; once settled, the Turn's terminal
  * outcome if it was not a plain completion. The whole block is the one click target into the Turn's

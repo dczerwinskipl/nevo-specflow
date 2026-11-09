@@ -14,6 +14,7 @@ summary: >
   completes, transitions are explicit, gates inspect separately from verify, attempts
   scope evidence, and durable effects resume instead of duplicating.
 related:
+  - architecture.workflow.workflow-kernel
   - architecture.principles.enforceable-invariants
   - architecture.runtime.ownership-and-lifecycle
   - engineering.shared.effects-and-io
@@ -47,12 +48,13 @@ current architecture decision explicitly makes that field authoritative.
 Workflow mutation always has one authoritative execution identity:
 
 ```text
-(change, task, step, attempt)
+(specId[, taskId], step, attempt)
 ```
 
-An AI session MAY carry wider context and a batch MAY coordinate multiple tasks, but that context
-MUST NOT replace the per-task identity whose state, gates, evidence, and transition are being
-mutated.
+The subject is the Specification, or one of its Tasks when `taskId` is present; the
+[workflow kernel](workflow-kernel.md) implements this identity. An AI session MAY carry wider
+context and a batch MAY coordinate multiple Tasks, but that context MUST NOT replace the
+per-subject identity whose state, gates, evidence, and transition are being mutated.
 
 Executor/session identity used for admission MUST come from trusted Runtime/application context.
 It MUST NOT be accepted from an agent-authored command parameter or prompt.

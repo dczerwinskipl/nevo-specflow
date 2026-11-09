@@ -23,6 +23,7 @@ related:
   - ideas.readme
   - product.specflow.ui.interaction-model
   - product.specflow.ui.ai-session-ux
+  - product.specflow.ui.full-session
   - architecture.workflow.deterministic-workflow
   - architecture.ai.canonical-session-turn-work
   - ideas.developer-workspace
@@ -70,30 +71,29 @@ Therefore:
 
 ## Current working documents
 
-- [Information and navigation inventory](information-and-navigation-inventory.md)
-- [Navigation and route model](navigation-and-route-model.md)
-- [Specification and Task information hierarchy](spec-task-information-hierarchy.md)
-- [Specification and Task screen structure](spec-task-screen-structure.md)
-- [Full Session screen structure](full-session-screen-structure.md)
-- [Session Chat V10 — accepted UX direction and implementation boundary](components/session-chat-v10-design.md)
-- [Session Composer capability proposal and adapter gaps](components/session-composer-design.md)
-- [Accepted Session Workspace V2 examples — desktop](examples/session-workspace-v2/desktop.html)
-- [Accepted Session Workspace V2 examples — mobile](examples/session-workspace-v2/mobile.html)
+Implemented, owner-accepted UI rules have been promoted to
+[SpecFlow UI product documentation](../../product/specflow/ui/README.md) (for example
+[Full Session](../../product/specflow/ui/full-session.md) and the
+[Specifications list](../../product/specflow/ui/specs-overview.md)). This package keeps what is
+still open:
+
+- [Navigation and route model — open items](navigation-and-route-model.md)
+- [Full Session screen structure — open areas](full-session-screen-structure.md)
+- [Session Chat V10 — open directions](components/session-chat-v10-design.md)
+- [Session Composer — open capability design](components/session-composer-design.md)
 - [Accepted Session Chat V10 mock — desktop](examples/session-chat-v10/desktop.html)
 - [Accepted Session Chat V10 mock — mobile](examples/session-chat-v10/mobile.html)
+- [Session actions decision record](session-actions-ux/README.md)
 - [Session association UX (stage 3 D10, accepted)](session-association-ux/README.md)
-- [Design-system and composition gaps](design-system-component-composition-gaps.md)
+- [Storybook rework — open follow-ups](storybook-rework.md)
 - [Data loading, refresh, batching, and eventing](data-loading-refresh-and-eventing.md)
 - [Screen specifications index](screens/README.md)
 - [Large UI component specifications](components/README.md)
 
-Workspace V2 layout/navigation and Session Chat V10 conversation/composer/Work inspection
-are now **accepted UX directions**, but their standalone HTML remains illustrative,
-synthetic and **not production code or API evidence**. Exact visual styling, Context body,
-provider-specific capability fixtures, and notably **mobile Composer iconography** (unclear
-square/diamond symbols and toolbar overflow) are **not accepted**. Use Nevo UI Design
-System components and icons, not the mock's CSS/SVGs. See the V10 design document for
-the dynamic auto/manual split contract and outstanding shared Design System gap.
+The Session Chat V10 HTML mocks remain illustrative, synthetic and **not production code or API
+evidence**. Exact visual styling, Context body, provider-specific capability fixtures and **mobile
+Composer iconography** were not accepted. Use Nevo UI Design System components and icons, not the
+mock's CSS/SVGs.
 
 ## Related idea package
 

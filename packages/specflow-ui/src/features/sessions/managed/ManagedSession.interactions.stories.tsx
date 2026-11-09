@@ -537,7 +537,7 @@ function selectedRootTabLabel(canvasElement: HTMLElement) {
 }
 
 /**
- * Root tab identity is the object (full-session-screen-structure.md §7.4/§10.1): each Related Tasks
+ * Root tab identity is the object (full-session.md "Secondary tabs"): each Related Tasks
  * row (session-association-ux §7, one row per associated Task) opens that Task as its own tab named
  * by its key; a Task already open is activated, never duplicated. Context stays the pinned,
  * non-closable first tab throughout, and closing the opened tabs returns the Secondary to the
@@ -635,7 +635,7 @@ export const RelatedTasksOpenTaskTabs: Story = {
 };
 
 /**
- * Attachments are UI-only (session-composer-design.md §5): Send must not clear them, which would
+ * Attachments are UI-only (session-composer-design.md §1): Send must not clear them, which would
  * imply they were delivered, and the "local mock" note stays under the chips while any exist.
  */
 export const AttachmentsStayAfterSend: Story = {

@@ -69,24 +69,16 @@ Read the relevant subset rather than duplicating it:
   feature-local composition, view models, state ownership.
 - [Tailwind styling guidelines](../../../design-system/implementation/tailwind/styling-guidelines.md) —
   semantic tone and styling ownership.
-- [SpecFlow information/navigation inventory](../information-and-navigation-inventory.md) — product
-  concepts, ownership, configuration/runtime/action separation.
 - [Runtime ownership and lifecycle](../../../architecture/runtime/ownership-and-lifecycle.md) —
   application/backend ownership and transport-adapter boundary.
 - [Repository tooling is separate from the product API](../../../architecture/decisions/0005-repository-tooling-is-separate-from-the-product-api.md) —
   legacy/internal tooling is evidence, not an implicit product contract.
-- [Design-system and composition gaps](../design-system-component-composition-gaps.md) — currently
-  available primitives and known capability gaps.
 - [Data loading, refresh, batching, and eventing](../data-loading-refresh-and-eventing.md) —
   query boundaries, revisions, event coalescing, batch reads/commands, invalidation and Refresh semantics.
 
 Session screens additionally inherit
-[AI Session UX](../../../product/specflow/ui/ai-session-ux.md) and
-[Full Session screen structure](../full-session-screen-structure.md).
-
-Specification/Task screens additionally inherit
-[Specification and Task information hierarchy](../spec-task-information-hierarchy.md) and
-[Specification and Task screen structure](../spec-task-screen-structure.md).
+[AI Session UX](../../../product/specflow/ui/ai-session-ux.md) and the
+[Full Session contract](../../../product/specflow/ui/full-session.md).
 
 ## API status vocabulary
 
@@ -110,17 +102,21 @@ legitimately have no `existing-new` API yet.
 
 ## Screen ownership index
 
-| Screen / large surface                 | Responsibility                                                                                       | Spec                                                                          |
-| -------------------------------------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| Specs overview                         | Cross-Spec steering: attention, ready work, current work, archive entry.                             | [Specs Overview UI spec](specs-overview-ui-spec.md)                           |
-| Specification creation / Session start | Title-first creation modal, common Session setup, worktree choice, recovery and Session placeholder. | [Creation and Session start mock proposal](specification-creation-ui-spec.md) |
-| New Session                            | Start a Session inside the Session shell: start card (agent, model, effort, mode, name), then write. | [New Session UI spec](new-session-ui-spec.md)                                 |
-| Specification                          | One Specification: workflow meaning, Task collection/bulk actions, Sessions, supporting evidence.    | [Specification UI spec](specification-workspace-ui-spec.md)                   |
-| Specification Sessions list            | One Specification's associated Sessions: Current/Archive collections, Show more paging, states.      | [Specification Sessions list UI spec](specification-sessions-list-ui-spec.md) |
-| Task detail                            | One Task: decision state, intent, evidence, deterministic actions, related Session history.          | [Task Detail UI spec](task-detail-ui-spec.md)                                 |
-| Full Session                           | Conversation/current work Primary with default Context and user-selected detail Secondary.           | [Full Session UI spec](full-session-ui-spec.md)                               |
-| Floating Session                       | Wide-only quick Session interaction without abandoning current Spec/Task context.                    | [Floating Session UI spec](floating-session-ui-spec.md)                       |
-| Project Settings                       | Project configuration, AI/agent policy, workflows, repository/Git, integrations.                     | [Project Settings UI spec](project-settings-ui-spec.md)                       |
+Implemented screens are owned by product docs: the
+[Specifications list](../../../product/specflow/ui/specs-overview.md), the
+[Specification overview](../../../product/specflow/ui/specification-overview.md),
+[Create Specification](../../../product/specflow/specification-creation.md) (including its demo mode) and
+[Full Session](../../../product/specflow/ui/full-session.md) (including starting a Session). The specs below hold
+proposals and open items.
+
+| Screen / large surface      | Responsibility                                                                                     | Spec                                                                          |
+| --------------------------- | -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Specification (open items)  | Batch Start, Specification-level decision, Task filter, relevant Session choice, Floating Session. | [Specification UI spec](specification-workspace-ui-spec.md)                   |
+| Specification Sessions list | One Specification's associated Sessions: Current/Archive collections, Show more paging, states.    | [Specification Sessions list UI spec](specification-sessions-list-ui-spec.md) |
+| Task detail                 | One Task: decision state, intent, evidence, deterministic actions, related Session history.        | [Task Detail UI spec](task-detail-ui-spec.md)                                 |
+| Full Session (open areas)   | Workflow execution, Task batches, Handover/artifact and File tabs, still-deferred decisions.       | [Full Session screen structure](../full-session-screen-structure.md)          |
+| Floating Session            | Wide-only quick Session interaction without abandoning current Spec/Task context.                  | [Floating Session UI spec](floating-session-ui-spec.md)                       |
+| Project Settings            | Project configuration, AI/agent policy, workflows, repository/Git, integrations.                   | [Project Settings UI spec](project-settings-ui-spec.md)                       |
 
 Do not create a separate screen spec merely because a backend entity exists. A screen earns a spec
 when it is a meaningful user surface with its own interaction and information hierarchy.

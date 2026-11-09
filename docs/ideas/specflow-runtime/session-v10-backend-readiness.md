@@ -23,58 +23,28 @@ related:
 
 # Session migration remainder and V10 backend readiness
 
-Audit baseline: main `3c0967fa`, the Session foundation merged in PR #98 and the
-Antigravity implementation in PR #107. Legacy evidence is `D:/repos/git/nevo`,
-primarily `tools/dashboard/server/ai/sessions`, `providers` and `orchestration`.
-The current frontend implementation branch is `feat/session-workspace-v2-v10`.
-This audit separates implemented APIs from requirements needing another capability;
-it does not authorize shipping every synthetic behavior in the HTML examples.
+Remaining backend capability gaps for the accepted Workspace V2 and Chat V10 designs, and legacy
+Nevo Session functionality not yet migrated. Implemented APIs are owned by the
+[Sessions API](../../reference/api/sessions.md); provider-only gaps belong to the
+[capability backlog](provider-migration-plan.md#current-scope-and-capability-backlog-ownership).
+This does not authorize shipping every synthetic behavior in the HTML examples.
 
-This is a dated readiness checkpoint, not a second provider roadmap. Provider-only
-gaps now belong to the consolidated [capability backlog](provider-migration-plan.md#current-scope-and-capability-backlog-ownership).
-The associations and frontend/backend requirements below retain their own scope;
-future provider capabilities are not current API guarantees or PR #107 merge gates.
+## Open V10 backend gaps
 
-## What has already migrated
+| Behavior                                                        | Existing production boundary                                                                                                                 | Remaining backend work / frontend rule                                                                                                                                                                                                                                                                                  |
+| --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Universal Ask/Plan/Agent and operation approval selectors       | Native provider modes with verified effect authority                                                                                         | No certified cross-provider intent/approval combination projection. Native Plan names alone do not promise non-writing behavior; Antigravity Plan requires write authority. The proposed ComposerOptions is illustrative. Expose verified native choices; do not invent unrestricted Accept All or a Cartesian product. |
+| Large Work history with filters/search and Commentary phases    | Bounded Work and ToolAction pages, canonical IDs/ordinals and content references                                                             | Query currently supports before/limit only. Need indexed server search/filter semantics and a Commentary phase anchor for pages beginning mid-phase. Do not fetch every earlier page to manufacture grouping context.                                                                                                   |
+| Open exact older Work from a reference                          | IDs on Work pages; ToolActions load by workId                                                                                                | Need bounded Work-by-ID detail or cursor seek. Do not scan lifetime Work merely to locate an inspector target.                                                                                                                                                                                                          |
+| Context: current execution, batch, attention and workflow links | Association registry (home Specification and Tasks, `GET /api/sessions/:sessionId/association`), Session list and Specification-owned create | No production current-execution/attention/workflow-event projection. Use explicit unavailable states, not synthetic Context counts or filename-derived ownership.                                                                                                                                                       |
+| Inspect Task attempt or workflow event from chat                | Canonical Session identities, separate Engine lifecycle                                                                                      | P5/E3/E5 composition must expose exact authorized Task/attempt/event IDs. An agent saying done is not a workflow event. Frontend source-aware Back behavior can be implemented without inventing these records.                                                                                                         |
+| Attachments, camera and trusted repository references           | Text-only StartTurn                                                                                                                          | New upload/storage/expiry, stable reference, model-input capability and adapter contracts are needed. Camera/chips in HTML are fixtures. Do not silently send text while dropping unsupported attachments.                                                                                                              |
+| Session file collections, artifacts, changes and handovers      | Textual tool content and general document APIs                                                                                               | No complete semantic Session file/revision/diff/artifact association contract. Do not derive authoritative file history or Task relationships from tool prose.                                                                                                                                                          |
 
-The independent Session/Turn/Work model, worker-owned SQLite, durable command
-idempotency, bounded tail/history/content, SSE replay, native context continuation,
-questions and operation permissions, process ownership and honest recovery are
-implemented. Claude, Codex and Antigravity have executable adapters; Antigravity
-is no longer only a question-transport stub. Native loading of private MCP
-configuration and question invocation have separate manual native-CLI evidence;
-actual-account answer/resume evidence is recorded in the provider document.
+Until a real authorized owner projection exists, the frontend Session Context view shape is not a
+backend contract and production composition defaults to unavailable Context.
 
-Runtime already accepts `StartTurn.mode`, `providerModeId`, `modelId` and `effort`.
-These configure the next Turn while provider identity remains Session-pinned.
-They do not rewrite Session defaults or reconfigure an active invocation. Do not
-add a second Composer mutation or infer these values from UI labels.
-
-Common MCP question transport lives in Sessions `interactions/mcp`, with an
-endpoint and credential per Invocation. Antigravity supplies native registration,
-permission hooks and native idle evidence. Claude's control protocol and Codex's
-JSON-RPC questions remain native adapters to the same canonical Interaction model.
-
-## Accepted V10 behavior versus real backend capabilities
-
-| Behavior                                                                               | Existing production boundary                                                                                                                                                                                                                                            | Remaining backend work / frontend rule                                                                                                                                                                                                                                                                                  |
-| -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Chat, current activity, question/permission, cancel and content expansion              | Snapshot/history, currentActivity, interactions/respond, cancel, SSE and revision-bound content ranges                                                                                                                                                                  | Ready foundation. Layout, Copy/Quote, navigation stacks, splitter and draft/scroll retention belong to frontend. A settled Turn does not imply a finished Task.                                                                                                                                                         |
-| Next-Turn native mode, model and effort                                                | `StartTurn` overrides; provider catalogue models/efforts, providerModes, compatibility/readiness and authorization                                                                                                                                                      | Ready for supported native combinations. Preserve unavailable reasons. Historical native execution metadata must not be guessed from current Session defaults.                                                                                                                                                          |
-| Universal Ask/Plan/Agent and operation approval selectors                              | Native provider modes with verified effect authority                                                                                                                                                                                                                    | No certified cross-provider intent/approval combination projection. Native Plan names alone do not promise non-writing behavior; Antigravity Plan requires write authority. The proposed ComposerOptions is illustrative. Expose verified native choices; do not invent unrestricted Accept All or a Cartesian product. |
-| Large Work history with filters/search and Commentary phases                           | Bounded Work and ToolAction pages, canonical IDs/ordinals and content references                                                                                                                                                                                        | Query currently supports before/limit only. Need indexed server search/filter semantics and a Commentary phase anchor for pages beginning mid-phase. Do not fetch every earlier page to manufacture grouping context.                                                                                                   |
-| Optional compact Work counts by operation                                              | Delivered: `WorkPage.counts` (Turn aggregate maintained transactionally) and `ConversationEntry.digest` with the canonical `ToolOperation` classification from each adapter's own tool identity ([Sessions API](../../reference/api/sessions.md#work-aggregate-counts)) | Turns recorded before the change carry neither; the UI hides the row and shows the honest loaded tool-Work count instead. `actionCount` is still not an operation-kind count.                                                                                                                                           |
-| Open exact older Work from a reference                                                 | IDs on Work pages; ToolActions load by workId                                                                                                                                                                                                                           | Need bounded Work-by-ID detail or cursor seek. Do not scan lifetime Work merely to locate an inspector target.                                                                                                                                                                                                          |
-| Context: owning Spec, Task scope, single/batch execution, attention and workflow links | Existing product readers and Session reference infrastructure; demo composition                                                                                                                                                                                         | No complete production managed-Session context/current-execution/event projection. Session projectId is not specId. Use explicit unavailable states, not synthetic Context counts or filename-derived ownership.                                                                                                        |
-| Inspect Task attempt or workflow event from chat                                       | Canonical Session identities, separate Engine lifecycle                                                                                                                                                                                                                 | P5/E3/E5 composition must expose exact authorized Task/attempt/event IDs. An agent saying done is not a workflow event. Frontend source-aware Back behavior can be implemented without inventing these records.                                                                                                         |
-| Attachments, camera and trusted repository references                                  | Text-only StartTurn                                                                                                                                                                                                                                                     | New upload/storage/expiry, stable reference, model-input capability and adapter contracts are needed. Camera/chips in HTML are fixtures. Do not silently send text while dropping unsupported attachments.                                                                                                              |
-| Session file collections, artifacts, changes and handovers                             | Textual tool content and general document APIs                                                                                                                                                                                                                          | No complete semantic Session file/revision/diff/artifact association contract. Do not derive authoritative file history or Task relationships from tool prose.                                                                                                                                                          |
-
-The frontend branch explicitly marks its Session Context view shape as **not a
-backend contract** and defaults production composition to unavailable Context.
-Preserve that distinction until a real authorized owner projection exists.
-
-The frontend branch currently gates Send with `session.capabilities.start`, which
+The frontend gates Send with `session.capabilities.start`, which
 is correct for the existing default-selection Composer. V10 overrides need a
 selection-aware capability contract: separate lifecycle/provider readiness from
 default-mode availability and effective selection authorization. A write-default
@@ -92,22 +62,11 @@ activity, not invented intent or exposure of private model internals.
 
 ## Remaining functionality demonstrated in old Nevo
 
-| Legacy functionality                                                 | Current status and ownership                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Spec/Task/batch context and authorized Session associations          | Remaining P5 composition above independent Sessions. Legacy service creates/binds context; it must not become a required specId/taskId in Session core.                                                                                                                                                                                                                                                                                                                                                                     |
-| Sequential Task queues, compatible batches and workflow continuation | Remaining E3/E5 execution integration. Engine writer exclusion is implemented but is not Task/batch orchestration.                                                                                                                                                                                                                                                                                                                                                                                                          |
-| Find and reopen previous chats through a filtered Session catalogue  | Opening a known URL works; production Session list/search is not implemented. Legacy listSessions filters by Spec/Task/provider. Define bounded authorized catalogue and association projections.                                                                                                                                                                                                                                                                                                                           |
-| Session deletion/unbinding and retention                             | Delivered: rename, archive/unarchive (`archivedAt`, read-only) and hard `DELETE` (204, `session.delete`), refused while a Turn is unsettled (`TURN_CONFLICT`) or Engine evidence is unsettled (`SESSION_DELETE_BLOCKED`); Engine records and native provider transcripts are kept ([Sessions API](../../reference/api/sessions.md#rename-archive-unarchive-and-delete), [storage and lifecycle](../../architecture/ai/session-storage-and-lifecycle.md#archive-and-delete)). Unbinding waits for Session associations (P5). |
-| Model modalities/context-capacity metadata                           | Legacy has advisory metadata and batch context-capacity snapshots. Current model descriptors expose IDs/titles/efforts only. Restore richer traits only with trustworthy adapter provenance; metadata alone is not an image-upload implementation.                                                                                                                                                                                                                                                                          |
-| Antigravity effort selection                                         | Intentionally unavailable until native discovery supplies supported values. Legacy's arbitrary --effort forwarding is not safety evidence.                                                                                                                                                                                                                                                                                                                                                                                  |
-
-The subsequent owner-authorized telemetry extension addresses the missing public
-projection for observed token/cost/limit/context data. See
-[the telemetry API](../../reference/api/session-telemetry.md) for exact current
-provider coverage and [usage accounting](ai-adapters/usage-accounting.md) for
-provenance. Claude monetary samples and Codex current context are mapped; bare
-Antigravity numeric costs and unobserved context-category breakdowns remain
-unavailable. This is independent of deferred Spec/Task/workflow composition.
+| Legacy functionality                                                 | Current status and ownership                                                                                                                                                     |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Sequential Task queues, compatible batches and workflow continuation | Remaining E3/E5 execution integration. Engine writer exclusion is implemented but is not Task/batch orchestration.                                                               |
+| Model modalities/context-capacity metadata                           | Current model descriptors expose IDs/titles/efforts only; richer traits need trustworthy adapter provenance (backlog F17). Metadata alone is not an image-upload implementation. |
+| Antigravity effort selection                                         | Unavailable until native discovery supplies supported values (backlog F15). Legacy arbitrary `--effort` forwarding is not safety evidence.                                       |
 
 Not proven lost functionality: no legacy attachment upload pipeline was found in
 the inspected Session dispatch, which sends message/prompt strings. Cursor in V10
@@ -126,19 +85,16 @@ and conservative unknown recovery remain explicit limitations.
 ## Bounded delivery order
 
 1. Work inspection contract: exact detail/seek and search/filter with phase context
-   (operation classification and maintained aggregates are delivered). Bind
+   (operation classification and maintained aggregates exist). Bind
    filters to stable cursors and preserve authorization/content byte budgets.
-2. P5 Context and catalogue: production authorized associations/current scope and
-   Session discovery, followed by exact Engine workflow/Task attempt references.
+2. Context: current-execution scope and exact Engine workflow/Task attempt references on top of
+   the existing association registry and Session list.
 3. Selection-aware admission/readiness, then separate capability design for
    certified intent/approval combinations, richer
-   model traits and attachments/trusted file references (deletion/retention is
-   delivered).
+   model traits and attachments/trusted file references.
 
-These are separate backend deliveries. The UI can use the ready boundaries above
-and keep unavailable features honest while they are designed. No new UI, fake
-production data, global MCP service or competing lifecycle owner is part of this
-audit/refactor.
+These are separate backend deliveries. The UI keeps unavailable features honest while they are
+designed; no fake production data, global MCP service or competing lifecycle owner fills the gap.
 
 ## Evidence pointers
 

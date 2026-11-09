@@ -17,8 +17,10 @@ related:
 
 # Product overview
 
-`status: draft` — states product intent and scope. The CLI and Runtime bootstrap exist;
-the full workflow and UI are still being built.
+`status: draft` — states product intent and scope. The CLI, the Runtime and the UI exist:
+Specifications with their documents and archetypes, Create, managed agent Sessions and the
+deterministic Task workflow kernel are implemented; the full workflow surface (Task execution from
+the UI, reviews and gates, Specification workflow) is still being built.
 
 ## What it is
 
@@ -29,9 +31,9 @@ development**:
   decisions. AI agents propose options with a recommendation and implement approved
   work inside an explicitly declared context — they do not decide on the owner's
   behalf.
-- Every non-trivial change is **anchored to a specification**. Changes are classified
-  by weight (small / standard / architectural / exploratory); heavier changes get more
-  specification and explicit owner approval gates.
+- Every non-trivial change is **anchored to a specification**. A Specification's
+  **archetype** (chosen at Create) decides which documents its shape requires and suggests;
+  owner approval gates are part of the workflow model.
 - The workflow is **tool-enforced and deterministic**. Discovery, specification, task
   decomposition, start/verify/finalize, and documentation discovery run through
   commands that produce stable, machine-readable output — safe for agents to drive.

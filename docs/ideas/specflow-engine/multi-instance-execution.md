@@ -19,7 +19,7 @@ related:
   - ideas.specflow-engine.execution-scopes
   - ideas.specflow-engine.locking
   - ideas.specflow-engine.managed-session-integration
-  - ideas.specflow-engine.worktrees
+  - architecture.runtime.specflow-project-home
   - ideas.specflow-engine.decisions
   - architecture.workflow.deterministic-workflow
 ---

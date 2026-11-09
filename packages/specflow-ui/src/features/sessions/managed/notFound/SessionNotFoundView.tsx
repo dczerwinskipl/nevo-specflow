@@ -4,11 +4,12 @@ import { StandaloneScreenHeader } from '../../../../app/StandaloneScreenLayout';
 import { useWorkspaceLabels } from '../../../../app/navigation/useWorkspaceLabels';
 
 /**
- * A Session that was deleted (here or in another view) or never existed (full-session-screen-structure §22.1):
- * the product's not-found composition (`NotFoundView`: header, description, one secondary button)
- * with one way on: the Specifications list (every new Session starts from a Specification). It replaces the Session screen inside the application shell,
- * in the workspace the Session screen used, rather than opening a second standalone shell (which
- * would nest a second `main` landmark in the shell's).
+ * A Session that was deleted (here or in another view) or never existed (full-session.md "Session
+ * actions"): the product's not-found composition (`NotFoundView`: header, description, one
+ * secondary button) with one way on: the Specifications list (every new Session starts from a
+ * Specification). It replaces the Session screen inside the application shell, in the workspace the
+ * Session screen used, rather than opening a second standalone shell (which would nest a second
+ * `main` landmark in the shell's).
  */
 export function SessionNotFoundView({
   onGoToSpecifications,

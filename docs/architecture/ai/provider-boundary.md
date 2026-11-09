@@ -7,6 +7,7 @@ read_when:
   - adding or changing an AI provider
   - exposing provider capabilities
   - mapping provider events, errors, interactions, or session identity
+  - deciding whether a provider operation needs workspace confinement or host-execution approval
   - deciding whether provider-specific data may cross into Runtime or UI contracts
 summary: >
   AI providers are adapters behind canonical SpecFlow contracts. They expose honest
@@ -18,6 +19,8 @@ related:
   - architecture.runtime.ownership-and-lifecycle
   - engineering.shared.effects-and-io
   - architecture.principles.normative-language
+  - architecture.ai.provider-process-ownership
+  - reference.providers.compatibility
 ---
 
 # AI provider boundary
@@ -94,6 +97,30 @@ provider timestamp quirks or event naming.
 Adapters MAY emit incremental events, but terminal arbitration MUST belong to one neutral lifecycle
 owner. Competing process exit, cancellation, timeout, protocol-terminal, and disconnect signals
 MUST settle to one terminal outcome.
+
+## Execution authorities
+
+A writable provider operation runs under exactly one of two distinct authorities:
+
+- **Workspace execution** — automatic tools MUST stay within the verified workspace, including when
+  a path is replaced during the operation. A native mode name does not by itself imply this
+  guarantee; the adapter enforces it with positive in-workspace and negative outside-workspace and
+  path-replacement controls.
+- **Approved host execution** — the user approves the exact command, its starting directory and an
+  explicit warning that it can affect files outside the workspace. The command runs with the
+  user's account permissions. Every unconfined command MUST require its own once-only approval,
+  even a seemingly harmless one.
+
+Approved host execution does not require an OS workspace sandbox. Engine admission, process
+ownership and filesystem containment remain separate responsibilities; a Job Object proves process
+ownership, not confinement. No mode, resumed context or hook replay may turn a one-operation grant
+into a persistent permission, and permission suggestions or persistent policy updates are never
+forwarded. An adapter MAY deny host execution entirely (Codex denies sandbox escalation).
+
+Native modes keep their native names and semantics and are separate from effect authority
+(`read-only` / `workspace-write`): a native Plan mode does not inherit another provider's read-only
+guarantee. An unsupported profile explains its unavailability instead of silently degrading an
+agent request to read-only.
 
 ## Raw diagnostics
 

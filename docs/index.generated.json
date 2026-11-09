@@ -235,6 +235,16 @@
       "related": []
     },
     {
+      "id": "docs.reference-providers-readme",
+      "type": "hub",
+      "title": "Session provider reference",
+      "status": "current",
+      "file": "docs/reference/providers/README.md",
+      "read_when": [],
+      "summary": "Implemented Session provider adapters, their enablement, supported profiles and limits, and the shared build compatibility policy.",
+      "related": []
+    },
+    {
       "id": "docs.reference-readme",
       "type": "hub",
       "title": "Reference documentation",
@@ -274,29 +284,6 @@
       ]
     },
     {
-      "id": "ideas.nevo-ui",
-      "type": "hub",
-      "title": "Nevo UI implementation ideas",
-      "status": "draft",
-      "file": "docs/ideas/nevo-ui/README.md",
-      "read_when": [
-        "planning or picking up implementation work for a reusable Nevo UI capability"
-      ],
-      "summary": "Non-authoritative implementation backlog for reusable Nevo UI (design-system) capabilities, separate from the SpecFlow product backlog under ideas/specflow-ui.",
-      "related": [
-        "ideas.readme",
-        "design-system.principles.system-boundary"
-      ],
-      "scope": "nevo-ui",
-      "areas": [
-        "ui"
-      ],
-      "tags": [
-        "design-system",
-        "execution-plan"
-      ]
-    },
-    {
       "id": "ideas.readme",
       "type": "hub",
       "title": "Implementation ideas",
@@ -320,17 +307,19 @@
     {
       "id": "ideas.specflow-engine",
       "type": "hub",
-      "title": "Future Engine proposals and E1-E2 historical evidence",
+      "title": "Open SpecFlow Engine proposals",
       "status": "draft",
       "file": "docs/ideas/specflow-engine/README.md",
       "read_when": [
-        "evaluating deferred E3 E4 E5 work",
-        "distinguishing implemented E1 E2 from old candidate designs"
+        "evaluating open offline workflow, writer claim or managed execution work",
+        "finding which Engine proposals are still open after the kernel and Sessions shipped"
       ],
-      "summary": "Deferred E3-E5 proposals and dated E1-E2 design evidence; accepted foundations now have current architecture and reference docs.",
+      "summary": "Index of the open Engine proposals: offline workflow coordination, writer claims and recovery, managed execution integration, human gates, Task resources and context, multi-instance execution, and the remaining execution plans. Implemented foundations have current architecture docs.",
       "related": [
         "ideas.readme",
         "architecture.runtime.specflow-engine",
+        "architecture.runtime.workspace-execution-claims",
+        "architecture.workflow.workflow-kernel",
         "architecture.runtime.specflow-project-home",
         "architecture.runtime.specflow-lifecycle"
       ],
@@ -343,7 +332,8 @@
       ],
       "tags": [
         "engine",
-        "worktree",
+        "workflow",
+        "claims",
         "offline",
         "migration"
       ]
@@ -351,20 +341,21 @@
     {
       "id": "ideas.specflow-engine.execution-plans",
       "type": "hub",
-      "title": "Remaining SpecFlow Engine E3-E5 execution plans",
+      "title": "Remaining SpecFlow Engine execution plans",
       "status": "draft",
       "file": "docs/ideas/specflow-engine/execution-plans/README.md",
       "read_when": [
-        "planning unimplemented E3 E4 E5 stages",
-        "understanding the future workflow and managed Session integration gates"
+        "planning the remaining offline workflow, managed execution integration or workflow kernel work",
+        "understanding the gates between those plans"
       ],
-      "summary": "Temporary remaining plans for E3 offline workflow, E4 managed Sessions and E5 integration, after E1 E2 promotion.",
+      "summary": "Index of the temporary plans still open: 03 offline workflow surface and claims, 05 managed execution integration, and 06 workflow kernel follow-ups.",
       "related": [
         "ideas.specflow-engine",
         "ideas.specflow-engine.plan-03",
-        "ideas.specflow-engine.plan-04",
         "ideas.specflow-engine.plan-05",
-        "architecture.runtime.specflow-engine"
+        "ideas.specflow-engine.plan-06",
+        "architecture.runtime.specflow-engine",
+        "architecture.workflow.workflow-kernel"
       ],
       "scope": "specflow",
       "areas": [
@@ -419,15 +410,14 @@
       "status": "draft",
       "file": "docs/ideas/specflow-runtime/ai-adapters/README.md",
       "read_when": [
-        "migrating AI providers into SpecFlow Runtime",
-        "hardening provider adapters before the MVP implementation settles"
+        "hardening provider adapters beyond the implemented driver contract"
       ],
-      "summary": "Candidate hardening work for provider adapters: lifecycle and recovery fencing, environment and diagnostic security, evidence-based errors, output semantics, model/usage/capacity handling, resource ownership, liveness, raw diagnostics, and replay tests.",
+      "summary": "Open provider-adapter hardening ideas: liveness and watchdogs, quota/transient classification, capacity-aware admission, readiness diagnose lane, resume/recovery follow-ups, diagnose/replay tooling, and the provider error evidence pack.",
       "related": [
         "ideas.readme",
         "architecture.ai.provider-boundary",
-        "architecture.ai.canonical-session-turn-work",
-        "architecture.runtime.ownership-and-lifecycle"
+        "reference.protocols.session-provider-driver",
+        "architecture.ai.provider-process-ownership"
       ],
       "scope": "specflow",
       "areas": [
@@ -438,7 +428,6 @@
       "tags": [
         "providers",
         "lifecycle",
-        "streaming",
         "recovery"
       ]
     },
@@ -458,6 +447,7 @@
         "ideas.readme",
         "product.specflow.ui.interaction-model",
         "product.specflow.ui.ai-session-ux",
+        "product.specflow.ui.full-session",
         "architecture.workflow.deterministic-workflow",
         "architecture.ai.canonical-session-turn-work",
         "ideas.developer-workspace"
@@ -561,6 +551,7 @@
         "adding or changing an AI provider",
         "exposing provider capabilities",
         "mapping provider events, errors, interactions, or session identity",
+        "deciding whether a provider operation needs workspace confinement or host-execution approval",
         "deciding whether provider-specific data may cross into Runtime or UI contracts"
       ],
       "summary": "AI providers are adapters behind canonical SpecFlow contracts. They expose honest capabilities, normalize lifecycle/events/errors at the boundary, keep provider-private identifiers and payloads out of product contracts, and preserve raw diagnostics only for bounded technical inspection.",
@@ -568,20 +559,58 @@
         "architecture.ai.canonical-session-turn-work",
         "architecture.runtime.ownership-and-lifecycle",
         "engineering.shared.effects-and-io",
-        "architecture.principles.normative-language"
+        "architecture.principles.normative-language",
+        "architecture.ai.provider-process-ownership",
+        "reference.providers.compatibility"
+      ]
+    },
+    {
+      "id": "architecture.ai.provider-process-ownership",
+      "type": "architecture",
+      "title": "Provider process ownership and limits",
+      "status": "current",
+      "file": "docs/architecture/ai/provider-process-ownership.md",
+      "read_when": [
+        "launching, cancelling or settling a provider process",
+        "changing process-tree termination or Windows Job Object ownership",
+        "adding provider temporary files, cleanup registrations or protocol framing",
+        "packaging native process bindings"
+      ],
+      "summary": "One Runtime owner per provider invocation: POSIX process-group and Windows Job Object tree ownership, positive settlement evidence, no-shell launch, bounded framing, input, temporary files and cleanup, and the packaged Koffi binding.",
+      "related": [
+        "architecture.ai.provider-boundary",
+        "architecture.runtime.ownership-and-lifecycle",
+        "reference.protocols.session-provider-driver",
+        "architecture.ai.session-storage-and-lifecycle"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "security",
+        "testing"
+      ],
+      "tags": [
+        "providers",
+        "process",
+        "windows",
+        "posix",
+        "cleanup"
       ]
     },
     {
       "id": "architecture.ai.session-storage-and-lifecycle",
       "type": "architecture",
       "title": "Managed Session persistence and lifecycle design",
-      "status": "draft",
+      "status": "current",
       "file": "docs/architecture/ai/session-storage-and-lifecycle.md",
       "read_when": [
         "implementing managed Session storage or admission",
-        "implementing Session tail reads and restart recovery"
+        "implementing Session tail reads and restart recovery",
+        "recovering a Session blocked by an unknown Turn",
+        "changing the Session SQLite schema"
       ],
-      "summary": "Decided implementation design for independent Sessions, worker-owned SQLite, one local Runtime owner, transactional admission, bounded reads and crash recovery.",
+      "summary": "Independent Sessions, worker-owned SQLite, one local Runtime owner, transactional admission, store admission bounds, bounded reads, schema migration, and positive-evidence crash recovery.",
       "related": [
         "architecture.ai.canonical-session-turn-work",
         "architecture.ai.provider-boundary",
@@ -602,6 +631,38 @@
         "durability",
         "recovery",
         "pagination"
+      ]
+    },
+    {
+      "id": "architecture.overview",
+      "type": "architecture",
+      "title": "Architecture overview",
+      "status": "current",
+      "file": "docs/architecture/overview.md",
+      "read_when": [
+        "orienting in the codebase before working across package or process boundaries",
+        "explaining which SpecFlow component talks to which, and over what transport",
+        "deciding which package or authoritative document owns a concern"
+      ],
+      "summary": "Derived, diagram-first map of Nevo SpecFlow: processes and transports, package dependency direction, Runtime feature composition, where state lives, and the managed Session Turn flow. Every diagram links the authoritative document that owns its facts; on conflict those documents win.",
+      "related": [
+        "adr.0012-product-package-topology-and-dependency-direction",
+        "architecture.runtime.ownership-and-lifecycle",
+        "architecture.runtime.specflow-engine",
+        "architecture.runtime.specflow-project-home",
+        "architecture.runtime.workspace-execution-claims",
+        "architecture.ai.provider-boundary",
+        "architecture.ai.session-storage-and-lifecycle",
+        "architecture.workflow.workflow-kernel",
+        "architecture.repository-structure"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "ai",
+        "workflow",
+        "ui",
+        "cli"
       ]
     },
     {
@@ -770,11 +831,13 @@
         "changing the Engine, CLI or HTTP integration boundary",
         "assigning ownership of durable Specification operations"
       ],
-      "summary": "Implemented E1/E2 ownership of the offline Engine, Runtime HTTP transport and product CLI.",
+      "summary": "What the offline Engine owns (Project Home, workspaces, Specifications, documents, Git, durable journals, workspace execution claims and the workflow kernel), and how the product CLI and the Runtime HTTP transport call it without owning mutation logic.",
       "related": [
         "architecture.runtime.ownership-and-lifecycle",
         "architecture.runtime.specflow-project-home",
-        "architecture.runtime.specflow-lifecycle"
+        "architecture.runtime.specflow-lifecycle",
+        "architecture.runtime.workspace-execution-claims",
+        "architecture.workflow.workflow-kernel"
       ],
       "scope": "specflow",
       "areas": [
@@ -818,7 +881,7 @@
         "resolving Project Home from primary and linked worktrees",
         "changing registry, canonical discovery or managed workspace capacity"
       ],
-      "summary": "Implemented E1/E2 Project Home identity, local registry authority and canonical Specification binding.",
+      "summary": "Project Home identity, local registry authority and canonical Specification binding.",
       "related": [
         "architecture.runtime.specflow-engine",
         "architecture.runtime.specflow-lifecycle"
@@ -902,6 +965,42 @@
       ]
     },
     {
+      "id": "architecture.runtime.workspace-execution-claims",
+      "type": "architecture",
+      "title": "Workspace execution claims",
+      "status": "current",
+      "file": "docs/architecture/runtime/workspace-execution-claims.md",
+      "read_when": [
+        "changing how a managed Turn is admitted, dispatched or settled against the Engine",
+        "adding an Engine operation that must exclude or wait for a running agent",
+        "diagnosing TURN_CONFLICT or SESSION_RECOVERY_REQUIRED from a Turn start or reconcile",
+        "designing writer admission for workflow steps or external CLI agents"
+      ],
+      "summary": "The Engine journal that admits every native agent execution as a project-wide writer claim: the intent, the phases admitted, dispatched, unknown and settled, settlement only on a proven not-dispatched or native-result receipt, the project-write resource that excludes Create, Close, document changes and manual commits, the archive move, the crash windows, and how Runtime maps the errors.",
+      "related": [
+        "architecture.runtime.specflow-engine",
+        "architecture.ai.session-storage-and-lifecycle",
+        "architecture.runtime.specflow-lifecycle",
+        "engineering.shared.specflow-git-recovery",
+        "reference.api.sessions"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "ai",
+        "security"
+      ],
+      "tags": [
+        "engine",
+        "claims",
+        "journal",
+        "recovery",
+        "sessions",
+        "admission",
+        "crash-safety"
+      ]
+    },
+    {
       "id": "architecture.workflow.deterministic-workflow",
       "type": "architecture",
       "title": "Deterministic workflow",
@@ -915,6 +1014,7 @@
       ],
       "summary": "Workflow progression is driven by authoritative declarative state and deterministic operations, not agent-authored orchestration. Step start activates, step finish completes, transitions are explicit, gates inspect separately from verify, attempts scope evidence, and durable effects resume instead of duplicating.",
       "related": [
+        "architecture.workflow.workflow-kernel",
         "architecture.principles.enforceable-invariants",
         "architecture.runtime.ownership-and-lifecycle",
         "engineering.shared.effects-and-io",
@@ -1080,86 +1180,24 @@
       ]
     },
     {
-      "id": "ideas.specflow-engine.baseline-evidence",
-      "type": "architecture",
-      "title": "Baseline and migration evidence",
-      "status": "draft",
-      "file": "docs/ideas/specflow-engine/baseline-and-evidence.md",
-      "read_when": [
-        "comparing main to open PR 45 before implementing engine foundations",
-        "deciding what existing functionality should be preserved"
-      ],
-      "summary": "Code-evidenced distinction between committed SpecFlow architecture, unmerged PR 45 direction, and useful or problematic legacy Nevo implementation details.",
-      "related": [
-        "ideas.specflow-engine",
-        "architecture.repository-structure",
-        "architecture.workflow.deterministic-workflow",
-        "architecture.runtime.ownership-and-lifecycle"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "runtime",
-        "workflow",
-        "cli",
-        "docs"
-      ],
-      "tags": [
-        "legacy-nevo",
-        "pr-review",
-        "migration"
-      ]
-    },
-    {
-      "id": "ideas.specflow-engine.boundaries",
-      "type": "architecture",
-      "title": "Offline Engine CLI and Runtime boundaries",
-      "status": "superseded",
-      "file": "docs/ideas/specflow-engine/engine-cli-runtime-boundaries.md",
-      "read_when": [
-        "allocating responsibility between product CLI and Runtime",
-        "migrating workflow or creating a new mutation endpoint"
-      ],
-      "summary": "Candidate independent application Engine invoked by CLI and Runtime without either adapter owning canonical workflow progression or long-running provider processes.",
-      "related": [
-        "ideas.specflow-engine",
-        "ideas.specflow-engine.baseline-evidence",
-        "architecture.workflow.deterministic-workflow",
-        "architecture.runtime.ownership-and-lifecycle",
-        "adr.0012-product-package-topology-and-dependency-direction"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "cli",
-        "runtime",
-        "workflow"
-      ],
-      "tags": [
-        "engine",
-        "adapter",
-        "architecture",
-        "offline"
-      ]
-    },
-    {
       "id": "ideas.specflow-engine.decisions",
       "type": "architecture",
-      "title": "Open decisions tradeoffs and promotion plan",
+      "title": "Open Engine workflow decisions",
       "status": "draft",
       "file": "docs/ideas/specflow-engine/decisions-and-promotion.md",
       "read_when": [
-        "agreeing which engine/worktree concepts should be adopted",
-        "preparing ADRs and freezing the architecture after tests"
+        "deciding external writer claims, local actor trust or lock ordering for workflow steps",
+        "preparing an ADR for offline workflow coordination"
       ],
-      "summary": "Non-authoritative decision backlog, tradeoffs, owners and explicit evidence required before promoting offline Engine/worktree proposals into normative architecture documents.",
+      "summary": "Non-authoritative backlog of the still open Engine decisions (external claims, offline actor attribution, filesystem scope, lock ordering, read-only enforcement, human approval trust, dirty-baseline admission) with the evidence each needs before promotion.",
       "related": [
         "ideas.specflow-engine",
-        "ideas.specflow-engine.boundaries",
         "ideas.specflow-engine.ownership",
         "ideas.specflow-engine.test-plan",
         "ideas.specflow-engine.acceptance",
         "ideas.specflow-engine.managed-session-integration",
-        "ideas.specflow-engine.project-home",
-        "ideas.specflow-engine.local-actors"
+        "ideas.specflow-engine.local-actors",
+        "ideas.specflow-engine.multi-instance"
       ],
       "scope": "specflow",
       "areas": [
@@ -1183,17 +1221,19 @@
       "status": "draft",
       "file": "docs/ideas/specflow-engine/execution-scopes-and-recovery.md",
       "read_when": [
-        "admitting external CLI or managed AI work without assuming a Task",
-        "recovering abandoned or uncertain writer claims"
+        "deciding which workflow steps need a writer claim (plan 06 F05)",
+        "designing operator inspect, reconcile, release or takeover of a claim",
+        "admitting a dirty checkout or a Task batch to a workflow step"
       ],
-      "summary": "Distinguishes workflow attempt, Turn, execution effects and physical ownership; proposes evidence-driven inspect/reconcile/release flows that also work without a running Runtime.",
+      "summary": "Open proposals beyond the implemented managed-execution claims: which workflow steps need a writer claim, the operator inspect/reconcile/release/takeover protocol, dirty-baseline admission and batch/handover rules, all usable without a running Runtime.",
       "related": [
         "ideas.specflow-engine",
         "ideas.specflow-engine.locking",
         "ideas.specflow-engine.offline-agents",
         "ideas.specflow-engine.managed-session-integration",
         "ideas.specflow-engine.local-actors",
-        "architecture.workflow.deterministic-workflow"
+        "architecture.workflow.deterministic-workflow",
+        "architecture.runtime.workspace-execution-claims"
       ],
       "scope": "specflow",
       "areas": [
@@ -1208,37 +1248,6 @@
         "ownership",
         "claims",
         "recovery"
-      ]
-    },
-    {
-      "id": "ideas.specflow-engine.git",
-      "type": "architecture",
-      "title": "Optional Git capability and adapter",
-      "status": "superseded",
-      "file": "docs/ideas/specflow-engine/git-capability.md",
-      "read_when": [
-        "enabling optional Git integration for Specs/workspaces",
-        "designing safe branch and linked worktree creation"
-      ],
-      "summary": "Candidate capability-owned Git port with explicit enablement, verified checkout membership, guarded branch/worktree operations and no Git shell logic in Specification use cases.",
-      "related": [
-        "ideas.specflow-engine",
-        "ideas.specflow-engine.project-workspace",
-        "ideas.specflow-engine.spec-creation",
-        "ideas.specflow-engine.worktrees",
-        "engineering.repository.git-workflow"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "workflow",
-        "configuration",
-        "security"
-      ],
-      "tags": [
-        "git",
-        "worktree",
-        "branch",
-        "capability"
       ]
     },
     {
@@ -1276,20 +1285,23 @@
     {
       "id": "ideas.specflow-engine.locking",
       "type": "architecture",
-      "title": "Cross-process locks claims and admission",
+      "title": "Workflow step claims, external agent liveness and lock ordering",
       "status": "draft",
       "file": "docs/ideas/specflow-engine/locking-and-admission.md",
       "read_when": [
-        "coordinating CLI and Runtime writes to the same workspace",
-        "designing external agent claim lifetime and stale recovery"
+        "designing writer claims for workflow steps or Spec Writer work",
+        "deciding how long an external agent's claim lives and how it is recovered",
+        "adding an operation that needs more than one lock"
       ],
-      "summary": "Separate short atomic cross-process mutation locks from long-lived physical-workspace execution claims, with fail-closed admission and recovery independent of managed AI Sessions.",
+      "summary": "Open proposals on top of the implemented control lock and execution claims: writer claims for workflow steps and Spec Writer work, external agent liveness, lock ordering, and operator release and takeover.",
       "related": [
         "ideas.specflow-engine",
         "ideas.specflow-engine.ownership",
         "ideas.specflow-engine.offline-agents",
         "ideas.specflow-engine.recovery",
-        "architecture.workflow.deterministic-workflow"
+        "ideas.specflow-engine.execution-scopes",
+        "architecture.workflow.deterministic-workflow",
+        "architecture.runtime.workspace-execution-claims"
       ],
       "scope": "specflow",
       "areas": [
@@ -1308,22 +1320,24 @@
     {
       "id": "ideas.specflow-engine.managed-session-integration",
       "type": "architecture",
-      "title": "Managed Sessions and Engine execution integration",
+      "title": "Managed Sessions and workflow execution integration",
       "status": "draft",
       "file": "docs/ideas/specflow-engine/managed-session-integration.md",
       "read_when": [
-        "migrating Nevo Session and Turn lifecycle into SpecFlow Runtime",
-        "integrating a managed provider Turn with Engine workflow and workspace claims"
+        "driving workflow steps from managed Sessions",
+        "binding a Session or Turn to a workflow attempt",
+        "designing batch, handover, rebind or multi-instance behaviour for managed execution"
       ],
-      "summary": "Proposed managed execution handshake, correlation identities, read-only Turn behavior, provider dispatch recovery, and explicit batch/handover boundaries.",
+      "summary": "Open proposals for connecting managed Sessions to the workflow kernel: attempt association, readiness before dispatch, workflow finish from a Session, batch and handover, native resume after rebind (S07), and multi-instance runs. Session storage and dispatch claims are implemented.",
       "related": [
         "ideas.specflow-engine",
-        "ideas.specflow-engine.boundaries",
         "ideas.specflow-engine.execution-scopes",
         "ideas.specflow-engine.workspace-binding-lifecycle",
         "ideas.specflow-engine.local-actors",
+        "ideas.specflow-engine.plan-06",
         "architecture.ai.canonical-session-turn-work",
-        "architecture.ai.provider-boundary"
+        "architecture.ai.session-storage-and-lifecycle",
+        "architecture.runtime.workspace-execution-claims"
       ],
       "scope": "specflow",
       "areas": [
@@ -1358,7 +1372,7 @@
         "ideas.specflow-engine.execution-scopes",
         "ideas.specflow-engine.locking",
         "ideas.specflow-engine.managed-session-integration",
-        "ideas.specflow-engine.worktrees",
+        "architecture.runtime.specflow-project-home",
         "ideas.specflow-engine.decisions",
         "architecture.workflow.deterministic-workflow"
       ],
@@ -1392,7 +1406,7 @@
       "summary": "External agents use vendor-neutral skills and CLI to progress Engine workflow without a live Runtime, while provider-native conversations remain outside managed Session/Turn ownership.",
       "related": [
         "ideas.specflow-engine",
-        "ideas.specflow-engine.boundaries",
+        "architecture.runtime.specflow-engine",
         "ideas.specflow-engine.ownership",
         "ideas.specflow-engine.locking",
         "architecture.ai.provider-boundary",
@@ -1417,125 +1431,60 @@
     {
       "id": "ideas.specflow-engine.ownership",
       "type": "architecture",
-      "title": "Execution ownership and state authority",
+      "title": "Human approval provenance and external claim reconciliation",
       "status": "draft",
       "file": "docs/ideas/specflow-engine/ownership-and-state.md",
       "read_when": [
-        "deciding which process owns workflow versus AI execution state",
-        "designing persistence and lifecycle across CLI and Runtime"
+        "recording a human approval or verification in workflow state",
+        "deciding what Runtime or the CLI reconciles on start-up for claims it did not create"
       ],
-      "summary": "Candidate authority split between committed specification facts, Engine execution state, transient workspace claims, and Runtime-owned live Session/Turn resources.",
+      "summary": "Open proposals on state authority: verifiable provenance for human approvals and how external claims are reconciled on boot without a daemon or a fabricated Session. The rest of the authority split is current architecture.",
       "related": [
         "ideas.specflow-engine",
-        "ideas.specflow-engine.boundaries",
         "ideas.specflow-engine.offline-agents",
         "ideas.specflow-engine.locking",
-        "architecture.ai.canonical-session-turn-work"
+        "ideas.specflow-engine.local-actors",
+        "architecture.ai.canonical-session-turn-work",
+        "architecture.runtime.ownership-and-lifecycle"
       ],
       "scope": "specflow",
       "areas": [
         "workflow",
         "runtime",
-        "configuration",
         "security"
       ],
       "tags": [
         "ownership",
         "authority",
-        "persistence",
-        "session"
-      ]
-    },
-    {
-      "id": "ideas.specflow-engine.project-home",
-      "type": "architecture",
-      "title": "Discovering the Project Home from any Git worktree",
-      "status": "superseded",
-      "file": "docs/ideas/specflow-engine/project-home-discovery.md",
-      "read_when": [
-        "making CLI work from a linked checkout with Runtime stopped",
-        "selecting the canonical local state and configuration home"
-      ],
-      "summary": "Testable candidate discovery protocol for the one local Project Home from the primary checkout and managed linked worktrees, including moves, ambiguity, offline startup, and repair.",
-      "related": [
-        "ideas.specflow-engine",
-        "ideas.specflow-engine.project-workspace",
-        "ideas.specflow-engine.workspace-registry",
-        "ideas.specflow-engine.recovery",
-        "architecture.runtime.configuration"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "configuration",
-        "cli",
-        "runtime",
-        "workflow"
-      ],
-      "tags": [
-        "project-home",
-        "worktree",
-        "discovery",
-        "identity"
-      ]
-    },
-    {
-      "id": "ideas.specflow-engine.project-workspace",
-      "type": "architecture",
-      "title": "Project Workspace discovery and identity",
-      "status": "superseded",
-      "file": "docs/ideas/specflow-engine/project-and-workspace-context.md",
-      "read_when": [
-        "resolving spec roots from the project or a linked Git checkout",
-        "designing stable workspace identity independent of physical paths"
-      ],
-      "summary": "Candidate Project versus Execution Workspace identity model and safe discovery of a home registry from any linked Git worktree, without confusing Git branch names or paths with canonical IDs.",
-      "related": [
-        "ideas.specflow-engine",
-        "ideas.specflow-engine.boundaries",
-        "ideas.specflow-engine.workspace-registry",
-        "ideas.specflow-engine.project-home",
-        "ideas.specflow-engine.workspace-binding-lifecycle",
-        "architecture.runtime.configuration"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "configuration",
-        "workflow",
-        "runtime",
-        "cli"
-      ],
-      "tags": [
-        "project",
-        "workspace",
-        "identity",
-        "discovery",
-        "worktree"
+        "approval",
+        "reconciliation"
       ]
     },
     {
       "id": "ideas.specflow-engine.recovery",
       "type": "architecture",
-      "title": "Durable mutation journal and crash recovery",
+      "title": "Workflow finish Git stages and external writer recovery",
       "status": "draft",
       "file": "docs/ideas/specflow-engine/durable-operations-and-recovery.md",
       "read_when": [
-        "making multi-stage create or workflow operations retry-safe",
-        "reconciling crashes without a long-running daemon"
+        "adding commit or push stages to the workflow finish journal",
+        "designing recovery for an external CLI writer that holds a workflow claim"
       ],
-      "summary": "Durable intent and stage evidence for recoverable worktree provisioning and workflow mutations, with offline CLI reconciliation, safe replay, and no fabricated Runtime sessions.",
+      "summary": "Open proposals for the durable-operation work that is not implemented: Git stages in the workflow finish journal (plan 06 F04) and the recovery protocol for external CLI writers.",
       "related": [
         "ideas.specflow-engine",
-        "ideas.specflow-engine.spec-creation",
         "ideas.specflow-engine.locking",
         "ideas.specflow-engine.ownership",
-        "architecture.workflow.deterministic-workflow"
+        "ideas.specflow-engine.plan-06",
+        "architecture.workflow.deterministic-workflow",
+        "architecture.workflow.workflow-kernel",
+        "engineering.shared.specflow-git-recovery"
       ],
       "scope": "specflow",
       "areas": [
         "workflow",
         "runtime",
-        "testing",
-        "configuration"
+        "testing"
       ],
       "tags": [
         "recovery",
@@ -1545,87 +1494,23 @@
       ]
     },
     {
-      "id": "ideas.specflow-engine.runtime-http",
-      "type": "architecture",
-      "title": "Runtime HTTP and read model integration",
-      "status": "superseded",
-      "file": "docs/ideas/specflow-engine/runtime-http-and-reads.md",
-      "read_when": [
-        "exposing offline Engine operations through the real Runtime API",
-        "integrating creation with Specs Overview and Workspace reads"
-      ],
-      "summary": "Thin authorized HTTP adapters over the same Engine use cases as offline CLI, with real read repositories, correct source availability and cache invalidation across processes.",
-      "related": [
-        "ideas.specflow-engine",
-        "ideas.specflow-engine.boundaries",
-        "ideas.specflow-engine.spec-creation",
-        "ideas.specflow-engine.workspace-registry",
-        "product.specflow.ui.application-architecture"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "runtime",
-        "server",
-        "ui",
-        "workflow"
-      ],
-      "tags": [
-        "http",
-        "api",
-        "read-model",
-        "synchronization"
-      ]
-    },
-    {
-      "id": "ideas.specflow-engine.specification-worktree-closure",
-      "type": "architecture",
-      "title": "Specification and managed worktree closure, Foundation A extension",
-      "status": "superseded",
-      "file": "docs/ideas/specflow-engine/specification-and-worktree-close-design.md",
-      "read_when": [
-        "implementing Plan 02 E2.T10 through E2.T17",
-        "reviewing Specification close versus Worktree close"
-      ],
-      "summary": "Proposed recoverable, transport-neutral close operations without a dependency on Plan 03, and a conservative future Specification workflow seam.",
-      "related": [
-        "ideas.specflow-engine.workspace-binding-lifecycle",
-        "ideas.specflow-engine.worktrees",
-        "ideas.specflow-engine.recovery",
-        "ideas.specflow-engine.acceptance"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "workflow",
-        "cli",
-        "runtime",
-        "security",
-        "testing"
-      ],
-      "tags": [
-        "specification-lifecycle",
-        "worktree",
-        "durable-operation",
-        "temporary-design"
-      ]
-    },
-    {
       "id": "ideas.specflow-engine.workspace-binding-lifecycle",
       "type": "architecture",
-      "title": "Canonical Specification workspace binding lifecycle",
+      "title": "Workspace relocate, repair and rebind under active execution",
       "status": "draft",
       "file": "docs/ideas/specflow-engine/workspace-binding-lifecycle.md",
       "read_when": [
-        "moving canonical Spec ownership after branch integration",
-        "relocating or deleting worktrees used by Specs and managed Sessions"
+        "relocating a registered worktree or repairing an unavailable Specification source",
+        "deciding how a rebind or relocation interacts with an active managed Turn",
+        "planning binding changes for multi-instance steps"
       ],
-      "summary": "Transactional Spec-to-workspace binding changes and safe post-merge rebind, move, unavailable, session-compatibility and cleanup behavior without branch-guessing or stale fallback.",
+      "summary": "Open binding operations beyond the implemented register, resolve, Worktree/Workspace Close and rebind: relocate, explicit repair and mark-unavailable, blocking a rebind or relocation while a managed Turn is active, and multi-instance implications.",
       "related": [
         "ideas.specflow-engine",
-        "ideas.specflow-engine.workspace-registry",
-        "ideas.specflow-engine.project-home",
-        "ideas.specflow-engine.worktrees",
         "ideas.specflow-engine.managed-session-integration",
-        "ideas.specflow-engine.recovery"
+        "ideas.specflow-engine.recovery",
+        "architecture.runtime.specflow-project-home",
+        "architecture.runtime.specflow-lifecycle"
       ],
       "scope": "specflow",
       "areas": [
@@ -1638,71 +1523,8 @@
         "workspace-binding",
         "worktree",
         "rebind",
-        "integration"
-      ]
-    },
-    {
-      "id": "ideas.specflow-engine.workspace-registry",
-      "type": "architecture",
-      "title": "Workspace registry and Specification discovery",
-      "status": "superseded",
-      "file": "docs/ideas/specflow-engine/workspace-registry-and-discovery.md",
-      "read_when": [
-        "listing Specs across primary and linked worktrees",
-        "designing source-of-truth and unavailable-worktree behavior"
-      ],
-      "summary": "Local spec-to-workspace binding registry, authoritative manifest selection, duplicate handling, and safe cross-worktree discovery for CLI and Runtime reads.",
-      "related": [
-        "ideas.specflow-engine",
-        "ideas.specflow-engine.project-workspace",
-        "ideas.specflow-engine.worktrees",
-        "ideas.specflow-engine.recovery",
-        "ideas.specflow-engine.project-home",
-        "ideas.specflow-engine.workspace-binding-lifecycle"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "workflow",
-        "configuration",
-        "runtime"
-      ],
-      "tags": [
-        "registry",
-        "discovery",
-        "deduplication",
-        "workspace"
-      ]
-    },
-    {
-      "id": "ideas.specflow-engine.worktrees",
-      "type": "architecture",
-      "title": "Optional per Specification Git worktrees",
-      "status": "superseded",
-      "file": "docs/ideas/specflow-engine/optional-worktrees.md",
-      "read_when": [
-        "designing one worktree per spec as optional execution isolation",
-        "deciding workspace creation reuse and cleanup"
-      ],
-      "summary": "Optional worktree placement policy, isolation guarantees, lifecycle, guardrails, and safe cleanup rules without imposing new workflow types or automatic branch switching.",
-      "related": [
-        "ideas.specflow-engine",
-        "ideas.specflow-engine.git",
-        "ideas.specflow-engine.workspace-registry",
-        "ideas.specflow-engine.project-workspace",
-        "ideas.specflow-engine.locking",
-        "ideas.specflow-engine.workspace-binding-lifecycle"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "workflow",
-        "configuration",
-        "security"
-      ],
-      "tags": [
-        "worktree",
-        "git",
-        "lifecycle",
-        "isolation"
+        "relocation",
+        "repair"
       ]
     },
     {
@@ -1766,7 +1588,7 @@
         "ideas.specflow-engine.ownership",
         "product.specflow.ui.ai-session-ux",
         "ideas.specflow-ui.full-session-screen-structure",
-        "ideas.specflow-ui.screens.full-session"
+        "product.specflow.ui.full-session"
       ],
       "scope": "specflow",
       "areas": [
@@ -1805,6 +1627,7 @@
         "design-system.implementation.ownership-and-tooling",
         "product.specflow.ui.interaction-model",
         "product.specflow.ui.data-loading-and-integration",
+        "product.specflow.ui.specs-overview",
         "product.shared.localization"
       ]
     },
@@ -2072,7 +1895,7 @@
       "status": "current",
       "file": "docs/architecture/decisions/0016-engine-owned-document-commits.md",
       "read_when": [],
-      "summary": "Every state-changing Specification document operation writes its files and registry change to disk immediately, answers once the content is durable and its commit request is durably queued, and lands in Git later as an Engine-owned path-limited commit executed by a per-checkout queue (one active batch per checkout, batches per Specification). Queued operations of one Specification consolidate into one commit; a batch save is one commit. The dirty window between write and commit is bounded and journaled; it relaxes the clean-checkout consequence of ADR 0013 for document operations only. Protected branches and commit blockers are checked before any file is written. Extends ADR 0013.",
+      "summary": "Amended by ADR 0018 (automatic commit is opt-in, default off). Every state-changing Specification document operation writes its files and registry change to disk immediately, answers once the content is durable and its commit request is durably queued, and lands in Git later as an Engine-owned path-limited commit executed by a per-checkout queue (one active batch per checkout, batches per Specification). Queued operations of one Specification consolidate into one commit; a batch save is one commit. The dirty window between write and commit is bounded and journaled; it relaxes the clean-checkout consequence of ADR 0013 for document operations only. Protected branches and commit blockers are checked before any file is written. Extends ADR 0013.",
       "related": [
         "adr.0013-engine-owned-commits-and-protected-branches",
         "adr.0014-feature-owned-operation-lists",
@@ -2125,7 +1948,7 @@
       "status": "current",
       "file": "docs/architecture/decisions/0019-workflow-kernel-and-automatic-continuation.md",
       "read_when": [],
-      "summary": "Specifications and Tasks run through one deterministic workflow core and differ only in their entry points. Every Task has its own type and workflow, and the Specification archetype only restricts the types. Each step names a preferred agent archetype, which holds a preferred provider and a model per provider. A transition may continue automatically. When the Engine cannot resolve the next launch, it records a local attention item instead of asking the agent. Canonical execution state is Git-tracked in the Specification's .execution/ folder.",
+      "summary": "Specifications and Tasks run through one deterministic workflow core and differ only in their entry points. Every Task has its own type and workflow, and the Specification archetype only restricts the types. Each step names a preferred agent archetype, which holds a preferred provider and a model per provider. A transition may continue automatically. When the Engine cannot resolve the next launch, the owner gets an attention item, derived from the state and never stored, instead of asking the agent. Canonical execution state is Git-tracked in the Specification's .execution/ folder; only the change journal is local.",
       "related": [
         "architecture.workflow.workflow-kernel",
         "architecture.workflow.deterministic-workflow",
@@ -2238,14 +2061,14 @@
       "id": "design-system.implementation.react.workspace-dynamic-split",
       "type": "engineering",
       "title": "Workspace dynamic split and Secondary root tabs",
-      "status": "draft",
+      "status": "current",
       "file": "docs/design-system/implementation/react/workspace-dynamic-split.md",
       "read_when": [
         "adding more than one independently revisitable root area to a Secondary inspector",
         "adding a draggable splitter or a left/right swap to AppWorkspace",
-        "implementing a screen that needs the Workspace V2 auto/manual split behavior"
+        "implementing a screen that needs the auto/manual dynamic split behavior"
       ],
-      "summary": "Decision-complete contract for Secondary root tabs and the auto/manual dynamic split: owned state, the public API surface built on top of the existing AppWorkspace/Secondary composition, the auto/manual transition table, explicit non-goals, and the accessible splitter contract. Implemented (W01-W07); see section 1 for the closing evidence and one open reconciliation point.",
+      "summary": "Decision-complete contract for Secondary root tabs and the auto/manual dynamic split: owned state, the public API surface built on top of the existing AppWorkspace/Secondary composition, the auto/manual transition table, explicit non-goals, and the accessible splitter contract. Implemented in Nevo UI; Full Session is the first consumer.",
       "related": [
         "design-system.implementation.react.secondary-navigation",
         "design-system.implementation.react.item-tabs",
@@ -2253,9 +2076,7 @@
         "design-system.principles.system-boundary",
         "design-system.principles.ui-ux-guidelines",
         "architecture.principles.normative-language",
-        "ideas.specflow-ui.design-system-component-composition-gaps",
-        "ideas.specflow-ui.components.session-chat-v10-design",
-        "ideas.specflow-ui.full-session-screen-structure"
+        "product.specflow.ui.full-session"
       ],
       "scope": "nevo-ui"
     },
@@ -2293,7 +2114,7 @@
         "mapping domain state to visual tone",
         "deciding whether to use @apply or a CSS file"
       ],
-      "summary": "Class-composition pipeline: static local layout inline, reusable variants via cva, domain state resolved to a semantic tone before classes, explicit conditional composition, and a narrow @apply policy.",
+      "summary": "Class-composition pipeline: static local layout inline, reusable variants via tailwind-variants (`tv`), domain state resolved to a semantic tone before classes, explicit conditional composition, and a narrow @apply policy.",
       "related": [
         "design-system.implementation.react.component-guidelines",
         "design-system.principles.ui-ux-guidelines"
@@ -2729,7 +2550,7 @@
         "implementing authorization beyond the current foundation",
         "adding authorization to SpecFlow domain endpoints or UI"
       ],
-      "summary": "Remaining authorization integration work after the request/scoped authorization foundation: concrete domain enforcement, persistence-side collection filtering, product DTO projection, and UI consumption.",
+      "summary": "Remaining authorization integration work after the request/scoped authorization foundation: persistence-side collection filtering, product DTO capability projection, and UI consumption.",
       "related": [
         "architecture.runtime.authorization",
         "reference.api.authorization",
@@ -2744,234 +2565,21 @@
       ]
     },
     {
-      "id": "ideas.nevo-ui.execution-plans.plan-01",
-      "type": "engineering",
-      "title": "Temporary execution plan 01 — Workspace dynamic split",
-      "status": "draft",
-      "file": "docs/ideas/nevo-ui/execution-plans/01-workspace-dynamic-split/README.md",
-      "read_when": [
-        "implementing Secondary root tabs or the auto/manual dynamic split in packages/nevo-ui",
-        "selecting the next dependency-complete task for this capability"
-      ],
-      "summary": "Implementation-ready decomposition of Secondary root tabs, the auto/manual dynamic split resolver, the accessible splitter and the side swap, all confined to packages/nevo-ui.",
-      "related": [
-        "design-system.implementation.react.workspace-dynamic-split",
-        "design-system.implementation.react.secondary-navigation",
-        "design-system.implementation.react.item-tabs",
-        "ideas.specflow-ui.design-system-component-composition-gaps",
-        "ideas.nevo-ui"
-      ],
-      "scope": "nevo-ui",
-      "areas": [
-        "ui",
-        "testing"
-      ],
-      "tags": [
-        "execution-plan",
-        "temporary",
-        "workspace",
-        "secondary",
-        "tabs",
-        "resize",
-        "design-system"
-      ]
-    },
-    {
-      "id": "ideas.nevo-ui.execution-plans.plan-01.task-01",
-      "type": "engineering",
-      "title": "W01 — Closable item-set extension",
-      "status": "draft",
-      "file": "docs/ideas/nevo-ui/execution-plans/01-workspace-dynamic-split/tasks/W01-closable-item-set-extension.md",
-      "read_when": [
-        "implementing W01 for the workspace dynamic split plan"
-      ],
-      "summary": "Dependency-complete task to add an optional non-closable item to useOpenedItems/ItemTabs, the first prerequisite for a pinned Secondary root tab.",
-      "related": [
-        "ideas.nevo-ui.execution-plans.plan-01",
-        "design-system.implementation.react.workspace-dynamic-split",
-        "design-system.implementation.react.item-tabs"
-      ],
-      "scope": "nevo-ui",
-      "areas": [
-        "ui",
-        "testing"
-      ],
-      "tags": [
-        "execution-task",
-        "temporary",
-        "implementation"
-      ]
-    },
-    {
-      "id": "ideas.nevo-ui.execution-plans.plan-01.task-02",
-      "type": "engineering",
-      "title": "W02 — Secondary root-tab state",
-      "status": "draft",
-      "file": "docs/ideas/nevo-ui/execution-plans/01-workspace-dynamic-split/tasks/W02-secondary-root-tab-state.md",
-      "read_when": [
-        "implementing W02 for the workspace dynamic split plan"
-      ],
-      "summary": "Dependency-complete task to generalize WorkspaceContext's single Secondary flow into a tab-keyed collection, with open() activating-or-creating a tab and close surviving hide/reopen.",
-      "related": [
-        "ideas.nevo-ui.execution-plans.plan-01",
-        "design-system.implementation.react.workspace-dynamic-split",
-        "design-system.implementation.react.secondary-navigation"
-      ],
-      "scope": "nevo-ui",
-      "areas": [
-        "ui",
-        "testing"
-      ],
-      "tags": [
-        "execution-task",
-        "temporary",
-        "implementation"
-      ]
-    },
-    {
-      "id": "ideas.nevo-ui.execution-plans.plan-01.task-03",
-      "type": "engineering",
-      "title": "W03 — Tab strip composition",
-      "status": "draft",
-      "file": "docs/ideas/nevo-ui/execution-plans/01-workspace-dynamic-split/tasks/W03-tab-strip-composition.md",
-      "read_when": [
-        "implementing W03 for the workspace dynamic split plan"
-      ],
-      "summary": "Dependency-complete task to render Secondary's root tabs via ItemTabs inside the existing Secondary header, hidden entirely while only the pinned tab is open.",
-      "related": [
-        "ideas.nevo-ui.execution-plans.plan-01",
-        "design-system.implementation.react.workspace-dynamic-split",
-        "design-system.implementation.react.item-tabs"
-      ],
-      "scope": "nevo-ui",
-      "areas": [
-        "ui",
-        "testing"
-      ],
-      "tags": [
-        "execution-task",
-        "temporary",
-        "implementation"
-      ]
-    },
-    {
-      "id": "ideas.nevo-ui.execution-plans.plan-01.task-04",
-      "type": "engineering",
-      "title": "W04 — Dynamic split resolver",
-      "status": "draft",
-      "file": "docs/ideas/nevo-ui/execution-plans/01-workspace-dynamic-split/tasks/W04-dynamic-split-resolver.md",
-      "read_when": [
-        "implementing W04 for the workspace dynamic split plan"
-      ],
-      "summary": "Dependency-complete task to add the pure auto/manual sizing resolver to workspaceSizing.ts and wire AppWorkspace's split=\"dynamic\" mode, including the width-infeasible stacked fallback.",
-      "related": [
-        "ideas.nevo-ui.execution-plans.plan-01",
-        "design-system.implementation.react.workspace-dynamic-split"
-      ],
-      "scope": "nevo-ui",
-      "areas": [
-        "ui",
-        "testing"
-      ],
-      "tags": [
-        "execution-task",
-        "temporary",
-        "implementation"
-      ]
-    },
-    {
-      "id": "ideas.nevo-ui.execution-plans.plan-01.task-05",
-      "type": "engineering",
-      "title": "W05 — Accessible splitter",
-      "status": "draft",
-      "file": "docs/ideas/nevo-ui/execution-plans/01-workspace-dynamic-split/tasks/W05-accessible-splitter.md",
-      "read_when": [
-        "implementing W05 for the workspace dynamic split plan"
-      ],
-      "summary": "Dependency-complete task to build the new interactive WorkspaceSplitter primitive (keyboard, pointer and touch resize, ARIA window-splitter pattern) and wire it into AppWorkspace.",
-      "related": [
-        "ideas.nevo-ui.execution-plans.plan-01",
-        "design-system.implementation.react.workspace-dynamic-split"
-      ],
-      "scope": "nevo-ui",
-      "areas": [
-        "ui",
-        "testing"
-      ],
-      "tags": [
-        "execution-task",
-        "temporary",
-        "implementation"
-      ]
-    },
-    {
-      "id": "ideas.nevo-ui.execution-plans.plan-01.task-06",
-      "type": "engineering",
-      "title": "W06 — Side swap",
-      "status": "draft",
-      "file": "docs/ideas/nevo-ui/execution-plans/01-workspace-dynamic-split/tasks/W06-side-swap.md",
-      "read_when": [
-        "implementing W06 for the workspace dynamic split plan"
-      ],
-      "summary": "Dependency-complete task to add secondarySide/onSecondarySideChange to AppWorkspace, swapping Primary/Secondary layout order while preserving every piece of sizing and tab state.",
-      "related": [
-        "ideas.nevo-ui.execution-plans.plan-01",
-        "design-system.implementation.react.workspace-dynamic-split"
-      ],
-      "scope": "nevo-ui",
-      "areas": [
-        "ui",
-        "testing"
-      ],
-      "tags": [
-        "execution-task",
-        "temporary",
-        "implementation"
-      ]
-    },
-    {
-      "id": "ideas.nevo-ui.execution-plans.plan-01.task-07",
-      "type": "engineering",
-      "title": "W07 — Verification and consumer-compatibility audit",
-      "status": "draft",
-      "file": "docs/ideas/nevo-ui/execution-plans/01-workspace-dynamic-split/tasks/W07-verification-and-compatibility-audit.md",
-      "read_when": [
-        "implementing W07 for the workspace dynamic split plan"
-      ],
-      "summary": "Dependency-complete acceptance task proving the full §5 transition table end-to-end, auditing the recorded consumer-compatibility consequences, and promoting the contract/gaps-doc status.",
-      "related": [
-        "ideas.nevo-ui.execution-plans.plan-01",
-        "design-system.implementation.react.workspace-dynamic-split",
-        "ideas.specflow-ui.design-system-component-composition-gaps"
-      ],
-      "scope": "nevo-ui",
-      "areas": [
-        "ui",
-        "testing"
-      ],
-      "tags": [
-        "execution-task",
-        "temporary",
-        "implementation"
-      ]
-    },
-    {
       "id": "ideas.specflow-engine.legacy-migration",
       "type": "engineering",
-      "title": "Legacy Nevo migration map and instructions",
+      "title": "Legacy Nevo migration — modules not yet ported",
       "status": "draft",
       "file": "docs/ideas/specflow-engine/legacy-nevo-migration.md",
       "read_when": [
-        "preparing deterministic workflow or AI migrations from the old nevo repository",
+        "porting gates, finalize, human verification, filesystem watching or batches from the old nevo repository",
         "reviewing whether a legacy module may be copied or needs redesign"
       ],
-      "summary": "Evidence-based map of old Nevo modules to Engine, CLI and Runtime owners, including known coupling to reject and checks required during future module-by-module migration.",
+      "summary": "The legacy Nevo modules that have no SpecFlow owner implementation yet (gates and verify, commit-and-push and finalize, approve and verify-human, watcher and SSE invalidation, batches), with what to preserve, what to change and the checks a migration needs.",
       "related": [
         "ideas.specflow-engine",
-        "ideas.specflow-engine.baseline-evidence",
-        "ideas.specflow-engine.boundaries",
         "ideas.specflow-engine.ownership",
         "ideas.specflow-engine.acceptance",
+        "ideas.specflow-engine.plan-06",
         "ideas.specflow-runtime.ai-adapters"
       ],
       "scope": "specflow",
@@ -3202,93 +2810,6 @@
       ]
     },
     {
-      "id": "ideas.specflow-engine.plan-03.task-01",
-      "type": "engineering",
-      "title": "E3.T01 — Legacy fact check",
-      "status": "draft",
-      "file": "docs/ideas/specflow-engine/execution-plans/03-offline-workflow-execution/tasks/T01-legacy-fact-check.md",
-      "read_when": [
-        "implementing E3.T01 on the shared implementation branch",
-        "checking dependencies, batch safety and acceptance evidence"
-      ],
-      "summary": "Temporary task for legacy fact check within the SpecFlow Engine implementation.",
-      "related": [
-        "ideas.specflow-engine.plan-03",
-        "ideas.specflow-engine.execution-plans",
-        "ideas.specflow-engine.test-plan"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "workflow",
-        "cli",
-        "security",
-        "testing"
-      ],
-      "tags": [
-        "execution-task",
-        "temporary",
-        "implementation"
-      ]
-    },
-    {
-      "id": "ideas.specflow-engine.plan-03.task-02",
-      "type": "engineering",
-      "title": "E3.T02 — Workflow definition/identity",
-      "status": "draft",
-      "file": "docs/ideas/specflow-engine/execution-plans/03-offline-workflow-execution/tasks/T02-workflow-definition-identity.md",
-      "read_when": [
-        "implementing E3.T02 on the shared implementation branch",
-        "checking dependencies, batch safety and acceptance evidence"
-      ],
-      "summary": "Temporary task for workflow definition/identity within the SpecFlow Engine implementation.",
-      "related": [
-        "ideas.specflow-engine.plan-03",
-        "ideas.specflow-engine.execution-plans",
-        "ideas.specflow-engine.test-plan"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "workflow",
-        "cli",
-        "security",
-        "testing"
-      ],
-      "tags": [
-        "execution-task",
-        "temporary",
-        "implementation"
-      ]
-    },
-    {
-      "id": "ideas.specflow-engine.plan-03.task-03",
-      "type": "engineering",
-      "title": "E3.T03 — Readiness/step state",
-      "status": "draft",
-      "file": "docs/ideas/specflow-engine/execution-plans/03-offline-workflow-execution/tasks/T03-readiness-step-state.md",
-      "read_when": [
-        "implementing E3.T03 on the shared implementation branch",
-        "checking dependencies, batch safety and acceptance evidence"
-      ],
-      "summary": "Temporary task for readiness/step state within the SpecFlow Engine implementation.",
-      "related": [
-        "ideas.specflow-engine.plan-03",
-        "ideas.specflow-engine.execution-plans",
-        "ideas.specflow-engine.test-plan"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "workflow",
-        "cli",
-        "security",
-        "testing"
-      ],
-      "tags": [
-        "execution-task",
-        "temporary",
-        "implementation"
-      ]
-    },
-    {
       "id": "ideas.specflow-engine.plan-03.task-04",
       "type": "engineering",
       "title": "E3.T04 — Verification boundary",
@@ -3492,283 +3013,6 @@
       ]
     },
     {
-      "id": "ideas.specflow-engine.plan-04",
-      "type": "engineering",
-      "title": "Temporary execution plan 04 — Managed Sessions Foundation",
-      "status": "draft",
-      "file": "docs/ideas/specflow-engine/execution-plans/04-managed-sessions-foundation/README.md",
-      "read_when": [
-        "implementing the independent managed Session foundation",
-        "selecting the next dependency-complete Session task"
-      ],
-      "summary": "Implementation-ready decomposition of independent Session core, worker SQLite, bounded tail/history, authorized HTTP/SSE and a real UI with a no-effect mock.",
-      "related": [
-        "ideas.specflow-runtime.managed-sessions-delivery",
-        "architecture.ai.session-storage-and-lifecycle",
-        "reference.api.sessions",
-        "reference.protocols.session-provider-driver",
-        "ideas.specflow-runtime.provider-migration-plan",
-        "ideas.specflow-engine.execution-plans"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "runtime",
-        "ai",
-        "security",
-        "testing",
-        "ui"
-      ],
-      "tags": [
-        "execution-plan",
-        "temporary",
-        "sessions",
-        "turns",
-        "mock-provider",
-        "pagination"
-      ]
-    },
-    {
-      "id": "ideas.specflow-engine.plan-04.task-01",
-      "type": "engineering",
-      "title": "E4.T01 — Session contract reconnaissance",
-      "status": "draft",
-      "file": "docs/ideas/specflow-engine/execution-plans/04-managed-sessions-foundation/tasks/T01-session-contract-reconnaissance.md",
-      "read_when": [
-        "implementing E4.T01 on feature/managed-sessions-foundation"
-      ],
-      "summary": "Dependency-complete session contract reconnaissance task for independent Sessions.",
-      "related": [
-        "ideas.specflow-engine.plan-04",
-        "ideas.specflow-runtime.managed-sessions-delivery",
-        "architecture.ai.session-storage-and-lifecycle",
-        "reference.api.sessions",
-        "reference.protocols.session-provider-driver"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "runtime",
-        "ai",
-        "security",
-        "testing"
-      ],
-      "tags": [
-        "execution-task",
-        "temporary",
-        "implementation"
-      ]
-    },
-    {
-      "id": "ideas.specflow-engine.plan-04.task-02",
-      "type": "engineering",
-      "title": "E4.T02 — Canonical identities",
-      "status": "draft",
-      "file": "docs/ideas/specflow-engine/execution-plans/04-managed-sessions-foundation/tasks/T02-canonical-identities.md",
-      "read_when": [
-        "implementing E4.T02 on feature/managed-sessions-foundation"
-      ],
-      "summary": "Dependency-complete canonical identities task for independent Sessions.",
-      "related": [
-        "ideas.specflow-engine.plan-04",
-        "ideas.specflow-runtime.managed-sessions-delivery",
-        "architecture.ai.session-storage-and-lifecycle",
-        "reference.api.sessions",
-        "reference.protocols.session-provider-driver"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "runtime",
-        "ai",
-        "security",
-        "testing"
-      ],
-      "tags": [
-        "execution-task",
-        "temporary",
-        "implementation"
-      ]
-    },
-    {
-      "id": "ideas.specflow-engine.plan-04.task-03",
-      "type": "engineering",
-      "title": "E4.T03 — Durable Runtime state",
-      "status": "draft",
-      "file": "docs/ideas/specflow-engine/execution-plans/04-managed-sessions-foundation/tasks/T03-durable-runtime-state.md",
-      "read_when": [
-        "implementing E4.T03 on feature/managed-sessions-foundation"
-      ],
-      "summary": "Dependency-complete durable runtime state task for independent Sessions.",
-      "related": [
-        "ideas.specflow-engine.plan-04",
-        "ideas.specflow-runtime.managed-sessions-delivery",
-        "architecture.ai.session-storage-and-lifecycle",
-        "reference.api.sessions",
-        "reference.protocols.session-provider-driver"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "runtime",
-        "ai",
-        "security",
-        "testing"
-      ],
-      "tags": [
-        "execution-task",
-        "temporary",
-        "implementation"
-      ]
-    },
-    {
-      "id": "ideas.specflow-engine.plan-04.task-04",
-      "type": "engineering",
-      "title": "E4.T04 — Provider-neutral test driver",
-      "status": "draft",
-      "file": "docs/ideas/specflow-engine/execution-plans/04-managed-sessions-foundation/tasks/T04-provider-neutral-test-driver.md",
-      "read_when": [
-        "implementing E4.T04 on feature/managed-sessions-foundation"
-      ],
-      "summary": "Dependency-complete provider-neutral test driver task for independent Sessions.",
-      "related": [
-        "ideas.specflow-engine.plan-04",
-        "ideas.specflow-runtime.managed-sessions-delivery",
-        "architecture.ai.session-storage-and-lifecycle",
-        "reference.api.sessions",
-        "reference.protocols.session-provider-driver"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "runtime",
-        "ai",
-        "security",
-        "testing"
-      ],
-      "tags": [
-        "execution-task",
-        "temporary",
-        "implementation"
-      ]
-    },
-    {
-      "id": "ideas.specflow-engine.plan-04.task-05",
-      "type": "engineering",
-      "title": "E4.T05 — Turn coordinator",
-      "status": "draft",
-      "file": "docs/ideas/specflow-engine/execution-plans/04-managed-sessions-foundation/tasks/T05-turn-coordinator.md",
-      "read_when": [
-        "implementing E4.T05 on feature/managed-sessions-foundation"
-      ],
-      "summary": "Dependency-complete turn coordinator task for independent Sessions.",
-      "related": [
-        "ideas.specflow-engine.plan-04",
-        "ideas.specflow-runtime.managed-sessions-delivery",
-        "architecture.ai.session-storage-and-lifecycle",
-        "reference.api.sessions",
-        "reference.protocols.session-provider-driver"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "runtime",
-        "ai",
-        "security",
-        "testing"
-      ],
-      "tags": [
-        "execution-task",
-        "temporary",
-        "implementation"
-      ]
-    },
-    {
-      "id": "ideas.specflow-engine.plan-04.task-06",
-      "type": "engineering",
-      "title": "E4.T06 — HTTP/stream contracts",
-      "status": "draft",
-      "file": "docs/ideas/specflow-engine/execution-plans/04-managed-sessions-foundation/tasks/T06-http-stream-contracts.md",
-      "read_when": [
-        "implementing E4.T06 on feature/managed-sessions-foundation"
-      ],
-      "summary": "Dependency-complete http/stream contracts task for independent Sessions.",
-      "related": [
-        "ideas.specflow-engine.plan-04",
-        "ideas.specflow-runtime.managed-sessions-delivery",
-        "architecture.ai.session-storage-and-lifecycle",
-        "reference.api.sessions",
-        "reference.protocols.session-provider-driver"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "runtime",
-        "ai",
-        "security",
-        "testing"
-      ],
-      "tags": [
-        "execution-task",
-        "temporary",
-        "implementation"
-      ]
-    },
-    {
-      "id": "ideas.specflow-engine.plan-04.task-07",
-      "type": "engineering",
-      "title": "E4.T07 — UI integration slice",
-      "status": "draft",
-      "file": "docs/ideas/specflow-engine/execution-plans/04-managed-sessions-foundation/tasks/T07-ui-integration-slice.md",
-      "read_when": [
-        "implementing E4.T07 on feature/managed-sessions-foundation"
-      ],
-      "summary": "Dependency-complete ui integration slice task for independent Sessions.",
-      "related": [
-        "ideas.specflow-engine.plan-04",
-        "ideas.specflow-runtime.managed-sessions-delivery",
-        "architecture.ai.session-storage-and-lifecycle",
-        "reference.api.sessions",
-        "reference.protocols.session-provider-driver"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "runtime",
-        "ai",
-        "security",
-        "testing",
-        "ui"
-      ],
-      "tags": [
-        "execution-task",
-        "temporary",
-        "implementation"
-      ]
-    },
-    {
-      "id": "ideas.specflow-engine.plan-04.task-08",
-      "type": "engineering",
-      "title": "E4.T08 — Lifecycle/security tests",
-      "status": "draft",
-      "file": "docs/ideas/specflow-engine/execution-plans/04-managed-sessions-foundation/tasks/T08-lifecycle-security-tests.md",
-      "read_when": [
-        "implementing E4.T08 on feature/managed-sessions-foundation"
-      ],
-      "summary": "Dependency-complete lifecycle/security tests task for independent Sessions.",
-      "related": [
-        "ideas.specflow-engine.plan-04",
-        "ideas.specflow-runtime.managed-sessions-delivery",
-        "architecture.ai.session-storage-and-lifecycle",
-        "reference.api.sessions",
-        "reference.protocols.session-provider-driver"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "runtime",
-        "ai",
-        "security",
-        "testing"
-      ],
-      "tags": [
-        "execution-task",
-        "temporary",
-        "implementation"
-      ]
-    },
-    {
       "id": "ideas.specflow-engine.plan-05",
       "type": "engineering",
       "title": "Temporary execution plan 05 — Managed Execution Integration",
@@ -3842,96 +3086,6 @@
         "checking dependencies, batch safety and acceptance evidence"
       ],
       "summary": "Temporary task for preparation and authorization within the SpecFlow Engine implementation.",
-      "related": [
-        "ideas.specflow-engine.plan-05",
-        "ideas.specflow-engine.execution-plans",
-        "ideas.specflow-engine.test-plan"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "workflow",
-        "runtime",
-        "ai",
-        "security",
-        "testing"
-      ],
-      "tags": [
-        "execution-task",
-        "temporary",
-        "implementation"
-      ]
-    },
-    {
-      "id": "ideas.specflow-engine.plan-05.task-03",
-      "type": "engineering",
-      "title": "E5.T03 — Atomic-enough intent protocol",
-      "status": "draft",
-      "file": "docs/ideas/specflow-engine/execution-plans/05-managed-execution-integration/tasks/T03-atomic-enough-intent-protocol.md",
-      "read_when": [
-        "implementing E5.T03 on the shared implementation branch",
-        "checking dependencies, batch safety and acceptance evidence"
-      ],
-      "summary": "Temporary task for atomic-enough intent protocol within the SpecFlow Engine implementation.",
-      "related": [
-        "ideas.specflow-engine.plan-05",
-        "ideas.specflow-engine.execution-plans",
-        "ideas.specflow-engine.test-plan"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "workflow",
-        "runtime",
-        "ai",
-        "security",
-        "testing"
-      ],
-      "tags": [
-        "execution-task",
-        "temporary",
-        "implementation"
-      ]
-    },
-    {
-      "id": "ideas.specflow-engine.plan-05.task-04",
-      "type": "engineering",
-      "title": "E5.T04 — Mock dispatch phases",
-      "status": "draft",
-      "file": "docs/ideas/specflow-engine/execution-plans/05-managed-execution-integration/tasks/T04-mock-dispatch-phases.md",
-      "read_when": [
-        "implementing E5.T04 on the shared implementation branch",
-        "checking dependencies, batch safety and acceptance evidence"
-      ],
-      "summary": "Temporary task for mock dispatch phases within the SpecFlow Engine implementation.",
-      "related": [
-        "ideas.specflow-engine.plan-05",
-        "ideas.specflow-engine.execution-plans",
-        "ideas.specflow-engine.test-plan"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "workflow",
-        "runtime",
-        "ai",
-        "security",
-        "testing"
-      ],
-      "tags": [
-        "execution-task",
-        "temporary",
-        "implementation"
-      ]
-    },
-    {
-      "id": "ideas.specflow-engine.plan-05.task-05",
-      "type": "engineering",
-      "title": "E5.T05 — Turn/claim settlement",
-      "status": "draft",
-      "file": "docs/ideas/specflow-engine/execution-plans/05-managed-execution-integration/tasks/T05-turn-claim-settlement.md",
-      "read_when": [
-        "implementing E5.T05 on the shared implementation branch",
-        "checking dependencies, batch safety and acceptance evidence"
-      ],
-      "summary": "Temporary task for turn/claim settlement within the SpecFlow Engine implementation.",
       "related": [
         "ideas.specflow-engine.plan-05",
         "ideas.specflow-engine.execution-plans",
@@ -4078,17 +3232,18 @@
       "status": "draft",
       "file": "docs/ideas/specflow-engine/execution-plans/06-workflow-kernel/README.md",
       "read_when": [
-        "continuing the workflow kernel work (follow-ups F01–F20)",
+        "continuing the workflow kernel work (follow-ups F01–F09, F11–F20)",
         "comparing the legacy nevo workflow engine with this one",
         "planning Runtime, CLI or UI work on Specification or Task execution"
       ],
-      "summary": "Analysis of the legacy nevo deterministic workflow (what was reused and what was rewritten), what the first kernel PR implements, and the ordered follow-ups with their design constraints, so each can be picked up independently.",
+      "summary": "Analysis of the legacy nevo deterministic workflow (what was reused and what was rewritten), a short note on what is implemented, and the open follow-ups with their design constraints, so each can be picked up independently.",
       "related": [
         "architecture.workflow.workflow-kernel",
         "architecture.workflow.deterministic-workflow",
         "adr.0019-workflow-kernel-and-automatic-continuation",
         "ideas.specflow-engine.plan-03",
         "ideas.specflow-engine.plan-05",
+        "architecture.runtime.workspace-execution-claims",
         "ideas.specflow-engine.workflow-api-requirements",
         "ideas.specflow-engine.task-resource-and-context"
       ],
@@ -4107,73 +3262,18 @@
       ]
     },
     {
-      "id": "ideas.specflow-engine.specification-close-decisions",
-      "type": "engineering",
-      "title": "Proposed Specification and worktree closure decisions",
-      "status": "superseded",
-      "file": "docs/ideas/specflow-engine/specification-close-decisions.md",
-      "read_when": [
-        "approving Plan 02 lifecycle implementation"
-      ],
-      "summary": "Decisions, rejected alternatives and product-owner questions for safe offline and HTTP closing.",
-      "related": [
-        "ideas.specflow-engine.specification-worktree-closure"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "workflow",
-        "security",
-        "cli",
-        "runtime",
-        "testing"
-      ],
-      "tags": [
-        "decision-record",
-        "architecture-review",
-        "temporary-design"
-      ]
-    },
-    {
-      "id": "ideas.specflow-engine.specification-close-self-review",
-      "type": "engineering",
-      "title": "Self-review of Specification and Worktree closure design",
-      "status": "superseded",
-      "file": "docs/ideas/specflow-engine/specification-close-self-review.md",
-      "read_when": [
-        "independently reviewing E2.T09–T17",
-        "checking corrected design weaknesses before code implementation"
-      ],
-      "summary": "Explicit internal review findings and correction evidence against the 2026-10-16 planning design.",
-      "related": [
-        "ideas.specflow-engine.specification-worktree-closure",
-        "ideas.specflow-engine.specification-close-decisions"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "workflow",
-        "security",
-        "testing"
-      ],
-      "tags": [
-        "architecture-review",
-        "self-review",
-        "lifecycle",
-        "temporary-design"
-      ]
-    },
-    {
       "id": "ideas.specflow-engine.task-resource-and-context",
       "type": "engineering",
-      "title": "Tasks as workflow-managed resources, Task lifecycle and context building (draft)",
+      "title": "Tasks as workflow-managed resources and context building (draft)",
       "status": "draft",
       "file": "docs/ideas/specflow-engine/task-resource-and-context.md",
       "read_when": [
         "replacing the provisional Task record of the workflow kernel",
-        "designing Task folders, the Task index, Task statuses or Task escalation",
+        "designing Task folders, the Task index or Task documents",
         "designing how the context of a Specification or Task step is built",
         "writing the ADR that makes Tasks a resource with their own documents"
       ],
-      "summary": "Owner ideas and decisions (open questions answered on 2026-11-05), not yet an ADR: one workflow-managed subject contract for Specifications and Tasks, one folder per Task with a manifest, a main document and the Task index as registry, a Task-only preparation status (draft, ready, on-hold, cancelled) separate from the workflow position, a guard that keeps draft Tasks out of implementation, explicit hold and cancel decisions, escalation from a Task to its Specification through a declared Specification transition, and an explicit typed context list per subject. Options, decisions and implementation slices.",
+      "summary": "Owner decisions (2026-11-05), not yet an ADR, for the open part of plan 06 F20: one workflow-managed subject contract for Specifications and Tasks, one folder per Task with a manifest, a main document and the Task index as registry, and an explicit typed context list per subject. The Task lifecycle (status, decisions, approval, escalation, guard) is implemented and lives in the workflow kernel document. Options, decisions and the remaining implementation slices.",
       "related": [
         "architecture.workflow.workflow-kernel",
         "adr.0015-specification-manifest-as-document-registry",
@@ -4200,23 +3300,21 @@
     {
       "id": "ideas.specflow-engine.test-plan",
       "type": "engineering",
-      "title": "Engine workspace integration test plan",
+      "title": "Open Engine workflow and managed execution test matrix",
       "status": "draft",
       "file": "docs/ideas/specflow-engine/test-plan.md",
       "read_when": [
-        "designing a proof-of-concept test suite for offline CLI and worktree Specs",
-        "investigating crash consistency or cross-process state"
+        "designing tests for offline workflow coordination, writer claims or managed execution",
+        "investigating crash consistency or cross-process state of workflow steps"
       ],
-      "summary": "Executable matrix using real temporary Git repositories, offline child processes, HTTP integration and fault injection to validate Engine/Runtime/worktree boundaries.",
+      "summary": "Open test matrix (W, L, SC, AG, H07, S, B, R06/R07, MI) using real temporary Git repositories, offline child processes, HTTP integration and fault injection; implemented Create, Close, Project Home and Session foundation cases are covered by package tests.",
       "related": [
         "ideas.specflow-engine",
-        "ideas.specflow-engine.spec-creation",
         "ideas.specflow-engine.locking",
         "ideas.specflow-engine.recovery",
         "ideas.specflow-engine.acceptance",
         "ideas.specflow-engine.managed-session-integration",
-        "ideas.specflow-engine.execution-scopes",
-        "ideas.specflow-engine.project-home"
+        "ideas.specflow-engine.execution-scopes"
       ],
       "scope": "specflow",
       "areas": [
@@ -4264,126 +3362,21 @@
       ]
     },
     {
-      "id": "ideas.specflow-runtime.ai-adapters.correlation-identity",
-      "type": "engineering",
-      "title": "Provider correlation identity",
-      "status": "draft",
-      "file": "docs/ideas/specflow-runtime/ai-adapters/correlation-identity.md",
-      "read_when": [
-        "indexing active turns or interactions by provider session",
-        "implementing MCP/provider correlation",
-        "migrating legacy maps keyed by providerSessionId"
-      ],
-      "summary": "Use composite provider/session identity consistently for every provider-native lookup and keep canonical Session identity separate, preventing collisions between providers and avoiding parallel identity rules in interaction registries.",
-      "related": [
-        "ideas.specflow-runtime.ai-adapters",
-        "ideas.specflow-runtime.ai-adapters.invocation-ownership",
-        "architecture.ai.provider-boundary",
-        "architecture.ai.canonical-session-turn-work"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ai",
-        "runtime",
-        "testing"
-      ],
-      "tags": [
-        "session-identity",
-        "interactions",
-        "mcp",
-        "correlation"
-      ]
-    },
-    {
-      "id": "ideas.specflow-runtime.ai-adapters.cross-platform-process-runtime",
-      "type": "engineering",
-      "title": "Cross-platform provider process runtime",
-      "status": "draft",
-      "file": "docs/ideas/specflow-runtime/ai-adapters/cross-platform-process-runtime.md",
-      "read_when": [
-        "migrating provider process management",
-        "changing process-tree termination or liveness checks",
-        "adding platform-specific provider telemetry"
-      ],
-      "summary": "Preserve OS-aware process-tree ownership and termination, isolate optional platform-specific liveness telemetry behind capability boundaries, and test paths/session ids/filesystem cleanup against Windows and POSIX semantics rather than assuming Linux behavior.",
-      "related": [
-        "ideas.specflow-runtime.ai-adapters",
-        "ideas.specflow-runtime.ai-adapters.liveness-watchdog",
-        "ideas.specflow-runtime.ai-adapters.resource-lifetime",
-        "ideas.specflow-runtime.ai-adapters.raw-diagnostics-retention",
-        "ideas.specflow-runtime.ai-adapters.process-environment-boundary"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ai",
-        "runtime",
-        "testing"
-      ],
-      "tags": [
-        "process",
-        "windows",
-        "linux",
-        "macos",
-        "portability"
-      ]
-    },
-    {
-      "id": "ideas.specflow-runtime.ai-adapters.diagnostic-sanitization",
-      "type": "engineering",
-      "title": "Provider diagnostic sanitization",
-      "status": "draft",
-      "file": "docs/ideas/specflow-runtime/ai-adapters/diagnostic-sanitization.md",
-      "read_when": [
-        "persisting provider diagnostics or errors",
-        "logging provider commands, stderr, environment failures, or probe output",
-        "emitting telemetry derived from provider execution",
-        "exposing technical provider details in UI or API responses"
-      ],
-      "summary": "Sanitize provider diagnostics at the boundary using actual resolved secret values plus structural token heuristics, bound retained text after redaction, remove terminal/control artifacts, and keep telemetry attributes closed and low-cardinality.",
-      "related": [
-        "ideas.specflow-runtime.ai-adapters",
-        "ideas.specflow-runtime.ai-adapters.process-environment-boundary",
-        "ideas.specflow-runtime.ai-adapters.raw-diagnostics-retention",
-        "ideas.specflow-runtime.ai-adapters.diagnostics-and-replay",
-        "architecture.ai.provider-boundary"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ai",
-        "runtime",
-        "security",
-        "testing"
-      ],
-      "tags": [
-        "diagnostics",
-        "redaction",
-        "secrets",
-        "telemetry",
-        "providers"
-      ]
-    },
-    {
       "id": "ideas.specflow-runtime.ai-adapters.diagnostics-and-replay",
       "type": "engineering",
-      "title": "Provider diagnostics and protocol replay",
+      "title": "Provider diagnose API and protocol replay",
       "status": "draft",
       "file": "docs/ideas/specflow-runtime/ai-adapters/diagnostics-and-replay.md",
       "read_when": [
         "adding a provider environment check",
-        "debugging provider installation/auth/version problems",
         "adding regression coverage for provider protocol drift"
       ],
-      "summary": "Keep cheap availability separate from an explicit provider diagnostic lane, and make provider event parsing replayable from minimized fixtures so protocol bugs become deterministic tests instead of requiring reproduction against a live CLI.",
+      "summary": "Open items: a provider-owned diagnose() API with independent checks, and a capture-to-replay harness that turns minimized protocol captures into deterministic parser fixtures.",
       "related": [
         "ideas.specflow-runtime.ai-adapters",
-        "ideas.specflow-runtime.ai-adapters.raw-diagnostics-retention",
-        "ideas.specflow-runtime.ai-adapters.error-classification",
-        "ideas.specflow-runtime.ai-adapters.output-semantics",
-        "ideas.specflow-runtime.ai-adapters.protocol-examples",
         "ideas.specflow-runtime.ai-adapters.provider-readiness-auth",
-        "ideas.specflow-runtime.ai-adapters.model-selection-effort",
         "ideas.specflow-runtime.ai-adapters.provider-error-examples",
-        "ideas.specflow-runtime.ai-adapters.diagnostic-sanitization"
+        "reference.protocols.session-provider-driver"
       ],
       "scope": "specflow",
       "areas": [
@@ -4401,23 +3394,20 @@
     {
       "id": "ideas.specflow-runtime.ai-adapters.error-classification",
       "type": "engineering",
-      "title": "Evidence-based provider error classification",
+      "title": "Quota versus transient rate-limit classification",
       "status": "draft",
       "file": "docs/ideas/specflow-runtime/ai-adapters/error-classification.md",
       "read_when": [
-        "implementing provider error mapping",
-        "deciding whether a provider failure is retryable",
-        "handling usage limits, authentication, model availability, or transient upstream failures"
+        "distinguishing provider quota exhaustion from transient throttling",
+        "adding retry or reset-time metadata to provider failures"
       ],
-      "summary": "Classify provider failures from structured evidence first, restrict text matching to trusted failure fields, distinguish quota from transient rate limiting, and expose retry metadata such as retryNotBefore without letting model prose drive lifecycle semantics.",
+      "summary": "Open classification work: separate account quota exhaustion from transient rate limiting using evidence from trusted failure locations only, and carry a conservatively parsed retryNotBefore with the private failure evidence.",
       "related": [
         "ideas.specflow-runtime.ai-adapters",
-        "architecture.ai.provider-boundary",
-        "ideas.specflow-runtime.ai-adapters.protocol-examples",
         "ideas.specflow-runtime.ai-adapters.provider-error-examples",
-        "ideas.specflow-runtime.ai-adapters.provider-readiness-auth",
         "ideas.specflow-runtime.ai-adapters.provider-capacity-admission",
-        "ideas.specflow-runtime.ai-adapters.session-resume-recovery"
+        "reference.protocols.session-provider-driver",
+        "architecture.ai.provider-boundary"
       ],
       "scope": "specflow",
       "areas": [
@@ -4429,38 +3419,7 @@
         "providers",
         "errors",
         "quota",
-        "retry"
-      ]
-    },
-    {
-      "id": "ideas.specflow-runtime.ai-adapters.invocation-ownership",
-      "type": "engineering",
-      "title": "Invocation ownership and late-event fencing",
-      "status": "draft",
-      "file": "docs/ideas/specflow-runtime/ai-adapters/invocation-ownership-and-late-events.md",
-      "read_when": [
-        "implementing provider start/cancel lifecycle",
-        "binding a provider-native session id after a turn has started",
-        "handling callbacks that may arrive after cancellation or replacement"
-      ],
-      "summary": "Give each provider invocation an ownership generation/fence so callbacks from cancelled, terminal, or superseded invocations cannot mutate canonical aliases, session identity, Work, or lifecycle state.",
-      "related": [
-        "ideas.specflow-runtime.ai-adapters",
-        "architecture.ai.canonical-session-turn-work",
-        "architecture.runtime.ownership-and-lifecycle",
-        "ideas.specflow-runtime.ai-adapters.session-resume-recovery"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ai",
-        "runtime",
-        "testing"
-      ],
-      "tags": [
-        "lifecycle",
-        "concurrency",
-        "cancellation",
-        "session-identity"
+        "rate-limit"
       ]
     },
     {
@@ -4478,7 +3437,7 @@
       "related": [
         "ideas.specflow-runtime.ai-adapters",
         "architecture.runtime.ownership-and-lifecycle",
-        "ideas.specflow-runtime.ai-adapters.protocol-examples"
+        "architecture.ai.provider-process-ownership"
       ],
       "scope": "specflow",
       "areas": [
@@ -4494,171 +3453,34 @@
       ]
     },
     {
-      "id": "ideas.specflow-runtime.ai-adapters.model-selection-effort",
-      "type": "engineering",
-      "title": "Model selection and reasoning effort",
-      "status": "draft",
-      "file": "docs/ideas/specflow-runtime/ai-adapters/model-selection-and-effort.md",
-      "read_when": [
-        "implementing provider model discovery",
-        "building a model picker or reasoning-effort selector",
-        "migrating model and effort configuration from legacy Nevo"
-      ],
-      "summary": "Keep provider model identity separate from reasoning effort, prefer authoritative per-model metadata when available, preserve unknown traits instead of guessing, and avoid presenting a Cartesian product of model and effort combinations when the provider exposes effort separately.",
-      "related": [
-        "ideas.specflow-runtime.ai-adapters",
-        "ideas.specflow-runtime.ai-adapters.provider-readiness-auth",
-        "ideas.specflow-runtime.ai-adapters.diagnostics-and-replay",
-        "architecture.ai.provider-boundary"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ai",
-        "runtime",
-        "ui",
-        "testing"
-      ],
-      "tags": [
-        "providers",
-        "models",
-        "reasoning",
-        "configuration"
-      ]
-    },
-    {
-      "id": "ideas.specflow-runtime.ai-adapters.output-semantics",
-      "type": "engineering",
-      "title": "Provider output semantics",
-      "status": "draft",
-      "file": "docs/ideas/specflow-runtime/ai-adapters/output-semantics.md",
-      "read_when": [
-        "mapping provider streams into canonical Work",
-        "deciding whether assistant text is commentary or a final answer",
-        "adding compatibility for provider protocol versions"
-      ],
-      "summary": "Preserve provider-native structured phases when available and use a conservative buffered fallback when they are not, keeping reasoning, commentary, tools, and final answer distinct without making raw stdout the canonical transcript.",
-      "related": [
-        "ideas.specflow-runtime.ai-adapters",
-        "architecture.ai.canonical-session-turn-work",
-        "architecture.ai.provider-boundary",
-        "ideas.specflow-runtime.ai-adapters.protocol-examples"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ai",
-        "runtime",
-        "testing"
-      ],
-      "tags": [
-        "streaming",
-        "commentary",
-        "reasoning",
-        "final-answer"
-      ]
-    },
-    {
-      "id": "ideas.specflow-runtime.ai-adapters.process-environment-boundary",
-      "type": "engineering",
-      "title": "Provider process environment boundary",
-      "status": "draft",
-      "file": "docs/ideas/specflow-runtime/ai-adapters/process-environment-boundary.md",
-      "read_when": [
-        "spawning a provider CLI or app-server process",
-        "deciding which host environment variables a provider may inherit",
-        "adding provider authentication through environment variables or workload identity",
-        "injecting Nevo run/session context into a provider process"
-      ],
-      "summary": "Replace ambient process.env inheritance with an explicit provider process environment projection that preserves required OS/provider authentication inputs without leaking unrelated server secrets, and make readiness probes use the same projection as real execution.",
-      "related": [
-        "ideas.specflow-runtime.ai-adapters",
-        "ideas.specflow-runtime.ai-adapters.provider-readiness-auth",
-        "ideas.specflow-runtime.ai-adapters.diagnostic-sanitization",
-        "ideas.specflow-runtime.ai-adapters.cross-platform-process-runtime",
-        "architecture.ai.provider-boundary",
-        "architecture.runtime.ownership-and-lifecycle"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ai",
-        "runtime",
-        "security",
-        "configuration",
-        "testing"
-      ],
-      "tags": [
-        "providers",
-        "environment",
-        "secrets",
-        "process",
-        "security"
-      ]
-    },
-    {
-      "id": "ideas.specflow-runtime.ai-adapters.protocol-examples",
-      "type": "engineering",
-      "title": "Provider protocol mapping examples",
-      "status": "draft",
-      "file": "docs/ideas/specflow-runtime/ai-adapters/protocol-examples.md",
-      "read_when": [
-        "implementing or reviewing provider event mapping",
-        "checking how provider-native output should map to reasoning, commentary, final answer, tools, or errors",
-        "creating minimized replay fixtures during provider migration"
-      ],
-      "summary": "Sanitized and minimized provider event examples showing the mapping evidence behind output, reasoning, tools, interactions, session establishment, late-event, liveness, and replay ideas; provider error/limit evidence lives in the dedicated error evidence document.",
-      "related": [
-        "ideas.specflow-runtime.ai-adapters",
-        "ideas.specflow-runtime.ai-adapters.output-semantics",
-        "ideas.specflow-runtime.ai-adapters.error-classification",
-        "ideas.specflow-runtime.ai-adapters.diagnostics-and-replay",
-        "ideas.specflow-runtime.ai-adapters.invocation-ownership",
-        "ideas.specflow-runtime.ai-adapters.provider-error-examples"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ai",
-        "runtime",
-        "testing"
-      ],
-      "tags": [
-        "providers",
-        "protocol",
-        "examples",
-        "fixtures"
-      ]
-    },
-    {
       "id": "ideas.specflow-runtime.ai-adapters.provider-capacity-admission",
       "type": "engineering",
       "title": "Provider capacity and admission",
       "status": "draft",
       "file": "docs/ideas/specflow-runtime/ai-adapters/provider-capacity-and-admission.md",
       "read_when": [
-        "handling provider quota or usage-window limits",
-        "deciding whether to start a Turn after a known provider limit",
-        "showing provider capacity/reset information",
-        "implementing retryNotBefore"
+        "preventing repeated automatic Turns against a known-exhausted provider",
+        "using provider limit windows or reset times in admission"
       ],
-      "summary": "Treat provider capacity as optional structured evidence, preserve usage/reset windows when safely available, and apply a fresh authoritative retryNotBefore at Turn admission so known exhausted providers are not repeatedly invoked before their reset.",
+      "summary": "Open item: let fresh, trustworthy capacity evidence (retryNotBefore, limit windows) defer automatic Turn admission for the affected scope, without turning quota into readiness or authentication failure.",
       "related": [
         "ideas.specflow-runtime.ai-adapters",
         "ideas.specflow-runtime.ai-adapters.error-classification",
         "ideas.specflow-runtime.ai-adapters.provider-readiness-auth",
-        "ideas.specflow-runtime.ai-adapters.usage-accounting",
+        "reference.api.session-telemetry",
         "architecture.ai.provider-boundary"
       ],
       "scope": "specflow",
       "areas": [
         "ai",
         "runtime",
-        "ui",
         "testing"
       ],
       "tags": [
+        "providers",
         "quota",
-        "rate-limit",
         "admission",
-        "retry",
-        "providers"
+        "scheduling"
       ]
     },
     {
@@ -4676,7 +3498,6 @@
       "related": [
         "ideas.specflow-runtime.ai-adapters",
         "ideas.specflow-runtime.ai-adapters.error-classification",
-        "ideas.specflow-runtime.ai-adapters.protocol-examples",
         "ideas.specflow-runtime.ai-adapters.provider-readiness-auth",
         "ideas.specflow-runtime.ai-adapters.liveness-watchdog"
       ],
@@ -4697,22 +3518,19 @@
     {
       "id": "ideas.specflow-runtime.ai-adapters.provider-readiness-auth",
       "type": "engineering",
-      "title": "Provider readiness and authentication",
+      "title": "Provider readiness and authentication follow-ups",
       "status": "draft",
       "file": "docs/ideas/specflow-runtime/ai-adapters/provider-readiness-and-auth.md",
       "read_when": [
-        "implementing provider availability or health",
-        "preventing a session or turn from starting when the local provider is not authenticated",
-        "designing provider connection tests or login-required UX"
+        "adding a user-triggered provider environment test",
+        "designing quota-aware provider readiness"
       ],
-      "summary": "Distinguish installation from execution readiness, reuse useful legacy health evidence without treating it as an approved target contract, add bounded provider-specific readiness probes, and keep startTurn as the final authoritative guard so an installed but logged-out CLI is not presented as ready.",
+      "summary": "Open readiness work beyond the implemented discovery/validate/start guards: an explicit layer-2 diagnose lane with independent machine-readable checks, and readiness that keeps quota exhaustion distinct from installation and authentication.",
       "related": [
         "ideas.specflow-runtime.ai-adapters",
-        "ideas.specflow-runtime.ai-adapters.error-classification",
         "ideas.specflow-runtime.ai-adapters.diagnostics-and-replay",
-        "ideas.specflow-runtime.ai-adapters.protocol-examples",
-        "ideas.specflow-runtime.ai-adapters.process-environment-boundary",
         "ideas.specflow-runtime.ai-adapters.provider-capacity-admission",
+        "reference.protocols.session-provider-driver",
         "architecture.ai.provider-boundary"
       ],
       "scope": "specflow",
@@ -4730,121 +3548,22 @@
       ]
     },
     {
-      "id": "ideas.specflow-runtime.ai-adapters.raw-diagnostics-retention",
-      "type": "engineering",
-      "title": "Raw provider diagnostics retention",
-      "status": "draft",
-      "file": "docs/ideas/specflow-runtime/ai-adapters/raw-diagnostics-retention.md",
-      "read_when": [
-        "implementing raw provider capture",
-        "deciding how long provider stdout/protocol payloads should remain on disk",
-        "turning a production protocol bug into a replay fixture"
-      ],
-      "summary": "Treat raw provider capture as disposable diagnostic trace rather than durable session history: release in-memory state at settlement, bound disk retention/size, keep failures longer when useful, and promote only minimized regression cases into durable test fixtures.",
-      "related": [
-        "ideas.specflow-runtime.ai-adapters",
-        "architecture.ai.provider-boundary",
-        "architecture.ai.canonical-session-turn-work",
-        "ideas.specflow-runtime.ai-adapters.diagnostic-sanitization"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ai",
-        "runtime",
-        "testing"
-      ],
-      "tags": [
-        "diagnostics",
-        "storage",
-        "retention",
-        "privacy"
-      ]
-    },
-    {
-      "id": "ideas.specflow-runtime.ai-adapters.resource-lifetime",
-      "type": "engineering",
-      "title": "Provider invocation resource lifetime",
-      "status": "draft",
-      "file": "docs/ideas/specflow-runtime/ai-adapters/resource-lifetime.md",
-      "read_when": [
-        "implementing provider process/resource ownership",
-        "adding temporary files, listeners, timers, MCP registrations, or raw capture to an invocation",
-        "handling partial provider startup or cancellation cleanup"
-      ],
-      "summary": "Centralize per-invocation resource ownership and cleanup so partial startup, success, failure, cancellation, and late callbacks converge on one idempotent settlement path instead of duplicating cleanup logic across branches.",
-      "related": [
-        "ideas.specflow-runtime.ai-adapters",
-        "ideas.specflow-runtime.ai-adapters.invocation-ownership",
-        "ideas.specflow-runtime.ai-adapters.session-resume-recovery",
-        "architecture.runtime.ownership-and-lifecycle"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ai",
-        "runtime",
-        "testing"
-      ],
-      "tags": [
-        "lifecycle",
-        "cleanup",
-        "resources",
-        "settlement"
-      ]
-    },
-    {
       "id": "ideas.specflow-runtime.ai-adapters.session-resume-recovery",
       "type": "engineering",
-      "title": "Provider session resume and recovery",
+      "title": "Provider session resume and recovery follow-ups",
       "status": "draft",
       "file": "docs/ideas/specflow-runtime/ai-adapters/session-resume-and-recovery.md",
       "read_when": [
-        "resuming a provider-native conversation",
-        "retrying after unknown or stale provider session errors",
-        "deciding whether a failed provider attempt may be safely replayed",
-        "rotating provider sessions to control stale or irrelevant context"
+        "handling a provider reporting that a native session no longer exists",
+        "designing provider context rotation",
+        "extending recovery of unknown Turns with provider evidence"
       ],
-      "summary": "Resume provider sessions only when compatibility is evidenced, recover stale native sessions without duplicating unknown work, and authorize automatic provider replay from positive recovery evidence rather than from an error string alone.",
+      "summary": "Open resume/recovery work beyond exact-context continuation and conservative unknown recovery: explicit native-session-not-found reset, provider context rotation, and positive provider reconciliation.",
       "related": [
         "ideas.specflow-runtime.ai-adapters",
-        "ideas.specflow-runtime.ai-adapters.invocation-ownership",
-        "ideas.specflow-runtime.ai-adapters.correlation-identity",
         "ideas.specflow-runtime.ai-adapters.error-classification",
-        "architecture.ai.provider-boundary",
-        "architecture.ai.canonical-session-turn-work",
-        "architecture.workflow.deterministic-workflow"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ai",
-        "runtime",
-        "workflow",
-        "testing"
-      ],
-      "tags": [
-        "sessions",
-        "resume",
-        "recovery",
-        "retry",
-        "providers"
-      ]
-    },
-    {
-      "id": "ideas.specflow-runtime.ai-adapters.usage-accounting",
-      "type": "engineering",
-      "title": "Provider usage accounting provenance",
-      "status": "draft",
-      "file": "docs/ideas/specflow-runtime/ai-adapters/usage-accounting.md",
-      "read_when": [
-        "mapping provider token or cost usage into canonical Turn state",
-        "aggregating usage across resumed provider sessions",
-        "deciding whether a provider usage update is incremental or cumulative"
-      ],
-      "summary": "Carry explicit usage scope/provenance so repeated provider usage events and resumed sessions cannot be double-counted, distinguishing per-turn deltas, cumulative session totals, and unknown usage semantics before aggregation.",
-      "related": [
-        "ideas.specflow-runtime.ai-adapters",
-        "ideas.specflow-runtime.ai-adapters.protocol-examples",
-        "ideas.specflow-runtime.ai-adapters.diagnostics-and-replay",
-        "architecture.ai.provider-boundary",
+        "ideas.specflow-runtime.provider-migration-plan",
+        "architecture.ai.session-storage-and-lifecycle",
         "architecture.ai.canonical-session-turn-work"
       ],
       "scope": "specflow",
@@ -4854,213 +3573,28 @@
         "testing"
       ],
       "tags": [
-        "usage",
-        "tokens",
-        "cost",
         "providers",
-        "sessions"
-      ]
-    },
-    {
-      "id": "ideas.specflow-runtime.antigravity-provider",
-      "type": "engineering",
-      "title": "Antigravity managed Session provider",
-      "status": "draft",
-      "file": "docs/ideas/specflow-runtime/antigravity-provider.md",
-      "read_when": [
-        "implementing or reviewing the Antigravity Session adapter",
-        "checking account binding, interactive tools and process settlement"
-      ],
-      "summary": "Native Antigravity protocol, private configuration, account affinity and interactive bridge implementation, with separate controlled and native evidence.",
-      "related": [
-        "ideas.specflow-runtime.provider-migration-plan",
-        "ideas.specflow-runtime.provider-process-boundary",
-        "ideas.specflow-runtime.managed-agent-execution",
-        "reference.protocols.session-provider-driver"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ai",
-        "runtime",
-        "security",
-        "testing"
-      ],
-      "tags": [
-        "antigravity",
-        "providers",
-        "sessions",
-        "migration"
-      ]
-    },
-    {
-      "id": "ideas.specflow-runtime.claude-provider",
-      "type": "engineering",
-      "title": "Claude Session provider implementation and acceptance",
-      "status": "draft",
-      "file": "docs/ideas/specflow-runtime/claude-provider.md",
-      "read_when": [
-        "enabling or reviewing the Claude Session adapter",
-        "checking compatibility after a Claude CLI update"
-      ],
-      "summary": "Production Claude wiring, optimistic Windows personal-OAuth compatibility, durable native context, bidirectional questions and explicit live acceptance limitations.",
-      "related": [
-        "ideas.specflow-runtime.provider-migration-plan",
-        "ideas.specflow-runtime.provider-process-boundary",
-        "reference.protocols.session-provider-driver",
-        "reference.api.sessions"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ai",
-        "runtime",
-        "security",
-        "testing"
-      ],
-      "tags": [
-        "claude",
-        "providers",
-        "sessions",
-        "migration"
-      ]
-    },
-    {
-      "id": "ideas.specflow-runtime.codex-provider",
-      "type": "engineering",
-      "title": "Codex Session provider implementation and acceptance",
-      "status": "draft",
-      "file": "docs/ideas/specflow-runtime/codex-provider.md",
-      "read_when": [
-        "enabling or reviewing the Codex Session adapter",
-        "checking native Codex execution and authentication boundaries"
-      ],
-      "summary": "Native Codex mode discovery, managed execution, provider-assigned context, access-only credentials and explicit live acceptance limitations.",
-      "related": [
-        "ideas.specflow-runtime.provider-migration-plan",
-        "ideas.specflow-runtime.provider-process-boundary",
-        "reference.protocols.session-provider-driver",
-        "reference.api.sessions"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ai",
-        "runtime",
-        "security",
-        "testing"
-      ],
-      "tags": [
-        "codex",
-        "providers",
-        "sessions",
-        "migration"
-      ]
-    },
-    {
-      "id": "ideas.specflow-runtime.managed-agent-execution",
-      "type": "engineering",
-      "title": "Native provider modes and managed agent execution",
-      "status": "draft",
-      "file": "docs/ideas/specflow-runtime/managed-agent-execution.md",
-      "read_when": [
-        "enabling writable native provider modes",
-        "changing external execution claims or recovery"
-      ],
-      "summary": "Owner-directed agent default, native provider mode selection, Engine-owned durable project write admission and evidence requirements across Runtime/Engine crash windows.",
-      "related": [
-        "ideas.specflow-runtime.provider-migration-plan",
-        "ideas.specflow-runtime.session-review-follow-up",
-        "engineering.shared.specflow-git-recovery"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ai",
-        "runtime",
-        "security",
-        "testing"
-      ],
-      "tags": [
-        "sessions",
-        "providers",
-        "execution",
-        "recovery"
-      ]
-    },
-    {
-      "id": "ideas.specflow-runtime.provider-compatibility",
-      "type": "engineering",
-      "title": "Optimistic provider compatibility and strict execution checks",
-      "status": "draft",
-      "file": "docs/ideas/specflow-runtime/provider-compatibility.md",
-      "read_when": [
-        "certifying an additional provider binary",
-        "implementing independently published compatibility updates"
-      ],
-      "summary": "Separates diagnostic build identity, bounded protocol probing and strict execution admission; compatible unlisted builds run provisionally without catalogue updates.",
-      "related": [
-        "ideas.specflow-runtime.claude-provider",
-        "ideas.specflow-runtime.provider-process-boundary",
-        "reference.protocols.session-provider-driver"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ai",
-        "runtime",
-        "security",
-        "testing"
-      ],
-      "tags": [
-        "providers",
-        "compatibility",
-        "certification",
-        "sessions"
-      ]
-    },
-    {
-      "id": "ideas.specflow-runtime.provider-manual-checks",
-      "type": "engineering",
-      "title": "Short manual provider checks outside automated tests",
-      "status": "draft",
-      "file": "docs/ideas/specflow-runtime/provider-manual-checks.md",
-      "read_when": [
-        "manually verifying an installed provider",
-        "reporting native provider evidence separately from automated tests"
-      ],
-      "summary": "Optional short native-provider checks with explicit test prompts, no embedded credentials and no dependency from automated tests or CI on a subscription.",
-      "related": [
-        "engineering.shared.testing",
-        "ideas.specflow-runtime.claude-provider",
-        "ideas.specflow-runtime.codex-provider",
-        "ideas.specflow-runtime.antigravity-provider"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ai",
-        "runtime",
-        "testing"
-      ],
-      "tags": [
-        "providers",
-        "sessions",
-        "manual",
-        "subscriptions"
+        "resume",
+        "recovery",
+        "context"
       ]
     },
     {
       "id": "ideas.specflow-runtime.provider-migration-plan",
       "type": "engineering",
-      "title": "Provider integration migration and capability backlog",
+      "title": "Provider capability backlog",
       "status": "draft",
       "file": "docs/ideas/specflow-runtime/provider-migration-plan.md",
       "read_when": [
-        "continuing migration after Plan 04",
-        "planning real provider parity and managed writer integration"
+        "planning a new provider capability or parity follow-up",
+        "checking whether a provider limitation is intentional or deferred"
       ],
-      "summary": "Consolidated provider capability follow-ups, source evidence and acceptance boundaries, alongside historical migration checkpoints. Future capabilities are outside PR 107.",
+      "summary": "Consolidated backlog of future provider capabilities (F01-F19) with current evidence, direction, security dependencies and minimum acceptance. Implemented behavior lives in the driver protocol and provider references.",
       "related": [
-        "ideas.specflow-engine.plan-04",
-        "ideas.specflow-engine.plan-05",
-        "ideas.specflow-runtime.managed-sessions-delivery",
         "reference.protocols.session-provider-driver",
-        "ideas.specflow-runtime.ai-adapters.migration-inspection-map"
+        "docs.reference-providers-readme",
+        "reference.api.session-telemetry",
+        "ideas.specflow-engine.plan-05"
       ],
       "scope": "specflow",
       "areas": [
@@ -5071,71 +3605,10 @@
       ],
       "tags": [
         "providers",
-        "migration",
         "backlog",
         "claude",
         "codex",
         "antigravity"
-      ]
-    },
-    {
-      "id": "ideas.specflow-runtime.session-review-follow-up",
-      "type": "engineering",
-      "title": "PR 98 Session architecture review follow-up",
-      "status": "draft",
-      "file": "docs/ideas/specflow-runtime/session-review-follow-up.md",
-      "read_when": [
-        "reviewing PR 98 architecture hardening",
-        "reconciling an unknown Session Turn"
-      ],
-      "summary": "Tracks reproduced defects, safe recovery boundaries, Windows ownership blockers, measured SSE activity, compatibility staging and final verification requirements.",
-      "related": [
-        "ideas.specflow-runtime.provider-compatibility",
-        "ideas.specflow-runtime.claude-provider",
-        "ideas.specflow-runtime.session-migration-evidence",
-        "reference.api.sessions"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ai",
-        "runtime",
-        "security",
-        "testing"
-      ],
-      "tags": [
-        "sessions",
-        "review",
-        "recovery",
-        "migration"
-      ]
-    },
-    {
-      "id": "ideas.specflow-runtime.session-telemetry-delivery",
-      "type": "engineering",
-      "title": "Session telemetry backend delivery plan",
-      "status": "draft",
-      "file": "docs/ideas/specflow-runtime/session-telemetry-delivery.md",
-      "read_when": [
-        "implementing or reviewing the Session telemetry API delivery"
-      ],
-      "summary": "Dependency-complete backend implementation and verification plan for live Session telemetry, without UI or Task/Specification/Workflow dependencies.",
-      "related": [
-        "reference.api.session-telemetry",
-        "ideas.specflow-runtime.ai-adapters.usage-accounting"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ai",
-        "runtime",
-        "server",
-        "security",
-        "testing"
-      ],
-      "tags": [
-        "sessions",
-        "telemetry",
-        "planning",
-        "implementation"
       ]
     },
     {
@@ -5244,126 +3717,55 @@
       ]
     },
     {
-      "id": "ideas.specflow-engine.spec-creation",
-      "type": "product",
-      "title": "Specification creation vertical slice",
-      "status": "superseded",
-      "file": "docs/ideas/specflow-engine/specification-creation.md",
-      "read_when": [
-        "implementing the initial cross-layer proof of concept",
-        "defining creation inputs and CLI HTTP parity"
-      ],
-      "summary": "Narrow end-to-end create-Spec experiment with title-only UX, explicit target workspace, optional Git worktree provisioning, durable operation intent, and consistent CLI/HTTP results.",
-      "related": [
-        "ideas.specflow-engine",
-        "ideas.specflow-engine.project-workspace",
-        "ideas.specflow-engine.git",
-        "ideas.specflow-engine.worktrees",
-        "ideas.specflow-engine.recovery",
-        "ideas.specflow-engine.acceptance",
-        "ideas.specflow-engine.project-home",
-        "ideas.specflow-engine.execution-scopes"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "workflow",
-        "cli",
-        "server",
-        "ui"
-      ],
-      "tags": [
-        "specifications",
-        "create",
-        "vertical-slice",
-        "worktree"
-      ]
-    },
-    {
-      "id": "ideas.specflow-runtime.managed-sessions-delivery",
-      "type": "product",
-      "title": "Managed Sessions migration delivery specification",
+      "id": "ideas.specflow-ui.storybook-rework",
+      "type": "engineering",
+      "title": "Storybook rework — open follow-ups",
       "status": "draft",
-      "file": "docs/ideas/specflow-runtime/managed-sessions-delivery.md",
+      "file": "docs/ideas/specflow-ui/storybook-rework.md",
       "read_when": [
-        "implementing the managed Session migration",
-        "checking scope and acceptance of Plan 04"
+        "planning a Storybook catalog clean-up or a story-policy check",
+        "retitling stories that break the Storybook tree-depth rule",
+        "deciding which SpecFlow components still need a focused component story"
       ],
-      "summary": "Decision-complete foundation scope for independent Sessions with durable lifecycle, bounded tail/history and streaming, plus explicit real-provider and Engine dependencies.",
+      "summary": "What is still open after the Storybook guideline change: a lightweight automated policy check, stories whose titles break the tree-depth rule, omnibus story files, component-story coverage gaps and the decisions not yet taken.",
       "related": [
-        "architecture.ai.canonical-session-turn-work",
-        "architecture.ai.session-storage-and-lifecycle",
-        "reference.api.sessions",
-        "reference.protocols.session-provider-driver",
-        "ideas.specflow-engine.plan-04",
-        "ideas.specflow-runtime.provider-migration-plan"
+        "ideas.specflow-ui",
+        "design-system.implementation.storybook.guidelines",
+        "engineering.shared.testing"
       ],
       "scope": "specflow",
       "areas": [
-        "ai",
-        "runtime",
         "ui",
-        "security",
-        "testing"
+        "testing",
+        "docs"
       ],
       "tags": [
-        "sessions",
-        "migration",
-        "tail",
-        "history",
-        "implementation"
-      ]
-    },
-    {
-      "id": "ideas.specflow-ui.components.secondary-tabs-redesign",
-      "type": "product",
-      "title": "Secondary tab rail and local Back — IDE-style redesign variants",
-      "status": "current",
-      "file": "docs/ideas/specflow-ui/components/secondary-tabs-redesign.md",
-      "read_when": [
-        "reviewing or choosing the redesign of the split Secondary's tab rail or its local Back",
-        "promoting the chosen variant into ItemTabs and AppWorkspace"
-      ],
-      "summary": "Decision record: the owner chose variant A (editor tabs) for the split Secondary's root-tab rail and local Back, implemented; this note keeps the three IDE-style variants that were weighed, the owner-decision history they reverse and the owner's changes to A. The normative rules live in secondary-navigation and item-tabs.",
-      "related": [
-        "design-system.implementation.react.secondary-navigation",
-        "design-system.implementation.react.item-tabs",
-        "design-system.principles.layout-and-containment",
-        "design-system.principles.information-hierarchy",
-        "ideas.specflow-ui.components.session-work-inspector"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ui"
-      ],
-      "tags": [
-        "secondary",
-        "tabs",
-        "item-tabs",
-        "back",
-        "navigation",
-        "workspace",
-        "ide"
+        "storybook",
+        "design-system",
+        "components",
+        "testing",
+        "agents"
       ]
     },
     {
       "id": "ideas.specflow-ui.components.session-chat-v10-design",
       "type": "product",
-      "title": "Session Chat V10 — accepted UX direction and Workspace split behavior",
+      "title": "Session Chat V10 — open directions",
       "status": "draft",
       "file": "docs/ideas/specflow-ui/components/session-chat-v10-design.md",
       "read_when": [
-        "designing or implementing Full Session Conversation, Composer and Work",
-        "composing from the Nevo UI Design System",
-        "specifying split sizing or source-aware Back navigation"
+        "adding workflow-event annotations or exact-event inspection to the Session conversation",
+        "designing Quote for Session messages",
+        "revisiting mobile Composer iconography and density"
       ],
-      "summary": "Owner-accepted V10 UX behavior (not implementation) layered on accepted Workspace V2. Mockup iconography and provider fixtures are not production contracts.",
+      "summary": "What remains open from the owner-accepted Session Chat V10 direction (2026-10-30): workflow-event annotations with exact-event inspection and origin-aware Back, Quote, and mobile Composer iconography. The implemented rules live in the Full Session product contract.",
       "related": [
+        "product.specflow.ui.full-session",
         "ideas.specflow-ui.full-session-screen-structure",
         "ideas.specflow-ui.components.session-composer-design",
         "ideas.specflow-ui.navigation-route-model",
-        "ideas.specflow-ui.design-system-component-composition-gaps",
-        "reference.api.sessions",
-        "architecture.ai.canonical-session-turn-work"
+        "ideas.specflow-runtime.session-v10-backend-readiness",
+        "reference.api.sessions"
       ],
       "scope": "specflow",
       "areas": [
@@ -5375,28 +3777,27 @@
         "session",
         "conversation",
         "composer",
-        "commentary",
-        "work",
-        "timeline",
-        "secondary",
+        "workflow-events",
+        "quote",
         "responsive"
       ]
     },
     {
       "id": "ideas.specflow-ui.components.session-composer-design",
       "type": "product",
-      "title": "AI Session Composer — capabilities for accepted V10 interaction",
+      "title": "AI Session Composer — open capability design",
       "status": "draft",
       "file": "docs/ideas/specflow-ui/components/session-composer-design.md",
       "read_when": [
-        "designing or implementing Session Composer",
-        "mapping provider-native execution modes and approvals to UI choices",
-        "adding attachments and model-specific capabilities"
+        "adding attachments, uploads or repository references to the Session Composer",
+        "designing a certified intent/approval split across providers",
+        "changing Composer keyboard, paste, drop or camera behavior"
       ],
-      "summary": "Composer capability resolution for accepted V10 interaction direction. A stable provider per Session, optional model/effort/intent/policy overrides per next Turn, attachment-first composer layout, and provider-declared certified presets. Mobile iconography and mock styling are not production designs.",
+      "summary": "Open Composer capability design left after the implemented work-mode and model/effort rules: attachments and upload transport, trusted repository references, a future intent/approval split, and the remaining interaction questions.",
       "related": [
-        "ideas.specflow-ui.components.session-conversation",
-        "ideas.specflow-ui.full-session-screen-structure",
+        "product.specflow.ui.full-session",
+        "ideas.specflow-ui.components.session-chat-v10-design",
+        "ideas.specflow-runtime.session-v10-backend-readiness",
         "reference.api.sessions",
         "architecture.ai.canonical-session-turn-work"
       ],
@@ -5418,57 +3819,22 @@
       ]
     },
     {
-      "id": "ideas.specflow-ui.components.session-conversation",
-      "type": "product",
-      "title": "Session conversation UI spec",
-      "status": "draft",
-      "file": "docs/ideas/specflow-ui/components/session-conversation-ui-spec.md",
-      "read_when": [
-        "implementing Full Session or Floating Session conversation",
-        "creating Storybook/Figma fixtures for Session states",
-        "deciding how Commentary and tool work mix in chat"
-      ],
-      "summary": "Detailed product presentation contract for Session conversation: user/assistant messages, Commentary, compact Work bursts, current activity, interactions, terminal outcomes, grouping rules, payload-backed state mocks, loading/realtime behavior, and component ownership.",
-      "related": [
-        "ideas.specflow-ui.components",
-        "ideas.specflow-ui.screens.full-session",
-        "ideas.specflow-ui.screens.floating-session",
-        "ideas.specflow-ui.data-loading-refresh-and-eventing",
-        "product.specflow.ui.ai-session-ux",
-        "architecture.ai.canonical-session-turn-work"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ui",
-        "ai",
-        "runtime"
-      ],
-      "tags": [
-        "session",
-        "chat",
-        "commentary",
-        "work-summary",
-        "interaction",
-        "composer"
-      ]
-    },
-    {
       "id": "ideas.specflow-ui.components.session-work-inspector",
       "type": "product",
-      "title": "Session Work inspector UI spec",
+      "title": "Session Work inspector — open per-tool formatting",
       "status": "draft",
       "file": "docs/ideas/specflow-ui/components/session-work-inspector-ui-spec.md",
       "read_when": [
-        "implementing Work L2/L3/L4",
-        "formatting canonical ToolInvocation and ToolAction payloads",
-        "creating Storybook/Figma fixtures for tool execution"
+        "adding tool kind, subject or normalized result facts to Work history or ToolAction detail",
+        "formatting a specific canonical tool kind",
+        "creating Storybook fixtures for tool execution"
       ],
-      "summary": "Detailed presentation contract for Session Work inspection: grouped chronology, ungrouped Work, ToolAction drill-down, every canonical tool kind, statuses, payload-backed fixtures, grouping, large payload behavior, and component ownership.",
+      "summary": "Open Work-inspection design beyond the implemented Full Session contract: per-tool-kind formatting and fixtures, nested ToolAction previews, normalized result counts, large-payload references and a per-operation Work digest in Work history. Needs Runtime tool kind/subject first.",
       "related": [
+        "product.specflow.ui.full-session",
         "ideas.specflow-ui.components",
-        "ideas.specflow-ui.components.session-conversation",
-        "ideas.specflow-ui.screens.full-session",
-        "ideas.specflow-ui.data-loading-refresh-and-eventing",
+        "ideas.specflow-runtime.session-v10-backend-readiness",
+        "reference.api.sessions",
         "architecture.ai.canonical-session-turn-work"
       ],
       "scope": "specflow",
@@ -5480,7 +3846,6 @@
       "tags": [
         "session",
         "work",
-        "timeline",
         "tools",
         "tool-action",
         "inspection"
@@ -5515,36 +3880,6 @@
         "renderer",
         "plugins",
         "fields"
-      ]
-    },
-    {
-      "id": "ideas.specflow-ui.components.spec-steering",
-      "type": "product",
-      "title": "Spec steering collection and item UI spec",
-      "status": "draft",
-      "file": "docs/ideas/specflow-ui/components/spec-steering-ui-spec.md",
-      "read_when": [
-        "implementing Specs Overview steering sections/items",
-        "creating Storybook/Figma fixtures for Spec signals",
-        "deciding how concurrent Spec/Task signals aggregate"
-      ],
-      "summary": "Detailed product presentation contract for the Specs steering list: semantic queue projection, strict row/section presentation models, stable visual grammar, responsive behavior, interaction, data loading, fixtures, and cardless list composition.",
-      "related": [
-        "ideas.specflow-ui.components",
-        "ideas.specflow-ui.screens.specs-overview",
-        "ideas.specflow-ui.data-loading-refresh-and-eventing"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ui"
-      ],
-      "tags": [
-        "specs",
-        "steering",
-        "attention",
-        "ready",
-        "working",
-        "issue"
       ]
     },
     {
@@ -5612,43 +3947,6 @@
       ]
     },
     {
-      "id": "ideas.specflow-ui.design-system-component-composition-gaps",
-      "type": "product",
-      "title": "SpecFlow UI design-system and composition gaps",
-      "status": "draft",
-      "file": "docs/ideas/specflow-ui/design-system-component-composition-gaps.md",
-      "read_when": [
-        "planning implementation after the Spec/Task and Full Session screen-structure passes",
-        "deciding whether a missing UI concept belongs in Nevo UI or SpecFlow feature code",
-        "prioritizing reusable component work before visual mockups"
-      ],
-      "summary": "Maps the current Specification/Task and Full Session screen structures onto the migrated Nevo UI foundation, distinguishing existing primitives, product-owned compositions, reusable design-system gaps, and product capability gaps.",
-      "related": [
-        "ideas.specflow-ui",
-        "ideas.specflow-ui.spec-task-screen-structure",
-        "ideas.specflow-ui.full-session-screen-structure",
-        "design-system.principles.system-boundary",
-        "design-system.implementation.react.component-guidelines",
-        "design-system.implementation.react.workspace-dynamic-split",
-        "product.specflow.ui.interaction-model",
-        "product.specflow.ui.ai-session-ux",
-        "ideas.developer-workspace.code-inspection-and-editing"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ui"
-      ],
-      "tags": [
-        "components",
-        "compositions",
-        "design-system",
-        "specification",
-        "task",
-        "session",
-        "migration"
-      ]
-    },
-    {
       "id": "ideas.specflow-ui.examples.session-chat-v10",
       "type": "product",
       "title": "Session Chat V10 interactive UX examples",
@@ -5660,7 +3958,7 @@
       "summary": "Standalone desktop and mobile HTML fixtures for the accepted Session Chat V10 UX direction. Synthetic content is illustrative and must not be used as a Runtime contract.",
       "related": [
         "ideas.specflow-ui.components.session-chat-v10-design",
-        "ideas.specflow-ui.full-session-screen-structure"
+        "product.specflow.ui.full-session"
       ],
       "scope": "specflow",
       "areas": [
@@ -5678,23 +3976,21 @@
     {
       "id": "ideas.specflow-ui.full-session-screen-structure",
       "type": "product",
-      "title": "Full Session screen structure",
+      "title": "Full Session screen structure — open areas",
       "status": "draft",
       "file": "docs/ideas/specflow-ui/full-session-screen-structure.md",
       "read_when": [
-        "designing Full Session or floating Session",
-        "deciding what belongs in Session Primary versus contextual Secondary",
-        "presenting current activity, Work history, pending interactions, Tasks, or files",
-        "validating single-Task, batch, generic, resumable, and attention Session states"
+        "adding workflow execution, Task batches, continuation or recovery to Full Session",
+        "designing Handover, artifact or file tabs in the Session Secondary",
+        "designing floating Session"
       ],
-      "summary": "Screen-structure pass for Full Session and floating Session. Defines Conversation as Primary, Context as the default split Secondary, Work/File contextual inspection, current-activity and attention placement, batch scope, and narrow behavior without freezing final components.",
+      "summary": "Open Full Session structure beyond the implemented contract: workflow execution in the Session (single Task, Task batch, continue, recovery, terminal consequences), Handover/artifact tabs, File detail tabs and floating Session, plus the decisions still deferred.",
       "related": [
-        "ideas.specflow-ui",
-        "ideas.specflow-ui.information-navigation-inventory",
-        "ideas.specflow-ui.spec-task-information-hierarchy",
-        "ideas.specflow-ui.spec-task-screen-structure",
-        "product.specflow.ui.interaction-model",
+        "product.specflow.ui.full-session",
         "product.specflow.ui.ai-session-ux",
+        "product.specflow.ui.interaction-model",
+        "ideas.specflow-ui.screens.floating-session",
+        "ideas.specflow-runtime.session-v10-backend-readiness",
         "architecture.ai.canonical-session-turn-work",
         "ideas.developer-workspace.code-inspection-and-editing"
       ],
@@ -5706,75 +4002,31 @@
       ],
       "tags": [
         "session",
-        "conversation",
-        "commentary",
-        "work",
         "context",
-        "primary-secondary",
-        "human-attention",
-        "responsive"
-      ]
-    },
-    {
-      "id": "ideas.specflow-ui.information-navigation-inventory",
-      "type": "product",
-      "title": "SpecFlow UI information and navigation inventory",
-      "status": "draft",
-      "file": "docs/ideas/specflow-ui/information-and-navigation-inventory.md",
-      "read_when": [
-        "planning real SpecFlow UI screens after the design-system migration",
-        "deciding whether a concept is a route, workspace secondary, floating surface, inline detail, or action",
-        "deciding which workflow facts are primary information for a human",
-        "migrating deterministic task/session/workflow data from the old `dczerwinskipl/nevo` repository"
-      ],
-      "summary": "Working inventory of SpecFlow UI concepts, ownership, deterministic properties, human-attention semantics, artifacts, and candidate navigation depth. It intentionally precedes screen layout.",
-      "related": [
-        "ideas.specflow-ui",
-        "product.specflow.ui.interaction-model",
-        "product.specflow.ui.ai-session-ux",
-        "product.specflow.ui.personas",
-        "architecture.workflow.deterministic-workflow",
-        "architecture.ai.canonical-session-turn-work",
-        "ideas.developer-workspace.code-inspection-and-editing"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ui",
-        "workflow",
-        "runtime",
-        "configuration"
-      ],
-      "tags": [
-        "information-architecture",
-        "specifications",
-        "tasks",
-        "sessions",
-        "workflow",
-        "human-attention",
+        "handover",
         "artifacts",
-        "handover"
+        "files",
+        "task-batch",
+        "floating-session"
       ]
     },
     {
       "id": "ideas.specflow-ui.navigation-route-model",
       "type": "product",
-      "title": "SpecFlow UI navigation and route model",
+      "title": "SpecFlow UI navigation — open items",
       "status": "draft",
       "file": "docs/ideas/specflow-ui/navigation-and-route-model.md",
       "read_when": [
-        "implementing SpecFlow product routing or Back behavior",
-        "validating that every product surface is reachable",
-        "deciding which interaction state belongs in the URL versus local UI state",
-        "designing cross-screen navigation between Specs, Specification, Task, Session, and Settings"
+        "designing Task evidence drill-down (Diff, Handover, Verification, Artifact, File)",
+        "designing origin-aware launch of workflow events from a Session conversation",
+        "designing Floating Session navigation"
       ],
-      "summary": "Cross-screen navigation contract for SpecFlow UI. Defines the default product entry point, routable product surfaces, Primary/Secondary drill-down, direct Full Session access, local inspector stacks, responsive representation, and Back behavior without freezing exact URL syntax or Session-creation flow.",
+      "summary": "Open navigation items not yet implemented: Task evidence drill-down in the Task's Secondary slot, origin-aware launch of workflow events from the conversation, and Floating Session. The implemented hierarchy, reachability, Session start and Back/Close rules live in product.specflow.ui.interaction-model.",
       "related": [
         "ideas.specflow-ui",
-        "ideas.specflow-ui.information-navigation-inventory",
-        "ideas.specflow-ui.spec-task-screen-structure",
-        "ideas.specflow-ui.full-session-screen-structure",
         "product.specflow.ui.interaction-model",
-        "design-system.principles.system-boundary"
+        "product.specflow.ui.full-session",
+        "ideas.specflow-ui.screens.floating-session"
       ],
       "scope": "specflow",
       "areas": [
@@ -5802,6 +4054,7 @@
       "related": [
         "ideas.specflow-ui.screens",
         "ideas.specflow-ui.full-session-screen-structure",
+        "product.specflow.ui.full-session",
         "product.specflow.ui.ai-session-ux",
         "product.specflow.ui.interaction-model"
       ],
@@ -5818,72 +4071,6 @@
       ]
     },
     {
-      "id": "ideas.specflow-ui.screens.full-session",
-      "type": "product",
-      "title": "Full Session UI spec",
-      "status": "draft",
-      "file": "docs/ideas/specflow-ui/screens/full-session-ui-spec.md",
-      "read_when": [
-        "implementing or reviewing Full Session",
-        "defining Session Primary/Secondary, current activity, Work, or interactions"
-      ],
-      "summary": "Vertical UI specification for Full Session: Conversation Primary, default Context Secondary, Work/detail inspection, runtime states, canonical Session API migration, components and tokens.",
-      "related": [
-        "ideas.specflow-ui.screens",
-        "ideas.specflow-ui.full-session-screen-structure",
-        "product.specflow.ui.ai-session-ux",
-        "architecture.ai.canonical-session-turn-work"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ui",
-        "ai",
-        "runtime"
-      ],
-      "tags": [
-        "session",
-        "conversation",
-        "work",
-        "context",
-        "interaction",
-        "execution"
-      ]
-    },
-    {
-      "id": "ideas.specflow-ui.screens.new-session",
-      "type": "product",
-      "title": "New Session UI spec",
-      "status": "draft",
-      "file": "docs/ideas/specflow-ui/screens/new-session-ui-spec.md",
-      "read_when": [
-        "implementing or reviewing how a new Session is started (the start form in the Session shell)",
-        "changing how a Session is named, or what a Session is started with",
-        "changing the agent choice shared by New Session and Create with an agent"
-      ],
-      "summary": "UX contract of starting a new Session on an existing Specification inside the Session screen itself: the full Session shell renders at once with the pinned Specification as context, the agent is chosen on a start form directly in the conversation column (provider tiles, then labelled Model, Effort and Work mode fields, then the optional own name), the Composer is inactive (hidden on a phone) until Start, and Start allocates the Session in place: the conversation shows the ready empty state with the agent's logo and the user continues straight into the first message. The same labelled agent fields replace the Composer pickers in Create with an agent.",
-      "related": [
-        "ideas.specflow-ui.screens",
-        "ideas.specflow-ui.navigation-route-model",
-        "ideas.specflow-ui.screens.specification-creation",
-        "ideas.specflow-ui.components.session-composer-design",
-        "ideas.specflow-ui.screens.full-session",
-        "product.specflow.ui.ai-session-ux",
-        "reference.api.sessions"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ui",
-        "ai"
-      ],
-      "tags": [
-        "session",
-        "creation",
-        "composer",
-        "naming",
-        "mock"
-      ]
-    },
-    {
       "id": "ideas.specflow-ui.screens.project-settings",
       "type": "product",
       "title": "Project Settings UI spec",
@@ -5897,7 +4084,6 @@
       "summary": "Vertical UI specification for Project Settings: user use cases, local section navigation, screen anatomy, responsive behavior, interactions, component usage, semantic token roles, borderless containment rules, states, and acceptance scenarios.",
       "related": [
         "ideas.specflow-ui.screens",
-        "ideas.specflow-ui.information-navigation-inventory",
         "product.specflow.ui.interaction-model",
         "design-system.principles.ui-ux-guidelines",
         "design-system.principles.layout-and-containment",
@@ -5919,38 +4105,6 @@
       ]
     },
     {
-      "id": "ideas.specflow-ui.screens.specification-creation",
-      "type": "product",
-      "title": "Specification creation, Documents and Session UX redesign",
-      "status": "draft",
-      "file": "docs/ideas/specflow-ui/screens/specification-creation-ui-spec.md",
-      "read_when": [
-        "reviewing Specification creation and manual or AI preparation in the demo",
-        "reviewing the Documents explorer and editor interactions"
-      ],
-      "summary": "Owner-approved Create and Documents contract of the bounded demo: workflow-led creation in one column, or two from a 992 px form column, first-session configuration, branch/worktree choice, preview-first documents in a larger Secondary, and folder-context inline file operations through bounded Runtime demo capabilities.",
-      "related": [
-        "ideas.specflow-ui.screens.specs-overview",
-        "ideas.specflow-ui.navigation-route-model",
-        "product.specflow.ui.interaction-model",
-        "product.specflow.ui.ai-session-ux",
-        "product.specflow.specification-creation",
-        "reference.api.specification-creation-demo",
-        "design-system.principles.system-boundary"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ui"
-      ],
-      "tags": [
-        "specification",
-        "session",
-        "creation",
-        "worktree",
-        "mock"
-      ]
-    },
-    {
       "id": "ideas.specflow-ui.screens.specification-sessions-list",
       "type": "product",
       "title": "Specification Sessions list UI spec",
@@ -5964,7 +4118,7 @@
       "related": [
         "ideas.specflow-ui.screens",
         "ideas.specflow-ui.screens.specification-workspace",
-        "ideas.specflow-ui.screens.new-session",
+        "product.specflow.ui.full-session",
         "ideas.specflow-ui.navigation-route-model",
         "ideas.specflow-ui.session-association-ux",
         "reference.api.sessions",
@@ -5986,19 +4140,20 @@
     {
       "id": "ideas.specflow-ui.screens.specification-workspace",
       "type": "product",
-      "title": "Specification UI spec",
+      "title": "Specification screen — open items",
       "status": "draft",
       "file": "docs/ideas/specflow-ui/screens/specification-workspace-ui-spec.md",
       "read_when": [
-        "implementing or reviewing a Specification surface",
-        "designing Spec-level steering and Task collection behavior"
+        "designing batch Task execution from the Specification",
+        "designing Specification-level decisions or a future Specification workflow",
+        "deciding how the recommended Session is chosen, Task filtering, or Floating Session on Compact"
       ],
-      "summary": "Vertical UI specification for one Specification surface: workflow meaning, high-priority signals, Task collection, evidence, navigation, API/read-model requirements and responsive behavior.",
+      "summary": "Open product/UX items of the Specification screen that are not yet implemented: batch Start of selected Tasks, Specification-level decisions and future Specification workflow, Task filtering, choosing the one relevant Session, and Floating Session validation. The implemented Overview is product.specflow.ui.specification-overview.",
       "related": [
         "ideas.specflow-ui.screens",
-        "ideas.specflow-ui.spec-task-information-hierarchy",
-        "ideas.specflow-ui.spec-task-screen-structure",
-        "product.specflow.ui.interaction-model"
+        "product.specflow.ui.specification-overview",
+        "product.specflow.ui.interaction-model",
+        "ideas.specflow-ui.screens.floating-session"
       ],
       "scope": "specflow",
       "areas": [
@@ -6010,36 +4165,8 @@
         "workspace",
         "tasks",
         "workflow",
-        "evidence"
-      ]
-    },
-    {
-      "id": "ideas.specflow-ui.screens.specs-overview",
-      "type": "product",
-      "title": "Specs Overview UI spec",
-      "status": "draft",
-      "file": "docs/ideas/specflow-ui/screens/specs-overview-ui-spec.md",
-      "read_when": [
-        "implementing or reviewing the Specs overview",
-        "defining cross-Spec human steering"
-      ],
-      "summary": "Vertical UI specification for the Specs collection: attention, readiness, current work, navigation, data/API requirements, component usage, visual rules, and responsive behavior.",
-      "related": [
-        "ideas.specflow-ui.screens",
-        "ideas.specflow-ui.spec-task-screen-structure",
-        "ideas.specflow-ui.information-navigation-inventory",
-        "product.specflow.ui.interaction-model"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ui"
-      ],
-      "tags": [
-        "specs",
-        "overview",
-        "attention",
-        "readiness",
-        "execution"
+        "evidence",
+        "floating-session"
       ]
     },
     {
@@ -6055,8 +4182,7 @@
       "summary": "Vertical UI specification for Task detail: decision state, intent, evidence, current execution, deterministic actions, API/read-model requirements, components, tokens, and responsive behavior.",
       "related": [
         "ideas.specflow-ui.screens",
-        "ideas.specflow-ui.spec-task-information-hierarchy",
-        "ideas.specflow-ui.spec-task-screen-structure",
+        "ideas.specflow-ui.components.task-decision-evidence",
         "product.specflow.ui.interaction-model"
       ],
       "scope": "specflow",
@@ -6082,11 +4208,9 @@
         "asking why the provider-limits refresh, the unknown-Turn notice or the Session actions look the way they do",
         "reconsidering an alternative rejected for plan decisions D1, D2 or D10"
       ],
-      "summary": "Rationale and decision record for plan decisions D1, D2 and D10 of the Managed Session UI integration, accepted by the owner on 2026-11-08 and implemented. The behaviour itself lives in full-session-screen-structure.md §7.7, §17.1 and §22.1 and Chat V10 §3.1/§6.",
+      "summary": "Rationale and decision record for plan decisions D1, D2 and D10 of the Managed Session UI integration, accepted by the owner on 2026-11-08 and implemented. The behaviour itself lives in the Full Session product contract.",
       "related": [
-        "ideas.specflow-ui.full-session-screen-structure",
-        "ideas.specflow-ui.components.session-chat-v10-design",
-        "ideas.specflow-ui.components.session-composer-design",
+        "product.specflow.ui.full-session",
         "product.specflow.ui.documents-archetypes",
         "reference.api.session-telemetry",
         "reference.api.sessions"
@@ -6122,12 +4246,10 @@
       "summary": "Decision record (owner decisions 2026-11-08, delivered in PR #126) for the D10 UX items of the stage 3 Session association design: standalone Sessions removed from the UI, the Specification Sessions list on the paged Session list read, post-delete destination from the association, Context Specification/Related Tasks from the association read, New Session gating and Session-owned status. Keeps decisions, rationale and rejected alternatives; the behaviour lives in the owning screen and structure documents.",
       "related": [
         "ideas.specflow-runtime.session-association",
-        "ideas.specflow-ui.full-session-screen-structure",
+        "product.specflow.ui.full-session",
         "ideas.specflow-ui.session-actions-ux",
-        "ideas.specflow-ui.components.session-chat-v10-design",
         "ideas.specflow-ui.navigation-route-model",
         "ideas.specflow-ui.screens.specification-workspace",
-        "ideas.specflow-ui.screens.new-session",
         "ideas.specflow-ui.screens.specification-sessions-list",
         "product.specflow.ui.ai-session-ux",
         "product.specflow.ui.interaction-model",
@@ -6148,77 +4270,6 @@
         "workspace",
         "archive",
         "delete"
-      ]
-    },
-    {
-      "id": "ideas.specflow-ui.spec-task-information-hierarchy",
-      "type": "product",
-      "title": "Specification and Task information hierarchy",
-      "status": "draft",
-      "file": "docs/ideas/specflow-ui/spec-task-information-hierarchy.md",
-      "read_when": [
-        "designing the Specs overview, Specification surface, or Task detail",
-        "deciding which workflow facts deserve immediate human visibility",
-        "designing review, approval, start, or finalize steering flows",
-        "migrating Task and workflow projections from the old `dczerwinskipl/nevo` repository into SpecFlow"
-      ],
-      "summary": "Working information hierarchy for Specification and Task. Classifies deterministic facts, human-attention signals, evidence, and actions before final screen layout is designed.",
-      "related": [
-        "ideas.specflow-ui",
-        "ideas.specflow-ui.information-navigation-inventory",
-        "product.specflow.ui.personas",
-        "product.specflow.ui.interaction-model",
-        "architecture.workflow.deterministic-workflow",
-        "architecture.ai.canonical-session-turn-work"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ui",
-        "workflow",
-        "runtime"
-      ],
-      "tags": [
-        "specification",
-        "task",
-        "human-attention",
-        "deterministic-workflow",
-        "review",
-        "artifacts",
-        "handover"
-      ]
-    },
-    {
-      "id": "ideas.specflow-ui.spec-task-screen-structure",
-      "type": "product",
-      "title": "Specification and Task screen structure",
-      "status": "draft",
-      "file": "docs/ideas/specflow-ui/spec-task-screen-structure.md",
-      "read_when": [
-        "sketching the Specs overview, Specification surface, or Task Secondary",
-        "validating ready, working, and human-review states before visual design",
-        "deciding which information stays in Specification Primary versus Task Secondary"
-      ],
-      "summary": "First screen-structure pass for Specs overview, Specification Primary, and Task Secondary. Validates the same structure against ready, agent-working, and human-review states without freezing final visual components or styling.",
-      "related": [
-        "ideas.specflow-ui",
-        "ideas.specflow-ui.information-navigation-inventory",
-        "ideas.specflow-ui.spec-task-information-hierarchy",
-        "product.specflow.ui.interaction-model",
-        "product.specflow.ui.ai-session-ux",
-        "design-system.principles.ui-ux-guidelines"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ui",
-        "workflow"
-      ],
-      "tags": [
-        "specification",
-        "task",
-        "screen-structure",
-        "primary-secondary",
-        "human-attention",
-        "responsive"
       ]
     },
     {
@@ -6380,6 +4431,7 @@
       ],
       "summary": "How an AI session is presented: canonical semantics first, immediate turn feedback, \"thinking\" needs evidence, \"waiting\" is not \"needs attention\", and the four Work information levels.",
       "related": [
+        "product.specflow.ui.full-session",
         "product.specflow.ui.interaction-model",
         "product.shared.vocabulary",
         "design-system.principles.ui-ux-guidelines",
@@ -6390,7 +4442,7 @@
       "id": "product.specflow.ui.documents-archetypes",
       "type": "product",
       "title": "Documents and Create with archetypes (UI)",
-      "status": "draft",
+      "status": "current",
       "file": "docs/product/specflow/ui/documents-archetypes-ui.md",
       "read_when": [
         "changing how the UI presents the archetype catalogue, document tree, document read or document operations",
@@ -6431,12 +4483,52 @@
         "opening a document or file preview from a Session",
         "deciding how several documents are open at once"
       ],
-      "summary": "Behavior of the Documents screen with several open documents (tree plus tabbed document area), the same tabs as read-only previews in a Session, and the open decisions around the layout.",
+      "summary": "Behavior of the Documents screen with several open documents (tree plus tabbed document area), the content kinds, the target read-only previews in a Session, and the deferred layout decisions.",
       "related": [
         "product.specflow.ui.interaction-model",
         "design-system.implementation.react.item-tabs",
         "design-system.implementation.react.secondary-navigation",
         "product.specflow.ui.ai-session-ux"
+      ]
+    },
+    {
+      "id": "product.specflow.ui.full-session",
+      "type": "product",
+      "title": "Full Session",
+      "status": "current",
+      "file": "docs/product/specflow/ui/full-session.md",
+      "read_when": [
+        "changing the Full Session screen, its conversation, Work block, Composer or Context",
+        "changing Work history (L2) or ToolAction detail (L4) presentation",
+        "changing how a new Session is started, named or handed over to the Session screen",
+        "changing Session actions, archived or view-only Sessions, or an unknown Turn outcome"
+      ],
+      "summary": "The implemented Full Session contract: chat rules, one Work block per Turn, Commentary-grouped Work history on the DS Timeline, ToolAction header and code blocks, Runtime-owned work modes in the Composer, refused vs unknown-outcome commands, starting a Session inside the Session shell, per-object Secondary tabs, Context section order and availability notes, Session actions, archived/view-only/deleted Sessions and the unknown-Turn-outcome notice.",
+      "related": [
+        "product.specflow.ui.ai-session-ux",
+        "product.specflow.ui.interaction-model",
+        "product.specflow.ui.shell-geometry",
+        "design-system.implementation.react.workspace-dynamic-split",
+        "design-system.implementation.react.secondary-navigation",
+        "reference.api.sessions",
+        "reference.api.session-telemetry",
+        "architecture.ai.canonical-session-turn-work"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "ai"
+      ],
+      "tags": [
+        "session",
+        "conversation",
+        "composer",
+        "work",
+        "work-block",
+        "timeline",
+        "tool-action",
+        "context",
+        "new-session"
       ]
     },
     {
@@ -6450,10 +4542,14 @@
         "choosing between an inline surface, an inspector, a sheet, and a page",
         "defining what state is preserved across navigation"
       ],
-      "summary": "Responsive shell with independent navigation and workspace breakpoints, the product navigation hierarchy, context-preserving drill-down, and when to use floating, Secondary, pushed-detail, or full-workspace surfaces.",
+      "summary": "Responsive shell with independent navigation and workspace breakpoints, the product hierarchy and routes, the reachability of every surface, starting a Session and the navigator, Back/Close semantics, and when to use floating, Secondary, pushed-detail, or full-workspace surfaces.",
       "related": [
         "product.specflow.ui.personas",
         "product.specflow.ui.ai-session-ux",
+        "product.specflow.ui.specs-overview",
+        "product.specflow.ui.specification-overview",
+        "product.specflow.ui.full-session",
+        "product.shared.vocabulary",
         "design-system.principles.ui-ux-guidelines"
       ]
     },
@@ -6490,23 +4586,90 @@
         "design-system.principles.layout-and-containment",
         "design-system.implementation.react.secondary-navigation",
         "product.specflow.specification-creation",
-        "product.specflow.ui.interaction-model"
+        "product.specflow.ui.interaction-model",
+        "product.specflow.ui.specification-overview",
+        "product.specflow.ui.specs-overview"
+      ]
+    },
+    {
+      "id": "product.specflow.ui.specification-overview",
+      "type": "product",
+      "title": "Specification Overview",
+      "status": "current",
+      "file": "docs/product/specflow/ui/specification-overview.md",
+      "read_when": [
+        "changing the Specification Overview at /specs/:specId, its sections or their order",
+        "changing the one/two-column arrangement, its threshold or focus behaviour",
+        "changing Activity history placement or its open/closed default",
+        "changing Task selection on the Overview"
+      ],
+      "summary": "Specification Overview: priority order of its sections, the measured two-column arrangement from 1408 px of content width with 16 px hysteresis, focus restore across a crossing, Activity history as an on-demand Secondary whose explicit choice holds per Specification for the visit, the preparation block and empty Tasks, and Task multi-selection.",
+      "related": [
+        "product.specflow.ui.shell-geometry",
+        "product.specflow.ui.interaction-model",
+        "product.specflow.ui.application-architecture",
+        "product.specflow.specification-creation",
+        "reference.api.specification-workspace"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "workflow"
+      ],
+      "tags": [
+        "specification",
+        "overview",
+        "tasks",
+        "activity-history",
+        "responsive",
+        "focus"
+      ]
+    },
+    {
+      "id": "product.specflow.ui.specs-overview",
+      "type": "product",
+      "title": "Specifications list (Specs Overview)",
+      "status": "current",
+      "file": "docs/product/specflow/ui/specs-overview.md",
+      "read_when": [
+        "changing the Specifications list, its sections, rows, search or Current/Archive switch",
+        "deciding what a Specification row may show or link to",
+        "adding a state or a responsive rule to the Specifications list"
+      ],
+      "summary": "The Specifications list at \"/\": backend-owned Current sections (Requires attention, Active, Ready, Draft) or a flat list when the Runtime has no work status, the row anatomy and its information budget, Archive milestones, search with filtered counts and forced disclosure, responsive behaviour and states.",
+      "related": [
+        "product.specflow.ui.interaction-model",
+        "product.specflow.ui.shell-geometry",
+        "product.specflow.specification-creation",
+        "reference.api.specs-overview",
+        "design-system.principles.information-row-hierarchy"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui"
+      ],
+      "tags": [
+        "specs",
+        "overview",
+        "attention",
+        "readiness",
+        "search",
+        "archive"
       ]
     },
     {
       "id": "ideas.specflow-engine.acceptance",
       "type": "reference",
-      "title": "Engine worktree foundation acceptance criteria",
+      "title": "Open Engine workflow and managed execution acceptance criteria",
       "status": "draft",
       "file": "docs/ideas/specflow-engine/acceptance-criteria.md",
       "read_when": [
-        "deciding whether the engine/worktree PoC proved its architecture",
-        "freezing documentation or approving migration of legacy workflow"
+        "deciding whether offline workflow coordination or managed execution integration is done",
+        "approving migration of the remaining legacy workflow behaviour"
       ],
-      "summary": "Separate evidence-based acceptance gates for Specs/workspace Foundation A, real workflow coordination Foundation B, and later Runtime-managed Sessions integration.",
+      "summary": "Open evidence-based acceptance gates: offline workflow coordination (FB01-FB09), the remaining managed execution integration criteria (SI04-SI08) and the deferred multi-instance gate.",
       "related": [
         "ideas.specflow-engine",
-        "ideas.specflow-engine.spec-creation",
         "ideas.specflow-engine.test-plan",
         "ideas.specflow-engine.decisions",
         "ideas.specflow-engine.managed-session-integration",
@@ -6524,91 +4687,6 @@
         "acceptance",
         "proof-of-concept",
         "requirements"
-      ]
-    },
-    {
-      "id": "ideas.specflow-runtime.ai-adapters.migration-inspection-map",
-      "type": "reference",
-      "title": "Legacy adapter migration inspection map",
-      "status": "draft",
-      "file": "docs/ideas/specflow-runtime/ai-adapters/migration-inspection-map.md",
-      "read_when": [
-        "migrating legacy Nevo provider behavior into SpecFlow Runtime",
-        "deciding which legacy behavior to preserve, harden, or deliberately drop"
-      ],
-      "summary": "Concrete legacy Nevo files and symbols worth inspecting during provider migration, grouped by hardening concern so an implementation agent can go directly to the relevant behavior instead of rediscovering it from historical logs.",
-      "related": [
-        "ideas.specflow-runtime.ai-adapters",
-        "architecture.ai.provider-boundary",
-        "architecture.ai.canonical-session-turn-work"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ai",
-        "runtime",
-        "testing"
-      ],
-      "tags": [
-        "migration",
-        "legacy",
-        "providers",
-        "inspection"
-      ]
-    },
-    {
-      "id": "ideas.specflow-runtime.provider-process-boundary",
-      "type": "reference",
-      "title": "Shared provider process boundary implementation",
-      "status": "draft",
-      "file": "docs/ideas/specflow-runtime/provider-process-boundary.md",
-      "read_when": [
-        "implementing a real Session provider adapter",
-        "checking process ownership and diagnostics limits"
-      ],
-      "summary": "P1 implementation surface for explicit process environments, bounded protocol framing, private diagnostics and invocation cleanup before real provider adapters are enabled.",
-      "related": [
-        "ideas.specflow-runtime.provider-migration-plan",
-        "architecture.ai.provider-boundary",
-        "reference.protocols.session-provider-driver"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ai",
-        "runtime",
-        "security",
-        "testing"
-      ],
-      "tags": [
-        "providers",
-        "process",
-        "migration",
-        "diagnostics"
-      ]
-    },
-    {
-      "id": "ideas.specflow-runtime.session-migration-evidence",
-      "type": "reference",
-      "title": "Managed Session migration evidence",
-      "status": "draft",
-      "file": "docs/ideas/specflow-runtime/session-migration-evidence.md",
-      "read_when": [
-        "checking preserved legacy behavior during Session implementation"
-      ],
-      "summary": "Source evidence and characterization mapping for independent Session contracts.",
-      "related": [
-        "ideas.specflow-runtime.managed-sessions-delivery",
-        "reference.api.sessions"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ai",
-        "runtime",
-        "testing"
-      ],
-      "tags": [
-        "sessions",
-        "migration",
-        "characterization"
       ]
     },
     {
@@ -6662,7 +4740,7 @@
       "id": "reference.api.session-telemetry",
       "type": "reference",
       "title": "Session telemetry HTTP and live update contract",
-      "status": "draft",
+      "status": "current",
       "file": "docs/reference/api/session-telemetry.md",
       "read_when": [
         "designing provider telemetry producers and Session telemetry readers",
@@ -6671,8 +4749,8 @@
       "summary": "Bounded Session telemetry snapshot, explicit refresh and existing-stream invalidation contract, with provider provenance, freshness and partial availability.",
       "related": [
         "reference.api.sessions",
-        "ideas.specflow-runtime.ai-adapters.usage-accounting",
-        "ideas.specflow-runtime.session-v10-backend-readiness"
+        "reference.protocols.session-provider-driver",
+        "ideas.specflow-runtime.provider-migration-plan"
       ],
       "scope": "specflow",
       "areas": [
@@ -6696,7 +4774,7 @@
       "id": "reference.api.sessions",
       "type": "reference",
       "title": "Managed Sessions HTTP and read-model contract",
-      "status": "draft",
+      "status": "current",
       "file": "docs/reference/api/sessions.md",
       "read_when": [
         "implementing Session schemas, HTTP or UI clients",
@@ -6710,7 +4788,7 @@
         "architecture.ai.session-storage-and-lifecycle",
         "architecture.ai.canonical-session-turn-work",
         "reference.protocols.session-provider-driver",
-        "ideas.specflow-runtime.managed-sessions-delivery"
+        "reference.providers.compatibility"
       ],
       "scope": "specflow",
       "areas": [
@@ -6766,7 +4844,7 @@
       "related": [
         "reference.api.specification-workspace",
         "product.specflow.ui.data-loading-and-integration",
-        "ideas.specflow-ui.screens.specification-creation"
+        "product.specflow.specification-creation"
       ],
       "scope": "specflow",
       "areas": [
@@ -6872,7 +4950,8 @@
       "related": [
         "architecture.runtime.authorization",
         "reference.api.specs-operations-list",
-        "product.specflow.ui.application-architecture"
+        "product.specflow.ui.application-architecture",
+        "product.specflow.ui.specs-overview"
       ]
     },
     {
@@ -6917,7 +4996,7 @@
         "describing the product CLI to a user or in product copy",
         "planning a new nevo-specflow command"
       ],
-      "summary": "The currently implemented nevo-specflow CLI: version, init, start, auth and Engine-backed Specifications, plus commands not implemented yet.",
+      "summary": "The currently implemented nevo-specflow CLI: version, init, project, specs (including documents), commit, definitions, start (UI and Runtime API) and auth, plus commands not implemented yet.",
       "related": [
         "docs.product-specflow-cli-readme",
         "engineering.cli.architecture",
@@ -6996,18 +5075,21 @@
       "id": "reference.protocols.session-provider-driver",
       "type": "reference",
       "title": "Session provider driver and invocation protocol",
-      "status": "draft",
+      "status": "current",
       "file": "docs/reference/protocols/session-provider-driver.md",
       "read_when": [
         "implementing a Session provider driver or the controllable mock",
-        "migrating Claude Codex or Antigravity adapters"
+        "changing the Claude, Codex or Antigravity adapters",
+        "building a provider process environment or diagnostics capture"
       ],
-      "summary": "Canonical driver operations, event normalization, invocation fences, settlement evidence and a no-effect mock protocol for the managed Session foundation.",
+      "summary": "Canonical driver operations, neutral facts, invocation fences, settlement evidence, the shared provider environment projection and the no-effect mock protocol for managed Sessions.",
       "related": [
         "architecture.ai.provider-boundary",
         "architecture.ai.session-storage-and-lifecycle",
         "reference.api.sessions",
-        "ideas.specflow-runtime.ai-adapters"
+        "architecture.ai.provider-process-ownership",
+        "reference.providers.compatibility",
+        "ideas.specflow-runtime.provider-migration-plan"
       ],
       "scope": "specflow",
       "areas": [
@@ -7022,6 +5104,136 @@
         "cancellation",
         "fencing",
         "mock"
+      ]
+    },
+    {
+      "id": "reference.providers.antigravity",
+      "type": "reference",
+      "title": "Antigravity Session provider",
+      "status": "current",
+      "file": "docs/reference/providers/antigravity-provider.md",
+      "read_when": [
+        "enabling or reviewing the Antigravity Session adapter",
+        "checking account binding, private configuration or file guards",
+        "changing Antigravity hooks, MCP questions, workspace discovery or Stop handling"
+      ],
+      "summary": "Antigravity adapter enablement, consumer keyring login, native modes, private profile, hook-enforced file and command permissions, private MCP questions and workspace discovery, Stop continuation, settlement and durable limits.",
+      "related": [
+        "reference.providers.compatibility",
+        "reference.protocols.session-provider-driver",
+        "reference.api.sessions",
+        "architecture.ai.provider-boundary",
+        "architecture.ai.provider-process-ownership"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "security",
+        "configuration"
+      ],
+      "tags": [
+        "antigravity",
+        "providers",
+        "sessions",
+        "mcp",
+        "hooks"
+      ]
+    },
+    {
+      "id": "reference.providers.claude",
+      "type": "reference",
+      "title": "Claude Session provider",
+      "status": "current",
+      "file": "docs/reference/providers/claude-provider.md",
+      "read_when": [
+        "enabling or reviewing the Claude Session adapter",
+        "checking why a Claude installation, login or mode is unavailable",
+        "changing Claude tools, permissions, questions or settlement"
+      ],
+      "summary": "Claude adapter enablement, supported installation and login, native modes and tools, prelaunch policy checks, native context and dispatch, questions and permissions, settlement and durable limits.",
+      "related": [
+        "reference.providers.compatibility",
+        "reference.protocols.session-provider-driver",
+        "reference.api.sessions",
+        "architecture.ai.provider-boundary",
+        "architecture.ai.provider-process-ownership"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "security",
+        "configuration"
+      ],
+      "tags": [
+        "claude",
+        "providers",
+        "sessions"
+      ]
+    },
+    {
+      "id": "reference.providers.codex",
+      "type": "reference",
+      "title": "Codex Session provider",
+      "status": "current",
+      "file": "docs/reference/providers/codex-provider.md",
+      "read_when": [
+        "enabling or reviewing the Codex Session adapter",
+        "checking why a Codex installation, login or mode is unavailable",
+        "changing Codex sandbox, approvals, credentials or settlement"
+      ],
+      "summary": "Codex app-server adapter enablement, supported login, native modes and sandbox, private home and credential snapshots, native thread dispatch, approvals, settlement and durable limits.",
+      "related": [
+        "reference.providers.compatibility",
+        "reference.protocols.session-provider-driver",
+        "reference.api.sessions",
+        "architecture.ai.provider-boundary",
+        "architecture.ai.provider-process-ownership"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "security",
+        "configuration"
+      ],
+      "tags": [
+        "codex",
+        "providers",
+        "sessions"
+      ]
+    },
+    {
+      "id": "reference.providers.compatibility",
+      "type": "reference",
+      "title": "Provider build compatibility and admission",
+      "status": "current",
+      "file": "docs/reference/providers/compatibility.md",
+      "read_when": [
+        "a provider CLI was updated and availability changed",
+        "changing provider discovery caching, build classification or admission prerequisites",
+        "adding a tested or known-incompatible build record"
+      ],
+      "summary": "Optimistic build compatibility with strict capability enforcement: Tested, Provisional and Unsupported classification, fingerprint identity, the 30-second discovery cache, reinspection before dispatch and the bundled compatibility catalogue.",
+      "related": [
+        "reference.protocols.session-provider-driver",
+        "architecture.ai.provider-boundary",
+        "reference.providers.claude",
+        "reference.providers.codex",
+        "reference.providers.antigravity"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "security"
+      ],
+      "tags": [
+        "providers",
+        "compatibility",
+        "discovery",
+        "admission"
       ]
     }
   ]

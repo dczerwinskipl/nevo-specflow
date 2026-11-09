@@ -9,8 +9,8 @@
  *
  * Every section is optional and carries a `ContextFact`: a section the Session has no association
  * with is absent (it simply does not render), while a section whose data is loading, unreadable,
- * missing or forbidden says so (see `sessionContextAvailability.ts`, full-session-screen-structure.md
- * §7.6). Adding a future section (Handovers, Evidence, …) must not require reworking this shape.
+ * missing or forbidden says so (see `sessionContextAvailability.ts`, full-session.md "Context"
+ * ). Adding a future section (Handovers, Evidence, …) must not require reworking this shape.
  */
 
 import type { TelemetrySnapshot } from '@nevo/specflow-contracts/sessions';
@@ -110,9 +110,9 @@ export interface SessionContextViewModel {
   relatedTasksMissing?: { count: number; total: number };
   /**
    * The Session's current/most-recent Turn — the id `SessionContext`'s own "Work history" row
-   * opens (the same per-Turn Work tab Conversation's Work blocks open, full-session-screen-structure.md
-   * §8.3). `loading` before the first snapshot; absent when the Session has no Turn yet. There is
-   * no cross-Turn list projection yet (v1 scope: the current/last Turn only).
+   * opens (the same per-Turn Work tab Conversation's Work blocks open, full-session.md
+   * "Work history (L2)"). `loading` before the first snapshot; absent when the Session has no Turn
+   * yet. There is no cross-Turn list projection yet (v1 scope: the current/last Turn only).
    */
   workHistory?: ContextFact<{ turnId: string }>;
   /**
@@ -128,7 +128,7 @@ export interface SessionContextViewModel {
    */
   telemetry?: TelemetrySnapshot;
   /**
-   * The provider-limits refresh (full-session-screen-structure §7.7). Present only when the user may manage
+   * The provider-limits refresh (full-session.md "Context"). Present only when the user may manage
    * the Session; the control itself also needs a `refreshable` limits reading.
    */
   limitsRefresh?: LimitsRefreshControl;

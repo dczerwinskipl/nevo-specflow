@@ -29,7 +29,7 @@ Link one managed writable Turn to an actual Workflow attempt, then call explicit
 
 ## Prerequisites
 
-- [E5.T05](T05-turn-claim-settlement.md)
+- Session-level intent, dispatch phases and claim settlement, implemented (former E5.T03–T05): [workspace execution claims](../../../../../architecture/runtime/workspace-execution-claims.md)
 
 Original planning dependency: T05. The linked IDs above are the **executable** dependency graph; a separate spec-level gate still applies.
 

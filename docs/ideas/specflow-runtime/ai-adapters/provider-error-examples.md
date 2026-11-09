@@ -25,7 +25,6 @@ summary: >
 related:
   - ideas.specflow-runtime.ai-adapters
   - ideas.specflow-runtime.ai-adapters.error-classification
-  - ideas.specflow-runtime.ai-adapters.protocol-examples
   - ideas.specflow-runtime.ai-adapters.provider-readiness-auth
   - ideas.specflow-runtime.ai-adapters.liveness-watchdog
 ---

@@ -24,7 +24,7 @@ summary: >
 related:
   - ideas.specflow-ui.screens
   - ideas.specflow-ui.screens.specification-workspace
-  - ideas.specflow-ui.screens.new-session
+  - product.specflow.ui.full-session
   - ideas.specflow-ui.navigation-route-model
   - ideas.specflow-ui.session-association-ux
   - reference.api.sessions
@@ -51,7 +51,7 @@ section's rows. Standalone Sessions are listed nowhere in the UI.
 
 Header action **Nowa sesja** (`sessions.list.newSession`, _New session_) opens
 `/specs/:specId/sessions/new`; gated by the workspace `actions.startSession`
-([New Session UI spec](new-session-ui-spec.md), scenario (h1)).
+([Full Session, Starting a Session](../../../product/specflow/ui/full-session.md#starting-a-session)).
 
 ## 3. Rows
 

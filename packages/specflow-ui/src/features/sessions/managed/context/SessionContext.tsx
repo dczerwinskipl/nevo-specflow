@@ -44,7 +44,7 @@ type OpenSecondaryStack = <
 ) => Promise<boolean>;
 
 /**
- * Full Session Context Secondary (full-session-screen-structure.md §7).
+ * Full Session Context Secondary (full-session.md "Context").
  *
  * Fixed section order, top to bottom: Executor (+ the scope note), Specification (identity row +
  * Documents row), Current execution, Attention, Related Tasks, Work, Planned areas, then Session
@@ -67,7 +67,7 @@ export function SessionContext({
   /**
    * How Tasks opens from here. On the narrow runtime Context flow (`createSessionContextStack`
    * below) this is that flow's own `navTo`, which pushes the Tasks tab's initial screen onto
-   * Context's OWN stack — narrow has no tabs at all (full-session-screen-structure.md §10.3), so
+   * Context's OWN stack — narrow has no tabs at all (full-session.md "Secondary tabs"), so
    * this is a plain, correct push/pop. Omitted on the wide/split-capable default Secondary (see
    * `ManagedSession`), where each Task (and the Tasks list) opens as its own root tab via
    * `navigation.openTab`.
@@ -88,7 +88,7 @@ export function SessionContext({
   /**
    * The Work history stack `ManagedSession` also uses for its Conversation Work blocks
    * (`createWorkInspector`), passed in so both entry points share its per-Turn tab identity
-   * (full-session-screen-structure.md §8.3): the "Work history" row and the chat block of the same
+   * (full-session.md "Work history (L2)"): the "Work history" row and the chat block of the same
    * Turn call `openTab` with the same `{ sessionId, turnId }`, so they land on one tab. Omitted: no
    * Work section.
    */
@@ -98,7 +98,7 @@ export function SessionContext({
   const navigation = useSecondaryNavigation();
 
   /**
-   * Opens a Tasks surface (full-session-screen-structure.md §7.4/§10.1 — see
+   * Opens a Tasks surface (full-session.md "Secondary tabs" — see
    * `SessionTasksInspector.tsx`'s module comment). With `openStack` (the narrow Context flow) it is
    * a push onto that flow, flagged `inFlow` so the list also pushes Tasks instead of opening tabs.
    * Otherwise it is `openTab`: `tasksStack` is the one list tab, `taskStack` is one tab per Task
@@ -193,7 +193,7 @@ export function SessionContext({
 
 /**
  * Narrow fallback: on layouts that cannot show Primary + Secondary side by side, Context is not
- * auto-pushed (full-session-screen-structure.md §3.3); a header action opens it as a pushed local
+ * auto-pushed (full-session.md "Secondary tabs"); a header action opens it as a pushed local
  * detail instead.
  *
  * Context here is a *runtime* Secondary flow (there is no default/static Secondary on narrow), so

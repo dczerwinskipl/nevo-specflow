@@ -39,7 +39,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 /**
- * Regression for the collapsed-search-field bug (session-work-inspector-ui-spec.md / live-review
+ * Regression for the collapsed-search-field bug (live-review
  * fix): a `w-max` (max-content) ancestor collapsed the drill-in panel's toolbar row to ~260px, so
  * the search `<TextInput>` shrank to ~118px and its own placeholder rendered cut off mid-word.
  * `clientWidth` alone would not catch that regression (a narrow box with a narrow placeholder both

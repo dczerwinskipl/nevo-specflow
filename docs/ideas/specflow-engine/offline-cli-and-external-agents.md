@@ -14,7 +14,7 @@ summary: >
   Runtime, while provider-native conversations remain outside managed Session/Turn ownership.
 related:
   - ideas.specflow-engine
-  - ideas.specflow-engine.boundaries
+  - architecture.runtime.specflow-engine
   - ideas.specflow-engine.ownership
   - ideas.specflow-engine.locking
   - architecture.ai.provider-boundary

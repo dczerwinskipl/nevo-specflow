@@ -81,13 +81,16 @@ the Engine must never commit on some branches (for example `main` or `release/**
    committed blob is what Git's attributes store for them. Resume verifies a found commit by comparing
    its blob id with `git hash-object <path>` of the verified working file (the filters of the path
    apply, `--no-filters` is not used), never by hashing the blob content. A scaffold committed by hand
-   is accepted when the full file list is committed and `git status` for those paths is clean under
-   the same flags, so a hand commit made under the user's `core.autocrlf` that differs from the disk
+   is accepted when the full file list is committed, `git status` for those paths is clean under
+   the same flags, and fresh attribute-aware working-file hashes equal the committed blobs. Status alone
+   MUST NOT prove byte identity: Git may reuse index stat data recorded under a different clean-filter policy.
+   A hand commit made under the user's `core.autocrlf` that differs from the disk
    under `autocrlf=false` is not byte-identical and stays a recovery. Concretely: CRLF content committed by
    hand under `core.autocrlf=true` WITHOUT a normalising `.gitattributes` rule stores LF, the Engine treats
    the working bytes as authoritative, and resume is refused with `CREATE_RECOVERY_REQUIRED`; with a
    normalising rule (for example `* text=auto eol=lf`) the same hand commit is accepted. Operator remedy: commit the scaffold files again on top with
-   `git -c core.autocrlf=false add specs` (a follow-up commit, so the working bytes become the committed
+   `git -c core.autocrlf=false add --renormalize specs` (force re-hashing despite the cached index stat data;
+   a follow-up commit, so the working bytes become the committed
    bytes) and finish with `specs recover <operation-id> --confirmed-stopped`; or abandon the operation.
    Do not rewrite the hand commit away once a resume was attempted: the journal then pins that HEAD as
    the commit parent and a reset ends in a permanent `CREATE_RECOVERY_REQUIRED` (history changed). `dropIntentToAdd` only runs after a

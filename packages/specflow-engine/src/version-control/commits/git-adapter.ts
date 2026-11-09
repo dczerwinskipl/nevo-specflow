@@ -308,6 +308,17 @@ export function createGitCommitPort(
         return { state: 'mixed' };
       }
 
+      // A clean status may reuse index stat data recorded under another clean-filter policy
+      // (for example core.autocrlf=true). Prove the blobs under our exact-byte policy as well.
+      const facts = await pathFacts(root, paths);
+      if (
+        facts.some(
+          (fact) => fact.head === null || isNonBlobState(fact.head) || fact.working !== fact.head,
+        )
+      ) {
+        return { state: 'mixed' };
+      }
+
       const last = await run(root, ['log', '-1', '--format=%H', 'HEAD', '--', ...literals]);
       const sha = last.stdout.trim();
       if (last.exitCode !== 0 || !OBJECT_ID.test(sha)) {

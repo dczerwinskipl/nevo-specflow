@@ -63,4 +63,10 @@ describe('docs command', () => {
     expect(run.exitCode).toBe(1);
     expect(run.stderr.join('\n')).toMatch(/project-owned and cannot be set locally/);
   });
+
+  it('fails with exit 1 when the documentation root does not exist', async () => {
+    const run = await runDocs(join(root, 'docs'), ['check', '--write']);
+    expect(run.exitCode).toBe(1);
+    expect(run.stderr.join('\n')).toMatch(/documentation root 'docs' does not exist/);
+  });
 });

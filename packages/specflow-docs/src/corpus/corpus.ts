@@ -1,10 +1,13 @@
 // A documentation corpus: the repository, the project settings and host-specific extra rules,
 // scanned and validated together.
 
+import { statSync } from 'node:fs';
+import { join } from 'node:path';
+
 import type { DocsSettings } from '../config/docs-settings';
 import type { DocRecord } from '../frontmatter/contract';
 import { validateCorpus, validateDoc } from '../frontmatter/validate';
-import { DocsCorpusInvalidError } from '../errors';
+import { DocsConfigError, DocsCorpusInvalidError } from '../errors';
 import { createFileSystemDocRepository, type DocRepository, type ScanResult } from './repository';
 
 /**
@@ -24,11 +27,22 @@ export interface DocsCorpus {
   readonly validate?: DocsCorpusRules['validate'];
 }
 
+/** Open the corpus under `docs.root`; a root that is not an existing directory is a configuration error. */
 export function openFileSystemCorpus(
   projectRoot: string,
   settings: DocsSettings,
   rules: DocsCorpusRules = {},
 ): DocsCorpus {
+  if (
+    !statSync(join(projectRoot, ...settings.root.split('/')), {
+      throwIfNoEntry: false,
+    })?.isDirectory()
+  ) {
+    throw new DocsConfigError(
+      `documentation root '${settings.root}' does not exist in ${projectRoot}; create it or set docs.root.`,
+    );
+  }
+
   return {
     repo: createFileSystemDocRepository({
       projectRoot,

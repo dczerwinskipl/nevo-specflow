@@ -1,8 +1,8 @@
-<!-- GENERATED FILE — do not edit. Run: pnpm docs:check --write -->
+<!-- GENERATED FILE — do not edit. Run: nevo-specflow docs check --write -->
 
 # Documentation index
 
-Regenerate with `pnpm docs:check --write`. Human-authored navigation lives in [`docs/README.md`](README.md).
+Regenerate with `nevo-specflow docs check --write`. Human-authored navigation lives in [`docs/README.md`](README.md).
 
 ## Hub
 

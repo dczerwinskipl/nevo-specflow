@@ -44,9 +44,18 @@ function encodeMarkdownTableCell(value: string): string {
 export interface IndexOptions {
   /** `docs.root`; links in the markdown index are relative to it. */
   readonly root: string;
-  /** The command line that regenerates the index, as the host invokes it. */
+}
+
+export interface IndexDiffOptions extends IndexOptions {
+  /** The command line that regenerates the index as the host invokes it; used only in hints. */
   readonly checkWriteCommand: string;
 }
+
+/**
+ * The regenerate command named inside the generated index. It is the product command whatever host
+ * wrote the file, so every host produces and accepts the same bytes for the same corpus.
+ */
+export const INDEX_REGENERATE_COMMAND = 'nevo-specflow docs check --write';
 
 export interface BuiltIndex {
   readonly json: string;
@@ -78,9 +87,9 @@ export function buildIndex(docs: readonly DocRecord[], options: IndexOptions): B
     byType.set(key, group);
   }
 
-  let md = `<!-- GENERATED FILE — do not edit. Run: ${options.checkWriteCommand} -->\n\n`;
+  let md = `<!-- GENERATED FILE — do not edit. Run: ${INDEX_REGENERATE_COMMAND} -->\n\n`;
   md += '# Documentation index\n\n';
-  md += `Regenerate with \`${options.checkWriteCommand}\`.`;
+  md += `Regenerate with \`${INDEX_REGENERATE_COMMAND}\`.`;
   md += docs.some((doc) => doc.file === `${rootPrefix}README.md`)
     ? ` Human-authored navigation lives in [\`${rootPrefix}README.md\`](README.md).\n\n`
     : '\n\n';
@@ -122,7 +131,11 @@ export function buildIndex(docs: readonly DocRecord[], options: IndexOptions): B
 }
 
 /** Compare a freshly built index against what is on disk. */
-export function diffIndex(built: BuiltIndex, onDisk: OnDiskIndex, options: IndexOptions): string[] {
+export function diffIndex(
+  built: BuiltIndex,
+  onDisk: OnDiskIndex,
+  options: IndexDiffOptions,
+): string[] {
   const problems: string[] = [];
   const hint = `run \`${options.checkWriteCommand}\``;
   const jsonFile = `${options.root}/index.generated.json`;

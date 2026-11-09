@@ -5029,7 +5029,7 @@
         "describing the product CLI to a user or in product copy",
         "planning a new nevo-specflow command"
       ],
-      "summary": "The currently implemented nevo-specflow CLI: version, init, project, specs (including documents), commit, definitions, start (UI and Runtime API) and auth, plus commands not implemented yet.",
+      "summary": "The currently implemented nevo-specflow CLI: version, init, project, specs (including documents), commit, definitions, docs, start (UI and Runtime API) and auth, plus commands not implemented yet.",
       "related": [
         "docs.product-specflow-cli-readme",
         "engineering.cli.architecture",

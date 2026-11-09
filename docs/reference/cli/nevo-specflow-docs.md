@@ -47,12 +47,18 @@ nevo-specflow docs check [--write]
   `related` / `supersedes` / `superseded_by`, relative Markdown links and their `#fragment`
   headings) and verifies that `<root>/index.generated.json` and `<root>/index.generated.md` are
   current. `--write` regenerates both when the corpus is valid; broken links are reported but do
-  not block regeneration. The index is deterministic, so writing it twice changes nothing.
+  not block regeneration. The index is deterministic, so writing it twice changes nothing, and its
+  content does not depend on how the command was invoked: it always names
+  `nevo-specflow docs check --write`.
 
 With `--json`, stdout holds one JSON document and nothing else. A `list` or `find` result carries
 the document's frontmatter, `file` and `body` (and, for `find`, `score`, `matchedTerms` and
 `matchedFields`); a `get` or `context` entry carries `id`, `file`, `title`, `status`, `summary`,
 `read_when`, `scope` (when set), `areas` and `tags`.
+
+Errors are reported on stderr in every mode, including `--json`; stdout stays empty when a command
+fails. This is the one deliberate difference from the repository tool these commands were promoted
+from, which printed an `{"error": …}` object on stdout in `--json` mode.
 
 ## Configuration
 

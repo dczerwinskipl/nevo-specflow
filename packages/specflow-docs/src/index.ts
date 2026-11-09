@@ -56,7 +56,9 @@ export {
 export {
   buildIndex,
   diffIndex,
+  INDEX_REGENERATE_COMMAND,
   type BuiltIndex,
+  type IndexDiffOptions,
   type IndexOptions,
   type OnDiskIndex,
 } from './index-file/index-file';

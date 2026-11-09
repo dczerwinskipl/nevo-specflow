@@ -4,7 +4,7 @@
 
 import { inspectCorpus, type DocsCorpus } from '../corpus/corpus';
 import { validateLinks } from '../links/links';
-import { buildIndex, diffIndex, type IndexOptions } from './index-file';
+import { buildIndex, diffIndex, type IndexDiffOptions } from './index-file';
 
 export interface CheckResult {
   readonly problems: string[];
@@ -19,7 +19,7 @@ export function checkDocumentation(
   { write = false, checkWriteCommand }: { write?: boolean; checkWriteCommand: string },
 ): CheckResult {
   const { docs, problems: corpusProblems } = inspectCorpus(corpus);
-  const indexOptions: IndexOptions = { root: corpus.settings.root, checkWriteCommand };
+  const indexOptions: IndexDiffOptions = { root: corpus.settings.root, checkWriteCommand };
 
   let wroteIndex = false;
   if (write && corpusProblems.length === 0) {

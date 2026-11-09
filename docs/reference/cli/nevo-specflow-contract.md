@@ -9,7 +9,7 @@ read_when:
   - planning a new nevo-specflow command
 summary: >
   The currently implemented nevo-specflow CLI: version, init, project, specs (including documents),
-  commit, definitions, start (UI and Runtime API) and auth, plus commands not implemented yet.
+  commit, definitions, docs, start (UI and Runtime API) and auth, plus commands not implemented yet.
 related:
   - docs.product-specflow-cli-readme
   - engineering.cli.architecture

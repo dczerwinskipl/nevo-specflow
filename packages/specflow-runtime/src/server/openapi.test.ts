@@ -9,9 +9,11 @@ import {
 } from '@nevo/specflow-contracts/authentication';
 import type { RuntimeConfig } from '../config/types';
 import { noAuthConfig, oidcConfig, passwordConfig } from '../../test/auth/support/config';
+import { pathParameterProblems } from '../openapi-document';
 import { createRuntimeApp, type RuntimeAppDependencies } from './app';
 import {
   generateOpenApiDocument,
+  openApiOperationId,
   openApiRouteGaps,
   registerOpenApi,
   type RuntimeOpenApiDocument,
@@ -19,9 +21,12 @@ import {
 import { contractRef, registerSharedContracts } from './shared-contracts';
 
 interface Operation {
+  operationId?: string;
+  security?: unknown;
   responses: Record<
     string,
     {
+      description?: string;
       headers?: Record<string, unknown>;
       content?: Record<string, { schema: Record<string, unknown> }>;
     }
@@ -104,6 +109,13 @@ describe('Runtime OpenAPI document', () => {
       );
       expect(JSON.stringify(await generateOpenApiDocument(app))).toBe(JSON.stringify(generated));
       expect(openApiRouteGaps(app)).toEqual([]);
+      expect(pathParameterProblems(generated)).toEqual([]);
+      expect(
+        pathParameterProblems({ openapi: '3.1.0', paths: { '/api/a/{id}': { get: {} } } }),
+      ).toEqual(['GET /api/a/{id} declares path parameters [].']);
+      // Trusted local mode: no operation needs a credential.
+      expect(generated.components).not.toHaveProperty('securitySchemes');
+      expect(JSON.stringify(generated.paths)).not.toContain('"security"');
     });
   });
 
@@ -116,6 +128,55 @@ describe('Runtime OpenAPI document', () => {
       expect(document.statusCode).toBe(read.statusCode);
       expect(document.json()).toEqual(read.json());
     });
+  });
+
+  it('documents the session cookie on protected operations only, under required authentication', async () => {
+    await withApp(passwordConfig(), {}, async (app) => {
+      const document = await generateOpenApiDocument(app);
+
+      expect(document.components).toMatchObject({
+        securitySchemes: {
+          sessionCookie: { type: 'apiKey', in: 'cookie', name: 'nevo_session_4318' },
+        },
+      });
+      expect(operation(document, '/api/specs/{specId}/workspace', 'get').security).toEqual([
+        { sessionCookie: [] },
+      ]);
+      expect(operation(document, '/api/auth/session', 'get')).not.toHaveProperty('security');
+    });
+  });
+
+  it('names every operation by its method and path, and refuses two routes with one name', async () => {
+    await withApp(passwordConfig(), {}, async (app) => {
+      const document = await generateOpenApiDocument(app);
+      const ids = Object.values(document.paths as Record<string, Record<string, Operation>>)
+        .flatMap((operations) => Object.values(operations))
+        .map((found) => found.operationId);
+
+      expect(new Set(ids).size).toBe(ids.length);
+      expect(operation(document, '/api/specs/{specId}/workspace', 'get').operationId).toBe(
+        'getSpecsBySpecIdWorkspace',
+      );
+      // A status code with a clear meaning is described, also when its body is a shared component.
+      const unauthenticated = operation(document, '/api/specs/{specId}/workspace', 'get')
+        .responses[401];
+      expect(unauthenticated?.description).toBe('Not authenticated.');
+      expect(unauthenticated?.content?.['application/json']?.schema).toEqual({
+        $ref: '#/components/schemas/AuthenticationRequiredErrorResponse',
+      });
+    });
+    expect(openApiOperationId('POST', '/api/specs/:specId/document-commits/flush')).toBe(
+      'postSpecsBySpecIdDocumentCommitsFlush',
+    );
+
+    const app = Fastify();
+    try {
+      await registerOpenApi(app, { sessionCookie: undefined });
+      app.get('/api/a-b', () => '');
+      expect(() => app.get('/api/a/b', () => '')).toThrow(/same operationId getAB/);
+    } finally {
+      await app.close();
+    }
   });
 
   it('hides demo seams and web application routes', async () => {
@@ -244,7 +305,7 @@ describe('Runtime OpenAPI document', () => {
   it('reports routes without documented responses and refuses a response documented twice', async () => {
     const app = Fastify();
     try {
-      await registerOpenApi(app);
+      await registerOpenApi(app, { sessionCookie: undefined });
       app.get('/api/plain/:id', () => '');
       app.get(
         '/api/stream',

@@ -8,7 +8,7 @@ import Fastify, {
   type RawServerBase,
 } from 'fastify';
 
-import { createAuthFeature, type AuthFeatureDependencies } from '../features/auth';
+import { authCookieNames, createAuthFeature, type AuthFeatureDependencies } from '../features/auth';
 import type { RuntimeConfig } from '../config/types';
 import {
   createSessionsFeature,
@@ -130,7 +130,13 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
   registerRuntimeErrorHandler(app);
   await registerEndpointPolicy(app, config.server.rateLimit);
   // Before any route: OpenAPI generation captures only routes registered after it.
-  await registerOpenApi(app);
+  await registerOpenApi(app, {
+    // Trusted local mode needs no credential; required authentication reads the session cookie.
+    sessionCookie:
+      config.authentication.mode === 'required'
+        ? authCookieNames(config.server.port).session
+        : undefined,
+  });
   registerSharedContracts(app);
 
   const mode = dependencies.dataMode ?? 'project';
@@ -302,6 +308,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
   app.withTypeProvider<TypeBoxTypeProvider>().get(
     '/api/runtime/info',
     {
+      config: { openApiPublic: true },
       schema: { response: { 200: RuntimeInfoResponseSchema } },
     },
     (_request, reply) => {

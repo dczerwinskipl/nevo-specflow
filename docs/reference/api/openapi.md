@@ -91,6 +91,55 @@ Schemas stay inline when they are not one shared response contract:
 Structural equality alone never makes a component; a new shared contract gets an `$id` in the
 contracts package and an entry in the shared-contract list.
 
+## Authentication
+
+The document describes the session cookie of the Runtime that serves it:
+
+- **Required authentication** (`authentication.mode: required`): `components.securitySchemes` has
+  one scheme, `sessionCookie`, an `apiKey` in a cookie whose name is the Runtime session cookie of
+  the configured server port (`authCookieNames(port).session`, for example `nevo_session_4318`).
+  Every operation that needs an authenticated principal carries
+  `"security": [{ "sessionCookie": [] }]`; a public operation carries no `security`. The document
+  has no global `security`.
+- **Trusted local mode** (`authentication.mode: none`): no operation needs a credential, so the
+  document has no security scheme and no operation `security`.
+
+Runtime authorizes inside each route (`request.authz`, `requireCapability`), so a route does not
+declare whether it needs a principal in a form the document could read. A route that answers
+without an authenticated principal says so in its route `config` with `openApiPublic: true`; every
+other documented route needs access. The public operations are login and logout
+(`/api/auth/password/login`, `/api/auth/oidc/<providerId>/start`,
+`/api/auth/oidc/<providerId>/callback`, `/api/auth/logout`), the authentication state
+(`GET /api/auth/session`) and `GET /api/runtime/info`. A new route that answers without a principal
+MUST set `openApiPublic: true`. The security of an operation is never derived from its URL or from
+its `401` and `403` responses.
+
+## Operation ids
+
+Every operation has an `operationId` made from its method and path: the lower-case method, then
+each path segment below `/api/` in PascalCase, with a path parameter written as `By<Name>`.
+
+| Operation                                         | `operationId`                           |
+| ------------------------------------------------- | --------------------------------------- |
+| `GET /api/specs/{specId}/workspace`               | `getSpecsBySpecIdWorkspace`             |
+| `POST /api/specs/{specId}/document-commits/flush` | `postSpecsBySpecIdDocumentCommitsFlush` |
+| `DELETE /api/sessions/{sessionId}`                | `deleteSessionsBySessionId`             |
+
+The id depends only on the method and the path, never on registration order, so it changes only
+when the route does. Two routes whose paths produce the same id (such as `/api/a-b` and
+`/api/a/b`) are refused when the second is registered. An OIDC provider route carries the provider
+id (`postAuthOidcExampleStart` in the committed document).
+
+## Response descriptions
+
+A response documented by a schema without its own `description` is described by its status code,
+for the status codes whose meaning is the same on every Runtime route (`200` Success, `202`
+Accepted: the operation continues asynchronously, `304` Not modified, `401` Not authenticated,
+`403` The principal lacks a required capability, `409`, `422`, `429`, `503` and so on; the list is
+`STATUS_DESCRIPTIONS` in `src/server/openapi.ts`). A documentation-only response carries the
+description written in its route `config` (see below). The description belongs to the response,
+not to the schema: a shared component keeps no description of its own.
+
 ## Committed document
 
 `docs/reference/api/openapi.generated.json` is the document of one canonical **project-mode**
@@ -120,7 +169,21 @@ pnpm api:openapi          # build @nevo/specflow-runtime and write the committed
 pnpm api:openapi --check  # fail when the committed document differs from a fresh generation
 ```
 
-Both modes use the same generation. `--check` exits non-zero with
+Both modes use the same generation and validate the document before they write or compare it:
+
+- the document is validated as OpenAPI 3.1 by
+  [`@seriousme/openapi-schema-validator`](https://github.com/seriousme/openapi-schema-validator)
+  (a development dependency of the command script only, never part of the Runtime build). This
+  checks conformance to the OpenAPI 3.1 schema, including `required: true` on every path parameter,
+  and that every `$ref` resolves;
+- every parameter of a path template is declared as a path parameter of each of its operations, and
+  no other path parameter is declared.
+
+An invalid document fails both modes with `The generated OpenAPI document is invalid:` and the list
+of problems; nothing is written. Component names cannot collide: each is the `$id` of a shared
+contract, and Fastify refuses a second registration of an `$id` at startup.
+
+`--check` exits non-zero with
 ``docs/reference/api/openapi.generated.json is stale: run `pnpm api:openapi`.`` when the bytes
 differ; CI runs it (see [Continuous integration](../../engineering/repository/ci.md#runtime-openapi-document)).
 After changing a route schema, run `pnpm api:openapi` and commit the regenerated file with the

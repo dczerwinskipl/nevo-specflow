@@ -113,9 +113,10 @@ workspace dependencies (`packages/specflow-runtime/`, `packages/specflow-contrac
 `packages/specflow-engine/`, `packages/authorization/`), where the route schemas and the schemas
 they reuse live, and to the generated file itself; the failure counts towards `verify tests`.
 
-The check regenerates the document and fails with
-``docs/reference/api/openapi.generated.json is stale: run `pnpm api:openapi`.`` when the committed
-bytes differ. Fix it by running `pnpm api:openapi` and committing the result; the API change is then
+The check regenerates the document, validates it as OpenAPI 3.1 and fails with
+`The generated OpenAPI document is invalid:` and the list of problems when the document is not
+valid, or with ``docs/reference/api/openapi.generated.json is stale: run `pnpm api:openapi`.`` when
+the committed bytes differ. Fix it by running `pnpm api:openapi` and committing the result; the API change is then
 visible in the pull request diff (`.gitattributes` keeps this generated file diffable). Routes
 without a response schema are printed to stderr as information and never fail the check.
 

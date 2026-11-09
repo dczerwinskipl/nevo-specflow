@@ -27,6 +27,7 @@ export const sessionEndpoint: FastifyPluginCallback<SessionEndpointOptions> = (
   routes.get(
     '/api/auth/session',
     {
+      config: { openApiPublic: true },
       schema: {
         response: {
           200: contractRef(AuthSessionResponseSchema),
@@ -48,6 +49,7 @@ export const sessionEndpoint: FastifyPluginCallback<SessionEndpointOptions> = (
     '/api/auth/logout',
     {
       config: {
+        openApiPublic: true,
         openApiResponses: {
           204: {
             description: 'Logged out. The session, if any, ends. No body.',

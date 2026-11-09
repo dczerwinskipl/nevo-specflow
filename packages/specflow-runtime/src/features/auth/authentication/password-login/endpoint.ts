@@ -39,6 +39,7 @@ export const passwordLoginEndpoint: FastifyPluginCallback<PasswordLoginEndpointO
     {
       bodyLimit: PASSWORD_LOGIN_BODY_LIMIT,
       config: {
+        openApiPublic: true,
         rateLimit: {
           max: PASSWORD_SOURCE_ATTEMPT_LIMIT,
           timeWindow: PASSWORD_SOURCE_WINDOW_MS,

@@ -308,8 +308,9 @@ jobs:
       - name: Build CLI and Runtime test dependencies
         if: steps.affected.outputs.run == 'true'
         run: pnpm exec turbo run build --filter=@nevo/specflow-runtime --filter=@nevo/specflow
-      # The committed Runtime OpenAPI document must match the route schemas (`pnpm api:openapi`).
-      - name: Runtime OpenAPI document is current
+      # The committed Runtime OpenAPI document must be valid OpenAPI 3.1 and match the route schemas
+      # (`pnpm api:openapi`).
+      - name: Runtime OpenAPI document is valid and current
         if: steps.affected.outputs.run == 'true'
         run: pnpm api:openapi --check
       - name: Engine real-Git lifecycle smoke

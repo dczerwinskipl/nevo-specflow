@@ -26,8 +26,26 @@ declare module 'fastify' {
      * schema: a JSON body is documented by its schema.
      */
     readonly openApiResponses?: Readonly<Record<number, OpenApiDocumentedResponse>>;
+    /**
+     * The route answers without an authenticated principal: it does not use request authorization
+     * (login, logout, the authentication state, the Runtime info). Every other documented route
+     * requires access, so the document gives it the session cookie requirement under required
+     * authentication.
+     */
+    readonly openApiPublic?: true;
   }
 }
+
+export interface OpenApiOptions {
+  /**
+   * The name of the session cookie under `authentication.mode: required`; absent in trusted local
+   * mode (`none`), where no operation needs a credential.
+   */
+  readonly sessionCookie: string | undefined;
+}
+
+/** The security scheme name of the session cookie in `components.securitySchemes`. */
+export const SESSION_COOKIE_SCHEME = 'sessionCookie';
 
 /** A route with neither a `response` schema nor `openApiResponses`: its responses are unknown. */
 export interface OpenApiRouteGap {
@@ -66,6 +84,53 @@ function openApiPath(url: string): string {
   return url.replace(/:([A-Za-z0-9_]+)/g, '{$1}');
 }
 
+/**
+ * The `operationId` of a route: the lower-case method followed by the path below `/api/` in
+ * PascalCase, a path parameter as `By<Name>` (`GET /api/specs/:specId/workspace` is
+ * `getSpecsBySpecIdWorkspace`). It depends only on the method and path, never on registration
+ * order; two routes with the same id are refused at registration.
+ */
+export function openApiOperationId(method: string, url: string): string {
+  const words = url
+    .replace(/^\/api\//, '')
+    .split('/')
+    .map((segment) =>
+      segment.startsWith(':') ? `By${pascalCase(segment.slice(1))}` : pascalCase(segment),
+    );
+
+  return `${method.toLowerCase()}${words.join('')}`;
+}
+
+function pascalCase(segment: string): string {
+  return segment
+    .split(/[^A-Za-z0-9]+/)
+    .filter((word) => word.length > 0)
+    .map((word) => `${word[0]!.toUpperCase()}${word.slice(1)}`)
+    .join('');
+}
+
+/**
+ * Response descriptions by status code, for responses whose schema has no `description`. Only
+ * status codes whose meaning is the same on every Runtime route are listed; any other status keeps
+ * the `@fastify/swagger` default.
+ */
+const STATUS_DESCRIPTIONS: Readonly<Record<string, string>> = {
+  200: 'Success.',
+  201: 'Created.',
+  202: 'Accepted: the operation continues asynchronously.',
+  304: 'Not modified: the representation identified by the request `If-None-Match` is current.',
+  400: 'The request is invalid.',
+  401: 'Not authenticated.',
+  403: 'The principal lacks a required capability.',
+  404: 'Not found.',
+  409: 'Conflicts with the current state of the resource.',
+  413: 'The request or the addressed content is too large.',
+  415: 'Unsupported media type.',
+  422: 'The request is well-formed but cannot be processed.',
+  429: 'Too many requests.',
+  503: 'Temporarily unavailable.',
+};
+
 const COMPONENT_NAME = /^[A-Za-z0-9._-]+$/;
 
 /** The `components.schemas` name of a shared schema: its `$id`, which MUST be a component name. */
@@ -83,9 +148,11 @@ function componentName(json: { readonly $id?: unknown }): string {
  */
 export async function registerOpenApi<RawServer extends RawServerBase>(
   app: FastifyInstance<RawServer>,
+  options: OpenApiOptions,
 ): Promise<void> {
   const gaps: OpenApiRouteGap[] = [];
   routeGaps.set(app, gaps);
+  const operationIds = new Map<string, string>();
   app.addHook('onRoute', (route) => {
     const documented = route.config?.openApiResponses;
     const schemaStatuses = Object.keys(route.schema?.response ?? {});
@@ -102,46 +169,102 @@ export async function registerOpenApi<RawServer extends RawServerBase>(
       return;
     }
 
+    // One operation per route, so the route has one `operationId`.
+    if (Array.isArray(route.method)) {
+      throw new Error(`Documented route ${route.url} must have one method.`);
+    }
+
+    const id = openApiOperationId(route.method, route.url);
+    const existing = operationIds.get(id);
+    if (existing) {
+      throw new Error(
+        `Routes ${existing} and ${route.method} ${route.url} have the same operationId ${id}.`,
+      );
+    }
+
+    operationIds.set(id, `${route.method} ${route.url}`);
     if (!route.schema?.response && !documented) {
-      const methods = Array.isArray(route.method) ? route.method : [route.method];
-      for (const method of methods) {
-        gaps.push({ method, url: openApiPath(route.url) });
-      }
+      gaps.push({ method: route.method, url: openApiPath(route.url) });
     }
   });
   await app.register(swagger, {
     openapi: {
       openapi: '3.1.0',
       info: { title: 'Nevo SpecFlow Runtime API', version: '0.0.0' },
+      ...(options.sessionCookie
+        ? {
+            components: {
+              securitySchemes: {
+                [SESSION_COOKIE_SCHEME]: {
+                  type: 'apiKey',
+                  in: 'cookie',
+                  name: options.sessionCookie,
+                  description:
+                    'The Runtime session cookie set by a successful login (password or OIDC).',
+                },
+              },
+            },
+          }
+        : {}),
     },
     // A shared contract becomes the component named by its `$id` (the default is a positional
     // `def-N`, which changes whenever a contract is added).
     refResolver: { buildLocalReference: componentName },
-    transform: ({ schema, url, route }) => ({
-      schema: isDocumentedRoute(url)
-        ? withDocumentedResponses(schema, route.config?.openApiResponses)
-        : { ...schema, hide: true },
-      url,
-    }),
+    transform: ({ schema, url, route }) => {
+      if (!isDocumentedRoute(url)) {
+        return { schema: { ...schema, hide: true }, url };
+      }
+
+      const secured = options.sessionCookie !== undefined && route.config?.openApiPublic !== true;
+
+      return {
+        schema: {
+          ...withDocumentedResponses(schema, route.config?.openApiResponses),
+          // A documented route has one method (refused otherwise at registration).
+          operationId: openApiOperationId(route.method as string, route.url),
+          ...(secured ? { security: [{ [SESSION_COOKIE_SCHEME]: [] }] } : {}),
+        },
+        url,
+      };
+    },
   });
 }
 
 /**
  * The route schema as the document sees it: the documentation-only responses are added in the form
- * `@fastify/swagger` reads (`type: 'null'` for no body, `content` for a media type, `headers`).
- * Only the document uses the result; the route keeps its own schema for serialization.
+ * `@fastify/swagger` reads (`type: 'null'` for no body, `content` for a media type, `headers`), and
+ * a schema response without a `description` gets the description of its status code. Only the
+ * document uses the result; the route keeps its own schema for validation and serialization.
  */
 function withDocumentedResponses(
   // A route without any schema reaches the transform with `undefined`.
   schema: FastifySchema | undefined,
   documented: Readonly<Record<number, OpenApiDocumentedResponse>> | undefined,
 ): FastifySchema {
-  if (!documented) {
+  if (!schema?.response && !documented) {
+    // No documented response: `@fastify/swagger` emits its generic `200 Default Response`.
     return schema ?? {};
   }
 
+  const described = Object.fromEntries(
+    Object.entries((schema?.response ?? {}) as Record<string, Record<string, unknown>>).map(
+      ([status, response]) => [
+        status,
+        response.description === undefined && STATUS_DESCRIPTIONS[status]
+          ? {
+              ...response,
+              // `@fastify/swagger` reads `x-response-description` of an inline schema and drops it
+              // from the body schema, but drops every sibling of a `$ref` before reading it, so a
+              // reference carries a plain `description` (which stays out of the component).
+              [response.$ref === undefined ? 'x-response-description' : 'description']:
+                STATUS_DESCRIPTIONS[status],
+            }
+          : response,
+      ],
+    ),
+  );
   const responses = Object.fromEntries(
-    Object.entries(documented).map(([status, response]) => [
+    Object.entries(documented ?? {}).map(([status, response]) => [
       status,
       {
         description: response.description,
@@ -162,7 +285,7 @@ function withDocumentedResponses(
     ]),
   );
 
-  return { ...schema, response: { ...(schema?.response as object | undefined), ...responses } };
+  return { ...schema, response: { ...described, ...responses } };
 }
 
 /**

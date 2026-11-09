@@ -5,6 +5,14 @@
     "version": "0.0.0"
   },
   "components": {
+    "securitySchemes": {
+      "sessionCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "nevo_session_4318",
+        "description": "The Runtime session cookie set by a successful login (password or OIDC)."
+      }
+    },
     "schemas": {
       "AuthSessionResponse": {
         "anyOf": [
@@ -2474,6 +2482,7 @@
   "paths": {
     "/api/auth/logout": {
       "post": {
+        "operationId": "postAuthLogout",
         "responses": {
           "204": {
             "description": "Logged out. The session, if any, ends. No body.",
@@ -2491,6 +2500,7 @@
     },
     "/api/auth/oidc/example/callback": {
       "get": {
+        "operationId": "getAuthOidcExampleCallback",
         "responses": {
           "302": {
             "description": "The end of the OIDC login: a redirect to the return path of the login after a completed login, or to `/login?error=<code>` (with `returnTo` when it is not `/`) after a failed one. No body.",
@@ -2514,6 +2524,7 @@
     },
     "/api/auth/oidc/example/start": {
       "post": {
+        "operationId": "postAuthOidcExampleStart",
         "requestBody": {
           "required": true,
           "content": {
@@ -2534,7 +2545,7 @@
         },
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2554,7 +2565,7 @@
             }
           },
           "400": {
-            "description": "Default Response",
+            "description": "The request is invalid.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2598,7 +2609,7 @@
             }
           },
           "429": {
-            "description": "Default Response",
+            "description": "Too many requests.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2642,7 +2653,7 @@
             }
           },
           "503": {
-            "description": "Default Response",
+            "description": "Temporarily unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2690,6 +2701,7 @@
     },
     "/api/auth/password/login": {
       "post": {
+        "operationId": "postAuthPasswordLogin",
         "requestBody": {
           "required": true,
           "content": {
@@ -2719,7 +2731,7 @@
         },
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2729,7 +2741,7 @@
             }
           },
           "401": {
-            "description": "Default Response",
+            "description": "Not authenticated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2767,7 +2779,7 @@
             }
           },
           "429": {
-            "description": "Default Response",
+            "description": "Too many requests.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2805,7 +2817,7 @@
             }
           },
           "503": {
-            "description": "Default Response",
+            "description": "Temporarily unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2847,9 +2859,10 @@
     },
     "/api/auth/session": {
       "get": {
+        "operationId": "getAuthSession",
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2863,6 +2876,7 @@
     },
     "/api/authorization/capabilities": {
       "post": {
+        "operationId": "postAuthorizationCapabilities",
         "requestBody": {
           "required": true,
           "content": {
@@ -2924,9 +2938,14 @@
             }
           }
         },
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -3169,7 +3188,7 @@
             }
           },
           "401": {
-            "description": "Default Response",
+            "description": "Not authenticated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -3183,9 +3202,15 @@
     },
     "/api/openapi.json": {
       "get": {
+        "operationId": "getOpenapiJson",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -3232,9 +3257,10 @@
     },
     "/api/runtime/info": {
       "get": {
+        "operationId": "getRuntimeInfo",
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -3269,6 +3295,7 @@
     },
     "/api/session-providers": {
       "get": {
+        "operationId": "getSessionProviders",
         "parameters": [
           {
             "schema": {
@@ -3291,9 +3318,14 @@
             "required": false
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -3646,6 +3678,7 @@
     },
     "/api/sessions": {
       "get": {
+        "operationId": "getSessions",
         "parameters": [
           {
             "schema": {
@@ -3727,9 +3760,14 @@
             "required": false
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -3964,6 +4002,7 @@
         }
       },
       "post": {
+        "operationId": "postSessions",
         "requestBody": {
           "required": true,
           "content": {
@@ -4026,9 +4065,14 @@
             }
           }
         },
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "201": {
-            "description": "Default Response",
+            "description": "Created.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4052,6 +4096,7 @@
     },
     "/api/sessions/{sessionId}": {
       "get": {
+        "operationId": "getSessionsBySessionId",
         "parameters": [
           {
             "schema": {
@@ -4063,9 +4108,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4879,6 +4929,7 @@
         }
       },
       "delete": {
+        "operationId": "deleteSessionsBySessionId",
         "parameters": [
           {
             "schema": {
@@ -4890,6 +4941,11 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "204": {
             "description": "The Session is deleted. No body."
@@ -4899,6 +4955,7 @@
     },
     "/api/sessions/{sessionId}/archive": {
       "post": {
+        "operationId": "postSessionsBySessionIdArchive",
         "requestBody": {
           "required": true,
           "content": {
@@ -4930,9 +4987,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4946,6 +5008,7 @@
     },
     "/api/sessions/{sessionId}/association": {
       "get": {
+        "operationId": "getSessionsBySessionIdAssociation",
         "parameters": [
           {
             "schema": {
@@ -4957,9 +5020,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5228,6 +5296,7 @@
     },
     "/api/sessions/{sessionId}/content/{contentId}": {
       "get": {
+        "operationId": "getSessionsBySessionIdContentByContentId",
         "parameters": [
           {
             "schema": {
@@ -5278,9 +5347,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5329,6 +5403,7 @@
     },
     "/api/sessions/{sessionId}/events": {
       "get": {
+        "operationId": "getSessionsBySessionIdEvents",
         "parameters": [
           {
             "schema": {
@@ -5348,6 +5423,11 @@
             "in": "path",
             "name": "sessionId",
             "required": true
+          }
+        ],
+        "security": [
+          {
+            "sessionCookie": []
           }
         ],
         "responses": {
@@ -5374,6 +5454,7 @@
     },
     "/api/sessions/{sessionId}/history": {
       "get": {
+        "operationId": "getSessionsBySessionIdHistory",
         "parameters": [
           {
             "schema": {
@@ -5403,9 +5484,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5736,6 +5822,7 @@
     },
     "/api/sessions/{sessionId}/interactions/{interactionId}/respond": {
       "post": {
+        "operationId": "postSessionsBySessionIdInteractionsByInteractionIdRespond",
         "requestBody": {
           "required": true,
           "content": {
@@ -5848,9 +5935,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "202": {
-            "description": "Default Response",
+            "description": "Accepted: the operation continues asynchronously.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5879,6 +5971,7 @@
     },
     "/api/sessions/{sessionId}/rename": {
       "post": {
+        "operationId": "postSessionsBySessionIdRename",
         "requestBody": {
           "required": true,
           "content": {
@@ -5917,9 +6010,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5933,6 +6031,7 @@
     },
     "/api/sessions/{sessionId}/telemetry": {
       "get": {
+        "operationId": "getSessionsBySessionIdTelemetry",
         "parameters": [
           {
             "schema": {
@@ -5944,9 +6043,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -8800,13 +8904,14 @@
             }
           },
           "304": {
-            "description": "Default Response"
+            "description": "Not modified: the representation identified by the request `If-None-Match` is current."
           }
         }
       }
     },
     "/api/sessions/{sessionId}/telemetry/refresh": {
       "post": {
+        "operationId": "postSessionsBySessionIdTelemetryRefresh",
         "requestBody": {
           "required": true,
           "content": {
@@ -8873,9 +8978,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "202": {
-            "description": "Default Response",
+            "description": "Accepted: the operation continues asynchronously.",
             "content": {
               "application/json": {
                 "schema": {
@@ -8953,7 +9063,7 @@
             }
           },
           "429": {
-            "description": "Default Response",
+            "description": "Too many requests.",
             "content": {
               "application/json": {
                 "schema": {
@@ -8979,6 +9089,7 @@
     },
     "/api/sessions/{sessionId}/turns": {
       "post": {
+        "operationId": "postSessionsBySessionIdTurns",
         "requestBody": {
           "required": true,
           "content": {
@@ -9047,9 +9158,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "202": {
-            "description": "Default Response",
+            "description": "Accepted: the operation continues asynchronously.",
             "content": {
               "application/json": {
                 "schema": {
@@ -9073,6 +9189,7 @@
     },
     "/api/sessions/{sessionId}/turns/{turnId}/cancel": {
       "post": {
+        "operationId": "postSessionsBySessionIdTurnsByTurnIdCancel",
         "requestBody": {
           "required": true,
           "content": {
@@ -9113,9 +9230,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "202": {
-            "description": "Default Response",
+            "description": "Accepted: the operation continues asynchronously.",
             "content": {
               "application/json": {
                 "schema": {
@@ -9139,6 +9261,7 @@
     },
     "/api/sessions/{sessionId}/turns/{turnId}/reconcile": {
       "post": {
+        "operationId": "postSessionsBySessionIdTurnsByTurnIdReconcile",
         "requestBody": {
           "required": true,
           "content": {
@@ -9179,9 +9302,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -9238,6 +9366,7 @@
     },
     "/api/sessions/{sessionId}/turns/{turnId}/work": {
       "get": {
+        "operationId": "getSessionsBySessionIdTurnsByTurnIdWork",
         "parameters": [
           {
             "schema": {
@@ -9276,9 +9405,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -10274,6 +10408,7 @@
     },
     "/api/sessions/{sessionId}/unarchive": {
       "post": {
+        "operationId": "postSessionsBySessionIdUnarchive",
         "requestBody": {
           "required": true,
           "content": {
@@ -10305,9 +10440,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -10321,6 +10461,7 @@
     },
     "/api/sessions/{sessionId}/work/{workId}/actions": {
       "get": {
+        "operationId": "getSessionsBySessionIdWorkByWorkIdActions",
         "parameters": [
           {
             "schema": {
@@ -10359,9 +10500,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -10724,6 +10870,7 @@
     },
     "/api/specs": {
       "post": {
+        "operationId": "postSpecs",
         "requestBody": {
           "required": true,
           "content": {
@@ -10865,9 +11012,14 @@
             }
           }
         },
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "201": {
-            "description": "Default Response",
+            "description": "Created.",
             "content": {
               "application/json": {
                 "schema": {
@@ -10927,7 +11079,7 @@
             }
           },
           "202": {
-            "description": "Default Response",
+            "description": "Accepted: the operation continues asynchronously.",
             "content": {
               "application/json": {
                 "schema": {
@@ -10961,7 +11113,7 @@
             }
           },
           "400": {
-            "description": "Default Response",
+            "description": "The request is invalid.",
             "content": {
               "application/json": {
                 "schema": {
@@ -10971,7 +11123,7 @@
             }
           },
           "401": {
-            "description": "Default Response",
+            "description": "Not authenticated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -10981,7 +11133,7 @@
             }
           },
           "403": {
-            "description": "Default Response",
+            "description": "The principal lacks a required capability.",
             "content": {
               "application/json": {
                 "schema": {
@@ -10991,7 +11143,7 @@
             }
           },
           "409": {
-            "description": "Default Response",
+            "description": "Conflicts with the current state of the resource.",
             "content": {
               "application/json": {
                 "schema": {
@@ -11001,7 +11153,7 @@
             }
           },
           "413": {
-            "description": "Default Response",
+            "description": "The request or the addressed content is too large.",
             "content": {
               "application/json": {
                 "schema": {
@@ -11011,7 +11163,7 @@
             }
           },
           "422": {
-            "description": "Default Response",
+            "description": "The request is well-formed but cannot be processed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -11021,7 +11173,7 @@
             }
           },
           "503": {
-            "description": "Default Response",
+            "description": "Temporarily unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -11035,9 +11187,15 @@
     },
     "/api/specs/archetypes": {
       "get": {
+        "operationId": "getSpecsArchetypes",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -11414,10 +11572,10 @@
             }
           },
           "304": {
-            "description": "Default Response"
+            "description": "Not modified: the representation identified by the request `If-None-Match` is current."
           },
           "401": {
-            "description": "Default Response",
+            "description": "Not authenticated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -11427,7 +11585,7 @@
             }
           },
           "403": {
-            "description": "Default Response",
+            "description": "The principal lacks a required capability.",
             "content": {
               "application/json": {
                 "schema": {
@@ -11437,7 +11595,7 @@
             }
           },
           "503": {
-            "description": "Default Response",
+            "description": "Temporarily unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -11451,9 +11609,15 @@
     },
     "/api/specs/create-options": {
       "get": {
+        "operationId": "getSpecsCreateOptions",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -11814,7 +11978,7 @@
             }
           },
           "400": {
-            "description": "Default Response",
+            "description": "The request is invalid.",
             "content": {
               "application/json": {
                 "schema": {
@@ -11824,7 +11988,7 @@
             }
           },
           "401": {
-            "description": "Default Response",
+            "description": "Not authenticated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -11834,7 +11998,7 @@
             }
           },
           "403": {
-            "description": "Default Response",
+            "description": "The principal lacks a required capability.",
             "content": {
               "application/json": {
                 "schema": {
@@ -11844,7 +12008,7 @@
             }
           },
           "409": {
-            "description": "Default Response",
+            "description": "Conflicts with the current state of the resource.",
             "content": {
               "application/json": {
                 "schema": {
@@ -11854,7 +12018,7 @@
             }
           },
           "422": {
-            "description": "Default Response",
+            "description": "The request is well-formed but cannot be processed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -11864,7 +12028,7 @@
             }
           },
           "503": {
-            "description": "Default Response",
+            "description": "Temporarily unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -11878,6 +12042,7 @@
     },
     "/api/specs/create/operations/{operationId}": {
       "get": {
+        "operationId": "getSpecsCreateOperationsByOperationId",
         "parameters": [
           {
             "schema": {
@@ -11889,9 +12054,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12026,7 +12196,7 @@
             }
           },
           "400": {
-            "description": "Default Response",
+            "description": "The request is invalid.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12036,7 +12206,7 @@
             }
           },
           "401": {
-            "description": "Default Response",
+            "description": "Not authenticated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12046,7 +12216,7 @@
             }
           },
           "403": {
-            "description": "Default Response",
+            "description": "The principal lacks a required capability.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12056,7 +12226,7 @@
             }
           },
           "404": {
-            "description": "Default Response",
+            "description": "Not found.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12066,7 +12236,7 @@
             }
           },
           "409": {
-            "description": "Default Response",
+            "description": "Conflicts with the current state of the resource.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12076,7 +12246,7 @@
             }
           },
           "422": {
-            "description": "Default Response",
+            "description": "The request is well-formed but cannot be processed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12086,7 +12256,7 @@
             }
           },
           "503": {
-            "description": "Default Response",
+            "description": "Temporarily unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12100,6 +12270,7 @@
     },
     "/api/specs/create/operations/{operationId}/events": {
       "get": {
+        "operationId": "getSpecsCreateOperationsByOperationIdEvents",
         "parameters": [
           {
             "schema": {
@@ -12109,6 +12280,11 @@
             "in": "path",
             "name": "operationId",
             "required": true
+          }
+        ],
+        "security": [
+          {
+            "sessionCookie": []
           }
         ],
         "responses": {
@@ -12131,7 +12307,7 @@
             }
           },
           "401": {
-            "description": "Default Response",
+            "description": "Not authenticated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12141,7 +12317,7 @@
             }
           },
           "403": {
-            "description": "Default Response",
+            "description": "The principal lacks a required capability.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12151,7 +12327,7 @@
             }
           },
           "429": {
-            "description": "Default Response",
+            "description": "Too many requests.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12178,6 +12354,7 @@
     },
     "/api/specs/document-operations": {
       "get": {
+        "operationId": "getSpecsDocumentOperations",
         "parameters": [
           {
             "schema": {
@@ -12199,9 +12376,14 @@
             "required": false
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12211,7 +12393,7 @@
             }
           },
           "400": {
-            "description": "Default Response",
+            "description": "The request is invalid.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12234,7 +12416,7 @@
             }
           },
           "401": {
-            "description": "Default Response",
+            "description": "Not authenticated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12244,7 +12426,7 @@
             }
           },
           "403": {
-            "description": "Default Response",
+            "description": "The principal lacks a required capability.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12254,7 +12436,7 @@
             }
           },
           "503": {
-            "description": "Default Response",
+            "description": "Temporarily unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12281,6 +12463,7 @@
     },
     "/api/specs/operations": {
       "get": {
+        "operationId": "getSpecsOperations",
         "parameters": [
           {
             "schema": {
@@ -12302,9 +12485,14 @@
             "required": false
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12314,7 +12502,7 @@
             }
           },
           "400": {
-            "description": "Default Response",
+            "description": "The request is invalid.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12337,7 +12525,7 @@
             }
           },
           "401": {
-            "description": "Default Response",
+            "description": "Not authenticated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12347,7 +12535,7 @@
             }
           },
           "403": {
-            "description": "Default Response",
+            "description": "The principal lacks a required capability.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12357,7 +12545,7 @@
             }
           },
           "503": {
-            "description": "Default Response",
+            "description": "Temporarily unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12384,6 +12572,7 @@
     },
     "/api/specs/overview": {
       "get": {
+        "operationId": "getSpecsOverview",
         "parameters": [
           {
             "schema": {
@@ -12407,9 +12596,14 @@
             "required": false
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12977,7 +13171,7 @@
             }
           },
           "401": {
-            "description": "Default Response",
+            "description": "Not authenticated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12987,7 +13181,7 @@
             }
           },
           "403": {
-            "description": "Default Response",
+            "description": "The principal lacks a required capability.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12997,7 +13191,7 @@
             }
           },
           "503": {
-            "description": "Default Response",
+            "description": "Temporarily unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13056,6 +13250,7 @@
     },
     "/api/specs/{specId}/close": {
       "post": {
+        "operationId": "postSpecsBySpecIdClose",
         "requestBody": {
           "required": true,
           "content": {
@@ -13090,9 +13285,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13102,7 +13302,7 @@
             }
           },
           "202": {
-            "description": "Default Response",
+            "description": "Accepted: the operation continues asynchronously.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13112,7 +13312,7 @@
             }
           },
           "400": {
-            "description": "Default Response",
+            "description": "The request is invalid.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13122,7 +13322,7 @@
             }
           },
           "401": {
-            "description": "Default Response",
+            "description": "Not authenticated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13132,7 +13332,7 @@
             }
           },
           "403": {
-            "description": "Default Response",
+            "description": "The principal lacks a required capability.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13142,7 +13342,7 @@
             }
           },
           "404": {
-            "description": "Default Response",
+            "description": "Not found.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13152,7 +13352,7 @@
             }
           },
           "409": {
-            "description": "Default Response",
+            "description": "Conflicts with the current state of the resource.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13162,7 +13362,7 @@
             }
           },
           "422": {
-            "description": "Default Response",
+            "description": "The request is well-formed but cannot be processed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13172,7 +13372,7 @@
             }
           },
           "503": {
-            "description": "Default Response",
+            "description": "Temporarily unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13186,6 +13386,7 @@
     },
     "/api/specs/{specId}/close/operations/{operationId}": {
       "get": {
+        "operationId": "getSpecsBySpecIdCloseOperationsByOperationId",
         "parameters": [
           {
             "schema": {
@@ -13206,9 +13407,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13218,7 +13424,7 @@
             }
           },
           "400": {
-            "description": "Default Response",
+            "description": "The request is invalid.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13228,7 +13434,7 @@
             }
           },
           "401": {
-            "description": "Default Response",
+            "description": "Not authenticated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13238,7 +13444,7 @@
             }
           },
           "403": {
-            "description": "Default Response",
+            "description": "The principal lacks a required capability.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13248,7 +13454,7 @@
             }
           },
           "404": {
-            "description": "Default Response",
+            "description": "Not found.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13258,7 +13464,7 @@
             }
           },
           "409": {
-            "description": "Default Response",
+            "description": "Conflicts with the current state of the resource.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13268,7 +13474,7 @@
             }
           },
           "422": {
-            "description": "Default Response",
+            "description": "The request is well-formed but cannot be processed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13278,7 +13484,7 @@
             }
           },
           "503": {
-            "description": "Default Response",
+            "description": "Temporarily unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13292,6 +13498,7 @@
     },
     "/api/specs/{specId}/close/operations/{operationId}/reconcile-scratch": {
       "post": {
+        "operationId": "postSpecsBySpecIdCloseOperationsByOperationIdReconcileScratch",
         "requestBody": {
           "required": true,
           "content": {
@@ -13334,9 +13541,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13346,7 +13558,7 @@
             }
           },
           "400": {
-            "description": "Default Response",
+            "description": "The request is invalid.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13356,7 +13568,7 @@
             }
           },
           "401": {
-            "description": "Default Response",
+            "description": "Not authenticated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13366,7 +13578,7 @@
             }
           },
           "403": {
-            "description": "Default Response",
+            "description": "The principal lacks a required capability.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13376,7 +13588,7 @@
             }
           },
           "404": {
-            "description": "Default Response",
+            "description": "Not found.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13386,7 +13598,7 @@
             }
           },
           "409": {
-            "description": "Default Response",
+            "description": "Conflicts with the current state of the resource.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13396,7 +13608,7 @@
             }
           },
           "422": {
-            "description": "Default Response",
+            "description": "The request is well-formed but cannot be processed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13406,7 +13618,7 @@
             }
           },
           "503": {
-            "description": "Default Response",
+            "description": "Temporarily unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13420,6 +13632,7 @@
     },
     "/api/specs/{specId}/close/preview": {
       "get": {
+        "operationId": "getSpecsBySpecIdClosePreview",
         "parameters": [
           {
             "schema": {
@@ -13439,9 +13652,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13451,7 +13669,7 @@
             }
           },
           "400": {
-            "description": "Default Response",
+            "description": "The request is invalid.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13461,7 +13679,7 @@
             }
           },
           "401": {
-            "description": "Default Response",
+            "description": "Not authenticated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13471,7 +13689,7 @@
             }
           },
           "403": {
-            "description": "Default Response",
+            "description": "The principal lacks a required capability.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13481,7 +13699,7 @@
             }
           },
           "404": {
-            "description": "Default Response",
+            "description": "Not found.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13491,7 +13709,7 @@
             }
           },
           "409": {
-            "description": "Default Response",
+            "description": "Conflicts with the current state of the resource.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13501,7 +13719,7 @@
             }
           },
           "422": {
-            "description": "Default Response",
+            "description": "The request is well-formed but cannot be processed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13511,7 +13729,7 @@
             }
           },
           "503": {
-            "description": "Default Response",
+            "description": "Temporarily unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13525,6 +13743,7 @@
     },
     "/api/specs/{specId}/commit": {
       "post": {
+        "operationId": "postSpecsBySpecIdCommit",
         "requestBody": {
           "required": true,
           "content": {
@@ -13590,9 +13809,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13724,7 +13948,7 @@
             }
           },
           "401": {
-            "description": "Default Response",
+            "description": "Not authenticated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13734,7 +13958,7 @@
             }
           },
           "403": {
-            "description": "Default Response",
+            "description": "The principal lacks a required capability.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13744,7 +13968,7 @@
             }
           },
           "404": {
-            "description": "Default Response",
+            "description": "Not found.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13754,7 +13978,7 @@
             }
           },
           "409": {
-            "description": "Default Response",
+            "description": "Conflicts with the current state of the resource.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13764,7 +13988,7 @@
             }
           },
           "413": {
-            "description": "Default Response",
+            "description": "The request or the addressed content is too large.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13774,7 +13998,7 @@
             }
           },
           "415": {
-            "description": "Default Response",
+            "description": "Unsupported media type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13784,7 +14008,7 @@
             }
           },
           "422": {
-            "description": "Default Response",
+            "description": "The request is well-formed but cannot be processed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13794,7 +14018,7 @@
             }
           },
           "503": {
-            "description": "Default Response",
+            "description": "Temporarily unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13808,6 +14032,7 @@
     },
     "/api/specs/{specId}/document-commits/flush": {
       "post": {
+        "operationId": "postSpecsBySpecIdDocumentCommitsFlush",
         "requestBody": {
           "required": true,
           "content": {
@@ -13839,9 +14064,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13875,7 +14105,7 @@
             }
           },
           "401": {
-            "description": "Default Response",
+            "description": "Not authenticated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13885,7 +14115,7 @@
             }
           },
           "403": {
-            "description": "Default Response",
+            "description": "The principal lacks a required capability.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13895,7 +14125,7 @@
             }
           },
           "404": {
-            "description": "Default Response",
+            "description": "Not found.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13905,7 +14135,7 @@
             }
           },
           "409": {
-            "description": "Default Response",
+            "description": "Conflicts with the current state of the resource.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13915,7 +14145,7 @@
             }
           },
           "413": {
-            "description": "Default Response",
+            "description": "The request or the addressed content is too large.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13925,7 +14155,7 @@
             }
           },
           "415": {
-            "description": "Default Response",
+            "description": "Unsupported media type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13935,7 +14165,7 @@
             }
           },
           "422": {
-            "description": "Default Response",
+            "description": "The request is well-formed but cannot be processed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13945,7 +14175,7 @@
             }
           },
           "503": {
-            "description": "Default Response",
+            "description": "Temporarily unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13959,6 +14189,7 @@
     },
     "/api/specs/{specId}/document-operations": {
       "post": {
+        "operationId": "postSpecsBySpecIdDocumentOperations",
         "requestBody": {
           "required": true,
           "content": {
@@ -14063,9 +14294,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14075,7 +14311,7 @@
             }
           },
           "401": {
-            "description": "Default Response",
+            "description": "Not authenticated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14085,7 +14321,7 @@
             }
           },
           "403": {
-            "description": "Default Response",
+            "description": "The principal lacks a required capability.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14095,7 +14331,7 @@
             }
           },
           "404": {
-            "description": "Default Response",
+            "description": "Not found.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14105,7 +14341,7 @@
             }
           },
           "409": {
-            "description": "Default Response",
+            "description": "Conflicts with the current state of the resource.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14115,7 +14351,7 @@
             }
           },
           "413": {
-            "description": "Default Response",
+            "description": "The request or the addressed content is too large.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14125,7 +14361,7 @@
             }
           },
           "415": {
-            "description": "Default Response",
+            "description": "Unsupported media type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14135,7 +14371,7 @@
             }
           },
           "422": {
-            "description": "Default Response",
+            "description": "The request is well-formed but cannot be processed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14145,7 +14381,7 @@
             }
           },
           "503": {
-            "description": "Default Response",
+            "description": "Temporarily unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14159,6 +14395,7 @@
     },
     "/api/specs/{specId}/document-operations/{operationId}": {
       "get": {
+        "operationId": "getSpecsBySpecIdDocumentOperationsByOperationId",
         "parameters": [
           {
             "schema": {
@@ -14182,9 +14419,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14194,10 +14436,10 @@
             }
           },
           "304": {
-            "description": "Default Response"
+            "description": "Not modified: the representation identified by the request `If-None-Match` is current."
           },
           "401": {
-            "description": "Default Response",
+            "description": "Not authenticated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14207,7 +14449,7 @@
             }
           },
           "403": {
-            "description": "Default Response",
+            "description": "The principal lacks a required capability.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14217,7 +14459,7 @@
             }
           },
           "404": {
-            "description": "Default Response",
+            "description": "Not found.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14227,7 +14469,7 @@
             }
           },
           "409": {
-            "description": "Default Response",
+            "description": "Conflicts with the current state of the resource.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14237,7 +14479,7 @@
             }
           },
           "413": {
-            "description": "Default Response",
+            "description": "The request or the addressed content is too large.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14247,7 +14489,7 @@
             }
           },
           "415": {
-            "description": "Default Response",
+            "description": "Unsupported media type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14257,7 +14499,7 @@
             }
           },
           "422": {
-            "description": "Default Response",
+            "description": "The request is well-formed but cannot be processed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14267,7 +14509,7 @@
             }
           },
           "503": {
-            "description": "Default Response",
+            "description": "Temporarily unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14281,6 +14523,7 @@
     },
     "/api/specs/{specId}/document-operations/{operationId}/abandon": {
       "post": {
+        "operationId": "postSpecsBySpecIdDocumentOperationsByOperationIdAbandon",
         "requestBody": {
           "required": true,
           "content": {
@@ -14316,9 +14559,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14328,7 +14576,7 @@
             }
           },
           "401": {
-            "description": "Default Response",
+            "description": "Not authenticated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14338,7 +14586,7 @@
             }
           },
           "403": {
-            "description": "Default Response",
+            "description": "The principal lacks a required capability.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14348,7 +14596,7 @@
             }
           },
           "404": {
-            "description": "Default Response",
+            "description": "Not found.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14358,7 +14606,7 @@
             }
           },
           "409": {
-            "description": "Default Response",
+            "description": "Conflicts with the current state of the resource.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14368,7 +14616,7 @@
             }
           },
           "413": {
-            "description": "Default Response",
+            "description": "The request or the addressed content is too large.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14378,7 +14626,7 @@
             }
           },
           "415": {
-            "description": "Default Response",
+            "description": "Unsupported media type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14388,7 +14636,7 @@
             }
           },
           "422": {
-            "description": "Default Response",
+            "description": "The request is well-formed but cannot be processed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14398,7 +14646,7 @@
             }
           },
           "503": {
-            "description": "Default Response",
+            "description": "Temporarily unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14412,6 +14660,7 @@
     },
     "/api/specs/{specId}/document-operations/{operationId}/retry": {
       "post": {
+        "operationId": "postSpecsBySpecIdDocumentOperationsByOperationIdRetry",
         "requestBody": {
           "required": true,
           "content": {
@@ -14447,9 +14696,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14459,7 +14713,7 @@
             }
           },
           "401": {
-            "description": "Default Response",
+            "description": "Not authenticated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14469,7 +14723,7 @@
             }
           },
           "403": {
-            "description": "Default Response",
+            "description": "The principal lacks a required capability.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14479,7 +14733,7 @@
             }
           },
           "404": {
-            "description": "Default Response",
+            "description": "Not found.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14489,7 +14743,7 @@
             }
           },
           "409": {
-            "description": "Default Response",
+            "description": "Conflicts with the current state of the resource.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14499,7 +14753,7 @@
             }
           },
           "413": {
-            "description": "Default Response",
+            "description": "The request or the addressed content is too large.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14509,7 +14763,7 @@
             }
           },
           "415": {
-            "description": "Default Response",
+            "description": "Unsupported media type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14519,7 +14773,7 @@
             }
           },
           "422": {
-            "description": "Default Response",
+            "description": "The request is well-formed but cannot be processed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14529,7 +14783,7 @@
             }
           },
           "503": {
-            "description": "Default Response",
+            "description": "Temporarily unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14543,6 +14797,7 @@
     },
     "/api/specs/{specId}/document-tree": {
       "get": {
+        "operationId": "getSpecsBySpecIdDocumentTree",
         "parameters": [
           {
             "schema": {
@@ -14556,9 +14811,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -16077,10 +16337,10 @@
             }
           },
           "304": {
-            "description": "Default Response"
+            "description": "Not modified: the representation identified by the request `If-None-Match` is current."
           },
           "401": {
-            "description": "Default Response",
+            "description": "Not authenticated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -16090,7 +16350,7 @@
             }
           },
           "403": {
-            "description": "Default Response",
+            "description": "The principal lacks a required capability.",
             "content": {
               "application/json": {
                 "schema": {
@@ -16100,7 +16360,7 @@
             }
           },
           "404": {
-            "description": "Default Response",
+            "description": "Not found.",
             "content": {
               "application/json": {
                 "schema": {
@@ -16110,7 +16370,7 @@
             }
           },
           "409": {
-            "description": "Default Response",
+            "description": "Conflicts with the current state of the resource.",
             "content": {
               "application/json": {
                 "schema": {
@@ -16120,7 +16380,7 @@
             }
           },
           "413": {
-            "description": "Default Response",
+            "description": "The request or the addressed content is too large.",
             "content": {
               "application/json": {
                 "schema": {
@@ -16130,7 +16390,7 @@
             }
           },
           "503": {
-            "description": "Default Response",
+            "description": "Temporarily unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -16144,6 +16404,7 @@
     },
     "/api/specs/{specId}/documents": {
       "post": {
+        "operationId": "postSpecsBySpecIdDocuments",
         "requestBody": {
           "required": true,
           "content": {
@@ -16239,9 +16500,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -16251,7 +16517,7 @@
             }
           },
           "401": {
-            "description": "Default Response",
+            "description": "Not authenticated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -16261,7 +16527,7 @@
             }
           },
           "403": {
-            "description": "Default Response",
+            "description": "The principal lacks a required capability.",
             "content": {
               "application/json": {
                 "schema": {
@@ -16271,7 +16537,7 @@
             }
           },
           "404": {
-            "description": "Default Response",
+            "description": "Not found.",
             "content": {
               "application/json": {
                 "schema": {
@@ -16281,7 +16547,7 @@
             }
           },
           "409": {
-            "description": "Default Response",
+            "description": "Conflicts with the current state of the resource.",
             "content": {
               "application/json": {
                 "schema": {
@@ -16291,7 +16557,7 @@
             }
           },
           "413": {
-            "description": "Default Response",
+            "description": "The request or the addressed content is too large.",
             "content": {
               "application/json": {
                 "schema": {
@@ -16301,7 +16567,7 @@
             }
           },
           "415": {
-            "description": "Default Response",
+            "description": "Unsupported media type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -16311,7 +16577,7 @@
             }
           },
           "422": {
-            "description": "Default Response",
+            "description": "The request is well-formed but cannot be processed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -16321,7 +16587,7 @@
             }
           },
           "503": {
-            "description": "Default Response",
+            "description": "Temporarily unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -16335,6 +16601,7 @@
     },
     "/api/specs/{specId}/documents/save": {
       "post": {
+        "operationId": "postSpecsBySpecIdDocumentsSave",
         "requestBody": {
           "required": true,
           "content": {
@@ -16398,9 +16665,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -16536,7 +16808,7 @@
             }
           },
           "401": {
-            "description": "Default Response",
+            "description": "Not authenticated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -16546,7 +16818,7 @@
             }
           },
           "403": {
-            "description": "Default Response",
+            "description": "The principal lacks a required capability.",
             "content": {
               "application/json": {
                 "schema": {
@@ -16556,7 +16828,7 @@
             }
           },
           "404": {
-            "description": "Default Response",
+            "description": "Not found.",
             "content": {
               "application/json": {
                 "schema": {
@@ -16566,7 +16838,7 @@
             }
           },
           "409": {
-            "description": "Default Response",
+            "description": "Conflicts with the current state of the resource.",
             "content": {
               "application/json": {
                 "schema": {
@@ -16576,7 +16848,7 @@
             }
           },
           "413": {
-            "description": "Default Response",
+            "description": "The request or the addressed content is too large.",
             "content": {
               "application/json": {
                 "schema": {
@@ -16586,7 +16858,7 @@
             }
           },
           "415": {
-            "description": "Default Response",
+            "description": "Unsupported media type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -16596,7 +16868,7 @@
             }
           },
           "422": {
-            "description": "Default Response",
+            "description": "The request is well-formed but cannot be processed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -16606,7 +16878,7 @@
             }
           },
           "503": {
-            "description": "Default Response",
+            "description": "Temporarily unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -16620,6 +16892,7 @@
     },
     "/api/specs/{specId}/documents/{documentId}": {
       "get": {
+        "operationId": "getSpecsBySpecIdDocumentsByDocumentId",
         "parameters": [
           {
             "schema": {
@@ -16654,9 +16927,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -16753,7 +17031,7 @@
             }
           },
           "401": {
-            "description": "Default Response",
+            "description": "Not authenticated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -16763,7 +17041,7 @@
             }
           },
           "403": {
-            "description": "Default Response",
+            "description": "The principal lacks a required capability.",
             "content": {
               "application/json": {
                 "schema": {
@@ -16773,7 +17051,7 @@
             }
           },
           "404": {
-            "description": "Default Response",
+            "description": "Not found.",
             "content": {
               "application/json": {
                 "schema": {
@@ -16783,7 +17061,7 @@
             }
           },
           "409": {
-            "description": "Default Response",
+            "description": "Conflicts with the current state of the resource.",
             "content": {
               "application/json": {
                 "schema": {
@@ -16793,7 +17071,7 @@
             }
           },
           "413": {
-            "description": "Default Response",
+            "description": "The request or the addressed content is too large.",
             "content": {
               "application/json": {
                 "schema": {
@@ -16803,7 +17081,7 @@
             }
           },
           "503": {
-            "description": "Default Response",
+            "description": "Temporarily unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -16815,6 +17093,7 @@
         }
       },
       "put": {
+        "operationId": "putSpecsBySpecIdDocumentsByDocumentId",
         "requestBody": {
           "required": true,
           "content": {
@@ -16868,9 +17147,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -17003,7 +17287,7 @@
             }
           },
           "401": {
-            "description": "Default Response",
+            "description": "Not authenticated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -17013,7 +17297,7 @@
             }
           },
           "403": {
-            "description": "Default Response",
+            "description": "The principal lacks a required capability.",
             "content": {
               "application/json": {
                 "schema": {
@@ -17023,7 +17307,7 @@
             }
           },
           "404": {
-            "description": "Default Response",
+            "description": "Not found.",
             "content": {
               "application/json": {
                 "schema": {
@@ -17033,7 +17317,7 @@
             }
           },
           "409": {
-            "description": "Default Response",
+            "description": "Conflicts with the current state of the resource.",
             "content": {
               "application/json": {
                 "schema": {
@@ -17043,7 +17327,7 @@
             }
           },
           "413": {
-            "description": "Default Response",
+            "description": "The request or the addressed content is too large.",
             "content": {
               "application/json": {
                 "schema": {
@@ -17053,7 +17337,7 @@
             }
           },
           "415": {
-            "description": "Default Response",
+            "description": "Unsupported media type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -17063,7 +17347,7 @@
             }
           },
           "422": {
-            "description": "Default Response",
+            "description": "The request is well-formed but cannot be processed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -17073,7 +17357,7 @@
             }
           },
           "503": {
-            "description": "Default Response",
+            "description": "Temporarily unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -17087,6 +17371,7 @@
     },
     "/api/specs/{specId}/documents/{documentId}/raw": {
       "get": {
+        "operationId": "getSpecsBySpecIdDocumentsByDocumentIdRaw",
         "parameters": [
           {
             "schema": {
@@ -17132,9 +17417,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {}
@@ -17142,10 +17432,10 @@
             }
           },
           "304": {
-            "description": "Default Response"
+            "description": "Not modified: the representation identified by the request `If-None-Match` is current."
           },
           "401": {
-            "description": "Default Response",
+            "description": "Not authenticated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -17155,7 +17445,7 @@
             }
           },
           "403": {
-            "description": "Default Response",
+            "description": "The principal lacks a required capability.",
             "content": {
               "application/json": {
                 "schema": {
@@ -17165,7 +17455,7 @@
             }
           },
           "404": {
-            "description": "Default Response",
+            "description": "Not found.",
             "content": {
               "application/json": {
                 "schema": {
@@ -17175,7 +17465,7 @@
             }
           },
           "409": {
-            "description": "Default Response",
+            "description": "Conflicts with the current state of the resource.",
             "content": {
               "application/json": {
                 "schema": {
@@ -17185,7 +17475,7 @@
             }
           },
           "413": {
-            "description": "Default Response",
+            "description": "The request or the addressed content is too large.",
             "content": {
               "application/json": {
                 "schema": {
@@ -17195,7 +17485,7 @@
             }
           },
           "503": {
-            "description": "Default Response",
+            "description": "Temporarily unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -17209,6 +17499,7 @@
     },
     "/api/specs/{specId}/folders": {
       "post": {
+        "operationId": "postSpecsBySpecIdFolders",
         "requestBody": {
           "required": true,
           "content": {
@@ -17247,9 +17538,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -17259,7 +17555,7 @@
             }
           },
           "401": {
-            "description": "Default Response",
+            "description": "Not authenticated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -17269,7 +17565,7 @@
             }
           },
           "403": {
-            "description": "Default Response",
+            "description": "The principal lacks a required capability.",
             "content": {
               "application/json": {
                 "schema": {
@@ -17279,7 +17575,7 @@
             }
           },
           "404": {
-            "description": "Default Response",
+            "description": "Not found.",
             "content": {
               "application/json": {
                 "schema": {
@@ -17289,7 +17585,7 @@
             }
           },
           "409": {
-            "description": "Default Response",
+            "description": "Conflicts with the current state of the resource.",
             "content": {
               "application/json": {
                 "schema": {
@@ -17299,7 +17595,7 @@
             }
           },
           "413": {
-            "description": "Default Response",
+            "description": "The request or the addressed content is too large.",
             "content": {
               "application/json": {
                 "schema": {
@@ -17309,7 +17605,7 @@
             }
           },
           "415": {
-            "description": "Default Response",
+            "description": "Unsupported media type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -17319,7 +17615,7 @@
             }
           },
           "422": {
-            "description": "Default Response",
+            "description": "The request is well-formed but cannot be processed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -17329,7 +17625,7 @@
             }
           },
           "503": {
-            "description": "Default Response",
+            "description": "Temporarily unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -17343,6 +17639,7 @@
     },
     "/api/specs/{specId}/sessions": {
       "post": {
+        "operationId": "postSpecsBySpecIdSessions",
         "requestBody": {
           "required": true,
           "content": {
@@ -17429,9 +17726,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "201": {
-            "description": "Default Response",
+            "description": "Created.",
             "content": {
               "application/json": {
                 "schema": {
@@ -17479,7 +17781,7 @@
             }
           },
           "404": {
-            "description": "Default Response",
+            "description": "Not found.",
             "content": {
               "application/json": {
                 "schema": {
@@ -17489,7 +17791,7 @@
             }
           },
           "503": {
-            "description": "Default Response",
+            "description": "Temporarily unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -17689,6 +17991,7 @@
     },
     "/api/specs/{specId}/tasks/{taskId}": {
       "get": {
+        "operationId": "getSpecsBySpecIdTasksByTaskId",
         "parameters": [
           {
             "schema": {
@@ -17713,9 +18016,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -21098,7 +21406,7 @@
             }
           },
           "401": {
-            "description": "Default Response",
+            "description": "Not authenticated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -21108,7 +21416,7 @@
             }
           },
           "403": {
-            "description": "Default Response",
+            "description": "The principal lacks a required capability.",
             "content": {
               "application/json": {
                 "schema": {
@@ -21118,7 +21426,7 @@
             }
           },
           "404": {
-            "description": "Default Response",
+            "description": "Not found.",
             "content": {
               "application/json": {
                 "schema": {
@@ -21128,7 +21436,7 @@
             }
           },
           "409": {
-            "description": "Default Response",
+            "description": "Conflicts with the current state of the resource.",
             "content": {
               "application/json": {
                 "schema": {
@@ -21138,7 +21446,7 @@
             }
           },
           "503": {
-            "description": "Default Response",
+            "description": "Temporarily unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -21152,6 +21460,7 @@
     },
     "/api/specs/{specId}/tasks/{taskId}/history": {
       "get": {
+        "operationId": "getSpecsBySpecIdTasksByTaskIdHistory",
         "parameters": [
           {
             "schema": {
@@ -21204,9 +21513,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -22078,7 +22392,7 @@
             }
           },
           "401": {
-            "description": "Default Response",
+            "description": "Not authenticated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -22088,7 +22402,7 @@
             }
           },
           "403": {
-            "description": "Default Response",
+            "description": "The principal lacks a required capability.",
             "content": {
               "application/json": {
                 "schema": {
@@ -22098,7 +22412,7 @@
             }
           },
           "404": {
-            "description": "Default Response",
+            "description": "Not found.",
             "content": {
               "application/json": {
                 "schema": {
@@ -22108,7 +22422,7 @@
             }
           },
           "409": {
-            "description": "Default Response",
+            "description": "Conflicts with the current state of the resource.",
             "content": {
               "application/json": {
                 "schema": {
@@ -22118,7 +22432,7 @@
             }
           },
           "503": {
-            "description": "Default Response",
+            "description": "Temporarily unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -22132,6 +22446,7 @@
     },
     "/api/specs/{specId}/tasks/{taskId}/resources": {
       "get": {
+        "operationId": "getSpecsBySpecIdTasksByTaskIdResources",
         "parameters": [
           {
             "schema": {
@@ -22184,9 +22499,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -22663,7 +22983,7 @@
             }
           },
           "401": {
-            "description": "Default Response",
+            "description": "Not authenticated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -22673,7 +22993,7 @@
             }
           },
           "403": {
-            "description": "Default Response",
+            "description": "The principal lacks a required capability.",
             "content": {
               "application/json": {
                 "schema": {
@@ -22683,7 +23003,7 @@
             }
           },
           "404": {
-            "description": "Default Response",
+            "description": "Not found.",
             "content": {
               "application/json": {
                 "schema": {
@@ -22693,7 +23013,7 @@
             }
           },
           "409": {
-            "description": "Default Response",
+            "description": "Conflicts with the current state of the resource.",
             "content": {
               "application/json": {
                 "schema": {
@@ -22703,7 +23023,7 @@
             }
           },
           "503": {
-            "description": "Default Response",
+            "description": "Temporarily unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -22717,6 +23037,7 @@
     },
     "/api/specs/{specId}/uncommitted": {
       "get": {
+        "operationId": "getSpecsBySpecIdUncommitted",
         "parameters": [
           {
             "schema": {
@@ -22730,9 +23051,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -22875,10 +23201,10 @@
             }
           },
           "304": {
-            "description": "Default Response"
+            "description": "Not modified: the representation identified by the request `If-None-Match` is current."
           },
           "401": {
-            "description": "Default Response",
+            "description": "Not authenticated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -22888,7 +23214,7 @@
             }
           },
           "403": {
-            "description": "Default Response",
+            "description": "The principal lacks a required capability.",
             "content": {
               "application/json": {
                 "schema": {
@@ -22898,7 +23224,7 @@
             }
           },
           "404": {
-            "description": "Default Response",
+            "description": "Not found.",
             "content": {
               "application/json": {
                 "schema": {
@@ -22908,7 +23234,7 @@
             }
           },
           "409": {
-            "description": "Default Response",
+            "description": "Conflicts with the current state of the resource.",
             "content": {
               "application/json": {
                 "schema": {
@@ -22918,7 +23244,7 @@
             }
           },
           "413": {
-            "description": "Default Response",
+            "description": "The request or the addressed content is too large.",
             "content": {
               "application/json": {
                 "schema": {
@@ -22928,7 +23254,7 @@
             }
           },
           "415": {
-            "description": "Default Response",
+            "description": "Unsupported media type.",
             "content": {
               "application/json": {
                 "schema": {
@@ -22938,7 +23264,7 @@
             }
           },
           "422": {
-            "description": "Default Response",
+            "description": "The request is well-formed but cannot be processed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -22948,7 +23274,7 @@
             }
           },
           "503": {
-            "description": "Default Response",
+            "description": "Temporarily unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -22962,6 +23288,7 @@
     },
     "/api/specs/{specId}/workspace": {
       "get": {
+        "operationId": "getSpecsBySpecIdWorkspace",
         "parameters": [
           {
             "schema": {
@@ -22975,9 +23302,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24224,7 +24556,7 @@
             }
           },
           "401": {
-            "description": "Default Response",
+            "description": "Not authenticated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24234,7 +24566,7 @@
             }
           },
           "403": {
-            "description": "Default Response",
+            "description": "The principal lacks a required capability.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24244,7 +24576,7 @@
             }
           },
           "404": {
-            "description": "Default Response",
+            "description": "Not found.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24254,7 +24586,7 @@
             }
           },
           "503": {
-            "description": "Default Response",
+            "description": "Temporarily unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24268,6 +24600,7 @@
     },
     "/api/specs/{specId}/worktree/close": {
       "post": {
+        "operationId": "postSpecsBySpecIdWorktreeClose",
         "requestBody": {
           "required": true,
           "content": {
@@ -24299,9 +24632,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24311,7 +24649,7 @@
             }
           },
           "202": {
-            "description": "Default Response",
+            "description": "Accepted: the operation continues asynchronously.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24321,7 +24659,7 @@
             }
           },
           "400": {
-            "description": "Default Response",
+            "description": "The request is invalid.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24331,7 +24669,7 @@
             }
           },
           "401": {
-            "description": "Default Response",
+            "description": "Not authenticated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24341,7 +24679,7 @@
             }
           },
           "403": {
-            "description": "Default Response",
+            "description": "The principal lacks a required capability.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24351,7 +24689,7 @@
             }
           },
           "404": {
-            "description": "Default Response",
+            "description": "Not found.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24361,7 +24699,7 @@
             }
           },
           "409": {
-            "description": "Default Response",
+            "description": "Conflicts with the current state of the resource.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24371,7 +24709,7 @@
             }
           },
           "422": {
-            "description": "Default Response",
+            "description": "The request is well-formed but cannot be processed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24381,7 +24719,7 @@
             }
           },
           "503": {
-            "description": "Default Response",
+            "description": "Temporarily unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24395,6 +24733,7 @@
     },
     "/api/specs/{specId}/worktree/close/operations/{operationId}": {
       "get": {
+        "operationId": "getSpecsBySpecIdWorktreeCloseOperationsByOperationId",
         "parameters": [
           {
             "schema": {
@@ -24415,9 +24754,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24427,7 +24771,7 @@
             }
           },
           "400": {
-            "description": "Default Response",
+            "description": "The request is invalid.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24437,7 +24781,7 @@
             }
           },
           "401": {
-            "description": "Default Response",
+            "description": "Not authenticated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24447,7 +24791,7 @@
             }
           },
           "403": {
-            "description": "Default Response",
+            "description": "The principal lacks a required capability.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24457,7 +24801,7 @@
             }
           },
           "404": {
-            "description": "Default Response",
+            "description": "Not found.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24467,7 +24811,7 @@
             }
           },
           "409": {
-            "description": "Default Response",
+            "description": "Conflicts with the current state of the resource.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24477,7 +24821,7 @@
             }
           },
           "422": {
-            "description": "Default Response",
+            "description": "The request is well-formed but cannot be processed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24487,7 +24831,7 @@
             }
           },
           "503": {
-            "description": "Default Response",
+            "description": "Temporarily unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24501,6 +24845,7 @@
     },
     "/api/specs/{specId}/worktree/close/preview": {
       "get": {
+        "operationId": "getSpecsBySpecIdWorktreeClosePreview",
         "parameters": [
           {
             "schema": {
@@ -24520,9 +24865,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24532,7 +24882,7 @@
             }
           },
           "400": {
-            "description": "Default Response",
+            "description": "The request is invalid.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24542,7 +24892,7 @@
             }
           },
           "401": {
-            "description": "Default Response",
+            "description": "Not authenticated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24552,7 +24902,7 @@
             }
           },
           "403": {
-            "description": "Default Response",
+            "description": "The principal lacks a required capability.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24562,7 +24912,7 @@
             }
           },
           "404": {
-            "description": "Default Response",
+            "description": "Not found.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24572,7 +24922,7 @@
             }
           },
           "409": {
-            "description": "Default Response",
+            "description": "Conflicts with the current state of the resource.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24582,7 +24932,7 @@
             }
           },
           "422": {
-            "description": "Default Response",
+            "description": "The request is well-formed but cannot be processed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24592,7 +24942,7 @@
             }
           },
           "503": {
-            "description": "Default Response",
+            "description": "Temporarily unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24606,6 +24956,7 @@
     },
     "/api/workspaces/{workspaceId}/close": {
       "post": {
+        "operationId": "postWorkspacesByWorkspaceIdClose",
         "requestBody": {
           "required": true,
           "content": {
@@ -24637,9 +24988,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24649,7 +25005,7 @@
             }
           },
           "202": {
-            "description": "Default Response",
+            "description": "Accepted: the operation continues asynchronously.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24659,7 +25015,7 @@
             }
           },
           "400": {
-            "description": "Default Response",
+            "description": "The request is invalid.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24669,7 +25025,7 @@
             }
           },
           "401": {
-            "description": "Default Response",
+            "description": "Not authenticated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24679,7 +25035,7 @@
             }
           },
           "403": {
-            "description": "Default Response",
+            "description": "The principal lacks a required capability.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24689,7 +25045,7 @@
             }
           },
           "404": {
-            "description": "Default Response",
+            "description": "Not found.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24699,7 +25055,7 @@
             }
           },
           "409": {
-            "description": "Default Response",
+            "description": "Conflicts with the current state of the resource.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24709,7 +25065,7 @@
             }
           },
           "422": {
-            "description": "Default Response",
+            "description": "The request is well-formed but cannot be processed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24719,7 +25075,7 @@
             }
           },
           "503": {
-            "description": "Default Response",
+            "description": "Temporarily unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24733,6 +25089,7 @@
     },
     "/api/workspaces/{workspaceId}/close/operations/{operationId}": {
       "get": {
+        "operationId": "getWorkspacesByWorkspaceIdCloseOperationsByOperationId",
         "parameters": [
           {
             "schema": {
@@ -24753,9 +25110,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24765,7 +25127,7 @@
             }
           },
           "400": {
-            "description": "Default Response",
+            "description": "The request is invalid.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24775,7 +25137,7 @@
             }
           },
           "401": {
-            "description": "Default Response",
+            "description": "Not authenticated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24785,7 +25147,7 @@
             }
           },
           "403": {
-            "description": "Default Response",
+            "description": "The principal lacks a required capability.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24795,7 +25157,7 @@
             }
           },
           "404": {
-            "description": "Default Response",
+            "description": "Not found.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24805,7 +25167,7 @@
             }
           },
           "409": {
-            "description": "Default Response",
+            "description": "Conflicts with the current state of the resource.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24815,7 +25177,7 @@
             }
           },
           "422": {
-            "description": "Default Response",
+            "description": "The request is well-formed but cannot be processed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24825,7 +25187,7 @@
             }
           },
           "503": {
-            "description": "Default Response",
+            "description": "Temporarily unavailable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24839,6 +25201,7 @@
     },
     "/api/workspaces/{workspaceId}/close/preview": {
       "get": {
+        "operationId": "getWorkspacesByWorkspaceIdClosePreview",
         "parameters": [
           {
             "schema": {
@@ -24850,9 +25213,14 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Success.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24951,7 +25319,7 @@
             }
           },
           "400": {
-            "description": "Default Response",
+            "description": "The request is invalid.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24961,7 +25329,7 @@
             }
           },
           "401": {
-            "description": "Default Response",
+            "description": "Not authenticated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24971,7 +25339,7 @@
             }
           },
           "403": {
-            "description": "Default Response",
+            "description": "The principal lacks a required capability.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24981,7 +25349,7 @@
             }
           },
           "404": {
-            "description": "Default Response",
+            "description": "Not found.",
             "content": {
               "application/json": {
                 "schema": {
@@ -24991,7 +25359,7 @@
             }
           },
           "409": {
-            "description": "Default Response",
+            "description": "Conflicts with the current state of the resource.",
             "content": {
               "application/json": {
                 "schema": {
@@ -25001,7 +25369,7 @@
             }
           },
           "422": {
-            "description": "Default Response",
+            "description": "The request is well-formed but cannot be processed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -25011,7 +25379,7 @@
             }
           },
           "503": {
-            "description": "Default Response",
+            "description": "Temporarily unavailable.",
             "content": {
               "application/json": {
                 "schema": {

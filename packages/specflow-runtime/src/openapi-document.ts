@@ -5,7 +5,11 @@ import { fileURLToPath } from 'node:url';
 
 import type { RuntimeConfig } from './config/types';
 import { createRuntimeApp } from './server/app';
-import { generateOpenApiDocument, openApiRouteGaps } from './server/openapi';
+import {
+  generateOpenApiDocument,
+  openApiRouteGaps,
+  type RuntimeOpenApiDocument,
+} from './server/openapi';
 
 const DOCUMENT_FILE = 'docs/reference/api/openapi.generated.json';
 // `src/` and `dist/` are both one level below the package, two levels below the repository root.
@@ -48,8 +52,46 @@ function referenceConfig(): RuntimeConfig {
   };
 }
 
+/**
+ * Validates a document as OpenAPI 3.1 (schema conformance, which includes required path
+ * parameters, and resolvable `$ref`s) and returns its problems. The command takes it as an argument
+ * so the validator stays a development dependency of the command script and never reaches the
+ * Runtime build.
+ */
+export type OpenApiValidator = (document: RuntimeOpenApiDocument) => Promise<readonly string[]>;
+
+/**
+ * Path template parameters without a declared path parameter, and declared path parameters
+ * without a template parameter. OpenAPI requires both to match; schema validation cannot see it.
+ */
+export function pathParameterProblems(document: RuntimeOpenApiDocument): string[] {
+  const problems: string[] = [];
+  const paths = document.paths as Record<
+    string,
+    Record<string, { parameters?: readonly { in: string; name: string }[] }>
+  >;
+  for (const [path, operations] of Object.entries(paths)) {
+    const template = [...path.matchAll(/\{([^}]+)\}/g)].map((match) => match[1]!).sort();
+    for (const [method, operation] of Object.entries(operations)) {
+      const declared = (operation.parameters ?? [])
+        .filter((parameter) => parameter.in === 'path')
+        .map((parameter) => parameter.name)
+        .sort();
+      if (template.join('/') !== declared.join('/')) {
+        problems.push(
+          `${method.toUpperCase()} ${path} declares path parameters [${declared.join(', ')}].`,
+        );
+      }
+    }
+  }
+
+  return problems;
+}
+
 /** The document bytes: paths sorted, 2-space indentation, LF line endings, trailing newline. */
-async function renderReferenceDocument(): Promise<{ text: string; gaps: readonly string[] }> {
+async function renderReferenceDocument(
+  validate: OpenApiValidator,
+): Promise<{ text: string; gaps: readonly string[]; problems: readonly string[] }> {
   const app = await createRuntimeApp(referenceConfig(), { dataMode: 'project' });
   try {
     const document = await generateOpenApiDocument(app);
@@ -59,10 +101,11 @@ async function renderReferenceDocument(): Promise<{ text: string; gaps: readonly
         .sort()
         .map((path) => [path, paths[path]]),
     );
-    const text = `${JSON.stringify({ ...document, paths: sortedPaths }, null, 2)}\n`;
+    const sorted = { ...document, paths: sortedPaths };
 
     return {
-      text,
+      text: `${JSON.stringify(sorted, null, 2)}\n`,
+      problems: [...(await validate(sorted)), ...pathParameterProblems(sorted)],
       gaps: openApiRouteGaps(app).map((gap) => `${gap.method} ${gap.url}`),
     };
   } finally {
@@ -71,10 +114,14 @@ async function renderReferenceDocument(): Promise<{ text: string; gaps: readonly
 }
 
 /**
- * The `pnpm api:openapi [--check]` command; returns its exit code. The module has no import side
- * effects (the package build imports it); `scripts/openapi-document.mjs` runs it.
+ * The `pnpm api:openapi [--check]` command; returns its exit code. Both modes validate the
+ * document first. The module has no import side effects (the package build imports it);
+ * `scripts/openapi-document.mjs` runs it with the OpenAPI 3.1 validator.
  */
-export async function runOpenApiDocumentCommand(args: readonly string[]): Promise<number> {
+export async function runOpenApiDocumentCommand(
+  args: readonly string[],
+  validate: OpenApiValidator,
+): Promise<number> {
   if (args.length > 1 || (args.length === 1 && args[0] !== '--check')) {
     process.stderr.write(`Usage: pnpm api:openapi [--check]\n`);
 
@@ -82,13 +129,24 @@ export async function runOpenApiDocumentCommand(args: readonly string[]): Promis
   }
 
   const check = args[0] === '--check';
-  const { text, gaps } = await renderReferenceDocument();
+  const { text, gaps, problems } = await renderReferenceDocument(validate);
   if (gaps.length > 0) {
     process.stderr.write(
       `Routes without documented responses (documented as "Default Response"):\n${gaps
         .map((gap) => `  ${gap}\n`)
         .join('')}`,
     );
+  }
+
+  // An invalid document is neither written nor accepted as current.
+  if (problems.length > 0) {
+    process.stderr.write(
+      `The generated OpenAPI document is invalid:\n${problems
+        .map((problem) => `  ${problem}\n`)
+        .join('')}`,
+    );
+
+    return 1;
   }
 
   if (!check) {

@@ -42,6 +42,7 @@ export const oidcLoginEndpoint: FastifyPluginCallback<OidcLoginEndpointOptions> 
     '/start',
     {
       config: {
+        openApiPublic: true,
         rateLimit: {
           max: OIDC_START_SOURCE_ATTEMPT_LIMIT,
           timeWindow: OIDC_START_SOURCE_WINDOW_MS,
@@ -109,6 +110,7 @@ export const oidcLoginEndpoint: FastifyPluginCallback<OidcLoginEndpointOptions> 
     '/callback',
     {
       config: {
+        openApiPublic: true,
         openApiResponses: {
           302: {
             description:

@@ -49,9 +49,9 @@
     "eslint": "10.14.0",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-react-hooks": "7.1.1",
-    "globals": "17.13.0",
+    "globals": "17.14.0",
     "prettier": "3.9.10",
-    "tsdown": "0.23.4",
+    "tsdown": "0.23.5",
     "turbo": "2.11.10",
     "typescript": "6.0.3",
     "typescript-eslint": "8.72.1"
@@ -60,6 +60,7 @@
     "overrides": {
       "source-map-js": "^1.2.2",
       "ip-address": "^10.7.4",
+      "glob@^13.0.0": "14.0.2",
       "fast-uri@>=3.0.0 <4.0.0": "^3.1.9",
       "fast-uri@>=4.0.0": "^4.2.3"
     }

@@ -18,10 +18,10 @@
   },
   "dependencies": {
     "commander": "15.0.0",
-    "semver": "7.8.5"
+    "semver": "7.8.6"
   },
   "devDependencies": {
     "@types/semver": "7.8.0",
-    "vitest": "5.0.5"
+    "vitest": "5.1.0"
   }
 }

@@ -147,6 +147,7 @@ lexically and reports why:
 | no `ai.embeddings` endpoint configured      | lexical | no embedding endpoint configured |
 | endpoint unreachable, error or timeout      | lexical | endpoint unreachable, with cause |
 | index not yet complete for the current data | lexical | index building                   |
+| index cannot be read or written             | lexical | index unavailable, with cause    |
 | otherwise                                   | hybrid  | —                                |
 
 The fallback MUST NOT fail `search`; only `semantic status` turns an unavailable configured mode

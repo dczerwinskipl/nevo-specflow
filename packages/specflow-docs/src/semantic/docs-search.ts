@@ -20,7 +20,7 @@ import type {
 import type { DocsConfiguration } from '../config/docs-configuration';
 import type { DocsCorpus } from '../corpus/corpus';
 import { createDocsChunkSource, type DocsChunk, type DocsChunkSource } from './docs-chunk-source';
-import { openDocsIndex } from './docs-index';
+import { openDocsIndex, type DocsIndex } from './docs-index';
 import {
   embeddingFailureReason,
   refreshReason,
@@ -62,6 +62,12 @@ export interface OpenDocsSearchOptions {
   readonly env: Readonly<Record<string, string | undefined>>;
   /** Test seam; production uses the OpenAI-compatible adapter. */
   readonly createProvider?: CreateEmbeddingProvider;
+  /**
+   * The project's index when the process already holds one (for example a Runtime that also
+   * refreshes it on start), so the process keeps one vector store per index directory. Omitted:
+   * `openDocsIndex` opens it.
+   */
+  readonly index?: DocsIndex;
 }
 
 export function openDocsSearch(options: OpenDocsSearchOptions): DocsSearch {
@@ -72,7 +78,7 @@ export function openDocsSearch(options: OpenDocsSearchOptions): DocsSearch {
     return { chunks: createDocsChunkSource({ corpus }), vectors: { reason: endpoint.reason } };
   }
 
-  const index = openDocsIndex(projectRoot, corpus);
+  const index = options.index ?? openDocsIndex(projectRoot, corpus);
   const created = createEmbeddingProviders(endpoint.embeddings, {
     env: options.env,
     ...(options.createProvider ? { createProvider: options.createProvider } : {}),

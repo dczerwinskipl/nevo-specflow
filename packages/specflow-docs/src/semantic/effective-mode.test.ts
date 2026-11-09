@@ -31,8 +31,8 @@ describe('effective search mode (ADR 0020 table)', () => {
       { status: 'embedding-failed', failure: { code: 'timeout', message: 'slow' } },
       'endpoint-unreachable',
     ],
-    [{ status: 'unreadable', message: 'locked' }, 'index-building'],
-    [{ status: 'write-failed', message: 'EACCES' }, 'index-building'],
+    [{ status: 'unreadable', message: 'locked' }, 'index-unavailable'],
+    [{ status: 'write-failed', message: 'EACCES' }, 'index-unavailable'],
   ])('maps refresh outcome %j to %s', (outcome, code) => {
     expect(refreshReason(outcome)?.code).toBe(code);
   });
@@ -41,7 +41,7 @@ describe('effective search mode (ADR 0020 table)', () => {
     [SEARCH_REASON.queryEmbeddingFailed, 'endpoint-unreachable'],
     [SEARCH_REASON.indexMissing, 'index-building'],
     [SEARCH_REASON.indexMismatch, 'index-building'],
-    [SEARCH_REASON.indexUnreadable, 'index-building'],
+    [SEARCH_REASON.indexUnreadable, 'index-unavailable'],
     ['no-endpoint', 'no-endpoint'],
   ])('maps engine reason %s to %s and keeps its message', (engineCode, code) => {
     expect(searchReason({ code: engineCode, message: 'why' })).toEqual({ code, message: 'why' });

@@ -75,22 +75,22 @@ export function refreshReason(outcome: RefreshOutcome): DocsSearchReason | undef
     case 'embedding-failed':
       return embeddingFailureReason(outcome.failure);
     case 'unreadable':
-      return reason('index-building', `The index cannot be read: ${outcome.message}`);
+      return reason('index-unavailable', `The index cannot be read: ${outcome.message}`);
     case 'write-failed':
-      return reason('index-building', `The index cannot be written: ${outcome.message}`);
+      return reason('index-unavailable', `The index cannot be written: ${outcome.message}`);
   }
 }
 
 /** The index could not be read before a refresh. */
 export function unreadableIndexReason(message: string): DocsSearchReason {
-  return reason('index-building', `The index cannot be read: ${message}`);
+  return reason('index-unavailable', `The index cannot be read: ${message}`);
 }
 
 const ENGINE_REASONS: Readonly<Record<string, DocsSearchReasonCode>> = {
   [SEARCH_REASON.queryEmbeddingFailed]: 'endpoint-unreachable',
   [SEARCH_REASON.indexMissing]: 'index-building',
   [SEARCH_REASON.indexMismatch]: 'index-building',
-  [SEARCH_REASON.indexUnreadable]: 'index-building',
+  [SEARCH_REASON.indexUnreadable]: 'index-unavailable',
 };
 
 /**

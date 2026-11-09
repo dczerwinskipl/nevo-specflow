@@ -8,13 +8,16 @@ import { Type, type Static } from 'typebox';
  * - `semantic-disabled`: `docs.search.semantic` is absent or `false`;
  * - `no-endpoint`: no `ai.embeddings` endpoint is configured;
  * - `endpoint-unreachable`: the endpoint failed, timed out or answered unusable vectors;
- * - `index-building`: the index is not yet complete for the current documents.
+ * - `index-building`: the index is not yet complete for the current documents (another process is
+ *   updating it, or it is not built yet or was built with another model); it will become current;
+ * - `index-unavailable`: the index cannot be read or written; it will not become current by waiting.
  */
 export const DocsSearchReasonCodeSchema = Type.Union([
   Type.Literal('semantic-disabled'),
   Type.Literal('no-endpoint'),
   Type.Literal('endpoint-unreachable'),
   Type.Literal('index-building'),
+  Type.Literal('index-unavailable'),
 ]);
 export type DocsSearchReasonCode = Static<typeof DocsSearchReasonCodeSchema>;
 
@@ -23,6 +26,7 @@ export const DOCS_SEARCH_REASON_CODES: readonly DocsSearchReasonCode[] = [
   'no-endpoint',
   'endpoint-unreachable',
   'index-building',
+  'index-unavailable',
 ];
 
 export const DocsSearchReasonSchema = Type.Object(

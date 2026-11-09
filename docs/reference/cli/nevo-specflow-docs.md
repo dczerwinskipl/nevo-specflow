@@ -86,12 +86,13 @@ hybrid: BM25 over section text fused with vector similarity
 Otherwise the same call ranks by BM25 alone and states why. Every result carries `mode`; a lexical
 result carries `reason.code` and a `reason.message` with the cause. A lexical answer still exits 0.
 
-| `reason.code`          | When                                                                                                                                                                                  |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `semantic-disabled`    | `docs.search.semantic` is absent or `false`                                                                                                                                           |
-| `no-endpoint`          | semantic search is enabled but `ai.embeddings` is not configured                                                                                                                      |
-| `endpoint-unreachable` | the endpoint failed, timed out or returned unusable vectors, or the `apiKeyEnv` variable is not set                                                                                   |
-| `index-building`       | the index does not cover the current documents: another process is updating it, it is not built yet or was built with another model (`--no-refresh`), or it cannot be read or written |
+| `reason.code`          | When                                                                                                                                                        |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `semantic-disabled`    | `docs.search.semantic` is absent or `false`                                                                                                                 |
+| `no-endpoint`          | semantic search is enabled but `ai.embeddings` is not configured                                                                                            |
+| `endpoint-unreachable` | the endpoint failed, timed out or returned unusable vectors, or the `apiKeyEnv` variable is not set                                                         |
+| `index-building`       | the index does not cover the current documents yet: another process is updating it, or it is not built yet or was built with another model (`--no-refresh`) |
+| `index-unavailable`    | the index cannot be read or written (for example a permission problem); waiting does not help                                                               |
 
 **Freshness.** Before answering, `search` brings the index up to date: unchanged files (same size
 and modification time) are not read, changed files are re-chunked only when their content changed,

@@ -143,6 +143,19 @@ describe('openDocsSearch', () => {
     expect('reason' in search.vectors && search.vectors.reason.code).toBe('endpoint-unreachable');
     expect(created).toBe(0);
   });
+  it('reuses an index the process already holds instead of opening another store', () => {
+    const index = { chunks: createDocsChunkSource({ corpus }), store: createInMemoryVectorStore() };
+    const search = openDocsSearch({
+      projectRoot: root,
+      corpus,
+      configuration: { docs: settings, embeddings: endpoint },
+      env: {},
+      createProvider: () => createFakeEmbeddingProvider(),
+      index,
+    });
+    expect(search.chunks).toBe(index.chunks);
+    expect('store' in search.vectors && search.vectors.store).toBe(index.store);
+  });
 });
 
 describe('docs chunk source', () => {

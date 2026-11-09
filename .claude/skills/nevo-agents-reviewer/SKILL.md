@@ -61,7 +61,7 @@ Use repository documentation as the source of project-specific rules. At the beg
 pnpm docs:find react git testing
 ```
 
-The search is deterministic lexical OR search. Scan the returned match metadata (`title`, `summary`, `read_when`, taxonomy, and matched terms) to identify applicable documents, then read those documents. When results are too broad, refine the activity terms or use a deliberate `--limit`; do not treat every lexical match as a requirement to read unrelated documents.
+`docs:find` is deterministic lexical OR search. Scan the returned match metadata (`title`, `summary`, `read_when`, taxonomy, and matched terms) to identify applicable documents, then read those documents. When results are too broad, refine the activity terms or use a deliberate `--limit`; do not treat every lexical match as a requirement to read unrelated documents.
 
 Choose the discovery command by what you know:
 

@@ -86,7 +86,7 @@ builds only `@nevo/specflow-docs` and its dependencies, never the bundled produc
 an installed `nevo-specflow docs check` in the repository therefore gives the same result as
 `pnpm docs:check`.
 
-`nevo-specflow start` in a checkout of this repository refuses with "No designated Project Home
-exists for this local Git repository" and writes nothing: a checkout becomes a Project Home only
-through `nevo-specflow init`, and `init` refuses once `.nevo/config.yaml` exists. Use a separate
-scratch repository to run the Runtime against a project.
+A fresh clone has no Project Home yet: `nevo-specflow start` refuses with "No designated Project
+Home exists for this local Git repository" and writes nothing. Run `nevo-specflow project bootstrap`
+once in the primary checkout (it designates the Project Home of an already-initialized checkout),
+then `nevo-specflow start`. The start error does not name `project bootstrap`.

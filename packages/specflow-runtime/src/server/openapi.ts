@@ -1,11 +1,35 @@
 import swagger from '@fastify/swagger';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
-import type { FastifyInstance, RawServerBase } from 'fastify';
+import type { FastifyInstance, FastifySchema, RawServerBase } from 'fastify';
 import { Type, type Static } from 'typebox';
 
 export const OPENAPI_DOCUMENT_PATH = '/api/openapi.json';
 
-/** A route that carries no `response` schema, so its responses are undocumented. */
+/**
+ * Documentation of a response that Runtime does not serialize from a response schema: a reply
+ * without a body (`204`, a redirect) or an event stream written to the raw socket. A response schema
+ * on such a route would take part in serialization, so the route declares this documentation in
+ * its `config` instead and only the OpenAPI document reads it.
+ */
+export interface OpenApiDocumentedResponse {
+  readonly description: string;
+  /** Response headers worth documenting: header name to description. */
+  readonly headers?: Readonly<Record<string, string>>;
+  /** The media type of the body; absent for a response without a body. */
+  readonly mediaType?: 'text/event-stream';
+}
+
+declare module 'fastify' {
+  interface FastifyContextConfig {
+    /**
+     * Documentation-only responses by status code. A status code MUST NOT also have a response
+     * schema: a JSON body is documented by its schema.
+     */
+    readonly openApiResponses?: Readonly<Record<number, OpenApiDocumentedResponse>>;
+  }
+}
+
+/** A route with neither a `response` schema nor `openApiResponses`: its responses are unknown. */
 export interface OpenApiRouteGap {
   readonly method: string;
   readonly url: string;
@@ -63,12 +87,22 @@ export async function registerOpenApi<RawServer extends RawServerBase>(
   const gaps: OpenApiRouteGap[] = [];
   routeGaps.set(app, gaps);
   app.addHook('onRoute', (route) => {
+    const documented = route.config?.openApiResponses;
+    const schemaStatuses = Object.keys(route.schema?.response ?? {});
+    for (const status of Object.keys(documented ?? {})) {
+      if (schemaStatuses.includes(status)) {
+        throw new Error(
+          `Route ${route.url} documents status ${status} both with a response schema and in openApiResponses.`,
+        );
+      }
+    }
+
     // Fastify adds HEAD twins of GET routes; the document lists only the declared methods.
     if (!isDocumentedRoute(route.url) || route.method === 'HEAD') {
       return;
     }
 
-    if (!route.schema?.response) {
+    if (!route.schema?.response && !documented) {
       const methods = Array.isArray(route.method) ? route.method : [route.method];
       for (const method of methods) {
         gaps.push({ method, url: openApiPath(route.url) });
@@ -83,11 +117,52 @@ export async function registerOpenApi<RawServer extends RawServerBase>(
     // A shared contract becomes the component named by its `$id` (the default is a positional
     // `def-N`, which changes whenever a contract is added).
     refResolver: { buildLocalReference: componentName },
-    transform: ({ schema, url }) => ({
-      schema: isDocumentedRoute(url) ? schema : { ...schema, hide: true },
+    transform: ({ schema, url, route }) => ({
+      schema: isDocumentedRoute(url)
+        ? withDocumentedResponses(schema, route.config?.openApiResponses)
+        : { ...schema, hide: true },
       url,
     }),
   });
+}
+
+/**
+ * The route schema as the document sees it: the documentation-only responses are added in the form
+ * `@fastify/swagger` reads (`type: 'null'` for no body, `content` for a media type, `headers`).
+ * Only the document uses the result; the route keeps its own schema for serialization.
+ */
+function withDocumentedResponses(
+  // A route without any schema reaches the transform with `undefined`.
+  schema: FastifySchema | undefined,
+  documented: Readonly<Record<number, OpenApiDocumentedResponse>> | undefined,
+): FastifySchema {
+  if (!documented) {
+    return schema ?? {};
+  }
+
+  const responses = Object.fromEntries(
+    Object.entries(documented).map(([status, response]) => [
+      status,
+      {
+        description: response.description,
+        ...(response.headers
+          ? {
+              headers: Object.fromEntries(
+                Object.entries(response.headers).map(([name, description]) => [
+                  name,
+                  { type: 'string', description },
+                ]),
+              ),
+            }
+          : {}),
+        ...(response.mediaType
+          ? { content: { [response.mediaType]: { schema: { type: 'string' } } } }
+          : { type: 'null' }),
+      },
+    ]),
+  );
+
+  return { ...schema, response: { ...(schema?.response as object | undefined), ...responses } };
 }
 
 /**
@@ -102,7 +177,7 @@ export async function generateOpenApiDocument<RawServer extends RawServerBase>(
   return app.swagger() as RuntimeOpenApiDocument;
 }
 
-/** Documented routes without a `response` schema, sorted by URL then method. */
+/** Documented routes without documented responses, sorted by URL then method. */
 export function openApiRouteGaps<RawServer extends RawServerBase>(
   app: FastifyInstance<RawServer>,
 ): readonly OpenApiRouteGap[] {

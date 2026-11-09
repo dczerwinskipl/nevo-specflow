@@ -2475,8 +2475,16 @@
     "/api/auth/logout": {
       "post": {
         "responses": {
-          "200": {
-            "description": "Default Response"
+          "204": {
+            "description": "Logged out. The session, if any, ends. No body.",
+            "headers": {
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Clears the session cookie and the OIDC transaction cookie."
+              }
+            }
           }
         }
       }
@@ -2484,8 +2492,22 @@
     "/api/auth/oidc/example/callback": {
       "get": {
         "responses": {
-          "200": {
-            "description": "Default Response"
+          "302": {
+            "description": "The end of the OIDC login: a redirect to the return path of the login after a completed login, or to `/login?error=<code>` (with `returnTo` when it is not `/`) after a failed one. No body.",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "The return path, or the login page with the error code."
+              },
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Clears the OIDC transaction cookie; after a completed login, also sets the session cookie."
+              }
+            }
           }
         }
       }
@@ -4869,8 +4891,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Default Response"
+          "204": {
+            "description": "The Session is deleted. No body."
           }
         }
       }
@@ -5330,7 +5352,22 @@
         ],
         "responses": {
           "200": {
-            "description": "Default Response"
+            "description": "Server-sent events of the Session: `session-change` events whose `id` is the event sequence and whose `data` is the JSON Session event, and `resync-required` when the client must read the Session again. Replay starts after `after` or `Last-Event-ID`; comment lines keep the connection alive.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "`no-store`."
+              }
+            },
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }
@@ -12075,6 +12112,24 @@
           }
         ],
         "responses": {
+          "200": {
+            "description": "Server-sent progress events of the operation: each event is named by the progress event type, its `data` is the JSON progress event and its `id` (when present) resumes the stream through `Last-Event-ID`. Comment lines keep the connection alive.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "`no-store`."
+              }
+            },
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Default Response",
             "content": {

@@ -289,6 +289,19 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
         '/api/sessions/:sessionId/events',
         {
           preHandler: (request) => authorize(request),
+          config: {
+            openApiResponses: {
+              200: {
+                description:
+                  'Server-sent events of the Session: `session-change` events whose `id` is the ' +
+                  'event sequence and whose `data` is the JSON Session event, and ' +
+                  '`resync-required` when the client must read the Session again. Replay starts ' +
+                  'after `after` or `Last-Event-ID`; comment lines keep the connection alive.',
+                headers: { 'Cache-Control': '`no-store`.' },
+                mediaType: 'text/event-stream',
+              },
+            },
+          },
           schema: {
             params: params(),
             querystring: Type.Object(

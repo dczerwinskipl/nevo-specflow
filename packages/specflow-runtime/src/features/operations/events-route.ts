@@ -87,6 +87,18 @@ export function registerOperationEventsRoute<RawServer extends RawServerBase>(
         // The Runtime serves HTTP/1 only; the generic RawServer is just the caller's app type.
         await route.authorize(request as unknown as FastifyRequest);
       },
+      config: {
+        openApiResponses: {
+          200: {
+            description:
+              'Server-sent progress events of the operation: each event is named by the progress ' +
+              'event type, its `data` is the JSON progress event and its `id` (when present) ' +
+              'resumes the stream through `Last-Event-ID`. Comment lines keep the connection alive.',
+            headers: { 'Cache-Control': '`no-store`.' },
+            mediaType: 'text/event-stream',
+          },
+        },
+      },
       schema: {
         params: OperationProgressParamsSchema,
         response: {

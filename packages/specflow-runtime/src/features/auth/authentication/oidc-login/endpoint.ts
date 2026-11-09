@@ -105,44 +105,65 @@ export const oidcLoginEndpoint: FastifyPluginCallback<OidcLoginEndpointOptions> 
     },
   );
 
-  routes.get('/callback', async (request, reply) => {
-    const result = await completeOidcLogin(
-      options.providerId,
-      options.provider,
-      options.store,
-      options.oidc,
-      request.cookies[options.cookieNames.oidc],
-      request.cookies[options.cookieNames.session],
-      new URL(request.url, options.publicOrigin),
-    );
-
-    if (!result.ok) {
-      if (result.error !== 'invalid_oidc_transaction' || !result.preserveTransactionCookie) {
-        reply.clearCookie(options.cookieNames.oidc, options.cookieOptions);
-      }
-
-      if ('providerError' in result) {
-        request.log.warn(
-          { oidc: result.providerError.diagnostic, providerId: options.providerId },
-          'OIDC callback failed at provider boundary',
-        );
-      } else if (result.error === 'service_unavailable') {
-        request.log.warn('Authentication session store capacity reached during OIDC callback');
-      }
-
-      return reply.redirect(
-        loginRedirect(options.publicOrigin, result.error, result.returnTo).toString(),
+  routes.get(
+    '/callback',
+    {
+      config: {
+        openApiResponses: {
+          302: {
+            description:
+              'The end of the OIDC login: a redirect to the return path of the login after a ' +
+              'completed login, or to `/login?error=<code>` (with `returnTo` when it is not `/`) ' +
+              'after a failed one. No body.',
+            headers: {
+              Location: 'The return path, or the login page with the error code.',
+              'Set-Cookie':
+                'Clears the OIDC transaction cookie; after a completed login, also sets the ' +
+                'session cookie.',
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const result = await completeOidcLogin(
+        options.providerId,
+        options.provider,
+        options.store,
+        options.oidc,
+        request.cookies[options.cookieNames.oidc],
+        request.cookies[options.cookieNames.session],
+        new URL(request.url, options.publicOrigin),
       );
-    }
 
-    reply.clearCookie(options.cookieNames.oidc, options.cookieOptions);
-    reply.setCookie(options.cookieNames.session, result.sessionId, {
-      ...options.cookieOptions,
-      maxAge: ttlSeconds(options.store.policy.sessionTtlMs),
-    });
+      if (!result.ok) {
+        if (result.error !== 'invalid_oidc_transaction' || !result.preserveTransactionCookie) {
+          reply.clearCookie(options.cookieNames.oidc, options.cookieOptions);
+        }
 
-    return reply.redirect(new URL(result.returnTo, options.publicOrigin).toString());
-  });
+        if ('providerError' in result) {
+          request.log.warn(
+            { oidc: result.providerError.diagnostic, providerId: options.providerId },
+            'OIDC callback failed at provider boundary',
+          );
+        } else if (result.error === 'service_unavailable') {
+          request.log.warn('Authentication session store capacity reached during OIDC callback');
+        }
+
+        return reply.redirect(
+          loginRedirect(options.publicOrigin, result.error, result.returnTo).toString(),
+        );
+      }
+
+      reply.clearCookie(options.cookieNames.oidc, options.cookieOptions);
+      reply.setCookie(options.cookieNames.session, result.sessionId, {
+        ...options.cookieOptions,
+        maxAge: ttlSeconds(options.store.policy.sessionTtlMs),
+      });
+
+      return reply.redirect(new URL(result.returnTo, options.publicOrigin).toString());
+    },
+  );
 
   done();
 };

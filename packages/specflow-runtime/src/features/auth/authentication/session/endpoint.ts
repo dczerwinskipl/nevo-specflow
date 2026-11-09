@@ -44,17 +44,30 @@ export const sessionEndpoint: FastifyPluginCallback<SessionEndpointOptions> = (
     },
   );
 
-  routes.post('/api/auth/logout', (request, reply) => {
-    logout(
-      options.store,
-      request.cookies[options.cookieNames.session],
-      request.cookies[options.cookieNames.oidc],
-    );
-    reply.clearCookie(options.cookieNames.session, options.cookieOptions);
-    reply.clearCookie(options.cookieNames.oidc, options.cookieOptions);
+  routes.post(
+    '/api/auth/logout',
+    {
+      config: {
+        openApiResponses: {
+          204: {
+            description: 'Logged out. The session, if any, ends. No body.',
+            headers: { 'Set-Cookie': 'Clears the session cookie and the OIDC transaction cookie.' },
+          },
+        },
+      },
+    },
+    (request, reply) => {
+      logout(
+        options.store,
+        request.cookies[options.cookieNames.session],
+        request.cookies[options.cookieNames.oidc],
+      );
+      reply.clearCookie(options.cookieNames.session, options.cookieOptions);
+      reply.clearCookie(options.cookieNames.oidc, options.cookieOptions);
 
-    return reply.code(204).send();
-  });
+      return reply.code(204).send();
+    },
+  );
 
   done();
 };

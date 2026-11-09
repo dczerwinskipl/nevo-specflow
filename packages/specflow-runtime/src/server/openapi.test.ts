@@ -8,13 +8,24 @@ import {
   type AuthSessionResponse,
 } from '@nevo/specflow-contracts/authentication';
 import type { RuntimeConfig } from '../config/types';
-import { noAuthConfig, passwordConfig } from '../../test/auth/support/config';
+import { noAuthConfig, oidcConfig, passwordConfig } from '../../test/auth/support/config';
 import { createRuntimeApp, type RuntimeAppDependencies } from './app';
-import { generateOpenApiDocument, openApiRouteGaps, type RuntimeOpenApiDocument } from './openapi';
+import {
+  generateOpenApiDocument,
+  openApiRouteGaps,
+  registerOpenApi,
+  type RuntimeOpenApiDocument,
+} from './openapi';
 import { contractRef, registerSharedContracts } from './shared-contracts';
 
 interface Operation {
-  responses: Record<string, { content?: Record<string, { schema: Record<string, unknown> }> }>;
+  responses: Record<
+    string,
+    {
+      headers?: Record<string, unknown>;
+      content?: Record<string, { schema: Record<string, unknown> }>;
+    }
+  >;
 }
 
 function operation(document: RuntimeOpenApiDocument, path: string, method: string): Operation {
@@ -92,10 +103,7 @@ describe('Runtime OpenAPI document', () => {
         expect.objectContaining({ in: 'path', name: 'specId', required: true }),
       );
       expect(JSON.stringify(await generateOpenApiDocument(app))).toBe(JSON.stringify(generated));
-      const gaps = openApiRouteGaps(app);
-      expect(gaps).toContainEqual({ method: 'POST', url: '/api/auth/logout' });
-      expect(gaps).toContainEqual({ method: 'DELETE', url: '/api/sessions/{sessionId}' });
-      expect(gaps.every((gap) => paths[gap.url] !== undefined)).toBe(true);
+      expect(openApiRouteGaps(app)).toEqual([]);
     });
   });
 
@@ -179,6 +187,87 @@ describe('Runtime OpenAPI document', () => {
       const response = await app.inject('/typed');
 
       expect(response.json()).toEqual(session);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('documents replies without a JSON body from documentation-only route metadata', async () => {
+    await withApp(passwordConfig(), {}, async (app) => {
+      const document = await generateOpenApiDocument(app);
+
+      const logout = operation(document, '/api/auth/logout', 'post').responses;
+      expect(Object.keys(logout)).toEqual(['204']);
+      expect(Object.keys(logout[204]?.headers ?? {})).toEqual(['Set-Cookie']);
+      expect(logout[204]?.content).toBeUndefined();
+      const deletion = operation(document, '/api/sessions/{sessionId}', 'delete').responses;
+      expect(Object.keys(deletion)).toEqual(['204']);
+      expect(deletion[204]?.content).toBeUndefined();
+      const sessionEvents = operation(document, '/api/sessions/{sessionId}/events', 'get');
+      expect(Object.keys(sessionEvents.responses)).toEqual(['200']);
+      expect(sessionEvents.responses[200]?.content).toEqual({
+        'text/event-stream': { schema: { type: 'string' } },
+      });
+      // Merged with the JSON error responses the route serializes from its schema.
+      const operationEvents = operation(
+        document,
+        '/api/specs/create/operations/{operationId}/events',
+        'get',
+      );
+      expect(Object.keys(operationEvents.responses).sort()).toEqual(['200', '401', '403', '429']);
+      expect(Object.keys(operationEvents.responses[200]?.content ?? {})).toEqual([
+        'text/event-stream',
+      ]);
+
+      // The route itself is unchanged: logout still answers 204 without a body.
+      const reply = await app.inject({ method: 'POST', url: '/api/auth/logout' });
+      expect(reply.statusCode).toBe(204);
+      expect(reply.body).toBe('');
+    });
+
+    await withApp(oidcConfig({}), {}, async (app) => {
+      const callback = operation(
+        await generateOpenApiDocument(app),
+        '/api/auth/oidc/company/callback',
+        'get',
+      );
+
+      expect(Object.keys(callback.responses)).toEqual(['302']);
+      expect(Object.keys(callback.responses[302]?.headers ?? {})).toEqual([
+        'Location',
+        'Set-Cookie',
+      ]);
+      expect(callback.responses[302]?.content).toBeUndefined();
+    });
+  });
+
+  it('reports routes without documented responses and refuses a response documented twice', async () => {
+    const app = Fastify();
+    try {
+      await registerOpenApi(app);
+      app.get('/api/plain/:id', () => '');
+      app.get(
+        '/api/stream',
+        {
+          config: {
+            openApiResponses: { 200: { description: 'Stream.', mediaType: 'text/event-stream' } },
+          },
+        },
+        () => '',
+      );
+      expect(() =>
+        app.get(
+          '/api/twice',
+          {
+            config: { openApiResponses: { 204: { description: 'No body.' } } },
+            schema: { response: { 204: { type: 'null' } } },
+          },
+          () => '',
+        ),
+      ).toThrow(/both with a response schema and in openApiResponses/);
+      await app.ready();
+
+      expect(openApiRouteGaps(app)).toEqual([{ method: 'GET', url: '/api/plain/{id}' }]);
     } finally {
       await app.close();
     }

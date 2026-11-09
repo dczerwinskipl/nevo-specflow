@@ -85,7 +85,7 @@ export async function runOpenApiDocumentCommand(args: readonly string[]): Promis
   const { text, gaps } = await renderReferenceDocument();
   if (gaps.length > 0) {
     process.stderr.write(
-      `Routes without a response schema (documented as "Default Response"):\n${gaps
+      `Routes without documented responses (documented as "Default Response"):\n${gaps
         .map((gap) => `  ${gap}\n`)
         .join('')}`,
     );

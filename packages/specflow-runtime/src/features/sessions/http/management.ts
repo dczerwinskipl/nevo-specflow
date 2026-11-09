@@ -76,7 +76,11 @@ export function registerSessionManagementRoutes(
   );
   feature.delete(
     '/api/sessions/:sessionId',
-    { preHandler: authorize('delete'), schema: { params } },
+    {
+      preHandler: authorize('delete'),
+      config: { openApiResponses: { 204: { description: 'The Session is deleted. No body.' } } },
+      schema: { params },
+    },
     async (request, reply) => {
       await coordinator().remove(sessionId(request));
 

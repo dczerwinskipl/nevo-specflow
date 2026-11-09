@@ -126,17 +126,40 @@ differ; CI runs it (see [Continuous integration](../../engineering/repository/ci
 After changing a route schema, run `pnpm api:openapi` and commit the regenerated file with the
 change.
 
-## Known gaps
+## Responses without a JSON body
 
-A route without a `response` schema gets the generic `200 Default Response` and no response body
-description. Both commands print these routes to stderr as information; they never fail the check.
-Current gaps in the committed document:
+Some replies are not serialized from a response schema: logout and Session deletion answer `204`
+without a body, the OIDC callback answers a `302` redirect, and the event streams write
+`text/event-stream` to the raw socket. A response schema on such a route would take part in Fastify
+serialization, so the route declares documentation-only responses in its route `config` instead:
 
-| Method   | Path                               |
-| -------- | ---------------------------------- |
-| `POST`   | `/api/auth/logout`                 |
-| `GET`    | `/api/auth/oidc/example/callback`  |
-| `DELETE` | `/api/sessions/{sessionId}`        |
-| `GET`    | `/api/sessions/{sessionId}/events` |
+```ts
+config: {
+  openApiResponses: {
+    204: { description: 'The Session is deleted. No body.' },
+  },
+},
+```
 
-A gap is closed by adding the response schema to the route, not by editing the document.
+Each entry has a `description`, optional response `headers` (name to description) and an optional
+`mediaType` (only `text/event-stream`; a JSON body is documented by a response schema). Only the
+Swagger `transform` of `src/server/openapi.ts` reads it: a response without `mediaType` becomes a
+response without `content`, and a stream becomes `content` of that media type with a `string`
+schema. A status code documented both ways is refused when the route is registered. An event
+stream route that also answers JSON errors (the operation progress stream) keeps those in its
+response schema; the documentation-only `200` is added next to them.
+
+| Method   | Path                                                | Documented response                                            |
+| -------- | --------------------------------------------------- | -------------------------------------------------------------- |
+| `POST`   | `/api/auth/logout`                                  | `204`, no body; `Set-Cookie` clears the authentication cookies |
+| `GET`    | `/api/auth/oidc/<providerId>/callback`              | `302`; `Location` and `Set-Cookie`                             |
+| `DELETE` | `/api/sessions/{sessionId}`                         | `204`, no body                                                 |
+| `GET`    | `/api/sessions/{sessionId}/events`                  | `200`, `text/event-stream`                                     |
+| `GET`    | `/api/specs/create/operations/{operationId}/events` | `200`, `text/event-stream`, besides its JSON error responses   |
+
+## Undocumented routes
+
+A route with neither a `response` schema nor `openApiResponses` gets the generic
+`200 Default Response`. Both commands print such routes to stderr as information; they never fail
+the check. The committed document currently has none. A route is documented by adding its response
+schema, or its documentation-only responses, to the route, never by editing the document.

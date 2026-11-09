@@ -51,6 +51,21 @@ describe('docs command', () => {
     ]);
   });
 
+  it('does not scan directories listed in docs.exclude', async () => {
+    mkdirSync(join(root, 'docs', 'templates'));
+    writeFileSync(join(root, 'docs', 'templates', 'page.md'), '# No frontmatter\n');
+    const unexcluded = await runDocs(root, ['check']);
+    mkdirSync(join(root, '.nevo'));
+    writeFileSync(join(root, '.nevo', 'config.yaml'), 'docs:\n  exclude: [templates/]\n');
+    const excluded = await runDocs(root, ['check']);
+    rmSync(join(root, '.nevo'), { recursive: true });
+    rmSync(join(root, 'docs', 'templates'), { recursive: true });
+    expect(unexcluded.stderr).toContain(
+      'docs/templates/page.md: missing frontmatter (every authored docs/**.md file needs it)',
+    );
+    expect(excluded).toMatchObject({ exitCode: 0, stderr: [] });
+  });
+
   it('rejects a non-positive --limit as a usage error', async () => {
     expect((await runDocs(root, ['find', 'guide', '--limit', '0'])).exitCode).toBe(2);
   });

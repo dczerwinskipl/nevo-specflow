@@ -15,8 +15,6 @@ import { createFileSystemDocRepository, type DocRepository, type ScanResult } fr
  * repository's own tooling (ADR 0020). The product shell supplies none.
  */
 export interface DocsCorpusRules {
-  /** Exempt a markdown file (path relative to the documentation root) from needing frontmatter. */
-  readonly isFrontmatterExempt?: (pathUnderRoot: string) => boolean;
   /**
    * Extra problems over the scanned documents; reported like contract problems. `search` validates
    * frontmatter only: the records it passes here have an empty `body`.
@@ -50,7 +48,7 @@ export function openFileSystemCorpus(
     repo: createFileSystemDocRepository({
       projectRoot,
       root: settings.root,
-      ...(rules.isFrontmatterExempt ? { isFrontmatterExempt: rules.isFrontmatterExempt } : {}),
+      exclude: settings.exclude,
     }),
     settings,
     ...(rules.validate ? { validate: rules.validate } : {}),

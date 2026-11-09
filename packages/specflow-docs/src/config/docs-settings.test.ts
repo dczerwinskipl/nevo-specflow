@@ -14,6 +14,7 @@ describe('parseDocsConfig', () => {
       root: 'docs',
       taxonomy: {},
       nonAuthoritative: [],
+      exclude: [],
       search: { semantic: false },
     });
     expect(parseDocsConfig({ taxonomy: { areas: ['cli'] } })).toEqual({
@@ -23,10 +24,17 @@ describe('parseDocsConfig', () => {
   });
 
   it('normalizes a trailing slash on the root and the prefixes', () => {
-    expect(parseDocsConfig({ root: 'handbook/', nonAuthoritative: ['ideas/', 'drafts'] })).toEqual({
+    expect(
+      parseDocsConfig({
+        root: 'handbook/',
+        nonAuthoritative: ['ideas/', 'drafts'],
+        exclude: ['templates/'],
+      }),
+    ).toEqual({
       ...DEFAULT_DOCS_SETTINGS,
       root: 'handbook',
       nonAuthoritative: ['ideas', 'drafts'],
+      exclude: ['templates'],
     });
     expect(parseDocsConfig({ search: { semantic: true } }).search).toEqual({ semantic: true });
   });
@@ -42,6 +50,8 @@ describe('parseDocsConfig', () => {
     [{ taxonomy: { areas: ['cli', 'cli'] } }, "docs.taxonomy.areas lists 'cli' more than once."],
     [{ nonAuthoritative: 'ideas' }, 'docs.nonAuthoritative must be a list of path prefixes.'],
     [{ nonAuthoritative: ['a\\b'] }, 'docs.nonAuthoritative[0] must be a relative directory path'],
+    [{ exclude: 'templates' }, 'docs.exclude must be a list of path prefixes.'],
+    [{ exclude: ['../x'] }, 'docs.exclude[0] must be a relative directory path'],
     [{ search: { semantic: 'yes' } }, 'docs.search.semantic must be true or false.'],
     [{ search: { mode: 'hybrid' } }, "Unknown configuration key 'docs.search.mode'."],
     ['docs', 'docs must be an object.'],

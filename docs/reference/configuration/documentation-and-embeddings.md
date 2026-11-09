@@ -6,12 +6,12 @@ status: current
 scope: specflow
 areas: [configuration, docs, ai, security]
 read_when:
-  - configuring the documentation root, taxonomy or non-authoritative paths of a project
+  - configuring the documentation root, taxonomy, non-authoritative or excluded paths of a project
   - enabling semantic documentation search or configuring an embedding endpoint
   - changing the semantic search step of nevo-specflow init
   - diagnosing a docs or ai.embeddings configuration error
 summary: >
-  The docs namespace (root, taxonomy, non-authoritative prefixes, search.semantic) and the
+  The docs namespace (root, taxonomy, non-authoritative and excluded prefixes, search.semantic) and the
   ai.embeddings endpoint (protocol, baseUrl, model, dimensions, apiKeyEnv, queryInstruction,
   batchSize, timeoutMs): which file may hold them, how they merge, their validation and defaults.
 related:
@@ -46,6 +46,7 @@ docs:
     scopes: [shared, specflow] # allowed `scope` values
     areas: [cli, docs, testing] # allowed `areas` values
   nonAuthoritative: [ideas/] # path prefixes under `root` that `context` and `search` skip
+  exclude: [templates/] # path prefixes under `root` that are not part of the corpus at all
   search:
     semantic: true # opt in to hybrid `search`; also needs `ai.embeddings`
 ```
@@ -56,6 +57,7 @@ docs:
 | `docs.taxonomy.scopes`  | Non-empty list of distinct values; any other `scope` is a `check` problem | unrestricted |
 | `docs.taxonomy.areas`   | Non-empty list of distinct values; any other area is a `check` problem    | unrestricted |
 | `docs.nonAuthoritative` | Directory prefixes relative to `docs.root` (a trailing `/` is optional)   | none         |
+| `docs.exclude`          | Directory prefixes relative to `docs.root`, validated the same way        | none         |
 | `docs.search.semantic`  | `true` or `false`                                                         | `false`      |
 
 An unknown key under `docs`, `docs.taxonomy` or `docs.search` is an error. Document types, required
@@ -63,6 +65,11 @@ fields and statuses are the product frontmatter contract and are not configurabl
 
 `context` never returns documents under a non-authoritative prefix; `search` skips them unless
 `--include-non-authoritative` is given; `list`, `find` and `get` return them.
+
+Files under an excluded prefix are not scanned by any command: they need no frontmatter, are not
+validated, indexed or searched. Use it for copy-me templates and similar non-documents. A relative
+Markdown link into an excluded directory still resolves when the target exists (its `#fragment` is
+not checked).
 
 ## `ai.embeddings`
 

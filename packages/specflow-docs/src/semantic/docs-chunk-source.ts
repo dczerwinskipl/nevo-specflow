@@ -87,13 +87,8 @@ export function createDocsChunkSource({
     load() {
       cached ??= cacheFile === undefined ? new Map() : readCache(cacheFile);
       const next = new Map<string, CachedFile>();
-      const exempt = new Set<string>();
       let reparsed = 0;
       for (const stat of corpus.repo.listMarkdownFiles()) {
-        if (stat.frontmatterExempt) {
-          exempt.add(stat.file);
-        }
-
         const previous = cached.get(stat.file);
         if (previous?.mtimeMs === stat.mtimeMs && previous.size === stat.size) {
           next.set(stat.file, previous);
@@ -117,7 +112,7 @@ export function createDocsChunkSource({
         writeCache(cacheFile, next);
       }
 
-      return { chunks: validatedChunks(corpus, [...next.values()], exempt), reparsed };
+      return { chunks: validatedChunks(corpus, [...next.values()]), reparsed };
     },
   };
 }
@@ -172,18 +167,12 @@ export function contextualHeader(frontmatter: Record<string, unknown>): string {
   return lines.join('\n');
 }
 
-function validatedChunks(
-  corpus: DocsCorpus,
-  files: readonly CachedFile[],
-  exempt: ReadonlySet<string>,
-): DocsChunk[] {
+function validatedChunks(corpus: DocsCorpus, files: readonly CachedFile[]): DocsChunk[] {
   const docs: DocRecord[] = [];
   const missingFrontmatter: string[] = [];
   for (const entry of files) {
     if (entry.frontmatter === null) {
-      if (!exempt.has(entry.file)) {
-        missingFrontmatter.push(entry.file);
-      }
+      missingFrontmatter.push(entry.file);
     } else {
       // Validation reads frontmatter only; the body is not kept.
       docs.push({ ...entry.frontmatter, file: entry.file, body: '' });

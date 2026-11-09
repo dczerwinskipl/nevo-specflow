@@ -26,7 +26,9 @@ related:
 `nevo-specflow docs` is the documentation capability (`@nevo/specflow-docs`,
 [ADR 0020](../../architecture/decisions/0020-documentation-discovery-is-a-product-capability.md)).
 It is an ordinary command: it does not start Runtime, need a running Runtime or load UI assets. It
-runs in a Git repository and reads the documents under the project's documentation root.
+runs in a Git repository and reads the documents under the project's documentation root: every
+`.md` file below `docs.root` except the generated index files and directories listed in
+`docs.exclude`.
 
 ```bash
 nevo-specflow docs list [--type <type>] [--status <status>] [--json]

@@ -86,7 +86,10 @@ namespace:
 - a list of **non-authoritative path prefixes** under `docs.root`. `context` always excludes
   documents under them. `search` (CLI and HTTP) excludes them unless the caller
   sets its include switch, which is the only such switch. `list`, `find` and `get` still return
-  them.
+  them;
+- a list of **excluded path prefixes** under `docs.root`. Files below them (for example copy-me
+  templates without frontmatter) are not part of the corpus and are never scanned; relative links
+  into them still resolve.
 
 Document types, required fields, statuses and inactive statuses are the product frontmatter
 contract and MUST NOT become configuration.
@@ -98,6 +101,7 @@ contract and MUST NOT become configuration.
 | `docs.root`                         | `docs`                           |
 | `docs.taxonomy.scopes` and `.areas` | unrestricted                     |
 | non-authoritative path prefixes     | none                             |
+| excluded path prefixes              | none                             |
 | `docs.search.semantic`              | off (`search` answers lexically) |
 | `ai.embeddings`                     | no endpoint configured           |
 
@@ -210,10 +214,11 @@ and schemas live in `@nevo/specflow-contracts`.
 - Documentation discovery is a product contract defined here, not inherited from `tools/docs`;
   changing it is a product change.
 - This repository dogfoods the capability: it commits a complete project `.nevo/config.yaml` (it is
-  a real SpecFlow project) that declares its taxonomy — the current `scope` and `areas` vocabulary
-  and `ideas/` as the non-authoritative prefix. Its root `pnpm docs:*` scripts build only
-  `@nevo/specflow-docs` and its dependencies and run the same `docs` command adapter the product
-  shell mounts, so agent lookups stay fast and do not need the UI build.
+  a real SpecFlow project) that declares its taxonomy — the current `scope` and `areas` vocabulary,
+  `ideas/` as the non-authoritative prefix and `templates/` as an excluded prefix. Its root
+  `pnpm docs:*` scripts build only `@nevo/specflow-docs` and its dependencies and run the same
+  `docs` command adapter the product shell mounts, so agent lookups stay fast and do not need the
+  UI build.
 - `find`, `get`, `context`, `check` and the generated index keep their behavior, including
   `context` excluding non-authoritative documents; agents and
   `tools/agents` that depend on them keep working.

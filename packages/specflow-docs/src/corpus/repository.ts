@@ -8,7 +8,7 @@ import type { BuiltIndex, OnDiskIndex } from '../index-file/index-file';
 
 export interface ScanResult {
   readonly docs: DocRecord[];
-  /** Project-root-relative paths of markdown files that have no frontmatter and are not exempt. */
+  /** Project-root-relative paths of markdown files that have no frontmatter. */
   readonly missingFrontmatter: string[];
 }
 
@@ -18,8 +18,6 @@ export interface MarkdownFileStat {
   readonly file: string;
   readonly mtimeMs: number;
   readonly size: number;
-  /** The file needs no frontmatter (host exemption). */
-  readonly frontmatterExempt: boolean;
 }
 
 /** Everything the discovery use cases touch on disk. */
@@ -27,7 +25,8 @@ export interface DocRepository {
   /** Walk the documentation root, parse frontmatter and return the deterministic corpus. */
   scan(): ScanResult;
   /**
-   * The markdown files `scan` reads (generated index files excluded), in walk order, with their
+   * The markdown files `scan` reads (generated index files and excluded directories left out), in
+   * walk order, with their
    * stat and without reading them.
    */
   listMarkdownFiles(): MarkdownFileStat[];
@@ -42,7 +41,15 @@ export interface DocRepository {
 export const INDEX_JSON_FILE = 'index.generated.json';
 export const INDEX_MD_FILE = 'index.generated.md';
 
-function walkMarkdown(dir: string): { abs: string; mtimeMs: number; size: number }[] {
+/**
+ * Markdown files below `dir` in a deterministic order. `under` is `dir` relative to the
+ * documentation root (`''` for the root itself); directories in `exclude` are not entered.
+ */
+function walkMarkdown(
+  dir: string,
+  under: string,
+  exclude: ReadonlySet<string>,
+): { abs: string; mtimeMs: number; size: number }[] {
   const out: { abs: string; mtimeMs: number; size: number }[] = [];
   let names: string[];
   try {
@@ -55,7 +62,10 @@ function walkMarkdown(dir: string): { abs: string; mtimeMs: number; size: number
     const full = join(dir, name);
     const stat = statSync(full);
     if (stat.isDirectory()) {
-      out.push(...walkMarkdown(full));
+      const child = under ? `${under}/${name}` : name;
+      if (!exclude.has(child)) {
+        out.push(...walkMarkdown(full, child, exclude));
+      }
     } else if (extname(name) === '.md' && !name.includes('.generated.')) {
       out.push({ abs: full, mtimeMs: stat.mtimeMs, size: stat.size });
     }
@@ -69,19 +79,18 @@ export interface FileSystemDocRepositoryOptions {
   readonly projectRoot: string;
   /** `docs.root` of the settings. */
   readonly root: string;
-  /**
-   * Host-specific frontmatter exemption for a path relative to the documentation root. The product
-   * exempts nothing beyond the generated index files.
-   */
-  readonly isFrontmatterExempt?: (pathUnderRoot: string) => boolean;
+  /** `docs.exclude`: directory prefixes relative to `root` that are not scanned. Default none. */
+  readonly exclude?: readonly string[];
 }
 
 export function createFileSystemDocRepository({
   projectRoot,
   root,
-  isFrontmatterExempt,
+  exclude = [],
 }: FileSystemDocRepositoryOptions): DocRepository {
   const docsDir = join(projectRoot, ...root.split('/'));
+  const excluded = new Set(exclude);
+  const markdownFiles = () => walkMarkdown(docsDir, '', excluded);
   const toPosix = (path: string): string => path.split(sep).join('/');
   const entries = new Map<string, string[] | null>();
   const entriesOf = (dir: string): string[] | null => {
@@ -101,14 +110,11 @@ export function createFileSystemDocRepository({
       const docs: DocRecord[] = [];
       const missingFrontmatter: string[] = [];
 
-      for (const { abs } of walkMarkdown(docsDir)) {
+      for (const { abs } of markdownFiles()) {
         const file = toPosix(relative(projectRoot, abs));
         const parsed = parseFrontmatter(readFileSync(abs, 'utf8'), file);
         if (parsed === null) {
-          if (!isFrontmatterExempt?.(toPosix(relative(docsDir, abs)))) {
-            missingFrontmatter.push(file);
-          }
-
+          missingFrontmatter.push(file);
           continue;
         }
 
@@ -122,11 +128,10 @@ export function createFileSystemDocRepository({
     },
 
     listMarkdownFiles(): MarkdownFileStat[] {
-      return walkMarkdown(docsDir).map(({ abs, mtimeMs, size }) => ({
+      return markdownFiles().map(({ abs, mtimeMs, size }) => ({
         file: toPosix(relative(projectRoot, abs)),
         mtimeMs,
         size,
-        frontmatterExempt: isFrontmatterExempt?.(toPosix(relative(docsDir, abs))) ?? false,
       }));
     },
 

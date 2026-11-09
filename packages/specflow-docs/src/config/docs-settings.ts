@@ -16,6 +16,11 @@ export interface DocsSettings {
   readonly taxonomy: DocsTaxonomy;
   /** Non-authoritative path prefixes relative to `root`, `/`-separated, without a trailing slash. */
   readonly nonAuthoritative: readonly string[];
+  /**
+   * Excluded path prefixes relative to `root`, `/`-separated, without a trailing slash: files below
+   * them are not part of the corpus and are not scanned. Links into them still resolve.
+   */
+  readonly exclude: readonly string[];
   readonly search: DocsSearchSettings;
 }
 
@@ -29,10 +34,11 @@ export const DEFAULT_DOCS_SETTINGS: DocsSettings = {
   root: 'docs',
   taxonomy: {},
   nonAuthoritative: [],
+  exclude: [],
   search: { semantic: false },
 };
 
-const DOCS_KEYS = new Set(['root', 'taxonomy', 'nonAuthoritative', 'search']);
+const DOCS_KEYS = new Set(['root', 'taxonomy', 'nonAuthoritative', 'exclude', 'search']);
 const TAXONOMY_KEYS = new Set(['scopes', 'areas']);
 const SEARCH_KEYS = new Set(['semantic']);
 
@@ -83,6 +89,19 @@ function vocabulary(value: unknown, path: string): readonly string[] {
   return [...seen];
 }
 
+/** A list of directory prefixes relative to `docs.root`; `undefined` means the default. */
+function prefixList(value: unknown, path: string, fallback: readonly string[]): readonly string[] {
+  if (value === undefined) {
+    return fallback;
+  }
+
+  if (!Array.isArray(value)) {
+    throw new DocsConfigError(`${path} must be a list of path prefixes.`);
+  }
+
+  return value.map((entry, i) => relativeDirectory(entry, `${path}[${String(i)}]`));
+}
+
 /** Parse the `docs` namespace of the project configuration; `undefined` means all defaults. */
 export function parseDocsConfig(value: unknown): DocsSettings {
   if (value === undefined) {
@@ -111,16 +130,12 @@ export function parseDocsConfig(value: unknown): DocsSettings {
     };
   }
 
-  let nonAuthoritative: readonly string[] = DEFAULT_DOCS_SETTINGS.nonAuthoritative;
-  if (docs.nonAuthoritative !== undefined) {
-    if (!Array.isArray(docs.nonAuthoritative)) {
-      throw new DocsConfigError('docs.nonAuthoritative must be a list of path prefixes.');
-    }
-
-    nonAuthoritative = docs.nonAuthoritative.map((entry, i) =>
-      relativeDirectory(entry, `docs.nonAuthoritative[${String(i)}]`),
-    );
-  }
+  const nonAuthoritative = prefixList(
+    docs.nonAuthoritative,
+    'docs.nonAuthoritative',
+    DEFAULT_DOCS_SETTINGS.nonAuthoritative,
+  );
+  const exclude = prefixList(docs.exclude, 'docs.exclude', DEFAULT_DOCS_SETTINGS.exclude);
 
   let search = DEFAULT_DOCS_SETTINGS.search;
   if (docs.search !== undefined) {
@@ -133,7 +148,7 @@ export function parseDocsConfig(value: unknown): DocsSettings {
     search = { semantic: declared.semantic === true };
   }
 
-  return { root, taxonomy, nonAuthoritative, search };
+  return { root, taxonomy, nonAuthoritative, exclude, search };
 }
 
 /**

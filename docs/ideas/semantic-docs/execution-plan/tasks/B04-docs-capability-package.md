@@ -65,10 +65,12 @@ project configuration, and produces exactly what `tools/docs` produces for this 
 
 ## Acceptance
 
-- Parity test on a fixture corpus and on this repository's `docs/` with this repository's taxonomy
-  supplied as fixture configuration: `find`, `get`, `context`, `check` output and
-  `index.generated.json`/`.md` are identical to today's `tools/docs` results (the generated index
-  must not churn when B08 switches).
+- Parity test on a small fixture corpus with a fixture taxonomy: `find`, `get`, `context`, `check`
+  output and `index.generated.json`/`.md` are identical to today's `tools/docs` results. No test
+  scans this repository's `docs/` (see the plan's test budget); repository-wide parity is shown once
+  by running the new `check --write` against this repository and observing no diff in
+  `docs/index.generated.*` (reported in the task hand-off, and enforced afterwards by `docs:check`
+  in CI once B08 switches).
 - Undeclared taxonomy accepts any scope/area; declared taxonomy rejects unknown values with the
   same message shape as today; non-authoritative prefixes are configurable.
 - `nevo-specflow docs --help` lists the commands; CLI tests cover exit codes and fail-closed `get`.

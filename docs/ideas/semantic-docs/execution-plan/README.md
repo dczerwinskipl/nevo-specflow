@@ -109,6 +109,25 @@ the packaged-product smoke run on Linux/CI. No test depends on a real embedding 
 HTTP tests use a deterministic fake embedder. The `semantic eval` command against a local Ollama is a
 manual owner check, not CI.
 
+### Test budget (owner rule)
+
+The suites are already slow; this feature must add as little test time as possible. Reviewers treat
+a breach as a gate finding.
+
+- **Embeddings are always mocked.** The default is the in-process deterministic fake embedder. A fake
+  HTTP endpoint is allowed only in the OpenAI-compatible adapter test (B02) and in one Runtime HTTP test
+  (B07). No test starts Docker, Ollama, a real model, or reaches the network.
+- **Small fixture corpora** (a handful of documents) only; no test scans this repository's `docs/`.
+  Repository-wide parity is proven by the existing `docs:check` index-currency check (no diff in
+  `docs/index.generated.*` after B08), not by a new test.
+- **Prefer pure domain unit tests** (chunker, BM25, RRF, mode resolution, config parsing) over
+  CLI/HTTP integration tests; one integration test per surface is the ceiling.
+- **No new packaged or end-to-end suite.** The installed-artifact check is two assertions appended to
+  the existing packaged smoke (B08); the CLI/HTTP contract check (B09) runs in-process with the fake
+  embedder.
+- No sleeps or real timers: lock contention, timeouts and background refresh use injected clocks and
+  controllable fakes.
+
 ## Open decisions
 
 Answer before B01 is admitted; B01 records the answers in the ADRs and authoritative docs.

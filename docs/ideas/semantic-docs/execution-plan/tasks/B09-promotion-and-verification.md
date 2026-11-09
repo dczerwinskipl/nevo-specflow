@@ -51,9 +51,11 @@ from configuration through CLI and HTTP on CI.
   the hub keeps only the still-open topics (contextual help, other corpora, watcher) or is
   superseded with a successor hub link. The open question "ADR authoring stays in `tools/docs`" and
   "Runtime endpoint in the same PR" are recorded as decided by B01.
-- Cross-package end-to-end check: a project config with `docs.search.semantic` and a fake endpoint
-  → `nevo-specflow docs search --json` and `GET /api/docs/search` return results valid against the
-  same contract.
+- Cross-package contract check, in-process with the deterministic fake embedder (no HTTP fake, no
+  packaged artifact, no repository `docs/` scan — see the plan's test budget): a fixture project
+  config with `docs.search.semantic` → the `docs search --json` command and the
+  `GET /api/docs/search` handler (Fastify `inject`) return results valid against the same contract.
+  Add it only if B05/B07 tests do not already cover it.
 - Confirm the plan's exit criteria and that this plan is ready to be retired after merge.
 
 ## Acceptance

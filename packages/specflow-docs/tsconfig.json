@@ -1,0 +1,7 @@
+{
+  "extends": "../../tsconfig.package-node.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./.tsbuild/specflow-docs.tsbuildinfo"
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts"]
+}

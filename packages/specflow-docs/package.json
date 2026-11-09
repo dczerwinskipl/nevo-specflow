@@ -1,0 +1,37 @@
+{
+  "name": "@nevo/specflow-docs",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Nevo SpecFlow documentation capability: frontmatter contract, project-configured taxonomy and deterministic discovery (list, find, get, context, check) with the generated index, plus the `nevo-specflow docs` Commander adapter (./cli). Bundled into @nevo/specflow.",
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./cli": {
+      "types": "./dist/cli/index.d.ts",
+      "default": "./dist/cli/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "node ../../tools/build-package.mjs",
+    "typecheck": "tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "commander": "15.0.0",
+    "yaml": "2.9.1"
+  },
+  "devDependencies": {
+    "vitest": "5.1.0"
+  },
+  "engines": {
+    "node": ">=24.20.0 <25"
+  }
+}

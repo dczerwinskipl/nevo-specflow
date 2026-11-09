@@ -81,6 +81,21 @@ export const specflowContractsBoundaries = [
   ]),
 ];
 
+/**
+ * `specflow-docs`: the documentation capability (ADR 0020). It may build on the neutral semantic
+ * search engine, the shared contracts and neutral foundations, but not on Engine, Runtime, UI or the
+ * product composition root; the shell passes it the project root instead.
+ */
+export const specflowDocsBoundaries = [
+  restrict([
+    {
+      regex: '^@nevo/(?:specflow|specflow-engine|specflow-runtime|specflow-ui)(?:/|$)',
+      message:
+        'The documentation capability must not depend on Engine, Runtime, UI or the product shell (ADR 0012, ADR 0020).',
+    },
+  ]),
+];
+
 export const specflowEngineBoundaries = [
   restrict([
     {

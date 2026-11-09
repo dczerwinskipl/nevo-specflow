@@ -5037,6 +5037,31 @@
       ]
     },
     {
+      "id": "reference.cli.nevo-specflow-docs",
+      "type": "reference",
+      "title": "nevo-specflow docs commands",
+      "status": "current",
+      "file": "docs/reference/cli/nevo-specflow-docs.md",
+      "read_when": [
+        "using nevo-specflow docs list, find, get, context or check",
+        "configuring the documentation root, taxonomy or non-authoritative paths of a project",
+        "checking the output or exit codes of documentation discovery"
+      ],
+      "summary": "The deterministic documentation commands of nevo-specflow docs (list, find, get, context, check), the docs configuration keys they read, their output and their exit codes.",
+      "related": [
+        "adr.0020-documentation-discovery-is-a-product-capability",
+        "adr.0007-documentation-architecture-and-taxonomy",
+        "reference.cli.nevo-specflow-contract",
+        "architecture.runtime.configuration"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "cli",
+        "docs",
+        "configuration"
+      ]
+    },
+    {
       "id": "reference.cli.specflow-specification-commands",
       "type": "reference",
       "title": "Offline Specification CLI commands",

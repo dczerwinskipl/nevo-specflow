@@ -49,6 +49,18 @@ export function createFileSystemDocRepository({
   docsDir,
 }: DocRepositoryPaths): DocRepository {
   const adrDir = join(docsDir, 'architecture', 'decisions');
+  const entries = new Map<string, string[] | null>();
+  const entriesOf = (dir: string): string[] | null => {
+    if (!entries.has(dir)) {
+      try {
+        entries.set(dir, readdirSync(dir));
+      } catch {
+        entries.set(dir, null);
+      }
+    }
+
+    return entries.get(dir) ?? null;
+  };
 
   return {
     scan(): ScanResult {
@@ -96,7 +108,22 @@ export function createFileSystemDocRepository({
     },
 
     pathExists(repoRelPath): boolean {
-      return existsSync(join(repoRoot, ...repoRelPath.split('/')));
+      // Compare every segment with the exact directory entry: Windows and macOS file systems are
+      // case-insensitive, but links are resolved case-sensitively on GitHub and in CI.
+      let dir = repoRoot;
+      for (const segment of repoRelPath.split('/')) {
+        if (!segment || segment === '.' || segment === '..') {
+          return false;
+        }
+
+        if (!entriesOf(dir)?.includes(segment)) {
+          return false;
+        }
+
+        dir = join(dir, segment);
+      }
+
+      return true;
     },
 
     readIndex(): OnDiskIndex {

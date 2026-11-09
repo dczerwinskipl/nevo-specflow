@@ -1,11 +1,12 @@
 // Pure relative-link validation over the scanned corpus. Existence of a target outside the corpus
-// (a directory, an image, a source file) is answered by the caller-supplied `pathExists`.
+// (a directory, an image, a source file) is answered by the caller-supplied `pathExists`, which
+// must compare path segments case-sensitively, as GitHub does.
 
 import { posix } from 'node:path';
 
 import type { DocRecord } from './frontmatter.js';
 
-/** Repo-relative path (POSIX separators) -> does a file or directory exist there? */
+/** Repo-relative path (POSIX separators) -> does a file or directory exist there, exact case? */
 export type PathExists = (repoRelPath: string) => boolean;
 
 export interface MarkdownLink {
@@ -15,77 +16,165 @@ export interface MarkdownLink {
 }
 
 const EXTERNAL = /^(?:[a-z][a-z0-9+.-]*:|\/\/)/i;
+const FENCE_OPEN = /^ {0,3}(`{3,}|~{3,})/;
 
-/** Blank out fenced code blocks and inline code spans, keeping line structure. */
-function stripCode(body: string): string {
-  const blank = (m: string): string => m.replace(/[^\n]/g, ' ');
+const blank = (text: string): string => text.replace(/[^\n]/g, ' ');
 
-  return body.replace(/^(```|~~~)[^\n]*\n[\s\S]*?^\1[^\n]*$/gm, blank).replace(/`[^`\n]*`/g, blank);
-}
+/**
+ * Blank out what is not prose, keeping line structure: fenced code blocks (CommonMark fences: up to
+ * three spaces of indent, three or more backticks or tildes, closed only by a fence of the same
+ * character at least as long; an unclosed fence runs to the end), HTML comments and inline code.
+ * Indented (four-space) code blocks are not detected: they cannot be told apart from list-item
+ * continuation without a full parser.
+ */
+function stripNonProse(body: string): string {
+  const lines = body.split('\n');
+  let fence: { char: string; length: number } | undefined;
+  for (const [i, line] of lines.entries()) {
+    if (fence) {
+      const close = new RegExp(
+        `^ {0,3}${fence.char === '`' ? '`' : '~'}{${String(fence.length)},}\\s*$`,
+      );
+      if (close.test(line)) {
+        fence = undefined;
+      }
 
-/** Inline links/images `[text](target "title")` and reference definitions `[x]: target`. */
-export function extractLinks(body: string): MarkdownLink[] {
-  const links: MarkdownLink[] = [];
-  const lines = stripCode(body).split('\n');
-  for (const [i, text] of lines.entries()) {
-    for (const m of text.matchAll(/\]\(\s*<?([^)\s>]+)>?(?:\s+["'(][^)]*)?\)/g)) {
-      links.push({ target: m[1] ?? '', line: i + 1 });
+      lines[i] = blank(line);
+      continue;
     }
 
-    const definition = /^\s{0,3}\[[^\]]+\]:\s*<?(\S+?)>?(?:\s|$)/.exec(text);
+    const open = FENCE_OPEN.exec(line);
+    if (open?.[1]) {
+      fence = { char: open[1].charAt(0), length: open[1].length };
+      lines[i] = blank(line);
+    }
+  }
+
+  return lines
+    .join('\n')
+    .replace(/<!--[\s\S]*?-->/g, blank)
+    .replace(/(`+)[^`\n][\s\S]*?\1/g, (m) => (m.includes('\n\n') ? m : blank(m)));
+}
+
+/**
+ * Inline links/images `[text](target "title")`, with one level of balanced parentheses in the
+ * target, and reference definitions `[x]: target`. Footnote definitions `[^x]:` are not links.
+ */
+export function extractLinks(body: string): MarkdownLink[] {
+  const links: MarkdownLink[] = [];
+  const lines = stripNonProse(body).split('\n');
+  for (const [i, text] of lines.entries()) {
+    for (const m of text.matchAll(
+      /\]\(\s*(?:<([^>\n]+)>|((?:[^()\s]|\([^()\s]*\))+))(?:\s+["'(][^)]*)?\s*\)/g,
+    )) {
+      links.push({ target: m[1] ?? m[2] ?? '', line: i + 1 });
+    }
+
+    const definition = /^ {0,3}\[(?!\^)[^\]]+\]:\s*(?:<([^>\n]+)>|(\S+))/.exec(text);
     if (definition) {
-      links.push({ target: definition[1] ?? '', line: i + 1 });
+      links.push({ target: definition[1] ?? definition[2] ?? '', line: i + 1 });
     }
   }
 
   return links;
 }
 
-/** GitHub-style heading slug: lower-case, punctuation dropped, spaces to hyphens. */
+const ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
+
+function decodeEntities(text: string): string {
+  return text.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e: string) => {
+    if (e.startsWith('#x') || e.startsWith('#X')) {
+      return String.fromCodePoint(Number.parseInt(e.slice(2), 16));
+    }
+
+    if (e.startsWith('#')) {
+      return String.fromCodePoint(Number.parseInt(e.slice(1), 10));
+    }
+
+    return ENTITIES[e.toLowerCase()] ?? m;
+  });
+}
+
+/**
+ * GitHub-style heading slug (github-slugger on the rendered text): link syntax, inline code
+ * markers, emphasis and HTML tags removed, entities decoded, lower-cased, punctuation dropped,
+ * spaces to hyphens.
+ */
 export function slugifyHeading(heading: string): string {
-  return heading
-    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
-    .replace(/<[^>]+>/g, '')
-    .replace(/`/g, '')
+  return decodeEntities(
+    heading
+      .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+      .replace(/<[^>]+>/g, '')
+      .replace(/`/g, '')
+      .replace(/(^|[^\p{L}\p{N}])[*_]+|[*_]+(?=[^\p{L}\p{N}]|$)/gu, '$1'),
+  )
     .trim()
     .toLowerCase()
     .replace(/[^\p{L}\p{M}\p{N}\p{Pc}\- ]/gu, '')
     .replace(/ /g, '-');
 }
 
+/** Heading texts in document order: ATX (up to three spaces of indent) and setext. */
+function headings(text: string): string[] {
+  const out: string[] = [];
+  const lines = text.split('\n');
+  for (const [i, line] of lines.entries()) {
+    const atx = /^ {0,3}#{1,6}(?:[ \t]+(.*?))?[ \t]*(?:[ \t]#+[ \t]*)?$/.exec(line);
+    if (atx) {
+      out.push(atx[1] ?? '');
+      continue;
+    }
+
+    const next = lines[i + 1];
+    if (next !== undefined && line.trim() && /^ {0,3}(?:=+|-+)[ \t]*$/.test(next)) {
+      // A `---` under a list item or a paragraph that ends a table is not a heading in practice;
+      // GitHub treats a non-blank paragraph line followed by `===`/`---` as a setext heading.
+      if (!/^ {0,3}(?:[-*+]|\d+[.)])\s|^\s*\|/.test(line)) {
+        out.push(line.trim());
+      }
+    }
+  }
+
+  return out;
+}
+
 /** Every anchor a document defines: heading slugs (with GitHub duplicate suffixes) and HTML ids. */
 export function documentAnchors(body: string): Set<string> {
   const anchors = new Set<string>();
-  const seen = new Map<string, number>();
-  const text = stripCode(body);
-  for (const m of text.matchAll(/^#{1,6}[ \t]+(.+?)[ \t#]*$/gm)) {
-    const base = slugifyHeading(m[1] ?? '');
-    const count = seen.get(base);
-    seen.set(base, (count ?? -1) + 1);
-    anchors.add(count === undefined ? base : `${base}-${count + 1}`);
+  const text = stripNonProse(body);
+  for (const heading of headings(text)) {
+    const base = slugifyHeading(heading);
+    let slug = base;
+    for (let n = 1; anchors.has(slug); n++) {
+      slug = `${base}-${String(n)}`;
+    }
+
+    anchors.add(slug);
   }
 
-  for (const m of body.matchAll(/<a\s+(?:name|id)="([^"]+)"/g)) {
-    anchors.add(m[1] ?? '');
+  for (const m of text.matchAll(/<a\b[^>]*?\s(?:name|id)\s*=\s*(?:"([^"]+)"|'([^']+)')/gi)) {
+    anchors.add(m[1] ?? m[2] ?? '');
   }
 
   return anchors;
 }
 
-function decode(path: string): string {
+function decode(part: string): string {
   try {
-    return decodeURI(path);
+    return decodeURIComponent(part);
   } catch {
-    return path;
+    return part;
   }
 }
 
 /**
- * Every relative link in every scanned document must resolve inside the repository; a fragment
- * pointing at a scanned Markdown document must name one of its anchors.
+ * Every relative link in every scanned document must resolve inside the repository with the exact
+ * case of its path, and a fragment pointing at a scanned Markdown document must name one of its
+ * anchors.
  */
 export function validateLinks(docs: readonly DocRecord[], pathExists: PathExists): string[] {
   const byFile = new Map(docs.map((d) => [d.file, d]));
+  const byLowerFile = new Map(docs.map((d) => [d.file.toLowerCase(), d.file]));
   const anchorCache = new Map<string, Set<string>>();
   const anchorsOf = (doc: DocRecord): Set<string> => {
     let anchors = anchorCache.get(doc.file);
@@ -104,10 +193,16 @@ export function validateLinks(docs: readonly DocRecord[], pathExists: PathExists
         continue;
       }
 
+      const where = `${doc.file} (body line ${String(line)})`;
+      if (target.includes('\\')) {
+        problems.push(`${where}: link '${target}' uses a backslash; use '/' separators`);
+        continue;
+      }
+
       const hash = target.indexOf('#');
-      const pathPart = decode(hash === -1 ? target : target.slice(0, hash));
+      const beforeHash = hash === -1 ? target : target.slice(0, hash);
+      const pathPart = decode(beforeHash.replace(/\?.*$/, ''));
       const fragment = hash === -1 ? '' : decode(target.slice(hash + 1));
-      const where = `${doc.file} (body line ${line})`;
 
       let resolved = doc.file;
       if (pathPart) {
@@ -123,7 +218,12 @@ export function validateLinks(docs: readonly DocRecord[], pathExists: PathExists
 
         resolved = resolved.replace(/\/$/, '');
         if (!byFile.has(resolved) && !pathExists(resolved)) {
-          problems.push(`${where}: broken link '${target}' (no such file or directory)`);
+          const caseVariant = byLowerFile.get(resolved.toLowerCase());
+          problems.push(
+            caseVariant
+              ? `${where}: broken link '${target}' (case differs from '${caseVariant}')`
+              : `${where}: broken link '${target}' (no such file or directory)`,
+          );
           continue;
         }
       }

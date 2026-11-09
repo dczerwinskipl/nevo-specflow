@@ -70,7 +70,11 @@ async function renderReferenceDocument(): Promise<{ text: string; gaps: readonly
   }
 }
 
-async function main(args: readonly string[]): Promise<number> {
+/**
+ * The `pnpm api:openapi [--check]` command; returns its exit code. The module has no import side
+ * effects (the package build imports it); `scripts/openapi-document.mjs` runs it.
+ */
+export async function runOpenApiDocumentCommand(args: readonly string[]): Promise<number> {
   if (args.length > 1 || (args.length === 1 && args[0] !== '--check')) {
     process.stderr.write(`Usage: pnpm api:openapi [--check]\n`);
 
@@ -110,9 +114,4 @@ async function main(args: readonly string[]): Promise<number> {
   process.stdout.write(`${DOCUMENT_FILE} is current.\n`);
 
   return 0;
-}
-
-// Runs only as the command; importing the module (the package build's surface check) does nothing.
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  process.exitCode = await main(process.argv.slice(2));
 }

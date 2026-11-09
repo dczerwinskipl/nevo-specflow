@@ -111,7 +111,7 @@ export function createFileVectorStore(options: FileVectorStoreOptions): VectorSt
 
   return {
     async readManifest(): Promise<ManifestOutcome> {
-      const outcome = await readSnapshot(directory, undefined);
+      const outcome = await readSnapshot(directory, cache);
 
       return outcome.status === 'ok'
         ? { status: 'ok', manifest: outcome.snapshot.manifest }
@@ -256,12 +256,14 @@ async function applyChange(
 }
 
 /**
- * Reads the highest generation. A writer removes superseded pairs, so a file named by a listing
- * taken just before can be gone; the read then starts once more from a fresh listing.
+ * Reads and validates the highest generation's whole pair; `readManifest`, `query` and writes all
+ * apply this one rule, so a damaged pair is `missing` everywhere. A generation already decoded is
+ * taken from the cache (its files never change). A writer removes superseded pairs, so a file named
+ * by a listing taken just before can be gone; the read then starts once more from a fresh listing.
  */
 async function readSnapshot(
   directory: string,
-  cache: VectorsCache | undefined,
+  cache: VectorsCache,
   retried = false,
 ): Promise<SnapshotOutcome> {
   let top: GenerationFile | undefined;
@@ -278,7 +280,7 @@ async function readSnapshot(
   let stored: StoredManifest | undefined;
   let size: number;
   let bytes: Uint8Array | undefined;
-  const cached = cache?.current?.key === top.key ? cache.current : undefined;
+  const cached = cache.current?.key === top.key ? cache.current : undefined;
   try {
     stored = parseManifest(
       await readFile(join(directory, `manifest-${top.key}.json`), 'utf8'),
@@ -290,11 +292,9 @@ async function readSnapshot(
 
     if (cached) {
       size = stored.chunks.length * stored.identity.dimensions * FLOAT_BYTES;
-    } else if (cache) {
+    } else {
       bytes = await readFile(join(directory, `vectors-${top.key}.f32`));
       size = bytes.byteLength;
-    } else {
-      size = (await stat(join(directory, `vectors-${top.key}.f32`))).size;
     }
   } catch (error) {
     if (errorCode(error) === 'ENOENT' && !retried) {
@@ -310,7 +310,7 @@ async function readSnapshot(
   }
 
   let candidates = cached?.candidates ?? [];
-  if (bytes && cache) {
+  if (bytes) {
     const vectors = decodeVectors(bytes);
     if (!vectors) {
       return { status: 'missing' };

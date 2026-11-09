@@ -1,4 +1,4 @@
-import { mkdtemp, readdir, rm, truncate } from 'node:fs/promises';
+import { mkdtemp, readdir, rm, truncate, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -76,7 +76,7 @@ describe('refreshIndex', () => {
     );
   });
 
-  it('rebuilds a file index in full on an identity change and on a truncated vectors file', async () => {
+  it('rebuilds a file index in full on an identity change and on a truncated or non-finite vectors file', async () => {
     const root = await mkdtemp(join(tmpdir(), 'ai-semantic-refresh-'));
     try {
       const store = createFileVectorStore({ directory: root });
@@ -98,6 +98,16 @@ describe('refreshIndex', () => {
         generation: 3,
         rebuilt: true,
         embedded: chunks.length,
+      });
+
+      const latest = (await readdir(root)).find((name) => name.startsWith('vectors-3-'))!;
+      const damaged = new Float32Array(chunks.length * other.dimensions!);
+      damaged[0] = Number.NaN;
+      await writeFile(join(root, latest), new Uint8Array(damaged.buffer));
+      expect(await refreshIndex({ chunks, provider: other, store })).toMatchObject({
+        status: 'refreshed',
+        generation: 4,
+        rebuilt: true,
       });
     } finally {
       await rm(root, { recursive: true, force: true });

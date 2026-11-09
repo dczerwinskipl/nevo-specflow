@@ -30,7 +30,11 @@ interface LockRecord {
   readonly token: string;
 }
 
-/** Tokens of the locks this process holds, across store instances. */
+/**
+ * Tokens of the locks this process holds, across store instances. The set is per module instance:
+ * a process that loads this module twice (for example two bundles) cannot tell the other copy's
+ * locks from a reused pid, so it treats them as stale.
+ */
 const heldTokens = new Set<string>();
 
 /**

@@ -27,8 +27,8 @@ Nevo SpecFlow uses one repository namespace:
 ├── config.yaml                 # committed product configuration container
 ├── agent-instructions.md       # committed
 ├── agents/                     # committed definitions/instructions
-├── definitions/                # committed archetype and document type definitions (ADR 0017)
-├── workflows/                  # committed deterministic workflow definitions when migrated
+├── definitions/                # committed definitions (ADR 0017): document types, archetypes,
+│                               #   workflows, agent archetypes, task types (ADR 0019)
 └── local/                      # entirely Git-ignored
     ├── config.yaml             # workstation/operator configuration + secrets
     └── state/                  # application-owned local persistence as capabilities migrate
@@ -139,9 +139,10 @@ aliases, and bounded diagnostics. Users should not treat that state as editable 
 ## Definitions are not flattened into config.yaml
 
 Large declarative definitions keep their own committed files. Agent definitions already live under
-`.nevo/agents/`; deterministic workflow definitions will live under `.nevo/workflows/` when
-that capability is migrated. Aggregate config may select/default such definitions, but should not
-absorb their full bodies.
+`.nevo/agents/`; deterministic workflows, agent archetypes and task types are definition kinds
+under `.nevo/definitions/{workflow,agent-archetype,task-type}/`
+([ADR 0019](../decisions/0019-workflow-kernel-and-automatic-continuation.md)). Aggregate config may
+select/default such definitions, but should not absorb their full bodies.
 
 ## Initialization
 

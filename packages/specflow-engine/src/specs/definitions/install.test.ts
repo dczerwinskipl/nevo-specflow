@@ -47,7 +47,8 @@ async function problemsOf(target: MemoryDefinitionSource) {
   return (await loadDefinitions(target, registry)).problems;
 }
 
-const ALL_SEED_FILES = 9 + 3 + 1;
+// Document types, archetypes, the overview template, agent archetypes, workflows, task types.
+const ALL_SEED_FILES = 9 + 3 + 1 + 6 + 3 + 2;
 
 describe('bare install (bootstrap)', () => {
   it('installs every shipped definition and template file into an empty project', async () => {
@@ -90,7 +91,7 @@ describe('bare install (bootstrap)', () => {
     expect(outcome.hint).toContain('--add-missing');
     expect(outcome.hint).toContain('<kind>/<id>');
     expect(outcome.missing).toContain('specification-archetype/feature');
-    expect(outcome.available).toHaveLength(12);
+    expect(outcome.available).toHaveLength(ALL_SEED_FILES - 1);
     expect(target.paths()).toEqual(['document-type/mine.yaml']);
   });
 
@@ -139,18 +140,24 @@ describe('bare install (bootstrap)', () => {
 });
 
 describe('install of named definitions', () => {
-  it('installs an archetype with its document types and template file, dependencies first', async () => {
+  it('installs an archetype with everything it refers to, dependencies first', async () => {
     const target = new MemoryDefinitionSource();
     const { outcome, written } = await run(target, {
       targets: ['specification-archetype/minimal'],
     });
     const plan = planOf(outcome);
     expect(plan.mode).toBe('explicit');
+    // The execution binding pulls in the Specification workflow and the agent archetypes of its steps.
     expect(written).toEqual([
+      'agent-archetype/reviewer.yaml',
+      'agent-archetype/solution-designer.yaml',
+      'agent-archetype/spec-writer.yaml',
+      'agent-archetype/task-planner.yaml',
       'document-type/decisions.yaml',
       'document-type/note.yaml',
       'document-type/overview.yaml',
       'document-type/research.yaml',
+      'workflow/specification-standard.yaml',
       'specification-archetype/templates/overview.md',
       'specification-archetype/minimal.yaml',
     ]);
@@ -297,7 +304,7 @@ describe('dry run and safety', () => {
     expect(error).toBeInstanceOf(DefinitionInstallError);
     expect(error).toMatchObject({
       code: 'INSTALL_WRITE_FAILED',
-      written: ['document-type/architecture.yaml', 'document-type/backend.yaml'],
+      written: ['agent-archetype/implementer.yaml', 'agent-archetype/implementer-ui.yaml'],
     });
     expect((error as Error).message).toContain('disk full');
   });

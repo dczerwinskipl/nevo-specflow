@@ -795,7 +795,7 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
     expect(printed.dryRun).toBe(true);
     expect(printed.outcome.status).toBe('planned');
     const created = printed.outcome.plan.items.filter((item) => item.action === 'create');
-    expect(created).toHaveLength(13);
+    expect(created).toHaveLength(24);
     expect(created.map((item) => item.path)).toContain(
       'specification-archetype/templates/overview.md',
     );

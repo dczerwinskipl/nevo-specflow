@@ -176,6 +176,10 @@ export const seedArchetypes: readonly ArchetypeDefinition[] = [
         content: '# {{specificationTitle}} - Note\n',
       },
     ],
+    execution: {
+      workflow: 'specification-standard',
+      taskTypes: ['implementation'],
+    },
   },
   {
     id: 'feature',
@@ -262,6 +266,9 @@ export const seedArchetypes: readonly ArchetypeDefinition[] = [
           '# {{specificationTitle}} - Research\n\n## Questions\n\n## Sources\n\n## Findings\n',
       },
     ],
+    execution: {
+      workflow: 'specification-standard',
+    },
   },
   {
     id: 'minimal',
@@ -317,5 +324,8 @@ export const seedArchetypes: readonly ArchetypeDefinition[] = [
         content: '# {{specificationTitle}} - Note\n',
       },
     ],
+    execution: {
+      workflow: 'specification-standard',
+    },
   },
 ];

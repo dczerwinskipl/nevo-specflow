@@ -40,6 +40,9 @@ import { documentTypeFile, sampleProject } from '../../src/specs/definitions/tes
 
 const registry = createDefaultDefinitionRegistry();
 
+// Document types, archetypes, the overview template, agent archetypes, workflows, task types.
+const ALL_SEED_FILES = 9 + 3 + 1 + 6 + 3 + 2;
+
 let scratch: string;
 let canSymlink = false;
 let canHardLink = false;
@@ -468,9 +471,9 @@ describe('install against a real project', () => {
   it('bootstraps a project with no .nevo folder, leaves no staged file and is idempotent', async () => {
     const home = await newHome();
     const first = await runInstall(home);
-    expect(first.written).toHaveLength(13);
+    expect(first.written).toHaveLength(ALL_SEED_FILES);
     const files = await filesBelow(definitionsRoot(home));
-    expect(files).toHaveLength(13);
+    expect(files).toHaveLength(ALL_SEED_FILES);
     expect(files.some((name) => name.endsWith('.tmp'))).toBe(false);
 
     const loaded = await loadDefinitions(
@@ -504,7 +507,7 @@ describe('install against a real project', () => {
   it('installs into a Project Home that the catalogue source then reads, with the pinned revision', async () => {
     const home = await newHome();
     const result = await installProjectDefinitionFiles(home);
-    expect(result.written).toHaveLength(13);
+    expect(result.written).toHaveLength(ALL_SEED_FILES);
     const project = await getProjectCatalogue({ context: { project: { homeRoot: home } } });
     expect(project.problems).toEqual([]);
     expect(project.catalogue.archetypes.map((archetype) => archetype.id)).toEqual([
@@ -513,7 +516,7 @@ describe('install against a real project', () => {
       'minimal',
     ]);
     expect(project.catalogue.revision).toBe(
-      '900fd261f4bb33c4f816e81d8c002baad92c2b85429d6f2bfe2c24ac2bdfe6e4',
+      '07b1c01d63520a27116ccc64a31cd13f70e1cc7b493b4891384d6eb338738328',
     );
   });
 

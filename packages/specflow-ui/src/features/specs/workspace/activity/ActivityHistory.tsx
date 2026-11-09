@@ -6,6 +6,8 @@ import { TaskActivityItem } from './TaskActivityItem';
 import { SessionActivityItem } from './SessionActivityItem';
 import { DocumentActivityItem } from './DocumentActivityItem';
 import { InformationalActivityItem } from './InformationalActivityItem';
+import { presentActivityEvent } from './presentActivity';
+import { useNow } from '../../../../shared/operations/panel/relativeTime';
 
 export interface ActivityHistoryProps {
   readonly showHeading?: boolean;
@@ -35,7 +37,9 @@ export function ActivityHistory({
   onOpenSession,
   onOpenDoc,
 }: ActivityHistoryProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const now = useNow();
+  const shown = events.map((event) => presentActivityEvent(event, t, now, i18n.language));
 
   return (
     <aside className="flex flex-col p-5" aria-label={t('specification.historyAriaLabel')}>
@@ -92,7 +96,7 @@ export function ActivityHistory({
           }
           className="border-none"
         />
-      ) : events.length === 0 ? (
+      ) : shown.length === 0 ? (
         <EmptyState
           icon="clock"
           title={t('specification.activityHistoryEmptyTitle')}
@@ -101,7 +105,7 @@ export function ActivityHistory({
         />
       ) : (
         <Timeline size="md">
-          {events.map((event, index) => {
+          {shown.map((event, index) => {
             const active = index === 0;
 
             switch (event.kind) {

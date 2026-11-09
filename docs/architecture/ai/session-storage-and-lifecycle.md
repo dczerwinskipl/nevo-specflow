@@ -31,8 +31,11 @@ The independent Session boundary is an owner decision recorded in the canonical 
 
 Session owns identity, configuration, Turn/Work/ToolAction, interactions, history, semantic
 projections and provider invocation. Core records and operations do not require spec/task/workflow
-identifiers. Associations live above the core. A product-local storage namespace and verified
-execution environment do not constitute Specification ownership.
+identifiers. Associations live outside the core aggregates: an association module owns sidecar
+tables in the same database (see [Authorization and associations](#authorization-and-associations)),
+and the core writes the association payload verbatim in the create transaction without reading it
+for lifecycle decisions. A product-local storage namespace and verified execution environment do not
+constitute Specification ownership.
 
 Runtime composition injects a trusted storage context:
 `{ projectId, absoluteStateDirectory }`. The product resolves it from verified Project Home;
@@ -90,6 +93,16 @@ IDs are app-owned UUIDs; provider locator is separate (provider, providerSession
 route nor provider string shape defines identity. One provider session locator cannot be actively
 bound to two application Sessions in this delivery. Native import/attach is excluded.
 
+Schema version 3 adds list projection columns to `sessions`, maintained by `saveSession` in the
+same statement as the JSON snapshot, so a list never decodes a snapshot per row:
+`created_seq` (monotonic creation order from a meta counter, never rewritten), `archived_at`,
+`readiness` and `updated_at`, with `sessions_created(project, created_seq)` (unique) and
+`sessions_archived(project, archived_at, created_seq)`. The title stays in the snapshot: a list page
+decodes only the rows it returns. The 2 -> 3 migration runs in one transaction and backfills the
+four columns by decoding each existing snapshot once (`created_seq` in `createdAt` order, ties by
+rowid). Version 3 also creates the association tables (below), empty: Sessions created before it
+are standalone. Versions 0-3 are accepted; a later version is refused.
+
 Session create allocates an ID and configuration before provider execution. Native correlation
 may arrive later and must pass the same epoch/invocation fence. A stale callback never binds or
 mutates a replacement/terminal Turn. Provider configuration is pinned at Session create; optional
@@ -99,7 +112,11 @@ Commands use durable idempotency keyed by trusted actor, command kind, aggregate
 requestId. Fingerprint normalized explicit input. Look up an existing accepted request after
 authorization but before current provider/readiness validation. Matching input returns the original
 accepted result even after terminalization/restart; different input gives IDEMPOTENCY_CONFLICT.
-Keep accepted keys for the Session lifetime; no DELETE/purge API is part of the foundation.
+Exception: rename, archive and unarchive replays answer the current effective SessionInfo rather
+than a stored copy, still without a second effect.
+Keep accepted keys for the Session lifetime. Session delete removes its Session-scoped keys; the
+project-scoped create key is kept, so a late create retry replays the deleted sessionId, whose use
+is then 404.
 Validation/auth failures before admission have no accepted operation. Concurrent requests serialize.
 
 ## Transactions and lifecycle
@@ -139,6 +156,24 @@ pending live interactions become expired and open Work is explicitly closed. A f
 invocation with uncertain external effects remains unknown and cannot be automatically replayed.
 Only positive reconciliation evidence can remove that block. Plan 04 does not expose a force-recover API.
 
+## Archive and delete
+
+Archive marks the Session read-only (`archivedAt`); it is admitted only when no Turn is nonterminal
+or unknown, checked in the same transaction as the write, and new Turn starts and interaction
+responses are refused while archived. Unarchive clears the mark. Neither cancels anything.
+
+Delete is a hard delete inside one Worker transaction. It refuses with SESSION_DELETE_BLOCKED while
+a detached nonterminal Turn carries an unsettled Engine effect binding, and with TURN_CONFLICT
+while any other Turn is nonterminal or unknown or the coordinator still holds a live invocation for
+the Session. Otherwise it removes every Session-owned row: the Session record, provider context,
+Turns, conversation entries, Work, actions, content with its chunks and revisions, text keys,
+interactions, idempotency records scoped to the Session (the project-scoped create record is kept
+on purpose), fact/usage/telemetry deduplication rows of its invocations, Session usage, telemetry
+state, the association and its Task rows, and the event outbox. A single delete map classifies every table as Session-owned or global;
+a test fails when the schema gains a table the map does not classify. Engine records keep the Session
+ID as audit data; provider-native transcripts are left in place. Subscribers are woken by the commit
+and close because the Session no longer resolves. There is no tombstone.
+
 ## History, content and replay
 
 The exact bounded API is in reference.api.sessions. Tail queries never read content chunks or scan
@@ -158,19 +193,60 @@ Never synthesize complete history from an incomplete event log.
 
 ## Authorization and associations
 
-Reuse existing session.create/view/manage and flat-role coverage. Create requires session.create
-at trusted {projectId}; existing Sessions use {projectId, sessionId} loaded from the store.
-There is no creator ACL or automatic creator grant: configured project/global roles determine
-sharing; creator is audit metadata only. A sessionId-scoped grant can allow one existing Session
-but cannot create another. A specId-only assignment does not cover an independent Session.
-Access-disabled mode follows existing Auth policy; use its stable internal audit/idempotency key,
-not a client-supplied user ID.
+Reuse existing session.create/view/manage and flat-role coverage; deletion uses the separate
+session.delete capability (developer and admin roles). Standalone create requires session.create
+at trusted {projectId}; existing Sessions use the scope `sessionScope(identity, capability)` builds
+from the store-derived identity: {projectId, sessionId} for a standalone Session and
+{projectId, specId, sessionId} for an associated one, except `session.execute-write`, which never
+carries `specId` (the provider `cwd` is the whole verified workspace). There is no creator ACL or
+automatic creator grant: configured project/global roles determine sharing; creator is audit
+metadata only. A sessionId-scoped grant can allow one existing Session but cannot create another.
+A specId-only assignment does not cover a standalone Session; its role's Session capabilities apply
+to Sessions associated with that Specification, except execute-write. Access-disabled mode follows
+existing Auth policy; use its stable internal audit/idempotency key, not a client-supplied user ID.
+Exact rules: [Runtime authorization](../runtime/auth/authorization.md#session-scope) and
+[Sessions API](../../reference/api/sessions.md).
 
-The integration layer may associate a Session with a Specification/Task only after checking both
-resources. This delivery adds no relation mutation API, automatic grant inheritance, cascade delete
-or implicit workflow progression. Existing SessionReferenceOwner is an associated-view port; it
-must not become the required identity type for the core. Rebinding a workspace cannot silently
-relocate a provider-native Session.
+**Association registry.** A Session has at most one home Specification, fixed at create and never
+changed, plus an append-only set of that Specification's Tasks. Absent means standalone.
+
+```sql
+CREATE TABLE session_associations(
+  session TEXT PRIMARY KEY REFERENCES sessions(id),
+  spec TEXT NOT NULL,             -- home Specification, immutable
+  created_seq INTEGER NOT NULL,   -- copy of sessions.created_seq for the spec-ordered index
+  origin TEXT NOT NULL CHECK(origin IN ('user','workflow')),
+  actor TEXT NOT NULL,            -- audit only, never an ACL
+  created INTEGER NOT NULL);
+CREATE INDEX session_associations_spec ON session_associations(spec, created_seq);
+CREATE TABLE session_association_tasks(
+  session TEXT NOT NULL REFERENCES session_associations(session),
+  task TEXT NOT NULL,
+  origin TEXT NOT NULL CHECK(origin IN ('user','workflow')),
+  added INTEGER NOT NULL,
+  PRIMARY KEY(session, task));
+```
+
+- The composed create (`POST /api/specs/:specId/sessions`) verifies the Specification and Tasks
+  through the Engine first (time-of-check only), then writes the Session, association and Task rows
+  in one Worker transaction under the project-scoped create key, whose fingerprint covers
+  `{input, association}`. A crash leaves both or neither. The registry never infers an association
+  from a URL, title, path or message, and stores the Engine's canonical ids, not titles.
+- The store operations `identity`/`identities` (batch, at most 500) join the association row, so a
+  Session's scope comes from one indexed lookup; `association`, `list` (keyset on `created_seq`,
+  bounded scan budget, signed filter-bound cursor) and `associate-tasks` complete the protocol.
+  `associate-tasks` has no HTTP route: only the future in-process workflow orchestrator appends
+  Tasks, and it is refused for another home Specification or a standalone Session.
+- Both tables are Session-owned in `SESSION_TABLE_OWNERSHIP`: delete removes them in the delete
+  transaction; archive leaves them untouched. No cascade on Specification or Task removal: the
+  association stays and reads as `missing`. There is no reassign, unlink or grant inheritance.
+- An association is context, never current execution: the Engine attempt executor stays the only
+  authority for what a Turn executes. Origin (`user`, `workflow`) is provenance, not authority.
+- `SessionReferenceOwner` (`resolve`, `resolveMany`) and its extension `SessionAssociations`
+  (`identity`, `association`) are implemented by the store in project mode and by the demo
+  catalogue in demo mode; the list reads through a separate `SessionListSource` with the same two
+  implementations. The port must not become the required identity type for the core. A Specification's workspace binding is resolved at read
+  time, not stored. Rebinding a workspace cannot silently relocate a provider-native Session.
 
 ## Readiness boundary
 

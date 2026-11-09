@@ -7,6 +7,14 @@ import {
 import { SpecCapabilities } from '@nevo/specflow-contracts/specs';
 
 import { requireCapability } from '../../auth';
+import { specScope, type ProjectIdSource } from '../../specs';
+import type { DocumentReadSource } from './document-read-source';
+
+export interface DocumentReadEndpointOptions {
+  readonly source?: DocumentReadSource;
+  /** The Runtime's project; see `specScope`. */
+  readonly projectId?: ProjectIdSource;
+}
 import { documentFailure, type DocumentFailure } from './error-status';
 
 /** Error responses shared by the read routes. 400 is the framework's validation answer. */
@@ -67,20 +75,20 @@ function specIdOf(params: unknown): string {
 }
 
 /** Pre-handler of the document read routes: the View capability on the Specification in the path. */
-export function viewGuard() {
+export function viewGuard(projectId: ProjectIdSource | undefined) {
   return requireCapability({
     resource: SpecCapabilities,
     capability: SpecCapabilities.capabilities.View,
-    scope: (request) => ({ specId: specIdOf(request.params) }),
+    scope: (request) => specScope(projectId?.(), specIdOf(request.params)),
   });
 }
 
 /** Pre-handler of the document write routes: the Manage capability on the Specification in the path. */
-export function manageGuard() {
+export function manageGuard(projectId: ProjectIdSource | undefined) {
   return requireCapability({
     resource: SpecCapabilities,
     capability: SpecCapabilities.capabilities.Manage,
-    scope: (request) => ({ specId: specIdOf(request.params) }),
+    scope: (request) => specScope(projectId?.(), specIdOf(request.params)),
   });
 }
 

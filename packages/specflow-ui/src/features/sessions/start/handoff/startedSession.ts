@@ -1,16 +1,12 @@
 import type { StartCatalogue, StartMode } from '../catalogue/startCatalogue';
-import type {
-  ContextFact,
-  ContextSpecification,
-  SessionContextViewModel,
-} from '../../managed/context/sessionContextTypes';
 
 /**
  * What a Session was started with, handed to the Session screen that opens it
  * (new-session-ui-spec.md, section 3(c)): the Session's first snapshot has not loaded yet, but the
  * start values are known, so the screen shows the ready empty state, the Context and the Composer's
  * pickers at once instead of a loading line. Only the start values; once the snapshot arrives the
- * Session screen reads the Session itself.
+ * Session screen reads the Session itself. The Specification is not among them: the start seeds the
+ * Session's association read instead, so first paint and a reload show the same Context.
  */
 export interface StartedSession {
   providerId: string;
@@ -26,8 +22,6 @@ export interface StartedSession {
   modeTitle?: string;
   /** The own name; absent when the agent names the Session from the first message. */
   title?: string;
-  /** The Specification the Session was pinned to, when it was. */
-  specification?: ContextFact<ContextSpecification>;
 }
 
 /**
@@ -50,7 +44,6 @@ export interface StartedSessionInput {
   /** The catalogue the titles are read from; without it (or without the provider) ids stand in. */
   catalogue: StartCatalogue | undefined;
   sent: SentStart;
-  specification?: ContextFact<ContextSpecification>;
   /** Translates a mode's title (a catalogue title or a message of the engine's safety modes). */
   modeTitle: (title: StartMode['title']) => string;
 }
@@ -71,19 +64,7 @@ export function startedSessionFrom(input: StartedSessionInput): StartedSession {
       ? { modeId: sent.modeId, modeTitle: mode ? input.modeTitle(mode.title) : sent.modeId }
       : {}),
     ...(sent.title ? { title: sent.title } : {}),
-    ...(input.specification ? { specification: input.specification } : {}),
   };
-}
-
-/**
- * The Context of a Session started here: its Specification when it was pinned to one, else no
- * association at all (a standalone Session), instead of the "scope unknown" note a Session opened
- * from elsewhere carries.
- */
-export function startedSessionContext(started: StartedSession): SessionContextViewModel {
-  return started.specification
-    ? { scope: { kind: 'specification' }, specification: started.specification }
-    : { scope: { kind: 'standalone' } };
 }
 
 /** The most Sessions remembered at once: a start is opened at once, so a few suffice. */

@@ -3,10 +3,26 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { AppShell } from '@nevo/ui';
 import { appI18n, LocalizationProvider } from '../../../i18n';
 import { SpecificationWorkspace } from './SpecificationWorkspace';
+import type { ReactNode } from 'react';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { createSpecFlowQueryClient } from '../../../app/queryClient';
+import { createSpecFlowAppServices } from '../../../services';
+import { TestServicesRouterContext } from '../../../../test-support/app/TestServicesRouterContext';
 import { UiModulesProvider } from '../../../app/ui-modules/UiModulesProvider';
 import { builtInUiModuleRegistry } from '../../../app/ui-modules/builtInUiModules';
 
 import { createSpecificationWorkspaceFixture } from '../../../../test-support/specs/workspace/fixtures';
+
+/** Documents reads the archetype catalogue (type titles) through the app services and Query. */
+function TestProviders({ children }: { readonly children: ReactNode }) {
+  return (
+    <QueryClientProvider client={createSpecFlowQueryClient()}>
+      <TestServicesRouterContext services={createSpecFlowAppServices({})}>
+        <UiModulesProvider modules={builtInUiModuleRegistry}>{children}</UiModulesProvider>
+      </TestServicesRouterContext>
+    </QueryClientProvider>
+  );
+}
 
 function renderWorkspaceMarkup(
   props: Partial<React.ComponentProps<typeof SpecificationWorkspace>> = {},
@@ -14,13 +30,13 @@ function renderWorkspaceMarkup(
   const data = props.data ?? createSpecificationWorkspaceFixture('working', 'UI-1234');
 
   return renderToStaticMarkup(
-    <UiModulesProvider modules={builtInUiModuleRegistry}>
+    <TestProviders>
       <LocalizationProvider>
         <AppShell navigation={<div>Nav</div>}>
           <SpecificationWorkspace specId="UI-1234" data={data} {...props} />
         </AppShell>
       </LocalizationProvider>
-    </UiModulesProvider>,
+    </TestProviders>,
   );
 }
 
@@ -97,14 +113,17 @@ describe('SpecificationWorkspace', () => {
     expect(markup).not.toContain('PR #128');
   });
 
-  it('renders empty scenario with preparation banner and no task list', () => {
+  it('renders empty scenario with the preparation block starting a Session and no task list', () => {
     const markup = renderWorkspaceMarkup({
-      data: createSpecificationWorkspaceFixture('empty', 'UI-1234'),
-      onNewConversation: () => undefined,
+      data: {
+        ...createSpecificationWorkspaceFixture('empty', 'UI-1234'),
+        startSession: { available: true },
+      },
     });
 
     expect(markup).toContain('Przygotuj specyfikację do realizacji');
-    expect(markup).toContain('Rozpocznij rozmowę');
+    expect(markup).toContain('Rozpocznij sesję');
+    expect(markup).not.toContain('Rozpocznij rozmowę');
     expect(markup).not.toContain('2 / 7 ukończone');
   });
 
@@ -207,44 +226,56 @@ describe('SpecificationWorkspace', () => {
     expect(markup.match(/<h1\b/g)).toHaveLength(1);
   });
 
-  it('hides the conversation actions a Runtime cannot serve instead of showing disabled ones', () => {
-    const markup = renderWorkspaceMarkup({ onNewConversation: undefined });
-
-    expect(markup).not.toContain('Nowa rozmowa');
-  });
-
-  it('project mode right after Create: calm "not available yet" state, no warning, no broken actions', () => {
+  it('project mode right after Create: empty Tasks, partial history, no "not available" anywhere', () => {
     const base = createSpecificationWorkspaceFixture('empty', 'UI-1234');
     const notImplemented = 'not_implemented' as const;
     const markup = renderWorkspaceMarkup({
-      onNewConversation: undefined,
       data: {
         ...base,
         sectionAvailability: {
-          tasks: 'unavailable',
-          documents: 'unavailable',
+          tasks: 'available',
+          documents: 'available',
           sessions: 'unavailable',
-          activity: 'unavailable',
+          activity: 'available',
           repository: 'unavailable',
           changes: 'unavailable',
         },
         sectionUnavailableReason: {
-          tasks: notImplemented,
-          documents: notImplemented,
-          sessions: notImplemented,
-          activity: notImplemented,
+          sessions: 'source_unavailable',
           repository: notImplemented,
           changes: notImplemented,
         },
+        startSession: { available: false, reason: 'sessions_disabled' },
+        activityEvents: [
+          {
+            id: 'specification-created',
+            event: 'specification_created',
+            kind: 'info',
+            time: '2026-11-08',
+            title: 'Specification created',
+            description: '',
+          },
+        ],
+      },
+    });
+
+    expect(markup).toContain('Nie ma jeszcze zadań');
+    expect(markup).toContain('Sesje są wyłączone na tym serwerze.');
+    expect(markup).not.toContain('Rozpocznij sesję');
+    expect(markup).not.toContain('Niedostępne na tym serwerze');
+    expect(markup).not.toContain('Specyfikacja jest niedostępna');
+    expect(markup).not.toContain('role="alert"');
+  });
+
+  it('keeps "Niedostępne" only for a Tasks source this Runtime does not implement', () => {
+    const markup = renderWorkspaceMarkup({
+      data: {
+        ...createSpecificationWorkspaceFixture('working', 'UI-1234'),
+        sectionAvailability: { tasks: 'unavailable' },
+        sectionUnavailableReason: { tasks: 'not_implemented' },
       },
     });
 
     expect(markup).toContain('Niedostępne na tym serwerze');
-    expect(markup).not.toContain('Rozpocznij rozmowę');
-    expect(markup).not.toContain('Przygotuj specyfikację do realizacji');
-    expect(markup).not.toContain('Nie udało się wczytać historii');
-    expect(markup).not.toContain('Specyfikacja jest niedostępna');
-    expect(markup).not.toContain('Spróbuj ponownie');
-    expect(markup).not.toContain('role="alert"');
   });
 });

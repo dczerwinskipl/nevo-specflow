@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createDemoSpecsRepositories } from '../../src/features/specs/demo/repositories';
+import type { RequestAuthorization } from '../../src/features/auth';
 
 describe('Demo Workspace lifecycle', () => {
   it('never marks active tasks as completed and matches Overview progress', async () => {
@@ -14,6 +15,7 @@ describe('Demo Workspace lifecycle', () => {
         repositories.workspaceRepository,
         repositories.contributions,
         item.id,
+        {} as RequestAuthorization,
       );
       expect(workspace).not.toBeNull();
       if (!workspace) {

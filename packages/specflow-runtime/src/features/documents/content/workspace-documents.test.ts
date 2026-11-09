@@ -24,8 +24,24 @@ describe('createEngineWorkspaceDocuments', () => {
           { id: 'overview', title: 'T', filename: 'overview.md', revision: 'r1', kind: 'overview' },
           { id: 'ux', title: 'UX', filename: 'sub/ux.md', revision: 'r2', kind: 'ux' },
         ],
+        overviewDocumentId: 'overview',
       },
     });
+  });
+
+  it('names the overview whatever its position, and no document when it is not listed', async () => {
+    summaries.mockResolvedValueOnce([
+      { id: 'behaviour', path: 'behaviour.md', type: 'behaviour', title: 'B', revision: 'r1' },
+      { id: 'overview', path: 'overview.md', type: 'overview', title: 'O', revision: 'r2' },
+    ]);
+    const second = await createEngineWorkspaceDocuments(engine)('spec');
+    expect(second.state === 'available' && second.data.overviewDocumentId).toBe('overview');
+
+    summaries.mockResolvedValueOnce([
+      { id: 'behaviour', path: 'behaviour.md', type: 'behaviour', title: 'B', revision: 'r1' },
+    ]);
+    const none = await createEngineWorkspaceDocuments(engine)('spec');
+    expect(none.state === 'available' && 'overviewDocumentId' in none.data).toBe(false);
   });
 
   it.each([

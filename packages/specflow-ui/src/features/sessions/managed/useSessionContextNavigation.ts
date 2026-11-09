@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useApplicationCollection } from '../../../app/navigation/ApplicationLocation';
 import { useRememberSessionReturn } from '../SessionStateProvider';
+import type { ContextSpecification } from './context/sessionContextTypes';
 
 /**
  * The cross-feature navigation Context's rows hand off to (`SessionContext` itself stays
@@ -11,29 +12,39 @@ import { useRememberSessionReturn } from '../SessionStateProvider';
  */
 export function useSessionContextNavigation(sessionId: string) {
   const navigate = useNavigate();
-  const collection = useApplicationCollection();
+  const routeCollection = useApplicationCollection();
+  // The association knows the Specification's collection; the route's is only where it was opened.
+  const collectionOf = useCallback(
+    (specification: Pick<ContextSpecification, 'collection'>) =>
+      specification.collection === undefined
+        ? routeCollection
+        : specification.collection === 'archived'
+          ? ('archive' as const)
+          : ('current' as const),
+    [routeCollection],
+  );
   const rememberSessionReturn = useRememberSessionReturn();
   const onOpenSpecification = useCallback(
-    (specification: { id: string }) => {
+    (specification: Pick<ContextSpecification, 'id' | 'collection'>) => {
       void navigate({
         to: '/specs/$specId',
         params: { specId: specification.id },
-        search: { collection },
+        search: { collection: collectionOf(specification) },
       });
     },
-    [navigate, collection],
+    [navigate, collectionOf],
   );
   const onOpenDocuments = useCallback(
-    (specification: { id: string }) => {
+    (specification: Pick<ContextSpecification, 'id' | 'collection'>) => {
       // Before navigating, so the Documents screen already knows where it was opened from.
       rememberSessionReturn(specification.id, sessionId);
       void navigate({
         to: '/specs/$specId/documents',
         params: { specId: specification.id },
-        search: { collection },
+        search: { collection: collectionOf(specification) },
       });
     },
-    [navigate, collection, rememberSessionReturn, sessionId],
+    [navigate, collectionOf, rememberSessionReturn, sessionId],
   );
 
   return { onOpenSpecification, onOpenDocuments };

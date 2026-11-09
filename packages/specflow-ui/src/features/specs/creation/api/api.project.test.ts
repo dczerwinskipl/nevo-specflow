@@ -9,6 +9,7 @@ function build(overrides: Partial<HttpRequestClient> = {}) {
   const http = {
     request: vi.fn(),
     get: vi.fn().mockResolvedValue({ workspaces: [], status: 'in-progress' }),
+    getResponse: vi.fn(),
     delete: vi.fn(),
     post: vi.fn().mockResolvedValue({ specId: 'spec-1' }),
     put: vi.fn(),

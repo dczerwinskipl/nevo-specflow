@@ -17,6 +17,8 @@ import type { WorkspaceContributions } from '../../src/features/specs/workspace/
 import { demoTaskResources, demoTaskHistory } from '../../src/features/tasks/demo/execution';
 import type { TaskHistoryPage } from '@nevo/specflow-contracts/tasks';
 import type { ReferenceVisibility } from '../../src/features/tasks/reads/facts';
+import type { SessionReferenceOwner } from '../../src/features/sessions';
+import { sessionReferences } from '../support/session-references';
 
 async function fixture() {
   const demo = createDemoSpecsRepositories(),
@@ -69,9 +71,12 @@ async function fixture() {
 
 async function appFor(
   f: Awaited<ReturnType<typeof fixture>>,
-  sessions: TasksFeatureDependencies['sessions'],
+  owner: Pick<SessionReferenceOwner, 'resolve'>,
   contributions?: WorkspaceContributions,
 ) {
+  const sessions: TasksFeatureDependencies['sessions'] = sessionReferences((id) =>
+    owner.resolve(id),
+  );
   const app = Fastify();
   registerRuntimeErrorHandler(app);
   app.decorateRequest('authz', { getter: () => f.authz });
@@ -180,46 +185,31 @@ describe('Reference identity and projection integrity HTTP', () => {
   });
   it('rejects substituted identities in Workspace summaries, attention and activity as well', async () => {
     const f = await fixture();
-    const readSpecification = f.demo.workspaceRepository.readSpecification.bind(
-      f.demo.workspaceRepository,
-    );
-    f.demo.workspaceRepository.readSpecification = async (specId) => {
-      const data = await readSpecification(specId);
-
-      return data
-        ? {
-            ...data,
-            sections: {
-              ...data.sections,
-              activity: {
-                state: 'available',
-                data: {
-                  items: [
-                    {
-                      id: 'private-activity',
-                      kind: 'info',
-                      relatedSessionId: 'protected-session',
-                      occurredAt: '2026-10-13',
-                      title: 'Protected activity',
-                      description: 'Private',
-                    },
-                  ],
-                },
-              },
-            },
-          }
-        : null;
-    };
-
     const app = await appFor(
       f,
       {
         resolve: () => Promise.resolve({ ...f.definition.identity, sessionId: 'allowed-session' }),
       },
       {
+        activity: () =>
+          Promise.resolve({
+            state: 'available',
+            data: {
+              items: [
+                {
+                  id: 'private-activity',
+                  kind: 'info',
+                  relatedSessionId: 'protected-session',
+                  occurredAt: '2026-10-13',
+                  title: 'Protected activity',
+                  description: 'Private',
+                },
+              ],
+            },
+          }),
         sessions: () =>
           Promise.resolve({
-            recommendedSessionId: 'protected-session',
+            recommendedSessionIds: ['protected-session'],
             section: {
               state: 'available',
               data: {
@@ -229,6 +219,8 @@ describe('Reference identity and projection integrity HTTP', () => {
                     title: 'Protected summary',
                     taskIds: [],
                     status: 'active',
+                    providerId: 'mock',
+                    updatedAt: '2026-11-08T00:00:00.000Z',
                   },
                 ],
                 attention: [

@@ -81,8 +81,10 @@ Authorization has five distinct concepts:
 
 The current feature-owned resources are:
 
-- `spec`: `spec.view`, `spec.create`, `spec.manage`;
-- `session`: `session.view`, `session.create`, `session.manage`;
+- `spec`: `spec.view`, `spec.create`, `spec.manage`, `spec.close-worktree`,
+  `spec.close-specification`, `spec.start-session`;
+- `session`: `session.view`, `session.create`, `session.manage`, `session.delete`,
+  `session.execute-write`, `session.view-provider-limits`;
 - `settings`: `settings.view`, `settings.manage`.
 
 There is intentionally no `spec.list` capability. A Specs collection endpoint requires the subject
@@ -139,6 +141,63 @@ data supplied to the same coverage rule.
 
 Wildcard scope values are not part of the current model. Multiple bounded areas are represented by
 multiple assignments.
+
+## SpecFlow required scopes
+
+The resolver stays hierarchy-free; SpecFlow features build their required scopes from trusted,
+server-derived identity only. Route parameters, bodies, list filters and the UI are never a scope
+source: a filter selects rows, it never grants.
+
+### Specification scope
+
+Every `spec.*` check (`spec.view`, `spec.manage`, `spec.start-session`, the close capabilities)
+runs at `specScope(projectId, specId)` = `{projectId, specId}` (`features/specs/scope.ts`), with the
+Runtime's own project. A `{projectId}` assignment therefore covers the project's Specifications and a
+`{specId}` assignment still covers its own. A hand-built `{specId}` target would leave a
+`{projectId}` assignment without any Specification and is not used.
+
+`spec.start-session` permits only associating a new Session with that Specification. It implies no
+Session capability and no Session capability implies it: starting a Session from Specification S
+requires `spec.start-session` at `specScope(projectId, S)` **and** `session.create` at
+`{projectId, specId: S}` (plus `session.execute-write` at `{projectId}` for a write-mode Session).
+The provider catalogue read for that start (`GET /api/session-providers?specId=S`) requires the same
+two checks, so a `{specId: S}` starter can choose its agent without any project-level grant.
+
+### Session scope
+
+Every Session check uses one builder, `sessionScope(identity, capability)`
+(`features/sessions/scope.ts`), fed by the store-derived identity (the Session row joined with its
+association). Session routes, SSE reauthorization, telemetry, the Session list and the Specification
+and Task projections of Session references all use it.
+
+| Capability                                                                         | Standalone Session       | Session associated with S        |
+| ---------------------------------------------------------------------------------- | ------------------------ | -------------------------------- |
+| `session.view`, `session.manage`, `session.delete`, `session.view-provider-limits` | `{projectId, sessionId}` | `{projectId, specId, sessionId}` |
+| `session.create` (standalone `POST /api/sessions`, catalogue without context)      | `{projectId}`            | not applicable                   |
+| `session.create` (from Specification S, its catalogue `?specId=S`)                 | not applicable           | `{projectId, specId}`            |
+| `session.execute-write` (create in write mode)                                     | `{projectId}`            | `{projectId}`                    |
+| `session.execute-write` (Turn start/respond in write mode)                         | `{projectId, sessionId}` | `{projectId, sessionId}`         |
+
+**Execute-write exception.** `session.execute-write` never carries `specId`. Every provider runs
+with the Runtime's whole verified project workspace as `cwd`, not the Specification's worktree, so a
+grant scoped to one Specification must never admit writes that reach every Specification and the
+project's own files. The dimension is added only when the managed execution handshake confines a
+Specification's Session to that Specification's worktree.
+
+Directional coverage then gives, for the capabilities the assigned role carries:
+
+| Assignment scope   | Standalone Session | Associated Session of S | Start from S | Write execution   |
+| ------------------ | ------------------ | ----------------------- | ------------ | ----------------- |
+| `{}`               | yes                | yes                     | yes          | yes               |
+| `{projectId: P}`   | yes                | yes                     | yes          | yes               |
+| `{specId: S}`      | no                 | yes                     | yes          | no                |
+| `{sessionId: sid}` | yes                | yes                     | no           | yes, that Session |
+
+A Session's home Specification is immutable, so its scope never changes. There is no creator ACL.
+Collection entries use `hasCapabilityInAnyScope`; its `withoutDimension` option answers whether the
+subject holds the capability in a scope without a given dimension, which the Session list uses to
+require a `specId` filter from callers whose `session.view` is only Specification-scoped
+([Sessions API](../../../reference/api/sessions.md#session-list)).
 
 ## Request-bound authorization
 

@@ -233,7 +233,6 @@ function OverviewFixtureContent({
   const [collectionOverride, setCollectionOverride] = useState<SpecsOverviewState>();
   const [target, setTarget] = useState<CurrentSpecTarget>();
   const [refreshes, setRefreshes] = useState(0);
-  const [sessionStarts, setSessionStarts] = useState(0);
 
   return (
     <>
@@ -250,7 +249,6 @@ function OverviewFixtureContent({
           })
         }
         onRefresh={() => setRefreshes((count) => count + 1)}
-        onCreateSession={interactive ? () => setSessionStarts((count) => count + 1) : undefined}
         onOpenTarget={interactive ? setTarget : undefined}
         specificationHref={interactive ? (id) => `/specs/${id}` : undefined}
         renderSpecificationLink={
@@ -283,7 +281,7 @@ function OverviewFixtureContent({
         }
       />
       <output className="sr-only" aria-label="Fixture interaction result">
-        {JSON.stringify({ target, refreshes, sessionStarts })}
+        {JSON.stringify({ target, refreshes })}
       </output>
     </>
   );
@@ -883,22 +881,16 @@ export const CollectionSwitch: Story = {
       throw new Error('Refresh must notify the collection owner.');
     }
 
+    // Every new Session starts from a Specification: the list offers no standalone start.
     await userEvent.click(canvas.getByRole('button', { name: 'Specification actions' }));
     const createSession = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
       (item) => item.textContent === 'Create session',
     );
-    if (!createSession?.querySelector('svg')) {
-      throw new Error('Create session must expose a semantic icon.');
+    if (createSession) {
+      throw new Error('The Specifications list must not offer a standalone Session start.');
     }
 
-    await userEvent.click(createSession);
-    if (
-      !canvas
-        .getByLabelText('Fixture interaction result')
-        .textContent?.includes('"sessionStarts":1')
-    ) {
-      throw new Error('Session start must notify the application owner.');
-    }
+    await userEvent.keyboard('{Escape}');
   },
 };
 export const LongContent: Story = {
@@ -1264,11 +1256,9 @@ export const ReadOnlyPreview: Story = {
   args: { interactive: false },
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(canvas.getByRole('button', { name: 'Specification actions' }));
-    const createSession = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
-      (item) => item.textContent === 'Create session',
-    );
-    if (createSession?.getAttribute('aria-disabled') !== 'true') {
-      throw new Error('Session creation must remain disabled without the owner capability.');
+    const items = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+    if (!items.some((item) => item.textContent === 'Refresh')) {
+      throw new Error('Refresh stays available in a read-only preview.');
     }
 
     await userEvent.keyboard('{Escape}');

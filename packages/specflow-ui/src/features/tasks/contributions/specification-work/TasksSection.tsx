@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, InformationList, Typography } from '@nevo/ui';
+import { Button, EmptyState, InformationList, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import type { TaskExecutionReadiness, TaskGroup } from '../../read-model/model';
 import { WorkspaceSection } from '../../../../shared/workspace-section';
@@ -80,6 +80,7 @@ export function TasksSection({
   const completedCount =
     completedTasksCount ?? tasks.filter((task) => task.lifecycle === 'completed').length;
   const totalTasks = totalTasksCount ?? tasks.length;
+  const noTasks = tasks.length === 0 && totalTasks === 0;
 
   const countLabel = isPreparing
     ? t('specification.tasksInPreparation', { count: totalTasks })
@@ -110,7 +111,7 @@ export function TasksSection({
         id="tasks-heading"
         title={t('specification.tasksHeading')}
         icon="list-checks"
-        count={countLabel}
+        count={noTasks ? undefined : countLabel}
         actions={
           effectiveSelectedTasks.length > 0 ? (
             <div className="flex items-center gap-3">
@@ -134,47 +135,58 @@ export function TasksSection({
         }
       />
 
-      {isPreparing ? (
+      {isPreparing && !noTasks ? (
         <Typography variant="body-sm" className="text-content-secondary">
           {t('specification.tasksPreparingNotice')}
         </Typography>
       ) : null}
 
-      <div className="grid gap-4">
-        {taskGroups.map((group) => {
-          const isCollapsed = collapsedGroups.has(group.id);
-          const groupControlsId = `task-group-${group.id}`;
+      {noTasks ? (
+        // The next step belongs to the preparation block or Continue session, not to this state.
+        // A row-sized, start-aligned state (owner decision D1, 2026-11-08), without a glyph: the
+        // section header already shows the Tasks icon.
+        <EmptyState
+          variant="inline"
+          title={t('specification.tasksEmptyTitle')}
+          description={t('specification.tasksEmptyDescription')}
+        />
+      ) : (
+        <div className="grid gap-4">
+          {taskGroups.map((group) => {
+            const isCollapsed = collapsedGroups.has(group.id);
+            const groupControlsId = `task-group-${group.id}`;
 
-          return (
-            <div key={group.id} className="grid gap-1">
-              <TaskGroupHeader
-                name={group.name}
-                count={group.tasks.length}
-                isCollapsed={isCollapsed}
-                tone={getGroupTone(group)}
-                controlsId={groupControlsId}
-                onToggle={() => toggleGroup(group.id)}
-              />
+            return (
+              <div key={group.id} className="grid gap-1">
+                <TaskGroupHeader
+                  name={group.name}
+                  count={group.tasks.length}
+                  isCollapsed={isCollapsed}
+                  tone={getGroupTone(group)}
+                  controlsId={groupControlsId}
+                  onToggle={() => toggleGroup(group.id)}
+                />
 
-              {!isCollapsed ? (
-                <InformationList selectable id={groupControlsId}>
-                  {group.tasks.map((task) => (
-                    <TaskRow
-                      key={task.id}
-                      task={task}
-                      selected={selectedTasks.has(task.id)}
-                      isPreparing={isPreparing}
-                      onSelect={handleSelectTask}
-                      onPreview={onPreviewTask}
-                      fullTaskHref={fullTaskHref(task.id)}
-                    />
-                  ))}
-                </InformationList>
-              ) : null}
-            </div>
-          );
-        })}
-      </div>
+                {!isCollapsed ? (
+                  <InformationList selectable id={groupControlsId}>
+                    {group.tasks.map((task) => (
+                      <TaskRow
+                        key={task.id}
+                        task={task}
+                        selected={selectedTasks.has(task.id)}
+                        isPreparing={isPreparing}
+                        onSelect={handleSelectTask}
+                        onPreview={onPreviewTask}
+                        fullTaskHref={fullTaskHref(task.id)}
+                      />
+                    ))}
+                  </InformationList>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </WorkspaceSection>
   );
 }

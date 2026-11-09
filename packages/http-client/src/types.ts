@@ -45,6 +45,24 @@ export interface HttpRequestConfig<
   readonly body?: TBody;
 }
 
+export interface HttpResponseOptions<TParams = unknown> extends HttpRequestOptions<TParams> {
+  /**
+   * Response headers the caller needs (case-insensitive names). Only these are returned, under
+   * lower-case names; absent headers are omitted.
+   */
+  readonly responseHeaders?: readonly string[];
+}
+
+/**
+ * A response with its status and the requested headers. `304 Not Modified` is a result, not an
+ * error, and carries no `data`; every other non-2xx status still throws {@link HttpClientError}.
+ */
+export interface HttpResponse<TResponse> {
+  readonly status: number;
+  readonly data?: TResponse;
+  readonly headers: Readonly<Record<string, string>>;
+}
+
 export interface SseEvent {
   readonly type: string;
   readonly data: string;
@@ -83,6 +101,12 @@ export interface HttpClient {
     url: string,
     config?: HttpRequestOptions<TParams>,
   ): Promise<TResponse>;
+
+  /** GET that also returns the status and requested headers (for ETag revalidation). */
+  getResponse<TResponse = unknown, TParams = unknown>(
+    url: string,
+    config?: HttpResponseOptions<TParams>,
+  ): Promise<HttpResponse<TResponse>>;
 
   delete<TResponse = unknown, TParams = unknown>(
     url: string,

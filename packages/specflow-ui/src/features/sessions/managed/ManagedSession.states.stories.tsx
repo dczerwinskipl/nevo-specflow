@@ -3,6 +3,7 @@ import { useEffect, useState, type ComponentProps } from 'react';
 import { expect, fn, userEvent, within, waitFor } from 'storybook/test';
 import { settleViewport } from '../../../test-support/viewportSettle.stories-support';
 import { ManagedSession } from './ManagedSession';
+import type { ManagedSessionsApi } from './api';
 import { fixtureApi, fixtureSessionId, sessionFixture } from './managedSession.stories-support';
 import {
   genericSpecLevelSnapshot,
@@ -43,7 +44,7 @@ import {
  * land on — a generic/spec-level Session (§12), a single-Task execution (§13), a pending
  * interaction (§15), waiting-without-attention (§18), a terminal failure/cancel/interrupt (§19),
  * and an unavailable Session (§20), plus the narrower-fixture states (`WaitingForQuestion`,
- * `QuotaFailure`, `UnsupportedMultipleChoice`) that predate the Full Session Context mock view
+ * `QuotaFailure`, `MultipleChoice`) that predate the Full Session Context mock view
  * model — each paired with a geometry/behavior regression assertion for that exact state. They
  * are tagged `contract` so they stay out of the default sidebar (hidden, not deleted: tags only
  * affect visibility, a `play` function is already part of the Chromium suite via Storybook's own
@@ -120,12 +121,8 @@ const meta = {
     // state story that carries `sessionContext.specification`, without a real router here.
     onOpenSpecification: fn((specification) => console.info('Open Specification', specification)),
     onOpenDocuments: fn((specification) => console.info('Open Documents', specification)),
-    // Story-only stand-ins for the header "⋯" session actions, which have no backend yet (the
-    // real route leaves them unwired, so they render disabled there): wired here so the rename /
-    // archive / delete dialogs can be tried on the browsable states.
-    onRenameSession: fn(),
-    onArchiveSession: fn(),
-    onDeleteSession: fn(),
+    onSessionDeleted: fn(),
+    onGoToSpecifications: fn(),
   },
 } satisfies Meta<typeof ManagedSession>;
 export default meta;
@@ -345,6 +342,53 @@ export const Unavailable: Story = {
 };
 
 /**
+ * A Session the caller may only view (the demo Runtime's read-only Sessions, or a viewer): the
+ * snapshot grants `view` alone. A quiet bar takes the Composer's place, the empty conversation has
+ * no call to action, and there is no Session menu and no error (full-session-screen-structure
+ * §22.1, View-only Session).
+ */
+export const ViewOnlySession: Story = {
+  tags: ['contract'],
+  args: {
+    api: fixtureApi({
+      ...genericSpecLevelSnapshot(),
+      entries: [],
+      history: { hasOlder: false },
+      session: {
+        ...genericSpecLevelSnapshot().session,
+        readiness: 'ready',
+        capabilities: {
+          view: true,
+          manage: false,
+          start: false,
+          cancel: false,
+          questions: false,
+          permissions: false,
+          executeWrite: false,
+          delete: false,
+        },
+      },
+    }),
+    sessionContext: genericSpecLevelContext(),
+  },
+  globals: WIDE_VIEWPORT,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('Możesz tylko przeglądać tę sesję.')).toBeVisible();
+    await expect(canvasElement.querySelector('[data-view-only-bar]')).not.toBeNull();
+    await expect(await canvas.findByText('Brak wiadomości w tej sesji.')).toBeVisible();
+    await expect(canvas.queryByText(/Napisz wiadomość/)).toBeNull();
+    await expect(canvas.queryByRole('textbox', { name: 'Wiadomość' })).toBeNull();
+    await expect(canvas.queryByRole('button', { name: 'Wyślij' })).toBeNull();
+    // The live regions stay mounted empty; none may carry an error.
+    await expect(
+      canvas.queryAllByRole('alert').filter((alert) => alert.textContent?.trim()),
+    ).toHaveLength(0);
+    await expect(canvas.queryByRole('button', { name: /Więcej akcji|Akcje sesji/ })).toBeNull();
+  },
+};
+
+/**
  * A Session without a message, however it was opened (new-session-ui-spec.md, section 5): the DS
  * ready empty state with the provider's logo and name, centred in the free height above the Composer,
  * which is docked at the bottom. It replaces the former plain "start the conversation" line.
@@ -377,25 +421,57 @@ export const EmptySession: Story = {
 const multiple = sessionFixture(true);
 if (multiple.interaction?.kind === 'question') {
   multiple.interaction.maxSelections = 2;
+  multiple.interaction.options = [
+    ...(multiple.interaction.options ?? []),
+    { id: 'telemetry', label: 'Telemetria dostawcy' },
+  ];
 }
 
-export const UnsupportedMultipleChoice: Story = {
+const multipleApi = {
+  ...fixtureApi(multiple),
+  respond: fn<ManagedSessionsApi['respond']>((_id, interactionId) =>
+    Promise.resolve({ turnId: multiple.interaction!.turnId, interactionId }),
+  ),
+};
+
+/** A question with `maxSelections > 1`: checkboxes capped at the limit, one Respond, keyboard only. */
+export const MultipleChoice: Story = {
   tags: ['contract'],
-  args: { owner: 'multi-story', api: fixtureApi(multiple) },
+  args: { owner: 'multi-story', api: multipleApi },
   play: async ({ canvasElement }) => {
+    multipleApi.respond.mockClear();
     const canvas = within(canvasElement);
-    await expect(
-      await canvas.findByText('To pytanie wymaga kontrolek, które nie są jeszcze dostępne.'),
-    ).toBeVisible();
-    await expect(
-      canvas.queryByRole('button', { name: 'Wczytywanie starszych wiadomości' }),
-    ).not.toBeInTheDocument();
-    await expect(canvas.queryByRole('button', { name: 'Odpowiedz' })).not.toBeInTheDocument();
+    const history = await canvas.findByRole('checkbox', {
+      name: 'Wczytywanie starszych wiadomości',
+    });
+    const recovery = canvas.getByRole('checkbox', { name: 'Odzyskiwanie sesji po restarcie' });
+    const telemetry = canvas.getByRole('checkbox', { name: 'Telemetria dostawcy' });
+    const respond = canvas.getByRole('button', { name: 'Odpowiedz' });
+    await expect(respond).toBeDisabled();
+    await expect(canvas.getByText('Wybrano 0 z maksymalnie 2.')).toBeVisible();
+    // Keyboard only: focus the last option, then the first, toggling each with Space.
+    telemetry.focus();
+    await userEvent.keyboard(' ');
+    history.focus();
+    await userEvent.keyboard(' ');
+    await expect(canvas.getByText('Wybrano 2 z maksymalnie 2.')).toBeVisible();
+    // Capped: still focusable, announced as unavailable, and Space does not check it.
+    await expect(recovery).toHaveAttribute('aria-disabled', 'true');
+    recovery.focus();
+    await userEvent.keyboard(' ');
+    await expect(recovery).not.toBeChecked();
+    await expect(respond).toBeEnabled();
+    respond.focus();
+    await userEvent.keyboard('{Enter}');
+    await waitFor(() => expect(multipleApi.respond).toHaveBeenCalledOnce());
+    // Declared order, not click order.
+    await expect(multipleApi.respond.mock.calls[0]?.[2]).toMatchObject({
+      kind: 'question',
+      answer: { optionIds: ['history', 'telemetry'] },
+    });
     await expect(canvas.getByRole('button', { name: 'Zatrzymaj' })).toBeEnabled();
-    // Status-line/InteractionPrompt overlap regression (owner audit, 320-390px): this story also
-    // renders `snapshot.interaction` (an unsupported multi-select question), so it is one of the
-    // states the audit flagged as likely affected even though it has no dedicated narrow viewport
-    // of its own yet.
+    // Status-line/InteractionPrompt overlap regression (owner audit, 320-390px): the multi-select
+    // prompt is the tallest interaction card.
     await settleViewport(390, 844);
     await verifyNoHeaderOverlapsInteractionPrompt(canvasElement);
     await settleViewport(320, 568);
@@ -479,9 +555,9 @@ async function openContextOnNarrow(canvasElement: HTMLElement) {
   await userEvent.click(await canvas.findByRole('button', { name: 'Kontekst' }));
 }
 
-/** The real route today: no `sessionContext` prop at all. Executor from the provider catalogue, the
- * scope-unknown info note under it, Work history derived from the snapshot, then Planned areas.
- * No Specification/Execution/Attention/Related Tasks (nothing is promised there). */
+/** A standalone Session (no `sessionContext` prop): executor from the provider catalogue, Work
+ * history derived from the snapshot, then Planned areas, and no note. No Specification/Execution/
+ * Attention/Related Tasks (nothing is promised there). */
 export const RealRouteContext: Story = {
   tags: ['contract'],
   args: { api: richDefaultApi() },
@@ -489,12 +565,8 @@ export const RealRouteContext: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Wykonawca')).toBeVisible();
-    await expect(
-      await canvas.findByText(
-        'Powiązania tej sesji ze specyfikacją i zadaniami nie są jeszcze dostępne.',
-      ),
-    ).toBeVisible();
     await expect(await canvas.findByRole('button', { name: /^Historia pracy/ })).toBeVisible();
+    await expect(canvas.queryByText(/Nie udało się wczytać powiązań/)).toBeNull();
     await expect(canvas.getByText('Planowane obszary')).toBeVisible();
     await expect(canvas.queryByText('Specyfikacja')).toBeNull();
     await expect(canvas.queryByText('Aktualne wykonanie')).toBeNull();
@@ -508,12 +580,8 @@ export const RealRouteContextNarrow: Story = {
   play: async ({ canvasElement }) => {
     await openContextOnNarrow(canvasElement);
     const canvas = within(canvasElement);
-    await expect(
-      await canvas.findByText(
-        'Powiązania tej sesji ze specyfikacją i zadaniami nie są jeszcze dostępne.',
-      ),
-    ).toBeVisible();
     await expect(await canvas.findByRole('button', { name: /^Historia pracy/ })).toBeVisible();
+    await expect(canvas.queryByText('Specyfikacja')).toBeNull();
   },
 };
 
@@ -526,7 +594,7 @@ export const ContextRequiredMissing: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const note = await canvas.findByText(
-      'Nie znaleziono specyfikacji SPEC-A, do której należy ta sesja.',
+      'Nie znaleziono specyfikacji SPEC-A, z którą powiązana jest ta sesja.',
     );
     await expect(note).toBeVisible();
     await expect(note.closest('p')?.querySelector('.text-status-danger')).not.toBeNull();
@@ -542,7 +610,7 @@ export const ContextRequiredMissingNarrow: Story = {
     await openContextOnNarrow(canvasElement);
     await expect(
       await within(canvasElement).findByText(
-        'Nie znaleziono specyfikacji SPEC-A, do której należy ta sesja.',
+        'Nie znaleziono specyfikacji SPEC-A, z którą powiązana jest ta sesja.',
       ),
     ).toBeVisible();
   },

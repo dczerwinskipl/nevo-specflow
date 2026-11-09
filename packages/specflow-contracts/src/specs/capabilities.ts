@@ -8,5 +8,7 @@ export const SpecCapabilities = defineResource({
     Manage: 'manage',
     CloseWorktree: 'close-worktree',
     CloseSpecification: 'close-specification',
+    /** Associate a new Session with this Specification; implies no Session capability. */
+    StartSession: 'start-session',
   },
 });

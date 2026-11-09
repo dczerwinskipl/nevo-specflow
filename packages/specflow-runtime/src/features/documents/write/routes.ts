@@ -22,6 +22,7 @@ import {
 import { DocumentError } from '@nevo/specflow-engine';
 import type { FastifyPluginCallback } from 'fastify';
 import { SpecCapabilities } from '@nevo/specflow-contracts/specs';
+import { specScope, type ProjectIdSource } from '../../specs';
 import { Type } from 'typebox';
 
 import { matchesEtag, sendNotModified } from '../../../server/etag';
@@ -56,6 +57,8 @@ const OVERSIZED_BODY = { oversizedBodyCode: 'DOCUMENT_TOO_LARGE' } as const;
 
 export interface DocumentWriteRoutesOptions {
   readonly source?: DocumentWriteSource;
+  /** The Runtime's project; see `specScope`. */
+  readonly projectId?: ProjectIdSource;
 }
 
 /** A route whose source is absent is an unavailable source, like an unreadable manifest. */
@@ -92,7 +95,7 @@ export const documentWriteEndpoint: FastifyPluginCallback<DocumentWriteRoutesOpt
   typed.put(
     '/api/specs/:specId/documents/:documentId',
     {
-      onRequest: manageGuard(),
+      onRequest: manageGuard(options.projectId),
       bodyLimit: SAVE_BODY_LIMIT_BYTES,
       config: OVERSIZED_BODY,
       schema: {
@@ -111,7 +114,7 @@ export const documentWriteEndpoint: FastifyPluginCallback<DocumentWriteRoutesOpt
   typed.post(
     '/api/specs/:specId/documents/save',
     {
-      onRequest: manageGuard(),
+      onRequest: manageGuard(options.projectId),
       bodyLimit: BATCH_SAVE_BODY_LIMIT_BYTES,
       config: OVERSIZED_BODY,
       schema: {
@@ -128,7 +131,7 @@ export const documentWriteEndpoint: FastifyPluginCallback<DocumentWriteRoutesOpt
   typed.post(
     '/api/specs/:specId/documents',
     {
-      onRequest: manageGuard(),
+      onRequest: manageGuard(options.projectId),
       bodyLimit: CREATE_DOCUMENTS_BODY_LIMIT_BYTES,
       config: OVERSIZED_BODY,
       schema: {
@@ -145,7 +148,7 @@ export const documentWriteEndpoint: FastifyPluginCallback<DocumentWriteRoutesOpt
   typed.post(
     '/api/specs/:specId/folders',
     {
-      onRequest: manageGuard(),
+      onRequest: manageGuard(options.projectId),
       bodyLimit: OPERATION_BODY_LIMIT_BYTES,
       config: OVERSIZED_BODY,
       schema: {
@@ -162,7 +165,7 @@ export const documentWriteEndpoint: FastifyPluginCallback<DocumentWriteRoutesOpt
   typed.post(
     '/api/specs/:specId/document-operations',
     {
-      onRequest: manageGuard(),
+      onRequest: manageGuard(options.projectId),
       bodyLimit: OPERATION_BODY_LIMIT_BYTES,
       config: OVERSIZED_BODY,
       schema: {
@@ -179,7 +182,7 @@ export const documentWriteEndpoint: FastifyPluginCallback<DocumentWriteRoutesOpt
   typed.get(
     '/api/specs/:specId/document-operations/:operationId',
     {
-      onRequest: viewGuard(),
+      onRequest: viewGuard(options.projectId),
       schema: {
         params: OperationParamsSchema,
         response: {
@@ -205,7 +208,7 @@ export const documentWriteEndpoint: FastifyPluginCallback<DocumentWriteRoutesOpt
   typed.get(
     '/api/specs/:specId/uncommitted',
     {
-      onRequest: viewGuard(),
+      onRequest: viewGuard(options.projectId),
       schema: {
         params: SpecParamsSchema,
         response: {
@@ -232,7 +235,7 @@ export const documentWriteEndpoint: FastifyPluginCallback<DocumentWriteRoutesOpt
   typed.post(
     '/api/specs/:specId/commit',
     {
-      onRequest: manageGuard(),
+      onRequest: manageGuard(options.projectId),
       bodyLimit: MANUAL_COMMIT_BODY_LIMIT_BYTES,
       config: OVERSIZED_BODY,
       schema: {
@@ -247,7 +250,7 @@ export const documentWriteEndpoint: FastifyPluginCallback<DocumentWriteRoutesOpt
         request.authz.can({
           resource: SpecCapabilities,
           capability: SpecCapabilities.capabilities.Manage,
-          scope: { specId },
+          scope: specScope(options.projectId?.(), specId),
         });
 
       return reply
@@ -260,7 +263,7 @@ export const documentWriteEndpoint: FastifyPluginCallback<DocumentWriteRoutesOpt
     typed.post(
       `/api/specs/:specId/document-operations/:operationId/${action}`,
       {
-        onRequest: manageGuard(),
+        onRequest: manageGuard(options.projectId),
         bodyLimit: OPERATION_BODY_LIMIT_BYTES,
         config: OVERSIZED_BODY,
         preValidation: (request, _reply, next) => {
@@ -284,7 +287,7 @@ export const documentWriteEndpoint: FastifyPluginCallback<DocumentWriteRoutesOpt
   typed.post(
     '/api/specs/:specId/document-commits/flush',
     {
-      onRequest: manageGuard(),
+      onRequest: manageGuard(options.projectId),
       bodyLimit: OPERATION_BODY_LIMIT_BYTES,
       config: OVERSIZED_BODY,
       preValidation: (request, _reply, next) => {

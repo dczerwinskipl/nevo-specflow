@@ -52,6 +52,8 @@ export function productNavigationItems(
    * not absent).
    */
   metadataSettled = true,
+  /** The view that is active off its own route (a Session of the Specification: `sessions`). */
+  activeViewId?: string,
 ) {
   const views = specificationViews.filter(
     (view) => !('requiresGit' in view && (!metadataSettled || hasGit === false)),
@@ -78,11 +80,14 @@ export function productNavigationItems(
 
     return {
       ...view,
-      active: Boolean(
-        path &&
-        hashMatches &&
-        (pathname === path || (view.id !== 'overview' && pathname.startsWith(`${path}/`))),
-      ),
+      active:
+        activeViewId !== undefined
+          ? view.id === activeViewId
+          : Boolean(
+              path &&
+              hashMatches &&
+              (pathname === path || (view.id !== 'overview' && pathname.startsWith(`${path}/`))),
+            ),
     };
   });
 }

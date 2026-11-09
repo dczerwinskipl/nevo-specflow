@@ -469,6 +469,7 @@ Planned areas                 (preview rows, §7.4: Files / Changes, Handovers, 
 
 Session details
   token usage, cost, context window and provider limits, always last
+  (provider-limits refresh, §7.7)
 ```
 
 The order is fixed: a section changing state (loading, ready, note) replaces the content of its own
@@ -581,10 +582,9 @@ Notes are the DS `InlineNote` in the section's slot, under its label: `info`, `a
 warning and `danger` for an error. They are passive: no live region (Context is an inspector the
 reader opens, not an alert), the text carries the meaning, the icon is decorative. No retry in v1.
 
-- Scope unknown, not provided (the real route today): one panel-level info note under the Executor,
-  no label: "This session's links to a Specification and Tasks aren't available yet." Unreadable:
-  the same slot, attention tone: "Couldn't load this session's links." A standalone Session has no
-  note.
+- Scope unreadable (the association read failed): one panel-level attention note under the
+  Executor, no label: "Couldn't load this session's links." A standalone Session has no note. The
+  former "not provided" note is retired: every Runtime mode serves the association read (§7.6.1).
 - Specification unreadable: "Couldn't load this session's Specification." Missing and required:
   "Can't find Specification {key} that this session belongs to."
 - Execution Task missing and required: "Can't find {key}, the Task this session is executing." For a
@@ -601,6 +601,74 @@ reader opens, not an alert), the text carries the meaning, the icon is decorativ
 The Documents row appears only while the Specification is ready: a loading Specification's skeleton
 covers both rows, an unreadable or missing one shows only its note. Work history is `loading` before
 the first snapshot and absent when the Session has no Turn yet.
+
+#### 7.6.1 Specification and Related Tasks from the association read (accepted 2026-11-08)
+
+Every Runtime mode serves `GET /api/sessions/:sessionId/association`
+([Sessions API](../../reference/api/sessions.md#association-read)); it is the only source of the
+Session's scope, so the scope survives reloads and deep links without a client cache. A Session
+started from a Specification is seeded from the composed create response, so first paint and reload
+agree. `scopeNotProvided` is no longer shown.
+
+An associated Session has scope `specification` with or without Tasks, never `task`: its associated
+Tasks fill **Powiązane zadania** (Related Tasks). **Aktualne wykonanie** (Current execution) is
+omitted, because an association is context, not execution, and no Engine execution fact is read.
+**Uwaga / dalsze działania** (Attention) is omitted too: its Session-owned fact (a pending
+interaction) is owned by Primary. Copy says **powiązana**, never "pracuje nad".
+
+| Association read                    | Specification section                                                                                                                               | Powiązane zadania                                                                                                                                                             |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| loading                             | nothing                                                                                                                                             | nothing                                                                                                                                                                       |
+| `standalone`                        | omitted; no note                                                                                                                                    | omitted                                                                                                                                                                       |
+| `available`, current                | Specification row (key, title) plus Documents row                                                                                                   | one row per `available` Task (key or id, title); none omits the section                                                                                                       |
+| `available`, `collection: archived` | same; row supporting text `sessions.context.specification.archived` **W archiwum**; links carry `collection=archive`                                | as above                                                                                                                                                                      |
+| `forbidden`                         | info note `specificationForbidden` **Nie masz uprawnień do wyświetlenia specyfikacji powiązanej z tą sesją.**; no Documents row                     | omitted                                                                                                                                                                       |
+| `missing`                           | danger note `specificationMissingNamed` **Nie znaleziono specyfikacji {{key}}, z którą powiązana jest ta sesja.** (`specificationMissing` likewise) | omitted (one cause, one note)                                                                                                                                                 |
+| `unavailable`                       | attention note `specificationUnreadable` **Nie udało się wczytać specyfikacji tej sesji.**                                                          | omitted                                                                                                                                                                       |
+| some Tasks `missing`                | per the Specification's state                                                                                                                       | found Tasks plus attention note `relatedTasksMissing` **Nie znaleziono {{count}} z {{total}} powiązanych zadań.** / _{{count}} of {{total}} associated tasks can't be found._ |
+| Tasks `unavailable`                 | per the Specification's state                                                                                                                       | attention note `relatedTasksUnreadable` **Nie udało się wczytać powiązanych zadań.**                                                                                          |
+| read failed (HTTP)                  | panel note `scopeUnreadable` **Nie udało się wczytać powiązań tej sesji.**                                                                          | omitted                                                                                                                                                                       |
+
+Two deliberate deviations from the rules above: while the association loads, no Specification
+skeleton shows (a standalone Session would show a skeleton that then vanishes); and the
+`relatedTasksMissing` note replaces the generic "Couldn't load related Tasks" for missing Tasks.
+Keys live in `sessions.context.availability.*`. Rationale:
+[Session association UX](session-association-ux/README.md).
+
+### 7.7 Session details: provider-limits refresh (owner accepted 2026-11-08)
+
+Session details render the [telemetry API](../../reference/api/session-telemetry.md) snapshot; a
+reading that is absent, unavailable or masked is not shown as zero or "unknown". Only account
+`limits` are admitted by the Runtime refresh scheduler, so they carry the only refresh control:
+usage, cost and context arrive with Turns. There is no global or section-wide Refresh.
+
+- **Placement:** one `Button variant="ghost" size="sm" leadingIcon="refresh"` trailing in the
+  heading row of "Limity dostawcy". Visible label `Odśwież`, accessible name
+  `Odśwież limity dostawcy`.
+- **Offered only when** `limits.refreshable` and `session.capabilities.manage`; otherwise omitted,
+  never disabled. `limits` unavailable with `NOT_AUTHORIZED` renders no limits section at all (no
+  heading, zero, "unknown" or control). Whenever the control is offered the section keeps its
+  heading even without rows (unavailable for another reason, or zero windows), because the user can
+  act on it; `isTelemetryVisible` counts it. An archived Session keeps the refresh (read-only).
+- **Pending** (POST in flight, or `refresh.state` `queued`/`running` for `limits`): the button reads
+  `Odświeżanie…`, is `aria-disabled` with a guarded handler and keeps focus; it is the only
+  indicator. Completion arrives as a newer SSE `telemetry` revision: values replace in place, no
+  toast.
+
+| Outcome                                                               | Control                                              | Note (one status and one alert region per limits section)                                         |
+| --------------------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| idle, no rows                                                         | enabled                                              | info: `Limity nie zostały jeszcze odczytane.`                                                     |
+| `REFRESH_FAILED`, previous values kept                                | enabled                                              | attention: `Nie udało się odświeżyć limitów. Pokazano ostatni odczyt.`                            |
+| `REFRESH_FAILED`, nothing to show                                     | enabled                                              | attention: `Nie udało się odczytać limitów.`                                                      |
+| 429 `retryAfterMs`, or a newer snapshot's `refresh.retryAfterSeconds` | `aria-disabled`, guarded, until the time passes      | info: `Limity odświeżono przed chwilą. Odświeżenie będzie znów możliwe za moment.` (no countdown) |
+| 403 or 422 `CAPABILITY_UNSUPPORTED`                                   | removed for this mount; focus to the section heading | info until the next snapshot: `Odświeżanie limitów jest niedostępne.`                             |
+| other definite rejection (400, 409)                                   | enabled; next press is a new request                 | info: `Odrzucono odświeżenie limitów.`                                                            |
+| network/503 (receipt not confirmed)                                   | enabled; next press reuses the same `requestId`      | danger, `role="alert"`: `Nie potwierdzono odświeżenia. Spróbuj ponownie.`                         |
+
+Info and attention notes use `role="status"`; only the unconfirmed request uses `role="alert"`.
+Losing access to the Session's telemetry (403/404 read) drops the snapshot and every refresh note.
+`migration` is an operational diagnostic and is not shown: its consequences already render as
+absent or partial readings.
 
 ---
 
@@ -1022,6 +1090,33 @@ ordinary resumable state.
 
 Technical operation records remain deeper inspection.
 
+### 17.1 Turn whose outcome is unknown (owner accepted 2026-11-08)
+
+User question: "Did my last request finish, and can I continue?" While
+`snapshot.activeTurn?.state === 'unknown'`, one **attention `Alert`** in the Composer overlay stack
+(the slot of `savedRequestUnreadable`/`commandFailed`: above the Composer, below a pending
+interaction) is the single owner of the fact:
+
+- the Turn's Work block shows no live line and no spinner (Chat V10 §3.1);
+- the header subtitle reads `Wynik tury nieznany` (precedence in §22.1);
+- the Composer stays visible and gated by `capabilities.start`; Stop is not offered (cancel is
+  refused for `unknown`); Context does not repeat the action, so Narrow needs no Context visit.
+
+Title `Nie wiadomo, jak zakończyła się ostatnia tura`; body `SpecFlow nie otrzymał potwierdzenia
+wyniku od dostawcy. Polecenie mogło zostać wykonane — nie zostanie wysłane ponownie.`
+
+| State                                                                     | Presentation                                                                                                                                                                    |
+| ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Manage                                                                    | `Button size="sm"` `Sprawdź wynik` (`SessionRecoveryNotice` pattern) calling reconcile.                                                                                         |
+| no Manage                                                                 | No button; line `Wynik może sprawdzić osoba zarządzająca tą sesją.`                                                                                                             |
+| pending, and after a 200 until the stream moves the Turn out of `unknown` | Button `aria-disabled`, guarded, `Sprawdzanie…`.                                                                                                                                |
+| 409 `SESSION_RECOVERY_REQUIRED`                                           | Alert stays; status line `Dostawca nie ma jeszcze dowodu wyniku. Tura pozostaje nierozstrzygnięta — spróbuj ponownie później.`; next press is a new request.                    |
+| network failure (unconfirmed)                                             | Alert line `Nie potwierdzono sprawdzenia. Spróbuj ponownie.`; next press reuses the `requestId`.                                                                                |
+| other definite refusal (403, 422, …)                                      | Its own refusal copy; next press is a new request.                                                                                                                              |
+| resolved (SSE turn change)                                                | Alert unmounts; the outcome renders through the Work block/outcome row. One polite toast `Ustalono wynik tury.` only when this view's reconcile returned `reconciled === true`. |
+
+Never combined with resend, never replays the prompt, never patches state from the 200 body.
+
 ---
 
 ## 18. State G — waiting without human action
@@ -1207,6 +1302,82 @@ Secondary selection from the URL. Secondary is local Workspace state.
 A direct Session route still exposes parent orientation (for example owning Specification when
 available), but does not invent a previous Secondary state.
 
+### 22.1 Session actions, archived and view-only Session (owner accepted 2026-11-08)
+
+Rename, Archive/Unarchive and Delete live in the header `⋯` menu (`WorkspaceHeaderAction`,
+`direct: 'never'`), Delete last with `tone: 'danger'`. Commands and errors are the
+[Sessions API](../../reference/api/sessions.md) contract.
+
+- **Gating:** Rename and Archive/Unarchive only with `capabilities.manage`, Delete only with
+  `capabilities.delete`; an absent capability omits the item, no items means no menu. Archive and
+  Unarchive (`Przywróć`, icon `undo`) are exclusive by `session.archivedAt`. Rename stays allowed
+  on an archived Session (metadata, not conversation).
+- **Unsettled Turn:** while `snapshot.activeTurn` exists (any nonterminal state, including
+  `unknown`), Archive and Delete open with the confirm `aria-disabled` and one attention note in
+  the dialog description: `Trwa tura. Zatrzymaj ją lub poczekaj na jej zakończenie.`
+  (`active`/`waiting`/`cancelling`), `Tura czeka na Twoją odpowiedź. Odpowiedz lub zatrzymaj
+turę.` (`waitingForUser`), `Najpierw ustal wynik ostatniej tury.` (`unknown`, §17.1). A 409
+  `TURN_CONFLICT` that wins a race shows the matching note. Cancel/Escape stay available.
+- **Pending and errors (every dialog):** confirm reads `Zapisywanie…`/`Archiwizowanie…`/`Usuwanie…`,
+  `aria-disabled` with a guarded handler; the dialog is locked (Cancel, Escape and the rename input,
+  which stays focusable as read-only) and closes only on success. Unconfirmed request (network/503):
+  `Alert tone="attention" role="alert"` `Nie potwierdzono operacji. Spróbuj ponownie.`, the dialog
+  stays locked and confirm becomes the retry (Rename/Archive reuse the `requestId`; Delete repeats
+  the body-less `DELETE`). Definite refusals unlock Cancel: 403 `Nie masz już uprawnień do tej
+operacji.`, `TURN_CONFLICT` as above, `SESSION_DELETE_BLOCKED` (unsettled Engine evidence,
+  not visible beforehand) `Sesja ma nierozliczone operacje w repozytorium. Spróbuj ponownie
+później.` with confirm still enabled. Rename has no optimistic title; validation is nonblank,
+  at most 256 characters. Focus after success returns to the `⋯` trigger, except Delete.
+- **Archive dialog:** `Zarchiwizować tę sesję?` — `Sesja zostanie przeniesiona do archiwum sesji.
+Nie będzie można w niej wysyłać wiadomości; historia, praca i zużycie pozostaną dostępne. Możesz
+ją w każdej chwili przywrócić.` (`managedSession.sessionActions.archiveDescription`; the
+  Specification Sessions list has an **Archiwum** collection). After archive the user stays on the
+  Session.
+- **Archived Session:** the Composer is replaced in its overlay slot by a quiet bar of the same
+  width, `InlineNote` info `Sesja jest zarchiwizowana. Nie można w niej wysyłać wiadomości.` plus,
+  with Manage, `Button variant="secondary" size="sm"` `Przywróć` (no confirmation: reversible).
+  Pending `Przywracanie…`; failure is one line in the bar (unconfirmed only for a lost answer,
+  forbidden and other refusals with their own copy). On success the Composer returns with its draft
+  and focus moves to the editor. Conversation, Work, Context and telemetry stay readable.
+- **View-only Session (owner accepted 2026-11-08):** when the caller lacks
+  `capabilities.manage`, the Session is not archived and no pending start is retained (the demo
+  Runtime's read-only Sessions, a viewer), no Turn, answer or Stop can ever be theirs. The Composer
+  is replaced in its overlay slot by the archived bar's quiet shape without an action: `InlineNote`
+  info `Możesz tylko przeglądać tę sesję.` / _You can only view this session._
+  (`managedSession.viewOnly.note`, `role="status"`). An empty conversation then reads
+  `Brak wiadomości w tej sesji.` (`managedSession.viewOnly.empty`) with no "write a message" call
+  to action. The trigger is the missing Manage, not `!capabilities.start`: Start is also false
+  while a Turn runs (the Composer carries Stop) or the provider is unavailable. A retained pending
+  start keeps the Composer, whose Retry owns that request. Archived takes precedence; conversation,
+  Work, Context and telemetry stay readable. Both bars carry the Composer's border
+  (`border-border-default`) so they read as one surface on the split layout.
+- **Archived elsewhere:** 409 `SESSION_ARCHIVED` on send, interaction respond or a retained pending
+  start is a definite refusal: the retained command and its `requestId` are dropped, no
+  `commandFailed` retry copy, the draft is kept, and the overlay slot says `Sesja została
+zarchiwizowana.` until the SSE `session` change brings the archived bar.
+- **Header subtitle precedence** (one fact, first match wins): connection not up (`Utracono
+połączenie`, `Ponowne łączenie…`) → `Zarchiwizowana` → `Wynik tury nieznany` → current activity /
+  readiness. Archived is a lasting state like readiness, so it is the subtitle, not the transient
+  header `status` slot.
+- **Delete:** `AlertDialog`, destructive `Usuń`, title `Usunąć tę sesję?`, the Session title on its
+  own line and `Tej operacji nie można cofnąć. Historia rozmowy, praca i zużycie tej sesji zostaną
+trwale usunięte ze SpecFlow. Odwołania do tej sesji w specyfikacjach i zadaniach przestaną
+działać. Pliki w repozytorium i lokalna historia dostawcy nie są usuwane.` No type-to-confirm.
+  Success is 204, or 404 `SESSION_NOT_FOUND` for a `DELETE` this view sent, or the stream's 404
+  while this view's delete is in flight, unconfirmed or done; it completes once: navigate with
+  `replace` (Back does not reopen it), polite toast `Sesja została usunięta.`, focus on the
+  destination's page heading. The destination follows the association read already on the screen:
+  an `available` Specification goes to `/specs/:specId/sessions` (with `collection=archive` when the
+  Specification is archived); `standalone`, `forbidden`, `missing`, `unavailable` or not yet read
+  goes to `/` (Specifications list). Accepted limit: a Session of a removed Specification is in no
+  list; it stays reachable by URL and from Engine audit links.
+- **Deleted elsewhere or unknown id:** a closed stream and then 404 `SESSION_NOT_FOUND` replace the
+  Session screen with the Session not-found view: title `Ta sesja została usunięta lub nie
+istnieje`, description `Historia tej sesji nie jest już dostępna.`, one secondary
+  `managedSession.notFound.action` `Przejdź do specyfikacji` / _Go to specifications_ → `/`. It is the not-found composition (header, description, one button) rendered
+  inside the application shell in the Session screen's `AppWorkspace`, not a standalone shell,
+  which would add a second `main` landmark. A Composer draft there is lost.
+
 ## 23. What this pass deliberately does not decide
 
 Still deferred:
@@ -1220,8 +1391,8 @@ Still deferred:
 - exact reasoning presentation policy;
 - exact future file-preview / IDE integration implementation;
 - provider-error/limit transfer to another agent;
-- exact cost/usage/limit presentation (reserve low-emphasis Session metadata/Context space without
-  implementing it yet).
+- richer cost/usage/limit presentation beyond Session details and the provider-limits refresh
+  (§7.7), such as history, budgets or charts.
 
 ## 24. Screen-structure acceptance checks
 
@@ -1253,6 +1424,8 @@ Before global component/composition gap analysis, verify:
 19. Unsupported Session capabilities do not produce fake controls.
 20. Narrow uses header/Back rather than bottom tabs; browser/system Back can pop local pushed detail before leaving the routed surface,
     without encoding Secondary in the URL.
+21. An unknown Turn outcome has one owner in Primary (§17.1); Session actions omit what the user
+    cannot do and never close a dialog before the Runtime answers (§22.1).
 
 The resulting design-system/component mapping is captured in
 [Design-system and composition gaps](design-system-component-composition-gaps.md).

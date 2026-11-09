@@ -100,7 +100,9 @@ not drown in the conversation text.
   `currentActivity` (tool → its own label, reasoning → "Myśli…", responding, commentary,
   waiting, cancelling), else from `activeTurn.state` when Runtime cleared `currentActivity`
   between Work items. Never inferred from the last entry. `attention`/`waitingForUser` produce
-  no live line — the pending interaction prompt owns that. While the block shows the live line,
+  no live line — the pending interaction prompt owns that. `unknown` produces no live line and no
+  spinner — the unknown-outcome notice above the Composer owns it
+  ([structure §17.1](../full-session-screen-structure.md#171-turn-whose-outcome-is-unknown-owner-accepted-2026-11-08)). While the block shows the live line,
   the header subtitle keeps only the coarse Session state ("Praca trwa") and drops its own
   spinner, so the live fact appears once.
 - **Single owner for terminal state.** When a Turn has a Work block, the block shows its
@@ -118,29 +120,16 @@ counts line + separate Inspect button (two targets, competing numbers); a contai
 Commentary (same weight as agent prose); showing interruption both in the block and in an
 outcome row (same fact twice).
 
-**Data contract.** Real `ConversationEntry` (`@nevo/specflow-contracts/sessions`) carries
-`id, ordinal, revision, turnId, kind, text, workId?, createdAt` — no tool sub-kind and no Work
-state; a `work-summary` entry is written once at Work open
-(`specflow-runtime/.../persistence/facts.ts`) and never updated when the Work fails. So on real
-data the block shows the honest count of tool Work it has loaded ("12 działań narzędzi", "co
-najmniej N…" when the Turn may continue into older, not-yet-loaded history) plus the live line
-and the folded outcome. The by-kind breakdown and failed-action line come only from a
-**proposed, not-yet-backend** digest, carried by fixtures on the Turn's latest `work-summary`
-entry (`workCounts.ts`, `WorkDigest`):
-
-```ts
-type ToolActivityKind =
-  'read' | 'edit' | 'write' | 'list' | 'search' | 'command' | 'test' | 'web' | 'other';
-interface WorkDigest {
-  done: Partial<Record<ToolActivityKind, number>>; // tool actions per kind
-  failed?: Partial<Record<ToolActivityKind, number>>;
-}
-```
-
-Backend gap that closes it: a bounded per-Turn Work digest projection (tool actions classified
-into these kinds, success/failure counts), either on the Turn's `work-summary` entry (with the
-entry revised as Work state changes) or as a `TurnSummary` field
-(session-work-inspector-ui-spec.md §10-11).
+**Data contract.** Each tool Work opens one `work-summary` `ConversationEntry`
+(`specflow-runtime/.../persistence/facts.ts`). The by-kind breakdown and failed-action line come
+from `ConversationEntry.digest` (`WorkDigest`, [Sessions API](../../../reference/api/sessions.md)
+"Work digest"), which Runtime keeps on the Turn's latest `work-summary` entry and revises as
+ToolActions open and fail; kinds are the contract `ToolOperation`
+(`read | edit | write | list | search | command | test | web | other`), classified only from each
+provider's own tool identity. `opened` counts every opened action, `failed` those that failed. A Turn
+whose entries carry no digest (recorded before Runtime maintained it) shows the honest count of
+tool Work it has loaded ("12 działań narzędzi", "co najmniej N…" when the Turn may continue into
+older, not-yet-loaded history) plus the live line and the folded outcome.
 
 ## 4. Large Work history: commentary structures operations
 
@@ -191,6 +180,10 @@ only when attachments exist. Its toolbar is inside the same frame: plus/attachme
 approval if relevant, model, effort if supported, Send/Stop. It is wider but capped on
 desktop; mobile can use icons when distinguishable. Do not use an extra settings row
 below Composer.
+
+An archived Session has no Composer: a quiet archived bar with Restore takes its overlay slot, and
+an unknown Turn outcome adds its notice above the Composer
+([structure §17.1 and §22.1](../full-session-screen-structure.md#221-session-actions-and-archived-session-owner-accepted-2026-11-08)).
 
 Provider (Claude Code/Codex/Cursor/Antigravity) is fixed per Session. The **next Turn**
 may change model, effort, certified work intent (Ask/Plan/Agent) or operation approval

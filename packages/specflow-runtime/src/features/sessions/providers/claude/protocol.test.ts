@@ -363,6 +363,12 @@ describe('Claude full-message protocol', () => {
     });
     await f.result({ result: 'Done' });
     expect(f.facts.filter((x) => x.kind === 'action-open')).toHaveLength(2);
+    expect(
+      f.facts.flatMap((x) => (x.kind === 'action-open' ? [[x.title, x.operation]] : [])),
+    ).toEqual([
+      ['Read', 'read'],
+      ['Grep', 'search'],
+    ]);
     expect(f.facts.filter((x) => x.kind === 'action-update').map((x) => [x.key, x.state])).toEqual([
       ['tool:tool_b', 'failed'],
       ['tool:tool_a', 'completed'],

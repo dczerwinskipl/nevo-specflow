@@ -11,8 +11,8 @@ export function createDemoSessionsApi(http: HttpRequestClient): SessionsApi {
   const spec = (id: string) => `/api/demo/specs/${encodeURIComponent(id)}`;
 
   return {
-    allocate: (id, input: DemoSessionInput) =>
-      http.post<DemoSessionResult>(`${spec(id)}/sessions`, input),
+    allocate: (id, input: DemoSessionInput, path) =>
+      http.post<DemoSessionResult>(path ?? `${spec(id)}/sessions`, input),
     session: (id, session, signal) =>
       http.get<DemoSessionDetail>(`${spec(id)}/sessions/${encodeURIComponent(session)}`, {
         signal,

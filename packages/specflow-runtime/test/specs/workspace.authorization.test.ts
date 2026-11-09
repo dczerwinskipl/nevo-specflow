@@ -4,78 +4,86 @@ import { createDemoSpecsRepositories } from '../../src/features/specs/demo/repos
 import { authorizeSessionReferences } from '../../src/features/specs/workspace/authorize-projection';
 import { presentWorkspace } from '../../src/features/specs/workspace/presenter';
 import { readWorkspace } from '../../src/features/specs/workspace/read-workspace';
+import type { RequestAuthorization } from '../../src/features/auth';
 
 describe('Workspace Session authorization projection', () => {
   it('filters all Session references, independently of visibility of the Sessions section', async () => {
     const demo = createDemoSpecsRepositories();
-    const source = await readWorkspace(demo.workspaceRepository, demo.contributions, 'admission');
+    const source = await readWorkspace(
+      demo.workspaceRepository,
+      demo.contributions,
+      'admission',
+      {} as RequestAuthorization,
+    );
     if (!source) {
       throw new Error('Missing demonstration Specification');
     }
 
-    const snapshot = presentWorkspace({
-      ...source,
-      recommendedSessionId: 'sample-session-23',
-      sections: {
-        ...source.sections,
-        sessions: {
-          state: 'available',
-          data: {
-            items:
-              source.sections.sessions.state === 'available'
-                ? source.sections.sessions.data.items
-                : [],
-            attention: [
-              {
-                id: 'blocked',
-                kind: 'session',
-                title: 'Secret title',
-                reason: 'Secret reason',
-                targetId: 'sample-session-23',
-              },
-              {
-                id: 'allowed',
-                kind: 'session',
-                title: 'Visible title',
-                reason: 'Visible reason',
-                targetId: 'sample-session-24',
-              },
-            ],
+    const snapshot = presentWorkspace(
+      {
+        ...source,
+        sections: {
+          ...source.sections,
+          sessions: {
+            state: 'available',
+            data: {
+              items:
+                source.sections.sessions.state === 'available'
+                  ? source.sections.sessions.data.items
+                  : [],
+              attention: [
+                {
+                  id: 'blocked',
+                  kind: 'session',
+                  title: 'Secret title',
+                  reason: 'Secret reason',
+                  targetId: '00000000-0000-4000-8000-000000000023',
+                },
+                {
+                  id: 'allowed',
+                  kind: 'session',
+                  title: 'Visible title',
+                  reason: 'Visible reason',
+                  targetId: '00000000-0000-4000-8000-000000000024',
+                },
+              ],
+            },
           },
-        },
-        activity: {
-          state: 'available',
-          data: {
-            items: [
-              {
-                id: 'hidden',
-                kind: 'session',
-                targetId: 'sample-session-23',
-                occurredAt: '2026-10-09',
-                title: 'Hidden session activity',
-                description: 'Secret',
-              },
-              {
-                id: 'visible',
-                kind: 'session',
-                targetId: 'sample-session-24',
-                occurredAt: '2026-10-09',
-                title: 'Visible session activity',
-                description: 'Public',
-              },
-              {
-                id: 'generic-hidden',
-                kind: 'info',
-                relatedSessionId: 'sample-session-23',
-                occurredAt: '2026-10-09',
-                title: 'Generic secret',
-                description: 'Secret',
-              },
-            ],
+          activity: {
+            state: 'available',
+            data: {
+              items: [
+                {
+                  id: 'hidden',
+                  kind: 'session',
+                  targetId: '00000000-0000-4000-8000-000000000023',
+                  occurredAt: '2026-10-09',
+                  title: 'Hidden session activity',
+                  description: 'Secret',
+                },
+                {
+                  id: 'visible',
+                  kind: 'session',
+                  targetId: '00000000-0000-4000-8000-000000000024',
+                  occurredAt: '2026-10-09',
+                  title: 'Visible session activity',
+                  description: 'Public',
+                },
+                {
+                  id: 'generic-hidden',
+                  kind: 'info',
+                  relatedSessionId: '00000000-0000-4000-8000-000000000023',
+                  occurredAt: '2026-10-09',
+                  title: 'Generic secret',
+                  description: 'Secret',
+                },
+              ],
+            },
           },
         },
       },
-    });
+      '00000000-0000-4000-8000-000000000023',
+    );
     // Domain sources are independent. A Session reference accidentally placed
     // in another section must not bypass Session-level authorization.
     const hiddenCrossSection = {
@@ -83,7 +91,7 @@ describe('Workspace Session authorization projection', () => {
       kind: 'session' as const,
       title: 'Secret cross-section item',
       reason: 'Hidden Session',
-      targetId: 'sample-session-23',
+      targetId: '00000000-0000-4000-8000-000000000023',
     };
     const withCrossSectionItems: SpecificationWorkspaceResponse = {
       ...snapshot,
@@ -114,11 +122,11 @@ describe('Workspace Session authorization projection', () => {
         },
       },
     };
-    const permitted = (id: string) => id === 'sample-session-24';
+    const permitted = (id: string) => id === '00000000-0000-4000-8000-000000000024';
     const check = (value: SpecificationWorkspaceResponse) => {
       const filtered = authorizeSessionReferences(value, permitted);
       const serialized = JSON.stringify(filtered);
-      expect(serialized).not.toContain('sample-session-23');
+      expect(serialized).not.toContain('00000000-0000-4000-8000-000000000023');
       expect(serialized).not.toContain('Secret');
       expect(serialized).not.toContain('Generic secret');
       expect(serialized).toContain('Visible session activity');
@@ -143,7 +151,7 @@ describe('Workspace Session authorization projection', () => {
     expect(filtered.sections.sessions.state).toBe('available');
     const unavailable = check({
       ...snapshot,
-      recommendedSessionId: 'sample-session-24',
+      recommendedSessionId: '00000000-0000-4000-8000-000000000024',
       sections: {
         ...snapshot.sections,
         sessions: { state: 'unavailable', reason: 'source_unavailable' },
@@ -161,7 +169,12 @@ describe('Workspace Session authorization projection', () => {
 
   it('never returns an unauthorized Session detail when none are permitted', async () => {
     const demo = createDemoSpecsRepositories();
-    const source = await readWorkspace(demo.workspaceRepository, demo.contributions, 'admission');
+    const source = await readWorkspace(
+      demo.workspaceRepository,
+      demo.contributions,
+      'admission',
+      {} as RequestAuthorization,
+    );
     if (!source) {
       throw new Error('Missing demonstration Specification');
     }
@@ -169,6 +182,6 @@ describe('Workspace Session authorization projection', () => {
     const filtered = authorizeSessionReferences(presentWorkspace(source), () => false);
     expect(filtered.sections.sessions).toEqual({ state: 'forbidden' });
     expect(filtered.recommendedSessionId).toBeUndefined();
-    expect(JSON.stringify(filtered)).not.toContain('sample-session-23');
+    expect(JSON.stringify(filtered)).not.toContain('00000000-0000-4000-8000-000000000023');
   });
 });

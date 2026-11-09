@@ -5,3 +5,4 @@ export * from './SessionActivityItem';
 export * from './DocumentActivityItem';
 export * from './InformationalActivityItem';
 export * from './ActivityHistory';
+export * from './presentActivity';

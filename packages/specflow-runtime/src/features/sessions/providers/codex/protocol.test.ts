@@ -199,7 +199,16 @@ describe('Codex authoritative native item normalization', () => {
       },
     });
     await f.finish();
-    expect(f.facts.filter((fact) => fact.kind === 'action-open')).toHaveLength(1);
+    // Codex's parsed shell fragments never reclassify the one native command action.
+    expect(f.facts.filter((fact) => fact.kind === 'action-open')).toEqual([
+      {
+        kind: 'action-open',
+        key: 'action:cmd',
+        parentKey: 'item:cmd',
+        title: 'Command',
+        operation: 'command',
+      },
+    ]);
     expect(f.facts).toContainEqual({
       kind: 'text',
       key: 'action:cmd',
@@ -284,7 +293,15 @@ describe('Codex authoritative native item normalization', () => {
       return facts;
     }
 
-    expect((await run(true)).filter((fact) => fact.kind === 'action-open')).toHaveLength(1);
+    expect((await run(true)).filter((fact) => fact.kind === 'action-open')).toEqual([
+      {
+        kind: 'action-open',
+        key: 'action:patch',
+        parentKey: 'item:patch',
+        title: 'Apply patch',
+        operation: 'edit',
+      },
+    ]);
     await expect(run(false)).rejects.toThrow();
     await expect(run(true, true)).rejects.toThrow();
   });
@@ -307,5 +324,213 @@ describe('Codex authoritative native item normalization', () => {
     await premature.start();
     await premature.send('item/started', { item: { id: 'open', type: 'agentMessage', text: '' } });
     await expect(premature.finish()).rejects.toThrow();
+  });
+});
+
+describe('Codex MCP tool call and web search items', () => {
+  // Shapes follow the app-server v2 ThreadItem `mcpToolCall` and `webSearch` variants.
+  const mcp = {
+    id: 'mcp',
+    type: 'mcpToolCall',
+    server: 'docs',
+    tool: 'lookup',
+    arguments: { term: 'session' },
+    appContext: null,
+    mcpAppUi: null,
+    pluginId: null,
+    readOnlyHint: true,
+    result: null,
+    error: null,
+    durationMs: null,
+  };
+  const search = { id: 'web', type: 'webSearch', query: '', action: null, results: null };
+  const actionFacts = (facts: DriverFact[]) =>
+    facts.filter((fact) =>
+      ['work-open', 'work-update', 'action-open', 'action-update', 'text'].includes(fact.kind),
+    );
+
+  it('maps a completed MCP tool call to one `other` ToolAction with native input and result', async () => {
+    const f = fixture();
+    await f.start();
+    await f.send('item/started', { item: { ...mcp, status: 'inProgress' } });
+    await f.send('item/mcpToolCall/progress', { itemId: 'mcp', message: 'transient progress' });
+    await f.send('item/completed', {
+      item: {
+        ...mcp,
+        status: 'completed',
+        result: {
+          content: [{ type: 'text', text: 'Found' }],
+          structuredContent: { hits: 1 },
+          _meta: { private: true },
+        },
+        durationMs: 5,
+      },
+    });
+    await f.finish();
+    expect(actionFacts(f.facts)).toEqual([
+      { kind: 'work-open', key: 'item:mcp', workKind: 'tool', title: 'Codex MCP tool call' },
+      {
+        kind: 'action-open',
+        key: 'action:mcp',
+        parentKey: 'item:mcp',
+        title: 'docs/lookup',
+        operation: 'other',
+      },
+      { kind: 'text', key: 'action:mcp', channel: 'tool-input', text: '{"term":"session"}' },
+      {
+        kind: 'text',
+        key: 'action:mcp',
+        channel: 'tool-output',
+        text: '{"content":[{"type":"text","text":"Found"}],"structuredContent":{"hits":1}}',
+      },
+      { kind: 'action-update', key: 'action:mcp', state: 'completed' },
+      { kind: 'work-update', key: 'item:mcp', state: 'completed' },
+    ]);
+    expect(f.facts.at(-1)).toEqual({ kind: 'outcome', outcome: 'completed' });
+  });
+  it('records a failed MCP tool call as failed and keeps the Turn running', async () => {
+    const f = fixture();
+    await f.start();
+    await f.send('item/started', { item: { ...mcp, status: 'inProgress' } });
+    await f.send('item/completed', {
+      item: { ...mcp, status: 'failed', error: { message: 'tool unavailable' } },
+    });
+    await f.item('answer', 'Done anyway');
+    await f.finish();
+    expect(f.facts).toContainEqual({
+      kind: 'text',
+      key: 'action:mcp',
+      channel: 'tool-output',
+      text: 'tool unavailable',
+    });
+    expect(f.facts).toContainEqual({ kind: 'action-update', key: 'action:mcp', state: 'failed' });
+    expect(f.facts).toContainEqual({ kind: 'work-update', key: 'item:mcp', state: 'failed' });
+    expect(f.facts.at(-1)).toEqual({ kind: 'outcome', outcome: 'completed' });
+  });
+  it('refuses MCP tool calls without a bounded native identity or a terminal status', async () => {
+    const f = fixture();
+    await f.start();
+    await expect(
+      f.send('item/started', { item: { ...mcp, server: '', status: 'inProgress' } }),
+    ).rejects.toThrow();
+    const g = fixture();
+    await g.start();
+    await g.send('item/started', { item: { ...mcp, status: 'inProgress' } });
+    await expect(
+      g.send('item/completed', { item: { ...mcp, status: 'inProgress' } }),
+    ).rejects.toThrow();
+  });
+  it('maps a web search to one `other` ToolAction whose query and results arrive on completion', async () => {
+    const f = fixture();
+    await f.start();
+    await f.send('item/started', { item: search });
+    const results = [{ title: 'Codex', url: 'https://example.com' }];
+    await f.send('item/completed', {
+      item: {
+        ...search,
+        query: 'codex app-server',
+        action: { type: 'search', query: 'codex app-server', queries: null },
+        results,
+      },
+    });
+    await f.finish();
+    expect(actionFacts(f.facts)).toEqual([
+      { kind: 'work-open', key: 'item:web', workKind: 'tool', title: 'Codex web search' },
+      {
+        kind: 'action-open',
+        key: 'action:web',
+        parentKey: 'item:web',
+        title: 'Web search',
+        operation: 'other',
+      },
+      { kind: 'text', key: 'action:web', channel: 'tool-input', text: 'codex app-server' },
+      { kind: 'text', key: 'action:web', channel: 'tool-output', text: JSON.stringify(results) },
+      { kind: 'action-update', key: 'action:web', state: 'completed' },
+      { kind: 'work-update', key: 'item:web', state: 'completed' },
+    ]);
+  });
+  it('uses the structured action when a web search has no query and refuses unknown actions', async () => {
+    const f = fixture();
+    await f.start();
+    await f.send('item/started', { item: search });
+    const action = { type: 'openPage', url: 'https://example.com' };
+    await f.send('item/completed', { item: { ...search, action } });
+    expect(f.facts).toContainEqual({
+      kind: 'text',
+      key: 'action:web',
+      channel: 'tool-input',
+      text: JSON.stringify(action),
+    });
+    const g = fixture();
+    await g.start();
+    await g.send('item/started', { item: search });
+    await expect(
+      g.send('item/completed', { item: { ...search, action: { type: 'browse' } } }),
+    ).rejects.toThrow();
+  });
+  it('leaves a web search open when the Turn fails, so settlement applies the terminal state', async () => {
+    const f = fixture();
+    await f.start();
+    await f.send('item/started', { item: search });
+    await f.finish('failed');
+    expect(f.facts.some((fact) => fact.kind === 'action-update')).toBe(false);
+    expect(f.facts.at(-1)).toMatchObject({ kind: 'outcome', outcome: 'failed' });
+  });
+  it('accepts a hosted web search that starts with an `other` action and completes with a query', async () => {
+    const f = fixture();
+    await f.start();
+    await f.send('item/started', { item: { ...search, action: { type: 'other' } } });
+    await f.send('item/completed', {
+      item: { ...search, query: 'hosted', action: { type: 'search', query: 'hosted' } },
+    });
+    await f.finish();
+    expect(f.facts.filter((fact) => fact.kind === 'text')).toEqual([
+      { kind: 'text', key: 'action:web', channel: 'tool-input', text: 'hosted' },
+    ]);
+    expect(f.facts.at(-1)).toEqual({ kind: 'outcome', outcome: 'completed' });
+  });
+  it('refuses MCP completions with a changed identity or missing arguments, and mismatched streaming kinds', async () => {
+    for (const changed of [{ tool: 'other' }, { arguments: undefined }]) {
+      const f = fixture();
+      await f.start();
+      await f.send('item/started', { item: { ...mcp, status: 'inProgress' } });
+      const completed: Record<string, unknown> = { ...mcp, status: 'completed', ...changed };
+      if ('arguments' in changed) {
+        delete completed.arguments;
+      }
+
+      await expect(f.send('item/completed', { item: completed })).rejects.toThrow();
+    }
+
+    const g = fixture();
+    await g.start();
+    await expect(
+      g.send('item/started', {
+        item: {
+          id: 'no-args',
+          type: 'mcpToolCall',
+          server: 'docs',
+          tool: 'x',
+          status: 'inProgress',
+        },
+      }),
+    ).rejects.toThrow();
+    await g.send('item/started', { item: search });
+    await expect(
+      g.send('item/mcpToolCall/progress', { itemId: 'web', message: 'progress' }),
+    ).rejects.toThrow();
+    await g.send('item/started', { item: { ...mcp, status: 'inProgress' } });
+    await expect(
+      g.send('item/agentMessage/delta', { itemId: 'mcp', delta: 'text' }),
+    ).rejects.toThrow();
+  });
+  it('still refuses ThreadItem types outside the accepted inventory', async () => {
+    const f = fixture();
+    await f.start();
+    await expect(
+      f.send('item/started', {
+        item: { id: 'dyn', type: 'dynamicToolCall', tool: 'x', arguments: {} },
+      }),
+    ).rejects.toThrow();
   });
 });

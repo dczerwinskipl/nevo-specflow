@@ -1,4 +1,29 @@
+import type { DemoCatalogue as CreationCatalogue } from '@nevo/specflow-contracts/demo';
 import type { DemoSpecification } from '../../demo-catalogue';
+import { DEMO_SEEDED_AT } from './seeded-at';
+
+/** The provider and model a Session row names, with their catalogue titles. */
+export interface DemoAgent {
+  providerId: string;
+  providerTitle?: string;
+  modelId?: string;
+  modelTitle?: string;
+}
+
+/** Seeded catalogue Sessions run on the first available demo provider and its first model. */
+export function seededDemoAgent(catalogue: Pick<CreationCatalogue, 'providers'>): DemoAgent {
+  const provider = catalogue.providers.find((item) => item.available);
+  const model = provider?.models[0];
+
+  return provider
+    ? {
+        providerId: provider.id,
+        providerTitle: provider.title,
+        ...(model ? { modelId: model.id, modelTitle: model.title } : {}),
+      }
+    : { providerId: 'demo' };
+}
+
 export interface SessionSummary {
   id: string;
   title: string;
@@ -39,8 +64,28 @@ export function buildDemoSessions(record: DemoSpecification): SessionSummary[] {
   return [...sessions.values()];
 }
 
-export function buildDemoSessionContribution(record: DemoSpecification) {
-  const items = buildDemoSessions(record);
+/**
+ * Recommendation candidates: attention, then active, then the rest in section order (the demo
+ * catalogue has no update time, so section order stands in for recency).
+ */
+export function rankDemoSessions(
+  items: readonly Pick<SessionSummary, 'id' | 'status'>[],
+): string[] {
+  const rank = (status: SessionSummary['status']) =>
+    status === 'attention' ? 0 : status === 'active' ? 1 : 2;
+
+  return items
+    .map((item, index) => ({ item, index }))
+    .sort((a, b) => rank(a.item.status) - rank(b.item.status) || a.index - b.index)
+    .map(({ item }) => item.id);
+}
+
+export function buildDemoSessionContribution(record: DemoSpecification, agent: DemoAgent) {
+  const items = buildDemoSessions(record).map((session) => ({
+    ...session,
+    ...agent,
+    updatedAt: DEMO_SEEDED_AT,
+  }));
   const attention = (record.signals ?? []).flatMap((signal) =>
     signal.kind === 'attention' && signal.target.kind === 'session'
       ? [
@@ -58,6 +103,6 @@ export function buildDemoSessionContribution(record: DemoSpecification) {
 
   return {
     section: { state: 'available' as const, data: { items, attention } },
-    recommendedSessionId: items[0]?.id,
+    recommendedSessionIds: rankDemoSessions(items),
   };
 }

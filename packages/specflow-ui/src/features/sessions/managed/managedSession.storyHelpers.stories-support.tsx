@@ -3,6 +3,7 @@ import { waitFor } from 'storybook/test';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AppShell, AppWorkspaceProvider } from '@nevo/ui';
 import { StoryLocalization } from '../../../i18n/StoryLocalization';
+import { NotificationProvider } from '../../../shared/notifications/notifications';
 
 /**
  * Shared play-function/decorator helpers used by both `ManagedSession.states.stories.tsx` and
@@ -24,14 +25,16 @@ export function Environment({ children }: { children: React.ReactNode }) {
   return (
     <StoryLocalization locale="pl">
       <QueryClientProvider client={query}>
-        <div className="h-dvh">
-          <AppShell navigation={<div className="p-4">SpecFlow</div>}>
-            {/* Same opt-in as `routes.tsx`'s `ManagedSessionRoute`: the phone's Back steps back
+        <NotificationProvider>
+          <div className="h-dvh">
+            <AppShell navigation={<div className="p-4">SpecFlow</div>}>
+              {/* Same opt-in as `routes.tsx`'s `ManagedSessionRoute`: the phone's Back steps back
                 inside the Secondary first (the iframe's entries are the newest in the joint
                 session history, so they are popped before Storybook's own). */}
-            <AppWorkspaceProvider browserHistory>{children}</AppWorkspaceProvider>
-          </AppShell>
-        </div>
+              <AppWorkspaceProvider browserHistory>{children}</AppWorkspaceProvider>
+            </AppShell>
+          </div>
+        </NotificationProvider>
       </QueryClientProvider>
     </StoryLocalization>
   );

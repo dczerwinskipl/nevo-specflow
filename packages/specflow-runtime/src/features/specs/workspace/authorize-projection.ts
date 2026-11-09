@@ -1,4 +1,5 @@
 import type { SpecificationWorkspaceResponse } from '@nevo/specflow-contracts/specs/workspace';
+import { WORKSPACE_ACTIVITY_LIMIT } from './activity';
 /**
  * A single policy for all Session references. Sources must mark generic
  * Session-owned activity with relatedSessionId; unbound Session events are dropped.
@@ -68,12 +69,15 @@ export function authorizeSessionReferences(
           ? {
               state: 'available',
               data: {
-                items: activity.data.items.filter((item) =>
-                  item.kind === 'session'
-                    ? isAllowed(item.targetId) &&
-                      (!item.relatedSessionId || isAllowed(item.relatedSessionId))
-                    : !item.relatedSessionId || isAllowed(item.relatedSessionId),
-                ),
+                // The bound counts what the caller may see, so hidden Sessions never shorten it.
+                items: activity.data.items
+                  .filter((item) =>
+                    item.kind === 'session'
+                      ? isAllowed(item.targetId) &&
+                        (!item.relatedSessionId || isAllowed(item.relatedSessionId))
+                      : !item.relatedSessionId || isAllowed(item.relatedSessionId),
+                  )
+                  .slice(0, WORKSPACE_ACTIVITY_LIMIT),
               },
             }
           : activity,

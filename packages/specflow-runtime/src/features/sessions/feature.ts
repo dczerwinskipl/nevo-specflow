@@ -7,6 +7,8 @@ import { createSessionCoordinator } from './lifecycle/coordinator';
 import { createMockDriver } from './providers/mock';
 import type { SessionDriver } from './providers/driver';
 import { registerSessionRoutes } from './http/routes';
+import type { SessionListSource } from './http/list';
+import type { DemoManagedSessionReads } from './demo/managed-reads';
 import { SessionError } from './errors';
 import { createClaudeDriver } from './providers/claude/driver';
 import { createCodexDriver } from './providers/codex/driver';
@@ -16,16 +18,40 @@ import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import type { SpecFlowEngine } from '@nevo/specflow-engine';
 import { createEngineSessionEffects, workspaceExecutionIdentity } from './effects/engine';
+import type { SessionCoordinator } from './lifecycle/coordinator';
+
+/**
+ * The registered Sessions runtime, read at request time by the features composed over it (the
+ * Session association module). `coordinator` is absent while managed Sessions are disabled.
+ */
+export interface SessionsRuntime {
+  readonly coordinator: SessionCoordinator | undefined;
+  /** The verified Session store project. */
+  readonly projectId: string | undefined;
+}
 
 export function createSessionsFeature(
   options: {
     config?: SessionsFeatureConfig;
     storage?: { directory: string; projectId: string; workspace?: string };
     driver?: SessionDriver | readonly SessionDriver[];
+    /** Demo mode: the catalogue's Session list, served without managed Sessions. */
+    demoList?: { source: SessionListSource; projectId: string };
+    /** Demo mode: the read-only reads of the managed Session screen. */
+    demoReads?: DemoManagedSessionReads;
     engine?: SpecFlowEngine;
   } = {},
-): RuntimeFeature {
+): RuntimeFeature & { readonly runtime: SessionsRuntime } {
+  let registered: SessionCoordinator | undefined;
+  const runtime: SessionsRuntime = {
+    get coordinator() {
+      return registered;
+    },
+    projectId: options.storage?.projectId,
+  };
+
   return {
+    runtime,
     authorizationResources: [SessionCapabilities],
     async register(app) {
       const enabled = options.config?.enabled === true;
@@ -140,6 +166,8 @@ export function createSessionsFeature(
         app.addHook('onClose', () => coordinator.close());
       }
 
+      registered = coordinator;
+
       if (coordinator) {
         await coordinator.recoverEffects();
       }
@@ -151,6 +179,8 @@ export function createSessionsFeature(
       registerSessionRoutes(app, {
         coordinator,
         projectId: options.storage?.projectId,
+        ...(options.demoList ? { demoList: options.demoList } : {}),
+        ...(options.demoReads ? { demoReads: options.demoReads } : {}),
       });
     },
   };

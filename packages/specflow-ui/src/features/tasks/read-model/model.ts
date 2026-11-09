@@ -67,8 +67,8 @@ export function getTaskStatePresentation(task: TaskItem): TaskStatePresentation 
     return {
       icon: 'loader',
       tone: 'info',
-      iconClassName: 'text-accent-primary animate-spin',
-      textClassName: 'text-accent-primary font-medium',
+      iconClassName: 'text-status-info animate-spin',
+      textClassName: 'text-status-info font-medium',
       animate: true,
     };
   }

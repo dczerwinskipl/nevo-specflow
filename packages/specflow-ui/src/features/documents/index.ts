@@ -4,5 +4,4 @@
  */
 export { DocumentContent } from './content/DocumentContent';
 export { DocumentDescription, descriptionScrollOwner } from './description/DocumentDescription';
-export { markdownIntro } from './description/markdownIntro';
 export { restoreScrollPosition } from './description/restoreScrollPosition';

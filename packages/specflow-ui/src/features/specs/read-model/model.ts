@@ -36,13 +36,24 @@ export interface SessionActivity {
 }
 
 export interface SessionSummary {
-  readonly navigationStatus?: 'active' | 'attention' | 'quiet' | 'unknown';
+  /** Effective Session readiness as the workspace section projects it. */
+  readonly navigationStatus?:
+    'active' | 'attention' | 'quiet' | 'authenticationRequired' | 'unknown';
   readonly id: string;
   readonly title: string;
   readonly meta?: string;
-  /** Number of Tasks the Session is linked to; absent when it has none. */
+  /** Associated Tasks; absent or zero shows no count. */
   readonly taskCount?: number;
-  readonly age?: string;
+  readonly updatedAt?: string;
+  /**
+   * The agent: ids from the Session, display titles resolved by the Runtime. Every workspace row
+   * carries `providerId`; only the navigator, which never names the agent, reads summaries
+   * without it.
+   */
+  readonly providerId?: string;
+  readonly providerTitle?: string;
+  readonly modelId?: string;
+  readonly modelTitle?: string;
   readonly activity?: SessionActivity;
   readonly activityCode?: 'active' | 'attention';
 }
@@ -95,6 +106,8 @@ export type ActivityEventKind = 'task' | 'session' | 'doc' | 'info';
 export interface BaseActivityEvent {
   readonly id: string;
   readonly time: string;
+  /** A known Runtime event the UI localizes; `title`/`description` are then English fallbacks. */
+  readonly event?: 'specification_created' | 'session_started';
   readonly title: string;
   readonly description: string;
 }
@@ -128,6 +141,17 @@ export interface SpecificationChangesData {
   readonly mr?: readonly string[];
 }
 
+/**
+ * `actions.startSession` of the workspace read: whether this user may start a Session in the
+ * Specification, else one reason (`sessions_disabled`, then `forbidden`, then `no_provider`). `path`
+ * is the start route when it is not the composed create (the demo Runtime).
+ */
+export interface StartSessionAction {
+  readonly available: boolean;
+  readonly reason?: string;
+  readonly path?: string;
+}
+
 export type SpecificationSectionId =
   'tasks' | 'documents' | 'sessions' | 'activity' | 'repository' | 'changes';
 export type SpecificationSectionState = 'available' | 'unavailable' | 'forbidden';
@@ -143,7 +167,7 @@ export interface SpecificationWorkspaceData {
   readonly key?: string;
   readonly title: string;
   readonly intro: string;
-  readonly mainDocumentId?: string;
+  readonly overviewDocumentId?: string;
   readonly isEmpty?: boolean;
   readonly isPreparing?: boolean;
   readonly hasGit?: boolean;
@@ -157,6 +181,9 @@ export interface SpecificationWorkspaceData {
   readonly documents: readonly DocumentItem[];
   readonly documentFolders?: readonly string[];
   readonly sessions: readonly SessionSummary[];
+  /** More associated Sessions exist than the bounded workspace section returns. */
+  readonly sessionsHasMore?: boolean;
+  readonly startSession?: StartSessionAction;
   readonly activityEvents: readonly ActivityEvent[];
   readonly completedTasksCount?: number;
   readonly totalTasksCount?: number;

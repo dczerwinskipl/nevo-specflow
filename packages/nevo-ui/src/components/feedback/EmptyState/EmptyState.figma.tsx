@@ -3,10 +3,10 @@ import { defineDesignComponent } from '@nevo/figma-core/authoring';
 export const designSpec = defineDesignComponent({
   component: 'EmptyState',
   description:
-    'Centered empty-content message: a large muted glyph (or a custom illustration), title, description and actions (one primary at most). `pane` fills an empty area without a border.',
+    'Empty-content message: a large muted glyph (or a custom illustration), title, description and actions (one primary at most). `pane` fills an empty area without a border; `inline` is a row-sized, start-aligned section body with a small glyph beside the text.',
   order: 114,
   variants: {
-    variant: ['default', 'pane'],
+    variant: ['default', 'pane', 'inline'],
   },
   defaults: {
     variant: 'default',

@@ -234,20 +234,18 @@ export const StackedBackFollowsThePath: Story = {
     const expectSurface = (heading: string) =>
       waitFor(() => expect(shownSurface(canvasElement)).toBe(heading));
 
+    // Related Tasks list one row per Task, each opening that Task (full-session-screen-structure
+    // §7.6.1), so on the narrow flow a Task is a push straight from Context.
     await press('Kontekst');
     await expectSurface('Kontekst');
-    await press(/2 zadania/);
-    await expectSurface('Zadania');
     await press(/Document the admission guard/);
     await expectSurface('Zadanie');
     await press('Wstecz');
-    await expectSurface('Zadania');
-    // The same Task again pushes again, so Back still returns to the list, then Context, then the
-    // conversation: the path, not the object, decides.
+    await expectSurface('Kontekst');
+    // The same Task again pushes again, so Back still returns to Context, then the conversation:
+    // the path, not the object, decides.
     await press(/Document the admission guard/);
     await expectSurface('Zadanie');
-    await press('Wstecz');
-    await expectSurface('Zadania');
     await press('Wstecz');
     await expectSurface('Kontekst');
     await press('Wstecz');

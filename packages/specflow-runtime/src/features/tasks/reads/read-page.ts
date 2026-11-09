@@ -1,5 +1,6 @@
 import type { TaskHistoryPage, TaskResourcePage } from '@nevo/specflow-contracts/tasks';
 import { SpecCapabilities } from '@nevo/specflow-contracts/specs';
+import { specScope } from '../../specs';
 import type { RequestAuthorization } from '../../auth';
 import type { TaskReadDependencies } from '../detail/read-task-detail';
 import { sameTask } from './facts';
@@ -17,7 +18,7 @@ export async function readTaskPage(
   authz.require({
     resource: SpecCapabilities,
     capability: SpecCapabilities.capabilities.View,
-    scope: { specId },
+    scope: specScope(deps.projectId?.(), specId),
   });
   if (!deps.definitions || !deps[kind]) {
     return { kind: 'unavailable' };
@@ -60,6 +61,13 @@ export async function readTaskPage(
     return { kind: 'expired' };
   }
 
+  await visible.prefetch(
+    kind === 'history'
+      ? (page.items as TaskHistoryPage['items']).flatMap((entry) =>
+          entry.resources.map((item) => item.link),
+        )
+      : (page.items as TaskResourcePage['items']).map((item) => item.link),
+  );
   const items = [];
   // One bounded source page per request. An underfilled visible page retains its continuation.
   if (kind === 'history') {

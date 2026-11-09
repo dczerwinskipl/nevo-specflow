@@ -11,11 +11,18 @@ import type {
   Interaction,
   ToolActionSummary,
   RefreshTelemetryReceipt,
+  WorkDigest,
 } from '@nevo/specflow-contracts/sessions';
 import type { StoredSession, StoredTurn, StoreCommand, WorkerRequest } from './protocol';
 import { terminalizeTurn } from '../lifecycle/reducer';
+import {
+  countActionTransition,
+  countWorkTransition,
+  emptyWorkAggregate,
+  hasToolActions,
+} from '../lifecycle/work-aggregate';
 import { StoreFault, fail, decode, type Row } from './encoding';
-import { initializeSessionSchema } from './schema';
+import { CREATED_SEQ_KEY, initializeSessionSchema } from './schema';
 import { createContentStorage } from './content';
 import { createRequestJournal } from './requests';
 import { createSessionCursors } from './cursors';
@@ -23,6 +30,9 @@ import { createSessionReads } from './reads';
 import { createProviderFacts } from './facts';
 import { createEffectReconciliation } from './reconciliation';
 import { createSessionTelemetry } from './telemetry';
+import { createSessionManagement } from './session-management';
+import { createFingerprint, createSessionAssociations } from './associations';
+import { createSessionCatalogue } from './catalogue';
 
 const TELEMETRY_PUBLICATION_RETRY_MS = 1000;
 
@@ -146,13 +156,18 @@ export async function runSessionWorker(): Promise<void> {
     return decode<StoredTurn>(get('SELECT data FROM turns WHERE id=? AND session=?', id, sid));
   }
 
+  /** The list projection columns mirror `data` in the same statement. */
   function saveSession(s: StoredSession): void {
+    const info = s.snapshot.session;
     run(
-      'UPDATE sessions SET seq=?,ordinal=?,data=? WHERE id=?',
+      'UPDATE sessions SET seq=?,ordinal=?,data=?,archived_at=?,readiness=?,updated_at=? WHERE id=?',
       s.snapshot.eventSeq,
       s.ordinal,
       JSON.stringify(s),
-      s.snapshot.session.sessionId,
+      info.archivedAt ?? null,
+      info.readiness,
+      info.updatedAt,
+      info.sessionId,
     );
   }
 
@@ -208,6 +223,7 @@ export async function runSessionWorker(): Promise<void> {
     text: TextPreview,
     workId?: string,
     existing?: string,
+    digest?: WorkDigest,
   ): ConversationEntry {
     const old = existing
       ? decode<ConversationEntry>(get('SELECT data FROM entries WHERE id=?', existing))
@@ -221,6 +237,7 @@ export async function runSessionWorker(): Promise<void> {
       text,
       createdAt: old?.createdAt ?? now(),
       ...(workId ? { workId } : {}),
+      ...(digest ? { digest } : {}),
     };
     run(
       'INSERT OR REPLACE INTO entries VALUES(?,?,?,?,?)',
@@ -233,6 +250,26 @@ export async function runSessionWorker(): Promise<void> {
     emit(s, 'conversation', { entries: [item], projection: projection(s) });
 
     return item;
+  }
+
+  /** Revises the Turn's latest `work-summary` entry with the Turn's current Work digest. */
+  function reviseWorkDigest(s: StoredSession, t: StoredTurn): void {
+    if (!t.work || !t.workSummaryEntryId || !hasToolActions(t.work.digest)) {
+      return;
+    }
+
+    const latest = decode<ConversationEntry>(
+      get('SELECT data FROM entries WHERE id=?', t.workSummaryEntryId),
+    );
+    entry(
+      s,
+      t.summary.turnId,
+      'work-summary',
+      latest.text,
+      latest.workId,
+      latest.id,
+      t.work.digest,
+    );
   }
 
   const { request, remember } = createRequestJournal({ get, run });
@@ -323,15 +360,21 @@ export async function runSessionWorker(): Promise<void> {
       "UPDATE interactions SET state='expired' WHERE turn=? AND state IN ('pending','admitted')",
       t.summary.turnId,
     );
+    const digestBefore = t.work?.digest;
     for (const row of all('SELECT * FROM work WHERE turn=?', t.summary.turnId)) {
       const w = decode<WorkSummary>(row);
       if (['queued', 'active', 'waiting'].includes(w.state)) {
+        const from = w.state;
         w.state =
           outcome === 'interrupted'
             ? 'interrupted'
             : outcome === 'cancelled'
               ? 'cancelled'
               : 'failed';
+        if (t.work) {
+          t.work = countWorkTransition(t.work, from, w.state);
+        }
+
         w.revision++;
         w.updatedAt = completedAt;
         run('UPDATE work SET data=? WHERE id=?', JSON.stringify(w), w.workId);
@@ -341,12 +384,17 @@ export async function runSessionWorker(): Promise<void> {
     for (const row of all('SELECT data FROM actions WHERE turn=?', t.summary.turnId)) {
       const action = decode<ToolActionSummary>(row);
       if (['queued', 'active', 'waiting'].includes(action.state)) {
+        const from = action.state;
         action.state =
           outcome === 'interrupted'
             ? 'interrupted'
             : outcome === 'cancelled'
               ? 'cancelled'
               : 'failed';
+        if (t.work) {
+          t.work = countActionTransition(t.work, action.operation ?? 'other', from, action.state);
+        }
+
         action.revision++;
         action.updatedAt = completedAt;
         run('UPDATE actions SET data=? WHERE id=?', JSON.stringify(action), action.actionId);
@@ -357,6 +405,10 @@ export async function runSessionWorker(): Promise<void> {
     refreshAttention(s, t);
     telemetry.terminal(s, t);
     emit(s, 'turn', { turn: t.summary, projection: projection(s) });
+    if (t.work && t.work.digest !== digestBefore) {
+      reviseWorkDigest(s, t);
+    }
+
     entry(s, t.summary.turnId, 'outcome', {
       text: t.summary.state === 'terminal' ? t.summary.outcome : outcome,
       complete: true,
@@ -423,9 +475,30 @@ export async function runSessionWorker(): Promise<void> {
     body,
     preview,
     entry,
+    reviseWorkDigest,
     telemetry,
   });
   const effects = createEffectReconciliation({ get, all, run, request, remember, turn, applyFact });
+  const associations = createSessionAssociations({ get, all, run });
+  const catalogue = createSessionCatalogue({
+    get,
+    all,
+    run,
+    projectId: options.projectId,
+    associations,
+  });
+  const management = createSessionManagement({
+    get,
+    all,
+    run,
+    request,
+    remember,
+    now,
+    session,
+    emit,
+    projection,
+    changed: (sessionId) => transactionChanges.add(sessionId),
+  });
   // Only active records are reconciled; settled conversation/content is not read at boot.
   transaction(() => {
     for (const row of all("SELECT session,data FROM turns WHERE state!='terminal'")) {
@@ -632,6 +705,10 @@ export async function runSessionWorker(): Promise<void> {
       });
     }
 
+    if (c.op === 'rename' || c.op === 'archive' || c.op === 'unarchive' || c.op === 'delete') {
+      return transaction(() => management.execute(c));
+    }
+
     if (c.op === 'effect-candidates') {
       return effects.candidates(c);
     }
@@ -655,20 +732,74 @@ export async function runSessionWorker(): Promise<void> {
     }
 
     if (c.op === 'identity') {
-      const s = session(c.sessionId);
+      return catalogue.identity(c.sessionId);
+    }
 
-      return { projectId: s.snapshot.session.projectId, sessionId: c.sessionId };
+    if (c.op === 'identities') {
+      return catalogue.identities(c.sessionIds);
+    }
+
+    if (c.op === 'list') {
+      if (c.cursor !== undefined && c.after !== undefined) {
+        fail(
+          'SESSION_INPUT_INVALID',
+          'A list request continues after a cursor or a row, not both.',
+        );
+      }
+
+      return catalogue.list(
+        c.filter,
+        c.cursor !== undefined ? cursors.listBoundary(c.cursor, c.filter) : c.after,
+        c.scanBudget,
+      );
+    }
+
+    if (c.op === 'list-cursor') {
+      if (!Number.isSafeInteger(c.after) || c.after < 1) {
+        fail('SESSION_INPUT_INVALID', 'Invalid Session list cursor position.');
+      }
+
+      return cursors.listCursor(c.filter, c.after);
+    }
+
+    if (c.op === 'summaries') {
+      return catalogue.summaries(c.sessionIds);
+    }
+
+    if (c.op === 'association') {
+      session(c.sessionId);
+
+      return associations.read(c.sessionId);
+    }
+
+    if (c.op === 'associate-tasks') {
+      return transaction(() => {
+        session(c.sessionId);
+
+        return associations.associateTasks(c.sessionId, c.specId, c.taskIds, c.origin, Date.now());
+      });
     }
 
     if (c.op === 'create') {
       return transaction(() => {
-        const cached = request(c.actor, 'create', options.projectId, c.input.requestId, c.input);
+        // One project-scoped key for both create routes, fingerprinted over input and association.
+        const fingerprint = createFingerprint(c.input, c.association);
+        const cached = request(
+          c.actor,
+          'create',
+          options.projectId,
+          c.input.requestId,
+          fingerprint,
+        );
         if (cached) {
           return cached;
         }
 
         const id = randomUUID(),
           date = now();
+        const createdSeq =
+          Number(get('SELECT value FROM meta WHERE key=?', CREATED_SEQ_KEY)?.value ?? 0) + 1;
+        run('INSERT OR REPLACE INTO meta VALUES(?,?)', CREATED_SEQ_KEY, String(createdSeq));
         const s: StoredSession = {
           ordinal: 0,
           snapshot: {
@@ -700,16 +831,23 @@ export async function runSessionWorker(): Promise<void> {
           },
         };
         run(
-          'INSERT INTO sessions VALUES(?,?,?,?,?,NULL)',
+          'INSERT INTO sessions(id,project,seq,ordinal,data,native,created_seq,archived_at,readiness,updated_at) VALUES(?,?,?,?,?,NULL,?,NULL,?,?)',
           id,
           options.projectId,
           0,
           0,
           JSON.stringify(s),
+          createdSeq,
+          s.snapshot.session.readiness,
+          date,
         );
+        if (c.association) {
+          associations.write(id, createdSeq, c.actor, c.association, Date.now());
+        }
+
         telemetry.create(s);
         const result = { sessionId: id };
-        remember(c.actor, 'create', options.projectId, c.input.requestId, c.input, result);
+        remember(c.actor, 'create', options.projectId, c.input.requestId, fingerprint, result);
 
         return result;
       });
@@ -725,6 +863,7 @@ export async function runSessionWorker(): Promise<void> {
 
         const s = session(c.sessionId),
           active = get("SELECT id FROM turns WHERE session=? AND state!='terminal'", c.sessionId);
+        management.assertWritable(s);
         if (active) {
           throw new StoreFault('TURN_CONFLICT', 'Session already has a nonterminal Turn.', {
             turnId: String(active.id),
@@ -842,6 +981,7 @@ export async function runSessionWorker(): Promise<void> {
           invocationId,
           ...(c.effectBinding ? { effectBinding: c.effectBinding } : {}),
           cancelRequested: false,
+          work: emptyWorkAggregate(),
           summary: {
             turnId: tid,
             mode: c.input.mode ?? s.snapshot.session.mode,
@@ -951,6 +1091,7 @@ export async function runSessionWorker(): Promise<void> {
 
         const s = session(c.sessionId),
           i = s.snapshot.interaction;
+        management.assertWritable(s);
         if (i?.interactionId !== c.interactionId) {
           fail('INTERACTION_EXPIRED', 'Interaction is no longer answerable.');
         }
@@ -985,6 +1126,10 @@ export async function runSessionWorker(): Promise<void> {
         // Keep the Work waiting until the same live invocation confirms its write.
         run("UPDATE interactions SET state='admitted' WHERE id=?", c.interactionId);
         const w = decode<WorkSummary>(get('SELECT data FROM work WHERE id=?', i.workId));
+        if (t.work) {
+          t.work = countWorkTransition(t.work, w.state, 'waiting');
+        }
+
         w.state = 'waiting';
         w.revision++;
         w.updatedAt = now();
@@ -1020,6 +1165,7 @@ export async function runSessionWorker(): Promise<void> {
         }
 
         const s = session(c.sessionId);
+        let delivered = false;
         for (const nativeKey of c.nativeKeys) {
           const row = get(
             "SELECT i.data FROM interactions i JOIN work w ON w.id=json_extract(i.data,'$.workId') WHERE i.session=? AND i.turn=? AND i.state='admitted' AND w.native=?",
@@ -1036,11 +1182,20 @@ export async function runSessionWorker(): Promise<void> {
             get('SELECT data FROM work WHERE id=?', interaction.workId),
           );
           run("UPDATE interactions SET state='answered' WHERE id=?", interaction.interactionId);
+          delivered = true;
+          if (t.work) {
+            t.work = countWorkTransition(t.work, work.state, 'completed');
+          }
+
           work.state = 'completed';
           work.revision++;
           work.updatedAt = now();
           run('UPDATE work SET data=? WHERE id=?', JSON.stringify(work), work.workId);
           emit(s, 'work', { turnId: c.turnId, items: [work] });
+        }
+
+        if (delivered) {
+          saveTurn(c.sessionId, t);
         }
 
         return true;

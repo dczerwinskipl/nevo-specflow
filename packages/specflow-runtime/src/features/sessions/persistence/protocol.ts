@@ -12,7 +12,23 @@ import type {
   TelemetryGroup,
   TelemetryContextUsage,
   TelemetryLimitWindow,
+  RenameSession,
+  ArchiveSession,
+  SessionInfo,
+  ToolOperation,
+  SessionListFilter,
 } from '@nevo/specflow-contracts/sessions';
+import type { WorkAggregate } from '../lifecycle/work-aggregate';
+import type { AssociationWrite } from './associations';
+
+export type { AssociationWrite, StoredAssociation } from './associations';
+export type {
+  SessionIdentity,
+  SessionListRow,
+  SessionListScan,
+  SessionListSummary,
+  StoredListSummary,
+} from './catalogue';
 
 export type MeasurementFact =
   | {
@@ -45,7 +61,14 @@ export type DriverFact =
   | { kind: 'correlation'; providerSessionId: string }
   | { kind: 'work-open'; key: string; workKind: WorkSummary['kind']; title: string }
   | { kind: 'work-update'; key: string; state: WorkSummary['state'] }
-  | { kind: 'action-open'; key: string; parentKey: string; title: string }
+  | {
+      kind: 'action-open';
+      key: string;
+      parentKey: string;
+      title: string;
+      /** Only from the provider's own tool identity; Runtime records `other` when absent. */
+      operation?: ToolOperation;
+    }
   | { kind: 'action-update'; key: string; state: WorkSummary['state'] }
   | {
       kind: 'usage';
@@ -86,7 +109,8 @@ export type StoreCommand =
       requestId: string;
       input: unknown;
     }
-  | { op: 'create'; actor: string; input: CreateSession }
+  /** `association` is an opaque sidecar written verbatim in the same transaction. */
+  | { op: 'create'; actor: string; input: CreateSession; association?: AssociationWrite }
   | {
       op: 'start';
       actor: string;
@@ -137,6 +161,10 @@ export type StoreCommand =
       input: RespondInteraction;
     }
   | { op: 'snapshot'; sessionId: string; actor: string }
+  | { op: 'rename'; actor: string; sessionId: string; input: RenameSession }
+  | { op: 'archive'; actor: string; sessionId: string; input: ArchiveSession }
+  | { op: 'unarchive'; actor: string; sessionId: string; input: ArchiveSession }
+  | { op: 'delete'; sessionId: string }
   | { op: 'telemetry'; sessionId: string; expectedScope?: string }
   | { op: 'telemetry-source'; sessionId: string }
   | { op: 'telemetry-migrate' }
@@ -175,7 +203,29 @@ export type StoreCommand =
     }
   | { op: 'telemetry-expiry-deadline'; sessionId: string }
   | { op: 'telemetry-expire'; sessionId: string }
+  /** `SessionIdentity`, including the home `specId` of an associated Session. */
   | { op: 'identity'; sessionId: string }
+  /** `SessionIdentity[]` of the known IDs; at most 500 unique IDs, one indexed query. */
+  | { op: 'identities'; sessionIds: string[] }
+  /** `StoredAssociation | null`. */
+  | { op: 'association'; sessionId: string }
+  /** In-process workflow orchestrator only; refused for another home or a standalone Session. */
+  | {
+      op: 'associate-tasks';
+      sessionId: string;
+      specId: string;
+      taskIds: string[];
+      origin: 'workflow';
+    }
+  /**
+   * `SessionListScan`: at most `scanBudget` (<= 500) index rows after `after` (a created_seq) or
+   * after the row a signed `cursor` of the same filter names (never both).
+   */
+  | { op: 'list'; filter: SessionListFilter; after?: number; cursor?: string; scanBudget: number }
+  /** A signed list cursor continuing after `after`, bound to the store, project and filter. */
+  | { op: 'list-cursor'; filter: SessionListFilter; after: number }
+  /** `StoredListSummary[]` for at most 100 Sessions, decoding only those rows. */
+  | { op: 'summaries'; sessionIds: string[] }
   | { op: 'history'; sessionId: string; actor: string; before: string; limit: number }
   | { op: 'work'; sessionId: string; turnId: string; actor: string; before?: string; limit: number }
   | {
@@ -202,6 +252,11 @@ export interface StartAdmission {
   invocationId: string;
   fresh: boolean;
   providerContext?: { nativeSessionId: string; resume: boolean; scope: string };
+}
+/** Current stored Session projection after a management command, before HTTP authorization. */
+export interface SessionView {
+  session: SessionInfo;
+  activeTurn?: SessionSnapshot['activeTurn'];
 }
 export interface SnapshotSource {
   snapshot: SessionSnapshot;
@@ -240,6 +295,10 @@ export interface StoredTurn {
   summary: TurnSummary;
   invocationId: string;
   cancelRequested: boolean;
+  /** Absent for Turns created before Runtime maintained it (never backfilled). */
+  work?: WorkAggregate;
+  /** The Turn's latest `work-summary` entry, which carries the current Work digest. */
+  workSummaryEntryId?: string;
 }
 export interface EffectRecoveryCandidate {
   sessionId: string;

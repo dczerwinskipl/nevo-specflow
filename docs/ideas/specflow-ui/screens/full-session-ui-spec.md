@@ -102,13 +102,17 @@ UI consumes, not derives:
 - current execution scope;
 - distinction between current and merely related Tasks.
 
-**Context scope read model (mock until Runtime provides it).** Context reads a product-owned
-projection: a `scope` (`unknown` with reason `not-provided` or `unreadable`, `standalone`,
-`specification`, `task` with a task count) and, per section, a `ContextFact` (`loading`, `ready`,
-`unreadable`, `missing`). The Runtime contract carries no Specification/Task association today, so
-the real route supplies scope `unknown / not-provided` and only the facts the screen derives itself
-(executor from the provider catalogue; Work history from the snapshot's active or last Turn). The
-association is never inferred from the URL. Rules and copy: full-session-screen-structure.md §7.6.
+**Context scope read model.** Context reads a product-owned projection: a `scope` (`unknown` with
+reason `unreadable`, `standalone`, `specification`, `task` with a task count) and, per section, a
+`ContextFact` (`loading`, `ready`, `unreadable`, `missing`). The Specification and Related Tasks
+come from the association read `GET /api/sessions/:sessionId/association`
+([Sessions API](../../../reference/api/sessions.md#association-read)), served in project and demo
+mode; a Session started from a Specification is seeded from the composed create response. An
+associated Session is always scope `specification` (its Tasks are Related Tasks, never Current
+execution); `task` is not produced from the association. The executor comes from the provider
+catalogue and Work history from the snapshot's active or last Turn. The association is never
+inferred from the URL or a client cache. Rules and copy: full-session-screen-structure.md §7.6 and
+§7.6.1.
 
 Transport connection/reconnect state is UI/adapter state and must not overwrite canonical Session
 semantics.
@@ -493,8 +497,9 @@ These states must remain semantically distinct.
 
 Separate from the Session states above, each Context section has its own availability (see
 full-session-screen-structure.md §7.6): no association (section absent), loading (label plus
-skeleton rows), unreadable (warning note), missing optional (warning note), missing required
-(error note), ready. The scope-unknown note sits under the Executor. A failure of one section never
+skeleton rows; while the association itself loads, nothing), unreadable (warning note), missing
+optional (warning note), missing required (error note), forbidden (info note), ready. The
+scope-unreadable note sits under the Executor. A failure of one section never
 hides another, and Context is never replaced by a whole-panel "unavailable" screen.
 
 ## 12. Data loading, events, batching, and reconnect

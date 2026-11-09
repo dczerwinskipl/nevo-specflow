@@ -9,6 +9,7 @@ import type {
   SpecificationWorkspaceData,
   TaskItem,
 } from './model';
+import { translateNow } from '../../../i18n/message';
 
 function mapAttention(items: readonly WorkspaceAttention[]): AttentionItem[] {
   return items.map((item) => ({
@@ -53,9 +54,15 @@ export function mapWorkspaceResponse(
   }));
   const sessionSummaries = sessions.map((session) => ({
     id: session.id,
-    title: session.title,
+    // The server never invents a title; an untitled Session shows the UI's untitled label.
+    title: session.title ?? translateNow('sessions.untitled'),
     navigationStatus: session.status,
-    taskCount: session.taskIds.length > 0 ? session.taskIds.length : undefined,
+    taskCount: session.taskIds.length,
+    updatedAt: session.updatedAt,
+    providerId: session.providerId,
+    ...(session.providerTitle ? { providerTitle: session.providerTitle } : {}),
+    ...(session.modelId ? { modelId: session.modelId } : {}),
+    ...(session.modelTitle ? { modelTitle: session.modelTitle } : {}),
     activityCode:
       session.status === 'active' || session.status === 'attention' ? session.status : undefined,
     activity:
@@ -123,9 +130,20 @@ export function mapWorkspaceResponse(
         : [],
     documentFolders:
       sections.documents.state === 'available' ? sections.documents.data.folders : undefined,
-    mainDocumentId:
-      sections.documents.state === 'available' ? sections.documents.data.items[0]?.id : undefined,
+    // The expand target is the overview the description comes from, never a substitute document.
+    overviewDocumentId:
+      sections.documents.state === 'available'
+        ? sections.documents.data.overviewDocumentId
+        : undefined,
     sessions: sessionSummaries,
+    ...(sections.sessions.state === 'available' && sections.sessions.data.hasMore
+      ? { sessionsHasMore: true }
+      : {}),
+    startSession: {
+      available: dto.actions.startSession.available,
+      ...(dto.actions.startSession.reason ? { reason: dto.actions.startSession.reason } : {}),
+      ...(dto.actions.startSession.path ? { path: dto.actions.startSession.path } : {}),
+    },
     resumeSession: sessionSummaries.find((session) => session.id === dto.recommendedSessionId),
     activityEvents:
       sections.activity.state === 'available'
@@ -133,6 +151,7 @@ export function mapWorkspaceResponse(
             const core = {
               id: event.id,
               time: event.occurredAt,
+              ...(event.event ? { event: event.event } : {}),
               title: event.title,
               description: event.description,
             };

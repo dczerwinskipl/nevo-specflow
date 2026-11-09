@@ -32,7 +32,11 @@ vi.mock('./new-session/NewSessionScreen', () => ({
 
 afterEach(cleanup);
 
-const callbacks = { onBack: vi.fn(), onOpenSession: vi.fn(), onOpenSpecification: vi.fn() };
+const callbacks = {
+  onBackToSpecification: vi.fn(),
+  onOpenSession: vi.fn(),
+  onOpenSpecification: vi.fn(),
+};
 
 describe('NewSessionRouteView', () => {
   it("does not carry one Specification's open Context into another's New session", async () => {

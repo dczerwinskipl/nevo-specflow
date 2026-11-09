@@ -278,6 +278,13 @@ function SpecificationRouteScreen() {
       onOpenSessions={() =>
         void navigate({ to: '/specs/$specId/sessions', params: { specId }, search: { collection } })
       }
+      onNewSession={() =>
+        void navigate({
+          to: '/specs/$specId/sessions/new',
+          params: { specId },
+          search: { collection },
+        })
+      }
       onOpenRepository={() =>
         void navigate({
           to: '/specs/$specId/repository',

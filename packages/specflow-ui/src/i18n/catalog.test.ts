@@ -88,6 +88,8 @@ describe('message catalogues', () => {
       'create.archetype.installCommand',
       // "Model" is the same word in Polish; nothing else in the string is translatable.
       'sessions.context.sessionDetails.contextWindowScopeModelOnly',
+      // "{{provider}}, model {{model}}": the same template in both languages (accepted copy).
+      'sessions.list.agent',
     ]);
     const identical = plKeys.filter(
       (key) =>

@@ -3,6 +3,17 @@ import type { DriverFact } from '../../persistence/protocol';
 import type { EmitFact } from '../driver';
 import { claudeReadTools } from './modes';
 import { nativeDecimal } from '../decimal';
+import { nativeToolOperation, type NativeToolOperations } from '../tool-operations';
+
+/** Claude Code's own tool names. Glob finds files by pattern and Grep searches file contents. */
+export const claudeToolOperations: NativeToolOperations = {
+  Read: 'read',
+  Glob: 'search',
+  Grep: 'search',
+  Edit: 'edit',
+  Write: 'write',
+  Bash: 'command',
+};
 
 type ObjectValue = Record<string, unknown>;
 export class ClaudeProtocolError extends Error {
@@ -302,7 +313,13 @@ export function createClaudeProtocol(
           }
 
           tools.set(toolId, { parent, key });
-          await emit({ kind: 'action-open', key, parentKey: parent, title: name });
+          await emit({
+            kind: 'action-open',
+            key,
+            parentKey: parent,
+            title: name,
+            operation: nativeToolOperation(claudeToolOperations, name),
+          });
           await text(key, 'tool-input', JSON.stringify(input));
         }
       }

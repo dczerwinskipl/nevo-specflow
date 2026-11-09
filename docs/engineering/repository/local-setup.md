@@ -7,9 +7,12 @@ read_when:
   - setting up the development environment
   - running standard repository commands
   - understanding Turborepo inputs
+  - running a local embedding model for semantic documentation search
 summary: >
-  Node/Corepack/pnpm prerequisites, standard root commands, and the repository task graph.
+  Node/Corepack/pnpm prerequisites, standard root commands, the optional local embedding model for
+  semantic documentation search, and the repository task graph.
 related:
+  - reference.configuration.documentation-and-embeddings
   - engineering.repository.ci
   - engineering.repository.git-workflow
   - adr.0011-product-artifact-packaging-and-pnpm-compatibility
@@ -44,6 +47,7 @@ pnpm install --frozen-lockfile
 | `pnpm lint:root`                    | Only the files outside packages and the lint-coverage check.                          |
 | `pnpm format`                       | Write formatting fixes.                                                               |
 | `pnpm docs:check`                   | Validate docs and generated index.                                                    |
+| `pnpm docs:search "<question>"`     | Search the docs in natural language (hybrid with a local model, otherwise lexical).   |
 | `pnpm product:pack`                 | Create the installable product tarball.                                               |
 | `pnpm dogfood:install`              | Install and smoke the real tarball globally.                                          |
 | `pnpm storybook:browsers:install`   | Install local Chromium used by Storybook browser tests.                               |
@@ -60,6 +64,45 @@ repeated run replays unchanged packages. No run needs a raised Node heap; do not
 `--max-old-space-size`.
 
 `format:check` is intentionally read-only. A check command must never repair the working tree.
+
+## Semantic documentation search
+
+The `pnpm docs:*` scripts run the product `nevo-specflow docs` command over this repository
+(`.nevo/config.yaml`). `pnpm docs:search` always works: without an embedding endpoint it answers
+lexically and says so (`mode: lexical`, reason `no-endpoint`). The committed configuration opts the
+project in (`docs.search.semantic: true`); the endpoint is a workstation choice. To get hybrid
+results, run the embedding model from the root `compose.yaml` (Ollama on `127.0.0.1:11434`, a
+persistent `ollama` volume and a one-shot pull of `qwen3-embedding:0.6b`; it runs on CPU):
+
+```bash
+docker compose up -d   # the first run downloads the image and the model
+```
+
+Then add the endpoint to the git-ignored `.nevo/local/config.yaml` (create the file if needed):
+
+```yaml
+ai:
+  embeddings:
+    protocol: openai-compatible
+    baseUrl: http://127.0.0.1:11434/v1
+    model: qwen3-embedding:0.6b
+    timeoutMs: 120000 # a CPU model needs far more than the 10 s default for a batch of 32 chunks
+```
+
+Check it, then search:
+
+```bash
+pnpm docs:semantic status   # endpoint reachable; exits 1 while it is not
+pnpm docs:search "how are document commits owned by the engine"
+```
+
+The first hybrid search (or `pnpm docs:semantic index`) embeds the whole corpus into
+`.nevo/local/cache/docs-index/` (disposable; delete it to rebuild). On CPU this first run is slow
+for a corpus of this size, so prefer running `pnpm docs:semantic index` once up front; until the
+index is complete, `pnpm docs:search --no-refresh` answers lexically. Later searches re-embed only
+changed documents. `docker compose down` stops the model and keeps the volume. Keys and their
+validation:
+[documentation and embeddings configuration](../../reference/configuration/documentation-and-embeddings.md).
 
 ## Running slow tests on Linux
 

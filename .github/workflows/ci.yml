@@ -210,7 +210,7 @@ jobs:
         shell: bash
         run: |
           git diff --name-only "${TURBO_SCM_BASE}" "${TURBO_SCM_HEAD}" > .ci-packaged-changed
-          if grep -Eq '^(packages/(specflow|specflow-runtime|specflow-engine|specflow-contracts|specflow-ui|nevo-ui)/|\.github/workflows/ci\.yml$|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$)' .ci-packaged-changed; then
+          if grep -Eq '^(packages/(specflow|specflow-runtime|specflow-engine|specflow-contracts|specflow-docs|ai-semantic-search|authorization|specflow-ui|nevo-ui)/|\.github/workflows/ci\.yml$|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$)' .ci-packaged-changed; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "No packaged product changes."

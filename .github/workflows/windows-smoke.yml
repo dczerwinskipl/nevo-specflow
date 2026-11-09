@@ -8,7 +8,8 @@ name: Windows smoke
 on:
   pull_request:
     # Keep this list narrow: only code that affects Create, its journal/persistence or Git/worktree
-    # handling on disk. UI, docs and unrelated feature code must not start a Windows runner.
+    # handling on disk, plus the semantic index's file store and writer lock. UI, docs and unrelated
+    # feature code must not start a Windows runner.
     # tools/ci-windows-smoke-paths.mjs verifies these globs against sample changes.
     paths:
       - "packages/specflow-engine/src/specs/**"
@@ -29,6 +30,7 @@ on:
       - "packages/specflow-runtime/test/specs/create-async.http.test.ts"
       - "packages/specflow-contracts/src/specs/**"
       - "packages/specflow-contracts/src/operations/**"
+      - "packages/ai-semantic-search/src/file-*"
       - "tools/ci-windows-smoke*"
       - ".github/workflows/windows-smoke.yml"
   workflow_dispatch:

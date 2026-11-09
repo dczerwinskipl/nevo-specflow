@@ -145,8 +145,8 @@ build; the tests themselves take about 1 to 2 minutes when green.
 
 - It runs on pull requests only when files that affect Create, its journal or Git/worktree handling
   change (engine `specs`, `git`, `version-control`, `project`, Runtime `features/specs`,
-  `features/operations`, `server`, contracts `specs`/`operations`, the smoke tests and tooling, the
-  workflow). UI-only and unrelated changes do not start a Windows runner.
+  `features/operations`, `server`, contracts `specs`/`operations`, the semantic index file store
+  and writer lock in `ai-semantic-search`, the smoke tests and tooling, the workflow). UI-only and unrelated changes do not start a Windows runner.
 - It does not run on push or nightly (the full suite does) and is not a required check. It can be
   started manually through **Actions → Windows smoke → Run workflow**.
 - A failure lists every failing test name in the log and the job summary. A listed test whose title

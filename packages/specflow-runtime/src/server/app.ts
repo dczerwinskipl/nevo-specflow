@@ -53,6 +53,7 @@ import type { RuntimeFeature } from '../features/runtime-feature';
 import { registerRuntimeErrorHandler } from './error-handler';
 import { registerEndpointPolicy } from './endpoint-policy';
 import { registerOpenApi, registerOpenApiRoute } from './openapi';
+import { registerSharedContracts } from './shared-contracts';
 import { serializeRuntimeRequest } from './logging';
 import { isRequestAtPublicOrigin } from './origin';
 import { registerRuntimeWebApp, type RuntimeWebApp } from './web-app';
@@ -130,6 +131,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
   await registerEndpointPolicy(app, config.server.rateLimit);
   // Before any route: OpenAPI generation captures only routes registered after it.
   await registerOpenApi(app);
+  registerSharedContracts(app);
 
   const mode = dependencies.dataMode ?? 'project';
   const demo =

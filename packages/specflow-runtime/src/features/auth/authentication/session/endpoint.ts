@@ -3,6 +3,7 @@ import type { FastifyPluginCallback } from 'fastify';
 
 import { AuthSessionResponseSchema } from '@nevo/specflow-contracts/authentication';
 
+import { contractRef } from '../../../../server/shared-contracts';
 import type { RuntimeAuthenticationConfig } from '../configuration/model';
 import { logout } from './logout';
 import { getAuthSession } from './get-session';
@@ -28,7 +29,7 @@ export const sessionEndpoint: FastifyPluginCallback<SessionEndpointOptions> = (
     {
       schema: {
         response: {
-          200: AuthSessionResponseSchema,
+          200: contractRef(AuthSessionResponseSchema),
         },
       },
     },

@@ -42,6 +42,17 @@ function openApiPath(url: string): string {
   return url.replace(/:([A-Za-z0-9_]+)/g, '{$1}');
 }
 
+const COMPONENT_NAME = /^[A-Za-z0-9._-]+$/;
+
+/** The `components.schemas` name of a shared schema: its `$id`, which MUST be a component name. */
+function componentName(json: { readonly $id?: unknown }): string {
+  if (typeof json.$id !== 'string' || !COMPONENT_NAME.test(json.$id)) {
+    throw new Error(`A shared schema $id must be an OpenAPI component name: ${String(json.$id)}`);
+  }
+
+  return json.$id;
+}
+
 /**
  * Registers OpenAPI generation. It MUST run before any route registration, because only routes
  * registered afterwards are captured.
@@ -69,6 +80,9 @@ export async function registerOpenApi<RawServer extends RawServerBase>(
       openapi: '3.1.0',
       info: { title: 'Nevo SpecFlow Runtime API', version: '0.0.0' },
     },
+    // A shared contract becomes the component named by its `$id` (the default is a positional
+    // `def-N`, which changes whenever a contract is added).
+    refResolver: { buildLocalReference: componentName },
     transform: ({ schema, url }) => ({
       schema: isDocumentedRoute(url) ? schema : { ...schema, hide: true },
       url,

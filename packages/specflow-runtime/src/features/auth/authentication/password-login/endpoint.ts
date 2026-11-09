@@ -8,6 +8,7 @@ import {
   type PasswordLoginErrorResponse,
 } from '@nevo/specflow-contracts/authentication';
 
+import { contractRef } from '../../../../server/shared-contracts';
 import type { RuntimeAuthenticationConfig } from '../configuration/model';
 import type { PasswordAccountThrottle } from './account-throttle';
 import { loginWithPassword } from './login';
@@ -46,7 +47,7 @@ export const passwordLoginEndpoint: FastifyPluginCallback<PasswordLoginEndpointO
       schema: {
         body: PasswordLoginRequestSchema,
         response: {
-          200: AuthSessionResponseSchema,
+          200: contractRef(AuthSessionResponseSchema),
           401: PasswordLoginErrorResponseSchema,
           429: PasswordLoginErrorResponseSchema,
           503: PasswordLoginErrorResponseSchema,

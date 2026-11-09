@@ -5,7 +5,220 @@
     "version": "0.0.0"
   },
   "components": {
-    "schemas": {}
+    "schemas": {
+      "AuthSessionResponse": {
+        "anyOf": [
+          {
+            "type": "object",
+            "required": [
+              "authenticationRequired",
+              "authenticated",
+              "user",
+              "authenticatedWith",
+              "loginMethods"
+            ],
+            "properties": {
+              "authenticationRequired": {
+                "type": "boolean"
+              },
+              "authenticated": {
+                "type": "boolean",
+                "enum": [
+                  true
+                ]
+              },
+              "user": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "name"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "additionalProperties": false
+              },
+              "authenticatedWith": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "required": [
+                      "kind"
+                    ],
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "password"
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "kind",
+                      "providerId"
+                    ],
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "oidc"
+                        ]
+                      },
+                      "providerId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "loginMethods": {
+                "type": "object",
+                "required": [
+                  "password",
+                  "oidc"
+                ],
+                "properties": {
+                  "password": {
+                    "type": "object",
+                    "required": [
+                      "enabled"
+                    ],
+                    "properties": {
+                      "enabled": {
+                        "type": "boolean"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "oidc": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "id",
+                        "name"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 64
+                        },
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 32
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "authenticationRequired",
+              "authenticated",
+              "loginMethods"
+            ],
+            "properties": {
+              "authenticationRequired": {
+                "type": "boolean"
+              },
+              "authenticated": {
+                "type": "boolean",
+                "enum": [
+                  false
+                ]
+              },
+              "user": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "name"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "additionalProperties": false
+              },
+              "loginMethods": {
+                "type": "object",
+                "required": [
+                  "password",
+                  "oidc"
+                ],
+                "properties": {
+                  "password": {
+                    "type": "object",
+                    "required": [
+                      "enabled"
+                    ],
+                    "properties": {
+                      "enabled": {
+                        "type": "boolean"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "oidc": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "id",
+                        "name"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 64
+                        },
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 32
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      }
+    }
   },
   "paths": {
     "/api/auth/logout": {
@@ -237,216 +450,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "anyOf": [
-                    {
-                      "type": "object",
-                      "required": [
-                        "authenticationRequired",
-                        "authenticated",
-                        "user",
-                        "authenticatedWith",
-                        "loginMethods"
-                      ],
-                      "properties": {
-                        "authenticationRequired": {
-                          "type": "boolean"
-                        },
-                        "authenticated": {
-                          "type": "boolean",
-                          "enum": [
-                            true
-                          ]
-                        },
-                        "user": {
-                          "type": "object",
-                          "required": [
-                            "id",
-                            "name"
-                          ],
-                          "properties": {
-                            "id": {
-                              "type": "string",
-                              "minLength": 1
-                            },
-                            "name": {
-                              "type": "string",
-                              "minLength": 1
-                            }
-                          },
-                          "additionalProperties": false
-                        },
-                        "authenticatedWith": {
-                          "anyOf": [
-                            {
-                              "type": "object",
-                              "required": [
-                                "kind"
-                              ],
-                              "properties": {
-                                "kind": {
-                                  "type": "string",
-                                  "enum": [
-                                    "password"
-                                  ]
-                                }
-                              },
-                              "additionalProperties": false
-                            },
-                            {
-                              "type": "object",
-                              "required": [
-                                "kind",
-                                "providerId"
-                              ],
-                              "properties": {
-                                "kind": {
-                                  "type": "string",
-                                  "enum": [
-                                    "oidc"
-                                  ]
-                                },
-                                "providerId": {
-                                  "type": "string",
-                                  "minLength": 1,
-                                  "maxLength": 64
-                                }
-                              },
-                              "additionalProperties": false
-                            }
-                          ]
-                        },
-                        "loginMethods": {
-                          "type": "object",
-                          "required": [
-                            "password",
-                            "oidc"
-                          ],
-                          "properties": {
-                            "password": {
-                              "type": "object",
-                              "required": [
-                                "enabled"
-                              ],
-                              "properties": {
-                                "enabled": {
-                                  "type": "boolean"
-                                }
-                              },
-                              "additionalProperties": false
-                            },
-                            "oidc": {
-                              "type": "array",
-                              "items": {
-                                "type": "object",
-                                "required": [
-                                  "id",
-                                  "name"
-                                ],
-                                "properties": {
-                                  "id": {
-                                    "type": "string",
-                                    "minLength": 1,
-                                    "maxLength": 64
-                                  },
-                                  "name": {
-                                    "type": "string",
-                                    "minLength": 1,
-                                    "maxLength": 32
-                                  }
-                                },
-                                "additionalProperties": false
-                              }
-                            }
-                          },
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
-                    },
-                    {
-                      "type": "object",
-                      "required": [
-                        "authenticationRequired",
-                        "authenticated",
-                        "loginMethods"
-                      ],
-                      "properties": {
-                        "authenticationRequired": {
-                          "type": "boolean"
-                        },
-                        "authenticated": {
-                          "type": "boolean",
-                          "enum": [
-                            false
-                          ]
-                        },
-                        "user": {
-                          "type": "object",
-                          "required": [
-                            "id",
-                            "name"
-                          ],
-                          "properties": {
-                            "id": {
-                              "type": "string",
-                              "minLength": 1
-                            },
-                            "name": {
-                              "type": "string",
-                              "minLength": 1
-                            }
-                          },
-                          "additionalProperties": false
-                        },
-                        "loginMethods": {
-                          "type": "object",
-                          "required": [
-                            "password",
-                            "oidc"
-                          ],
-                          "properties": {
-                            "password": {
-                              "type": "object",
-                              "required": [
-                                "enabled"
-                              ],
-                              "properties": {
-                                "enabled": {
-                                  "type": "boolean"
-                                }
-                              },
-                              "additionalProperties": false
-                            },
-                            "oidc": {
-                              "type": "array",
-                              "items": {
-                                "type": "object",
-                                "required": [
-                                  "id",
-                                  "name"
-                                ],
-                                "properties": {
-                                  "id": {
-                                    "type": "string",
-                                    "minLength": 1,
-                                    "maxLength": 64
-                                  },
-                                  "name": {
-                                    "type": "string",
-                                    "minLength": 1,
-                                    "maxLength": 32
-                                  }
-                                },
-                                "additionalProperties": false
-                              }
-                            }
-                          },
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
-                    }
-                  ]
+                  "$ref": "#/components/schemas/AuthSessionResponse"
                 }
               }
             }
@@ -576,216 +580,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "anyOf": [
-                    {
-                      "type": "object",
-                      "required": [
-                        "authenticationRequired",
-                        "authenticated",
-                        "user",
-                        "authenticatedWith",
-                        "loginMethods"
-                      ],
-                      "properties": {
-                        "authenticationRequired": {
-                          "type": "boolean"
-                        },
-                        "authenticated": {
-                          "type": "boolean",
-                          "enum": [
-                            true
-                          ]
-                        },
-                        "user": {
-                          "type": "object",
-                          "required": [
-                            "id",
-                            "name"
-                          ],
-                          "properties": {
-                            "id": {
-                              "type": "string",
-                              "minLength": 1
-                            },
-                            "name": {
-                              "type": "string",
-                              "minLength": 1
-                            }
-                          },
-                          "additionalProperties": false
-                        },
-                        "authenticatedWith": {
-                          "anyOf": [
-                            {
-                              "type": "object",
-                              "required": [
-                                "kind"
-                              ],
-                              "properties": {
-                                "kind": {
-                                  "type": "string",
-                                  "enum": [
-                                    "password"
-                                  ]
-                                }
-                              },
-                              "additionalProperties": false
-                            },
-                            {
-                              "type": "object",
-                              "required": [
-                                "kind",
-                                "providerId"
-                              ],
-                              "properties": {
-                                "kind": {
-                                  "type": "string",
-                                  "enum": [
-                                    "oidc"
-                                  ]
-                                },
-                                "providerId": {
-                                  "type": "string",
-                                  "minLength": 1,
-                                  "maxLength": 64
-                                }
-                              },
-                              "additionalProperties": false
-                            }
-                          ]
-                        },
-                        "loginMethods": {
-                          "type": "object",
-                          "required": [
-                            "password",
-                            "oidc"
-                          ],
-                          "properties": {
-                            "password": {
-                              "type": "object",
-                              "required": [
-                                "enabled"
-                              ],
-                              "properties": {
-                                "enabled": {
-                                  "type": "boolean"
-                                }
-                              },
-                              "additionalProperties": false
-                            },
-                            "oidc": {
-                              "type": "array",
-                              "items": {
-                                "type": "object",
-                                "required": [
-                                  "id",
-                                  "name"
-                                ],
-                                "properties": {
-                                  "id": {
-                                    "type": "string",
-                                    "minLength": 1,
-                                    "maxLength": 64
-                                  },
-                                  "name": {
-                                    "type": "string",
-                                    "minLength": 1,
-                                    "maxLength": 32
-                                  }
-                                },
-                                "additionalProperties": false
-                              }
-                            }
-                          },
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
-                    },
-                    {
-                      "type": "object",
-                      "required": [
-                        "authenticationRequired",
-                        "authenticated",
-                        "loginMethods"
-                      ],
-                      "properties": {
-                        "authenticationRequired": {
-                          "type": "boolean"
-                        },
-                        "authenticated": {
-                          "type": "boolean",
-                          "enum": [
-                            false
-                          ]
-                        },
-                        "user": {
-                          "type": "object",
-                          "required": [
-                            "id",
-                            "name"
-                          ],
-                          "properties": {
-                            "id": {
-                              "type": "string",
-                              "minLength": 1
-                            },
-                            "name": {
-                              "type": "string",
-                              "minLength": 1
-                            }
-                          },
-                          "additionalProperties": false
-                        },
-                        "loginMethods": {
-                          "type": "object",
-                          "required": [
-                            "password",
-                            "oidc"
-                          ],
-                          "properties": {
-                            "password": {
-                              "type": "object",
-                              "required": [
-                                "enabled"
-                              ],
-                              "properties": {
-                                "enabled": {
-                                  "type": "boolean"
-                                }
-                              },
-                              "additionalProperties": false
-                            },
-                            "oidc": {
-                              "type": "array",
-                              "items": {
-                                "type": "object",
-                                "required": [
-                                  "id",
-                                  "name"
-                                ],
-                                "properties": {
-                                  "id": {
-                                    "type": "string",
-                                    "minLength": 1,
-                                    "maxLength": 64
-                                  },
-                                  "name": {
-                                    "type": "string",
-                                    "minLength": 1,
-                                    "maxLength": 32
-                                  }
-                                },
-                                "additionalProperties": false
-                              }
-                            }
-                          },
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
-                    }
-                  ]
+                  "$ref": "#/components/schemas/AuthSessionResponse"
                 }
               }
             }

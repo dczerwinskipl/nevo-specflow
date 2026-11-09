@@ -72,11 +72,12 @@ On a project Runtime (not `--demo`) the Overview shows what the Engine and the S
 - **Tasks — temporary source.** The section reflects only the verified manifest: with no Tasks there
   it is the empty Tasks state above; a manifest with Tasks has no verified schema yet, so the section
   shows the calm "Not available on this server" state. This source is temporary until the workflow
-  kernel's Task source replaces it, so project mode shows no real Task rows today.
+  kernel's Task source replaces it, so project mode shows no real Task rows today
+  ([open follow-up](../../../ideas/specflow-runtime/project-mode-spec-overview/README.md#open-follow-ups)).
 - **Activity history — partial.** It holds exactly two event kinds: **Specification created** (from
   the manifest's creation date) and **Session started** (one per associated, non-archived Session the
-  caller may view, bounded by the workspace Sessions section's 100 rows), at most 50 events. No Task, document or commit
-  events exist yet. A date-only event shows as a calendar date without time-zone conversion; other
+  caller may view, bounded by the workspace Sessions section's 100 rows), at most 50 events. No
+  Task, document or commit events exist yet ([open follow-up](../../../ideas/specflow-runtime/project-mode-spec-overview/README.md#open-follow-ups)). A date-only event shows as a calendar date without time-zone conversion; other
   events show a relative time.
 - **Documents** and **Continue session** come from the Engine's document registry and the Session
   association registry, independently of Tasks.

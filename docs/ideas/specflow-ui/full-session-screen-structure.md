@@ -120,6 +120,9 @@ full Context, Task detail or file browser). See
 - richer cost/usage/limit presentation (history, budgets, charts);
 - persisted manual split size across reloads;
 - reasoning presentation policy beyond provider-supplied, user-renderable summaries;
+- agent Session naming: a Runtime naming signal that titles a Session from its first message and
+  drives the header **Naming…** status; it must never overwrite a name the person set or renamed.
+  The start form's switch hint already promises it;
 - still unplaced by a reviewed UX contract: demo-mode managed Sessions, a Task-context Session start
   (the composed create already accepts `taskIds`), the Attention Context section, and
   `TurnSummary.usage`/`error` presentation.

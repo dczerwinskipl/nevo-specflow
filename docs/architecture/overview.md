@@ -52,6 +52,7 @@ Nevo SpecFlow is one local product, `nevo-specflow`, installed into a Git reposi
 There are two kinds of process. An offline command opens the Engine in its own short-lived
 process. `nevo-specflow start` keeps its process running as the Runtime host: the same process
 serves the built UI and `/api`, opens the Engine in-process and owns the provider child processes.
+`start --demo` opens no Engine and serves demonstration data instead.
 
 ```mermaid
 flowchart LR

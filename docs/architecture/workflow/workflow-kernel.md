@@ -539,7 +539,8 @@ proceed.
 - **Per-Task files.** Each Task has its own file, so parallel Task worktrees can later merge without
   conflicts (follow-up F08).
 
-Committing the `.execution/` files is not done by this kernel yet (follow-up F04). Until then, they
+Committing the `.execution/` files is not done by this kernel yet (follow-up
+[F04](../../ideas/specflow-engine/execution-plans/06-workflow-kernel/README.md#f04--commits-of-execution-state-and-finalize-actions)). Until then, they
 are ordinary working-tree changes of the Specification's checkout.
 
 ## Extension points

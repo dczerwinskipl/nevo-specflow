@@ -67,6 +67,14 @@ state. An ambiguous write may block conflicting actions until reconciliation suc
 claims are never removed on Runtime shutdown. The operator protocol is proposed in
 [execution scopes and recovery](execution-scopes-and-recovery.md).
 
+## Protected branches for Close (deferred)
+
+Close keeps its own archive commit and integration code, so the protected-branch guard of the commit
+capability does not cover it: integration into a protected target branch is not forbidden today
+(ADR 0013, decision 7). The follow-up moves the archive commit onto the commit capability so the
+guard applies, and decides whether integration into a protected target is refused or offered as a
+branch for the person to merge.
+
 ## Merge-conflict resolution after Close (deferred)
 
 Close reports a known integration conflict and fences it: the Specification settles as

@@ -268,7 +268,7 @@ type Respond =
 ```
 
 Respond answer text <=16 KiB, option IDs must be declared, duplicate option IDs invalid;
-text only when allowText; an optional maxSelections (1 to 20) limits selected option IDs and is checked
+text only when allowText; an optional maxSelections (1 to 20) limits selected option IDs (absent means 1, single-select) and is checked
 before durable response admission. Empty answer invalid unless the question explicitly offers an empty
 option (through its ID). Denied permission resolves the interaction; it does not automatically
 fail the Turn. Start may override mode, native providerModeId, model and effort for that Turn;

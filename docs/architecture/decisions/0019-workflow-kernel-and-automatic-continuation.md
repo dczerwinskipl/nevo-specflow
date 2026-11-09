@@ -85,9 +85,9 @@ local attention file exists. The reasons were extended (the full list is in
    current position on every inspection, never stored, so every start of that subject removes it and
    a quick screen, a manual start and an automatic continuation behave the same. A "remember" choice
    writes the model into the agent archetype file.
-9. **Canonical state is Git-tracked next to the Specification.** Implementation status: the kernel
-   writes these files in the Specification's checkout; committing them is follow-up F04, so until then
-   they are uncommitted working-tree changes.
+9. **Canonical state belongs in Git next to the Specification.** Implementation status: the kernel
+   writes these files in the Specification's checkout; committing them is follow-up
+   [F04](../../ideas/specflow-engine/execution-plans/06-workflow-kernel/README.md#f04--commits-of-execution-state-and-finalize-actions), so until then they are uncommitted working-tree changes.
    - `.execution/specification.yaml` holds the Specification run, and
      `.execution/tasks/<taskId>.yaml` holds one Task each.
    - These files store only position, attempts and returns. They are not named `change.yaml`, and they

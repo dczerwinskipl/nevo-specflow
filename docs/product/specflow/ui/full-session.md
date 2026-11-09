@@ -228,11 +228,14 @@ Every UI start is from a Specification: **New session** opens `/specs/:specId/se
 `pane` with the provider's colour logo, **{Provider} is ready** and **Write a message below to start
 the conversation.** It names the provider only; model and mode are visible in the Composer.
 
-**Naming.** The **Give it your own name** switch is off by default ("The agent names the session
-from your first message."); on, it reveals the name field (at most 256 characters, a counter in the
-last 32) and the agent will not rename it. Switching off keeps the typed text. A Session without an
-own name shows the provisional title **New session** until it is renamed; the header naming status
-(**Naming…**) is shown only when the Runtime reports naming in progress.
+**Naming.** The **Give it your own name** switch is off by default; on, it reveals the name field
+(at most 256 characters, a counter in the last 32). Switching off keeps the typed text. A Session
+without an own name keeps the title **New session** until the person renames it.
+
+Agent naming is not implemented: the Runtime reports no naming signal, so the header **Naming…**
+status is never shown, and the switch's hint ("The agent names the session from your first
+message.") describes the planned behaviour
+([open idea](../../../ideas/specflow-ui/full-session-screen-structure.md#6-still-deferred)).
 
 ## Secondary tabs
 

@@ -69,11 +69,14 @@ locale, wall-clock time (beyond explicitly-requested timestamps), or ambient env
 - Agents and CI reach the same operations through explicit flags — never through a
   suppressed prompt. A command that would otherwise need interactive input, run
   non-interactively without the flag, **fails with a clear message**.
-- Engine commits never land on a branch the project protects (`git.commits.protectedBranches` /
-  `allowedBranches`): such a commit is refused with `BRANCH_PROTECTED`, which covers both cases, and
-  `init` offers to switch to a separate branch for the definitions commit. The CLI does not open pull requests; the person merges such a branch.
+- Engine commits made through the commit capability (Create, documents, definitions, manual commit)
+  never land on a branch the project protects (`git.commits.protectedBranches` / `allowedBranches`):
+  such a commit is refused with `BRANCH_PROTECTED`, which covers both cases, and
+  `init` offers to switch to a separate branch for the definitions commit. The CLI does not open
+  pull requests; the person merges such a branch.
   Close archive and integration are not covered by the guard yet
-  ([ADR 0013](../../../architecture/decisions/0013-engine-owned-commits-and-protected-branches.md)).
+  ([ADR 0013](../../../architecture/decisions/0013-engine-owned-commits-and-protected-branches.md);
+  [open idea](../../../ideas/specflow-engine/durable-operations-and-recovery.md#protected-branches-for-close-deferred)).
 
 ## Next-action guidance
 

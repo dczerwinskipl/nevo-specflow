@@ -1,8 +1,57 @@
-import { describe, expect, it } from 'vitest';
+import Fastify from 'fastify';
+import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import type { Static } from 'typebox';
+import { describe, expect, expectTypeOf, it } from 'vitest';
+import {
+  AuthSessionResponseSchema,
+  PasswordLoginErrorResponseSchema,
+  type AuthSessionResponse,
+} from '@nevo/specflow-contracts/authentication';
 import type { RuntimeConfig } from '../config/types';
 import { noAuthConfig, passwordConfig } from '../../test/auth/support/config';
 import { createRuntimeApp, type RuntimeAppDependencies } from './app';
-import { generateOpenApiDocument, openApiRouteGaps } from './openapi';
+import { generateOpenApiDocument, openApiRouteGaps, type RuntimeOpenApiDocument } from './openapi';
+import { contractRef, registerSharedContracts } from './shared-contracts';
+
+interface Operation {
+  responses: Record<string, { content?: Record<string, { schema: Record<string, unknown> }> }>;
+}
+
+function operation(document: RuntimeOpenApiDocument, path: string, method: string): Operation {
+  const operations = (document.paths as Record<string, Record<string, Operation>>)[path];
+  const found = operations?.[method];
+  if (!found) {
+    throw new Error(`No ${method} ${path} in the document.`);
+  }
+
+  return found;
+}
+
+function jsonSchema(
+  document: RuntimeOpenApiDocument,
+  path: string,
+  method: string,
+  status: string,
+) {
+  return operation(document, path, method).responses[status]?.content?.['application/json']?.schema;
+}
+
+/** Every `$ref` value in the document. */
+function references(node: unknown, found: string[] = []): string[] {
+  if (Array.isArray(node)) {
+    node.forEach((item) => references(item, found));
+  } else if (typeof node === 'object' && node !== null) {
+    for (const [key, value] of Object.entries(node)) {
+      if (key === '$ref' && typeof value === 'string') {
+        found.push(value);
+      } else {
+        references(value, found);
+      }
+    }
+  }
+
+  return found;
+}
 
 async function withApp<T>(
   config: RuntimeConfig,
@@ -71,5 +120,67 @@ describe('Runtime OpenAPI document', () => {
       expect(paths).not.toContain('/');
       expect(paths).not.toContain('/assets/app.js');
     });
+  });
+
+  it('emits a shared contract once and references it from every operation answering it', async () => {
+    await withApp(passwordConfig(), {}, async (app) => {
+      const document = await generateOpenApiDocument(app);
+      const components = (document.components as { schemas: Record<string, unknown> }).schemas;
+      const shared = { $ref: '#/components/schemas/AuthSessionResponse' };
+
+      expect(jsonSchema(document, '/api/auth/session', 'get', '200')).toEqual(shared);
+      expect(jsonSchema(document, '/api/auth/password/login', 'post', '200')).toEqual(shared);
+      expect(components.AuthSessionResponse).toMatchObject({ anyOf: [{}, {}] });
+      // The component name is the contract's own `$id`, not a positional `def-N`.
+      expect(Object.keys(components).sort()).toEqual(Object.keys(app.getSchemas()).sort());
+      const refs = references(document.paths);
+      for (const name of Object.keys(components)) {
+        expect(refs).toContain(`#/components/schemas/${name}`);
+      }
+
+      for (const ref of references(document)) {
+        expect(components[ref.replace('#/components/schemas/', '')]).toBeDefined();
+      }
+
+      // Separate contracts of the same shape (`{ turnId }`) are not merged into one component.
+      for (const path of [
+        '/api/sessions/{sessionId}/turns',
+        '/api/sessions/{sessionId}/turns/{turnId}/cancel',
+      ]) {
+        expect(jsonSchema(document, path, 'post', '202')).toMatchObject({ required: ['turnId'] });
+      }
+
+      // A contract answered by one operation only stays inline.
+      expect(jsonSchema(document, '/api/auth/password/login', 'post', '401')).toMatchObject({
+        type: 'object',
+      });
+    });
+  });
+
+  it('keeps the static type of a referenced contract and refuses an unregistered one', async () => {
+    const schema = contractRef(AuthSessionResponseSchema);
+    expectTypeOf<Static<typeof schema>>().toEqualTypeOf<AuthSessionResponse>();
+    expect(() => contractRef(PasswordLoginErrorResponseSchema)).toThrow(
+      /registered shared contract/,
+    );
+
+    const app = Fastify();
+    registerSharedContracts(app);
+    const typed = app.withTypeProvider<TypeBoxTypeProvider>();
+    const session: AuthSessionResponse = {
+      authenticationRequired: false,
+      authenticated: false,
+      loginMethods: { password: { enabled: false }, oidc: [] },
+    };
+    typed.get('/typed', { schema: { response: { 200: schema } } }, () => session);
+    // @ts-expect-error A reply outside the referenced contract does not type-check.
+    typed.get('/untyped', { schema: { response: { 200: schema } } }, () => ({ wrong: true }));
+    try {
+      const response = await app.inject('/typed');
+
+      expect(response.json()).toEqual(session);
+    } finally {
+      await app.close();
+    }
   });
 });

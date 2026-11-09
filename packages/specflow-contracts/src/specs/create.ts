@@ -74,7 +74,7 @@ export const CreateSpecErrorSchema = Type.Object(
     /** For example `cause: 'definitions-missing'` of `DEFINITIONS_MISSING`; absent for most errors. */
     details: Type.Optional(DocumentErrorDetailsSchema),
   },
-  { additionalProperties: false },
+  { $id: 'CreateSpecError', additionalProperties: false },
 );
 
 /** Lookup key contains no caller-supplied workspace, file path or Spec selector. */

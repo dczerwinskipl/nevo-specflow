@@ -47,6 +47,50 @@ GET /api/openapi.json
 `info.version` is fixed at `0.0.0`: the document describes the API of the Runtime that serves it and
 does not carry the product version.
 
+## Shared contracts
+
+A response contract of `@nevo/specflow-contracts` that more than one operation answers is one
+component under `components.schemas`, and every response that answers it is a `$ref` to that
+component. For example `GET /api/auth/session` and `POST /api/auth/password/login` both answer
+`200` with `{ "$ref": "#/components/schemas/AuthSessionResponse" }`.
+
+It works with the Fastify shared-schema mechanism, without a second copy of any schema:
+
+- **Identity:** the contract carries a stable `$id` in the contracts package, equal to its type name
+  without the `Schema` suffix (`AuthSessionResponseSchema` has `$id: 'AuthSessionResponse'`). The
+  contracts package has no Fastify or Swagger dependency; the `$id` is plain JSON Schema.
+- **Registration:** `src/server/shared-contracts.ts` lists the shared contracts and registers them
+  with `addSchema` on the root instance before any route, so every encapsulated plugin sees them.
+  Registering an `$id` twice fails at startup (Fastify `FST_ERR_SCH_ALREADY_PRESENT`).
+- **Reference:** a route answers `contractRef(XSchema)`, a `{ "$ref": "<$id>" }` schema typed with
+  the contract's static type, so handler reply types stay those of the contract. Validation and
+  serialization resolve the reference to the registered definition. `contractRef` throws for a
+  contract that is not in the list, and a composition that registers a referencing route without
+  the shared contracts fails at startup, because the reference cannot be resolved.
+- **Component name:** `@fastify/swagger` names the component with `refResolver.buildLocalReference`;
+  Runtime returns the `$id` (the default would be a positional `def-N`) and refuses an `$id` that is
+  not a valid component name.
+
+Current shared contracts: `AuthSessionResponse`, `AuthenticationRequiredErrorResponse`,
+`AuthorizationForbiddenErrorResponse`, `CloseError`, `ClosePreview`, `CloseResult`,
+`CloseWorkspaceResult`, `CreateSpecError`, `DocumentError`, `DocumentOperationResult`,
+`DocumentOperationStatus`, `OperationListResponse`, `SessionCommandResult`,
+`SpecificationReadError`, `TaskReadError` and `TaskSnapshotExpired`.
+
+Schemas stay inline when they are not one shared response contract:
+
+- a contract answered by one operation only, even under several status codes (for example
+  `PasswordLoginErrorResponse` for `401`, `429` and `503` of password login);
+- separate contracts that only have the same shape: `StartTurnResult` and `CancelTurnResult` are
+  both `{ turnId }`, `CloseError` and `CreateSpecError` differ only by `remedy`, and they keep their
+  own schemas;
+- request bodies, path and query parameters: their validation keeps its inline schema;
+- schemas that are not contracts of `@nevo/specflow-contracts` (such as the operation list error of
+  the Runtime operations feature).
+
+Structural equality alone never makes a component; a new shared contract gets an `$id` in the
+contracts package and an entry in the shared-contract list.
+
 ## Committed document
 
 `docs/reference/api/openapi.generated.json` is the document of one canonical **project-mode**

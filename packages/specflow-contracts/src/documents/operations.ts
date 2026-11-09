@@ -189,7 +189,7 @@ export const DocumentOperationResultSchema = Type.Object(
     folders: Type.Array(Type.String()),
     commit: CommitInfoSchema,
   },
-  { additionalProperties: false },
+  { $id: 'DocumentOperationResult', additionalProperties: false },
 );
 export type DocumentOperationResult = Static<typeof DocumentOperationResultSchema>;
 
@@ -265,7 +265,7 @@ export const DocumentOperationStatusSchema = Type.Object(
     /** What a person can do now. Each action is available only where the operation is in a state that allows it. */
     actions: Type.Optional(DocumentOperationAvailableActionsSchema),
   },
-  { additionalProperties: false },
+  { $id: 'DocumentOperationStatus', additionalProperties: false },
 );
 export type DocumentOperationStatus = Static<typeof DocumentOperationStatusSchema>;
 

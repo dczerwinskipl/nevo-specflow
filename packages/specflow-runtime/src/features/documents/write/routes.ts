@@ -40,6 +40,7 @@ import {
   SAVE_BODY_LIMIT_BYTES,
 } from './limits';
 import type { DocumentWriteSource } from './write-source';
+import { contractRef } from '../../../server/shared-contracts';
 
 const SpecParamsSchema = Type.Object({ specId: IdSchema }, { additionalProperties: false });
 
@@ -137,7 +138,10 @@ export const documentWriteEndpoint: FastifyPluginCallback<DocumentWriteRoutesOpt
       schema: {
         params: SpecParamsSchema,
         body: CreateDocumentsInputSchema,
-        response: { 200: DocumentOperationResultSchema, ...documentWriteErrorResponses },
+        response: {
+          200: contractRef(DocumentOperationResultSchema),
+          ...documentWriteErrorResponses,
+        },
       },
     },
     documentRoute(async (request, reply) => {
@@ -154,7 +158,10 @@ export const documentWriteEndpoint: FastifyPluginCallback<DocumentWriteRoutesOpt
       schema: {
         params: SpecParamsSchema,
         body: FolderInputSchema,
-        response: { 200: DocumentOperationResultSchema, ...documentWriteErrorResponses },
+        response: {
+          200: contractRef(DocumentOperationResultSchema),
+          ...documentWriteErrorResponses,
+        },
       },
     },
     documentRoute(async (request, reply) => {
@@ -171,7 +178,10 @@ export const documentWriteEndpoint: FastifyPluginCallback<DocumentWriteRoutesOpt
       schema: {
         params: SpecParamsSchema,
         body: DocumentOperationInputSchema,
-        response: { 200: DocumentOperationResultSchema, ...documentWriteErrorResponses },
+        response: {
+          200: contractRef(DocumentOperationResultSchema),
+          ...documentWriteErrorResponses,
+        },
       },
     },
     documentRoute(async (request, reply) => {
@@ -186,7 +196,7 @@ export const documentWriteEndpoint: FastifyPluginCallback<DocumentWriteRoutesOpt
       schema: {
         params: OperationParamsSchema,
         response: {
-          200: DocumentOperationStatusSchema,
+          200: contractRef(DocumentOperationStatusSchema),
           304: Type.Null(),
           ...documentWriteErrorResponses,
         },
@@ -273,7 +283,10 @@ export const documentWriteEndpoint: FastifyPluginCallback<DocumentWriteRoutesOpt
         schema: {
           params: OperationParamsSchema,
           body: EmptyBodySchema,
-          response: { 200: DocumentOperationStatusSchema, ...documentWriteErrorResponses },
+          response: {
+            200: contractRef(DocumentOperationStatusSchema),
+            ...documentWriteErrorResponses,
+          },
         },
       },
       documentRoute(async (request, reply) => {

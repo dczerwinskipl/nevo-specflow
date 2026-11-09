@@ -19,6 +19,7 @@ import type { TaskHistoryPage } from '@nevo/specflow-contracts/tasks';
 import type { ReferenceVisibility } from '../../src/features/tasks/reads/facts';
 import type { SessionReferenceOwner } from '../../src/features/sessions';
 import { sessionReferences } from '../support/session-references';
+import { registerSharedContracts } from '../../src/server/shared-contracts';
 
 async function fixture() {
   const demo = createDemoSpecsRepositories(),
@@ -78,6 +79,7 @@ async function appFor(
     owner.resolve(id),
   );
   const app = Fastify();
+  registerSharedContracts(app);
   registerRuntimeErrorHandler(app);
   app.decorateRequest('authz', { getter: () => f.authz });
   app.register(taskReadEndpoint, { dependencies: { ...f.deps, sessions } });

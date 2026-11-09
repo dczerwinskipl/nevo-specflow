@@ -20,6 +20,7 @@ import {
 import type { ProjectIdSource } from '../../specs';
 import type { AssociationTargets } from '../targets';
 import { createContextSession } from './create-context-session';
+import { contractRef } from '../../../server/shared-contracts';
 
 const specIdOf = (request: FastifyRequest) => (request.params as { specId: string }).specId;
 
@@ -69,9 +70,9 @@ export function registerCreateContextSessionRoute(
         body: CreateContextSessionSchema,
         response: {
           201: CreateContextSessionResultSchema,
-          404: SpecificationReadErrorSchema,
+          404: contractRef(SpecificationReadErrorSchema),
           // Either envelope: the Specification source error or a `session_error`.
-          503: Type.Union([SpecificationReadErrorSchema, SessionErrorSchema]),
+          503: Type.Union([contractRef(SpecificationReadErrorSchema), SessionErrorSchema]),
         },
       },
     },

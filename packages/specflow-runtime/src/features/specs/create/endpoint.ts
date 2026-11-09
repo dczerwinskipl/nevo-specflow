@@ -38,6 +38,7 @@ import { catalogueEtag } from './catalogue-etag';
 import { createErrorCode, createErrorDetails, statusForCreateError } from './error-status';
 import { prefersRespondAsync } from './respond-async';
 import { createOperationPath, runCreate } from './run-create';
+import { contractRef } from '../../../server/shared-contracts';
 
 /**
  * Route-level `bodyLimit` of `POST /api/specs` (reference "Limits": HTTP body, Save and Create).
@@ -107,12 +108,12 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
       schema: {
         response: {
           200: CreateOptionsSchema,
-          400: CreateSpecErrorSchema,
-          401: AuthenticationRequiredErrorResponseSchema,
-          403: AuthorizationForbiddenErrorResponseSchema,
-          409: CreateSpecErrorSchema,
-          422: CreateSpecErrorSchema,
-          503: CreateSpecErrorSchema,
+          400: contractRef(CreateSpecErrorSchema),
+          401: contractRef(AuthenticationRequiredErrorResponseSchema),
+          403: contractRef(AuthorizationForbiddenErrorResponseSchema),
+          409: contractRef(CreateSpecErrorSchema),
+          422: contractRef(CreateSpecErrorSchema),
+          503: contractRef(CreateSpecErrorSchema),
         },
       },
     },
@@ -179,9 +180,9 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
         response: {
           200: ArchetypeCatalogueSchema,
           304: Type.Null(),
-          401: AuthenticationRequiredErrorResponseSchema,
-          403: AuthorizationForbiddenErrorResponseSchema,
-          503: CreateSpecErrorSchema,
+          401: contractRef(AuthenticationRequiredErrorResponseSchema),
+          403: contractRef(AuthorizationForbiddenErrorResponseSchema),
+          503: contractRef(CreateSpecErrorSchema),
         },
       },
     },
@@ -214,13 +215,13 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
         params: CreateOperationParamsSchema,
         response: {
           200: CreateOperationInspectionSchema,
-          400: CreateSpecErrorSchema,
-          401: AuthenticationRequiredErrorResponseSchema,
-          403: AuthorizationForbiddenErrorResponseSchema,
-          404: CreateSpecErrorSchema,
-          409: CreateSpecErrorSchema,
-          422: CreateSpecErrorSchema,
-          503: CreateSpecErrorSchema,
+          400: contractRef(CreateSpecErrorSchema),
+          401: contractRef(AuthenticationRequiredErrorResponseSchema),
+          403: contractRef(AuthorizationForbiddenErrorResponseSchema),
+          404: contractRef(CreateSpecErrorSchema),
+          409: contractRef(CreateSpecErrorSchema),
+          422: contractRef(CreateSpecErrorSchema),
+          503: contractRef(CreateSpecErrorSchema),
         },
       },
     },
@@ -322,13 +323,13 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
         response: {
           201: CreatedSpecSchema,
           202: CreateOperationAcceptedSchema,
-          400: CreateSpecErrorSchema,
-          401: AuthenticationRequiredErrorResponseSchema,
-          403: AuthorizationForbiddenErrorResponseSchema,
-          409: CreateSpecErrorSchema,
-          413: CreateSpecErrorSchema,
-          422: CreateSpecErrorSchema,
-          503: CreateSpecErrorSchema,
+          400: contractRef(CreateSpecErrorSchema),
+          401: contractRef(AuthenticationRequiredErrorResponseSchema),
+          403: contractRef(AuthorizationForbiddenErrorResponseSchema),
+          409: contractRef(CreateSpecErrorSchema),
+          413: contractRef(CreateSpecErrorSchema),
+          422: contractRef(CreateSpecErrorSchema),
+          503: contractRef(CreateSpecErrorSchema),
         },
       },
     },

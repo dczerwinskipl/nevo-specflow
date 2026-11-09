@@ -15,6 +15,7 @@ import {
   type OperationProgressRegistry,
   type StoredProgressEvent,
 } from './progress-registry';
+import { contractRef } from '../../server/shared-contracts';
 
 export const DEFAULT_PROGRESS_HEARTBEAT_MS = 15_000;
 
@@ -89,8 +90,8 @@ export function registerOperationEventsRoute<RawServer extends RawServerBase>(
       schema: {
         params: OperationProgressParamsSchema,
         response: {
-          401: AuthenticationRequiredErrorResponseSchema,
-          403: AuthorizationForbiddenErrorResponseSchema,
+          401: contractRef(AuthenticationRequiredErrorResponseSchema),
+          403: contractRef(AuthorizationForbiddenErrorResponseSchema),
           429: Type.Object(
             { error: Type.String(), code: Type.String() },
             { additionalProperties: false },

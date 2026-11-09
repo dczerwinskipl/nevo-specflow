@@ -11,6 +11,7 @@ import {
   type CapabilityDiscoveryRequest,
   type CapabilityDiscoveryResponse,
 } from '@nevo/specflow-contracts/authorization/capability-discovery';
+import { contractRef } from '../../../../server/shared-contracts';
 
 export interface CapabilityDiscoveryEndpointOptions {
   readonly authorizationResources: readonly ResourceDefinition[];
@@ -36,7 +37,7 @@ export const capabilityDiscoveryEndpoint: FastifyPluginCallback<
         body: requestSchema,
         response: {
           200: responseSchema,
-          401: AuthenticationRequiredErrorResponseSchema,
+          401: contractRef(AuthenticationRequiredErrorResponseSchema),
         },
       },
     },

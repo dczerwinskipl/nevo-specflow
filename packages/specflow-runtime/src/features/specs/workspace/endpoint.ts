@@ -16,6 +16,7 @@ import { isSpecsSourceError } from '../read/error';
 import type { SpecificationWorkspaceRepository, WorkspaceContributions } from './repository';
 import { readAuthorizedWorkspace } from './read-authorized-workspace';
 import type { SessionReferenceOwner } from '../../sessions';
+import { contractRef } from '../../../server/shared-contracts';
 
 export interface SpecificationWorkspaceEndpointOptions {
   readonly repository?: SpecificationWorkspaceRepository;
@@ -43,10 +44,10 @@ export const specificationWorkspaceEndpoint: FastifyPluginCallback<
         params: SpecificationWorkspaceParamsSchema,
         response: {
           200: SpecificationWorkspaceResponseSchema,
-          401: AuthenticationRequiredErrorResponseSchema,
-          403: AuthorizationForbiddenErrorResponseSchema,
-          404: SpecificationReadErrorSchema,
-          503: SpecificationReadErrorSchema,
+          401: contractRef(AuthenticationRequiredErrorResponseSchema),
+          403: contractRef(AuthorizationForbiddenErrorResponseSchema),
+          404: contractRef(SpecificationReadErrorSchema),
+          503: contractRef(SpecificationReadErrorSchema),
         },
       },
     },

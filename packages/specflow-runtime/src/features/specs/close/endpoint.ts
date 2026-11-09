@@ -48,6 +48,7 @@ import type { FastifyPluginCallback, FastifyRequest } from 'fastify';
 import { requireCapability } from '../../auth';
 import { specScope } from '../scope';
 import { documentFailure } from '../../documents';
+import { contractRef } from '../../../server/shared-contracts';
 
 export interface SpecsCloseEndpointOptions {
   readonly engine?: SpecFlowEngine;
@@ -206,13 +207,13 @@ function statusForCloseError(code: SafeCode): 400 | 404 | 409 | 422 | 503 {
 }
 
 const errors = {
-  400: CloseErrorSchema,
-  401: AuthenticationRequiredErrorResponseSchema,
-  403: AuthorizationForbiddenErrorResponseSchema,
-  404: CloseErrorSchema,
-  409: CloseErrorSchema,
-  422: CloseErrorSchema,
-  503: CloseErrorSchema,
+  400: contractRef(CloseErrorSchema),
+  401: contractRef(AuthenticationRequiredErrorResponseSchema),
+  403: contractRef(AuthorizationForbiddenErrorResponseSchema),
+  404: contractRef(CloseErrorSchema),
+  409: contractRef(CloseErrorSchema),
+  422: contractRef(CloseErrorSchema),
+  503: contractRef(CloseErrorSchema),
 } as const;
 
 export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions> = (
@@ -247,7 +248,11 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
             kind === 'worktree-close'
               ? CloseWorktreeRequestSchema
               : CloseSpecificationRequestSchema,
-          response: { 200: CloseResultSchema, 202: CloseResultSchema, ...errors },
+          response: {
+            200: contractRef(CloseResultSchema),
+            202: contractRef(CloseResultSchema),
+            ...errors,
+          },
         },
       },
       async (request, reply) => {
@@ -314,7 +319,7 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
         schema: {
           params: CloseSpecParamsSchema,
           querystring: ClosePreviewQuerySchema,
-          response: { 200: ClosePreviewSchema, ...errors },
+          response: { 200: contractRef(ClosePreviewSchema), ...errors },
         },
       },
       async (request, reply) => {
@@ -403,7 +408,11 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
       schema: {
         params: CloseWorkspaceParamsSchema,
         body: CloseWorktreeRequestSchema,
-        response: { 200: CloseWorkspaceResultSchema, 202: CloseWorkspaceResultSchema, ...errors },
+        response: {
+          200: contractRef(CloseWorkspaceResultSchema),
+          202: contractRef(CloseWorkspaceResultSchema),
+          ...errors,
+        },
       },
     },
     async (request, reply) => {
@@ -446,7 +455,7 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
     {
       schema: {
         params: CloseWorkspaceOperationParamsSchema,
-        response: { 200: CloseWorkspaceResultSchema, ...errors },
+        response: { 200: contractRef(CloseWorkspaceResultSchema), ...errors },
       },
     },
     async (request, reply) => {
@@ -486,7 +495,7 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
       preHandler: authSpec,
       schema: {
         params: CloseOperationParamsSchema,
-        response: { 200: CloseResultSchema, ...errors },
+        response: { 200: contractRef(CloseResultSchema), ...errors },
       },
     },
     async (request, reply) => {
@@ -516,7 +525,7 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
       schema: {
         params: CloseOperationParamsSchema,
         body: CloseScratchReconciliationRequestSchema,
-        response: { 200: CloseResultSchema, ...errors },
+        response: { 200: contractRef(CloseResultSchema), ...errors },
       },
     },
     async (request, reply) => {
@@ -568,7 +577,7 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
       preHandler: authWorktree,
       schema: {
         params: CloseOperationParamsSchema,
-        response: { 200: CloseResultSchema, ...errors },
+        response: { 200: contractRef(CloseResultSchema), ...errors },
       },
     },
     async (request, reply) => {

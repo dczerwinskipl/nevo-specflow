@@ -1,12 +1,15 @@
 import { Type, type Static } from 'typebox';
 import { TaskSnapshotSchema } from './task-read';
 export * from './task-read';
-export const TaskReadErrorSchema = Type.Object({
-  error: Type.Union([
-    Type.Literal('specification_task_not_found'),
-    Type.Literal('specification_source_unavailable'),
-  ]),
-});
+export const TaskReadErrorSchema = Type.Object(
+  {
+    error: Type.Union([
+      Type.Literal('specification_task_not_found'),
+      Type.Literal('specification_source_unavailable'),
+    ]),
+  },
+  { $id: 'TaskReadError' },
+);
 const IdSchema = Type.String({
   minLength: 1,
   maxLength: 200,

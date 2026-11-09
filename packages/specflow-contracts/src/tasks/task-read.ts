@@ -183,9 +183,12 @@ export const TaskPageQuerySchema = Type.Object(
   },
   { additionalProperties: false },
 );
-export const TaskSnapshotExpiredSchema = Type.Object({
-  error: Type.Literal('task_snapshot_expired'),
-});
+export const TaskSnapshotExpiredSchema = Type.Object(
+  {
+    error: Type.Literal('task_snapshot_expired'),
+  },
+  { $id: 'TaskSnapshotExpired' },
+);
 const Descriptor = Type.Object({ id: Id, label: Text });
 /** Additive Task detail. Project adapters may omit this until they implement the reader. */
 export const TaskSnapshotSchema = Type.Object({

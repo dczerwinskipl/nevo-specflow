@@ -178,14 +178,17 @@ export const SpecificationWorkspaceResponseSchema = Type.Object({
     startSession: StartSessionActionSchema,
   }),
 });
-export const SpecificationReadErrorSchema = Type.Object({
-  error: Type.Union([
-    Type.Literal('specification_not_found'),
-    Type.Literal('specification_document_not_found'),
-    Type.Literal('specification_task_not_found'),
-    Type.Literal('specification_source_unavailable'),
-  ]),
-});
+export const SpecificationReadErrorSchema = Type.Object(
+  {
+    error: Type.Union([
+      Type.Literal('specification_not_found'),
+      Type.Literal('specification_document_not_found'),
+      Type.Literal('specification_task_not_found'),
+      Type.Literal('specification_source_unavailable'),
+    ]),
+  },
+  { $id: 'SpecificationReadError' },
+);
 export type SpecificationWorkspaceResponse = Static<typeof SpecificationWorkspaceResponseSchema>;
 export type WorkspaceTaskGroup = Static<typeof WorkspaceTaskGroupSchema>;
 export type WorkspaceDocument = Static<typeof WorkspaceDocumentSchema>;

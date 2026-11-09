@@ -11,6 +11,7 @@ import { PageLeases } from '../../src/features/tasks/reads/page-leases';
 import { createDemoTaskSources } from '../../src/features/tasks';
 import { createDemoSpecsRepositories } from '../../src/features/specs';
 import { sessionReferences } from '../support/session-references';
+import { registerSharedContracts } from '../../src/server/shared-contracts';
 
 describe('Task read authorization through the real HTTP adapter', () => {
   it('redacts Session metadata and invalidates existing tokens after subject/policy change', async () => {
@@ -69,6 +70,7 @@ describe('Task read authorization through the real HTTP adapter', () => {
     let authorization = policy(true),
       user = subject;
     const app = Fastify();
+    registerSharedContracts(app);
     registerRuntimeErrorHandler(app);
     app.decorateRequest('authz', {
       getter: () => createRequestAuthorization({ mode: 'subject', subject: user }, authorization),

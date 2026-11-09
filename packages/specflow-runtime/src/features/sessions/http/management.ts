@@ -13,6 +13,7 @@ import type { SessionCoordinator } from '../lifecycle/coordinator';
 import type { SessionView } from '../persistence/protocol';
 import { authorizeSessionCapability, authorizedIdentity } from './authorization';
 import { effective } from './projection';
+import { contractRef } from '../../../server/shared-contracts';
 
 const params = Type.Object({ sessionId: SessionIdSchema }, { additionalProperties: false });
 const sessionId = (request: FastifyRequest) => (request.params as { sessionId: string }).sessionId;
@@ -59,7 +60,7 @@ export function registerSessionManagementRoutes(
       {
         bodyLimit: 65536,
         preHandler: authorize('manage'),
-        schema: { params, body, response: { 200: SessionCommandResultSchema } },
+        schema: { params, body, response: { 200: contractRef(SessionCommandResultSchema) } },
       },
       async (request) => project(await run(request), request),
     );

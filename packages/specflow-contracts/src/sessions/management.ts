@@ -12,7 +12,10 @@ export const RenameSessionSchema = Type.Object(
 /** Shared by archive and unarchive; each command keeps its own idempotency scope. */
 export const ArchiveSessionSchema = Type.Object({ requestId: SessionIdSchema }, closed);
 /** Rename, archive and unarchive return the current effective Session projection. */
-export const SessionCommandResultSchema = Type.Object({ session: SessionInfoSchema }, closed);
+export const SessionCommandResultSchema = Type.Object(
+  { session: SessionInfoSchema },
+  { ...closed, $id: 'SessionCommandResult' },
+);
 
 export type RenameSession = Static<typeof RenameSessionSchema>;
 export type ArchiveSession = Static<typeof ArchiveSessionSchema>;

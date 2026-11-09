@@ -22,6 +22,7 @@ import { matchesEtag, sendNotModified } from '../../server/etag';
 import { buildOperationList, type OperationListConfig } from './list-service';
 import type { OperationListSource } from './operation-source';
 import type { OperationProgressRegistry } from './progress-registry';
+import { contractRef } from '../../server/shared-contracts';
 
 export const OPERATIONS_UNAVAILABLE_CODE = 'OPERATIONS_UNAVAILABLE';
 export const OPERATION_LIST_QUERY_INVALID_CODE = 'OPERATION_LIST_QUERY_INVALID';
@@ -84,10 +85,10 @@ export function registerOperationListRoute<RawServer extends RawServerBase>(
       schema: {
         querystring: OperationListQueryStringSchema,
         response: {
-          200: OperationListResponseSchema,
+          200: contractRef(OperationListResponseSchema),
           400: OperationListErrorSchema,
-          401: AuthenticationRequiredErrorResponseSchema,
-          403: AuthorizationForbiddenErrorResponseSchema,
+          401: contractRef(AuthenticationRequiredErrorResponseSchema),
+          403: contractRef(AuthorizationForbiddenErrorResponseSchema),
           503: OperationListErrorSchema,
         },
       },

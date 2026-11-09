@@ -50,7 +50,7 @@ export const ClosePreviewSchema = Type.Object(
     location: Type.Union([Type.Literal('active'), Type.Literal('archive')]),
     integrationRequired: Type.Boolean(),
   },
-  { additionalProperties: false },
+  { $id: 'ClosePreview', additionalProperties: false },
 );
 export const CloseResultSchema = Type.Object(
   {
@@ -75,7 +75,7 @@ export const CloseResultSchema = Type.Object(
     conflictPaths: Type.Optional(Type.Array(Type.String())),
     scratchRetired: Type.Optional(Type.Boolean()),
   },
-  { additionalProperties: false },
+  { $id: 'CloseResult', additionalProperties: false },
 );
 export const CloseErrorSchema = Type.Object(
   {
@@ -85,7 +85,7 @@ export const CloseErrorSchema = Type.Object(
     /** Present for `DOCUMENT_COMMITS_PENDING` (`details.cause`: `commit-pending`, `commit-failed`, ...). */
     details: Type.Optional(DocumentErrorDetailsSchema),
   },
-  { additionalProperties: false },
+  { $id: 'CloseError', additionalProperties: false },
 );
 
 export const CloseWorkspacePreviewSchema = Type.Object(
@@ -128,5 +128,5 @@ export const CloseWorkspaceResultSchema = Type.Object(
     occupantCount: Type.Integer({ minimum: 1 }),
     conflictPaths: Type.Optional(Type.Array(Type.String())),
   },
-  { additionalProperties: false },
+  { $id: 'CloseWorkspaceResult', additionalProperties: false },
 );

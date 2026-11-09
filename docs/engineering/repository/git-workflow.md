@@ -85,7 +85,7 @@ The channel model (`beta` / `rc` / `stable`), the intentional prerelease tag seq
 1. A security/critical issue affects `1.3` while `main` has moved on.
 2. `git switch release/v1.3 && git switch -c fix/security-xyz`
 3. PR into `release/v1.3` — same review + CI gate, squash merge.
-4. Promote and release the patch via the [`release` workflow](releasing.md#releasing-a-version)
+4. Promote and release the patch via the [`release` workflow](releasing.md#releasing)
    — an optional `v1.3.1-rc.1`, then `v1.3.1`.
 5. **Forward-port** the fix to `main` and any other maintained release lines with
    their own PRs.

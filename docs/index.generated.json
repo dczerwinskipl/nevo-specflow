@@ -640,11 +640,11 @@
       "status": "current",
       "file": "docs/architecture/overview.md",
       "read_when": [
-        "orienting in the codebase before working across package or process boundaries",
-        "explaining which SpecFlow component talks to which, and over what transport",
+        "orienting in the system before working across package or process boundaries",
+        "explaining who uses SpecFlow through which surface, and which part talks to which",
         "deciding which package or authoritative document owns a concern"
       ],
-      "summary": "Derived, diagram-first map of Nevo SpecFlow: processes and transports, package dependency direction, Runtime feature composition, where state lives, and the managed Session Turn flow. Every diagram links the authoritative document that owns its facts; on conflict those documents win.",
+      "summary": "Derived, diagram-first map of Nevo SpecFlow from the outside in: actors and use cases, the running parts (CLI, Runtime with the UI, Engine, provider agents), the components inside each part, then technical views (package dependencies, where state lives, the managed Session Turn). Every diagram links the authoritative document that owns its facts; on conflict those documents win.",
       "related": [
         "adr.0012-product-package-topology-and-dependency-direction",
         "architecture.runtime.ownership-and-lifecycle",
@@ -654,7 +654,9 @@
         "architecture.ai.provider-boundary",
         "architecture.ai.session-storage-and-lifecycle",
         "architecture.workflow.workflow-kernel",
-        "architecture.repository-structure"
+        "architecture.repository-structure",
+        "product.specflow.ui.application-architecture",
+        "reference.cli.nevo-specflow-contract"
       ],
       "scope": "specflow",
       "areas": [

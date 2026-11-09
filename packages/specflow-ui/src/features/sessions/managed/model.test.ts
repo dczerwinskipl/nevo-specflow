@@ -68,6 +68,35 @@ describe('bounded Session conversation reconciliation', () => {
     );
     expect(next.interaction).toBeUndefined();
   });
+  it('keeps Stop available when the Session is renamed during an active Turn', () => {
+    const activeTurn = {
+      turnId: 'turn',
+      state: 'active',
+      revision: 1,
+      startedAt: 'now',
+    } as const;
+    const running = {
+      ...snapshot,
+      session: { sessionId: 'session', capabilities: { cancel: true, start: false } },
+      activeTurn,
+    } as SessionSnapshot;
+    const renamed = {
+      sessionId: 'session',
+      eventSeq: 4,
+      kind: 'session',
+      changes: {
+        projection: {
+          session: { ...running.session, title: 'Renamed' },
+          activeTurn,
+          currentActivity: null,
+          interaction: null,
+        },
+      },
+    } as SessionChange;
+    const next = applySessionEvent(running, renamed);
+    expect(next.session).toMatchObject({ title: 'Renamed', capabilities: { cancel: true } });
+    expect(next.activeTurn).toEqual(activeTurn);
+  });
   it('keeps canonical order and resource isolation', () => {
     expect(mergeEntries([entry('second', 2)], [entry('first', 1)]).map((e) => e.id)).toEqual([
       'first',

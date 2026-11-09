@@ -7,6 +7,7 @@ import {
 import type { FastifyInstance, RawServerBase } from 'fastify';
 
 import { requireCapabilityInAnyScope } from '../../auth';
+import { specScope } from '../../specs';
 import {
   registerOperationListRoute,
   type OperationListConfig,
@@ -114,7 +115,7 @@ export function registerDocumentOperationList<RawServer extends RawServerBase>(
         ? authorization.can({
             resource: SpecCapabilities,
             capability: SpecCapabilities.capabilities.View,
-            scope: { specId: row.subject.specId },
+            scope: specScope(options.engine?.context.project.projectId, row.subject.specId),
           })
         : authorization.can({
             resource: SpecCapabilities,

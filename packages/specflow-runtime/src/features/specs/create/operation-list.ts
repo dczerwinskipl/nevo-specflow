@@ -107,7 +107,7 @@ export function registerSpecsOperationList<RawServer extends RawServerBase>(
     // operation not reserved yet) is only shown to callers who may create specifications.
     canView: (authorization, row) =>
       row.subject?.specId
-        ? canViewSpec(authorization, row.subject.specId)
+        ? canViewSpec(authorization, options.engine?.context.project.projectId, row.subject.specId)
         : authorization.can({
             resource: SpecCapabilities,
             capability: SpecCapabilities.capabilities.Create,

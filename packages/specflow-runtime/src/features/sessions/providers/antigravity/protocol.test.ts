@@ -276,6 +276,26 @@ describe('Antigravity native stream protocol', () => {
     ).rejects.toThrow();
   });
 
+  it('classifies each native tool step only from its own tool name', async () => {
+    const { facts, protocol, step } = fixture();
+    const names = ['view_file', 'list_dir', 'grep_search', 'run_command', 'call_mcp_tool'];
+    for (const [offset, name] of names.entries()) {
+      await protocol.frame(
+        step(4 + offset, { step_type: 'tool', state: 'ACTIVE', tool_name: name }),
+      );
+    }
+
+    expect(
+      facts.flatMap((fact) => (fact.kind === 'action-open' ? [[fact.title, fact.operation]] : [])),
+    ).toEqual([
+      ['view_file', 'read'],
+      ['list_dir', 'list'],
+      ['grep_search', 'search'],
+      ['run_command', 'command'],
+      ['call_mcp_tool', 'other'],
+    ]);
+  });
+
   it('does not accept successful completion while native tool work remains active', async () => {
     const { facts, protocol, step, result } = fixture();
     await protocol.frame(

@@ -13,10 +13,10 @@ import { providerDescriptor } from '../catalogue/startCatalogue.stories-support'
 import { creates, ManagedStartPreview } from './sessionStart.stories-support';
 
 /**
- * Starting a Session on the managed Runtime (`/sessions/new`, no Specification): the same Session
- * screen and form as a Specification's, over the Runtime's own provider catalogue (readiness,
- * reasons, native work modes) and `POST /api/sessions`
- * (`docs/ideas/specflow-ui/screens/new-session-ui-spec.md`, scenario (h)). The real start source runs
+ * A Specification's New Session on the managed (project) Runtime (`/specs/$specId/sessions/new`):
+ * the same Session screen and form as the demo's, over the Runtime's own provider catalogue
+ * (readiness, reasons, native work modes) and the composed create `POST /api/specs/:specId/sessions`
+ * (`docs/ideas/specflow-ui/session-association-ux/README.md` §5). The real start source runs
  * over a faked transport; a created Session opens as in the route. Every state is rendered from the
  * story's args; the plays only assert it and walk the flow.
  */
@@ -61,17 +61,17 @@ async function pick(canvas: Canvas, field: string, option: string | RegExp) {
   await waitFor(() => expect(body().queryByRole('listbox')).toBeNull());
 }
 
-/** Scenario (h): no Specification in Context; the catalogue is the Runtime's own. */
-export const NoSpecification: Story = {
+/** The Specification pinned in Context; the catalogue is the Runtime's own. */
+export const ManagedInSpecification: Story = {
   play: async ({ canvas }) => {
     await settle();
     await expect(canvas.getByRole('heading', { level: 1, name: 'Nowa sesja' })).toBeVisible();
     await expect(
       await canvas.findByRole('heading', { level: 2, name: 'Rozpocznij sesję' }),
     ).toBeVisible();
-    // The Runtime's own providers, the first available one chosen; Context has no Specification row.
+    // The Runtime's own providers, the first available one chosen; Context pins the Specification.
     await expect(canvas.getByRole('radio', { name: /Claude/ })).toBeChecked();
-    await expect(canvas.queryByText('Specyfikacja')).toBeNull();
+    await expect(canvas.getByRole('button', { name: /Logowanie SSO/ })).toBeVisible();
     await expect(canvas.getByText('nie wybrano')).toBeVisible();
     await expect(canvas.getByRole('combobox', { name: 'Model' })).toBeEnabled();
     await expect(canvas.getByRole('combobox', { name: 'Effort' })).toBeDisabled();
@@ -313,11 +313,13 @@ export const ManagedStartFlow: Story = {
     await expect(composer(canvas)).toBeEnabled();
     await expect(canvas.getByRole('button', { name: /Claude Sonnet/ })).toBeVisible();
     await expect(canvas.getByRole('button', { name: /Plan/ })).toBeVisible();
+    // The composed create's association seeded the Session's Context: the Specification stays.
+    await expect(canvas.getByRole('button', { name: /Logowanie SSO/ })).toBeVisible();
   },
 };
 
-/** Narrow 375 px, no Specification: one column, no Composer before Start, Context from the header. */
-export const NarrowNoSpecification: Story = {
+/** Narrow 375 px: one column, no Composer before Start, Context from the header. */
+export const NarrowManagedInSpecification: Story = {
   globals: mobile,
   play: async ({ canvas }) => {
     await settle(375, 812);

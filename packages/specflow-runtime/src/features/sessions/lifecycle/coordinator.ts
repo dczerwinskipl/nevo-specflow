@@ -3,17 +3,22 @@ import type {
   StartTurn,
   RespondInteraction,
   SessionSnapshot,
+  RenameSession,
+  ArchiveSession,
+  ReconcileTurnResult,
 } from '@nevo/specflow-contracts/sessions';
 import { SessionLimits, utf8Bytes } from '@nevo/specflow-contracts/sessions';
 import { SessionError } from '../errors';
 import { setTimeout as delay } from 'node:timers/promises';
 import type { SessionStore } from '../persistence/store';
+import { createFingerprint, type AssociationWrite } from '../persistence/associations';
 import type {
   DriverFact,
   SnapshotSource,
   StartAdmission,
   StoreCommand,
   EffectRecoveryCandidate,
+  SessionView,
 } from '../persistence/protocol';
 import type { SessionDriver, ProviderOperation, Invocation } from '../providers/driver';
 import { ProviderTimeouts } from '../providers/driver';
@@ -23,6 +28,7 @@ import { createManagedInvocation } from './managed-invocation';
 import { createSessionTelemetryService } from './telemetry';
 
 interface ActiveInvocation {
+  sessionId: string;
   invocationId: string;
   controller: AbortController;
   operation?: ProviderOperation;
@@ -149,7 +155,7 @@ export function createSessionCoordinator(
       );
     }
 
-    return call<{ turnId: string; outcome: string; reconciled: boolean }>({
+    return call<ReconcileTurnResult>({
       op: 'reconcile-effect',
       ...candidate,
       actor,
@@ -169,6 +175,9 @@ export function createSessionCoordinator(
       available ? registry.get(providerId)?.describe() : undefined,
     available: (providerId: string) =>
       available && registry.get(providerId)?.describe().readiness === 'ready',
+    /** Some enabled provider is ready now (its last known readiness; no discovery is run). */
+    usable: () =>
+      available && [...registry.values()].some((driver) => driver.describe().readiness === 'ready'),
     async recoverEffects() {
       if (!effects) {
         return;
@@ -203,9 +212,7 @@ export function createSessionCoordinator(
     },
     async reconcile(actor: string, sessionId: string, turnId: string, requestId: string) {
       accepting();
-      const previous = await call<
-        { turnId: string; outcome: string; reconciled: boolean } | undefined
-      >({
+      const previous = await call<ReconcileTurnResult | undefined>({
         op: 'replay',
         actor,
         command: 'reconcile',
@@ -254,8 +261,14 @@ export function createSessionCoordinator(
         }),
       );
     },
-    async create(actor: string, input: CreateSession): Promise<{ sessionId: string }> {
+    /** `association` is written verbatim with the Session; it never steers lifecycle decisions. */
+    async create(
+      actor: string,
+      input: CreateSession,
+      association?: AssociationWrite,
+    ): Promise<{ sessionId: string }> {
       input = Object.freeze(structuredClone(input));
+      association = association && Object.freeze(structuredClone(association));
       accepting();
       const cached = await call<{ sessionId: string } | undefined>({
         op: 'replay',
@@ -263,7 +276,7 @@ export function createSessionCoordinator(
         command: 'create',
         scope: projectId,
         requestId: input.requestId,
-        input,
+        input: createFingerprint(input, association),
       });
       if (cached) {
         return cached;
@@ -276,7 +289,7 @@ export function createSessionCoordinator(
       const driver = driverFor(input.providerId);
       await validate(driver, input);
 
-      return call({ op: 'create', actor, input });
+      return call({ op: 'create', actor, input, ...(association ? { association } : {}) });
     },
     async start(actor: string, sessionId: string, input: StartTurn): Promise<{ turnId: string }> {
       input = Object.freeze(structuredClone(input));
@@ -302,6 +315,11 @@ export function createSessionCoordinator(
       }
 
       const before = await snapshot(sessionId, actor);
+      // Early refusal only; the store re-checks archive state inside the admission transaction.
+      if (before.session.archivedAt) {
+        throw new SessionError('SESSION_ARCHIVED', 'Archived Sessions are read-only.');
+      }
+
       const selection = {
         providerId: before.session.providerId,
         mode: before.session.mode,
@@ -391,6 +409,7 @@ export function createSessionCoordinator(
       };
 
       const live: ActiveInvocation = {
+        sessionId,
         invocationId: admitted.invocationId,
         controller,
         emit,
@@ -577,6 +596,36 @@ export function createSessionCoordinator(
       }
 
       return { turnId: result.turnId, interactionId };
+    },
+    async rename(actor: string, sessionId: string, input: RenameSession) {
+      accepting();
+
+      return call<SessionView>({ op: 'rename', actor, sessionId, input });
+    },
+    async archive(actor: string, sessionId: string, input: ArchiveSession) {
+      accepting();
+
+      return call<SessionView>({ op: 'archive', actor, sessionId, input });
+    },
+    async unarchive(actor: string, sessionId: string, input: ArchiveSession) {
+      accepting();
+
+      return call<SessionView>({ op: 'unarchive', actor, sessionId, input });
+    },
+    /** Hard delete of Runtime-owned rows; Engine records and native transcripts are kept. */
+    async remove(sessionId: string): Promise<void> {
+      accepting();
+      for (const [turnId, live] of active) {
+        if (live.sessionId === sessionId) {
+          throw new SessionError(
+            'TURN_CONFLICT',
+            'A live invocation of this Session has not settled.',
+            { turnId },
+          );
+        }
+      }
+
+      await call({ op: 'delete', sessionId });
     },
     async close() {
       if (closed) {

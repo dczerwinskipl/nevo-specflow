@@ -47,7 +47,7 @@ export function TaskWorkspaceHistory({
                 <Typography
                   as="p"
                   variant="body-md"
-                  className={item.result.tone === 'attention' ? 'text-accent-attention' : undefined}
+                  className={item.result.tone === 'attention' ? 'text-status-attention' : undefined}
                 >
                   {item.result.label}
                 </Typography>

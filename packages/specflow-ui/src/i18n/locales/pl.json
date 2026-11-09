@@ -122,6 +122,8 @@
     "activityHistoryUnavailableDescription": "Historia tej specyfikacji jest chwilowo niedostępna.",
     "activityHistoryForbiddenTitle": "Brak dostępu do historii",
     "activityHistoryForbiddenDescription": "Nie masz uprawnień do historii tej specyfikacji.",
+    "activitySpecificationCreated": "Utworzono specyfikację",
+    "activitySessionStarted": "Rozpoczęto sesję",
     "documentPreviewTitle": "Podgląd dokumentu",
     "markdownTable": "Tabela",
     "markdownCodeBlock": "Blok kodu",
@@ -157,12 +159,16 @@
     "sessionActions": "Akcje sesji",
     "openSessionAction": "Otwórz sesję",
     "allSessionsLink": "Wszystkie sesje",
-    "newConversation": "Nowa rozmowa",
     "activityHistoryLink": "Historia aktywności",
     "prepareSpecificationHeading": "Przygotuj specyfikację do realizacji",
-    "prepareSpecificationDescription": "Rozpocznij rozmowę z agentem, aby dopracować wymagania i przygotować zadania do realizacji.",
-    "startConversation": "Rozpocznij rozmowę",
+    "prepareSpecificationDescription": "Rozpocznij sesję z agentem, aby dopracować wymagania i przygotować zadania do realizacji.",
+    "startSession": "Rozpocznij sesję",
+    "prepareSessionsDisabled": "Zadania przygotowuje agent w sesji. Sesje są wyłączone na tym serwerze.",
+    "prepareStartForbidden": "Nie masz uprawnień do rozpoczęcia sesji dla tej specyfikacji.",
+    "prepareStartUnavailable": "Zadania przygotowuje agent w sesji. Rozpoczęcie sesji nie jest tu dostępne.",
     "tasksHeading": "Zadania",
+    "tasksEmptyTitle": "Nie ma jeszcze zadań",
+    "tasksEmptyDescription": "Zadania pojawią się tutaj, gdy specyfikacja zostanie przygotowana do realizacji.",
     "tasksInPreparation": "{{count}} w przygotowaniu",
     "tasksProgressCount": "{{completed}} / {{total}} ukończone",
     "selectedTasksCount": "{{count}} wybrane",
@@ -173,8 +179,6 @@
     "documentsHeading": "Dokumenty",
     "allDocumentsLink": "Wszystkie dokumenty",
     "openFullDocument": "Otwórz pełny dokument",
-    "sessionsOfThisSpec": "Sesje tej specyfikacji",
-    "sessionsFutureNotice": "W przyszłości ta sama kolekcja może zawierać sesje wykonujące workflow specyfikacji.",
     "changesHeading": "Zmiany",
     "changesWorktreeContext": "Repozytorium crm · worktree tej specyfikacji",
     "changesSourceLabel": "Źródło zmian",
@@ -204,18 +208,12 @@
     "backToSpecification": "Wróć do specyfikacji",
     "taskFullHistoryHeading": "Historia zadania",
     "executeModalTitle": "Wykonaj wybrane zadania",
-    "conversationModalTitle": "Nowa rozmowa o specyfikacji",
     "taskStatusPending": "Gotowe",
     "taskStatusInProgress": "W trakcie",
     "taskStatusCompleted": "Ukończone",
     "taskStatusBlocked": "Zablokowane",
     "sessionStatusActive": "Aktywna",
     "sessionStatusAttention": "Wymaga uwagi",
-    "sessionStatusQuiet": "Bezczynna",
-    "sessionTaskCount_one": "{{count}} zadanie",
-    "sessionTaskCount_few": "{{count}} zadania",
-    "sessionTaskCount_many": "{{count}} zadań",
-    "sessionTaskCount_other": "{{count}} zadania",
     "attentionViewTask": "Zobacz zadanie",
     "viewTasks": "Zadania"
   },
@@ -250,7 +248,6 @@
     "noResults": "Brak pasujących specyfikacji",
     "noResultsDescription": "Wpisz inny tytuł lub wyczyść wyszukiwanie, aby zobaczyć tę kolekcję.",
     "openSpec": "Otwórz specyfikację: {{title}}",
-    "createSession": "Utwórz sesję",
     "openPullRequest": "PR #{{number}}: Otwórz pull request — {{title}}",
     "progress": "{{completed}} / {{total}} zadań",
     "updated": "Aktualizacja: {{date}}",
@@ -1426,7 +1423,8 @@
       },
       "specification": {
         "sectionTitle": "Specyfikacja",
-        "documents": "Dokumenty"
+        "documents": "Dokumenty",
+        "archived": "W archiwum"
       },
       "placeholders": {
         "sectionTitle": "Planowane obszary",
@@ -1440,7 +1438,16 @@
       "sessionDetails": {
         "usageTitle": "Zużycie sesji",
         "limitsTitle": "Limity dostawcy",
-        "refreshing": "Odświeżanie…",
+        "refreshLimits": "Odśwież",
+        "refreshLimitsLabel": "Odśwież limity dostawcy",
+        "refreshingLimits": "Odświeżanie…",
+        "limitsNotRead": "Limity nie zostały jeszcze odczytane.",
+        "refreshFailed": "Nie udało się odświeżyć limitów. Pokazano ostatni odczyt.",
+        "limitsReadFailed": "Nie udało się odczytać limitów.",
+        "refreshCooldown": "Limity odświeżono przed chwilą. Odświeżenie będzie znów możliwe za moment.",
+        "refreshUnavailable": "Odświeżanie limitów jest niedostępne.",
+        "refreshRejected": "Odrzucono odświeżenie limitów.",
+        "refreshUnconfirmed": "Nie potwierdzono odświeżenia. Spróbuj ponownie.",
         "costLabel": "Koszt",
         "tokensStatLabel": "Tokeny wej. / wyj.",
         "tokenBreakdownLabel": "Pozostałe statystyki tokenów",
@@ -1477,11 +1484,10 @@
       "batch_many": "{{count}} zadań",
       "batch_other": "{{count}} zadania",
       "availability": {
-        "scopeNotProvided": "Powiązania tej sesji ze specyfikacją i zadaniami nie są jeszcze dostępne.",
         "scopeUnreadable": "Nie udało się wczytać powiązań tej sesji.",
         "specificationUnreadable": "Nie udało się wczytać specyfikacji tej sesji.",
-        "specificationMissing": "Nie znaleziono specyfikacji, do której należy ta sesja.",
-        "specificationMissingNamed": "Nie znaleziono specyfikacji {{key}}, do której należy ta sesja.",
+        "specificationMissing": "Nie znaleziono specyfikacji, z którą powiązana jest ta sesja.",
+        "specificationMissingNamed": "Nie znaleziono specyfikacji {{key}}, z którą powiązana jest ta sesja.",
         "executionUnreadable": "Nie udało się wczytać wykonywanych zadań.",
         "taskMissing": "Nie znaleziono zadania, które wykonuje ta sesja.",
         "taskMissingNamed": "Nie znaleziono zadania {{key}}, które wykonuje ta sesja.",
@@ -1490,13 +1496,47 @@
         "relatedTasksUnreadable": "Nie udało się wczytać powiązanych zadań.",
         "executorUnreadable": "Nie udało się wczytać danych wykonawcy.",
         "workUnreadable": "Nie udało się wczytać historii pracy.",
-        "executorMissing": "Wykonawca tej sesji nie jest już dostępny."
+        "executorMissing": "Wykonawca tej sesji nie jest już dostępny.",
+        "specificationForbidden": "Nie masz uprawnień do wyświetlenia specyfikacji powiązanej z tą sesją.",
+        "relatedTasksMissing": "Nie znaleziono {{count}} z {{total}} powiązanych zadań."
       },
       "work": {
         "sectionTitle": "Praca",
         "currentTurn": "Bieżąca tura",
         "lastTurn": "Ostatnia tura"
       }
+    },
+    "untitled": "Sesja bez nazwy",
+    "list": {
+      "newSession": "Nowa sesja",
+      "collection": "Kolekcja sesji",
+      "current": "Bieżące",
+      "archive": "Archiwum",
+      "loadMore": "Pokaż więcej",
+      "loadingMore": "Wczytywanie…",
+      "noneInScanned": "Nie znaleziono więcej sesji w tej partii. Możesz szukać dalej.",
+      "loadMoreFailed": "Nie udało się wczytać kolejnych sesji.",
+      "emptySpecification": "Ta specyfikacja nie ma jeszcze sesji.",
+      "emptyArchive": "Brak zarchiwizowanych sesji",
+      "failed": "Nie udało się wczytać sesji.",
+      "forbiddenSpecification": "Nie masz dostępu do sesji tej specyfikacji.",
+      "statusUnknown": "Stan sesji nieznany",
+      "statusAttention": "Wymaga uwagi",
+      "statusActive": "Aktywna",
+      "statusAuthentication": "{{provider}}: wymagane ponowne logowanie",
+      "agent": "{{provider}}, model {{model}}",
+      "loaded_one": "Wczytano {{count}} sesję",
+      "loaded_few": "Wczytano {{count}} sesje",
+      "loaded_many": "Wczytano {{count}} sesji",
+      "loaded_other": "Wczytano {{count}} sesji",
+      "taskCount_one": "{{count}} zadanie",
+      "taskCount_few": "{{count}} zadania",
+      "taskCount_many": "{{count}} zadań",
+      "taskCount_other": "{{count}} zadania",
+      "associatedTasks_one": "Powiązana z {{count}} zadaniem",
+      "associatedTasks_few": "Powiązana z {{count}} zadaniami",
+      "associatedTasks_many": "Powiązana z {{count}} zadaniami",
+      "associatedTasks_other": "Powiązana z {{count}} zadaniami"
     }
   },
   "apiErrors": {
@@ -1582,10 +1622,25 @@
       "renameTooLong": "Nazwa może mieć maksymalnie {{max}} znaków.",
       "archive": "Archiwizuj",
       "archiveTitle": "Zarchiwizować tę sesję?",
-      "archiveDescription": "Sesja zniknie z list, ale cała jej historia zostanie zachowana. Możesz ją później przywrócić z archiwum.",
+      "archiveDescription": "Sesja zostanie przeniesiona do archiwum sesji. Nie będzie można w niej wysyłać wiadomości; historia, praca i zużycie pozostaną dostępne. Możesz ją w każdej chwili przywrócić.",
       "delete": "Usuń",
       "deleteTitle": "Usunąć tę sesję?",
-      "deleteDescription": "Tej operacji nie można cofnąć. Sesja wraz z całą historią rozmowy zostanie trwale usunięta."
+      "deleteDescription": "Tej operacji nie można cofnąć. Historia rozmowy, praca i zużycie tej sesji zostaną trwale usunięte ze SpecFlow. Odwołania do tej sesji w specyfikacjach i zadaniach przestaną działać. Pliki w repozytorium i lokalna historia dostawcy nie są usuwane.",
+      "unarchive": "Przywróć",
+      "archivedNote": "Sesja jest zarchiwizowana. Nie można w niej wysyłać wiadomości.",
+      "archivedSubtitle": "Zarchiwizowana",
+      "archivedElsewhere": "Sesja została zarchiwizowana.",
+      "renaming": "Zapisywanie…",
+      "archiving": "Archiwizowanie…",
+      "unarchiving": "Przywracanie…",
+      "deleting": "Usuwanie…",
+      "turnActive": "Trwa tura. Zatrzymaj ją lub poczekaj na jej zakończenie.",
+      "turnWaitingForUser": "Tura czeka na Twoją odpowiedź. Odpowiedz lub zatrzymaj turę.",
+      "turnUnknown": "Najpierw ustal wynik ostatniej tury.",
+      "unconfirmed": "Nie potwierdzono operacji. Spróbuj ponownie.",
+      "forbidden": "Nie masz już uprawnień do tej operacji.",
+      "deleteBlocked": "Sesja ma nierozliczone operacje w repozytorium. Spróbuj ponownie później.",
+      "deleted": "Sesja została usunięta."
     },
     "authenticationRequired": "Wymagane ponowne logowanie",
     "authenticationHelp": "Zaloguj się ponownie w CLI dostawcy, a następnie sprawdź dostępność. Wiadomości nie zostaną ponowione automatycznie.",
@@ -1601,7 +1656,7 @@
     "savedRequestUnreadableBody": "Ta przeglądarka zachowała żądanie, którego nie da się odczytać. Mogło już zostać zastosowane. Odrzucenie go pozwala wysłać nowe.",
     "discardSavedRequest": "Odrzuć zapisane żądanie",
     "responseRequired": "Wymagana odpowiedź",
-    "unsupportedQuestion": "To pytanie wymaga kontrolek, które nie są jeszcze dostępne.",
+    "selectionCount": "Wybrano {{count}} z maksymalnie {{max}}.",
     "commandDirectory": "Katalog względem workspace: {{cwd}}",
     "hostExecutionScope": "Jednorazowa zgoda na uruchomienie tej komendy z uprawnieniami Twojego konta. Może zmieniać pliki poza workspace.",
     "workspaceExecutionScope": "Jednorazowa zgoda na tę komendę w obrębie workspace.",
@@ -1610,6 +1665,10 @@
     "answer": "Twoja odpowiedź",
     "respond": "Odpowiedz",
     "message": "Wiadomość",
+    "viewOnly": {
+      "note": "Możesz tylko przeglądać tę sesję.",
+      "empty": "Brak wiadomości w tej sesji."
+    },
     "readyState": {
       "title": "{{provider}} jest gotowy",
       "description": "Napisz wiadomość poniżej, aby rozpocząć rozmowę."
@@ -1818,6 +1877,22 @@
         "cancelling": "Anuluje…",
         "working": "Pracuje…"
       }
+    },
+    "turnUnknown": "Wynik tury nieznany",
+    "reconcile": {
+      "title": "Nie wiadomo, jak zakończyła się ostatnia tura",
+      "body": "SpecFlow nie otrzymał potwierdzenia wyniku od dostawcy. Polecenie mogło zostać wykonane — nie zostanie wysłane ponownie.",
+      "action": "Sprawdź wynik",
+      "checking": "Sprawdzanie…",
+      "noManage": "Wynik może sprawdzić osoba zarządzająca tą sesją.",
+      "noEvidence": "Dostawca nie ma jeszcze dowodu wyniku. Tura pozostaje nierozstrzygnięta — spróbuj ponownie później.",
+      "unconfirmed": "Nie potwierdzono sprawdzenia. Spróbuj ponownie.",
+      "resolved": "Ustalono wynik tury."
+    },
+    "notFound": {
+      "title": "Ta sesja została usunięta lub nie istnieje",
+      "description": "Historia tej sesji nie jest już dostępna.",
+      "action": "Przejdź do specyfikacji"
     }
   },
   "sessionStart": {
@@ -1870,7 +1945,10 @@
     },
     "provider": {
       "noMode": "Brak dostępnego trybu pracy"
-    }
+    },
+    "forbiddenSpecification": "Nie możesz rozpoczynać sesji w tej specyfikacji.",
+    "sessionsDisabled": "Sesje są wyłączone w tym projekcie.",
+    "backToSpecification": "Wróć do specyfikacji"
   },
   "sessionNaming": {
     "pending": "Nadawanie nazwy…",

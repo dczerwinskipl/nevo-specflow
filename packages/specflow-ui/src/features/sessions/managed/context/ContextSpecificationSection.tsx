@@ -6,11 +6,12 @@ import { isRequired, isSectionPresent, resolveSection } from './sessionContextAv
 import type { ContextSpecification, SessionContextViewModel } from './sessionContextTypes';
 
 /**
- * The Specification this Session belongs to: its identity row, and under it (same list) the
- * Documents row that opens that Specification's Documents. Present for Specification- and
+ * The Specification this Session is associated with: its identity row, and under it (same list)
+ * the Documents row that opens that Specification's Documents. Present for Specification- and
  * Task-scoped Sessions only; required there, so a Specification that cannot be found is an error
- * note, not silence. While loading, the skeleton covers both rows (the Documents row only exists
- * once the Specification is ready), so the section keeps its height when the data arrives.
+ * note, not silence; one the user may not view is an info note without a Documents row. While
+ * loading, the skeleton covers both rows (the Documents row only exists once the Specification is
+ * ready), so the section keeps its height when the data arrives.
  */
 export function ContextSpecificationSection({
   value,
@@ -50,7 +51,14 @@ export function ContextSpecificationSection({
             icon="workflow"
             emphasis="identity"
             label={resolved.value.title}
-            secondary={<ContextKey>{resolved.value.key}</ContextKey>}
+            secondary={
+              <>
+                <ContextKey>{resolved.value.key}</ContextKey>
+                {resolved.value.collection === 'archived' && (
+                  <span className="block">{t('sessions.context.specification.archived')}</span>
+                )}
+              </>
+            }
             onClick={() => onOpenSpecification(resolved.value)}
           />
           {onOpenDocuments && (
@@ -61,6 +69,11 @@ export function ContextSpecificationSection({
             />
           )}
         </InformationList>
+      )}
+      {resolved.kind === 'info' && (
+        <ContextNote kind="info">
+          {t('sessions.context.availability.specificationForbidden')}
+        </ContextNote>
       )}
       {resolved.kind === 'warning' && (
         <ContextNote kind="warning">

@@ -78,6 +78,11 @@ export interface CreateSpecificationModel {
 export interface UseCreateSpecificationOptions {
   /** Present when only a Session is created for an existing specification. */
   specId?: string;
+  /**
+   * Where that Session is started: the workspace's `startSession.path` once it is read (the demo
+   * Runtime has no composed create). A Specification created here has no workspace read yet.
+   */
+  sessionPath?: string;
   catalogueRevision: DemoCreateRequest['catalogueRevision'];
   /** Current form fingerprint (see {@link CreateSubmission.snapshot}). */
   snapshot: string;
@@ -105,7 +110,8 @@ function createDemoLedger() {
 export function useCreateDemoSpecification(
   options: UseCreateSpecificationOptions,
 ): CreateSpecificationModel {
-  const { specId, catalogueRevision, snapshot, onCreated, onSession, announce } = options;
+  const { specId, sessionPath, catalogueRevision, snapshot, onCreated, onSession, announce } =
+    options;
   const { t } = useTranslation();
   const { demoCreationApi, sessionsApi } = useAppServices();
   const cache = useQueryClient();
@@ -167,7 +173,9 @@ export function useCreateDemoSpecification(
 
             return created;
           },
-          ...(session ? { allocate: (id: string) => sessionsApi.allocate(id, session) } : {}),
+          ...(session
+            ? { allocate: (id: string) => sessionsApi.allocate(id, session, sessionPath) }
+            : {}),
         });
         await cache.invalidateQueries({ queryKey: specificationKeys.detail(result.specId) });
         notify(specId ? t('create.sessionReady') : t('create.specificationCreated'));
@@ -228,6 +236,7 @@ export function useCreateDemoSpecification(
       onSession,
       requestSessionRecovery,
       sessionsApi,
+      sessionPath,
       specId,
       t,
     ],

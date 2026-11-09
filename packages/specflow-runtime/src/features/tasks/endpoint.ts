@@ -15,6 +15,7 @@ import {
 } from '@nevo/specflow-contracts/authorization';
 import { SpecCapabilities } from '@nevo/specflow-contracts/specs';
 import { requireCapability } from '../auth';
+import { specScope } from '../specs';
 import { readTaskDetail, type TaskReadDependencies } from './detail/read-task-detail';
 import { readTaskPage } from './reads/read-page';
 
@@ -26,7 +27,8 @@ export const taskReadEndpoint: FastifyPluginCallback<{ dependencies: TaskReadDep
   const authorization = requireCapability({
     resource: SpecCapabilities,
     capability: SpecCapabilities.capabilities.View,
-    scope: (request) => ({ specId: (request.params as { specId: string }).specId }),
+    scope: (request) =>
+      specScope(options.dependencies.projectId?.(), (request.params as { specId: string }).specId),
   });
   const errors = {
     401: AuthenticationRequiredErrorResponseSchema,

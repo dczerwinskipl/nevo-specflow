@@ -9,6 +9,7 @@ import {
   TelemetryLimitWindowSchema,
   validateTelemetryContextUsage,
   CommandPermissionActionSchema,
+  ToolOperationSchema,
 } from '@nevo/specflow-contracts/sessions';
 import { SessionError } from '../errors';
 import type { DriverFact } from '../persistence/protocol';
@@ -108,7 +109,13 @@ const schema = Type.Union([
   ),
   Type.Object({ kind: Type.Literal('work-update'), key, state: WorkStateSchema }, closed),
   Type.Object(
-    { kind: Type.Literal('action-open'), key, parentKey: key, title: text(2048) },
+    {
+      kind: Type.Literal('action-open'),
+      key,
+      parentKey: key,
+      title: text(2048),
+      operation: Type.Optional(ToolOperationSchema),
+    },
     closed,
   ),
   Type.Object({ kind: Type.Literal('action-update'), key, state: WorkStateSchema }, closed),

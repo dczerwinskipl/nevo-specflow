@@ -42,8 +42,15 @@ export function SpecificationAggregatePage({
   children,
   loading,
   loadingShape = 'list',
+  ownSource = false,
 }: {
   loading?: ReactNode;
+  /**
+   * The screen reads its own source (the Sessions list reads the Session list read): the workspace
+   * section's availability does not replace it, and a transient workspace failure shows no stale
+   * notice for data the screen does not show.
+   */
+  ownSource?: boolean;
   loadingShape?: 'list' | 'summary';
   specId: string;
   title: string;
@@ -53,7 +60,8 @@ export function SpecificationAggregatePage({
   const { t } = useTranslation();
   const workspaceLabels = useWorkspaceLabels();
   const query = useSpecificationWorkspace(specId);
-  const availability = section && query.data?.sectionAvailability?.[section];
+  const availability =
+    section && !ownSource ? query.data?.sectionAvailability?.[section] : undefined;
   const accessDenied = query.errorStatus === 403;
   const sectionDenied = availability === 'forbidden';
   const deniedCopy = {
@@ -73,11 +81,11 @@ export function SpecificationAggregatePage({
     : query.isDomainNotFound
       ? notFoundCopy
       : unavailableCopy;
-  const mustShowError =
-    query.isError && (!query.data || [401, 403, 404].includes(query.errorStatus ?? 0));
+  const blockingError = [401, 403, 404].includes(query.errorStatus ?? 0);
+  const mustShowError = query.isError && (blockingError || (!query.data && !ownSource));
   // Keep the last successful projection for transient failures, but identify it
   // as stale and let the user retry. Auth and not-found errors remain blocking.
-  const showingStaleData = query.isError && Boolean(query.data) && !mustShowError;
+  const showingStaleData = query.isError && Boolean(query.data) && !mustShowError && !ownSource;
   const sectionCopy = sectionDenied ? deniedCopy : unavailableCopy;
   const sectionNotInRuntime =
     availability === 'unavailable' &&
@@ -106,7 +114,7 @@ export function SpecificationAggregatePage({
             <AppContentContainer align="start" size="full">
               <ApplicationContextLine specId={specId} view={sectionViews[section ?? 'activity']} />
               <ViewPageTitle>{title}</ViewPageTitle>
-              {query.isPending ? (
+              {query.isPending || (ownSource && query.isError && !query.data && !blockingError) ? (
                 loading !== undefined ? (
                   loading
                 ) : (

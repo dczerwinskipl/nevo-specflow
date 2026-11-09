@@ -173,7 +173,8 @@ The demo Runtime (`dataMode: demo`) has one shared in-memory state per Runtime i
 failure injection). That state is data plus a few invariants; it is not a place for operations.
 Operations, validation and endpoints belong to the feature that owns the capability:
 `features/documents/demo/` (document tree, import, rename/move/delete, read/save with revisions,
-seeded content), `features/sessions/demo/` (Session allocation, seeded details, references, context),
+seeded content), `features/sessions/demo/` (Session allocation, seeded details, references, context, and the
+read-only managed Session reads the Session routes serve without a coordinator),
 `features/specs/demo/` (workspace registry and Create options, atomic Create with idempotency and
 operation inspection, the scenario seam) and `features/tasks/demo/`. Each module exposes its demo
 surface through its barrel; a module needs another module's capability only through that barrel or

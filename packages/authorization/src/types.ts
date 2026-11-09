@@ -36,6 +36,11 @@ export interface HasCapabilityInAnyScopeInput {
   readonly subject: Subject;
   readonly resource: ResourceName;
   readonly capability: CapabilityId;
+  /**
+   * Count only grants whose scope does not constrain this dimension, i.e. grants that can cover a
+   * target without it (for example any grant but a Specification-scoped one for `specId`).
+   */
+  readonly withoutDimension?: string;
 }
 
 export interface AuthorizationDefinition {

@@ -11,12 +11,12 @@ export interface WorkspaceRuntime {
   readonly openRepository: () => void;
   readonly openChanges: (source?: 'base' | 'uncommitted' | 'mr') => void;
   readonly openHistory: () => void;
-  readonly startConversation: (agent?: string) => void;
+  /** Opens the Specification's New Session; its entry points are gated by `startSession`. */
+  readonly openNewSession: () => void;
   readonly executeTasks: (taskIds: readonly string[], agent?: string) => void;
   readonly refresh: () => void | Promise<void>;
   readonly fullTaskHref: (taskId: string) => string;
   readonly canExecute?: boolean;
-  readonly canStartConversation?: boolean;
   readonly canOpenSession?: boolean;
 }
 
@@ -60,12 +60,11 @@ export function createFakeWorkspaceRuntime(
     openRepository: noop,
     openChanges: noop,
     openHistory: noop,
-    startConversation: noop,
+    openNewSession: noop,
     executeTasks: noop,
     refresh: noop,
     fullTaskHref: (taskId) => `/specs/fake/tasks/${encodeURIComponent(taskId)}`,
     canExecute: true,
-    canStartConversation: true,
     canOpenSession: true,
     ...overrides,
   };

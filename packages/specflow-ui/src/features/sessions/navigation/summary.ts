@@ -15,7 +15,8 @@ export type SessionNavigationSummary =
       readonly count?: number;
       readonly attention: boolean;
     }
-  | { readonly state: 'unknown' | 'loading' | 'unavailable' | 'forbidden' };
+  /** `disabled`: Sessions are turned off in the project, which is not a failed read. */
+  | { readonly state: 'unknown' | 'loading' | 'unavailable' | 'forbidden' | 'disabled' };
 /** Sessions owns interpretation of the Workspace snapshot for navigation. */
 export function projectSessionNavigation(
   data: SpecificationWorkspaceData | undefined,
@@ -37,7 +38,7 @@ export function projectSessionNavigation(
   }
 
   if (availability && availability !== 'available') {
-    return { state: 'unavailable' };
+    return sessionsDisabled(data) ? { state: 'disabled' } : { state: 'unavailable' };
   }
 
   const entries = data.sessions
@@ -48,9 +49,17 @@ export function projectSessionNavigation(
     .sort(
       (a, b) => Number(b.activityCode === 'attention') - Number(a.activityCode === 'attention'),
     );
-  const partial = data.sessions.some(
-    (item) => !item.activityCode && item.navigationStatus !== 'quiet',
-  );
+  // Interim count rule (session-association-ux §3): exact only when the bounded section holds every
+  // Session and each one's status is known; otherwise the partial-activity line says so. A
+  // provider sign-in is a known status that never enters the preview.
+  const partial =
+    data.sessionsHasMore === true ||
+    data.sessions.some(
+      (item) =>
+        !item.activityCode &&
+        item.navigationStatus !== 'quiet' &&
+        item.navigationStatus !== 'authenticationRequired',
+    );
 
   return {
     state: error ? 'stale' : partial ? 'partial' : 'available',
@@ -58,6 +67,18 @@ export function projectSessionNavigation(
     count: !partial && !error ? entries.length : undefined,
     attention: entries.some((item) => item.activityCode === 'attention'),
   };
+}
+
+/**
+ * The workspace's Sessions section is unavailable because Sessions are turned off: the section's
+ * `source_unavailable` read together with the `sessions_disabled` reason of `startSession`.
+ */
+export function sessionsDisabled(data: SpecificationWorkspaceData): boolean {
+  return (
+    data.sectionAvailability?.sessions === 'unavailable' &&
+    data.sectionUnavailableReason?.sessions === 'source_unavailable' &&
+    data.startSession?.reason === 'sessions_disabled'
+  );
 }
 
 /** Reads the same route-owned Workspace query as the Specification navigation identity. */

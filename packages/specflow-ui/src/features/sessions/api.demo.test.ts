@@ -21,4 +21,18 @@ describe('demo sessions adapter', () => {
     expect(post.mock.calls).toEqual([['/api/demo/specs/spec%2Fa/sessions', input]]);
     expect(get.mock.calls).toEqual([['/api/demo/specs/spec%2Fa/sessions/session%2Fb', { signal }]]);
   });
+
+  it("starts at the workspace's startSession path when it is known", async () => {
+    const http = createHttpClient();
+    const post = vi.spyOn(http, 'post').mockResolvedValue({});
+    const input = {
+      requestId: 'k',
+      catalogueRevision: 'v4',
+      providerId: 'codex',
+      modelId: 'model-a',
+      mode: 'agent',
+    };
+    await createDemoSessionsApi(http).allocate('a', input, '/api/demo/specs/a/sessions');
+    expect(post.mock.calls).toEqual([['/api/demo/specs/a/sessions', input]]);
+  });
 });

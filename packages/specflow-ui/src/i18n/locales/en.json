@@ -122,6 +122,8 @@
     "activityHistoryUnavailableDescription": "The history of this specification is temporarily unavailable.",
     "activityHistoryForbiddenTitle": "No access to history",
     "activityHistoryForbiddenDescription": "You don't have permission to view this specification's history.",
+    "activitySpecificationCreated": "Specification created",
+    "activitySessionStarted": "Session started",
     "documentPreviewTitle": "Document preview",
     "markdownTable": "Table",
     "markdownCodeBlock": "Code block",
@@ -157,12 +159,16 @@
     "sessionActions": "Session actions",
     "openSessionAction": "Open session",
     "allSessionsLink": "All sessions",
-    "newConversation": "New conversation",
     "activityHistoryLink": "Activity history",
     "prepareSpecificationHeading": "Prepare specification for execution",
-    "prepareSpecificationDescription": "Start a conversation with an agent to refine requirements and prepare tasks for execution.",
-    "startConversation": "Start conversation",
+    "prepareSpecificationDescription": "Start a session with an agent to refine requirements and prepare tasks for execution.",
+    "startSession": "Start session",
+    "prepareSessionsDisabled": "An agent prepares the tasks in a session. Sessions are turned off on this server.",
+    "prepareStartForbidden": "You don't have permission to start a session for this specification.",
+    "prepareStartUnavailable": "An agent prepares the tasks in a session. Starting a session is not available here.",
     "tasksHeading": "Tasks",
+    "tasksEmptyTitle": "No tasks yet",
+    "tasksEmptyDescription": "Tasks appear here once the specification is prepared for work.",
     "tasksInPreparation": "{{count}} in preparation",
     "tasksProgressCount": "{{completed}} / {{total}} completed",
     "selectedTasksCount": "{{count}} selected",
@@ -173,8 +179,6 @@
     "documentsHeading": "Documents",
     "allDocumentsLink": "All documents",
     "openFullDocument": "Open full document",
-    "sessionsOfThisSpec": "Sessions of this specification",
-    "sessionsFutureNotice": "In the future this collection may include sessions executing the specification workflow.",
     "changesHeading": "Changes",
     "changesWorktreeContext": "Repository crm · worktree of this specification",
     "changesSourceLabel": "Changes source",
@@ -204,18 +208,12 @@
     "backToSpecification": "Back to specification",
     "taskFullHistoryHeading": "Task history",
     "executeModalTitle": "Execute selected tasks",
-    "conversationModalTitle": "New specification conversation",
     "taskStatusPending": "Ready",
     "taskStatusInProgress": "In progress",
     "taskStatusCompleted": "Completed",
     "taskStatusBlocked": "Blocked",
     "sessionStatusActive": "Active",
     "sessionStatusAttention": "Requires attention",
-    "sessionStatusQuiet": "Idle",
-    "sessionTaskCount_one": "{{count}} task",
-    "sessionTaskCount_other": "{{count}} tasks",
-    "sessionTaskCount_few": "{{count}} tasks",
-    "sessionTaskCount_many": "{{count}} tasks",
     "attentionViewTask": "View task",
     "viewTasks": "Tasks"
   },
@@ -250,7 +248,6 @@
     "noResults": "No matching specifications",
     "noResultsDescription": "Try another title or clear the search to see this collection.",
     "openSpec": "Open specification: {{title}}",
-    "createSession": "Create session",
     "openPullRequest": "PR #{{number}}: Open pull request — {{title}}",
     "progress": "{{completed}} / {{total}} Tasks",
     "updated": "Updated {{date}}",
@@ -1426,7 +1423,8 @@
       },
       "specification": {
         "sectionTitle": "Specification",
-        "documents": "Documents"
+        "documents": "Documents",
+        "archived": "Archived"
       },
       "placeholders": {
         "sectionTitle": "Planned areas",
@@ -1440,7 +1438,16 @@
       "sessionDetails": {
         "usageTitle": "Session usage",
         "limitsTitle": "Provider limits",
-        "refreshing": "Refreshing…",
+        "refreshLimits": "Refresh",
+        "refreshLimitsLabel": "Refresh provider limits",
+        "refreshingLimits": "Refreshing…",
+        "limitsNotRead": "Limits have not been read yet.",
+        "refreshFailed": "Could not refresh limits. Showing the last reading.",
+        "limitsReadFailed": "Could not read limits.",
+        "refreshCooldown": "Limits were just refreshed. You can refresh again shortly.",
+        "refreshUnavailable": "Refreshing limits is unavailable.",
+        "refreshRejected": "The limits refresh was rejected.",
+        "refreshUnconfirmed": "The refresh was not confirmed. Try again.",
         "costLabel": "Cost",
         "tokensStatLabel": "Input / output tokens",
         "tokenBreakdownLabel": "Additional token stats",
@@ -1477,11 +1484,10 @@
       "batch_few": "{{count}} Tasks",
       "batch_many": "{{count}} Tasks",
       "availability": {
-        "scopeNotProvided": "This session’s links to a Specification and Tasks aren’t available yet.",
         "scopeUnreadable": "Couldn’t load this session’s links.",
         "specificationUnreadable": "Couldn’t load this session’s Specification.",
-        "specificationMissing": "Can’t find the Specification that this session belongs to.",
-        "specificationMissingNamed": "Can’t find Specification {{key}} that this session belongs to.",
+        "specificationMissing": "Can’t find the specification associated with this session.",
+        "specificationMissingNamed": "Can’t find specification {{key}} associated with this session.",
         "executionUnreadable": "Couldn’t load the Tasks being executed.",
         "taskMissing": "Can’t find the Task this session is executing.",
         "taskMissingNamed": "Can’t find {{key}}, the Task this session is executing.",
@@ -1490,13 +1496,47 @@
         "relatedTasksUnreadable": "Couldn’t load related Tasks.",
         "executorUnreadable": "Couldn’t load executor details.",
         "workUnreadable": "Couldn’t load the work history.",
-        "executorMissing": "This session’s executor is no longer available."
+        "executorMissing": "This session’s executor is no longer available.",
+        "specificationForbidden": "You don’t have permission to view the specification associated with this session.",
+        "relatedTasksMissing": "{{count}} of {{total}} associated tasks can’t be found."
       },
       "work": {
         "sectionTitle": "Work",
         "currentTurn": "Current Turn",
         "lastTurn": "Last Turn"
       }
+    },
+    "untitled": "Untitled session",
+    "list": {
+      "newSession": "New session",
+      "collection": "Session collection",
+      "current": "Current",
+      "archive": "Archive",
+      "loadMore": "Show more",
+      "loadingMore": "Loading…",
+      "noneInScanned": "No more sessions in this batch. You can keep looking.",
+      "loadMoreFailed": "Couldn’t load more sessions.",
+      "emptySpecification": "This specification has no sessions yet.",
+      "emptyArchive": "No archived sessions",
+      "failed": "Couldn’t load sessions.",
+      "forbiddenSpecification": "You don’t have access to this specification’s sessions.",
+      "statusUnknown": "Session state unknown",
+      "statusAttention": "Requires attention",
+      "statusActive": "Active",
+      "statusAuthentication": "{{provider}}: sign-in required",
+      "agent": "{{provider}}, model {{model}}",
+      "loaded_one": "Loaded {{count}} session",
+      "loaded_other": "Loaded {{count}} sessions",
+      "taskCount_one": "{{count}} task",
+      "taskCount_other": "{{count}} tasks",
+      "associatedTasks_one": "Associated with {{count}} task",
+      "associatedTasks_other": "Associated with {{count}} tasks",
+      "loaded_few": "Loaded {{count}} sessions",
+      "loaded_many": "Loaded {{count}} sessions",
+      "taskCount_few": "{{count}} tasks",
+      "taskCount_many": "{{count}} tasks",
+      "associatedTasks_few": "Associated with {{count}} tasks",
+      "associatedTasks_many": "Associated with {{count}} tasks"
     }
   },
   "apiErrors": {
@@ -1582,10 +1622,25 @@
       "renameTooLong": "The name can be at most {{max}} characters.",
       "archive": "Archive",
       "archiveTitle": "Archive this session?",
-      "archiveDescription": "The session will disappear from the lists, but its whole history is kept. You can restore it from the archive later.",
+      "archiveDescription": "The session will be moved to the session archive. No messages can be sent in it; its history, work and usage stay available. You can restore it at any time.",
       "delete": "Delete",
       "deleteTitle": "Delete this session?",
-      "deleteDescription": "This cannot be undone. The session and its whole conversation history will be permanently deleted."
+      "deleteDescription": "This cannot be undone. The session's conversation history, work and usage will be permanently deleted from SpecFlow. References to this session in specifications and tasks will stop working. Repository files and the provider's local history are not deleted.",
+      "unarchive": "Restore",
+      "archivedNote": "This session is archived. No messages can be sent in it.",
+      "archivedSubtitle": "Archived",
+      "archivedElsewhere": "The session was archived.",
+      "renaming": "Saving…",
+      "archiving": "Archiving…",
+      "unarchiving": "Restoring…",
+      "deleting": "Deleting…",
+      "turnActive": "A Turn is running. Stop it or wait for it to finish.",
+      "turnWaitingForUser": "The Turn is waiting for your answer. Answer or stop the Turn.",
+      "turnUnknown": "First establish the outcome of the last Turn.",
+      "unconfirmed": "The operation was not confirmed. Try again.",
+      "forbidden": "You no longer have permission for this operation.",
+      "deleteBlocked": "The session has unsettled repository operations. Try again later.",
+      "deleted": "The session was deleted."
     },
     "authenticationRequired": "Sign-in required",
     "authenticationHelp": "Sign in again using the provider CLI, then recheck availability. Messages will not be retried automatically.",
@@ -1601,7 +1656,7 @@
     "savedRequestUnreadableBody": "This browser kept a request that could not be read. It may already have been applied. Discarding it lets you send a new one.",
     "discardSavedRequest": "Discard saved request",
     "responseRequired": "Response required",
-    "unsupportedQuestion": "This question needs controls that are not available yet.",
+    "selectionCount": "Selected {{count}} of at most {{max}}.",
     "commandDirectory": "Directory relative to the workspace: {{cwd}}",
     "hostExecutionScope": "One-time permission to run this command with your account permissions. It may change files outside the workspace.",
     "workspaceExecutionScope": "One-time permission for this command within the workspace.",
@@ -1610,6 +1665,10 @@
     "answer": "Your answer",
     "respond": "Respond",
     "message": "Message",
+    "viewOnly": {
+      "note": "You can only view this session.",
+      "empty": "This session has no messages."
+    },
     "readyState": {
       "title": "{{provider}} is ready",
       "description": "Write a message below to start the conversation."
@@ -1818,6 +1877,22 @@
       "actions_many": "{{count}} tool actions",
       "actionsAtLeast_few": "at least {{count}} tool actions",
       "actionsAtLeast_many": "at least {{count}} tool actions"
+    },
+    "turnUnknown": "Turn outcome unknown",
+    "reconcile": {
+      "title": "It is not known how the last Turn ended",
+      "body": "SpecFlow did not receive the outcome from the provider. The request may have run — it will not be sent again.",
+      "action": "Check outcome",
+      "checking": "Checking…",
+      "noManage": "Someone who manages this session can check the outcome.",
+      "noEvidence": "The provider has no evidence of the outcome yet. The Turn stays unresolved — try again later.",
+      "unconfirmed": "The check was not confirmed. Try again.",
+      "resolved": "Turn outcome established."
+    },
+    "notFound": {
+      "title": "This session was deleted or does not exist",
+      "description": "This session's history is no longer available.",
+      "action": "Go to specifications"
     }
   },
   "sessionStart": {
@@ -1870,7 +1945,10 @@
     },
     "provider": {
       "noMode": "No work mode is available"
-    }
+    },
+    "forbiddenSpecification": "You can’t start sessions in this specification.",
+    "sessionsDisabled": "Sessions are turned off in this project.",
+    "backToSpecification": "Back to specification"
   },
   "sessionNaming": {
     "pending": "Naming…",

@@ -1,5 +1,6 @@
 import { Type, type Static } from 'typebox';
 import { WorkspaceTaskSchema } from '../../tasks';
+import { SessionIdSchema } from '../../sessions/model';
 export * from '../../tasks';
 export * from '../../documents';
 
@@ -40,17 +41,30 @@ export const WorkspaceDocumentSchema = Type.Object({
   kind: Type.String(),
   summary: Type.Optional(Type.String()),
 });
-export const WorkspaceSessionSchema = Type.Object({
-  id: IdSchema,
-  title: Type.String(),
-  taskIds: Type.Array(IdSchema),
-  status: Type.Union([
-    Type.Literal('active'),
-    Type.Literal('attention'),
-    Type.Literal('quiet'),
-    Type.Literal('unknown'),
-  ]),
-});
+export const WorkspaceSessionSchema = Type.Object(
+  {
+    id: SessionIdSchema,
+    /** Absent for an untitled Session; the server never invents a title. */
+    title: Type.Optional(Type.String()),
+    taskIds: Type.Array(IdSchema),
+    /** Effective Session readiness only (the single-Session read's provider projection). */
+    status: Type.Union([
+      Type.Literal('active'),
+      Type.Literal('attention'),
+      Type.Literal('quiet'),
+      /** The provider needs a sign-in and no Turn is active. */
+      Type.Literal('authenticationRequired'),
+      Type.Literal('unknown'),
+    ]),
+    providerId: Type.String({ minLength: 1, maxLength: 128 }),
+    /** Display titles from the Runtime's provider catalogue; absent when not listed. */
+    providerTitle: Type.Optional(Type.String({ minLength: 1, maxLength: 512 })),
+    modelId: Type.Optional(Type.String({ minLength: 1, maxLength: 256 })),
+    modelTitle: Type.Optional(Type.String({ minLength: 1, maxLength: 512 })),
+    updatedAt: Type.String({ minLength: 1, maxLength: 40 }),
+  },
+  { additionalProperties: false },
+);
 export const WorkspaceAttentionSchema = Type.Object({
   id: IdSchema,
   kind: Type.Union([
@@ -75,11 +89,18 @@ const ActivitySchema = Type.Object({
     Type.Literal('doc'),
     Type.Literal('info'),
   ]),
+  /**
+   * The semantic event of a known Runtime event, which clients localize; `title` and `description`
+   * then carry English fallback text. Absent for a source-written event shown as delivered.
+   */
+  event: Type.Optional(
+    Type.Union([Type.Literal('specification_created'), Type.Literal('session_started')]),
+  ),
   title: Type.String(),
   description: Type.String(),
   targetId: Type.Optional(IdSchema),
   /** Session provenance for generic events carrying Session data. */
-  relatedSessionId: Type.Optional(IdSchema),
+  relatedSessionId: Type.Optional(SessionIdSchema),
 });
 const RepoSchema = Type.Object({
   repositoryName: Type.Optional(Type.String()),
@@ -102,9 +123,17 @@ const TaskCollectionSchema = Type.Object({
 const DocumentCollectionSchema = Type.Object({
   items: Type.Array(WorkspaceDocumentSchema),
   folders: Type.Optional(Type.Array(Type.String())),
+  /**
+   * The id of the Specification's overview among `items` (the document the workspace description is
+   * read from), whatever its position. Absent when the overview is not listed; clients then offer no
+   * expand action and never substitute another document.
+   */
+  overviewDocumentId: Type.Optional(IdSchema),
 });
 const SessionCollectionSchema = Type.Object({
   items: Type.Array(WorkspaceSessionSchema),
+  /** More associated Sessions exist than the bounded section returns. */
+  hasMore: Type.Optional(Type.Boolean()),
   attention: Type.Array(WorkspaceAttentionSchema),
 });
 const ActivityCollectionSchema = Type.Object({ items: Type.Array(ActivitySchema) });
@@ -112,9 +141,17 @@ const ActionSchema = Type.Object({
   available: Type.Boolean(),
   reason: Type.Optional(Type.String()),
 });
+const StartSessionActionSchema = Type.Object({
+  ...ActionSchema.properties,
+  /**
+   * The start route when it is not the composed `POST /api/specs/:specId/sessions`: the demo
+   * Runtime starts Sessions at `/api/demo/specs/:specId/sessions`.
+   */
+  path: Type.Optional(Type.String()),
+});
 export const SpecificationWorkspaceResponseSchema = Type.Object({
   revision: Type.String(),
-  recommendedSessionId: Type.Optional(IdSchema),
+  recommendedSessionId: Type.Optional(SessionIdSchema),
   specification: Type.Object({
     id: IdSchema,
     /** Optional human-facing Specification key (for example `UI-1234`). */
@@ -138,7 +175,7 @@ export const SpecificationWorkspaceResponseSchema = Type.Object({
   }),
   actions: Type.Object({
     executeTasks: ActionSchema,
-    startSession: ActionSchema,
+    startSession: StartSessionActionSchema,
   }),
 });
 export const SpecificationReadErrorSchema = Type.Object({

@@ -81,7 +81,9 @@ export function WorkView({ specId, data }: WorkViewProps) {
   });
   const id = specId ?? data.id;
   const context: SpecificationWorkSectionContext = { specId: id, data, actions: runtime };
-  const preparationShown = data.isEmpty === true && runtime.canStartConversation !== false;
+  // No Tasks and no Session to continue: the preparation block explains (and, when the start is
+  // offered, opens) the way to Tasks. Continue session owns the next step once a Session exists.
+  const preparationShown = data.isEmpty === true && !data.resumeSession;
   const hasContextSide = hasVisibleWorkSections(modules, ['resume', 'context', 'related'], context);
   const hasWorkSide =
     preparationShown ||
@@ -98,8 +100,7 @@ export function WorkView({ specId, data }: WorkViewProps) {
         title={data.title}
         specId={id}
         intro={data.intro}
-        isEmpty={data.isEmpty}
-        mainDocumentId={data.mainDocumentId}
+        overviewDocumentId={data.overviewDocumentId}
       />
     </div>
   );
@@ -109,7 +110,6 @@ export function WorkView({ specId, data }: WorkViewProps) {
       <SpecificationAttentionOutlet specId={id} data={data} />
     </div>
   );
-  // Preparation is a conversation call-to-action: without a conversation it is not offered.
   const preparation = preparationShown ? (
     <div
       key="preparation"
@@ -118,7 +118,7 @@ export function WorkView({ specId, data }: WorkViewProps) {
         twoColumns && 'col-start-1 min-w-0 peer-empty:border-t-0 peer-empty:pt-3',
       )}
     >
-      <PreparationSection />
+      <PreparationSection startSession={data.startSession} />
     </div>
   ) : null;
   const main = (

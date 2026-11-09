@@ -5,6 +5,8 @@ import {
   type HttpMethod,
   type HttpRequestConfig,
   type HttpRequestOptions,
+  type HttpResponse,
+  type HttpResponseOptions,
   type SseEvent,
   type SseRequestConfig,
   type SseStream,
@@ -65,6 +67,12 @@ export function createProtectedRuntimeHttpClient(
       return run<TResponse>('get', config?.signal, () =>
         client.get<TResponse, TParams>(url, config),
       );
+    },
+    getResponse<TResponse, TParams>(
+      url: string,
+      config?: HttpResponseOptions<TParams>,
+    ): Promise<HttpResponse<TResponse>> {
+      return run('get', config?.signal, () => client.getResponse<TResponse, TParams>(url, config));
     },
     delete<TResponse, TParams>(url: string, config?: HttpRequestOptions<TParams>) {
       return run<TResponse>('delete', config?.signal, () =>

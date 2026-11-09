@@ -38,6 +38,7 @@ describe('capability discovery contracts', () => {
           manage: true,
           'close-worktree': false,
           'close-specification': false,
+          'start-session': false,
         },
       }),
     ).toBe(true);
@@ -59,6 +60,7 @@ describe('capability discovery contracts', () => {
         manage: false,
         'close-worktree': false,
         'close-specification': false,
+        'start-session': false,
       },
     };
 

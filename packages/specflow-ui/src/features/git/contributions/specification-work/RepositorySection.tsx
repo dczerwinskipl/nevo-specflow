@@ -83,7 +83,7 @@ export function RepositorySection({
             <button
               type="button"
               onClick={() => void onRefresh()}
-              className="font-medium text-accent-primary hover:underline focus-visible:outline-2 focus-visible:outline-focus-ring"
+              className="font-medium text-content-link hover:text-content-link-hover hover:underline focus-visible:outline-2 focus-visible:outline-focus-ring"
             >
               {t('common.retry')}
             </button>

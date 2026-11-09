@@ -46,6 +46,7 @@ import {
 } from '../../operations';
 import { buildDemoOperationList } from './operation-list';
 import { canViewSpec } from '../overview/filter-authorized-specs';
+import { specScope } from '../scope';
 import { startCreateProgress } from '../create/progress';
 import { prefersRespondAsync } from '../create/respond-async';
 
@@ -187,7 +188,7 @@ export function registerDemoSpecRoutes<RawServer extends RawServerBase>(
         // Same admission rule as the real route: a known spec needs View, one without needs Create.
         admit: (row) =>
           row.subject?.specId
-            ? canViewSpec(authz, row.subject.specId)
+            ? canViewSpec(authz, state.catalogue.project.id, row.subject.specId)
             : authz.can({
                 resource: SpecCapabilities,
                 capability: SpecCapabilities.capabilities.Create,
@@ -287,7 +288,7 @@ export function registerDemoSpecRoutes<RawServer extends RawServerBase>(
       request.authz.require({
         resource: SpecCapabilities,
         capability: SpecCapabilities.capabilities.View,
-        scope: { specId },
+        scope: specScope(state.catalogue.project.id, specId),
       });
       if (!(await catalogue.find(specId))) {
         return reply.code(404).send({ error: 'specification_not_found' });

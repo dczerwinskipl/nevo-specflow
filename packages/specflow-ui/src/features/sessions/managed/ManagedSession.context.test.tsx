@@ -7,7 +7,12 @@ import { LocalizationProvider, createSpecFlowI18n } from '../../../i18n';
 import { installWorkspaceWidth } from '../../../test-support/workspaceWidth.test-support';
 import type { ManagedSessionsApi } from './api';
 import { ManagedSession } from './ManagedSession';
-import { fixtureSessionId } from './managedSession.stories-support';
+import {
+  fixtureApi,
+  fixtureSessionId,
+  sessionFixture,
+  withRuntimeTitles,
+} from './managedSession.stories-support';
 import { workSummaryStatesApi } from './managedSession.fullSession.stories-support';
 
 let width: ReturnType<typeof installWorkspaceWidth>;
@@ -85,6 +90,51 @@ describe('N-D1 the first snapshot failed', () => {
     );
     expect(screen.getAllByText('Couldn’t load executor details.').length).toBeGreaterThan(0);
     expect(document.querySelector('section[aria-busy="true"]')).toBeNull();
+  });
+});
+
+describe('a viewer with session.view only', () => {
+  it('sees the provider and model from the snapshot, never reading the creator catalogue', async () => {
+    const served = sessionFixture();
+    const viewer = withRuntimeTitles({
+      ...served,
+      session: {
+        ...served.session,
+        modelId: 'mock-standard',
+        capabilities: {
+          ...served.session.capabilities,
+          manage: false,
+          start: false,
+          delete: false,
+        },
+      },
+    });
+    // The catalogue needs session.manage on this Session: the Runtime refuses it to a viewer.
+    const providers = vi.fn(() => Promise.reject(new Error('403 Forbidden')));
+    const api = { ...fixtureApi(viewer), providers } as ManagedSessionsApi;
+    renderSession(api, 1400);
+
+    await waitFor(() =>
+      expect(screen.getAllByText('Controlled test provider').length).toBeGreaterThan(0),
+    );
+    expect(screen.getAllByText('Standard').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Couldn’t load executor details.')).toBeNull();
+    expect(providers).not.toHaveBeenCalled();
+  });
+});
+
+describe('a manager of the Session', () => {
+  it('reads the catalogue for this Session, which Manage authorizes without Create', async () => {
+    const base = fixtureApi(withRuntimeTitles(sessionFixture()));
+    const providers = vi.fn<ManagedSessionsApi['providers']>((context, signal) =>
+      base.providers(context, signal),
+    );
+    renderSession({ ...base, providers }, 1400);
+
+    await waitFor(() => expect(providers).toHaveBeenCalled());
+    for (const [context] of providers.mock.calls) {
+      expect(context).toEqual({ sessionId: fixtureSessionId });
+    }
   });
 });
 

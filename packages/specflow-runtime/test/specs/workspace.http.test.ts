@@ -120,8 +120,12 @@ describe('Specification Workspace Runtime HTTP integration', () => {
         throw new Error('Expected demo Sessions');
       }
 
-      expect(sessions.data.items.some((item) => item.id === 'sample-session-24')).toBe(true);
-      expect(sessions.data.items.some((item) => item.id === 'sample-session-23')).toBe(true);
+      expect(
+        sessions.data.items.some((item) => item.id === '00000000-0000-4000-8000-000000000024'),
+      ).toBe(true);
+      expect(
+        sessions.data.items.some((item) => item.id === '00000000-0000-4000-8000-000000000023'),
+      ).toBe(true);
 
       const taskResponse = await app.inject('/api/specs/admission/tasks/TASK-02');
       expect(taskResponse.statusCode).toBe(200);

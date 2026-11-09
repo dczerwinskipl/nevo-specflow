@@ -33,6 +33,8 @@ export interface AuthorizationAnyScopeCapabilityCheck<
 > {
   readonly resource: R;
   readonly capability: ResourceCapability<R>;
+  /** Count only grants whose scope does not constrain this dimension. */
+  readonly withoutDimension?: string;
 }
 
 export type AuthorizationTargets = Readonly<
@@ -175,6 +177,9 @@ export function createRequestAuthorization(
         subject: access.subject,
         resource: input.resource.name,
         capability: input.capability,
+        ...(input.withoutDimension !== undefined
+          ? { withoutDimension: input.withoutDimension }
+          : {}),
       });
     },
 

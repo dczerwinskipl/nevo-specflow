@@ -1,5 +1,5 @@
 import { useId, useMemo, useState, type ReactNode } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { AppShell, AppWorkspaceProvider } from '@nevo/ui';
 import type {
   StartTurn,
@@ -9,12 +9,22 @@ import type {
 } from '@nevo/specflow-contracts/sessions';
 import type { ManagedSessionsApi } from '../../managed/api';
 import { ManagedSession } from '../../managed/ManagedSession';
-import { fixtureApi, sessionFixture } from '../../managed/managedSession.stories-support';
-import type { ContextSpecification } from '../../managed/context/sessionContextTypes';
+import {
+  fixtureApi,
+  sessionFixture,
+  withRuntimeTitles,
+} from '../../managed/managedSession.stories-support';
+import type {
+  ContextSpecification,
+  SessionContextViewModel,
+} from '../../managed/context/sessionContextTypes';
+import type { SessionAssociationsApi } from '../../associations/api';
+import { associationContext } from '../../associations/associationContext';
+import { sessionAssociationKeys } from '../../associations/queries';
+import type { SessionAssociationRead } from '@nevo/specflow-contracts/sessions';
 import {
   forgetStartedSessions,
   rememberStartedSession,
-  startedSessionContext,
   startedSessionOf,
   type StartedSession,
 } from '../handoff/startedSession';
@@ -53,13 +63,20 @@ export function StartEnvironment({
   );
 }
 
+/** The Specification a managed start preview starts in (`/specs/$specId/sessions/new`). */
+const storyPinned = {
+  specId: storySpecification.id,
+  fact: { status: 'ready', value: storySpecification },
+} as const;
+
 /** What the managed Runtime was asked to create (reset by every start preview). */
 export const creates: CreateSession[] = [];
 
 /**
  * The Session screen the Runtime opens at once: the Session exists, its first snapshot is empty (no
  * message yet) or still loading. It is rendered as the route does: what the Session was started
- * with is handed to it, and its Context is the one it was started with.
+ * with is handed to it, and its Context is its association (the one its start seeded, else
+ * `context`, else standalone).
  */
 /** The messages the opened Session sent to the Runtime (reset by every start preview). */
 export const turns: StartTurn[] = [];
@@ -69,9 +86,11 @@ export function StartedSessionView({
   owner = 'story',
   sessionId = storySessionId,
   snapshot = 'empty',
+  context,
   onOpenSpecification,
 }: {
   started: StartedSession;
+  context?: SessionContextViewModel;
   owner?: string;
   sessionId?: string;
   /**
@@ -81,8 +100,12 @@ export function StartedSessionView({
   snapshot?: 'empty' | 'loading' | 'failed';
   onOpenSpecification?: (specification: ContextSpecification) => void;
 }) {
-  const [{ api, context }] = useState(() => {
+  const queryClient = useQueryClient();
+  const [{ api, sessionContext }] = useState(() => {
     rememberStartedSession(owner, sessionId, started);
+    const seeded = queryClient.getQueryData<SessionAssociationRead>(
+      sessionAssociationKeys.read(sessionId),
+    );
     const base = sessionFixture();
     const created = creates.at(-1);
     const empty: SessionSnapshot = {
@@ -139,7 +162,7 @@ export function StartedSessionView({
           ? new Promise(() => undefined)
           : snapshot === 'failed'
             ? Promise.reject(new Error('Session unavailable'))
-            : Promise.resolve(empty),
+            : Promise.resolve(withRuntimeTitles(empty, provider)),
       start: (_id, input) => {
         turns.push(structuredClone(input));
 
@@ -147,7 +170,14 @@ export function StartedSessionView({
       },
     };
 
-    return { api, context: startedSessionContext(started) };
+    return {
+      api,
+      sessionContext:
+        context ??
+        (seeded
+          ? associationContext({ status: 'success', data: seeded })
+          : { scope: { kind: 'standalone' as const } }),
+    };
   });
 
   return (
@@ -155,7 +185,7 @@ export function StartedSessionView({
       sessionId={sessionId}
       owner={owner}
       api={api}
-      sessionContext={context}
+      sessionContext={sessionContext}
       onOpenSpecification={onOpenSpecification}
     />
   );
@@ -165,6 +195,7 @@ export function StartedSessionView({
 export function StartedSessionPreview(props: {
   started: StartedSession;
   snapshot?: 'empty' | 'loading' | 'failed';
+  context?: SessionContextViewModel;
 }) {
   return (
     <StartEnvironment browserHistory>
@@ -173,28 +204,30 @@ export function StartedSessionPreview(props: {
   );
 }
 
-function managedApi(
-  providers: ProviderDescriptor[],
-  outcome: 'ok' | 'failed' | 'never',
-): ManagedSessionsApi {
+function managedApi(providers: ProviderDescriptor[]): ManagedSessionsApi {
   return {
     providers: () => Promise.resolve({ items: providers }),
-    create: (input: CreateSession) => {
+  } as unknown as ManagedSessionsApi;
+}
+
+function associationsApi(outcome: 'ok' | 'failed' | 'never'): SessionAssociationsApi {
+  return {
+    createInSpecification: (specId: string, input: CreateSession) => {
       creates.push(structuredClone(input));
 
       return outcome === 'ok'
-        ? Promise.resolve({ sessionId: storySessionId })
+        ? Promise.resolve({ sessionId: storySessionId, association: { specId, taskIds: [] } })
         : outcome === 'failed'
           ? Promise.reject(new Error('Session creation failed'))
           : new Promise(() => undefined);
     },
-  } as unknown as ManagedSessionsApi;
+  } as unknown as SessionAssociationsApi;
 }
 
 /**
- * The managed Runtime's `/sessions/new` with its real start source over a faked transport. A
- * created Session opens as in the route (`onOpenSession` replaces the screen with the Session
- * screen), so the whole flow can be walked.
+ * A Specification's New Session on the managed Runtime (`/specs/$specId/sessions/new`) with its
+ * real start source over a faked transport. A created Session opens as in the route
+ * (`onOpenSession` replaces the screen with the Session screen), so the whole flow can be walked.
  */
 export function ManagedStartPreview({
   providers = managedProviders,
@@ -226,6 +259,7 @@ export function ManagedStartPreview({
             providerTitle: 'Claude',
           }
         }
+        onOpenSpecification={() => undefined}
       />
     </StartEnvironment>
   ) : (
@@ -254,8 +288,16 @@ function ManagedStartScreen({
   defaults?: SessionStartDefaults;
   onOpenSession: (sessionId: string) => void;
 }) {
-  const api = useMemo(() => managedApi(providers, outcome), [providers, outcome]);
-  const source = useManagedStartSource(owner, api);
+  const api = useMemo(() => managedApi(providers), [providers]);
+  const associations = useMemo(() => associationsApi(outcome), [outcome]);
+  const source = useManagedStartSource(owner, api, associations, storyPinned);
 
-  return <SessionStartScreen source={source} defaults={defaults} onOpenSession={onOpenSession} />;
+  return (
+    <SessionStartScreen
+      source={source}
+      defaults={defaults}
+      onOpenSession={onOpenSession}
+      onOpenSpecification={() => undefined}
+    />
+  );
 }

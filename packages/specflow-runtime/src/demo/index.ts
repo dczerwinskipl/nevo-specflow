@@ -6,10 +6,11 @@ import {
 } from '../features/documents';
 import {
   createDemoSessionReferences,
+  createDemoManagedSessionReads,
   createDemoSessions,
   registerDemoSessionRoutes,
-  type SessionReferenceOwner,
 } from '../features/sessions';
+import { createDemoAssociationTargets } from '../features/session-associations';
 import {
   createDemoSpecs,
   createDemoSpecsRepositories,
@@ -51,24 +52,38 @@ export type DemoEnvironment = ReturnType<typeof createDemoEnvironment>;
 
 /**
  * Wires the demo environment into the Runtime: read-side repositories and sources handed to the
- * feature modules, plus the demo-only routes. Optional overrides are injected seeded sources.
+ * feature modules, plus the demo-only routes. The seeded catalogue (with the Sessions allocated
+ * in this environment) is the Session association registry.
  */
-export function createDemoRuntime(
-  environment: DemoEnvironment,
-  overrides: { references?: SessionReferenceOwner } = {},
-) {
+export function createDemoRuntime(environment: DemoEnvironment) {
   const { state, documents, sessions } = environment;
   const repositories = createDemoSpecsRepositories({ state, documents, sessions });
   const sessionReferences = sessions.overlayReferences(
-    overrides.references ?? createDemoSessionReferences(repositories.catalogue),
+    createDemoSessionReferences(repositories.catalogue),
   );
+  const taskSources = createDemoTaskSources(repositories.catalogue);
+  const sessionList = sessions.list(repositories.catalogue);
 
   return {
     environment,
     ...repositories,
     sessionReferences,
+    sessionList,
+    managedSessionReads: createDemoManagedSessionReads({
+      state,
+      list: sessionList,
+      references: sessionReferences,
+    }),
+    associationTargets: createDemoAssociationTargets({
+      catalogue: repositories.catalogue,
+      isArchived: async (specId) =>
+        (await repositories.overviewRepository.readArchive()).items.some(
+          (item) => item.id === specId,
+        ),
+      ...(taskSources.definitions ? { definitions: taskSources.definitions } : {}),
+    }),
     documentReadSource: createDemoDocumentReadSource(documents, repositories.catalogue),
-    taskSources: createDemoTaskSources(repositories.catalogue),
+    taskSources,
   };
 }
 
@@ -89,5 +104,5 @@ export function registerDemoRoutes<RawServer extends RawServerBase>(
     references: demo.sessionReferences,
     documentPaths: documents.pathsFor,
   });
-  registerDemoDocumentRoutes(app, documents, demo.catalogue);
+  registerDemoDocumentRoutes(app, documents, demo.catalogue, state.catalogue.project.id);
 }

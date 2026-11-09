@@ -12,7 +12,7 @@ import {
 import { StoryLocalization } from '../../../../i18n/StoryLocalization';
 import { SessionContext } from './SessionContext';
 import { SessionContextSourceProvider } from './sessionContextValue';
-import { fullTelemetrySnapshot } from './sessionTelemetry';
+import { fullTelemetrySnapshot } from './sessionTelemetry.stories-support';
 import type { ContextFact } from './sessionContextTypes';
 import type { SessionContextTaskRef, SessionContextViewModel } from './sessionContextTypes';
 
@@ -109,87 +109,39 @@ async function renderContextWithRelatedTasks(
   });
 }
 
-describe('Related Tasks summary row', () => {
-  it('renders one navigational summary row — never the individual Task list — on Context itself', async () => {
+describe('Related Tasks rows', () => {
+  it('renders one row per related Task (title, key) on Context itself', async () => {
     const value: SessionContextViewModel = {
       scope: { kind: 'specification' },
-      executionScope: ready({ kind: 'generic' }),
       relatedTasks: ready([task02, task03]),
     };
 
     await renderContextWithRelatedTasks(value);
 
-    // Context is an entry point into its subjects, not a dump of every related Task inline
-    // (live-review correction): a count-based summary row, never an individual Task's title.
-    expect(screen.getByText('2 Tasks')).toBeTruthy();
-    expect(screen.queryByText('Document the admission guard')).toBeNull();
-    expect(screen.queryByText('Deterministic admission')).toBeNull();
+    // session-association-ux §7: each associated Task is its own row, not a count summary.
+    expect(screen.getByText('Document the admission guard')).toBeTruthy();
+    expect(screen.getByText('Deterministic admission')).toBeTruthy();
+    expect(screen.getByText('TASK-02')).toBeTruthy();
+    expect(screen.queryByText('2 Tasks')).toBeNull();
   });
 
-  it('opens a single related Task directly, as its own tab named by the Task key', async () => {
+  it("opens a related Task's row as that Task's own tab, named by its key", async () => {
     const value: SessionContextViewModel = {
       scope: { kind: 'specification' },
-      executionScope: ready({ kind: 'generic' }),
-      relatedTasks: ready([task02]),
-    };
-
-    await renderContextWithRelatedTasks(value);
-
-    clickButtonByText('1 Task');
-    await act(async () => {
-      await Promise.resolve();
-    });
-
-    // One tab for that Task, named by its key (the object is the tab's identity) and deep-linked
-    // straight to its detail, not forced through the list first.
-    expect(tabLabels()).toEqual(['TASK-02']);
-    expect(
-      await screen.findByRole('heading', { name: 'Document the admission guard' }),
-    ).toBeTruthy();
-  });
-
-  it('opens the shared Tasks list — not a direct per-Task tab — when more than one Task is related', async () => {
-    const value: SessionContextViewModel = {
-      scope: { kind: 'specification' },
-      executionScope: ready({ kind: 'generic' }),
       relatedTasks: ready([task02, task03]),
     };
 
     await renderContextWithRelatedTasks(value);
-
-    clickButtonByText('2 Tasks');
-    await act(async () => {
-      await Promise.resolve();
-    });
-
-    // Reuses the existing Tasks list screen as the dedicated subject view (previously reachable
-    // only via a separate "Open Tasks" button) — no new list screen invented for this fix.
-    const openTabs = screen.getByLabelText('open-tabs');
-    expect(within(openTabs).getByText('Tasks')).toBeTruthy();
-  });
-
-  it('selecting a Task from the list opens that Task as its own tab beside the list', async () => {
-    const value: SessionContextViewModel = {
-      scope: { kind: 'specification' },
-      executionScope: ready({ kind: 'generic' }),
-      relatedTasks: ready([task02, task03]),
-    };
-    await renderContextWithRelatedTasks(value);
-
-    clickButtonByText('2 Tasks');
-    await act(async () => {
-      await Promise.resolve();
-    });
-    expect(tabLabels()).toEqual(['Tasks']);
 
     clickButtonByText('Document the admission guard');
     await act(async () => {
       await Promise.resolve();
     });
 
-    // The list tab is untouched and the Task is its own tab, not a page inside the list.
-    expect(tabLabels()).toEqual(['Tasks', 'TASK-02']);
-    expect(activeTabLabel()).toBe('TASK-02');
+    expect(tabLabels()).toEqual(['TASK-02']);
+    expect(
+      await screen.findByRole('heading', { name: 'Document the admission guard' }),
+    ).toBeTruthy();
   });
 
   it('one tab per Task: another Task gets its own tab, and re-opening an open Task activates it', async () => {
@@ -212,7 +164,7 @@ describe('Related Tasks summary row', () => {
       await screen.findByRole('heading', { name: 'Document the admission guard' }),
     ).toBeTruthy();
 
-    clickButtonByText('1 Task');
+    clickButtonByText('Deterministic admission');
     await act(async () => {
       await Promise.resolve();
     });
@@ -462,17 +414,16 @@ describe('data states', () => {
     expect(screen.getByRole('region', { name: 'Provider limits' })).toBeTruthy();
   });
 
-  it('real route: executor, the scope-unknown info note under it, then planned areas; never a full-pane EmptyState', () => {
+  it('association loading: executor and planned areas, no note and no Specification skeleton; never a full-pane EmptyState', () => {
     const { container } = renderContext({
-      scope: { kind: 'unknown', reason: 'not-provided' },
+      scope: { kind: 'unknown', reason: 'loading' },
       executor,
     });
 
     expect(container.querySelector('[data-empty-state="pane"]')).toBeNull();
     expect(screen.getByText('Claude')).toBeTruthy();
-    expect(
-      screen.getByText('This session’s links to a Specification and Tasks aren’t available yet.'),
-    ).toBeTruthy();
+    expect(container.querySelector('[data-context-skeleton-row]')).toBeNull();
+    expect(screen.queryByText(/Couldn’t load this session’s links/)).toBeNull();
     for (const absent of ['Specification', 'Current execution', 'Attention / next actions']) {
       expect(screen.queryByText(absent)).toBeNull();
     }
@@ -483,8 +434,8 @@ describe('data states', () => {
   it('a standalone Session shows no scope note at all', () => {
     renderContext({ scope: { kind: 'standalone' }, executor });
 
-    expect(screen.queryByText(/aren’t available yet/)).toBeNull();
     expect(screen.queryByText(/Couldn’t load this session’s links/)).toBeNull();
+    expect(screen.queryByText('Specification')).toBeNull();
   });
 
   it('unreadable associations warn with the attention tone, not the info note', () => {
@@ -519,7 +470,7 @@ describe('data states', () => {
 
   it('loading sections keep their label, are aria-busy and show skeleton rows (executor)', () => {
     renderContext({
-      scope: { kind: 'unknown', reason: 'not-provided' },
+      scope: { kind: 'unknown', reason: 'loading' },
       executor: { status: 'loading' },
     });
 
@@ -567,15 +518,61 @@ describe('data states', () => {
       { onOpenSpecification: vi.fn() },
     );
     expect(
-      screen.getByText('Can’t find Specification SPEC-A that this session belongs to.'),
+      screen.getByText('Can’t find specification SPEC-A associated with this session.'),
     ).toBeTruthy();
     expect(missing.container.querySelector('.text-status-danger')).toBeTruthy();
+  });
+
+  it('a forbidden Specification is an info note without the Documents row', () => {
+    const { container } = renderContext(
+      { scope: { kind: 'specification' }, specification: { status: 'forbidden' } },
+      { onOpenSpecification: vi.fn(), onOpenDocuments: vi.fn() },
+    );
+
+    expect(
+      screen.getByText(
+        'You don’t have permission to view the specification associated with this session.',
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText('Documents')).toBeNull();
+    expect(container.querySelector('.text-status-danger')).toBeNull();
+  });
+
+  it('an archived Specification says so on its row', () => {
+    renderContext(
+      {
+        scope: { kind: 'specification' },
+        specification: ready({ id: 's', key: 'SPEC-1', title: 'Auth', collection: 'archived' }),
+      },
+      { onOpenSpecification: vi.fn() },
+    );
+
+    expect(screen.getByRole('button', { name: /Auth.*Archived/ })).toBeTruthy();
+  });
+
+  it('counts associated Tasks that cannot be found beside the found ones, and alone when none is', () => {
+    const { unmount } = renderContext({
+      scope: { kind: 'specification' },
+      relatedTasks: ready([task02]),
+      relatedTasksMissing: { count: 1, total: 2 },
+    });
+    expect(screen.getByText('1 of 2 associated tasks can’t be found.')).toBeTruthy();
+    expect(screen.getByText('Document the admission guard')).toBeTruthy();
+    unmount();
+
+    renderContext({
+      scope: { kind: 'specification' },
+      relatedTasks: ready([]),
+      relatedTasksMissing: { count: 2, total: 2 },
+    });
+    expect(screen.getByText('2 of 2 associated tasks can’t be found.')).toBeTruthy();
+    expect(screen.getByText('Related Tasks')).toBeTruthy();
   });
 
   it('a missing Specification stays a warning when the scope does not require it', () => {
     // Task/specification scope require it; a missing optional reference must not be an error.
     const { container } = renderContext({
-      scope: { kind: 'unknown', reason: 'not-provided' },
+      scope: { kind: 'unknown', reason: 'loading' },
       specification: { status: 'missing' },
     });
 
@@ -703,7 +700,7 @@ describe('Specification entry', () => {
         scope: { kind: 'specification' },
         specification: ready(specification),
         executionScope: ready({ kind: 'single-task', task }),
-        relatedTasks: ready([task, { id: 'task-02', key: 'TASK-02', title: 'Admission guard' }]),
+        relatedTasks: ready([{ id: 'task-02', key: 'TASK-02', title: 'Admission guard' }]),
       },
       vi.fn(),
     );
@@ -711,9 +708,9 @@ describe('Specification entry', () => {
     // Specification and Task titles are the object's identity (DS primary information).
     expect(screen.getByText('Workflow admission hardening').className).toContain('text-title-sm');
     expect(screen.getByText('Deterministic admission').className).toContain('text-title-sm');
-    // Navigation subjects and count summaries are not bold just because they are clickable.
+    expect(screen.getByText('Admission guard').className).toContain('text-title-sm');
+    // Navigation subjects are not bold just because they are clickable.
     expect(screen.getByText('Files / Changes').className).toContain('text-body-md');
-    expect(screen.getByText('2 Tasks').className).toContain('text-body-md');
     // Technical identifiers stay muted on the secondary line.
     expect(screen.getByText('SPEC-A').closest('.text-content-muted')).toBeTruthy();
   });

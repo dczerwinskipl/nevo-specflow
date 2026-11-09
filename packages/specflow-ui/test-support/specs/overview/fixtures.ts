@@ -123,7 +123,11 @@ export function createSpecsFixture(collection: SpecsCollection = 'current'): Spe
             'attention',
             'Agent asks for input',
             110,
-            { kind: 'session', specId: 'admission', sessionId: 'session-23' },
+            {
+              kind: 'session',
+              specId: 'admission',
+              sessionId: '00000000-0000-4000-8000-000000000023',
+            },
             'Choose how queued work should behave after a recovery.',
             'input',
           ),
@@ -140,7 +144,11 @@ export function createSpecsFixture(collection: SpecsCollection = 'current'): Spe
           signal('admission', 'working', 'working', 'Reviewer working', 40),
         ],
         currentExecutions: [
-          { sessionId: 'session-23', agentRole: 'Reviewer', taskIds: ['TASK-02', 'TASK-03'] },
+          {
+            sessionId: '00000000-0000-4000-8000-000000000023',
+            agentRole: 'Reviewer',
+            taskIds: ['TASK-02', 'TASK-03'],
+          },
         ],
       }),
       createSpecItem({
@@ -203,7 +211,7 @@ export function createSpecsFixture(collection: SpecsCollection = 'current'): Spe
         signals: [signal('providers', 'batch', 'working', 'Implementation in progress', 40)],
         currentExecutions: [
           {
-            sessionId: 'session-42',
+            sessionId: '00000000-0000-4000-8000-000000000042',
             agentRole: 'Implementer',
             taskIds: ['TASK-02', 'TASK-04', 'TASK-05'],
           },

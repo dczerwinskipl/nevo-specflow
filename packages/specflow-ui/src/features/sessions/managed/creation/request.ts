@@ -73,9 +73,13 @@ function consumedMarker(encoded: string): string | undefined {
   return undefined;
 }
 
-/** Persist before dispatch. An uncertain create retains its exact body across route reloads. */
-export function createSessionRequest(owner: string, storage: Storage | undefined) {
-  const key = 'nevo:session-create:' + owner;
+/**
+ * Persist before dispatch. An uncertain create retains its exact body across route reloads. One
+ * record per owner and Specification: a request kept for one Specification is never resent into
+ * another (the association is part of the create's identity).
+ */
+export function createSessionRequest(owner: string, storage: Storage | undefined, specId: string) {
+  const key = 'nevo:session-create:' + owner + ':spec:' + specId;
   const holder: { current: RequestAttempt<CreateSession> | null } = { current: null };
   let state: RetainedCreateState = storage ? 'ready' : 'unavailable';
   let leftover = false;

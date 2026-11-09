@@ -7,6 +7,8 @@ import type {
 } from '@nevo/specflow-contracts/sessions';
 import { effective, effectiveEvent } from './projection';
 
+const identity = { projectId: 'project', sessionId: 'session' };
+
 function fixture(
   mode: 'read-only' | 'workspace-write' = 'workspace-write',
   write = true,
@@ -58,7 +60,7 @@ function fixture(
     snapshot,
     request,
     provider,
-    project: () => effective(snapshot, request, () => provider),
+    project: () => effective(snapshot, request, () => provider, identity),
   };
 }
 
@@ -113,7 +115,7 @@ it('applies the same effective Start rule to streamed Turn projections', () => {
       },
     },
   };
-  const projected = effectiveEvent(event, f.request, () => f.provider);
+  const projected = effectiveEvent(event, f.request, () => f.provider, identity);
   if (projected.kind !== 'interaction') {
     throw new Error('Wrong fixture event');
   }
@@ -135,4 +137,128 @@ it('requires the pinned native mode to be available even when another mode keeps
   ];
   expect(f.project().session.capabilities.start).toBe(false);
   expect(f.snapshot.session.readiness).toBe('unavailable');
+});
+it('keeps an archived Session read-only and projects the separate delete grant', () => {
+  const archived = fixture('read-only');
+  archived.snapshot.session.archivedAt = 'now';
+  expect(archived.project().session.capabilities).toMatchObject({ start: false, manage: true });
+  const event: SessionChange = {
+    sessionId: 'session',
+    eventSeq: 2,
+    kind: 'session',
+    changes: {
+      projection: {
+        session: {
+          ...archived.snapshot.session,
+          capabilities: { ...archived.snapshot.session.capabilities, start: true },
+        },
+        activeTurn: null,
+        currentActivity: null,
+        interaction: null,
+      },
+    },
+  };
+  const projected = effectiveEvent(event, archived.request, () => archived.provider, identity);
+  if (projected.kind !== 'session') {
+    throw new Error('Wrong fixture event');
+  }
+
+  expect(projected.changes.projection.session.capabilities.start).toBe(false);
+  const granted = fixture('read-only');
+  (
+    granted.request.authz as unknown as { resolveCapabilities: () => Record<string, boolean> }
+  ).resolveCapabilities = () => ({ view: true, manage: true, delete: true });
+  expect(granted.project().session.capabilities).toMatchObject({ start: true, delete: true });
+});
+it('resolves an associated Session at its Specification scope, but write execution without it', () => {
+  const f = fixture();
+  const scopes: unknown[] = [];
+  const request = {
+    authz: {
+      resolveCapabilities: ({ scope }: { scope: Record<string, string> }) => {
+        scopes.push(scope);
+
+        // A Specification-scoped developer: covers the specId scope only.
+        return 'specId' in scope
+          ? { view: true, manage: true, delete: true, 'execute-write': true }
+          : { view: false, manage: false, delete: false, 'execute-write': false };
+      },
+    },
+  } as unknown as FastifyRequest;
+  const projected = effective(f.snapshot, request, () => f.provider, {
+    ...identity,
+    specId: 'S1',
+  });
+  expect(scopes).toEqual([
+    { projectId: 'project', specId: 'S1', sessionId: 'session' },
+    { projectId: 'project', sessionId: 'session' },
+  ]);
+  expect(projected.session.capabilities).toMatchObject({
+    view: true,
+    manage: true,
+    delete: true,
+    executeWrite: false,
+    start: false,
+  });
+});
+it('names the executor by catalogue titles in the snapshot and in change projections', () => {
+  const f = fixture();
+  f.provider.models = [{ modelId: 'm1', title: 'Model one', efforts: [] }];
+  f.snapshot.session.modelId = 'm1';
+  expect(f.project().session).toMatchObject({
+    providerTitle: 'Controlled',
+    modelTitle: 'Model one',
+  });
+
+  const event: SessionChange = {
+    sessionId: 'session',
+    eventSeq: 2,
+    kind: 'session',
+    changes: {
+      projection: {
+        // A model the catalogue no longer lists: a stale title never survives.
+        session: { ...f.snapshot.session, modelId: 'gone', modelTitle: 'Stale' },
+        activeTurn: null,
+        currentActivity: null,
+        interaction: null,
+      },
+    },
+  };
+  const projected = effectiveEvent(event, f.request, () => f.provider, identity);
+  if (projected.kind !== 'session') {
+    throw new Error('Wrong fixture event');
+  }
+
+  expect(projected.changes.projection.session.providerTitle).toBe('Controlled');
+  expect(projected.changes.projection.session).not.toHaveProperty('modelTitle');
+  // A provider the catalogue does not list is named by nothing.
+  const unlisted = fixture();
+  expect(
+    effective(unlisted.snapshot, unlisted.request, () => undefined, identity).session,
+  ).not.toHaveProperty('providerTitle');
+});
+it('keeps Cancel on a Session change (rename) emitted during an active Turn', () => {
+  const f = fixture();
+  const event: SessionChange = {
+    sessionId: 'session',
+    eventSeq: 2,
+    kind: 'session',
+    changes: {
+      projection: {
+        session: { ...f.snapshot.session, title: 'Renamed' },
+        activeTurn: { turnId: 'turn', state: 'active', revision: 1, startedAt: 'now' },
+        currentActivity: null,
+        interaction: null,
+      },
+    },
+  };
+  const projected = effectiveEvent(event, f.request, () => f.provider, identity);
+  if (projected.kind !== 'session') {
+    throw new Error('Wrong fixture event');
+  }
+
+  expect(projected.changes.projection.session.capabilities).toMatchObject({
+    cancel: true,
+    start: false,
+  });
 });

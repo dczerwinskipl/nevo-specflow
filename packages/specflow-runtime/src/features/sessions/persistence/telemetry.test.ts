@@ -74,7 +74,7 @@ function fixture() {
     } as StoredTurn;
     // The feature owner only needs normalized Turn metadata, never content/chunks.
     run(
-      'INSERT OR IGNORE INTO sessions VALUES(?,?,?,?,?,NULL)',
+      'INSERT OR IGNORE INTO sessions(id,project,seq,ordinal,data) VALUES(?,?,?,?,?)',
       s.snapshot.session.sessionId,
       'project',
       0,
@@ -333,7 +333,7 @@ describe('materialized Session telemetry', () => {
 
     f.db.exec('PRAGMA user_version=1');
     initializeSessionSchema(f.db, f.get);
-    expect(f.get('PRAGMA user_version')?.user_version).toBe(2);
+    expect(f.get('PRAGMA user_version')?.user_version).toBe(3);
     expect(f.telemetry.read(f.s).usage.session).toMatchObject({
       status: 'unavailable',
       reason: 'BASELINE_MISSING',

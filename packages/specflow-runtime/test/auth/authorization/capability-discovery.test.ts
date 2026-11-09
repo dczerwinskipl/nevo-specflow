@@ -15,6 +15,7 @@ function baseConfig(): RuntimeConfig {
         viewer: { name: 'Viewer' },
         developer: { name: 'Developer' },
         scopedViewer: { name: 'Scoped Viewer' },
+        scopedDeveloper: { name: 'Scoped Developer' },
       },
       providers: {
         password: { enabled: false, accounts: {} },
@@ -30,6 +31,7 @@ function baseConfig(): RuntimeConfig {
           role: 'viewer',
           scope: { specId: 'S1' },
         },
+        { userId: 'scopedDeveloper', role: 'developer', scope: { specId: 'S1' } },
       ],
     },
   };
@@ -78,6 +80,7 @@ describe('authorization HTTP API', () => {
           manage: true,
           'close-worktree': true,
           'close-specification': true,
+          'start-session': true,
         },
       });
 
@@ -95,6 +98,7 @@ describe('authorization HTTP API', () => {
         'view-provider-limits': false,
         view: true,
         manage: true,
+        delete: true,
       });
 
       const otherWorkspace = await app.inject({
@@ -111,7 +115,32 @@ describe('authorization HTTP API', () => {
         manage: false,
         'close-worktree': false,
         'close-specification': false,
+        'start-session': false,
       });
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('reports spec.start-session per Specification', async () => {
+    const store = new InMemoryAuthenticationStore({ idFactory: () => 'start-session-id' });
+    const session = store.createSession({
+      userId: 'scopedDeveloper',
+      authenticatedWith: { kind: 'password' },
+    });
+    const app = await createRuntimeApp(baseConfig(), { auth: { store } });
+    try {
+      const discover = async (specId: string) =>
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/api/authorization/capabilities',
+            headers: { cookie: `${COOKIE_NAMES.session}=${session}` },
+            payload: { resource: { name: 'spec', scope: { specId } } },
+          })
+        ).json<CapabilityDiscoveryResponse>().capabilities;
+      expect((await discover('S1'))['start-session']).toBe(true);
+      expect((await discover('S2'))['start-session']).toBe(false);
     } finally {
       await app.close();
     }
@@ -140,6 +169,7 @@ describe('authorization HTTP API', () => {
         manage: false,
         'close-worktree': false,
         'close-specification': false,
+        'start-session': false,
       });
 
       const global = await app.inject({
@@ -156,6 +186,7 @@ describe('authorization HTTP API', () => {
           manage: false,
           'close-worktree': false,
           'close-specification': false,
+          'start-session': false,
         },
       });
     } finally {
@@ -239,6 +270,7 @@ describe('authorization HTTP API', () => {
         manage: false,
         'close-worktree': false,
         'close-specification': false,
+        'start-session': false,
       });
     } finally {
       await app.close();
@@ -264,6 +296,7 @@ describe('authorization HTTP API', () => {
         manage: true,
         'close-worktree': true,
         'close-specification': true,
+        'start-session': true,
       });
     } finally {
       await app.close();

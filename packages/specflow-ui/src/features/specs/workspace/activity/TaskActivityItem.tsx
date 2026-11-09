@@ -15,7 +15,7 @@ export function TaskActivityItem({ event, active, onOpenTask }: TaskActivityItem
     <button
       type="button"
       onClick={() => onOpenTask(event.targetId)}
-      className="text-left text-content-primary hover:text-accent-primary hover:underline focus-visible:outline-2 focus-visible:outline-focus-ring [overflow-wrap:anywhere]"
+      className="text-left text-content-primary hover:text-content-link hover:underline focus-visible:outline-2 focus-visible:outline-focus-ring [overflow-wrap:anywhere]"
       aria-label={t('specification.previewTaskAria', { title: event.title })}
     >
       {event.title}

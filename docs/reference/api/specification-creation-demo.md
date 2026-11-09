@@ -57,7 +57,9 @@ Created documents and Sessions belong to their Specification. Every lookup/updat
 Specification and resource pair. Unrelated IDs return not found, never another Specification's data.
 Use fresh stable opaque resource IDs, independent of titles. Session configuration is a snapshot;
 changing a later setup cannot mutate an existing Session. An allocated placeholder is quiet, with no
-Task or current execution, and remains openable from that Specification's Sessions list.
+Task or current execution, and remains openable from that Specification's Sessions list. Its ID is a
+UUID, and the Full Session screen opens it read-only through the managed Session read routes
+([Sessions API, Demo Runtime](sessions.md#demo-runtime-read-only-managed-sessions)).
 
 ## Temporary transport
 

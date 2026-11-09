@@ -49,6 +49,21 @@ needed, and stop on quota or authentication failure rather than retrying it.
 Never embed credentials in code, fixtures, prompts, documentation or committed
 configuration. Report manual evidence separately from automated verification.
 
+### Manual provider smoke checks
+
+Run these in a manually opened Session with the operator's normal local login, only the one the
+change needs, never in a test runner. Do not retry automatically or switch to another paid provider.
+
+| Check           | Prompt                                                                                                                                                                                                                | Evidence                                                                                                                      |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Minimal reply   | "To krótki test integracji. Odpowiedz wyłącznie: OK. Nie używaj narzędzi."                                                                                                                                            | Selected native mode and the canonical completed/failed result. A text-only reply proves neither writable tools nor resume.   |
+| Continuation    | First: "To krótki test integracji. Zapamiętaj znacznik TEST-123 i odpowiedz tylko OK. Bez narzędzi." After reopening the same Session: "To krótki test wznowienia. Podaj wyłącznie poprzedni znacznik. Bez narzędzi." | The second Turn's answer (not an older transcript entry). Use a fresh marker each time; do not repeat the pair automatically. |
+| Workspace write | In a disposable workspace, native Agent mode: "To krótki test zapisu. Utwórz tylko plik test-agent.txt z tekstem OK. Odpowiedz tylko OK."                                                                             | The actual file and the canonical outcome; prose claiming a write is not evidence. Remove only the test file afterwards.      |
+
+Report the provider and build, selected mode, which check ran, its result, and any quota or
+authentication limitation. Missing native evidence is a reported limitation, never a reason to make
+automated tests depend on a personal account.
+
 ## Test and story placement
 
 Placement follows **ownership**, not technology. A test or Storybook story that belongs to one

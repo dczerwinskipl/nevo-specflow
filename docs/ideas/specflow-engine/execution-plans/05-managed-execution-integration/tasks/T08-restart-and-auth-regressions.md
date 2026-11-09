@@ -28,9 +28,7 @@ Cross-process and Runtime restart scenarios, duplicate request IDs, stale callba
 ## Prerequisites
 
 - [E5.T02](T02-preparation-and-authorization.md)
-- [E5.T03](T03-atomic-enough-intent-protocol.md)
-- [E5.T04](T04-mock-dispatch-phases.md)
-- [E5.T05](T05-turn-claim-settlement.md)
+- Session-level intent, dispatch phases and claim settlement, implemented (former E5.T03–T05): [workspace execution claims](../../../../../architecture/runtime/workspace-execution-claims.md)
 - [E5.T06](T06-explicit-workflow-interaction.md)
 - [E5.T07](T07-bounded-batch-and-handover.md)
 

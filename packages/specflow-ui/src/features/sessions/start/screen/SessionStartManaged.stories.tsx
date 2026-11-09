@@ -16,7 +16,7 @@ import { creates, ManagedStartPreview } from './sessionStart.stories-support';
  * A Specification's New Session on the managed (project) Runtime (`/specs/$specId/sessions/new`):
  * the same Session screen and form as the demo's, over the Runtime's own provider catalogue
  * (readiness, reasons, native work modes) and the composed create `POST /api/specs/:specId/sessions`
- * (`docs/ideas/specflow-ui/session-association-ux/README.md` §5). The real start source runs
+ * (`docs/product/specflow/ui/full-session.md` "Starting a Session"). The real start source runs
  * over a faked transport; a created Session opens as in the route. Every state is rendered from the
  * story's args; the plays only assert it and walk the flow.
  */
@@ -82,7 +82,7 @@ export const ManagedInSpecification: Story = {
 };
 
 /** Claude's own native modes: only the usable ones are listed; the catalogue's unavailable one is
- * omitted, with no reason line (session-composer-design.md §7 item 4). */
+ * omitted, with no reason line (full-session.md "Composer"). */
 export const NativeModesWithUnavailableOne: Story = {
   args: {
     defaults: {

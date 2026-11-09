@@ -64,8 +64,9 @@ export function seedSessionAssociation(queryClient: QueryClient, read: SessionAs
 }
 
 /**
- * Refresh-on-action (session-association-ux §3): the Specification's Sessions list and the
- * workspace read (whose `revision` does not cover Sessions) after this UI's own Session command.
+ * Refresh-on-action (specification-sessions.md "Freshness"): the Specification's Sessions list
+ * and the workspace read (whose `revision` does not cover Sessions) after this UI's own Session
+ * command.
  * The list resets to its first page (appended pages are dropped); what it shows stays until the
  * first page is read again.
  */

@@ -337,6 +337,10 @@ async function chooseModel(
   await userEvent.click(canvas.getByRole('combobox', { name: 'Model' }));
   await userEvent.click(await within(document.body).findByRole('option', { name }));
   await waitFor(() => expect(within(document.body).queryByRole('listbox')).toBeNull());
+  // The listbox closes before the form re-renders for the new model: wait for the choice itself.
+  await waitFor(() =>
+    expect(canvas.getByRole('combobox', { name: 'Model' })).toHaveTextContent(name),
+  );
 }
 
 export const ChoiceAndConfiguration: Story = {
@@ -707,11 +711,10 @@ export const SingleModeModel: Story = {
     await openAgentForm(canvas, userEvent);
     await chooseModel(canvas, userEvent, 'Solo model');
     // The only mode is shown as the chosen one; there is nothing else to pick.
-    const modes = within(canvas.getByRole('radiogroup', { name: 'Tryb pracy' })).getAllByRole(
-      'radio',
-    );
-    await expect(modes).toHaveLength(1);
-    await expect(modes[0]).toBeChecked();
+    const modes = () =>
+      within(canvas.getByRole('radiogroup', { name: 'Tryb pracy' })).getAllByRole('radio');
+    await waitFor(() => expect(modes()).toHaveLength(1));
+    await expect(modes()[0]).toBeChecked();
   },
 };
 export const SeparatorsOnlyBetweenRenderedSections: Story = {

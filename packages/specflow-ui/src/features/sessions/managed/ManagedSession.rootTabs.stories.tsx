@@ -15,11 +15,11 @@ import {
 } from './managedSession.storyHelpers.stories-support';
 
 /**
- * Root tab identity on the composed Session screen (full-session-screen-structure.md §7.4.1, §8.3;
- * secondary-navigation.md "Root tabs lifecycle"): a root tab is one OBJECT. Work history is one tab
- * per Turn, whichever entry point opens it (a Work block in the conversation or Context's "Work
- * history" row); every Task is its own tab, labelled by its key; the workspace remembers a tab's
- * scroll while another tab is shown. Same title as the other Managed Session groups; hidden
+ * Root tab identity on the composed Session screen (full-session.md "Secondary tabs", "Work history
+ * (L2)"; secondary-navigation.md "Root tabs lifecycle"): a root tab is one OBJECT. Work history is
+ * one tab per Turn, whichever entry point opens it (a Work block in the conversation or Context's
+ * "Work history" row); every Task is its own tab, labelled by its key; the workspace remembers a
+ * tab's scroll while another tab is shown. Same title as the other Managed Session groups; hidden
  * `contract`.
  */
 
@@ -207,7 +207,7 @@ const shownSurface = (canvasElement: HTMLElement) => {
 
 /**
  * Narrow layout has no per-object tabs: Back follows the path the user took, and opening an object
- * that was visited before pushes it again (full-session-screen-structure.md §10.3).
+ * that was visited before pushes it again (full-session.md "Secondary tabs").
  */
 export const StackedBackFollowsThePath: Story = {
   tags: ['contract'],
@@ -234,8 +234,8 @@ export const StackedBackFollowsThePath: Story = {
     const expectSurface = (heading: string) =>
       waitFor(() => expect(shownSurface(canvasElement)).toBe(heading));
 
-    // Related Tasks list one row per Task, each opening that Task (full-session-screen-structure
-    // §7.6.1), so on the narrow flow a Task is a push straight from Context.
+    // Related Tasks list one row per Task, each opening that Task (full-session.md
+    // "Context"), so on the narrow flow a Task is a push straight from Context.
     await press('Kontekst');
     await expectSurface('Kontekst');
     await press(/Document the admission guard/);

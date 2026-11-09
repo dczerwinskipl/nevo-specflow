@@ -2,7 +2,7 @@ import type { StartCatalogue, StartMode } from '../catalogue/startCatalogue';
 
 /**
  * What a Session was started with, handed to the Session screen that opens it
- * (new-session-ui-spec.md, section 3(c)): the Session's first snapshot has not loaded yet, but the
+ * (full-session.md "Starting a Session"): the Session's first snapshot has not loaded yet, but the
  * start values are known, so the screen shows the ready empty state, the Context and the Composer's
  * pickers at once instead of a loading line. Only the start values; once the snapshot arrives the
  * Session screen reads the Session itself. The Specification is not among them: the start seeds the

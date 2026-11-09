@@ -9,7 +9,7 @@ read_when:
   - deciding how several documents are open at once
 summary: >
   Behavior of the Documents screen with several open documents (tree plus tabbed document area), the
-  same tabs as read-only previews in a Session, and the open decisions around the layout.
+  content kinds, the target read-only previews in a Session, and the deferred layout decisions.
 related:
   - product.specflow.ui.interaction-model
   - design-system.implementation.react.item-tabs
@@ -27,7 +27,8 @@ document owns only what they mean in the product. Approved mock: Storybook
 ## Documents
 
 - **Layout.** The document tree is Primary and the document area is Secondary of the existing
-  workspace (`fit="available"`): Wide 25 / 75, Compact 1/3 / 2/3. The tree MUST be permanently
+  workspace (`fit="available"`): Wide 25 / 75, Compact 1/3 / 2/3, with the tree capped at 360 px
+  (`primaryMaxPx`) so the document gets the rest on wide screens. The tree MUST be permanently
   visible whenever the workspace splits (>= 840 px); it MUST NOT be a drawer or toggle there.
 - **Contents and properties (preview only).** A markdown preview with at least two headings (h1-h4) offers
   its contents. When the document panel is at least 840 px wide (a 1400 px window and wider) (measured on the panel, so the text keeps
@@ -44,8 +45,8 @@ document owns only what they mean in the product. Approved mock: Storybook
   direct slot. The sheet is titled Contents only (the tab already names the document). Choosing a heading
   closes the sheet, scrolls to the heading and focuses it; closing without a
   choice returns focus to the icon. The properties are one collapsed plain row (a thin rule, no frame) in the text and in the column, with a 44 px hit area on touch. Editing, plain text
-  and documents with fewer than two headings have no contents. Split view (editor beside preview) is deferred
-  to a later change, and a permanent contents bar was considered and rejected in review.
+  and documents with fewer than two headings have no contents. A permanent contents bar was considered
+  and rejected in review.
 - **Source editor.** Line numbers are a quiet band of their own beside the text, and the current line is marked
   from that band to the end of the line. While the source editor is shown, the Display group of the `...`
   menu has a checked **Wrap lines**: on unless the reader turned it off, kept in this browser separately for a
@@ -82,7 +83,11 @@ document owns only what they mean in the product. Approved mock: Storybook
   the delete) and drops their drafts. A new empty file opens as a new tab in edit; an import opens its
   first file as a new tab in preview; a new folder opens nothing.
 
-## Session
+## Session (target, not implemented)
+
+Today a Session reaches documents only through Context's Documents row, which opens the
+Specification's Documents screen with the Session as the way back. The following is the intended
+behavior once a Session can preview files in its own Secondary:
 
 - The same tabs host read-only previews in the Session's Secondary region, next to the
   conversation. There is no tree and no editing.
@@ -97,17 +102,26 @@ document owns only what they mean in the product. Approved mock: Storybook
 Each kind declares its views and actions to the host; the rules for descriptors, promotion and the
 `...` menu are in the design-system document.
 
-- **Plain text (`.txt`).** One editable view: it opens as the source, with no preview, no mode action and
-  no properties. Save is promoted only while there are unsaved changes.
-- **Markdown.** Opens in preview. Edit/Preview is promoted (pencil in preview, eye in edit). Split
-  (icon `columns-2`, from the existing lucide set) exists only when the document area is at least 1000 px; below
-  that the view falls back to edit. Word wrap and line numbers are editor preferences in the
-  `display` group, shared across tabs.
-- **Code.** One view, editable by property; no mode toggle. Save is promoted only while dirty.
-- **Image.** Opens as Fit. One promoted toggle, Fit <-> Actual size (100%). Zoom in/out are in
-  `display`, with the current zoom shown as a trailing value; zoom is per tab; pinch and `+`/`-`
-  zoom on input devices.
-- **Binary.** Download is promoted.
+The kinds are `documentContentKinds` in `features/documents/content-kinds`; the first kind that
+matches a document wins, plain text being the fallback.
+
+- **Markdown.** Views preview and edit; opens in preview. Edit/Preview is one icon action that names
+  the action (pencil in preview, eye in edit), always direct, except while editing with unsaved
+  changes, when Save takes the narrow header's single slot and the mode action is direct only on
+  wide headers. Markdown the Runtime reports as not editable has only the preview and offers
+  Download in the menu.
+- **Plain text** (any text that is not markdown). One editable source view: no preview, no mode
+  action, no properties. Text that cannot be changed here is a read-only source view with Download
+  in the menu.
+- **Save and Discard** (markdown and plain text) exist only while the draft differs. Save is the
+  `primary` action, always direct, and shows Saving while it commits.
+- **Image.** One view, fitted to the area. The `display` group has a checked **Actual size** item
+  (100 %); Download is the promoted (`primary`) header action. Never dirty.
+- **File** (binary, or text above the read limit). The body explains the file and carries a
+  Download button; the header keeps Download in the menu only (`direct: 'never'`), so the two never
+  differ in weight.
+- **Source editor preferences.** **Wrap lines** in the `display` group while the source editor is
+  shown (see Documents above).
 - **Editor look.** Editable source MUST look like an editor: monospace, a line-number gutter sized
   to its digit count (at least 2 digits on Narrow), current-line highlight. There is no "Editing"
   badge.
@@ -120,27 +134,19 @@ Estimate, not measured in the final mock: with a tree of 240 px the split keeps 
 characters per line down to a workspace of about 770 px.
 
 **Decision.** The split threshold of this screen stays the shell's global 840 px; below it the
-screen stacks as Narrow. A lower threshold (about 770 px) is deferred to the integration PR and
-requires changing the shell (`supportsWorkspaceSplit`). The mock's `Split770` and `Split800` frames
-are comparison frames only.
+screen stacks as Narrow. A lower threshold (about 770 px) is deferred and would require changing
+the shell (`supportsWorkspaceSplit`). The mock's `Split770` and `Split800` frames are comparison
+frames only.
 
 ## Decisions and deferrals
 
-- The minimum tab width stays 140 px; exceptions may be raised in the integration PR.
-- The 44 px close hit area on coarse pointers is to be confirmed in integration.
-- Back behavior in a Session with open tabs is open.
-- Split view for kinds other than markdown is deferred.
-- A transient preview tab is deferred.
-- A separate editor layout (tree and tabbed area as peers, outside Primary/Secondary) is deferred
-  until after the integration.
-
-## Follow-ups after the integration
-
-Integrated for Markdown and plain text on the demo Runtime: the complete header menu and `aria-pressed`,
-the guard for several tabs, the route as the active tab, the narrow switcher and tree operations.
-
-- Split view (>= 1000 px) and the editor preferences (word wrap, line numbers) for markdown.
-- Code, image and binary kinds (the registry in `features/documents/content-kinds` takes a descriptor each).
-- Confirm the 44 px hit area.
-- Verify the tree/document geometry on the real `AppWorkspace` at the tablet widths: the Storybook mock
+- Tab width follows [Item tabs](../../../design-system/implementation/react/item-tabs.md): content
+  width clamped to 64-240 px, compressed to no less than 120 px before tabs overflow.
+- The 44 px close hit area on coarse pointers applies to the `header` density; the split rail's
+  close is always visible.
+- Deferred: split view (editor beside preview, any kind); a code kind (editable source by
+  property); image zoom (zoom steps, pinch, `+`/`-`); a transient preview tab; a separate editor
+  layout (tree and tabbed area as peers, outside Primary/Secondary); Session file previews (above),
+  including Back behavior in a Session with open tabs.
+- Verify the tree/document geometry on the real `AppWorkspace` at tablet widths: the Storybook mock
   composes the layout by hand, so it does not prove scroll, borders, region widths or breakpoints.

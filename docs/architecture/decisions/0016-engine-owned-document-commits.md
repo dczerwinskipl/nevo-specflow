@@ -5,7 +5,7 @@ title: Document operations write files at once and land as Engine-owned path-lim
 status: current
 date: 2026-10-24
 summary: >
-  Every state-changing Specification document operation writes its files and registry change to disk
+  Amended by ADR 0018 (automatic commit is opt-in, default off). Every state-changing Specification document operation writes its files and registry change to disk
   immediately, answers once the content is durable and its commit request is durably queued, and lands in
   Git later as an Engine-owned path-limited commit executed by a per-checkout queue (one active batch per
   checkout, batches per Specification). Queued operations of one Specification consolidate into one commit; a
@@ -32,6 +32,12 @@ Current. This ADR **extends**
 states that "a checkout is clean after Create". For document operations a checkout MAY be dirty because of Nevo for
 a bounded, journaled window (decision 9). Create keeps its synchronous commit stage and its clean-checkout
 guarantee. Language follows [normative language](../principles/normative-language.md).
+
+**Amended by [ADR 0018](0018-engine-commit-policy-and-manual-commit.md).** The automatic commit
+described here applies only when `git.commits.auto.documents` is enabled; the default is off. With it
+off, a document operation completes as uncommitted, is recorded in the uncommitted-changes ledger,
+and lands in Git only through a manual commit. Where this ADR says every document operation is
+committed, read "every document operation whose effective commit policy is automatic".
 
 ## Why a new ADR and not an amendment of 0013
 

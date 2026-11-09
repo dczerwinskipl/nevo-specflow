@@ -13,6 +13,7 @@ related:
   - architecture.runtime.authorization
   - reference.api.specs-operations-list
   - product.specflow.ui.application-architecture
+  - product.specflow.ui.specs-overview
 ---
 
 # Specs Overview HTTP API

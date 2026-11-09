@@ -13,6 +13,7 @@ summary: >
 Architecture describes boundaries, ownership, lifecycle, invariants, and durable decisions.
 Implementation guidance belongs under [`../engineering/`](../engineering/).
 
+- [Architecture overview](overview.md) — diagrams of processes, packages, state and the Session Turn flow
 - [Architecture principles](principles/)
 - [Runtime architecture](runtime/)
 - [AI architecture](ai/)

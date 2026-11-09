@@ -20,3 +20,4 @@ React implementation conventions for Nevo SpecFlow UI. Visual/design rules are i
 | [Component authoring contract](component-authoring-contract.md) | Public API, refs, state, fields, localization, styling, accessibility, stories, tests, Figma, and the artifact matrix. |
 | [Secondary navigation](secondary-navigation.md)                 | In-memory contextual screen stack, live data, Back/Close, guard and canonical React usage.                             |
 | [Item tabs](item-tabs.md)                                       | ItemTabs strip, useOpenedItems and the content tabs host pattern (views, promoted actions, complete menu).             |
+| [Workspace dynamic split](workspace-dynamic-split.md)           | Secondary root tabs (pinned, `open`/`openTab`), auto/manual split, side swap and the accessible `WorkspaceSplitter`.   |

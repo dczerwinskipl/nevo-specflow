@@ -1,7 +1,7 @@
 import type { StartSessionAction } from '../../specs/read-model';
 
 /**
- * Whether the New Session entry points of a Specification show (session-association-ux §5, U6):
+ * Whether the New Session entry points of a Specification show (full-session.md "Starting a Session"):
  * when the start is available, and with `no_provider` too (the start form explains it). Omitted for
  * `forbidden`, `sessions_disabled` and any other reason, and while the workspace read is unknown.
  */

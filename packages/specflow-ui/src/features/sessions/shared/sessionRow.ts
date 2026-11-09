@@ -32,8 +32,8 @@ export function sessionProviderName(agent: SessionRowAgent): string {
 const AGENT_FACT_MAX_WIDTH = '16rem';
 
 /**
- * The agent fact (Sessions list §3.1): the model's title, else its raw id, else the provider.
- * Assistive technology reads the provider too, since the mark showing it is decorative.
+ * The agent fact (specification-sessions.md "Rows"): the model's title, else its raw id, else the
+ * provider. Assistive technology reads the provider too, since the mark showing it is decorative.
  */
 export function sessionAgentFact(agent: SessionRowAgent, t: TFunction): CompactFactItem {
   const provider = sessionProviderName(agent);
@@ -94,9 +94,9 @@ function prepend(fact: CompactFactItem, rest: CompactFacts): InlineFacts {
 }
 
 /**
- * A Session row's status (Sessions list §3.3): effective Session readiness only, never an Engine
- * attempt fact. A ready Session shows none. A sign-in is provider-wide and resolved in the
- * provider's CLI, so it names the provider and stays muted.
+ * A Session row's status (specification-sessions.md "Status"): effective Session readiness only,
+ * never an Engine attempt fact. A ready Session shows none. A sign-in is provider-wide and resolved
+ * in the provider's CLI, so it names the provider and stays muted.
  */
 export function sessionRowStatus(
   readiness: SessionRowReadiness,

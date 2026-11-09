@@ -811,3 +811,70 @@ Every fixture includes the exact Task projection payload.
 7. Heavy evidence does not load eagerly.
 8. Recovery can stand out without making every state a Card.
 9. No evidence Card soup.
+
+## 16. Migration evidence from the legacy Task model
+
+Legacy deterministic facts, kept so later work can tell useful concepts from legacy
+representation. They are evidence, not a target contract.
+
+- **Task properties seen by the legacy dashboard:** `id`, `title`, `order`, `status`, `stage`,
+  `dependsOn[]`, `blockedBy[]`, `ready`, `terminal`, `file`. Id, title, dependencies and the
+  document reference carry product meaning. `ready` is useful as a projection but should be derived
+  from the new deterministic model; `stage` and lifecycle `status` overlap with semantic workflow
+  status; `terminal` is derivable; the `blockedBy` projection stays owned by application/Runtime
+  logic.
+- **Workflow progress:** `current_step`, `current_attempt`, `state: active | completed` and a
+  `history[]` of step, attempt, completion time and transition. The useful concepts are workflow
+  position, attempt identity when evidence freshness matters, active/completed state, semantic
+  status and transition history. The UI leads with semantic meaning, not the storage shape.
+- **Step behavior contract:** steps may declare `purpose`, `expectedWork` and `hints` (docs, skills,
+  files). They can become Task Context ("what is the agent supposed to do in this phase?"), not
+  primary chrome.
+- **Legacy lifecycle vocabulary:** `draft`, `approved`, `in-implementation`, `implemented`,
+  `verified`, `archived`, `abandoned`. Do not create visual variants or navigation rules around these
+  values until the deterministic migration decides which remain authoritative.
+- **Review artifacts:** legacy reviews persist per-Specification reports with Task-specific files:
+  an explicit verdict, findings classified by who acts (`AUTO_FIX`, `OWNER_DECISION`,
+  `NEEDS_CLARIFICATION`, `NON_BLOCKING`, `INFORMATIONAL`), unresolved fixes, decisions and
+  clarifications, freshness/fingerprint evidence, gating versus non-gating verification. UI
+  consequences: a concise outcome; "owner must decide" distinct from "agent can fix"; blocking
+  distinct from informational; stale evidence marked; the justifying report linked; one shared
+  multi-Task report with separate per-Task verdicts, never one representative Task. A Task waiting
+  for review lets the user see the current outcome and relevant findings, inspect changes,
+  Handover or Session, and choose the deterministic decision without opening the raw report first;
+  the raw report stays reachable.
+
+## 17. Validation flows
+
+Scenarios to validate Task decision composition against:
+
+1. **Ready to start.** Specification → Task "ready to start" → Task shows goal, satisfied
+   prerequisites, workflow position and what Start activates → Start is a deterministic operation.
+   Convenient, not an alert.
+2. **Task requires review.** The Specifications list stays aggregate ("3 Tasks require review");
+   inside the Specification the responsible Tasks are identified; the Task shows why review is
+   required, intent/acceptance criteria, review outcome, Handover, changes, linked Session and
+   verification, then the review/decision action.
+3. **Agent is working.** Only authoritative current execution produces "1 active session"; the Task
+   shows the current execution scope and no fake attention. Working is neither ready nor
+   requires-attention.
+4. **Start blocked by dependency.** "Waiting for TASK-02"; Start is unavailable for that reason while
+   another remediation may stay legal. No attention styling unless a human must decide, and no
+   universal Task-level `BLOCKED` state.
+5. **Unresolved owner decision.** Shown as "Owner decision required" with the exact decision and its
+   evidence, not as "changes required".
+6. **Agent-fixable findings.** "Changes required" with `AUTO_FIX` findings: what will change, the
+   report, an explicit apply action when supported. Distinct from an owner decision even in the same
+   report.
+7. **Generic Turn after Task work.** A Session that executed TASK-03 receives an ordinary message:
+   the new Turn has no Task execution identity; the Session stays related to TASK-03 but never shows
+   "working on TASK-03".
+8. **Multi-Task review.** One execution covering TASK-01..03, possibly one shared report, separate
+   per-Task verdicts. Full Session exposes the whole batch scope.
+9. **Terminal Turn, more legal work remains.** Not "agent working", not "Task done"; Continue only
+   when authoritative readiness allows it. Resumable is a projection, not a persisted status.
+10. **Recovery required after a terminal Turn.** Not "Task done", not generic "Blocked": the recovery
+    reason and the authoritative recovery action. Distinct from resumable.
+11. **Specification-level workflow attention (future).** "Specification approval required" opens
+    the Specification's workflow context and its decision, without a second special-purpose status
+    system for Specifications.

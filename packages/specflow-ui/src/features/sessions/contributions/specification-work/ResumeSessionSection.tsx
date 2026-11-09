@@ -19,7 +19,7 @@ export interface ResumeSessionSectionProps {
   readonly onOpenSessionsView: () => void;
   /** Opens the Specification's New Session (`/specs/$specId/sessions/new`). */
   readonly onStartSession: () => void;
-  /** The workspace's `startSession` offers the start (session-association-ux §5). */
+  /** The workspace's `startSession` offers the start (full-session.md "Starting a Session"). */
   readonly canStartSession: boolean;
   readonly canOpenSession: boolean;
 }

@@ -1,8 +1,7 @@
 import type { ToolActionSummary, WorkSummary } from '@nevo/specflow-contracts/sessions';
 
 /**
- * Commentary-grouped L2 Work chronology (session-chat-v10-design.md §4,
- * session-work-inspector-ui-spec.md §6): pure, UI-framework-free grouping/filtering so the
+ * Commentary-grouped L2 Work chronology (full-session.md "Work history (L2)"): pure, UI-framework-free grouping/filtering so the
  * behaviour is unit-testable without mounting the Secondary stack or ScrollArea machinery.
  *
  * The real canonical `WorkSummary.kind` is only `'commentary' | 'reasoning' | 'interaction' |
@@ -193,7 +192,7 @@ export const TOOL_BURST_MIN_SIZE = 5;
 /**
  * Compacts a long (`>= TOOL_BURST_MIN_SIZE`) run of adjacent happy-path ('completed') tool items
  * inside one chapter into a single collapsible burst row — one `Timeline.Item`/marker for the
- * whole run, never one marker per member (session-work-inspector-ui-spec.md §6.2/§6.3 and the
+ * whole run, never one marker per member (full-session.md "Work history (L2)" and the
  * one-axis, one-hierarchy principle above). A shorter run
  * (1 to `TOOL_BURST_MIN_SIZE - 1` items) is left as that many individual rows instead of being
  * wrapped in a container at all. Reasoning and Interaction are never merged, and a tool that is
@@ -282,11 +281,11 @@ export function formatWorkDuration(ms: number, locale: string): string {
 }
 
 /**
- * Localized wall-clock start/end, e.g. "14:32:05–14:32:06" (session-work-inspector-ui-spec.md §9's
- * Started/Completed fields: the duration alone leaves no way to tell WHEN a ToolAction ran). `undefined` on the same terms
- * {@link workItemDurationMs} already uses for "no reliable duration" (not yet settled, or an
- * unparsable/non-positive span) — the two are shown together, so one being unavailable implies the
- * other is too.
+ * Localized wall-clock start/end, e.g. "14:32:05–14:32:06" (full-session.md "ToolAction detail
+ * (L4)": the duration alone leaves no way to tell WHEN a ToolAction
+ * ran). `undefined` on the same terms {@link workItemDurationMs} already uses for "no reliable
+ * duration" (not yet settled, or an unparsable/non-positive span) — the two are shown together, so
+ * one being unavailable implies the other is too.
  */
 export function formatWorkClockRange(
   item: Pick<WorkSummary, 'state' | 'createdAt' | 'updatedAt'>,
@@ -308,7 +307,7 @@ export function formatWorkClockRange(
 /**
  * Merges a newly fetched Work page into the already-accumulated, ascending item list: upserts by
  * `workId` (a later revision wins — Realtime settlement only ever refreshes the tail window, per
- * session-work-inspector-ui-spec.md §15) and re-sorts by canonical `ordinal`. Used for both the
+ * full-session.md "Work history (L2)") and re-sorts by canonical `ordinal`. Used for both the
  * live tail refresh and progressively prepending an older page, so neither ever discards already
  * loaded history.
  */

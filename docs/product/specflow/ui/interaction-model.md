@@ -9,11 +9,16 @@ read_when:
   - defining what state is preserved across navigation
 summary: >
   Responsive shell with independent navigation and workspace breakpoints, the product
-  navigation hierarchy, context-preserving drill-down, and when to use floating,
-  Secondary, pushed-detail, or full-workspace surfaces.
+  hierarchy and routes, the reachability of every surface, starting a Session and the
+  navigator, Back/Close semantics, and when to use floating, Secondary, pushed-detail, or
+  full-workspace surfaces.
 related:
   - product.specflow.ui.personas
   - product.specflow.ui.ai-session-ux
+  - product.specflow.ui.specs-overview
+  - product.specflow.ui.specification-overview
+  - product.specflow.ui.full-session
+  - product.shared.vocabulary
   - design-system.principles.ui-ux-guidelines
 ---
 
@@ -60,79 +65,113 @@ surface.
 Use **Nevo SpecFlow** for the product as a whole. The UI does not introduce a separate collective
 brand or a separate Home/dashboard route.
 
-Use **Workspace** for the Nevo UI layout model (`AppWorkspace`, Primary/Secondary, local workspace
-stack) or for explicitly qualified repository/filesystem concepts such as workspace root. Product
-surfaces should normally be named by their product concept: Specs Overview, Specification, Task
-Detail, Full Session, Project Settings.
+Name product surfaces by their product concept, as the UI shows them (see
+[Product vocabulary](../../shared/vocabulary.md#screen-names)): Specifications, Specification
+overview, Task detail, Session, New specification. **Workspace** and its qualified meanings (a
+checkout, the Workspace layout terms, the Workspace screen mode) are defined in the vocabulary; this
+document uses them only in those meanings.
 
 ## Product hierarchy
 
-Specification Overview owns `/specs/:specId`. Documents, Sessions, Changes
-and Repository are feature-owned canonical Primary pages under that specification,
-not tabs controlled by `?view`. They do not become global product areas.
+The default product entry is the **Specifications** list at `/`
+([Specifications list](specs-overview.md)). Specification overview owns `/specs/:specId`
+([Specification overview](specification-overview.md)). Documents, Sessions, Changes and
+Repository are feature-owned canonical Primary pages under that Specification, not tabs controlled
+by `?view` (legacy `?view` URLs redirect). They do not become global product areas.
 
-TanStack Router owns routable Primary surfaces. Nevo UI Secondary Stack owns
-contextual Task/Document previews, independent from URL search state.
-Promoting a preview to Full is an explicit Primary route navigation.
-
-The Specification design separates short Task Preview in Secondary from explicit Full Task
-promotion into a main routed page (`/specs/:specId/tasks/:taskId`). Specification Overview shows
-its Activity history in the Secondary, open by default only when the history has entries; an empty
-history leaves the space to Overview and stays available from the header's Activity history toggle
-(see `ideas.specflow-ui.screens.specification-workspace`, "Activity history"). A Full Task deep link reads the Task by ID through the
-authenticated Runtime detail API, not through the Workspace Task collection.
-
-For the current spec-driven MVP, global product navigation stays deliberately small. The default
-product entry is Specs Overview:
+TanStack Router owns routable Primary surfaces. Nevo UI Secondary Stack owns contextual
+Task/Document previews, independent from URL search state. Promoting a preview to Full is an
+explicit Primary route navigation: short Task Preview in Secondary, explicit Full Task at
+`/specs/:specId/tasks/:taskId`. A Full Task deep link reads the Task by ID through the authenticated
+Runtime detail API, not through the Workspace Task collection. Specification overview shows its
+Activity history in the Secondary, open by default only when the history has entries
+([Specification overview](specification-overview.md#activity-history)).
 
 ```text
 Project
-├── Specs
-│   ├── Current / Archive                 collection views, not necessarily nav items
-│   └── Specification
-│       ├── Task details                  contextual Secondary
-│       └── Session
-│           ├── quick conversation        floating presentation where supported
-│           └── Open full session         main product surface/route
-│
-└── Project settings
-    ├── Configuration
-    ├── AI / agents
-    ├── Workflows
-    ├── Repository / Git
-    └── Integrations
+├── Specifications                        default entry; Current / Archive are collection views
+│   └── Specification overview            /specs/:specId
+│       ├── Documents, Sessions, Changes, Repository   Primary pages under the Specification
+│       ├── Task Preview                  contextual Secondary
+│       └── Full Task                     /specs/:specId/tasks/:taskId
+└── Session                               /sessions/:sessionId, top-level route
+    └── Secondary local inspector         Context (default on split entry) and user-selected detail
 ```
 
-A Full Session is a first-class workspace and may have its own URL, but Sessions are not a global
-sidebar area while they remain owned by/spec-driven from Specifications.
+A Session is owned by its Specification in the product (every UI start is from a Specification),
+but its route is top-level: `/sessions/:sessionId`, with the owning Specification resolved from the
+Session's association read (see below; the nested `/specs/:specId/sessions/:sessionId` only
+redirects there). Sessions are not a global sidebar area. That the navigator recovers the
+Specification only from the association, and has none for a standalone Session, is an
+[open finding](shell-geometry.md#open-findings-for-later-work).
 
-The implemented increment has only Specs in global navigation; Project Settings awaits a real
-surface. UI Playground is development-only direct navigation. Every Current/Archive Overview row
-uses a real owning Specification link at `/specs/:specId`, including Open specification in overflow.
-The Specification destination is an actual Workspace connected to the Runtime read API.
-Work, Documents and Task details use typed projections; absent project read sources are shown
-as unavailable rather than fabricated content. Runtime does not yet implement the workflow
-mutations or the full Session conversation surface.
+Global navigation is deliberately small: the Specification switcher (with **Browse all
+specifications**) and, inside a Specification, its views (Overview, Sessions, Tasks, Documents,
+Changes, Repository). Project Settings earns a global entry once its real surface exists.
+UI Playground is development-only direct navigation.
+
+Every Current/Archive row of the Specifications list is a real link to `/specs/:specId`. The
+Specification destination is connected to the Runtime read API; Documents and Task details use typed
+projections, and absent project read sources are shown as unavailable rather than fabricated
+content.
 
 Changes, pull requests, documentation, files, Work details, and similar concepts are contextual
 surfaces until a proven independent human task justifies promoting them into global navigation.
 
-Within a Full Session:
+Within a Session ([Full Session](full-session.md)):
 
 ```text
 Session conversation Primary
 └── Secondary local inspector
-    ├── Context                     default on split-capable entry
-    └── user-selected detail        Task / Handover / artifact / Work / future File preview / ...
+    ├── Context                     default on split-capable entry, pinned tab
+    └── user-selected detail        Task / Work / future File, Handover, artifact
 ```
 
 Secondary changes because the user explicitly opens something. Normal agent activity must not
 replace what the user is currently inspecting.
 
-A Session reference may expose both conversation access and an explicit **Open full session** action.
-On Wide, conversation access may use Floating Session to preserve the current Spec/Task context. On
-Compact/Narrow, conversation access opens Full Session directly; there is no miniature floating
-replacement.
+A Session reference opens the Session (`/sessions/:sessionId`). A Wide-only Floating Session that
+keeps the current Specification/Task context visible is a target presentation, not implemented;
+Compact/Narrow always open the Session directly, with no miniature floating replacement.
+
+## Reachability
+
+| Surface                   | Normal entry                                                                                          | Representation                                            |
+| ------------------------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| Specifications            | default entry `/`; **Browse all specifications** in the switcher                                      | Primary                                                   |
+| Specification overview    | a Specifications row, the switcher, or its stable route                                               | Primary                                                   |
+| Task Preview              | a Task row in the Specification                                                                       | Secondary on split layouts; pushed local detail on Narrow |
+| Full Task                 | explicit promotion from Preview, or its stable route                                                  | routed Primary                                            |
+| New Session               | the Specification's Sessions list, its empty state, Continue session, the preparation block           | routed Primary (`/specs/:specId/sessions/new`)            |
+| Session (Full Session)    | a Session row or Continue session, Create with an agent (demo mode only), a stable route              | routed Primary + Secondary                                |
+| Session Context           | default on split-capable Session entry; the **Context** action on Narrow                              | Secondary or pushed local detail                          |
+| Session inspection detail | an explicit click on a Work block, a Related Task or another Context row (the Task tab is a stand-in) | a tab or the active tab's local stack; never a third pane |
+
+The table defines reachability. A product row keeps a stable neutral destination: a Specifications
+row always enters its Specification and never deep-links to whichever Task or issue currently has
+the highest priority; status prose inside the row is not a link. Opening a Task Preview is
+inspection only and performs no workflow action.
+
+## Starting a Session and the navigator
+
+Every UI start of a Session is from a Specification. **New session** opens
+`/specs/:specId/sessions/new` from the Specification Sessions list toolbar, its empty state,
+Continue session's header menu and the Overview's preparation block, gated by the workspace
+`actions.startSession` (shown when available or with `no_provider`; omitted with `forbidden` or
+`sessions_disabled`), and posts the composed `POST /api/specs/:specId/sessions`, which records the
+association. There is no UI entry to a standalone Session: the Specifications list has no create
+session action, and `/sessions/new` opened directly redirects with `replace` to `/` without a toast.
+Existing standalone Sessions stay reachable by direct link; their Context and navigator show no
+Specification. The start screen itself is specified in [Full Session](full-session.md).
+
+On `/specs/:specId/**` the navigator shows that Specification. On `/sessions/:sessionId` the active
+Specification is the home `specId` of the Session's association read when it is `available`, with
+**Sessions** active; while the association loads, and for `standalone`, `forbidden`, `missing` or
+`unavailable`, no Specification section shows. There is no "last opened Specification" cache. The
+Specification's Session preview comes from the workspace Sessions section (first three
+`active`/`attention` rows, attention first); its active count shows only when the section has no
+`hasMore` and no row of status `unknown`, otherwise a partial-activity line says so. **All
+sessions** opens the [Specification Sessions list](specification-sessions.md) `/specs/:specId/sessions`.
 
 ## Surface choice
 
@@ -144,24 +183,10 @@ replacement.
 | Pushed / stacked detail  | Narrow representation of Secondary: it becomes the visible workspace surface and provides an explicit way back. |
 | Main page / workspace    | A distinct product surface the user explicitly navigated/promoted to.                                           |
 
-## Specification list: layout follows the data
+## Specifications list
 
-The current list groups specifications by work status (Requires attention, Active, Ready, Draft)
-with a situation and a progress column only when the Runtime really provides that data. A project
-Runtime may know the specifications but not their work status or progress; the list then shows
-**one flat list** of specifications: the name, the facts that exist (key, tags, pull requests) and
-when it was last updated (its own column, Updated, on wide lists). It never shows a group "Status unavailable" with empty columns. The choice
-is data-driven (`overviewCapabilities` in the overview presentation: status exists when any
-specification has a real section, progress when any has a progress; decided from the whole
-collection, so a search does not change the layout), not tied to the runtime mode, so the demo with
-real statuses stays grouped. An empty collection (Current or Archive) shows only the shared empty
-screen, without column headers or a search box; Current offers **New specification** there.
-
-Rows follow the design-system interaction grammar
-(`design-system.principles.information-row-hierarchy`): a row is one link to the specification with
-no trailing arrow and no actions menu (there are no contextual actions yet); chevrons appear only on
-group headers, as real disclosures at the leading edge. The Background operations panel above the
-list is one always-open container (see `product.specflow.specification-creation`).
+The list's sections, row anatomy, search and layout-follows-the-data rule are specified in
+[Specifications list](specs-overview.md).
 
 ## State preservation
 
@@ -177,3 +202,22 @@ to router history. This keeps physical Back natural without turning Secondary in
 
 Deep links address stable main product resources. Raw provider/runtime identifiers must not define
 navigation semantics merely because they exist internally.
+
+Reload or direct URL entry reconstructs the routed surface, not the previous Secondary stack.
+Returning from a Session goes back through router history to the previous routed surface; the
+product does not promise to restore a Task or other Secondary selection there.
+
+## Back and Close
+
+Product Back inside Secondary follows the local inspection stack:
+
+- a dependent detail Back returns to its parent in the same tab or stack (for example ToolAction to
+  Work history, a Task to the Tasks list it was opened from);
+- Task Preview Back/Close returns to the owning Primary;
+- a tab is closed explicitly; Context stays pinned and is never closed as a tab;
+- closing the whole Secondary returns to the owning Primary and does not reset it.
+
+Browser/system Back normally follows router history. On **Narrow**, when a local pushed Secondary
+stack is active, the product first lets that stack pop or close before leaving the routed surface;
+the URL still represents only the Primary route. This uses router/history integration that keeps
+normal browser semantics; Secondary does not become a URL-addressable route.

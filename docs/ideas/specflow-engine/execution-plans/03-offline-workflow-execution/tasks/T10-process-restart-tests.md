@@ -27,7 +27,7 @@ Spawn independent OS processes with coordination barriers, crash points, writer 
 
 ## Prerequisites
 
-- [E3.T03](T03-readiness-step-state.md)
+- Workflow kernel, implemented (former E3.T01–T03): [architecture](../../../../../architecture/workflow/workflow-kernel.md)
 - [E3.T04](T04-verification-boundary.md)
 - [E3.T05](T05-physical-admission.md)
 - [E3.T06](T06-owner-recovery-protocol.md)

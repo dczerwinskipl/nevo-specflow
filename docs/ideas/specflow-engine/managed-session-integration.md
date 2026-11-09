@@ -1,109 +1,108 @@
 ---
 id: ideas.specflow-engine.managed-session-integration
 type: architecture
-title: Managed Sessions and Engine execution integration
+title: Managed Sessions and workflow execution integration
 status: draft
 scope: specflow
 areas: [ai, runtime, workflow, security, testing]
 tags: [sessions, turns, admission, handover, crash-recovery]
 read_when:
-  - migrating Nevo Session and Turn lifecycle into SpecFlow Runtime
-  - integrating a managed provider Turn with Engine workflow and workspace claims
+  - driving workflow steps from managed Sessions
+  - binding a Session or Turn to a workflow attempt
+  - designing batch, handover, rebind or multi-instance behaviour for managed execution
 summary: >
-  Proposed managed execution handshake, correlation identities, read-only Turn behavior,
-  provider dispatch recovery, and explicit batch/handover boundaries.
+  Open proposals for connecting managed Sessions to the workflow kernel: attempt association,
+  readiness before dispatch, workflow finish from a Session, batch and handover, native resume
+  after rebind (S07), and multi-instance runs. Session storage and dispatch claims are implemented.
 related:
   - ideas.specflow-engine
-  - ideas.specflow-engine.boundaries
   - ideas.specflow-engine.execution-scopes
   - ideas.specflow-engine.workspace-binding-lifecycle
   - ideas.specflow-engine.local-actors
+  - ideas.specflow-engine.plan-06
   - architecture.ai.canonical-session-turn-work
-  - architecture.ai.provider-boundary
+  - architecture.ai.session-storage-and-lifecycle
+  - architecture.runtime.workspace-execution-claims
 ---
 
-# Managed Sessions ↔ Engine integration
+# Managed Sessions ↔ workflow integration
 
-## Purpose and authority
+## What exists
 
-`Runtime Sessions` owns canonical Session/Turn/Work lifecycle, provider invocation, transport, interactions, streaming and cancellation. `Engine` owns Specs, workflow readiness/transitions, physical workspace admission/claims and durable mutation recovery. Neither layer delegates its authority to the other.
+Runtime Sessions owns canonical Session/Turn/Work lifecycle, provider invocation, transport,
+interactions, streaming and cancellation
+([Session/Turn/Work](../../architecture/ai/canonical-session-turn-work.md),
+[storage and lifecycle](../../architecture/ai/session-storage-and-lifecycle.md)). A Session has at
+most one home Specification and an append-only set of its Tasks (the association registry). Every
+native agent process is admitted through an Engine
+[workspace execution claim](../../architecture/runtime/workspace-execution-claims.md): the claim is
+published before the Turn is dispatched, marked dispatched before the driver runs, and settled only
+with a not-dispatched or native-result receipt. The Engine owns Specs, the workflow kernel and
+durable mutation recovery. Neither layer delegates its authority to the other.
 
-The owner-selected [Session/Turn/Work model](../../architecture/ai/canonical-session-turn-work.md)
-uses an independent application-owned `sessionId`; composite provider-native identity remains
-adapter correlation. Spec/Task/workflow associations are composed above that core. The decided
-[foundation design](../../architecture/ai/session-storage-and-lifecycle.md) and
-[Plan 04](execution-plans/04-managed-sessions-foundation/README.md) resolve its storage, authorization
-and bounded history contracts. This document still proposes the later Engine dispatch handshake;
-it does not make managed writer admission an implemented capability.
+Not implemented: a Turn or Session bound to a workflow attempt, readiness checks before dispatch,
+a workflow finish from a Session, and the continuation orchestrator (plan 06 F01, F02).
 
-## Independent identities
+## Association with Specification, Task and attempt
 
-| Identity                        | Owner                    | Stability and meaning                                                                    |
-| ------------------------------- | ------------------------ | ---------------------------------------------------------------------------------------- |
-| `sessionId`                     | Runtime Sessions         | Durable product conversation identity, independent of native provider                    |
-| `turnId`                        | Runtime Sessions         | One requested logical invocation; retries preserve idempotency                           |
-| `providerSessionRef`            | Provider adapter/Runtime | `(provider, providerSessionId)`; may be replaced on safe native recovery                 |
-| `workspaceId`                   | Engine Workspace         | Local workspace identity; never use stored `cwd` as identity                             |
-| `executionId` / claim reference | Engine admission         | Optional ownership of physical mutations; **not** the Turn identity                      |
-| `workflowAttemptRef`            | Engine Workflow          | Optional `(change, task, step, attempt)`, never inferred from historical Session binding |
-| `invocationId`                  | Runtime dispatch         | One provider dispatch attempt, used to fence late callbacks and unknown outcomes         |
+| Identity             | Owner            | Meaning                                                                                      |
+| -------------------- | ---------------- | -------------------------------------------------------------------------------------------- |
+| `sessionId`          | Runtime Sessions | Durable product conversation identity, independent of the native provider                    |
+| `turnId`             | Runtime Sessions | One requested logical invocation                                                             |
+| `invocationId`       | Runtime dispatch | One provider dispatch attempt; it is the claim's `operationId`                               |
+| `workflowAttemptRef` | Engine Workflow  | Optional `(specId[, taskId], step, attempt)`, never inferred from historical Session binding |
 
-A Session can reference Specs/Tasks historically and may have different active scope per Turn. One Turn may be ad-hoc and have no task/claim; one workflow attempt may span more than one Turn. A Turn ending does not automatically advance/finish workflow.
+The Session-to-Specification/Task association is context, not current execution: the attempt's
+executor (`sessionId` on the attempt, see the kernel's "Executors") stays the only authority for
+which Session may resume or finish a step. One Turn may be ad-hoc with no attempt; one attempt may
+span several Turns. A Turn ending does not finish or advance the workflow.
 
-## Minimal managed execution handshake (future integration contract)
+## Readiness before dispatch
 
-```text
-Runtime: accept intent + authorize user / Session operation
-     -> resolve current Spec/Workspace through Engine (verify membership)
-     -> derive Turn intent + effect scope (read-only/write/Git)
-     -> Engine inspect readiness / conditional admission and claim
-     -> Runtime persist Turn + provider invocation INTENT (idempotent)
-     -> dispatch provider with verified workspace cwd and validated mode
-     -> persist provider correlation and invocation dispatch evidence
-     -> consume normalized events; own streaming/interactions/cancel
-     -> settle Turn outcome exactly once
-     -> Engine reconcile/release claim when ownership can be proved settled
-     -> explicit workflow operation completes/advances attempt if requested
-```
+Before a Turn that works on a step is dispatched, Runtime asks the Engine to start (or resume) the
+step with the trusted executor, so a Task that is not ready, a mismatched attempt or another
+Session's attempt fails before any provider process runs. The workspace execution claim is then
+admitted as today. A crash between the step start and the claim leaves an active attempt without a
+process; the next start by the same Session resumes it.
 
-This is an **intent protocol**, not a single ACID transaction between Engine state, Runtime journal and provider process. Decide stage ordering so a crash after claim acquisition but before Runtime intent is discoverable; persist enough correlation on **both sides** to reconcile. Reject indefinite orphan claims, but never replay provider dispatch merely because a native session ID was not persisted.
+## Workflow finish from a Session
 
-### Dispatch uncertainty
-
-Distinguish at least `prepared` (not dispatched, proven), `dispatching/unknown` (provider may have begun work), and `started` (correlation persisted or provider progress observed). These are semantic milestones; do not copy legacy field names blindly. Crash between spawn and provider ID persistence is **unknown**, not permission to start another Turn automatically. Use positive evidence of process settlement/side-effect disposition before any replay. A terminal provider process with unproven tool effects remains ambiguous for writer safety.
-
-### Turn settlement is not Workflow completion
-
-- Runtime may mark a Turn terminal while Engine task stays active, ready to resume, or awaiting human review.
-- Engine releases a claim only when its own ownership and mutation evidence meet release policy.
-- Engine `workflow step finish` is an explicit deterministic action, not a side effect of `Turn terminal` or `handover`.
-- No automatic creation of a new review/implementation Session by Turn completion unless a separately approved workflow explicitly requests it.
-
-## No workflow / no writer cases
-
-Ordinary chat, design planning and read-only analysis can create managed Turns without a Workflow attempt. Read-only execution may not need a physical writer claim **only if the actual tool capability/enforcement prevents writes**; a label of `readOnly` is insufficient. A Spec Writer writing a draft may need writer admission **without a taskId or workflow attempt**. Source-control-changing operations may need Git/ref-level coordination as well as workspace coordination.
-
-## Workspace resolution and native resume
-
-Every new Turn/start/resume resolves the current `workspaceId -> verified root` through Engine; Runtime passes that root at provider invocation rather than constructing one provider adapter permanently bound to a project-global `cwd`. If workspace moved, disappeared or was rebound, check provider-native resume compatibility; never silently reuse the previous native session just because `providerSessionId` exists. A missing workspace must not erase readable Session history. See [workspace binding lifecycle](workspace-binding-lifecycle.md).
+- The agent signals completion through the product CLI or an MCP tool (plan 06 F02); executor
+  identity comes from the Runtime environment or Session binding, never from tool arguments.
+- `finishStep` is an explicit deterministic action, not a side effect of a terminal Turn or a
+  handover. A terminal Turn may leave the attempt active, ready to resume, or waiting for a human.
+- After the finish, the continuation decision may start the next step in the same or a new Session
+  (ADR 0019); the Runtime records a durable launch intent per `(subject, step, attempt+1)`.
+- A return by the owner ends the attempt as `returned`; Runtime must cancel a Session still working
+  on it and ignore its late finish (plan 06 F13).
 
 ## Batch and handover
 
-- **Batch:** one Session/Turn may own an explicit ordered set of Task attempts, but each Task retains its own workflow identity, gates and evidence. Engine controls per-task admission and progression, never guesses a 'primary' task from Session history.
-- **Handover:** Runtime may create a new Session with predecessor/handoff context on explicit request. New Session does not inherit a claim or auto-start a workflow step merely because a previous Session linked to that Task.
-- **Retry:** durable invocation intent and idempotency keys fence concurrent starts; provider-native resume policy is separate from workflow retry policy.
-- **Cancellation:** cancelling a Runtime-managed Turn is not sufficient proof that every external tool side effect stopped. Engine admission remains blocked if actual write outcome is ambiguous.
+- **Batch:** one Session/Turn may own an explicit ordered set of Task attempts, but each Task keeps
+  its own workflow identity, gates and evidence. The Engine controls per-Task admission and
+  progression and never guesses a 'primary' Task from Session history (plan 06 F12).
+- **Handover:** Runtime may create a new Session with predecessor/handoff context on explicit
+  request or a declared `session: fresh` continuation. The new Session does not inherit a claim.
+- **Cancellation:** cancelling a managed Turn is not proof that every tool side effect stopped; the
+  claim stays unsettled while the outcome is ambiguous.
 
-## Deferred same-step multi-instance execution
+## Workspace rebind and native resume (S07)
 
-Current Batch/Handover candidates do not schedule independent executions of the **same user-defined step attempt**. The future association is `workflowAttempt -> instance slots -> execution runs -> optional Runtime Session/Turn`; Sessions are not canonical workflow owners. Slots retain identity across retries, while invocations have distinct fencing/recovery identity. A terminal Turn does not close the workflow step.
+Every new Turn resolves the current `workspaceId -> verified root` through the Engine. If the
+workspace moved, disappeared or was rebound, the Turn must check provider-native resume
+compatibility; never silently reuse the previous native session just because the provider
+reference still exists. Today a registry change while a claim is held is already
+`EXECUTION_RECOVERY_REQUIRED`.
 
-Runtime dispatches according to step instructions, effect scope, requested independence and concurrency limit. Engine accepts typed contributions and performs user-configured deterministic aggregation/one workflow finish through offline-safe operations shared with CLI/MCP. Read-only and common-input snapshots are **conditional policies**, not inherent in multi-instance. Prove offline Engine aggregation before managed scheduling; see [future plan](multi-instance-plan/README.md).
+## Multi-instance runs
 
-## Authorization and observation
+The future association is `workflowAttempt -> instance slots -> execution runs -> optional Runtime
+Session/Turn`; Sessions are not canonical workflow owners. Slots keep identity across retries, while
+invocations have distinct fencing and recovery identity. A terminal Turn does not count as a
+contribution. See [multi-instance execution](multi-instance-execution.md).
 
-Runtime authorizes Session access and requested Specs/Tasks after Engine resolves their canonical binding. HTTP-supplied `workspaceId`, `sessionId` and `taskId` are selectors, not access grants. Do not leak unauthorized Session history into an allowed Specs aggregation. External manually launched provider runs are **not** Runtime Sessions.
+## Tests
 
-## Promotion gate / later tests
-
-After Foundation A and minimal coordinator, implement Sessions without workflow first, then test managed execution with a mock provider: S01 standalone chat; S02 writer Turn + Engine claim; S03 terminal Turn without workflow finish; S04 multi-task execution scope; S05 handover without step advance; S06 crash at each dispatch milestone, no duplicate provider invocation; S07 moved/missing workspace and safe native resume; S08 scoped authorization across Sessions/read models. These are **Sessions integration gates**, not Foundation A pass conditions.
+S03 terminal Turn without workflow finish; S04 multi-Task execution scope; S05 handover without
+step advance; S07 moved/missing workspace before a new Turn; S08 scoped reads. See the
+[test plan](test-plan.md).

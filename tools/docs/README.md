@@ -17,7 +17,7 @@ pnpm docs:find git react testing       # every doc matching any term; ranked det
 pnpm docs:get engineering.shared.testing # exact stable-id lookup
 pnpm docs:context "react tailwind"     # every active match; deprecated/superseded excluded
 pnpm docs:adr new "Use X for Y"        # create the next-numbered ADR as a draft
-pnpm docs:check                        # validate the whole corpus + verify the index
+pnpm docs:check                        # validate the corpus and its relative links + verify the index
 pnpm docs:check --write                # also regenerate docs/index.generated.{md,json}
 ```
 
@@ -50,7 +50,11 @@ inconsistent they fail loudly rather than serve partial context. `pnpm docs:chec
 what CI runs; it exits non-zero on any authored file missing frontmatter, invalid
 frontmatter, an unresolved `related` id, an ADR whose filename and `id` disagree or
 whose date is not ISO, a `current` ADR still carrying a generated `TODO` placeholder
-**anywhere** (summary or body), or a stale index. The generated index carries no
+**anywhere** (summary or body), a stale index, or a broken relative Markdown link. A link must
+resolve to an existing file or directory inside the repository, and a `#fragment` pointing at an
+indexed document must name one of its headings (GitHub slug rules) or `<a id>` anchors. Links in
+code, external URLs and fragments of non-indexed files (templates, generated files) are not
+checked. Broken links never block `--write` from regenerating the index. The generated index carries no
 timestamp, so `--write` twice with no source change leaves the tree clean.
 
 ## Architecture

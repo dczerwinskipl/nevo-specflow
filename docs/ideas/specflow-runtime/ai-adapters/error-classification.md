@@ -1,7 +1,7 @@
 ---
 id: ideas.specflow-runtime.ai-adapters.error-classification
 type: engineering
-title: Evidence-based provider error classification
+title: Quota versus transient rate-limit classification
 status: draft
 scope: specflow
 areas:
@@ -12,247 +12,66 @@ tags:
   - providers
   - errors
   - quota
-  - retry
+  - rate-limit
 read_when:
-  - implementing provider error mapping
-  - deciding whether a provider failure is retryable
-  - handling usage limits, authentication, model availability, or transient upstream failures
+  - distinguishing provider quota exhaustion from transient throttling
+  - adding retry or reset-time metadata to provider failures
 summary: >
-  Classify provider failures from structured evidence first, restrict text matching to trusted
-  failure fields, distinguish quota from transient rate limiting, and expose retry metadata such
-  as retryNotBefore without letting model prose drive lifecycle semantics.
+  Open classification work: separate account quota exhaustion from transient rate limiting
+  using evidence from trusted failure locations only, and carry a conservatively parsed
+  retryNotBefore with the private failure evidence.
 related:
   - ideas.specflow-runtime.ai-adapters
-  - architecture.ai.provider-boundary
-  - ideas.specflow-runtime.ai-adapters.protocol-examples
   - ideas.specflow-runtime.ai-adapters.provider-error-examples
-  - ideas.specflow-runtime.ai-adapters.provider-readiness-auth
   - ideas.specflow-runtime.ai-adapters.provider-capacity-admission
-  - ideas.specflow-runtime.ai-adapters.session-resume-recovery
+  - reference.protocols.session-provider-driver
+  - architecture.ai.provider-boundary
 ---
 
-# Evidence-based provider error classification
+# Quota versus transient rate-limit classification
 
-## Problem
+Implemented today: adapters map structured native errors (for example Claude `api_error`, including
+HTTP 429) to the canonical Turn error vocabulary (`PROVIDER_FAILED`, `PROVIDER_AUTH_REQUIRED`, ...)
+and exclude native prose ([driver protocol](../../../reference/protocols/session-provider-driver.md#failure-and-settlement)).
+The vocabulary does not distinguish quota exhaustion from a transient rate limit, and carries no
+retry time.
 
-The legacy adapters contain useful normalized error codes, but several mappings begin from one
-human-readable `message` and run regexes over it. Current SpecFlow architecture requires bounded,
-distinguishable error **categories**, but does not yet approve the legacy `AI_*` code names as the
-target contract. That is too weak once provider output can contain
-the same words as ordinary model prose.
+## Evidence rule
 
-Example failure mode:
+Classify from provenance-preserving evidence, in priority order: structured terminal status or stop
+reason; structured provider error code and HTTP status; protocol terminal error payload; process
+disposition; known provider stderr lines; raw stdout only as a narrowly scoped last fallback. Text
+from an assistant/model message MUST NOT classify infrastructure, authentication or quota failure by
+itself. A more specific deterministic failure (max turns, unknown session, invalid model, refusal)
+wins over generic throttling.
 
-- the model explains that an API returned "invalid bearer token";
-- a broad auth regex sees that phrase in output;
-- the runtime misclassifies a successful turn as authentication failure.
+## Two classes
 
-The target design should preserve technical diagnostics while making the **provenance of evidence**
-part of classification.
+**Account quota exhaustion** (does not clear with short backoff). Useful tokens in trusted failure
+locations: `you've hit your ... limit`, `session limit reached/exceeded`, `out of extra usage`,
+`usage limit reached`, `usage cap reached`, `5-hour limit reached`, `weekly limit reached`,
+`ServiceQuotaExceededException`, Codex `You've hit your usage limit for <model> ... try again at
+<time>`, `model is at capacity`.
 
-## Candidate input contract
+**Transient rate limit / overload** (backoff candidate): `rate limit`, `rate_limit_error`, `too many
+requests`, status 429 without a quota marker, `overloaded`/`overloaded_error`, 503/529, `service
+unavailable`, `high demand`, `try again later`, `temporarily unavailable`, `ThrottlingException`.
 
-Conceptually prefer a classifier input shaped like:
-
-```text
-ProviderFailureEvidence
-  structuredTerminal
-  structuredError
-  providerCode
-  httpStatus
-  processExit
-  stderr
-  stdout
-```
-
-The exact TypeScript shape is intentionally left to implementation. The candidate classifier
-should preserve source/provenance instead of flattening all evidence into one string before
-classification.
-
-## Evidence priority
-
-Suggested order:
-
-1. structured terminal status / subtype / stop reason;
-2. structured provider error code and status;
-3. protocol terminal error payload;
-4. process disposition and exit code;
-5. stderr lines known to be emitted by the provider runtime;
-6. raw stdout only as a narrowly-scoped last fallback.
-
-Text originating from an assistant/model message should never classify infrastructure/auth/quota
-failure by itself.
-
-## Claude-family signatures worth supporting
-
-The following tokens are useful compatibility evidence when they occur in a trusted failure
-location. Matching should be case-insensitive and tolerant of hyphen/space variants where shown.
-
-### Provider quota / account usage exhaustion
-
-- `you've hit your ... limit`
-- `you’ve hit your ... limit`
-- `session limit reached`
-- `session limit exceeded`
-- `out of extra usage`
-- `extra usage`
-- `claude usage limit reached`
-- `5-hour limit reached`
-- `5 hour limit reached`
-- `weekly limit reached`
-- `usage limit reached`
-- `usage cap reached`
-- `ServiceQuotaExceededException`
-
-These should map separately from temporary upstream throttling. The target semantic category is
-"provider/account quota exhausted"; legacy Nevo names that category `AI_QUOTA_EXHAUSTED`.
-Preserving that exact code remains a separate target-contract decision.
-
-### Temporary upstream / throttling
-
-Observed useful tokens include:
-
-- `rate limit`, `rate-limit`, `rate_limit_error`
-- `too many requests`
-- HTTP/status `429`
-- `overloaded`, `overloaded_error`, `server overloaded`
-- `service unavailable`
-- status `503`, `529`
-- `high demand`
-- `try again later`
-- `temporarily unavailable`
-- `throttled`, `throttling`, `ThrottlingException`
-
-This class is a candidate for retry/backoff behavior. It should not swallow a more specific
-deterministic failure.
-
-### Authentication/token failures
-
-Prefer structured 401/403 and explicit failed terminal state. Useful failure tokens include:
-
-- `authentication_failed`, `authentication error`
-- `failed to authenticate`
-- `invalid bearer token`
-- expired/revoked bearer, OAuth, or access token variants
-
-The important constraint is **scope**: token phrases should be evaluated against terminal failure
-fields, not arbitrary assistant stdout.
-
-### Deterministic provider failures
-
-These should be checked before generic transient matching:
-
-- max-turns subtype such as `error_max_turns`;
-- stop/error reasons `max_turns`, `max_turns_exhausted`, `turn_limit`,
-  `turn_limit_exhausted`;
-- unknown/missing provider session;
-- poisoned/incompatible previous message/session state;
-- model not found / unknown model / invalid model;
-- image processing failure if the provider exposes one;
-- policy/model refusal when represented by structured stop reason.
-
-A refusal may arrive with process exit code 0, therefore process success alone is insufficient.
-
-## Codex-family signatures worth supporting
-
-### Usage limit / provider quota
-
-Useful tokens include:
-
-- `you've hit your usage limit`
-- `you’ve hit your usage limit`
-- `usage limit`
-- `model is at capacity`
-- `at capacity for this model`
-- `capacity limit`
-
-A common useful shape is:
-
-```text
-You've hit your usage limit for <model>. Switch to another model now, or try again at <time>.
-```
-
-The retry time should be parsed into a structured `retryNotBefore` value when unambiguous.
-
-### Auth refresh failures
-
-Worth keeping distinguishable in provider-private diagnostics:
-
-- `refresh_token_reused` / "refresh token has already been used";
-- `refresh_token_expired`;
-- `refresh_token_invalidated` / revoked / invalid;
-- `invalid_grant`;
-- contextual 401/unauthorized together with OAuth/refresh/access-token/bearer terminology.
-
-These may share a canonical auth category while retaining a provider-private subcode.
-
-### Structural harness/process crash
-
-Do not rely only on crash text.
-
-A strong structural signal is:
-
-- process exits non-zero;
-- protocol emitted at least one valid event;
-- no protocol terminal event was received.
-
-That means the harness/transport disappeared underneath the agent and should be treated as an
-infrastructure/process failure rather than inferred from whatever stderr happened to contain.
+Quota MUST NOT also classify as transient. Neither class affects authentication readiness.
 
 ## Retry metadata
 
-A candidate normalized/internal error object could carry metadata such as:
+Candidate private failure metadata: `retryable`, `retryNotBefore`, provider code, failure class,
+HTTP status, exit code and evidence source. Whether any field crosses the public boundary is a
+separate decision (a canonical `quota` code and a public reset time are the likely candidates).
 
-```text
-retryable
-retryNotBefore
-providerCode
-providerFailureClass
-httpStatus
-exitCode
-source
-```
-
-Whether every field crosses the public product boundary is a separate decision.
-
-### Reset-time parsing
-
-When a provider emits "resets at" / "try again at" information:
-
-- parse conservatively;
-- retain the original diagnostic string;
-- if timezone is absent, use the provider/CLI documented local-time semantics rather than inventing
-  UTC;
-- if parsing is ambiguous, leave `retryNotBefore` absent instead of guessing.
-
-## Antigravity/Gemini compatibility note
-
-Legacy evidence shows a provider can report a terminal-looking `ERROR` status while also returning
-a genuine substantive response and an advisory/stale diagnostic. Therefore no global rule such as
-"status ERROR always wins" or "non-empty response always wins" should be applied across providers.
-
-Provider-specific classifiers may interpret evidenced protocol oddities, but the neutral Runtime
-should receive one normalized disposition plus diagnostics. The exact code/value vocabulary should
-be promoted into an authoritative target contract before implementation depends on it.
+Reset-time parsing is conservative: retain the original diagnostic; honour the provider's documented
+time-zone semantics rather than assuming UTC; leave `retryNotBefore` absent when ambiguous.
 
 ## Verification cases
 
-At minimum add table-driven tests for:
-
-1. successful model prose containing "invalid bearer token" does not become auth failure;
-2. weekly/5-hour/usage-cap messages classify as quota;
-3. 429/high-demand/temporary-error classify as transient when no stronger class exists;
-4. quota does not also classify as transient;
-5. unknown session and max-turns beat generic transient regexes;
-6. structured refusal with exit code 0 remains refusal;
-7. Codex usage-limit time produces `retryNotBefore`;
-8. malformed/ambiguous reset time does not invent a timestamp;
-9. nonzero process exit after protocol start but before protocol terminal is classified structurally;
-10. raw stdout assistant text alone cannot classify an infrastructure failure.
-
-## Migration note
-
-Do not port the legacy `mapClaudeError(message)` / `mapAntigravityError(message)` shape unchanged.
-Keep the useful legacy semantic distinctions where they still fit current architecture, but do not
-treat the legacy code strings as target API by default. Change the input boundary so provenance is
-available before matching.
+1. weekly/5-hour/usage-cap messages classify as quota, not transient;
+2. 429/high-demand classify as transient when no stronger class exists;
+3. Codex usage-limit text with an unambiguous time yields `retryNotBefore`;
+4. ambiguous reset text never invents a timestamp;
+5. successful model prose mentioning a limit or token error classifies nothing.

@@ -14,8 +14,7 @@ summary: >
   deterministic actions, API/read-model requirements, components, tokens, and responsive behavior.
 related:
   - ideas.specflow-ui.screens
-  - ideas.specflow-ui.spec-task-information-hierarchy
-  - ideas.specflow-ui.spec-task-screen-structure
+  - ideas.specflow-ui.components.task-decision-evidence
   - product.specflow.ui.interaction-model
 ---
 

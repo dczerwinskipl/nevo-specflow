@@ -1,6 +1,7 @@
 # `@nevo/specflow-contracts`
 
-Shared, platform-neutral SpecFlow contracts consumed by Runtime and UI.
+Shared, platform-neutral SpecFlow contracts consumed by Runtime and UI. The Engine consumes only
+the neutral documents vocabulary and definition schemas from `./documents` (ADR 0012).
 
 ## Ownership
 

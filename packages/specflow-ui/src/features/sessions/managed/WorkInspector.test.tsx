@@ -358,8 +358,8 @@ describe('WorkInspector Work screen', () => {
   });
 
   function ninetyPhaseItems(): WorkSummary[] {
-    // 90 Commentary/tool pairs = 180 items; 40 per page -> 5 pages (the synthetic-scalability
-    // scenario session-chat-v10-design.md §4 calls out, here with a bounded real page size).
+    // 90 Commentary/tool pairs = 180 items; 40 per page -> 5 pages (the V10 mock's
+    // synthetic-scalability scenario, here with a bounded real page size).
     const items: WorkSummary[] = [];
     for (let index = 0; index < 90; index += 1) {
       items.push(

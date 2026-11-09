@@ -10,6 +10,8 @@ export interface DocRepository {
   /** `true` once the file existed and was created. */
   writeDoc(repoRelPath: string, content: string): void;
   removeDoc(repoRelPath: string): void;
+  /** Whether a repo-relative path (POSIX separators) names an existing file or directory. */
+  pathExists(repoRelPath: string): boolean;
   readIndex(): OnDiskIndex;
   writeIndex(index: BuiltIndex): void;
 }

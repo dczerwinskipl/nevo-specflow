@@ -9,10 +9,10 @@ import { Environment, WIDE_VIEWPORT } from './managedSession.storyHelpers.storie
 
 /**
  * The composed Session screen's Work history -> ToolAction drill on the real `ManagedSession`
- * (secondary-navigation.md "Root tabs and local navigation"; session-work-inspector-ui-spec.md
- * §9.1): Context is already the one tab of the split rail, so opening Work history moves nothing;
- * a ToolAction detail gets the detail header row (a `←` named "Wróć do: Historia pracy · tura 3" followed by
- * the action's own title + status line, shown once), never a breadcrumb trail, with the 36px rail
+ * (secondary-navigation.md "Root tabs and local navigation"; full-session.md
+ * "ToolAction detail (L4)"): Context is already the one tab of the split rail, so opening Work
+ * history moves nothing; a ToolAction detail gets the detail header row (a `←` named "Wróć do:
+ * Historia pracy · tura 3" followed by the action's own title + status line, shown once), never a breadcrumb trail, with the 36px rail
  * unmoved and the sections 20px apart; pretty-printed JSON
  * parameters are numbered while the Read tool's own `cat -n` output is shown verbatim without a
  * second gutter; a failure names itself next to its icon with its message. Mobile keeps its header

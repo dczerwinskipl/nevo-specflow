@@ -37,7 +37,7 @@ function agentOf(item: SessionListItem): SessionRowAgent {
 }
 
 /**
- * The Specification Sessions list (`/specs/:specId/sessions`, session-association-ux §3): the
+ * The Specification Sessions list (`/specs/:specId/sessions`, specification-sessions.md): the
  * current/archive collections of the Session list read, newest first, paged by an explicit
  * **Show more**. `onNewSession` is present only when the workspace's `startSession` offers it.
  */

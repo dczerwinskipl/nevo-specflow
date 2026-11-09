@@ -6,7 +6,9 @@ import type { DocsCliContext } from '../context.js';
 
 export function checkCommand(ctx: DocsCliContext): Command {
   return new Command('check')
-    .description('Validate the whole corpus and verify (or regenerate) the generated index')
+    .description(
+      'Validate the corpus and its relative links, and verify (or regenerate) the generated index',
+    )
     .option('--write', 'regenerate docs/index.generated.{md,json} when the corpus is clean', false)
     .action((opts: { write: boolean }) => {
       const result = validateDocumentation(ctx.repo, { write: opts.write });
@@ -19,7 +21,7 @@ export function checkCommand(ctx: DocsCliContext): Command {
           ctx.stderr(p);
         }
 
-        if (!opts.write) {
+        if (result.indexStale) {
           ctx.stderr('Run `pnpm docs:check --write` to regenerate the index.');
         }
 

@@ -6,7 +6,8 @@ import { AsyncLocalStorage } from 'node:async_hooks';
  * A read request (overview, workspace, documents, create-options, ...) calls
  * registry reads and workspace inspections many times. Reads MUST NOT spawn Git:
  * inside `runReadRequest` workspace/Project Home verification switches to the
- * filesystem-only trust model (see docs/architecture/project-home-verification.md):
+ * filesystem-only trust model (see "Verification trust model" in
+ * docs/architecture/runtime/project-home-and-workspaces.md):
  * Project Home identity is the one verified at Engine open, and every read only
  * re-checks cheap on-disk evidence (marker, Git instance sentinel, `.git` link
  * of the checkout, linked identity marker, realpath containment).

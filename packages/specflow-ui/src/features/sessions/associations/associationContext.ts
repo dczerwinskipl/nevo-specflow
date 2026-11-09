@@ -16,7 +16,7 @@ type SpecificationAssociation = Extract<
 
 /**
  * The Session Context's Specification and Tasks from the association read
- * (session-association-ux §7): a standalone Session has neither; an associated one is always
+ * (full-session.md "Context"): a standalone Session has neither; an associated one is always
  * Specification-scoped, its Tasks fill Related Tasks (never task scope or Current execution, since
  * an association is not execution) and Attention stays absent. While the read is in flight nothing
  * shows; a failed read is one panel note.

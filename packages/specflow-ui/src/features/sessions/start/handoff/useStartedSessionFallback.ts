@@ -7,7 +7,7 @@ import { useFocusStartedComposer } from './useFocusStartedComposer';
 
 /**
  * What a Session screen shows for a Session just started here until its first snapshot arrives
- * (new-session-ui-spec.md, section 3(c)): the start values stand in for the snapshot's provider,
+ * (full-session.md "Starting a Session"): the start values stand in for the snapshot's provider,
  * model, effort and executor, the header says "New session" and what the connection really is, and
  * Context has no Work history to wait for. Everything is `undefined` once the snapshot is there, or
  * for a Session that was not started here, so the screen's own derivations apply unchanged.

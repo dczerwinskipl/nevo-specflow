@@ -12,6 +12,6 @@ summary: >
 
 Tailwind CSS class conventions for Nevo SpecFlow UI.
 
-| Doc                                         | Covers                                                                                                                    |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| [Styling guidelines](styling-guidelines.md) | Static layout vs variants, `cva`, domain-state → tone pipeline, DOM/interaction state, `@apply` policy, source detection. |
+| Doc                                         | Covers                                                                                                                                       |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Styling guidelines](styling-guidelines.md) | Static layout vs variants, `tv` (tailwind-variants), domain-state → tone pipeline, DOM/interaction state, `@apply` policy, source detection. |

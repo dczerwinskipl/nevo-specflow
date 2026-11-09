@@ -48,9 +48,15 @@ Both work after `pnpm install --frozen-lockfile`; no prior repository build is r
 1. Build the release/version tool plus Runtime and UI workspace inputs.
 2. Resolve the artifact version through the repository release model.
 3. Bundle `packages/specflow/src/bin.ts`, internal capability packages, and runtime third-party
-   dependencies with esbuild into one Node ESM executable.
+   dependencies with esbuild into one Node ESM executable. Two more self-contained entries are
+   bundled beside it, because they run as separate processes or threads at a fixed installed path:
+   the Session store worker (`dist/session-worker.js`, from `specflow-runtime/src/session-worker.ts`)
+   and the Antigravity hook subprocess (`dist/antigravity-hook.js`).
 4. Copy the Vite-built SpecFlow UI into `dist/ui`; `nevo-specflow start` serves that UI and the
-   Runtime API from one local HTTP origin.
+   Runtime API from one local HTTP origin. Copy the Engine's default definition seeds
+   (`packages/specflow-engine/definitions`) into `dist/definitions`, and the `koffi` FFI loader with
+   its Windows x64/arm64 native bindings into `dist/native/` (`packaging/windows-bindings.ts`), so
+   installation never downloads code. Missing UI output or definitions fail packaging.
 5. Generate `THIRD_PARTY_NOTICES.txt` from the CLI/Runtime bundle inputs plus the production
    dependency closure of the browser UI. Missing license information fails packaging.
 6. Stage a minimal package manifest with the real version, `bin`, `engines`, README, LICENSE,
@@ -67,13 +73,20 @@ not reimplement tarball generation or generic package-manager behavior.
 The source `packages/specflow/package.json` keeps `version: 0.0.0`; release/version state is not
 duplicated there. The final staged manifest receives the resolved release version.
 
-The packed artifact contains the fixed product files plus the Vite-generated UI assets:
+The packed artifact contains the fixed product files, the Vite-generated UI assets, the definition
+seeds and the native bindings:
 
 ```text
 package/LICENSE
 package/README.md
 package/THIRD_PARTY_NOTICES.txt
 package/dist/bin.js
+package/dist/session-worker.js
+package/dist/antigravity-hook.js
+package/dist/definitions/...
+package/dist/native/koffi/...
+package/dist/native/@koromix/koffi-win32-x64/...
+package/dist/native/@koromix/koffi-win32-arm64/...
 package/dist/ui/index.html
 package/dist/ui/assets/...
 package/package.json

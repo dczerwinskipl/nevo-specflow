@@ -21,9 +21,9 @@ export type WorkModeCommand = Required<Pick<StartTurn, 'mode' | 'providerModeId'
  * A Session provider's usable `providerModes`, in catalogue order. A mode is usable only when the
  * provider reports it ready, does not deny authorization, and its engine safety mode is one the
  * provider currently offers (the same rule the start catalogue applies,
- * `start/catalogue/fromProviderDescriptors`). An unusable mode is omitted (session-composer-design.md
- * §7 item 4) — except `currentId`, the Session's current mode, which stays listed disabled with its
- * reason so the picker never claims a mode the next Turn would not inherit.
+ * `start/catalogue/fromProviderDescriptors`). An unusable mode is omitted (full-session.md
+ * "Composer" ) — except `currentId`, the Session's current mode, which stays listed disabled with
+ * its reason so the picker never claims a mode the next Turn would not inherit.
  */
 export function runtimeWorkModes(
   provider: ProviderDescriptor | undefined,

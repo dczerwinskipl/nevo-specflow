@@ -26,7 +26,7 @@ export function liveActivity(
   currentActivity: CurrentActivity | undefined,
 ): LiveActivity | undefined {
   // An unknown outcome is not running: its single owner is the reconcile notice above the Composer
-  // (full-session-screen-structure §17.1), so the Work block shows no live line and no spinner.
+  // (full-session.md "Unknown Turn outcome"), so the Work block shows no live line and no spinner.
   if (!activeTurn || activeTurn.state === 'unknown') {
     return undefined;
   }
@@ -50,7 +50,7 @@ export function liveActivity(
 }
 
 /**
- * One Turn's Work in the Conversation (session-chat-v10-design.md §3.1): every `work-summary`
+ * One Turn's Work in the Conversation (full-session.md "Work block"): every `work-summary`
  * entry of the Turn folded into a single block, plus — while the Turn is live — what is happening
  * right now, and — once it has ended — its terminal outcome.
  *

@@ -67,3 +67,17 @@ describe('isFrontmatterExempt / findRepoRoot', () => {
     expect(findRepoRoot(join(docsDir, 'engineering'))).toBe(root);
   });
 });
+
+describe('createFileSystemDocRepository.pathExists', () => {
+  it('matches files and directories with the exact case of every segment', () => {
+    writeFileSync(join(docsDir, 'README.md'), fm('docs.readme', 'hub'));
+    const repo = createFileSystemDocRepository({ repoRoot: root, docsDir });
+
+    expect(repo.pathExists('docs/README.md')).toBe(true);
+    expect(repo.pathExists('docs/engineering')).toBe(true);
+    expect(repo.pathExists('docs/readme.md')).toBe(false);
+    expect(repo.pathExists('Docs/README.md')).toBe(false);
+    expect(repo.pathExists('docs/missing.md')).toBe(false);
+    expect(repo.pathExists('docs/../docs/README.md')).toBe(false);
+  });
+});

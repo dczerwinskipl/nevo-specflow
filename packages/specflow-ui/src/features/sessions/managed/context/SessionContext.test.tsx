@@ -118,7 +118,7 @@ describe('Related Tasks rows', () => {
 
     await renderContextWithRelatedTasks(value);
 
-    // session-association-ux §7: each associated Task is its own row, not a count summary.
+    // full-session.md "Context": each associated Task is its own row, not a count summary.
     expect(screen.getByText('Document the admission guard')).toBeTruthy();
     expect(screen.getByText('Deterministic admission')).toBeTruthy();
     expect(screen.getByText('TASK-02')).toBeTruthy();

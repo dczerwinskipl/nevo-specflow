@@ -16,7 +16,8 @@ summary: >
   or its own escalation to the Specification. The Engine decides
   continuations; anything it cannot carry out is attention for the owner, derived from the state on
   every inspection and never stored. Canonical state lives in the Specification's `.execution/`
-  folder, which lists the Task set; only the change journal is local.
+  folder, which lists the Task set; only the change journal is local. The kernel writes those files
+  but does not commit them yet (follow-up F04).
 related:
   - architecture.workflow.deterministic-workflow
   - adr.0019-workflow-kernel-and-automatic-continuation
@@ -155,7 +156,7 @@ Readiness, lanes and statuses are derived from these, never stored.
   A record file is also bounded to 256 KiB (see the budgets under "State and storage"). Known limit: a
   history that grows over that byte budget is refused only when the change is serialized
   (`WORKFLOW_INPUT_INVALID`, nothing is stored); no operation checks it earlier, and bounding the run
-  history is a follow-up (plan 06, F16).
+  history is a follow-up (plan 06, F19).
 
 ## Executors
 
@@ -474,11 +475,11 @@ proceed.
 
 ## State and storage
 
-| What                                   | Where                                                  | Tracked |
-| -------------------------------------- | ------------------------------------------------------ | ------- |
-| Specification run and Task list        | `<specification>/.execution/specification.yaml`        | Git     |
-| Task records (type, deps, status, run) | `<specification>/.execution/tasks/<taskId>.yaml`       | Git     |
-| Change journal                         | `<stateRoot>/engine/operations/workflow/<specId>.json` | local   |
+| What                                   | Where                                                  | Belongs to                   |
+| -------------------------------------- | ------------------------------------------------------ | ---------------------------- |
+| Specification run and Task list        | `<specification>/.execution/specification.yaml`        | Git (not committed yet, F04) |
+| Task records (type, deps, status, run) | `<specification>/.execution/tasks/<taskId>.yaml`       | Git (not committed yet, F04) |
+| Change journal                         | `<stateRoot>/engine/operations/workflow/<specId>.json` | local                        |
 
 - **Location.** `.execution/` starts with a dot, so the document tree never lists it. It moves with
   the Specification when the Specification is archived.
@@ -523,7 +524,8 @@ proceed.
   conflict found in the middle of publishing also leaves the journal pending, and deleting it then may
   keep a partly applied change; only a concurrent external writer can cause that (F05). This
   narrows, but does not close, the window against a concurrent external writer such as Git between the
-  check and the write; full protection needs writer admission (plan 06, F05).
+  check and the write; full protection needs writer admission (plan 06, F05) through
+  [workspace execution claims](../runtime/workspace-execution-claims.md).
 - **Stage files.** An atomic write that crashed leaves a `.<record>.<uuid>.tmp` file. Reads skip
   dot-files, and the next change removes only the stage files of known record names
   (`specification.yaml` in `.execution/`, valid Task file names in `.execution/tasks/`); every other
@@ -537,7 +539,8 @@ proceed.
 - **Per-Task files.** Each Task has its own file, so parallel Task worktrees can later merge without
   conflicts (follow-up F08).
 
-Committing the `.execution/` files is not done by this kernel yet (follow-up F04). Until then, they
+Committing the `.execution/` files is not done by this kernel yet (follow-up
+[F04](../../ideas/specflow-engine/execution-plans/06-workflow-kernel/README.md#f04--commits-of-execution-state-and-finalize-actions)). Until then, they
 are ordinary working-tree changes of the Specification's checkout.
 
 ## Extension points

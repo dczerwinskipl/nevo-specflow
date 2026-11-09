@@ -27,7 +27,7 @@ Define practical MVP local trust boundary, accurate limitations of shared OS acc
 
 ## Prerequisites
 
-- [E3.T03](T03-readiness-step-state.md)
+- Workflow kernel, implemented (former E3.T01–T03): [architecture](../../../../../architecture/workflow/workflow-kernel.md)
 - [E3.T06](T06-owner-recovery-protocol.md)
 
 Original planning dependency: T03, T06. The linked IDs above are the **executable** dependency graph; a separate spec-level gate still applies.

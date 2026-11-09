@@ -29,7 +29,7 @@ Support minimal **explicit** ordered set of Task attempts and new successor Sess
 
 ## Prerequisites
 
-- [E5.T05](T05-turn-claim-settlement.md)
+- Session-level intent, dispatch phases and claim settlement, implemented (former E5.T03–T05): [workspace execution claims](../../../../../architecture/runtime/workspace-execution-claims.md)
 - [E5.T06](T06-explicit-workflow-interaction.md)
 
 Original planning dependency: T05–T06. The linked IDs above are the **executable** dependency graph; a separate spec-level gate still applies.

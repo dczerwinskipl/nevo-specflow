@@ -11,7 +11,7 @@ import { translateNow } from '../../../../i18n/message';
 
 /**
  * Navigation-skeleton placeholder root tabs for Context's other subjects
- * (full-session-screen-structure.md §7.4: "Its concise, clickable content summaries open/reselect
+ * (full-session.md "Context": "Its concise, clickable content summaries open/reselect
  * root tabs such as Tasks, Files/Changes, History, Handovers, Artifacts, Instructions or
  * Environment when useful"). Tasks already has a real tab (`SessionTasksInspector.tsx`); History
  * now has one too (`SessionContext.tsx`'s own "Work history" row, reusing `WorkInspector.tsx`'s

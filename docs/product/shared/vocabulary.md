@@ -51,27 +51,46 @@ product copy, code, packages, and documentation MUST NOT introduce a competing s
 - Product lifecycle commands MUST operate on SpecFlow itself at the executable root:
   `nevo-specflow start`, and eventually `stop` / `status` when implemented.
 - Resource-oriented commands SHOULD use `<noun> <verb>` where a resource has multiple operations,
-  for example `nevo-specflow task start` or `nevo-specflow workflow status`. A deviation requires a
+  for example `nevo-specflow specs create` or `nevo-specflow documents list`. A deviation requires a
   clearer product-level command model.
 - The repository MUST be named `nevo-specflow`; published product packages MUST use the
   `@nevo/specflow*` family.
 
 ## Workflow vocabulary
 
-| Term                     | Meaning                                                                                                                           |
-| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
-| **Specification** (spec) | The anchoring document for a change: goal, decisions, constraints, and task breakdown.                                            |
-| **Change**               | A unit of work with an identifier and classification. Owns one specification.                                                     |
-| **Change class**         | Weight of a change: small, standard, architectural, or exploratory.                                                               |
-| **Task**                 | A reviewable unit of work inside a change. Its exact lifecycle is defined by the workflow model, not by this vocabulary document. |
-| **Review**               | A structured assessment of a specification, task, or implementation.                                                              |
-| **Approval / gate**      | A deterministic condition and, where required, explicit human decision that permits progression.                                  |
-| **Session**              | A provider-neutral AI working session associated with product context.                                                            |
-| **Turn**                 | One request/execution cycle within a session.                                                                                     |
-| **Work**                 | Structured activity performed within a turn, such as tool actions or file operations.                                             |
-| **Commentary**           | Human-readable agent narration separate from structured Work.                                                                     |
-| **Finalize**             | A product operation that completes a workflow according to its configured gates and outcomes.                                     |
-| **Forward-port**         | Applying a fix from a maintained release line to another maintained line, normally including `main`.                              |
+| Term                     | Meaning                                                                                                                   |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| **Specification** (spec) | The anchoring unit of a change: its documents (goal, decisions, constraints) and its Task breakdown.                      |
+| **Archetype**            | The named shape of work chosen at Create: which document types a Specification requires and which documents it suggests.  |
+| **Document type**        | What a Specification document is for (`behaviour`, `ux`, `backend`, ...), recorded per document.                          |
+| **Task**                 | A reviewable unit of work inside a Specification. Its lifecycle is defined by the workflow model, not by this vocabulary. |
+| **Review**               | A structured assessment of a specification, task, or implementation.                                                      |
+| **Approval / gate**      | A deterministic condition and, where required, explicit human decision that permits progression.                          |
+| **Session**              | A provider-neutral AI working session associated with product context.                                                    |
+| **Turn**                 | One request/execution cycle within a session.                                                                             |
+| **Work**                 | Structured activity performed within a turn, such as tool actions or file operations.                                     |
+| **Commentary**           | Human-readable agent narration separate from structured Work.                                                             |
+| **Finalize**             | A product operation that completes a workflow according to its configured gates and outcomes.                             |
+| **Forward-port**         | Applying a fix from a maintained release line to another maintained line, normally including `main`.                      |
+
+Archetypes and document types are defined in
+[Specification documents](../specflow/specification-documents.md). "Change" is not a product object:
+a Specification has no separate Change record and there is no change-weight classification ("change
+class") in the product today; the archetype is the shipped classification of a Specification's
+shape. In the UI, **Changes** names the Git diff view of a Specification (its changed files), not a
+unit of work.
+
+## Screen names
+
+User-facing copy names a screen by what the UI shows; documentation uses the same name, with the
+code identifier in parentheses only where it helps to find the code.
+
+| Screen (UI copy)           | Route                  | Code / API name                                                |
+| -------------------------- | ---------------------- | -------------------------------------------------------------- |
+| **Specifications**         | `/`                    | Specs Overview (`SpecsOverview`, `/api/specs/overview`)        |
+| **Specification overview** | `/specs/:specId`       | Specification Workspace (`SpecificationWorkspace`, `WorkView`) |
+| **Session** (its title)    | `/sessions/:sessionId` | Full Session (`ManagedSession`)                                |
+| **New specification**      | `/specs/new`           | Create (`CreateSpecificationScreen`)                           |
 
 ## Git and workspace vocabulary
 
@@ -79,15 +98,21 @@ English is the source of truth. The Polish column is the only accepted rendering
 (`pl.json`); a term that stays in English is a Git term that Polish users know by that name. Do not
 mix the renderings of one concept inside a catalogue.
 
-| Term                 | Meaning                                                                                                                | Polish rendering                                                                                                    |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| **Workspace**        | A checkout of the project (the primary folder or a linked worktree) in which specifications are created and worked on. | **środowisko pracy**. Not "workspace" and not "obszar roboczy" for a checkout; a bare "środowisko" only repeats it. |
-| **Worktree**         | The Git mechanism and folder behind a linked workspace (technical detail such as "worktree folder").                   | **worktree** (kept), e.g. "katalog worktree"; the user-facing object is still the środowisko pracy.                 |
-| **Workspace area**   | The application page or region of the UI in which a specification or task is worked on (not a checkout).               | **obszar roboczy**                                                                                                  |
-| **Environment**      | The deployment of the product (for example the demo Runtime); unrelated to a workspace.                                | **środowisko** with a qualifier ("środowisko demo"), never alone for a checkout.                                    |
-| **Branch**           | A Git branch.                                                                                                          | **gałąź**                                                                                                           |
-| **Commit** (noun)    | A Git commit, including the scaffold commit Nevo makes when Git is enabled.                                            | **commit** (declined: "commita", "w commicie"). Not "zatwierdzenie" or "zatwierdź".                                 |
-| **Commit** (verb)    | Record changes in a commit.                                                                                            | **zapisać w commicie** ("zapisz je w commicie"). Not "zacommitować" or "niecommitowane".                            |
-| **Uncommitted**      | Changes not recorded in any commit yet.                                                                                | **niezapisane w commicie** ("zmiany niezapisane w commicie").                                                       |
-| **Protected branch** | A branch on which the Engine never commits (committed project configuration).                                          | **chroniona gałąź**; the effect reads "Nevo nie tworzy tam commitów".                                               |
-| **Merge target**     | The workspace (and its branch) the changes return to later.                                                            | **cel scalenia** / "scal do środowiska".                                                                            |
+**Workspace** has several meanings; this table owns all of them. In product copy and product
+documentation an unqualified "workspace" means a checkout. Every other meaning carries its
+qualifier (workspace area, Workspace layout or screen mode, `AppWorkspace`); other documents
+defer to these definitions instead of redefining the word.
+
+| Term                   | Meaning                                                                                                                                         | Polish rendering                                                                                                    |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| **Workspace**          | A checkout of the project (the primary folder or a linked worktree) in which specifications are created and worked on.                          | **środowisko pracy**. Not "workspace" and not "obszar roboczy" for a checkout; a bare "środowisko" only repeats it. |
+| **Worktree**           | The Git mechanism and folder behind a linked workspace (technical detail such as "worktree folder").                                            | **worktree** (kept), e.g. "katalog worktree"; the user-facing object is still the środowisko pracy.                 |
+| **Workspace area**     | The application page or region of the UI in which a specification or task is worked on (not a checkout).                                        | **obszar roboczy**                                                                                                  |
+| **Workspace** (layout) | Nevo UI layout terms only: `AppWorkspace`, Primary/Secondary, the local workspace stack, and the Workspace screen mode. Never user-facing copy. | not translated (code and design-system terms)                                                                       |
+| **Environment**        | The deployment of the product (for example the demo Runtime); unrelated to a workspace.                                                         | **środowisko** with a qualifier ("środowisko demo"), never alone for a checkout.                                    |
+| **Branch**             | A Git branch.                                                                                                                                   | **gałąź**                                                                                                           |
+| **Commit** (noun)      | A Git commit, including the scaffold commit Nevo makes when Git is enabled.                                                                     | **commit** (declined: "commita", "w commicie"). Not "zatwierdzenie" or "zatwierdź".                                 |
+| **Commit** (verb)      | Record changes in a commit.                                                                                                                     | **zapisać w commicie** ("zapisz je w commicie"). Not "zacommitować" or "niecommitowane".                            |
+| **Uncommitted**        | Changes not recorded in any commit yet.                                                                                                         | **niezapisane w commicie** ("zmiany niezapisane w commicie").                                                       |
+| **Protected branch**   | A branch on which the Engine never commits (committed project configuration).                                                                   | **chroniona gałąź**; the effect reads "Nevo nie tworzy tam commitów".                                               |
+| **Merge target**       | The workspace (and its branch) the changes return to later.                                                                                     | **cel scalenia** / "scal do środowiska".                                                                            |

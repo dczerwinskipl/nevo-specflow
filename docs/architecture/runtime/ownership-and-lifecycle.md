@@ -127,9 +127,11 @@ the projection, and fail explicitly if canonical selection changes during the re
 HTTP re-read observes later CLI updates; there is no promise of an atomic multi-Spec filesystem
 snapshot or freshness beyond the final validation instant.
 
-Task/Workflow projections remain separate from unvalidated manifest `tasks` entries. The typed
-read contract follows the canonical workflow-state design in Plan 03; Runtime must not synthesize
-progress, completion or execution state from unknown Task payloads.
+Task/Workflow projections remain separate from unvalidated manifest `tasks` entries. The Task set
+and each Task's state are the Engine's execution records (`.execution/specification.yaml` lists the
+`taskIds`, `.execution/tasks/<taskId>.yaml` holds each Task), read through the
+[workflow kernel](../workflow/workflow-kernel.md); Runtime must not synthesize progress, completion
+or execution state from unknown Task payloads.
 
 ## One lifecycle owner
 

@@ -21,3 +21,4 @@ them instead of restating them.
 | [Testing](testing.md)                         | Test responsibility boundaries, determinism, coverage.      |
 
 - [SpecFlow Engine durable Git operations and recovery](specflow-git-recovery.md)
+- [Operation progress](operation-progress.md)

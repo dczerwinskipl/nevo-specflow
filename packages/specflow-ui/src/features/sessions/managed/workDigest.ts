@@ -19,7 +19,7 @@ export const toolOperationOrder: readonly ToolOperation[] = [
 /** Breakdown segments beyond this collapse into "i więcej" so the line stays one glance. */
 export const WORK_SUMMARY_MAX_SEGMENTS = 4;
 
-/** Human-readable lines for one Work block (session-chat-v10-design.md §3.1). */
+/** Human-readable lines for one Work block (full-session.md "Work block"). */
 export interface WorkBlockText {
   /** Cumulative "what it has done", e.g. "4 odczyty · 50 zapisów · 3 polecenia i więcej". */
   summary?: string;

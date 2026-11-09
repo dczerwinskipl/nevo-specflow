@@ -6,8 +6,9 @@ import type { StartedSession } from './startedSession';
 
 /**
  * The conversation of a Session whose first snapshot has not arrived. One just started here shows
- * the ready empty state and the Composer in their places (no loading text, new-session-ui-spec.md
- * section 3(c)); any other Session, or one whose connection failed, says so and offers to retry.
+ * the ready empty state and the Composer in their places (no loading text, full-session.md
+ * "Starting a Session"); any other Session, or one whose connection failed, says so
+ * and offers to retry.
  */
 export function PendingConversation({
   started,

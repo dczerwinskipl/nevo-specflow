@@ -61,7 +61,8 @@ export function ProductNavigation({
       select: (match) => match.params.sessionId,
     }) ?? null;
   // On a Session, the Specification its association names (only when the user may open it); no
-  // "last opened Specification" is remembered (session-association-ux §3).
+  // "last opened Specification" is remembered (interaction-model.md, "Starting a Session and the
+  // navigator").
   const sessionHome = useSessionHomeSpecification(routeSpecId ? null : sessionId);
   const specId = routeSpecId ?? sessionHome?.specId ?? null;
   const collection = sessionHome

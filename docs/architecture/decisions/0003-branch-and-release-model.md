@@ -55,7 +55,7 @@ produced from `release/v1.3` — the branch name stays at the minor granularity.
 - **Review is by repository access, not a file.** There is no `.github/CODEOWNERS`;
   collaborators/teams are managed in GitHub. `tools/github/repository-policy.json`
   holds one durable target — **1 eligible approval**, stale reviews dismissed,
-  latest-push approval required. `configure-repository.mjs` applies it verbatim when
+  latest-push approval required. `tools/github/src/app/configure-repository.ts` applies it verbatim when
   the repo has ≥ 2 eligible reviewers; with only 1 it applies a **bootstrap exception**
   (0 approvals) and reports why on every run. Adding a second Write collaborator and
   re-running converges to the target with no policy-file edit.

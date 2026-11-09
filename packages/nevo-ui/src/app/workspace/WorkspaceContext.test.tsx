@@ -181,7 +181,7 @@ describe('stackedSecondaryClose', () => {
   });
 });
 
-describe('W02: Secondary root-tab state', () => {
+describe('Secondary root-tab state', () => {
   interface ItemParams {
     itemId: string;
   }

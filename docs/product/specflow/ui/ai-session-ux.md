@@ -12,7 +12,9 @@ summary: >
   "thinking" needs evidence, "waiting" is not "needs attention", and the four Work
   information levels.
 related:
+  - product.specflow.ui.full-session
   - product.specflow.ui.interaction-model
+  - product.specflow.ui.specification-sessions
   - product.shared.vocabulary
   - design-system.principles.ui-ux-guidelines
   - architecture.ai.canonical-session-turn-work
@@ -20,8 +22,8 @@ related:
 
 # AI session UX
 
-`status: draft` — working guidance, expanded as the code it governs lands. The canonical UI
-model and exact component specs are defined with the implementation.
+`status: draft` — working guidance, expanded as the code it governs lands. The concrete,
+implemented Session screen rules are the [Full Session](full-session.md) contract.
 
 ## Model
 
@@ -131,8 +133,8 @@ for that Task); neither re-colours a Session:
 | readiness `unavailable`                              | **Stan sesji nieznany** (muted) | unchanged                                          |
 
 Session rows (the Specification Sessions list and Continue session) show the **effective**
-readiness, the same provider projection the Session screen applies (Runtime: the list read and the
-workspace Sessions section, a required backend change), so they add one row (accepted 2026-11-08):
+readiness, the same provider projection the Session screen applies (the Runtime applies it in the
+list read and the workspace Sessions section), so they add one row (accepted 2026-11-08):
 
 | readiness                | Session row shows                                             |
 | ------------------------ | ------------------------------------------------------------- |
@@ -140,8 +142,8 @@ workspace Sessions section, a required backend change), so they add one row (acc
 
 Muted because the condition is provider-wide and resolved in the provider's CLI, not in the Session;
 the copy names the provider so it does not read as the Session needing a login. The navigator preview
-is unchanged and never lists such a Session. Row composition and backend needs:
-[Specification Sessions list §3](../../../ideas/specflow-ui/screens/specification-sessions-list-ui-spec.md#3-rows).
+is unchanged and never lists such a Session. Row composition:
+[Specification Sessions list, Rows](specification-sessions.md#rows).
 
 Associated Tasks are context: rows and Context say **powiązana** / **Powiązane zadania**; no surface
 writes "pracuje nad" or "wykonuje" or shows a Task as current execution from the association. A

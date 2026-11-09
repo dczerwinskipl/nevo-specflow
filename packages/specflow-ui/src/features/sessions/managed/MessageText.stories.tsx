@@ -16,7 +16,7 @@ import { fixtureApi, fixtureSessionId, sessionFixture } from './managedSession.s
  * `api` (only its `content()` method is ever called) and a plain `TextPreview` value, matching
  * what the component itself actually needs.
  *
- * Previously this behavior (notably the Copy action, item 4 of session-chat-v10-design.md §2) was
+ * Previously this behavior (notably the Copy action, full-session.md "Conversation") was
  * only proven by `CopyMessage` in `ManagedSession.interactions.stories.tsx`, which mounted the
  * *entire* `ManagedSession` screen just to reach one small element — the wrong level of story for
  * what it was actually testing (owner feedback). `CopyMessage` has been removed now that this
@@ -118,7 +118,7 @@ export const AutoStitchedLongText: Story = {
 };
 
 /**
- * Item 4 (session-chat-v10-design.md §2): Copy acts on the full resolved text — every
+ * full-session.md "Conversation": Copy acts on the full resolved text — every
  * auto-stitched page included — not just the capped initial preview. The same clipboard-mocking
  * approach the removed screen-level `CopyMessage` story used.
  */

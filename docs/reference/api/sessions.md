@@ -2,7 +2,7 @@
 id: reference.api.sessions
 type: reference
 title: Managed Sessions HTTP and read-model contract
-status: draft
+status: current
 scope: specflow
 areas: [ai, runtime, server, security, ui]
 tags: [sessions, pagination, tail, streaming, idempotency]
@@ -20,7 +20,7 @@ related:
   - architecture.ai.session-storage-and-lifecycle
   - architecture.ai.canonical-session-turn-work
   - reference.protocols.session-provider-driver
-  - ideas.specflow-runtime.managed-sessions-delivery
+  - reference.providers.compatibility
 ---
 
 # Managed Sessions API
@@ -28,15 +28,13 @@ related:
 Independent telemetry reads, refresh and live invalidation are specified in
 [Session telemetry API](session-telemetry.md). They do not depend on Task/Spec/Workflow.
 
-Plan 04 foundation contract, implemented on `feature/managed-sessions-foundation` in PR #98.
-This document remains draft pending independent review. Schemas/types live in
-`@nevo/specflow-contracts/sessions`. No aliases for legacy /agent-sessions or DemoSession.
+Schemas/types live in `@nevo/specflow-contracts/sessions`. No aliases for legacy /agent-sessions or DemoSession.
 All JSON objects reject unknown keys. Optional fields are omitted, never overloaded null values.
 IDs below are canonical UUIDs except provider/model IDs, content revision and opaque cursors.
 Sequences/revisions are nonnegative safe integers; overflow fails closed, not wraparound.
 Timestamps are UTC ISO-8601 strings. Byte limits refer to UTF-8, not JavaScript string length.
 
-## Enable the foundation
+## Enable Sessions
 
 Add this project-owned top-level section to `.nevo/config.yaml`:
 
@@ -52,14 +50,9 @@ Both flags default to false. Local overrides and unknown provider keys are rejec
 Start the existing product server and open a Specification's **Sessions** list; a Session started
 there (`/specs/:specId/sessions/new`) opens at `/sessions/:sessionId`. Every UI start is from a
 Specification; `/sessions/new` redirects to `/`.
-The explicitly labelled mock performs no external effects. The optional Claude adapter uses this
-same API; see [Claude enablement and supported installations](../../ideas/specflow-runtime/claude-provider.md).
-On Windows x64, `sessions.providers.antigravity.enabled: true` enables no-input
-discovery of the consumer CLI, with an optional absolute `executable` path.
-Managed Agent and Plan require Engine write admission. Automatic file access is
-bound to Runtime-held Windows file identities; every shell command requires a
-one-time host-execution approval. See
-[Antigravity implementation and acceptance limits](../../ideas/specflow-runtime/antigravity-provider.md).
+The explicitly labelled mock performs no external effects. The Claude, Codex and Antigravity
+adapters (`sessions.providers.<provider>.{enabled, executable}`) use this same API; their supported
+platforms, logins, modes and limits are in the [provider reference](../providers/README.md).
 Importing external Nevo history remains outside this API. Writable execution uses
 Engine-owned admission and settlement; it does not imply OS isolation. Disabling only the provider
 keeps stored reads available. Disabling the feature acquires no database owner.
@@ -275,7 +268,7 @@ type Respond =
 ```
 
 Respond answer text <=16 KiB, option IDs must be declared, duplicate option IDs invalid;
-text only when allowText; an optional maxSelections (1 to 20) limits selected option IDs and is checked
+text only when allowText; an optional maxSelections (1 to 20) limits selected option IDs (absent means 1, single-select) and is checked
 before durable response admission. Empty answer invalid unless the question explicitly offers an empty
 option (through its ID). Denied permission resolves the interaction; it does not automatically
 fail the Turn. Start may override mode, native providerModeId, model and effort for that Turn;
@@ -352,6 +345,11 @@ in `@nevo/specflow-contracts/sessions`. Sessions stay independent: the associati
 Session-owned sidecar record
 ([storage](../../architecture/ai/session-storage-and-lifecycle.md#authorization-and-associations)),
 written only by the composed create. There is no route to reassign, unlink or append Tasks.
+
+Known limit: the record stores Task ids as they were at create. A Task id is a slug, not an
+immutable identity, so an id reused after its Task was removed reads as the associated Task.
+Pinning an immutable Engine identity is open (follow-up D13 in the
+[association decision record](../../ideas/specflow-runtime/session-association/README.md)).
 
 ### Composed create
 
@@ -724,7 +722,7 @@ answer 403 to a caller without it), then the identity from the demo association 
 
 Every mutation (`POST /api/sessions`, Turn start/cancel/reconcile/respond, rename, archive,
 unarchive, delete, telemetry refresh) stays `SESSION_DISABLED`. Without Manage the screen shows the
-view-only bar in the Composer's place and no error state (Full Session structure §22.1, "View-only Session").
+view-only bar in the Composer's place and no error state ([Full Session — Session actions](../../product/specflow/ui/full-session.md#session-actions)).
 
 ## Error contract
 

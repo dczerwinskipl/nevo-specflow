@@ -72,7 +72,8 @@ the Engine must never commit on some branches (for example `main` or `release/**
    commit code and integration into a protected target branch is not forbidden. Migrating archive onto
    the commit capability (so protection guards it too) is a follow-up. Previously created untracked
    specifications are not adopted automatically. Specification document operations reuse this
-   mechanism and are decided in [ADR 0016](0016-engine-owned-document-commits.md) (proposed).
+   mechanism and are decided in [ADR 0016](0016-engine-owned-document-commits.md), with the commit policy
+   of [ADR 0018](0018-engine-commit-policy-and-manual-commit.md).
 8. **Line endings and attributes.** The commit port runs `git status`, `add` and `commit` (and the hash
    comparison below) with `-c core.autocrlf=false -c core.safecrlf=false`, so the user's own conversion
    setting never changes what is committed. `.gitattributes` still apply, exactly as they do for a

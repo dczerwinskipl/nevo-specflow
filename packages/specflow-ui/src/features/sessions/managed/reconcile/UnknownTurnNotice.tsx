@@ -4,10 +4,10 @@ import { useNotify } from '../../../../shared/notifications/notifications';
 import type { SessionFeed, ReconcileState } from '../feed';
 
 /**
- * The single owner of "the last Turn's outcome is unknown" (full-session-screen-structure §17.1): shown above the
- * Composer while the active Turn is `unknown`. With Manage it offers the check; the Turn's new
- * state arrives on the stream, and only a check that settled it here (`reconciled`) is confirmed
- * with a toast. Never combined with a resend.
+ * The single owner of "the last Turn's outcome is unknown" (full-session.md "Unknown Turn
+ * outcome"): shown above the Composer while the active Turn is `unknown`. With Manage it offers the
+ * check; the Turn's new state arrives on the stream, and only a check that settled it here
+ * (`reconciled`) is confirmed with a toast. Never combined with a resend.
  */
 export function UnknownTurnNotice({
   feed,

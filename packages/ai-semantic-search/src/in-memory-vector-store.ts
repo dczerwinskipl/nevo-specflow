@@ -2,10 +2,12 @@ import type {
   ApplyOutcome,
   IndexManifest,
   ManifestOutcome,
+  OpenWriterOutcome,
   VectorQuery,
   VectorQueryOutcome,
   VectorStore,
   VectorStoreChange,
+  VectorStoreWriter,
 } from './ports';
 import { nearestNeighbours, type VectorCandidate } from './vector-math';
 import { sameIdentity, validateChange } from './vector-store-contract';
@@ -18,10 +20,46 @@ interface Snapshot {
 /**
  * Reference `VectorStore` that keeps everything in memory. Every change replaces one immutable
  * snapshot, so each read answers from a single consistent state; it enforces the port contract
- * (`validateChange`) and the compare-and-swap on `baseGeneration`.
+ * (`validateChange`), the single writer and the compare-and-swap on `baseGeneration`.
  */
 export function createInMemoryVectorStore(): VectorStore {
   let snapshot: Snapshot | undefined;
+  let writerOpen = false;
+
+  const apply = (change: VectorStoreChange): Promise<ApplyOutcome> => {
+    if (change.baseGeneration !== snapshot?.manifest.generation) {
+      return Promise.resolve({ status: 'conflict' });
+    }
+
+    try {
+      validateChange(change, snapshot?.manifest.identity);
+    } catch (error) {
+      return Promise.reject(error instanceof Error ? error : new Error(String(error)));
+    }
+
+    const vectors = new Map<string, VectorCandidate>(
+      change.reset || !snapshot ? [] : snapshot.vectors,
+    );
+    for (const chunkId of change.delete) {
+      vectors.delete(chunkId);
+    }
+
+    for (const entry of change.upsert) {
+      vectors.set(entry.chunkId, {
+        chunkId: entry.chunkId,
+        contentHash: entry.contentHash,
+        vector: Float32Array.from(entry.vector),
+      });
+    }
+
+    const generation = (snapshot?.manifest.generation ?? 0) + 1;
+    const chunks = new Map(
+      [...vectors.values()].map((entry) => [entry.chunkId, entry.contentHash]),
+    );
+    snapshot = { manifest: { identity: change.identity, generation, chunks }, vectors };
+
+    return Promise.resolve({ status: 'applied', generation });
+  };
 
   return {
     readManifest(): Promise<ManifestOutcome> {
@@ -30,39 +68,33 @@ export function createInMemoryVectorStore(): VectorStore {
       );
     },
 
-    apply(change: VectorStoreChange): Promise<ApplyOutcome> {
-      if (change.baseGeneration !== snapshot?.manifest.generation) {
-        return Promise.resolve({ status: 'conflict' });
-      }
-
-      try {
-        validateChange(change, snapshot?.manifest.identity);
-      } catch (error) {
-        return Promise.reject(error instanceof Error ? error : new Error(String(error)));
-      }
-
-      const vectors = new Map<string, VectorCandidate>(
-        change.reset || !snapshot ? [] : snapshot.vectors,
-      );
-      for (const chunkId of change.delete) {
-        vectors.delete(chunkId);
-      }
-
-      for (const entry of change.upsert) {
-        vectors.set(entry.chunkId, {
-          chunkId: entry.chunkId,
-          contentHash: entry.contentHash,
-          vector: Float32Array.from(entry.vector),
+    openWriter(): Promise<OpenWriterOutcome> {
+      if (writerOpen) {
+        return Promise.resolve({
+          status: 'busy',
+          message: 'Another writer holds the vector store.',
         });
       }
 
-      const generation = (snapshot?.manifest.generation ?? 0) + 1;
-      const chunks = new Map(
-        [...vectors.values()].map((entry) => [entry.chunkId, entry.contentHash]),
-      );
-      snapshot = { manifest: { identity: change.identity, generation, chunks }, vectors };
+      writerOpen = true;
+      let closed = false;
+      const writer: VectorStoreWriter = {
+        apply(change) {
+          return closed
+            ? Promise.reject(new Error('The vector store writer is closed.'))
+            : apply(change);
+        },
+        close() {
+          if (!closed) {
+            closed = true;
+            writerOpen = false;
+          }
 
-      return Promise.resolve({ status: 'applied', generation });
+          return Promise.resolve();
+        },
+      };
+
+      return Promise.resolve({ status: 'opened', writer });
     },
 
     query({ identity, vector, limit }: VectorQuery): Promise<VectorQueryOutcome> {

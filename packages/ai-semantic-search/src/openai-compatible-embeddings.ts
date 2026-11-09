@@ -1,17 +1,15 @@
-import type {
-  EmbeddingFailure,
-  EmbeddingProvider,
-  EmbeddingPurpose,
-  EmbeddingResult,
-  ProbeResult,
+import {
+  PROBE_TEXT,
+  type EmbeddingFailure,
+  type EmbeddingProvider,
+  type EmbeddingPurpose,
+  type EmbeddingResult,
+  type ProbeResult,
 } from './ports';
 
 export const OPENAI_COMPATIBLE_PROTOCOL = 'openai-compatible';
 export const DEFAULT_EMBEDDING_BATCH_SIZE = 32;
 export const DEFAULT_EMBEDDING_TIMEOUT_MS = 10_000;
-
-/** The fixed text `probe()` embeds. */
-export const PROBE_TEXT = 'probe';
 
 const MAX_ERROR_BODY_CHARS = 300;
 const malformedBody = Symbol('malformed body');

@@ -10,6 +10,7 @@ export type {
   IndexIdentity,
   IndexManifest,
   ManifestOutcome,
+  OpenWriterOutcome,
   ProbeResult,
   SourceUnit,
   StoreUnreadable,
@@ -21,7 +22,9 @@ export type {
   VectorQueryOutcome,
   VectorStore,
   VectorStoreChange,
+  VectorStoreWriter,
 } from './ports';
+export { PROBE_TEXT } from './ports';
 export {
   CHUNKER_VERSION,
   CHUNK_MAX_CHARS,
@@ -32,11 +35,23 @@ export {
   DEFAULT_EMBEDDING_BATCH_SIZE,
   DEFAULT_EMBEDDING_TIMEOUT_MS,
   OPENAI_COMPATIBLE_PROTOCOL,
-  PROBE_TEXT,
   createOpenAiCompatibleEmbeddingProvider,
   type OpenAiCompatibleEmbeddingDependencies,
   type OpenAiCompatibleEmbeddingSettings,
 } from './openai-compatible-embeddings';
+export {
+  FILE_INDEX_SCHEMA_VERSION,
+  createFileVectorStore,
+  type FileVectorStoreOptions,
+} from './file-vector-store';
+export type { WriterLockDependencies } from './file-writer-lock';
+export {
+  planRefresh,
+  refreshIndex,
+  type RefreshOutcome,
+  type RefreshPlan,
+  type RefreshRequest,
+} from './refresh-index';
 export {
   SEARCH_REASON,
   VECTOR_CANDIDATES_PER_RESULT,

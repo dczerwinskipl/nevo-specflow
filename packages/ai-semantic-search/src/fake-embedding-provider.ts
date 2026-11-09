@@ -1,11 +1,11 @@
-import type {
-  EmbeddingFailure,
-  EmbeddingProvider,
-  EmbeddingPurpose,
-  EmbeddingResult,
-  ProbeResult,
+import {
+  PROBE_TEXT,
+  type EmbeddingFailure,
+  type EmbeddingProvider,
+  type EmbeddingPurpose,
+  type EmbeddingResult,
+  type ProbeResult,
 } from './ports';
-import { PROBE_TEXT } from './openai-compatible-embeddings';
 import { tokenize } from './tokenize';
 
 export const FAKE_EMBEDDING_PROTOCOL = 'fake';

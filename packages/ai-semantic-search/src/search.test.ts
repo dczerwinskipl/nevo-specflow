@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { createFakeEmbeddingProvider } from './fake-embedding-provider';
 import { createInMemoryVectorStore } from './in-memory-vector-store';
 import { CHUNKER_VERSION, chunkMarkdownUnit } from './markdown-chunker';
-import type { Chunk, IndexIdentity, VectorStore, VectorStoreChange } from './ports';
+import type { ApplyOutcome, Chunk, IndexIdentity, VectorStore, VectorStoreChange } from './ports';
 import { RRF_K } from './rrf';
 import { SEARCH_REASON, createSearchEngine } from './search';
 
@@ -17,6 +17,19 @@ const units = [
 ].map((unit) => ({ ...unit, contentHash: unit.id, header: unit.id, metadata: { area: unit.id } }));
 
 const chunks = units.flatMap(chunkMarkdownUnit);
+
+async function write(store: VectorStore, change: VectorStoreChange): Promise<ApplyOutcome> {
+  const opened = await store.openWriter();
+  if (opened.status !== 'opened') {
+    throw new Error('vector store busy');
+  }
+
+  try {
+    return await opened.writer.apply(change);
+  } finally {
+    await opened.writer.close();
+  }
+}
 
 async function indexedStore(
   provider = createFakeEmbeddingProvider(),
@@ -37,7 +50,7 @@ async function indexedStore(
     model: provider.model,
     dimensions: provider.dimensions!,
   };
-  await store.apply({
+  await write(store, {
     baseGeneration: undefined,
     identity,
     reset: true,
@@ -140,7 +153,7 @@ describe('createSearchEngine', () => {
   it('degrades to lexical when the store cannot be read', async () => {
     const unreadable: VectorStore = {
       readManifest: () => Promise.resolve({ status: 'unreadable', message: 'EBUSY' }),
-      apply: () => Promise.reject(new Error('read-only')),
+      openWriter: () => Promise.reject(new Error('read-only')),
       query: () => Promise.resolve({ status: 'unreadable', message: 'EBUSY' }),
     };
     const result = await engine.search({
@@ -187,11 +200,12 @@ describe('in-memory vector store contract', () => {
   it('upserts, deletes and resets under one identity, answering from one snapshot', async () => {
     const store = createInMemoryVectorStore();
     expect(
-      await store.apply(
+      await write(
+        store,
         change(undefined, { reset: true, upsert: [entry('a', [1, 0]), entry('b', [0, 1])] }),
       ),
     ).toEqual({ status: 'applied', generation: 1 });
-    await store.apply(change(1, { delete: ['a'], upsert: [entry('c', [1, 1])] }));
+    await write(store, change(1, { delete: ['a'], upsert: [entry('c', [1, 1])] }));
 
     const manifest = await store.readManifest();
     expect(manifest.status === 'ok' && [...manifest.manifest.chunks.keys()]).toEqual(['b', 'c']);
@@ -210,23 +224,29 @@ describe('in-memory vector store contract', () => {
 
   it('answers conflict to a change computed from an older generation', async () => {
     const store = createInMemoryVectorStore();
-    await store.apply(change(undefined, { reset: true }));
-    await store.apply(change(1, { reset: true, identity: { ...identity, model: 'new' } }));
+    const held = await store.openWriter();
+    expect((await store.openWriter()).status).toBe('busy');
+    if (held.status === 'opened') {
+      await held.writer.close();
+    }
 
-    expect(await store.apply(change(1, { upsert: [entry('a', [1, 0])] }))).toEqual({
+    await write(store, change(undefined, { reset: true }));
+    await write(store, change(1, { reset: true, identity: { ...identity, model: 'new' } }));
+
+    expect(await write(store, change(1, { upsert: [entry('a', [1, 0])] }))).toEqual({
       status: 'conflict',
     });
-    expect(await store.apply(change(undefined, { reset: true }))).toEqual({ status: 'conflict' });
+    expect(await write(store, change(undefined, { reset: true }))).toEqual({ status: 'conflict' });
   });
 
   it('rejects a first change without reset, another identity without reset and wrong dimensions', async () => {
     const store = createInMemoryVectorStore();
-    await expect(store.apply(change(undefined))).rejects.toThrow();
-    await store.apply(change(undefined, { reset: true }));
-    await expect(store.apply(change(1, { identity: { ...identity, model: 'x' } }))).rejects.toThrow(
-      /reset/,
-    );
-    await expect(store.apply(change(1, { upsert: [entry('a', [1, 2, 3])] }))).rejects.toThrow(
+    await expect(write(store, change(undefined))).rejects.toThrow();
+    await write(store, change(undefined, { reset: true }));
+    await expect(
+      write(store, change(1, { identity: { ...identity, model: 'x' } })),
+    ).rejects.toThrow(/reset/);
+    await expect(write(store, change(1, { upsert: [entry('a', [1, 2, 3])] }))).rejects.toThrow(
       RangeError,
     );
   });

@@ -1,3 +1,6 @@
+/** Fixed short text `EmbeddingProvider.probe` embeds. */
+export const PROBE_TEXT = 'probe';
+
 /** Filterable metadata a consumer attaches to a unit; the engine never interprets it. */
 export type UnitMetadataValue = string | number | boolean | readonly string[];
 export type UnitMetadata = Readonly<Record<string, UnitMetadataValue>>;
@@ -115,6 +118,20 @@ export interface VectorStoreChange {
 export type ApplyOutcome =
   { readonly status: 'applied'; readonly generation: number } | { readonly status: 'conflict' };
 
+/**
+ * The single writer of a store. It holds the store's write lock until `close`; `apply` after
+ * `close` violates the contract and throws.
+ */
+export interface VectorStoreWriter {
+  apply(change: VectorStoreChange): Promise<ApplyOutcome>;
+  close(): Promise<void>;
+}
+
+/** `busy`: another writer holds the lock; the caller does not wait for it. */
+export type OpenWriterOutcome =
+  | { readonly status: 'opened'; readonly writer: VectorStoreWriter }
+  | { readonly status: 'busy'; readonly message: string };
+
 /** A store that cannot be read answers this instead of throwing (for example a locked file). */
 export interface StoreUnreadable {
   readonly status: 'unreadable';
@@ -153,12 +170,15 @@ export interface VectorQuery {
 
 /**
  * Stores vectors by chunk id. Read methods never throw for store state or I/O problems: they answer
- * `missing` or `unreadable`. `apply` throws only for a change that violates the contract (see
- * `validateChange`) or a failed write; a concurrent writer surfaces as `conflict`.
+ * `missing` or `unreadable`, and never wait for a writer. Writes go through the one writer
+ * `openWriter` hands out at a time; `openWriter` and `apply` throw only for a change that violates
+ * the contract (see `validateChange`) or a failed write; a change computed from a state the store
+ * has left surfaces as `conflict`.
  */
 export interface VectorStore {
   readManifest(): Promise<ManifestOutcome>;
-  apply(change: VectorStoreChange): Promise<ApplyOutcome>;
+  /** Takes the single-writer lock without waiting. */
+  openWriter(): Promise<OpenWriterOutcome>;
   /** Nearest neighbours by cosine similarity, ordered by score then chunk id. */
   query(query: VectorQuery): Promise<VectorQueryOutcome>;
 }

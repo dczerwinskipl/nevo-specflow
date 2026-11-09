@@ -37,6 +37,11 @@ function isDocumentedRoute(url: string): boolean {
   return url.startsWith('/api/') && !url.startsWith('/api/demo/');
 }
 
+/** The OpenAPI path of a Fastify route URL: `:param` becomes `{param}`, as in the document. */
+function openApiPath(url: string): string {
+  return url.replace(/:([A-Za-z0-9_]+)/g, '{$1}');
+}
+
 /**
  * Registers OpenAPI generation. It MUST run before any route registration, because only routes
  * registered afterwards are captured.
@@ -55,7 +60,7 @@ export async function registerOpenApi<RawServer extends RawServerBase>(
     if (!route.schema?.response) {
       const methods = Array.isArray(route.method) ? route.method : [route.method];
       for (const method of methods) {
-        gaps.push({ method, url: route.url });
+        gaps.push({ method, url: openApiPath(route.url) });
       }
     }
   });

@@ -43,7 +43,10 @@ describe('Runtime OpenAPI document', () => {
         expect.objectContaining({ in: 'path', name: 'specId', required: true }),
       );
       expect(JSON.stringify(await generateOpenApiDocument(app))).toBe(JSON.stringify(generated));
-      expect(openApiRouteGaps(app).every((gap) => gap.url.startsWith('/api/'))).toBe(true);
+      const gaps = openApiRouteGaps(app);
+      expect(gaps).toContainEqual({ method: 'POST', url: '/api/auth/logout' });
+      expect(gaps).toContainEqual({ method: 'DELETE', url: '/api/sessions/{sessionId}' });
+      expect(gaps.every((gap) => paths[gap.url] !== undefined)).toBe(true);
     });
   });
 

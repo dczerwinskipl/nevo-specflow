@@ -9,14 +9,19 @@ function scripted(answers: { select?: string[]; input?: string[] }) {
   const select = [...(answers.select ?? [])];
   const input = [...(answers.input ?? [])];
   const notes: { message: string; title?: string }[] = [];
+  const inputDefaults: (string | undefined)[] = [];
   const ui = {
     select: (_message: string, _choices: unknown, initial?: string) =>
       Promise.resolve(select.shift() ?? initial),
-    input: (_message: string, def?: string) => Promise.resolve(input.shift() ?? def ?? ''),
+    input: (_message: string, def?: string) => {
+      inputDefaults.push(def);
+
+      return Promise.resolve(input.shift() ?? def ?? '');
+    },
     note: (message: string, title?: string) => notes.push({ message, title }),
   } as unknown as DocsInitUi;
 
-  return { ui, notes };
+  return { ui, notes, inputDefaults };
 }
 
 function reachable() {
@@ -72,7 +77,7 @@ describe('initDocs', () => {
   it('still writes the configuration when the endpoint is unreachable and re-asks an invalid answer', async () => {
     const { provider, createProvider } = reachable();
     provider.failWith({ code: 'unreachable', message: 'connect ECONNREFUSED' });
-    const { ui, notes } = scripted({
+    const { ui, notes, inputDefaults } = scripted({
       select: ['yes'],
       // A pasted key is rejected; the second round names the variable.
       input: [
@@ -87,6 +92,8 @@ describe('initDocs', () => {
     const result = await initDocs({ ui, env: { EMBED_KEY: 'secret' }, createProvider });
 
     expect(notes[0]?.title).toBe('Invalid embedding endpoint');
+    // The second round offers the valid answers again, never the rejected key.
+    expect(inputDefaults.slice(3)).toEqual(['https://embed.example.com/v1', 'm', undefined]);
     expect(result.localConfig).toEqual({
       ai: {
         embeddings: {

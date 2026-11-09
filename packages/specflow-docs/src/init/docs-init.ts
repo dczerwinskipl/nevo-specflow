@@ -93,6 +93,7 @@ export async function initDocs(options: DocsInitOptions): Promise<DocsInitContri
 
   const sections = await askEndpoint(ui);
   const { embeddings } = sections;
+  ui.note(`Checking the embedding endpoint ${embeddings.baseUrl}…`, 'Semantic docs search');
   const probe = await probeEndpoint(embeddings, options);
   const where = `${embeddings.model} at ${embeddings.baseUrl}`;
   if (probe.ok) {
@@ -146,10 +147,44 @@ async function askEndpoint(ui: DocsInitUi): Promise<ValidatedSections> {
       }
 
       ui.note(error.message, 'Invalid embedding endpoint');
+      answers = nextRoundDefaults(answers);
     }
   }
 
-  throw new Error('No valid embedding endpoint was provided.');
+  throw new Error(
+    'No valid embedding endpoint was provided; nothing was written. Run "nevo-specflow init" again and answer No to skip semantic documentation search.',
+  );
+}
+
+/**
+ * The defaults of the next round after a rejected one: only answers that pass validation on their
+ * own are offered again, so a rejected value (a pasted key, a URL with credentials) is never
+ * prefilled. `apiKeyEnv` is always asked afresh.
+ */
+function nextRoundDefaults(answers: EndpointAnswers): EndpointAnswers {
+  const valid = (candidate: EndpointAnswers): boolean => {
+    try {
+      validatedSections(candidate);
+
+      return true;
+    } catch (error) {
+      if (error instanceof DocsConfigError) {
+        return false;
+      }
+
+      throw error;
+    }
+  };
+
+  const fresh = { baseUrl: DEFAULT_EMBEDDINGS_BASE_URL, model: DEFAULT_EMBEDDINGS_MODEL };
+
+  return {
+    baseUrl: valid({ ...fresh, baseUrl: answers.baseUrl, apiKeyEnv: '' })
+      ? answers.baseUrl
+      : fresh.baseUrl,
+    model: valid({ ...fresh, model: answers.model, apiKeyEnv: '' }) ? answers.model : fresh.model,
+    apiKeyEnv: '',
+  };
 }
 
 function validatedSections(answers: EndpointAnswers): ValidatedSections {

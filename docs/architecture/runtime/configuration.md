@@ -7,11 +7,15 @@ read_when:
   - adding or moving SpecFlow configuration
   - deciding whether a setting is committed or workstation-local
   - adding Runtime-owned local persistence
+  - adding a local cache or index
 summary: >
   Nevo SpecFlow uses one .nevo namespace: committed project configuration and definitions,
-  ignored workstation-local configuration, and application-owned local Runtime state.
+  ignored workstation-local configuration, persistent application-owned local state and a
+  disposable local cache.
 related:
   - adr.0017-definitions-as-project-data
+  - adr.0020-documentation-discovery-is-a-product-capability
+  - adr.0021-product-neutral-ai-semantic-search-engine
   - docs.architecture-runtime-readme
   - architecture.runtime.ownership-and-lifecycle
   - reference.cli.nevo-specflow-contract
@@ -31,7 +35,8 @@ Nevo SpecFlow uses one repository namespace:
 │                               #   workflows, agent archetypes, task types (ADR 0019)
 └── local/                      # entirely Git-ignored
     ├── config.yaml             # workstation/operator configuration + secrets
-    └── state/                  # application-owned local persistence as capabilities migrate
+    ├── state/                  # persistent application-owned local data; must not be deleted
+    └── cache/                  # disposable, rebuildable data; safe to delete
 ```
 
 The canonical ignore entry is:
@@ -41,6 +46,11 @@ The canonical ignore entry is:
 ```
 
 Do not introduce a sibling `.nevo-local/` namespace.
+
+`.nevo/local/` has exactly these three top-level entries. A capability that needs local data adds a
+subdirectory inside `state/` or `cache/` (for example `cache/docs-index/`). It MUST NOT add another
+top-level entry under `.nevo/local/`, another ignore entry, or a setup step for its directory: the
+single ignore entry already covers it, and the capability creates its subdirectory on first use.
 
 ## Ownership
 
@@ -82,6 +92,15 @@ git:
   worktrees: ...
   integrationTargetBranch: ...
   commits: ...
+
+docs:
+  root: docs
+  taxonomy: ...
+  search:
+    semantic: true
+
+ai:
+  embeddings: ...
 ```
 
 Runtime infrastructure owns composition and file loading, while feature modules own the meaning of
@@ -89,7 +108,11 @@ their configuration. Auth owns `runtime.authentication` and `runtime.authorizati
 composition owns `runtime.server`; Specs owns the top-level `specs` namespace; Runtime Sessions
 owns the top-level `sessions` namespace (`features/sessions/configuration.ts`); the Engine's
 version-control capability owns `git`, whose keys and defaults are in
-[SpecFlow Git/worktree configuration](../../reference/configuration/specflow-git-worktrees.md).
+[SpecFlow Git/worktree configuration](../../reference/configuration/specflow-git-worktrees.md). The documentation
+capability (`@nevo/specflow-docs`,
+[ADR 0020](../decisions/0020-documentation-discovery-is-a-product-capability.md)) owns the `docs`
+namespace and, while it is the only consumer, `ai.embeddings`; the `nevo-specflow docs` command and
+Runtime use the same parsers from that package.
 
 Configuration dependencies flow in one direction:
 
@@ -148,13 +171,25 @@ Current ownership is explicit:
 - `git`: project owns everything shareable (`enabled`, `worktrees`, `integrationTargetBranch`,
   `commits.protectedBranches`/`allowedBranches`/`auto`); local owns `worktreesRoot` and may override
   `commits.auto.<capability>` (the local value wins; any other local `git.commits` key is rejected).
+- `docs`: project-owned (documentation root, taxonomy, non-authoritative path prefixes, the
+  `search.semantic` opt-in); local `docs` configuration is rejected.
+- `ai.embeddings`: allowed in both files; project config may hold a team default endpoint and local
+  config overrides it, the local value winning per key. The embedding API key is never stored in
+  either file: configuration holds only the name of the environment variable that contains it.
 
 A local file that attempts to set project-owned policy is rejected before composition. Likewise,
 project config cannot contain local-owned credentials or workstation-specific TLS paths.
 
-`.nevo/local/state/` is reserved for application-owned data such as Session bindings,
+`.nevo/local/state/` is reserved for persistent application-owned data such as Session bindings,
 transcript/read-model caches, workflow operation records, human-verification records, provider
-aliases, and bounded diagnostics. Users should not treat that state as editable configuration.
+aliases, and bounded diagnostics. Users should not treat that state as editable configuration, and
+it MUST NOT be deleted to recover from a problem.
+
+`.nevo/local/cache/` holds data that can always be rebuilt from project files and configuration,
+such as the semantic documentation index (`cache/docs-index/`). Cache contents are never migrated:
+a capability that finds an incompatible cache discards and rebuilds it. Deleting `cache/` or any
+subdirectory is always safe and costs only the rebuild. Data that cannot be rebuilt belongs in
+`state/`, not `cache/`.
 
 ## Definitions are not flattened into config.yaml
 

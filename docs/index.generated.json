@@ -761,11 +761,14 @@
       "read_when": [
         "adding or moving SpecFlow configuration",
         "deciding whether a setting is committed or workstation-local",
-        "adding Runtime-owned local persistence"
+        "adding Runtime-owned local persistence",
+        "adding a local cache or index"
       ],
-      "summary": "Nevo SpecFlow uses one .nevo namespace: committed project configuration and definitions, ignored workstation-local configuration, and application-owned local Runtime state.",
+      "summary": "Nevo SpecFlow uses one .nevo namespace: committed project configuration and definitions, ignored workstation-local configuration, persistent application-owned local state and a disposable local cache.",
       "related": [
         "adr.0017-definitions-as-project-data",
+        "adr.0020-documentation-discovery-is-a-product-capability",
+        "adr.0021-product-neutral-ai-semantic-search-engine",
         "docs.architecture-runtime-readme",
         "architecture.runtime.ownership-and-lifecycle",
         "reference.cli.nevo-specflow-contract",
@@ -1757,6 +1760,7 @@
       "read_when": [],
       "summary": "Defines a documentation architecture that separates product behavior, durable system architecture, engineering guidance, reusable design-system knowledge, exact reference contracts, operational instructions, and a non-authoritative idea backlog, while using searchable scope, area, and tag metadata so discovery does not depend on folder paths alone.",
       "related": [
+        "adr.0020-documentation-discovery-is-a-product-capability",
         "docs.readme",
         "docs.architecture-readme",
         "architecture.repository-structure"
@@ -1832,6 +1836,8 @@
       "summary": "Nevo SpecFlow is one npm-distributed local product composed from source packages. Product capabilities, including Runtime and UI, live under packages; apps is reserved for a future independently deployed or independently operated host. Package dependencies flow toward shared contracts and neutral foundations, with @nevo/specflow as the product composition root.",
       "related": [
         "architecture.repository-structure",
+        "adr.0020-documentation-discovery-is-a-product-capability",
+        "adr.0021-product-neutral-ai-semantic-search-engine",
         "adr.0005-repository-tooling-is-separate-from-the-product-api",
         "adr.0011-product-artifact-packaging-and-pnpm-compatibility",
         "design-system.principles.system-boundary"
@@ -1955,6 +1961,40 @@
         "adr.0015-specification-manifest-as-document-registry",
         "ideas.specflow-engine.plan-05",
         "ideas.specflow-engine.plan-06"
+      ]
+    },
+    {
+      "id": "adr.0020-documentation-discovery-is-a-product-capability",
+      "type": "adr",
+      "title": "Documentation discovery is a product capability",
+      "status": "current",
+      "file": "docs/architecture/decisions/0020-documentation-discovery-is-a-product-capability.md",
+      "read_when": [],
+      "summary": "Documentation discovery is deliberately promoted into the product as `@nevo/specflow-docs`: it owns the frontmatter contract, deterministic discovery and optional semantic search, takes its taxonomy from project configuration, is exposed as the ordinary CLI command `nevo-specflow docs` and as the Runtime endpoint `GET /api/docs/search`, and keeps its index fresh on Runtime start and on read without a file watcher.",
+      "related": [
+        "adr.0005-repository-tooling-is-separate-from-the-product-api",
+        "adr.0007-documentation-architecture-and-taxonomy",
+        "adr.0012-product-package-topology-and-dependency-direction",
+        "adr.0021-product-neutral-ai-semantic-search-engine",
+        "architecture.runtime.configuration",
+        "architecture.runtime.authorization",
+        "architecture.repository-structure"
+      ]
+    },
+    {
+      "id": "adr.0021-product-neutral-ai-semantic-search-engine",
+      "type": "adr",
+      "title": "Product-neutral AI semantic search engine",
+      "status": "current",
+      "file": "docs/architecture/decisions/0021-product-neutral-ai-semantic-search-engine.md",
+      "read_when": [],
+      "summary": "`@nevo/ai-semantic-search` is a product-neutral engine with embedding provider, chunk source and vector store ports, an OpenAI-compatible embeddings adapter with a probe, heading-aware versioned markdown chunking and hybrid BM25 + cosine ranking fused by reciprocal rank fusion. Its local index is disposable, file-backed, written atomically under a single-writer lock and rebuilt in full on any manifest mismatch; it uses no native modules and no provider SDK.",
+      "related": [
+        "adr.0020-documentation-discovery-is-a-product-capability",
+        "adr.0011-product-artifact-packaging-and-pnpm-compatibility",
+        "adr.0012-product-package-topology-and-dependency-direction",
+        "architecture.runtime.configuration",
+        "architecture.repository-structure"
       ]
     },
     {

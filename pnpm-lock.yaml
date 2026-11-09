@@ -509,6 +509,9 @@ importers:
 
   tools/docs:
     dependencies:
+      '@nevo/specflow-docs':
+        specifier: workspace:*
+        version: link:../../packages/specflow-docs
       commander:
         specifier: 15.0.0
         version: 15.0.0

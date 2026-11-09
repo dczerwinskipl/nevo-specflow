@@ -1,7 +1,8 @@
 // Behavioral parity with the repository tool this package was promoted from (`tools/docs`,
-// `nevo-docs`). `fixtures/parity/expected-*` were captured once by running today's `tools/docs`
-// program over `fixtures/parity/docs` (its hard-coded taxonomy and `docs/ideas/**` exclusion). The
-// product reads the same vocabulary from project configuration and must answer identically.
+// `nevo-docs`). `fixtures/parity/expected-*` were captured once by running the former `tools/docs`
+// implementation over `fixtures/parity/docs` (its hard-coded taxonomy and `docs/ideas/**`
+// exclusion). The product reads the same vocabulary from project configuration and must answer
+// identically.
 // One intended difference: the generated index names the product command
 // (`nevo-specflow docs check --write`) whatever host wrote it, so `expected-index.generated.md`
 // carries that text in its two header lines; check hints on stderr still use the host's command.

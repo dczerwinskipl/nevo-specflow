@@ -1,3 +1,4 @@
+import { DocsUsageError, parseFrontmatter, type DocRecord } from '@nevo/specflow-docs';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -12,8 +13,8 @@ import {
   validateAdrs,
   validateRenderedAdr,
 } from '../../src/domain/adr.js';
-import { parseFrontmatter, type DocRecord } from '../../src/domain/frontmatter.js';
-import { UsageError } from '../../src/errors.js';
+
+const DIR = 'docs/architecture/decisions';
 
 describe('slugify', () => {
   it('is deterministic and ASCII-kebab', () => {
@@ -43,6 +44,7 @@ describe('nextAdrNumber', () => {
 describe('planNewAdr', () => {
   it('produces the next draft file, id and template content', () => {
     const plan = planNewAdr({
+      directory: DIR,
       title: 'Use X for Y',
       filenames: ['0001-a.md', '0002-b.md', 'README.md'],
       date: '2026-09-06',
@@ -64,7 +66,12 @@ describe('planNewAdr', () => {
       'Café stratégy — final',
       'Colons: everywhere: really',
     ]) {
-      const plan = planNewAdr({ title, filenames: ['0001-a.md'], date: '2026-09-06' });
+      const plan = planNewAdr({
+        directory: DIR,
+        title,
+        filenames: ['0001-a.md'],
+        date: '2026-09-06',
+      });
       const fm = parseFrontmatter(plan.content, plan.file)?.frontmatter;
       expect(fm?.title).toBe(title);
       expect(fm?.type).toBe('adr');
@@ -75,10 +82,19 @@ describe('planNewAdr', () => {
 
   it('refuses inconsistent numbering, an empty title, or a bad date', () => {
     expect(() =>
-      planNewAdr({ title: 'A', filenames: ['0001-a.md', '0003-c.md'], date: '2026-09-06' }),
+      planNewAdr({
+        directory: DIR,
+        title: 'A',
+        filenames: ['0001-a.md', '0003-c.md'],
+        date: '2026-09-06',
+      }),
     ).toThrow(/gap-free/);
-    expect(() => planNewAdr({ title: '  ', filenames: [] })).toThrow(UsageError);
-    expect(() => planNewAdr({ title: 'A', filenames: [], date: '9/9/26' })).toThrow(/ISO/);
+    expect(() => planNewAdr({ directory: DIR, title: '  ', filenames: [] })).toThrow(
+      DocsUsageError,
+    );
+    expect(() => planNewAdr({ directory: DIR, title: 'A', filenames: [], date: '9/9/26' })).toThrow(
+      /ISO/,
+    );
   });
 });
 
@@ -177,7 +193,12 @@ describe('validateAdrs', () => {
 
 describe('validateRenderedAdr / renderAdr', () => {
   it('catches a filename/id mismatch before the file is written', () => {
-    const plan = planNewAdr({ title: 'A B', filenames: ['0001-a.md'], date: '2026-09-06' });
+    const plan = planNewAdr({
+      directory: DIR,
+      title: 'A B',
+      filenames: ['0001-a.md'],
+      date: '2026-09-06',
+    });
     const tampered = plan.content.replace('id: adr.0002-a-b', 'id: adr.0002-wrong');
     expect(validateRenderedAdr(tampered, plan.file).join('\n')).toMatch(/must match the filename/);
   });

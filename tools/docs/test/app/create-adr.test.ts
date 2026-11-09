@@ -1,76 +1,84 @@
-import { describe, expect, it } from 'vitest';
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+import {
+  DocsCorpusInvalidError,
+  loadDocsSettings,
+  openFileSystemCorpus,
+  type DocsCorpus,
+} from '@nevo/specflow-docs';
+import type { DocsProject } from '@nevo/specflow-docs/cli';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { createAdr } from '../../src/app/create-adr.js';
-import { CorpusInvalidError } from '../../src/errors.js';
-import { createMemoryRepo } from '../support/memory-repo.js';
+import { REPOSITORY_CORPUS_RULES } from '../../src/cli/program.js';
+import { createAdrFiles } from '../../src/infra/adr-files.js';
+import { createFixtureProject } from '../support/fixture.js';
 
-const fm = (o: Record<string, string>): string =>
-  `---\n${Object.entries(o)
-    .map(([k, v]) => `${k}: ${v}`)
-    .join('\n')}\n---\n# body\n`;
+const projects: DocsProject[] = [];
+afterEach(() =>
+  projects.splice(0).forEach((p) => rmSync(p.root, { recursive: true, force: true })),
+);
 
-const baseRepo = () =>
-  createMemoryRepo({
-    'docs/README.md': fm({ id: 'docs.readme', type: 'hub', title: 'Docs', status: 'current' }),
-    'docs/architecture/decisions/0001-first.md': fm({
-      id: 'adr.0001-first',
-      type: 'adr',
-      title: 'First',
-      status: 'current',
-      date: '2026-09-06',
-      summary: 'A real decision.',
-    }),
-  });
+function setup(): { project: DocsProject; corpus: DocsCorpus } {
+  const project = createFixtureProject();
+  projects.push(project);
+  const { docs } = loadDocsSettings(project);
+
+  return { project, corpus: openFileSystemCorpus(project.root, docs, REPOSITORY_CORPUS_RULES) };
+}
+
+const NEW_ADR = 'docs/architecture/decisions/0002-use-x-for-y.md';
 
 describe('createAdr', () => {
   it('writes the next draft ADR and regenerates the index', () => {
-    const repo = baseRepo();
-    const result = createAdr(repo, { title: 'Use X for Y', date: '2026-09-06' });
-    expect(result.written).toBe(true);
-    expect(result.indexRegenerated).toBe(true);
-    expect(repo.files.get('docs/architecture/decisions/0002-use-x-for-y.md')).toContain(
-      'status: draft',
+    const { project, corpus } = setup();
+    const result = createAdr(corpus, createAdrFiles(project.root, 'docs'), {
+      title: 'Use X for Y',
+      date: '2026-09-06',
+    });
+    expect(result).toMatchObject({ written: true, indexRegenerated: true });
+    expect(readFileSync(join(project.root, NEW_ADR), 'utf8')).toContain('status: draft');
+    expect(readFileSync(join(project.root, 'docs/index.generated.md'), 'utf8')).toContain(
+      'adr.0002-use-x-for-y',
     );
-    expect(repo.readIndex().md).toContain('adr.0002-use-x-for-y');
   });
 
   it('dry-run writes nothing', () => {
-    const repo = baseRepo();
-    const result = createAdr(repo, { title: 'Use X for Y', date: '2026-09-06', dryRun: true });
+    const { project, corpus } = setup();
+    const result = createAdr(corpus, createAdrFiles(project.root, 'docs'), {
+      title: 'Use X for Y',
+      date: '2026-09-06',
+      dryRun: true,
+    });
     expect(result.written).toBe(false);
-    expect(repo.writes).toEqual([]);
+    expect(existsSync(join(project.root, NEW_ADR))).toBe(false);
   });
 
   it('refuses to add on top of an already-invalid corpus', () => {
-    const repo = baseRepo();
-    repo.files.set('docs/broken.md', '# no frontmatter\n');
-    expect(() => createAdr(repo, { title: 'X', date: '2026-09-06' })).toThrow(CorpusInvalidError);
-    expect(repo.writes).toEqual([]);
+    const { project, corpus } = setup();
+    writeFileSync(join(project.root, 'docs/broken.md'), '# no frontmatter\n');
+    expect(() =>
+      createAdr(corpus, createAdrFiles(project.root, 'docs'), { title: 'X', date: '2026-09-06' }),
+    ).toThrow(DocsCorpusInvalidError);
+    expect(existsSync(join(project.root, 'docs/architecture/decisions/0002-x.md'))).toBe(false);
   });
 
   it('rolls the new file back if the post-write corpus check fails', () => {
-    const repo = baseRepo();
-    // A second ADR dir file that will create a numbering gap once 0002 is added
-    // is not possible here; instead simulate a scan that fails by planting a
-    // colliding id via an extra README-less doc AFTER planNewAdr computed 0002.
-    // Simplest deterministic trigger: pre-existing broken doc appears between
-    // plan and re-scan — emulate by overriding scan once.
-    const realScan = repo.scan.bind(repo);
-    let calls = 0;
-    (repo as { scan: typeof repo.scan }).scan = () => {
-      calls += 1;
-      const r = realScan();
-      if (calls >= 2) {
-        return { docs: r.docs, missingFrontmatter: [...r.missingFrontmatter, 'docs/ghost.md'] };
-      }
-
-      return r;
+    const { project, corpus } = setup();
+    const files = createAdrFiles(project.root, 'docs');
+    // A document that turns invalid between the plan and the re-validation.
+    const failing = {
+      ...files,
+      write(file: string, content: string) {
+        files.write(file, content);
+        writeFileSync(join(project.root, 'docs/ghost.md'), '# no frontmatter\n');
+      },
     };
 
-    expect(() => createAdr(repo, { title: 'Later', date: '2026-09-06' })).toThrow(
-      CorpusInvalidError,
+    expect(() => createAdr(corpus, failing, { title: 'Later', date: '2026-09-06' })).toThrow(
+      DocsCorpusInvalidError,
     );
-    expect(repo.removes).toContain('docs/architecture/decisions/0002-later.md');
-    expect(repo.files.has('docs/architecture/decisions/0002-later.md')).toBe(false);
+    expect(existsSync(join(project.root, 'docs/architecture/decisions/0002-later.md'))).toBe(false);
   });
 });

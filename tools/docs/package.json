@@ -2,13 +2,10 @@
   "name": "nevo-repo-docs",
   "private": true,
   "type": "module",
-  "description": "Repository-internal documentation discovery and index for Nevo SpecFlow. Not a product package.",
+  "description": "Repository launcher for the product documentation capability (@nevo/specflow-docs) plus ADR authoring and repository-only ADR checks. Not a product package.",
   "license": "MIT",
   "bin": {
     "nevo-docs": "./dist/bin.js"
-  },
-  "exports": {
-    ".": "./dist/index.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
@@ -18,6 +15,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@nevo/specflow-docs": "workspace:*",
     "commander": "15.0.0",
     "yaml": "2.9.1"
   },

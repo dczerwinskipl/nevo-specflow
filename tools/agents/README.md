@@ -55,7 +55,7 @@ pnpm agents:check
 pnpm agents:test
 ```
 
-The public `docs:*` commands build `nevo-repo-docs` before invoking it, so documentation discovery works on a fresh checkout after `pnpm install`. Agent build/check also verifies the docs corpus/index before validating `knowledge.required`.
+The public `docs:*` commands build `nevo-repo-docs` and `@nevo/specflow-docs` before invoking the launcher, so documentation discovery works on a fresh checkout after `pnpm install`. Agent build/check also verifies the docs corpus/index before validating `knowledge.required`.
 
 Default `--content=embed` copies `auto` instruction bodies into the generated skill. `--content=reference` emits links/tables for `auto` instructions instead. Explicit `delivery: inline` or `delivery: reference` is unchanged by that flag.
 

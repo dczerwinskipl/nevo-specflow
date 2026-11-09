@@ -1,0 +1,60 @@
+# Project configuration of this repository: it is a Nevo SpecFlow project (ADR 0020, dogfooding).
+# Same shape as `nevo-specflow init` writes; see nevo-specflow.example.yaml and
+# docs/reference/configuration/ for every key. Workstation choices (local identity, worktree
+# folder, auto-commit, an embedding endpoint) go to the git-ignored .nevo/local/config.yaml.
+
+runtime:
+  server:
+    host: 127.0.0.1
+    port: 4318
+    tls:
+      enabled: false
+  # Trusted local Runtime without sign-in. Without `authentication.localUserId` in the local config
+  # Runtime access control is disabled; set it to `local-user` to act as that admin.
+  authentication:
+    mode: none
+    users:
+      local-user:
+        name: Local User
+    providers:
+      password:
+        enabled: false
+      oidc:
+        instances: {}
+  authorization:
+    assignments:
+      - userId: local-user
+        role: admin
+
+git:
+  enabled: true
+  integrationTargetBranch: main
+  worktrees:
+    branchPattern: feature/{key}-{slug}
+  commits:
+    protectedBranches: [main, "release/**"]
+
+docs:
+  root: docs
+  taxonomy:
+    scopes: [shared, repo, specflow, nevo-ui]
+    areas:
+      - ai
+      - workflow
+      - runtime
+      - server
+      - cli
+      - ui
+      - figma
+      - testing
+      - docs
+      - release
+      - security
+      - configuration
+  nonAuthoritative: [ideas/]
+  exclude: [templates/]
+  # The team opt-in only: without an `ai.embeddings` endpoint `search` stays lexical (reason
+  # `no-endpoint`). A workstation enables hybrid search by adding the endpoint to the git-ignored
+  # .nevo/local/config.yaml (docs/engineering/repository/local-setup.md).
+  search:
+    semantic: true

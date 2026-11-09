@@ -1,104 +1,62 @@
 # `nevo-repo-docs` (`nevo-docs`)
 
-Repository-internal documentation discovery. Private, never published, not the
-`nevo-specflow` product CLI (ADR 0005).
+This repository's documentation commands. Private, never published, not the `nevo-specflow`
+product CLI (ADR 0005).
 
-It reads the structured frontmatter on every `docs/**/*.md` file and answers
-"which document should I read for this task?" deterministically — no product
-knowledge is baked into the code.
+Documentation discovery is a product capability
+([ADR 0020](../../docs/architecture/decisions/0020-documentation-discovery-is-a-product-capability.md)):
+`@nevo/specflow-docs` owns the frontmatter contract, `list`, `find`, `get`, `context`, `check`,
+`search`, `semantic` and the generated index. This package is a thin launcher that mounts the same
+`createDocsCommand` adapter `nevo-specflow docs` mounts, with this repository as the project
+(`.nevo/config.yaml` declares the taxonomy, `ideas/` as non-authoritative and `templates/` as
+excluded). It adds only what is not product behavior:
+
+- `adr new` — create the next-numbered ADR as a draft and regenerate the index;
+- the repository's ADR rules, run by `check` (and every corpus read) through
+  `corpusRules.validate`: filename/id agreement, ISO `date`, gap-free numbering, resolvable
+  `supersedes`/`superseded_by`, and no generated `TODO` placeholder in a `current` ADR;
+- hints that name the repository scripts (`pnpm docs:check --write`, `pnpm docs:get`).
 
 ## Commands
 
-Run from the repository root:
+Run from the repository root. Each script builds only `@nevo/specflow-docs`, its dependencies and
+this launcher (Turbo, cached; build output goes to stderr), never the bundled product or the UI.
 
 ```bash
-pnpm docs:list                         # every indexed document (all statuses)
-pnpm docs:find git react testing       # every doc matching any term; ranked deterministically
+pnpm docs:search "how are document commits owned by the engine"  # natural-language question
+pnpm docs:find git react testing       # known terms; lexical OR, ranked deterministically
 pnpm docs:get engineering.shared.testing # exact stable-id lookup
-pnpm docs:context "react tailwind"     # every active match; deprecated/superseded excluded
-pnpm docs:adr new "Use X for Y"        # create the next-numbered ADR as a draft
-pnpm docs:check                        # validate the corpus and its relative links + verify the index
+pnpm docs:context "react tailwind"     # active, authoritative matches only
+pnpm docs:list                         # every indexed document (all statuses)
+pnpm docs:check                        # validate corpus, links and ADR rules; verify the index
 pnpm docs:check --write                # also regenerate docs/index.generated.{md,json}
+pnpm docs:semantic status              # semantic search configuration and availability
+pnpm docs:adr new "Use X for Y"        # create the next-numbered ADR as a draft
 ```
 
-`find` uses lexical OR semantics across the supplied terms. With no `--limit`, it returns every
-matching document; use `--scope`, `--area`, or `--tag` when a deterministic taxonomy filter is
-useful. `get` is not search: it resolves exact stable IDs in caller-provided order and fails if
-any ID is unknown.
+Options and output shapes are those of the product command:
+[`nevo-specflow docs`](../../docs/reference/cli/nevo-specflow-docs.md). Configuration keys:
+[documentation and embeddings configuration](../../docs/reference/configuration/documentation-and-embeddings.md).
+Semantic search is a local opt-in; see
+[local setup](../../docs/engineering/repository/local-setup.md#semantic-documentation-search).
 
-`context` feeds an AI agent, so it never recommends a `deprecated` or `superseded`
-document and excludes the non-authoritative `docs/ideas/**` backlog by default. Ideas remain
-available through explicit `find` discovery or exact `get` IDs. Within the eligible corpus,
-`context` returns every matching document unless `--limit` is supplied.
-`list` and `find` can expose historical statuses for inspection. `get` resolves exact active
-stable IDs and fails closed for `deprecated` or `superseded` documents.
+`adr new` writes the file at `status: draft` with `TODO:` placeholders and regenerates the index.
+Fill the sections in, then set `status: current` when the decision is adopted — `docs:check`
+rejects a `current` ADR that still has a TODO placeholder. Titles are serialized through the YAML
+library, so `:` / `#` / quotes / accents in a title cannot corrupt the frontmatter; the slug is
+ASCII-only and deterministic. `--dry-run` prints the file and writes nothing; `--json` emits the
+plan.
 
-`adr new` writes the file at `status: draft` with `TODO:` placeholders and
-regenerates the index. Fill the sections in, then set `status: current` when the
-decision is adopted — `docs:check` rejects a `current` ADR that still has a TODO
-placeholder summary. Titles are serialized through the YAML library, so `:`
-/ `#` / quotes / accents in a title cannot corrupt the frontmatter; the slug is
-still ASCII-only and deterministic.
-
-Each command owns its own options (`nevo-docs find --help`, `nevo-docs adr new --help`):
-`find` takes `--type` / `--status` / `--scope` / `--area` / `--tag` / `--limit` / `--json`;
-`get` takes `--json`; `context` takes `--limit` / `--json`; `adr new` takes `--dry-run` /
-`--json`; `check` takes `--write`.
-
-`list` / `find` / `get` / `context` / `adr` load a **fully validated corpus** — if the docs are
-inconsistent they fail loudly rather than serve partial context. `pnpm docs:check` is
-what CI runs; it exits non-zero on any authored file missing frontmatter, invalid
-frontmatter, an unresolved `related` id, an ADR whose filename and `id` disagree or
-whose date is not ISO, a `current` ADR still carrying a generated `TODO` placeholder
-**anywhere** (summary or body), a stale index, or a broken relative Markdown link. A link must
-resolve to an existing file or directory inside the repository, and a `#fragment` pointing at an
-indexed document must name one of its headings (GitHub slug rules) or `<a id>` anchors. Links in
-code, external URLs and fragments of non-indexed files (templates, generated files) are not
-checked. Broken links never block `--write` from regenerating the index. The generated index carries no
-timestamp, so `--write` twice with no source change leaves the tree clean.
-
-## Architecture
-
-TypeScript, `tsc` → `dist/`; the `nevo-docs` executable is `dist/bin.js`. Same layered
-split as the other `tools/*` packages:
+## Layout
 
 ```
 src/
-  domain/     frontmatter contract · ADR authoring/validation · search · index build  (all pure)
-  app/        load-corpus · find-documents · get-context · validate-documentation · create-adr
-  infra/      doc-repository — the filesystem boundary (scan docs/, read/write index, write/remove ADR)
-  cli/        thin Commander wiring; commands own their own options
-  bin.ts      executable boundary — build deps, run the program, map errors to exit codes
+  domain/adr.ts         ADR planning, rendering and the repository ADR rules (pure)
+  app/create-adr.ts     plan → write → re-validate → roll back on failure → regenerate the index
+  infra/adr-files.ts    list/write/remove files in the ADR directory
+  cli/program.ts        createDocsCommand + repository rules + `adr`
+  bin.ts                resolve the repository root, run the program, map errors to exit codes
 ```
 
-The use cases run against a `DocRepository` port: `create-adr` (plan → validate in
-memory → write → re-validate → roll the file back on failure → regenerate the index) is
-driven by an in-memory repository in tests; a temp-dir test covers the real adapter.
-
-## Frontmatter contract
-
-```yaml
----
-id: engineering.repository.git-workflow # stable concept id, unique across docs/
-type: engineering # hub | architecture | adr | engineering | product | reference | instruction
-title: Git workflow
-status: current # current | draft | deprecated | superseded
-scope: repo # optional: shared | repo | specflow | nevo-ui
-areas: # optional controlled major concerns from ADR 0007
-  - release
-tags: # optional, extensible, lowercase kebab-case vocabulary
-  - git
-  - github
-read_when: # non-empty for non-hub guidance/reference docs
-  - creating a branch
-  - preparing a pull request
-summary: >
-  One or two sentences describing what the document covers.
-related: # optional; each id must resolve
-  - engineering.repository.commit-conventions
----
-```
-
-An authored `docs/**/*.md` file with **no** frontmatter block is a `docs:check`
-failure — it must not silently disappear from discovery. Only two things are exempt:
-`docs/templates/**` (copy-me starters) and `*.generated.*` (owned by the generator).
+Tests use a small temporary fixture project; none reads this repository's `docs/`. The index
+currency check (`pnpm docs:check` in `check:quality`) covers the real corpus.

@@ -37,5 +37,6 @@ pnpm docs:context "react tailwind"
 
 ## Authoring
 
-Every authored document carries YAML frontmatter. Generated files and [`templates/`](templates/)
-are exempt. Run `pnpm docs:check` to validate the corpus and generated index.
+Every authored document carries YAML frontmatter. Generated files are exempt, and
+[`templates/`](templates/) is excluded from the corpus (`docs.exclude` in `.nevo/config.yaml`).
+Run `pnpm docs:check` to validate the corpus and generated index.

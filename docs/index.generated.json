@@ -404,6 +404,41 @@
       ]
     },
     {
+      "id": "ideas.specflow-engine.reusable-workflow",
+      "type": "hub",
+      "title": "Reusable Workflow, Task resources and manual execution",
+      "status": "draft",
+      "file": "docs/ideas/specflow-engine/reusable-workflow-manual-execution/README.md",
+      "read_when": [
+        "planning a reusable Workflow capability independent of Specification and Task",
+        "adding Task authoring and manual Specification or Task execution through the UI",
+        "reviewing the gates and sequencing of the next workflow implementation slices"
+      ],
+      "summary": "Non-authoritative proposal to separate neutral Workflow progression from SpecFlow resource and storage ownership, add standalone Task creation and documents, support fully manual UI execution, and later render typed transition inputs.",
+      "related": [
+        "ideas.specflow-engine",
+        "ideas.specflow-engine.task-resource-and-context",
+        "ideas.specflow-engine.workflow-api-requirements",
+        "architecture.workflow.workflow-kernel",
+        "adr.0019-workflow-kernel-and-automatic-continuation"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "workflow",
+        "runtime",
+        "ui",
+        "cli",
+        "docs"
+      ],
+      "tags": [
+        "proposal",
+        "workflow",
+        "task-resource",
+        "manual-execution",
+        "implementation-plan"
+      ]
+    },
+    {
       "id": "ideas.specflow-runtime.ai-adapters",
       "type": "hub",
       "title": "AI adapter hardening ideas",
@@ -1492,6 +1527,43 @@
         "idempotency",
         "journal",
         "persistence"
+      ]
+    },
+    {
+      "id": "ideas.specflow-engine.reusable-workflow.boundaries",
+      "type": "architecture",
+      "title": "Reusable Workflow boundaries and unresolved design decisions",
+      "status": "draft",
+      "file": "docs/ideas/specflow-engine/reusable-workflow-manual-execution/boundaries-and-decisions.md",
+      "read_when": [
+        "defining the reusable Workflow package boundary or API",
+        "designing Task CRUD without a running Specification workflow",
+        "deciding human execution, transition inputs, or close eligibility"
+      ],
+      "summary": "Candidate responsibility map and open P1/P2 decisions that must be resolved before extracting Workflow and exposing manual Task execution.",
+      "related": [
+        "ideas.specflow-engine.reusable-workflow",
+        "ideas.specflow-engine.task-resource-and-context",
+        "ideas.specflow-engine.decisions",
+        "architecture.workflow.workflow-kernel",
+        "adr.0012-product-package-topology-and-dependency-direction"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "workflow",
+        "runtime",
+        "ui",
+        "cli",
+        "testing",
+        "security"
+      ],
+      "tags": [
+        "proposal",
+        "architecture",
+        "ownership",
+        "atomicity",
+        "manual-execution",
+        "decisions"
       ]
     },
     {
@@ -3258,6 +3330,41 @@
         "continuation",
         "attention",
         "archetypes"
+      ]
+    },
+    {
+      "id": "ideas.specflow-engine.reusable-workflow.delivery",
+      "type": "engineering",
+      "title": "Reusable Workflow and manual execution delivery plan",
+      "status": "draft",
+      "file": "docs/ideas/specflow-engine/reusable-workflow-manual-execution/delivery-plan.md",
+      "read_when": [
+        "scoping implementation slices for reusable Workflow and Task resources",
+        "selecting review checkpoints before Task authoring and manual execution",
+        "checking end-to-end acceptance without Managed Sessions"
+      ],
+      "summary": "Proposed E0-E5 delivery sequence with isolated reviewable vertical slices, preservation tests, no automatic AI dispatch and a complete manual UI proof.",
+      "related": [
+        "ideas.specflow-engine.reusable-workflow",
+        "ideas.specflow-engine.reusable-workflow.boundaries",
+        "ideas.specflow-engine.task-resource-and-context",
+        "ideas.specflow-engine.plan-06",
+        "architecture.workflow.workflow-kernel"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "workflow",
+        "runtime",
+        "ui",
+        "cli",
+        "testing"
+      ],
+      "tags": [
+        "proposal",
+        "delivery-plan",
+        "slices",
+        "task-resource",
+        "manual-ui"
       ]
     },
     {

@@ -47,6 +47,7 @@ Open proposals (draft, non-authoritative; current documentation and code win):
 | [Workspace binding lifecycle](workspace-binding-lifecycle.md)                                         | Relocate, repair, active Turn blocking rebind                                                        |
 | [Ownership and state](ownership-and-state.md)                                                         | Human approval provenance; external claim reconciliation on boot                                     |
 | [Local actor and human gates](local-actor-and-human-gates.md)                                         | Local trust model for human approvals                                                                |
+| [Reusable Workflow and manual UI execution](reusable-workflow-manual-execution/README.md)             | Neutral Workflow extraction, Task CRUD, manual execution and typed forms (decision-gated draft)      |
 | [Task resource and context](task-resource-and-context.md)                                             | Task folders, index, documents and context lists (plan 06 F20)                                       |
 | [Legacy Nevo migration](legacy-nevo-migration.md)                                                     | Legacy modules not yet ported                                                                        |
 | [Decisions](decisions-and-promotion.md)                                                               | Open decision register                                                                               |

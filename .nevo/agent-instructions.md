@@ -23,6 +23,12 @@ pnpm docs:find react git testing
 pnpm docs:get engineering.repository.git-workflow engineering.shared.testing
 ```
 
+Route natural-language questions, and questions whose repository vocabulary you do not know, to `docs:search`; use `docs:find` for known terms and taxonomy filters. Resolve every selected document with `docs:get` and read the file in full. Each `docs:search` result states its `mode` (`hybrid`, or `lexical` with a `reason`), so there is no need to check semantic search status first:
+
+```bash
+pnpm docs:search "how are document commits owned by the engine"
+```
+
 `docs:get` fails closed for `deprecated` and `superseded` documents. Replace an inactive ID with its current authoritative successor before continuing.
 
 Do not infer repository-specific rules when no matching documentation exists. Prefer the authoritative document over duplicated guidance in prompts or generated skills.

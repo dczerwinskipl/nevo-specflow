@@ -125,11 +125,16 @@ Readiness, lanes and statuses are derived from these, never stored.
   attempts and returns are replayed in sequence order from `not-started`: the first attempt is of the
   entry step, and every later attempt is of the step the previous record led to (an Engine-entered
   wait step included); an open attempt makes the run `active` on it, so it can only be the last
-  record; a finished attempt leads where its recorded transition (from that attempt's step) targets;
-  an attempt ended by a return, and a return record (whose `from` must be the replayed position), lead
-  to the return's step. A replayed return follows the rules of `returnToStep`: its step is one the
-  definition declares in `returns[]`, and an attempt replayed so far (the returned attempt included)
-  was of that step. The replay must end at the stored position, whatever its state. A hand-edited
+  record; an attempt of a work step carries an `executor` of the step's kind (`agent` or `human`),
+  and an attempt of a wait step, which the Engine starts, carries none, so the Session check of a
+  finish or resume always has the starting executor; a finished attempt leads where its recorded
+  transition (from that attempt's step) targets, and it records the transition's `result` (none when
+  the transition declares none) and non-empty feedback when the transition requires feedback, as
+  `planFinish` enforces; an attempt ended by a return, and a return record (whose `from` must be the
+  replayed position), lead to the return's step. A replayed return follows the rules of
+  `returnToStep`: its step is one the definition declares in `returns[]`, an attempt replayed so far
+  (the returned attempt included) was of that step, and it carries non-empty feedback when the
+  return requires feedback. The replay must end at the stored position, whatever its state. A hand-edited
   position or history that does not follow (for example `ready: acceptance` with an empty history,
   `active` on `acceptance` right after `requirements`, an attempt of a step nothing led to, or a return
   from `specification` to the undeclared `acceptance` or to the not yet reached `breakdown`) fails

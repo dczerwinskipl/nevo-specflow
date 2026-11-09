@@ -207,6 +207,14 @@ change.`); each reason stays in the Task's `statusChange`, listed in the next st
   `planReturn` requires; and a Specification finish that would end the run `terminal completed` is
   refused (`WORKFLOW_INPUT_INVALID`, nothing written) while any Task is broken.
 
+  External re-review (R08–R09), in the same PR, by extending the replay (`isPositionJustified`): a
+  recorded transition must carry the result its transition declares (none when it declares none)
+  and the feedback a transition or return requires, as `planFinish` and `planReturn` enforce; and
+  every attempt of a work step must carry an executor of the step's kind, while an Engine-started
+  wait-step attempt carries none, so a hand-removed executor on an active agent attempt can no longer
+  let another Session finish it. A violation is `WORKFLOW_STATE_CORRUPT` for the Specification and
+  makes a Task broken.
+
 ## 3. Follow-ups
 
 Each follow-up is independent unless it says otherwise. All of them reuse the operations; none adds

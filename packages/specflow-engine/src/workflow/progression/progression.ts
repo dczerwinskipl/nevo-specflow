@@ -307,23 +307,41 @@ export function lastArrival(
 }
 
 /**
- * The stored position must follow from the history, read with the pinned definition. The records
- * (attempts and returns) are replayed in sequence order from `not-started`: the first attempt is of
- * the entry step and every later one of the step the previous record led to (an Engine-entered wait
- * step included); an open attempt makes the run active on it, so it can only be the last record; a
- * finished attempt leads where its recorded (declared) transition targets, an attempt ended by a return and a
- * return record (written only while no attempt is active, from the position it records) to the
- * return's step. A return, like `planReturn`, targets a return the definition declares and a step
- * an attempt replayed so far (the returned attempt included) was of. The position the replay ends
- * at must be the stored one. Anything else is a hand-edited or foreign record.
+ * The stored position must follow from the history, read with the pinned definition, under the rules
+ * the operations apply when they write it. The records (attempts and returns) are replayed in
+ * sequence order from `not-started`:
+ *
+ * - the first attempt is of the entry step and every later one of the step the previous record led
+ *   to (an Engine-entered wait step included); an open attempt makes the run active on it, so it can
+ *   only be the last record;
+ * - an attempt of a work step carries an executor of the step's kind; an attempt of a wait step
+ *   (started by the Engine) carries none;
+ * - a finished attempt leads where its recorded transition of that step targets, with the result
+ *   the transition declares (none when it declares none) and feedback when the transition requires
+ *   it (`planFinish`);
+ * - an attempt ended by a return, and a return record (written only while no attempt is active, from
+ *   the position it records), lead to the return's step; like `planReturn`, it is a return the
+ *   definition declares, to a step an attempt replayed so far (the returned attempt included) was of,
+ *   with feedback when the return requires it.
+ *
+ * The position the replay ends at must be the stored one. Anything else is a hand-edited or foreign
+ * record.
  */
 export function isPositionJustified(run: WorkflowRun, definition: WorkflowDefinition): boolean {
   const records = [...run.attempts, ...run.returns].sort(
     (left, right) => left.sequence - right.sequence,
   );
   const reached = new Set<string>();
-  const returnAllowed = (to: string) =>
-    reached.has(to) && definition.returns.some((candidate) => candidate.step === to);
+  const returnAllowed = (to: string, feedback: string | undefined) => {
+    const entry = definition.returns.find((candidate) => candidate.step === to);
+
+    return (
+      entry !== undefined &&
+      reached.has(to) &&
+      (entry.feedback !== 'required' || Boolean(feedback?.trim()))
+    );
+  };
+
   let expected: RunPosition = { state: 'not-started' };
   for (const record of records) {
     if ('from' in record) {
@@ -331,7 +349,7 @@ export function isPositionJustified(run: WorkflowRun, definition: WorkflowDefini
         expected.state === 'active' ||
         expected.state === 'terminal' ||
         !isDeepStrictEqual(record.from, expected) ||
-        !returnAllowed(record.to)
+        !returnAllowed(record.to, record.feedback)
       ) {
         return false;
       }
@@ -346,31 +364,43 @@ export function isPositionJustified(run: WorkflowRun, definition: WorkflowDefini
         : expected.state === 'ready'
           ? expected.step
           : undefined;
-    if (record.step !== starts) {
+    const step: WorkflowStep | undefined =
+      record.step === starts ? findStep(definition, record.step) : undefined;
+    if (
+      !step ||
+      (step.kind === 'work'
+        ? record.executor?.kind !== step.executor
+        : record.executor !== undefined)
+    ) {
       return false;
     }
 
-    reached.add(record.step);
+    reached.add(step.id);
     const outcome = record.outcome;
-    if (outcome?.kind === 'returned' && !returnAllowed(outcome.to)) {
-      return false;
-    }
-
-    if (outcome?.kind === 'transition') {
-      const transition = findStep(definition, record.step)?.transitions.find(
-        (candidate) => candidate.id === outcome.transition,
-      );
-      if (!transition) {
-        return false;
-      }
-
-      expected = positionAfter(transition);
+    if (!outcome) {
+      expected = { state: 'active', step: step.id, attempt: record.attempt };
       continue;
     }
 
-    expected = outcome
-      ? { state: 'ready', step: outcome.to }
-      : { state: 'active', step: record.step, attempt: record.attempt };
+    if (outcome.kind === 'returned') {
+      if (!returnAllowed(outcome.to, outcome.feedback)) {
+        return false;
+      }
+
+      expected = { state: 'ready', step: outcome.to };
+      continue;
+    }
+
+    const transition = step.transitions.find((candidate) => candidate.id === outcome.transition);
+    if (
+      !transition ||
+      outcome.result !== transition.result ||
+      (transition.feedback === 'required' && !outcome.feedback?.trim())
+    ) {
+      return false;
+    }
+
+    expected = positionAfter(transition);
   }
 
   return isDeepStrictEqual(expected, run.position);

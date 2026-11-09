@@ -16,9 +16,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { symlinksAvailable } from '../../../test/support/platform';
 
 import { sha256Hex } from '../../hash';
-import { finishStep } from '../operations/finish';
+import { finishStep, type FinishStepInput } from '../operations/finish';
 import { inspectExecution } from '../operations/inspect';
 import {
+  agent,
   claude,
   memoryDependencies,
   owner,
@@ -955,11 +956,163 @@ describe('filesystem workflow store: the position follows from the history', () 
         ],
       }),
     ],
+    [
+      'a recorded result the transition does not declare',
+      (run) => ({
+        ...run,
+        attempts: run.attempts.map((attempt) =>
+          attempt.outcome?.kind === 'transition'
+            ? { ...attempt, outcome: { ...attempt.outcome, result: 'pass' } }
+            : attempt,
+        ),
+      }),
+    ],
+    [
+      'an agent attempt without its executor',
+      (run) => ({
+        ...run,
+        attempts: run.attempts.map(({ executor: _executor, ...attempt }) => attempt),
+      }),
+    ],
+    [
+      'an agent attempt with a human executor',
+      (run) => ({
+        ...run,
+        attempts: run.attempts.map((attempt) => ({ ...attempt, executor: owner })),
+      }),
+    ],
+    [
+      'a return record without the feedback the return requires',
+      (run) => ({
+        ...run,
+        position: { state: 'ready', step: 'requirements' },
+        returns: [
+          {
+            sequence: 2,
+            at: '2026-11-05T10:00:05.000Z',
+            from: { state: 'ready', step: 'specification' },
+            to: 'requirements',
+          },
+        ],
+      }),
+    ],
+    [
+      'an attempt returned without the feedback the return requires',
+      (run) => ({
+        ...run,
+        position: { state: 'ready', step: 'specification' },
+        attempts: [
+          ...run.attempts,
+          {
+            step: 'specification',
+            attempt: 1,
+            sequence: 2,
+            startedAt: '2026-11-05T10:00:05.000Z',
+            executor: claude,
+            endedAt: '2026-11-05T10:00:06.000Z',
+            outcome: { kind: 'returned', to: 'specification' },
+          },
+        ],
+      }),
+    ],
   ])('refuses %s', async (_name, edit) => {
     const dependencies = await editedRun(edit);
 
     await expect(inspectExecution(dependencies, SPEC)).rejects.toMatchObject(corrupt);
     await expect(startSpecification(dependencies)).rejects.toMatchObject(corrupt);
+  });
+
+  it('refuses a finish from another Session once the active attempt lost its executor', async () => {
+    const dependencies = await operations();
+    await startSpecification(dependencies);
+    const stored = parseSpecificationRecord(await readFile(specificationPath(), 'utf8'));
+    await writeFile(
+      specificationPath(),
+      serializeSpecificationRecord({
+        ...stored,
+        run: {
+          ...stored.run,
+          attempts: stored.run.attempts.map(({ executor: _executor, ...attempt }) => attempt),
+        },
+      }),
+    );
+
+    await expect(inspectExecution(dependencies, SPEC)).rejects.toMatchObject(corrupt);
+    await expect(
+      finishStep(dependencies, {
+        subject: operationSpecification,
+        step: 'requirements',
+        attempt: 1,
+        input: {},
+        executor: agent('claude', 'session-other'),
+      }),
+    ).rejects.toMatchObject(corrupt);
+  });
+
+  it.each<[string, readonly FinishStepInput['input'][], (run: WorkflowRun) => WorkflowRun]>([
+    [
+      'a recorded result other than the transition declares',
+      [{}, { result: 'pass' }],
+      (run) => ({
+        ...run,
+        attempts: run.attempts.map((attempt) =>
+          attempt.outcome?.kind === 'transition' && attempt.outcome.result === 'pass'
+            ? { ...attempt, outcome: { ...attempt.outcome, result: 'fail' } }
+            : attempt,
+        ),
+      }),
+    ],
+    [
+      'a transition without the feedback it requires',
+      [{}, { result: 'fail', feedback: 'Fix it.' }],
+      (run) => ({
+        ...run,
+        attempts: run.attempts.map((attempt) => {
+          if (attempt.outcome?.kind !== 'transition') {
+            return attempt;
+          }
+
+          const { feedback: _feedback, ...outcome } = attempt.outcome;
+
+          return { ...attempt, outcome };
+        }),
+      }),
+    ],
+    [
+      'an active agent attempt without its executor',
+      [],
+      (run) => ({
+        ...run,
+        position: { state: 'active', step: 'implement', attempt: 1 },
+        attempts: [
+          {
+            step: 'implement',
+            attempt: 1,
+            sequence: 1,
+            startedAt: run.attempts[0]?.startedAt ?? '',
+          },
+        ],
+      }),
+    ],
+  ])('makes a Task broken for %s', async (_name, finishes, edit) => {
+    const dependencies = await operations();
+    await specificationWithTasks(dependencies);
+    for (const input of finishes) {
+      await work(dependencies, operationTask('api'), input);
+    }
+
+    if (finishes.length === 0) {
+      await startTaskExecution(dependencies, { specId: SPEC, taskId: 'api', executor: claude });
+    }
+
+    const path = join(tasksDirectory(), 'api.yaml');
+    const stored = parseTaskRecord(await readFile(path, 'utf8'));
+    await writeFile(path, serializeTaskRecord({ ...stored, run: edit(stored.run) }));
+
+    expect((await inspectExecution(dependencies, SPEC)).brokenTasks).toEqual(['api']);
+    await expect(
+      startTaskExecution(dependencies, { specId: SPEC, taskId: 'api', executor: claude }),
+    ).rejects.toMatchObject(corrupt);
   });
 
   it('accepts an attempt returned to its own declared step', async () => {
@@ -973,8 +1126,9 @@ describe('filesystem workflow store: the position follows from the history', () 
           attempt: 1,
           sequence: 2,
           startedAt: '2026-11-05T10:00:05.000Z',
+          executor: claude,
           endedAt: '2026-11-05T10:00:06.000Z',
-          outcome: { kind: 'returned', to: 'specification' },
+          outcome: { kind: 'returned', to: 'specification', feedback: 'Again.' },
         },
       ],
     }));

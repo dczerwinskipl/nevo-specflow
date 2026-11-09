@@ -12,10 +12,27 @@ export interface ScanResult {
   readonly missingFrontmatter: string[];
 }
 
+/** One markdown file under the documentation root and the stat the search freshness check uses. */
+export interface MarkdownFileStat {
+  /** Path relative to the project root, with `/` separators. */
+  readonly file: string;
+  readonly mtimeMs: number;
+  readonly size: number;
+  /** The file needs no frontmatter (host exemption). */
+  readonly frontmatterExempt: boolean;
+}
+
 /** Everything the discovery use cases touch on disk. */
 export interface DocRepository {
   /** Walk the documentation root, parse frontmatter and return the deterministic corpus. */
   scan(): ScanResult;
+  /**
+   * The markdown files `scan` reads (generated index files excluded), in walk order, with their
+   * stat and without reading them.
+   */
+  listMarkdownFiles(): MarkdownFileStat[];
+  /** Read one file `listMarkdownFiles` returned. */
+  readMarkdownFile(file: string): string;
   /** Whether a project-root-relative path (`/` separators) names an existing file or directory. */
   pathExists(projectRelPath: string): boolean;
   readIndex(): OnDiskIndex;
@@ -25,8 +42,8 @@ export interface DocRepository {
 export const INDEX_JSON_FILE = 'index.generated.json';
 export const INDEX_MD_FILE = 'index.generated.md';
 
-function walkMarkdown(dir: string): string[] {
-  const out: string[] = [];
+function walkMarkdown(dir: string): { abs: string; mtimeMs: number; size: number }[] {
+  const out: { abs: string; mtimeMs: number; size: number }[] = [];
   let names: string[];
   try {
     names = readdirSync(dir);
@@ -36,10 +53,11 @@ function walkMarkdown(dir: string): string[] {
 
   for (const name of [...names].sort((a, b) => a.localeCompare(b))) {
     const full = join(dir, name);
-    if (statSync(full).isDirectory()) {
+    const stat = statSync(full);
+    if (stat.isDirectory()) {
       out.push(...walkMarkdown(full));
     } else if (extname(name) === '.md' && !name.includes('.generated.')) {
-      out.push(full);
+      out.push({ abs: full, mtimeMs: stat.mtimeMs, size: stat.size });
     }
   }
 
@@ -83,7 +101,7 @@ export function createFileSystemDocRepository({
       const docs: DocRecord[] = [];
       const missingFrontmatter: string[] = [];
 
-      for (const abs of walkMarkdown(docsDir)) {
+      for (const { abs } of walkMarkdown(docsDir)) {
         const file = toPosix(relative(projectRoot, abs));
         const parsed = parseFrontmatter(readFileSync(abs, 'utf8'), file);
         if (parsed === null) {
@@ -101,6 +119,19 @@ export function createFileSystemDocRepository({
       missingFrontmatter.sort();
 
       return { docs, missingFrontmatter };
+    },
+
+    listMarkdownFiles(): MarkdownFileStat[] {
+      return walkMarkdown(docsDir).map(({ abs, mtimeMs, size }) => ({
+        file: toPosix(relative(projectRoot, abs)),
+        mtimeMs,
+        size,
+        frontmatterExempt: isFrontmatterExempt?.(toPosix(relative(docsDir, abs))) ?? false,
+      }));
+    },
+
+    readMarkdownFile(file): string {
+      return readFileSync(join(projectRoot, ...file.split('/')), 'utf8');
     },
 
     pathExists(projectRelPath): boolean {

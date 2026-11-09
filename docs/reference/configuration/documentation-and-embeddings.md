@@ -1,0 +1,128 @@
+---
+id: reference.configuration.documentation-and-embeddings
+type: reference
+title: Documentation and embeddings configuration
+status: current
+scope: specflow
+areas: [configuration, docs, ai, security]
+read_when:
+  - configuring the documentation root, taxonomy or non-authoritative paths of a project
+  - enabling semantic documentation search or configuring an embedding endpoint
+  - diagnosing a docs or ai.embeddings configuration error
+summary: >
+  The docs namespace (root, taxonomy, non-authoritative prefixes, search.semantic) and the
+  ai.embeddings endpoint (protocol, baseUrl, model, dimensions, apiKeyEnv, queryInstruction,
+  batchSize, timeoutMs): which file may hold them, how they merge, their validation and defaults.
+related:
+  - adr.0020-documentation-discovery-is-a-product-capability
+  - adr.0021-product-neutral-ai-semantic-search-engine
+  - architecture.runtime.configuration
+  - reference.cli.nevo-specflow-docs
+---
+
+# Documentation and embeddings configuration
+
+The documentation capability (`@nevo/specflow-docs`,
+[ADR 0020](../../architecture/decisions/0020-documentation-discovery-is-a-product-capability.md))
+owns two configuration namespaces: `docs` and `ai.embeddings`. The
+[`nevo-specflow docs`](../cli/nevo-specflow-docs.md) commands and Runtime config loading validate
+them with the same rules. Both files are optional; a missing file or key means the default.
+
+| Namespace       | `.nevo/config.yaml` (project) | `.nevo/local/config.yaml` (local)    |
+| --------------- | ----------------------------- | ------------------------------------ |
+| `docs`          | allowed                       | rejected                             |
+| `ai.embeddings` | allowed (team default)        | allowed; the local value wins by key |
+
+The `docs` command reads only these two namespaces; other namespaces (including `runtime` and other
+`ai` keys) are neither required nor validated by it.
+
+## `docs`
+
+```yaml
+docs:
+  root: docs # documentation root, relative to the project root
+  taxonomy:
+    scopes: [shared, specflow] # allowed `scope` values
+    areas: [cli, docs, testing] # allowed `areas` values
+  nonAuthoritative: [ideas/] # path prefixes under `root` that `context` and `search` skip
+  search:
+    semantic: true # opt in to hybrid `search`; also needs `ai.embeddings`
+```
+
+| Key                     | Meaning                                                                   | Default      |
+| ----------------------- | ------------------------------------------------------------------------- | ------------ |
+| `docs.root`             | Relative directory with `/` separators; no `.` or `..` segments           | `docs`       |
+| `docs.taxonomy.scopes`  | Non-empty list of distinct values; any other `scope` is a `check` problem | unrestricted |
+| `docs.taxonomy.areas`   | Non-empty list of distinct values; any other area is a `check` problem    | unrestricted |
+| `docs.nonAuthoritative` | Directory prefixes relative to `docs.root` (a trailing `/` is optional)   | none         |
+| `docs.search.semantic`  | `true` or `false`                                                         | `false`      |
+
+An unknown key under `docs`, `docs.taxonomy` or `docs.search` is an error. Document types, required
+fields and statuses are the product frontmatter contract and are not configurable.
+
+`context` never returns documents under a non-authoritative prefix; `search` skips them unless
+`--include-non-authoritative` is given; `list`, `find` and `get` return them.
+
+## `ai.embeddings`
+
+```yaml
+# .nevo/config.yaml — team default
+ai:
+  embeddings:
+    protocol: openai-compatible
+    baseUrl: http://127.0.0.1:11434/v1
+    model: qwen3-embedding:0.6b
+    queryInstruction: "Instruct: Given a question, retrieve documentation that answers it\nQuery: "
+```
+
+```yaml
+# .nevo/local/config.yaml — this workstation's endpoint
+ai:
+  embeddings:
+    baseUrl: https://embeddings.example.com/v1
+    model: text-embedding-3-small
+    apiKeyEnv: EMBEDDINGS_API_KEY
+```
+
+The two files merge key by key, the local value winning; the example resolves to the remote
+endpoint and model with the project's `protocol` and `queryInstruction`. Either file alone may
+configure the endpoint. After merging, `protocol`, `baseUrl` and `model` are required.
+
+| Key                | Meaning                                                                                   | Default           |
+| ------------------ | ----------------------------------------------------------------------------------------- | ----------------- |
+| `protocol`         | `openai-compatible` (`POST {baseUrl}/embeddings`), the only protocol                      | required          |
+| `baseUrl`          | Absolute `http` or `https` URL without credentials, query or fragment                     | required          |
+| `model`            | Model id sent to the endpoint                                                             | required          |
+| `dimensions`       | Expected vector dimension; a different observed dimension is an endpoint error            | observed by probe |
+| `apiKeyEnv`        | Name of the environment variable holding the API key (upper-case letters, digits and `_`) | no key sent       |
+| `queryInstruction` | Prefix added to queries only, for instruction-tuned models                                | none              |
+| `batchSize`        | Texts per request when embedding documents                                                | 32                |
+| `timeoutMs`        | Per-request timeout for document embedding; query embedding uses at most 3000 ms of it    | 10000             |
+
+### Secrets
+
+The API key is never stored in configuration. `apiKeyEnv` names the variable; the command reads it
+when it calls the endpoint and sends it as a bearer token. These are rejected when the file is
+loaded, with a message naming the file and key:
+
+- a key that would hold a secret (`apiKey`, `key`, `token`, `accessToken`, `secret`, `password`,
+  `authorization`, `bearer`);
+- an `apiKeyEnv` value that is not an upper-case variable name (a pasted key is never one);
+- credentials, a query string or a fragment in `baseUrl`.
+
+A named variable that is not set is not a configuration error: `search` answers lexically with
+reason `endpoint-unreachable` and `semantic status` reports it.
+
+## Effective search mode
+
+`search` answers in `hybrid` mode only when `docs.search.semantic` is `true`, an endpoint is
+configured and reachable, and the index is current; otherwise it answers `lexical` with a reason
+(see the [CLI reference](../cli/nevo-specflow-docs.md#search)). Configuration problems fail every
+`docs` command with exit 1; an unavailable endpoint or index never does.
+
+## Local cache
+
+The semantic index lives in `.nevo/local/cache/docs-index/` below the project root: the vectors
+(`vectors/`) and the parsed chunks of each document (`units.json`). It is disposable cache
+([project configuration and local state](../../architecture/runtime/configuration.md)): deleting it
+costs only re-embedding. `search` writes nothing there while semantic search is not enabled.

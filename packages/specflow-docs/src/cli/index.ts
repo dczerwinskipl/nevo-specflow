@@ -10,25 +10,30 @@ import { addFindCommand } from './commands/find';
 import { addGetCommand } from './commands/get';
 import { addListCommand } from './commands/list';
 import type { DocsCommandContext } from './context';
-import { corpusOpener } from './open-corpus';
+import { addSearchCommand } from './commands/search';
+import { addSemanticCommand } from './commands/semantic';
+import { corpusOpener, projectOpener } from './open-corpus';
 
 export type { DocsCommandContext, DocsProject } from './context';
 
 export function createDocsCommand(ctx: DocsCommandContext): Command {
   const docs = new Command('docs')
-    .description('Discover, validate and index the project documentation')
+    .description('Discover, search, validate and index the project documentation')
     // Set before the subcommands are created so they inherit it.
     .configureOutput({
       writeOut: (str) => ctx.stdout(str.replace(/\n$/, '')),
       writeErr: (str) => ctx.stderr(str.replace(/\n$/, '')),
     });
 
-  const open = corpusOpener(ctx);
+  const openProject = projectOpener(ctx);
+  const open = corpusOpener(openProject);
   addListCommand(docs, ctx, open);
   addFindCommand(docs, ctx, open);
   addGetCommand(docs, ctx, open);
   addContextCommand(docs, ctx, open);
   addCheckCommand(docs, ctx, open);
+  addSearchCommand(docs, ctx, openProject);
+  addSemanticCommand(docs, ctx, openProject);
 
   return docs;
 }

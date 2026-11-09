@@ -5043,15 +5043,16 @@
       "status": "current",
       "file": "docs/reference/cli/nevo-specflow-docs.md",
       "read_when": [
-        "using nevo-specflow docs list, find, get, context or check",
-        "configuring the documentation root, taxonomy or non-authoritative paths of a project",
-        "checking the output or exit codes of documentation discovery"
+        "using nevo-specflow docs list, find, get, context, check, search or semantic",
+        "checking the output, search mode or exit codes of documentation discovery"
       ],
-      "summary": "The deterministic documentation commands of nevo-specflow docs (list, find, get, context, check), the docs configuration keys they read, their output and their exit codes.",
+      "summary": "The documentation commands of nevo-specflow docs: deterministic list, find, get, context and check, semantic search with its hybrid or lexical mode and reasons, semantic status and index, their output and exit codes.",
       "related": [
         "adr.0020-documentation-discovery-is-a-product-capability",
+        "adr.0021-product-neutral-ai-semantic-search-engine",
         "adr.0007-documentation-architecture-and-taxonomy",
         "reference.cli.nevo-specflow-contract",
+        "reference.configuration.documentation-and-embeddings",
         "architecture.runtime.configuration"
       ],
       "scope": "specflow",
@@ -5104,6 +5105,32 @@
       "areas": [
         "configuration",
         "runtime",
+        "security"
+      ]
+    },
+    {
+      "id": "reference.configuration.documentation-and-embeddings",
+      "type": "reference",
+      "title": "Documentation and embeddings configuration",
+      "status": "current",
+      "file": "docs/reference/configuration/documentation-and-embeddings.md",
+      "read_when": [
+        "configuring the documentation root, taxonomy or non-authoritative paths of a project",
+        "enabling semantic documentation search or configuring an embedding endpoint",
+        "diagnosing a docs or ai.embeddings configuration error"
+      ],
+      "summary": "The docs namespace (root, taxonomy, non-authoritative prefixes, search.semantic) and the ai.embeddings endpoint (protocol, baseUrl, model, dimensions, apiKeyEnv, queryInstruction, batchSize, timeoutMs): which file may hold them, how they merge, their validation and defaults.",
+      "related": [
+        "adr.0020-documentation-discovery-is-a-product-capability",
+        "adr.0021-product-neutral-ai-semantic-search-engine",
+        "architecture.runtime.configuration",
+        "reference.cli.nevo-specflow-docs"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "configuration",
+        "docs",
+        "ai",
         "security"
       ]
     },

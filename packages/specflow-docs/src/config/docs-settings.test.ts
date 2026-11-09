@@ -14,6 +14,7 @@ describe('parseDocsConfig', () => {
       root: 'docs',
       taxonomy: {},
       nonAuthoritative: [],
+      search: { semantic: false },
     });
     expect(parseDocsConfig({ taxonomy: { areas: ['cli'] } })).toEqual({
       ...DEFAULT_DOCS_SETTINGS,
@@ -23,10 +24,11 @@ describe('parseDocsConfig', () => {
 
   it('normalizes a trailing slash on the root and the prefixes', () => {
     expect(parseDocsConfig({ root: 'handbook/', nonAuthoritative: ['ideas/', 'drafts'] })).toEqual({
+      ...DEFAULT_DOCS_SETTINGS,
       root: 'handbook',
-      taxonomy: {},
       nonAuthoritative: ['ideas', 'drafts'],
     });
+    expect(parseDocsConfig({ search: { semantic: true } }).search).toEqual({ semantic: true });
   });
 
   it.each([
@@ -40,6 +42,8 @@ describe('parseDocsConfig', () => {
     [{ taxonomy: { areas: ['cli', 'cli'] } }, "docs.taxonomy.areas lists 'cli' more than once."],
     [{ nonAuthoritative: 'ideas' }, 'docs.nonAuthoritative must be a list of path prefixes.'],
     [{ nonAuthoritative: ['a\\b'] }, 'docs.nonAuthoritative[0] must be a relative directory path'],
+    [{ search: { semantic: 'yes' } }, 'docs.search.semantic must be true or false.'],
+    [{ search: { mode: 'hybrid' } }, "Unknown configuration key 'docs.search.mode'."],
     ['docs', 'docs must be an object.'],
   ])('rejects %j', (value, message) => {
     expect(() => parseDocsConfig(value)).toThrow(message);
@@ -72,7 +76,10 @@ describe('loadDocsSettings', () => {
   }
 
   it('returns the defaults without either configuration file', () => {
-    expect(loadDocsSettings(project({}))).toEqual(DEFAULT_DOCS_SETTINGS);
+    expect(loadDocsSettings(project({}))).toEqual({
+      docs: DEFAULT_DOCS_SETTINGS,
+      embeddings: undefined,
+    });
   });
 
   it('reads only the docs namespace and ignores other capabilities', () => {
@@ -80,7 +87,7 @@ describe('loadDocsSettings', () => {
       '.nevo/config.yaml': 'specs: { anything: [1, 2] }\ndocs:\n  root: handbook\n',
       '.nevo/local/config.yaml': 'runtime: { not: validated }\n',
     });
-    expect(loadDocsSettings(paths).root).toBe('handbook');
+    expect(loadDocsSettings(paths).docs.root).toBe('handbook');
   });
 
   it('rejects a local docs section', () => {

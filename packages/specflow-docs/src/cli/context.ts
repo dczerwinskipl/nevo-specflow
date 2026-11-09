@@ -3,6 +3,7 @@ import { InvalidArgumentError, type Command } from 'commander';
 import type { DocsConfigPaths } from '../config/load-docs-settings';
 import type { DocsCorpusRules } from '../corpus/corpus';
 import { DocsUsageError } from '../errors';
+import type { CreateEmbeddingProvider } from '../semantic/embedding-providers';
 
 /** The project the host resolved: its root and configuration file paths. */
 export interface DocsProject extends DocsConfigPaths {
@@ -21,9 +22,19 @@ export interface DocsCommandContext {
   readonly stderr: (line: string) => void;
   /**
    * The command line that regenerates the index as this host invokes it, for example
-   * `nevo-specflow docs check --write`. It is quoted in check hints and in the generated index.
+   * `nevo-specflow docs check --write`. It is quoted only in `check` hints; the generated index
+   * always names the product command (`INDEX_REGENERATE_COMMAND`).
    */
   readonly checkWriteCommand: string;
+  /**
+   * The command line that reads documents as this host invokes it, quoted in `search` hints.
+   * Default `nevo-specflow docs get`.
+   */
+  readonly getCommand?: string;
+  /** Environment the embedding API key variable is read from. Default `process.env`. */
+  readonly env?: Readonly<Record<string, string | undefined>>;
+  /** Test seam for the embedding endpoint; production uses the OpenAI-compatible adapter. */
+  readonly createEmbeddingProvider?: CreateEmbeddingProvider;
   /** Host-specific rules on top of the product contract; the product shell supplies none. */
   readonly corpusRules?: DocsCorpusRules;
 }

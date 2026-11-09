@@ -19,13 +19,25 @@ export {
   DEFAULT_DOCS_SETTINGS,
   isNonAuthoritative,
   parseDocsConfig,
+  type DocsSearchSettings,
   type DocsSettings,
   type DocsTaxonomy,
 } from './config/docs-settings';
+export {
+  EMBEDDINGS_PROTOCOLS,
+  type EmbeddingsProtocol,
+  type EmbeddingsSettings,
+} from './config/embeddings-settings';
+export {
+  parseDocsConfiguration,
+  type DocsConfiguration,
+  type DocsConfigurationSources,
+} from './config/docs-configuration';
 export { loadDocsSettings, type DocsConfigPaths } from './config/load-docs-settings';
 export {
   createFileSystemDocRepository,
   type DocRepository,
+  type MarkdownFileStat,
   type FileSystemDocRepositoryOptions,
   type ScanResult,
 } from './corpus/repository';
@@ -63,6 +75,38 @@ export {
   type OnDiskIndex,
 } from './index-file/index-file';
 export { checkDocumentation, type CheckResult } from './index-file/check';
+export {
+  CHUNKS_PER_RESULT,
+  openDocsSearch,
+  searchDocumentation,
+  snippet,
+  type DocsSearch,
+  type DocsSearchRequest,
+  type DocsSearchVectors,
+  type OpenDocsSearchOptions,
+} from './semantic/docs-search';
+export { DOCS_INDEX_DIRECTORY, openDocsIndex, type DocsIndex } from './semantic/docs-index';
+export {
+  createDocsChunkSource,
+  type DocsChunk,
+  type DocsChunkMetadata,
+  type DocsChunks,
+  type DocsChunkSource,
+} from './semantic/docs-chunk-source';
+export {
+  QUERY_TIMEOUT_MS,
+  type CreateEmbeddingProvider,
+  type EmbeddingProviders,
+} from './semantic/embedding-providers';
+export {
+  buildDocsIndex,
+  semanticStatus,
+  type EndpointReachability,
+  type IndexState,
+  type SemanticEnvironment,
+  type SemanticIndexResult,
+  type SemanticStatus,
+} from './semantic/semantic-index';
 export {
   documentAnchors,
   extractLinks,

@@ -27,6 +27,7 @@ export async function runDocs(
   root: string,
   args: readonly string[],
   checkWriteCommand = 'nevo-specflow docs check --write',
+  extra: Partial<Pick<DocsCommandContext, 'env' | 'createEmbeddingProvider' | 'getCommand'>> = {},
 ): Promise<DocsRun> {
   const stdout: string[] = [];
   const stderr: string[] = [];
@@ -35,6 +36,7 @@ export async function runDocs(
     stdout: (line) => stdout.push(line),
     stderr: (line) => stderr.push(line),
     checkWriteCommand,
+    ...extra,
   });
   const overrideExit = (c: typeof command): void => {
     c.exitOverride();

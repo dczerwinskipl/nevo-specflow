@@ -1,0 +1,135 @@
+import type { Command } from 'commander';
+
+import { DocsError } from '../../errors';
+import { openDocsIndex } from '../../semantic/docs-index';
+import {
+  buildDocsIndex,
+  semanticStatus,
+  type SemanticEnvironment,
+  type SemanticStatus,
+} from '../../semantic/semantic-index';
+import { runDocsAction, type DocsCommandContext } from '../context';
+import type { OpenProject } from '../open-corpus';
+
+function environment(ctx: DocsCommandContext): SemanticEnvironment {
+  return {
+    env: ctx.env ?? process.env,
+    ...(ctx.createEmbeddingProvider ? { createProvider: ctx.createEmbeddingProvider } : {}),
+  };
+}
+
+export function addSemanticCommand(
+  docs: Command,
+  ctx: DocsCommandContext,
+  open: OpenProject,
+): void {
+  const semantic = docs
+    .command('semantic')
+    .description('Inspect and build the semantic search index');
+
+  const status = semantic
+    .command('status')
+    .description(
+      'Report the semantic search configuration, endpoint reachability and index freshness; exits 1 when semantic search is enabled but unavailable',
+    )
+    .option('--json', 'emit JSON on stdout', false);
+
+  status.action((opts: { json: boolean }) =>
+    runDocsAction(status, async () => {
+      const { project, configuration, corpus } = await open();
+      const report = await semanticStatus(
+        openDocsIndex(project.root, corpus),
+        configuration,
+        environment(ctx),
+      );
+      if (opts.json) {
+        ctx.stdout(JSON.stringify(report, null, 2));
+      } else {
+        printStatus(ctx, report);
+      }
+
+      if (report.enabled && !report.available) {
+        throw new DocsError(
+          `semantic search is enabled but unavailable: ${report.reason?.message ?? 'unknown cause'}`,
+        );
+      }
+    }),
+  );
+
+  const index = semantic
+    .command('index')
+    .description(
+      'Embed new and changed documents now (everything after a model or chunker change)',
+    );
+
+  index.action(() =>
+    runDocsAction(index, async () => {
+      const { project, configuration, corpus } = await open();
+      const result = await buildDocsIndex(
+        openDocsIndex(project.root, corpus),
+        configuration,
+        environment(ctx),
+      );
+      if (result.status === 'not-attempted') {
+        ctx.stdout(`Index not built (${result.reason.code}): ${result.reason.message}`);
+
+        return;
+      }
+
+      const { outcome } = result;
+      if (outcome.status === 'current') {
+        ctx.stdout(`Index current (generation ${String(outcome.generation)}).`);
+      } else if (outcome.status === 'refreshed') {
+        ctx.stdout(
+          `Index ${outcome.rebuilt ? 'rebuilt' : 'refreshed'}: embedded ${String(outcome.embedded)}, deleted ${String(outcome.deleted)} chunks (generation ${String(outcome.generation)}).`,
+        );
+      } else {
+        ctx.stdout(
+          `Index not updated (${result.reason?.code ?? outcome.status}): ${result.reason?.message ?? outcome.status}`,
+        );
+      }
+    }),
+  );
+}
+
+function printStatus(ctx: DocsCommandContext, report: SemanticStatus): void {
+  ctx.stdout(`semantic search: ${report.enabled ? 'enabled' : 'not enabled'}`);
+  if (report.endpoint === null) {
+    ctx.stdout('endpoint: not configured');
+  } else {
+    const { protocol, baseUrl, model, dimensions, apiKeyEnv } = report.endpoint;
+    ctx.stdout(
+      `endpoint: ${protocol} ${baseUrl}  model ${model}${
+        dimensions === undefined ? '' : `  dimensions ${String(dimensions)}`
+      }${apiKeyEnv === undefined ? '' : `  key from ${apiKeyEnv}`}`,
+    );
+  }
+
+  if (report.reachability !== null) {
+    ctx.stdout(
+      report.reachability.reachable
+        ? `reachable: yes (${String(Math.round(report.reachability.latencyMs))} ms, ${String(report.reachability.dimensions)} dimensions)`
+        : `reachable: no (${report.reachability.message})`,
+    );
+  }
+
+  const { index } = report;
+  switch (index.state) {
+    case 'missing':
+      ctx.stdout('index: not built yet');
+      break;
+    case 'unreadable':
+      ctx.stdout(`index: unreadable (${index.message})`);
+      break;
+    default:
+      ctx.stdout(
+        `index: ${index.state}${index.changed > 0 ? ` (${String(index.changed)} chunks to update)` : ''}  generation ${String(index.generation)}, ${String(index.chunks)} chunks, ${index.model} / ${String(index.dimensions)} dimensions`,
+      );
+  }
+
+  ctx.stdout(
+    report.available
+      ? 'search mode: hybrid'
+      : `search mode: lexical (${report.reason?.code ?? ''}: ${report.reason?.message ?? ''})`,
+  );
+}

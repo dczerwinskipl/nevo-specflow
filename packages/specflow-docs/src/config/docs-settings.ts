@@ -2,6 +2,7 @@
 // This parser is file-free so Runtime config loading and the `docs` command share it.
 
 import { DocsConfigError } from '../errors';
+import { onlyKeys, record } from './values';
 
 /** The `scope` / `areas` vocabularies; an absent list means the values are unrestricted. */
 export interface DocsTaxonomy {
@@ -15,6 +16,12 @@ export interface DocsSettings {
   readonly taxonomy: DocsTaxonomy;
   /** Non-authoritative path prefixes relative to `root`, `/`-separated, without a trailing slash. */
   readonly nonAuthoritative: readonly string[];
+  readonly search: DocsSearchSettings;
+}
+
+export interface DocsSearchSettings {
+  /** Opt-in to hybrid (semantic) `search`; it also needs an `ai.embeddings` endpoint. */
+  readonly semantic: boolean;
 }
 
 /** The defaults when the `docs` namespace or one of its keys is absent (ADR 0020 defaults table). */
@@ -22,28 +29,12 @@ export const DEFAULT_DOCS_SETTINGS: DocsSettings = {
   root: 'docs',
   taxonomy: {},
   nonAuthoritative: [],
+  search: { semantic: false },
 };
 
-const DOCS_KEYS = new Set(['root', 'taxonomy', 'nonAuthoritative']);
+const DOCS_KEYS = new Set(['root', 'taxonomy', 'nonAuthoritative', 'search']);
 const TAXONOMY_KEYS = new Set(['scopes', 'areas']);
-
-type ConfigRecord = Record<string, unknown>;
-
-function record(value: unknown, path: string): ConfigRecord {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    throw new DocsConfigError(`${path} must be an object.`);
-  }
-
-  return value as ConfigRecord;
-}
-
-function onlyKeys(value: ConfigRecord, allowed: ReadonlySet<string>, path: string): void {
-  for (const key of Object.keys(value)) {
-    if (!allowed.has(key)) {
-      throw new DocsConfigError(`Unknown configuration key '${path}.${key}'.`);
-    }
-  }
-}
+const SEARCH_KEYS = new Set(['semantic']);
 
 /**
  * A relative path below the project root (or below `docs.root`): `/`-separated, no empty, `.` or
@@ -131,7 +122,18 @@ export function parseDocsConfig(value: unknown): DocsSettings {
     );
   }
 
-  return { root, taxonomy, nonAuthoritative };
+  let search = DEFAULT_DOCS_SETTINGS.search;
+  if (docs.search !== undefined) {
+    const declared = record(docs.search, 'docs.search');
+    onlyKeys(declared, SEARCH_KEYS, 'docs.search');
+    if (declared.semantic !== undefined && typeof declared.semantic !== 'boolean') {
+      throw new DocsConfigError('docs.search.semantic must be true or false.');
+    }
+
+    search = { semantic: declared.semantic === true };
+  }
+
+  return { root, taxonomy, nonAuthoritative, search };
 }
 
 /**

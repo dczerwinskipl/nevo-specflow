@@ -1,13 +1,13 @@
-// Reads the `docs` namespace from the project configuration files for the `docs` command. Either file
-// may be absent (defaults apply); only the `docs` namespace is read and validated, and a `docs`
-// section in the local file is rejected because the namespace is project-owned.
+// Reads the project and local configuration files for the `docs` command. Either file may be absent
+// (defaults apply); only `docs` and `ai.embeddings` are read and validated, by the same
+// `parseDocsConfiguration` Runtime config loading uses.
 
 import { existsSync, readFileSync } from 'node:fs';
 
 import { parse } from 'yaml';
 
 import { DocsConfigError } from '../errors';
-import { parseDocsConfig, type DocsSettings } from './docs-settings';
+import { parseDocsConfiguration, type DocsConfiguration } from './docs-configuration';
 
 export interface DocsConfigPaths {
   /** `.nevo/config.yaml` of the project. */
@@ -42,22 +42,12 @@ function readTopLevel(path: string): Record<string, unknown> | undefined {
   return parsed as Record<string, unknown>;
 }
 
-export function loadDocsSettings(paths: DocsConfigPaths): DocsSettings {
-  const local = readTopLevel(paths.localConfigPath);
-  if (local && 'docs' in local) {
-    throw new DocsConfigError(
-      `${paths.localConfigPath}: documentation configuration is project-owned and cannot be set locally; move 'docs' to ${paths.projectConfigPath}.`,
-    );
-  }
-
-  const project = readTopLevel(paths.projectConfigPath);
-  try {
-    return parseDocsConfig(project?.docs);
-  } catch (err) {
-    if (err instanceof DocsConfigError) {
-      throw new DocsConfigError(`${paths.projectConfigPath}: ${err.message}`, { cause: err });
-    }
-
-    throw err;
-  }
+/** Read both files (either may be absent) and validate the namespaces this package owns. */
+export function loadDocsSettings(paths: DocsConfigPaths): DocsConfiguration {
+  return parseDocsConfiguration({
+    project: readTopLevel(paths.projectConfigPath),
+    local: readTopLevel(paths.localConfigPath),
+    projectLabel: paths.projectConfigPath,
+    localLabel: paths.localConfigPath,
+  });
 }

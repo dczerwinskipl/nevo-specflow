@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Nevo SpecFlow documentation capability: frontmatter contract, project-configured taxonomy and deterministic discovery (list, find, get, context, check) with the generated index, plus the `nevo-specflow docs` Commander adapter (./cli). Bundled into @nevo/specflow.",
+  "description": "Nevo SpecFlow documentation capability: frontmatter contract, project-configured taxonomy, deterministic discovery (list, find, get, context, check) with the generated index, semantic search over @nevo/ai-semantic-search with the docs and ai.embeddings configuration, plus the `nevo-specflow docs` Commander adapter (./cli). Bundled into @nevo/specflow.",
   "license": "MIT",
   "exports": {
     ".": {
@@ -25,10 +25,13 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@nevo/ai-semantic-search": "workspace:*",
+    "@nevo/specflow-contracts": "workspace:*",
     "commander": "15.0.0",
     "yaml": "2.9.1"
   },
   "devDependencies": {
+    "typebox": "1.4.4",
     "vitest": "5.1.0"
   },
   "engines": {

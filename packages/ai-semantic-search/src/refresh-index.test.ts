@@ -8,7 +8,7 @@ import { createFakeEmbeddingProvider } from './fake-embedding-provider';
 import { createFileVectorStore } from './file-vector-store';
 import { createInMemoryVectorStore } from './in-memory-vector-store';
 import { chunkMarkdownUnit } from './markdown-chunker';
-import type { SourceUnit } from './ports';
+import type { EmbeddingProvider, SourceUnit } from './ports';
 import { refreshIndex } from './refresh-index';
 
 const unit = (id: string, text: string): SourceUnit => ({
@@ -112,6 +112,55 @@ describe('refreshIndex', () => {
     } finally {
       await rm(root, { recursive: true, force: true });
     }
+  });
+
+  it('applies a long refresh in slices, so a failure keeps the slices before it', async () => {
+    const provider = createFakeEmbeddingProvider();
+    const store = createInMemoryVectorStore();
+    const chunks = corpus(base);
+    const progress: unknown[] = [];
+
+    // The second slice fails: the first stays applied.
+    const failing: EmbeddingProvider = {
+      ...provider,
+      embed: (texts, purpose) => {
+        if (provider.calls.length === 1) {
+          provider.failWith({ code: 'timeout', message: 'slow' });
+        }
+
+        return provider.embed(texts, purpose);
+      },
+    };
+    expect(await refreshIndex({ chunks, provider: failing, store, commitChunks: 2 })).toMatchObject(
+      { status: 'embedding-failed' },
+    );
+    provider.failWith(undefined);
+    const partial = await store.readManifest();
+    expect(partial.status === 'ok' && [...partial.manifest.chunks.keys()]).toEqual(
+      chunks.slice(0, 2).map((chunk) => chunk.id),
+    );
+
+    // The next refresh embeds only the rest, one write per slice.
+    expect(
+      await refreshIndex({
+        chunks,
+        provider,
+        store,
+        commitChunks: 1,
+        onProgress: (step) => progress.push(step),
+      }),
+    ).toEqual({
+      status: 'refreshed',
+      generation: 3,
+      rebuilt: false,
+      embedded: chunks.length - 2,
+      deleted: 0,
+    });
+    expect(chunks).toHaveLength(4);
+    expect(progress).toEqual([
+      { embedded: 1, total: 2 },
+      { embedded: 2, total: 2 },
+    ]);
   });
 
   it('answers busy without embedding while another writer holds the store, and keeps it on failure', async () => {

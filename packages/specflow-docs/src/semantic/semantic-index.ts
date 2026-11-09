@@ -7,6 +7,7 @@ import {
   planRefresh,
   refreshIndex,
   type RefreshOutcome,
+  type RefreshProgress,
 } from '@nevo/ai-semantic-search';
 import type { DocsSearchReason } from '@nevo/specflow-contracts/docs';
 
@@ -191,11 +192,15 @@ export type SemanticIndexResult =
       readonly reason?: DocsSearchReason;
     };
 
-/** Bring the index up to date now: embeds new and changed documents, or everything after a mismatch. */
+/**
+ * Bring the index up to date now: embeds new and changed documents, or everything after a mismatch.
+ * `onProgress` is called after every store write (the refresh lands in slices).
+ */
 export async function buildDocsIndex(
   index: DocsIndex,
   configuration: DocsConfiguration,
   environment: SemanticEnvironment,
+  onProgress?: (progress: RefreshProgress) => void,
 ): Promise<SemanticIndexResult> {
   const endpoint = semanticEndpoint(configuration);
   if ('reason' in endpoint) {
@@ -211,6 +216,7 @@ export async function buildDocsIndex(
     chunks: index.chunks.load().chunks,
     provider: resolved.providers.documents,
     store: index.store,
+    ...(onProgress === undefined ? {} : { onProgress }),
   });
   const reason = refreshReason(outcome);
 

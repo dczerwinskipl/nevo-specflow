@@ -106,7 +106,9 @@ engine does not fail a search because embeddings are unavailable.
   version, chunker version, protocol, model, dimensions, and per chunk id its content hash and
   vector offset) and a binary `Float32` vector file.
 - Refresh is incremental: only chunks that are new or whose content hash changed are re-embedded,
-  and chunks that no longer exist are deleted.
+  and chunks that no longer exist are deleted. A long refresh is applied in several writes, one
+  per slice of embedded chunks, so an interrupted or failed refresh keeps the slices it wrote and
+  the next refresh embeds only the rest.
 - A mismatch of schema version, chunker version, protocol, model or dimensions, and an incomplete
   or damaged pair, discards the index and rebuilds it in full. There is no index migration.
 - Writes are atomic: each write creates a new generation pair (the vectors first, then the manifest

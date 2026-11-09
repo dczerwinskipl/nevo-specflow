@@ -104,8 +104,8 @@ configure the endpoint. After merging, `protocol`, `baseUrl` and `model` are req
 | `dimensions`       | Expected vector dimension; a different observed dimension is an endpoint error            | observed by probe |
 | `apiKeyEnv`        | Name of the environment variable holding the API key (upper-case letters, digits and `_`) | no key sent       |
 | `queryInstruction` | Prefix added to queries only, for instruction-tuned models                                | none              |
-| `batchSize`        | Texts per request when embedding documents                                                | 32                |
-| `timeoutMs`        | Per-request timeout for document embedding; query embedding uses at most 3000 ms of it    | 10000             |
+| `batchSize`        | Texts per request when embedding documents                                                | 16                |
+| `timeoutMs`        | Per-request timeout for document embedding; query embedding uses at most 3000 ms of it    | 60000             |
 
 ### Secrets
 

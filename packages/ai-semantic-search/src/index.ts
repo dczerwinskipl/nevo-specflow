@@ -46,10 +46,12 @@ export {
 } from './file-vector-store';
 export type { WriterLockDependencies } from './file-writer-lock';
 export {
+  REFRESH_COMMIT_CHUNKS,
   planRefresh,
   refreshIndex,
   type RefreshOutcome,
   type RefreshPlan,
+  type RefreshProgress,
   type RefreshRequest,
 } from './refresh-index';
 export {

@@ -8,8 +8,13 @@ import {
 } from './ports';
 
 export const OPENAI_COMPATIBLE_PROTOCOL = 'openai-compatible';
-export const DEFAULT_EMBEDDING_BATCH_SIZE = 32;
-export const DEFAULT_EMBEDDING_TIMEOUT_MS = 10_000;
+/**
+ * Sized for a local CPU model: a 0.6B model on an 8-core CPU embeds 16 chunks of about 1200
+ * characters in roughly 10 s, so 60 s per request leaves headroom for a slower machine or a model
+ * that is still loading. A hosted API answers far faster.
+ */
+export const DEFAULT_EMBEDDING_BATCH_SIZE = 16;
+export const DEFAULT_EMBEDDING_TIMEOUT_MS = 60_000;
 
 const MAX_ERROR_BODY_CHARS = 300;
 const malformedBody = Symbol('malformed body');

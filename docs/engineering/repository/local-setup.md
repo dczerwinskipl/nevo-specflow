@@ -86,7 +86,6 @@ ai:
     protocol: openai-compatible
     baseUrl: http://127.0.0.1:11434/v1
     model: qwen3-embedding:0.6b
-    timeoutMs: 120000 # a CPU model needs far more than the 10 s default for a batch of 32 chunks
 ```
 
 Check it, then search:
@@ -98,10 +97,12 @@ pnpm docs:search "how are document commits owned by the engine"
 
 The first hybrid search (or `pnpm docs:semantic index`) embeds the whole corpus into
 `.nevo/local/cache/docs-index/` (disposable; delete it to rebuild). On CPU this first run is slow
-for a corpus of this size, so prefer running `pnpm docs:semantic index` once up front; until the
-index is complete, `pnpm docs:search --no-refresh` answers lexically. Later searches re-embed only
-changed documents. `docker compose down` stops the model and keeps the volume. Keys and their
-validation:
+for a corpus of this size (about 20 minutes for about 2100 chunks on an 8-core CPU), so prefer
+running `pnpm docs:semantic index` once up front: it prints its progress to stderr and writes every
+slice it embeds, so an interrupted run resumes where it stopped. Until the index is complete,
+`pnpm docs:search --no-refresh` embeds no documents and ranks with the chunks embedded so far.
+Later searches re-embed only changed documents. `docker compose down` stops the model and keeps the
+volume. Keys and their validation:
 [documentation and embeddings configuration](../../reference/configuration/documentation-and-embeddings.md).
 
 ## Running slow tests on Linux

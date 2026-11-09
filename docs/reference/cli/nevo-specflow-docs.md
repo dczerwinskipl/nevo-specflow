@@ -174,8 +174,11 @@ search mode: hybrid
 
 `semantic index` updates the index now, the same way a search does (everything after a model or
 chunker change), and prints what it did, for example
-`Index refreshed: embedded 4, deleted 1 chunks (generation 4).` When semantic search is not
-configured or the update cannot run, it prints the reason and changes nothing; it does not fail.
+`Index refreshed: embedded 4, deleted 1 chunks (generation 4).` It embeds in slices of 128 chunks
+and writes each slice to the index as soon as it is embedded, printing `embedded 256/2130 chunks`
+to stderr after each, so an interrupted or failed run keeps its progress and the next run embeds
+only the rest. When semantic search is not configured or the update cannot run, it prints the
+reason; it does not fail.
 
 The index is disposable cache in `.nevo/local/cache/docs-index/`; deleting it is always safe. The
 CLI and a running Runtime share it; one process writes at a time, and another one answers lexically

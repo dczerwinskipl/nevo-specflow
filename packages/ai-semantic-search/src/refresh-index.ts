@@ -21,20 +21,36 @@ export interface RefreshPlan {
   readonly delete: readonly string[];
 }
 
+/**
+ * Chunks embedded per store write. A long refresh (a first build on a CPU model takes many minutes)
+ * lands in several writes, so an interruption or a failed request loses at most one slice.
+ */
+export const REFRESH_COMMIT_CHUNKS = 128;
+
+/** Reported after every store write of a refresh that embeds. */
+export interface RefreshProgress {
+  readonly embedded: number;
+  readonly total: number;
+}
+
 export interface RefreshRequest {
   /** Every current chunk of the corpus, for example `chunkMarkdownUnit` over each unit. */
   readonly chunks: readonly Chunk[];
   readonly provider: EmbeddingProvider;
   readonly store: VectorStore;
+  /** Chunks per store write; defaults to `REFRESH_COMMIT_CHUNKS`. */
+  readonly commitChunks?: number;
+  readonly onProgress?: (progress: RefreshProgress) => void;
 }
 
 /**
  * - `current`: the index already matches the chunks; nothing was embedded or written.
  * - `refreshed`: the plan was embedded and applied (`rebuilt` for a full rebuild).
- * - `busy`: another writer holds or changed the index; nothing was embedded or written.
- * - `embedding-failed`: the provider failed; the index is unchanged.
+ * - `busy`: another writer holds or changed the index; nothing more was embedded or written.
+ * - `embedding-failed`: the provider failed; slices written before the failure stay applied and
+ *   the next refresh embeds only the rest.
  * - `unreadable`: the index cannot be read right now; nothing was written.
- * - `write-failed`: the lock or the index could not be written; the index is unchanged.
+ * - `write-failed`: the lock or the index could not be written; earlier slices stay applied.
  */
 export type RefreshOutcome =
   | { readonly status: 'current'; readonly generation: number }
@@ -85,12 +101,17 @@ export function planRefresh(
  * up-to-date index costs one manifest read (a provider without configured dimensions is then
  * checked against the stored ones, without a probe). Otherwise the refresh resolves the dimensions
  * (probing when not configured), opens the single writer (a held lock answers `busy` without
- * waiting), re-reads the manifest, embeds only the planned chunks in one provider call and applies
- * them with the manifest generation it read as the compare-and-swap base. Only a contract violation
- * throws.
+ * waiting), re-reads the manifest and embeds only the planned chunks, in slices of `commitChunks`:
+ * each slice is applied as soon as it is embedded, with the generation of the previous write as the
+ * compare-and-swap base (the first write carries the deletes and, for a rebuild, the reset). Only a
+ * contract violation throws.
  */
 export async function refreshIndex(request: RefreshRequest): Promise<RefreshOutcome> {
-  const { chunks, provider, store } = request;
+  const { chunks, provider, store, onProgress } = request;
+  const commitChunks = request.commitChunks ?? REFRESH_COMMIT_CHUNKS;
+  if (!Number.isInteger(commitChunks) || commitChunks < 1) {
+    throw new RangeError(`commitChunks must be a positive integer, got ${commitChunks}.`);
+  }
 
   const unlocked = await store.readManifest();
   if (unlocked.status === 'unreadable') {
@@ -134,43 +155,67 @@ export async function refreshIndex(request: RefreshRequest): Promise<RefreshOutc
       return { status: 'current', generation: manifest.generation };
     }
 
-    let vectors: readonly Float32Array[] = [];
-    if (plan.embed.length > 0) {
-      const embedded = await provider.embed(
-        plan.embed.map((chunk) => chunk.embeddingText),
-        'document',
-      );
-      if (!embedded.ok) {
-        return { status: 'embedding-failed', failure: embedded.failure };
+    const total = plan.embed.length;
+    let generation = manifest?.generation;
+    // At least one write, so a rebuild of an empty corpus or a delete-only plan lands too.
+    for (let start = 0; start === 0 || start < total; start += commitChunks) {
+      const slice = plan.embed.slice(start, start + commitChunks);
+      let vectors: readonly Float32Array[] = [];
+      if (slice.length > 0) {
+        const embedded = await provider.embed(
+          slice.map((chunk) => chunk.embeddingText),
+          'document',
+        );
+        if (!embedded.ok) {
+          return { status: 'embedding-failed', failure: embedded.failure };
+        }
+
+        // The provider checks dimensions within one call; slices are separate calls.
+        const wrong = embedded.vectors.find((vector) => vector.length !== dimensions);
+        if (wrong) {
+          return {
+            status: 'embedding-failed',
+            failure: {
+              code: 'dimension-mismatch',
+              message: `The provider returned ${wrong.length}-dimensional vectors; the index has ${dimensions}.`,
+            },
+          };
+        }
+
+        vectors = embedded.vectors;
       }
 
-      vectors = embedded.vectors;
-    }
+      const first = start === 0;
+      const outcome = await opened.writer.apply({
+        baseGeneration: generation,
+        identity,
+        reset: first && plan.reset,
+        upsert: slice.map((chunk, index) => ({
+          chunkId: chunk.id,
+          contentHash: chunk.contentHash,
+          vector: vectors[index]!,
+        })),
+        delete: first ? plan.delete : [],
+      });
 
-    const outcome = await opened.writer.apply({
-      baseGeneration: manifest?.generation,
-      identity,
-      reset: plan.reset,
-      upsert: plan.embed.map((chunk, index) => ({
-        chunkId: chunk.id,
-        contentHash: chunk.contentHash,
-        vector: vectors[index]!,
-      })),
-      delete: plan.delete,
-    });
+      // Under the lock only a writer that broke the lock protocol can have moved the store on.
+      if (outcome.status === 'conflict') {
+        return { status: 'busy', message: 'Another writer changed the index during the refresh.' };
+      }
 
-    // Under the lock only a writer that broke the lock protocol can have moved the store on.
-    if (outcome.status === 'conflict') {
-      return { status: 'busy', message: 'Another writer changed the index during the refresh.' };
-    }
+      if (outcome.status === 'write-failed') {
+        return outcome;
+      }
 
-    if (outcome.status === 'write-failed') {
-      return outcome;
+      generation = outcome.generation;
+      if (total > 0) {
+        onProgress?.({ embedded: start + slice.length, total });
+      }
     }
 
     return {
       status: 'refreshed',
-      generation: outcome.generation,
+      generation: generation!,
       rebuilt: plan.reset,
       embedded: plan.embed.length,
       deleted: plan.delete.length,

@@ -69,6 +69,9 @@ export function addSemanticCommand(
         openDocsIndex(project.root, corpus),
         configuration,
         environment(ctx),
+        ({ embedded, total }) => {
+          ctx.stderr(`embedded ${String(embedded)}/${String(total)} chunks`);
+        },
       );
       if (result.status === 'not-attempted') {
         ctx.stdout(`Index not built (${result.reason.code}): ${result.reason.message}`);

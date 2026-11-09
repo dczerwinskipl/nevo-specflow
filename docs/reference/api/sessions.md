@@ -70,7 +70,8 @@ Authentication/authorization, origin protection and shared rate limits use exist
 boundaries. Cache-Control: no-store applies. Never include raw provider IDs, process handles,
 private interaction IDs, local absolute paths or provider payloads in ordinary DTOs.
 
-Standalone create and provider catalogue: session.create at server-derived {projectId}.
+Standalone create: session.create at server-derived {projectId}. The provider catalogue is
+authorized by the start it is read for ([Provider catalogue](#provider-catalogue)).
 Existing resource reads: session.view at the Session's store-derived scope (below).
 Start/cancel/reconcile/respond and rename/archive/unarchive: session.manage at that same scope.
 Delete: session.delete at that same scope. Check access before protected source
@@ -186,9 +187,9 @@ type Snapshot = {
 (the snapshot, the management answers and every `LiveProjection.session` on the event stream)
 from the Runtime's provider catalogue, exactly as for a list row; a title no longer listed is
 dropped, never kept from an earlier read. A caller with `session.view` alone therefore names the
-executor without `GET /api/session-providers` (which requires `session.create`); clients read
-that catalogue only for the composer's model, effort and mode pickers, when they can manage the
-Session.
+executor without `GET /api/session-providers`; clients read that catalogue for a Session
+(`?sessionId=`, which requires `session.manage` on it) only for the composer's model, effort and
+mode pickers, when they can manage the Session.
 
 Turn summaries (from Work pages/events) include turnId, state, revision, createdAt, updatedAt,
 optional completedAt/outcome/error, userMessage and finalAnswer TextPreview, and usage.
@@ -225,7 +226,7 @@ allocates a new interactionId and expires the old one; a stale form cannot answe
 
 | Route                                                             | Request                              | Success                           |
 | ----------------------------------------------------------------- | ------------------------------------ | --------------------------------- |
-| GET /api/session-providers                                        | none                                 | {items: ProviderDescriptor[]}     |
+| GET /api/session-providers                                        | optional specId or sessionId         | {items: ProviderDescriptor[]}     |
 | POST /api/sessions                                                | CreateSession                        | 201 {sessionId}                   |
 | GET /api/sessions/:sessionId                                      | none                                 | 200 Snapshot (tail)               |
 | GET /api/sessions/:sessionId/history                              | before cursor, optional limit        | 200 HistoryPage                   |
@@ -463,9 +464,9 @@ type SessionListPage = { items: SessionListItem[]; nextCursor?: string };
 - A page decodes only the rows it returns; a Session deleted between scan and decode is omitted.
   The demo Runtime serves the same route from its catalogue.
 - `providerTitle` and `modelTitle` are resolved from the Runtime's provider catalogue at read time,
-  so a caller without `session.create` (which `GET /api/session-providers` requires) can still name
-  the agent. `readiness` is the effective readiness of the single-Session read: when the provider
-  (or the Session's provider mode) cannot run a Turn and none is active, it reads
+  so a caller who may not read `GET /api/session-providers` (a viewer) can still name the agent.
+  `readiness` is the effective readiness of the single-Session read: when the provider (or the
+  Session's provider mode) cannot run a Turn and none is active, it reads
   `authenticationRequired` if the provider needs a sign-in, otherwise `unavailable`.
 
 ## Bounded history and Work
@@ -661,6 +662,24 @@ not lose the first event after the snapshot; test with an update in each handoff
 
 ## Provider catalogue
 
+`GET /api/session-providers` is a starter's read. Its closed query names the start it is read for
+(`ProviderCatalogueQuerySchema`), which decides its authorization; no request value is a scope
+source beyond selecting which check runs:
+
+| Query          | Read for                                     | Requires                                                                                                                                         |
+| -------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| none           | a standalone Session of the project          | `session.create` at `{projectId}`                                                                                                                |
+| `?specId=S`    | a Session started in Specification S         | the composed create's checks: `spec.start-session` at `specScope(projectId, S)` and `session.create` at `{projectId, specId: S}`                 |
+| `?sessionId=X` | the composer of Session X (model/mode/retry) | `session.manage` at X's store-derived `sessionScope`: any-scope precheck first (403 for an unknown Session too), then the identity (404 unknown) |
+
+Both parameters together are `400 SESSION_INPUT_INVALID`, as is any other parameter or a malformed
+id. `?specId` is a pure authorization check: it does not verify that the Specification exists
+(the catalogue is not sensitive and names no Specification; the composed create verifies it). A `workspace-write` provider mode is `authorized` when the caller holds `session.execute-write`
+at `{projectId}` (no context, `?specId`) or at the Session's own execute-write scope
+(`?sessionId`); it never carries `specId`. The UI's New Session in a Specification reads `?specId`,
+the Full Session composer `?sessionId`, so a Specification-scoped developer can start and steer
+Sessions in its Specification without any project-level grant.
+
 ProviderDescriptor = {providerId, title, readiness:'ready'|'unavailable'|'authenticationRequired'|
 'unknown', reason?:string, reasonCode?:string, compatibility?:{classification:'tested'|'provisional'|'unsupported',protocolProfile,version?}, capabilities:{questions,permissions,cancel,resume,modelOverride,effortOverride},
 models:[{modelId,title,efforts:string[]}], modes:('read-only'|'workspace-write')[]}.
@@ -689,8 +708,10 @@ answer 403 to a caller without it), then the identity from the demo association 
   `activeTurn`, no entries, `history.hasOlder: false`, `eventSeq: 0` and `capabilities` granting
   `view` only (`manage`, `start`, `cancel`, `delete`, `executeWrite` false). Title, provider and
   model, with their `providerTitle` and `modelTitle`, are the Session list row's.
-- `GET /api/session-providers`: the demo catalogue's providers, requiring `session.create` at the
-  project as in project mode; every provider capability false and `modes: ['read-only']`. The
+- `GET /api/session-providers`: the demo catalogue's providers, authorized by its start context
+  exactly as in project mode ([Provider catalogue](#provider-catalogue)), the Session's identity
+  from the demo association registry; every provider capability false and
+  `modes: ['read-only']`. The
   screen does not need it to name the executor: the snapshot's titles do, as in project mode.
 - `GET .../history`: still requires a cursor (`400 SESSION_CURSOR_INVALID` without one); any cursor
   answers an empty page. `GET .../turns/:turnId/work`, `.../work/:workId/actions` and

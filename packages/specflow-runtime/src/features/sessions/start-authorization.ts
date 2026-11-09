@@ -6,7 +6,8 @@ import { specScope } from '../specs';
 /**
  * The two checks of starting a Session in a Specification, from one project id: the
  * `spec.start-session` capability at `specScope` and `session.create` at `{projectId, specId}`.
- * The composed create requires them; the workspace `startSession` action reports them.
+ * The composed create and the catalogue read for it (`GET /api/session-providers?specId=`) require
+ * them; the workspace `startSession` action reports them.
  */
 function checks(projectId: string | undefined, specId: string) {
   return [

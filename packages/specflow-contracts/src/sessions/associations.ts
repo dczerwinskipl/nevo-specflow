@@ -39,6 +39,20 @@ export const CreateContextSessionResultSchema = Type.Object(
   closed,
 );
 
+/**
+ * Query of `GET /api/session-providers`: the start the catalogue is read for, which decides how it
+ * is authorized. `specId` reads it for a Session started in that Specification, `sessionId` for
+ * the composer of that Session, neither for a standalone Session of the project. At most one of
+ * the two: the Runtime answers both together with `400 SESSION_INPUT_INVALID`.
+ */
+export const ProviderCatalogueQuerySchema = Type.Object(
+  {
+    specId: Type.Optional(AssociationTargetIdSchema),
+    sessionId: Type.Optional(SessionIdSchema),
+  },
+  closed,
+);
+
 /** One referenced Engine object of an association, read at request time. */
 export const AssociatedFactSchema = <T extends TSchema>(value: T) =>
   Type.Union([
@@ -90,6 +104,9 @@ export type SessionAssociationRef = Static<typeof SessionAssociationRefSchema>;
 export type CreateContextSession = Static<typeof CreateContextSessionSchema>;
 export type CreateContextSessionResult = Static<typeof CreateContextSessionResultSchema>;
 export type SessionAssociationRead = Static<typeof SessionAssociationReadSchema>;
+/** The start a client reads the provider catalogue for: one Specification, one Session or none. */
+export type ProviderCatalogueContext =
+  { readonly specId: string } | { readonly sessionId: string } | Record<string, never>;
 export type AssociatedFact<T> =
   | { state: 'available'; value: T }
   | { state: 'missing'; id: string }

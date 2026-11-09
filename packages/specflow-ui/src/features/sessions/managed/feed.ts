@@ -579,7 +579,8 @@ export function createSessionFeed(
       const token = generation;
       notify({ ...state, commandBusy: true, commandError: false });
       try {
-        await api.providers(controller?.signal);
+        // Read for this Session: rechecking its provider is its manager's action.
+        await api.providers({ sessionId }, controller?.signal);
         notify({ ...state, commandBusy: false });
         if (token !== generation) {
           return;

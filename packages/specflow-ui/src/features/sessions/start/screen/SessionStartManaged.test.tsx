@@ -161,9 +161,19 @@ it('shows the shell at once and the catalogue as a skeleton until it is read', a
   expect(document.querySelector('[aria-busy="true"]')).not.toBeNull();
 });
 
+it('reads the catalogue for the pinned Specification, which a Specification starter may read', async () => {
+  const f = fixture();
+  view(f.api);
+  await startButton();
+  expect(f.providers).toHaveBeenCalled();
+  for (const [context] of f.providers.mock.calls) {
+    expect(context).toEqual({ specId: 'spec' });
+  }
+});
+
 it('explains external login and only refreshes discovery after the operator signs in', async () => {
   const f = fixture();
-  const provider = (await f.providers()).items[0]!;
+  const provider = (await f.providers({})).items[0]!;
   f.providers.mockResolvedValue({ items: [{ ...provider, readiness: 'authenticationRequired' }] });
   view(f.api);
   await screen.findByText('Sign-in required');
@@ -195,7 +205,7 @@ it('starts a provider without models at its defaults: Model is disabled, the wor
 
 it('defaults to the provider native writable mode and retains it on a lost response', async () => {
   const f = fixture();
-  const base = (await f.providers()).items[0]!;
+  const base = (await f.providers({})).items[0]!;
   f.providers.mockResolvedValue({
     items: [
       {
@@ -243,7 +253,7 @@ it.each(['unavailable', 'unauthorized'] as const)(
   'omits a %s mode and starts in the first available one',
   async (failure) => {
     const f = fixture();
-    const base = (await f.providers()).items[0]!;
+    const base = (await f.providers({})).items[0]!;
     f.providers.mockResolvedValue({
       items: [
         {
@@ -280,7 +290,7 @@ it.each(['unavailable', 'unauthorized'] as const)(
 
 it('starts on the chosen provider with its own writer mode', async () => {
   const f = fixture();
-  const base = (await f.providers()).items[0]!;
+  const base = (await f.providers({})).items[0]!;
   f.providers.mockResolvedValue({
     items: [
       { ...base, providerModes: [plan] },
@@ -308,7 +318,7 @@ it('starts on the chosen provider with its own writer mode', async () => {
 it('sends the chosen model, effort and an own name, and opens the Session with them', async () => {
   const f = fixture();
   f.create.mockReset().mockResolvedValue({ sessionId: 'created' });
-  const base = (await f.providers()).items[0]!;
+  const base = (await f.providers({})).items[0]!;
   f.providers.mockResolvedValue({
     items: [
       {
@@ -410,7 +420,7 @@ it('does not open a Session for another identity when an unmounted create is ack
 });
 
 const twoProviders = async (f: ReturnType<typeof fixture>) => {
-  const base = (await f.providers()).items[0]!;
+  const base = (await f.providers({})).items[0]!;
   f.providers.mockResolvedValue({
     items: [
       base,
@@ -479,7 +489,7 @@ it('keeps a kept request retryable while the provider catalogue cannot be read',
 
 it('treats a ready provider without a usable work mode as unavailable, with the reason', async () => {
   const f = fixture();
-  const base = (await f.providers()).items[0]!;
+  const base = (await f.providers({})).items[0]!;
   f.providers.mockResolvedValue({
     items: [
       {
@@ -505,7 +515,7 @@ it('treats a ready provider without a usable work mode as unavailable, with the 
 
 it('prefers a provider that can start over one that cannot', async () => {
   const f = fixture();
-  const base = (await f.providers()).items[0]!;
+  const base = (await f.providers({})).items[0]!;
   f.providers.mockResolvedValue({
     items: [{ ...base, modes: [], title: 'Broken', providerId: 'broken' }, base],
   });

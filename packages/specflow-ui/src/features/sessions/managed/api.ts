@@ -14,6 +14,7 @@ import {
   type WorkPage,
   type ActionPage,
   type ProviderDescriptor,
+  type ProviderCatalogueContext,
   type CreateSessionResult,
   type StartTurnResult,
   type CancelTurnResult,
@@ -37,7 +38,15 @@ export type TelemetryRead =
   | { readonly kind: 'not-modified' };
 
 export interface ManagedSessionsApi {
-  providers(signal?: AbortSignal): Promise<{ items: ProviderDescriptor[] }>;
+  /**
+   * The provider catalogue for one start (`GET /api/session-providers`): `{specId}` for a Session
+   * started in that Specification, `{sessionId}` for that Session's composer, `{}` for a
+   * standalone Session of the project. The Runtime authorizes it by that start.
+   */
+  providers(
+    context: ProviderCatalogueContext,
+    signal?: AbortSignal,
+  ): Promise<{ items: ProviderDescriptor[] }>;
   create(input: CreateSession): Promise<CreateSessionResult>;
   snapshot(sessionId: string, signal?: AbortSignal): Promise<SessionSnapshot>;
   history(sessionId: string, before: string, signal?: AbortSignal): Promise<HistoryPage>;
@@ -118,8 +127,12 @@ export function createManagedSessionsApi(http: HttpRequestClient): ManagedSessio
   const path = (id: string) => '/api/sessions/' + encodeURIComponent(id);
 
   return {
-    providers: (signal) =>
-      read.get('/api/session-providers', { signal, isValid: sessionValidators.providers }),
+    providers: (context, signal) =>
+      read.get('/api/session-providers', {
+        signal,
+        params: context,
+        isValid: sessionValidators.providers,
+      }),
     create: (input) =>
       read.post('/api/sessions', input, { isValid: sessionValidators.createResult }),
     snapshot: (id, signal) => read.get(path(id), { signal, isValid: sessionValidators.snapshot }),

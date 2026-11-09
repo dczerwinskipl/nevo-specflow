@@ -102,7 +102,8 @@ export function startedAssociation(
 
 /**
  * The start source of a Specification's New Session in a project Runtime
- * (`/specs/$specId/sessions/new`): the provider catalogue (`GET /api/session-providers`) and the
+ * (`/specs/$specId/sessions/new`): the Specification's provider catalogue
+ * (`GET /api/session-providers?specId=`) and the
  * composed create `POST /api/specs/:specId/sessions` with request retention. The request is
  * persisted before it is sent and kept until it is acknowledged, so a lost response is retried as
  * the same request — also after a reload, and even when the provider has meanwhile become
@@ -122,9 +123,10 @@ export function useManagedStartSource(
   );
   // `retained` keeps its pending request outside React: a send settling re-reads it.
   const [, reread] = useReducer((count: number) => count + 1, 0);
+  // Read for this Specification: whoever may start a Session in it may choose its agent.
   const providers = useQuery({
-    queryKey: ['managed-session-providers', owner],
-    queryFn: ({ signal }) => api.providers(signal),
+    queryKey: ['managed-session-providers', owner, { specId }],
+    queryFn: ({ signal }) => api.providers({ specId }, signal),
   });
   const items = providers.data?.items;
   const catalogue = useMemo(

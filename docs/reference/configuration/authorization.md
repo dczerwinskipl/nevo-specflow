@@ -98,9 +98,10 @@ Session capabilities at `{projectId, sessionId}` for a standalone Session and
 - a `{specId: S}` assignment applies its role's Specification capabilities to S and its Session
   capabilities to the Sessions associated with S, but not to standalone Sessions or Sessions of
   another Specification, and never admits write-mode execution; for example a `developer` at
-  `{specId: S}` starts read-only Sessions in S and views, manages and deletes every Session of S,
-  and a `viewer` there only views them;
-- a `{sessionId}` assignment covers that one Session and cannot create another.
+  `{specId: S}` starts read-only Sessions in S (reading the provider catalogue for S) and views,
+  manages and deletes every Session of S, and a `viewer` there only views them;
+- a `{sessionId}` assignment covers that one Session (a `developer` there reads the provider
+  catalogue for it to steer its Turns) and cannot create another.
 
 The exact rule is in [Runtime authorization](../../architecture/runtime/auth/authorization.md#specflow-required-scopes).
 

@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   ProviderCatalogueSchema,
   SessionAssociationReadSchema,
+  type SessionAssociationRead,
   SessionSnapshotSchema,
   TelemetrySnapshotSchema,
   type SessionListPage,
@@ -141,8 +142,44 @@ describe('demo managed Session reads (read-only, no coordinator)', () => {
     expect((await scoped.inject('/api/sessions/' + otherSeeded)).statusCode).toBe(403);
     expect((await scoped.inject('/api/sessions/' + unknown)).statusCode).toBe(404);
     expect((await scoped.inject('/api/sessions/' + seeded + '/telemetry')).statusCode).toBe(200);
-    // The provider catalogue is a creator's read, as in project mode.
+    // The provider catalogue is a starter's read: viewing a Session is not enough.
     expect((await scoped.inject('/api/session-providers')).statusCode).toBe(403);
+  });
+
+  it('authorizes the catalogue by the start it is read for, as in project mode', async () => {
+    const home = (
+      await (await open()).inject(`/api/sessions/${seeded}/association`)
+    ).json<SessionAssociationRead>();
+    await app!.close();
+    expect(home.association.kind).toBe('specification');
+    const specId =
+      home.association.kind === 'specification' &&
+      home.association.specification.state === 'available'
+        ? home.association.specification.value.specId
+        : '';
+
+    const inSpec = await open([{ role: 'developer', scope: { specId } }]);
+    const catalogue = (query: string) => inSpec.inject('/api/session-providers' + query);
+    expect((await catalogue(`?specId=${specId}`)).statusCode).toBe(200);
+    expect((await catalogue('?specId=other-specification')).statusCode).toBe(403);
+    expect((await catalogue('')).statusCode).toBe(403);
+    expect((await catalogue(`?specId=${specId}&sessionId=${seeded}`)).statusCode).toBe(400);
+    await app!.close();
+
+    const manager = await open([{ role: 'developer', scope: { sessionId: seeded } }]);
+    const read = (sessionId: string) =>
+      manager.inject(`/api/session-providers?sessionId=${sessionId}`);
+    expect((await read(seeded)).statusCode).toBe(200);
+    expect((await read(otherSeeded)).statusCode).toBe(403);
+    expect((await read(unknown)).statusCode).toBe(404);
+    await app!.close();
+
+    // No Manage anywhere: an unknown Session is refused like a known one.
+    const viewer = await open([{ role: 'viewer', scope: {} }]);
+    for (const sessionId of [seeded, unknown]) {
+      const response = await viewer.inject(`/api/session-providers?sessionId=${sessionId}`);
+      expect(response.statusCode).toBe(403);
+    }
   });
 
   it('keeps every mutation refused as disabled', async () => {

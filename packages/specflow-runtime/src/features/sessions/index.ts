@@ -22,6 +22,7 @@ export type {
 export { registerSessionErrorHandling } from './http/error-handling';
 export { listedSession } from './http/projection';
 export { authorizeSessionWrite } from './http/authorization';
+export { canStartSession, requireStartSession } from './start-authorization';
 export { sessionScope, type SessionScopeIdentity, type SessionCapabilityId } from './scope';
 export { createDemoSessionReferences } from './demo/references';
 

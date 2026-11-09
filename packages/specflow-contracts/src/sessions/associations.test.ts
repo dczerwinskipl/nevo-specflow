@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   CreateContextSessionResultSchema,
   CreateContextSessionSchema,
+  ProviderCatalogueQuerySchema,
   SessionAssociationReadSchema,
 } from './associations';
 import { SessionErrorSchema } from './commands';
@@ -25,6 +26,16 @@ describe('Session association contract', () => {
       false,
     );
     expect(Value.Check(CreateContextSessionSchema, { ...create, taskIds: ['../x'] })).toBe(false);
+  });
+
+  it('closes the provider catalogue query to a bounded Specification or Session id', () => {
+    const check = (query: unknown) => Value.Check(ProviderCatalogueQuerySchema, query);
+    expect(check({})).toBe(true);
+    expect(check({ specId: 'S1' })).toBe(true);
+    expect(check({ sessionId: id })).toBe(true);
+    expect(check({ specId: '../x' })).toBe(false);
+    expect(check({ sessionId: 'not-a-session' })).toBe(false);
+    expect(check({ projectId: 'project' })).toBe(false);
   });
 
   it('keeps the composed create body closed and never carries the Specification itself', () => {

@@ -160,6 +160,8 @@ Runtime's own project. A `{projectId}` assignment therefore covers the project's
 Session capability and no Session capability implies it: starting a Session from Specification S
 requires `spec.start-session` at `specScope(projectId, S)` **and** `session.create` at
 `{projectId, specId: S}` (plus `session.execute-write` at `{projectId}` for a write-mode Session).
+The provider catalogue read for that start (`GET /api/session-providers?specId=S`) requires the same
+two checks, so a `{specId: S}` starter can choose its agent without any project-level grant.
 
 ### Session scope
 
@@ -171,8 +173,8 @@ and Task projections of Session references all use it.
 | Capability                                                                         | Standalone Session       | Session associated with S        |
 | ---------------------------------------------------------------------------------- | ------------------------ | -------------------------------- |
 | `session.view`, `session.manage`, `session.delete`, `session.view-provider-limits` | `{projectId, sessionId}` | `{projectId, specId, sessionId}` |
-| `session.create` (standalone `POST /api/sessions`)                                 | `{projectId}`            | not applicable                   |
-| `session.create` (from Specification S)                                            | not applicable           | `{projectId, specId}`            |
+| `session.create` (standalone `POST /api/sessions`, catalogue without context)      | `{projectId}`            | not applicable                   |
+| `session.create` (from Specification S, its catalogue `?specId=S`)                 | not applicable           | `{projectId, specId}`            |
 | `session.execute-write` (create in write mode)                                     | `{projectId}`            | `{projectId}`                    |
 | `session.execute-write` (Turn start/respond in write mode)                         | `{projectId, sessionId}` | `{projectId, sessionId}`         |
 

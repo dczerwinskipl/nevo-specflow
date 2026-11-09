@@ -13,6 +13,7 @@ import {
   ActionPageSchema,
   ContentPageSchema,
   ProviderCatalogueSchema,
+  ProviderCatalogueQuerySchema,
   CreateSessionResultSchema,
   StartTurnResultSchema,
   CancelTurnResultSchema,
@@ -25,7 +26,13 @@ import {
 import type { SessionCoordinator } from '../lifecycle/coordinator';
 import { SessionError } from '../errors';
 import { effective } from './projection';
-import { authorizeSession, authorizeSessionWrite, authorizedIdentity } from './authorization';
+import {
+  authorizeSession,
+  authorizeSessionWrite,
+  authorizedIdentity,
+  sessionIdentity,
+} from './authorization';
+import { authorizeProviderCatalogue, authorizedProviderModes } from './catalogue-authorization';
 import { createSessionStreams } from './stream';
 import { registerTelemetryRoutes } from './telemetry';
 import { registerSessionManagementRoutes } from './management';
@@ -142,23 +149,31 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
     function registerManagedReads() {
       feature.get(
         '/api/session-providers',
-        { preHandler: authorizeCreate, schema: { response: { 200: ProviderCatalogueSchema } } },
+        {
+          schema: {
+            querystring: ProviderCatalogueQuerySchema,
+            response: { 200: ProviderCatalogueSchema },
+          },
+        },
         async (request) => {
-          const items = await coordinator().providers();
+          request.authz.requireAccess();
+          const sessions = coordinator();
+          const writeScope = await authorizeProviderCatalogue(
+            request,
+            options.projectId!,
+            (sessionId) => sessionIdentity(sessions, sessionId),
+          );
           const permissions = request.authz.resolveCapabilities({
             resource: SessionCapabilities,
-            scope: { projectId: options.projectId! },
+            scope: writeScope,
           });
-          for (const provider of items) {
-            if (provider.providerModes) {
-              provider.providerModes = provider.providerModes.map((mode) => ({
-                ...mode,
-                authorized: mode.mode !== 'workspace-write' || permissions['execute-write'],
-              }));
-            }
-          }
 
-          return { items };
+          return {
+            items: authorizedProviderModes(
+              await sessions.providers(),
+              permissions['execute-write'],
+            ),
+          };
         },
       );
       feature.get(

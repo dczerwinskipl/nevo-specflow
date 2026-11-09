@@ -35,7 +35,7 @@ nevo-specflow project inspect|bootstrap                  # show the Project Home
 nevo-specflow specs ...                                  # Engine-backed Specifications, worktrees, workspaces and documents (offline)
 nevo-specflow commit [status]                            # manual commit of the uncommitted changes the Engine recorded
 nevo-specflow definitions list|show|validate|install     # the project's archetype and document type definitions
-nevo-specflow docs list|find|get|context|check         # discover and validate the project documentation
+nevo-specflow docs list|find|get|context|check           # discover and validate the project documentation
 nevo-specflow start [--demo]                             # serve the local SpecFlow UI and Runtime API; exit 0 after shutdown
 nevo-specflow auth hash-password --password-stdin        # hash one password line from stdin
 ```

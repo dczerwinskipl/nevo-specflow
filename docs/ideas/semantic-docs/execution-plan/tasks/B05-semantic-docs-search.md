@@ -9,7 +9,7 @@ tags: [execution-task, temporary, implementation, semantic-search, embeddings]
 read_when:
   - implementing B05 of the semantic documentation search plan
 summary: >
-  Add docs search and docs semantic status|index|eval to @nevo/specflow-docs on top of the semantic
+  Add docs search and docs semantic status|index to @nevo/specflow-docs on top of the semantic
   engine, parse and validate docs.search and ai.embeddings with ownership rules, keep the index in
   the disposable cache, and define the search result contract in @nevo/specflow-contracts.
 related:
@@ -61,9 +61,8 @@ otherwise, and never fails because of the embedding endpoint.
 - `search` options: `--limit`, `--json`, `--no-refresh`, and the switch including non-authoritative
   prefixes (default excluded); status filtering matches `context` (no inactive documents). Each
   hit: id, title, heading path, snippet, score, and a `get` hint.
-- `semantic status` (exit non-zero when semantic mode is configured but unavailable), `semantic
-index` (explicit rebuild), `semantic eval --golden <file>` (B-D11: YAML of query → expected ids;
-  reports recall@k and MRR; never in CI).
+- `semantic status` (exit non-zero when semantic mode is configured but unavailable) and `semantic
+index` (explicit rebuild). No `semantic eval` (B-D11: dropped by the owner).
 - Result contract (TypeBox schema + type) in `@nevo/specflow-contracts`; the CLI `--json` output
   and B07's HTTP response are the same contract.
 
@@ -90,8 +89,8 @@ pnpm --filter @nevo/specflow-contracts typecheck
 pnpm --filter @nevo/specflow-docs lint
 ```
 
-Manual owner check (not CI): `docs semantic status` and `docs semantic eval` against a local
-Ollama. Full suites on Linux/CI.
+Manual owner check (not CI): `docs semantic status` and a few `docs search` queries against a
+local Ollama. Full suites on Linux/CI.
 
 ## Review focus (heightened gate)
 
@@ -102,4 +101,4 @@ is the single shape for CLI and HTTP.
 ## Out of scope
 
 Init prompts (B06); Runtime endpoint and start refresh (B07); repository config and agent routing
-(B08); a reconfigure command (B-D10).
+(B08); a reconfigure command (B-D10: deferred to re-run setup / UI Settings); `semantic eval` (B-D11).

@@ -2961,7 +2961,7 @@
       "read_when": [
         "implementing B05 of the semantic documentation search plan"
       ],
-      "summary": "Add docs search and docs semantic status|index|eval to @nevo/specflow-docs on top of the semantic engine, parse and validate docs.search and ai.embeddings with ownership rules, keep the index in the disposable cache, and define the search result contract in @nevo/specflow-contracts.",
+      "summary": "Add docs search and docs semantic status|index to @nevo/specflow-docs on top of the semantic engine, parse and validate docs.search and ai.embeddings with ownership rules, keep the index in the disposable cache, and define the search result contract in @nevo/specflow-contracts.",
       "related": [
         "ideas.semantic-docs.execution-plan",
         "ideas.semantic-docs.execution-plan.task-b03",

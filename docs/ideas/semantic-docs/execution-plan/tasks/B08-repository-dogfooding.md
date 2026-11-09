@@ -36,7 +36,7 @@ command.
 - Owner paths: root `package.json` (`docs:*` scripts, new `docs:search`/`docs:semantic`,
   `quality:build-prerequisites`); `tools/docs/**` (rewired onto `@nevo/specflow-docs`: launcher
   mounting `createDocsCommand` plus the retained `adr` command and repository-only checks;
-  duplicated domain/app code removed; golden set file for `semantic eval`, B-D11);
+  duplicated domain/app code removed);
   `.nevo/config.yaml` (new, B-D1); `.nevo/agents/instructions/repository-knowledge.md`,
   `.nevo/agent-instructions.md` and the generated provider skills (regenerated with
   `pnpm agents:build`, never hand-edited); `compose.yaml` (new); `packages/specflow/test/packaging.smoke.test.ts`
@@ -105,4 +105,4 @@ committed project config is honest and does not break `start` or existing tests.
 
 ## Out of scope
 
-Superseding the ideas and promoting remaining rules (B09); CI execution of `semantic eval`.
+Superseding the ideas and promoting remaining rules (B09); `semantic eval` and a golden set (B-D11, dropped).

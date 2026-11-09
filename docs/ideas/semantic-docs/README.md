@@ -87,8 +87,7 @@ Temporary task decomposition of delivery step 2: [execution plan](execution-plan
 
 ## Open questions
 
-- Corpus for in-product help: bundled product docs, the user project's own documentation, project
-  Specification documents, or a combination. The engine's chunk-source port stays generic either way.
-- Whether ADR authoring moves into the product or stays in `tools/docs` (current assumption: stays).
-- Whether the Runtime endpoint ships in the same PR as the CLI (leaning yes once OpenAPI exists).
-- Whether the index refreshes automatically on every `search` (leaning yes, with `--no-refresh`).
+Answered on 2026-11-09 — see the owner answers in the [execution plan](execution-plan/README.md#owner-answers-2026-11-09).
+Notable deviations from these ideas: no `semantic eval` command or golden set for now; enabling semantic
+search in an already initialized project is deferred (later via re-run setup or UI Settings); no
+`context` HTTP parameter until the contextual help UX contract exists.

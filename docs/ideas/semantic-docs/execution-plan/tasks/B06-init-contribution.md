@@ -52,8 +52,8 @@ the user whether it is usable right now.
   the reason.
 - The written sections pass B05's validation entry (the step builds them through it, not by
   hand-assembled objects that could diverge).
-- No change to `init`'s refusal on an existing `.nevo/config.yaml` (B-D10: existing projects edit
-  config manually; documented in the configuration reference).
+- No change to `init`'s refusal on an existing `.nevo/config.yaml` (B-D10: enabling it in an
+  existing project is out of scope; later via re-run setup or UI Settings).
 
 ## Acceptance
 
@@ -82,4 +82,4 @@ direction; init remains a single flow, not a second configuration writer.
 
 ## Out of scope
 
-A reconfigure command for initialized projects (B-D10); Runtime endpoint (B07).
+A reconfigure path for initialized projects (B-D10: later via re-run setup or UI Settings); Runtime endpoint (B07).

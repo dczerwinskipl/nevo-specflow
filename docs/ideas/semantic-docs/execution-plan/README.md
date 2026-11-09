@@ -45,7 +45,7 @@ merged. Contextual help in the UI is out of scope (it needs a UX contract first)
   without native modules.
 - `@nevo/specflow-docs` (`packages/specflow-docs`): the deliberately promoted documentation
   capability (ADR 0005) — frontmatter contract, `list/find/get/context/check`, configurable
-  taxonomy, semantic `search` and `semantic status|index|eval`, `docs.*` and `ai.embeddings`
+  taxonomy, semantic `search` and `semantic status|index`, `docs.*` and `ai.embeddings`
   configuration with ownership validation, init contribution; Commander adapter at `./cli` mounted
   by the product shell as `nevo-specflow docs`.
 - Runtime feature `GET /api/docs/search` with an authorization resource, background refresh on
@@ -106,8 +106,8 @@ that did not implement it. A failed gate stops dependent work. Heightened gates:
 
 Windows workstation: targeted test files only (named per task). Full package suites, lint, build and
 the packaged-product smoke run on Linux/CI. No test depends on a real embedding endpoint; unit and
-HTTP tests use a deterministic fake embedder. The `semantic eval` command against a local Ollama is a
-manual owner check, not CI.
+HTTP tests use a deterministic fake embedder. Trying `search` against a local Ollama is a manual
+owner check, not CI.
 
 ### Test budget (owner rule)
 
@@ -130,7 +130,27 @@ a breach as a gate finding.
 
 ## Open decisions
 
-Answer before B01 is admitted; B01 records the answers in the ADRs and authoritative docs.
+Answered by the owner on 2026-11-09; B01 records the answers in the ADRs and authoritative docs.
+The table below keeps the original analysis; where an answer differs from the recommendation, the
+answer wins.
+
+### Owner answers (2026-11-09)
+
+| ID    | Answer                                                                                                                                                                                                                                                                                       |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| B-D1  | Recommendation accepted: this repository commits a complete `.nevo/config.yaml` and becomes a real SpecFlow project.                                                                                                                                                                         |
+| B-D2  | Lightweight launcher. The installed product is an ordinary CLI: `nevo-specflow docs …` must not start Runtime, load UI assets or require the UI build. Root `pnpm docs:*` scripts (this repository's own shortcuts) build only `@nevo/specflow-docs` and its dependencies.                   |
+| B-D3  | Recommendation accepted: `docs.root`, `docs.taxonomy.scopes`, `docs.taxonomy.areas` and project-owned non-authoritative path prefixes.                                                                                                                                                       |
+| B-D4  | Recommendation accepted: `@nevo/specflow-docs` owns `ai.embeddings` parsing for now.                                                                                                                                                                                                         |
+| B-D5  | Recommendation accepted (`.nevo/local/cache/docs-index/`), with a constraint: the cache lives under the already ignored `.nevo/local/`, so no feature adds its own ignore entries or setup step, and the index is created once and refreshed incrementally rather than rebuilt on every run. |
+| B-D6  | Recommendation accepted: refresh on Runtime start and on read only; no invalidation API.                                                                                                                                                                                                     |
+| B-D7  | Recommendation accepted: resource `docs`, action `search`, granted from `viewer` up.                                                                                                                                                                                                         |
+| B-D8  | Recommendation accepted: `q`, `limit` and the non-authoritative-inclusion switch; no `context` parameter until the contextual help UX contract exists.                                                                                                                                       |
+| B-D9  | Recommendation accepted: the project's own `docs.root` only.                                                                                                                                                                                                                                 |
+| B-D10 | Out of scope for this feature. Later there should be two paths: re-running setup, and a Settings screen in the UI. No reconfigure command and no documented manual procedure are required now.                                                                                               |
+| B-D11 | Dropped: no `semantic eval` command and no golden set in this feature; quality is checked manually with a few queries. Revisit when comparing models.                                                                                                                                        |
+
+### Original analysis
 
 | ID    | Decision                                                                                                                                                                                                                                                                                      | Recommendation                                                                                                                                                                                                                                                                                                                                                  |
 | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

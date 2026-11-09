@@ -20,10 +20,12 @@ read_when:
   - adding workflow execution, Task batches, continuation or recovery to Full Session
   - designing Handover, artifact or file tabs in the Session Secondary
   - designing floating Session
+  - replacing the stand-in Task tab with real Task detail and drill-down
 summary: >
   Open Full Session structure beyond the implemented contract: workflow execution in the Session
-  (single Task, Task batch, continue, recovery, terminal consequences), Handover/artifact tabs,
-  File detail tabs and floating Session, plus the decisions still deferred.
+  (single Task, Task batch, continue, recovery, terminal consequences), real Task detail and
+  drill-down in Task tabs, Handover/artifact tabs, File detail tabs and floating Session, plus the
+  decisions still deferred.
 related:
   - product.specflow.ui.full-session
   - product.specflow.ui.ai-session-ux
@@ -70,14 +72,31 @@ When it does:
 - **Workflow events in the chat** are described in
   [Session Chat V10 open directions](components/session-chat-v10-design.md).
 
-## 2. Handover and artifact tabs
+## 2. Task tabs in the Session
+
+Today a Task tab opened from Context is a stand-in (key, title, a note), because the association
+read carries no Task detail ([Full Session, Secondary tabs](../../product/specflow/ui/full-session.md#secondary-tabs)).
+Open:
+
+- **Real Task detail in the Task tab**, from the Specification/Task read model (the Specification's
+  Task detail presentation), not from the association read.
+- **Drill-down on the Task tab's own stack.** Attempts, review events, rejections and feedback opened
+  from a Task push onto that Task tab's local stack, keeping their Task provenance; Back returns to
+  the direct parent inside the tab. Evidence targets follow the
+  [Task evidence drill-down](navigation-and-route-model.md#1-task-evidence-drill-down).
+- **Tasks list tab.** The Secondary already defines a Tasks list tab whose rows open each Task's own
+  tab (so a Task never lives both as a tab and as a page inside the list), but no entry opens it:
+  Context lists Related Tasks one row each. Whether a Session with many related Tasks gets a
+  **Related Tasks** entry that opens the list is undecided.
+
+## 3. Handover and artifact tabs
 
 When a handover, report or evidence object is independently addressable or shared (one review report
 covering several Tasks), it opens as its own Secondary tab with its original identity and links back
 to every relevant Task. Details bound to one Task execution or attempt stay on that Task tab's local
 stack. The canonical Handover and artifact contracts still need integration. No third pane.
 
-## 3. File detail tabs
+## 4. File detail tabs
 
 An independently inspected file can open as its own Secondary tab, so several files stay open beside
 Context. A file tab may show read-only Markdown/code, a revision-aware preview or a diff once that
@@ -87,17 +106,20 @@ diff contract, so no surface may pretend a file was read, changed or is previewa
 read, an edit and an open tab are different facts. The Context **Planned areas** rows are the
 placeholders for these surfaces.
 
-## 4. Floating Session
+## 5. Floating Session
 
 Wide-only quick conversation from a Task or Specification without leaving it; never a mandatory step
 before Full Session and never a compressed copy of its inspectors (no Work history, raw tool detail,
 full Context, Task detail or file browser). See
 [Floating Session UI spec](screens/floating-session-ui-spec.md).
 
-## 5. Still deferred
+## 6. Still deferred
 
 - cancel near current activity beyond the Composer's Stop, where the provider supports it;
 - provider-error/limit transfer to another agent;
 - richer cost/usage/limit presentation (history, budgets, charts);
 - persisted manual split size across reloads;
-- reasoning presentation policy beyond provider-supplied, user-renderable summaries.
+- reasoning presentation policy beyond provider-supplied, user-renderable summaries;
+- still unplaced by a reviewed UX contract: demo-mode managed Sessions, a Task-context Session start
+  (the composed create already accepts `taskIds`), the Attention Context section, and
+  `TurnSummary.usage`/`error` presentation.

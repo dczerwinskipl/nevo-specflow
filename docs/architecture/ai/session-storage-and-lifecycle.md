@@ -168,6 +168,39 @@ pending live interactions become expired and open Work is explicitly closed. A f
 invocation with uncertain external effects remains unknown and cannot be automatically replayed.
 Only positive reconciliation evidence can remove that block. There is no force-recover API.
 
+### Turn flow
+
+The happy path of one Turn whose selected mode writes to the workspace. Every native invocation
+starts from a verified `read-only` execution context; a writing mode takes the Engine
+[workspace execution claim](../runtime/workspace-execution-claims.md) before the provider starts and
+receives `workspace-write` only after admission. A mode without workspace write (for example Plan)
+takes no claim. The Engine receipt is settled before the Turn outcome is published.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant UI as SpecFlow UI
+  participant RT as Runtime sessions
+  participant DB as Session store
+  participant EN as Engine
+  participant PR as Provider CLI
+
+  UI->>RT: POST /api/sessions/:id/turns
+  RT->>DB: persist Turn and invocation intent
+  RT->>EN: admit workspace execution claim (project-write)
+  RT->>EN: mark claim dispatched
+  RT->>PR: start the driver invocation (workspace-write)
+  UI->>RT: GET /api/sessions/:id/events (SSE)
+  loop Provider facts
+    PR-->>RT: native events
+    RT->>DB: normalized Work and messages
+    RT-->>UI: session events
+  end
+  PR-->>RT: terminal result, process tree settled
+  RT->>EN: settle claim with receipt
+  RT->>DB: settle Turn
+```
+
 ### Positive evidence and operator recovery
 
 Startup settles an admitted real Turn as interrupted only when its persisted native dispatch

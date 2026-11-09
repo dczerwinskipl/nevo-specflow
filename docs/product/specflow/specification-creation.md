@@ -417,6 +417,12 @@ A Runtime started with `--demo` serves Create through the bounded in-memory
 provider execution. The project Runtime never receives these capabilities. The demo Create keeps the
 layout, blocked-Create and recovery rules above and adds a method choice and a first Session.
 
+The method choice, and with it **Create with an agent**, exists **only in demo mode**. The project
+Create form has no method step and no agent fields, and the project Create operation allocates no
+Session: a project Specification gets its first Session from New Session afterwards. Create with an
+agent on a project Runtime is an open item in the
+[SpecFlow UI ideas backlog](../../ideas/specflow-ui/README.md#open-items-without-their-own-document).
+
 - **Method choice.** The first step (**Creation method**) is two fully active cards, **With an
   agent** (start a Spec Writer session) and **On my own** (create the archetype's documents and edit
   them). Wide: equal columns; narrow: stacked. No segments, radios or selects. **Change the way of

@@ -11,17 +11,20 @@ read_when:
   - changing the one/two-column arrangement, its threshold or focus behaviour
   - changing Activity history placement or its open/closed default
   - changing Task selection on the Overview
+  - changing what the Overview shows on a project Runtime (Tasks source, Activity events, description)
 summary: >
   Specification Overview: priority order of its sections, the measured two-column arrangement
   from 1408 px of content width with 16 px hysteresis, focus restore across a crossing, Activity
   history as an on-demand Secondary whose explicit choice holds per Specification for the visit,
-  the preparation block and empty Tasks, and Task multi-selection.
+  the preparation block and empty Tasks, what project mode shows today (temporary Tasks source,
+  partial Activity history), and Task multi-selection.
 related:
   - product.specflow.ui.shell-geometry
   - product.specflow.ui.interaction-model
   - product.specflow.ui.application-architecture
   - product.specflow.specification-creation
   - reference.api.specification-workspace
+  - product.specflow.ui.specification-sessions
 ---
 
 # Specification Overview
@@ -43,17 +46,41 @@ whether Tasks exist: "no Tasks" only selects the preparation block and the empty
 - **Preparation block** — shown when the Specification has no Tasks and no Session to continue.
   Heading **Prepare specification for execution**. When `actions.startSession` is available (or
   its reason is `no_provider`) it says that an agent session prepares the tasks and offers **Start
-  session**, which opens `/specs/:specId/sessions/new`. With `sessions_disabled` or `forbidden` it
-  only explains why there is no start here, without a button.
+  session**, which opens `/specs/:specId/sessions/new`. Otherwise it only explains the preparation
+  path without a button: with `sessions_disabled` that Sessions are turned off on this server, with
+  `forbidden` that the user may not start a Session for this Specification, and with any other
+  reason that starting a Session is not available here.
 - **Empty Tasks** — the Tasks section keeps its **Tasks** header (the `#tasks-heading` target of the
   navigator's Tasks item) without count or execute control, followed by an inline, start-aligned
-  empty state **No tasks yet** without glyph or actions.
+  empty state **No tasks yet** without glyph, border or actions.
 - **Continue session** — one navigation row, not a card, for the Runtime's `recommendedSessionId`:
-  the title (or **Untitled session**) is the row's link stretched over it, with the shared hover and
-  focus tint and no trailing arrow. It shows the linked Tasks as a labelled count (`1 task`,
-  `3 tasks`; nothing without a linked Task, never one chip per Task) and the Session status, which
-  is Session readiness only ([AI session UX](ai-session-ux.md#session-status-ownership-accepted-2026-11-08)).
-  **All sessions** is a quiet action in the section header and opens `/specs/:specId/sessions`.
+  the same row as in the [Specification Sessions list](specification-sessions.md#rows) (provider
+  mark, title or **Untitled session**, then age, agent and the associated Task count, then the
+  Session status, which is Session readiness only;
+  [AI session UX](ai-session-ux.md#session-status-ownership-accepted-2026-11-08)). The title is the
+  row's link stretched over it, with the shared hover and focus tint and no trailing arrow. **All
+  sessions** is a quiet action in the section header and opens `/specs/:specId/sessions`; when the
+  start is offered, the header's overflow menu also holds **New session**.
+
+## Project mode: what the sections show today
+
+On a project Runtime (not `--demo`) the Overview shows what the Engine and the Session store hold
+([Specification Workspace API, Data source](../../../reference/api/specification-workspace.md#data-source)):
+
+- **Description** — the overview document's first paragraph as plain text (at most 320 graphemes),
+  rendered as delivered, never parsed as Markdown again; empty when there is no readable overview.
+- **Tasks — temporary source.** The section reflects only the verified manifest: with no Tasks there
+  it is the empty Tasks state above; a manifest with Tasks has no verified schema yet, so the section
+  shows the calm "Not available on this server" state. This source is temporary until the workflow
+  kernel's Task source replaces it, so project mode shows no real Task rows today.
+- **Activity history — partial.** It holds exactly two event kinds: **Specification created** (from
+  the manifest's creation date) and **Session started** (one per associated, non-archived Session the
+  caller may view, bounded by the workspace Sessions section's 100 rows), at most 50 events. No Task, document or commit
+  events exist yet. A date-only event shows as a calendar date without time-zone conversion; other
+  events show a relative time.
+- **Documents** and **Continue session** come from the Engine's document registry and the Session
+  association registry, independently of Tasks.
+- Repository and Changes are not implemented in project mode and are hidden.
 
 ## One or two columns
 

@@ -641,10 +641,9 @@
       "file": "docs/architecture/overview.md",
       "read_when": [
         "orienting in the system before working across package or process boundaries",
-        "explaining who uses SpecFlow through which surface, and which part talks to which",
-        "deciding which package or authoritative document owns a concern"
+        "deciding which package and authoritative document own a concern, and where its code starts"
       ],
-      "summary": "Derived, diagram-first map of Nevo SpecFlow from the outside in: actors and use cases, the running parts (CLI, Runtime with the UI, Engine, provider agents), the components inside each part, then technical views (package dependencies, where state lives, the managed Session Turn). Every diagram links the authoritative document that owns its facts; on conflict those documents win.",
+      "summary": "Short, derived map of Nevo SpecFlow: who uses it through which surface, the process boundaries, the responsibility boundaries between CLI, Runtime, Engine and UI, package dependency direction, where state lives, and a topic → owner → document → code entry table. Every fact links its authoritative document; on conflict that document wins.",
       "related": [
         "adr.0012-product-package-topology-and-dependency-direction",
         "architecture.runtime.ownership-and-lifecycle",
@@ -1036,7 +1035,7 @@
         "wiring the Runtime, CLI or UI to Specification or Task execution",
         "adding a step kind, an effect, an attention reason or a new subject"
       ],
-      "summary": "One deterministic workflow core drives both a Specification and each of its Tasks. Entry points only select the subject. Workflows, agent archetypes (preferred provider and a model per provider) and task types are project definitions. Each Task has its own type, workflow and preparation status (draft, ready, on-hold, cancelled), changed only by explicit decisions, a declared approval effect or its own escalation to the Specification. The Engine decides continuations; anything it cannot carry out is attention for the owner, derived from the state on every inspection and never stored. Canonical state lives in the Specification's `.execution/` folder, which lists the Task set; only the change journal is local.",
+      "summary": "One deterministic workflow core drives both a Specification and each of its Tasks. Entry points only select the subject. Workflows, agent archetypes (preferred provider and a model per provider) and task types are project definitions. Each Task has its own type, workflow and preparation status (draft, ready, on-hold, cancelled), changed only by explicit decisions, a declared approval effect or its own escalation to the Specification. The Engine decides continuations; anything it cannot carry out is attention for the owner, derived from the state on every inspection and never stored. Canonical state lives in the Specification's `.execution/` folder, which lists the Task set; only the change journal is local. The kernel writes those files but does not commit them yet (follow-up F04).",
       "related": [
         "architecture.workflow.deterministic-workflow",
         "adr.0019-workflow-kernel-and-automatic-continuation",
@@ -1532,22 +1531,20 @@
     {
       "id": "ideas.specflow-runtime.project-mode-spec-overview",
       "type": "architecture",
-      "title": "Project-mode Specification Overview — gap analysis and minimal-complete scope (PR",
-      "status": "current",
+      "title": "Project-mode Specification Overview — decision record and open follow-ups",
+      "status": "draft",
       "file": "docs/ideas/specflow-runtime/project-mode-spec-overview/README.md",
       "read_when": [
-        "making the Specification Overview work against a real project Runtime (not --demo)",
-        "changing which workspace sections are not_implemented, empty or available in project mode",
-        "changing the Overview visibility rules that depend on preparationState / isEmpty"
+        "asking why the project-mode Overview has a temporary Tasks source and a partial Activity history",
+        "replacing the manifest Tasks source with the workflow kernel's Task source",
+        "adding Task, document or commit events to the project-mode Activity history"
       ],
-      "summary": "Why the project-mode Specification Overview shows only \"Niedostępne na tym serwerze\" (main pane and Activity history) although Documents and Sessions are real, what the Engine already provides, and the decided minimal-complete scope for PR #126: a Tasks contribution from the verified manifest, a real (partial) activity contribution, an overview-derived summary, Overview visibility rules decoupled from \"no Tasks\", the preparation call-to-action wired to New Session, contract changes, task breakdown, verification and the owner decisions of 2026-11-08 (Tasks EmptyState, partial activity).",
+      "summary": "Non-authoritative decision record of making the Specification Overview work on a project Runtime (owner decisions 2026-11-08, delivered in PR #126): Overview sections independent of Tasks, the temporary manifest Tasks source, the partial Activity history, the overview-derived description and the preparation block. Keeps the decisions, the rejected alternatives and the open follow-ups; the behaviour is owned by the Specification Overview and the Specification Workspace API.",
       "related": [
+        "product.specflow.ui.specification-overview",
         "reference.api.specification-workspace",
-        "ideas.specflow-ui.screens.specification-workspace",
-        "ideas.specflow-runtime.session-association",
         "ideas.specflow-ui.session-association-ux",
-        "reference.api.specs-overview",
-        "reference.api.specification-documents",
+        "ideas.specflow-ui.screens.specification-workspace",
         "architecture.runtime.task-read-composition"
       ],
       "scope": "specflow",
@@ -1571,16 +1568,16 @@
       "id": "ideas.specflow-runtime.session-association",
       "type": "architecture",
       "title": "Session association registry, Session list and Specification Session integration (stage 3)",
-      "status": "current",
+      "status": "draft",
       "file": "docs/ideas/specflow-runtime/session-association/README.md",
       "read_when": [
         "asking why the Session-to-Specification/Task association is designed the way it is",
         "changing the association storage, the composed create, the Session scope or spec.start-session",
         "picking up a stage 3 follow-up (execute-write with specId, Task identity, Engine Task source)"
       ],
-      "summary": "Decision record of stage 3 (owner decisions 2026-11-08, delivered in PR #126). Sessions stay independent; a separate durable association registry in the Session SQLite records which Specification (and Tasks) a Session belongs to, is written atomically by the composed create, backs the SessionReferenceOwner seam, and gives every Session capability except execute-write one Spec-bearing scope, so granular role capabilities at {specId} apply to that Specification's Sessions. Keeps the decisions, options, rationale and open follow-ups; the contracts live in the Sessions API, storage, authorization and workspace documents.",
+      "summary": "Non-authoritative decision record of stage 3 (owner decisions 2026-11-08, delivered in PR #126): a separate durable Session association registry in the Session SQLite, the composed create from a Specification, one Spec-bearing Session scope with the execute-write exception. Keeps the decisions, the options considered, the fit with the workflow engine and the open follow-ups (D8 execute-write with specId, D13 Task identity, the project-mode Engine Task source); the contracts live in the Sessions API, storage, authorization and workspace documents.",
       "related": [
-        "ideas.specflow-runtime.session-ui-integration.plan",
+        "ideas.specflow-ui.session-association-ux",
         "reference.api.sessions",
         "architecture.ai.session-storage-and-lifecycle",
         "architecture.runtime.authorization",
@@ -1950,7 +1947,7 @@
       "status": "current",
       "file": "docs/architecture/decisions/0019-workflow-kernel-and-automatic-continuation.md",
       "read_when": [],
-      "summary": "Specifications and Tasks run through one deterministic workflow core and differ only in their entry points. Every Task has its own type and workflow, and the Specification archetype only restricts the types. Each step names a preferred agent archetype, which holds a preferred provider and a model per provider. A transition may continue automatically. When the Engine cannot resolve the next launch, the owner gets an attention item, derived from the state and never stored, instead of asking the agent. Canonical execution state is Git-tracked in the Specification's .execution/ folder; only the change journal is local.",
+      "summary": "Specifications and Tasks run through one deterministic workflow core and differ only in their entry points. Every Task has its own type and workflow, and the Specification archetype only restricts the types. Each step names a preferred agent archetype, which holds a preferred provider and a model per provider. A transition may continue automatically. When the Engine cannot resolve the next launch, the owner gets an attention item, derived from the state and never stored, instead of asking the agent. Canonical execution state belongs in Git in the Specification's .execution/ folder (written today, committed once follow-up F04 lands); only the change journal is local.",
       "related": [
         "architecture.workflow.workflow-kernel",
         "architecture.workflow.deterministic-workflow",
@@ -3614,48 +3611,6 @@
       ]
     },
     {
-      "id": "ideas.specflow-runtime.session-ui-integration.plan",
-      "type": "engineering",
-      "title": "Managed Session UI integration and Session actions — delivery record",
-      "status": "current",
-      "file": "docs/ideas/specflow-runtime/session-ui-integration/plan.md",
-      "read_when": [
-        "asking what the feat/session-ui-integration delivery decided and what it left open",
-        "looking up what stage 3 (Session associations and the Session list) delivered"
-      ],
-      "summary": "Delivered record of the Managed Session UI integration (T1-T13): real telemetry, closed command acknowledgements, unknown-Turn reconcile, multi-select questions, Antigravity icon, Work counts and classified digest, Session rename/archive/unarchive/delete end to end; plus stage 3 (PR #126, T1-T12): the Session association registry, Session list, composed create from a Specification and their UI. Keeps the owner decisions and the open follow-ups; the behaviour lives in the owning contracts.",
-      "related": [
-        "reference.api.sessions",
-        "reference.api.session-telemetry",
-        "architecture.ai.session-storage-and-lifecycle",
-        "architecture.runtime.authorization",
-        "ideas.specflow-runtime.session-v10-backend-readiness",
-        "ideas.specflow-ui.components.session-chat-v10-design",
-        "ideas.specflow-ui.full-session-screen-structure",
-        "ideas.specflow-ui.session-actions-ux",
-        "ideas.specflow-runtime.session-association",
-        "ideas.specflow-ui.session-association-ux"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ai",
-        "runtime",
-        "server",
-        "security",
-        "ui",
-        "testing"
-      ],
-      "tags": [
-        "sessions",
-        "telemetry",
-        "interactions",
-        "work",
-        "session-actions",
-        "planning",
-        "implementation"
-      ]
-    },
-    {
       "id": "ideas.specflow-runtime.session-v10-backend-readiness",
       "type": "engineering",
       "title": "Session migration remainder and V10 backend readiness",
@@ -3984,9 +3939,10 @@
       "read_when": [
         "adding workflow execution, Task batches, continuation or recovery to Full Session",
         "designing Handover, artifact or file tabs in the Session Secondary",
-        "designing floating Session"
+        "designing floating Session",
+        "replacing the stand-in Task tab with real Task detail and drill-down"
       ],
-      "summary": "Open Full Session structure beyond the implemented contract: workflow execution in the Session (single Task, Task batch, continue, recovery, terminal consequences), Handover/artifact tabs, File detail tabs and floating Session, plus the decisions still deferred.",
+      "summary": "Open Full Session structure beyond the implemented contract: workflow execution in the Session (single Task, Task batch, continue, recovery, terminal consequences), real Task detail and drill-down in Task tabs, Handover/artifact tabs, File detail tabs and floating Session, plus the decisions still deferred.",
       "related": [
         "product.specflow.ui.full-session",
         "product.specflow.ui.ai-session-ux",
@@ -4107,39 +4063,6 @@
       ]
     },
     {
-      "id": "ideas.specflow-ui.screens.specification-sessions-list",
-      "type": "product",
-      "title": "Specification Sessions list UI spec",
-      "status": "draft",
-      "file": "docs/ideas/specflow-ui/screens/specification-sessions-list-ui-spec.md",
-      "read_when": [
-        "implementing or reviewing the Sessions list of a Specification (/specs/:specId/sessions)",
-        "changing its rows, current/archive collections, paging or refusal states"
-      ],
-      "summary": "Screen contract of a Specification's Sessions list: rows of the Sessions associated with the Specification read from the paged Session list API, Current/Archive collections, explicit Show more paging that tolerates short and empty pages, states, gating of New session and refresh-on-action freshness.",
-      "related": [
-        "ideas.specflow-ui.screens",
-        "ideas.specflow-ui.screens.specification-workspace",
-        "product.specflow.ui.full-session",
-        "ideas.specflow-ui.navigation-route-model",
-        "ideas.specflow-ui.session-association-ux",
-        "reference.api.sessions",
-        "product.specflow.ui.ai-session-ux"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ui",
-        "ai"
-      ],
-      "tags": [
-        "sessions",
-        "session-list",
-        "paging",
-        "archive",
-        "associations"
-      ]
-    },
-    {
       "id": "ideas.specflow-ui.screens.specification-workspace",
       "type": "product",
       "title": "Specification screen — open items",
@@ -4204,16 +4127,16 @@
       "id": "ideas.specflow-ui.session-actions-ux",
       "type": "product",
       "title": "Session telemetry refresh, unknown-Turn reconcile and Session actions — decision record",
-      "status": "current",
+      "status": "draft",
       "file": "docs/ideas/specflow-ui/session-actions-ux/README.md",
       "read_when": [
         "asking why the provider-limits refresh, the unknown-Turn notice or the Session actions look the way they do",
-        "reconsidering an alternative rejected for plan decisions D1, D2 or D10"
+        "reconsidering an alternative rejected for these decisions"
       ],
-      "summary": "Rationale and decision record for plan decisions D1, D2 and D10 of the Managed Session UI integration, accepted by the owner on 2026-11-08 and implemented. The behaviour itself lives in the Full Session product contract.",
+      "summary": "Non-authoritative decision record of the provider-limits refresh, the unknown-Turn reconcile notice and the Session actions (rename, archive/restore, delete), accepted by the owner on 2026-11-08 and implemented. Keeps the rationale and the rejected alternatives that still hold; the behaviour is owned by the Full Session product contract.",
       "related": [
         "product.specflow.ui.full-session",
-        "product.specflow.ui.documents-archetypes",
+        "ideas.specflow-ui.session-association-ux",
         "reference.api.session-telemetry",
         "reference.api.sessions"
       ],
@@ -4237,26 +4160,26 @@
     {
       "id": "ideas.specflow-ui.session-association-ux",
       "type": "product",
-      "title": "Session association UX — Session lists, post-delete destination, Context and workspace status (D10)",
-      "status": "current",
+      "title": "Session association UX — decision record (U1-U6)",
+      "status": "draft",
       "file": "docs/ideas/specflow-ui/session-association-ux/README.md",
       "read_when": [
         "asking why standalone Sessions left the UI, or why delete goes where it goes",
-        "asking why the Specification Sessions list pages explicitly with current/archive collections",
-        "asking why Session status never takes Engine attempt facts"
+        "asking why the Specification Sessions list pages explicitly with Current/Archive collections",
+        "asking why a Session row looks the way it does, or why Session status never takes Engine attempt facts",
+        "picking up an open follow-up of the Session association UX"
       ],
-      "summary": "Decision record (owner decisions 2026-11-08, delivered in PR #126) for the D10 UX items of the stage 3 Session association design: standalone Sessions removed from the UI, the Specification Sessions list on the paged Session list read, post-delete destination from the association, Context Specification/Related Tasks from the association read, New Session gating and Session-owned status. Keeps decisions, rationale and rejected alternatives; the behaviour lives in the owning screen and structure documents.",
+      "summary": "Non-authoritative decision record of the Session association UX (owner decisions 2026-11-08, delivered in PR #126): standalone Sessions out of the UI, the post-delete destination, the Specification Sessions list and its row, Context from the association and Session-owned status. Keeps the decisions, the rejected alternatives that still hold and the open follow-ups; the behaviour is owned by the current product and reference documents it links.",
       "related": [
-        "ideas.specflow-runtime.session-association",
+        "product.specflow.ui.specification-sessions",
         "product.specflow.ui.full-session",
-        "ideas.specflow-ui.session-actions-ux",
-        "ideas.specflow-ui.navigation-route-model",
-        "ideas.specflow-ui.screens.specification-workspace",
-        "ideas.specflow-ui.screens.specification-sessions-list",
-        "product.specflow.ui.ai-session-ux",
         "product.specflow.ui.interaction-model",
-        "product.specflow.ui.data-loading-and-integration",
-        "reference.api.sessions"
+        "product.specflow.ui.ai-session-ux",
+        "product.specflow.ui.specification-overview",
+        "reference.api.sessions",
+        "reference.api.specification-workspace",
+        "ideas.specflow-runtime.session-association",
+        "ideas.specflow-ui.session-actions-ux"
       ],
       "scope": "specflow",
       "areas": [
@@ -4435,6 +4358,7 @@
       "related": [
         "product.specflow.ui.full-session",
         "product.specflow.ui.interaction-model",
+        "product.specflow.ui.specification-sessions",
         "product.shared.vocabulary",
         "design-system.principles.ui-ux-guidelines",
         "architecture.ai.canonical-session-turn-work"
@@ -4603,15 +4527,17 @@
         "changing the Specification Overview at /specs/:specId, its sections or their order",
         "changing the one/two-column arrangement, its threshold or focus behaviour",
         "changing Activity history placement or its open/closed default",
-        "changing Task selection on the Overview"
+        "changing Task selection on the Overview",
+        "changing what the Overview shows on a project Runtime (Tasks source, Activity events, description)"
       ],
-      "summary": "Specification Overview: priority order of its sections, the measured two-column arrangement from 1408 px of content width with 16 px hysteresis, focus restore across a crossing, Activity history as an on-demand Secondary whose explicit choice holds per Specification for the visit, the preparation block and empty Tasks, and Task multi-selection.",
+      "summary": "Specification Overview: priority order of its sections, the measured two-column arrangement from 1408 px of content width with 16 px hysteresis, focus restore across a crossing, Activity history as an on-demand Secondary whose explicit choice holds per Specification for the visit, the preparation block and empty Tasks, what project mode shows today (temporary Tasks source, partial Activity history), and Task multi-selection.",
       "related": [
         "product.specflow.ui.shell-geometry",
         "product.specflow.ui.interaction-model",
         "product.specflow.ui.application-architecture",
         "product.specflow.specification-creation",
-        "reference.api.specification-workspace"
+        "reference.api.specification-workspace",
+        "product.specflow.ui.specification-sessions"
       ],
       "scope": "specflow",
       "areas": [
@@ -4625,6 +4551,40 @@
         "activity-history",
         "responsive",
         "focus"
+      ]
+    },
+    {
+      "id": "product.specflow.ui.specification-sessions",
+      "type": "product",
+      "title": "Specification Sessions list",
+      "status": "current",
+      "file": "docs/product/specflow/ui/specification-sessions.md",
+      "read_when": [
+        "changing the Sessions list of a Specification at /specs/:specId/sessions",
+        "changing its rows, Current/Archive collections, Show more paging, states or freshness",
+        "changing a Session row shared with Continue session (provider mark, agent fact, status)"
+      ],
+      "summary": "The implemented Sessions list of one Specification: rows of its associated Sessions from the paged Session list read, the shared Session row (provider mark, age, agent, Task count, effective readiness status), Current/Archive collections, explicit Show more paging that tolerates short and empty pages, states, New session gating and refresh-on-action freshness.",
+      "related": [
+        "product.specflow.ui.full-session",
+        "product.specflow.ui.specification-overview",
+        "product.specflow.ui.ai-session-ux",
+        "product.specflow.ui.interaction-model",
+        "reference.api.sessions",
+        "reference.api.specification-workspace"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "ai"
+      ],
+      "tags": [
+        "sessions",
+        "session-list",
+        "paging",
+        "archive",
+        "associations",
+        "continue-session"
       ]
     },
     {

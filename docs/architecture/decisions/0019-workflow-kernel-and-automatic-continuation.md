@@ -10,8 +10,8 @@ summary: >
   types. Each step names a preferred agent archetype, which holds a preferred provider and a model per
   provider. A transition may continue automatically. When the Engine cannot resolve the next launch, the
   owner gets an attention item, derived from the state and never stored, instead of asking the agent.
-  Canonical execution state is Git-tracked in the Specification's .execution/ folder; only the change
-  journal is local.
+  Canonical execution state belongs in Git in the Specification's .execution/ folder (written today,
+  committed once follow-up F04 lands); only the change journal is local.
 related:
   - architecture.workflow.workflow-kernel
   - architecture.workflow.deterministic-workflow
@@ -85,7 +85,9 @@ local attention file exists. The reasons were extended (the full list is in
    current position on every inspection, never stored, so every start of that subject removes it and
    a quick screen, a manual start and an automatic continuation behave the same. A "remember" choice
    writes the model into the agent archetype file.
-9. **Canonical state is Git-tracked next to the Specification.**
+9. **Canonical state is Git-tracked next to the Specification.** Implementation status: the kernel
+   writes these files in the Specification's checkout; committing them is follow-up F04, so until then
+   they are uncommitted working-tree changes.
    - `.execution/specification.yaml` holds the Specification run, and
      `.execution/tasks/<taskId>.yaml` holds one Task each.
    - These files store only position, attempts and returns. They are not named `change.yaml`, and they

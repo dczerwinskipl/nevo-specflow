@@ -136,16 +136,16 @@ Compact/Narrow always open the Session directly, with no miniature floating repl
 
 ## Reachability
 
-| Surface                   | Normal entry                                                                                            | Representation                                            |
-| ------------------------- | ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| Specifications            | default entry `/`; **Browse all specifications** in the switcher                                        | Primary                                                   |
-| Specification overview    | a Specifications row, the switcher, or its stable route                                                 | Primary                                                   |
-| Task Preview              | a Task row in the Specification, or an explicit Task target in another owning context (Session Context) | Secondary on split layouts; pushed local detail on Narrow |
-| Full Task                 | explicit promotion from Preview, or its stable route                                                    | routed Primary                                            |
-| New Session               | the Specification's Sessions list, its empty state, Continue session, the preparation block             | routed Primary (`/specs/:specId/sessions/new`)            |
-| Session (Full Session)    | a Session row or Continue session, Create with an agent, a stable route                                 | routed Primary + Secondary                                |
-| Session Context           | default on split-capable Session entry; the **Context** action on Narrow                                | Secondary or pushed local detail                          |
-| Session inspection detail | an explicit click on a Work block, a Task or another Context row                                        | a tab or the active tab's local stack; never a third pane |
+| Surface                   | Normal entry                                                                                          | Representation                                            |
+| ------------------------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| Specifications            | default entry `/`; **Browse all specifications** in the switcher                                      | Primary                                                   |
+| Specification overview    | a Specifications row, the switcher, or its stable route                                               | Primary                                                   |
+| Task Preview              | a Task row in the Specification                                                                       | Secondary on split layouts; pushed local detail on Narrow |
+| Full Task                 | explicit promotion from Preview, or its stable route                                                  | routed Primary                                            |
+| New Session               | the Specification's Sessions list, its empty state, Continue session, the preparation block           | routed Primary (`/specs/:specId/sessions/new`)            |
+| Session (Full Session)    | a Session row or Continue session, Create with an agent (demo mode only), a stable route              | routed Primary + Secondary                                |
+| Session Context           | default on split-capable Session entry; the **Context** action on Narrow                              | Secondary or pushed local detail                          |
+| Session inspection detail | an explicit click on a Work block, a Related Task or another Context row (the Task tab is a stand-in) | a tab or the active tab's local stack; never a third pane |
 
 The table defines reachability. A product row keeps a stable neutral destination: a Specifications
 row always enters its Specification and never deep-links to whichever Task or issue currently has
@@ -155,8 +155,8 @@ inspection only and performs no workflow action.
 ## Starting a Session and the navigator
 
 Every UI start of a Session is from a Specification. **New session** opens
-`/specs/:specId/sessions/new` from the Specification Sessions list header, its empty state,
-Continue session's start action and the Overview's preparation block, gated by the workspace
+`/specs/:specId/sessions/new` from the Specification Sessions list toolbar, its empty state,
+Continue session's header menu and the Overview's preparation block, gated by the workspace
 `actions.startSession` (shown when available or with `no_provider`; omitted with `forbidden` or
 `sessions_disabled`), and posts the composed `POST /api/specs/:specId/sessions`, which records the
 association. There is no UI entry to a standalone Session: the Specifications list has no create
@@ -171,7 +171,7 @@ Specification is the home `specId` of the Session's association read when it is 
 Specification's Session preview comes from the workspace Sessions section (first three
 `active`/`attention` rows, attention first); its active count shows only when the section has no
 `hasMore` and no row of status `unknown`, otherwise a partial-activity line says so. **All
-sessions** opens the Specification Sessions list `/specs/:specId/sessions`.
+sessions** opens the [Specification Sessions list](specification-sessions.md) `/specs/:specId/sessions`.
 
 ## Surface choice
 

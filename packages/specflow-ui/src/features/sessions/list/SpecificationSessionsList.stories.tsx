@@ -41,7 +41,7 @@ const claude = { providerId: 'claude', providerTitle: 'Claude' } as const;
 const codex = { providerId: 'codex', providerTitle: 'Codex' } as const;
 const antigravity = { providerId: 'antigravity', providerTitle: 'Antigravity' } as const;
 
-/** The accepted reference rows (Sessions list §3): one per status, provider and fact shape. */
+/** Reference rows (specification-sessions.md "Rows"): one per status, provider and fact shape. */
 const currentRows: SessionListItem[] = [
   row('a', {
     ...claude,
@@ -207,7 +207,7 @@ function Harness({
 
 /**
  * The Specification Sessions list (`/specs/:specId/sessions`,
- * `docs/ideas/specflow-ui/session-association-ux/README.md` §3): current/archive collections of the
+ * `docs/product/specflow/ui/specification-sessions.md`): current/archive collections of the
  * Session list read, rows with Session-owned status only, and the explicit **Pokaż więcej** paging
  * that follows sparse pages at most four requests per press. The real list hook runs over a faked
  * read.
@@ -279,7 +279,7 @@ const factText = (fact: HTMLElement) =>
     .textContent;
 
 /**
- * Rows (Sessions list §3, acceptance 4, 7, 8): the provider mark, the title (or the untitled
+ * Rows (specification-sessions.md "Rows"): the provider mark, the title (or the untitled
  * label), then age · agent · Tasks and the effective status as the last inline item at Wide. The
  * agent's provider reaches assistive technology with the model; a provider sign-in names the
  * provider and is muted.
@@ -324,8 +324,9 @@ export const CurrentSessions: Story = {
 };
 
 /**
- * Mixed list (acceptance 5): with and without Tasks, every age starts under the title start and
- * an absent fact takes no space; an age or a count never wraps inside itself.
+ * Mixed list (specification-sessions.md "Rows", inline facts): with and without Tasks, every age
+ * starts under the title start and an absent fact takes no space; an age or a count never wraps
+ * inside itself.
  */
 export const AgeLeadsEveryRow: Story = {
   args: {
@@ -366,8 +367,8 @@ export const AgeLeadsEveryRow: Story = {
 };
 
 /**
- * A provider or model no longer listed (acceptance 7): the `chat` glyph, the raw model id, else
- * the provider id, as the agent fact. A long model title truncates at 16 rem.
+ * A provider or model no longer listed (specification-sessions.md "Rows"): the `chat` glyph, the
+ * raw model id, else the provider id, as the agent fact. A long model title truncates at 16 rem.
  */
 export const UnlistedProvider: Story = {
   args: {
@@ -660,9 +661,9 @@ export const SessionsDisabledByListRead: Story = {
 };
 
 /**
- * Narrow (acceptance 9): the title and facts wrap, the status takes its own line under the facts,
- * the mark stays centred on the whole row, no horizontal overflow; a click on the mark opens the
- * Session.
+ * Narrow (specification-sessions.md "Rows"): the title and facts wrap, the status takes its own
+ * line under the facts, the mark stays centred on the whole row, no horizontal overflow; a click on
+ * the mark opens the Session.
  */
 export const Mobile: Story = {
   ...CurrentSessions,

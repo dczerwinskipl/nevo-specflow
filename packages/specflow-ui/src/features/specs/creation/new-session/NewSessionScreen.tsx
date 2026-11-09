@@ -30,7 +30,7 @@ const loadingSource: SessionStartSource = {
  * itself with the Specification pinned (full-session.md "Starting a Session"). A project Runtime
  * starts it with the composed create, the demo at its own start route. Opened directly, the start
  * form is replaced by a refusal when the workspace's `startSession` is `forbidden` or Sessions are
- * turned off (session-association-ux §5); while that read loads or failed the form renders.
+ * turned off (full-session.md "Starting a Session"); while that read loads or failed the form renders.
  */
 export function NewSessionScreen({
   specId,

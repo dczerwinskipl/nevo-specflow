@@ -44,6 +44,19 @@ When an idea is accepted for implementation:
 3. create an implementation-ready specification or task plan as appropriate;
 4. remove or mark the idea as superseded rather than leaving competing active guidance.
 
+A merged implementation PR does not by itself prove that a whole idea is delivered. Before any part
+of an idea is removed, give each part exactly one disposition:
+
+- **implemented** — described in a current contract that states the delivered scope, including
+  any limited or stand-in behaviour;
+- **superseded** — replaced by a concrete decision, which the remaining text names;
+- **still open** — kept here as backlog.
+
+A current product, architecture or reference document describes only what is implemented; planned
+behaviour next to it is marked as such and linked to its open idea. Decision records kept here
+(rationale, rejected alternatives, follow-ups) stay `status: draft` and non-authoritative; a
+rationale whose premise no longer holds is marked superseded or removed.
+
 ## Current packages
 
 - [Offline Engine, CLI/Runtime boundaries, and Git worktrees](specflow-engine/README.md)
@@ -56,7 +69,6 @@ When an idea is accepted for implementation:
 - [Developer workspace / code inspection and IDE integration](developer-workspace/README.md)
 - [SpecFlow UI / open screen and component ideas](specflow-ui/README.md)
 
-Decision records of delivered work, kept until their open follow-ups land:
-[Session UI integration](specflow-runtime/session-ui-integration/plan.md),
+Non-authoritative decision records with open follow-ups:
 [Session association registry](specflow-runtime/session-association/README.md),
 [Project-mode Specification Overview](specflow-runtime/project-mode-spec-overview/README.md).

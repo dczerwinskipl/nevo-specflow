@@ -24,7 +24,8 @@ these files.
 | [AI-session UX](ai-session-ux.md)                                  | Turn state, Work information levels, commentary, live vs historical.                                                          |
 | [Full Session](full-session.md)                                    | The Session screen: conversation, Work block and Work history, Composer and work modes, starting a Session, Context and tabs. |
 | [Specifications list](specs-overview.md)                           | The list at `/`: Current sections or flat list, row anatomy, Archive, search, states.                                         |
-| [Specification overview](specification-overview.md)                | Section order, one/two columns, focus across a crossing, Activity history, Task selection.                                    |
+| [Specification overview](specification-overview.md)                | Section order, one/two columns, focus across a crossing, Activity history, project-mode sources, Task selection.              |
+| [Specification Sessions list](specification-sessions.md)           | A Specification's Sessions: the shared Session row, Current/Archive, Show more paging, states, freshness.                     |
 | [Authentication recovery](authentication-recovery.md)              | How the UI recovers when the Runtime session expires or authentication fails.                                                 |
 | [Documents editor mode](documents-editor-mode.md)                  | Documents with several open tabs, read-only tabs in a Session, tablet threshold.                                              |
 | [Documents and Create with archetypes](documents-archetypes-ui.md) | Document types, unclassified/missing files, expected documents, Create archetype, tab states.                                 |

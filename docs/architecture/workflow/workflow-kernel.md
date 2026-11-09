@@ -16,7 +16,8 @@ summary: >
   or its own escalation to the Specification. The Engine decides
   continuations; anything it cannot carry out is attention for the owner, derived from the state on
   every inspection and never stored. Canonical state lives in the Specification's `.execution/`
-  folder, which lists the Task set; only the change journal is local.
+  folder, which lists the Task set; only the change journal is local. The kernel writes those files
+  but does not commit them yet (follow-up F04).
 related:
   - architecture.workflow.deterministic-workflow
   - adr.0019-workflow-kernel-and-automatic-continuation
@@ -474,11 +475,11 @@ proceed.
 
 ## State and storage
 
-| What                                   | Where                                                  | Tracked |
-| -------------------------------------- | ------------------------------------------------------ | ------- |
-| Specification run and Task list        | `<specification>/.execution/specification.yaml`        | Git     |
-| Task records (type, deps, status, run) | `<specification>/.execution/tasks/<taskId>.yaml`       | Git     |
-| Change journal                         | `<stateRoot>/engine/operations/workflow/<specId>.json` | local   |
+| What                                   | Where                                                  | Belongs to                   |
+| -------------------------------------- | ------------------------------------------------------ | ---------------------------- |
+| Specification run and Task list        | `<specification>/.execution/specification.yaml`        | Git (not committed yet, F04) |
+| Task records (type, deps, status, run) | `<specification>/.execution/tasks/<taskId>.yaml`       | Git (not committed yet, F04) |
+| Change journal                         | `<stateRoot>/engine/operations/workflow/<specId>.json` | local                        |
 
 - **Location.** `.execution/` starts with a dot, so the document tree never lists it. It moves with
   the Specification when the Specification is archived.

@@ -12,14 +12,12 @@ areas:
   - cli
 read_when:
   - orienting in the system before working across package or process boundaries
-  - explaining who uses SpecFlow through which surface, and which part talks to which
-  - deciding which package or authoritative document owns a concern
+  - deciding which package and authoritative document own a concern, and where its code starts
 summary: >
-  Derived, diagram-first map of Nevo SpecFlow from the outside in: actors and use cases, the
-  running parts (CLI, Runtime with the UI, Engine, provider agents), the components inside each
-  part, then technical views (package dependencies, where state lives, the managed Session Turn).
-  Every diagram links the authoritative document that owns its facts; on conflict those documents
-  win.
+  Short, derived map of Nevo SpecFlow: who uses it through which surface, the process boundaries,
+  the responsibility boundaries between CLI, Runtime, Engine and UI, package dependency direction,
+  where state lives, and a topic → owner → document → code entry table. Every fact links its
+  authoritative document; on conflict that document wins.
 related:
   - adr.0012-product-package-topology-and-dependency-direction
   - architecture.runtime.ownership-and-lifecycle
@@ -36,342 +34,87 @@ related:
 
 # Architecture overview
 
-This page is a **derived overview** for orientation. It restates facts owned by other documents in
-diagram form and adds no rules. Each section names its owning documents; when a diagram and its
-owner disagree, the owner wins and the diagram is fixed.
+A **derived** map for orientation. It adds no rules: each section names the documents that own
+its facts, and when this page and an owner disagree, the owner wins and this page is fixed.
 
-It reads from the outside in: who uses SpecFlow and for what, which parts run, what each part is
-made of, and finally the technical views.
+## System and process boundaries
 
-## 1. Context: who uses SpecFlow
+Nevo SpecFlow is one local product, `nevo-specflow`, installed into a Git repository.
 
-SpecFlow is a local product, `nevo-specflow`, installed into a Git repository. A **person** works
-mainly in the browser UI; an **agent the person runs themselves** (for example Claude Code or Codex
-in a terminal) works through the CLI. SpecFlow can also run **managed agents** itself: Runtime
-starts the provider CLI as a child process and relays the conversation to the UI.
+- A **person** works mainly in the browser UI, and uses the CLI to initialise a project, start
+  SpecFlow and recover interrupted operations.
+- An **external agent** that the person runs in a terminal (for example Claude Code) reads and
+  changes Specifications only through offline CLI commands; it never talks to the Runtime.
+- **Managed agents** are provider CLIs that the Runtime starts for a Session. They work in the
+  bound workspace and reach the person only through the Runtime, which shows their questions and
+  permission requests in the UI.
 
-```mermaid
-flowchart LR
-  person([Person<br/>developer, project owner])
-  extagent([External agent<br/>run by the person in a terminal])
-
-  subgraph sf["Nevo SpecFlow (local, one install per repository)"]
-    ui["SpecFlow UI<br/>in the browser"]
-    cli["nevo-specflow CLI"]
-    rt["Runtime<br/>local server"]
-  end
-
-  managed([Managed agents<br/>Claude Code, Codex, Antigravity<br/>started by Runtime])
-  repo[("Git repository<br/>Project Home + worktrees")]
-  idp([OIDC identity provider<br/>optional])
-
-  person -- "works in" --> ui
-  person -- "init, start, operator commands" --> cli
-  extagent -- "reads and writes Specifications" --> cli
-  ui -- "HTTP" --> rt
-  cli -- "start" --> rt
-  rt -- "starts and talks to" --> managed
-  managed -- "work in the workspace" --> repo
-  cli --> repo
-  rt --> repo
-  rt -. "sign-in" .-> idp
-```
-
-Owners: [Product overview](../product/specflow/overview.md),
-[CLI contract](../reference/cli/nevo-specflow-contract.md),
-[Runtime authentication](runtime/auth/README.md),
-[Provider boundary](ai/provider-boundary.md).
-
-## 2. Use cases by actor
-
-What each actor does today, and through which surface. The workflow kernel (steps, Tasks,
-automatic continuation) exists in the Engine but is not yet exposed through the CLI, Runtime or UI,
-so it has no use case here yet.
-
-**Person.** Works mainly in the UI; uses the CLI to set up a project, start SpecFlow and recover
-interrupted operations.
-
-```mermaid
-flowchart LR
-  person([Person])
-  subgraph ui["In the UI"]
-    u1["Browse Specifications<br/>current and archive"]
-    u2["Create a Specification<br/>archetype, workspace"]
-    u3["Read and edit documents"]
-    u4["Start a Session with an agent<br/>and converse in it"]
-    u5["Answer agent questions,<br/>allow or deny permissions"]
-    u6["Inspect Work history,<br/>telemetry, provider limits"]
-    u7["Rename, archive, delete Sessions"]
-    u8["Review Tasks"]
-  end
-  subgraph cli["In the CLI"]
-    c1["init, project inspect|bootstrap"]
-    c2["start the Runtime and UI"]
-    c3["recovery: specs recover,<br/>close-reconcile-scratch"]
-  end
-  person --> ui
-  person --> cli
-```
-
-**External agent.** An agent the person runs in a terminal reads and changes Specifications only
-through the offline CLI. It never talks to the Runtime.
-
-```mermaid
-flowchart LR
-  extagent([External agent])
-  subgraph cli["In the CLI"]
-    c1["specs create|list|resolve|close"]
-    c2["specs documents ...<br/>list, save, add, move, status"]
-    c3["commit [status]"]
-    c4["definitions list|show|validate|install"]
-  end
-  extagent --> cli
-```
-
-**Managed agent.** A provider CLI started by Runtime for a Session. It works in the bound workspace
-and reaches the person only through Runtime, which shows its questions and permission requests in
-the Session screen.
-
-```mermaid
-flowchart LR
-  managed([Managed agent])
-  subgraph session["Inside a Session"]
-    m1["Work in the bound workspace<br/>within its mode's write authority"]
-    m2["Ask a question or<br/>request a permission"]
-  end
-  person([Person in the UI])
-  managed --> m1
-  managed --> m2
-  m2 -- "answered by" --> person
-```
-
-Owners: [UI interaction model](../product/specflow/ui/interaction-model.md),
-[Full Session](../product/specflow/ui/full-session.md),
-[Specification creation](../product/specflow/specification-creation.md),
-[Specification CLI commands](../reference/cli/specflow-specification-commands.md),
-[Provider references](../reference/providers/README.md).
-
-## 3. Containers: what runs
-
-Two ways in share one Engine. Offline CLI commands open the Engine in their own process and exit.
-`nevo-specflow start` runs the long-lived Runtime, which serves the built UI and the `/api` HTTP
-surface from one origin, opens the same Engine in-process, and owns the managed provider processes.
+There are two kinds of process. An offline command opens the Engine in its own short-lived
+process. `nevo-specflow start` keeps its process running as the Runtime host: the same process
+serves the built UI and `/api`, opens the Engine in-process and owns the provider child processes.
 
 ```mermaid
 flowchart LR
   person([Person])
   extagent([External agent])
 
-  subgraph cliproc["CLI process (short-lived)"]
-    cli["Commands<br/>@nevo/specflow"]
-    engine1["Engine<br/>(library)"]
+  subgraph offline["nevo-specflow &lt;command&gt; — short-lived"]
+    cmd["offline command"] --> eng1["Engine (library)"]
   end
 
-  subgraph rtproc["Runtime process (nevo-specflow start)"]
-    http["HTTP server<br/>/api + static UI"]
-    features["Runtime features"]
-    engine2["Engine<br/>(library)"]
-    store[("Session store<br/>SQLite, worker thread")]
+  subgraph host["nevo-specflow start — long-lived Runtime host"]
+    http["HTTP server<br/>/api + built UI"] --> features["Runtime features"]
+    features --> eng2["Engine (library)"]
+    features --> store[("Session store<br/>SQLite, worker thread")]
   end
 
-  browser["Browser<br/>SpecFlow UI (React)"]
-  git[("Git + filesystem")]
-
-  subgraph providers["Provider CLIs (child processes)"]
-    claude["Claude Code<br/>stream-json, stdio"]
-    codex["Codex<br/>app-server JSON-RPC, stdio"]
-    antigravity["Antigravity<br/>stream-json + hooks<br/>+ private loopback MCP"]
-  end
+  browser["Browser: SpecFlow UI"]
+  providers["Provider CLIs<br/>Claude Code, Codex, Antigravity<br/>(child processes)"]
+  git[("Git repository<br/>Project Home + worktrees")]
 
   person --> browser
-  person --> cli
-  extagent --> cli
-  cli --> engine1
-  cli -- "start" --> rtproc
+  person --> offline
+  person -- "start" --> host
+  extagent --> offline
   browser -- "HTTP JSON + SSE" --> http
-  http --> features
-  features --> engine2
-  features --> store
   features -- "spawn, stdio, process tree" --> providers
-  engine1 --> git
-  engine2 --> git
-  providers --> git
-```
-
-Owners: [Runtime ownership and lifecycle](runtime/ownership-and-lifecycle.md),
-[Engine boundaries](runtime/specflow-engine.md),
-[Provider process ownership](ai/provider-process-ownership.md),
-[Session provider driver protocol](../reference/protocols/session-provider-driver.md).
-
-## 4. Components
-
-### 4.1 CLI (`@nevo/specflow`)
-
-The product composition root. Command groups open the Engine for the current checkout, except
-`start`, which hands over to the Runtime, and `auth`, which belongs to the Runtime auth feature.
-
-```mermaid
-flowchart LR
-  bin["bin: nevo-specflow"] --> program["program<br/>command composition"]
-  program --> init["init"]
-  program --> project["project inspect|bootstrap"]
-  program --> specs["specs ...<br/>+ specs documents ..."]
-  program --> commit["commit [status]"]
-  program --> defs["definitions ..."]
-  program --> auth["auth hash-password"]
-  program --> start["start [--demo]"]
-
-  init & project & specs & commit & defs --> engine["Engine<br/>openSpecFlowEngine"]
-  auth --> rtauth["Runtime auth feature"]
-  start --> runtime["Runtime<br/>startProjectRuntime + built UI"]
+  eng1 --> git
+  eng2 --> git
+  providers -- "work in the bound workspace" --> git
 ```
 
 Owners: [CLI contract](../reference/cli/nevo-specflow-contract.md),
-[CLI architecture](../engineering/cli/architecture.md),
-[Product packaging](../engineering/repository/product-packaging.md).
+[Runtime ownership and lifecycle](runtime/ownership-and-lifecycle.md),
+[Engine boundaries](runtime/specflow-engine.md),
+[Provider boundary](ai/provider-boundary.md),
+[Provider process ownership](ai/provider-process-ownership.md).
 
-### 4.2 Runtime (`@nevo/specflow-runtime`)
+## Responsibility boundaries
 
-One composition root builds infrastructure, then the feature modules under `src/features/<feature>/`,
-then starts the HTTP adapter. HTTP and SSE are adapters over the features, not owners of state.
-
-```mermaid
-flowchart LR
-  subgraph adapters["Transport adapters"]
-    routes["HTTP routes /api/..."]
-    sse["SSE streams<br/>operations, session events"]
-    webapp["Static UI host"]
-  end
-
-  subgraph feat["Feature modules"]
-    auth["auth<br/>sign-in, capabilities"]
-    specs["specs<br/>overview, create, close, workspace"]
-    documents["documents"]
-    tasks["tasks"]
-    operations["operations<br/>progress of long operations"]
-    sessions["sessions"]
-    assoc["session-associations<br/>Session ↔ Specification/Task"]
-    settings["settings"]
-  end
-
-  subgraph sess["sessions internals"]
-    coord["lifecycle coordinator"]
-    drivers["provider drivers<br/>claude, codex, antigravity, mock"]
-    proc["process ownership<br/>scope, termination, Windows job"]
-    persist["persistence<br/>SQLite worker"]
-    inter["interactions<br/>questions, permissions"]
-  end
-
-  engine["Engine"]
-  routes --> auth
-  routes --> feat
-  sse --> operations & sessions
-  specs & documents & tasks --> engine
-  sessions --> coord
-  coord --> drivers --> proc
-  coord --> persist
-  coord --> inter
-  coord -- "workspace execution claims" --> engine
-  assoc --> persist
-```
-
-Owners: [Runtime ownership and lifecycle](runtime/ownership-and-lifecycle.md),
-[Authorization](runtime/auth/authorization.md),
-[Session storage and lifecycle](ai/session-storage-and-lifecycle.md),
-[Task read composition](runtime/task-read-composition.md),
-[Operation progress](../engineering/shared/operation-progress.md).
-
-### 4.3 Engine (`@nevo/specflow-engine`)
-
-A library with no server of its own. `openSpecFlowEngine` resolves the Project Home once per
-process; every use case then runs against that verified project.
-
-```mermaid
-flowchart TD
-  open["openSpecFlowEngine<br/>resolves the Project Home once per process"]
-
-  subgraph uc["Use cases"]
-    create["specs/create<br/>Create"]
-    close["specs/lifecycle<br/>Specification, worktree<br/>and workspace Close"]
-    docs["specs/documents<br/>tree, reads, writes"]
-    commits["specs/manual-commit<br/>uncommitted changes, commit"]
-    defs["specs/definitions<br/>archetypes, document types"]
-    execc["execution<br/>workspace execution claims"]
-    wf["workflow<br/>kernel: steps, Tasks,<br/>continuation, attention"]
-  end
-
-  subgraph infra["Shared infrastructure"]
-    home["project<br/>Project Home, workspace registry"]
-    lock["control lock +<br/>shared resources (project-write)"]
-    policy["version-control<br/>worktree and commit policy"]
-    gitp["git<br/>Git process runner"]
-  end
-
-  open --> uc
-  uc --> infra
-  policy --> gitp
-```
+- **Engine** is the only place that changes Specification and workspace state: Project Home and
+  workspace bindings, Specification Create and Close, documents and Engine-owned commits,
+  definitions, workspace execution claims and the workflow kernel. It is a library without a
+  server; mutations are serialized by the project control lock and shared resources.
+- **Runtime** is the lifecycle owner of long-lived resources: the HTTP server, Sessions and their
+  store, provider processes, operation progress and authentication. HTTP and SSE are adapters over
+  its feature modules. Specifications, documents, commits and workspace bindings change only
+  through the Engine; Runtime itself writes only its own local state, such as the Session store.
+- **UI** talks to the Runtime only through the `/api` contracts in `@nevo/specflow-contracts`; it
+  never imports Runtime internals. Reusable components come from the `@nevo/ui` design system.
+- **CLI** (`@nevo/specflow`) is the composition root: it composes the commands and packages the
+  single product artifact. Its `init` writes the project configuration.
+- The **workflow kernel** exists in the Engine but is not yet wired to the Runtime, CLI or UI.
 
 Owners: [Engine boundaries](runtime/specflow-engine.md),
-[Project Home and workspaces](runtime/project-home-and-workspaces.md),
-[Specification lifecycle](runtime/specification-lifecycle.md),
-[Specification documents](runtime/specification-documents.md),
-[Workspace execution claims](runtime/workspace-execution-claims.md),
-[Workflow kernel](workflow/workflow-kernel.md),
-[Git/worktree configuration](../reference/configuration/specflow-git-worktrees.md).
+[Runtime ownership and lifecycle](runtime/ownership-and-lifecycle.md),
+[UI application architecture](../product/specflow/ui/application-architecture.md),
+[Workflow kernel](workflow/workflow-kernel.md).
 
-### 4.4 UI (`@nevo/specflow-ui`)
-
-A React single-page app on the Nevo UI design system. Feature UI modules contribute routes and
-navigation to the shell; screens read through TanStack Query from services that talk to the
-Runtime, with separate project and demo adapters.
-
-```mermaid
-flowchart LR
-  subgraph shell["app"]
-    router["router<br/>TanStack Router"]
-    appshell["SpecFlow shell<br/>navigation, account"]
-    registry["UI module registry<br/>extension points"]
-    query["query client<br/>TanStack Query"]
-  end
-
-  subgraph features["feature UI modules"]
-    specs["specs<br/>list, create, overview"]
-    documents["documents<br/>explorer, editor, tabs"]
-    sessions["sessions<br/>start, Full Session, list"]
-    tasks["tasks<br/>workbench, detail"]
-    gitf["git<br/>changes, repository"]
-  end
-
-  subgraph services["services"]
-    apis["SpecFlowAppServices<br/>project and demo adapters"]
-    authc["auth<br/>login, recovery"]
-    http["HTTP client<br/>@nevo/http-client"]
-  end
-
-  nevoui["@nevo/ui<br/>design system"]
-  runtime["Runtime /api"]
-
-  router --> appshell
-  registry --> router
-  features -- "contribute" --> registry
-  features --> query --> apis --> http --> runtime
-  authc --> http
-  features --> nevoui
-  appshell --> nevoui
-```
-
-Owners: [UI application architecture](../product/specflow/ui/application-architecture.md),
-[Data loading and integration](../product/specflow/ui/data-loading-and-integration.md),
-[Design system boundary](../design-system/principles/system-boundary.md).
-
-## 5. Technical views
-
-### 5.1 Package dependency direction
+## Package dependency direction
 
 Arrows point from a consumer to its dependency, as declared in each `package.json`. The UI is not a
 runtime dependency of `@nevo/specflow`: its built assets are bundled into the artifact and served by
-Runtime.
+the Runtime.
 
 ```mermaid
 flowchart TD
@@ -404,7 +147,7 @@ Owners: [ADR 0012](decisions/0012-product-package-topology-and-dependency-direct
 [Repository structure](repository-structure.md). Repository tooling under `tools/*` is private and
 never a dependency of product packages ([ADR 0005](decisions/0005-repository-tooling-is-separate-from-the-product-api.md)).
 
-### 5.2 Where state lives
+## Where state lives
 
 ```mermaid
 flowchart TD
@@ -421,7 +164,7 @@ flowchart TD
 
   subgraph ws["Bound workspace checkout (primary or worktree)"]
     spec["specs/active|archive/&lt;slug&gt;/specification.yaml<br/>+ documents"]
-    exec["specs/active|archive/&lt;slug&gt;/.execution/<br/>specification.yaml, tasks/&lt;taskId&gt;.yaml"]
+    exec["specs/active|archive/&lt;slug&gt;/.execution/<br/>workflow state, not committed yet (F04)"]
   end
 
   registry -- "specId → workspaceId binding" --> ws
@@ -434,38 +177,20 @@ Owners: [Configuration](runtime/configuration.md),
 [Workflow kernel](workflow/workflow-kernel.md),
 [Session storage and lifecycle](ai/session-storage-and-lifecycle.md).
 
-### 5.3 Managed Session Turn
+## Where to start
 
-The happy path of one workspace-writing Turn. Read-only invocations take no Engine claim. Failure,
-`unknown` dispatch outcomes and restart recovery are owned by the session storage document and the
-driver protocol.
-
-```mermaid
-sequenceDiagram
-  autonumber
-  participant UI as SpecFlow UI
-  participant RT as Runtime sessions
-  participant DB as Session store
-  participant EN as Engine
-  participant PR as Provider CLI
-
-  UI->>RT: POST /api/sessions/:id/turns
-  RT->>DB: persist Turn and invocation intent
-  RT->>EN: admit workspace-execution claim (project-write)
-  RT->>EN: mark claim dispatched
-  RT->>PR: start the driver invocation
-  UI->>RT: GET /api/sessions/:id/events (SSE)
-  loop Provider facts
-    PR-->>RT: native events
-    RT->>DB: normalized Work and messages
-    RT-->>UI: session events
-  end
-  PR-->>RT: terminal result, process tree settled
-  RT->>EN: settle claim with receipt
-  RT->>DB: settle Turn
-```
-
-Owners: [Canonical Session, Turn and Work](ai/canonical-session-turn-work.md),
-[Session storage and lifecycle](ai/session-storage-and-lifecycle.md),
-[Sessions API](../reference/api/sessions.md),
-[Workspace execution claims](runtime/workspace-execution-claims.md).
+| Topic                         | Owner                        | Authoritative document                                                                                                              | Code entry point                                                           |
+| ----------------------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| CLI commands                  | `@nevo/specflow`             | [CLI contract](../reference/cli/nevo-specflow-contract.md), [CLI architecture](../engineering/cli/architecture.md)                  | `packages/specflow/src/program.ts`                                         |
+| Runtime composition           | `@nevo/specflow-runtime`     | [Ownership and lifecycle](runtime/ownership-and-lifecycle.md)                                                                       | `packages/specflow-runtime/src/runtime.ts`, `src/server/app.ts`            |
+| Authentication, authorization | Runtime `auth`               | [Runtime auth](runtime/auth/README.md)                                                                                              | `packages/specflow-runtime/src/features/auth/`, `packages/authorization/`  |
+| Project Home, workspaces      | Engine                       | [Project Home and workspaces](runtime/project-home-and-workspaces.md)                                                               | `packages/specflow-engine/src/project/`                                    |
+| Specification Create, Close   | Engine                       | [Specification lifecycle](runtime/specification-lifecycle.md)                                                                       | `packages/specflow-engine/src/specs/create/`, `specs/lifecycle/`           |
+| Documents and commits         | Engine                       | [Specification documents](runtime/specification-documents.md), [ADR 0018](decisions/0018-engine-commit-policy-and-manual-commit.md) | `packages/specflow-engine/src/specs/documents/`, `specs/manual-commit/`    |
+| Definitions                   | Engine                       | [ADR 0017](decisions/0017-definitions-as-project-data.md)                                                                           | `packages/specflow-engine/src/specs/definitions/`                          |
+| Workflow kernel               | Engine                       | [Workflow kernel](workflow/workflow-kernel.md)                                                                                      | `packages/specflow-engine/src/workflow/`                                   |
+| Workspace execution claims    | Engine                       | [Workspace execution claims](runtime/workspace-execution-claims.md)                                                                 | `packages/specflow-engine/src/execution/`                                  |
+| Sessions, Turns, Work         | Runtime `sessions`           | [Session storage and lifecycle](ai/session-storage-and-lifecycle.md), [Sessions API](../reference/api/sessions.md)                  | `packages/specflow-runtime/src/features/sessions/lifecycle/coordinator.ts` |
+| Providers                     | Runtime `sessions/providers` | [Driver protocol](../reference/protocols/session-provider-driver.md), [Provider references](../reference/providers/README.md)       | `packages/specflow-runtime/src/features/sessions/providers/`               |
+| UI application                | `@nevo/specflow-ui`          | [UI application architecture](../product/specflow/ui/application-architecture.md)                                                   | `packages/specflow-ui/src/app/router.tsx`, `src/services/index.tsx`        |
+| Design system                 | `@nevo/ui`                   | [Design system](../design-system/README.md)                                                                                         | `packages/nevo-ui/src/`                                                    |

@@ -49,9 +49,9 @@ export function projectSessionNavigation(
     .sort(
       (a, b) => Number(b.activityCode === 'attention') - Number(a.activityCode === 'attention'),
     );
-  // Interim count rule (session-association-ux §3): exact only when the bounded section holds every
-  // Session and each one's status is known; otherwise the partial-activity line says so. A
-  // provider sign-in is a known status that never enters the preview.
+  // Interim count rule (interaction-model.md, "Starting a Session and the navigator"): exact only
+  // when the bounded section holds every Session and each one's status is known; otherwise the
+  // partial-activity line says so. A provider sign-in is a known status that never enters the preview.
   const partial =
     data.sessionsHasMore === true ||
     data.sessions.some(

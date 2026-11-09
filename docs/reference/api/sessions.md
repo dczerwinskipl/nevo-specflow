@@ -346,6 +346,11 @@ Session-owned sidecar record
 ([storage](../../architecture/ai/session-storage-and-lifecycle.md#authorization-and-associations)),
 written only by the composed create. There is no route to reassign, unlink or append Tasks.
 
+Known limit: the record stores Task ids as they were at create. A Task id is a slug, not an
+immutable identity, so an id reused after its Task was removed reads as the associated Task.
+Pinning an immutable Engine identity is open (follow-up D13 in the
+[association decision record](../../ideas/specflow-runtime/session-association/README.md)).
+
 ### Composed create
 
 `POST /api/specs/:specId/sessions` (body limit 256 KiB) starts a Session associated with the

@@ -5,7 +5,7 @@
  * (`GET /api/sessions/:sessionId/association`, mapped by `associationContext`); the executor, Work
  * history and telemetry are derived by the Session screen itself. Execution scope and Attention stay
  * in the shape for fixtures and future projections: an association is context, never current
- * execution, so the association read never fills them (session-association-ux §7).
+ * execution, so the association read never fills them (full-session.md "Context").
  *
  * Every section is optional and carries a `ContextFact`: a section the Session has no association
  * with is absent (it simply does not render), while a section whose data is loading, unreadable,

@@ -8,7 +8,7 @@ import { sessionErrorCode } from '../managed/api';
 import { loadSessions, type SessionCollection, type SessionListLoad } from './loadSessions';
 import type { SessionListItem } from '@nevo/specflow-contracts/sessions';
 
-/** What the Specification Sessions list shows (session-association-ux §3). */
+/** What the Specification Sessions list shows (specification-sessions.md). */
 export type SpecificationSessionListState =
   | { status: 'loading' }
   | { status: 'failed'; retry: () => void }

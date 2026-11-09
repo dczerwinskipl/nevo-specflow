@@ -24,8 +24,9 @@ export { ProviderChoice } from './start/fields/ProviderChoice';
 export type { ContextFact, ContextSpecification } from './managed/context/sessionContextTypes';
 export { SessionStartScreen } from './start/screen/SessionStartScreen';
 export type { SessionStartSource } from './start/source/sessionStartSource';
-// A Specification's New Session (session-association-ux §5): the project Runtime's start source, the
-// association a start establishes, its gating and the refresh after this UI's own Session command.
+// A Specification's New Session (full-session.md "Starting a Session"): the project Runtime's start
+// source, the association a start establishes, its gating and the refresh after this UI's own
+// Session command.
 export { startedAssociation, useManagedStartSource } from './start/source/useManagedStartSource';
 export { startRouteRefusal, startSessionOffered } from './associations/startSessionGate';
 export { invalidateSpecificationSessions } from './associations/queries';

@@ -104,19 +104,19 @@ legitimately have no `existing-new` API yet.
 
 Implemented screens are owned by product docs: the
 [Specifications list](../../../product/specflow/ui/specs-overview.md), the
-[Specification overview](../../../product/specflow/ui/specification-overview.md),
+[Specification overview](../../../product/specflow/ui/specification-overview.md), the
+[Specification Sessions list](../../../product/specflow/ui/specification-sessions.md),
 [Create Specification](../../../product/specflow/specification-creation.md) (including its demo mode) and
 [Full Session](../../../product/specflow/ui/full-session.md) (including starting a Session). The specs below hold
 proposals and open items.
 
-| Screen / large surface      | Responsibility                                                                                     | Spec                                                                          |
-| --------------------------- | -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| Specification (open items)  | Batch Start, Specification-level decision, Task filter, relevant Session choice, Floating Session. | [Specification UI spec](specification-workspace-ui-spec.md)                   |
-| Specification Sessions list | One Specification's associated Sessions: Current/Archive collections, Show more paging, states.    | [Specification Sessions list UI spec](specification-sessions-list-ui-spec.md) |
-| Task detail                 | One Task: decision state, intent, evidence, deterministic actions, related Session history.        | [Task Detail UI spec](task-detail-ui-spec.md)                                 |
-| Full Session (open areas)   | Workflow execution, Task batches, Handover/artifact and File tabs, still-deferred decisions.       | [Full Session screen structure](../full-session-screen-structure.md)          |
-| Floating Session            | Wide-only quick Session interaction without abandoning current Spec/Task context.                  | [Floating Session UI spec](floating-session-ui-spec.md)                       |
-| Project Settings            | Project configuration, AI/agent policy, workflows, repository/Git, integrations.                   | [Project Settings UI spec](project-settings-ui-spec.md)                       |
+| Screen / large surface     | Responsibility                                                                                     | Spec                                                                 |
+| -------------------------- | -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Specification (open items) | Batch Start, Specification-level decision, Task filter, relevant Session choice, Floating Session. | [Specification UI spec](specification-workspace-ui-spec.md)          |
+| Task detail                | One Task: decision state, intent, evidence, deterministic actions, related Session history.        | [Task Detail UI spec](task-detail-ui-spec.md)                        |
+| Full Session (open areas)  | Workflow execution, Task batches, Handover/artifact and File tabs, still-deferred decisions.       | [Full Session screen structure](../full-session-screen-structure.md) |
+| Floating Session           | Wide-only quick Session interaction without abandoning current Spec/Task context.                  | [Floating Session UI spec](floating-session-ui-spec.md)              |
+| Project Settings           | Project configuration, AI/agent policy, workflows, repository/Git, integrations.                   | [Project Settings UI spec](project-settings-ui-spec.md)              |
 
 Do not create a separate screen spec merely because a backend entity exists. A screen earns a spec
 when it is a meaningful user surface with its own interaction and information hierarchy.

@@ -14,9 +14,9 @@ export interface SessionListLoad {
 }
 
 /**
- * One load of the Specification Sessions list (session-association-ux §3): a page may hold fewer
- * rows than asked, or none, while a cursor remains, so the load follows `nextCursor` until at least
- * one row arrives or the cursor ends, at most {@link maxRequestsPerLoad} requests.
+ * One load of the Specification Sessions list (specification-sessions.md "Paging"): a page may
+ * hold fewer rows than asked, or none, while a cursor remains, so the load follows `nextCursor`
+ * until at least one row arrives or the cursor ends, at most {@link maxRequestsPerLoad} requests.
  */
 export async function loadSessions(
   api: Pick<SessionAssociationsApi, 'list'>,

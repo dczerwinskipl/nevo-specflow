@@ -201,7 +201,9 @@ Every UI start is from a Specification: **New session** opens `/specs/:specId/se
   catalogue's usable modes: a segmented control for up to 4, a picker beyond), then **Session
   name**. Effort and Work mode are rendered disabled until a model is chosen, so choosing one never
   adds rows. Changing the provider resets everything below it. The same labelled fields serve
-  Create with an agent; the Composer keeps its compact pickers.
+  Create with an agent, which exists only in demo mode
+  ([Create Specification, Demo mode](../specification-creation.md#demo-mode)); the Composer keeps
+  its compact pickers.
 - **Composer before Start.** Split layout: inactive in its final place, placeholder **Choose the
   agent and start the session**, no pickers, Send disabled. Single-surface (narrow) layout: not shown
   until Start.
@@ -238,21 +240,29 @@ On split-capable layouts **Context** is the pinned home tab and the editor-tab r
 the start. The user opens other root tabs from Context or Session references; live events never open,
 switch or push anything.
 
-- **A root tab's identity is the object it shows.** Each Task opened from Context is its own tab
-  (label: the Task key); an open Task is activated, never duplicated and never retargeted to another
-  Task. **Related Tasks** with more than one Task opens the Tasks list tab; selecting a Task there
-  opens that Task's own tab, so a Task never lives both as a tab and as a page inside the list.
-- **Dependent detail stays on its root's stack.** Attempts, review events, rejections and feedback
-  opened from a Task push onto **that Task tab's** local stack; ToolActions push onto their Turn's
-  Work tab. Back returns to the direct parent inside the active tab.
+- **A root tab's identity is the object it shows.** Each Task opened from Context (a **Related
+  Tasks** row) is its own tab (label: the Task key); an open Task is activated, never duplicated and
+  never retargeted to another Task. Each Turn's Work history is its own tab (see
+  [Work history](#work-history-l2)); each Planned-areas row opens its own placeholder tab.
+- **Task tab today is a limited stand-in.** The association read carries only a Task's id, key and
+  title, so the Task tab shows the key, the title and a note that the Task's evidence and actions are
+  on its own Task page. It is not the Task detail of the Specification: it shows no attempts, review
+  events, rejections or feedback and offers no actions, and nothing pushes onto its stack.
+- **Dependent detail stays on its root's stack.** ToolActions push onto their Turn's Work tab. Back
+  returns to the direct parent inside the active tab.
 - Switching tabs preserves each tab's stack and scroll; inactive tab screens are not kept mounted, so
   selections, filters and drafts are product state, and leaving a tab with unsaved work runs that
   tab's leave guard.
 - **Narrow** shows one surface at a time and has **no bottom tab strip**. Conversation opens first;
-  Context and details open from the header and return with Back. Back follows the actual path: an
-  object opened again is pushed again. The Composer draft and conversation scroll survive.
+  Context opens from the header and returns with Back; a Task, Work history or Planned-areas row
+  opened from it is pushed onto the same flow. Back follows the actual path: an object opened again
+  is pushed again. The Composer draft and conversation scroll survive.
 - Closing Secondary is the user's choice; new activity never reopens it. Secondary state is local,
   not URL state, and there is no third pane.
+
+A full Task detail with attempt, review and feedback drill-down in the Task tab, and a Tasks list
+tab, are open items in the
+[Full Session screen structure](../../../ideas/specflow-ui/full-session-screen-structure.md#2-task-tabs-in-the-session).
 
 Sizing (narrow Context-only Secondary, 50/50 on a second root tab, manual splitter, side swap) and
 the tab rail are the design-system contract linked above.
@@ -268,7 +278,7 @@ neighbours:
    as its way back).
 3. **Current execution** — only from an authoritative execution scope.
 4. **Attention / next actions** — only from an authoritative projection.
-5. **Related Tasks** — the associated Tasks.
+5. **Related Tasks** — the associated Tasks, one row each (title and key), each opening its Task tab.
 6. **Work** — Work history of the current or last Turn.
 7. **Planned areas** — preview rows (Files / Changes, Handovers, Artifacts, Instructions,
    Environment) that open a placeholder tab.
@@ -282,14 +292,16 @@ supplies an execution scope or attention today, so Current execution and Attenti
 
 **Availability.** The Session's scope comes only from the association read
 ([Sessions API](../../../reference/api/sessions.md#association-read)), seeded from the create
-response for a Session started from a Specification. Every fact-backed section is `loading`,
-`ready`, `unreadable` or `missing`: an absent association or an empty list is omitted; loading shows
-skeleton rows at their final height; unreadable is an attention note; missing is an attention note
-for an optional and a danger note for a required reference. Notes are DS `InlineNote`s in the
-section's own slot, passive (no live region), with no retry. A forbidden Specification is an info
-note without a Documents row; missing Tasks show the found Tasks plus a count note. Context always
-keeps the facts it knows; there is no whole-panel "not available" state. Copy keys live in
-`sessions.context.availability.*`.
+response for a Session started from a Specification. While that read is in flight, or for a
+standalone Session, the Specification and Related Tasks sections are not shown; a failed read is one
+attention note under Executor. Executor and Work show skeleton rows at their final height while the
+first snapshot loads. Once the association is read, an absent Specification or an empty Task list is
+omitted. A Specification that cannot be found is a danger note naming its key; one the user may not
+view is an info note without a Documents row; one that cannot be read is an attention note. Related
+Tasks show only beside an available Specification: Tasks that cannot be read are one attention note,
+and Tasks that no longer exist show the found Tasks plus a count note. Notes are DS `InlineNote`s in the section's own
+slot, passive (no live region), with no retry. Context always keeps the facts it knows; there is no
+whole-panel "not available" state. Copy keys live in `sessions.context.availability.*`.
 
 **Session details.** The [telemetry](../../../reference/api/session-telemetry.md) snapshot; a reading
 that is absent, unavailable or masked is not shown as zero or "unknown". Only provider limits can be

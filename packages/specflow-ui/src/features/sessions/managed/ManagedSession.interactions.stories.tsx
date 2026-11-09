@@ -538,7 +538,7 @@ function selectedRootTabLabel(canvasElement: HTMLElement) {
 
 /**
  * Root tab identity is the object (full-session.md "Secondary tabs"): each Related Tasks
- * row (session-association-ux §7, one row per associated Task) opens that Task as its own tab named
+ * row (full-session.md "Context", one row per associated Task) opens that Task as its own tab named
  * by its key; a Task already open is activated, never duplicated. Context stays the pinned,
  * non-closable first tab throughout, and closing the opened tabs returns the Secondary to the
  * DOM-identical single-pinned-tab baseline.

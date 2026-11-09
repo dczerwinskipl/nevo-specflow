@@ -83,12 +83,22 @@ still open:
 - [Session Composer — open capability design](components/session-composer-design.md)
 - [Accepted Session Chat V10 mock — desktop](examples/session-chat-v10/desktop.html)
 - [Accepted Session Chat V10 mock — mobile](examples/session-chat-v10/mobile.html)
-- [Session actions decision record](session-actions-ux/README.md)
-- [Session association UX (stage 3 D10, accepted)](session-association-ux/README.md)
+- [Session actions decision record](session-actions-ux/README.md) (non-authoritative rationale)
+- [Session association UX decision record](session-association-ux/README.md) (non-authoritative
+  rationale and open follow-ups)
 - [Storybook rework — open follow-ups](storybook-rework.md)
 - [Data loading, refresh, batching, and eventing](data-loading-refresh-and-eventing.md)
 - [Screen specifications index](screens/README.md)
 - [Large UI component specifications](components/README.md)
+
+## Open items without their own document
+
+- **Create with an agent on a project Runtime.** The method choice and Create with an agent exist
+  only in demo mode ([Create Specification, Demo mode](../../product/specflow/specification-creation.md#demo-mode)).
+  On a project Runtime the Create form chooses no agent and the Create operation allocates no
+  Session, so offering it there first needs a backend change: a project Create that takes the agent
+  choice and allocates the first Session. Whether that is planned with the UI or as a separate item
+  is not decided.
 
 The Session Chat V10 HTML mocks remain illustrative, synthetic and **not production code or API
 evidence**. Exact visual styling, Context body, provider-specific capability fixtures and **mobile

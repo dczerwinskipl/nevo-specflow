@@ -1,4 +1,9 @@
 import { DefinitionKindRegistry } from '../kind-registry';
+import {
+  agentArchetypeKind,
+  taskTypeKind,
+  workflowKind,
+} from '../../../workflow/definitions/kinds';
 import { documentTypeKind } from './document-type';
 import { specificationArchetypeKind } from './specification-archetype';
 
@@ -13,5 +18,8 @@ export {
 export function createDefaultDefinitionRegistry(): DefinitionKindRegistry {
   return new DefinitionKindRegistry()
     .register(documentTypeKind)
-    .register(specificationArchetypeKind);
+    .register(specificationArchetypeKind)
+    .register(agentArchetypeKind)
+    .register(workflowKind)
+    .register(taskTypeKind);
 }

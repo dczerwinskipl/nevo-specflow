@@ -32,6 +32,9 @@ async function project(config: string) {
   return { root, engine: await bootstrapProjectHome(root) };
 }
 
+// Document types, archetypes, the overview template, agent archetypes, workflows, task types.
+const ALL_SEED_FILES = 9 + 3 + 1 + 6 + 3 + 2;
+
 const GIT_ON = 'runtime: {}\ngit:\n  enabled: true\n';
 const GIT_OFF = 'runtime: {}\ngit:\n  enabled: false\n';
 
@@ -52,8 +55,8 @@ describe('installing definitions with Git enabled', () => {
 
     const result = await installProjectDefinitions(engine);
 
-    expect(result.written).toHaveLength(13);
-    expect(result.commit?.paths).toHaveLength(13);
+    expect(result.written).toHaveLength(ALL_SEED_FILES);
+    expect(result.commit?.paths).toHaveLength(ALL_SEED_FILES);
     expect(git(root, 'rev-list', '--count', parent + '..HEAD')).toBe('1');
     const changed = git(root, 'diff-tree', '--no-commit-id', '--name-only', '-r', 'HEAD')
       .split('\n')
@@ -62,7 +65,9 @@ describe('installing definitions with Git enabled', () => {
     expect(changed.every((path) => path.startsWith('.nevo/definitions/'))).toBe(true);
     expect(git(root, 'status', '--porcelain', '--untracked-files=all')).toBe('');
     expect(git(root, 'log', '-1', '--format=%B')).toMatch(/^Nevo-Operation: [0-9a-f-]{36}$/mu);
-    expect(git(root, 'log', '-1', '--format=%s')).toBe('definitions(install): 13 files');
+    expect(git(root, 'log', '-1', '--format=%s')).toBe(
+      `definitions(install): ${ALL_SEED_FILES} files`,
+    );
   });
 
   it('is idempotent: a second add-missing run changes and commits nothing', async () => {
@@ -84,7 +89,7 @@ describe('installing definitions with Git enabled', () => {
     );
     const again = await installProjectDefinitions(engine, { addMissing: true });
     expect(again.written).toEqual([]);
-    expect(again.commit?.paths).toHaveLength(13);
+    expect(again.commit?.paths).toHaveLength(ALL_SEED_FILES);
     expect(git(root, 'status', '--porcelain', '--untracked-files=all')).toBe('');
   });
 
@@ -140,7 +145,7 @@ describe('installing definitions with Git disabled', () => {
     const { root, engine } = await project(GIT_OFF);
     const head = git(root, 'rev-parse', 'HEAD');
     const result = await installProjectDefinitions(engine);
-    expect(result.written).toHaveLength(13);
+    expect(result.written).toHaveLength(ALL_SEED_FILES);
     expect(result.commit).toBeUndefined();
     expect(git(root, 'rev-parse', 'HEAD')).toBe(head);
     expect(git(root, 'status', '--porcelain', '--untracked-files=all')).toContain(

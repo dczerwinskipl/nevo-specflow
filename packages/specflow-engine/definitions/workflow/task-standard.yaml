@@ -1,0 +1,43 @@
+kind: workflow
+schemaVersion: 1
+id: task-standard
+version: 1
+title: Standard Task
+description: Implement the Task, then an independent review; a rejected review goes back to implementation with its feedback.
+subject: task
+entryStep: implement
+steps:
+  - id: implement
+    kind: work
+    title: Implement
+    executor: agent
+    archetype: implementer
+    purpose: Implement the Task within its scope and run its verification.
+    transitions:
+      - id: implemented
+        to: { step: review }
+        continuation: auto
+  - id: review
+    kind: work
+    title: Review
+    executor: agent
+    archetype: reviewer
+    purpose: Review the change independently against the Task and the repository rules.
+    transitions:
+      - id: approved
+        result: pass
+        to: { terminal: completed }
+      - id: changes-requested
+        result: fail
+        to: { step: implement }
+        feedback: required
+        continuation: auto
+      - id: escalated
+        result: needs-spec-change
+        label: The Specification needs a change
+        to: { step: implement }
+        feedback: required
+        escalate: true
+returns:
+  - step: implement
+    label: Back to implementation

@@ -12,6 +12,7 @@ import {
   templateId,
   utf8ByteLength,
 } from './definition-schema-parts';
+import { SpecificationExecutionSchema } from './workflow-definition-files';
 
 /**
  * Declarative definition schema (`schemaVersion: 1`) of the entities a project's definition files
@@ -122,6 +123,8 @@ export const ArchetypeDefinitionSchema = Type.Object(
         include: Type.Literal('always'),
       }),
     }),
+    /** Absent: Specifications of this archetype have no deterministic execution. */
+    execution: Type.Optional(SpecificationExecutionSchema),
   },
   { additionalProperties: false },
 );

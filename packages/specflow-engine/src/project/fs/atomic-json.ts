@@ -9,9 +9,18 @@ import { removeFileWindowsSafe, renameWindowsSafe } from './windows-safe-fs';
  * transaction lock for read/modify/write. Never deletes the old destination as
  * a Windows rename workaround.
  */
-export async function writeJsonAtomically(
+export function writeJsonAtomically(
   path: string,
   document: unknown,
+  options: { readonly beforePublish?: () => Promise<void> } = {},
+): Promise<void> {
+  return writeTextAtomically(path, `${JSON.stringify(document, null, 2)}\n`, options);
+}
+
+/** {@link writeJsonAtomically} for text that is already serialized. */
+export async function writeTextAtomically(
+  path: string,
+  text: string,
   options: { readonly beforePublish?: () => Promise<void> } = {},
 ): Promise<void> {
   const parent = dirname(path);
@@ -40,7 +49,7 @@ export async function writeJsonAtomically(
   try {
     const handle = await open(staged, 'wx', 0o600);
     try {
-      await handle.writeFile(JSON.stringify(document, null, 2) + '\n', 'utf8');
+      await handle.writeFile(text, 'utf8');
       await handle.sync();
     } finally {
       await handle.close();

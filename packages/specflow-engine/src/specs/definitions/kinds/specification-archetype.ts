@@ -21,6 +21,7 @@ import {
   type DefinitionIssue,
 } from '../kind-registry';
 import { DOCUMENT_TYPE_KIND } from './document-type';
+import { TASK_TYPE_KIND, WORKFLOW_KIND } from '../../../workflow/definitions/model';
 
 export const SPECIFICATION_ARCHETYPE_KIND = 'specification-archetype';
 
@@ -170,7 +171,16 @@ function archetypeIssues(
     }
   }
 
+  // The execution binding is not checked here: a missing or broken workflow or task type must not
+  // invalidate the archetype, whose document templates keep working. It is resolved where execution
+  // starts (`resolveSpecificationExecution`, `WORKFLOW_NOT_CONFIGURED`).
   return issues;
+}
+
+function namedTaskTypes(archetype: ArchetypeDefinition): readonly string[] {
+  const taskTypes = archetype.execution?.taskTypes;
+
+  return taskTypes === undefined || taskTypes[0] === '*' ? [] : taskTypes;
 }
 
 /** The kind `specification-archetype`: requirements and templates; template files live under `templates/`. */
@@ -180,7 +190,9 @@ export const specificationArchetypeKind = defineDefinitionKind<
 >({
   kind: SPECIFICATION_ARCHETYPE_KIND,
   auxiliaryDirectories: [ARCHETYPE_TEMPLATES_DIRECTORY],
-  dependsOn: [DOCUMENT_TYPE_KIND],
+  // Workflows and task types are only referenced (not looked up by `check`); depending on them keeps
+  // them loaded and installed before the archetypes that name them.
+  dependsOn: [DOCUMENT_TYPE_KIND, TASK_TYPE_KIND, WORKFLOW_KIND],
   schemaVersions: [1],
   maxEntities: ARCHETYPES_MAX,
   schema: () => SpecificationArchetypeDefinitionFileSchema,
@@ -226,6 +238,16 @@ export const specificationArchetypeKind = defineDefinitionKind<
             ...(template.preselected !== undefined ? { preselected: template.preselected } : {}),
           };
     }),
+    ...(file.execution !== undefined
+      ? {
+          execution: {
+            workflow: file.execution.workflow,
+            ...(file.execution.taskTypes !== undefined
+              ? { taskTypes: file.execution.taskTypes }
+              : {}),
+          },
+        }
+      : {}),
   }),
   check: archetypeIssues,
   references: (archetype) => {
@@ -238,6 +260,12 @@ export const specificationArchetypeKind = defineDefinitionKind<
       types.add(template.documentType);
     }
 
-    return [...types].sort().map((id) => ({ kind: DOCUMENT_TYPE_KIND, id }));
+    return [
+      ...[...types].sort().map((id) => ({ kind: DOCUMENT_TYPE_KIND, id })),
+      ...(archetype.execution !== undefined
+        ? [{ kind: WORKFLOW_KIND, id: archetype.execution.workflow }]
+        : []),
+      ...[...namedTaskTypes(archetype)].sort().map((id) => ({ kind: TASK_TYPE_KIND, id })),
+    ];
   },
 });

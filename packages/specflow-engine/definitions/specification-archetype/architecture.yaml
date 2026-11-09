@@ -68,3 +68,6 @@ templates:
     instructions: State why this note belongs here.
     content: |
       # {{specificationTitle}} - Note
+execution:
+  workflow: specification-standard
+  taskTypes: [implementation]

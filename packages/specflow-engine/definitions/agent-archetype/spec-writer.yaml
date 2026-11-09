@@ -1,0 +1,12 @@
+kind: agent-archetype
+schemaVersion: 1
+id: spec-writer
+title: Spec writer
+description: Gathers requirements with the owner and writes a bounded, decision-complete Specification.
+profile: nevo-agents:spec-writer
+preferredProvider: claude
+providers:
+  - provider: claude
+    model: claude-opus-5-5
+  - provider: codex
+  - provider: antigravity

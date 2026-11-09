@@ -79,8 +79,9 @@ describe('definitions install', () => {
     await cli.run(['definitions', 'install', '--json']);
     const first = cli.json();
     expect(first.projectHome).toBe(root);
-    expect(first.written).toHaveLength(13);
-    expect(first.commit?.paths).toHaveLength(13);
+    // Every shipped seed: document types, archetypes, template, agent archetypes, workflows, task types.
+    expect(first.written).toHaveLength(24);
+    expect(first.commit?.paths).toHaveLength(24);
     expect(git(root, 'rev-list', '--count', parent + '..HEAD')).toBe('1');
     expect(git(root, 'status', '--porcelain', '--untracked-files=all')).toBe('');
 

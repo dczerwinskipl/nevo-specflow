@@ -271,6 +271,44 @@
                 }
               }
             }
+          },
+          "execution": {
+            "type": "object",
+            "required": [
+              "workflow"
+            ],
+            "properties": {
+              "workflow": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]{0,31}$"
+              },
+              "taskTypes": {
+                "anyOf": [
+                  {
+                    "type": "array",
+                    "additionalItems": false,
+                    "items": [
+                      {
+                        "type": "string",
+                        "const": "*"
+                      }
+                    ],
+                    "minItems": 1
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                    },
+                    "minItems": 1,
+                    "maxItems": 64,
+                    "uniqueItems": true
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
           }
         },
         "additionalProperties": false

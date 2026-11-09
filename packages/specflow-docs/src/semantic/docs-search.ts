@@ -7,6 +7,7 @@ import {
   createSearchEngine,
   planRefresh,
   refreshIndex,
+  type Chunk,
   type SearchVectors,
   type UnitHit,
   type VectorStore,
@@ -23,8 +24,9 @@ import { createDocsChunkSource, type DocsChunk, type DocsChunkSource } from './d
 import { openDocsIndex, type DocsIndex } from './docs-index';
 import {
   embeddingFailureReason,
-  indexIncompleteReason,
+  overLimitReason,
   refreshReason,
+  refreshSkippedReason,
   searchReason,
   semanticEndpoint,
   unreadableIndexReason,
@@ -45,9 +47,6 @@ export const CHUNKS_PER_RESULT = 3;
  * repository) is left to `semantic index` or the Runtime start refresh.
  */
 export const READ_REFRESH_MAX_CHUNKS = 16;
-
-/** The product command that builds the index, named in `index-building` messages. */
-const SEMANTIC_INDEX_COMMAND = 'nevo-specflow docs semantic index';
 const SNIPPET_MAX_CHARS = 280;
 
 /** Vectors for a search, or why there are none. */
@@ -175,7 +174,6 @@ async function prepareIndex(
   }
 
   let missing = chunks.length;
-  let deletes = 0;
   if (manifest.status === 'ok') {
     const plan = planRefresh(
       chunks,
@@ -188,25 +186,20 @@ async function prepareIndex(
       manifest.manifest,
     );
     missing = plan.reset ? chunks.length : plan.embed.length;
-    deletes = plan.reset ? 0 : plan.delete.length;
   }
 
   // Vectors of deleted chunks are never ranked (the engine matches chunk ids and hashes), so an
-  // index that only has extra vectors is complete; the refresh drops them when it runs.
-  if (missing === 0 && (deletes === 0 || !refresh)) {
+  // index with only extra vectors is complete; the next full refresh drops them.
+  if (missing === 0) {
     return undefined;
   }
 
   if (!refresh) {
-    return indexIncompleteReason(
-      `The index lacks ${String(missing)} of ${String(chunks.length)} chunks and this search does not refresh it; search without skipping the refresh, or run \`${SEMANTIC_INDEX_COMMAND}\`.`,
-    );
+    return refreshSkippedReason(missing, chunks.length);
   }
 
   if (missing > READ_REFRESH_MAX_CHUNKS) {
-    return indexIncompleteReason(
-      `The index lacks ${String(missing)} of ${String(chunks.length)} chunks, more than a search embeds (${String(READ_REFRESH_MAX_CHUNKS)}); run \`${SEMANTIC_INDEX_COMMAND}\`.`,
-    );
+    return overLimitReason(missing, READ_REFRESH_MAX_CHUNKS);
   }
 
   const probe = await providers.query.probe();
@@ -214,7 +207,18 @@ async function prepareIndex(
     return embeddingFailureReason(probe.failure);
   }
 
-  return refreshReason(await refreshIndex({ chunks, provider: providers.documents, store }));
+  // The bound holds under the lock too: a re-probe that observes another dimension, or a manifest
+  // gone since the read above, turns this into a full rebuild, which the search must not run.
+  const outcome = await refreshIndex({
+    chunks,
+    provider: providers.documents,
+    store,
+    maxEmbed: READ_REFRESH_MAX_CHUNKS,
+  });
+
+  return outcome.status === 'over-limit'
+    ? overLimitReason(outcome.pending, READ_REFRESH_MAX_CHUNKS)
+    : refreshReason(outcome);
 }
 
 function toHit(hit: UnitHit): DocsSearchHit {
@@ -227,20 +231,39 @@ function toHit(hit: UnitHit): DocsSearchHit {
     score: hit.score,
     chunks: hit.chunks.slice(0, CHUNKS_PER_RESULT).map(({ chunk, score }) => ({
       headingPath: [...chunk.headingPath],
-      snippet: snippet(chunk.text),
+      snippet: snippet(chunk.text, isContinuationPart(chunk)),
       score,
     })),
   };
 }
 
-/** The section text without its heading lines, on one line, cut at a word boundary. */
-export function snippet(text: string): string {
-  const prose = text
+/**
+ * A second or later part of an oversize section (ADR 0021 chunking): it starts inside the section,
+ * usually inside a word. The first part of a section with a heading starts with its heading line;
+ * text before the first heading has the empty heading path and part ids `<unit>#/<n>`.
+ */
+function isContinuationPart(chunk: Chunk): boolean {
+  return chunk.headingPath.length > 0
+    ? !/^ {0,3}#{1,6}(?:\s|$)/u.test(chunk.text)
+    : /#\/(?:[2-9]|[1-9]\d+)$/u.test(chunk.id);
+}
+
+/**
+ * The section text without its heading lines, on one line, cut at a word boundary. A continuation
+ * part drops its first, usually partial, word and starts with an ellipsis.
+ */
+export function snippet(text: string, continuation = false): string {
+  let prose = text
     .split('\n')
     .filter((line) => !/^#{1,6}\s/.test(line))
     .join(' ')
     .replace(/\s+/g, ' ')
     .trim();
+  if (continuation) {
+    const rest = prose.replace(/^\S*\s+/u, '');
+    prose = rest === prose ? prose : `…${rest}`;
+  }
+
   if (prose.length <= SNIPPET_MAX_CHARS) {
     return prose;
   }

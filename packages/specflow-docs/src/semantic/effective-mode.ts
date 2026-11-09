@@ -64,9 +64,28 @@ export function embeddingFailureReason(failure: EmbeddingFailure): DocsSearchRea
   );
 }
 
+/** The product command that builds the index in full, named in `index-building` messages. */
+const SEMANTIC_INDEX_COMMAND = 'nevo-specflow docs semantic index';
+
 /** The index lacks vectors for current chunks and this search does not embed them. */
-export function indexIncompleteReason(message: string): DocsSearchReason {
+function indexIncompleteReason(message: string): DocsSearchReason {
   return reason('index-building', message);
+}
+
+/** More chunks lack vectors than a search embeds (`limit`, when known). */
+export function overLimitReason(pending: number, limit?: number): DocsSearchReason {
+  return indexIncompleteReason(
+    `The index lacks vectors for ${String(pending)} chunks, more than a search embeds${
+      limit === undefined ? '' : ` (${String(limit)})`
+    }; run \`${SEMANTIC_INDEX_COMMAND}\`.`,
+  );
+}
+
+/** `--no-refresh` (or `refresh: false`) on an index that lacks vectors for current chunks. */
+export function refreshSkippedReason(pending: number, total: number): DocsSearchReason {
+  return indexIncompleteReason(
+    `The index lacks vectors for ${String(pending)} of ${String(total)} chunks and this search does not refresh it; search without skipping the refresh, or run \`${SEMANTIC_INDEX_COMMAND}\`.`,
+  );
 }
 
 /** A read-time or explicit refresh; `undefined` when the index is current for the documents. */
@@ -75,6 +94,8 @@ export function refreshReason(outcome: RefreshOutcome): DocsSearchReason | undef
     case 'current':
     case 'refreshed':
       return undefined;
+    case 'over-limit':
+      return overLimitReason(outcome.pending);
     case 'busy':
       return reason('index-building', `Another process is updating the index: ${outcome.message}`);
     case 'embedding-failed':

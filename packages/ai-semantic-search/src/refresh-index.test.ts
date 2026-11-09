@@ -163,6 +163,35 @@ describe('refreshIndex', () => {
     ]);
   });
 
+  it('bounds the plan made under the lock and checks every slice against the probed dimension', async () => {
+    const provider = createFakeEmbeddingProvider();
+    const store = createInMemoryVectorStore();
+    const chunks = corpus(base);
+    await refreshIndex({ chunks, provider, store });
+
+    // One new chunk looks like a gap of 1, but the provider has no configured dimension and the
+    // endpoint now answers 4-dimensional probes: the locked plan is a full rebuild.
+    const next = [...chunks, ...corpus([unit('search', '# Search\nHybrid ranking.')])];
+    const reprobed: EmbeddingProvider = {
+      ...provider,
+      dimensions: undefined,
+      probe: () => Promise.resolve({ ok: true, latencyMs: 0, dimensions: 4 }),
+    };
+    expect(await refreshIndex({ chunks: next, provider: reprobed, store, maxEmbed: 1 })).toEqual({
+      status: 'over-limit',
+      pending: next.length,
+    });
+    expect(provider.calls).toHaveLength(1);
+
+    // Unbounded, the 32-dimensional vectors no longer match the probed dimension.
+    expect(await refreshIndex({ chunks: next, provider: reprobed, store })).toMatchObject({
+      status: 'embedding-failed',
+      failure: { code: 'dimension-mismatch' },
+    });
+    const manifest = await store.readManifest();
+    expect(manifest.status === 'ok' && manifest.manifest.generation).toBe(1);
+  });
+
   it('answers busy without embedding while another writer holds the store, and keeps it on failure', async () => {
     const provider = createFakeEmbeddingProvider();
     const store = createInMemoryVectorStore();

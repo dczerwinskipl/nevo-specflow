@@ -16,6 +16,7 @@ import {
   openDocsSearch,
   READ_REFRESH_MAX_CHUNKS,
   searchDocumentation,
+  snippet,
   type DocsSearch,
 } from './docs-search';
 
@@ -189,6 +190,13 @@ describe('openDocsSearch', () => {
     });
     expect(search.chunks).toBe(index.chunks);
     expect('store' in search.vectors && search.vectors.store).toBe(index.store);
+  });
+});
+
+describe('snippet', () => {
+  it('drops the partial first word of a continuation part', () => {
+    expect(snippet('## Commit\nThe engine commits.')).toBe('The engine commits.');
+    expect(snippet('ngine commits the documents.', true)).toBe('…commits the documents.');
   });
 });
 

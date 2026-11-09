@@ -100,8 +100,9 @@ Build the index once with `pnpm docs:semantic index`; it embeds the whole corpus
 of this size (about 20 minutes for about 2100 chunks on an 8-core CPU). It prints its progress to
 stderr and writes every slice it embeds, so an interrupted run resumes where it stopped. A search
 never builds the index: until it is complete, `pnpm docs:search` answers lexically at once
-(`index-building`). Later searches re-embed only changed documents (up to 16 sections per search).
-`docker compose down` stops the model and keeps the volume. Keys and their validation:
+(`index-building`). Later searches re-embed changed sections themselves when at most 16 changed;
+otherwise run `pnpm docs:semantic index`. `docker compose down` stops the model and keeps the
+volume. Keys and their validation:
 [documentation and embeddings configuration](../../reference/configuration/documentation-and-embeddings.md).
 
 ## Running slow tests on Linux

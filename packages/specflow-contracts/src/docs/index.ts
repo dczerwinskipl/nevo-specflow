@@ -9,7 +9,9 @@ import { Type, type Static } from 'typebox';
  * - `no-endpoint`: no `ai.embeddings` endpoint is configured;
  * - `endpoint-unreachable`: the endpoint failed, timed out or answered unusable vectors;
  * - `index-building`: the index is not yet complete for the current documents (another process is
- *   updating it, or it is not built yet or was built with another model); it will become current;
+ *   updating it; it is not built yet, was built with another model or more sections lack vectors
+ *   than a search embeds; or the search skipped the refresh with `--no-refresh`); it becomes current
+ *   once a full refresh runs (`nevo-specflow docs semantic index` or the Runtime start refresh);
  * - `index-unavailable`: the index cannot be read or written; it will not become current by waiting.
  */
 export const DocsSearchReasonCodeSchema = Type.Union([

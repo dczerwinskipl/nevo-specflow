@@ -36,22 +36,22 @@ the Runtime, CLI or UI.
 
 Open proposals (draft, non-authoritative; current documentation and code win):
 
-| Document                                                                                              | Open subject                                                                   |
-| ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| [Offline CLI and external agents](offline-cli-and-external-agents.md)                                 | Workflow commands for agents outside Runtime                                   |
-| [Workflow API requirements](workflow-api-requirements.md)                                             | Runtime HTTP surface for the kernel                                            |
-| [Execution scopes and recovery](execution-scopes-and-recovery.md)                                     | Which steps need a claim; operator inspect/reconcile/release/takeover; batches |
-| [Locking and admission](locking-and-admission.md)                                                     | Workflow step claims, external agent liveness, lock ordering                   |
-| [Durable operations](durable-operations-and-recovery.md)                                              | Git stages in the finish journal; external writer recovery                     |
-| [Managed Session integration](managed-session-integration.md)                                         | Sessions driving workflow steps; batch, handover, rebind                       |
-| [Workspace binding lifecycle](workspace-binding-lifecycle.md)                                         | Relocate, repair, active Turn blocking rebind                                  |
-| [Ownership and state](ownership-and-state.md)                                                         | Human approval provenance; external claim reconciliation on boot               |
-| [Local actor and human gates](local-actor-and-human-gates.md)                                         | Local trust model for human approvals                                          |
-| [Task resource and context](task-resource-and-context.md)                                             | Task folders, index, documents and context lists (plan 06 F20)                 |
-| [Legacy Nevo migration](legacy-nevo-migration.md)                                                     | Legacy modules not yet ported                                                  |
-| [Decisions](decisions-and-promotion.md)                                                               | Open decision register                                                         |
-| [Acceptance criteria](acceptance-criteria.md) and [test plan](test-plan.md)                           | Open gates FB01–FB09, SI04–SI08 and their test rows                            |
-| [Multi-instance execution](multi-instance-execution.md) and [its plan](multi-instance-plan/README.md) | Deferred same-step multi-instance runs                                         |
+| Document                                                                                              | Open subject                                                                    |
+| ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| [Offline CLI and external agents](offline-cli-and-external-agents.md)                                 | Workflow commands for agents outside Runtime                                    |
+| [Workflow API requirements](workflow-api-requirements.md)                                             | Runtime HTTP surface for the kernel                                             |
+| [Execution scopes and recovery](execution-scopes-and-recovery.md)                                     | Which steps need a claim; operator inspect/reconcile/release/takeover; batches  |
+| [Locking and admission](locking-and-admission.md)                                                     | Workflow step claims, external agent liveness, lock ordering                    |
+| [Durable operations](durable-operations-and-recovery.md)                                              | Git stages in the finish journal; external writer recovery; conflict resolution |
+| [Managed Session integration](managed-session-integration.md)                                         | Sessions driving workflow steps; batch, handover, rebind                        |
+| [Workspace binding lifecycle](workspace-binding-lifecycle.md)                                         | Relocate, repair, active Turn blocking rebind                                   |
+| [Ownership and state](ownership-and-state.md)                                                         | Human approval provenance; external claim reconciliation on boot                |
+| [Local actor and human gates](local-actor-and-human-gates.md)                                         | Local trust model for human approvals                                           |
+| [Task resource and context](task-resource-and-context.md)                                             | Task folders, index, documents and context lists (plan 06 F20)                  |
+| [Legacy Nevo migration](legacy-nevo-migration.md)                                                     | Legacy modules not yet ported                                                   |
+| [Decisions](decisions-and-promotion.md)                                                               | Open decision register                                                          |
+| [Acceptance criteria](acceptance-criteria.md) and [test plan](test-plan.md)                           | Open gates FB01–FB09, SI04–SI08 and their test rows                             |
+| [Multi-instance execution](multi-instance-execution.md) and [its plan](multi-instance-plan/README.md) | Deferred same-step multi-instance runs                                          |
 
 The temporary [execution plans](execution-plans/README.md) (03, 05, 06) order the remaining work.
 Do not implement a workflow or Session capability merely because the Engine infrastructure exists.

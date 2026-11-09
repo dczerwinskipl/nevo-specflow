@@ -181,7 +181,7 @@ flowchart TD
 
   subgraph ws["Bound workspace checkout (primary or worktree)"]
     spec["specs/active|archive/&lt;slug&gt;/specification.yaml<br/>+ documents"]
-    exec[".execution/specification.yaml<br/>.execution/tasks/&lt;taskId&gt;.yaml"]
+    exec["specs/active|archive/&lt;slug&gt;/.execution/<br/>specification.yaml, tasks/&lt;taskId&gt;.yaml"]
   end
 
   registry -- "specId → workspaceId binding" --> ws
@@ -221,8 +221,8 @@ sequenceDiagram
     RT-->>UI: session events
   end
   PR-->>RT: terminal result, process tree settled
-  RT->>DB: settle Turn
   RT->>EN: settle claim with receipt
+  RT->>DB: settle Turn
 ```
 
 Owners: [Canonical Session, Turn and Work](ai/canonical-session-turn-work.md),

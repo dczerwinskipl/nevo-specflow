@@ -67,6 +67,20 @@ state. An ambiguous write may block conflicting actions until reconciliation suc
 claims are never removed on Runtime shutdown. The operator protocol is proposed in
 [execution scopes and recovery](execution-scopes-and-recovery.md).
 
+## Merge-conflict resolution after Close (deferred)
+
+Close reports a known integration conflict and fences it: the Specification settles as
+`archived-linked-awaiting-integration` (or `requires-resolution`), and a later CloseWorktree
+integrates once the conflict is resolved outside the Engine. A resolution capability itself does
+not exist. The owner direction for it:
+
+- the UI may offer **Resolve manually** and **Ask agent**, but the Engine never launches an agent
+  or picks changes; it only emits typed conflict evidence;
+- resolution is a separate, separately authorized operation with its own resolution checkout; it
+  never mutates the settled CloseSpecification intent;
+- the following CloseWorktree re-verifies source ancestry and the current target before
+  integrating.
+
 ## Verification
 
 Kill a subprocess at each stage and start **a fresh process** to recover. Assert no duplicate

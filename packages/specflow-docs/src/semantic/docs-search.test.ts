@@ -173,4 +173,11 @@ describe('docs chunk source', () => {
     expect(source.load().reparsed).toBe(1);
     expect(createDocsChunkSource({ corpus, cacheFile }).load().reparsed).toBe(0);
   });
+
+  it('treats a cache file of the wrong shape as an empty cache', () => {
+    const cacheFile = join(root, 'cache', 'null.json');
+    mkdirSync(join(root, 'cache'), { recursive: true });
+    writeFileSync(cacheFile, 'null');
+    expect(createDocsChunkSource({ corpus, cacheFile }).load().reparsed).toBe(3);
+  });
 });

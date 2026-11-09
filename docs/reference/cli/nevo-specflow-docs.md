@@ -77,8 +77,9 @@ frontmatter. It is the only model-dependent command.
 | `--no-refresh`                | Answer from the index as it is, without re-embedding changed documents       |
 | `--json`                      | Print the result contract (`DocsSearchResult` in `@nevo/specflow-contracts`) |
 
-Inactive documents (`deprecated`, `superseded`) are never returned. The corpus is validated as for
-`context`; an invalid corpus or configuration fails with exit 1.
+Inactive documents (`deprecated`, `superseded`) are never returned. The corpus frontmatter is
+validated as for `context` (document bodies are not checked; links are `check`'s job); an invalid
+corpus or configuration fails with exit 1.
 
 **Mode.** With `docs.search.semantic: true` and a reachable `ai.embeddings` endpoint, ranking is
 hybrid: BM25 over section text fused with vector similarity
@@ -157,6 +158,8 @@ a connectivity probe (latency and observed dimensions) and the index: `missing`,
 `unreadable`. Its last line is the mode `search` would answer in. It exits 1 when semantic search is
 enabled but unavailable: no endpoint, an unreachable endpoint or unset key variable, or an
 unreadable index. A missing or stale index is not a failure, because the next `search` updates it.
+It checks configuration, the endpoint and that the index can be read, not that it can be written: a
+write failure shows up on `search` as `index-unavailable`.
 `--json` prints the same report as one JSON object.
 
 ```text

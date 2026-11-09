@@ -17,7 +17,10 @@ import { createFileSystemDocRepository, type DocRepository, type ScanResult } fr
 export interface DocsCorpusRules {
   /** Exempt a markdown file (path relative to the documentation root) from needing frontmatter. */
   readonly isFrontmatterExempt?: (pathUnderRoot: string) => boolean;
-  /** Extra problems over the scanned documents; reported like contract problems. */
+  /**
+   * Extra problems over the scanned documents; reported like contract problems. `search` validates
+   * frontmatter only: the records it passes here have an empty `body`.
+   */
   readonly validate?: (docs: readonly DocRecord[]) => string[];
 }
 

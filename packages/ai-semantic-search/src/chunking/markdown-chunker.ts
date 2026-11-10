@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 
+import { tokenize } from '../ranking/tokenize';
 import type { Chunk, SourceUnit } from './chunk';
 
 /**
@@ -14,20 +15,40 @@ export const CHUNK_MAX_CHARS = 2000;
 /** Characters repeated at the start of the next part when one section exceeds the bound. */
 export const CHUNK_OVERLAP_CHARS = 200;
 
+/** Section id of the text before the first heading; `_` never occurs in a heading slug. */
+export const PREAMBLE_SECTION_ID = '_top';
+
 const HEADING_PATH_SEPARATOR = ' > ';
 const ATX_HEADING = /^ {0,3}(#{1,6})(?:[ \t]+(.*?))?(?:[ \t]+#+)?[ \t]*$/u;
 const FENCE = /^ {0,3}(`{3,}|~{3,})/u;
 
-interface Section {
+/** One heading section of a unit's markdown: its heading line and its lines up to the next heading. */
+export interface MarkdownSection {
+  /**
+   * Stable and unique within the unit: the heading path as slugs (the `tokenize` words of a heading
+   * joined by `-`, `section` when it has none) joined by `/`, and `PREAMBLE_SECTION_ID` for the text
+   * before the first heading. A path that occurred earlier in the unit gets the first free `~<n>`
+   * (n >= 2). It changes only when a heading of its path changes or an earlier section takes the
+   * same path, not when other sections are edited.
+   */
+  readonly id: string;
   readonly headingPath: readonly string[];
+  /** 1-based line of the heading in the unit text (of the first line, for the preamble). */
+  readonly startLine: number;
+  /** The heading line and the section's own lines, without its subsections. */
+  readonly lines: readonly string[];
+}
+
+interface RawSection {
+  readonly headingPath: readonly string[];
+  readonly startLine: number;
   readonly lines: string[];
 }
 
 /**
- * Splits a unit's markdown on ATX headings (`#` .. `######`; headings inside fenced code blocks are
- * ignored). Each chunk keeps its heading path; text before the first heading forms a chunk with an
- * empty path; sections without content besides their heading produce no chunk. A section longer
- * than `CHUNK_MAX_CHARS` is split into parts that overlap by `CHUNK_OVERLAP_CHARS`.
+ * Splits a unit's markdown into its sections (`splitMarkdownSections`). Each chunk keeps its heading
+ * path and section id; sections without content besides their heading produce no chunk. A section
+ * longer than `CHUNK_MAX_CHARS` is split into parts that overlap by `CHUNK_OVERLAP_CHARS`.
  *
  * Chunk ids are `<unit id>#<heading path>`, with `/<part>` for parts of an oversize section, so
  * editing one section does not change the ids of the others. When that id (or one of its part ids)
@@ -38,7 +59,7 @@ export function chunkMarkdownUnit(unit: SourceUnit): Chunk[] {
   const chunks: Chunk[] = [];
   const used = new Set<string>();
 
-  for (const section of splitSections(unit.text)) {
+  for (const section of splitMarkdownSections(unit.text)) {
     const text = trimBlankLines(section.lines).join('\n');
     if (!hasContentBesidesHeading(section)) {
       continue;
@@ -66,6 +87,8 @@ export function chunkMarkdownUnit(unit: SourceUnit): Chunk[] {
         id: ids[index]!,
         unitId: unit.id,
         headingPath: section.headingPath,
+        sectionId: section.id,
+        startLine: section.startLine,
         text: part,
         embeddingText,
         contentHash: hashChunk(embeddingText),
@@ -77,14 +100,42 @@ export function chunkMarkdownUnit(unit: SourceUnit): Chunk[] {
   return chunks;
 }
 
-function splitSections(markdown: string): Section[] {
-  const sections: Section[] = [];
+/**
+ * Splits markdown on ATX headings (`#` .. `######`), ignoring headings inside fenced code blocks.
+ * Every heading starts a section, also one without content of its own; the text before the first
+ * heading is a section with the empty heading path unless it is blank.
+ */
+export function splitMarkdownSections(markdown: string): MarkdownSection[] {
+  const used = new Set<string>();
+
+  return splitRawSections(markdown)
+    .filter((section) => section.headingPath.length > 0 || section.lines.some(isContent))
+    .map((section) => {
+      const base =
+        section.headingPath.length === 0
+          ? PREAMBLE_SECTION_ID
+          : section.headingPath
+              .map((heading) => tokenize(heading).join('-') || 'section')
+              .join('/');
+      let id = base;
+      for (let occurrence = 2; used.has(id); occurrence += 1) {
+        id = `${base}~${occurrence}`;
+      }
+
+      used.add(id);
+
+      return { id, ...section };
+    });
+}
+
+function splitRawSections(markdown: string): RawSection[] {
+  const sections: RawSection[] = [];
   const path: string[] = [];
   const levels: number[] = [];
-  let current: Section = { headingPath: [], lines: [] };
+  let current: RawSection = { headingPath: [], startLine: 1, lines: [] };
   let fence: string | undefined;
 
-  for (const line of markdown.replace(/\r\n?/gu, '\n').split('\n')) {
+  for (const [index, line] of markdown.replace(/\r\n?/gu, '\n').split('\n').entries()) {
     const fenceMatch = FENCE.exec(line);
     if (fenceMatch) {
       const marker = fenceMatch[1]!;
@@ -111,7 +162,7 @@ function splitSections(markdown: string): Section[] {
     path.push((heading[2] ?? '').trim());
 
     sections.push(current);
-    current = { headingPath: [...path], lines: [line] };
+    current = { headingPath: [...path], startLine: index + 1, lines: [line] };
   }
 
   sections.push(current);
@@ -119,20 +170,24 @@ function splitSections(markdown: string): Section[] {
   return sections;
 }
 
-function hasContentBesidesHeading(section: Section): boolean {
+function isContent(line: string): boolean {
+  return line.trim().length > 0;
+}
+
+function hasContentBesidesHeading(section: MarkdownSection): boolean {
   const body = section.headingPath.length === 0 ? section.lines : section.lines.slice(1);
 
-  return body.some((line) => line.trim().length > 0);
+  return body.some(isContent);
 }
 
 function trimBlankLines(lines: readonly string[]): string[] {
   let start = 0;
   let end = lines.length;
-  while (start < end && lines[start]!.trim().length === 0) {
+  while (start < end && !isContent(lines[start]!)) {
     start += 1;
   }
 
-  while (end > start && lines[end - 1]!.trim().length === 0) {
+  while (end > start && !isContent(lines[end - 1]!)) {
     end -= 1;
   }
 

@@ -5,6 +5,7 @@ import {
   CHUNK_MAX_CHARS,
   CHUNK_OVERLAP_CHARS,
   chunkMarkdownUnit,
+  splitMarkdownSections,
 } from './markdown-chunker';
 import type { SourceUnit } from './chunk';
 
@@ -37,6 +38,13 @@ describe('chunkMarkdownUnit', () => {
       ['guide#Guide > Install > Windows', ['Guide', 'Install', 'Windows']],
       ['guide#Guide > Usage', ['Guide', 'Usage']],
     ]);
+    expect(chunks.map((chunk) => [chunk.sectionId, chunk.startLine])).toEqual([
+      ['_top', 1],
+      ['guide', 2],
+      ['guide/install', 4],
+      ['guide/install/windows', 6],
+      ['guide/usage', 8],
+    ]);
     expect(chunks[2]!.text).toBe('## Install\nRun it.');
     expect(chunks[2]!.embeddingText).toBe('Title: Guide\n\nGuide > Install\n\n## Install\nRun it.');
     expect(chunks[2]!.metadata).toEqual({ kind: 'guide' });
@@ -60,7 +68,18 @@ describe('chunkMarkdownUnit', () => {
     );
 
     expect(chunks.map((chunk) => chunk.id)).toEqual(['guide#A > Notes', 'guide#A > Notes~2']);
+    expect(chunks.map((chunk) => chunk.sectionId)).toEqual(['a/notes', 'a/notes~2']);
     expect(chunks[0]!.text).toContain('# not a heading');
+  });
+
+  it('slugs section ids with the shared tokenizer and keeps empty sections addressable', () => {
+    const sections = splitMarkdownSections('# Zarządzanie taskami!\n## Empty\n## —\ntext');
+
+    expect(sections.map((section) => [section.id, section.startLine])).toEqual([
+      ['zarzadzanie-taskami', 1],
+      ['zarzadzanie-taskami/empty', 2],
+      ['zarzadzanie-taskami/section', 3],
+    ]);
   });
 
   it('keeps ids unique when headings spell the suffixes literally', () => {

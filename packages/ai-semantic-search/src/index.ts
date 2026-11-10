@@ -33,7 +33,10 @@ export {
   CHUNKER_VERSION,
   CHUNK_MAX_CHARS,
   CHUNK_OVERLAP_CHARS,
+  PREAMBLE_SECTION_ID,
   chunkMarkdownUnit,
+  splitMarkdownSections,
+  type MarkdownSection,
 } from './chunking/markdown-chunker';
 export {
   DEFAULT_EMBEDDING_BATCH_SIZE,

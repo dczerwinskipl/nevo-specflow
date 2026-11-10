@@ -1,13 +1,21 @@
 // The documentation corpus as search chunks. Every search needs every current chunk (BM25 ranks
 // all of them and the index refresh diffs against them), so this source keeps the parsed
-// frontmatter and chunks of each file and re-reads only what changed: a file whose size and mtime
-// are unchanged is not read; a changed stat costs one read and hash, and only a changed hash parses
-// and re-chunks the file. A persisted copy (`units.json` in the index directory) carries the work
-// across CLI invocations (`chunk-cache`); it is disposable cache like the vectors.
+// frontmatter and chunks of each file and re-parses only what changed. Every load reads and hashes
+// every file (about 300 files and 3 MB here: a few milliseconds), so any content change is seen,
+// also one that keeps the size and modification time; only a changed hash parses and re-chunks the
+// file. While no hash changes, the validated corpus and its BM25 engine are reused. A persisted copy
+// (`units.json` in the index directory) carries the parsing across CLI invocations (`chunk-cache`);
+// it is disposable cache like the vectors. All file access is asynchronous: a running Runtime loads
+// on every search.
 
 import { createHash } from 'node:crypto';
 
-import { chunkMarkdownUnit, type Chunk } from '@nevo/ai-semantic-search';
+import {
+  chunkMarkdownUnit,
+  createSearchEngine,
+  type Chunk,
+  type SearchEngine,
+} from '@nevo/ai-semantic-search';
 
 import { isNonAuthoritative } from '../config/docs-file';
 import { collectCorpusProblems, type DocsCorpus } from '../corpus/corpus';
@@ -44,16 +52,19 @@ export interface DocsChunks {
   readonly chunks: readonly DocsChunk[];
   /** Every active document, also those without chunks (an empty body), in id order. */
   readonly documents: readonly DocsDocument[];
-  /** Number of documents that were read and re-chunked by this load (the rest came from cache). */
+  /** Number of documents that were re-chunked by this load (the rest came from cache). */
   readonly reparsed: number;
+  /** The search engine over `chunks`, built on first use and shared until the corpus changes. */
+  readonly searchEngine: () => SearchEngine;
 }
 
 export interface DocsChunkSource {
   /**
    * Bring the cached files up to date with the corpus, validate the corpus like `context` does
-   * (throws `DocsCorpusInvalidError`) and return the chunks of its active documents.
+   * (rejects with `DocsCorpusInvalidError`) and return the chunks of its active documents. Loads
+   * run one at a time, in call order.
    */
-  load(): DocsChunks;
+  load(): Promise<DocsChunks>;
 }
 
 export interface DocsChunkSourceOptions {
@@ -62,62 +73,109 @@ export interface DocsChunkSourceOptions {
   readonly cacheFile?: string;
 }
 
+/** Files read at the same time by a load. */
+const READ_CONCURRENCY = 16;
+
+type CorpusVersion =
+  | { readonly ok: true; readonly value: Omit<DocsChunks, 'reparsed'> }
+  | { readonly ok: false; readonly error: unknown };
+
 export function createDocsChunkSource({
   corpus,
   cacheFile,
 }: DocsChunkSourceOptions): DocsChunkSource {
   let cached: Map<string, CachedFile> | undefined;
+  // The validated corpus of `cached`, or why it is invalid; recomputed only when a file changed.
+  let version: CorpusVersion | undefined;
+  let queue: Promise<unknown> = Promise.resolve();
+
+  const refresh = async (): Promise<DocsChunks> => {
+    cached ??= cacheFile === undefined ? new Map() : await readCache(cacheFile);
+    const previous = cached;
+    let reparsed = 0;
+    const files = await corpus.repo.listMarkdownFiles();
+    const entries = await mapConcurrently(files, READ_CONCURRENCY, async (file) => {
+      const content = await corpus.repo.readMarkdownFileAsync(file);
+      const contentHash = sha256(content);
+      const entry = previous.get(file);
+      if (entry?.contentHash === contentHash) {
+        return entry;
+      }
+
+      reparsed += 1;
+
+      return parseFile(file, content, contentHash);
+    });
+    const next = new Map(entries.map((entry): [string, CachedFile] => [entry.file, entry]));
+
+    const changed = !sameFiles(previous, next);
+    if (changed || version === undefined) {
+      cached = next;
+      version = validate(corpus, [...next.values()]);
+    }
+
+    if (changed && cacheFile !== undefined) {
+      await writeCache(cacheFile, next);
+    }
+
+    if (!version.ok) {
+      throw version.error;
+    }
+
+    return { ...version.value, reparsed };
+  };
 
   return {
     load() {
-      cached ??= cacheFile === undefined ? new Map() : readCache(cacheFile);
-      const next = new Map<string, CachedFile>();
-      let reparsed = 0;
-      for (const stat of corpus.repo.listMarkdownFiles()) {
-        const previous = cached.get(stat.file);
-        if (previous?.mtimeMs === stat.mtimeMs && previous.size === stat.size) {
-          next.set(stat.file, previous);
-          continue;
-        }
+      const run = queue.then(refresh);
+      queue = run.catch(() => undefined);
 
-        const content = corpus.repo.readMarkdownFile(stat.file);
-        const contentHash = sha256(content);
-        if (previous?.contentHash === contentHash) {
-          next.set(stat.file, { ...previous, mtimeMs: stat.mtimeMs, size: stat.size });
-          continue;
-        }
-
-        reparsed += 1;
-        next.set(stat.file, parseFile(stat.file, content, contentHash, stat));
-      }
-
-      const changed = !sameFiles(cached, next);
-      cached = next;
-      if (changed && cacheFile !== undefined) {
-        writeCache(cacheFile, next);
-      }
-
-      return { ...validatedChunks(corpus, [...next.values()]), reparsed };
+      return run;
     },
   };
 }
 
-function parseFile(
-  file: string,
-  content: string,
-  contentHash: string,
-  stat: { readonly mtimeMs: number; readonly size: number },
-): CachedFile {
+function validate(corpus: DocsCorpus, files: readonly CachedFile[]): CorpusVersion {
+  let value: Omit<DocsChunks, 'reparsed' | 'searchEngine'>;
+  try {
+    value = validatedChunks(corpus, files);
+  } catch (error) {
+    return { ok: false, error };
+  }
+
+  let engine: SearchEngine | undefined;
+
+  return {
+    ok: true,
+    value: { ...value, searchEngine: () => (engine ??= createSearchEngine(value.chunks)) },
+  };
+}
+
+/** `items.map(map)` with at most `limit` calls pending at a time, results in input order. */
+async function mapConcurrently<T, R>(
+  items: readonly T[],
+  limit: number,
+  map: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array<R>(items.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const index = next;
+      next += 1;
+      results[index] = await map(items[index]!);
+    }
+  };
+
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+
+  return results;
+}
+
+function parseFile(file: string, content: string, contentHash: string): CachedFile {
   const parsed = parseFrontmatter(content, file);
   if (parsed === null) {
-    return {
-      file,
-      mtimeMs: stat.mtimeMs,
-      size: stat.size,
-      contentHash,
-      frontmatter: null,
-      chunks: [],
-    };
+    return { file, contentHash, frontmatter: null, chunks: [] };
   }
 
   const { frontmatter, body } = parsed;
@@ -135,7 +193,7 @@ function parseFile(
     contentHash: chunkHash,
   }));
 
-  return { file, mtimeMs: stat.mtimeMs, size: stat.size, contentHash, frontmatter, chunks };
+  return { file, contentHash, frontmatter, chunks };
 }
 
 /** Title, id, summary and tags: embedded with every chunk so small sections keep their document. */
@@ -155,7 +213,7 @@ export function contextualHeader(frontmatter: Record<string, unknown>): string {
 function validatedChunks(
   corpus: DocsCorpus,
   files: readonly CachedFile[],
-): Omit<DocsChunks, 'reparsed'> {
+): Omit<DocsChunks, 'reparsed' | 'searchEngine'> {
   const docs: DocRecord[] = [];
   const missingFrontmatter: string[] = [];
   for (const entry of files) {

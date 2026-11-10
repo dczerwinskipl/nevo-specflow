@@ -51,7 +51,7 @@ export async function buildDocsIndex(
   const progress =
     index.directory === undefined ? undefined : createProgressRecorder(index.directory, recorder);
   const outcome = await refreshIndex({
-    chunks: index.chunks.load().chunks,
+    chunks: (await index.chunks.load()).chunks,
     provider: resolved.providers.documents,
     store: index.store,
     onProgress: (step) => {

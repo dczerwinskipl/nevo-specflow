@@ -176,7 +176,7 @@ async function readIndexState(
       ? {
           state: { state: 'missing' },
           // Without an endpoint the mode is already lexical for that reason.
-          pending: identity === undefined ? 0 : index.chunks.load().chunks.length,
+          pending: identity === undefined ? 0 : (await index.chunks.load()).chunks.length,
         }
       : { state: { state: 'unreadable', message: outcome.message }, pending: 0 };
   }
@@ -194,7 +194,7 @@ async function readIndexState(
   }
 
   const plan = planAgainstIndex(
-    index.chunks.load().chunks,
+    (await index.chunks.load()).chunks,
     { ...identity, dimensions: identity.dimensions ?? observedDimensions },
     manifest,
   );

@@ -1,8 +1,16 @@
-import { existsSync, mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  statSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { refreshIndex } from '@nevo/ai-semantic-search';
+import { createSearchEngine, refreshIndex } from '@nevo/ai-semantic-search';
 import {
   createFakeEmbeddingProvider,
   createInMemoryVectorStore,
@@ -152,13 +160,21 @@ describe('searchDocumentation', () => {
 
   it('does not build a large gap on read: lexical index-building until the index is complete', async () => {
     const { provider, store } = semanticSearch();
-    const { chunks: base, documents } = createDocsChunkSource({ corpus }).load();
+    const { chunks: base, documents } = await createDocsChunkSource({ corpus }).load();
     const many = Array.from({ length: 2 * READ_REFRESH_MAX_CHUNKS + 2 }, (_, index) => ({
       ...base[index % base.length]!,
       id: `${base[index % base.length]!.id}/${String(index)}`,
     }));
     const search: DocsSearch = {
-      chunks: { load: () => ({ chunks: many, documents, reparsed: 0 }) },
+      chunks: {
+        load: () =>
+          Promise.resolve({
+            chunks: many,
+            documents,
+            reparsed: 0,
+            searchEngine: () => createSearchEngine(many),
+          }),
+      },
       vectors: { store, providers: { query: provider, documents: provider } },
     };
 
@@ -184,7 +200,7 @@ describe('searchDocumentation', () => {
     const before = { ...createFakeEmbeddingProvider({ dimensions: 8 }), dimensions: undefined };
     const after = { ...createFakeEmbeddingProvider({ dimensions: 16 }), dimensions: undefined };
     const chunks = createDocsChunkSource({ corpus });
-    await refreshIndex({ chunks: chunks.load().chunks, provider: before, store });
+    await refreshIndex({ chunks: (await chunks.load()).chunks, provider: before, store });
     let starts = 0;
     const search: DocsSearch = {
       chunks,
@@ -342,25 +358,37 @@ describe('toHit', () => {
 });
 
 describe('docs chunk source', () => {
-  it('re-reads only files whose stat changed and re-chunks only changed content, across instances', () => {
+  it('re-chunks only changed content, also when size and mtime stay, across instances', async () => {
     const cacheFile = join(root, 'cache', 'units.json');
     const source = createDocsChunkSource({ corpus, cacheFile });
-    expect(source.load().reparsed).toBe(4);
-    expect(source.load().reparsed).toBe(0);
+    const first = await source.load();
+    expect(first.reparsed).toBe(4);
+    const second = await source.load();
+    expect(second.reparsed).toBe(0);
+    // An unchanged corpus keeps its chunks and its BM25 engine.
+    expect(second.chunks).toBe(first.chunks);
+    expect(second.searchEngine()).toBe(first.searchEngine());
 
-    // Same content, new mtime: one read and hash, no re-chunking.
-    utimesSync(join(root, 'docs', 'old.md'), new Date(2001, 1, 1), new Date(2001, 1, 1));
-    expect(source.load().reparsed).toBe(0);
+    // Same content, new mtime: hashed, not re-chunked.
+    const file = join(root, 'docs', 'old.md');
+    utimesSync(file, new Date(2001, 1, 1), new Date(2001, 1, 1));
+    expect((await source.load()).reparsed).toBe(0);
 
-    writeFileSync(join(root, 'docs', 'old.md'), doc('old', 'superseded', '# Old\n\nChanged.'));
-    expect(source.load().reparsed).toBe(1);
-    expect(createDocsChunkSource({ corpus, cacheFile }).load().reparsed).toBe(0);
+    // Same size and mtime, other content (a metadata-preserving copy): still detected.
+    const { atime, mtime, size } = statSync(file);
+    writeFileSync(file, doc('old', 'superseded', '# Old\n\nInstall the widget by HAND.'));
+    utimesSync(file, atime, mtime);
+    expect(statSync(file).size).toBe(size);
+    const third = await source.load();
+    expect(third.reparsed).toBe(1);
+    expect(third.searchEngine()).not.toBe(first.searchEngine());
+    expect((await createDocsChunkSource({ corpus, cacheFile }).load()).reparsed).toBe(0);
   });
 
-  it('treats a cache file of the wrong shape as an empty cache', () => {
+  it('treats a cache file of the wrong shape as an empty cache', async () => {
     const cacheFile = join(root, 'cache', 'null.json');
     mkdirSync(join(root, 'cache'), { recursive: true });
     writeFileSync(cacheFile, 'null');
-    expect(createDocsChunkSource({ corpus, cacheFile }).load().reparsed).toBe(4);
+    expect((await createDocsChunkSource({ corpus, cacheFile }).load()).reparsed).toBe(4);
   });
 });

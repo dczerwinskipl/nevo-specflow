@@ -101,6 +101,10 @@ is optional and is versioned with the documents it describes:
   copy-me templates without frontmatter) are not part of the corpus and are never scanned; relative
   links into them still resolve.
 
+The corpus is what physically lies below `docs.root`: the scan follows no symbolic link (or Windows
+junction), to a directory or a file, so a link can neither loop the scan nor add files from
+elsewhere.
+
 `docs.yaml` is not part of the corpus: only `*.md` files are scanned and indexed. Unknown keys in it
 are rejected, and these keys in the `docs` namespace of `.nevo/config.yaml` are rejected with an
 error that names `<docs.root>/docs.yaml`.
@@ -208,8 +212,9 @@ A full refresh records its progress next to the index, so `semantic status` and 
 status endpoint show who is updating the index and how far it got, and the outcome of the last
 refresh.
 
-There is no file watcher and no invalidation API: the read-time check of each file's size and
-modification time, then of its content hash, detects changed documents, whoever wrote them.
+There is no file watcher and no invalidation API: every read hashes the content of every document
+and re-chunks and re-embeds only those whose hash changed, so every change is detected, whoever
+wrote it and whatever it did to the file's size and modification time.
 
 The CLI and a running Runtime share one index in `.nevo/local/cache/docs-index/`; the index is
 disposable cache, not state ([project configuration and local state](../runtime/configuration.md)).

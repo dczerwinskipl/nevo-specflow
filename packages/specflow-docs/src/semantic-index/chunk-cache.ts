@@ -3,13 +3,13 @@
 // or incompatible file is an empty cache, and a failed write loses only the cache.
 
 import { randomBytes } from 'node:crypto';
-import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
 import { CHUNKER_VERSION, type Chunk } from '@nevo/ai-semantic-search';
 
 /** Bump when the cached shape or what it is derived from changes; a mismatch discards the cache. */
-export const UNIT_CACHE_SCHEMA_VERSION = 1;
+export const UNIT_CACHE_SCHEMA_VERSION = 2;
 
 export type CachedChunk = Pick<
   Chunk,
@@ -18,8 +18,6 @@ export type CachedChunk = Pick<
 
 export interface CachedFile {
   readonly file: string;
-  readonly mtimeMs: number;
-  readonly size: number;
   /** SHA-256 of the file content. */
   readonly contentHash: string;
   /** `null`: the file has no frontmatter block. */
@@ -34,10 +32,10 @@ interface PersistedCache {
 }
 
 /** A missing, unreadable or incompatible cache is an empty one: it only costs re-reading files. */
-export function readCache(cacheFile: string): Map<string, CachedFile> {
+export async function readCache(cacheFile: string): Promise<Map<string, CachedFile>> {
   let persisted: unknown;
   try {
-    persisted = JSON.parse(readFileSync(cacheFile, 'utf8'));
+    persisted = JSON.parse(await readFile(cacheFile, 'utf8'));
   } catch {
     return new Map();
   }
@@ -67,8 +65,6 @@ function isCachedFile(value: unknown): value is CachedFile {
   return (
     isObject(value) &&
     typeof value.file === 'string' &&
-    typeof value.mtimeMs === 'number' &&
-    typeof value.size === 'number' &&
     typeof value.contentHash === 'string' &&
     (value.frontmatter === null || isObject(value.frontmatter)) &&
     Array.isArray(value.chunks) &&
@@ -91,7 +87,10 @@ function isPersistedCache(value: unknown): value is PersistedCache {
  * Write through a temporary file and a rename, so a reader never sees a partial file. Failing to
  * write (for example a concurrent reader holding the file on Windows) loses only the cache.
  */
-export function writeCache(cacheFile: string, files: ReadonlyMap<string, CachedFile>): void {
+export async function writeCache(
+  cacheFile: string,
+  files: ReadonlyMap<string, CachedFile>,
+): Promise<void> {
   const persisted: PersistedCache = {
     schemaVersion: UNIT_CACHE_SCHEMA_VERSION,
     chunkerVersion: CHUNKER_VERSION,
@@ -99,14 +98,11 @@ export function writeCache(cacheFile: string, files: ReadonlyMap<string, CachedF
   };
   const temporary = `${cacheFile}.${randomBytes(6).toString('hex')}.tmp`;
   try {
-    mkdirSync(dirname(cacheFile), { recursive: true });
-    writeFileSync(temporary, JSON.stringify(persisted));
-    renameSync(temporary, cacheFile);
+    await mkdir(dirname(cacheFile), { recursive: true });
+    await writeFile(temporary, JSON.stringify(persisted));
+    await rename(temporary, cacheFile);
   } catch {
-    try {
-      rmSync(temporary, { force: true });
-    } catch {
-      // An abandoned temporary file in the disposable cache directory is harmless.
-    }
+    // An abandoned temporary file in the disposable cache directory is harmless.
+    await rm(temporary, { force: true }).catch(() => undefined);
   }
 }

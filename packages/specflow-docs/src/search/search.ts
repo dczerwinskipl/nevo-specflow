@@ -4,7 +4,6 @@
 
 import {
   SEARCH_REASON,
-  createSearchEngine,
   reciprocalRankFusion,
   type SearchReason,
   type SearchVectors,
@@ -47,7 +46,8 @@ export type DocsSearchVectors = { readonly reason: DocsSearchReason } | IndexVec
 /**
  * Everything a project's searches share. Open it once per project and process (a CLI invocation, or
  * a running Runtime) and reuse it: the vector store decodes the vectors file once per generation and
- * the chunk source keeps the parsed corpus in memory between searches.
+ * the chunk source keeps the parsed corpus and its BM25 engine in memory between searches, rebuilt
+ * only when a document's content changes.
  */
 export interface DocsSearch {
   readonly chunks: DocsChunkSource;
@@ -137,7 +137,7 @@ export async function searchDocumentation(
   search: DocsSearch,
   request: DocsSearchRequest,
 ): Promise<DocsSearchResult> {
-  const { chunks, documents } = search.chunks.load();
+  const { chunks, documents, searchEngine } = await search.chunks.load();
   const vectors = await vectorsFor(
     search.vectors,
     chunks,
@@ -145,7 +145,7 @@ export async function searchDocumentation(
     request.semanticIndexCommand ?? SEMANTIC_INDEX_COMMAND,
   );
   const candidates = request.limit * DOCUMENT_CANDIDATES_PER_RESULT;
-  const sections = await createSearchEngine(chunks).search({
+  const sections = await searchEngine().search({
     query: request.query,
     limit: candidates,
     vectors,

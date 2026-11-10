@@ -43,6 +43,8 @@ export interface OperationEventsRoute {
   readonly path: string;
   /** The operation kind (a key of the contracts registry) this route streams. */
   readonly kind: string;
+  /** The OpenAPI summary of the stream (its group is `Operations`). */
+  readonly summary: string;
   /**
    * Same authentication and authorization as the feature's inspection endpoint. Runs before
    * anything about the operation is revealed; throws an auth error (rendered by the Runtime).
@@ -100,6 +102,8 @@ export function registerOperationEventsRoute<RawServer extends RawServerBase>(
         },
       },
       schema: {
+        tags: ['Operations'],
+        summary: route.summary,
         params: OperationProgressParamsSchema,
         response: {
           401: contractRef(AuthenticationRequiredErrorResponseSchema),

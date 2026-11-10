@@ -1,7 +1,9 @@
 import { Type } from 'typebox';
 
+import { SpecIdSchema } from '../identifiers';
 import { IdSchema } from './vocabulary';
 
+export * from '../identifiers';
 export * from './catalogue';
 export * from './definition';
 export * from './definition-files';
@@ -13,7 +15,7 @@ export * from './vocabulary';
 export * from './workflow-definition-files';
 
 export const SpecificationDocumentParamsSchema = Type.Object(
-  { specId: IdSchema, documentId: IdSchema },
+  { specId: SpecIdSchema, documentId: IdSchema },
   { additionalProperties: false },
 );
 export const DocumentQuerySchema = Type.Object(

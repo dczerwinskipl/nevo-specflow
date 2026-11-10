@@ -41,6 +41,8 @@ export const specificationWorkspaceEndpoint: FastifyPluginCallback<
     {
       preHandler: authorization,
       schema: {
+        tags: ['Specifications'],
+        summary: 'Read the workspace view of a Specification',
         params: SpecificationWorkspaceParamsSchema,
         response: {
           200: SpecificationWorkspaceResponseSchema,

@@ -97,6 +97,7 @@ export function registerSpecsOperationList<RawServer extends RawServerBase>(
 ): void {
   registerOperationListRoute(app, {
     path: SPECS_OPERATIONS_PATH,
+    summary: 'List Specification operations',
     sources: options.engine ? [createOperationSource(options.engine)] : undefined,
     registry: options.registry,
     authorize: requireCapabilityInAnyScope({

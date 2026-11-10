@@ -20,6 +20,7 @@ import {
 import type { ProjectIdSource } from '../../specs';
 import type { AssociationTargets } from '../targets';
 import { createContextSession } from './create-context-session';
+import { AuthorizationForbiddenErrorResponseSchema } from '@nevo/specflow-contracts/authorization';
 import { contractRef } from '../../../server/shared-contracts';
 
 const specIdOf = (request: FastifyRequest) => (request.params as { specId: string }).specId;
@@ -66,9 +67,12 @@ export function registerCreateContextSessionRoute(
       bodyLimit: 256 * 1024,
       preHandler: authorize,
       schema: {
+        tags: ['Sessions'],
+        summary: 'Start a Session in a Specification',
         params: SpecificationWorkspaceParamsSchema,
         body: CreateContextSessionSchema,
         response: {
+          403: contractRef(AuthorizationForbiddenErrorResponseSchema),
           201: CreateContextSessionResultSchema,
           404: contractRef(SpecificationReadErrorSchema),
           // Either envelope: the Specification source error or a `session_error`.

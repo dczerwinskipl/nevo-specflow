@@ -241,6 +241,7 @@ export function registerDemoSpecRoutes<RawServer extends RawServerBase>(
     registerOperationEventsRoute(app, {
       path: '/api/demo/specifications/operations/:operationId/events',
       kind: 'specification-create',
+      summary: 'Stream the progress of a demo Specification creation',
       authorize: (request) =>
         request.authz.require({
           resource: SpecCapabilities,

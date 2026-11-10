@@ -1,6 +1,7 @@
 import { Type, type Static } from 'typebox';
 import { WorkspaceTaskSchema } from '../../tasks';
 import { SessionIdSchema } from '../../sessions/model';
+import { SpecIdSchema, TaskIdSchema } from '../../identifiers';
 export * from '../../tasks';
 export * from '../../documents';
 
@@ -10,7 +11,7 @@ const IdSchema = Type.String({
   pattern: '^[a-zA-Z0-9][a-zA-Z0-9._-]*$',
 });
 export const SpecificationWorkspaceParamsSchema = Type.Object(
-  { specId: IdSchema },
+  { specId: SpecIdSchema },
   { additionalProperties: false },
 );
 export const ReadSectionSchema = <T extends ReturnType<typeof Type.Object>>(data: T) =>
@@ -46,7 +47,7 @@ export const WorkspaceSessionSchema = Type.Object(
     id: SessionIdSchema,
     /** Absent for an untitled Session; the server never invents a title. */
     title: Type.Optional(Type.String()),
-    taskIds: Type.Array(IdSchema),
+    taskIds: Type.Array(TaskIdSchema),
     /** Effective Session readiness only (the single-Session read's provider projection). */
     status: Type.Union([
       Type.Literal('active'),

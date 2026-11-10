@@ -1,6 +1,12 @@
 import { Type, type Static } from 'typebox';
-import { AssociationTargetIdSchema } from './associations';
-import { DisplayTitleSchema, SessionIdSchema, SessionInfoSchema, TurnStateSchema } from './model';
+import { SpecIdSchema, TaskIdSchema } from '../identifiers';
+import {
+  DisplayTitleSchema,
+  SessionIdSchema,
+  SessionInfoSchema,
+  TurnIdSchema,
+  TurnStateSchema,
+} from './model';
 
 const closed = { additionalProperties: false } as const;
 /** A provider or model title as the provider catalogue names it. */
@@ -21,8 +27,8 @@ export const SessionListFilterSchema = Type.Union([
   Type.Object({ archived: SessionListArchivedSchema }, closed),
   Type.Object(
     {
-      specId: AssociationTargetIdSchema,
-      taskId: Type.Optional(AssociationTargetIdSchema),
+      specId: SpecIdSchema,
+      taskId: Type.Optional(TaskIdSchema),
       archived: SessionListArchivedSchema,
     },
     closed,
@@ -33,8 +39,8 @@ export const SessionListFilterSchema = Type.Union([
 /** Query of `GET /api/sessions`; the Runtime derives a {@link SessionListFilter} from it. */
 export const SessionListQuerySchema = Type.Object(
   {
-    specId: Type.Optional(AssociationTargetIdSchema),
-    taskId: Type.Optional(AssociationTargetIdSchema),
+    specId: Type.Optional(SpecIdSchema),
+    taskId: Type.Optional(TaskIdSchema),
     standalone: Type.Optional(Type.Literal(true)),
     archived: Type.Optional(SessionListArchivedSchema),
     limit: Type.Optional(Type.Integer({ minimum: 1, maximum: SessionListLimits.maxLimit })),
@@ -49,8 +55,8 @@ export const ListAssociationSchema = Type.Union([
   Type.Object(
     {
       kind: Type.Literal('specification'),
-      specId: AssociationTargetIdSchema,
-      taskIds: Type.Array(AssociationTargetIdSchema, { uniqueItems: true }),
+      specId: SpecIdSchema,
+      taskIds: Type.Array(TaskIdSchema, { uniqueItems: true }),
     },
     closed,
   ),
@@ -72,7 +78,7 @@ export const SessionListItemSchema = Type.Object(
     /** Effective readiness: the same provider projection as the single-Session read. */
     readiness: SessionInfoSchema.properties.readiness,
     activeTurn: Type.Optional(
-      Type.Object({ turnId: SessionIdSchema, state: TurnStateSchema }, closed),
+      Type.Object({ turnId: TurnIdSchema, state: TurnStateSchema }, closed),
     ),
     archivedAt: Type.Optional(SessionInfoSchema.properties.archivedAt),
     createdAt: SessionInfoSchema.properties.createdAt,

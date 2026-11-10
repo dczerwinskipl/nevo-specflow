@@ -43,6 +43,8 @@ export const taskReadEndpoint: FastifyPluginCallback<{ dependencies: TaskReadDep
     {
       preHandler: authorization,
       schema: {
+        tags: ['Tasks'],
+        summary: 'Read a Task',
         params: SpecificationTaskParamsSchema,
         response: { 200: SpecificationTaskResponseSchema, ...errors },
       },
@@ -72,6 +74,9 @@ export const taskReadEndpoint: FastifyPluginCallback<{ dependencies: TaskReadDep
       {
         preHandler: authorization,
         schema: {
+          tags: ['Tasks'],
+          summary:
+            kind === 'resources' ? 'Read the resources of a Task' : 'Read the history of a Task',
           params: SpecificationTaskParamsSchema,
           querystring: TaskPageQuerySchema,
           response: {

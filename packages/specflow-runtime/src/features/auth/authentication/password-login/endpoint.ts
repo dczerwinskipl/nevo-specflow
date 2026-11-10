@@ -46,6 +46,8 @@ export const passwordLoginEndpoint: FastifyPluginCallback<PasswordLoginEndpointO
         },
       },
       schema: {
+        tags: ['Authentication'],
+        summary: 'Log in with a password',
         body: PasswordLoginRequestSchema,
         response: {
           200: contractRef(AuthSessionResponseSchema),

@@ -1,5 +1,6 @@
 import { Type, type Static, type TSchema } from 'typebox';
 import { CreateSessionResultSchema, CreateSessionSchema } from './commands';
+import { SpecIdSchema, TaskIdSchema } from '../identifiers';
 import { SessionIdSchema } from './model';
 
 const closed = { additionalProperties: false } as const;
@@ -11,7 +12,7 @@ export const AssociationTargetIdSchema = Type.String({
   pattern: '^[a-zA-Z0-9][a-zA-Z0-9._-]*$',
 });
 export const SessionAssociationLimits = { taskIds: 32 } as const;
-const TaskIdsSchema = Type.Array(AssociationTargetIdSchema, {
+const TaskIdsSchema = Type.Array(TaskIdSchema, {
   maxItems: SessionAssociationLimits.taskIds,
   uniqueItems: true,
 });
@@ -24,7 +25,7 @@ export const SessionAssociationOriginSchema = Type.Union([
 
 /** The home Specification of a Session and the Tasks of it the Session belongs to. */
 export const SessionAssociationRefSchema = Type.Object(
-  { specId: AssociationTargetIdSchema, taskIds: TaskIdsSchema },
+  { specId: SpecIdSchema, taskIds: TaskIdsSchema },
   closed,
 );
 
@@ -47,7 +48,7 @@ export const CreateContextSessionResultSchema = Type.Object(
  */
 export const ProviderCatalogueQuerySchema = Type.Object(
   {
-    specId: Type.Optional(AssociationTargetIdSchema),
+    specId: Type.Optional(SpecIdSchema),
     sessionId: Type.Optional(SessionIdSchema),
   },
   closed,
@@ -67,7 +68,7 @@ export const AssociatedFactSchema = <T extends TSchema>(value: T) =>
 
 const AssociatedSpecificationSchema = Type.Object(
   {
-    specId: AssociationTargetIdSchema,
+    specId: SpecIdSchema,
     key: Type.Optional(Type.String()),
     title: Type.String(),
     collection: Type.Union([Type.Literal('current'), Type.Literal('archived')]),
@@ -75,7 +76,7 @@ const AssociatedSpecificationSchema = Type.Object(
   closed,
 );
 const AssociatedTaskSchema = Type.Object(
-  { taskId: AssociationTargetIdSchema, key: Type.Optional(Type.String()), title: Type.String() },
+  { taskId: TaskIdSchema, key: Type.Optional(Type.String()), title: Type.String() },
   closed,
 );
 

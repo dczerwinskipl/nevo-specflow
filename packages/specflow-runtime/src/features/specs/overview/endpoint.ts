@@ -48,6 +48,8 @@ export const specsOverviewEndpoint: FastifyPluginCallback<SpecsOverviewEndpointO
         capability: SpecCapabilities.capabilities.View,
       }),
       schema: {
+        tags: ['Specifications'],
+        summary: 'Read the Specifications overview',
         querystring: SpecsOverviewQuerySchema,
         response: {
           200: SpecsOverviewSchema,

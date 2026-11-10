@@ -29,6 +29,8 @@ export const sessionEndpoint: FastifyPluginCallback<SessionEndpointOptions> = (
     {
       config: { openApiPublic: true },
       schema: {
+        tags: ['Authentication'],
+        summary: 'Read the authentication state',
         response: {
           200: contractRef(AuthSessionResponseSchema),
         },
@@ -57,6 +59,7 @@ export const sessionEndpoint: FastifyPluginCallback<SessionEndpointOptions> = (
           },
         },
       },
+      schema: { tags: ['Authentication'], summary: 'Log out' },
     },
     (request, reply) => {
       logout(

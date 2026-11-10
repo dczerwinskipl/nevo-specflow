@@ -3,6 +3,11 @@ import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import type { FastifyInstance, FastifySchema, RawServerBase } from 'fastify';
 import { Type, type Static } from 'typebox';
 
+import { AuthenticationRequiredErrorResponseSchema } from '@nevo/specflow-contracts/authorization';
+import { RateLimitedErrorResponseSchema } from '@nevo/specflow-contracts/runtime';
+
+import { contractRef, referenceSharedIdentifiers } from './shared-contracts';
+
 export const OPENAPI_DOCUMENT_PATH = '/api/openapi.json';
 
 /**
@@ -46,6 +51,52 @@ export interface OpenApiOptions {
 
 /** The security scheme name of the session cookie in `components.securitySchemes`. */
 export const SESSION_COOKIE_SCHEME = 'sessionCookie';
+
+/**
+ * The operation groups of the document, in display order. Every documented route declares exactly
+ * one of them in its schema `tags`, with a short `summary`; a route declaring another or more than
+ * one is refused at registration. The group of an operation is never derived from its URL (the
+ * document and Task operations live under `/api/specs/`).
+ */
+export const OPENAPI_TAGS = [
+  {
+    name: 'Authentication',
+    description: 'Password and OIDC login, logout and the authentication state of the caller.',
+  },
+  { name: 'Authorization', description: 'The capabilities of the caller on a resource.' },
+  {
+    name: 'Sessions',
+    description:
+      'Agent Sessions: create, list, read the conversation and its work, run Turns, manage.',
+  },
+  {
+    name: 'Session Providers',
+    description: 'The agent providers and models a Session can be started with.',
+  },
+  { name: 'Session Telemetry', description: 'Usage, cost and provider limits of a Session.' },
+  {
+    name: 'Specifications',
+    description: 'Overview, creation, workspace view and closing of Specifications.',
+  },
+  {
+    name: 'Documents',
+    description: 'Specification documents: tree, reads, writes, commits and document operations.',
+  },
+  { name: 'Tasks', description: 'Task reads of a Specification: detail, history and resources.' },
+  {
+    name: 'Operations',
+    description: 'Status and progress of long-running operations across features.',
+  },
+  {
+    name: 'Workspaces',
+    description: 'Closing a linked worktree and a whole workspace (checkout).',
+  },
+  { name: 'Runtime', description: 'The Runtime itself: its mode and this OpenAPI document.' },
+] as const;
+
+export type OpenApiTag = (typeof OPENAPI_TAGS)[number]['name'];
+
+const TAG_NAMES = new Set<string>(OPENAPI_TAGS.map((tag) => tag.name));
 
 /** A route with neither a `response` schema nor `openApiResponses`: its responses are unknown. */
 export interface OpenApiRouteGap {
@@ -197,6 +248,13 @@ export async function registerOpenApi<RawServer extends RawServerBase>(
       throw new Error(`Documented route ${route.url} must have one method.`);
     }
 
+    const tags = route.schema?.tags;
+    if (tags !== undefined && (tags.length !== 1 || !TAG_NAMES.has(tags[0]!))) {
+      throw new Error(
+        `Route ${route.method} ${route.url} must declare exactly one of the OpenAPI tags.`,
+      );
+    }
+
     const id = openApiOperationId(route.method, route.url);
     const existing = operationIds.get(id);
     if (existing) {
@@ -214,6 +272,7 @@ export async function registerOpenApi<RawServer extends RawServerBase>(
     openapi: {
       openapi: '3.1.0',
       info: { title: 'Nevo SpecFlow Runtime API', version: '0.0.0' },
+      tags: OPENAPI_TAGS.map((tag) => ({ ...tag })),
       ...(options.sessionCookie
         ? {
             components: {
@@ -239,10 +298,30 @@ export async function registerOpenApi<RawServer extends RawServerBase>(
       }
 
       const secured = options.sessionCookie !== undefined && route.config?.openApiPublic !== true;
+      const documented = route.config?.openApiResponses;
+      const shared: Record<number, object> = {};
+      // A route without documented responses keeps the generic `200 Default Response` alone.
+      if (schema?.response || documented) {
+        if (secured) {
+          shared[401] = contractRef(AuthenticationRequiredErrorResponseSchema);
+        }
+
+        // Every route without a limit of its own is under the default limit; `rateLimit: false`
+        // would exempt it (no Runtime route is exempt).
+        if (route.config?.rateLimit !== false) {
+          shared[429] = RATE_LIMITED_RESPONSE;
+        }
+      }
 
       return {
         schema: {
-          ...withDocumentedResponses(schema, route.config?.openApiResponses),
+          ...withDocumentedResponses(
+            withSharedResponses(
+              referenceSharedIdentifiers(schema) as FastifySchema | undefined,
+              shared,
+            ),
+            documented,
+          ),
           // A documented route has one method (refused otherwise at registration).
           operationId: openApiOperationId(route.method as string, route.url),
           ...(secured ? { security: [{ [SESSION_COOKIE_SCHEME]: [] }] } : {}),
@@ -251,6 +330,42 @@ export async function registerOpenApi<RawServer extends RawServerBase>(
       };
     },
   });
+}
+
+/**
+ * The default rate limit's refusal (the endpoint policy): its body and the headers the limiter sets.
+ * A route with a `429` schema of its own (a stricter route limit) documents it there.
+ */
+const RATE_LIMITED_RESPONSE = {
+  ...contractRef(RateLimitedErrorResponseSchema),
+  description: 'Too many requests: the source exceeded the Runtime default rate limit.',
+  headers: {
+    'Retry-After': { type: 'string', description: 'Seconds until the budget renews.' },
+    'x-ratelimit-limit': { type: 'string', description: 'The budget of the time window.' },
+    'x-ratelimit-remaining': { type: 'string', description: '`0` on a refusal.' },
+    'x-ratelimit-reset': { type: 'string', description: 'Seconds until the window resets.' },
+  },
+} as const;
+
+/**
+ * The route schema with the responses that shared Runtime mechanisms answer for it, for each status
+ * code it does not document itself: `401` of request authorization for an operation that needs a
+ * principal, `429` of the default rate limit. A `403` is never added: whether a route can refuse a
+ * capability is the route's own knowledge, so it documents its `403` in its response schema.
+ */
+function withSharedResponses(
+  schema: FastifySchema | undefined,
+  shared: Readonly<Record<number, object>>,
+): FastifySchema | undefined {
+  const own = (schema?.response ?? {}) as Record<string, unknown>;
+  const added = Object.fromEntries(
+    Object.entries(shared).filter(([status]) => own[status] === undefined),
+  );
+  if (Object.keys(added).length === 0) {
+    return schema;
+  }
+
+  return { ...schema, response: { ...own, ...added } };
 }
 
 /**
@@ -344,16 +459,20 @@ export function openApiRouteGaps<RawServer extends RawServerBase>(
 export function registerOpenApiRoute<RawServer extends RawServerBase>(
   app: FastifyInstance<RawServer>,
 ): void {
-  app
-    .withTypeProvider<TypeBoxTypeProvider>()
-    .get(
-      OPENAPI_DOCUMENT_PATH,
-      { schema: { response: { 200: OpenApiDocumentResponseSchema } } },
-      (request, reply) => {
-        request.authz.requireAccess();
-        reply.header('Cache-Control', 'no-store');
-
-        return app.swagger() as Static<typeof OpenApiDocumentResponseSchema>;
+  app.withTypeProvider<TypeBoxTypeProvider>().get(
+    OPENAPI_DOCUMENT_PATH,
+    {
+      schema: {
+        tags: ['Runtime'],
+        summary: 'Read this OpenAPI document',
+        response: { 200: OpenApiDocumentResponseSchema },
       },
-    );
+    },
+    (request, reply) => {
+      request.authz.requireAccess();
+      reply.header('Cache-Control', 'no-store');
+
+      return app.swagger() as Static<typeof OpenApiDocumentResponseSchema>;
+    },
+  );
 }

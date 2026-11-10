@@ -238,11 +238,17 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
     const url =
       kind === 'worktree-close' ? '/api/specs/:specId/worktree/close' : '/api/specs/:specId/close';
     const preHandler = kind === 'worktree-close' ? authWorktree : authSpec;
+    const worktree = kind === 'worktree-close';
+    const tags = [worktree ? 'Workspaces' : 'Specifications'];
     typed.post(
       url,
       {
         preHandler,
         schema: {
+          tags,
+          summary: worktree
+            ? 'Close the linked worktree of a Specification'
+            : 'Close a Specification',
           params: CloseSpecParamsSchema,
           body:
             kind === 'worktree-close'
@@ -317,6 +323,10 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
       {
         preHandler,
         schema: {
+          tags,
+          summary: worktree
+            ? 'Preview closing the linked worktree of a Specification'
+            : 'Preview closing a Specification',
           params: CloseSpecParamsSchema,
           querystring: ClosePreviewQuerySchema,
           response: { 200: contractRef(ClosePreviewSchema), ...errors },
@@ -370,6 +380,8 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
     '/api/workspaces/:workspaceId/close/preview',
     {
       schema: {
+        tags: ['Workspaces'],
+        summary: 'Preview closing a workspace',
         params: CloseWorkspaceParamsSchema,
         response: { 200: CloseWorkspacePreviewSchema, ...errors },
       },
@@ -406,6 +418,8 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
     '/api/workspaces/:workspaceId/close',
     {
       schema: {
+        tags: ['Workspaces'],
+        summary: 'Close a workspace',
         params: CloseWorkspaceParamsSchema,
         body: CloseWorktreeRequestSchema,
         response: {
@@ -454,6 +468,8 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
     '/api/workspaces/:workspaceId/close/operations/:operationId',
     {
       schema: {
+        tags: ['Workspaces'],
+        summary: 'Read a workspace close operation',
         params: CloseWorkspaceOperationParamsSchema,
         response: { 200: contractRef(CloseWorkspaceResultSchema), ...errors },
       },
@@ -494,6 +510,8 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
     {
       preHandler: authSpec,
       schema: {
+        tags: ['Specifications'],
+        summary: 'Read a Specification close operation',
         params: CloseOperationParamsSchema,
         response: { 200: contractRef(CloseResultSchema), ...errors },
       },
@@ -523,6 +541,8 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
     {
       preHandler: authSpec,
       schema: {
+        tags: ['Specifications'],
+        summary: 'Reconcile the scratch checkout of a close operation',
         params: CloseOperationParamsSchema,
         body: CloseScratchReconciliationRequestSchema,
         response: { 200: contractRef(CloseResultSchema), ...errors },
@@ -576,6 +596,8 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
     {
       preHandler: authWorktree,
       schema: {
+        tags: ['Workspaces'],
+        summary: 'Read a worktree close operation',
         params: CloseOperationParamsSchema,
         response: { 200: contractRef(CloseResultSchema), ...errors },
       },

@@ -10,9 +10,22 @@ import {
   DocumentErrorSchema,
   DocumentOperationResultSchema,
   DocumentOperationStatusSchema,
+  SpecIdSchema,
+  TaskIdSchema,
+  WorkspaceIdSchema,
 } from '@nevo/specflow-contracts/documents';
-import { OperationListResponseSchema } from '@nevo/specflow-contracts/operations';
-import { SessionCommandResultSchema } from '@nevo/specflow-contracts/sessions';
+import {
+  OperationIdSchema,
+  OperationListResponseSchema,
+} from '@nevo/specflow-contracts/operations';
+import {
+  ContentIdSchema,
+  InteractionIdSchema,
+  SessionCommandResultSchema,
+  SessionIdSchema,
+  TurnIdSchema,
+  WorkIdSchema,
+} from '@nevo/specflow-contracts/sessions';
 import {
   CloseErrorSchema,
   ClosePreviewSchema,
@@ -21,6 +34,7 @@ import {
   CreateSpecErrorSchema,
 } from '@nevo/specflow-contracts/specs';
 import { SpecificationReadErrorSchema } from '@nevo/specflow-contracts/specs/workspace';
+import { RateLimitedErrorResponseSchema } from '@nevo/specflow-contracts/runtime';
 import { TaskReadErrorSchema, TaskSnapshotExpiredSchema } from '@nevo/specflow-contracts/tasks';
 
 /**
@@ -43,6 +57,7 @@ const SHARED_CONTRACTS: readonly TSchema[] = [
   DocumentOperationResultSchema,
   DocumentOperationStatusSchema,
   OperationListResponseSchema,
+  RateLimitedErrorResponseSchema,
   SessionCommandResultSchema,
   SpecificationReadErrorSchema,
   TaskReadErrorSchema,
@@ -50,6 +65,39 @@ const SHARED_CONTRACTS: readonly TSchema[] = [
 ];
 
 const sharedContracts = new Set<TSchema>(SHARED_CONTRACTS);
+
+/**
+ * The domain identifiers of `@nevo/specflow-contracts` that several operations share. An identifier
+ * is used inline in many schemas (route parameters, bodies, other contracts), so it cannot carry an
+ * `$id`: one request schema would then resolve the same `$id` twice, which Ajv refuses. It carries
+ * its name as `title` instead; it is registered under that name, and the OpenAPI document references
+ * the component wherever a route schema uses the identifier (`referenceSharedIdentifiers`).
+ * Validation and serialization keep the inline schema.
+ */
+const SHARED_IDENTIFIERS: readonly TSchema[] = [
+  ContentIdSchema,
+  InteractionIdSchema,
+  OperationIdSchema,
+  SessionIdSchema,
+  SpecIdSchema,
+  TaskIdSchema,
+  TurnIdSchema,
+  WorkIdSchema,
+  WorkspaceIdSchema,
+];
+
+const sharedIdentifiers = new Map<string, TSchema>(
+  SHARED_IDENTIFIERS.map((identifier) => [identifierName(identifier), identifier]),
+);
+
+function identifierName(identifier: TSchema): string {
+  const { title } = identifier as { readonly title?: unknown };
+  if (typeof title !== 'string') {
+    throw new Error('A shared identifier must carry its name as `title`.');
+  }
+
+  return title;
+}
 
 /**
  * Registers the shared contracts on the root instance. It MUST run before any route registration:
@@ -62,6 +110,52 @@ export function registerSharedContracts<RawServer extends RawServerBase>(
   for (const contract of SHARED_CONTRACTS) {
     app.addSchema(contract);
   }
+
+  for (const [name, identifier] of sharedIdentifiers) {
+    app.addSchema({ ...identifier, $id: name });
+  }
+}
+
+/**
+ * A copy of a route schema in which every use of a shared identifier (a subschema whose `title`
+ * names one) is a reference to it. A subschema with that `title` that is not the identifier's
+ * definition is refused: one name, one definition. Only the OpenAPI document reads the copy.
+ */
+export function referenceSharedIdentifiers(schema: unknown): unknown {
+  if (Array.isArray(schema)) {
+    return schema.map(referenceSharedIdentifiers);
+  }
+
+  if (typeof schema !== 'object' || schema === null) {
+    return schema;
+  }
+
+  const { title } = schema as { readonly title?: unknown };
+  const identifier = typeof title === 'string' ? sharedIdentifiers.get(title) : undefined;
+  if (identifier) {
+    if (!sameDefinition(schema, identifier)) {
+      throw new Error(`A schema titled ${String(title)} differs from the shared identifier.`);
+    }
+
+    return { $ref: title };
+  }
+
+  return Object.fromEntries(
+    Object.entries(schema).map(([key, value]) => [key, referenceSharedIdentifiers(value)]),
+  );
+}
+
+/** The same JSON Schema keywords and values (an identifier is a flat schema of scalars). */
+function sameDefinition(schema: object, identifier: TSchema): boolean {
+  const keys = Object.keys(identifier);
+
+  return (
+    Object.keys(schema).length === keys.length &&
+    keys.every(
+      (key) =>
+        (schema as Record<string, unknown>)[key] === (identifier as Record<string, unknown>)[key],
+    )
+  );
 }
 
 /**

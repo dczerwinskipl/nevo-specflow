@@ -34,6 +34,8 @@ export const capabilityDiscoveryEndpoint: FastifyPluginCallback<
     '/api/authorization/capabilities',
     {
       schema: {
+        tags: ['Authorization'],
+        summary: 'Resolve the capabilities of the caller on a resource',
         body: requestSchema,
         response: {
           200: responseSchema,

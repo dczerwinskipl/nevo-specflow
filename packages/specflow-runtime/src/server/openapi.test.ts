@@ -11,18 +11,29 @@ import type { RuntimeConfig } from '../config/types';
 import { noAuthConfig, oidcConfig, passwordConfig } from '../../test/auth/support/config';
 import { pathParameterProblems } from '../openapi-document';
 import { createRuntimeApp, type RuntimeAppDependencies } from './app';
+import { SpecIdSchema } from '@nevo/specflow-contracts/documents';
+import { RateLimitedErrorResponseSchema } from '@nevo/specflow-contracts/runtime';
+import { Value } from 'typebox/value';
 import {
   generateOpenApiDocument,
+  OPENAPI_TAGS,
   openApiOperationId,
   openApiRouteGaps,
   registerOpenApi,
   type RuntimeOpenApiDocument,
 } from './openapi';
-import { contractRef, registerSharedContracts } from './shared-contracts';
+import {
+  contractRef,
+  referenceSharedIdentifiers,
+  registerSharedContracts,
+} from './shared-contracts';
 
 interface Operation {
   operationId?: string;
+  summary?: string;
+  tags?: string[];
   security?: unknown;
+  parameters?: readonly { name: string; schema: unknown }[];
   responses: Record<
     string,
     {
@@ -130,6 +141,45 @@ describe('Runtime OpenAPI document', () => {
     });
   });
 
+  it('documents the 401 and 429 of shared mechanisms as the bodies they really answer', async () => {
+    const config = passwordConfig();
+    await withApp(
+      { ...config, server: { ...config.server, rateLimit: { max: 2, timeWindowMs: 60_000 } } },
+      {},
+      async (app) => {
+        const document = await generateOpenApiDocument(app);
+        const sessionRead = operation(document, '/api/sessions/{sessionId}', 'get');
+        expect(sessionRead.responses[401]?.content?.['application/json']?.schema).toEqual({
+          $ref: '#/components/schemas/AuthenticationRequiredErrorResponse',
+        });
+        expect(sessionRead.responses[429]?.content?.['application/json']?.schema).toEqual({
+          $ref: '#/components/schemas/RateLimitedErrorResponse',
+        });
+        // Public operations need no principal, so they have no 401; the default limit still applies.
+        expect(Object.keys(operation(document, '/api/runtime/info', 'get').responses)).toEqual([
+          '200',
+          '429',
+        ]);
+        // Identifiers are references; validation keeps the identifier's own pattern.
+        expect(sessionRead.parameters?.[0]?.schema).toEqual({
+          $ref: '#/components/schemas/SessionId',
+        });
+        expect((await app.inject('/api/sessions/not-a-session')).statusCode).toBe(400);
+
+        const unauthenticated = await app.inject('/api/sessions');
+        expect(unauthenticated.statusCode).toBe(401);
+        expect(unauthenticated.json()).toEqual({ error: 'authentication_required' });
+        const limited = await app.inject('/api/runtime/info');
+        expect(limited.statusCode).toBe(429);
+        expect(Value.Check(RateLimitedErrorResponseSchema, limited.json())).toBe(true);
+      },
+    );
+    expectTypeOf<Static<typeof SpecIdSchema>>().toEqualTypeOf<string>();
+    expect(() => referenceSharedIdentifiers({ type: 'string', title: 'SpecId' })).toThrow(
+      /differs from the shared identifier/,
+    );
+  });
+
   it('documents the session cookie on protected operations only, under required authentication', async () => {
     await withApp(passwordConfig(), {}, async (app) => {
       const document = await generateOpenApiDocument(app);
@@ -154,6 +204,17 @@ describe('Runtime OpenAPI document', () => {
         .map((found) => found.operationId);
 
       expect(new Set(ids).size).toBe(ids.length);
+      // Every operation is in exactly one declared group, with a summary.
+      const tagNames = OPENAPI_TAGS.map((tag) => tag.name);
+      expect((document.tags as { name: string }[]).map((tag) => tag.name)).toEqual(tagNames);
+      for (const found of Object.values(
+        document.paths as Record<string, Record<string, Operation>>,
+      ).flatMap((operations) => Object.values(operations))) {
+        expect(found.tags, found.operationId).toHaveLength(1);
+        expect(tagNames, found.operationId).toContain(found.tags![0]);
+        expect(found.summary, found.operationId).toMatch(/\S/);
+      }
+
       expect(operation(document, '/api/specs/{specId}/workspace', 'get').operationId).toBe(
         'getSpecsBySpecIdWorkspace',
       );
@@ -199,6 +260,9 @@ describe('Runtime OpenAPI document', () => {
       await registerOpenApi(app, { sessionCookie: undefined });
       app.get('/api/a-b', () => '');
       expect(() => app.get('/api/a/b', () => '')).toThrow(/same operationId getAB/);
+      expect(() => app.get('/api/c', { schema: { tags: ['Session'] } }, () => '')).toThrow(
+        /exactly one of the OpenAPI tags/,
+      );
     } finally {
       await app.close();
     }
@@ -283,14 +347,14 @@ describe('Runtime OpenAPI document', () => {
       const document = await generateOpenApiDocument(app);
 
       const logout = operation(document, '/api/auth/logout', 'post').responses;
-      expect(Object.keys(logout)).toEqual(['204']);
+      expect(Object.keys(logout)).toEqual(['204', '429']);
       expect(Object.keys(logout[204]?.headers ?? {})).toEqual(['Set-Cookie']);
       expect(logout[204]?.content).toBeUndefined();
       const deletion = operation(document, '/api/sessions/{sessionId}', 'delete').responses;
-      expect(Object.keys(deletion)).toEqual(['204']);
+      expect(Object.keys(deletion)).toEqual(['204', '401', '403', '429']);
       expect(deletion[204]?.content).toBeUndefined();
       const sessionEvents = operation(document, '/api/sessions/{sessionId}/events', 'get');
-      expect(Object.keys(sessionEvents.responses)).toEqual(['200']);
+      expect(Object.keys(sessionEvents.responses)).toEqual(['200', '401', '403', '429']);
       expect(sessionEvents.responses[200]?.content).toEqual({
         'text/event-stream': { schema: { type: 'string' } },
       });
@@ -318,7 +382,7 @@ describe('Runtime OpenAPI document', () => {
         'get',
       );
 
-      expect(Object.keys(callback.responses)).toEqual(['302']);
+      expect(Object.keys(callback.responses)).toEqual(['302', '429']);
       expect(Object.keys(callback.responses[302]?.headers ?? {})).toEqual([
         'Location',
         'Set-Cookie',

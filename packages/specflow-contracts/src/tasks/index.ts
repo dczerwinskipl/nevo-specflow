@@ -1,4 +1,5 @@
 import { Type, type Static } from 'typebox';
+import { SpecIdSchema, TaskIdSchema } from '../identifiers';
 import { TaskSnapshotSchema } from './task-read';
 export * from './task-read';
 export const TaskReadErrorSchema = Type.Object(
@@ -16,7 +17,7 @@ const IdSchema = Type.String({
   pattern: '^[a-zA-Z0-9][a-zA-Z0-9._-]*$',
 });
 export const SpecificationTaskParamsSchema = Type.Object(
-  { specId: IdSchema, taskId: IdSchema },
+  { specId: SpecIdSchema, taskId: TaskIdSchema },
   { additionalProperties: false },
 );
 

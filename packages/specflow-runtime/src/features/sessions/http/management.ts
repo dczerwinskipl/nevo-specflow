@@ -14,6 +14,7 @@ import type { SessionView } from '../persistence/protocol';
 import { authorizeSessionCapability, authorizedIdentity } from './authorization';
 import { effective } from './projection';
 import { contractRef } from '../../../server/shared-contracts';
+import { capabilityRefusal } from './route-docs';
 
 const params = Type.Object({ sessionId: SessionIdSchema }, { additionalProperties: false });
 const sessionId = (request: FastifyRequest) => (request.params as { sessionId: string }).sessionId;
@@ -52,6 +53,7 @@ export function registerSessionManagementRoutes(
   });
   const command = (
     path: string,
+    summary: string,
     body: typeof RenameSessionSchema | typeof ArchiveSessionSchema,
     run: (request: FastifyRequest) => Promise<SessionView>,
   ) =>
@@ -60,26 +62,38 @@ export function registerSessionManagementRoutes(
       {
         bodyLimit: 65536,
         preHandler: authorize('manage'),
-        schema: { params, body, response: { 200: contractRef(SessionCommandResultSchema) } },
+        schema: {
+          tags: ['Sessions'],
+          summary,
+          params,
+          body,
+          response: { 200: contractRef(SessionCommandResultSchema), ...capabilityRefusal },
+        },
       },
       async (request) => project(await run(request), request),
     );
 
-  command('rename', RenameSessionSchema, (request) =>
+  command('rename', 'Rename a Session', RenameSessionSchema, (request) =>
     coordinator().rename(actor(request), sessionId(request), request.body as RenameSession),
   );
-  command('archive', ArchiveSessionSchema, (request) =>
+  command('archive', 'Archive a Session', ArchiveSessionSchema, (request) =>
     coordinator().archive(actor(request), sessionId(request), request.body as ArchiveSession),
   );
-  command('unarchive', ArchiveSessionSchema, (request) =>
+  command('unarchive', 'Unarchive a Session', ArchiveSessionSchema, (request) =>
     coordinator().unarchive(actor(request), sessionId(request), request.body as ArchiveSession),
   );
-  feature.delete(
+  // The handler answers `204` only; the `403` of the response schema comes from the preHandler.
+  feature.delete<{ Reply: { 204: undefined } }>(
     '/api/sessions/:sessionId',
     {
       preHandler: authorize('delete'),
       config: { openApiResponses: { 204: { description: 'The Session is deleted. No body.' } } },
-      schema: { params },
+      schema: {
+        tags: ['Sessions'],
+        summary: 'Delete a Session',
+        params,
+        response: capabilityRefusal,
+      },
     },
     async (request, reply) => {
       await coordinator().remove(sessionId(request));

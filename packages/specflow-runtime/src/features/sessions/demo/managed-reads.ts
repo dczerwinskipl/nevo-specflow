@@ -8,6 +8,9 @@ import {
   ProviderCatalogueSchema,
   SessionCapabilities,
   SessionIdSchema,
+  TurnIdSchema,
+  WorkIdSchema,
+  ContentIdSchema,
   SessionSnapshotSchema,
   TelemetrySnapshotSchema,
   WorkPageSchema,
@@ -23,6 +26,7 @@ import type { SessionScopeIdentity } from '../scope';
 import { authorizeSessionIdentity } from '../http/authorization';
 import { authorizeProviderCatalogue } from '../http/catalogue-authorization';
 import type { SessionStreams } from '../http/stream';
+import { capabilityRefusal, sessionEventStream, sessionReadDocs } from '../http/route-docs';
 
 /**
  * The read side of the managed Session screen in demo mode. A demo Session (seeded in the
@@ -175,8 +179,9 @@ export function registerDemoManagedSessionReads(
     '/api/session-providers',
     {
       schema: {
+        ...sessionReadDocs.providers,
         querystring: ProviderCatalogueQuerySchema,
-        response: { 200: ProviderCatalogueSchema },
+        response: { 200: ProviderCatalogueSchema, ...capabilityRefusal },
       },
     },
     async (request) => {
@@ -192,12 +197,25 @@ export function registerDemoManagedSessionReads(
   );
   feature.get(
     '/api/sessions/:sessionId',
-    { schema: { params: params(), response: { 200: SessionSnapshotSchema } } },
+    {
+      schema: {
+        ...sessionReadDocs.snapshot,
+        params: params(),
+        response: { 200: SessionSnapshotSchema, ...capabilityRefusal },
+      },
+    },
     async (request) => reads.snapshot(await authorize(request)),
   );
   feature.get(
     '/api/sessions/:sessionId/history',
-    { schema: { params: params(), querystring: pageQuery, response: { 200: HistoryPageSchema } } },
+    {
+      schema: {
+        ...sessionReadDocs.history,
+        params: params(),
+        querystring: pageQuery,
+        response: { 200: HistoryPageSchema, ...capabilityRefusal },
+      },
+    },
     async (request) => {
       await authorize(request);
       if (!(request.query as { before?: string }).before) {
@@ -214,9 +232,10 @@ export function registerDemoManagedSessionReads(
     '/api/sessions/:sessionId/turns/:turnId/work',
     {
       schema: {
-        params: params({ turnId: SessionIdSchema }),
+        ...sessionReadDocs.work,
+        params: params({ turnId: TurnIdSchema }),
         querystring: pageQuery,
-        response: { 200: WorkPageSchema },
+        response: { 200: WorkPageSchema, ...capabilityRefusal },
       },
     },
     async (request) => {
@@ -229,9 +248,10 @@ export function registerDemoManagedSessionReads(
     '/api/sessions/:sessionId/work/:workId/actions',
     {
       schema: {
-        params: params({ workId: SessionIdSchema }),
+        ...sessionReadDocs.actions,
+        params: params({ workId: WorkIdSchema }),
         querystring: pageQuery,
-        response: { 200: ActionPageSchema },
+        response: { 200: ActionPageSchema, ...capabilityRefusal },
       },
     },
     async (request) => {
@@ -244,8 +264,9 @@ export function registerDemoManagedSessionReads(
     '/api/sessions/:sessionId/content/:contentId',
     {
       schema: {
-        params: params({ contentId: SessionIdSchema }),
-        response: { 200: ContentPageSchema },
+        ...sessionReadDocs.content,
+        params: params({ contentId: ContentIdSchema }),
+        response: { 200: ContentPageSchema, ...capabilityRefusal },
       },
     },
     async (request) => {
@@ -256,7 +277,13 @@ export function registerDemoManagedSessionReads(
   );
   feature.get(
     '/api/sessions/:sessionId/telemetry',
-    { schema: { params: params(), response: { 200: TelemetrySnapshotSchema } } },
+    {
+      schema: {
+        ...sessionReadDocs.telemetry,
+        params: params(),
+        response: { 200: TelemetrySnapshotSchema, ...capabilityRefusal },
+      },
+    },
     async (request, reply) => {
       await authorize(request);
       reply.header('Cache-Control', 'private, no-cache');
@@ -267,7 +294,10 @@ export function registerDemoManagedSessionReads(
   feature.get(
     '/api/sessions/:sessionId/events',
     {
+      config: { openApiResponses: sessionEventStream },
       schema: {
+        ...sessionReadDocs.events,
+        response: { ...capabilityRefusal },
         params: params(),
         querystring: Type.Object(
           { after: Type.Optional(Type.String({ pattern: '^[0-9]+$', maxLength: 16 })) },

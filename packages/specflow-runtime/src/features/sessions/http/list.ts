@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { Type } from 'typebox';
+import { SpecIdSchema, TaskIdSchema } from '@nevo/specflow-contracts/documents';
 import {
-  AssociationTargetIdSchema,
   SessionCapabilities,
   SessionListArchivedSchema,
   SessionListLimits,
@@ -22,6 +22,7 @@ import type {
   StoredListSummary,
 } from '../persistence/protocol';
 import { listedSession } from './projection';
+import { capabilityRefusal } from './route-docs';
 import { sessionScope } from '../scope';
 import { specScope } from '../../specs';
 
@@ -29,8 +30,8 @@ const closed = { additionalProperties: false } as const;
 // Query values arrive as strings (no coercion): `limit` and `standalone` are parsed here.
 const querystring = Type.Object(
   {
-    specId: Type.Optional(AssociationTargetIdSchema),
-    taskId: Type.Optional(AssociationTargetIdSchema),
+    specId: Type.Optional(SpecIdSchema),
+    taskId: Type.Optional(TaskIdSchema),
     standalone: Type.Optional(Type.Literal('true')),
     archived: Type.Optional(SessionListArchivedSchema),
     limit: Type.Optional(Type.String({ pattern: '^[1-9][0-9]{0,2}$' })),
@@ -134,7 +135,14 @@ export function registerSessionListRoute(
 ): void {
   feature.get(
     '/api/sessions',
-    { schema: { querystring, response: { 200: SessionListPageSchema } } },
+    {
+      schema: {
+        tags: ['Sessions'],
+        summary: 'List Sessions',
+        querystring,
+        response: { 200: SessionListPageSchema, ...capabilityRefusal },
+      },
+    },
     async (request): Promise<SessionListPage> => {
       request.authz.requireAccess();
       const sessions = source();

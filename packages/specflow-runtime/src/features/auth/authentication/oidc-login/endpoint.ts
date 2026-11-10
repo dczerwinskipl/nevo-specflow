@@ -49,6 +49,8 @@ export const oidcLoginEndpoint: FastifyPluginCallback<OidcLoginEndpointOptions> 
         },
       },
       schema: {
+        tags: ['Authentication'],
+        summary: 'Start an OIDC login',
         body: OidcStartRequestSchema,
         response: {
           200: OidcStartSuccessResponseSchema,
@@ -126,6 +128,7 @@ export const oidcLoginEndpoint: FastifyPluginCallback<OidcLoginEndpointOptions> 
           },
         },
       },
+      schema: { tags: ['Authentication'], summary: 'Complete an OIDC login' },
     },
     async (request, reply) => {
       const result = await completeOidcLogin(

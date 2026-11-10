@@ -106,6 +106,8 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
         scope: {},
       }),
       schema: {
+        tags: ['Specifications'],
+        summary: 'Read the options of a Specification creation',
         response: {
           200: CreateOptionsSchema,
           400: contractRef(CreateSpecErrorSchema),
@@ -177,6 +179,8 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
         scope: {},
       }),
       schema: {
+        tags: ['Specifications'],
+        summary: 'List the Specification archetypes',
         response: {
           200: ArchetypeCatalogueSchema,
           304: Type.Null(),
@@ -212,6 +216,8 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
         scope: {},
       }),
       schema: {
+        tags: ['Operations'],
+        summary: 'Read the status of a Specification creation',
         params: CreateOperationParamsSchema,
         response: {
           200: CreateOperationInspectionSchema,
@@ -297,6 +303,7 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
     registerOperationEventsRoute(app, {
       path: '/api/specs/create/operations/:operationId/events',
       kind: 'specification-create',
+      summary: 'Stream the progress of a Specification creation',
       authorize: requireCapability({
         resource: SpecCapabilities,
         capability: SpecCapabilities.capabilities.Create,
@@ -319,6 +326,8 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
         scope: {},
       }),
       schema: {
+        tags: ['Specifications'],
+        summary: 'Create a Specification',
         body: CreateSpecRequestSchema,
         response: {
           201: CreatedSpecSchema,

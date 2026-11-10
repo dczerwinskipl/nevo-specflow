@@ -309,7 +309,11 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
     '/api/runtime/info',
     {
       config: { openApiPublic: true },
-      schema: { response: { 200: RuntimeInfoResponseSchema } },
+      schema: {
+        tags: ['Runtime'],
+        summary: 'Read the Runtime data mode',
+        response: { 200: RuntimeInfoResponseSchema },
+      },
     },
     (_request, reply) => {
       reply.header('Cache-Control', 'no-store');

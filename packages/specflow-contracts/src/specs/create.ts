@@ -6,6 +6,8 @@ import {
   DocumentErrorDetailsSchema,
   RegisteredDocumentIdSchema,
 } from '../documents';
+import { WorkspaceIdSchema } from '../identifiers';
+import { OperationIdSchema } from '../operations/progress';
 import { SPEC_SLUG_MAX_LENGTH, SPEC_SLUG_PATTERN } from './slug';
 
 const UuidSchema = Type.String({
@@ -14,7 +16,7 @@ const UuidSchema = Type.String({
 });
 
 export const ExistingSpecTargetSchema = Type.Object(
-  { kind: Type.Literal('existing'), workspaceId: UuidSchema },
+  { kind: Type.Literal('existing'), workspaceId: WorkspaceIdSchema },
   { additionalProperties: false },
 );
 export const NewSpecWorktreeTargetSchema = Type.Object(
@@ -22,7 +24,7 @@ export const NewSpecWorktreeTargetSchema = Type.Object(
     kind: Type.Literal('new-worktree'),
     baseRef: Type.Optional(Type.String({ minLength: 1 })),
     branch: Type.Optional(Type.String({ minLength: 1 })),
-    integrationTargetWorkspaceId: Type.Optional(UuidSchema),
+    integrationTargetWorkspaceId: Type.Optional(WorkspaceIdSchema),
   },
   { additionalProperties: false },
 );
@@ -38,7 +40,7 @@ export const CreateSpecRequestSchema = Type.Object(
     slug: Type.Optional(
       Type.String({ minLength: 1, maxLength: SPEC_SLUG_MAX_LENGTH, pattern: SPEC_SLUG_PATTERN }),
     ),
-    operationId: Type.Optional(UuidSchema),
+    operationId: Type.Optional(OperationIdSchema),
     target: Type.Optional(Type.Union([ExistingSpecTargetSchema, NewSpecWorktreeTargetSchema])),
     /**
      * Archetype selection (`archetypeId`, `archetypeVersion`, `catalogueRevision` required;
@@ -53,12 +55,12 @@ export type CreateSpecRequest = Static<typeof CreateSpecRequestSchema>;
 
 export const CreatedSpecSchema = Type.Object(
   {
-    operationId: UuidSchema,
+    operationId: OperationIdSchema,
     specId: UuidSchema,
     kind: Type.Literal('specification-create'),
     status: Type.Literal('completed'),
     slug: Type.String(),
-    workspaceId: UuidSchema,
+    workspaceId: WorkspaceIdSchema,
     relativeManifestPath: Type.String(),
     /** Ids of the registered documents of the new Specification, in manifest order. */
     documentIds: Type.Array(RegisteredDocumentIdSchema),
@@ -79,7 +81,7 @@ export const CreateSpecErrorSchema = Type.Object(
 
 /** Lookup key contains no caller-supplied workspace, file path or Spec selector. */
 export const CreateOperationParamsSchema = Type.Object(
-  { operationId: UuidSchema },
+  { operationId: OperationIdSchema },
   { additionalProperties: false },
 );
 
@@ -91,7 +93,7 @@ export const CreateOperationParamsSchema = Type.Object(
 export const CREATE_RESPOND_ASYNC_PREFERENCE = 'respond-async';
 export const CreateOperationAcceptedSchema = Type.Object(
   {
-    operationId: UuidSchema,
+    operationId: OperationIdSchema,
     kind: Type.Literal('specification-create'),
     status: Type.Literal('in-progress'),
   },
@@ -103,7 +105,7 @@ export type CreateOperationAccepted = Static<typeof CreateOperationAcceptedSchem
 export const CreateOperationInspectionSchema = Type.Union([
   Type.Object(
     {
-      operationId: UuidSchema,
+      operationId: OperationIdSchema,
       kind: Type.Literal('specification-create'),
       status: Type.Union([Type.Literal('in-progress'), Type.Literal('recovery-required')]),
       /** Stable code when the cause is known (for example `OPERATION_INTERRUPTED` after a long idle). */
@@ -118,7 +120,7 @@ export const CreateOperationInspectionSchema = Type.Union([
    */
   Type.Object(
     {
-      operationId: UuidSchema,
+      operationId: OperationIdSchema,
       kind: Type.Literal('specification-create'),
       status: Type.Literal('failed'),
       code: Type.String(),

@@ -42,10 +42,25 @@ GET /api/openapi.json
 - **Admission and caching:** the shared default rate limit of the
   [endpoint policy](../../architecture/runtime/endpoint-policy.md) and `Cache-Control: no-store`.
 - **Format:** JSON only. Runtime ships no interactive viewer; open the URL or the committed file in
-  an external tool (Bruno, Postman, Scalar, Swagger Editor).
+  an external tool that supports OpenAPI 3.1 (see [Viewers](#viewers)).
 
 `info.version` is fixed at `0.0.0`: the document describes the API of the Runtime that serves it and
 does not carry the product version.
+
+## Viewers
+
+The document is OpenAPI **3.1**; a viewer must support 3.1 (JSON Schema 2020-12 keywords such as
+`type: 'null'` and `const`).
+
+| Viewer                                         | Result                                                                                                                                                                    |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Swagger UI 5 (`swagger-ui-dist` 5.34)          | Works: operations grouped by tag with summaries, parameters, bodies, responses with headers, components under Schemas, `Authorize` for the session cookie.                |
+| Scalar API Reference (1.77)                    | Works: the same groups in the sidebar, operations with their responses and models, the session cookie in the request examples.                                            |
+| Classic Swagger Editor 4 (`editor.swagger.io`) | Does not work: it validates against the OpenAPI **3.0** schema and lists structural errors (`openapi` must match `3.0.x`, `null` is not a 3.0 type) instead of a preview. |
+
+Use Swagger UI, Scalar or another 3.1 viewer. The next-generation Swagger Editor
+(`editor-next.swagger.io`) supports 3.1 but was not part of the check. The results come from a
+one-off local render of the committed file in headless Chromium; there is no automated viewer test.
 
 ## Shared contracts
 
@@ -74,8 +89,12 @@ It works with the Fastify shared-schema mechanism, without a second copy of any 
 Current shared contracts: `AuthSessionResponse`, `AuthenticationRequiredErrorResponse`,
 `AuthorizationForbiddenErrorResponse`, `CloseError`, `ClosePreview`, `CloseResult`,
 `CloseWorkspaceResult`, `CreateSpecError`, `DocumentError`, `DocumentOperationResult`,
-`DocumentOperationStatus`, `OperationListResponse`, `SessionCommandResult`,
-`SpecificationReadError`, `TaskReadError` and `TaskSnapshotExpired`.
+`DocumentOperationStatus`, `OperationListResponse`, `RateLimitedErrorResponse`,
+`SessionCommandResult`, `SpecificationReadError`, `TaskReadError` and `TaskSnapshotExpired`.
+
+A test that registers Runtime routes on a bare Fastify instance (without `createRuntimeApp`) creates
+it with `routeTestApp()` from `test/support/route-app.ts`, which registers the shared contracts that
+route schemas reference.
 
 Schemas stay inline when they are not one shared response contract:
 
@@ -90,6 +109,95 @@ Schemas stay inline when they are not one shared response contract:
 
 Structural equality alone never makes a component; a new shared contract gets an `$id` in the
 contracts package and an entry in the shared-contract list.
+
+## Shared identifiers
+
+Domain identifiers that several operations use are components too, and every use in a route schema
+is a `$ref` to them:
+
+| Component                                                     | Contract (`@nevo/specflow-contracts`)                                                                  | Format                                           |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------ |
+| `SessionId`, `TurnId`, `WorkId`, `ContentId`, `InteractionId` | `SessionIdSchema`, `TurnIdSchema`, `WorkIdSchema`, `ContentIdSchema`, `InteractionIdSchema` (sessions) | lowercase UUID                                   |
+| `OperationId`                                                 | `OperationIdSchema` (operations)                                                                       | RFC 4122 UUID (version 1-8), any case            |
+| `WorkspaceId`                                                 | `WorkspaceIdSchema` (`src/identifiers.ts`)                                                             | RFC 4122 UUID (version 1-8), any case            |
+| `SpecId`, `TaskId`                                            | `SpecIdSchema`, `TaskIdSchema` (`src/identifiers.ts`)                                                  | `^[a-zA-Z0-9][a-zA-Z0-9._-]*$`, 1-200 characters |
+
+How it works:
+
+- **Identity:** an identifier is used inline in many schemas (path and query parameters, bodies and
+  other contracts), so it cannot carry an `$id`: a request schema with two uses would resolve the
+  same `$id` twice, which Ajv refuses (`reference "SessionId" resolves to more than one schema`).
+  The contract carries its name as the JSON Schema annotation `title` instead. Validation,
+  serialization and route types keep using the inline schema, unchanged.
+- **Registration:** `src/server/shared-contracts.ts` lists the identifiers and registers each with
+  `addSchema` under its `title` as `$id`, so `@fastify/swagger` emits it once under
+  `components.schemas`.
+- **Reference:** the Swagger `transform` replaces every subschema whose `title` names an identifier
+  with a reference to it (`referenceSharedIdentifiers`); only the document reads that copy. A
+  subschema with such a `title` and another definition fails the generation: one name, one
+  definition.
+
+Only a schema that is the identifier becomes a reference, never one that merely has the same
+pattern. The two UUID formats are different contracts (lowercase without a version check, against
+RFC 4122 with version 1-8 in any case); they stay separate and neither is `format: uuid`. Fields of
+these formats that are not one of the identifiers keep their inline schema: the `requestId` of a
+Session command, ToolAction and conversation entry ids (`SessionUuidSchema`), the Specification ids
+of Create and close (an RFC 4122 UUID, stricter than `SpecId`), document ids and the other ids of
+the generic id pattern. Inside a shared object contract (a component) an identifier stays inline
+with its `title`, because the component is emitted from the registered contract itself.
+
+## Groups and summaries
+
+Every operation belongs to exactly one group (`tags`) and has a short `summary`, both declared in
+the route schema by the feature that owns the route:
+
+```ts
+schema: {
+  tags: ['Sessions'],
+  summary: 'Cancel a Turn',
+  body: CancelTurnSchema,
+}
+```
+
+The groups and their descriptions are `OPENAPI_TAGS` in `src/server/openapi.ts`; the document lists
+them in this order as its top-level `tags`: Authentication, Authorization, Sessions, Session
+Providers, Session Telemetry, Specifications, Documents, Tasks, Operations, Workspaces and Runtime.
+A route declaring an unknown group, or more than one, is refused when it is registered, and the
+OpenAPI test fails for an operation without exactly one group and a summary. A group is never
+derived from the URL: document and Task operations live under `/api/specs/` too.
+
+Operations holds the cross-feature operation lists, the operation progress stream and the status of
+a Specification creation (the shared list and stream mechanisms declare the group, the feature
+gives the summary). The status of a close or document operation stays with its feature
+(Specifications, Workspaces, Documents). Workspaces holds closing a linked worktree and closing a
+whole workspace.
+
+## Shared error responses
+
+Some refusals come from shared Runtime mechanisms, not from the route. The Swagger `transform`
+documents them for every operation that documents its responses and does not document that status
+code itself:
+
+| Status | Added to                                                                           | Body (component)                                                           | Source                                                                     |
+| ------ | ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `401`  | operations with `security` (required authentication, not `openApiPublic`)          | `AuthenticationRequiredErrorResponse`                                      | `request.authz` without a principal, answered by the Runtime error handler |
+| `429`  | every operation without a rate limit of its own (no route sets `rateLimit: false`) | `RateLimitedErrorResponse`, with `Retry-After` and `x-ratelimit-*` headers | the default rate limit of the endpoint policy                              |
+
+The transform never adds `403`: whether an operation can refuse a capability is the route's own
+knowledge. A route whose authorization can deny documents `403` with
+`AuthorizationForbiddenErrorResponse` in its response schema. Every Session route does (the
+capability checks of the Session or of the start), as the Specification, document, Task, close and
+operation routes already did. `GET /api/openapi.json` and `POST /api/authorization/capabilities`
+only require a principal and never answer `403`. In trusted local mode no operation has `security`,
+so none has the `401`.
+
+`RateLimitedErrorResponse` is `{ "error": "rate_limited" }`, with `statusCode: 429` from the
+limiter's error on a route without a `429` schema of its own. Routes with a stricter limit of their
+own (password login, OIDC start) and routes with their own `429` (Session telemetry refresh, the
+operation progress stream) keep their own `429`. Other refusals of shared mechanisms are not added:
+for example a Session route answers `503 SESSION_DISABLED` before its authentication check while
+managed Sessions are disabled, and the Session routes do not document their `session_error`
+responses yet.
 
 ## Authentication
 

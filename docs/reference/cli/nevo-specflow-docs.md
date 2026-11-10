@@ -146,8 +146,9 @@ catches up inside the Runtime instead. An unreachable endpoint answers `endpoint
 starts nothing. When the process cannot be started at all (for example a missing executable), the
 search says so (``starting a background `nevo-specflow docs semantic index` failed (<cause>); run it
 yourself``), appends the cause to the catch-up log, leaves no start marker and still exits 0; the
-next search tries again and reports the same failure rather than a catch-up that never runs. Search is hybrid only once every current section has a vector. `--no-refresh` skips
-the embedding step entirely and starts no catch-up.
+next search tries again and reports the same failure rather than a catch-up that never runs.
+Search is hybrid only once every current section has a vector. `--no-refresh` skips the embedding
+step entirely and starts no catch-up.
 
 Text output: one block per document with its id, title, type and status, the `summary` (cut at a
 word boundary after 200 characters; `--json` has all of it), the `read_when` situations and the

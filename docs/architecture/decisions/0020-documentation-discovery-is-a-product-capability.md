@@ -182,8 +182,8 @@ lexically and reports why:
 
 The fallback MUST NOT fail `search`. Only the two explicit administrative commands turn an
 unavailable configured mode into a failure exit: `semantic status`, and `semantic index` when it
-could not bring the index up to date. Callers do not need to know in advance whether semantic mode is on, because
-every result states its `mode`.
+could not bring the index up to date. Callers do not need to know in advance whether semantic mode
+is on, because every result states its `mode`.
 
 ### 5. Index freshness without a watcher
 

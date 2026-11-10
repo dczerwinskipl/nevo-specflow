@@ -4,14 +4,18 @@ import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { createFileVectorStore } from '@nevo/ai-semantic-search';
+import {
+  DEFAULT_EMBEDDING_TIMEOUT_MS,
+  createFileVectorStore,
+  createOpenAiCompatibleEmbeddingProvider,
+} from '@nevo/ai-semantic-search';
 import { createFakeEmbeddingProvider } from '@nevo/ai-semantic-search/testing';
 import { DocsStatusSchema } from '@nevo/specflow-contracts/docs';
 import { Value } from 'typebox/value';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import { runDocs } from '../../test/support/run-docs';
-import { QUERY_TIMEOUT_MS } from '../embeddings/embedding-providers';
+import { QUERY_TIMEOUT_MS, type CreateEmbeddingProvider } from '../embeddings/embedding-providers';
 import { CATCH_UP_MARKER_FILE } from './catch-up';
 
 // A project without an index and more sections than a search embeds; the endpoint sets batchSize.
@@ -191,11 +195,28 @@ describe('semantic status during an endpoint outage', () => {
 
   it('answers unreachable within the query timeout through the real endpoint adapter', async () => {
     await using endpoint = await hangingEndpoint(true);
+    // The real adapter, with every timeout cut to 50 ms so the test does not wait the real 3 s;
+    // the timeout each provider was given is recorded.
+    const timeouts: number[] = [];
+    const createEmbeddingProvider: CreateEmbeddingProvider = (settings) => {
+      timeouts.push(settings.timeoutMs ?? Number.NaN);
+
+      return createOpenAiCompatibleEmbeddingProvider({
+        ...settings,
+        timeoutMs: Math.min(settings.timeoutMs ?? Number.POSITIVE_INFINITY, 50),
+      });
+    };
+
     const started = performance.now();
-    const run = await runDocs(endpoint.project, ['semantic', 'status', '--json']);
+    const run = await runDocs(endpoint.project, ['semantic', 'status', '--json'], undefined, {
+      createEmbeddingProvider,
+    });
     const elapsed = performance.now() - started;
 
-    expect(elapsed).toBeLessThan(QUERY_TIMEOUT_MS + 2000);
+    // The query provider (3000 ms) and the documents provider (the default); the probe answered
+    // within the cut query timeout, so it was the query provider's.
+    expect(timeouts).toEqual([QUERY_TIMEOUT_MS, DEFAULT_EMBEDDING_TIMEOUT_MS]);
+    expect(elapsed).toBeLessThan(1000);
     expect(endpoint.requests).toHaveLength(1);
     expect(run.exitCode).toBe(1);
     expect(JSON.parse(run.stdout.join('\n'))).toMatchObject({
@@ -204,7 +225,7 @@ describe('semantic status during an endpoint outage', () => {
       reachability: { reachable: false },
       failed: true,
     });
-  }, 15_000);
+  });
 
   it('sends the endpoint nothing while semantic search is disabled', async () => {
     await using endpoint = await hangingEndpoint(false);

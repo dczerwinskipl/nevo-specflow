@@ -26,6 +26,13 @@ Runtime derives an OpenAPI 3.1 document from the route schemas it already regist
 `@fastify/swagger`). No part of the document is written by hand: a route appears with the
 parameters, request body and responses its schema declares.
 
+The generation lives in `packages/specflow-runtime/src/server/openapi/`: `register.ts` (Swagger
+registration and the registration checks), `transform.ts` (the per-route schema transform),
+`responses.ts`, `parameters.ts`, `security.ts`, `tags.ts`, `operations.ts` (paths and operation
+ids), `components.ts`, `request-error-guard.ts`, `document-route.ts` and `config.ts` (the route
+`config` it reads); `index.ts` is its public entry. Shared contracts and identifiers are registered
+in `src/server/shared-contracts.ts`.
+
 ## Served document
 
 ```http
@@ -165,7 +172,7 @@ schema: {
 }
 ```
 
-The groups and their descriptions are `OPENAPI_TAGS` in `src/server/openapi.ts`; the document lists
+The groups and their descriptions are `OPENAPI_TAGS` in `src/server/openapi/tags.ts`; the document lists
 them in this order as its top-level `tags`: Authentication, Authorization, Sessions, Session
 Providers, Session Telemetry, Specifications, Documents, Tasks, Operations, Workspaces and Runtime.
 A documented route (under `/api/`, not a demo seam) without exactly one known group or without a
@@ -345,7 +352,7 @@ A response documented by a schema without its own `description` is described by 
 for the status codes whose meaning is the same on every Runtime route (`200` Success, `202`
 Accepted: the operation continues asynchronously, `304` Not modified, `401` Not authenticated,
 `403` The principal lacks a required capability, `409`, `422`, `429`, `503` and so on; the list is
-`STATUS_DESCRIPTIONS` in `src/server/openapi.ts`). A route whose response means something more
+`STATUS_DESCRIPTIONS` in `src/server/openapi/responses.ts`). A route whose response means something more
 specific gives it its own description with `x-response-description` on the response schema (which
 only the document reads); password login describes its `401` this way, since that `401` means
 rejected credentials. A documentation-only response carries the
@@ -422,7 +429,7 @@ config: {
 Each entry has a `description`, optional response `headers` (name to description) and either an
 optional `mediaType` (only `text/event-stream`) or a `contract` (a registered shared contract, for a
 JSON body; any other JSON body is documented by a response schema). Only the Swagger `transform` of
-`src/server/openapi.ts` reads it: a response without `mediaType` or `contract` becomes a response
+`src/server/openapi/transform.ts` reads it: a response without `mediaType` or `contract` becomes a response
 without `content`, a stream becomes `content` of that media type with a `string` schema, and a
 contract becomes JSON `content` referencing its component. A documentation-only status replaces a
 shared response of the same status code (the default rate limit's `429`). A status code documented both ways is refused when the route is registered. An event

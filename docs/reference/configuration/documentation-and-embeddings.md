@@ -120,6 +120,11 @@ product frontmatter contract and are not configurable.
 `context` never returns documents under a non-authoritative prefix; `search` skips them unless
 `--include-non-authoritative` is given; `list`, `find` and `get` return them.
 
+Symbolic links (and Windows junctions) below `docs.root` are skipped by every command, whether
+they point to a directory or a file, inside or outside `docs.root`: a link never loops the scan and
+never adds files from elsewhere to the corpus. Put a document in the documentation tree itself
+instead of linking it there.
+
 Files under an excluded prefix are not scanned by any command: they need no frontmatter, are not
 validated, indexed or searched. Use it for copy-me templates and similar non-documents. A relative
 Markdown link into an excluded directory still resolves when the target exists (its `#fragment` is
@@ -149,6 +154,14 @@ ai:
     model: text-embedding-3-small
     apiKeyEnv: EMBEDDINGS_API_KEY
 ```
+
+An endpoint in the committed project configuration is used as it is, with no local confirmation:
+once `docs.search.semantic` is `true` and the endpoint is set (in either file), the first `search`,
+`semantic index` or Runtime start sends document sections (their text with the document's title,
+id, summary and tags) to it to embed them, and every search sends the query. Configure in
+`.nevo/config.yaml` only an endpoint every contributor may send the documentation to; a
+workstation that must not use it sets its own `baseUrl` and `model` in `.nevo/local/config.yaml`
+(`docs.search.semantic` is a project setting and cannot be turned off locally).
 
 The two files merge key by key, the local value winning; the example resolves to the remote
 endpoint and model with the project's `queryInstruction`. Either file alone may configure the

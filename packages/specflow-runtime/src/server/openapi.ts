@@ -84,8 +84,8 @@ export const SESSION_COOKIE_SCHEME = 'sessionCookie';
 /**
  * The operation groups of the document, in display order. Every documented route declares exactly
  * one of them in its schema `tags`, with a non-empty `summary`; a documented route without them,
- * with another tag or with more than one is refused at registration. The group of an operation is never derived from its URL (the
- * document and Task operations live under `/api/specs/`).
+ * with another tag or with more than one is refused at registration. The group of an operation is
+ * never derived from its URL (the document and Task operations live under `/api/specs/`).
  */
 export const OPENAPI_TAGS = [
   {

@@ -23,14 +23,14 @@ describe('rankByContent', () => {
 describe('tokenize', () => {
   it('normalizes like the search engine and folds English plurals of ASCII words only', () => {
     expect(tokenize('Obsługa płatności: Policies, tasks, status')).toEqual([
-      'obsługa',
-      'płatnosci',
+      'obsluga',
+      'platnosci',
       'policy',
       'task',
       'status',
     ]);
     // A word that keeps a non-ASCII letter is never folded.
-    expect(tokenize('płatnoś')).toEqual(['płatnos']);
+    expect(tokenize('ελπίδες')).toEqual(['ελπιδες']);
   });
 
   it('finds a document by a Polish word with or without its diacritics', () => {
@@ -40,5 +40,6 @@ describe('tokenize', () => {
     ];
     expect(searchDocs(polish, { query: 'płatności' }).map((doc) => doc.id)).toEqual(['payments']);
     expect(searchDocs(polish, { query: 'PŁATNOSCI' }).map((doc) => doc.id)).toEqual(['payments']);
+    expect(searchDocs(polish, { query: 'platnosci' }).map((doc) => doc.id)).toEqual(['payments']);
   });
 });

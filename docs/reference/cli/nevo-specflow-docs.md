@@ -110,8 +110,9 @@ A document whose `summary` says "Tasks are handled by the engine" is therefore f
 `search tasks` even when no section says "tasks". A document none of whose sections is among the
 section ranking's candidates has no sections. Both rankings split text into the same words:
 Unicode letter and digit runs after compatibility normalization (NFKD), lower-cased, with
-diacritics removed, so `płatności` is one word and matches `PŁATNOŚCI` and `płatnosci` (a letter
-without a decomposition, such as `ł`, stays). Section text is matched by these exact words without
+diacritics removed and the letters without a decomposition folded to ASCII (`ł` → `l`, `ø` → `o`,
+`ß` → `ss`, `đ` → `d`, `æ` → `ae`, `œ` → `oe`, `þ` → `th`), so `płatności` is one word and
+matches `PŁATNOŚCI` and the ASCII-typed `platnosci`. Section text is matched by these exact words without
 stemming, because the engine does not know the corpus language; only the frontmatter ranking folds
 English plurals, and only of words that are ASCII after normalization.
 

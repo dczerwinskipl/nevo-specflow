@@ -9,7 +9,8 @@ import { asString, type DocRecord } from './contract';
 /**
  * English plural folding of one token: `policies` → `policy`, `classes` → `class`, `boxes` → `box`,
  * `tasks` → `task` (not `status`, `analysis`, `class`). A separate step after tokenization, applied
- * to ASCII tokens only, so words of other languages are never cut.
+ * to ASCII tokens only (after the tokenizer's folding, so also Latin-script words of other
+ * languages, alike on both sides), never to words that keep a non-ASCII letter.
  */
 export function foldEnglishPlural(token: string): string {
   if (!/^[a-z0-9]+$/.test(token)) {
@@ -37,7 +38,8 @@ export function foldEnglishPlural(token: string): string {
 
 /**
  * The distinct terms of a text: the search engine's tokenizer (`tokenize` of
- * `@nevo/ai-semantic-search`: NFKD, diacritics removed, lower-cased, Unicode letter/digit runs), so
+ * `@nevo/ai-semantic-search`: NFKD, diacritics removed, lower-cased, letters such as `ł` folded,
+ * Unicode letter/digit runs), so
  * the frontmatter ranking and BM25 normalize alike, then `foldEnglishPlural`.
  */
 export function tokenize(text: string): string[] {

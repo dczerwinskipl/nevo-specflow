@@ -5,9 +5,17 @@ import { RRF_K, reciprocalRankFusion } from './rrf';
 import { tokenize } from './tokenize';
 
 describe('tokenize', () => {
-  it('lower-cases, strips diacritics and splits on non-alphanumerics', () => {
-    expect(tokenize('Zażółć GĘŚLĄ-jaźń v2.1')).toEqual(['zazołc', 'gesla', 'jazn', 'v2', '1']);
-    expect(tokenize('płatności ﬁle')).toEqual(['płatnosci', 'file']);
+  it('lower-cases, strips diacritics, folds undecomposable letters and splits on non-alphanumerics', () => {
+    expect(tokenize('Zażółć GĘŚLĄ-jaźń v2.1')).toEqual(['zazolc', 'gesla', 'jazn', 'v2', '1']);
+    expect(tokenize('płatności ﬁle')).toEqual(['platnosci', 'file']);
+    expect(tokenize('Straße Øre Æsir Œuvre Þing Đak')).toEqual([
+      'strasse',
+      'ore',
+      'aesir',
+      'oeuvre',
+      'thing',
+      'dak',
+    ]);
   });
 });
 

@@ -98,7 +98,7 @@ export function createInMemoryVectorStore(): VectorStore {
       return Promise.resolve({ status: 'opened', writer });
     },
 
-    query({ identity, vector, limit }: VectorQuery): Promise<VectorQueryOutcome> {
+    query({ identity, vector, limit, accept }: VectorQuery): Promise<VectorQueryOutcome> {
       const current = snapshot;
       if (!current) {
         return Promise.resolve({ status: 'missing' });
@@ -111,7 +111,7 @@ export function createInMemoryVectorStore(): VectorStore {
 
       return Promise.resolve({
         status: 'ok',
-        matches: nearestNeighbours(vector, current.vectors.values(), limit),
+        matches: nearestNeighbours(vector, current.vectors.values(), limit, accept),
       });
     },
   };

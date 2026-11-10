@@ -113,6 +113,43 @@ describe('createSearchEngine', () => {
     expect(again).toEqual(all);
   });
 
+  it('applies the filter before the vector candidate cut', async () => {
+    // Twelve rejected units closer to the query than any accepted one would fill all ten vector
+    // candidates of a one-unit search if the filter ran after the cut.
+    const noise = Array.from({ length: 12 }, (_, index) => ({
+      id: `noise-${index}`,
+      text: '# Noise\nlock lock lock',
+      contentHash: `noise-${index}`,
+      header: '',
+      metadata: { area: 'noise' },
+    })).flatMap(chunkMarkdownUnit);
+    const corpus = [...chunks, ...noise];
+    const provider = createFakeEmbeddingProvider();
+    const store = await indexedStore(provider, corpus);
+    const matched: string[] = [];
+    const spy: VectorStore = {
+      ...store,
+      query: async (query) => {
+        const outcome = await store.query(query);
+        if (outcome.status === 'ok') {
+          matched.push(...outcome.matches.map((match) => match.chunkId));
+        }
+
+        return outcome;
+      },
+    };
+
+    const result = await createSearchEngine(corpus).search({
+      query: 'lock',
+      limit: 1,
+      vectors: { provider, store: spy },
+      filter: (chunk) => chunk.metadata.area !== 'noise',
+    });
+    expect(matched.length).toBeGreaterThan(0);
+    expect(matched.filter((id) => id.startsWith('noise-'))).toEqual([]);
+    expect(result.hits.map((hit) => hit.unitId)).toEqual(['locks']);
+  });
+
   it('ignores stored vectors of removed or changed chunks', async () => {
     const provider = createFakeEmbeddingProvider();
     const stale = chunks.map((chunk) =>

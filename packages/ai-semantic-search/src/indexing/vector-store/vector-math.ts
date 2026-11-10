@@ -1,5 +1,5 @@
 import { compareIds } from '../../compare';
-import type { VectorMatch } from './vector-store';
+import type { VectorMatch, VectorQuery } from './vector-store';
 
 /** Cosine similarity of two equal-length vectors; 0 when either has zero norm. */
 export function cosineSimilarity(a: Float32Array, b: Float32Array): number {
@@ -28,16 +28,22 @@ export interface VectorCandidate {
 }
 
 /**
- * Brute-force nearest neighbours by cosine similarity, ordered by score then chunk id. Shared by
- * vector store implementations so every store ranks identically.
+ * Brute-force nearest neighbours by cosine similarity, ordered by score then chunk id, among the
+ * candidates `accept` admits (all without it) before the `limit` cut. Shared by vector store
+ * implementations so every store ranks identically.
  */
 export function nearestNeighbours(
   query: Float32Array,
   candidates: Iterable<VectorCandidate>,
   limit: number,
+  accept?: VectorQuery['accept'],
 ): VectorMatch[] {
   const matches: VectorMatch[] = [];
   for (const candidate of candidates) {
+    if (accept && !accept(candidate.chunkId, candidate.contentHash)) {
+      continue;
+    }
+
     matches.push({
       chunkId: candidate.chunkId,
       contentHash: candidate.contentHash,

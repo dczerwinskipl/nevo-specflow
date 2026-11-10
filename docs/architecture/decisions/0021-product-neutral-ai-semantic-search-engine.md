@@ -94,8 +94,12 @@ dimension that differs from the observed one is an error.
 With vectors, ranking is hybrid:
 
 1. BM25 over chunk text;
-2. cosine similarity against the query embedding;
-3. reciprocal rank fusion of both lists, then consumer filters and grouping by parent unit.
+2. cosine similarity against the query embedding, bounded to a number of candidates;
+3. reciprocal rank fusion of both lists, then grouping by parent unit.
+
+Consumer filters (for example "no non-authoritative documents") apply before any candidate cut:
+rejected chunks are left out of the BM25 list and of the vector query, so they neither take a
+candidate place nor shift the ranks that are fused.
 
 Without vectors the same call returns BM25-only results with `mode: lexical` and a `reason`. The
 engine does not fail a search because embeddings are unavailable.

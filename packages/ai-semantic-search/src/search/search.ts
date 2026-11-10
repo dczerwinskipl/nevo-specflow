@@ -39,7 +39,11 @@ export interface SearchRequest {
   /** Maximum number of units returned. */
   readonly limit: number;
   readonly vectors: SearchVectors;
-  /** Consumer filter, applied after ranking and fusion and before grouping. */
+  /**
+   * Consumer filter. It applies before any candidate cut: rejected chunks are left out of the BM25
+   * ranking and of the vector query (`VectorQuery.accept`), so they take no candidate place and do
+   * not shift the ranks that are fused.
+   */
   readonly filter?: (chunk: Chunk) => boolean;
 }
 
@@ -70,8 +74,9 @@ export interface SearchEngine {
  * Builds a search engine over the current chunks of a corpus. Lexical ranking is BM25 over each
  * chunk's heading path and text. With vectors, the query embedding is ranked against one snapshot of
  * the store (at most `limit * VECTOR_CANDIDATES_PER_RESULT` matches) and both lists are fused by
- * reciprocal rank fusion; vector matches with a non-positive similarity, and stored vectors whose
- * chunk no longer exists or whose content hash differs from the current chunk, are ignored. Without
+ * reciprocal rank fusion. The request filter, and stored vectors whose chunk no longer exists or
+ * whose content hash differs from the current chunk, are excluded before that cut; vector matches
+ * with a non-positive similarity are ignored. Without
  * usable vectors the same call returns BM25 results with `mode: 'lexical'` and a reason; it never
  * fails because embeddings or the index are unavailable.
  */
@@ -98,13 +103,16 @@ export function createSearchEngine(chunks: readonly Chunk[]): SearchEngine {
         throw new RangeError(`Search limit must be a positive integer, got ${request.limit}.`);
       }
 
-      const lexicalRanking = lexical.search(request.query);
-      const vectorRanking = await rankByVectors(request, byId);
+      const accepted = (chunk: Chunk) => !request.filter || request.filter(chunk);
+      const lexicalRanking = lexical
+        .search(request.query)
+        .filter(({ id }) => accepted(byId.get(id)!));
+      const vectorRanking = await rankByVectors(request, byId, accepted);
       if ('reason' in vectorRanking) {
         return {
           mode: 'lexical',
           reason: vectorRanking.reason,
-          hits: group(lexicalRanking, byId, request),
+          hits: group(lexicalRanking, byId, request.limit),
         };
       }
 
@@ -113,7 +121,7 @@ export function createSearchEngine(chunks: readonly Chunk[]): SearchEngine {
         vectorRanking.ids,
       ]);
 
-      return { mode: 'hybrid', hits: group(fused, byId, request) };
+      return { mode: 'hybrid', hits: group(fused, byId, request.limit) };
     },
   };
 }
@@ -121,6 +129,7 @@ export function createSearchEngine(chunks: readonly Chunk[]): SearchEngine {
 async function rankByVectors(
   request: SearchRequest,
   byId: ReadonlyMap<string, Chunk>,
+  accepted: (chunk: Chunk) => boolean,
 ): Promise<{ readonly ids: readonly string[] } | { readonly reason: SearchReason }> {
   const { vectors } = request;
   if ('reason' in vectors) {
@@ -148,6 +157,11 @@ async function rankByVectors(
     identity,
     vector,
     limit: request.limit * VECTOR_CANDIDATES_PER_RESULT,
+    accept: (chunkId, contentHash) => {
+      const chunk = byId.get(chunkId);
+
+      return chunk?.contentHash === contentHash && accepted(chunk);
+    },
   });
 
   switch (outcome.status) {
@@ -174,12 +188,7 @@ async function rankByVectors(
       };
     case 'ok':
       return {
-        ids: outcome.matches
-          .filter(
-            (match) =>
-              match.score > 0 && byId.get(match.chunkId)?.contentHash === match.contentHash,
-          )
-          .map((match) => match.chunkId),
+        ids: outcome.matches.filter((match) => match.score > 0).map((match) => match.chunkId),
       };
   }
 }
@@ -197,15 +206,11 @@ function describeMismatch(stored: IndexIdentity, expected: IndexIdentity): strin
 function group(
   ranking: readonly { readonly id: string; readonly score: number }[],
   byId: ReadonlyMap<string, Chunk>,
-  request: SearchRequest,
+  limit: number,
 ): UnitHit[] {
   const units = new Map<string, { metadata: UnitMetadata; chunks: ChunkHit[] }>();
   for (const { id, score } of ranking) {
     const chunk = byId.get(id)!;
-    if (request.filter && !request.filter(chunk)) {
-      continue;
-    }
-
     const unit = units.get(chunk.unitId);
     if (unit) {
       unit.chunks.push({ chunk, score });
@@ -223,5 +228,5 @@ function group(
       chunks: unit.chunks,
     }))
     .sort((a, b) => b.score - a.score || compareIds(a.unitId, b.unitId))
-    .slice(0, request.limit);
+    .slice(0, limit);
 }

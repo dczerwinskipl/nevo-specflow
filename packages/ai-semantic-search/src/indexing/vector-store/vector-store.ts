@@ -100,6 +100,12 @@ export interface VectorQuery {
   readonly identity: IndexIdentity;
   readonly vector: Float32Array;
   readonly limit: number;
+  /**
+   * Which stored vectors may match, decided before the `limit` cut so excluded vectors take no
+   * place among the matches (for example a consumer filter, or vectors of chunks that no longer
+   * exist). All without it.
+   */
+  readonly accept?: (chunkId: string, contentHash: string) => boolean;
 }
 
 /**

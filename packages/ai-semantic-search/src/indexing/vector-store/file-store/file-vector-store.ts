@@ -133,7 +133,7 @@ function openFileVectorStore(
       return { status: 'opened', writer };
     },
 
-    async query({ identity, vector, limit }: VectorQuery): Promise<VectorQueryOutcome> {
+    async query({ identity, vector, limit, accept }: VectorQuery): Promise<VectorQueryOutcome> {
       const outcome = await readSnapshot(directory, cache);
       if (outcome.status !== 'ok') {
         return outcome;
@@ -146,7 +146,7 @@ function openFileVectorStore(
 
       return {
         status: 'ok',
-        matches: nearestNeighbours(vector, outcome.snapshot.candidates, limit),
+        matches: nearestNeighbours(vector, outcome.snapshot.candidates, limit, accept),
       };
     },
   };

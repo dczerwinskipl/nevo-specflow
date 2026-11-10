@@ -102,6 +102,11 @@ export const SessionErrorCodes = [
   'PROVIDER_AUTH_REQUIRED',
   'PROVIDER_CATALOGUE_UNAVAILABLE',
 ] as const;
+/**
+ * The `session_error` envelope of a Session refusal, answered by every Session and Session
+ * association route (the Runtime's Session error handling). Its `$id` names the shared contract:
+ * the Runtime OpenAPI document publishes it once, as the `SessionError` component.
+ */
 export const SessionErrorSchema = Type.Object(
   {
     error: Type.Literal('session_error'),
@@ -119,7 +124,7 @@ export const SessionErrorSchema = Type.Object(
       ),
     ),
   },
-  closed,
+  { ...closed, $id: 'SessionError' },
 );
 export const ProviderDescriptorSchema = Type.Object(
   {

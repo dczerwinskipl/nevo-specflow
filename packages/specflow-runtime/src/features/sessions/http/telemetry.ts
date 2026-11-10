@@ -15,7 +15,7 @@ import type { SessionCoordinator } from '../lifecycle/coordinator';
 import { TelemetryRateLimited } from '../lifecycle/telemetry';
 import { SessionError } from '../errors';
 import { authorizeSession, authorizedIdentity } from './authorization';
-import { capabilityRefusal, sessionReadDocs } from './route-docs';
+import { capabilityRefusal, sessionReadDocs, sessionRouteErrors } from './route-docs';
 import type { SessionIdentity } from '../persistence/protocol';
 import { resolveSessionPermissions, sessionScope } from '../scope';
 
@@ -77,6 +77,7 @@ export function registerTelemetryRoutes(
       '/api/sessions/:sessionId/telemetry',
       {
         preHandler: (request) => authorizeSession(request, coordinator(), sid(request)),
+        config: { openApiResponses: sessionRouteErrors.telemetry },
         schema: {
           ...sessionReadDocs.telemetry,
           params,
@@ -115,6 +116,7 @@ export function registerTelemetryRoutes(
     '/api/sessions/:sessionId/telemetry/refresh',
     {
       bodyLimit: 4096,
+      config: { openApiResponses: sessionRouteErrors.telemetryRefresh },
       preHandler: async (request) => {
         await authorizeSession(request, coordinator(), sid(request));
         const identity = await authorizeSession(request, coordinator(), sid(request), true);

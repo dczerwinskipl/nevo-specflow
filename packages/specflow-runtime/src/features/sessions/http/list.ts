@@ -22,7 +22,7 @@ import type {
   StoredListSummary,
 } from '../persistence/protocol';
 import { listedSession } from './projection';
-import { capabilityRefusal } from './route-docs';
+import { capabilityRefusal, sessionRouteErrors } from './route-docs';
 import { sessionScope } from '../scope';
 import { specScope } from '../../specs';
 
@@ -136,6 +136,7 @@ export function registerSessionListRoute(
   feature.get(
     '/api/sessions',
     {
+      config: { openApiResponses: sessionRouteErrors.list },
       schema: {
         tags: ['Sessions'],
         summary: 'List Sessions',

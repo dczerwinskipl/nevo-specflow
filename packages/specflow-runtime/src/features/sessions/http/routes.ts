@@ -41,7 +41,13 @@ import { createSessionStreams } from './stream';
 import { registerTelemetryRoutes } from './telemetry';
 import { registerSessionManagementRoutes } from './management';
 import { registerSessionErrorHandling } from './error-handling';
-import { capabilityRefusal, sessionEventStream, sessionReadDocs } from './route-docs';
+import {
+  capabilityRefusal,
+  sessionEventReplayParameters,
+  sessionEventStream,
+  sessionReadDocs,
+  sessionRouteErrors,
+} from './route-docs';
 import { registerSessionListRoute, storeSessionListSource, type SessionListSource } from './list';
 import {
   registerDemoManagedSessionReads,
@@ -155,6 +161,7 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
       feature.get(
         '/api/session-providers',
         {
+          config: { openApiResponses: sessionRouteErrors.providers },
           schema: {
             ...sessionReadDocs.providers,
             querystring: ProviderCatalogueQuerySchema,
@@ -186,6 +193,7 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
         '/api/sessions/:sessionId',
         {
           preHandler: (request) => authorize(request),
+          config: { openApiResponses: sessionRouteErrors.snapshot },
           schema: {
             ...sessionReadDocs.snapshot,
             params: params(),
@@ -204,6 +212,7 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
         '/api/sessions/:sessionId/history',
         {
           preHandler: (request) => authorize(request),
+          config: { openApiResponses: sessionRouteErrors.history },
           schema: {
             ...sessionReadDocs.history,
             params: params(),
@@ -233,6 +242,7 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
         '/api/sessions/:sessionId/turns/:turnId/work',
         {
           preHandler: (request) => authorize(request),
+          config: { openApiResponses: sessionRouteErrors.page },
           schema: {
             ...sessionReadDocs.work,
             params: params({ turnId: TurnIdSchema }),
@@ -254,6 +264,7 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
         '/api/sessions/:sessionId/work/:workId/actions',
         {
           preHandler: (request) => authorize(request),
+          config: { openApiResponses: sessionRouteErrors.page },
           schema: {
             ...sessionReadDocs.actions,
             params: params({ workId: WorkIdSchema }),
@@ -275,6 +286,7 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
         '/api/sessions/:sessionId/content/:contentId',
         {
           preHandler: (request) => authorize(request),
+          config: { openApiResponses: sessionRouteErrors.content },
           schema: {
             ...sessionReadDocs.content,
             params: params({ contentId: ContentIdSchema }),
@@ -303,7 +315,10 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
         '/api/sessions/:sessionId/events',
         {
           preHandler: (request) => authorize(request),
-          config: { openApiResponses: sessionEventStream },
+          config: {
+            openApiResponses: { ...sessionEventStream, ...sessionRouteErrors.events },
+            openApiParameters: sessionEventReplayParameters,
+          },
           schema: {
             ...sessionReadDocs.events,
             response: { ...capabilityRefusal },
@@ -348,6 +363,7 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
       {
         bodyLimit: 256 * 1024,
         preHandler: authorizeCreate,
+        config: { openApiResponses: sessionRouteErrors.create },
         schema: {
           tags: ['Sessions'],
           summary: 'Create a standalone Session',
@@ -367,6 +383,7 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
       {
         bodyLimit: 256 * 1024,
         preHandler: (request) => authorizeExecution(request),
+        config: { openApiResponses: sessionRouteErrors.start },
         schema: {
           tags: ['Sessions'],
           summary: 'Start a Turn',
@@ -392,6 +409,7 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
       {
         bodyLimit: 65536,
         preHandler: (request) => authorize(request, true),
+        config: { openApiResponses: sessionRouteErrors.cancel },
         schema: {
           tags: ['Sessions'],
           summary: 'Cancel a Turn',
@@ -417,6 +435,7 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
       {
         bodyLimit: 65536,
         preHandler: (request) => authorize(request, true),
+        config: { openApiResponses: sessionRouteErrors.reconcile },
         schema: {
           tags: ['Sessions'],
           summary: 'Reconcile the outcome of a Turn',
@@ -442,6 +461,7 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
       {
         bodyLimit: 65536,
         preHandler: (request) => authorizeExecution(request, true),
+        config: { openApiResponses: sessionRouteErrors.respond },
         schema: {
           tags: ['Sessions'],
           summary: 'Respond to an interaction of a Turn',

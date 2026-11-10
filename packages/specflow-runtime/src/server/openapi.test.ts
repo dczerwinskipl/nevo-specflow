@@ -28,6 +28,9 @@ import {
   registerSharedContracts,
 } from './shared-contracts';
 
+/** The group and summary every documented route declares. */
+const documented = { tags: ['Runtime'], summary: 'A test route' };
+
 interface Operation {
   operationId?: string;
   summary?: string;
@@ -258,11 +261,25 @@ describe('Runtime OpenAPI document', () => {
     const app = Fastify();
     try {
       await registerOpenApi(app, { sessionCookie: undefined });
-      app.get('/api/a-b', () => '');
-      expect(() => app.get('/api/a/b', () => '')).toThrow(/same operationId getAB/);
-      expect(() => app.get('/api/c', { schema: { tags: ['Session'] } }, () => '')).toThrow(
-        /exactly one of the OpenAPI tags/,
+      app.get('/api/a-b', { schema: documented }, () => '');
+      expect(() => app.get('/api/a/b', { schema: documented }, () => '')).toThrow(
+        /same operationId getAB/,
       );
+      // Every documented route has exactly one known tag and a summary; demo and web routes do not.
+      for (const schema of [
+        { summary: 'No tag' },
+        { tags: ['Session'], summary: 'Unknown tag' },
+        { tags: ['Runtime', 'Sessions'], summary: 'Two tags' },
+        { tags: ['Runtime'] },
+        { tags: ['Runtime'], summary: ' ' },
+      ]) {
+        expect(() => app.get('/api/c', { schema }, () => '')).toThrow(
+          schema.summary?.trim() ? /exactly one of the OpenAPI tags/ : /must declare a summary/,
+        );
+      }
+
+      app.get('/api/demo/seam', () => '');
+      app.get('/assets/app.js', () => '');
     } finally {
       await app.close();
     }
@@ -299,6 +316,18 @@ describe('Runtime OpenAPI document', () => {
       for (const ref of references(document)) {
         expect(components[ref.replace('#/components/schemas/', '')]).toBeDefined();
       }
+
+      // A shared contract references the identifiers it contains; an identifier stays a definition.
+      expect(components.SessionCommandResult).toMatchObject({
+        properties: {
+          session: { properties: { sessionId: { $ref: '#/components/schemas/SessionId' } } },
+        },
+      });
+      expect(components.SessionId).toMatchObject({ type: 'string', title: 'SessionId' });
+      // No component repeats an identifier's definition inline (only its own component has it).
+      expect(JSON.stringify(components).split('"title":"SessionId"')).toHaveLength(2);
+      // The registered contract keeps its inline identifier for validation.
+      expect(JSON.stringify(app.getSchema('SessionCommandResult'))).not.toContain('$ref');
 
       // Separate contracts of the same shape (`{ turnId }`) are not merged into one component.
       for (const path of [
@@ -350,11 +379,34 @@ describe('Runtime OpenAPI document', () => {
       expect(Object.keys(logout)).toEqual(['204', '429']);
       expect(Object.keys(logout[204]?.headers ?? {})).toEqual(['Set-Cookie']);
       expect(logout[204]?.content).toBeUndefined();
+      const operationEvents = () =>
+        operation(document, '/api/specs/create/operations/{operationId}/events', 'get');
       const deletion = operation(document, '/api/sessions/{sessionId}', 'delete').responses;
-      expect(Object.keys(deletion)).toEqual(['204', '401', '403', '429']);
+      expect(Object.keys(deletion)).toEqual([
+        '204',
+        '400',
+        '401',
+        '403',
+        '404',
+        '409',
+        '429',
+        '503',
+      ]);
       expect(deletion[204]?.content).toBeUndefined();
       const sessionEvents = operation(document, '/api/sessions/{sessionId}/events', 'get');
-      expect(Object.keys(sessionEvents.responses)).toEqual(['200', '401', '403', '429']);
+      expect(Object.keys(sessionEvents.responses)).toEqual([
+        '200',
+        '400',
+        '401',
+        '403',
+        '404',
+        '429',
+        '503',
+      ]);
+      // The replay header the stream reads itself is a documentation-only parameter.
+      const replay = { in: 'header', name: 'Last-Event-ID', required: false };
+      expect(sessionEvents.parameters).toContainEqual(expect.objectContaining(replay));
+      expect(operationEvents().parameters).toContainEqual(expect.objectContaining(replay));
       expect(sessionEvents.responses[200]?.content).toEqual({
         'text/event-stream': { schema: { type: 'string' } },
       });
@@ -364,13 +416,8 @@ describe('Runtime OpenAPI document', () => {
         $ref: '#/components/schemas/RateLimitedErrorResponse',
       });
       // Merged with the JSON error responses the route serializes from its schema.
-      const operationEvents = operation(
-        document,
-        '/api/specs/create/operations/{operationId}/events',
-        'get',
-      );
-      expect(Object.keys(operationEvents.responses).sort()).toEqual(['200', '401', '403', '429']);
-      expect(Object.keys(operationEvents.responses[200]?.content ?? {})).toEqual([
+      expect(Object.keys(operationEvents().responses).sort()).toEqual(['200', '401', '403', '429']);
+      expect(Object.keys(operationEvents().responses[200]?.content ?? {})).toEqual([
         'text/event-stream',
       ]);
 
@@ -393,6 +440,21 @@ describe('Runtime OpenAPI document', () => {
         'Set-Cookie',
       ]);
       expect(callback.responses[302]?.content).toBeUndefined();
+      // The authorization response parameters the callback reads, none of them validated by Fastify.
+      expect(
+        callback.parameters?.map((parameter) => [
+          (parameter as { in?: string }).in,
+          parameter.name,
+          (parameter as { required?: boolean }).required,
+        ]),
+      ).toEqual([
+        ['query', 'code', false],
+        ['query', 'state', false],
+        ['query', 'iss', false],
+        ['query', 'error', false],
+      ]);
+      const failed = await app.inject('/api/auth/oidc/company/callback?state=a&state=b');
+      expect(failed.statusCode).toBe(302);
     });
   });
 
@@ -400,10 +462,11 @@ describe('Runtime OpenAPI document', () => {
     const app = Fastify();
     try {
       await registerOpenApi(app, { sessionCookie: undefined });
-      app.get('/api/plain/:id', () => '');
+      app.get('/api/plain/:id', { schema: documented }, () => '');
       app.get(
         '/api/stream',
         {
+          schema: documented,
           config: {
             openApiResponses: { 200: { description: 'Stream.', mediaType: 'text/event-stream' } },
           },
@@ -415,11 +478,24 @@ describe('Runtime OpenAPI document', () => {
           '/api/twice',
           {
             config: { openApiResponses: { 204: { description: 'No body.' } } },
-            schema: { response: { 204: { type: 'null' } } },
+            schema: { ...documented, response: { 204: { type: 'null' } } },
           },
           () => '',
         ),
       ).toThrow(/both with a response schema and in openApiResponses/);
+      expect(() =>
+        app.get(
+          '/api/twice-header',
+          {
+            config: { openApiParameters: { header: { 'Last-Event-ID': 'Resume.' } } },
+            schema: {
+              ...documented,
+              headers: { type: 'object', properties: { 'last-event-id': { type: 'string' } } },
+            },
+          },
+          () => '',
+        ),
+      ).toThrow(/both in its schema and in openApiParameters/);
       await app.ready();
 
       expect(openApiRouteGaps(app)).toEqual([{ method: 'GET', url: '/api/plain/{id}' }]);

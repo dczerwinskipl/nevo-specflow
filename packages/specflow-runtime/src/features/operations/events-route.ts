@@ -90,6 +90,14 @@ export function registerOperationEventsRoute<RawServer extends RawServerBase>(
         await route.authorize(request as unknown as FastifyRequest);
       },
       config: {
+        openApiParameters: {
+          header: {
+            'Last-Event-ID':
+              'The `id` of the last progress event the client received (an EventSource sends ' +
+              'it on reconnect): the stream continues after it. Without it, or when it is not a ' +
+              'number up to the latest event id, the stream starts with the current snapshot.',
+          },
+        },
         openApiResponses: {
           200: {
             description:

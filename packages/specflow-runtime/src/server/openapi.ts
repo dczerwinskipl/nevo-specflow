@@ -6,7 +6,11 @@ import { Type, type Static, type TSchema } from 'typebox';
 import { AuthenticationRequiredErrorResponseSchema } from '@nevo/specflow-contracts/authorization';
 import { RateLimitedErrorResponseSchema } from '@nevo/specflow-contracts/runtime';
 
-import { contractRef, referenceSharedIdentifiers } from './shared-contracts';
+import {
+  contractRef,
+  referenceIdentifiersInComponents,
+  referenceSharedIdentifiers,
+} from './shared-contracts';
 
 export const OPENAPI_DOCUMENT_PATH = '/api/openapi.json';
 
@@ -47,8 +51,24 @@ declare module 'fastify' {
      * authentication.
      */
     readonly openApiPublic?: true;
+    /**
+     * Documentation-only request parameters: protocol parameters the handler reads itself (the
+     * SSE `Last-Event-ID` header, the OIDC callback query), by location, name and description. A
+     * route schema for them would change validation (a value the handler tolerates or refuses in
+     * its own way would be refused before it), so only the OpenAPI document reads this. A name
+     * MUST NOT also be in the route's own schema for that location.
+     */
+    readonly openApiParameters?: Readonly<
+      Partial<Record<OpenApiParameterLocation, Readonly<Record<string, string>>>>
+    >;
   }
 }
+
+/** Where a documentation-only parameter is read. */
+export type OpenApiParameterLocation = 'header' | 'query';
+
+/** The route schema key `@fastify/swagger` reads the parameters of a location from. */
+const PARAMETER_SCHEMA_KEYS = { header: 'headers', query: 'querystring' } as const;
 
 export interface OpenApiOptions {
   /**
@@ -63,8 +83,8 @@ export const SESSION_COOKIE_SCHEME = 'sessionCookie';
 
 /**
  * The operation groups of the document, in display order. Every documented route declares exactly
- * one of them in its schema `tags`, with a short `summary`; a route declaring another or more than
- * one is refused at registration. The group of an operation is never derived from its URL (the
+ * one of them in its schema `tags`, with a non-empty `summary`; a documented route without them,
+ * with another tag or with more than one is refused at registration. The group of an operation is never derived from its URL (the
  * document and Task operations live under `/api/specs/`).
  */
 export const OPENAPI_TAGS = [
@@ -258,10 +278,30 @@ export async function registerOpenApi<RawServer extends RawServerBase>(
     }
 
     const tags = route.schema?.tags;
-    if (tags !== undefined && (tags.length !== 1 || !TAG_NAMES.has(tags[0]!))) {
+    if (tags?.length !== 1 || !TAG_NAMES.has(tags[0]!)) {
       throw new Error(
         `Route ${route.method} ${route.url} must declare exactly one of the OpenAPI tags.`,
       );
+    }
+
+    if (typeof route.schema?.summary !== 'string' || !/\S/.test(route.schema.summary)) {
+      throw new Error(`Route ${route.method} ${route.url} must declare a summary.`);
+    }
+
+    const parameters = route.config?.openApiParameters ?? {};
+    for (const [location, named] of Object.entries(parameters)) {
+      const own = route.schema?.[PARAMETER_SCHEMA_KEYS[location as OpenApiParameterLocation]] as
+        { readonly properties?: Readonly<Record<string, unknown>> } | undefined;
+      // Header names are case-insensitive; query parameter names are not.
+      const key = (name: string) => (location === 'header' ? name.toLowerCase() : name);
+      const declared = new Set(Object.keys(own?.properties ?? {}).map(key));
+      for (const name of Object.keys(named ?? {})) {
+        if (declared.has(key(name))) {
+          throw new Error(
+            `Route ${route.url} documents ${location} ${name} both in its schema and in openApiParameters.`,
+          );
+        }
+      }
     }
 
     const id = openApiOperationId(route.method, route.url);
@@ -324,12 +364,15 @@ export async function registerOpenApi<RawServer extends RawServerBase>(
 
       return {
         schema: {
-          ...withDocumentedResponses(
-            withSharedResponses(
-              referenceSharedIdentifiers(schema) as FastifySchema | undefined,
-              shared,
+          ...withDocumentedParameters(
+            withDocumentedResponses(
+              withSharedResponses(
+                referenceSharedIdentifiers(schema) as FastifySchema | undefined,
+                shared,
+              ),
+              documented,
             ),
-            documented,
+            route.config?.openApiParameters,
           ),
           // A documented route has one method (refused otherwise at registration).
           operationId: openApiOperationId(route.method as string, route.url),
@@ -338,7 +381,65 @@ export async function registerOpenApi<RawServer extends RawServerBase>(
         url,
       };
     },
+    // Shared contracts reference the identifiers they contain, as route schemas do (documentation
+    // only: the registered contracts keep their inline identifiers for validation).
+    transformObject: (documentObject) => {
+      // The document is OpenAPI 3.1 (`openapi` above), never Swagger 2.
+      const document = (
+        documentObject as Extract<typeof documentObject, { openapiObject: unknown }>
+      ).openapiObject;
+      const schemas = document.components?.schemas;
+
+      return schemas
+        ? ({
+            ...document,
+            components: {
+              ...document.components,
+              schemas: referenceIdentifiersInComponents(schemas),
+            },
+          } as typeof document)
+        : document;
+    },
   });
+}
+
+/**
+ * The route schema as the document sees it with the documentation-only parameters: each is an
+ * optional string property of the location's schema (`headers`, `querystring`), which
+ * `@fastify/swagger` lists as a parameter with its description.
+ */
+function withDocumentedParameters(
+  schema: FastifySchema,
+  parameters:
+    Partial<Record<OpenApiParameterLocation, Readonly<Record<string, string>>>> | undefined,
+): FastifySchema {
+  let documented = schema;
+  for (const [location, named] of Object.entries(parameters ?? {}) as [
+    OpenApiParameterLocation,
+    Readonly<Record<string, string>>,
+  ][]) {
+    const key = PARAMETER_SCHEMA_KEYS[location];
+    const own = (schema[key] ?? { type: 'object' }) as {
+      readonly properties?: Readonly<Record<string, unknown>>;
+    };
+    documented = {
+      ...documented,
+      [key]: {
+        ...own,
+        properties: {
+          ...own.properties,
+          ...Object.fromEntries(
+            Object.entries(named).map(([name, description]) => [
+              name,
+              { type: 'string', description },
+            ]),
+          ),
+        },
+      },
+    };
+  }
+
+  return documented;
 }
 
 /**

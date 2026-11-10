@@ -403,9 +403,7 @@
         ],
         "properties": {
           "operationId": {
-            "type": "string",
-            "title": "OperationId",
-            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+            "$ref": "#/components/schemas/OperationId"
           },
           "specId": {
             "type": "string",
@@ -459,9 +457,7 @@
         ],
         "properties": {
           "operationId": {
-            "type": "string",
-            "title": "OperationId",
-            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+            "$ref": "#/components/schemas/OperationId"
           },
           "specId": {
             "type": "string",
@@ -568,14 +564,10 @@
         ],
         "properties": {
           "operationId": {
-            "type": "string",
-            "title": "OperationId",
-            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+            "$ref": "#/components/schemas/OperationId"
           },
           "workspaceId": {
-            "type": "string",
-            "title": "WorkspaceId",
-            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+            "$ref": "#/components/schemas/WorkspaceId"
           },
           "kind": {
             "type": "string",
@@ -1354,9 +1346,7 @@
         ],
         "properties": {
           "operationId": {
-            "type": "string",
-            "title": "OperationId",
-            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+            "$ref": "#/components/schemas/OperationId"
           },
           "revision": {
             "type": "string",
@@ -1506,16 +1496,10 @@
         ],
         "properties": {
           "operationId": {
-            "type": "string",
-            "title": "OperationId",
-            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+            "$ref": "#/components/schemas/OperationId"
           },
           "specId": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 200,
-            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*$",
-            "title": "SpecId"
+            "$ref": "#/components/schemas/SpecId"
           },
           "action": {
             "anyOf": [
@@ -1727,9 +1711,7 @@
           "batchMembers": {
             "type": "array",
             "items": {
-              "type": "string",
-              "title": "OperationId",
-              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+              "$ref": "#/components/schemas/OperationId"
             },
             "maxItems": 50
           },
@@ -2039,9 +2021,7 @@
               ],
               "properties": {
                 "operationId": {
-                  "type": "string",
-                  "title": "OperationId",
-                  "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+                  "$ref": "#/components/schemas/OperationId"
                 },
                 "kind": {
                   "type": "string",
@@ -2288,9 +2268,7 @@
             ],
             "properties": {
               "sessionId": {
-                "type": "string",
-                "title": "SessionId",
-                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                "$ref": "#/components/schemas/SessionId"
               },
               "projectId": {
                 "type": "string",
@@ -2427,6 +2405,187 @@
               "updatedAt": {
                 "type": "string",
                 "maxLength": 40
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      "SessionError": {
+        "type": "object",
+        "required": [
+          "error",
+          "code",
+          "message"
+        ],
+        "properties": {
+          "error": {
+            "type": "string",
+            "enum": [
+              "session_error"
+            ]
+          },
+          "code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "SESSION_INPUT_INVALID"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "SESSION_CURSOR_INVALID"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "SESSION_LIST_SCOPE_REQUIRED"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "INTERACTION_RESPONSE_INVALID"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "SESSION_NOT_FOUND"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "SESSION_RESOURCE_NOT_FOUND"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "TURN_CONFLICT"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "SESSION_ARCHIVED"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "SESSION_DELETE_BLOCKED"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "IDEMPOTENCY_CONFLICT"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "INTERACTION_EXPIRED"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "SESSION_CURSOR_EXPIRED"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "CONTENT_REVISION_UNAVAILABLE"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "SESSION_RECOVERY_REQUIRED"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "SESSION_PAYLOAD_TOO_LARGE"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "CAPABILITY_UNSUPPORTED"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "MODEL_UNSUPPORTED"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "SESSION_DISABLED"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "SESSION_STORE_BUSY"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "SESSION_STORE_UNAVAILABLE"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "PROVIDER_UNAVAILABLE"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "PROVIDER_AUTH_REQUIRED"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "PROVIDER_CATALOGUE_UNAVAILABLE"
+                ]
+              }
+            ]
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 2048
+          },
+          "details": {
+            "type": "object",
+            "properties": {
+              "field": {
+                "type": "string"
+              },
+              "turnId": {
+                "$ref": "#/components/schemas/TurnId"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "capability": {
+                "type": "string"
               }
             },
             "additionalProperties": false
@@ -2624,6 +2783,44 @@
         "summary": "Complete an OIDC login",
         "tags": [
           "Authentication"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "code",
+            "required": false,
+            "description": "The authorization code to exchange (a successful authorization response)."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "description": "The state of the login transaction; it must match the transaction cookie of the started login."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "iss",
+            "required": false,
+            "description": "The issuer of the authorization response; when present, it must be the issuer of the provider (required when the provider advertises it)."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "error",
+            "required": false,
+            "description": "The error code of a failed authorization response; the login fails as `oidc_authentication_failed`."
+          }
         ],
         "responses": {
           "302": {
@@ -4011,6 +4208,16 @@
               }
             }
           },
+          "400": {
+            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not authenticated.",
             "content": {
@@ -4027,6 +4234,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found: a `session_error` with `code` `SESSION_NOT_FOUND`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
                 }
               }
             }
@@ -4063,6 +4280,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RateLimitedErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporarily unavailable: a `session_error` with `code` one of `SESSION_DISABLED`, `SESSION_STORE_BUSY`, `SESSION_STORE_UNAVAILABLE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
                 }
               }
             }
@@ -4383,6 +4610,16 @@
               }
             }
           },
+          "400": {
+            "description": "The request is invalid: a `session_error` with `code` one of `SESSION_INPUT_INVALID`, `SESSION_CURSOR_INVALID`, `SESSION_LIST_SCOPE_REQUIRED`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not authenticated.",
             "content": {
@@ -4399,6 +4636,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicts with the current state of the Session: a `session_error` with `code` `SESSION_CURSOR_EXPIRED`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
                 }
               }
             }
@@ -4435,6 +4682,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RateLimitedErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporarily unavailable: a `session_error` with `code` one of `SESSION_DISABLED`, `SESSION_STORE_BUSY`, `SESSION_STORE_UNAVAILABLE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
                 }
               }
             }
@@ -4534,6 +4791,16 @@
               }
             }
           },
+          "400": {
+            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not authenticated.",
             "content": {
@@ -4550,6 +4817,36 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicts with the current state of the Session: a `session_error` with `code` `IDEMPOTENCY_CONFLICT`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request or the addressed content is too large: a `session_error` with `code` `SESSION_PAYLOAD_TOO_LARGE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The selected provider, model or capability is unsupported: a `session_error` with `code` one of `MODEL_UNSUPPORTED`, `CAPABILITY_UNSUPPORTED`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
                 }
               }
             }
@@ -4586,6 +4883,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RateLimitedErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporarily unavailable: a `session_error` with `code` one of `SESSION_DISABLED`, `SESSION_STORE_BUSY`, `SESSION_STORE_UNAVAILABLE`, `PROVIDER_UNAVAILABLE`, `PROVIDER_AUTH_REQUIRED`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
                 }
               }
             }
@@ -5414,6 +5721,16 @@
               }
             }
           },
+          "400": {
+            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not authenticated.",
             "content": {
@@ -5430,6 +5747,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found: a `session_error` with `code` `SESSION_NOT_FOUND`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
                 }
               }
             }
@@ -5466,6 +5793,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RateLimitedErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporarily unavailable: a `session_error` with `code` one of `SESSION_DISABLED`, `SESSION_STORE_BUSY`, `SESSION_STORE_UNAVAILABLE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
                 }
               }
             }
@@ -5497,6 +5834,16 @@
           "204": {
             "description": "The Session is deleted. No body."
           },
+          "400": {
+            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not authenticated.",
             "content": {
@@ -5513,6 +5860,26 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found: a `session_error` with `code` `SESSION_NOT_FOUND`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicts with the current state of the Session: a `session_error` with `code` one of `TURN_CONFLICT`, `SESSION_DELETE_BLOCKED`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
                 }
               }
             }
@@ -5549,6 +5916,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RateLimitedErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporarily unavailable: a `session_error` with `code` one of `SESSION_DISABLED`, `SESSION_STORE_BUSY`, `SESSION_STORE_UNAVAILABLE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
                 }
               }
             }
@@ -5609,6 +5986,16 @@
               }
             }
           },
+          "400": {
+            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not authenticated.",
             "content": {
@@ -5625,6 +6012,36 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found: a `session_error` with `code` `SESSION_NOT_FOUND`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicts with the current state of the Session: a `session_error` with `code` one of `IDEMPOTENCY_CONFLICT`, `TURN_CONFLICT`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request or the addressed content is too large: a `session_error` with `code` `SESSION_PAYLOAD_TOO_LARGE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
                 }
               }
             }
@@ -5661,6 +6078,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RateLimitedErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporarily unavailable: a `session_error` with `code` one of `SESSION_DISABLED`, `SESSION_STORE_BUSY`, `SESSION_STORE_UNAVAILABLE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
                 }
               }
             }
@@ -5949,6 +6376,16 @@
               }
             }
           },
+          "400": {
+            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not authenticated.",
             "content": {
@@ -5965,6 +6402,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found: a `session_error` with `code` `SESSION_NOT_FOUND`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
                 }
               }
             }
@@ -6001,6 +6448,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RateLimitedErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporarily unavailable: a `session_error` with `code` one of `SESSION_DISABLED`, `SESSION_STORE_BUSY`, `SESSION_STORE_UNAVAILABLE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
                 }
               }
             }
@@ -6113,6 +6570,16 @@
               }
             }
           },
+          "400": {
+            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not authenticated.",
             "content": {
@@ -6129,6 +6596,26 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found: a `session_error` with `code` one of `SESSION_NOT_FOUND`, `SESSION_RESOURCE_NOT_FOUND`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicts with the current state of the Session: a `session_error` with `code` `CONTENT_REVISION_UNAVAILABLE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
                 }
               }
             }
@@ -6168,6 +6655,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Temporarily unavailable: a `session_error` with `code` one of `SESSION_DISABLED`, `SESSION_STORE_BUSY`, `SESSION_STORE_UNAVAILABLE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
           }
         }
       }
@@ -6197,6 +6694,15 @@
             "in": "path",
             "name": "sessionId",
             "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "Last-Event-ID",
+            "required": false,
+            "description": "The sequence of the last Session event the client received (an EventSource sends it on reconnect): the stream replays the events after it. The same cursor as `after`; when both are present they must be equal. Answers `400 SESSION_CURSOR_INVALID` when repeated, not equal to `after`, not an integer or beyond the latest event. Without either, the stream starts at the latest event."
           }
         ],
         "security": [
@@ -6223,6 +6729,16 @@
               }
             }
           },
+          "400": {
+            "description": "The request is invalid: a `session_error` with `code` one of `SESSION_INPUT_INVALID`, `SESSION_CURSOR_INVALID`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not authenticated.",
             "content": {
@@ -6243,6 +6759,16 @@
               }
             }
           },
+          "404": {
+            "description": "Not found: a `session_error` with `code` `SESSION_NOT_FOUND`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
           "429": {
             "description": "Too many requests: the caller has as many open Session event streams as allowed, or the source exceeded the Runtime default rate limit (then the body also has `statusCode: 429` and the `x-ratelimit-*` headers are set).",
             "headers": {
@@ -6257,6 +6783,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RateLimitedErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporarily unavailable: a `session_error` with `code` one of `SESSION_DISABLED`, `SESSION_STORE_BUSY`, `SESSION_STORE_UNAVAILABLE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
                 }
               }
             }
@@ -6627,6 +7163,16 @@
               }
             }
           },
+          "400": {
+            "description": "The request is invalid: a `session_error` with `code` one of `SESSION_INPUT_INVALID`, `SESSION_CURSOR_INVALID`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not authenticated.",
             "content": {
@@ -6643,6 +7189,26 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found: a `session_error` with `code` `SESSION_NOT_FOUND`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicts with the current state of the Session: a `session_error` with `code` `SESSION_CURSOR_EXPIRED`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
                 }
               }
             }
@@ -6679,6 +7245,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RateLimitedErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporarily unavailable: a `session_error` with `code` one of `SESSION_DISABLED`, `SESSION_STORE_BUSY`, `SESSION_STORE_UNAVAILABLE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
                 }
               }
             }
@@ -6832,6 +7408,16 @@
               }
             }
           },
+          "400": {
+            "description": "The request is invalid: a `session_error` with `code` one of `SESSION_INPUT_INVALID`, `INTERACTION_RESPONSE_INVALID`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not authenticated.",
             "content": {
@@ -6848,6 +7434,36 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found: a `session_error` with `code` `SESSION_NOT_FOUND`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicts with the current state of the Session: a `session_error` with `code` one of `IDEMPOTENCY_CONFLICT`, `SESSION_ARCHIVED`, `INTERACTION_EXPIRED`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request or the addressed content is too large: a `session_error` with `code` `SESSION_PAYLOAD_TOO_LARGE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
                 }
               }
             }
@@ -6884,6 +7500,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RateLimitedErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporarily unavailable: a `session_error` with `code` one of `SESSION_DISABLED`, `SESSION_STORE_BUSY`, `SESSION_STORE_UNAVAILABLE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
                 }
               }
             }
@@ -6951,6 +7577,16 @@
               }
             }
           },
+          "400": {
+            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not authenticated.",
             "content": {
@@ -6967,6 +7603,36 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found: a `session_error` with `code` `SESSION_NOT_FOUND`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicts with the current state of the Session: a `session_error` with `code` `IDEMPOTENCY_CONFLICT`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request or the addressed content is too large: a `session_error` with `code` `SESSION_PAYLOAD_TOO_LARGE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
                 }
               }
             }
@@ -7003,6 +7669,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RateLimitedErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporarily unavailable: a `session_error` with `code` one of `SESSION_DISABLED`, `SESSION_STORE_BUSY`, `SESSION_STORE_UNAVAILABLE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
                 }
               }
             }
@@ -9885,6 +10561,16 @@
           "304": {
             "description": "Not modified: the representation identified by the request `If-None-Match` is current."
           },
+          "400": {
+            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not authenticated.",
             "content": {
@@ -9901,6 +10587,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found: a `session_error` with `code` `SESSION_NOT_FOUND`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
                 }
               }
             }
@@ -9937,6 +10633,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RateLimitedErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporarily unavailable: a `session_error` with `code` one of `SESSION_DISABLED`, `SESSION_STORE_BUSY`, `SESSION_STORE_UNAVAILABLE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
                 }
               }
             }
@@ -10100,6 +10806,16 @@
               }
             }
           },
+          "400": {
+            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not authenticated.",
             "content": {
@@ -10116,6 +10832,46 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found: a `session_error` with `code` `SESSION_NOT_FOUND`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicts with the current state of the Session: a `session_error` with `code` `IDEMPOTENCY_CONFLICT`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request or the addressed content is too large: a `session_error` with `code` `SESSION_PAYLOAD_TOO_LARGE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The selected provider, model or capability is unsupported: a `session_error` with `code` `CAPABILITY_UNSUPPORTED`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
                 }
               }
             }
@@ -10138,6 +10894,16 @@
                     }
                   },
                   "additionalProperties": false
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporarily unavailable: a `session_error` with `code` one of `SESSION_DISABLED`, `SESSION_STORE_BUSY`, `SESSION_STORE_UNAVAILABLE`, `PROVIDER_UNAVAILABLE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
                 }
               }
             }
@@ -10244,6 +11010,16 @@
               }
             }
           },
+          "400": {
+            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not authenticated.",
             "content": {
@@ -10260,6 +11036,46 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found: a `session_error` with `code` `SESSION_NOT_FOUND`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicts with the current state of the Session: a `session_error` with `code` one of `IDEMPOTENCY_CONFLICT`, `SESSION_ARCHIVED`, `TURN_CONFLICT`, `SESSION_RECOVERY_REQUIRED`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request or the addressed content is too large: a `session_error` with `code` `SESSION_PAYLOAD_TOO_LARGE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The selected provider, model or capability is unsupported: a `session_error` with `code` one of `MODEL_UNSUPPORTED`, `CAPABILITY_UNSUPPORTED`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
                 }
               }
             }
@@ -10296,6 +11112,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RateLimitedErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporarily unavailable: a `session_error` with `code` one of `SESSION_DISABLED`, `SESSION_STORE_BUSY`, `SESSION_STORE_UNAVAILABLE`, `PROVIDER_UNAVAILABLE`, `PROVIDER_AUTH_REQUIRED`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
                 }
               }
             }
@@ -10373,6 +11199,16 @@
               }
             }
           },
+          "400": {
+            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not authenticated.",
             "content": {
@@ -10389,6 +11225,36 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found: a `session_error` with `code` one of `SESSION_NOT_FOUND`, `SESSION_RESOURCE_NOT_FOUND`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicts with the current state of the Session: a `session_error` with `code` one of `IDEMPOTENCY_CONFLICT`, `SESSION_RECOVERY_REQUIRED`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request or the addressed content is too large: a `session_error` with `code` `SESSION_PAYLOAD_TOO_LARGE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
                 }
               }
             }
@@ -10425,6 +11291,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RateLimitedErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporarily unavailable: a `session_error` with `code` one of `SESSION_DISABLED`, `SESSION_STORE_BUSY`, `SESSION_STORE_UNAVAILABLE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
                 }
               }
             }
@@ -10535,6 +11411,16 @@
               }
             }
           },
+          "400": {
+            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not authenticated.",
             "content": {
@@ -10551,6 +11437,36 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found: a `session_error` with `code` `SESSION_NOT_FOUND`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicts with the current state of the Session: a `session_error` with `code` one of `IDEMPOTENCY_CONFLICT`, `SESSION_RECOVERY_REQUIRED`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request or the addressed content is too large: a `session_error` with `code` `SESSION_PAYLOAD_TOO_LARGE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
                 }
               }
             }
@@ -10587,6 +11503,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RateLimitedErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporarily unavailable: a `session_error` with `code` one of `SESSION_DISABLED`, `SESSION_STORE_BUSY`, `SESSION_STORE_UNAVAILABLE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
                 }
               }
             }
@@ -11620,6 +12546,16 @@
               }
             }
           },
+          "400": {
+            "description": "The request is invalid: a `session_error` with `code` one of `SESSION_INPUT_INVALID`, `SESSION_CURSOR_INVALID`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not authenticated.",
             "content": {
@@ -11636,6 +12572,26 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found: a `session_error` with `code` one of `SESSION_NOT_FOUND`, `SESSION_RESOURCE_NOT_FOUND`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicts with the current state of the Session: a `session_error` with `code` `SESSION_CURSOR_EXPIRED`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
                 }
               }
             }
@@ -11672,6 +12628,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RateLimitedErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporarily unavailable: a `session_error` with `code` one of `SESSION_DISABLED`, `SESSION_STORE_BUSY`, `SESSION_STORE_UNAVAILABLE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
                 }
               }
             }
@@ -11732,6 +12698,16 @@
               }
             }
           },
+          "400": {
+            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not authenticated.",
             "content": {
@@ -11748,6 +12724,36 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found: a `session_error` with `code` `SESSION_NOT_FOUND`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicts with the current state of the Session: a `session_error` with `code` `IDEMPOTENCY_CONFLICT`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request or the addressed content is too large: a `session_error` with `code` `SESSION_PAYLOAD_TOO_LARGE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
                 }
               }
             }
@@ -11784,6 +12790,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RateLimitedErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporarily unavailable: a `session_error` with `code` one of `SESSION_DISABLED`, `SESSION_STORE_BUSY`, `SESSION_STORE_UNAVAILABLE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
                 }
               }
             }
@@ -12193,6 +13209,16 @@
               }
             }
           },
+          "400": {
+            "description": "The request is invalid: a `session_error` with `code` one of `SESSION_INPUT_INVALID`, `SESSION_CURSOR_INVALID`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not authenticated.",
             "content": {
@@ -12209,6 +13235,26 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found: a `session_error` with `code` one of `SESSION_NOT_FOUND`, `SESSION_RESOURCE_NOT_FOUND`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicts with the current state of the Session: a `session_error` with `code` `SESSION_CURSOR_EXPIRED`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
                 }
               }
             }
@@ -12245,6 +13291,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RateLimitedErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporarily unavailable: a `session_error` with `code` one of `SESSION_DISABLED`, `SESSION_STORE_BUSY`, `SESSION_STORE_UNAVAILABLE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
                 }
               }
             }
@@ -13812,6 +14868,15 @@
             "in": "path",
             "name": "operationId",
             "required": true
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "Last-Event-ID",
+            "required": false,
+            "description": "The `id` of the last progress event the client received (an EventSource sends it on reconnect): the stream continues after it. Without it, or when it is not a number up to the latest event id, the stream starts with the current snapshot."
           }
         ],
         "security": [
@@ -20051,6 +21116,16 @@
               }
             }
           },
+          "400": {
+            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not authenticated.",
             "content": {
@@ -20077,6 +21152,36 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SpecificationReadError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicts with the current state of the Session: a `session_error` with `code` `IDEMPOTENCY_CONFLICT`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request or the addressed content is too large: a `session_error` with `code` `SESSION_PAYLOAD_TOO_LARGE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The selected provider, model or capability is unsupported: a `session_error` with `code` one of `MODEL_UNSUPPORTED`, `CAPABILITY_UNSUPPORTED`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionError"
                 }
               }
             }
@@ -20118,7 +21223,7 @@
             }
           },
           "503": {
-            "description": "Temporarily unavailable.",
+            "description": "Temporarily unavailable: the Specification source (`specification_source_unavailable`), or a `session_error` with `code` one of `SESSION_DISABLED`, `SESSION_STORE_BUSY`, `SESSION_STORE_UNAVAILABLE`, `PROVIDER_UNAVAILABLE`, `PROVIDER_AUTH_REQUIRED`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -20127,187 +21232,10 @@
                       "$ref": "#/components/schemas/SpecificationReadError"
                     },
                     {
-                      "type": "object",
-                      "required": [
-                        "error",
-                        "code",
-                        "message"
-                      ],
-                      "properties": {
-                        "error": {
-                          "type": "string",
-                          "enum": [
-                            "session_error"
-                          ]
-                        },
-                        "code": {
-                          "anyOf": [
-                            {
-                              "type": "string",
-                              "enum": [
-                                "SESSION_INPUT_INVALID"
-                              ]
-                            },
-                            {
-                              "type": "string",
-                              "enum": [
-                                "SESSION_CURSOR_INVALID"
-                              ]
-                            },
-                            {
-                              "type": "string",
-                              "enum": [
-                                "SESSION_LIST_SCOPE_REQUIRED"
-                              ]
-                            },
-                            {
-                              "type": "string",
-                              "enum": [
-                                "INTERACTION_RESPONSE_INVALID"
-                              ]
-                            },
-                            {
-                              "type": "string",
-                              "enum": [
-                                "SESSION_NOT_FOUND"
-                              ]
-                            },
-                            {
-                              "type": "string",
-                              "enum": [
-                                "SESSION_RESOURCE_NOT_FOUND"
-                              ]
-                            },
-                            {
-                              "type": "string",
-                              "enum": [
-                                "TURN_CONFLICT"
-                              ]
-                            },
-                            {
-                              "type": "string",
-                              "enum": [
-                                "SESSION_ARCHIVED"
-                              ]
-                            },
-                            {
-                              "type": "string",
-                              "enum": [
-                                "SESSION_DELETE_BLOCKED"
-                              ]
-                            },
-                            {
-                              "type": "string",
-                              "enum": [
-                                "IDEMPOTENCY_CONFLICT"
-                              ]
-                            },
-                            {
-                              "type": "string",
-                              "enum": [
-                                "INTERACTION_EXPIRED"
-                              ]
-                            },
-                            {
-                              "type": "string",
-                              "enum": [
-                                "SESSION_CURSOR_EXPIRED"
-                              ]
-                            },
-                            {
-                              "type": "string",
-                              "enum": [
-                                "CONTENT_REVISION_UNAVAILABLE"
-                              ]
-                            },
-                            {
-                              "type": "string",
-                              "enum": [
-                                "SESSION_RECOVERY_REQUIRED"
-                              ]
-                            },
-                            {
-                              "type": "string",
-                              "enum": [
-                                "SESSION_PAYLOAD_TOO_LARGE"
-                              ]
-                            },
-                            {
-                              "type": "string",
-                              "enum": [
-                                "CAPABILITY_UNSUPPORTED"
-                              ]
-                            },
-                            {
-                              "type": "string",
-                              "enum": [
-                                "MODEL_UNSUPPORTED"
-                              ]
-                            },
-                            {
-                              "type": "string",
-                              "enum": [
-                                "SESSION_DISABLED"
-                              ]
-                            },
-                            {
-                              "type": "string",
-                              "enum": [
-                                "SESSION_STORE_BUSY"
-                              ]
-                            },
-                            {
-                              "type": "string",
-                              "enum": [
-                                "SESSION_STORE_UNAVAILABLE"
-                              ]
-                            },
-                            {
-                              "type": "string",
-                              "enum": [
-                                "PROVIDER_UNAVAILABLE"
-                              ]
-                            },
-                            {
-                              "type": "string",
-                              "enum": [
-                                "PROVIDER_AUTH_REQUIRED"
-                              ]
-                            },
-                            {
-                              "type": "string",
-                              "enum": [
-                                "PROVIDER_CATALOGUE_UNAVAILABLE"
-                              ]
-                            }
-                          ]
-                        },
-                        "message": {
-                          "type": "string",
-                          "maxLength": 2048
-                        },
-                        "details": {
-                          "type": "object",
-                          "properties": {
-                            "field": {
-                              "type": "string"
-                            },
-                            "turnId": {
-                              "$ref": "#/components/schemas/TurnId"
-                            },
-                            "reason": {
-                              "type": "string"
-                            },
-                            "capability": {
-                              "type": "string"
-                            }
-                          },
-                          "additionalProperties": false
-                        }
-                      },
-                      "additionalProperties": false
+                      "$ref": "#/components/schemas/SessionError"
                     }
-                  ]
+                  ],
+                  "description": "Temporarily unavailable: the Specification source (`specification_source_unavailable`), or a `session_error` with `code` one of `SESSION_DISABLED`, `SESSION_STORE_BUSY`, `SESSION_STORE_UNAVAILABLE`, `PROVIDER_UNAVAILABLE`, `PROVIDER_AUTH_REQUIRED`."
                 }
               }
             }

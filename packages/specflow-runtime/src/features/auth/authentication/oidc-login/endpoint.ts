@@ -113,6 +113,23 @@ export const oidcLoginEndpoint: FastifyPluginCallback<OidcLoginEndpointOptions> 
     {
       config: {
         openApiPublic: true,
+        // The authorization response the provider redirects with (OpenID Connect Core 3.1.2.5,
+        // RFC 9207 `iss`). The handler and the OIDC client read the query themselves: every
+        // failure, a missing parameter included, ends in the redirect to the login page.
+        openApiParameters: {
+          query: {
+            code: 'The authorization code to exchange (a successful authorization response).',
+            state:
+              'The state of the login transaction; it must match the transaction cookie of the ' +
+              'started login.',
+            iss:
+              'The issuer of the authorization response; when present, it must be the issuer of ' +
+              'the provider (required when the provider advertises it).',
+            error:
+              'The error code of a failed authorization response; the login fails as ' +
+              '`oidc_authentication_failed`.',
+          },
+        },
         openApiResponses: {
           302: {
             description:

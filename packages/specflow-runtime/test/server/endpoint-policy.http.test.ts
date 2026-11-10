@@ -13,7 +13,11 @@ describe('Runtime endpoint policy HTTP', () => {
       },
       { dataMode: 'demo', documents: { readSource: { read } } },
     );
-    app.get('/api/future-feature', () => ({ ok: true }));
+    app.get(
+      '/api/future-feature',
+      { schema: { tags: ['Runtime'], summary: 'A future feature' } },
+      () => ({ ok: true }),
+    );
     try {
       expect((await app.inject('/api/specs/admission/tasks/TASK-03')).statusCode).toBe(200);
       expect((await app.inject('/api/future-feature')).statusCode).toBe(200);

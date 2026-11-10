@@ -22,6 +22,7 @@ import {
   ContentIdSchema,
   InteractionIdSchema,
   SessionCommandResultSchema,
+  SessionErrorSchema,
   SessionIdSchema,
   TurnIdSchema,
   WorkIdSchema,
@@ -59,6 +60,7 @@ const SHARED_CONTRACTS: readonly TSchema[] = [
   OperationListResponseSchema,
   RateLimitedErrorResponseSchema,
   SessionCommandResultSchema,
+  SessionErrorSchema,
   SpecificationReadErrorSchema,
   TaskReadErrorSchema,
   TaskSnapshotExpiredSchema,
@@ -117,13 +119,19 @@ export function registerSharedContracts<RawServer extends RawServerBase>(
 }
 
 /**
- * A copy of a route schema in which every use of a shared identifier (a subschema whose `title`
- * names one) is a reference to it. A subschema with that `title` that is not the identifier's
- * definition is refused: one name, one definition. Only the OpenAPI document reads the copy.
+ * A copy of a schema in which every use of a shared identifier (a subschema whose `title` names
+ * one) is a reference to it. A subschema with that `title` that is not the identifier's definition
+ * is refused: one name, one definition. Only the OpenAPI document reads the copy.
+ *
+ * A route schema references the identifier by its Fastify name (`@fastify/swagger` resolves it);
+ * a component of the generated document by its `#/components/schemas/` pointer.
  */
-export function referenceSharedIdentifiers(schema: unknown): unknown {
+export function referenceSharedIdentifiers(
+  schema: unknown,
+  reference: (name: string) => string = (name) => name,
+): unknown {
   if (Array.isArray(schema)) {
-    return schema.map(referenceSharedIdentifiers);
+    return schema.map((item) => referenceSharedIdentifiers(item, reference));
   }
 
   if (typeof schema !== 'object' || schema === null) {
@@ -137,12 +145,37 @@ export function referenceSharedIdentifiers(schema: unknown): unknown {
       throw new Error(`A schema titled ${String(title)} differs from the shared identifier.`);
     }
 
-    return { $ref: title };
+    return { $ref: reference(title as string) };
   }
 
   return Object.fromEntries(
-    Object.entries(schema).map(([key, value]) => [key, referenceSharedIdentifiers(value)]),
+    Object.entries(schema).map(([key, value]) => [
+      key,
+      referenceSharedIdentifiers(value, reference),
+    ]),
   );
+}
+
+/**
+ * The `components.schemas` of a generated document in which a shared contract references the
+ * shared identifiers it contains, as route schemas do. An identifier's own component stays its
+ * definition. Only the document changes; the registered contracts keep their inline identifiers.
+ */
+export function referenceIdentifiersInComponents<Components extends Record<string, unknown>>(
+  components: Components,
+): Components {
+  // A reference is a schema too, so the copy keeps the type of the generated components.
+  return Object.fromEntries(
+    Object.entries(components).map(([name, component]) => [
+      name,
+      sharedIdentifiers.has(name)
+        ? component
+        : referenceSharedIdentifiers(
+            component,
+            (identifier) => `#/components/schemas/${identifier}`,
+          ),
+    ]),
+  ) as Components;
 }
 
 /** The same JSON Schema keywords and values (an identifier is a flat schema of scalars). */

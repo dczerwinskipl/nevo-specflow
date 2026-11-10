@@ -90,7 +90,8 @@ Current shared contracts: `AuthSessionResponse`, `AuthenticationRequiredErrorRes
 `AuthorizationForbiddenErrorResponse`, `CloseError`, `ClosePreview`, `CloseResult`,
 `CloseWorkspaceResult`, `CreateSpecError`, `DocumentError`, `DocumentOperationResult`,
 `DocumentOperationStatus`, `OperationListResponse`, `RateLimitedErrorResponse`,
-`SessionCommandResult`, `SpecificationReadError`, `TaskReadError` and `TaskSnapshotExpired`.
+`SessionCommandResult`, `SessionError`, `SpecificationReadError`, `TaskReadError` and
+`TaskSnapshotExpired`.
 
 A test that registers Runtime routes on a bare Fastify instance (without `createRuntimeApp`) creates
 it with `routeTestApp()` from `test/support/route-app.ts`, which registers the shared contracts that
@@ -136,6 +137,12 @@ How it works:
   with a reference to it (`referenceSharedIdentifiers`); only the document reads that copy. A
   subschema with such a `title` and another definition fails the generation: one name, one
   definition.
+- **Inside shared contracts:** a shared object contract is emitted from the registered contract
+  itself, after the route `transform`. The Swagger `transformObject` applies the same replacement
+  to `components.schemas` of the finished document (`referenceIdentifiersInComponents`), except to
+  an identifier's own component, which stays its definition: `SessionCommandResult` references
+  `SessionId`, `SessionError` references `TurnId`. The registered contracts keep their inline
+  identifiers, so validation and serialization do not change.
 
 Only a schema that is the identifier becomes a reference, never one that merely has the same
 pattern. The two UUID formats are different contracts (lowercase without a version check, against
@@ -143,8 +150,7 @@ RFC 4122 with version 1-8 in any case); they stay separate and neither is `forma
 these formats that are not one of the identifiers keep their inline schema: the `requestId` of a
 Session command, ToolAction and conversation entry ids (`SessionUuidSchema`), the Specification ids
 of Create and close (an RFC 4122 UUID, stricter than `SpecId`), document ids and the other ids of
-the generic id pattern. Inside a shared object contract (a component) an identifier stays inline
-with its `title`, because the component is emitted from the registered contract itself.
+the generic id pattern.
 
 ## Groups and summaries
 
@@ -162,8 +168,9 @@ schema: {
 The groups and their descriptions are `OPENAPI_TAGS` in `src/server/openapi.ts`; the document lists
 them in this order as its top-level `tags`: Authentication, Authorization, Sessions, Session
 Providers, Session Telemetry, Specifications, Documents, Tasks, Operations, Workspaces and Runtime.
-A route declaring an unknown group, or more than one, is refused when it is registered, and the
-OpenAPI test fails for an operation without exactly one group and a summary. A group is never
+A documented route (under `/api/`, not a demo seam) without exactly one known group or without a
+non-empty `summary` is refused when it is registered, so no operation reaches the document without
+them; the OpenAPI test also checks every operation of the canonical document. A group is never
 derived from the URL: document and Task operations live under `/api/specs/` too.
 
 Operations holds the cross-feature operation lists, the operation progress stream and the status of
@@ -195,10 +202,46 @@ so none has the `401`.
 limiter's error on a route without a `429` schema of its own. Routes with a stricter limit of their
 own (password login, OIDC start) and routes with their own `429` (Session telemetry refresh, the
 operation progress stream, the Session event stream) keep their own `429`; every other route,
-logout and the OIDC callback included, is under the default limit only. Other refusals of shared mechanisms are not added:
-for example a Session route answers `503 SESSION_DISABLED` before its authentication check while
-managed Sessions are disabled, and the Session routes do not document their `session_error`
-responses yet.
+logout and the OIDC callback included, is under the default limit only. The transform adds no
+other refusal; each Session route documents its own Session refusals (next section).
+
+## Session error responses
+
+Every Session and Session association route answers a Session refusal with the `session_error`
+envelope of its Session error handling (`registerSessionErrorHandling`): a `SessionError` thrown on
+its path, a failed request validation (`SESSION_INPUT_INVALID`) or an exceeded body limit
+(`SESSION_PAYLOAD_TOO_LARGE`). The body is the shared contract `SessionError` (`SessionErrorSchema`
+of `@nevo/specflow-contracts/sessions`, `$id: 'SessionError'`).
+
+The error handling sends the envelope without a response schema, and a schema would take part in
+its serialization, so a route documents its refusals as documentation-only responses
+(`openApiResponses` with `contract: SessionErrorSchema`, see below). `sessionErrors(...codes)` in
+`src/features/sessions/http/route-docs.ts` builds them: each code goes under its
+`SessionError.statusCode`, one response per status, and the description lists the codes:
+
+```json
+"409": {
+  "description": "Conflicts with the current state of the Session: a `session_error` with `code` one of `IDEMPOTENCY_CONFLICT`, `SESSION_ARCHIVED`, `TURN_CONFLICT`, `SESSION_RECOVERY_REQUIRED`.",
+  "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SessionError" } } }
+}
+```
+
+A route lists only the codes that have a thrower on its own path (`sessionRouteErrors`). Every
+Session route can answer `400 SESSION_INPUT_INVALID` and `503` with `SESSION_DISABLED`,
+`SESSION_STORE_BUSY` or `SESSION_STORE_UNAVAILABLE`; a route that looks the Session up answers
+`404 SESSION_NOT_FOUND`, a route with a body `413 SESSION_PAYLOAD_TOO_LARGE`; the other codes follow
+the store operation and the provider validation the route runs (for example `TURN_CONFLICT` only
+for a start, archive or delete). Invariant guards that a consistent store never reaches (one page
+item over its byte budget, an undecodable row) are not documented. The composed create
+(`POST /api/specs/{specId}/sessions`) answers its `503` from its response schema, a union of the
+Specification read error and `SessionError`, whose description lists both.
+
+The documented codes describe the project-mode surface; the demo Runtime's read-only Session routes
+keep only their success and `403` documentation. `test/sessions/error-contracts.http.test.ts` drives
+a refusal of every Session error status through `inject`, checks the body against
+`SessionErrorSchema` and the code against the documented response of the operation, and checks
+that every documented code has a thrower in the Session code and that every Session operation
+documents its refusals.
 
 ## Authentication
 
@@ -344,6 +387,34 @@ response schema; the documentation-only `200` is added next to them.
 | `DELETE` | `/api/sessions/{sessionId}`                         | `204`, no body                                                                                                              |
 | `GET`    | `/api/sessions/{sessionId}/events`                  | `200`, `text/event-stream`; `429` (`RateLimitedErrorResponse`, `Retry-After`) of the stream limit or the default rate limit |
 | `GET`    | `/api/specs/create/operations/{operationId}/events` | `200`, `text/event-stream`, besides its JSON error responses                                                                |
+
+The Session routes also document their `session_error` refusals this way (see
+[Session error responses](#session-error-responses)).
+
+## Protocol parameters
+
+Some request parameters belong to a protocol the handler implements itself and are not in the route
+schema: a schema would validate them before the handler, which accepts or refuses them in its own
+way. The route declares them as documentation-only parameters in its route `config`, by location
+(`header` or `query`), name and description:
+
+```ts
+config: {
+  openApiParameters: {
+    header: { 'Last-Event-ID': 'The sequence of the last Session event the client received ...' },
+  },
+},
+```
+
+The Swagger `transform` adds each as an optional `string` parameter of the operation; validation is
+unchanged. A name that the route schema also declares for that location is refused when the route
+is registered.
+
+| Operation                                               | Parameters                                                                                                                                                                                   |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/sessions/{sessionId}/events`                  | header `Last-Event-ID`: replay after that event sequence, the same cursor as `after` (both present: equal); a repeated, unequal, non-integer or future value is `400 SESSION_CURSOR_INVALID` |
+| `GET /api/specs/create/operations/{operationId}/events` | header `Last-Event-ID`: continue after that progress event id; when absent, not a number or beyond the latest id, the stream starts with the current snapshot                                |
+| `GET /api/auth/oidc/<providerId>/callback`              | query `code`, `state`, `iss` and `error` of the authorization response (OpenID Connect Core, RFC 9207); every failure, a missing parameter included, ends in the redirect to the login page  |
 
 ## Undocumented routes
 

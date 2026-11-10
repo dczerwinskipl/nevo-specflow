@@ -4,8 +4,9 @@
 // `semantic index` process (`createProcessCatchUp`), a running Runtime its in-process refresh.
 
 import { spawn } from 'node:child_process';
-import { closeSync, openSync } from 'node:fs';
-import { mkdir, stat, unlink, writeFile } from 'node:fs/promises';
+import { randomBytes } from 'node:crypto';
+import { closeSync, openSync, renameSync, statSync } from 'node:fs';
+import { mkdir, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { readIndexActivity } from './progress';
@@ -32,7 +33,7 @@ export interface BackgroundIndexLaunch {
 export interface DetachedProcessRequest extends BackgroundIndexLaunch {
   /** Working directory: the project root. */
   readonly cwd: string;
-  /** Receives the process's stdout and stderr, replaced on every start. */
+  /** Receives the process's stdout and stderr, appended (see `CATCH_UP_LOG_MAX_BYTES`). */
   readonly logFile: string;
 }
 
@@ -41,6 +42,12 @@ export type SpawnDetached = (request: DetachedProcessRequest) => void;
 
 /** The log of the latest background `semantic index`, in the index directory. */
 export const CATCH_UP_LOG_FILE = 'catch-up.log';
+
+/**
+ * A log above this size is moved to `<log>.1` (replacing the previous one) before the next start,
+ * so the two files stay bounded; a log still open by a running process is appended to instead.
+ */
+export const CATCH_UP_LOG_MAX_BYTES = 256 * 1024;
 
 /** Written when a background `semantic index` is started; see `CATCH_UP_START_COOLDOWN_MS`. */
 export const CATCH_UP_MARKER_FILE = 'catch-up.started';
@@ -58,7 +65,8 @@ export const CATCH_UP_START_COOLDOWN_MS = 60_000;
  * unreferenced, so the search exits at once and the process keeps running after it.
  */
 export const spawnDetachedProcess: SpawnDetached = ({ command, args, cwd, logFile }) => {
-  const log = openSync(logFile, 'w');
+  rotateLog(logFile);
+  const log = openSync(logFile, 'a');
   try {
     const child = spawn(command, [...args], {
       cwd,
@@ -73,6 +81,28 @@ export const spawnDetachedProcess: SpawnDetached = ({ command, args, cwd, logFil
     closeSync(log);
   }
 };
+
+function rotateLog(logFile: string): void {
+  try {
+    if (statSync(logFile).size > CATCH_UP_LOG_MAX_BYTES) {
+      renameSync(logFile, `${logFile}.1`);
+    }
+  } catch {
+    // No log yet, or it cannot be moved (still open on Windows): append to it.
+  }
+}
+
+/**
+ * The Node options a detached child keeps from the parent's `process.execArgv`: loader and other
+ * runtime flags yes, debugger and profiler flags no (a second `--inspect` would fight for the port,
+ * a profiler would write its files from a process nobody watches).
+ */
+export function backgroundExecArgv(execArgv: readonly string[]): string[] {
+  const dropped =
+    /^--(?:inspect(?:-brk|-port|-wait)?|debug-port|cpu-prof|heap-prof|prof)(?:[-=]|$)/;
+
+  return execArgv.filter((flag) => !dropped.test(flag));
+}
 
 export interface ProcessCatchUpOptions {
   /** Absolute index directory (`DocsIndex.directory`). */
@@ -117,9 +147,11 @@ export function createProcessCatchUp(options: ProcessCatchUpOptions): IndexCatch
     },
 
     async start() {
+      let claimed = false;
       try {
         await mkdir(directory, { recursive: true });
-        if (await claimStart(marker, now(), CATCH_UP_START_COOLDOWN_MS)) {
+        claimed = await claimStart(marker, now(), CATCH_UP_START_COOLDOWN_MS);
+        if (claimed) {
           options.spawn({
             ...options.launch,
             cwd: options.projectRoot,
@@ -129,6 +161,11 @@ export function createProcessCatchUp(options: ProcessCatchUpOptions): IndexCatch
 
         return started;
       } catch (error) {
+        // Nothing runs, so the next search may try again at once.
+        if (claimed) {
+          await unlink(marker).catch(() => undefined);
+        }
+
         return `starting a background \`${indexCommand}\` failed (${error instanceof Error ? error.message : String(error)}); run it yourself`;
       }
     },
@@ -136,26 +173,60 @@ export function createProcessCatchUp(options: ProcessCatchUpOptions): IndexCatch
 }
 
 /**
- * Takes the start for this search: the marker is created exclusively; one older than the cooldown
- * is replaced (one more exclusive create, so of two searches replacing it at once one wins).
+ * Takes the start for this search. The marker is created exclusively, holding a token. One older
+ * than the cooldown is first moved aside under a private name (a rename succeeds for one search
+ * only) and the moved file is checked to be the stale marker that was inspected: a search that
+ * moved a marker another search has just created puts it back and does not start. Then one more
+ * exclusive create decides between the searches that moved a stale marker aside.
  */
 async function claimStart(marker: string, now: number, cooldownMs: number): Promise<boolean> {
-  const record = new Date(now).toISOString();
-  if (await createExclusive(marker, record)) {
+  const token = randomBytes(8).toString('hex');
+  if (await createExclusive(marker, token)) {
     return true;
   }
 
-  const age = await markerAge(marker, now);
-  if (age !== undefined && age < cooldownMs) {
+  const seen = await readMarker(marker, now);
+  if (seen === undefined || seen.age < cooldownMs) {
     return false;
   }
 
-  await unlink(marker).catch(() => undefined);
+  const aside = `${marker}.${token}.stale`;
+  try {
+    await rename(marker, aside);
+  } catch {
+    return false;
+  }
 
-  return createExclusive(marker, record);
+  const moved = await readMarker(aside, now);
+  if (moved?.token !== seen.token || moved.age < cooldownMs) {
+    await rename(aside, marker).catch(() => unlink(aside).catch(() => undefined));
+
+    return false;
+  }
+
+  await unlink(aside).catch(() => undefined);
+
+  return createExclusive(marker, token);
 }
 
-/** Milliseconds since the marker was written (its modification time); `undefined` without one. */
+async function readMarker(
+  path: string,
+  now: number,
+): Promise<{ readonly token: string; readonly age: number } | undefined> {
+  try {
+    const [token, age] = await Promise.all([readFile(path, 'utf8'), markerAge(path, now)]);
+
+    return age === undefined ? undefined : { token, age };
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Milliseconds since the marker was written: its modification time (the filesystem's clock) against
+ * `now` (the injected clock, `Date.now` in production, so both read the same system time; tests
+ * move `now` ahead to pass the cooldown). `undefined` without a marker.
+ */
 async function markerAge(marker: string, now: number): Promise<number | undefined> {
   try {
     return Math.max(0, now - (await stat(marker)).mtimeMs);

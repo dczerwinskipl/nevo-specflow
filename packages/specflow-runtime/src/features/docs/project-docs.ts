@@ -86,9 +86,13 @@ export function createProjectDocs(options: ProjectDocsOptions): ProjectDocs {
         : undefined;
     },
     start() {
-      refresh.start();
+      const start = refresh.start();
 
-      return Promise.resolve(`the Runtime started updating it in the background; ${FOLLOW}`);
+      return Promise.resolve(
+        start.status === 'cooling-down'
+          ? `the Runtime's last background update failed (${start.message}) and is retried shortly`
+          : `the Runtime started updating it in the background; ${FOLLOW}`,
+      );
     },
   };
 
@@ -124,7 +128,9 @@ export function createProjectDocs(options: ProjectDocsOptions): ProjectDocs {
         { env, ...(createProvider ? { createProvider } : {}) },
         { backgroundCatchUp: true },
       ),
-    startRefresh: () => refresh.start(),
+    startRefresh: () => {
+      refresh.start();
+    },
     close: () => refresh.stop(),
   };
 }

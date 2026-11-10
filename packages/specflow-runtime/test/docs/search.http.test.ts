@@ -167,6 +167,11 @@ describe('GET /api/docs/search', () => {
       const forbidden = await app.inject({ url, headers: cookie('stranger') });
       expect(forbidden.statusCode).toBe(403);
       expect(forbidden.json()).toEqual({ error: 'forbidden' });
+      // The status endpoint has the same access rule.
+      expect((await app.inject('/api/docs/status')).statusCode).toBe(401);
+      expect(
+        (await app.inject({ url: '/api/docs/status', headers: cookie('stranger') })).statusCode,
+      ).toBe(403);
       const reader = cookie('reader');
       expect((await app.inject({ url, headers: reader })).statusCode).toBe(200);
       const included = `${url}&includeNonAuthoritative=true`;

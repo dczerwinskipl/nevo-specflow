@@ -133,11 +133,21 @@ function largeGapReason(
     : overLimitReason(pending, READ_REFRESH_MAX_CHUNKS, command);
 }
 
+/** The endpoint fields of the `DocsStatus` contract, picked so new settings never leak into it. */
 function publicEndpoint({
-  queryInstruction: _queryInstruction,
-  ...endpoint
+  protocol,
+  baseUrl,
+  model,
+  dimensions,
+  apiKeyEnv,
 }: EmbeddingsSettings): DocsStatus['endpoint'] {
-  return endpoint;
+  return {
+    protocol,
+    baseUrl,
+    model,
+    ...(dimensions === undefined ? {} : { dimensions }),
+    ...(apiKeyEnv === undefined ? {} : { apiKeyEnv }),
+  };
 }
 
 async function readIndexState(

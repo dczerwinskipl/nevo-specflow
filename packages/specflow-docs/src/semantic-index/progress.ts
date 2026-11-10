@@ -25,6 +25,8 @@ import { vectorsDirectory } from './index-store';
 export const PROGRESS_SCHEMA_VERSION = 1;
 
 const PROGRESS_FILE = /^progress-\d{13}-\d{6}-[0-9a-f]+\.json$/;
+/** A temporary file of a record write; group 1 is the record name it was written for. */
+const PROGRESS_TEMPORARY = /^(progress-\d{13}-\d{6}-[0-9a-f]+\.json)\.[0-9a-f]+\.tmp$/;
 
 /** One record: a refresh that is embedding (`running`) or has ended (`finished`). */
 export type ProgressRecord = {
@@ -130,12 +132,14 @@ async function writeRecord(directory: string, name: string, record: ProgressReco
     return;
   }
 
-  // Older records, this refresh's and earlier ones; one held open by a reader goes next time.
+  // Older records, this refresh's and earlier ones, and temporary files left by an interrupted
+  // write of an older record; one held open by a reader goes next time.
   const names = await readdir(directory).catch(() => [] as string[]);
+  const older = (other: string) =>
+    (PROGRESS_FILE.test(other) && other < name) ||
+    (PROGRESS_TEMPORARY.exec(other)?.[1] ?? name) < name;
   await Promise.all(
-    names
-      .filter((other) => PROGRESS_FILE.test(other) && other < name)
-      .map((other) => unlink(join(directory, other)).catch(() => undefined)),
+    names.filter(older).map((other) => unlink(join(directory, other)).catch(() => undefined)),
   );
 }
 

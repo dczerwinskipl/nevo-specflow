@@ -8,6 +8,7 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 import { DocsUsageError } from '@nevo/specflow-docs';
+import { backgroundExecArgv } from '@nevo/specflow-docs/cli';
 import { CommanderError } from 'commander';
 
 import { createProgram } from './cli/program.js';
@@ -40,7 +41,7 @@ async function main(argv: string[]): Promise<number> {
     // A search's background catch-up runs this launcher directly (no build step, no pnpm).
     backgroundIndex: {
       command: process.execPath,
-      args: [...process.execArgv, entry, 'semantic', 'index'],
+      args: [...backgroundExecArgv(process.execArgv), entry, 'semantic', 'index'],
     },
   });
 

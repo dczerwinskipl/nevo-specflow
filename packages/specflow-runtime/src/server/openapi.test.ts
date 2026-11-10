@@ -416,7 +416,13 @@ describe('Runtime OpenAPI document', () => {
         $ref: '#/components/schemas/RateLimitedErrorResponse',
       });
       // Merged with the JSON error responses the route serializes from its schema.
-      expect(Object.keys(operationEvents().responses).sort()).toEqual(['200', '401', '403', '429']);
+      expect(Object.keys(operationEvents().responses).sort()).toEqual([
+        '200',
+        '400',
+        '401',
+        '403',
+        '429',
+      ]);
       expect(Object.keys(operationEvents().responses[200]?.content ?? {})).toEqual([
         'text/event-stream',
       ]);

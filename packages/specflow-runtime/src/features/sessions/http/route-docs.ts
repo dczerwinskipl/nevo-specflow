@@ -1,7 +1,7 @@
 import { AuthorizationForbiddenErrorResponseSchema } from '@nevo/specflow-contracts/authorization';
 import {
   RateLimitedErrorResponseSchema,
-  RequestParsingErrorResponseSchema,
+  RequestErrorResponseSchema,
 } from '@nevo/specflow-contracts/runtime';
 import { SessionErrorSchema, type SessionErrorCode } from '@nevo/specflow-contracts/sessions';
 
@@ -91,16 +91,16 @@ export function sessionBodyErrors(
     400: {
       description:
         `${invalid.description.slice(0, -1)}; or, for a malformed or empty JSON body, the ` +
-        'request parsing error with `code` `FST_ERR_CTP_INVALID_JSON_BODY` or ' +
+        'request error with `code` `FST_ERR_CTP_INVALID_JSON_BODY` or ' +
         '`FST_ERR_CTP_EMPTY_JSON_BODY`.',
-      contract: [SessionErrorSchema, RequestParsingErrorResponseSchema],
+      contract: [SessionErrorSchema, RequestErrorResponseSchema],
     },
     415: {
       description:
         'Unsupported media type: the body is neither `application/json` nor `text/plain` ' +
-        '(a text body fails validation as `SESSION_INPUT_INVALID`); the request parsing error ' +
+        '(a text body fails validation as `SESSION_INPUT_INVALID`); the request error ' +
         'with `code` `FST_ERR_CTP_INVALID_MEDIA_TYPE`.',
-      contract: RequestParsingErrorResponseSchema,
+      contract: RequestErrorResponseSchema,
     },
   };
 }

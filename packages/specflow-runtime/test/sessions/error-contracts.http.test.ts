@@ -10,11 +10,11 @@ import {
   SessionErrorSchema,
   type SessionErrorCode,
 } from '@nevo/specflow-contracts/sessions';
-import { RequestParsingErrorResponseSchema } from '@nevo/specflow-contracts/runtime';
+import { RequestErrorResponseSchema } from '@nevo/specflow-contracts/runtime';
 import { SessionError } from '../../src/features/sessions';
 
 /** Fastify's codes for a body it cannot read, answered by the Runtime error handling. */
-type RequestParsingCode = 'FST_ERR_CTP_INVALID_JSON_BODY' | 'FST_ERR_CTP_INVALID_MEDIA_TYPE';
+type RequestErrorCode = 'FST_ERR_CTP_INVALID_JSON_BODY' | 'FST_ERR_CTP_INVALID_MEDIA_TYPE';
 import { createRuntimeApp } from '../../src/server/app';
 import { generateOpenApiDocument, type RuntimeOpenApiDocument } from '../../src/server/openapi';
 import { passwordConfig } from '../auth/support/config';
@@ -101,7 +101,7 @@ describe('Session error contracts', () => {
       payload?: object | string;
       contentType?: string;
       status: number;
-      code: SessionErrorCode | RequestParsingCode;
+      code: SessionErrorCode | RequestErrorCode;
     }[] = [
       {
         app: disabled,
@@ -207,7 +207,7 @@ describe('Session error contracts', () => {
         ...(contentType ? { headers: { 'content-type': contentType } } : {}),
       });
       const label = `${operation} ${code}`;
-      const body = code.startsWith('FST_') ? RequestParsingErrorResponseSchema : SessionErrorSchema;
+      const body = code.startsWith('FST_') ? RequestErrorResponseSchema : SessionErrorSchema;
 
       expect(response.statusCode, label).toBe(status);
       expect(Value.Check(body, response.json()), label).toBe(true);

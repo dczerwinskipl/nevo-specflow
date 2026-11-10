@@ -4,7 +4,10 @@ import type { FastifyInstance, FastifySchema, RawServerBase } from 'fastify';
 import { Type, type Static, type TSchema } from 'typebox';
 
 import { AuthenticationRequiredErrorResponseSchema } from '@nevo/specflow-contracts/authorization';
-import { RateLimitedErrorResponseSchema } from '@nevo/specflow-contracts/runtime';
+import {
+  RateLimitedErrorResponseSchema,
+  RequestErrorResponseSchema,
+} from '@nevo/specflow-contracts/runtime';
 
 import {
   contractRef,
@@ -54,6 +57,12 @@ declare module 'fastify' {
      * authentication.
      */
     readonly openApiPublic?: true;
+    /**
+     * The route's own error handling answers a request that fails its schema validation, not the
+     * Runtime error handling (the Session error handling answers `SESSION_INPUT_INVALID`), so the
+     * document does not add Fastify's validation `400` to it. Set by that error handling.
+     */
+    readonly openApiOwnValidation?: true;
     /**
      * Documentation-only request parameters: protocol parameters the handler reads itself (the
      * SSE `Last-Event-ID` header, the OIDC callback query), by location, name and description. A
@@ -363,6 +372,10 @@ export async function registerOpenApi<RawServer extends RawServerBase>(
         if (route.config?.rateLimit !== false) {
           shared[429] = RATE_LIMITED_RESPONSE;
         }
+
+        if (route.config?.openApiOwnValidation !== true && hasRequestSchema(schema)) {
+          shared[400] = requestValidationResponse(schema?.body !== undefined);
+        }
       }
 
       return {
@@ -460,11 +473,38 @@ const RATE_LIMITED_RESPONSE = {
   },
 } as const;
 
+/** The route validates a part of the request: path, query, headers or body. */
+function hasRequestSchema(schema: FastifySchema | undefined): boolean {
+  const parts = schema as Record<string, unknown> | undefined;
+
+  return ['params', 'querystring', 'query', 'headers', 'body'].some(
+    (part) => parts?.[part] !== undefined,
+  );
+}
+
+/**
+ * The `400` of a request that fails the route schema: the Runtime error handling answers Fastify's
+ * own error body. A route with a JSON body also answers it for a malformed or empty body.
+ */
+function requestValidationResponse(body: boolean) {
+  return {
+    ...contractRef(RequestErrorResponseSchema),
+    description:
+      'The request does not match the route schema: the request error with `code` ' +
+      (body
+        ? '`FST_ERR_VALIDATION`, or `FST_ERR_CTP_INVALID_JSON_BODY` or ' +
+          '`FST_ERR_CTP_EMPTY_JSON_BODY` for a malformed or empty JSON body.'
+        : '`FST_ERR_VALIDATION`.'),
+  };
+}
+
 /**
  * The route schema with the responses that shared Runtime mechanisms answer for it, for each status
  * code it does not document itself: `401` of request authorization for an operation that needs a
- * principal, `429` of the default rate limit. A `403` is never added: whether a route can refuse a
- * capability is the route's own knowledge, so it documents its `403` in its response schema.
+ * principal, `429` of the default rate limit, `400` of request validation for a route with a
+ * request schema whose validation failures reach the Runtime error handling. A `403` is never
+ * added: whether a route can refuse a capability is the route's own knowledge, so it documents its
+ * `403` in its response schema.
  */
 function withSharedResponses(
   schema: FastifySchema | undefined,

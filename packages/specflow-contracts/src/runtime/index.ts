@@ -16,17 +16,18 @@ export const RateLimitedErrorResponseSchema = Type.Object(
 export type RateLimitedErrorResponse = Static<typeof RateLimitedErrorResponseSchema>;
 
 /**
- * The body of a request the framework refuses while reading it, before the route runs: a malformed
- * or empty JSON body (`400`, `FST_ERR_CTP_INVALID_JSON_BODY`, `FST_ERR_CTP_EMPTY_JSON_BODY`) or an
- * unsupported media type (`415`, `FST_ERR_CTP_INVALID_MEDIA_TYPE`). Fastify's own error body.
+ * The body of a request the framework refuses before the route runs, Fastify's own error body: a
+ * request that does not match the route schema (`400`, `FST_ERR_VALIDATION`), a malformed or empty
+ * JSON body (`400`, `FST_ERR_CTP_INVALID_JSON_BODY`, `FST_ERR_CTP_EMPTY_JSON_BODY`) or an
+ * unsupported media type (`415`, `FST_ERR_CTP_INVALID_MEDIA_TYPE`).
  */
-export const RequestParsingErrorResponseSchema = Type.Object(
+export const RequestErrorResponseSchema = Type.Object(
   {
     statusCode: Type.Integer({ minimum: 400, maximum: 499 }),
     code: Type.String(),
     error: Type.String(),
     message: Type.String(),
   },
-  { $id: 'RequestParsingErrorResponse', additionalProperties: false },
+  { $id: 'RequestErrorResponse', additionalProperties: false },
 );
-export type RequestParsingErrorResponse = Static<typeof RequestParsingErrorResponseSchema>;
+export type RequestErrorResponse = Static<typeof RequestErrorResponseSchema>;

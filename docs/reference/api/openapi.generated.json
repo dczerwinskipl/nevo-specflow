@@ -2248,7 +2248,7 @@
         },
         "additionalProperties": false
       },
-      "RequestParsingErrorResponse": {
+      "RequestErrorResponse": {
         "type": "object",
         "required": [
           "statusCode",
@@ -3131,6 +3131,16 @@
               }
             }
           },
+          "400": {
+            "description": "The request does not match the route schema: the request error with `code` `FST_ERR_VALIDATION`, or `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY` for a malformed or empty JSON body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestErrorResponse"
+                }
+              }
+            }
+          },
           "401": {
             "description": "The login is refused: the credentials are invalid (`invalid_credentials`).",
             "content": {
@@ -3618,6 +3628,16 @@
                       "additionalProperties": false
                     }
                   ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the route schema: the request error with `code` `FST_ERR_VALIDATION`, or `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY` for a malformed or empty JSON body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestErrorResponse"
                 }
               }
             }
@@ -4818,7 +4838,7 @@
             }
           },
           "400": {
-            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`; or, for a malformed or empty JSON body, the request parsing error with `code` `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY`.",
+            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`; or, for a malformed or empty JSON body, the request error with `code` `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4827,7 +4847,7 @@
                       "$ref": "#/components/schemas/SessionError"
                     },
                     {
-                      "$ref": "#/components/schemas/RequestParsingErrorResponse"
+                      "$ref": "#/components/schemas/RequestErrorResponse"
                     }
                   ]
                 }
@@ -4875,11 +4895,11 @@
             }
           },
           "415": {
-            "description": "Unsupported media type: the body is neither `application/json` nor `text/plain` (a text body fails validation as `SESSION_INPUT_INVALID`); the request parsing error with `code` `FST_ERR_CTP_INVALID_MEDIA_TYPE`.",
+            "description": "Unsupported media type: the body is neither `application/json` nor `text/plain` (a text body fails validation as `SESSION_INPUT_INVALID`); the request error with `code` `FST_ERR_CTP_INVALID_MEDIA_TYPE`.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RequestParsingErrorResponse"
+                  "$ref": "#/components/schemas/RequestErrorResponse"
                 }
               }
             }
@@ -6030,7 +6050,7 @@
             }
           },
           "400": {
-            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`; or, for a malformed or empty JSON body, the request parsing error with `code` `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY`.",
+            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`; or, for a malformed or empty JSON body, the request error with `code` `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6039,7 +6059,7 @@
                       "$ref": "#/components/schemas/SessionError"
                     },
                     {
-                      "$ref": "#/components/schemas/RequestParsingErrorResponse"
+                      "$ref": "#/components/schemas/RequestErrorResponse"
                     }
                   ]
                 }
@@ -6097,11 +6117,11 @@
             }
           },
           "415": {
-            "description": "Unsupported media type: the body is neither `application/json` nor `text/plain` (a text body fails validation as `SESSION_INPUT_INVALID`); the request parsing error with `code` `FST_ERR_CTP_INVALID_MEDIA_TYPE`.",
+            "description": "Unsupported media type: the body is neither `application/json` nor `text/plain` (a text body fails validation as `SESSION_INPUT_INVALID`); the request error with `code` `FST_ERR_CTP_INVALID_MEDIA_TYPE`.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RequestParsingErrorResponse"
+                  "$ref": "#/components/schemas/RequestErrorResponse"
                 }
               }
             }
@@ -7469,7 +7489,7 @@
             }
           },
           "400": {
-            "description": "The request is invalid: a `session_error` with `code` one of `SESSION_INPUT_INVALID`, `INTERACTION_RESPONSE_INVALID`; or, for a malformed or empty JSON body, the request parsing error with `code` `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY`.",
+            "description": "The request is invalid: a `session_error` with `code` one of `SESSION_INPUT_INVALID`, `INTERACTION_RESPONSE_INVALID`; or, for a malformed or empty JSON body, the request error with `code` `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -7478,7 +7498,7 @@
                       "$ref": "#/components/schemas/SessionError"
                     },
                     {
-                      "$ref": "#/components/schemas/RequestParsingErrorResponse"
+                      "$ref": "#/components/schemas/RequestErrorResponse"
                     }
                   ]
                 }
@@ -7536,11 +7556,11 @@
             }
           },
           "415": {
-            "description": "Unsupported media type: the body is neither `application/json` nor `text/plain` (a text body fails validation as `SESSION_INPUT_INVALID`); the request parsing error with `code` `FST_ERR_CTP_INVALID_MEDIA_TYPE`.",
+            "description": "Unsupported media type: the body is neither `application/json` nor `text/plain` (a text body fails validation as `SESSION_INPUT_INVALID`); the request error with `code` `FST_ERR_CTP_INVALID_MEDIA_TYPE`.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RequestParsingErrorResponse"
+                  "$ref": "#/components/schemas/RequestErrorResponse"
                 }
               }
             }
@@ -7655,7 +7675,7 @@
             }
           },
           "400": {
-            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`; or, for a malformed or empty JSON body, the request parsing error with `code` `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY`.",
+            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`; or, for a malformed or empty JSON body, the request error with `code` `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -7664,7 +7684,7 @@
                       "$ref": "#/components/schemas/SessionError"
                     },
                     {
-                      "$ref": "#/components/schemas/RequestParsingErrorResponse"
+                      "$ref": "#/components/schemas/RequestErrorResponse"
                     }
                   ]
                 }
@@ -7722,11 +7742,11 @@
             }
           },
           "415": {
-            "description": "Unsupported media type: the body is neither `application/json` nor `text/plain` (a text body fails validation as `SESSION_INPUT_INVALID`); the request parsing error with `code` `FST_ERR_CTP_INVALID_MEDIA_TYPE`.",
+            "description": "Unsupported media type: the body is neither `application/json` nor `text/plain` (a text body fails validation as `SESSION_INPUT_INVALID`); the request error with `code` `FST_ERR_CTP_INVALID_MEDIA_TYPE`.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RequestParsingErrorResponse"
+                  "$ref": "#/components/schemas/RequestErrorResponse"
                 }
               }
             }
@@ -10901,7 +10921,7 @@
             }
           },
           "400": {
-            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`; or, for a malformed or empty JSON body, the request parsing error with `code` `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY`.",
+            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`; or, for a malformed or empty JSON body, the request error with `code` `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -10910,7 +10930,7 @@
                       "$ref": "#/components/schemas/SessionError"
                     },
                     {
-                      "$ref": "#/components/schemas/RequestParsingErrorResponse"
+                      "$ref": "#/components/schemas/RequestErrorResponse"
                     }
                   ]
                 }
@@ -10968,11 +10988,11 @@
             }
           },
           "415": {
-            "description": "Unsupported media type: the body is neither `application/json` nor `text/plain` (a text body fails validation as `SESSION_INPUT_INVALID`); the request parsing error with `code` `FST_ERR_CTP_INVALID_MEDIA_TYPE`.",
+            "description": "Unsupported media type: the body is neither `application/json` nor `text/plain` (a text body fails validation as `SESSION_INPUT_INVALID`); the request error with `code` `FST_ERR_CTP_INVALID_MEDIA_TYPE`.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RequestParsingErrorResponse"
+                  "$ref": "#/components/schemas/RequestErrorResponse"
                 }
               }
             }
@@ -11122,7 +11142,7 @@
             }
           },
           "400": {
-            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`; or, for a malformed or empty JSON body, the request parsing error with `code` `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY`.",
+            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`; or, for a malformed or empty JSON body, the request error with `code` `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -11131,7 +11151,7 @@
                       "$ref": "#/components/schemas/SessionError"
                     },
                     {
-                      "$ref": "#/components/schemas/RequestParsingErrorResponse"
+                      "$ref": "#/components/schemas/RequestErrorResponse"
                     }
                   ]
                 }
@@ -11189,11 +11209,11 @@
             }
           },
           "415": {
-            "description": "Unsupported media type: the body is neither `application/json` nor `text/plain` (a text body fails validation as `SESSION_INPUT_INVALID`); the request parsing error with `code` `FST_ERR_CTP_INVALID_MEDIA_TYPE`.",
+            "description": "Unsupported media type: the body is neither `application/json` nor `text/plain` (a text body fails validation as `SESSION_INPUT_INVALID`); the request error with `code` `FST_ERR_CTP_INVALID_MEDIA_TYPE`.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RequestParsingErrorResponse"
+                  "$ref": "#/components/schemas/RequestErrorResponse"
                 }
               }
             }
@@ -11328,7 +11348,7 @@
             }
           },
           "400": {
-            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`; or, for a malformed or empty JSON body, the request parsing error with `code` `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY`.",
+            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`; or, for a malformed or empty JSON body, the request error with `code` `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -11337,7 +11357,7 @@
                       "$ref": "#/components/schemas/SessionError"
                     },
                     {
-                      "$ref": "#/components/schemas/RequestParsingErrorResponse"
+                      "$ref": "#/components/schemas/RequestErrorResponse"
                     }
                   ]
                 }
@@ -11395,11 +11415,11 @@
             }
           },
           "415": {
-            "description": "Unsupported media type: the body is neither `application/json` nor `text/plain` (a text body fails validation as `SESSION_INPUT_INVALID`); the request parsing error with `code` `FST_ERR_CTP_INVALID_MEDIA_TYPE`.",
+            "description": "Unsupported media type: the body is neither `application/json` nor `text/plain` (a text body fails validation as `SESSION_INPUT_INVALID`); the request error with `code` `FST_ERR_CTP_INVALID_MEDIA_TYPE`.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RequestParsingErrorResponse"
+                  "$ref": "#/components/schemas/RequestErrorResponse"
                 }
               }
             }
@@ -11557,7 +11577,7 @@
             }
           },
           "400": {
-            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`; or, for a malformed or empty JSON body, the request parsing error with `code` `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY`.",
+            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`; or, for a malformed or empty JSON body, the request error with `code` `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -11566,7 +11586,7 @@
                       "$ref": "#/components/schemas/SessionError"
                     },
                     {
-                      "$ref": "#/components/schemas/RequestParsingErrorResponse"
+                      "$ref": "#/components/schemas/RequestErrorResponse"
                     }
                   ]
                 }
@@ -11624,11 +11644,11 @@
             }
           },
           "415": {
-            "description": "Unsupported media type: the body is neither `application/json` nor `text/plain` (a text body fails validation as `SESSION_INPUT_INVALID`); the request parsing error with `code` `FST_ERR_CTP_INVALID_MEDIA_TYPE`.",
+            "description": "Unsupported media type: the body is neither `application/json` nor `text/plain` (a text body fails validation as `SESSION_INPUT_INVALID`); the request error with `code` `FST_ERR_CTP_INVALID_MEDIA_TYPE`.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RequestParsingErrorResponse"
+                  "$ref": "#/components/schemas/RequestErrorResponse"
                 }
               }
             }
@@ -12861,7 +12881,7 @@
             }
           },
           "400": {
-            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`; or, for a malformed or empty JSON body, the request parsing error with `code` `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY`.",
+            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`; or, for a malformed or empty JSON body, the request error with `code` `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12870,7 +12890,7 @@
                       "$ref": "#/components/schemas/SessionError"
                     },
                     {
-                      "$ref": "#/components/schemas/RequestParsingErrorResponse"
+                      "$ref": "#/components/schemas/RequestErrorResponse"
                     }
                   ]
                 }
@@ -12928,11 +12948,11 @@
             }
           },
           "415": {
-            "description": "Unsupported media type: the body is neither `application/json` nor `text/plain` (a text body fails validation as `SESSION_INPUT_INVALID`); the request parsing error with `code` `FST_ERR_CTP_INVALID_MEDIA_TYPE`.",
+            "description": "Unsupported media type: the body is neither `application/json` nor `text/plain` (a text body fails validation as `SESSION_INPUT_INVALID`); the request error with `code` `FST_ERR_CTP_INVALID_MEDIA_TYPE`.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RequestParsingErrorResponse"
+                  "$ref": "#/components/schemas/RequestErrorResponse"
                 }
               }
             }
@@ -15082,6 +15102,16 @@
               }
             }
           },
+          "400": {
+            "description": "The request does not match the route schema: the request error with `code` `FST_ERR_VALIDATION`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestErrorResponse"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not authenticated.",
             "content": {
@@ -16026,6 +16056,16 @@
                       "additionalProperties": false
                     }
                   ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the route schema: the request error with `code` `FST_ERR_VALIDATION`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestErrorResponse"
                 }
               }
             }
@@ -16999,6 +17039,16 @@
               }
             }
           },
+          "400": {
+            "description": "The request does not match the route schema: the request error with `code` `FST_ERR_VALIDATION`, or `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY` for a malformed or empty JSON body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestErrorResponse"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not authenticated.",
             "content": {
@@ -17189,6 +17239,16 @@
                     }
                   },
                   "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the route schema: the request error with `code` `FST_ERR_VALIDATION`, or `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY` for a malformed or empty JSON body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestErrorResponse"
                 }
               }
             }
@@ -17435,6 +17495,16 @@
               }
             }
           },
+          "400": {
+            "description": "The request does not match the route schema: the request error with `code` `FST_ERR_VALIDATION`, or `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY` for a malformed or empty JSON body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestErrorResponse"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not authenticated.",
             "content": {
@@ -17599,6 +17669,16 @@
           },
           "304": {
             "description": "Not modified: the representation identified by the request `If-None-Match` is current."
+          },
+          "400": {
+            "description": "The request does not match the route schema: the request error with `code` `FST_ERR_VALIDATION`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestErrorResponse"
+                }
+              }
+            }
           },
           "401": {
             "description": "Not authenticated.",
@@ -17774,6 +17854,16 @@
               }
             }
           },
+          "400": {
+            "description": "The request does not match the route schema: the request error with `code` `FST_ERR_VALIDATION`, or `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY` for a malformed or empty JSON body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestErrorResponse"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not authenticated.",
             "content": {
@@ -17944,6 +18034,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DocumentOperationStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the route schema: the request error with `code` `FST_ERR_VALIDATION`, or `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY` for a malformed or empty JSON body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestErrorResponse"
                 }
               }
             }
@@ -19611,6 +19711,16 @@
           "304": {
             "description": "Not modified: the representation identified by the request `If-None-Match` is current."
           },
+          "400": {
+            "description": "The request does not match the route schema: the request error with `code` `FST_ERR_VALIDATION`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestErrorResponse"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not authenticated.",
             "content": {
@@ -19820,6 +19930,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DocumentOperationResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the route schema: the request error with `code` `FST_ERR_VALIDATION`, or `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY` for a malformed or empty JSON body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestErrorResponse"
                 }
               }
             }
@@ -20150,6 +20270,16 @@
               }
             }
           },
+          "400": {
+            "description": "The request does not match the route schema: the request error with `code` `FST_ERR_VALIDATION`, or `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY` for a malformed or empty JSON body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestErrorResponse"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not authenticated.",
             "content": {
@@ -20406,6 +20536,16 @@
                     }
                   },
                   "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the route schema: the request error with `code` `FST_ERR_VALIDATION`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestErrorResponse"
                 }
               }
             }
@@ -20701,6 +20841,16 @@
               }
             }
           },
+          "400": {
+            "description": "The request does not match the route schema: the request error with `code` `FST_ERR_VALIDATION`, or `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY` for a malformed or empty JSON body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestErrorResponse"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not authenticated.",
             "content": {
@@ -20886,6 +21036,16 @@
           "304": {
             "description": "Not modified: the representation identified by the request `If-None-Match` is current."
           },
+          "400": {
+            "description": "The request does not match the route schema: the request error with `code` `FST_ERR_VALIDATION`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestErrorResponse"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not authenticated.",
             "content": {
@@ -21038,6 +21198,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DocumentOperationResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the route schema: the request error with `code` `FST_ERR_VALIDATION`, or `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY` for a malformed or empty JSON body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestErrorResponse"
                 }
               }
             }
@@ -21296,7 +21466,7 @@
             }
           },
           "400": {
-            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`; or, for a malformed or empty JSON body, the request parsing error with `code` `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY`.",
+            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`; or, for a malformed or empty JSON body, the request error with `code` `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -21305,7 +21475,7 @@
                       "$ref": "#/components/schemas/SessionError"
                     },
                     {
-                      "$ref": "#/components/schemas/RequestParsingErrorResponse"
+                      "$ref": "#/components/schemas/RequestErrorResponse"
                     }
                   ]
                 }
@@ -21363,11 +21533,11 @@
             }
           },
           "415": {
-            "description": "Unsupported media type: the body is neither `application/json` nor `text/plain` (a text body fails validation as `SESSION_INPUT_INVALID`); the request parsing error with `code` `FST_ERR_CTP_INVALID_MEDIA_TYPE`.",
+            "description": "Unsupported media type: the body is neither `application/json` nor `text/plain` (a text body fails validation as `SESSION_INPUT_INVALID`); the request error with `code` `FST_ERR_CTP_INVALID_MEDIA_TYPE`.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RequestParsingErrorResponse"
+                  "$ref": "#/components/schemas/RequestErrorResponse"
                 }
               }
             }
@@ -24729,6 +24899,16 @@
               }
             }
           },
+          "400": {
+            "description": "The request does not match the route schema: the request error with `code` `FST_ERR_VALIDATION`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestErrorResponse"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not authenticated.",
             "content": {
@@ -25716,6 +25896,16 @@
               }
             }
           },
+          "400": {
+            "description": "The request does not match the route schema: the request error with `code` `FST_ERR_VALIDATION`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestErrorResponse"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not authenticated.",
             "content": {
@@ -26314,6 +26504,16 @@
               }
             }
           },
+          "400": {
+            "description": "The request does not match the route schema: the request error with `code` `FST_ERR_VALIDATION`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestErrorResponse"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not authenticated.",
             "content": {
@@ -26571,6 +26771,16 @@
           },
           "304": {
             "description": "Not modified: the representation identified by the request `If-None-Match` is current."
+          },
+          "400": {
+            "description": "The request does not match the route schema: the request error with `code` `FST_ERR_VALIDATION`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestErrorResponse"
+                }
+              }
+            }
           },
           "401": {
             "description": "Not authenticated.",
@@ -27951,6 +28161,16 @@
                       }
                     }
                   }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the route schema: the request error with `code` `FST_ERR_VALIDATION`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestErrorResponse"
                 }
               }
             }

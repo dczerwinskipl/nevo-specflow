@@ -8,6 +8,11 @@ import { SessionError } from '../errors';
 export function registerSessionErrorHandling<RawServer extends RawServerBase>(
   feature: FastifyInstance<RawServer>,
 ): void {
+  // The validation failures of these routes are `SESSION_INPUT_INVALID`, documented per route: the
+  // OpenAPI document does not add Fastify's validation `400` to them.
+  feature.addHook('onRoute', (route) => {
+    route.config = { ...route.config, openApiOwnValidation: true };
+  });
   feature.setErrorHandler((error, _request, reply) => {
     if (error instanceof SessionError) {
       return reply

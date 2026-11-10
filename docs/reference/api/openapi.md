@@ -90,7 +90,7 @@ Current shared contracts: `AuthSessionResponse`, `AuthenticationRequiredErrorRes
 `AuthorizationForbiddenErrorResponse`, `CloseError`, `ClosePreview`, `CloseResult`,
 `CloseWorkspaceResult`, `CreateSpecError`, `DocumentError`, `DocumentOperationResult`,
 `DocumentOperationStatus`, `OperationListResponse`, `RateLimitedErrorResponse`,
-`RequestParsingErrorResponse`, `SessionCommandResult`, `SessionError`, `SpecificationReadError`, `TaskReadError` and
+`RequestErrorResponse`, `SessionCommandResult`, `SessionError`, `SpecificationReadError`, `TaskReadError` and
 `TaskSnapshotExpired`.
 
 A test that registers Runtime routes on a bare Fastify instance (without `createRuntimeApp`) creates
@@ -185,10 +185,11 @@ Some refusals come from shared Runtime mechanisms, not from the route. The Swagg
 documents them for every operation that documents its responses and does not document that status
 code itself:
 
-| Status | Added to                                                                           | Body (component)                                                           | Source                                                                     |
-| ------ | ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| `401`  | operations with `security` (required authentication, not `openApiPublic`)          | `AuthenticationRequiredErrorResponse`                                      | `request.authz` without a principal, answered by the Runtime error handler |
-| `429`  | every operation without a rate limit of its own (no route sets `rateLimit: false`) | `RateLimitedErrorResponse`, with `Retry-After` and `x-ratelimit-*` headers | the default rate limit of the endpoint policy                              |
+| Status | Added to                                                                                            | Body (component)                                                           | Source                                                                     |
+| ------ | --------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `401`  | operations with `security` (required authentication, not `openApiPublic`)                           | `AuthenticationRequiredErrorResponse`                                      | `request.authz` without a principal, answered by the Runtime error handler |
+| `429`  | every operation without a rate limit of its own (no route sets `rateLimit: false`)                  | `RateLimitedErrorResponse`, with `Retry-After` and `x-ratelimit-*` headers | the default rate limit of the endpoint policy                              |
+| `400`  | operations with a request schema (path, query, headers or body), outside the Session error handling | `RequestErrorResponse`                                                     | Fastify request validation, answered by the Runtime error handler          |
 
 The transform never adds `403`: whether an operation can refuse a capability is the route's own
 knowledge. A route whose authorization can deny documents `403` with
@@ -202,8 +203,30 @@ so none has the `401`.
 limiter's error on a route without a `429` schema of its own. Routes with a stricter limit of their
 own (password login, OIDC start) and routes with their own `429` (Session telemetry refresh, the
 operation progress stream, the Session event stream) keep their own `429`; every other route,
-logout and the OIDC callback included, is under the default limit only. The transform adds no
-other refusal; each Session route documents its own Session refusals (next section).
+logout and the OIDC callback included, is under the default limit only.
+
+A request that does not match its route schema fails Fastify validation, and the Runtime error
+handler answers the error as it is: Fastify's error body, the shared contract
+`RequestErrorResponse` (`{ "statusCode": 400, "code": "FST_ERR_VALIDATION", "error": "Bad Request",
+"message": "..." }`). The `400` names `FST_ERR_VALIDATION`; for a route with a JSON body also the
+malformed and empty body errors (`FST_ERR_CTP_INVALID_JSON_BODY`, `FST_ERR_CTP_EMPTY_JSON_BODY`),
+which have the same body. Two kinds of routes do not get it:
+
+- **Session and Session association routes:** the Session error handling answers their validation
+  failures as `400 SESSION_INPUT_INVALID` (next section). It marks every route of its context with
+  the route `config` `openApiOwnValidation: true` (an `onRoute` hook), which the transform reads, so
+  this holds in every data mode.
+- **Routes with a `400` schema of their own** (Create, close and the operation lists): Fastify
+  serializes the validation error through that schema, so the body is that contract, for example
+  `{ "error": "Bad Request", "code": "FST_ERR_VALIDATION" }` for `CloseError`, and the route's own
+  `400` documents it.
+
+`test/server/request-validation.http.test.ts` sends a request with an invalid path parameter, query
+and body, checks each answer against `RequestErrorResponse` and checks that the operation documents
+it, and that a Session route in demo mode does not.
+
+The transform adds no other refusal; each Session route documents its own Session refusals (next
+section).
 
 ## Session error responses
 
@@ -238,17 +261,17 @@ Specification read error and `SessionError`, whose description lists both.
 
 Not every `400` of a route with a JSON body is a `session_error`. The Session error handling leaves
 a body the framework cannot read to the Runtime error handling, which answers Fastify's own error
-body, the shared contract `RequestParsingErrorResponse` (`{ statusCode, code, error, message }`,
+body, the shared contract `RequestErrorResponse` (`{ statusCode, code, error, message }`,
 `@nevo/specflow-contracts/runtime`): `400` for a malformed or empty JSON body
 (`FST_ERR_CTP_INVALID_JSON_BODY`, `FST_ERR_CTP_EMPTY_JSON_BODY`) and `415` for a media type
 without a parser (`FST_ERR_CTP_INVALID_MEDIA_TYPE`; a `text/plain` body is parsed and fails
 validation as `SESSION_INPUT_INVALID`). `sessionBodyErrors(...codes)` documents the `400` of such
-a route as `anyOf` `SessionError` and `RequestParsingErrorResponse`, and the `415`. A
+a route as `anyOf` `SessionError` and `RequestErrorResponse`, and the `415`. A
 documentation-only response with several bodies has `contract: [A, B]`.
 
 The documented codes describe the project-mode surface; the demo Runtime's read-only Session routes
 keep only their success and `403` documentation. `test/sessions/error-contracts.http.test.ts` drives
-a refusal of every documented Session error status, and the two request parsing errors, through
+a refusal of every documented Session error status, and the two request errors, through
 `inject`, and checks the status, the body against its contract and the code against the documented
 response of the operation. It also checks that every Session operation documents its refusals,
 that each documented code is under its own `SessionError.statusCode`, and, statically, that each

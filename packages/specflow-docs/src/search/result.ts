@@ -1,29 +1,82 @@
-// One search hit as the `docs search` contract shows it: the document and its best sections, each
-// with a one-line snippet.
+// One search hit as the `docs search` contract shows it: the document described by its frontmatter,
+// so a reader can decide whether to open it, and its best sections as heading paths (with a one-line
+// snippet only on request).
 
-import type { Chunk, UnitHit } from '@nevo/ai-semantic-search';
-import type { DocsSearchHit } from '@nevo/specflow-contracts/docs';
+import type { Chunk, ChunkHit, UnitHit } from '@nevo/ai-semantic-search';
+import type { DocsSearchHit, DocsSearchSection } from '@nevo/specflow-contracts/docs';
 
-import type { DocsChunk } from '../semantic-index/chunk-source';
+import { asString, type DocRecord } from '../frontmatter/contract';
 
-/** Matching sections shown per document. */
-export const CHUNKS_PER_RESULT = 3;
+/** Distinct matching sections shown per document (the contract's `sections` maximum). */
+export const SECTIONS_PER_RESULT = 3;
 const SNIPPET_MAX_CHARS = 280;
 
-export function toHit(hit: UnitHit): DocsSearchHit {
-  const best = hit.chunks[0]!.chunk as DocsChunk;
+/**
+ * @param sections the document's matching sections from the section ranking; `undefined` when only
+ *   its frontmatter matched.
+ * @param score the document's fused rank score.
+ */
+export function toHit(
+  record: DocRecord,
+  sections: UnitHit | undefined,
+  score: number,
+  snippets: boolean,
+): DocsSearchHit {
+  const summary = typeof record.summary === 'string' ? oneLine(record.summary) : '';
+  const scope = asString(record.scope);
+  const areas = strings(record.areas);
+  const tags = strings(record.tags);
+  const readWhen = strings(record.read_when);
 
   return {
-    id: hit.unitId,
-    title: best.metadata.title,
-    file: best.metadata.file,
-    score: hit.score,
-    chunks: hit.chunks.slice(0, CHUNKS_PER_RESULT).map(({ chunk, score }) => ({
-      headingPath: [...chunk.headingPath],
-      snippet: snippet(chunk.text, isContinuationPart(chunk)),
-      score,
-    })),
+    id: asString(record.id),
+    title: asString(record.title),
+    type: asString(record.type),
+    status: asString(record.status),
+    ...(scope ? { scope } : {}),
+    ...(areas.length > 0 ? { areas } : {}),
+    ...(tags.length > 0 ? { tags } : {}),
+    ...(summary ? { summary } : {}),
+    ...(readWhen.length > 0 ? { readWhen } : {}),
+    file: record.file,
+    score,
+    sections: bestSections(sections?.chunks ?? []).map(
+      ({ chunk, score: sectionScore }): DocsSearchSection => ({
+        headingPath: [...chunk.headingPath],
+        score: sectionScore,
+        ...(snippets ? { snippet: snippet(chunk.text, isContinuationPart(chunk)) } : {}),
+      }),
+    ),
   };
+}
+
+/**
+ * The best `SECTIONS_PER_RESULT` sections, one per heading path: the parts of an oversize section
+ * share its heading path, and only the best-ranked part is shown.
+ */
+function bestSections(chunks: readonly ChunkHit[]): ChunkHit[] {
+  const seen = new Set<string>();
+  const best: ChunkHit[] = [];
+  for (const hit of chunks) {
+    const key = JSON.stringify(hit.chunk.headingPath);
+    if (!seen.has(key)) {
+      seen.add(key);
+      best.push(hit);
+      if (best.length === SECTIONS_PER_RESULT) {
+        break;
+      }
+    }
+  }
+
+  return best;
+}
+
+function oneLine(text: string): string {
+  return text.replace(/\s+/g, ' ').trim();
+}
+
+function strings(value: unknown): string[] {
+  return Array.isArray(value) ? value.map((item) => oneLine(asString(item))).filter(Boolean) : [];
 }
 
 /**
@@ -42,12 +95,12 @@ function isContinuationPart(chunk: Chunk): boolean {
  * part drops its first, usually partial, word and starts with an ellipsis.
  */
 export function snippet(text: string, continuation = false): string {
-  let prose = text
-    .split('\n')
-    .filter((line) => !/^#{1,6}\s/.test(line))
-    .join(' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  let prose = oneLine(
+    text
+      .split('\n')
+      .filter((line) => !/^#{1,6}\s/.test(line))
+      .join(' '),
+  );
   if (continuation) {
     const rest = prose.replace(/^\S*\s+/u, '');
     prose = rest === prose ? prose : `…${rest}`;

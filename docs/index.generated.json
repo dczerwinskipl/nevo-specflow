@@ -4729,7 +4729,7 @@
         "changing GET /api/docs/search, its query or the Runtime start refresh of the docs index",
         "diagnosing why a Runtime documentation search answers lexically or 503"
       ],
-      "summary": "GET /api/docs/search answers ranked sections of the project's own documentation with the result contract of nevo-specflow docs search --json: query parameters, the docs.search capability, errors, the read-time refresh and the background index refresh on Runtime start.",
+      "summary": "GET /api/docs/search answers ranked documents of the project's own documentation, with their frontmatter and best sections, in the result contract of nevo-specflow docs search --json: query parameters (including snippets), the docs.search capability, errors, the read-time refresh and the background index refresh on Runtime start.",
       "related": [
         "adr.0020-documentation-discovery-is-a-product-capability",
         "reference.cli.nevo-specflow-docs",

@@ -11,8 +11,9 @@ read_when:
   - changing GET /api/docs/search, its query or the Runtime start refresh of the docs index
   - diagnosing why a Runtime documentation search answers lexically or 503
 summary: >
-  GET /api/docs/search answers ranked sections of the project's own documentation with the result
-  contract of nevo-specflow docs search --json: query parameters, the docs.search capability,
+  GET /api/docs/search answers ranked documents of the project's own documentation, with their
+  frontmatter and best sections, in the result contract of nevo-specflow docs search --json: query
+  parameters (including snippets), the docs.search capability,
   errors, the read-time refresh and the background index refresh on Runtime start.
 related:
   - adr.0020-documentation-discovery-is-a-product-capability
@@ -33,7 +34,7 @@ feature is `packages/specflow-runtime/src/features/docs/`.
 ## Endpoint
 
 ```http
-GET /api/docs/search?q=<question>&limit=<n>&includeNonAuthoritative=<true|false>
+GET /api/docs/search?q=<question>&limit=<n>&includeNonAuthoritative=<true|false>&snippets=<true|false>
 ```
 
 | Parameter                 | Required | Value                                                                       |
@@ -41,14 +42,16 @@ GET /api/docs/search?q=<question>&limit=<n>&includeNonAuthoritative=<true|false>
 | `q`                       | yes      | the question, 1 to 500 characters with at least one non-space character     |
 | `limit`                   | no       | maximum documents, `1` to `50`; default `10` (the CLI default)              |
 | `includeNonAuthoritative` | no       | `true` also returns documents under the non-authoritative prefixes; `false` |
+| `snippets`                | no       | `true` adds a one-line `snippet` to each section (the CLI's `--snippets`)   |
 
 Other parameters are rejected. There is no `context` parameter.
 
 - **Corpus:** the project's own `docs.root` (the Runtime's project root). Specification documents
   and product documentation are not searched.
 - **Response:** `200` with `DocsSearchResult`, unchanged from the CLI's `--json` output: `mode`
-  `hybrid` or `lexical`, the ranked `results` and, when lexical, the `reason`. A lexical answer is a
-  normal result, never an error.
+  `hybrid` or `lexical`, the ranked `results` (each document's frontmatter and best sections,
+  ranked as described in [`search`](../cli/nevo-specflow-docs.md#search)) and, when lexical, the
+  `reason`. A lexical answer is a normal result, never an error.
 - **Caching and admission:** `Cache-Control: no-store`; the shared default rate limit of the
   [endpoint policy](../../architecture/runtime/endpoint-policy.md).
 
@@ -67,10 +70,10 @@ carry it
 
 ## Errors
 
-| Status | Body / code              | Meaning                                                                                                                  |
-| ------ | ------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
-| `400`  | Fastify validation error | `q` missing, empty or too long; `limit` outside `1..50`; `includeNonAuthoritative` not `true`/`false`; unknown parameter |
-| `503`  | `DOCS_UNAVAILABLE`       | `docs.root` is not a directory, the corpus fails validation, or the Runtime serves demo data                             |
+| Status | Body / code              | Meaning                                                                                                                                |
+| ------ | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `400`  | Fastify validation error | `q` missing, empty or too long; `limit` outside `1..50`; `includeNonAuthoritative` or `snippets` not `true`/`false`; unknown parameter |
+| `503`  | `DOCS_UNAVAILABLE`       | `docs.root` is not a directory, the corpus fails validation, or the Runtime serves demo data                                           |
 
 The `503` body is `{ "error": "Documentation search is unavailable.", "code": "DOCS_UNAVAILABLE" }`:
 `error` is for people, `code` is the stable value to branch on.

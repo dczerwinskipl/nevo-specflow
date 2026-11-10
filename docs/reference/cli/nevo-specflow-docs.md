@@ -37,7 +37,7 @@ nevo-specflow docs find <query...> [--type] [--status] [--scope] [--area] [--tag
 nevo-specflow docs get <id...> [--json]
 nevo-specflow docs context <query...> [--limit <n>] [--json]
 nevo-specflow docs check [--write]
-nevo-specflow docs search <question...> [--limit <n>] [--include-non-authoritative] [--no-refresh] [--json]
+nevo-specflow docs search <question...> [--limit <n>] [--include-non-authoritative] [--no-refresh] [--snippets] [--json]
 nevo-specflow docs semantic status [--json]
 nevo-specflow docs semantic index
 ```
@@ -69,25 +69,41 @@ fails, and no error object is printed on stdout.
 
 ## `search`
 
-`search` answers a natural-language question with document sections ranked by content, not
-frontmatter. It is the only model-dependent command.
+`search` answers a natural-language question with ranked documents, each described by its
+frontmatter and the heading paths of its best matching sections, so a reader (often an AI agent)
+can choose which documents to open with `get`. It is the only model-dependent command.
 
 | Option                        | Meaning                                                                      |
 | ----------------------------- | ---------------------------------------------------------------------------- |
 | `--limit <n>`                 | Maximum documents (default 10); each shows up to 3 matching sections         |
 | `--include-non-authoritative` | Also return documents under the `nonAuthoritative` prefixes of `docs.yaml`   |
 | `--no-refresh`                | Embed no documents; answer lexically unless the index is already complete    |
+| `--snippets`                  | Add a one-line snippet (about 280 characters) to each matching section       |
 | `--json`                      | Print the result contract (`DocsSearchResult` in `@nevo/specflow-contracts`) |
 
 Inactive documents (`deprecated`, `superseded`) are never returned. The corpus frontmatter is
 validated as for `context` (document bodies are not checked; links are `check`'s job); an invalid
 corpus or configuration fails with exit 1.
 
-**Mode.** With `docs.search.semantic: true` and a reachable `ai.embeddings` endpoint, ranking is
-hybrid: BM25 over section text fused with vector similarity
-([ADR 0021](../../architecture/decisions/0021-product-neutral-ai-semantic-search-engine.md)).
-Otherwise the same call ranks by BM25 alone and states why. Every result carries `mode`; a lexical
-result carries `reason.code` and a `reason.message` with the cause. A lexical answer still exits 0.
+**Ranking.** Documents are ranked by reciprocal rank fusion (equal weight, by rank, so the two
+scores never mix) of two rankings, each limited to three times `--limit` candidates:
+
+1. the **section ranking**: sections ranked by BM25 over their heading path and text, fused with
+   vector similarity in hybrid mode
+   ([ADR 0021](../../architecture/decisions/0021-product-neutral-ai-semantic-search-engine.md));
+   a document takes the rank of its best section;
+2. the **frontmatter ranking** of `find`: the same fields, weights and term normalization (case and
+   English plural folding, so `task` and `tasks` match each other).
+
+A document whose `summary` says "Tasks are handled by the engine" is therefore found by
+`search tasks` even when no section says "tasks". A document only the frontmatter matched has no
+sections. Section text is matched by exact, diacritic-folded words without stemming, because the
+engine does not know the corpus language.
+
+**Mode.** With `docs.search.semantic: true` and a reachable `ai.embeddings` endpoint, the section
+ranking is hybrid. Otherwise it is BM25 alone and the result states why. Every result carries
+`mode`; a lexical result carries `reason.code` and a `reason.message` with the cause. A lexical
+answer still exits 0.
 
 | `reason.code`          | When                                                                                                                                                      |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -110,15 +126,26 @@ another name, such as this repository's `pnpm docs:*` scripts, names its own com
 HTTP endpoint always names the product command). Search is hybrid only once every current
 section has a vector. `--no-refresh` skips the embedding step entirely.
 
-Text output, hybrid:
+Text output: one block per document with its id, title, type and status, the `summary`, the
+`read_when` situations, the matching sections (heading paths, `;`-separated) and the command that
+reads it. Absent fields are omitted.
 
 ```text
 mode: hybrid
 
-guide — "Guide"  docs/guide.md  (score 0.0328)
-  in: Guide > Install
-    Install the widget with pnpm.
+guide — Guide (reference, current)
+  How to install and configure the widget.
+  read when: installing the widget; pointing it at a local model
+  sections: Guide > Install; Guide > Configure
   read: nevo-specflow docs get guide
+```
+
+With `--snippets`, each section is on its own line with its snippet:
+
+```text
+  sections:
+    Guide > Install: Install the widget with pnpm.
+    Guide > Configure: Point the embedding endpoint at a local model.
 ```
 
 Text output, lexical: the first line names the reason, for example
@@ -127,7 +154,34 @@ Text output, lexical: the first line names the reason, for example
 mode: lexical (semantic-disabled: Semantic search is not enabled (docs.search.semantic is not true).)
 ```
 
-JSON output (`--json`), lexical:
+JSON output (`--json`), hybrid:
+
+```json
+{
+  "mode": "hybrid",
+  "results": [
+    {
+      "id": "guide",
+      "title": "Guide",
+      "type": "reference",
+      "status": "current",
+      "scope": "specflow",
+      "areas": ["docs"],
+      "tags": ["install"],
+      "summary": "How to install and configure the widget.",
+      "readWhen": ["installing the widget", "pointing it at a local model"],
+      "file": "docs/guide.md",
+      "score": 0.0328,
+      "sections": [
+        { "headingPath": ["Guide", "Install"], "score": 0.0325 },
+        { "headingPath": ["Guide", "Configure"], "score": 0.0159 }
+      ]
+    }
+  ]
+}
+```
+
+JSON output, lexical with `--snippets`:
 
 ```json
 {
@@ -140,13 +194,17 @@ JSON output (`--json`), lexical:
     {
       "id": "guide",
       "title": "Guide",
+      "type": "reference",
+      "status": "current",
+      "summary": "How to install and configure the widget.",
+      "readWhen": ["installing the widget"],
       "file": "docs/guide.md",
-      "score": 1.38,
-      "chunks": [
+      "score": 0.0328,
+      "sections": [
         {
           "headingPath": ["Guide", "Install"],
-          "snippet": "Install the widget with pnpm.",
-          "score": 1.38
+          "score": 1.38,
+          "snippet": "Install the widget with pnpm."
         }
       ]
     }
@@ -154,8 +212,10 @@ JSON output (`--json`), lexical:
 }
 ```
 
-A hybrid result has `"mode": "hybrid"` and no `reason`. Scores are BM25 in lexical mode and
-reciprocal-rank-fusion scores in hybrid mode; compare them only within one result.
+`scope`, `areas`, `tags`, `summary` and `readWhen` are present only when the frontmatter has a
+non-empty value; `snippet` only with `--snippets`. A document's `score` is its fused rank score; a
+section's `score` is BM25 in lexical mode and the section-level reciprocal-rank-fusion score in
+hybrid mode. Only the order is meaningful; compare scores only within one result.
 
 ## `semantic status` and `semantic index`
 

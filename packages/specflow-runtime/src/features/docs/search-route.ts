@@ -21,7 +21,7 @@ export const DOCS_SEARCH_MAX_QUERY_LENGTH = 500;
 
 /**
  * Wire form of the search query. The Runtime does not coerce query types, so `limit` arrives as
- * digits (1..50) and the switch as `true` or `false`.
+ * digits (1..50) and the switches as `true` or `false`.
  */
 const DocsSearchQuerySchema = Type.Object(
   {
@@ -43,6 +43,11 @@ const DocsSearchQuerySchema = Type.Object(
           'Also return documents under the non-authoritative path prefixes (default false).',
       }),
     ),
+    snippets: Type.Optional(
+      Type.Union([Type.Literal('true'), Type.Literal('false')], {
+        description: 'Add a one-line snippet to each matching section (default false).',
+      }),
+    ),
   },
   { additionalProperties: false },
 );
@@ -53,8 +58,8 @@ const DocsSearchErrorSchema = Type.Object(
 );
 
 /**
- * `GET /api/docs/search`: ranked document sections of the project's own documentation, with the
- * result contract of `nevo-specflow docs search --json`. Every search runs the bounded read-time
+ * `GET /api/docs/search`: ranked documents of the project's own documentation with their best
+ * sections, in the result contract of `nevo-specflow docs search --json`. Every search runs the bounded read-time
  * refresh. `docs` is `undefined` when the Runtime serves no project documentation (demo data).
  */
 export const docsSearchEndpoint: FastifyPluginCallback<{
@@ -86,12 +91,13 @@ export const docsSearchEndpoint: FastifyPluginCallback<{
         return unavailable();
       }
 
-      const { q, limit, includeNonAuthoritative } = request.query;
+      const { q, limit, includeNonAuthoritative, snippets } = request.query;
       try {
         return await docs.search({
           query: q.trim(),
           limit: limit === undefined ? DOCS_SEARCH_DEFAULT_LIMIT : Number(limit),
           includeNonAuthoritative: includeNonAuthoritative === 'true',
+          snippets: snippets === 'true',
           refresh: true,
         });
       } catch (error) {

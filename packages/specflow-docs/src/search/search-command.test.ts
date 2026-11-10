@@ -48,7 +48,12 @@ describe('docs search and semantic status', () => {
     expect(lexical.stdout[0]).toMatch(
       /^mode: lexical \(endpoint-unreachable: .*connection refused/,
     );
-    expect(lexical.stdout).toContain('  read: pnpm docs:get guide');
+    expect(lexical.stdout.slice(1)).toEqual([
+      '',
+      'guide — Guide (hub, current)',
+      '  sections: Guide > Install',
+      '  read: pnpm docs:get guide',
+    ]);
   });
 
   it('semantic status exits 1 when semantic search is enabled but the endpoint is unreachable', async () => {

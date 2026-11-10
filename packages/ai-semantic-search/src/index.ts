@@ -69,6 +69,7 @@ export {
   type SearchVectors,
   type UnitHit,
 } from './search/search';
+export { RRF_K, reciprocalRankFusion } from './ranking/rrf';
 export { sameIdentity, validateChange } from './indexing/vector-store/vector-store';
 export {
   cosineSimilarity,

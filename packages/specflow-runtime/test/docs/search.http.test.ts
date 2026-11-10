@@ -80,6 +80,12 @@ describe('GET /api/docs/search', () => {
       expect(Value.Check(DocsSearchResultSchema, body)).toBe(true);
       expect(body).toMatchObject({ mode: 'hybrid', results: [{ id: 'guide' }] });
       expect(body.results).toHaveLength(1);
+      expect(body.results[0]!.sections[0]).not.toHaveProperty('snippet');
+
+      const withSnippets = await hybrid.inject('/api/docs/search?q=install&limit=1&snippets=true');
+      const snippetBody = withSnippets.json<DocsSearchResult>();
+      expect(Value.Check(DocsSearchResultSchema, snippetBody)).toBe(true);
+      expect(snippetBody.results[0]!.sections[0]).toMatchObject({ snippet: 'Install the widget.' });
     } finally {
       await hybrid.close();
     }

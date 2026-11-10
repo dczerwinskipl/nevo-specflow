@@ -14,6 +14,7 @@ interface SearchCliOptions {
   readonly limit: number;
   readonly includeNonAuthoritative: boolean;
   readonly refresh: boolean;
+  readonly snippets: boolean;
   readonly json: boolean;
 }
 
@@ -21,7 +22,7 @@ export function addSearchCommand(docs: Command, ctx: DocsCommandContext, open: O
   const command = docs
     .command('search')
     .description(
-      'Answer a natural-language question with ranked document sections (hybrid when semantic search is available, lexical otherwise)',
+      'Answer a natural-language question with ranked documents and their best sections (hybrid when semantic search is available, lexical otherwise)',
     )
     .argument('<question...>', 'the question, in your own words')
     .option('--limit <n>', 'maximum documents', positiveInteger, DEFAULT_SEARCH_LIMIT)
@@ -34,6 +35,7 @@ export function addSearchCommand(docs: Command, ctx: DocsCommandContext, open: O
       '--no-refresh',
       'embed no documents; answer lexically unless the index is already complete',
     )
+    .option('--snippets', 'show a one-line snippet of each matching section', false)
     .option('--json', 'emit JSON on stdout', false);
 
   command.action((questionParts: string[], opts: SearchCliOptions) =>
@@ -55,6 +57,7 @@ export function addSearchCommand(docs: Command, ctx: DocsCommandContext, open: O
         query,
         limit: opts.limit,
         includeNonAuthoritative: opts.includeNonAuthoritative,
+        snippets: opts.snippets,
         refresh: opts.refresh,
         ...(ctx.semanticIndexCommand === undefined
           ? {}
@@ -67,12 +70,17 @@ export function addSearchCommand(docs: Command, ctx: DocsCommandContext, open: O
         return;
       }
 
-      printResult(ctx, query, result);
+      printResult(ctx, query, result, opts.snippets);
     }),
   );
 }
 
-function printResult(ctx: DocsCommandContext, query: string, result: DocsSearchResult): void {
+function printResult(
+  ctx: DocsCommandContext,
+  query: string,
+  result: DocsSearchResult,
+  snippets: boolean,
+): void {
   ctx.stdout(
     result.mode === 'hybrid'
       ? 'mode: hybrid'
@@ -87,12 +95,25 @@ function printResult(ctx: DocsCommandContext, query: string, result: DocsSearchR
   const getCommand = ctx.getCommand ?? 'nevo-specflow docs get';
   for (const hit of result.results) {
     ctx.stdout('');
-    ctx.stdout(`${hit.id} — "${hit.title}"  ${hit.file}  (score ${hit.score.toFixed(4)})`);
-    for (const chunk of hit.chunks) {
-      ctx.stdout(`  in: ${chunk.headingPath.join(' > ') || '(top)'}`);
-      if (chunk.snippet) {
-        ctx.stdout(`    ${chunk.snippet}`);
+    ctx.stdout(`${hit.id} — ${hit.title} (${hit.type}, ${hit.status})`);
+    if (hit.summary) {
+      ctx.stdout(`  ${hit.summary}`);
+    }
+
+    if (hit.readWhen) {
+      ctx.stdout(`  read when: ${hit.readWhen.join('; ')}`);
+    }
+
+    const heading = (path: readonly string[]) => path.join(' > ') || '(top)';
+    if (snippets && hit.sections.length > 0) {
+      ctx.stdout('  sections:');
+      for (const section of hit.sections) {
+        ctx.stdout(`    ${heading(section.headingPath)}: ${section.snippet ?? ''}`);
       }
+    } else if (hit.sections.length > 0) {
+      ctx.stdout(
+        `  sections: ${hit.sections.map((section) => heading(section.headingPath)).join('; ')}`,
+      );
     }
 
     ctx.stdout(`  read: ${getCommand} ${hit.id}`);

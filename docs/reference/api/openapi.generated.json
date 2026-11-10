@@ -777,9 +777,11 @@
                   "required": [
                     "id",
                     "title",
+                    "type",
+                    "status",
                     "file",
                     "score",
-                    "chunks"
+                    "sections"
                   ],
                   "properties": {
                     "id": {
@@ -788,19 +790,51 @@
                     "title": {
                       "type": "string"
                     },
+                    "type": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "scope": {
+                      "type": "string"
+                    },
+                    "areas": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1
+                    },
+                    "tags": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1
+                    },
+                    "summary": {
+                      "type": "string"
+                    },
+                    "readWhen": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1
+                    },
                     "file": {
                       "type": "string"
                     },
                     "score": {
                       "type": "number"
                     },
-                    "chunks": {
+                    "sections": {
                       "type": "array",
                       "items": {
                         "type": "object",
                         "required": [
                           "headingPath",
-                          "snippet",
                           "score"
                         ],
                         "properties": {
@@ -810,16 +844,16 @@
                               "type": "string"
                             }
                           },
-                          "snippet": {
-                            "type": "string"
-                          },
                           "score": {
                             "type": "number"
+                          },
+                          "snippet": {
+                            "type": "string"
                           }
                         },
                         "additionalProperties": false
                       },
-                      "minItems": 1
+                      "maxItems": 3
                     }
                   },
                   "additionalProperties": false
@@ -896,9 +930,11 @@
                   "required": [
                     "id",
                     "title",
+                    "type",
+                    "status",
                     "file",
                     "score",
-                    "chunks"
+                    "sections"
                   ],
                   "properties": {
                     "id": {
@@ -907,19 +943,51 @@
                     "title": {
                       "type": "string"
                     },
+                    "type": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "scope": {
+                      "type": "string"
+                    },
+                    "areas": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1
+                    },
+                    "tags": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1
+                    },
+                    "summary": {
+                      "type": "string"
+                    },
+                    "readWhen": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1
+                    },
                     "file": {
                       "type": "string"
                     },
                     "score": {
                       "type": "number"
                     },
-                    "chunks": {
+                    "sections": {
                       "type": "array",
                       "items": {
                         "type": "object",
                         "required": [
                           "headingPath",
-                          "snippet",
                           "score"
                         ],
                         "properties": {
@@ -929,16 +997,16 @@
                               "type": "string"
                             }
                           },
-                          "snippet": {
-                            "type": "string"
-                          },
                           "score": {
                             "type": "number"
+                          },
+                          "snippet": {
+                            "type": "string"
                           }
                         },
                         "additionalProperties": false
                       },
-                      "minItems": 1
+                      "maxItems": 3
                     }
                   },
                   "additionalProperties": false
@@ -3990,6 +4058,28 @@
             "name": "includeNonAuthoritative",
             "required": false,
             "description": "Also return documents under the non-authoritative path prefixes (default false)."
+          },
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "false"
+                  ]
+                }
+              ]
+            },
+            "in": "query",
+            "name": "snippets",
+            "required": false,
+            "description": "Add a one-line snippet to each matching section (default false)."
           }
         ],
         "security": [

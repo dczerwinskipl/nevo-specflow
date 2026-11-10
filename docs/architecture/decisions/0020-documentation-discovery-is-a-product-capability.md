@@ -149,11 +149,14 @@ nevo-specflow docs semantic index
 
 - `find`, `get`, `context` and `check` are deterministic and do not depend on a model. `get` fails
   closed on inactive documents.
-- `search` is the only model-dependent command. Its results are content chunks grouped by
-  document: document id, title, heading path, snippet and score. Every result carries a top-level
-  `mode` (`hybrid` or `lexical`) and, when `lexical`, a `reason`. Inactive documents are always
-  excluded; documents under non-authoritative prefixes are excluded unless the include switch is
-  set.
+- `search` is the only model-dependent command. Its results are documents, described by their
+  frontmatter (id, title, type, status, taxonomy, summary, read_when) so a reader can choose which to
+  open, with the heading paths of their best matching sections and a score; section snippets only on
+  request. Documents are ranked by fusing the section ranking with the frontmatter ranking of
+  `find`, so a document whose frontmatter matches the question is found even when no section
+  repeats its words. Every result carries a top-level `mode` (`hybrid` or `lexical`) and, when
+  `lexical`, a `reason`. Inactive documents are always excluded; documents under non-authoritative
+  prefixes are excluded unless the include switch is set.
 - `semantic status` reports whether semantic search is enabled, the endpoint's reachability, the
   model and dimensions, and index freshness. It exits non-zero when semantic search is enabled but
   unavailable.

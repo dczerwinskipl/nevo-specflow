@@ -33,9 +33,17 @@ export interface DocsChunk extends Chunk {
   readonly metadata: DocsChunkMetadata;
 }
 
+/** An active document's frontmatter (with `file` and an empty `body`), for frontmatter ranking. */
+export interface DocsDocument {
+  readonly record: DocRecord;
+  readonly nonAuthoritative: boolean;
+}
+
 /** The validated corpus as chunks: active documents only (inactive ones are never searched). */
 export interface DocsChunks {
   readonly chunks: readonly DocsChunk[];
+  /** Every active document, also those without chunks (an empty body), in id order. */
+  readonly documents: readonly DocsDocument[];
   /** Number of documents that were read and re-chunked by this load (the rest came from cache). */
   readonly reparsed: number;
 }
@@ -89,7 +97,7 @@ export function createDocsChunkSource({
         writeCache(cacheFile, next);
       }
 
-      return { chunks: validatedChunks(corpus, [...next.values()]), reparsed };
+      return { ...validatedChunks(corpus, [...next.values()]), reparsed };
     },
   };
 }
@@ -144,7 +152,10 @@ export function contextualHeader(frontmatter: Record<string, unknown>): string {
   return lines.join('\n');
 }
 
-function validatedChunks(corpus: DocsCorpus, files: readonly CachedFile[]): DocsChunk[] {
+function validatedChunks(
+  corpus: DocsCorpus,
+  files: readonly CachedFile[],
+): Omit<DocsChunks, 'reparsed'> {
   const docs: DocRecord[] = [];
   const missingFrontmatter: string[] = [];
   for (const entry of files) {
@@ -167,24 +178,28 @@ function validatedChunks(corpus: DocsCorpus, files: readonly CachedFile[]): Docs
     throw new DocsCorpusInvalidError(problems);
   }
 
+  const byFile = new Map(files.map((entry) => [entry.file, entry]));
   const chunks: DocsChunk[] = [];
-  for (const entry of files) {
-    if (entry.frontmatter === null || isInactiveStatus(entry.frontmatter.status)) {
+  const documents: DocsDocument[] = [];
+  for (const record of docs) {
+    if (isInactiveStatus(record.status)) {
       continue;
     }
 
+    const nonAuthoritative = isNonAuthoritative(corpus.settings, record.file);
+    documents.push({ record, nonAuthoritative });
     const metadata: DocsChunkMetadata = {
-      file: entry.file,
-      title: asString(entry.frontmatter.title),
-      status: asString(entry.frontmatter.status),
-      nonAuthoritative: isNonAuthoritative(corpus.settings, entry.file),
+      file: record.file,
+      title: asString(record.title),
+      status: asString(record.status),
+      nonAuthoritative,
     };
-    for (const chunk of entry.chunks) {
-      chunks.push({ ...chunk, unitId: asString(entry.frontmatter.id), metadata });
+    for (const chunk of byFile.get(record.file)!.chunks) {
+      chunks.push({ ...chunk, unitId: asString(record.id), metadata });
     }
   }
 
-  return chunks;
+  return { chunks, documents };
 }
 
 function sameFiles(

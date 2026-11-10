@@ -10,9 +10,12 @@ import {
 const hit = {
   id: 'guide',
   title: 'Guide',
+  type: 'guide',
+  status: 'current',
+  readWhen: ['installing'],
   file: 'docs/guide.md',
   score: 0.5,
-  chunks: [{ headingPath: ['Guide'], snippet: 'Install it.', score: 0.5 }],
+  sections: [{ headingPath: ['Guide'], score: 0.5 }],
 };
 
 describe('DocsSearchResultSchema', () => {

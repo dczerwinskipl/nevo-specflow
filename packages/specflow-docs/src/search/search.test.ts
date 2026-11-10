@@ -36,6 +36,11 @@ writeFileSync(
   join(root, 'docs', 'ideas', 'draft.md'),
   doc('draft', 'draft', '# Draft\n\nA widget install idea.'),
 );
+// Only the frontmatter names tasks; no section does.
+writeFileSync(
+  join(root, 'docs', 'engine.md'),
+  '---\nid: engine\ntype: hub\ntitle: Engine\nstatus: current\nsummary: Tasks are handled by the engine.\nread_when: [changing work items]\n---\n\n# Engine\n\nWork items move through states.\n',
+);
 
 writeFileSync(join(root, 'docs', 'docs.yaml'), 'nonAuthoritative: [ideas]\n');
 
@@ -59,6 +64,7 @@ const request = {
   query: 'install widget',
   limit: 5,
   includeNonAuthoritative: false,
+  snippets: false,
   refresh: true,
 };
 
@@ -68,15 +74,46 @@ describe('searchDocumentation', () => {
     const first = await searchDocumentation(search, request);
     expect(first.mode).toBe('hybrid');
     expect(first.results.map((hit) => hit.id)).toEqual(['guide']);
-    expect(first.results[0]).toMatchObject({
+    expect(first.results[0]).toEqual({
+      id: 'guide',
       title: 'guide title',
+      type: 'hub',
+      status: 'current',
       file: 'docs/guide.md',
-      chunks: [{ headingPath: ['Guide', 'Install'], snippet: 'Install the widget with pnpm.' }],
+      score: expect.any(Number) as unknown,
+      sections: [{ headingPath: ['Guide', 'Install'], score: expect.any(Number) as unknown }],
     });
 
     const embedCalls = provider.calls.length;
     expect(await searchDocumentation(search, request)).toEqual(first);
     expect(provider.calls.slice(embedCalls).map((call) => call.purpose)).toEqual(['query']);
+
+    const withSnippets = await searchDocumentation(search, { ...request, snippets: true });
+    expect(withSnippets.results[0]!.sections[0]).toMatchObject({
+      headingPath: ['Guide', 'Install'],
+      snippet: 'Install the widget with pnpm.',
+    });
+  });
+
+  it('finds a document by its frontmatter lexically, singular or plural', async () => {
+    const search = openDocsSearch({
+      projectRoot: root,
+      corpus: openFileSystemCorpus(root, DEFAULT_DOCS_SETTINGS),
+      configuration: { docs: DEFAULT_DOCS_SETTINGS, embeddings: undefined },
+      env: {},
+    });
+    for (const query of ['tasks', 'task']) {
+      const result = await searchDocumentation(search, { ...request, query });
+      expect(result.mode).toBe('lexical');
+      expect(result.results).toEqual([
+        expect.objectContaining({
+          id: 'engine',
+          summary: 'Tasks are handled by the engine.',
+          readWhen: ['changing work items'],
+          sections: [],
+        }),
+      ]);
+    }
   });
 
   it('includes non-authoritative documents only with the switch; inactive ones never', async () => {
@@ -114,13 +151,13 @@ describe('searchDocumentation', () => {
 
   it('does not build a large gap on read: lexical index-building until the index is complete', async () => {
     const { provider, store } = semanticSearch();
-    const base = createDocsChunkSource({ corpus }).load().chunks;
+    const { chunks: base, documents } = createDocsChunkSource({ corpus }).load();
     const many = Array.from({ length: 2 * READ_REFRESH_MAX_CHUNKS + 2 }, (_, index) => ({
       ...base[index % base.length]!,
       id: `${base[index % base.length]!.id}/${String(index)}`,
     }));
     const search: DocsSearch = {
-      chunks: { load: () => ({ chunks: many, reparsed: 0 }) },
+      chunks: { load: () => ({ chunks: many, documents, reparsed: 0 }) },
       vectors: { store, providers: { query: provider, documents: provider } },
     };
 
@@ -202,7 +239,7 @@ describe('docs chunk source', () => {
   it('re-reads only files whose stat changed and re-chunks only changed content, across instances', () => {
     const cacheFile = join(root, 'cache', 'units.json');
     const source = createDocsChunkSource({ corpus, cacheFile });
-    expect(source.load().reparsed).toBe(3);
+    expect(source.load().reparsed).toBe(4);
     expect(source.load().reparsed).toBe(0);
 
     // Same content, new mtime: one read and hash, no re-chunking.
@@ -218,6 +255,6 @@ describe('docs chunk source', () => {
     const cacheFile = join(root, 'cache', 'null.json');
     mkdirSync(join(root, 'cache'), { recursive: true });
     writeFileSync(cacheFile, 'null');
-    expect(createDocsChunkSource({ corpus, cacheFile }).load().reparsed).toBe(3);
+    expect(createDocsChunkSource({ corpus, cacheFile }).load().reparsed).toBe(4);
   });
 });

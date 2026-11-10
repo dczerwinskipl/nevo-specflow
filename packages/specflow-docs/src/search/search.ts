@@ -1,12 +1,19 @@
-// `docs search`: ranked document sections for a question, hybrid when the configured endpoint and the
-// index allow it and lexical with a stated reason otherwise. Embeddings and the index never make a
-// search fail; the corpus and the configuration are validated like for every `docs` command.
+// `docs search`: ranked documents for a question, hybrid when the configured endpoint and the index
+// allow it and lexical with a stated reason otherwise. Embeddings and the index never make a search
+// fail; the corpus and the configuration are validated like for every `docs` command.
 
-import { createSearchEngine, type SearchVectors } from '@nevo/ai-semantic-search';
+import {
+  createSearchEngine,
+  reciprocalRankFusion,
+  type SearchVectors,
+  type UnitHit,
+} from '@nevo/ai-semantic-search';
 import type { DocsSearchReason, DocsSearchResult } from '@nevo/specflow-contracts/docs';
 
 import type { DocsConfiguration } from '../config/docs-configuration';
 import type { DocsCorpus } from '../corpus/corpus';
+import { searchDocs } from '../discovery/frontmatter-search';
+import { asString } from '../frontmatter/contract';
 import {
   createEmbeddingProviders,
   type CreateEmbeddingProvider,
@@ -20,6 +27,12 @@ import { openDocsIndex, type DocsIndex } from '../semantic-index/index-store';
 import { SEMANTIC_INDEX_COMMAND, searchReason, semanticEndpoint } from '../semantic-index/reasons';
 import { refreshForRead, type IndexVectors } from '../semantic-index/refresh-policy';
 import { toHit } from './result';
+
+/**
+ * Candidates each ranking contributes per requested document before the two are fused, so a document
+ * just below the limit in one ranking and high in the other can still be returned.
+ */
+export const DOCUMENT_CANDIDATES_PER_RESULT = 3;
 
 /** Vectors for a search, or why there are none. */
 export type DocsSearchVectors = { readonly reason: DocsSearchReason } | IndexVectors;
@@ -80,6 +93,8 @@ export interface DocsSearchRequest {
   readonly limit: number;
   /** Include documents under the project's non-authoritative prefixes. */
   readonly includeNonAuthoritative: boolean;
+  /** Add each section's one-line `snippet` to the result. */
+  readonly snippets: boolean;
   /**
    * Re-embed changed documents before answering (ADR 0020 read-time refresh), at most
    * `READ_REFRESH_MAX_CHUNKS` (`semantic-index/refresh-policy`); a larger gap answers lexically with `index-building`.
@@ -92,30 +107,52 @@ export interface DocsSearchRequest {
   readonly semanticIndexCommand?: string;
 }
 
+/**
+ * Ranks documents by fusing two rankings with reciprocal rank fusion (`reciprocalRankFusion`, equal
+ * weight, rank-based, so the incomparable scores never mix):
+ * - the section ranking of the search engine, documents in the order of their best section (BM25
+ *   over heading paths and section text, fused with the vector ranking in hybrid mode);
+ * - the frontmatter ranking of `docs find` (`searchDocs`: title, id, scope, areas, tags, read_when,
+ *   summary with their field weights and English plural folding), which finds a document by what it
+ *   says it is about even when no section repeats the words.
+ * A document only the frontmatter matched has no sections.
+ */
 export async function searchDocumentation(
   search: DocsSearch,
   request: DocsSearchRequest,
 ): Promise<DocsSearchResult> {
-  const { chunks } = search.chunks.load();
+  const { chunks, documents } = search.chunks.load();
   const vectors = await vectorsFor(
     search.vectors,
     chunks,
     request.refresh,
     request.semanticIndexCommand ?? SEMANTIC_INDEX_COMMAND,
   );
-  const result = await createSearchEngine(chunks).search({
+  const candidates = request.limit * DOCUMENT_CANDIDATES_PER_RESULT;
+  const sections = await createSearchEngine(chunks).search({
     query: request.query,
-    limit: request.limit,
+    limit: candidates,
     vectors,
     filter: (chunk) =>
       request.includeNonAuthoritative || !(chunk as DocsChunk).metadata.nonAuthoritative,
   });
+  const searched = documents
+    .filter((document) => request.includeNonAuthoritative || !document.nonAuthoritative)
+    .map((document) => document.record);
+  const byFrontmatter = searchDocs(searched, { query: request.query, limit: candidates });
 
-  const results = result.hits.map(toHit);
+  const records = new Map(searched.map((record) => [asString(record.id), record]));
+  const sectionsById = new Map<string, UnitHit>(sections.hits.map((hit) => [hit.unitId, hit]));
+  const results = reciprocalRankFusion([
+    sections.hits.map((hit) => hit.unitId),
+    byFrontmatter.map((record) => asString(record.id)),
+  ])
+    .slice(0, request.limit)
+    .map(({ id, score }) => toHit(records.get(id)!, sectionsById.get(id), score, request.snippets));
 
-  return result.mode === 'hybrid'
+  return sections.mode === 'hybrid'
     ? { mode: 'hybrid', results }
-    : { mode: 'lexical', reason: searchReason(result.reason), results };
+    : { mode: 'lexical', reason: searchReason(sections.reason), results };
 }
 
 async function vectorsFor(

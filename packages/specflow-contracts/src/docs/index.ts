@@ -44,29 +44,53 @@ export const DocsSearchReasonSchema = Type.Object(
 );
 export type DocsSearchReason = Static<typeof DocsSearchReasonSchema>;
 
-/** One matching section of a document. */
-export const DocsSearchChunkSchema = Type.Object(
+/** One of the best matching sections of a document. */
+export const DocsSearchSectionSchema = Type.Object(
   {
-    /** Heading path of the section, outermost first (`H1 > H2 > H3`). */
+    /** Heading path of the section, outermost first (`H1 > H2 > H3`); empty before the first heading. */
     headingPath: Type.Array(Type.String()),
-    snippet: Type.String(),
+    /**
+     * Rank score of the section among all sections: BM25 in lexical mode, reciprocal rank fusion of
+     * the BM25 and vector rankings in hybrid mode.
+     */
     score: Type.Number(),
+    /** The section text on one line, cut at about 280 characters; only when snippets are requested. */
+    snippet: Type.Optional(Type.String()),
   },
   { additionalProperties: false },
 );
-export type DocsSearchChunk = Static<typeof DocsSearchChunkSchema>;
+export type DocsSearchSection = Static<typeof DocsSearchSectionSchema>;
 
-/** One document, with its best matching sections first. */
+const strings = Type.Array(Type.String(), { minItems: 1 });
+
+/**
+ * One document, described by its frontmatter so a reader can decide whether to open it. Optional
+ * fields are present only when the document's frontmatter has a non-empty value.
+ */
 export const DocsSearchHitSchema = Type.Object(
   {
     /** Stable document id; read the document with `docs get <id>`. */
     id: Type.String(),
     title: Type.String(),
+    type: Type.String(),
+    status: Type.String(),
+    scope: Type.Optional(Type.String()),
+    areas: Type.Optional(strings),
+    tags: Type.Optional(strings),
+    summary: Type.Optional(Type.String()),
+    /** The frontmatter `read_when`: situations in which the document should be read. */
+    readWhen: Type.Optional(strings),
     /** Path relative to the project root, with `/` separators. */
     file: Type.String(),
-    /** Score of the best chunk; BM25 in lexical mode, reciprocal rank fusion in hybrid mode. */
+    /**
+     * Document rank score: reciprocal rank fusion of the section ranking (BM25, fused with the vector
+     * ranking in hybrid mode) and the frontmatter ranking. Only the order is meaningful.
+     */
     score: Type.Number(),
-    chunks: Type.Array(DocsSearchChunkSchema, { minItems: 1 }),
+    /**
+     * Up to three best matching sections, best first. Empty when only the frontmatter matched.
+     */
+    sections: Type.Array(DocsSearchSectionSchema, { maxItems: 3 }),
   },
   { additionalProperties: false },
 );

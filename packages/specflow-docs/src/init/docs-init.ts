@@ -6,13 +6,13 @@
 import type { DocsSearchReason } from '@nevo/specflow-contracts/docs';
 
 import { parseDocsConfiguration } from '../config/docs-configuration';
-import type { EmbeddingsSettings } from '../config/embeddings-settings';
-import { DocsConfigError } from '../errors';
-import { embeddingFailureReason } from '../semantic/effective-mode';
 import {
   createEmbeddingProviders,
   type CreateEmbeddingProvider,
-} from '../semantic/embedding-providers';
+} from '../embeddings/embedding-providers';
+import type { EmbeddingsSettings } from '../embeddings/embeddings-settings';
+import { embeddingFailureReason } from '../embeddings/endpoint-reasons';
+import { DocsConfigError } from '../errors';
 
 export const DEFAULT_EMBEDDINGS_BASE_URL = 'http://127.0.0.1:11434/v1';
 export const DEFAULT_EMBEDDINGS_MODEL = 'qwen3-embedding:0.6b';

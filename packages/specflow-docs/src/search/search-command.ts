@@ -3,9 +3,9 @@ import type { Command } from 'commander';
 import type { DocsSearchResult } from '@nevo/specflow-contracts/docs';
 
 import { DocsUsageError } from '../errors';
-import { openDocsSearch, searchDocumentation } from './docs-search';
-import { positiveInteger, runDocsAction, type DocsCommandContext } from '../cli/context';
-import type { OpenProject } from '../cli/open-corpus';
+import { openDocsSearch, searchDocumentation } from './search';
+import { positiveInteger, runDocsAction, type DocsCommandContext } from '../command/context';
+import type { OpenProject } from '../command/open-project';
 
 /** Documents returned when `--limit` is omitted. */
 export const DEFAULT_SEARCH_LIMIT = 10;

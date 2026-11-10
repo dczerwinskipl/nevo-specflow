@@ -4,8 +4,8 @@
 // looks like a literal secret is rejected. This parser is file-free; `parseDocsConfiguration` is the
 // entry point the `docs` command and Runtime config loading share.
 
+import { onlyKeys, record, type ConfigRecord } from '../config/values';
 import { DocsConfigError } from '../errors';
-import { onlyKeys, record, type ConfigRecord } from './values';
 
 /** The only embedding protocol; further protocols are further adapters (ADR 0021). */
 export const EMBEDDINGS_PROTOCOLS = ['openai-compatible'] as const;

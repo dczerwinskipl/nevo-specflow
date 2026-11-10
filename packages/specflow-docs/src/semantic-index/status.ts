@@ -1,39 +1,17 @@
-// `docs semantic status` and `docs semantic index`: report and (re)build the semantic index. Status is
-// the only `docs` operation whose answer turns an unavailable configured semantic mode into a
-// failure; the caller decides the exit code from `failed`, separately from the reported mode.
+// `docs semantic status`: report the configured endpoint and the semantic index. Status is the only
+// `docs` operation whose answer turns an unavailable configured semantic mode into a failure; the
+// caller decides the exit code from `failed`, separately from the reported mode.
 
-import {
-  CHUNKER_VERSION,
-  planRefresh,
-  refreshIndex,
-  type RefreshOutcome,
-  type RefreshProgress,
-} from '@nevo/ai-semantic-search';
 import type { DocsSearchReason } from '@nevo/specflow-contracts/docs';
 
 import type { DocsConfiguration } from '../config/docs-configuration';
-import type { EmbeddingsSettings } from '../config/embeddings-settings';
-import type { DocsIndex } from './docs-index';
-import { READ_REFRESH_MAX_CHUNKS } from './docs-search';
-import {
-  embeddingFailureReason,
-  overLimitReason,
-  refreshReason,
-  semanticEndpoint,
-  unreadableIndexReason,
-} from './effective-mode';
-import {
-  createEmbeddingProviders,
-  type CreateEmbeddingProvider,
-  type EmbeddingProviders,
-} from './embedding-providers';
-
-export interface SemanticEnvironment {
-  readonly env: Readonly<Record<string, string | undefined>>;
-  readonly createProvider?: CreateEmbeddingProvider;
-  /** Stops the endpoint requests; `semantic index` then ends with the embedding failure. */
-  readonly signal?: AbortSignal;
-}
+import type { EmbeddingsSettings } from '../embeddings/embeddings-settings';
+import { embeddingFailureReason } from '../embeddings/endpoint-reasons';
+import { providersFor, type SemanticEnvironment } from './environment';
+import { planAgainstIndex, type EndpointIdentity } from './freshness';
+import type { DocsIndex } from './index-store';
+import { READ_REFRESH_MAX_CHUNKS } from './refresh-policy';
+import { overLimitReason, semanticEndpoint, unreadableIndexReason } from './reasons';
 
 export type EndpointReachability =
   | { readonly reachable: true; readonly latencyMs: number; readonly dimensions: number }
@@ -84,14 +62,6 @@ export interface SemanticStatusOptions {
   readonly semanticIndexCommand?: string;
 }
 
-type Providers = { readonly providers: EmbeddingProviders } | { readonly reason: DocsSearchReason };
-
-function providersFor(settings: EmbeddingsSettings, environment: SemanticEnvironment): Providers {
-  const created = createEmbeddingProviders(settings, environment);
-
-  return created.ok ? { providers: created.providers } : { reason: created.reason };
-}
-
 export async function semanticStatus(
   index: DocsIndex,
   configuration: DocsConfiguration,
@@ -105,7 +75,7 @@ export async function semanticStatus(
 
   let reachability: EndpointReachability | null = null;
   let observedDimensions: number | undefined;
-  let identity: { protocol: string; model: string; dimensions: number | undefined } | undefined;
+  let identity: EndpointIdentity | undefined;
   if (settings !== undefined) {
     const resolved = providersFor(settings, environment);
     if ('reason' in resolved) {
@@ -164,7 +134,7 @@ function publicEndpoint({
 
 async function readIndexState(
   index: DocsIndex,
-  identity: { protocol: string; model: string; dimensions: number | undefined } | undefined,
+  identity: EndpointIdentity | undefined,
   observedDimensions: number | undefined,
 ): Promise<{ readonly state: IndexState; readonly pending: number }> {
   const outcome = await index.store.readManifest();
@@ -190,14 +160,9 @@ async function readIndexState(
     return { state: { state: 'current', ...summary, changed: 0 }, pending: 0 };
   }
 
-  const plan = planRefresh(
+  const plan = planAgainstIndex(
     index.chunks.load().chunks,
-    {
-      chunkerVersion: CHUNKER_VERSION,
-      protocol: identity.protocol,
-      model: identity.model,
-      dimensions: identity.dimensions ?? observedDimensions ?? stored.dimensions,
-    },
+    { ...identity, dimensions: identity.dimensions ?? observedDimensions },
     manifest,
   );
   const pending = plan.embed.length;
@@ -208,44 +173,4 @@ async function readIndexState(
   const changed = pending + plan.delete.length;
 
   return { state: { state: changed === 0 ? 'current' : 'stale', ...summary, changed }, pending };
-}
-
-/** Result of `semantic index`: the refresh outcome, or why nothing was attempted. */
-export type SemanticIndexResult =
-  | { readonly status: 'not-attempted'; readonly reason: DocsSearchReason }
-  | {
-      readonly status: 'done';
-      readonly outcome: RefreshOutcome;
-      readonly reason?: DocsSearchReason;
-    };
-
-/**
- * Bring the index up to date now: embeds new and changed documents, or everything after a mismatch.
- * `onProgress` is called after every store write (the refresh lands in slices).
- */
-export async function buildDocsIndex(
-  index: DocsIndex,
-  configuration: DocsConfiguration,
-  environment: SemanticEnvironment,
-  onProgress?: (progress: RefreshProgress) => void,
-): Promise<SemanticIndexResult> {
-  const endpoint = semanticEndpoint(configuration);
-  if ('reason' in endpoint) {
-    return { status: 'not-attempted', reason: endpoint.reason };
-  }
-
-  const resolved = providersFor(endpoint.embeddings, environment);
-  if ('reason' in resolved) {
-    return { status: 'not-attempted', reason: resolved.reason };
-  }
-
-  const outcome = await refreshIndex({
-    chunks: index.chunks.load().chunks,
-    provider: resolved.providers.documents,
-    store: index.store,
-    ...(onProgress === undefined ? {} : { onProgress }),
-  });
-  const reason = refreshReason(outcome);
-
-  return { status: 'done', outcome, ...(reason === undefined ? {} : { reason }) };
 }

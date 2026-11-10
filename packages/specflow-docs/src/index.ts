@@ -20,7 +20,7 @@ export {
   searchDocumentation,
   type DocsSearch,
   type DocsSearchRequest,
-} from './semantic/docs-search';
-export { openDocsIndex, type DocsIndex } from './semantic/docs-index';
-export { type CreateEmbeddingProvider } from './semantic/embedding-providers';
-export { buildDocsIndex, type SemanticIndexResult } from './semantic/semantic-index';
+} from './search/search';
+export { openDocsIndex, type DocsIndex } from './semantic-index/index-store';
+export { type CreateEmbeddingProvider } from './embeddings/embedding-providers';
+export { buildDocsIndex, type SemanticIndexResult } from './semantic-index/build';

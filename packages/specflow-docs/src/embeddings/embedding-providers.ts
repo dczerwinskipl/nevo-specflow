@@ -9,8 +9,8 @@ import {
 } from '@nevo/ai-semantic-search';
 import type { DocsSearchReason } from '@nevo/specflow-contracts/docs';
 
-import type { EmbeddingsSettings } from '../config/embeddings-settings';
-import { missingApiKeyReason } from './effective-mode';
+import type { EmbeddingsSettings } from './embeddings-settings';
+import { missingApiKeyReason } from './endpoint-reasons';
 
 /**
  * Upper bound for embedding a search query and for the reachability probe before a read-time

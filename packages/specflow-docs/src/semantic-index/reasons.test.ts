@@ -2,8 +2,8 @@ import { SEARCH_REASON, type RefreshOutcome } from '@nevo/ai-semantic-search';
 import { describe, expect, it } from 'vitest';
 
 import { DEFAULT_DOCS_SETTINGS } from '../config/docs-settings';
-import type { EmbeddingsSettings } from '../config/embeddings-settings';
-import { refreshReason, searchReason, semanticEndpoint } from './effective-mode';
+import type { EmbeddingsSettings } from '../embeddings/embeddings-settings';
+import { refreshReason, searchReason, semanticEndpoint } from './reasons';
 
 const embeddings: EmbeddingsSettings = {
   protocol: 'openai-compatible',

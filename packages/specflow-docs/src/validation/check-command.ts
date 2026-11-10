@@ -2,8 +2,8 @@ import type { Command } from 'commander';
 
 import { DocsError } from '../errors';
 import { checkDocumentation } from './check';
-import { runDocsAction, type DocsCommandContext } from '../cli/context';
-import type { OpenCorpus } from '../cli/open-corpus';
+import { runDocsAction, type DocsCommandContext } from '../command/context';
+import type { OpenCorpus } from '../command/open-project';
 
 export function addCheckCommand(docs: Command, ctx: DocsCommandContext, open: OpenCorpus): void {
   const command = docs

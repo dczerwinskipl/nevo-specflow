@@ -10,7 +10,7 @@ import {
   mergeEmbeddingsLayers,
   parseEmbeddingsLayer,
   type EmbeddingsSettings,
-} from './embeddings-settings';
+} from '../embeddings/embeddings-settings';
 import type { ConfigRecord } from './values';
 
 export interface DocsConfiguration {

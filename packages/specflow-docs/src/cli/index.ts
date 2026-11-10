@@ -4,17 +4,17 @@
 
 import { Command } from 'commander';
 
+import type { DocsCommandContext } from '../command/context';
+import { corpusOpener, projectOpener } from '../command/open-project';
 import { addContextCommand } from '../discovery/context-command';
 import { addFindCommand } from '../discovery/find-command';
 import { addGetCommand } from '../discovery/get-command';
 import { addListCommand } from '../discovery/list-command';
-import { addSearchCommand } from '../semantic/search-command';
-import { addSemanticCommand } from '../semantic/semantic-command';
+import { addSearchCommand } from '../search/search-command';
+import { addSemanticCommand } from '../semantic-index/semantic-command';
 import { addCheckCommand } from '../validation/check-command';
-import type { DocsCommandContext } from './context';
-import { corpusOpener, projectOpener } from './open-corpus';
 
-export type { DocsCommandContext, DocsProject } from './context';
+export type { DocsCommandContext, DocsProject } from '../command/context';
 
 export function createDocsCommand(ctx: DocsCommandContext): Command {
   const docs = new Command('docs')

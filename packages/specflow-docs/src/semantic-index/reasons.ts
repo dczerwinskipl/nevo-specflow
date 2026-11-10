@@ -1,13 +1,9 @@
 // Why a documentation search answers lexically (ADR 0020, "Semantic search is optional and never
 // fails a command"). Every condition that prevents vectors maps to one contract reason; these
-// functions are the whole mapping, so each row is testable without an endpoint or an index.
+// functions and the endpoint reasons in `embeddings/endpoint-reasons` are the whole mapping, so each
+// row is testable without an endpoint or an index.
 
-import {
-  SEARCH_REASON,
-  type EmbeddingFailure,
-  type RefreshOutcome,
-  type SearchReason,
-} from '@nevo/ai-semantic-search';
+import { SEARCH_REASON, type RefreshOutcome, type SearchReason } from '@nevo/ai-semantic-search';
 import {
   DOCS_SEARCH_REASON_CODES,
   type DocsSearchReason,
@@ -15,7 +11,8 @@ import {
 } from '@nevo/specflow-contracts/docs';
 
 import type { DocsConfiguration } from '../config/docs-configuration';
-import type { EmbeddingsSettings } from '../config/embeddings-settings';
+import type { EmbeddingsSettings } from '../embeddings/embeddings-settings';
+import { embeddingFailureReason } from '../embeddings/endpoint-reasons';
 
 function reason(code: DocsSearchReasonCode, message: string): DocsSearchReason {
   return { code, message };
@@ -47,21 +44,6 @@ export function semanticEndpoint(
   }
 
   return { embeddings: config.embeddings };
-}
-
-/** The API key's environment variable is named in configuration but not set. */
-export function missingApiKeyReason(apiKeyEnv: string): DocsSearchReason {
-  return reason(
-    'endpoint-unreachable',
-    `The embedding API key environment variable ${apiKeyEnv} (ai.embeddings.apiKeyEnv) is not set.`,
-  );
-}
-
-export function embeddingFailureReason(failure: EmbeddingFailure): DocsSearchReason {
-  return reason(
-    'endpoint-unreachable',
-    `The embedding endpoint failed (${failure.code}): ${failure.message}`,
-  );
 }
 
 /**

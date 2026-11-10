@@ -2,8 +2,8 @@ import type { Command } from 'commander';
 
 import { getContext } from './documents';
 import { DocsUsageError } from '../errors';
-import { positiveInteger, runDocsAction, type DocsCommandContext } from '../cli/context';
-import type { OpenCorpus } from '../cli/open-corpus';
+import { positiveInteger, runDocsAction, type DocsCommandContext } from '../command/context';
+import type { OpenCorpus } from '../command/open-project';
 
 export function addContextCommand(docs: Command, ctx: DocsCommandContext, open: OpenCorpus): void {
   const command = docs

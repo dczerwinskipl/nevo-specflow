@@ -3,7 +3,7 @@ import { InvalidArgumentError, type Command } from 'commander';
 import type { DocsConfigPaths } from '../config/load-docs-settings';
 import type { DocsCorpusRules } from '../corpus/corpus';
 import { DocsUsageError } from '../errors';
-import type { CreateEmbeddingProvider } from '../semantic/embedding-providers';
+import type { CreateEmbeddingProvider } from '../embeddings/embedding-providers';
 
 /** The project the host resolved: its root and configuration file paths. */
 export interface DocsProject extends DocsConfigPaths {

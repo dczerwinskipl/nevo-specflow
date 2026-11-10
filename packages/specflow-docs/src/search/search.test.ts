@@ -11,14 +11,10 @@ import { afterAll, describe, expect, it } from 'vitest';
 
 import { DEFAULT_DOCS_SETTINGS, parseDocsConfig } from '../config/docs-settings';
 import { openFileSystemCorpus } from '../corpus/corpus';
-import { createDocsChunkSource } from './docs-chunk-source';
-import {
-  openDocsSearch,
-  READ_REFRESH_MAX_CHUNKS,
-  searchDocumentation,
-  snippet,
-  type DocsSearch,
-} from './docs-search';
+import { createDocsChunkSource } from '../semantic-index/chunk-source';
+import { READ_REFRESH_MAX_CHUNKS } from '../semantic-index/refresh-policy';
+import { snippet } from './result';
+import { openDocsSearch, searchDocumentation, type DocsSearch } from './search';
 
 const root = mkdtempSync(join(tmpdir(), 'specflow-docs-search-'));
 mkdirSync(join(root, 'docs', 'ideas'), { recursive: true });

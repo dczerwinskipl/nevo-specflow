@@ -3,8 +3,8 @@ import type { Command } from 'commander';
 import { findDocuments } from './documents';
 import type { ScoredDoc } from './frontmatter-search';
 import { DocsUsageError } from '../errors';
-import { positiveInteger, runDocsAction, type DocsCommandContext } from '../cli/context';
-import type { OpenCorpus } from '../cli/open-corpus';
+import { positiveInteger, runDocsAction, type DocsCommandContext } from '../command/context';
+import type { OpenCorpus } from '../command/open-project';
 
 interface FindCliOptions {
   readonly type?: string;

@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { createFileVectorStore, type VectorStore } from '@nevo/ai-semantic-search';
 
 import type { DocsCorpus } from '../corpus/corpus';
-import { createDocsChunkSource, type DocsChunkSource } from './docs-chunk-source';
+import { createDocsChunkSource, type DocsChunkSource } from './chunk-source';
 
 /** The index directory below the project root. */
 export const DOCS_INDEX_DIRECTORY = '.nevo/local/cache/docs-index';

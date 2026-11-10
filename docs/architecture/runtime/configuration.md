@@ -225,7 +225,8 @@ select/default such definitions, but should not absorb their full bodies.
 - discover the Git repository root;
 - create `.nevo/config.yaml` and `.nevo/local/config.yaml`, or complete existing ones that have no
   `runtime` section (for example a documentation-only configuration): it adds its sections, keeps
-  the existing sections and comments, and refuses a section that already exists. A configuration
+  the existing sections and comments, and refuses a section it writes that already exists before
+  the first question. A configuration
   with `runtime` is an initialized project and init refuses it;
 - ensure `.nevo/local/` is ignored and verify the concrete local config path with Git;
 - compose and serialize capability-owned contributions;

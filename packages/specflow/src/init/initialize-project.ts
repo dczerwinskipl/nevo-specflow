@@ -73,6 +73,14 @@ interface GitignoreSnapshot {
 }
 
 /**
+ * Sections other than `runtime` that init may write into each file. An existing one is refused
+ * before anything is asked, so a conflict never surfaces after the interactive flow. (`docs` and
+ * `ai` are not here: init keeps an existing documentation configuration and does not ask about it.)
+ */
+const INIT_PROJECT_SECTIONS = ['git'] as const;
+const INIT_LOCAL_SECTIONS = ['git'] as const;
+
+/**
  * The `runtime` section marks an initialized project. A configuration without it (for example one
  * with only `docs`, which the `docs` commands use on their own) is completed: init adds its
  * sections and keeps the existing ones.
@@ -92,7 +100,25 @@ export async function assertProjectCanInitialize(
     );
   }
 
+  assertNoInitSection(layout.projectConfigPath, project, INIT_PROJECT_SECTIONS);
+  assertNoInitSection(layout.localConfigPath, local, INIT_LOCAL_SECTIONS);
+
   return { ...(project ? { project } : {}), ...(local ? { local } : {}) };
+}
+
+function assertNoInitSection(
+  path: string,
+  existing: ExistingConfigFile | undefined,
+  sections: readonly string[],
+): void {
+  const section = sections.find((name) => existing?.sections.includes(name));
+  if (section !== undefined) {
+    throw new Error(sectionConflict(path, section));
+  }
+}
+
+function sectionConflict(path: string, section: string): string {
+  return `Refusing to overwrite the existing '${section}' section of ${path}; remove it and run init again.`;
 }
 
 async function readExistingConfig(path: string): Promise<ExistingConfigFile | undefined> {
@@ -118,9 +144,7 @@ function completeConfig(
 ): string {
   for (const section of Object.keys(contribution)) {
     if (existing.sections.includes(section)) {
-      throw new Error(
-        `Refusing to overwrite the existing '${section}' section of ${path}; remove it and run init again.`,
-      );
+      throw new Error(sectionConflict(path, section));
     }
   }
 
@@ -263,8 +287,8 @@ async function defaultWriteConfigFile(
         throw new Error(`Refusing to overwrite SpecFlow config that changed during init: ${path}`);
       }
 
+      // Nothing to undo here: the rename is the last step and replaces the file at once.
       await rename(stagedPath, path);
-      published = true;
 
       return;
     }
@@ -285,9 +309,7 @@ async function defaultWriteConfigFile(
     await rm(stagedPath, { force: true });
   } catch (error) {
     if (published) {
-      await (options.replaces === undefined
-        ? rm(path, { force: true })
-        : writeFile(path, options.replaces, 'utf8'));
+      await rm(path, { force: true });
     }
 
     await rm(stagedPath, { force: true });

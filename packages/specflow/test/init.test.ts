@@ -124,6 +124,16 @@ describe('project initialization', () => {
     );
   });
 
+  it('refuses a section init writes before anything is asked', async () => {
+    const root = await repository();
+    const projectConfigPath = join(root, '.nevo', 'config.yaml');
+    await writeFile(projectConfigPath, 'docs: {}\ngit:\n  enabled: true\n', 'utf8');
+
+    await expect(assertProjectCanInitialize(layout(root))).rejects.toThrowError(
+      `Refusing to overwrite the existing 'git' section of ${projectConfigPath}; remove it and run init again.`,
+    );
+  });
+
   it('does not treat existing committed .nevo definitions as an initialized config', async () => {
     const root = await repository();
 
@@ -206,6 +216,34 @@ describe('project initialization', () => {
       code: 'ENOENT',
     });
     expect(await readFile(join(root, '.gitignore'), 'utf8')).toBe('node_modules/\n');
+  });
+
+  it('puts back a completed local config byte for byte when the project write fails', async () => {
+    const root = await repository();
+    const projectConfigPath = join(root, '.nevo', 'config.yaml');
+    const localConfigPath = join(root, '.nevo', 'local', 'config.yaml');
+    const local = '# mine\r\nai:\r\n  embeddings: { baseUrl: x, model: m }\r\n';
+    await mkdir(join(root, '.nevo', 'local'), { recursive: true });
+    await writeFile(projectConfigPath, 'docs: {}\n', 'utf8');
+    await writeFile(localConfigPath, local, 'utf8');
+
+    await expect(
+      initializeProject({
+        layout: layout(root),
+        contribution,
+        isIgnored: () => Promise.resolve(true),
+        writeConfigFile: async (path, content, options) => {
+          if (!options.local) {
+            throw new Error('simulated project write failure');
+          }
+
+          await writeFile(path, content, 'utf8');
+        },
+      }),
+    ).rejects.toThrowError(/simulated project write failure/);
+
+    expect(await readFile(localConfigPath, 'utf8')).toBe(local);
+    expect(await readFile(projectConfigPath, 'utf8')).toBe('docs: {}\n');
   });
 
   describe('default definitions', () => {

@@ -222,8 +222,8 @@ and schemas live in `@nevo/specflow-contracts`.
 - The `runtime` section marks an initialized project. A project configuration without it (for
   example only `docs`) is not initialized: `nevo-specflow init` completes it, adding its sections
   and keeping the existing ones (and the existing sections of a local configuration without
-  `runtime`); it refuses only a configuration that has `runtime`, and a contributed section that
-  already exists. Runtime config loading and `nevo-specflow project bootstrap` refuse a project
+  `runtime`); it refuses only a configuration that has `runtime`, and, before the first question, a
+  section it writes that already exists. Runtime config loading and `nevo-specflow project bootstrap` refuse a project
   configuration without `runtime` and name `nevo-specflow init`.
 - `nevo-specflow init` contributes an optional step for a new project: it asks whether to enable
   semantic search, asks for the endpoint and model, runs a connectivity probe and shows the result,

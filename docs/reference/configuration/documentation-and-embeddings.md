@@ -216,7 +216,8 @@ documentation-only configuration), `init` completes the existing files instead o
 its sections and keeps the existing ones and their comments. When the project configuration already
 has a `docs` section or the local configuration an `ai` section, `init` does not ask the question
 above and the review says `Documentation: the existing configuration is kept`. A section `init`
-would write that already exists (for example `git`) is refused before anything is written. A project
+writes that already exists (`git` in either file) is refused before the first question, so no answer
+is lost. A project
 configuration with `runtime` is an initialized project; `init` refuses it.
 
 Enabling semantic search in an already initialized project is not offered by any command: edit

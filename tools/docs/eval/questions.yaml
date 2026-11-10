@@ -1,0 +1,92 @@
+# Retrieval eval of `docs search` for this repository (`pnpm docs:eval`; manual, not in CI).
+# Realistic agent questions, English and Polish, each with the 1..3 active, authoritative document
+# ids a good answer must return. Keep `expected` to documents that really answer the question; add a
+# question when a search regression is found.
+
+questions:
+  # Design system and Storybook
+  - question: How do I write a Storybook story for a component and what must it cover?
+    expected: [design-system.implementation.storybook.guidelines]
+  - question: Jakie są zasady pisania stories w Storybooku?
+    expected: [design-system.implementation.storybook.guidelines]
+  - question: How should Tailwind classes and design tokens be used in components?
+    expected: [design-system.implementation.tailwind.styling-guidelines]
+  - question: Jak tworzyć nowy komponent React w design systemie?
+    expected:
+      - design-system.implementation.react.component-authoring-contract
+      - design-system.implementation.react.component-guidelines
+
+  # Workflow and tasks
+  - question: jak obsługujemy taski
+    expected:
+      - architecture.workflow.workflow-kernel
+      - architecture.runtime.task-read-composition
+      - reference.api.task-reads
+  - question: How does the workflow continue automatically to the next step?
+    expected:
+      - architecture.workflow.workflow-kernel
+      - adr.0019-workflow-kernel-and-automatic-continuation
+  - question: Which HTTP endpoint reads a task and its documents?
+    expected: [reference.api.task-reads]
+  - question: Jak przebiega cykl życia specyfikacji od utworzenia do zamknięcia?
+    expected:
+      - architecture.runtime.specflow-lifecycle
+      - product.specflow.specification-creation
+
+  # Sessions: architecture vs API reference
+  - question: Which HTTP route starts a new agent session turn and what does it return?
+    expected: [reference.api.sessions]
+  - question: Where are AI session transcripts stored and how is a crash recovered?
+    expected: [architecture.ai.session-storage-and-lifecycle]
+  - question: Kto jest właścicielem procesu providera i jak jest zatrzymywany?
+    expected: [architecture.ai.provider-process-ownership]
+  - question: How does the session provider driver protocol exchange messages?
+    expected: [reference.protocols.session-provider-driver]
+  - question: What does the Full Session screen show?
+    expected: [product.specflow.ui.full-session]
+
+  # Recovery
+  - question: How do we recover after an engine Git commit failed halfway?
+    expected: [engineering.shared.specflow-git-recovery]
+  - question: Jak UI odzyskuje sesję po wygaśnięciu uwierzytelnienia?
+    expected: [product.specflow.ui.authentication-recovery]
+  - question: How do workspace execution claims prevent two runs in the same worktree?
+    expected: [architecture.runtime.workspace-execution-claims]
+
+  # Engineering and repository workflow
+  - question: What is the commit message format?
+    expected: [engineering.repository.commit-conventions]
+  - question: Jak przygotować pull request i co powinien zawierać opis?
+    expected: [engineering.repository.pull-requests]
+  - question: Where do test files go and how are tests organized?
+    expected: [engineering.shared.testing]
+  - question: Jak testować komendy CLI?
+    expected: [engineering.cli.testing]
+  - question: How do I run slow integration tests on Linux from Windows?
+    expected: [engineering.repository.local-setup]
+  - question: How is a release line cut and promoted?
+    expected: [engineering.repository.releasing, adr.0003-branch-and-release-model]
+  - question: Jak obsługiwać anulowanie i cykl życia operacji asynchronicznych w kodzie?
+    expected: [engineering.shared.async-and-lifecycle]
+
+  # Runtime architecture and API
+  - question: How does authorization decide which capabilities a principal has?
+    expected: [architecture.runtime.authorization, reference.api.authorization]
+  - question: Gdzie są przechowywane lokalna konfiguracja i cache?
+    expected: [architecture.runtime.configuration]
+  - question: How do I report progress of a long-running operation to the UI?
+    expected: [engineering.shared.operation-progress, reference.api.operation-progress]
+  - question: How is the OpenAPI document generated and checked?
+    expected: [reference.api.openapi]
+  - question: Jak wyglądają zależności między pakietami produktu?
+    expected:
+      - adr.0012-product-package-topology-and-dependency-direction
+      - architecture.repository-structure
+
+  # Documentation tooling
+  - question: Which docs command should an agent use to find documents for a task?
+    expected:
+      - reference.cli.nevo-specflow-docs
+      - adr.0020-documentation-discovery-is-a-product-capability
+  - question: How do I configure an embedding endpoint for semantic documentation search?
+    expected: [reference.configuration.documentation-and-embeddings]

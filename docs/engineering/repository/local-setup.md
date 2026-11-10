@@ -117,6 +117,12 @@ when the index is not up to date afterwards, for example while the endpoint is d
 volume. Keys and their validation:
 [documentation and embeddings configuration](../../reference/configuration/documentation-and-embeddings.md).
 
+To measure search quality after changing chunking, ranking or the documents, run
+`pnpm docs:eval` against the current index (`pnpm docs:semantic index` first). It searches every
+question of `tools/docs/eval/questions.yaml` like `pnpm docs:search`, embeds nothing, and reports
+Recall@5, Recall@10, MRR and the non-authoritative documents in the top 10. It is a manual check,
+not part of CI; see [`tools/docs`](../../../tools/docs/README.md#retrieval-eval).
+
 ## Running slow tests on Linux
 
 Real-Git integration tests (Engine, Runtime HTTP, CLI) spawn many Git processes and create many

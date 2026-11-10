@@ -1,5 +1,5 @@
 import { spawn, type ChildProcess } from 'node:child_process';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readdir, rm, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -24,24 +24,20 @@ afterEach(async () => {
 });
 
 /** Contenders see the lock ten minutes after it was written, so a lock nobody refreshes is stale. */
-const contender = (
-  pid: number,
-  checkpoint?: WriterLockDependencies['checkpoint'],
-): WriterLockDependencies => ({
+const contender = (pid: number): WriterLockDependencies => ({
   pid,
   scope: 'test',
   isProcessAlive: () => true,
   now: () => Date.now() + 600_000,
   staleAfterMs: 60_000,
-  ...(checkpoint ? { checkpoint } : {}),
 });
+
+/** A writer that sees the lock as it is written (no clock offset). */
+const present = (pid: number): WriterLockDependencies => ({ ...contender(pid), now: Date.now });
 
 /** A lock whose holder stopped refreshing it (a suspended or hung writer): its process looks alive. */
 async function abandonedLock(): Promise<WriterLockAttempt> {
-  const attempt = await tryAcquireWriterLock(scratch, 'abandoned', {
-    ...contender(100),
-    now: Date.now,
-  });
+  const attempt = await tryAcquireWriterLock(scratch, 'abandoned', present(100));
   expect(attempt.status).toBe('acquired');
 
   return attempt;
@@ -73,12 +69,13 @@ describe('tryAcquireWriterLock', () => {
       tryAcquireWriterLock(
         scratch,
         `writer-${String(index)}`,
-        contender(101 + index, async (step) => {
+        contender(101 + index),
+        async (step) => {
           if (step === 'claim') {
             reached[index]!.open();
             await go[index]!.opened;
           }
-        }),
+        },
       );
 
     const first = attempt(0);
@@ -92,11 +89,46 @@ describe('tryAcquireWriterLock', () => {
 
     expect([won.status, lost.status]).toEqual(['acquired', 'busy']);
     // The former holder's release leaves the new owner's lock in place.
-    const observer = { ...contender(103), now: Date.now };
+    const observer = present(103);
     await release(abandoned);
     expect(await inspectWriterLock(scratch, observer)).toEqual({ status: 'held', pid: 101 });
     await release(won);
     expect(await inspectWriterLock(scratch, observer)).toEqual({ status: 'free' });
+  });
+
+  it('backs off when it created an epoch from an old listing below a newer one', async () => {
+    await release(await tryAcquireWriterLock(scratch, 'first', present(100)));
+    const reached = gate();
+    const go = gate();
+    const late = tryAcquireWriterLock(scratch, 'late', present(101), async (step) => {
+      if (step === 'claim') {
+        reached.open();
+        await go.opened;
+      }
+    });
+    // Epoch 2 is chosen from the listing; meanwhile 2 is taken and released, and 3 removes it.
+    await reached.opened;
+    await release(await tryAcquireWriterLock(scratch, 'second', present(102)));
+    const third = await tryAcquireWriterLock(scratch, 'third', present(103));
+    expect(third).toMatchObject({ status: 'acquired', epoch: 3 });
+    go.open();
+
+    expect(await late).toMatchObject({ status: 'busy' });
+    expect((await readdir(scratch)).filter((name) => name.startsWith('writer-'))).toEqual([
+      'writer-3.lock',
+    ]);
+    expect(await inspectWriterLock(scratch, present(104))).toEqual({ status: 'held', pid: 103 });
+    await release(third);
+  });
+
+  it('takes over a lock whose refresh time lies beyond the stale bound ahead (a skewed clock)', async () => {
+    await writeFile(join(scratch, 'writer-1.lock'), JSON.stringify({ pid: 1, token: 'skewed' }));
+    const ahead = new Date(Date.now() + 600_000);
+    await utimes(join(scratch, 'writer-1.lock'), ahead, ahead);
+
+    const attempt = await tryAcquireWriterLock(scratch, 'now', present(100));
+    expect(attempt).toMatchObject({ status: 'acquired', epoch: 2 });
+    await release(attempt);
   });
 
   it('lets exactly one of two processes that found the same stale lock take it over', async () => {
@@ -212,12 +244,11 @@ const attempt = await tryAcquireWriterLock(directory, 'process-' + process.pid, 
   isProcessAlive: () => true,
   now: () => Date.now() + 600_000,
   staleAfterMs: 60_000,
-  checkpoint: async (step) => {
-    if (step === 'claim') {
-      process.send('claiming');
-      await next();
-    }
-  },
+}, async (step) => {
+  if (step === 'claim') {
+    process.send('claiming');
+    await next();
+  }
 });
 process.send(attempt.status);
 await next();

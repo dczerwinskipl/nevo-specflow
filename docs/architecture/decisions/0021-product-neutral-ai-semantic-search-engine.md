@@ -124,12 +124,13 @@ engine does not fail a search because embeddings are unavailable.
   always sees a complete pair from one write and an open reader cannot make a write fail on
   Windows. Readers never take a lock: they take the highest pair by writer epoch, then generation;
   superseded pairs are removed.
-- One writer at a time owns the index. A second writer in the CLI or a running Runtime does not
-  wait: it gets `busy`, and its consumer degrades to lexical search. Ownership works as follows:
-  - Ownership is an epoch. A writer owns the index when it has created the lock file
-    `writer-<epoch>.lock` exclusively (`O_EXCL` on Linux, `CREATE_NEW` on Windows: one atomic
-    create-if-absent on local filesystems, overlay mounts, NFSv3 and later, and SMB) for an epoch above every lock and manifest epoch in the directory, and no
-    higher epoch has appeared since. It lets go by creating `writer-<epoch>.released`.
+- One writer at a time holds the writer lock. A second writer in the CLI or a running Runtime does
+  not wait: it gets `busy`, and its consumer degrades to lexical search. Ownership works as follows:
+  - Ownership is an epoch. A writer takes the lock by creating the lock file `writer-<epoch>.lock`
+    exclusively (`O_EXCL` on Linux, `CREATE_NEW` on Windows: one atomic create-if-absent on local
+    filesystems, overlay mounts, NFSv3 and later, and SMB) for an epoch above every lock and
+    manifest epoch it lists, and keeps it while its listings show no higher epoch. It lets go by
+    creating `writer-<epoch>.released`.
   - Taking a lock over never renames or removes it. When the highest lock is released or stale, a
     writer creates the next epoch's lock; of writers that judged the same lock stale, exactly one
     create succeeds and the others get `busy`. A writer whose listing was out of date and that
@@ -141,6 +142,11 @@ engine does not fail a search because embeddings are unavailable.
     only where it means something: a lock recorded under the same host, boot and PID namespace as
     the reader is also stale when that process is gone or the pid is the reader's own. A pid from
     another container or host never makes a lock stale.
+  - Listings are only as fresh as the filesystem makes them. On a local filesystem a listing
+    shows every file created before it; a network filesystem (NFS, SMB) can serve a cached listing,
+    so two writers can briefly both believe they hold the lock. Safety then rests on the epoch
+    fencing below, not on the lock: the writer with the lower epoch wastes its write, whose pair
+    ranks below the other's and never becomes the index.
   - Writes are fenced by the epoch. A writer checks that it still owns the index right before it
     publishes a manifest and publishes nothing otherwise. Because the epoch is part of every pair's
     name and readers rank by epoch first, a former holder that was suspended past the stale bound

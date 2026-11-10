@@ -11,7 +11,11 @@ import type {
   VectorStoreChange,
   VectorStoreWriter,
 } from '../vector-store';
-import { createFileVectorStore, inspectFileStoreWriter } from './file-vector-store';
+import {
+  createCheckpointedFileVectorStore,
+  createFileVectorStore,
+  inspectFileStoreWriter,
+} from './file-vector-store';
 import { compareGenerations, parseGenerationFile } from './generation-files';
 
 const identity: IndexIdentity = { chunkerVersion: 1, protocol: 'p', model: 'm', dimensions: 2 };
@@ -255,7 +259,9 @@ describe('file vector store', () => {
 
     // A writer that passed its last ownership check stops right before it publishes, and is
     // taken over meanwhile: its late pair never ranks above the new owner's.
-    const late = await openWriter(createFileVectorStore({ directory, lock: { now, checkpoint } }));
+    const late = await openWriter(
+      createCheckpointedFileVectorStore({ directory, lock: { now } }, checkpoint),
+    );
     pausing = true;
     const publishing = late.apply(change(1, { upsert: [entry('late', [1, 1])] }));
     await atPublish;

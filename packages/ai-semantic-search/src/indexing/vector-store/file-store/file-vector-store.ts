@@ -19,6 +19,7 @@ import {
   isProcessAlive,
   processScope,
   tryAcquireWriterLock,
+  type WriterLockCheckpoint,
   type WriterLockDependencies,
   type WriterLockState,
 } from './writer-lock';
@@ -57,6 +58,24 @@ export interface FileVectorStoreOptions {
  *   other generation and temporary files only once older than `staleAfterMs`.
  */
 export function createFileVectorStore(options: FileVectorStoreOptions): VectorStore {
+  return openFileVectorStore(options, undefined);
+}
+
+/**
+ * `createFileVectorStore` that awaits `checkpoint` at each `WriterLockStep` of its writers, so a
+ * test can pause one between the protocol steps (exported from `./testing` only).
+ */
+export function createCheckpointedFileVectorStore(
+  options: FileVectorStoreOptions,
+  checkpoint: WriterLockCheckpoint,
+): VectorStore {
+  return openFileVectorStore(options, checkpoint);
+}
+
+function openFileVectorStore(
+  options: FileVectorStoreOptions,
+  checkpoint: WriterLockCheckpoint | undefined,
+): VectorStore {
   const { directory } = options;
   const lock = lockDependencies(options);
   const cache: VectorsCache = { current: undefined };
@@ -74,7 +93,7 @@ export function createFileVectorStore(options: FileVectorStoreOptions): VectorSt
       let attempt: Awaited<ReturnType<typeof tryAcquireWriterLock>>;
       try {
         await mkdir(directory, { recursive: true });
-        attempt = await tryAcquireWriterLock(directory, newToken(), lock);
+        attempt = await tryAcquireWriterLock(directory, newToken(), lock, checkpoint);
       } catch (error) {
         return writeFailed('The index lock cannot be taken', error);
       }
@@ -97,7 +116,7 @@ export function createFileVectorStore(options: FileVectorStoreOptions): VectorSt
 
           applying = true;
           try {
-            return await applyChange(directory, change, cache, lock, attempt);
+            return await applyChange(directory, change, cache, lock, attempt, checkpoint);
           } finally {
             applying = false;
           }
@@ -155,6 +174,5 @@ function lockDependencies(options: FileVectorStoreOptions): WriterLockDependenci
     isProcessAlive: options.lock?.isProcessAlive ?? isProcessAlive,
     now: options.lock?.now ?? Date.now,
     staleAfterMs: options.lock?.staleAfterMs ?? 60_000,
-    ...(options.lock?.checkpoint ? { checkpoint: options.lock.checkpoint } : {}),
   };
 }

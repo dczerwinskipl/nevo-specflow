@@ -9,7 +9,7 @@ import { generationFiles, generationKey } from './generation-files';
 import { writeFailed } from './io-errors';
 import { FILE_INDEX_SCHEMA_VERSION, type StoredManifest } from './manifest-file';
 import { readSnapshot, type VectorsCache } from './snapshot';
-import type { HeldWriterLock, WriterLockDependencies } from './writer-lock';
+import type { HeldWriterLock, WriterLockCheckpoint, WriterLockDependencies } from './writer-lock';
 
 /**
  * One write of the lock holder `owner`: the new pair is named with its epoch (the fencing token) and
@@ -24,6 +24,7 @@ export async function applyChange(
   cache: VectorsCache,
   lock: WriterLockDependencies,
   owner: Pick<HeldWriterLock, 'epoch' | 'stillHeld'>,
+  checkpoint?: WriterLockCheckpoint,
 ): Promise<ApplyOutcome> {
   const current = await readSnapshot(directory, cache);
   if (current.status === 'unreadable') {
@@ -90,7 +91,7 @@ export async function applyChange(
       return { status: 'conflict' };
     }
 
-    await lock.checkpoint?.('publish');
+    await checkpoint?.('publish');
     await rename(tempManifestPath, manifestPath);
   } catch (error) {
     await removeQuietly(tempManifestPath);

@@ -13,19 +13,23 @@ import { errorCode } from './io-errors';
  */
 const LOCK_FILE = /^writer-(\d+)\.(lock|released)$/;
 
-/** The protocol steps a test can pause at (`WriterLockDependencies.checkpoint`). */
+/** The protocol steps a test can pause at (`WriterLockCheckpoint`). */
 export type WriterLockStep =
   /** The holder of the highest epoch was judged gone or stale; next comes the exclusive create. */
   | 'claim'
   /** A write passed its ownership check; next comes the rename that publishes its manifest. */
   | 'publish';
 
+/** Test seam, awaited at each `WriterLockStep` to drive interleavings deterministically. */
+export type WriterLockCheckpoint = (step: WriterLockStep) => Promise<void>;
+
 /**
  * Inputs of the ownership rule. A held lock is refreshed (its mtime touched) every quarter of
  * `staleAfterMs`; the lock of the highest epoch is free once released, and stale when
  *
  * - it was not refreshed for `staleAfterMs` (a holder that died, hung or was suspended, or that died
- *   before writing its owner record), or
+ *   before writing its owner record), or its refresh time lies more than `staleAfterMs` ahead of
+ *   `now` (a skewed clock, which would otherwise keep a dead holder's lock for the skew too), or
  * - its record names this process's `scope` and its pid is not alive there, or is this process's
  *   pid without this process holding its token (a reused pid, for example PID 1 in a restarted
  *   container). A pid from another scope (another host, boot or PID namespace) says nothing, so
@@ -38,8 +42,6 @@ export interface WriterLockDependencies {
   readonly isProcessAlive: (pid: number) => boolean;
   readonly now: () => number;
   readonly staleAfterMs: number;
-  /** Test seam: awaited at each `WriterLockStep`, to drive interleavings deterministically. */
-  readonly checkpoint?: (step: WriterLockStep) => Promise<void>;
 }
 
 /** Whether a live writer holds the lock of an index directory, by the ownership rule above. */
@@ -100,6 +102,7 @@ export async function tryAcquireWriterLock(
   directory: string,
   token: string,
   dependencies: WriterLockDependencies,
+  checkpoint?: WriterLockCheckpoint,
 ): Promise<WriterLockAttempt> {
   const names = await readdir(directory);
   const top = highestLock(names);
@@ -111,7 +114,7 @@ export async function tryAcquireWriterLock(
   }
 
   const epoch = highestEpoch(names) + 1;
-  await dependencies.checkpoint?.('claim');
+  await checkpoint?.('claim');
   const path = lockPath(directory, epoch);
   const record = JSON.stringify({
     pid: dependencies.pid,
@@ -306,12 +309,22 @@ async function createExclusive(path: string, content: string): Promise<boolean> 
 
     return true;
   } catch (error) {
-    if (errorCode(error) === 'EEXIST') {
+    if (errorCode(error) === 'EEXIST' || isDeletePending(error)) {
       return false;
     }
 
     throw error;
   }
+}
+
+/**
+ * Windows answers `EPERM` (or `EBUSY`) for a file whose deletion is pending while another program
+ * still has it open, for example a virus scanner: the name is taken for a moment, like "exists".
+ */
+function isDeletePending(error: unknown): boolean {
+  const code = errorCode(error);
+
+  return process.platform === 'win32' && (code === 'EPERM' || code === 'EBUSY');
 }
 
 type Holder =
@@ -330,10 +343,14 @@ async function inspectHolder(path: string, dependencies: WriterLockDependencies)
       return { status: 'stale' };
     }
 
+    if (isDeletePending(error)) {
+      return { status: 'held', owner: 'a writer whose lock file is being removed', pid: undefined };
+    }
+
     throw error;
   }
 
-  if (dependencies.now() - refreshedAt > dependencies.staleAfterMs) {
+  if (Math.abs(dependencies.now() - refreshedAt) > dependencies.staleAfterMs) {
     return { status: 'stale' };
   }
 

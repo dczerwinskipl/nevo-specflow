@@ -135,6 +135,14 @@ function runtimeSection(
     return undefined;
   }
 
+  // A project configuration without `runtime` is valid for the `docs` commands (for example one
+  // with only a `docs` section), but the project is not initialized.
+  if (runtime === undefined) {
+    throw new RuntimeConfigError(
+      `Nevo SpecFlow is not initialized: ${path} has no 'runtime' section. Run "nevo-specflow init"; it keeps the existing sections.`,
+    );
+  }
+
   if (!isRecord(runtime)) {
     throw new RuntimeConfigError(`SpecFlow config must define an object at 'runtime': ${path}`);
   }

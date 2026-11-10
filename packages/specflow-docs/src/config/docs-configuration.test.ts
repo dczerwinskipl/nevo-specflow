@@ -38,6 +38,13 @@ describe('parseDocsConfiguration', () => {
     expect(parse(undefined, { ai: { embeddings: endpoint } }).embeddings).toEqual(endpoint);
   });
 
+  it('defaults the protocol: baseUrl and model are a complete endpoint', () => {
+    const { baseUrl, model } = endpoint;
+    expect(parse(undefined, { ai: { embeddings: { baseUrl, model } } }).embeddings).toEqual(
+      endpoint,
+    );
+  });
+
   it.each([
     [{}, { docs: { root: 'mine' } }, /local\.yaml: documentation configuration is project-owned/],
     [
@@ -86,9 +93,9 @@ describe('parseDocsConfiguration', () => {
       /Unknown configuration key 'ai\.embeddings\.modle'/,
     ],
     [
-      { ai: { embeddings: { baseUrl: endpoint.baseUrl } } },
+      { ai: { embeddings: { protocol: endpoint.protocol } } },
       { ai: { embeddings: { model: 'm' } } },
-      /project\.yaml \+ local\.yaml: ai\.embeddings\.protocol is required/,
+      /project\.yaml \+ local\.yaml: ai\.embeddings\.baseUrl is required/,
     ],
     [{ ai: 'embeddings' }, undefined, /project\.yaml: ai must be an object/],
   ])('rejects %j with local %j', (project, local, message) => {

@@ -11,7 +11,7 @@ import { dirname } from 'node:path';
 
 import { CHUNKER_VERSION, chunkMarkdownUnit, type Chunk } from '@nevo/ai-semantic-search';
 
-import { isNonAuthoritative } from '../config/docs-settings';
+import { isNonAuthoritative } from '../config/docs-file';
 import { collectCorpusProblems, type DocsCorpus } from '../corpus/corpus';
 import {
   asString,

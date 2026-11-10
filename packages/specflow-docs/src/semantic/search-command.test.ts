@@ -16,7 +16,7 @@ mkdirSync(join(root, '.nevo', 'local'), { recursive: true });
 writeFileSync(join(root, '.nevo', 'config.yaml'), 'docs:\n  search:\n    semantic: true\n');
 writeFileSync(
   join(root, '.nevo', 'local', 'config.yaml'),
-  'ai:\n  embeddings:\n    protocol: openai-compatible\n    baseUrl: http://127.0.0.1:1/v1\n    model: fake-embedding\n',
+  'ai:\n  embeddings:\n    baseUrl: http://127.0.0.1:1/v1\n    model: fake-embedding\n',
 );
 writeFileSync(
   join(root, 'docs', 'guide.md'),

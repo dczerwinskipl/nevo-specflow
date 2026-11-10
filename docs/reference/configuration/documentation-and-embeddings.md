@@ -7,13 +7,16 @@ scope: specflow
 areas: [configuration, docs, ai, security]
 read_when:
   - configuring the documentation root, taxonomy, non-authoritative or excluded paths of a project
+  - writing or validating a docs/docs.yaml documentation settings file
+  - using the docs commands in a project that is not initialized (documentation-only configuration)
   - enabling semantic documentation search or configuring an embedding endpoint
   - changing the semantic search step of nevo-specflow init
   - diagnosing a docs or ai.embeddings configuration error
 summary: >
-  The docs namespace (root, taxonomy, non-authoritative and excluded prefixes, search.semantic) and the
-  ai.embeddings endpoint (protocol, baseUrl, model, dimensions, apiKeyEnv, queryInstruction,
-  batchSize, timeoutMs): which file may hold them, how they merge, their validation and defaults.
+  The docs namespace (root, search.semantic), the documentation settings file <docs.root>/docs.yaml
+  (taxonomy, nonAuthoritative, exclude) and the ai.embeddings endpoint (baseUrl, model, optional
+  protocol, dimensions, apiKeyEnv, queryInstruction, batchSize, timeoutMs): which file holds them,
+  how they merge, their validation and defaults, and documentation-only configuration.
 related:
   - adr.0020-documentation-discovery-is-a-product-capability
   - adr.0021-product-neutral-ai-semantic-search-engine
@@ -25,43 +28,79 @@ related:
 
 The documentation capability (`@nevo/specflow-docs`,
 [ADR 0020](../../architecture/decisions/0020-documentation-discovery-is-a-product-capability.md))
-owns two configuration namespaces: `docs` and `ai.embeddings`. The
-[`nevo-specflow docs`](../cli/nevo-specflow-docs.md) commands and Runtime config loading validate
-them with the same rules. Both files are optional; a missing file or key means the default.
+owns two configuration namespaces, `docs` and `ai.embeddings`, and the documentation settings file
+`<docs.root>/docs.yaml`. The [`nevo-specflow docs`](../cli/nevo-specflow-docs.md) commands and
+Runtime config loading validate the namespaces with the same rules. All three files are optional; a
+missing file or key means the default.
 
-| Namespace       | `.nevo/config.yaml` (project) | `.nevo/local/config.yaml` (local)    |
-| --------------- | ----------------------------- | ------------------------------------ |
-| `docs`          | allowed                       | rejected                             |
-| `ai.embeddings` | allowed (team default)        | allowed; the local value wins by key |
+| Settings                | `.nevo/config.yaml` (project) | `.nevo/local/config.yaml` (local)    | `<docs.root>/docs.yaml` |
+| ----------------------- | ----------------------------- | ------------------------------------ | ----------------------- |
+| `docs` (root, search)   | allowed                       | rejected                             | —                       |
+| taxonomy, path prefixes | rejected                      | rejected (as part of `docs`)         | allowed                 |
+| `ai.embeddings`         | allowed (team default)        | allowed; the local value wins by key | —                       |
 
-The `docs` command reads only these two namespaces; other namespaces (including `runtime` and other
-`ai` keys) are neither required nor validated by it.
+The `docs` command reads only these two namespaces and `docs.yaml`; other namespaces (including
+`runtime` and other `ai` keys) are neither required nor validated by it.
+
+### Documentation without an initialized project
+
+The `docs` commands do not need an initialized project. A `.nevo/config.yaml` with only a `docs`
+section is a complete configuration for them:
+
+```yaml
+# .nevo/config.yaml — documentation only
+docs:
+  search:
+    semantic: true
+```
+
+Such a project is not initialized: `nevo-specflow start` and `nevo-specflow project bootstrap`
+refuse it and name `nevo-specflow init`, which adds the `runtime` and `git` sections and keeps the
+existing ones (see [Enabling it in `nevo-specflow init`](#enabling-it-in-nevo-specflow-init)).
 
 ## `docs`
 
 ```yaml
+# .nevo/config.yaml
 docs:
   root: docs # documentation root, relative to the project root
-  taxonomy:
-    scopes: [shared, specflow] # allowed `scope` values
-    areas: [cli, docs, testing] # allowed `areas` values
-  nonAuthoritative: [ideas/] # path prefixes under `root` that `context` and `search` skip
-  exclude: [templates/] # path prefixes under `root` that are not part of the corpus at all
   search:
     semantic: true # opt in to hybrid `search`; also needs `ai.embeddings`
 ```
 
-| Key                     | Meaning                                                                   | Default      |
-| ----------------------- | ------------------------------------------------------------------------- | ------------ |
-| `docs.root`             | Relative directory with `/` separators; no `.` or `..` segments           | `docs`       |
-| `docs.taxonomy.scopes`  | Non-empty list of distinct values; any other `scope` is a `check` problem | unrestricted |
-| `docs.taxonomy.areas`   | Non-empty list of distinct values; any other area is a `check` problem    | unrestricted |
-| `docs.nonAuthoritative` | Directory prefixes relative to `docs.root` (a trailing `/` is optional)   | none         |
-| `docs.exclude`          | Directory prefixes relative to `docs.root`, validated the same way        | none         |
-| `docs.search.semantic`  | `true` or `false`                                                         | `false`      |
+| Key                    | Meaning                                                         | Default |
+| ---------------------- | --------------------------------------------------------------- | ------- |
+| `docs.root`            | Relative directory with `/` separators; no `.` or `..` segments | `docs`  |
+| `docs.search.semantic` | `true` or `false`                                               | `false` |
 
-An unknown key under `docs`, `docs.taxonomy` or `docs.search` is an error. Document types, required
-fields and statuses are the product frontmatter contract and are not configurable.
+An unknown key under `docs` or `docs.search` is an error. `docs.taxonomy`, `docs.nonAuthoritative`
+and `docs.exclude` are rejected with an error that names `<docs.root>/docs.yaml`, where they belong.
+
+## `<docs.root>/docs.yaml`
+
+The documentation settings file describes the documentation itself and is committed next to it.
+
+```yaml
+# docs/docs.yaml
+taxonomy:
+  scopes: [shared, specflow] # allowed `scope` values
+  areas: [cli, docs, testing] # allowed `areas` values
+nonAuthoritative: [ideas/] # path prefixes under `docs.root` that `context` and `search` skip
+exclude: [templates/] # path prefixes under `docs.root` that are not part of the corpus at all
+```
+
+| Key                | Meaning                                                                   | Default      |
+| ------------------ | ------------------------------------------------------------------------- | ------------ |
+| `taxonomy.scopes`  | Non-empty list of distinct values; any other `scope` is a `check` problem | unrestricted |
+| `taxonomy.areas`   | Non-empty list of distinct values; any other area is a `check` problem    | unrestricted |
+| `nonAuthoritative` | Directory prefixes relative to `docs.root` (a trailing `/` is optional)   | none         |
+| `exclude`          | Directory prefixes relative to `docs.root`, validated the same way        | none         |
+
+An absent or empty file means all defaults. An unknown key at the top level or under `taxonomy` is
+an error naming the file. The file is not part of the corpus: only `*.md` files are scanned,
+validated and indexed. It is read whenever a corpus is opened (every `docs` command, and a running
+Runtime on its first documentation search). Document types, required fields and statuses are the
+product frontmatter contract and are not configurable.
 
 `context` never returns documents under a non-authoritative prefix; `search` skips them unless
 `--include-non-authoritative` is given; `list`, `find` and `get` return them.
@@ -82,7 +121,6 @@ remote.
 # .nevo/config.yaml — team default
 ai:
   embeddings:
-    protocol: openai-compatible
     baseUrl: http://127.0.0.1:11434/v1
     model: qwen3-embedding:0.6b
     queryInstruction: "Instruct: Given a question, retrieve documentation that answers it\nQuery: "
@@ -98,19 +136,20 @@ ai:
 ```
 
 The two files merge key by key, the local value winning; the example resolves to the remote
-endpoint and model with the project's `protocol` and `queryInstruction`. Either file alone may
-configure the endpoint. After merging, `protocol`, `baseUrl` and `model` are required.
+endpoint and model with the project's `queryInstruction`. Either file alone may configure the
+endpoint. After merging, `baseUrl` and `model` are required; a minimal endpoint is
+`ai.embeddings: { baseUrl, model }`.
 
-| Key                | Meaning                                                                                   | Default           |
-| ------------------ | ----------------------------------------------------------------------------------------- | ----------------- |
-| `protocol`         | `openai-compatible` (`POST {baseUrl}/embeddings`), the only protocol                      | required          |
-| `baseUrl`          | Absolute `http` or `https` URL without credentials, query or fragment                     | required          |
-| `model`            | Model id sent to the endpoint                                                             | required          |
-| `dimensions`       | Expected vector dimension; a different observed dimension is an endpoint error            | observed by probe |
-| `apiKeyEnv`        | Name of the environment variable holding the API key (upper-case letters, digits and `_`) | no key sent       |
-| `queryInstruction` | Prefix added to queries only, for instruction-tuned models                                | none              |
-| `batchSize`        | Texts per request when embedding documents                                                | 16                |
-| `timeoutMs`        | Per-request timeout for document embedding; query embedding uses at most 3000 ms of it    | 60000             |
+| Key                | Meaning                                                                                   | Default             |
+| ------------------ | ----------------------------------------------------------------------------------------- | ------------------- |
+| `protocol`         | `openai-compatible` (`POST {baseUrl}/embeddings`), the only protocol                      | `openai-compatible` |
+| `baseUrl`          | Absolute `http` or `https` URL without credentials, query or fragment                     | required            |
+| `model`            | Model id sent to the endpoint                                                             | required            |
+| `dimensions`       | Expected vector dimension; a different observed dimension is an endpoint error            | observed by probe   |
+| `apiKeyEnv`        | Name of the environment variable holding the API key (upper-case letters, digits and `_`) | no key sent         |
+| `queryInstruction` | Prefix added to queries only, for instruction-tuned models                                | none                |
+| `batchSize`        | Texts per request when embedding documents                                                | 16                  |
+| `timeoutMs`        | Per-request timeout for document embedding; query embedding uses at most 3000 ms of it    | 60000               |
 
 ### Secrets
 
@@ -158,7 +197,6 @@ docs:
 # .nevo/local/config.yaml
 ai:
   embeddings:
-    protocol: openai-compatible
     baseUrl: http://127.0.0.1:11434/v1
     model: qwen3-embedding:0.6b
     apiKeyEnv: EMBEDDINGS_API_KEY # only when a variable was named
@@ -172,6 +210,14 @@ and the review says `Semantic docs search: configured but unavailable, lexical f
 the review says `Semantic docs search: enabled (<model> at <baseUrl>, <n> dimensions)`. The probe
 writes no index; `docs semantic index` builds it (a `search` embeds at most 16 sections itself, so
 it builds only a very small corpus).
+
+In a project whose `.nevo/config.yaml` has no `runtime` section yet (for example a
+documentation-only configuration), `init` completes the existing files instead of refusing: it adds
+its sections and keeps the existing ones and their comments. When the project configuration already
+has a `docs` section or the local configuration an `ai` section, `init` does not ask the question
+above and the review says `Documentation: the existing configuration is kept`. A section `init`
+would write that already exists (for example `git`) is refused before anything is written. A project
+configuration with `runtime` is an initialized project; `init` refuses it.
 
 Enabling semantic search in an already initialized project is not offered by any command: edit
 the two files as shown.

@@ -1,13 +1,16 @@
-// Reads the project and local configuration files for the `docs` command. Either file may be absent
-// (defaults apply); only `docs` and `ai.embeddings` are read and validated, by the same
-// `parseDocsConfiguration` Runtime config loading uses.
+// Reads the configuration files of the documentation capability: the project and local
+// configuration (for the `docs` command; either may be absent and defaults apply; only `docs` and
+// `ai.embeddings` are read and validated, by the same `parseDocsConfiguration` Runtime config
+// loading uses) and the optional `<docs.root>/docs.yaml` (whenever a corpus is opened).
 
 import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { parse } from 'yaml';
 
 import { DocsConfigError } from '../errors';
 import { parseDocsConfiguration, type DocsConfiguration } from './docs-configuration';
+import { DOCS_FILE_NAME, parseDocsFile, type DocsFileSettings } from './docs-file';
 
 export interface DocsConfigPaths {
   /** `.nevo/config.yaml` of the project. */
@@ -50,4 +53,22 @@ export function loadDocsSettings(paths: DocsConfigPaths): DocsConfiguration {
     projectLabel: paths.projectConfigPath,
     localLabel: paths.localConfigPath,
   });
+}
+
+/**
+ * Read and validate `<docs.root>/docs.yaml`; an absent or empty file means the defaults. Throws
+ * `DocsConfigError` naming the file and the key of the first problem.
+ */
+export function loadDocsFile(projectRoot: string, root: string): DocsFileSettings {
+  const path = join(projectRoot, ...root.split('/'), DOCS_FILE_NAME);
+  const value = readTopLevel(path);
+  try {
+    return parseDocsFile(value);
+  } catch (err) {
+    if (err instanceof DocsConfigError) {
+      throw new DocsConfigError(`${path}: ${err.message}`, { cause: err });
+    }
+
+    throw err;
+  }
 }

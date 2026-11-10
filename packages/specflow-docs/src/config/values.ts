@@ -19,3 +19,27 @@ export function onlyKeys(value: ConfigRecord, allowed: ReadonlySet<string>, path
     }
   }
 }
+
+/**
+ * A relative directory path (below the project root or below `docs.root`): `/`-separated, no
+ * empty, `.` or `..` segments, not absolute. A single trailing slash is accepted and removed.
+ */
+export function relativeDirectory(value: unknown, path: string): string {
+  if (typeof value !== 'string' || value.trim() === '') {
+    throw new DocsConfigError(`${path} must be a non-empty string.`);
+  }
+
+  const normalized = value.endsWith('/') ? value.slice(0, -1) : value;
+  const segments = normalized.split('/');
+  if (
+    normalized.includes('\\') ||
+    /^[A-Za-z]:/.test(normalized) ||
+    segments.some((segment) => segment === '' || segment === '.' || segment === '..')
+  ) {
+    throw new DocsConfigError(
+      `${path} must be a relative directory path with '/' separators and no '.' or '..' segments (got '${value}').`,
+    );
+  }
+
+  return normalized;
+}

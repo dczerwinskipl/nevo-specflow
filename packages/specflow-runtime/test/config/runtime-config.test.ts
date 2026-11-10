@@ -92,6 +92,17 @@ describe('documentation configuration', () => {
     });
   });
 
+  it('refuses a docs-only project configuration and names "nevo-specflow init"', async () => {
+    const cwd = await mkdtemp(join(tmpdir(), 'specflow-docs-only-'));
+    await mkdir(join(cwd, '.nevo'), { recursive: true });
+    await writeFile(join(cwd, '.nevo/config.yaml'), 'docs:\n  search:\n    semantic: true\n');
+    await expect(loadFrom(cwd)).rejects.toThrowError(
+      new RuntimeConfigError(
+        `Nevo SpecFlow is not initialized: ${join(cwd, '.nevo/config.yaml')} has no 'runtime' section. Run "nevo-specflow init"; it keeps the existing sections.`,
+      ),
+    );
+  });
+
   it('rejects a local docs section and a secret literal like the docs command', async () => {
     const cwd = await mkdtemp(join(tmpdir(), 'specflow-docs-local-'));
     await mkdir(join(cwd, '.nevo/local'), { recursive: true });

@@ -1970,7 +1970,7 @@
       "status": "current",
       "file": "docs/architecture/decisions/0020-documentation-discovery-is-a-product-capability.md",
       "read_when": [],
-      "summary": "Documentation discovery is deliberately promoted into the product as `@nevo/specflow-docs`: it owns the frontmatter contract, deterministic discovery and optional semantic search, takes its taxonomy from project configuration, is exposed as the ordinary CLI command `nevo-specflow docs` and as the Runtime endpoint `GET /api/docs/search`, and keeps its index fresh on Runtime start and on read without a file watcher.",
+      "summary": "Documentation discovery is deliberately promoted into the product as `@nevo/specflow-docs`: it owns the frontmatter contract, deterministic discovery and optional semantic search, takes its taxonomy from a settings file next to the documentation, works without an initialized project, is exposed as the ordinary CLI command `nevo-specflow docs` and as the Runtime endpoint `GET /api/docs/search`, and keeps its index fresh on Runtime start and on read without a file watcher.",
       "related": [
         "adr.0005-repository-tooling-is-separate-from-the-product-api",
         "adr.0007-documentation-architecture-and-taxonomy",
@@ -2362,9 +2362,9 @@
       "read_when": [
         "installing a local build of nevo-specflow to use it elsewhere",
         "checking that a packaging change did not break the installed CLI",
-        "changing this repository's own .nevo/config.yaml or the pnpm docs scripts"
+        "changing this repository's own .nevo/config.yaml, docs/docs.yaml or the pnpm docs scripts"
       ],
-      "summary": "`pnpm dogfood:install` builds the real distributable, packs it, installs THAT tarball globally with pnpm, and smokes the installed `nevo-specflow`. It deliberately uses a tarball — not a workspace link — so it catches packaging problems a linked install would hide. This repository is itself a SpecFlow project whose `pnpm docs:*` scripts run the product documentation command.",
+      "summary": "`pnpm dogfood:install` builds the real distributable, packs it, installs THAT tarball globally with pnpm, and smokes the installed `nevo-specflow`. It deliberately uses a tarball — not a workspace link — so it catches packaging problems a linked install would hide. This repository's `pnpm docs:*` scripts run the product documentation command over a documentation-only configuration; the repository is not an initialized SpecFlow project.",
       "related": [
         "adr.0020-documentation-discovery-is-a-product-capability",
         "engineering.repository.product-packaging",
@@ -5151,11 +5151,13 @@
       "file": "docs/reference/configuration/documentation-and-embeddings.md",
       "read_when": [
         "configuring the documentation root, taxonomy, non-authoritative or excluded paths of a project",
+        "writing or validating a docs/docs.yaml documentation settings file",
+        "using the docs commands in a project that is not initialized (documentation-only configuration)",
         "enabling semantic documentation search or configuring an embedding endpoint",
         "changing the semantic search step of nevo-specflow init",
         "diagnosing a docs or ai.embeddings configuration error"
       ],
-      "summary": "The docs namespace (root, taxonomy, non-authoritative and excluded prefixes, search.semantic) and the ai.embeddings endpoint (protocol, baseUrl, model, dimensions, apiKeyEnv, queryInstruction, batchSize, timeoutMs): which file may hold them, how they merge, their validation and defaults.",
+      "summary": "The docs namespace (root, search.semantic), the documentation settings file <docs.root>/docs.yaml (taxonomy, nonAuthoritative, exclude) and the ai.embeddings endpoint (baseUrl, model, optional protocol, dimensions, apiKeyEnv, queryInstruction, batchSize, timeoutMs): which file holds them, how they merge, their validation and defaults, and documentation-only configuration.",
       "related": [
         "adr.0020-documentation-discovery-is-a-product-capability",
         "adr.0021-product-neutral-ai-semantic-search-engine",

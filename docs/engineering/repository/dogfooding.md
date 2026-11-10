@@ -6,13 +6,13 @@ status: current
 read_when:
   - installing a local build of nevo-specflow to use it elsewhere
   - checking that a packaging change did not break the installed CLI
-  - changing this repository's own .nevo/config.yaml or the pnpm docs scripts
+  - changing this repository's own .nevo/config.yaml, docs/docs.yaml or the pnpm docs scripts
 summary: >
   `pnpm dogfood:install` builds the real distributable, packs it, installs THAT tarball
   globally with pnpm, and smokes the installed `nevo-specflow`. It deliberately uses a
   tarball — not a workspace link — so it catches packaging problems a linked install
-  would hide. This repository is itself a SpecFlow project whose `pnpm docs:*` scripts run the
-  product documentation command.
+  would hide. This repository's `pnpm docs:*` scripts run the product documentation command over a
+  documentation-only configuration; the repository is not an initialized SpecFlow project.
 related:
   - adr.0020-documentation-discovery-is-a-product-capability
   - engineering.repository.product-packaging
@@ -70,15 +70,21 @@ nevo-specflow start      # starts the configured long-running Runtime server
 
 Remove it with `pnpm remove -g @nevo/specflow`.
 
-## This repository is a SpecFlow project
+## This repository uses the documentation capability
 
-The repository commits a complete project configuration, `.nevo/config.yaml`: a trusted local
-loopback Runtime (`127.0.0.1:4318`, no sign-in), the Git policy of the
-[Git workflow](git-workflow.md) and the `docs` namespace — the `scope` and `areas` vocabulary,
-`ideas/` as non-authoritative, `templates/` excluded from the corpus and the semantic search opt-in
-([ADR 0020](../../architecture/decisions/0020-documentation-discovery-is-a-product-capability.md)).
-Workstation choices (a local identity, the worktree folder, an embedding endpoint) belong in the
-git-ignored `.nevo/local/config.yaml`.
+The repository uses the product documentation capability without being an initialized SpecFlow
+project ([ADR 0020](../../architecture/decisions/0020-documentation-discovery-is-a-product-capability.md)).
+It commits two files:
+
+- `.nevo/config.yaml` with only the `docs` section: the semantic search opt-in
+  (`docs.search.semantic: true`; `docs.root` is the default `docs`). It has no `runtime` section,
+  so `nevo-specflow start` and `nevo-specflow project bootstrap` refuse and name
+  `nevo-specflow init`.
+- `docs/docs.yaml`, the documentation settings: the `scope` and `areas` vocabulary, `ideas/` as
+  non-authoritative and `templates/` excluded from the corpus.
+
+An embedding endpoint is a workstation choice and belongs in the git-ignored
+`.nevo/local/config.yaml` ([local setup](local-setup.md)).
 
 The root `pnpm docs:*` scripts are the product `nevo-specflow docs` command: `tools/docs` mounts the
 same command adapter with this repository as the project, adds `adr new` and the ADR rules, and
@@ -86,8 +92,3 @@ builds only `@nevo/specflow-docs` and its dependencies, never the bundled produc
 an installed `nevo-specflow docs check` in the repository therefore gives the same result as
 `pnpm docs:check`, except for the repository-only ADR rules, which only `pnpm docs:check` applies. Hints in the output name the `pnpm docs:*` command lines (`pnpm docs:get`,
 `pnpm docs:check --write`, `pnpm docs:semantic index`).
-
-A fresh clone has no Project Home yet: `nevo-specflow start` refuses with "No designated Project
-Home exists for this local Git repository" and writes nothing. Run `nevo-specflow project bootstrap`
-once in the primary checkout (it designates the Project Home of an already-initialized checkout),
-then `nevo-specflow start`. The start error does not name `project bootstrap`.

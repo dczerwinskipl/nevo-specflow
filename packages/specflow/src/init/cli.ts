@@ -71,7 +71,8 @@ export function createProjectInitCommand(context: ProjectInitCommandContext): Co
       const layout = await (context.resolveLayout ?? resolveGitCheckoutLayout)(context.cwd);
       // Reject linked worktrees before asking questions or mutating configuration.
       await assertPrimaryGitCheckout(layout.root);
-      await assertProjectCanInitialize(layout);
+      // A configuration without `runtime` (for example only `docs`) is completed, keeping its sections.
+      const existing = await assertProjectCanInitialize(layout);
       // A repository an earlier project claimed cannot be designated again: say so before anything is
       // asked or written, instead of failing after the configuration is in place.
       const claimed = await findOrphanedGitInstance(layout.root);
@@ -124,7 +125,17 @@ export function createProjectInitCommand(context: ProjectInitCommandContext): Co
       }
 
       // Last before the review: its prompt defaults to no, and a probe failure is reported, not thrown.
-      const docs = await initDocs({ ui, env: process.env });
+      // Documentation that is already configured is kept as it is and not asked about.
+      const docsConfigured =
+        existing.project?.sections.includes('docs') === true ||
+        existing.local?.sections.includes('ai') === true;
+      const docs = docsConfigured
+        ? {
+            projectConfig: {},
+            localConfig: {},
+            summary: ['Documentation: the existing configuration is kept'],
+          }
+        : await initDocs({ ui, env: process.env });
 
       const protectedNote =
         gitConfig.integrationTargetBranch !== undefined

@@ -5,62 +5,70 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { DocsConfigError } from '../errors';
-import { DEFAULT_DOCS_SETTINGS, isNonAuthoritative, parseDocsConfig } from './docs-settings';
-import { loadDocsSettings } from './load-docs-settings';
+import { DEFAULT_DOCS_FILE_SETTINGS, isNonAuthoritative, parseDocsFile } from './docs-file';
+import { DEFAULT_DOCS_SETTINGS, parseDocsConfig } from './docs-settings';
+import { loadDocsFile, loadDocsSettings } from './load-docs-settings';
 
 describe('parseDocsConfig', () => {
   it('uses the ADR 0020 defaults when the namespace or a key is absent', () => {
-    expect(parseDocsConfig(undefined)).toEqual({
-      root: 'docs',
-      taxonomy: {},
-      nonAuthoritative: [],
-      exclude: [],
-      search: { semantic: false },
-    });
-    expect(parseDocsConfig({ taxonomy: { areas: ['cli'] } })).toEqual({
-      ...DEFAULT_DOCS_SETTINGS,
-      taxonomy: { areas: ['cli'] },
-    });
-  });
-
-  it('normalizes a trailing slash on the root and the prefixes', () => {
-    expect(
-      parseDocsConfig({
-        root: 'handbook/',
-        nonAuthoritative: ['ideas/', 'drafts'],
-        exclude: ['templates/'],
-      }),
-    ).toEqual({
+    expect(parseDocsConfig(undefined)).toEqual({ root: 'docs', search: { semantic: false } });
+    expect(parseDocsConfig({ root: 'handbook/' })).toEqual({
       ...DEFAULT_DOCS_SETTINGS,
       root: 'handbook',
-      nonAuthoritative: ['ideas', 'drafts'],
-      exclude: ['templates'],
     });
     expect(parseDocsConfig({ search: { semantic: true } }).search).toEqual({ semantic: true });
   });
 
   it.each([
     [{ rooot: 'docs' }, "Unknown configuration key 'docs.rooot'."],
-    [{ taxonomy: { tags: ['x'] } }, "Unknown configuration key 'docs.taxonomy.tags'."],
     [{ root: '../elsewhere' }, 'docs.root must be a relative directory path'],
     [{ root: '/abs' }, 'docs.root must be a relative directory path'],
     [{ root: 'C:/docs' }, 'docs.root must be a relative directory path'],
     [{ root: '.' }, 'docs.root must be a relative directory path'],
-    [{ taxonomy: { scopes: [] } }, 'docs.taxonomy.scopes must be a non-empty list of strings.'],
-    [{ taxonomy: { areas: ['cli', 'cli'] } }, "docs.taxonomy.areas lists 'cli' more than once."],
-    [{ nonAuthoritative: 'ideas' }, 'docs.nonAuthoritative must be a list of path prefixes.'],
-    [{ nonAuthoritative: ['a\\b'] }, 'docs.nonAuthoritative[0] must be a relative directory path'],
-    [{ exclude: 'templates' }, 'docs.exclude must be a list of path prefixes.'],
-    [{ exclude: ['../x'] }, 'docs.exclude[0] must be a relative directory path'],
     [{ search: { semantic: 'yes' } }, 'docs.search.semantic must be true or false.'],
     [{ search: { mode: 'hybrid' } }, "Unknown configuration key 'docs.search.mode'."],
     ['docs', 'docs must be an object.'],
+    [
+      { root: 'handbook', taxonomy: { areas: ['cli'] } },
+      "docs.taxonomy is not a project configuration key; set 'taxonomy' in handbook/docs.yaml",
+    ],
+    [{ nonAuthoritative: ['ideas'] }, "set 'nonAuthoritative' in docs/docs.yaml"],
+    [{ exclude: ['templates'] }, "set 'exclude' in docs/docs.yaml"],
   ])('rejects %j', (value, message) => {
     expect(() => parseDocsConfig(value)).toThrow(message);
   });
+});
+
+describe('parseDocsFile', () => {
+  it('uses the defaults without a file and normalizes trailing slashes', () => {
+    expect(parseDocsFile(undefined)).toEqual(DEFAULT_DOCS_FILE_SETTINGS);
+    expect(
+      parseDocsFile({
+        taxonomy: { areas: ['cli'] },
+        nonAuthoritative: ['ideas/', 'drafts'],
+        exclude: ['templates/'],
+      }),
+    ).toEqual({
+      taxonomy: { areas: ['cli'] },
+      nonAuthoritative: ['ideas', 'drafts'],
+      exclude: ['templates'],
+    });
+  });
+
+  it.each([
+    [{ root: 'docs' }, "Unknown configuration key 'root'."],
+    [{ taxonomy: { tags: ['x'] } }, "Unknown configuration key 'taxonomy.tags'."],
+    [{ taxonomy: { scopes: [] } }, 'taxonomy.scopes must be a non-empty list of strings.'],
+    [{ taxonomy: { areas: ['cli', 'cli'] } }, "taxonomy.areas lists 'cli' more than once."],
+    [{ nonAuthoritative: 'ideas' }, 'nonAuthoritative must be a list of path prefixes.'],
+    [{ nonAuthoritative: ['a\\b'] }, 'nonAuthoritative[0] must be a relative directory path'],
+    [{ exclude: ['../x'] }, 'exclude[0] must be a relative directory path'],
+  ])('rejects %j', (value, message) => {
+    expect(() => parseDocsFile(value)).toThrow(message);
+  });
 
   it('matches non-authoritative prefixes as directories under the root', () => {
-    const settings = parseDocsConfig({ nonAuthoritative: ['ideas'] });
+    const settings = { root: 'docs', ...parseDocsFile({ nonAuthoritative: ['ideas'] }) };
     expect(isNonAuthoritative(settings, 'docs/ideas/x.md')).toBe(true);
     expect(isNonAuthoritative(settings, 'docs/ideas-x.md')).toBe(false);
     expect(isNonAuthoritative(settings, 'ideas/x.md')).toBe(false);
@@ -109,5 +117,20 @@ describe('loadDocsSettings', () => {
   it('names the project file in a namespace problem', () => {
     const paths = project({ '.nevo/config.yaml': 'docs:\n  root: ../up\n' });
     expect(() => loadDocsSettings(paths)).toThrow(`${paths.projectConfigPath}: docs.root`);
+  });
+
+  it('reads <docs.root>/docs.yaml and names it in a problem; an empty file is the defaults', () => {
+    const paths = project({});
+    const root = join(paths.projectConfigPath, '..', '..');
+    mkdirSync(join(root, 'docs'));
+    expect(loadDocsFile(root, 'docs')).toEqual(DEFAULT_DOCS_FILE_SETTINGS);
+    writeFileSync(join(root, 'docs', 'docs.yaml'), '');
+    expect(loadDocsFile(root, 'docs')).toEqual(DEFAULT_DOCS_FILE_SETTINGS);
+    writeFileSync(join(root, 'docs', 'docs.yaml'), 'exclude: [templates/]\n');
+    expect(loadDocsFile(root, 'docs').exclude).toEqual(['templates']);
+    writeFileSync(join(root, 'docs', 'docs.yaml'), 'search: { semantic: true }\n');
+    expect(() => loadDocsFile(root, 'docs')).toThrow(
+      `${join(root, 'docs', 'docs.yaml')}: Unknown configuration key 'search'.`,
+    );
   });
 });

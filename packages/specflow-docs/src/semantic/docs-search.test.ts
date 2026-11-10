@@ -41,9 +41,11 @@ writeFileSync(
   doc('draft', 'draft', '# Draft\n\nA widget install idea.'),
 );
 
+writeFileSync(join(root, 'docs', 'docs.yaml'), 'nonAuthoritative: [ideas]\n');
+
 afterAll(() => rmSync(root, { recursive: true, force: true }));
 
-const settings = parseDocsConfig({ nonAuthoritative: ['ideas'], search: { semantic: true } });
+const settings = parseDocsConfig({ search: { semantic: true } });
 const corpus = openFileSystemCorpus(root, settings);
 
 function semanticSearch() {

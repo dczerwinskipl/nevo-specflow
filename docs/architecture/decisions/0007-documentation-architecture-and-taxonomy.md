@@ -252,8 +252,9 @@ configuration
 
 (Amended 2026-11-09 by [ADR 0020](0020-documentation-discovery-is-a-product-capability.md):
 documentation discovery is a product capability, and the `scope` and `areas` vocabularies are
-project configuration (`docs.taxonomy`). The vocabularies above are this repository's taxonomy,
-declared in its `.nevo/config.yaml` and enforced by the product documentation capability. Where
+declared in the documentation settings file `<docs.root>/docs.yaml` (`taxonomy`). The vocabularies
+above are this repository's taxonomy, declared in its `docs/docs.yaml` and enforced by the product
+documentation capability. Where
 this ADR names `nevo-docs` as the validator or indexer, read the product `nevo-specflow docs`
 command.)
 
@@ -326,7 +327,7 @@ Those subjects use this documentation model but are decided independently.
 
 ### Costs
 
-- the controlled taxonomy is enforced by the documentation capability from project configuration, so adding a genuinely new scope or area requires an intentional taxonomy change;
+- the controlled taxonomy is enforced by the documentation capability from the documentation settings file, so adding a genuinely new scope or area requires an intentional taxonomy change;
 - authors must classify both semantic role and ownership scope;
 - the controlled scope/area vocabulary requires maintenance;
 - some subjects naturally cross namespaces, so links between authoritative documents remain

@@ -90,7 +90,7 @@ export interface FileSystemDocRepositoryOptions {
   readonly projectRoot: string;
   /** `docs.root` of the settings. */
   readonly root: string;
-  /** `docs.exclude`: directory prefixes relative to `root` that are not scanned. Default none. */
+  /** `exclude` of `docs.yaml`: directory prefixes relative to `root` that are not scanned. Default none. */
   readonly exclude?: readonly string[];
 }
 

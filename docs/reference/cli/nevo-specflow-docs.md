@@ -28,7 +28,8 @@ related:
 It is an ordinary command: it does not start Runtime, need a running Runtime or load UI assets. It
 runs in a Git repository and reads the documents under the project's documentation root: every
 `.md` file below `docs.root` except the generated index files and directories listed in
-`docs.exclude`.
+`exclude` of `<docs.root>/docs.yaml`. The project does not need to be initialized: a
+`.nevo/config.yaml` with only a `docs` section is enough.
 
 ```bash
 nevo-specflow docs list [--type <type>] [--status <status>] [--json]
@@ -74,7 +75,7 @@ frontmatter. It is the only model-dependent command.
 | Option                        | Meaning                                                                      |
 | ----------------------------- | ---------------------------------------------------------------------------- |
 | `--limit <n>`                 | Maximum documents (default 10); each shows up to 3 matching sections         |
-| `--include-non-authoritative` | Also return documents under `docs.nonAuthoritative` prefixes                 |
+| `--include-non-authoritative` | Also return documents under the `nonAuthoritative` prefixes of `docs.yaml`   |
 | `--no-refresh`                | Embed no documents; answer lexically unless the index is already complete    |
 | `--json`                      | Print the result contract (`DocsSearchResult` in `@nevo/specflow-contracts`) |
 
@@ -193,9 +194,10 @@ meanwhile.
 
 ## Configuration
 
-The commands work without `.nevo/config.yaml` and without `.nevo/local/config.yaml`. They read and
-validate only the `docs` and `ai.embeddings` namespaces; `docs` is project-owned and rejected in the
-local file. The keys, their defaults and the secret rules are in the
+The commands work without `.nevo/config.yaml`, without `.nevo/local/config.yaml` and without
+`<docs.root>/docs.yaml`, and they do not need an initialized project (no `runtime` section). They
+read and validate only the `docs` and `ai.embeddings` namespaces and `docs.yaml` (the taxonomy and
+path prefixes); `docs` is project-owned and rejected in the local file. The keys, their defaults and the secret rules are in the
 [documentation and embeddings configuration reference](../configuration/documentation-and-embeddings.md).
 
 ## Exit codes

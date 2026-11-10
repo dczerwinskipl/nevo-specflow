@@ -3,7 +3,7 @@
 Copy this file to `docs/architecture/decisions/NNNN-kebab-title.md`, delete this notice,
 and replace the example frontmatter with a real `---`-delimited block. This template
 deliberately has **no** frontmatter — `docs/templates/**` is excluded from the corpus
-(`docs.exclude` in `.nevo/config.yaml`), so the frontmatter requirement does not apply here.
+(`exclude` in `docs/docs.yaml`), so the frontmatter requirement does not apply here.
 
 ## Frontmatter to add at the top of the real ADR
 

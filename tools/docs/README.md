@@ -8,8 +8,8 @@ Documentation discovery is a product capability
 `@nevo/specflow-docs` owns the frontmatter contract, `list`, `find`, `get`, `context`, `check`,
 `search`, `semantic` and the generated index. This package is a thin launcher that mounts the same
 `createDocsCommand` adapter `nevo-specflow docs` mounts, with this repository as the project
-(`.nevo/config.yaml` declares the taxonomy, `ideas/` as non-authoritative and `templates/` as
-excluded). It adds only what is not product behavior:
+(`docs/docs.yaml` declares the taxonomy, `ideas/` as non-authoritative and `templates/` as
+excluded; `.nevo/config.yaml` holds only the semantic search opt-in). It adds only what is not product behavior:
 
 - `adr new` — create the next-numbered ADR as a draft and regenerate the index;
 - the repository's ADR rules, run by `check` (and every corpus read) through

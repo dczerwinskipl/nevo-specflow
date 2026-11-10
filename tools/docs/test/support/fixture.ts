@@ -12,7 +12,7 @@ export const fm = (o: Record<string, string>, body = '# body\n'): string =>
     .join('\n')}\n---\n${body}`;
 
 const FIXTURE_FILES: Record<string, string> = {
-  '.nevo/config.yaml': 'docs:\n  exclude: [templates/]\n',
+  'docs/docs.yaml': 'exclude: [templates/]\n',
   'docs/README.md': fm({ id: 'docs.readme', type: 'hub', title: 'Docs', status: 'current' }),
   'docs/architecture/decisions/0001-first.md': fm(
     {

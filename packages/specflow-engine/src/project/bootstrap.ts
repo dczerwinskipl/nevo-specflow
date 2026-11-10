@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
-import { lstat, mkdir, open, realpath } from 'node:fs/promises';
+import { lstat, mkdir, open, readFile, realpath } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
+
+import { parse as parseYaml } from 'yaml';
 
 import { openSpecFlowEngine, type SpecFlowEngine } from '../application';
 import {
@@ -47,6 +49,8 @@ export async function bootstrapProjectHome(cwd: string): Promise<SpecFlowEngine>
       'Project configuration must be a regular file.',
     );
   }
+
+  await assertInitializedProjectConfig(join(root, PROJECT_CONFIG_RELATIVE_PATH));
 
   for (const relative of [
     LOCAL_CONFIG_RELATIVE_PATH,
@@ -205,6 +209,27 @@ async function inspectPrimaryGitCheckout(
   }
 
   return { root, physicalCommonDir };
+}
+
+/**
+ * The `runtime` section is what makes a project configuration an initialized one; a configuration
+ * without it (for example only a `docs` section) serves the `docs` commands but is not a project
+ * to designate. Designating it would leave a Project Home that `init` can no longer complete.
+ */
+async function assertInitializedProjectConfig(path: string): Promise<void> {
+  let parsed: unknown;
+  try {
+    parsed = parseYaml(await readFile(path, 'utf8')) as unknown;
+  } catch {
+    throw new ProjectHomeError('PROJECT_HOME_INVALID', 'Invalid project configuration.');
+  }
+
+  if (typeof parsed !== 'object' || parsed === null || !('runtime' in parsed)) {
+    throw new ProjectHomeError(
+      'PROJECT_HOME_INVALID',
+      `Nevo SpecFlow is not initialized: ${PROJECT_CONFIG_RELATIVE_PATH} has no 'runtime' section. Run "nevo-specflow init"; it keeps the existing sections.`,
+    );
+  }
 }
 
 function isMissing(error: unknown): boolean {

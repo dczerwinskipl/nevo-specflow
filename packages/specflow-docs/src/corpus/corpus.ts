@@ -1,10 +1,12 @@
-// A documentation corpus: the repository, the project settings and host-specific extra rules,
-// scanned and validated together.
+// A documentation corpus: the repository, its settings (`docs.root` and `<docs.root>/docs.yaml`)
+// and host-specific extra rules, scanned and validated together.
 
 import { statSync } from 'node:fs';
 import { join } from 'node:path';
 
+import type { CorpusSettings } from '../config/docs-file';
 import type { DocsSettings } from '../config/docs-settings';
+import { loadDocsFile } from '../config/load-docs-settings';
 import type { DocRecord } from '../frontmatter/contract';
 import { validateCorpus, validateDoc } from '../frontmatter/validate';
 import { DocsConfigError, DocsCorpusInvalidError } from '../errors';
@@ -24,25 +26,30 @@ export interface DocsCorpusRules {
 
 export interface DocsCorpus {
   readonly repo: DocRepository;
-  readonly settings: DocsSettings;
+  readonly settings: CorpusSettings;
   readonly validate?: DocsCorpusRules['validate'];
 }
 
-/** Open the corpus under `docs.root`; a root that is not an existing directory is a configuration error. */
+/**
+ * Open the corpus under `docs.root` and read its `docs.yaml`. A root that is not an existing
+ * directory and an invalid `docs.yaml` are configuration errors.
+ */
 export function openFileSystemCorpus(
   projectRoot: string,
-  settings: DocsSettings,
+  { root }: DocsSettings,
   rules: DocsCorpusRules = {},
 ): DocsCorpus {
   if (
-    !statSync(join(projectRoot, ...settings.root.split('/')), {
+    !statSync(join(projectRoot, ...root.split('/')), {
       throwIfNoEntry: false,
     })?.isDirectory()
   ) {
     throw new DocsConfigError(
-      `documentation root '${settings.root}' does not exist in ${projectRoot}; create it or set docs.root.`,
+      `documentation root '${root}' does not exist in ${projectRoot}; create it or set docs.root.`,
     );
   }
+
+  const settings: CorpusSettings = { root, ...loadDocsFile(projectRoot, root) };
 
   return {
     repo: createFileSystemDocRepository({
@@ -57,7 +64,7 @@ export function openFileSystemCorpus(
 
 export function collectCorpusProblems(
   scan: ScanResult,
-  settings: DocsSettings,
+  settings: CorpusSettings,
   validate?: DocsCorpusRules['validate'],
 ): string[] {
   const problems: string[] = [];

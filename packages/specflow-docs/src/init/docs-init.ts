@@ -192,7 +192,6 @@ function validatedSections(answers: EndpointAnswers): ValidatedSections {
   const localConfig = {
     ai: {
       embeddings: {
-        protocol: 'openai-compatible',
         baseUrl: answers.baseUrl,
         model: answers.model,
         ...(answers.apiKeyEnv === '' ? {} : { apiKeyEnv: answers.apiKeyEnv }),

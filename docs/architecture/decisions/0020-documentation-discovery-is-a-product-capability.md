@@ -7,7 +7,8 @@ date: 2026-11-09
 summary: >
   Documentation discovery is deliberately promoted into the product as `@nevo/specflow-docs`: it
   owns the frontmatter contract, deterministic discovery and optional semantic search, takes its
-  taxonomy from project configuration, is exposed as the ordinary CLI command `nevo-specflow docs`
+  taxonomy from a settings file next to the documentation, works without an initialized project,
+  is exposed as the ordinary CLI command `nevo-specflow docs`
   and as the Runtime endpoint `GET /api/docs/search`, and keeps its index fresh on Runtime start and
   on read without a file watcher.
 related:
@@ -24,7 +25,9 @@ related:
 
 ## Status
 
-Current. The decisions below were taken by the product owner on 2026-11-09.
+Current. The decisions below were taken by the product owner on 2026-11-09; where the taxonomy lives
+(section 2), documentation without an initialized project (section 3) and the init interaction
+(section 7) on 2026-11-10.
 
 ## Context
 
@@ -75,35 +78,49 @@ ADR authoring (`adr new`) and validation rules that exist only for this reposito
 behavior. They stay in `tools/docs`, which consumes `@nevo/specflow-docs` through its package
 exports.
 
-### 2. Taxonomy is project configuration
+### 2. Taxonomy lives next to the documentation
 
-The vocabulary that differs between projects is configuration in the project-owned `docs`
-namespace:
+What differs between projects is split by what it describes.
+
+The project-owned `docs` namespace of `.nevo/config.yaml` says where the documentation is and how
+the project searches it:
 
 - `docs.root` — the documentation root, relative to the project root (default `docs`);
-- `docs.taxonomy.scopes` and `docs.taxonomy.areas` — when declared, `scope` and `areas` values
-  outside them are validation errors; when absent, the values are unrestricted;
-- a list of **non-authoritative path prefixes** under `docs.root`. `context` always excludes
-  documents under them. `search` (CLI and HTTP) excludes them unless the caller
+- `docs.search.semantic` — the semantic search opt-in (section 4).
+
+The **documentation settings file** `<docs.root>/docs.yaml` describes the documentation itself. It
+is optional and is versioned with the documents it describes:
+
+- `taxonomy.scopes` and `taxonomy.areas` — when declared, `scope` and `areas` values outside them
+  are validation errors; when absent, the values are unrestricted;
+- `nonAuthoritative` — a list of **non-authoritative path prefixes** under `docs.root`. `context`
+  always excludes documents under them. `search` (CLI and HTTP) excludes them unless the caller
   sets its include switch, which is the only such switch. `list`, `find` and `get` still return
   them;
-- a list of **excluded path prefixes** under `docs.root`. Files below them (for example copy-me
-  templates without frontmatter) are not part of the corpus and are never scanned; relative links
-  into them still resolve.
+- `exclude` — a list of **excluded path prefixes** under `docs.root`. Files below them (for example
+  copy-me templates without frontmatter) are not part of the corpus and are never scanned; relative
+  links into them still resolve.
+
+`docs.yaml` is not part of the corpus: only `*.md` files are scanned and indexed. Unknown keys in it
+are rejected, and these keys in the `docs` namespace of `.nevo/config.yaml` are rejected with an
+error that names `<docs.root>/docs.yaml`.
 
 Document types, required fields, statuses and inactive statuses are the product frontmatter
 contract and MUST NOT become configuration.
 
-**Defaults.** These are the defaults of the `docs` and `ai.embeddings` settings, stated only here:
+**Defaults.** These are the defaults of the `docs`, `docs.yaml` and `ai.embeddings` settings, stated
+only here:
 
-| Setting                             | Default when absent              |
-| ----------------------------------- | -------------------------------- |
-| `docs.root`                         | `docs`                           |
-| `docs.taxonomy.scopes` and `.areas` | unrestricted                     |
-| non-authoritative path prefixes     | none                             |
-| excluded path prefixes              | none                             |
-| `docs.search.semantic`              | off (`search` answers lexically) |
-| `ai.embeddings`                     | no endpoint configured           |
+| Setting                                | Default when absent              |
+| -------------------------------------- | -------------------------------- |
+| `docs.root`                            | `docs`                           |
+| `docs.search.semantic`                 | off (`search` answers lexically) |
+| `<docs.root>/docs.yaml`                | all of its defaults below        |
+| `taxonomy.scopes` and `taxonomy.areas` | unrestricted                     |
+| `nonAuthoritative` (non-authoritative) | none                             |
+| `exclude` (excluded path prefixes)     | none                             |
+| `ai.embeddings`                        | no endpoint configured           |
+| `ai.embeddings.protocol`               | `openai-compatible`              |
 
 The exact keys are defined by the configuration reference; ownership rules are in
 [project configuration and local state](../runtime/configuration.md).
@@ -113,10 +130,15 @@ The exact keys are defined by the configuration reference; ownership rules are i
 `nevo-specflow docs` is an ordinary CLI command. It MUST NOT start Runtime, require a running
 Runtime, load UI assets or require the UI build.
 
-Every `docs` command MUST work in a Git repository without `.nevo/config.yaml` and without
-`.nevo/local/config.yaml`; a missing file means the defaults above. When the files exist, the
-command reads and validates only the `docs` and `ai.embeddings` namespaces. It MUST NOT require the
-`runtime` section or validate other capabilities' namespaces.
+Every `docs` command MUST work in a Git repository without `.nevo/config.yaml`, without
+`.nevo/local/config.yaml` and without `<docs.root>/docs.yaml`; a missing file means the defaults
+above. When the files exist, the command reads and validates only the `docs` and `ai.embeddings`
+namespaces and `docs.yaml`. It MUST NOT require the `runtime` section or validate other
+capabilities' namespaces.
+
+Using the documentation capability MUST NOT require initializing the project (Runtime, users,
+roles). A `.nevo/config.yaml` that contains only a `docs` section is a complete configuration for
+the `docs` commands.
 
 ```text
 nevo-specflow docs list | find | get | context | check
@@ -197,11 +219,19 @@ and schemas live in `@nevo/specflow-contracts`.
 - `ai.embeddings` may appear in project and local configuration; the local value wins per key. The
   embedding API key is never stored in either file: configuration names the environment variable
   that holds it.
+- The `runtime` section marks an initialized project. A project configuration without it (for
+  example only `docs`) is not initialized: `nevo-specflow init` completes it, adding its sections
+  and keeping the existing ones (and the existing sections of a local configuration without
+  `runtime`); it refuses only a configuration that has `runtime`, and a contributed section that
+  already exists. Runtime config loading and `nevo-specflow project bootstrap` refuse a project
+  configuration without `runtime` and name `nevo-specflow init`.
 - `nevo-specflow init` contributes an optional step for a new project: it asks whether to enable
   semantic search, asks for the endpoint and model, runs a connectivity probe and shows the result,
-  writes `docs.search.semantic` to project configuration and the endpoint settings to local
-  configuration. A failed probe does not fail `init`; the summary reports the configured but
-  unavailable mode.
+  writes `docs.search.semantic` to project configuration and the endpoint settings (`baseUrl`,
+  `model` and an optional `apiKeyEnv`) to local configuration. A failed probe does not fail `init`;
+  the summary reports the configured but unavailable mode. When the project configuration already
+  has a `docs` section or the local configuration an `ai` section, the step is skipped and the
+  existing documentation configuration is kept.
 - **Deferred:** enabling semantic search in an already initialized project is not provided by any
   command. Re-running setup and a UI Settings screen are the intended future paths.
 
@@ -217,8 +247,9 @@ and schemas live in `@nevo/specflow-contracts`.
 
 - Documentation discovery is a product contract defined here, not inherited from `tools/docs`;
   changing it is a product change.
-- This repository dogfoods the capability: it commits a complete project `.nevo/config.yaml` (it is
-  a real SpecFlow project) that declares its taxonomy — the current `scope` and `areas` vocabulary,
+- This repository dogfoods the capability without being an initialized SpecFlow project: it commits
+  a `.nevo/config.yaml` with only the `docs` section (the semantic search opt-in) and a
+  `docs/docs.yaml` that declares its taxonomy — the current `scope` and `areas` vocabulary,
   `ideas/` as the non-authoritative prefix and `templates/` as an excluded prefix. Its root
   `pnpm docs:*` scripts build only `@nevo/specflow-docs` and its dependencies and run the same
   `docs` command adapter the product shell mounts, so agent lookups stay fast and do not need the

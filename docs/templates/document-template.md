@@ -2,7 +2,7 @@
 
 Copy this file to the appropriate place under `docs/`, delete this notice, and add a real
 frontmatter block. This template has no frontmatter because `docs/templates/**` is excluded from
-the corpus (`docs.exclude` in `.nevo/config.yaml`).
+the corpus (`exclude` in `docs/docs.yaml`).
 
 ## Frontmatter
 

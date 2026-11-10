@@ -1,26 +1,16 @@
-// The project-owned `docs` configuration namespace (ADR 0020, architecture.runtime.configuration).
-// This parser is file-free so Runtime config loading and the `docs` command share it.
+// The project-owned `docs` configuration namespace of `.nevo/config.yaml` (ADR 0020,
+// architecture.runtime.configuration): where the documentation lives and the semantic-search
+// opt-in. What describes the documentation itself (taxonomy, path prefixes) is in `docs.yaml` next
+// to it (`docs-file.ts`). This parser is file-free so Runtime config loading and the `docs` command
+// share it.
 
 import { DocsConfigError } from '../errors';
-import { onlyKeys, record } from './values';
-
-/** The `scope` / `areas` vocabularies; an absent list means the values are unrestricted. */
-export interface DocsTaxonomy {
-  readonly scopes?: readonly string[];
-  readonly areas?: readonly string[];
-}
+import { DOCS_FILE_NAME } from './docs-file';
+import { onlyKeys, record, relativeDirectory } from './values';
 
 export interface DocsSettings {
   /** Documentation root relative to the project root, `/`-separated, without a trailing slash. */
   readonly root: string;
-  readonly taxonomy: DocsTaxonomy;
-  /** Non-authoritative path prefixes relative to `root`, `/`-separated, without a trailing slash. */
-  readonly nonAuthoritative: readonly string[];
-  /**
-   * Excluded path prefixes relative to `root`, `/`-separated, without a trailing slash: files below
-   * them are not part of the corpus and are not scanned. Links into them still resolve.
-   */
-  readonly exclude: readonly string[];
   readonly search: DocsSearchSettings;
 }
 
@@ -32,75 +22,13 @@ export interface DocsSearchSettings {
 /** The defaults when the `docs` namespace or one of its keys is absent (ADR 0020 defaults table). */
 export const DEFAULT_DOCS_SETTINGS: DocsSettings = {
   root: 'docs',
-  taxonomy: {},
-  nonAuthoritative: [],
-  exclude: [],
   search: { semantic: false },
 };
 
-const DOCS_KEYS = new Set(['root', 'taxonomy', 'nonAuthoritative', 'exclude', 'search']);
-const TAXONOMY_KEYS = new Set(['scopes', 'areas']);
+const DOCS_KEYS = new Set(['root', 'search']);
 const SEARCH_KEYS = new Set(['semantic']);
-
-/**
- * A relative path below the project root (or below `docs.root`): `/`-separated, no empty, `.` or
- * `..` segments, not absolute. A single trailing slash is accepted and removed.
- */
-function relativeDirectory(value: unknown, path: string): string {
-  if (typeof value !== 'string' || value.trim() === '') {
-    throw new DocsConfigError(`${path} must be a non-empty string.`);
-  }
-
-  const normalized = value.endsWith('/') ? value.slice(0, -1) : value;
-  const segments = normalized.split('/');
-  if (
-    normalized.includes('\\') ||
-    /^[A-Za-z]:/.test(normalized) ||
-    segments.some((segment) => segment === '' || segment === '.' || segment === '..')
-  ) {
-    throw new DocsConfigError(
-      `${path} must be a relative directory path with '/' separators and no '.' or '..' segments (got '${value}').`,
-    );
-  }
-
-  return normalized;
-}
-
-function vocabulary(value: unknown, path: string): readonly string[] {
-  if (!Array.isArray(value) || value.length === 0) {
-    throw new DocsConfigError(`${path} must be a non-empty list of strings.`);
-  }
-
-  const seen = new Set<string>();
-  for (const entry of value) {
-    if (typeof entry !== 'string' || entry.trim() === '' || entry !== entry.trim()) {
-      throw new DocsConfigError(
-        `${path} entries must be non-empty strings without surrounding spaces.`,
-      );
-    }
-
-    if (seen.has(entry)) {
-      throw new DocsConfigError(`${path} lists '${entry}' more than once.`);
-    }
-
-    seen.add(entry);
-  }
-
-  return [...seen];
-}
-
-/** A list of directory prefixes relative to `docs.root`; `undefined` means the default. */
-function prefixList(value: unknown, path: string, fallback: readonly string[]): readonly string[] {
-  if (value === undefined) {
-    return fallback;
-  }
-
-  if (!Array.isArray(value)) {
-    throw new DocsConfigError(`${path} must be a list of path prefixes.`);
-  }
-
-  return value.map((entry, i) => relativeDirectory(entry, `${path}[${String(i)}]`));
-}
+/** Keys of `<docs.root>/docs.yaml`; named explicitly so the error says where they go. */
+const DOCS_FILE_KEYS = ['taxonomy', 'nonAuthoritative', 'exclude'] as const;
 
 /** Parse the `docs` namespace of the project configuration; `undefined` means all defaults. */
 export function parseDocsConfig(value: unknown): DocsSettings {
@@ -109,33 +37,19 @@ export function parseDocsConfig(value: unknown): DocsSettings {
   }
 
   const docs = record(value, 'docs');
-  onlyKeys(docs, DOCS_KEYS, 'docs');
-
   const root =
     docs.root === undefined
       ? DEFAULT_DOCS_SETTINGS.root
       : relativeDirectory(docs.root, 'docs.root');
-
-  let taxonomy: DocsTaxonomy = {};
-  if (docs.taxonomy !== undefined) {
-    const declared = record(docs.taxonomy, 'docs.taxonomy');
-    onlyKeys(declared, TAXONOMY_KEYS, 'docs.taxonomy');
-    taxonomy = {
-      ...(declared.scopes === undefined
-        ? {}
-        : { scopes: vocabulary(declared.scopes, 'docs.taxonomy.scopes') }),
-      ...(declared.areas === undefined
-        ? {}
-        : { areas: vocabulary(declared.areas, 'docs.taxonomy.areas') }),
-    };
+  for (const key of DOCS_FILE_KEYS) {
+    if (key in docs) {
+      throw new DocsConfigError(
+        `docs.${key} is not a project configuration key; set '${key}' in ${root}/${DOCS_FILE_NAME}, the documentation settings file next to the documentation.`,
+      );
+    }
   }
 
-  const nonAuthoritative = prefixList(
-    docs.nonAuthoritative,
-    'docs.nonAuthoritative',
-    DEFAULT_DOCS_SETTINGS.nonAuthoritative,
-  );
-  const exclude = prefixList(docs.exclude, 'docs.exclude', DEFAULT_DOCS_SETTINGS.exclude);
+  onlyKeys(docs, DOCS_KEYS, 'docs');
 
   let search = DEFAULT_DOCS_SETTINGS.search;
   if (docs.search !== undefined) {
@@ -148,20 +62,5 @@ export function parseDocsConfig(value: unknown): DocsSettings {
     search = { semantic: declared.semantic === true };
   }
 
-  return { root, taxonomy, nonAuthoritative, exclude, search };
-}
-
-/**
- * Whether a project-root-relative document path lies under one of the non-authoritative prefixes.
- * Prefixes name directories, so `ideas` matches `docs/ideas/x.md` but not `docs/ideas-x.md`.
- */
-export function isNonAuthoritative(settings: DocsSettings, file: string): boolean {
-  const rootPrefix = `${settings.root}/`;
-  if (!file.startsWith(rootPrefix)) {
-    return false;
-  }
-
-  const underRoot = file.slice(rootPrefix.length);
-
-  return settings.nonAuthoritative.some((prefix) => underRoot.startsWith(`${prefix}/`));
+  return { root, search };
 }

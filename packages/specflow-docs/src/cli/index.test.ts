@@ -51,14 +51,13 @@ describe('docs command', () => {
     ]);
   });
 
-  it('does not scan directories listed in docs.exclude', async () => {
+  it('does not scan directories excluded in docs.yaml', async () => {
     mkdirSync(join(root, 'docs', 'templates'));
     writeFileSync(join(root, 'docs', 'templates', 'page.md'), '# No frontmatter\n');
     const unexcluded = await runDocs(root, ['check']);
-    mkdirSync(join(root, '.nevo'));
-    writeFileSync(join(root, '.nevo', 'config.yaml'), 'docs:\n  exclude: [templates/]\n');
+    writeFileSync(join(root, 'docs', 'docs.yaml'), 'exclude: [templates/]\n');
     const excluded = await runDocs(root, ['check']);
-    rmSync(join(root, '.nevo'), { recursive: true });
+    rmSync(join(root, 'docs', 'docs.yaml'));
     rmSync(join(root, 'docs', 'templates'), { recursive: true });
     expect(unexcluded.stderr).toContain(
       'docs/templates/page.md: missing frontmatter (every authored docs/**.md file needs it)',

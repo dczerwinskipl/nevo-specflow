@@ -94,8 +94,7 @@ git:
   commits: ...
 
 docs:
-  root: docs
-  taxonomy: ...
+  root: docs # the taxonomy and path prefixes are in <docs.root>/docs.yaml
   search:
     semantic: true
 
@@ -116,6 +115,20 @@ package's parsers for these namespaces like any other feature parser. The `nevo-
 command uses the same parsers but is not Runtime config loading: it works without either config
 file (using the defaults in ADR 0020), reads and validates only `docs` and `ai.embeddings`, and does
 not require the `runtime` section.
+
+**Documentation-only configuration.** A `.nevo/config.yaml` with only a `docs` section (and
+optionally `ai.embeddings`) is a valid configuration for the `docs` commands; using documentation
+does not require initializing the project. It is not an initialized project: the `runtime` section
+is the initialization marker. Runtime config loading and `nevo-specflow project bootstrap` refuse a
+project configuration without `runtime` and name `nevo-specflow init`, which completes the file (see
+Initialization).
+
+**Documentation settings file.** What describes the documentation itself — the `scope`/`areas`
+taxonomy, non-authoritative and excluded path prefixes — is not in `.nevo/config.yaml` but in the
+optional `<docs.root>/docs.yaml`, committed next to the documents. The documentation capability owns
+and validates it whenever it opens the corpus (the `docs` commands, and the Runtime on the first
+search); it is not part of the corpus. The keys are in the
+[configuration reference](../../reference/configuration/documentation-and-embeddings.md).
 
 Configuration dependencies flow in one direction:
 
@@ -174,9 +187,10 @@ Current ownership is explicit:
 - `git`: project owns everything shareable (`enabled`, `worktrees`, `integrationTargetBranch`,
   `commits.protectedBranches`/`allowedBranches`/`auto`); local owns `worktreesRoot` and may override
   `commits.auto.<capability>` (the local value wins; any other local `git.commits` key is rejected).
-- `docs`: project-owned (documentation root, taxonomy, non-authoritative and excluded path
-  prefixes, the `search.semantic` opt-in); local `docs` configuration is rejected, both by Runtime config loading
-  and by the `nevo-specflow docs` command.
+- `docs`: project-owned (the documentation root and the `search.semantic` opt-in); local `docs`
+  configuration is rejected, both by Runtime config loading and by the `nevo-specflow docs`
+  command. The taxonomy and path prefixes are in `<docs.root>/docs.yaml`, which is committed with
+  the documentation and has no local counterpart.
 - `ai.embeddings`: allowed in both files; project config may hold a team default endpoint and local
   config overrides it, the local value winning per key. The embedding API key is never stored in
   either file: configuration holds only the name of the environment variable that contains it.
@@ -209,10 +223,14 @@ select/default such definitions, but should not absorb their full bodies.
 `nevo-specflow init` owns repository bootstrap only:
 
 - discover the Git repository root;
-- create `.nevo/config.yaml` and `.nevo/local/config.yaml`;
+- create `.nevo/config.yaml` and `.nevo/local/config.yaml`, or complete existing ones that have no
+  `runtime` section (for example a documentation-only configuration): it adds its sections, keeps
+  the existing sections and comments, and refuses a section that already exists. A configuration
+  with `runtime` is an initialized project and init refuses it;
 - ensure `.nevo/local/` is ignored and verify the concrete local config path with Git;
 - compose and serialize capability-owned contributions;
-- write local config first and committed config last as the success marker, rolling back on failure.
+- write local config first and committed config last as the success marker, rolling back on failure
+  (a completed file gets its previous content back).
 
 The product shell resolves the Git repository root for both `init` and `start`, then passes
 absolute config paths and the project root into Runtime. Runtime does not discover product file

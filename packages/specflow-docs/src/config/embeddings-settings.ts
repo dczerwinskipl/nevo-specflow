@@ -10,6 +10,8 @@ import { onlyKeys, record, type ConfigRecord } from './values';
 /** The only embedding protocol; further protocols are further adapters (ADR 0021). */
 export const EMBEDDINGS_PROTOCOLS = ['openai-compatible'] as const;
 export type EmbeddingsProtocol = (typeof EMBEDDINGS_PROTOCOLS)[number];
+/** `ai.embeddings.protocol` when neither file sets it. */
+export const DEFAULT_EMBEDDINGS_PROTOCOL: EmbeddingsProtocol = 'openai-compatible';
 
 /** A resolved embedding endpoint. Absent optional keys use the adapter defaults. */
 export interface EmbeddingsSettings {
@@ -144,8 +146,8 @@ export function mergeEmbeddingsLayers(
     return undefined;
   }
 
-  const merged = { ...project, ...local };
-  for (const key of ['protocol', 'baseUrl', 'model'] as const) {
+  const merged: ConfigRecord = { protocol: DEFAULT_EMBEDDINGS_PROTOCOL, ...project, ...local };
+  for (const key of ['baseUrl', 'model'] as const) {
     if (merged[key] === undefined) {
       throw new DocsConfigError(
         `ai.embeddings.${key} is required when ai.embeddings is configured (in either file).`,

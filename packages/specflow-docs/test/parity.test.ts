@@ -1,13 +1,13 @@
 // Behavioral parity with the repository tool this package was promoted from (`tools/docs`,
 // `nevo-docs`). `fixtures/parity/expected-*` were captured once by running the former `tools/docs`
 // implementation over `fixtures/parity/docs` (its hard-coded taxonomy and `docs/ideas/**`
-// exclusion). The product reads the same vocabulary from project configuration and must answer
+// exclusion). The product reads the same vocabulary from `docs/docs.yaml` and must answer
 // identically.
 // One intended difference: the generated index names the product command
 // (`nevo-specflow docs check --write`) whatever host wrote it, so `expected-index.generated.md`
 // carries that text in its two header lines; check hints on stderr still use the host's command.
 
-import { cpSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -28,19 +28,16 @@ const expectedRuns = JSON.parse(
   readFileSync(join(fixtures, 'expected-outputs.json'), 'utf8'),
 ) as ExpectedRun[];
 
-// The vocabulary `tools/docs` hard-codes, declared as project configuration.
-const PROJECT_CONFIG = `docs:
-  root: docs
-  taxonomy:
-    scopes: [shared, repo, specflow, nevo-ui]
-    areas: [ai, workflow, runtime, server, cli, ui, figma, testing, docs, release, security, configuration]
-  nonAuthoritative: [ideas/]
+// The vocabulary `tools/docs` hard-codes, declared in the documentation settings file.
+const DOCS_FILE = `taxonomy:
+  scopes: [shared, repo, specflow, nevo-ui]
+  areas: [ai, workflow, runtime, server, cli, ui, figma, testing, docs, release, security, configuration]
+nonAuthoritative: [ideas/]
 `;
 
 const root = mkdtempSync(join(tmpdir(), 'specflow-docs-parity-'));
 cpSync(join(fixtures, 'docs'), join(root, 'docs'), { recursive: true });
-mkdirSync(join(root, '.nevo'));
-writeFileSync(join(root, '.nevo', 'config.yaml'), PROJECT_CONFIG);
+writeFileSync(join(root, 'docs', 'docs.yaml'), DOCS_FILE);
 
 afterAll(() => rmSync(root, { recursive: true, force: true }));
 

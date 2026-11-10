@@ -2,7 +2,7 @@
 // vocabularies come from the project taxonomy: declared lists are enforced, absent lists accept any
 // value.
 
-import type { DocsTaxonomy } from '../config/docs-settings';
+import type { DocsTaxonomy } from '../config/docs-file';
 import { asString, KNOWN_STATUSES, KNOWN_TYPES, REQUIRED_FIELDS } from './contract';
 import type { DocRecord, DocType } from './contract';
 

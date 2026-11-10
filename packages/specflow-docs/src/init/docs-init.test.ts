@@ -52,7 +52,6 @@ describe('initDocs', () => {
     expect(result.localConfig).toEqual({
       ai: {
         embeddings: {
-          protocol: 'openai-compatible',
           baseUrl: 'http://127.0.0.1:11434/v1',
           model: 'qwen3-embedding:0.6b',
         },
@@ -97,7 +96,6 @@ describe('initDocs', () => {
     expect(result.localConfig).toEqual({
       ai: {
         embeddings: {
-          protocol: 'openai-compatible',
           baseUrl: 'https://embed.example.com/v1',
           model: 'm',
           apiKeyEnv: 'EMBED_KEY',

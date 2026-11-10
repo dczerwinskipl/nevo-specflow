@@ -1,6 +1,6 @@
 // `list` / `find` / `get` / `context` over a validated corpus.
 
-import { isNonAuthoritative } from '../config/docs-settings';
+import { isNonAuthoritative } from '../config/docs-file';
 import { loadValidatedCorpus, type DocsCorpus } from '../corpus/corpus';
 import {
   asString,

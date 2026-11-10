@@ -81,7 +81,7 @@ describe('project initialization', () => {
     const projectConfigPath = join(root, '.nevo', 'config.yaml');
 
     await assertProjectCanInitialize(layout(root));
-    await writeFile(projectConfigPath, 'concurrent: project\n', 'utf8');
+    await writeFile(projectConfigPath, 'runtime: { concurrent: project }\n', 'utf8');
 
     await expect(
       initializeProject({
@@ -91,10 +91,37 @@ describe('project initialization', () => {
       }),
     ).rejects.toThrowError(/already initialized/);
 
-    await expect(readFile(projectConfigPath, 'utf8')).resolves.toBe('concurrent: project\n');
+    await expect(readFile(projectConfigPath, 'utf8')).resolves.toBe(
+      'runtime: { concurrent: project }\n',
+    );
     await expect(
       readFile(join(root, '.nevo', 'local', 'config.yaml'), 'utf8'),
     ).rejects.toMatchObject({ code: 'ENOENT' });
+  });
+
+  it('completes a configuration without runtime, keeping its sections and comments', async () => {
+    const root = await repository();
+    const projectConfigPath = join(root, '.nevo', 'config.yaml');
+    const localConfigPath = join(root, '.nevo', 'local', 'config.yaml');
+    await mkdir(join(root, '.nevo', 'local'), { recursive: true });
+    await writeFile(projectConfigPath, '# Documentation only.\ndocs:\n  root: handbook\n', 'utf8');
+    await writeFile(localConfigPath, 'ai:\n  embeddings: { baseUrl: x, model: m }\n', 'utf8');
+
+    await initializeProject({
+      layout: layout(root),
+      contribution,
+      isIgnored: () => Promise.resolve(true),
+    });
+
+    await expect(readFile(projectConfigPath, 'utf8')).resolves.toBe(
+      '# Documentation only.\ndocs:\n  root: handbook\nruntime:\n  marker: runtime-project\n',
+    );
+    await expect(readFile(localConfigPath, 'utf8')).resolves.toContain(
+      'ai:\n  embeddings: { baseUrl: x, model: m }\nruntime:\n',
+    );
+    await expect(assertProjectCanInitialize(layout(root))).rejects.toThrowError(
+      `Nevo SpecFlow is already initialized: ${projectConfigPath}`,
+    );
   });
 
   it('does not treat existing committed .nevo definitions as an initialized config', async () => {

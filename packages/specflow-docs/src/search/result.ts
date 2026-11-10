@@ -1,26 +1,28 @@
 // One search hit as the `docs search` contract shows it: the document described by its frontmatter,
-// so a reader can decide whether to open it, and its best sections as heading paths (with a one-line
-// snippet only on request).
+// so a reader can decide whether to open it, and its best sections with their ids, lines and a
+// query-aware excerpt (`excerpt.ts`, unless snippets are turned off).
 
-import type { Chunk, ChunkHit, UnitHit } from '@nevo/ai-semantic-search';
+import type { ChunkHit, UnitHit } from '@nevo/ai-semantic-search';
 import type { DocsSearchHit, DocsSearchSection } from '@nevo/specflow-contracts/docs';
 
 import { asString, type DocRecord } from '../frontmatter/contract';
+import type { DocsChunk } from '../semantic-index/chunk-source';
+import { excerpt } from './excerpt';
 
 /** Distinct matching sections shown per document (the contract's `sections` maximum). */
 export const SECTIONS_PER_RESULT = 3;
-const SNIPPET_MAX_CHARS = 280;
 
 /**
  * @param sections the document's matching sections from the section ranking; `undefined` when only
  *   its frontmatter matched.
  * @param score the document's fused rank score.
+ * @param query the question the excerpts are chosen for; `undefined` shows no excerpts.
  */
 export function toHit(
   record: DocRecord,
   sections: UnitHit | undefined,
   score: number,
-  snippets: boolean,
+  query: string | undefined,
 ): DocsSearchHit {
   const summary = typeof record.summary === 'string' ? oneLine(record.summary) : '';
   const scope = asString(record.scope);
@@ -43,8 +45,10 @@ export function toHit(
     sections: bestSections(sections?.chunks ?? []).map(
       ({ chunk, score: sectionScore }): DocsSearchSection => ({
         headingPath: [...chunk.headingPath],
+        sectionId: chunk.sectionId,
+        line: (chunk as DocsChunk).startLine,
         score: sectionScore,
-        ...(snippets ? { snippet: snippet(chunk.text, isContinuationPart(chunk)) } : {}),
+        ...(query === undefined ? {} : { snippet: excerpt(chunk.text, query) }),
       }),
     ),
   };
@@ -77,36 +81,6 @@ function oneLine(text: string): string {
 
 function strings(value: unknown): string[] {
   return Array.isArray(value) ? value.map((item) => oneLine(asString(item))).filter(Boolean) : [];
-}
-
-/**
- * A second or later part of an oversize section (ADR 0021 chunking): it starts inside the section,
- * usually inside a word. The first part of a section with a heading starts with its heading line;
- * text before the first heading has the empty heading path and part ids `<unit>#/<n>`.
- */
-function isContinuationPart(chunk: Chunk): boolean {
-  return chunk.headingPath.length > 0
-    ? !/^ {0,3}#{1,6}(?:\s|$)/u.test(chunk.text)
-    : /#\/(?:[2-9]|[1-9]\d+)$/u.test(chunk.id);
-}
-
-/**
- * The section text without its heading lines, on one line, cut at a word boundary. A continuation
- * part drops its first, usually partial, word and starts with an ellipsis.
- */
-export function snippet(text: string, continuation = false): string {
-  let prose = oneLine(
-    text
-      .split('\n')
-      .filter((line) => !/^#{1,6}\s/.test(line))
-      .join(' '),
-  );
-  if (continuation) {
-    const rest = prose.replace(/^\S*\s+/u, '');
-    prose = rest === prose ? prose : `…${rest}`;
-  }
-
-  return cutAtWord(prose, SNIPPET_MAX_CHARS);
 }
 
 /** `text` when it fits `max` characters, otherwise cut at a word boundary with an ellipsis. */

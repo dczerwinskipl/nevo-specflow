@@ -52,11 +52,24 @@ export const DocsSearchSectionSchema = Type.Object(
     /** Heading path of the section, outermost first (`H1 > H2 > H3`); empty before the first heading. */
     headingPath: Type.Array(Type.String()),
     /**
+     * Stable id of the section within its document: the heading path as slugs (lower-cased words
+     * without diacritics joined by `-`) joined by `/`, `_top` before the first heading, `~<n>` for a
+     * repeated path. Read the section with `docs get <id> --section <sectionId>`.
+     */
+    sectionId: Type.String({ minLength: 1 }),
+    /** 1-based line of the section's heading in `file`. */
+    line: Type.Integer({ minimum: 1 }),
+    /**
      * Rank score of the section among all sections: BM25 in lexical mode, reciprocal rank fusion of
      * the BM25 and vector rankings in hybrid mode.
      */
     score: Type.Number(),
-    /** The section text on one line, cut at about 280 characters; only when snippets are requested. */
+    /**
+     * A short excerpt of the section on one line (at most about 280 characters): the sentences or
+     * lines around the best match of the query's words or, when no word matches (a semantic-only
+     * match), the first sentences after the heading. Present by default; absent when snippets are
+     * turned off.
+     */
     snippet: Type.Optional(Type.String()),
   },
   { additionalProperties: false },

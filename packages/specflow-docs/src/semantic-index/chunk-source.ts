@@ -38,6 +38,7 @@ export interface DocsChunkMetadata {
   readonly nonAuthoritative: boolean;
 }
 
+/** A chunk of a document; its `startLine` is the line in the file, frontmatter included. */
 export interface DocsChunk extends Chunk {
   readonly metadata: DocsChunkMetadata;
 }
@@ -231,20 +232,24 @@ function parseFile(file: string, content: string, contentHash: string): CachedFi
     return { file, contentHash, frontmatter: null, chunks: [] };
   }
 
-  const { frontmatter, body } = parsed;
+  const { frontmatter, body, bodyLine } = parsed;
   const chunks = chunkMarkdownUnit({
     id: asString(frontmatter.id),
     contentHash,
     text: body,
     header: contextualHeader(frontmatter),
     metadata: {},
-  }).map(({ id, headingPath, text, embeddingText, contentHash: chunkHash }) => ({
-    id,
-    headingPath,
-    text,
-    embeddingText,
-    contentHash: chunkHash,
-  }));
+  }).map(
+    ({ id, headingPath, sectionId, startLine, text, embeddingText, contentHash: chunkHash }) => ({
+      id,
+      headingPath,
+      sectionId,
+      startLine: bodyLine + startLine - 1,
+      text,
+      embeddingText,
+      contentHash: chunkHash,
+    }),
+  );
 
   return { file, contentHash, frontmatter, chunks };
 }

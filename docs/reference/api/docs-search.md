@@ -47,16 +47,17 @@ GET /api/docs/search?q=<question>&limit=<n>&includeNonAuthoritative=<true|false>
 | `q`                       | yes      | the question, 1 to 500 characters with at least one non-space character     |
 | `limit`                   | no       | maximum documents, `1` to `50`; default `10` (the CLI default)              |
 | `includeNonAuthoritative` | no       | `true` also returns documents under the non-authoritative prefixes; `false` |
-| `snippets`                | no       | `true` adds a one-line `snippet` to each section (the CLI's `--snippets`)   |
+| `snippets`                | no       | `false` leaves out each section's excerpt (the CLI's `--no-snippets`)       |
 
 Other parameters are rejected. There is no `context` parameter.
 
 - **Corpus:** the project's own `docs.root` (the Runtime's project root). Specification documents
   and product documentation are not searched.
 - **Response:** `200` with `DocsSearchResult`, unchanged from the CLI's `--json` output: `mode`
-  `hybrid` or `lexical`, the ranked `results` (each document's frontmatter and best sections,
-  ranked as described in [`search`](../cli/nevo-specflow-docs.md#search)) and, when lexical, the
-  `reason`. A lexical answer is a normal result, never an error.
+  `hybrid` or `lexical`, the ranked `results` (each document's frontmatter and best sections with
+  their `sectionId`, `line` and, unless `snippets=false`, a query-aware `snippet`, ranked as
+  described in [`search`](../cli/nevo-specflow-docs.md#search)) and, when lexical, the `reason`.
+  A section is read with `nevo-specflow docs get <id> --section <sectionId>`. A lexical answer is a normal result, never an error.
 - **Caching and admission:** `Cache-Control: no-store`; the shared default rate limit of the
   [endpoint policy](../../architecture/runtime/endpoint-policy.md).
 

@@ -9,6 +9,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 
 import { runDocs } from '../../test/support/run-docs';
 import { CATCH_UP_START_COOLDOWN_MS } from '../semantic-index/catch-up';
+import { readAllCommand } from './search-command';
 import type { DetachedProcessRequest } from '../semantic-index/detached-process';
 import { createProgressRecorder } from '../semantic-index/progress';
 
@@ -54,10 +55,38 @@ describe('docs search and semantic status', () => {
     expect(lexical.stdout.slice(1)).toEqual([
       '',
       'guide — Guide (hub, current)',
-      '  sections: Install',
+      '  sections:',
+      '    Install  [guide/install, line 10]',
+      '      Install the widget with pnpm.',
       '',
       'read all: pnpm docs:get --content guide',
     ]);
+  });
+
+  it('reads reference documents by section and the others whole, on one line', () => {
+    const hit = (id: string, type: string, sectionIds: string[]) => ({
+      id,
+      title: id,
+      type,
+      status: 'current',
+      file: `docs/${id}.md`,
+      score: 1,
+      sections: sectionIds.map((sectionId) => ({
+        headingPath: [sectionId],
+        sectionId,
+        line: 1,
+        score: 1,
+      })),
+    });
+    const results = [
+      hit('api', 'reference', ['api/routes', 'api/errors']),
+      hit('arch', 'architecture', ['arch/model']),
+      hit('cli', 'reference', []),
+    ];
+
+    expect(readAllCommand({ mode: 'hybrid', results }, 'pnpm docs:get')).toBe(
+      'pnpm docs:get --content arch cli; pnpm docs:get api --section api/routes --section api/errors',
+    );
   });
 
   it('semantic status exits 1 when semantic search is enabled but the endpoint is unreachable', async () => {

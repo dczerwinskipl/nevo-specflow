@@ -45,7 +45,8 @@ const DocsSearchQuerySchema = Type.Object(
     ),
     snippets: Type.Optional(
       Type.Union([Type.Literal('true'), Type.Literal('false')], {
-        description: 'Add a one-line snippet to each matching section (default false).',
+        description:
+          'Add a query-aware excerpt (`snippet`) to each matching section (default true; `false` omits it).',
       }),
     ),
   },
@@ -102,7 +103,7 @@ export const docsSearchEndpoint: FastifyPluginCallback<{
           query: q.trim(),
           limit: limit === undefined ? DOCS_SEARCH_DEFAULT_LIMIT : Number(limit),
           includeNonAuthoritative: includeNonAuthoritative === 'true',
-          snippets: snippets === 'true',
+          snippets: snippets !== 'false',
           refresh: true,
         });
       } catch (error) {

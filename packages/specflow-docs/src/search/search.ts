@@ -107,7 +107,7 @@ export interface DocsSearchRequest {
   readonly limit: number;
   /** Include documents under the project's non-authoritative prefixes. */
   readonly includeNonAuthoritative: boolean;
-  /** Add each section's one-line `snippet` to the result. */
+  /** Add each section's query-aware excerpt (`snippet`) to the result. */
   readonly snippets: boolean;
   /**
    * Re-embed changed documents before answering (ADR 0020 read-time refresh), at most
@@ -164,7 +164,14 @@ export async function searchDocumentation(
     byFrontmatter.map((record) => asString(record.id)),
   ])
     .slice(0, request.limit)
-    .map(({ id, score }) => toHit(records.get(id)!, sectionsById.get(id), score, request.snippets));
+    .map(({ id, score }) =>
+      toHit(
+        records.get(id)!,
+        sectionsById.get(id),
+        score,
+        request.snippets ? request.query : undefined,
+      ),
+    );
 
   return sections.mode === 'hybrid'
     ? { mode: 'hybrid', results }

@@ -35,9 +35,10 @@ runs in a Git repository and reads the documents under the project's documentati
 nevo-specflow docs list [--type <type>] [--status <status>] [--json]
 nevo-specflow docs find <query...> [--type] [--status] [--scope] [--area] [--tag] [--limit <n>] [--json]
 nevo-specflow docs get <id...> [--content] [--json]
+nevo-specflow docs get <id> --section <sectionId> [--section <sectionId>...] [--json]
 nevo-specflow docs context <query...> [--limit <n>] [--json]
 nevo-specflow docs check [--write]
-nevo-specflow docs search <question...> [--limit <n>] [--include-non-authoritative] [--no-refresh] [--snippets] [--json]
+nevo-specflow docs search <question...> [--limit <n>] [--include-non-authoritative] [--no-refresh] [--no-snippets] [--json]
 nevo-specflow docs semantic status [--json]
 nevo-specflow docs semantic index
 ```
@@ -52,6 +53,12 @@ nevo-specflow docs semantic index
   set, and nothing is printed. With `--content` it prints the whole Markdown file of every
   document, frontmatter included, in one call: each document starts with the delimiter line
   `===== <id> — "<title>" [<status>]  <file> =====`, and documents are separated by a blank line.
+  With `--section <sectionId>` (repeatable, one document id, not with `--content`) it prints only
+  those sections, in the given order, after the same delimiter line: each section starts with
+  `----- <heading path>  [<sectionId>, line <n>] -----` and holds its Markdown from the heading
+  line up to the next heading of the same or a higher level, so its subsections are included
+  (`_top` is the text before the first heading). An id that is not a section of the document is
+  an error that lists the document's section ids, and nothing is printed.
 - `context` lists the files to load for a task: like `find`, but inactive documents and documents
   under non-authoritative prefixes are never returned.
 - `check` validates the whole corpus (frontmatter contract, taxonomy, unique ids, resolvable
@@ -66,7 +73,8 @@ With `--json`, stdout holds one JSON document and nothing else. A `list` or `fin
 the document's frontmatter, `file` and `body` (and, for `find`, `score`, `matchedTerms` and
 `matchedFields`); a `get` or `context` entry carries `id`, `file`, `title`, `status`, `summary`,
 `read_when`, `scope` (when set), `areas` and `tags`, and with `get --content` also `content`, the
-whole file.
+whole file; `get --section` prints one such entry with `sections`, each with `sectionId`,
+`headingPath`, `line` and `content`.
 
 Errors are reported on stderr in every mode, including `--json`; stdout stays empty when a command
 fails, and no error object is printed on stdout. The one exception is `semantic status`, which
@@ -75,15 +83,16 @@ prints its whole report and then exits 1 when it found enabled semantic search u
 ## `search`
 
 `search` answers a natural-language question with ranked documents, each described by its
-frontmatter and the heading paths of its best matching sections, so a reader (often an AI agent)
-can choose which documents to open with `get`. It is the only model-dependent command.
+frontmatter and its best matching sections (heading path, section id, line and a short excerpt of
+what the section says), so a reader (often an AI agent) can choose which documents or sections to
+open with `get`. It is the only model-dependent command.
 
 | Option                        | Meaning                                                                      |
 | ----------------------------- | ---------------------------------------------------------------------------- |
 | `--limit <n>`                 | Maximum documents (default 10); each shows up to 3 matching sections         |
 | `--include-non-authoritative` | Also return documents under the `nonAuthoritative` prefixes of `docs.yaml`   |
 | `--no-refresh`                | Embed no documents; answer lexically unless the index is already complete    |
-| `--snippets`                  | Add a one-line snippet (about 280 characters) to each matching section       |
+| `--no-snippets`               | Show no excerpt under each matching section (they are shown by default)      |
 | `--json`                      | Print the result contract (`DocsSearchResult` in `@nevo/specflow-contracts`) |
 
 Inactive documents (`deprecated`, `superseded`) are never returned. The corpus frontmatter is
@@ -112,9 +121,9 @@ section ranking's candidates has no sections. Both rankings split text into the 
 Unicode letter and digit runs after compatibility normalization (NFKD), lower-cased, with
 diacritics removed and the letters without a decomposition folded to ASCII (`ł` → `l`, `ø` → `o`,
 `ß` → `ss`, `đ` → `d`, `æ` → `ae`, `œ` → `oe`, `þ` → `th`), so `płatności` is one word and
-matches `PŁATNOŚCI` and the ASCII-typed `platnosci`. Section text is matched by these exact words without
-stemming, because the engine does not know the corpus language; only the frontmatter ranking folds
-English plurals, and only of words that are ASCII after normalization.
+matches `PŁATNOŚCI` and the ASCII-typed `platnosci`. Section text is matched by these exact
+words without stemming, because the engine does not know the corpus language; only the frontmatter
+ranking folds English plurals, and only of words that are ASCII after normalization.
 
 **Mode.** With `docs.search.semantic: true` and a reachable `ai.embeddings` endpoint, the section
 ranking is hybrid. Otherwise it is BM25 alone and the result states why. Every result carries
@@ -158,11 +167,36 @@ next search tries again and reports the same failure rather than a catch-up that
 Search is hybrid only once every current section has a vector. `--no-refresh` skips the embedding
 step entirely and starts no catch-up.
 
+**Sections.** Each document shows up to three matching sections, best first, one per heading
+path. A section is identified by its `sectionId`: the heading path as slugs (each heading's words,
+normalized like the ranking's words, joined by `-`; `section` for a heading without words)
+joined by `/`, for example `guide/install` for `# Guide` > `## Install`. The text before the
+first heading is `_top`; a heading path that occurred earlier in the document gets `~2`, `~3`,
+… . An id changes only when a heading on its path changes (or an earlier section takes the same
+path), not when other sections are edited. `line` is the line of the section's heading in the
+file. `get <id> --section <sectionId>` prints the section.
+
+**Excerpts.** Under each section, `search` shows a short excerpt (`snippet`, one line, at most
+280 characters) taken from the section's own text, never generated: the section body is split
+into pieces (the sentences of each paragraph, and every line of a list, table, quote or code block
+on its own) and the piece with the most query words wins, each word weighted by how few pieces of
+the section contain it (words of at least four letters also match by a long common prefix, so
+`taski` matches `taskami` and `session` matches `sessions`); the following and then the
+preceding pieces are added while they fit, and `…` marks text left out. When no piece contains a
+query word (a section found by its meaning only), the excerpt is the first sentences after the
+heading. `--no-snippets` leaves them out.
+
 Text output: one block per document with its id, title, type and status, the `summary` (cut at a
 word boundary after 200 characters; `--json` has all of it), the `read_when` situations and the
-matching sections (heading paths, `;`-separated, without a first heading equal to the document
-title; `(top)` for the text directly under it). Absent fields are omitted. The last line reads
-every listed document in one call with `get --content`, in rank order:
+matching sections, one per line with its heading path (without a first heading equal to the
+document title; `(top)` for the text directly under it), `[<sectionId>, line <n>]` and the
+excerpt on the next line. Absent fields are omitted. The last line, `read all:`, reads every
+listed result in one line of commands separated by `; ` (valid in POSIX shells and PowerShell):
+first `get --content` with every document that is read whole, in rank order, then one
+`get <id> --section <sectionId>...` per `reference` document with matching sections, in rank
+order. Reference documents are lookup material (routes, options, keys) whose matching sections
+answer the question; architecture, engineering and other documents are read whole. A part is
+omitted when it has no documents.
 
 ```text
 mode: hybrid
@@ -170,20 +204,18 @@ mode: hybrid
 guide — Guide (reference, current)
   How to install and configure the widget.
   read when: installing the widget; pointing it at a local model
-  sections: Install; Configure
+  sections:
+    Install  [guide/install, line 10]
+      Install the widget with pnpm.
+    Configure  [guide/configure, line 14]
+      Point the embedding endpoint at a local model.
 
 faq — FAQ (hub, current)
-  sections: (top)
-
-read all: nevo-specflow docs get --content guide faq
-```
-
-With `--snippets`, each section is on its own line with its snippet:
-
-```text
   sections:
-    Install: Install the widget with pnpm.
-    Configure: Point the embedding endpoint at a local model.
+    (top)  [faq, line 8]
+      Ask anything.
+
+read all: nevo-specflow docs get --content faq; nevo-specflow docs get guide --section guide/install --section guide/configure
 ```
 
 Text output, lexical: the first line names the reason, for example
@@ -211,15 +243,27 @@ JSON output (`--json`), hybrid:
       "file": "docs/guide.md",
       "score": 0.0328,
       "sections": [
-        { "headingPath": ["Guide", "Install"], "score": 0.0325 },
-        { "headingPath": ["Guide", "Configure"], "score": 0.0159 }
+        {
+          "headingPath": ["Guide", "Install"],
+          "sectionId": "guide/install",
+          "line": 10,
+          "score": 0.0325,
+          "snippet": "Install the widget with pnpm."
+        },
+        {
+          "headingPath": ["Guide", "Configure"],
+          "sectionId": "guide/configure",
+          "line": 14,
+          "score": 0.0159,
+          "snippet": "Point the embedding endpoint at a local model."
+        }
       ]
     }
   ]
 }
 ```
 
-JSON output, lexical with `--snippets`:
+JSON output, lexical with `--no-snippets`:
 
 ```json
 {
@@ -241,8 +285,9 @@ JSON output, lexical with `--snippets`:
       "sections": [
         {
           "headingPath": ["Guide", "Install"],
-          "score": 1.38,
-          "snippet": "Install the widget with pnpm."
+          "sectionId": "guide/install",
+          "line": 10,
+          "score": 1.38
         }
       ]
     }
@@ -251,9 +296,9 @@ JSON output, lexical with `--snippets`:
 ```
 
 `scope`, `areas`, `tags`, `summary` and `readWhen` are present only when the frontmatter has a
-non-empty value; `snippet` only with `--snippets`. A document's `score` is its fused rank score; a
-section's `score` is BM25 in lexical mode and the section-level reciprocal-rank-fusion score in
-hybrid mode. Only the order is meaningful; compare scores only within one result.
+non-empty value; `snippet` is left out with `--no-snippets`. A document's `score` is its fused rank
+score; a section's `score` is BM25 in lexical mode and the section-level reciprocal-rank-fusion
+score in hybrid mode. Only the order is meaningful; compare scores only within one result.
 
 ## `semantic status` and `semantic index`
 

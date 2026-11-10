@@ -15,7 +15,7 @@ const hit = {
   readWhen: ['installing'],
   file: 'docs/guide.md',
   score: 0.5,
-  sections: [{ headingPath: ['Guide'], score: 0.5 }],
+  sections: [{ headingPath: ['Guide'], sectionId: 'guide', line: 7, score: 0.5 }],
 };
 
 describe('DocsSearchResultSchema', () => {

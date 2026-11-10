@@ -103,6 +103,8 @@ function stripTrailingNewlines(value: unknown): unknown {
 export interface ParsedMarkdown {
   readonly frontmatter: Record<string, unknown>;
   readonly body: string;
+  /** 1-based file line on which `body` starts: body line `n` is file line `bodyLine + n - 1`. */
+  readonly bodyLine: number;
 }
 
 /** Extract and parse the frontmatter block; `null` when there is no block at all. */
@@ -118,7 +120,10 @@ export function parseFrontmatter(content: string, label = 'document'): ParsedMar
       typeof parsed === 'object' && parsed !== null ? (parsed as Record<string, unknown>) : {};
 
     // Drop the single blank line that conventionally separates the block from the body.
-    return { frontmatter, body: (match[2] ?? '').replace(/^\r?\n/, '') };
+    const body = (match[2] ?? '').replace(/^\r?\n/, '');
+    const bodyLine = content.slice(0, content.length - body.length).split('\n').length;
+
+    return { frontmatter, body, bodyLine };
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
 

@@ -85,6 +85,43 @@ describe('docs command', () => {
     expect(excluded).toMatchObject({ exitCode: 0, stderr: [] });
   });
 
+  it('get --section prints sections with their subsections and fails closed on an unknown section', async () => {
+    writeFileSync(
+      join(root, 'docs', 'manual.md'),
+      [
+        '---\nid: manual\ntype: hub\ntitle: Manual\nstatus: current\n---\n',
+        '# Manual\n\nIntro.\n\n## Install\n\nRun it.\n\n### Windows\n\nUse PowerShell.\n\n## Usage\n\nCall it.\n',
+      ].join('\n'),
+    );
+    try {
+      const sections = await runDocs(root, [
+        'get',
+        'manual',
+        '--section',
+        'manual/install',
+        '--section',
+        'manual/usage',
+      ]);
+      expect(sections).toMatchObject({ exitCode: 0, stderr: [] });
+      expect(sections.stdout).toEqual([
+        '===== manual — "Manual" [current]  docs/manual.md =====',
+        '----- Manual > Install  [manual/install, line 12] -----',
+        '## Install\n\nRun it.\n\n### Windows\n\nUse PowerShell.',
+        '',
+        '----- Manual > Usage  [manual/usage, line 20] -----',
+        '## Usage\n\nCall it.',
+      ]);
+      const unknown = await runDocs(root, ['get', 'manual', '--section', 'manual/nope']);
+      expect(unknown).toMatchObject({ exitCode: 2, stdout: [] });
+      expect(unknown.stderr.join('\n')).toMatch(
+        /unknown section id\(s\) in 'manual': manual\/nope \(sections: manual, manual\/install,/,
+      );
+      expect((await runDocs(root, ['get', 'manual', 'faq', '--section', 'faq'])).exitCode).toBe(2);
+    } finally {
+      rmSync(join(root, 'docs', 'manual.md'));
+    }
+  });
+
   it('rejects a non-positive --limit as a usage error', async () => {
     expect((await runDocs(root, ['find', 'guide', '--limit', '0'])).exitCode).toBe(2);
   });

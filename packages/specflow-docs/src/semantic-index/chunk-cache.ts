@@ -9,11 +9,11 @@ import { dirname } from 'node:path';
 import { CHUNKER_VERSION, type Chunk } from '@nevo/ai-semantic-search';
 
 /** Bump when the cached shape or what it is derived from changes; a mismatch discards the cache. */
-export const UNIT_CACHE_SCHEMA_VERSION = 2;
+export const UNIT_CACHE_SCHEMA_VERSION = 3;
 
 export type CachedChunk = Pick<
   Chunk,
-  'id' | 'headingPath' | 'text' | 'embeddingText' | 'contentHash'
+  'id' | 'headingPath' | 'sectionId' | 'startLine' | 'text' | 'embeddingText' | 'contentHash'
 >;
 
 export interface CachedFile {
@@ -55,6 +55,8 @@ function isCachedChunk(value: unknown): value is CachedChunk {
     typeof value.id === 'string' &&
     Array.isArray(value.headingPath) &&
     value.headingPath.every((part) => typeof part === 'string') &&
+    typeof value.sectionId === 'string' &&
+    Number.isInteger(value.startLine) &&
     typeof value.text === 'string' &&
     typeof value.embeddingText === 'string' &&
     typeof value.contentHash === 'string'

@@ -1,6 +1,6 @@
 import type { Command } from 'commander';
 
-import type { DocsSearchResult } from '@nevo/specflow-contracts/docs';
+import type { DocsSearchHit, DocsSearchResult } from '@nevo/specflow-contracts/docs';
 
 import { DocsUsageError } from '../errors';
 import { cutAtWord } from './result';
@@ -42,7 +42,7 @@ export function addSearchCommand(docs: Command, ctx: DocsCommandContext, open: O
       '--no-refresh',
       'embed no documents; answer lexically unless the index is already complete',
     )
-    .option('--snippets', 'show a one-line snippet of each matching section', false)
+    .option('--no-snippets', 'show no excerpt under each matching section')
     .option('--json', 'emit JSON on stdout', false);
 
   command.action((questionParts: string[], opts: SearchCliOptions) =>
@@ -91,17 +91,12 @@ export function addSearchCommand(docs: Command, ctx: DocsCommandContext, open: O
         return;
       }
 
-      printResult(ctx, query, result, opts.snippets);
+      printResult(ctx, query, result);
     }),
   );
 }
 
-function printResult(
-  ctx: DocsCommandContext,
-  query: string,
-  result: DocsSearchResult,
-  snippets: boolean,
-): void {
+function printResult(ctx: DocsCommandContext, query: string, result: DocsSearchResult): void {
   ctx.stdout(
     result.mode === 'hybrid'
       ? 'mode: hybrid'
@@ -113,7 +108,6 @@ function printResult(
     return;
   }
 
-  const getCommand = ctx.getCommand ?? 'nevo-specflow docs get';
   for (const hit of result.results) {
     ctx.stdout('');
     ctx.stdout(`${hit.id} — ${hit.title} (${hit.type}, ${hit.status})`);
@@ -125,21 +119,44 @@ function printResult(
       ctx.stdout(`  read when: ${hit.readWhen.join('; ')}`);
     }
 
-    const heading = (path: readonly string[]) => sectionHeading(path, hit.title);
-    if (snippets && hit.sections.length > 0) {
+    if (hit.sections.length > 0) {
       ctx.stdout('  sections:');
       for (const section of hit.sections) {
-        ctx.stdout(`    ${heading(section.headingPath)}: ${section.snippet ?? ''}`);
+        ctx.stdout(
+          `    ${sectionHeading(section.headingPath, hit.title)}  [${section.sectionId}, line ${String(section.line)}]`,
+        );
+        if (section.snippet) {
+          ctx.stdout(`      ${section.snippet}`);
+        }
       }
-    } else if (hit.sections.length > 0) {
-      ctx.stdout(
-        `  sections: ${hit.sections.map((section) => heading(section.headingPath)).join('; ')}`,
-      );
     }
   }
 
   ctx.stdout('');
-  ctx.stdout(`read all: ${getCommand} --content ${result.results.map((hit) => hit.id).join(' ')}`);
+  ctx.stdout(`read all: ${readAllCommand(result, ctx.getCommand ?? 'nevo-specflow docs get')}`);
+}
+
+/**
+ * One line that reads every result, commands separated by `; ` (bash and PowerShell alike): first
+ * `<get> --content <ids...>` for the whole documents, then `<get> <id> --section <sectionId>...`
+ * for each `reference` document with matching sections, in result order. Reference documents are
+ * large lookup tables (routes, options, configuration keys) whose matching sections answer the
+ * question; architecture, engineering and instruction documents are meant to be read whole.
+ */
+export function readAllCommand(result: DocsSearchResult, getCommand: string): string {
+  const bySection = (hit: DocsSearchHit) => hit.type === 'reference' && hit.sections.length > 0;
+  const whole = result.results.filter((hit) => !bySection(hit)).map((hit) => hit.id);
+  const commands = [
+    ...(whole.length > 0 ? [`${getCommand} --content ${whole.join(' ')}`] : []),
+    ...result.results
+      .filter(bySection)
+      .map(
+        (hit) =>
+          `${getCommand} ${hit.id} ${hit.sections.map((section) => `--section ${section.sectionId}`).join(' ')}`,
+      ),
+  ];
+
+  return commands.join('; ');
 }
 
 /**

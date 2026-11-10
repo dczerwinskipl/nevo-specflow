@@ -155,8 +155,10 @@ nevo-specflow docs semantic index
   closed on inactive documents.
 - `search` is the only model-dependent command. Its results are documents, described by their
   frontmatter (id, title, type, status, taxonomy, summary, read_when) so a reader can choose which to
-  open, with the heading paths of their best matching sections and a score; section snippets only on
-  request. Documents are ranked by fusing the section ranking with the frontmatter ranking of
+  open, with their best matching sections: heading path, a stable section id, the line and a
+  short excerpt of the section's own text around the question's words (on by default, never
+  generated). `get <id> --section <sectionId>` reads one section, so a large reference document
+  need not be read whole. Documents are ranked by fusing the section ranking with the frontmatter ranking of
   `find`, so a document whose frontmatter matches the question is found even when no section
   repeats its words. Every result carries a top-level `mode` (`hybrid` or `lexical`) and, when
   `lexical`, a `reason`. Inactive documents are always excluded; documents under non-authoritative

@@ -22,7 +22,7 @@ import { openFileSystemCorpus } from '../corpus/corpus';
 import { createDocsChunkSource } from '../semantic-index/chunk-source';
 import { openDocsIndex, openProjectIndex } from '../semantic-index/index-store';
 import { READ_REFRESH_MAX_CHUNKS } from '../semantic-index/refresh-policy';
-import { snippet, toHit } from './result';
+import { toHit } from './result';
 import { openDocsSearch, searchDocumentation, type DocsSearch } from './search';
 
 const root = mkdtempSync(join(tmpdir(), 'specflow-docs-search-'));
@@ -90,7 +90,14 @@ describe('searchDocumentation', () => {
       status: 'current',
       file: 'docs/guide.md',
       score: expect.any(Number) as unknown,
-      sections: [{ headingPath: ['Guide', 'Install'], score: expect.any(Number) as unknown }],
+      sections: [
+        {
+          headingPath: ['Guide', 'Install'],
+          sectionId: 'guide/install',
+          line: 10,
+          score: expect.any(Number) as unknown,
+        },
+      ],
     });
 
     const embedCalls = provider.calls.length;
@@ -307,13 +314,6 @@ describe('openDocsSearch', () => {
   });
 });
 
-describe('snippet', () => {
-  it('drops the partial first word of a continuation part', () => {
-    expect(snippet('## Commit\nThe engine commits.')).toBe('The engine commits.');
-    expect(snippet('ngine commits the documents.', true)).toBe('…commits the documents.');
-  });
-});
-
 describe('toHit', () => {
   it('shows one section per heading path, the best-ranked part first', () => {
     const part = (id: string, headingPath: string[], score: number) => ({
@@ -321,6 +321,8 @@ describe('toHit', () => {
         id,
         unitId: 'guide',
         headingPath,
+        sectionId: headingPath.join('/').toLowerCase(),
+        startLine: headingPath.length,
         text: id,
         embeddingText: id,
         contentHash: id,
@@ -348,11 +350,11 @@ describe('toHit', () => {
         ],
       },
       0.5,
-      false,
+      undefined,
     );
     expect(hit.sections).toEqual([
-      { headingPath: ['Guide', 'A'], score: 3 },
-      { headingPath: ['Guide', 'B'], score: 1 },
+      { headingPath: ['Guide', 'A'], sectionId: 'guide/a', line: 2, score: 3 },
+      { headingPath: ['Guide', 'B'], sectionId: 'guide/b', line: 2, score: 1 },
     ]);
   });
 });

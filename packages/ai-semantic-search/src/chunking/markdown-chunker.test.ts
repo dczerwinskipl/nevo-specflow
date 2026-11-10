@@ -143,6 +143,22 @@ describe('chunkMarkdownUnit', () => {
     expect(chunks.at(-1)!.id).toBe('guide#small');
   });
 
+  it('starts a window overlap at a line start, so a table row is repeated whole, and gives parts their line', () => {
+    const rows = Array.from(
+      { length: 120 },
+      (_, index) => `| /route/${index} | purpose ${index} |`,
+    );
+    const chunks = chunkMarkdownUnit(unit(['# T', '', 'Intro.', '', ...rows].join('\n')));
+
+    expect(chunks.length).toBeGreaterThan(2);
+    expect(chunks[0]!.startLine).toBe(1);
+    for (const chunk of chunks.slice(1)) {
+      expect(chunk.text).toMatch(/^\| \/route\/\d+ \|/u);
+      const row = Number(/^\| \/route\/(\d+)/u.exec(chunk.text)![1]);
+      expect(chunk.startLine).toBe(5 + row);
+    }
+  });
+
   it('keeps ids and hashes of unchanged sections stable, and hashes include the header', () => {
     const before = chunkMarkdownUnit(unit('# A\nOne.\n# B\nTwo.'));
     const after = chunkMarkdownUnit(unit('# New\nInserted.\n# A\nOne.\n# B\nChanged.'));

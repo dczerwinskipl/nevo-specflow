@@ -1,13 +1,12 @@
 import { createHash } from 'node:crypto';
 
-import { tokenize } from '../ranking/tokenize';
 import type { Chunk, SourceUnit } from './chunk';
 
 /**
  * Version of the chunking behavior. Any change to how chunks, their ids, texts or embedding texts
  * are produced MUST increment it, so stored vectors are rebuilt (ADR 0021).
  */
-export const CHUNKER_VERSION = 2;
+export const CHUNKER_VERSION = 3;
 
 /** Size bound of one chunk's section text, in characters. */
 export const CHUNK_MAX_CHARS = 2000;
@@ -26,7 +25,7 @@ const LIST_ITEM = /^( *)(?:[-*+]|\d{1,9}[.)])(?:[ \t]|$)/u;
 /** One heading section of a unit's markdown: its heading line and its lines up to the next heading. */
 export interface MarkdownSection {
   /**
-   * Stable and unique within the unit: the heading path as slugs (the `tokenize` words of a heading
+   * Stable and unique within the unit: the heading path as slugs (`headingSlug`: the words of a heading
    * joined by `-`, `section` when it has none) joined by `/`, and `PREAMBLE_SECTION_ID` for the text
    * before the first heading. A path that occurred earlier in the unit gets the first free `~<n>`
    * (n >= 2). It changes only when a heading of its path changes or an earlier section takes the
@@ -67,10 +66,11 @@ export function chunkMarkdownUnit(unit: SourceUnit): Chunk[] {
     }
 
     const pathKey = section.headingPath.join(HEADING_PATH_SEPARATOR);
+    const leading = section.lines.findIndex(isContent);
     const parts = splitSection(trimBlankLines(section.lines));
     const baseId = `${unit.id}#${section.id}`;
     parts.forEach((part, index) => {
-      const embeddingText = [unit.header, pathKey, part]
+      const embeddingText = [unit.header, pathKey, part.text]
         .filter((value) => value.trim().length > 0)
         .join('\n\n');
       chunks.push({
@@ -78,8 +78,8 @@ export function chunkMarkdownUnit(unit: SourceUnit): Chunk[] {
         unitId: unit.id,
         headingPath: section.headingPath,
         sectionId: section.id,
-        startLine: section.startLine,
-        text: part,
+        startLine: section.startLine + leading + part.line,
+        text: part.text,
         embeddingText,
         contentHash: hashChunk(embeddingText),
         metadata: unit.metadata,
@@ -104,9 +104,7 @@ export function splitMarkdownSections(markdown: string): MarkdownSection[] {
       const base =
         section.headingPath.length === 0
           ? PREAMBLE_SECTION_ID
-          : section.headingPath
-              .map((heading) => tokenize(heading).join('-') || 'section')
-              .join('/');
+          : section.headingPath.map(headingSlug).join('/');
       let id = base;
       for (let occurrence = 2; used.has(id); occurrence += 1) {
         id = `${base}~${occurrence}`;
@@ -116,6 +114,38 @@ export function splitMarkdownSections(markdown: string): MarkdownSection[] {
 
       return { id, ...section };
     });
+}
+
+/**
+ * Lower-case letters without a Unicode decomposition and their ASCII spelling, for heading slugs.
+ * Kept here, apart from the ranking tokenizer, so section and chunk ids change only with the
+ * chunker (and its `CHUNKER_VERSION`), never with a ranking change.
+ */
+const SLUG_LETTER_FOLDS: Readonly<Record<string, string>> = {
+  ł: 'l',
+  ø: 'o',
+  ß: 'ss',
+  đ: 'd',
+  æ: 'ae',
+  œ: 'oe',
+  þ: 'th',
+};
+const SLUG_FOLDED_LETTERS = new RegExp(`[${Object.keys(SLUG_LETTER_FOLDS).join('')}]`, 'gu');
+
+/**
+ * A heading's slug: NFKD, combining marks removed, lower-cased, letters without a decomposition
+ * folded, then the Unicode letter/digit runs joined by `-`; `section` for a heading without any.
+ */
+function headingSlug(heading: string): string {
+  const words =
+    heading
+      .normalize('NFKD')
+      .replace(/\p{M}+/gu, '')
+      .toLowerCase()
+      .replace(SLUG_FOLDED_LETTERS, (letter) => SLUG_LETTER_FOLDS[letter]!)
+      .match(/[\p{L}\p{N}]+/gu) ?? [];
+
+  return words.join('-') || 'section';
 }
 
 function splitRawSections(markdown: string): RawSection[] {
@@ -208,6 +238,12 @@ function trimBlankLines(lines: readonly string[]): string[] {
   return lines.slice(start, end);
 }
 
+/** One part of a section: its text and the 0-based index of its first line in the section lines. */
+interface Part {
+  readonly text: string;
+  readonly line: number;
+}
+
 /**
  * A section's parts: the whole section when it fits `CHUNK_MAX_CHARS`, otherwise its blocks packed
  * in order into parts of at most the bound (blocks joined as in the source, by a blank line or, for
@@ -215,49 +251,73 @@ function trimBlankLines(lines: readonly string[]): string[] {
  * section's heading line, when nothing else precedes that block, is the start of its first window
  * rather than a part of its own.
  */
-function splitSection(lines: readonly string[]): string[] {
+function splitSection(lines: readonly string[]): Part[] {
   const text = lines.join('\n');
   if (text.length <= CHUNK_MAX_CHARS) {
-    return [text];
+    return [{ text, line: 0 }];
   }
 
-  const parts: string[] = [];
-  let current = '';
+  const parts: Part[] = [];
+  let current: Part | undefined;
   let headingOnly = false;
   for (const block of splitBlocks(lines)) {
-    const joined = current === '' ? block.text : `${current}${block.separator}${block.text}`;
+    const joined =
+      current === undefined ? block.text : `${current.text}${block.separator}${block.text}`;
     if (joined.length <= CHUNK_MAX_CHARS) {
-      headingOnly = current === '' && ATX_HEADING.test(block.text);
-      current = joined;
+      headingOnly = current === undefined && ATX_HEADING.test(block.text);
+      current = { text: joined, line: current?.line ?? block.line };
       continue;
     }
 
     if (block.text.length > CHUNK_MAX_CHARS) {
-      if (current !== '' && !headingOnly) {
+      const prefix = headingOnly && current !== undefined ? joined.length - block.text.length : 0;
+      if (current !== undefined && prefix === 0) {
         parts.push(current);
       }
 
-      parts.push(...windows(headingOnly ? joined : block.text));
-      current = '';
+      for (const window of windows(prefix > 0 ? joined : block.text)) {
+        const inBlock = window.offset - prefix;
+        parts.push({
+          text: window.text,
+          line: inBlock < 0 ? current!.line : block.line + lineBreaks(block.text, inBlock),
+        });
+      }
+
+      current = undefined;
     } else {
-      parts.push(current);
-      current = block.text;
+      parts.push(current!);
+      current = { text: block.text, line: block.line };
     }
 
     headingOnly = false;
   }
 
-  if (current !== '') {
+  if (current !== undefined) {
     parts.push(current);
   }
 
   return parts;
 }
 
+function lineBreaks(text: string, before: number): number {
+  let count = 0;
+  for (
+    let index = text.indexOf('\n');
+    index !== -1 && index < before;
+    index = text.indexOf('\n', index + 1)
+  ) {
+    count += 1;
+  }
+
+  return count;
+}
+
 interface Block {
   readonly text: string;
   /** What joins the block to the one before it in the source. */
   readonly separator: string;
+  /** 0-based index of the block's first line in the section lines. */
+  readonly line: number;
 }
 
 /**
@@ -271,22 +331,24 @@ function splitBlocks(lines: readonly string[]): Block[] {
   const fence = createFenceTracker();
   let current: string[] = [];
   let separator = '';
+  let first = 0;
   let sawBlank = false;
   const flush = () => {
     if (current.length > 0) {
-      blocks.push({ text: current.join('\n'), separator });
+      blocks.push({ text: current.join('\n'), separator, line: first });
       current = [];
     }
   };
 
-  const start = (line: string) => {
+  const start = (line: string, index: number) => {
     flush();
     separator = sawBlank ? '\n\n' : '\n';
     sawBlank = false;
+    first = index;
     current = [line];
   };
 
-  for (const line of lines) {
+  for (const [index, line] of lines.entries()) {
     const position = fence.track(line);
     if (position === 'inside' || (position === 'fence' && current.length > 0 && isFence(current))) {
       current.push(line);
@@ -294,25 +356,26 @@ function splitBlocks(lines: readonly string[]): Block[] {
         flush();
       }
     } else if (position === 'fence') {
-      start(line);
+      start(line, index);
     } else if (!isContent(line)) {
       flush();
       sawBlank = true;
     } else if (ATX_HEADING.test(line)) {
-      start(line);
+      start(line, index);
       flush();
     } else if (LIST_ITEM.test(line)) {
-      start(line);
+      start(line, index);
     } else if (current.length > 0) {
       current.push(line);
     } else if (sawBlank && /^\s/u.test(line) && isListItem(blocks.at(-1))) {
       // An indented paragraph after a blank line continues the list item before it.
       const previous = blocks.pop()!;
       separator = previous.separator;
+      first = previous.line;
       current = [previous.text, '', line];
       sawBlank = false;
     } else {
-      start(line);
+      start(line, index);
     }
   }
 
@@ -331,12 +394,14 @@ function isListItem(block: Block | undefined): boolean {
 }
 
 /**
- * Character windows of at most `CHUNK_MAX_CHARS` over one oversize block. A window ends at the last
- * line break (or else the last whitespace) in its second half when there is one, so words are not
- * cut; the next window starts about `CHUNK_OVERLAP_CHARS` before that end, at a word boundary.
+ * Character windows of at most `CHUNK_MAX_CHARS` over one oversize block, with the offset of each
+ * window's first character. A window ends at the last line break (or else the last whitespace) in
+ * its second half when there is one, so words are not cut. The next window starts about
+ * `CHUNK_OVERLAP_CHARS` before that end: at the first line start in that overlap when it has one
+ * (so a table row or code line is repeated whole), otherwise at its first word.
  */
-function windows(text: string): string[] {
-  const parts: string[] = [];
+function windows(text: string): { readonly text: string; readonly offset: number }[] {
+  const parts: { text: string; offset: number }[] = [];
   let start = 0;
   for (;;) {
     let end = Math.min(start + CHUNK_MAX_CHARS, text.length);
@@ -351,14 +416,23 @@ function windows(text: string): string[] {
       }
     }
 
-    parts.push(text.slice(start, end).trim());
+    const raw = text.slice(start, end);
+    const leading = raw.length - raw.trimStart().length;
+    parts.push({ text: raw.trim(), offset: start + leading });
     if (end >= text.length) {
       return parts;
     }
 
     const overlap = end - CHUNK_OVERLAP_CHARS;
-    const wordStart = text.slice(overlap, end).search(/(?<=\s)\S/u);
-    start = wordStart === -1 ? overlap : overlap + wordStart;
+    const region = text.slice(overlap, end);
+    const lineStart = region.indexOf('\n');
+    const wordStart = region.search(/(?<=\s)\S/u);
+    start =
+      lineStart !== -1 && lineStart + 1 < region.length
+        ? overlap + lineStart + 1
+        : wordStart === -1
+          ? overlap
+          : overlap + wordStart;
   }
 }
 

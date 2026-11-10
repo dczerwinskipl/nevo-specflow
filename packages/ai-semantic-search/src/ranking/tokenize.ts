@@ -23,6 +23,10 @@ const FOLDED_LETTERS = new RegExp(`[${Object.keys(LETTER_FOLDS).join('')}]`, 'gu
  * `đ` → `d`, `æ` → `ae`, `œ` → `oe`, `þ` → `th`), then Unicode letter/digit runs. "Płatności" is
  * one token, `platnosci`, so it matches "PŁATNOŚCI" and the ASCII-typed "platnosci". No stop words
  * or stemming, because the engine does not know the corpus language.
+ *
+ * It serves ranking only: chunk texts, ids and hashes do not depend on it, so changing it needs no
+ * `CHUNKER_VERSION` bump. Section ids slug headings with the chunker's own `headingSlug`; changing
+ * that does.
  */
 export function tokenize(text: string): string[] {
   const normalized = text

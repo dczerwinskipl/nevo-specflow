@@ -31,7 +31,10 @@ export interface Chunk {
   readonly headingPath: readonly string[];
   /** Id of the chunk's section within its unit (`MarkdownSection.id`); the parts of one share it. */
   readonly sectionId: string;
-  /** 1-based line of the section's heading in the unit text (`MarkdownSection.startLine`). */
+  /**
+   * 1-based line in the unit text where this chunk's text starts: the section's heading line
+   * (`MarkdownSection.startLine`), or for a later part of a long section that part's first line.
+   */
   readonly startLine: number;
   /** The section markdown (heading line included); what lexical ranking and snippets use. */
   readonly text: string;

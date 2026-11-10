@@ -126,8 +126,8 @@ Initialization).
 **Documentation settings file.** What describes the documentation itself — the `scope`/`areas`
 taxonomy, non-authoritative and excluded path prefixes — is not in `.nevo/config.yaml` but in the
 optional `<docs.root>/docs.yaml`, committed next to the documents. The documentation capability owns
-and validates it whenever it opens the corpus (the `docs` commands, and the Runtime on the first
-search); it is not part of the corpus. The keys are in the
+and validates it whenever it opens the corpus (the `docs` commands, and the Runtime when it first
+uses the corpus); it is not part of the corpus. The keys are in the
 [configuration reference](../../reference/configuration/documentation-and-embeddings.md).
 
 Configuration dependencies flow in one direction:

@@ -99,7 +99,7 @@ exclude: [templates/] # path prefixes under `docs.root` that are not part of the
 An absent or empty file means all defaults. An unknown key at the top level or under `taxonomy` is
 an error naming the file. The file is not part of the corpus: only `*.md` files are scanned,
 validated and indexed. It is read whenever a corpus is opened (every `docs` command, and a running
-Runtime on its first documentation search). Document types, required fields and statuses are the
+Runtime when it first uses the corpus). Document types, required fields and statuses are the
 product frontmatter contract and are not configurable.
 
 `context` never returns documents under a non-authoritative prefix; `search` skips them unless

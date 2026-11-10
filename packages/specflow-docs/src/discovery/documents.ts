@@ -9,7 +9,7 @@ import {
   type DocRecord,
 } from '../frontmatter/contract';
 import { DocsUsageError } from '../errors';
-import { searchDocs, type ScoredDoc } from './search';
+import { searchDocs, type ScoredDoc } from './frontmatter-search';
 
 export interface FindOptions {
   readonly query?: string;

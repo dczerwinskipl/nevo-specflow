@@ -3,8 +3,8 @@
 // links do not block regenerating the index; they are reported either way.
 
 import { inspectCorpus, type DocsCorpus } from '../corpus/corpus';
-import { validateLinks } from '../links/links';
-import { buildIndex, diffIndex, type IndexDiffOptions } from './index-file';
+import { validateLinks } from './links';
+import { buildIndex, diffIndex, type IndexDiffOptions } from './generated-index';
 
 export interface CheckResult {
   readonly problems: string[];

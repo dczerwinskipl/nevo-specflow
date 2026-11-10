@@ -1,5 +1,6 @@
 // Build and compare the generated documentation index. Pure; the repository does the file I/O.
 
+import type { BuiltIndex, OnDiskIndex } from '../corpus/repository';
 import { asString, type DocRecord } from '../frontmatter/contract';
 
 const TYPE_ORDER = [
@@ -56,16 +57,6 @@ export interface IndexDiffOptions extends IndexOptions {
  * wrote the file, so every host produces and accepts the same bytes for the same corpus.
  */
 export const INDEX_REGENERATE_COMMAND = 'nevo-specflow docs check --write';
-
-export interface BuiltIndex {
-  readonly json: string;
-  readonly md: string;
-}
-
-export interface OnDiskIndex {
-  readonly md: string | null;
-  readonly json: string | null;
-}
 
 /** Deterministic index content: no timestamp, so writing it twice is a no-op. */
 export function buildIndex(docs: readonly DocRecord[], options: IndexOptions): BuiltIndex {

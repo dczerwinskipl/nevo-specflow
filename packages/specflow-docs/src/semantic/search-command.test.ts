@@ -7,7 +7,7 @@ import { DocsSearchResultSchema } from '@nevo/specflow-contracts/docs';
 import { Value } from 'typebox/value';
 import { afterAll, describe, expect, it } from 'vitest';
 
-import { runDocs } from '../../../test/support/run-docs';
+import { runDocs } from '../../test/support/run-docs';
 
 // A project with semantic search enabled in the project file and the endpoint in the local file.
 const root = mkdtempSync(join(tmpdir(), 'specflow-docs-search-cli-'));

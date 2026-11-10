@@ -1,10 +1,10 @@
 import type { Command } from 'commander';
 
-import { findDocuments } from '../../discovery/documents';
-import type { ScoredDoc } from '../../discovery/search';
-import { DocsUsageError } from '../../errors';
-import { positiveInteger, runDocsAction, type DocsCommandContext } from '../context';
-import type { OpenCorpus } from '../open-corpus';
+import { findDocuments } from './documents';
+import type { ScoredDoc } from './frontmatter-search';
+import { DocsUsageError } from '../errors';
+import { positiveInteger, runDocsAction, type DocsCommandContext } from '../cli/context';
+import type { OpenCorpus } from '../cli/open-corpus';
 
 interface FindCliOptions {
   readonly type?: string;

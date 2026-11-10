@@ -4,14 +4,14 @@
 
 import { Command } from 'commander';
 
-import { addCheckCommand } from './commands/check';
-import { addContextCommand } from './commands/context';
-import { addFindCommand } from './commands/find';
-import { addGetCommand } from './commands/get';
-import { addListCommand } from './commands/list';
+import { addContextCommand } from '../discovery/context-command';
+import { addFindCommand } from '../discovery/find-command';
+import { addGetCommand } from '../discovery/get-command';
+import { addListCommand } from '../discovery/list-command';
+import { addSearchCommand } from '../semantic/search-command';
+import { addSemanticCommand } from '../semantic/semantic-command';
+import { addCheckCommand } from '../validation/check-command';
 import type { DocsCommandContext } from './context';
-import { addSearchCommand } from './commands/search';
-import { addSemanticCommand } from './commands/semantic';
 import { corpusOpener, projectOpener } from './open-corpus';
 
 export type { DocsCommandContext, DocsProject } from './context';

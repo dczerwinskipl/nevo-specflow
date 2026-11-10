@@ -1,9 +1,9 @@
 import type { Command } from 'commander';
 
-import { getContext } from '../../discovery/documents';
-import { DocsUsageError } from '../../errors';
-import { positiveInteger, runDocsAction, type DocsCommandContext } from '../context';
-import type { OpenCorpus } from '../open-corpus';
+import { getContext } from './documents';
+import { DocsUsageError } from '../errors';
+import { positiveInteger, runDocsAction, type DocsCommandContext } from '../cli/context';
+import type { OpenCorpus } from '../cli/open-corpus';
 
 export function addContextCommand(docs: Command, ctx: DocsCommandContext, open: OpenCorpus): void {
   const command = docs

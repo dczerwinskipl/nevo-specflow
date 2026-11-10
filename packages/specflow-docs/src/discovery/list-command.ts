@@ -1,8 +1,8 @@
 import type { Command } from 'commander';
 
-import { findDocuments } from '../../discovery/documents';
-import { runDocsAction, type DocsCommandContext } from '../context';
-import type { OpenCorpus } from '../open-corpus';
+import { findDocuments } from './documents';
+import { runDocsAction, type DocsCommandContext } from '../cli/context';
+import type { OpenCorpus } from '../cli/open-corpus';
 
 export function addListCommand(docs: Command, ctx: DocsCommandContext, open: OpenCorpus): void {
   const command = docs

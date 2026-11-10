@@ -4,7 +4,6 @@ import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from '
 import { extname, join, relative, sep } from 'node:path';
 
 import { parseFrontmatter, type DocRecord } from '../frontmatter/contract';
-import type { BuiltIndex, OnDiskIndex } from '../index-file/index-file';
 
 export interface ScanResult {
   readonly docs: DocRecord[];
@@ -36,6 +35,18 @@ export interface DocRepository {
   pathExists(projectRelPath: string): boolean;
   readIndex(): OnDiskIndex;
   writeIndex(index: BuiltIndex): void;
+}
+
+/** The generated index files as written to the documentation root. */
+export interface BuiltIndex {
+  readonly json: string;
+  readonly md: string;
+}
+
+/** The generated index files as found on disk; `null` when a file is missing. */
+export interface OnDiskIndex {
+  readonly md: string | null;
+  readonly json: string | null;
 }
 
 export const INDEX_JSON_FILE = 'index.generated.json';

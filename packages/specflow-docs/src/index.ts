@@ -14,7 +14,7 @@ export {
   type DocsCorpus,
   type DocsCorpusRules,
 } from './corpus/corpus';
-export { buildIndex } from './index-file/index-file';
+export { buildIndex } from './validation/generated-index';
 export {
   openDocsSearch,
   searchDocumentation,

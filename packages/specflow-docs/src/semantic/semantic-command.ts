@@ -1,15 +1,15 @@
 import type { Command } from 'commander';
 
-import { DocsError } from '../../errors';
-import { openDocsIndex } from '../../semantic/docs-index';
+import { DocsError } from '../errors';
+import { openDocsIndex } from './docs-index';
 import {
   buildDocsIndex,
   semanticStatus,
   type SemanticEnvironment,
   type SemanticStatus,
-} from '../../semantic/semantic-index';
-import { runDocsAction, type DocsCommandContext } from '../context';
-import type { OpenProject } from '../open-corpus';
+} from './semantic-index';
+import { runDocsAction, type DocsCommandContext } from '../cli/context';
+import type { OpenProject } from '../cli/open-corpus';
 
 function environment(ctx: DocsCommandContext): SemanticEnvironment {
   return {

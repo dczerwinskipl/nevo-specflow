@@ -385,6 +385,34 @@ describe('docs chunk source', () => {
     expect((await createDocsChunkSource({ corpus, cacheFile }).load()).reparsed).toBe(0);
   });
 
+  it('shares a pending load between concurrent calls and skips a file that vanished', async () => {
+    let listings = 0;
+    const gone = Object.assign(new Error('gone'), { code: 'ENOENT' });
+    const source = createDocsChunkSource({
+      corpus: {
+        ...corpus,
+        repo: {
+          ...corpus.repo,
+          listMarkdownFiles: async () => {
+            listings += 1;
+
+            return [...(await corpus.repo.listMarkdownFiles()), 'docs/gone.md'];
+          },
+          readMarkdownFileAsync: (file) =>
+            file === 'docs/gone.md'
+              ? Promise.reject(gone)
+              : corpus.repo.readMarkdownFileAsync(file),
+        },
+      },
+    });
+    const loads = await Promise.all([source.load(), source.load(), source.load(), source.load()]);
+    expect(listings).toBe(2);
+    expect(loads[3]).toBe(loads[1]);
+    expect(loads[0].documents.map((document) => document.record.file)).not.toContain(
+      'docs/gone.md',
+    );
+  });
+
   it('treats a cache file of the wrong shape as an empty cache', async () => {
     const cacheFile = join(root, 'cache', 'null.json');
     mkdirSync(join(root, 'cache'), { recursive: true });

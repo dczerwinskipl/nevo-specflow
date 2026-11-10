@@ -1,9 +1,10 @@
 // The documentation corpus as search chunks. Every search needs every current chunk (BM25 ranks
 // all of them and the index refresh diffs against them), so this source keeps the parsed
 // frontmatter and chunks of each file and re-parses only what changed. Every load reads and hashes
-// every file (about 300 files and 3 MB here: a few milliseconds), so any content change is seen,
-// also one that keeps the size and modification time; only a changed hash parses and re-chunks the
-// file. While no hash changes, the validated corpus and its BM25 engine are reused. A persisted copy
+// every file (about 300 files and 3 MB here: about 20 ms for a warm load on Windows), so any content
+// change is seen, also one that keeps the size and modification time; only a changed hash parses and
+// re-chunks the file. A file that disappears between listing and reading (a checkout during a
+// search) is skipped like one the listing did not see. While no hash changes, the validated corpus and its BM25 engine are reused. A persisted copy
 // (`units.json` in the index directory) carries the parsing across CLI invocations (`chunk-cache`);
 // it is disposable cache like the vectors. All file access is asynchronous: a running Runtime loads
 // on every search.
@@ -62,7 +63,9 @@ export interface DocsChunkSource {
   /**
    * Bring the cached files up to date with the corpus, validate the corpus like `context` does
    * (rejects with `DocsCorpusInvalidError`) and return the chunks of its active documents. Loads
-   * run one at a time, in call order.
+   * run one at a time: a call while one runs waits for it and then starts the next one, which every
+   * further call made before it starts shares (at most one load in progress and one pending), so
+   * each answer reflects the files as they were after the call.
    */
   load(): Promise<DocsChunks>;
 }
@@ -87,15 +90,20 @@ export function createDocsChunkSource({
   let cached: Map<string, CachedFile> | undefined;
   // The validated corpus of `cached`, or why it is invalid; recomputed only when a file changed.
   let version: CorpusVersion | undefined;
-  let queue: Promise<unknown> = Promise.resolve();
+  let running: Promise<DocsChunks> | undefined;
+  let pending: Promise<DocsChunks> | undefined;
 
   const refresh = async (): Promise<DocsChunks> => {
     cached ??= cacheFile === undefined ? new Map() : await readCache(cacheFile);
     const previous = cached;
     let reparsed = 0;
     const files = await corpus.repo.listMarkdownFiles();
-    const entries = await mapConcurrently(files, READ_CONCURRENCY, async (file) => {
-      const content = await corpus.repo.readMarkdownFileAsync(file);
+    const read = await mapConcurrently(files, READ_CONCURRENCY, async (file) => {
+      const content = await readUnlessGone(corpus, file);
+      if (content === undefined) {
+        return undefined;
+      }
+
       const contentHash = sha256(content);
       const entry = previous.get(file);
       if (entry?.contentHash === contentHash) {
@@ -106,6 +114,7 @@ export function createDocsChunkSource({
 
       return parseFile(file, content, contentHash);
     });
+    const entries = read.filter((entry) => entry !== undefined);
     const next = new Map(entries.map((entry): [string, CachedFile] => [entry.file, entry]));
 
     const changed = !sameFiles(previous, next);
@@ -125,14 +134,58 @@ export function createDocsChunkSource({
     return { ...version.value, reparsed };
   };
 
+  const start = (): Promise<DocsChunks> => {
+    const run = refresh();
+    running = run;
+    const settled = () => {
+      if (running === run) {
+        running = undefined;
+      }
+    };
+
+    run.then(settled, settled);
+
+    return run;
+  };
+
   return {
     load() {
-      const run = queue.then(refresh);
-      queue = run.catch(() => undefined);
+      if (pending !== undefined) {
+        return pending;
+      }
 
-      return run;
+      if (running === undefined) {
+        return start();
+      }
+
+      const next = running
+        .then(
+          () => undefined,
+          () => undefined,
+        )
+        .then(() => {
+          pending = undefined;
+
+          return start();
+        });
+      pending = next;
+
+      return next;
     },
   };
+}
+
+/** The file's content, or `undefined` when it no longer exists. */
+async function readUnlessGone(corpus: DocsCorpus, file: string): Promise<string | undefined> {
+  try {
+    return await corpus.repo.readMarkdownFileAsync(file);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return undefined;
+    }
+
+    throw error;
+  }
 }
 
 function validate(corpus: DocsCorpus, files: readonly CachedFile[]): CorpusVersion {

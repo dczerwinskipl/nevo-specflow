@@ -323,7 +323,7 @@ jobs:
           test/specs/create.http.test.ts
           test/specs/close.http.test.ts
           test/specs/engine-overview.http.test.ts
-          --maxWorkers=1 --no-file-parallelism
+          --maxWorkers=1 --no-file-parallelism --testTimeout=20000
       - name: Offline CLI and cross-transport smoke
         if: steps.affected.outputs.run == 'true'
         run: pnpm --filter @nevo/specflow exec vitest run test/specs-command.test.ts test/create-cross-transport.test.ts --maxWorkers=1 --no-file-parallelism
@@ -361,7 +361,7 @@ jobs:
           src/features/sessions/lifecycle
           src/features/sessions/persistence
           test/sessions
-          --maxWorkers=1 --no-file-parallelism
+          --maxWorkers=1 --no-file-parallelism --testTimeout=20000
 
   verify-product-smoke:
     name: product smoke

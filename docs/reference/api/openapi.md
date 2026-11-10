@@ -227,7 +227,9 @@ which have the same body. Two kinds of routes do not get it:
   The contract is not closed, because the serializer matches the error object itself, which has
   more fields (`validation`); only the four declared fields are written. The Runtime refuses to
   start (`onReady`, when every route and its final `config` are known) with a documented route
-  whose own `400` schema cannot serialize the request error: one that requires another field or
+  whose own `400` schema cannot serialize the request error: one that is not an object
+  (`Type.Null()`, a string), an object without an `error` field (`Type.Object({})` would write the
+  error as `{}`, a body that no longer says what was refused), one that requires another field or
   constrains `statusCode`, `code`, `error` or `message` against it, or a union without an open
   member that accepts it. Routes of the Session error handling are exempt.
 

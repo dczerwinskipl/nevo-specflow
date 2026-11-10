@@ -525,11 +525,14 @@ const REQUEST_ERROR = {
 } as const;
 
 /**
- * Whether a `400` response schema can serialize Fastify's request error. An object schema can when
- * it requires no other field and every declared field of the error accepts its value (an `error`
- * enum cannot); a union can when one member is an open object that can (the serializer validates
- * the error object, with its extra fields, against each member). A reference is resolved through
- * the registered shared schemas; an unknown one is left to Fastify.
+ * Whether a `400` response schema can serialize Fastify's request error. An object schema
+ * (`type: 'object'`) can when it declares `error`, requires no other field of its own and every
+ * declared field of the error accepts its value (an `error` enum cannot). A schema of another type
+ * (`null`, a string) cannot, and neither can an object without `error` (`{}`): the serializer
+ * would write an empty object, a body that no longer says what was refused. A union can when one
+ * member is an open object that can (the serializer validates the error object, with its extra
+ * fields, against each member). A reference is resolved through the registered shared schemas; an
+ * unknown one is left to Fastify.
  */
 function serializesRequestError(
   schema: unknown,
@@ -539,6 +542,7 @@ function serializesRequestError(
   const node = schema as {
     readonly $ref?: string;
     readonly anyOf?: readonly unknown[];
+    readonly type?: unknown;
     readonly properties?: Readonly<Record<string, unknown>>;
     readonly required?: readonly string[];
     readonly additionalProperties?: unknown;
@@ -556,6 +560,8 @@ function serializesRequestError(
   const fields = REQUEST_ERROR as Readonly<Record<string, unknown>>;
 
   return (
+    node.type === 'object' &&
+    node.properties?.error !== undefined &&
     !(member && node.additionalProperties === false) &&
     (node.required ?? []).every((name) => name in fields) &&
     Object.entries(node.properties ?? {}).every(

@@ -531,13 +531,29 @@ describe('Runtime OpenAPI document', () => {
       return app;
     };
 
-    const refused = await register(enumOnly);
-    await expect(refused.ready()).rejects.toThrow('POST /api/enum has a 400 response schema');
-    await refused.close();
-    const accepted = await register(
+    // Not an object, or an object that would serialize the error as `{}`: refused like an enum.
+    for (const badRequest of [
+      enumOnly,
+      Type.Null(),
+      Type.String(),
+      Type.Object({}),
+      Type.Union([enumOnly, Type.Null()]),
+    ]) {
+      const refused = await register(badRequest);
+      await expect(refused.ready(), JSON.stringify(badRequest)).rejects.toThrow(
+        'POST /api/enum has a 400 response schema',
+      );
+      await refused.close();
+    }
+
+    for (const badRequest of [
       Type.Union([enumOnly, contractRef(RequestErrorResponseSchema)]),
-    );
-    await expect(accepted.ready()).resolves.toBeDefined();
-    await accepted.close();
+      contractRef(RequestErrorResponseSchema),
+      Type.Object({ error: Type.String(), code: Type.String() }),
+    ]) {
+      const accepted = await register(badRequest);
+      await expect(accepted.ready(), JSON.stringify(badRequest)).resolves.toBeDefined();
+      await accepted.close();
+    }
   });
 });

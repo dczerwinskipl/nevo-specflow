@@ -7,10 +7,10 @@ import {
   PasswordLoginErrorResponseSchema,
   type AuthSessionResponse,
 } from '@nevo/specflow-contracts/authentication';
-import type { RuntimeConfig } from '../config/types';
-import { noAuthConfig, oidcConfig, passwordConfig } from '../../test/auth/support/config';
-import { pathParameterProblems } from '../openapi-document';
-import { createRuntimeApp, type RuntimeAppDependencies } from './app';
+import type { RuntimeConfig } from '../../config/types';
+import { noAuthConfig, oidcConfig, passwordConfig } from '../../../test/auth/support/config';
+import { pathParameterProblems } from '../../openapi-document';
+import { createRuntimeApp, type RuntimeAppDependencies } from '../app';
 import { SpecIdSchema } from '@nevo/specflow-contracts/documents';
 import {
   RateLimitedErrorResponseSchema,
@@ -24,12 +24,12 @@ import {
   openApiRouteGaps,
   registerOpenApi,
   type RuntimeOpenApiDocument,
-} from './openapi';
+} from '.';
 import {
   contractRef,
   referenceSharedIdentifiers,
   registerSharedContracts,
-} from './shared-contracts';
+} from '../shared-contracts';
 
 /** The group and summary every documented route declares. */
 const documented = { tags: ['Runtime'], summary: 'A test route' };
@@ -531,17 +531,29 @@ describe('Runtime OpenAPI document', () => {
       return app;
     };
 
-    // Not an object, or an object that would serialize the error as `{}`: refused like an enum.
-    for (const badRequest of [
-      enumOnly,
-      Type.Null(),
-      Type.String(),
-      Type.Object({}),
-      Type.Union([enumOnly, Type.Null()]),
-    ]) {
+    // Each refusal names the rule that failed.
+    for (const [badRequest, reason] of [
+      [enumOnly, 'its `error` field (an enum, const or type) does not accept "Bad Request"'],
+      [Type.Null(), 'it is not an object schema'],
+      [Type.String(), 'it is not an object schema'],
+      // It would serialize the error as `{}`.
+      [Type.Object({}), 'it declares no `error` field'],
+      [Type.Union([enumOnly, Type.Null()]), 'no member of its union can'],
+      [
+        { allOf: [contractRef(RequestErrorResponseSchema)] },
+        'an `allOf` composition is not supported',
+      ],
+      [
+        Type.Object(
+          { error: Type.String(), field: Type.String() },
+          { required: ['error', 'field'] },
+        ),
+        'it requires `field`',
+      ],
+    ] as const) {
       const refused = await register(badRequest);
-      await expect(refused.ready(), JSON.stringify(badRequest)).rejects.toThrow(
-        'POST /api/enum has a 400 response schema',
+      await expect(refused.ready(), reason).rejects.toThrow(
+        `POST /api/enum has a 400 response schema that cannot serialize the Fastify request error: ${reason}`,
       );
       await refused.close();
     }
@@ -550,6 +562,7 @@ describe('Runtime OpenAPI document', () => {
       Type.Union([enumOnly, contractRef(RequestErrorResponseSchema)]),
       contractRef(RequestErrorResponseSchema),
       Type.Object({ error: Type.String(), code: Type.String() }),
+      { oneOf: [enumOnly, contractRef(RequestErrorResponseSchema)] },
     ]) {
       const accepted = await register(badRequest);
       await expect(accepted.ready(), JSON.stringify(badRequest)).resolves.toBeDefined();

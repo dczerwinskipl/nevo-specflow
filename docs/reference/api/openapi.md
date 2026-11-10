@@ -237,8 +237,10 @@ which have the same body. Two kinds of routes do not get it:
   whose own `400` schema cannot serialize the request error: one that is not an object
   (`Type.Null()`, a string), an object without an `error` field (`Type.Object({})` would write the
   error as `{}`, a body that no longer says what was refused), one that requires another field or
-  constrains `statusCode`, `code`, `error` or `message` against it, or a union without an open
-  member that accepts it. Routes of the Session error handling are exempt.
+  constrains `statusCode`, `code`, `error` or `message` against it (a field `$ref` is resolved
+  through the registered schemas), a union (`anyOf`, `oneOf`) without an open member that accepts
+  it, or an `allOf` composition, which the check does not support. The error names the rule that
+  failed. Routes of the Session error handling are exempt.
 
 `test/server/request-validation.http.test.ts` sends a request with an invalid path parameter, query
 and body, checks each answer against `RequestErrorResponse` and checks that the operation documents

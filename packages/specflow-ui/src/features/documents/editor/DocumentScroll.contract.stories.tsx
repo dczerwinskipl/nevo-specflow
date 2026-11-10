@@ -380,7 +380,7 @@ export const DirtyDraftKeepsPositionAcrossToggles: Story = {
     const preview = previewOf(canvasElement)!;
     await userScroll(preview, 0.4 * (preview.scrollHeight - preview.clientHeight));
     const view = await openEditor(context);
-    const entered = editorTopLine(view);
+    const entered = await settled(() => editorTopLine(view));
     view.focus();
     await userEvent.keyboard('ZMIANA');
     await expect(canvas.getByText('Niezapisane zmiany')).toBeInTheDocument();

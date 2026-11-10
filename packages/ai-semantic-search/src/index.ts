@@ -1,21 +1,26 @@
 export type {
-  ApplyOutcome,
   Chunk,
   ChunkSource,
+  SourceUnit,
+  UnitMetadata,
+  UnitMetadataValue,
+} from './chunking/chunk';
+export type {
   EmbeddingFailure,
   EmbeddingFailureCode,
   EmbeddingProvider,
   EmbeddingPurpose,
   EmbeddingResult,
+  ProbeResult,
+} from './embeddings/embedding-provider';
+export { PROBE_TEXT } from './embeddings/embedding-provider';
+export type {
+  ApplyOutcome,
   IndexIdentity,
   IndexManifest,
   ManifestOutcome,
   OpenWriterOutcome,
-  ProbeResult,
-  SourceUnit,
   StoreUnreadable,
-  UnitMetadata,
-  UnitMetadataValue,
   VectorEntry,
   VectorMatch,
   VectorQuery,
@@ -23,14 +28,13 @@ export type {
   VectorStore,
   VectorStoreChange,
   VectorStoreWriter,
-} from './ports';
-export { PROBE_TEXT } from './ports';
+} from './indexing/vector-store';
 export {
   CHUNKER_VERSION,
   CHUNK_MAX_CHARS,
   CHUNK_OVERLAP_CHARS,
   chunkMarkdownUnit,
-} from './markdown-chunker';
+} from './chunking/markdown-chunker';
 export {
   DEFAULT_EMBEDDING_BATCH_SIZE,
   DEFAULT_EMBEDDING_TIMEOUT_MS,
@@ -38,13 +42,13 @@ export {
   createOpenAiCompatibleEmbeddingProvider,
   type OpenAiCompatibleEmbeddingDependencies,
   type OpenAiCompatibleEmbeddingSettings,
-} from './openai-compatible-embeddings';
+} from './embeddings/openai-compatible-embeddings';
 export {
-  FILE_INDEX_SCHEMA_VERSION,
   createFileVectorStore,
   type FileVectorStoreOptions,
-} from './file-vector-store';
-export type { WriterLockDependencies } from './file-writer-lock';
+} from './indexing/file-store/file-vector-store';
+export { FILE_INDEX_SCHEMA_VERSION } from './indexing/file-store/manifest-file';
+export type { WriterLockDependencies } from './indexing/file-store/writer-lock';
 export {
   REFRESH_COMMIT_CHUNKS,
   planRefresh,
@@ -53,7 +57,7 @@ export {
   type RefreshPlan,
   type RefreshProgress,
   type RefreshRequest,
-} from './refresh-index';
+} from './indexing/refresh-index';
 export {
   SEARCH_REASON,
   VECTOR_CANDIDATES_PER_RESULT,
@@ -65,6 +69,6 @@ export {
   type SearchResult,
   type SearchVectors,
   type UnitHit,
-} from './search';
-export { sameIdentity, validateChange } from './vector-store-contract';
-export { cosineSimilarity, nearestNeighbours, type VectorCandidate } from './vector-math';
+} from './search/search';
+export { sameIdentity, validateChange } from './indexing/vector-store';
+export { cosineSimilarity, nearestNeighbours, type VectorCandidate } from './ranking/vector-math';

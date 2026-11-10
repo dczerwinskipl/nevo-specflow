@@ -1,6 +1,8 @@
 import { readFile, stat, unlink, utimes, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import { errorCode } from './io-errors';
+
 /** Name of the single-writer lock file inside an index directory. */
 export const WRITER_LOCK_FILE = 'writer.lock';
 
@@ -102,12 +104,6 @@ export function isProcessAlive(pid: number): boolean {
   } catch (error) {
     return errorCode(error) === 'EPERM';
   }
-}
-
-export function errorCode(error: unknown): string | undefined {
-  const code = (error as { code?: unknown } | undefined)?.code;
-
-  return typeof code === 'string' ? code : undefined;
 }
 
 async function createExclusive(path: string, content: string): Promise<boolean> {

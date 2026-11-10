@@ -1,8 +1,10 @@
-import { createBm25Index } from './bm25';
-import { compareIds } from './compare';
-import { CHUNKER_VERSION } from './markdown-chunker';
-import type { Chunk, EmbeddingProvider, IndexIdentity, UnitMetadata, VectorStore } from './ports';
-import { reciprocalRankFusion } from './rrf';
+import type { Chunk, UnitMetadata } from '../chunking/chunk';
+import { CHUNKER_VERSION } from '../chunking/markdown-chunker';
+import type { EmbeddingProvider } from '../embeddings/embedding-provider';
+import type { IndexIdentity, VectorStore } from '../indexing/vector-store';
+import { createBm25Index } from '../ranking/bm25';
+import { compareIds } from '../ranking/compare';
+import { reciprocalRankFusion } from '../ranking/rrf';
 
 /**
  * Why a search ran lexical-only. Consumers pass their own codes (for example "not configured");

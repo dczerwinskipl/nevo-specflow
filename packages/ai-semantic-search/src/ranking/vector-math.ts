@@ -1,5 +1,5 @@
 import { compareIds } from './compare';
-import type { VectorMatch } from './ports';
+import type { VectorMatch } from '../indexing/vector-store';
 
 /** Cosine similarity of two equal-length vectors; 0 when either has zero norm. */
 export function cosineSimilarity(a: Float32Array, b: Float32Array): number {

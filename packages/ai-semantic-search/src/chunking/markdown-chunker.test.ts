@@ -6,7 +6,7 @@ import {
   CHUNK_OVERLAP_CHARS,
   chunkMarkdownUnit,
 } from './markdown-chunker';
-import type { SourceUnit } from './ports';
+import type { SourceUnit } from './chunk';
 
 function unit(text: string, header = 'Title: Guide'): SourceUnit {
   return { id: 'guide', contentHash: 'h', text, header, metadata: { kind: 'guide' } };

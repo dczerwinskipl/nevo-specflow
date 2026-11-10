@@ -1,16 +1,17 @@
-import type {
-  ApplyOutcome,
-  IndexManifest,
-  ManifestOutcome,
-  OpenWriterOutcome,
-  VectorQuery,
-  VectorQueryOutcome,
-  VectorStore,
-  VectorStoreChange,
-  VectorStoreWriter,
-} from './ports';
-import { nearestNeighbours, type VectorCandidate } from './vector-math';
-import { sameIdentity, validateChange } from './vector-store-contract';
+import { nearestNeighbours, type VectorCandidate } from '../ranking/vector-math';
+import {
+  sameIdentity,
+  validateChange,
+  type ApplyOutcome,
+  type IndexManifest,
+  type ManifestOutcome,
+  type OpenWriterOutcome,
+  type VectorQuery,
+  type VectorQueryOutcome,
+  type VectorStore,
+  type VectorStoreChange,
+  type VectorStoreWriter,
+} from './vector-store';
 
 interface Snapshot {
   readonly manifest: IndexManifest;

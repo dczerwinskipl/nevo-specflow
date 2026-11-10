@@ -1,16 +1,15 @@
-import { CHUNKER_VERSION } from './markdown-chunker';
-import type {
-  Chunk,
-  EmbeddingFailure,
-  EmbeddingProvider,
-  IndexIdentity,
-  IndexManifest,
-  ManifestOutcome,
-  StoreUnreadable,
-  StoreWriteFailed,
-  VectorStore,
-} from './ports';
-import { sameIdentity } from './vector-store-contract';
+import type { Chunk } from '../chunking/chunk';
+import { CHUNKER_VERSION } from '../chunking/markdown-chunker';
+import type { EmbeddingFailure, EmbeddingProvider } from '../embeddings/embedding-provider';
+import {
+  sameIdentity,
+  type IndexIdentity,
+  type IndexManifest,
+  type ManifestOutcome,
+  type StoreUnreadable,
+  type StoreWriteFailed,
+  type VectorStore,
+} from './vector-store';
 
 /** What a refresh changes: `reset` replaces the whole index (no index yet or another identity). */
 export interface RefreshPlan {

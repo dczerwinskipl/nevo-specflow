@@ -4,15 +4,15 @@ import { join } from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { createFileVectorStore } from './file-vector-store';
-import { WRITER_LOCK_FILE } from './file-writer-lock';
 import type {
   ApplyOutcome,
   IndexIdentity,
   VectorStore,
   VectorStoreChange,
   VectorStoreWriter,
-} from './ports';
+} from '../vector-store';
+import { createFileVectorStore } from './file-vector-store';
+import { WRITER_LOCK_FILE } from './writer-lock';
 
 const identity: IndexIdentity = { chunkerVersion: 1, protocol: 'p', model: 'm', dimensions: 2 };
 const entry = (chunkId: string, vector: number[]) => ({

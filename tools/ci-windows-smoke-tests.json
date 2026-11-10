@@ -43,7 +43,7 @@
     {
       "package": "@nevo/ai-semantic-search",
       "dir": "packages/ai-semantic-search",
-      "file": "src/file-vector-store.test.ts",
+      "file": "src/indexing/file-store/file-vector-store.test.ts",
       "tests": [
         "writes pairs another instance reads while a reader holds the current manifest open",
         "keeps readers on a complete pair and removes an abandoned write only once it is stale",

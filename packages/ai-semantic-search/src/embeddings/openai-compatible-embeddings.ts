@@ -5,7 +5,7 @@ import {
   type EmbeddingPurpose,
   type EmbeddingResult,
   type ProbeResult,
-} from './ports';
+} from './embedding-provider';
 
 export const OPENAI_COMPATIBLE_PROTOCOL = 'openai-compatible';
 /**

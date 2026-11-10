@@ -1,10 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
-import { createFakeEmbeddingProvider } from './fake-embedding-provider';
-import { createInMemoryVectorStore } from './in-memory-vector-store';
-import { CHUNKER_VERSION, chunkMarkdownUnit } from './markdown-chunker';
-import type { ApplyOutcome, Chunk, IndexIdentity, VectorStore, VectorStoreChange } from './ports';
-import { RRF_K } from './rrf';
+import type { Chunk } from '../chunking/chunk';
+import { CHUNKER_VERSION, chunkMarkdownUnit } from '../chunking/markdown-chunker';
+import { createFakeEmbeddingProvider } from '../embeddings/fake-embedding-provider';
+import { createInMemoryVectorStore } from '../indexing/in-memory-vector-store';
+import type {
+  ApplyOutcome,
+  IndexIdentity,
+  VectorStore,
+  VectorStoreChange,
+} from '../indexing/vector-store';
+import { RRF_K } from '../ranking/rrf';
 import { SEARCH_REASON, createSearchEngine } from './search';
 
 const units = [

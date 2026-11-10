@@ -4,11 +4,12 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { createFakeEmbeddingProvider } from './fake-embedding-provider';
-import { createFileVectorStore } from './file-vector-store';
+import type { SourceUnit } from '../chunking/chunk';
+import { chunkMarkdownUnit } from '../chunking/markdown-chunker';
+import type { EmbeddingProvider } from '../embeddings/embedding-provider';
+import { createFakeEmbeddingProvider } from '../embeddings/fake-embedding-provider';
+import { createFileVectorStore } from './file-store/file-vector-store';
 import { createInMemoryVectorStore } from './in-memory-vector-store';
-import { chunkMarkdownUnit } from './markdown-chunker';
-import type { EmbeddingProvider, SourceUnit } from './ports';
 import { refreshIndex } from './refresh-index';
 
 const unit = (id: string, text: string): SourceUnit => ({

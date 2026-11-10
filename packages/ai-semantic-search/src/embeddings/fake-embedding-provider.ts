@@ -5,8 +5,8 @@ import {
   type EmbeddingPurpose,
   type EmbeddingResult,
   type ProbeResult,
-} from './ports';
-import { tokenize } from './tokenize';
+} from './embedding-provider';
+import { tokenize } from '../ranking/tokenize';
 
 export const FAKE_EMBEDDING_PROTOCOL = 'fake';
 

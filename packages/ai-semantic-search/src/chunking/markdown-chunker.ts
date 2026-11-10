@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import type { Chunk, SourceUnit } from './ports';
+import type { Chunk, SourceUnit } from './chunk';
 
 /**
  * Version of the chunking behavior. Any change to how chunks, their ids, texts or embedding texts

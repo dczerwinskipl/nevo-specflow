@@ -57,7 +57,11 @@ return) through the same `search` as `pnpm docs:search`, with this repository's 
 local index, the top 10 documents per question and no embedding (`--no-refresh`). It prints each
 question's Recall@5, Recall@10, the rank of its first expected document and what is missing, then
 the means: Recall@5, Recall@10, MRR (mean of 1 / rank of the first expected document in the top
-10, 0 when none) and the number of non-authoritative documents in all top-10 lists (expected 0).
+10, 0 when none), the number of non-authoritative documents in all top-10 lists (the default
+search excludes them, so this only checks the filter: expected 0) and, from a second search per
+question with them included, how many non-authoritative documents rank above the first expected
+document (how much they would compete if included). Expected ids must be active, authoritative
+documents.
 A question answered lexically is flagged; build the index first (`pnpm docs:semantic index`).
 `--json` emits the full report, `--questions <file>` another set. It is a manual measurement for
 chunking and ranking changes, not a CI check: results depend on the local embedding model.

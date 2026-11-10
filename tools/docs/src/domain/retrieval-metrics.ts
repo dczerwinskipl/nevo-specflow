@@ -11,8 +11,16 @@ export interface EvalQuestion {
 export interface EvalAnswer {
   /** Document ids in rank order (at most the eval's depth). */
   readonly ids: readonly string[];
-  /** How many of the returned documents are non-authoritative. */
+  /**
+   * How many of the returned documents are non-authoritative. The default search excludes them, so
+   * this checks the filter only.
+   */
   readonly nonAuthoritative: number;
+  /**
+   * With non-authoritative documents included in the search: how many of them rank above the first
+   * expected document (in the whole top list when no expected document is in it).
+   */
+  readonly nonAuthoritativeAboveExpected: number;
 }
 
 export interface QuestionScore {
@@ -27,8 +35,10 @@ export interface EvalSummary {
   readonly recallAt5: number;
   readonly recallAt10: number;
   readonly mrr: number;
-  /** Non-authoritative documents over all top-10 lists. */
+  /** Non-authoritative documents over all default top-10 lists (a check of the filter: 0). */
   readonly nonAuthoritativeHits: number;
+  /** Over all questions, `EvalAnswer.nonAuthoritativeAboveExpected`. */
+  readonly nonAuthoritativeAboveExpected: number;
 }
 
 /** Recall@k: the share of the expected documents among the first `k` ids. */
@@ -49,7 +59,7 @@ export function scoreQuestion(question: EvalQuestion, answer: EvalAnswer): Quest
   };
 }
 
-/** Means over the questions (macro average), plus the non-authoritative total. */
+/** Means over the questions (macro average), plus the non-authoritative totals. */
 export function summarize(
   scores: readonly QuestionScore[],
   answers: readonly EvalAnswer[],
@@ -63,5 +73,9 @@ export function summarize(
     recallAt10: mean((score) => score.recallAt10),
     mrr: mean((score) => score.reciprocalRank),
     nonAuthoritativeHits: answers.reduce((sum, answer) => sum + answer.nonAuthoritative, 0),
+    nonAuthoritativeAboveExpected: answers.reduce(
+      (sum, answer) => sum + answer.nonAuthoritativeAboveExpected,
+      0,
+    ),
   };
 }

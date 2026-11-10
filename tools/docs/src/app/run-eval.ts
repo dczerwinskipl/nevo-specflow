@@ -33,6 +33,7 @@ export interface EvalQuestionResult extends QuestionScore {
   readonly mode: string;
   readonly ids: readonly string[];
   readonly nonAuthoritative: number;
+  readonly nonAuthoritativeAboveExpected: number;
 }
 
 export interface EvalReport {
@@ -55,11 +56,13 @@ export async function runEval(
   const nonAuthoritative = new Map(
     documents.map((document) => [asString(document.record.id), document.nonAuthoritative]),
   );
-  const unknown = questions.flatMap((question) =>
-    question.expected.filter((id) => !nonAuthoritative.has(id)),
+  const invalid = questions.flatMap((question) =>
+    question.expected.filter((id) => nonAuthoritative.get(id) !== false),
   );
-  if (unknown.length > 0) {
-    throw new Error(`eval: expected ids are not active documents: ${unknown.join(', ')}`);
+  if (invalid.length > 0) {
+    throw new Error(
+      `eval: expected ids are not active, authoritative documents: ${invalid.join(', ')}`,
+    );
   }
 
   const results: EvalQuestionResult[] = [];
@@ -72,9 +75,21 @@ export async function runEval(
       refresh: false,
     });
     const ids = result.results.map((hit) => hit.id);
+    const included = await searchDocumentation(search, {
+      query: question.question,
+      limit: EVAL_DEPTH,
+      includeNonAuthoritative: true,
+      snippets: false,
+      refresh: false,
+    });
+    const withIdeas = included.results.map((hit) => hit.id);
+    const firstExpected = withIdeas.findIndex((id) => question.expected.includes(id));
     const answer: EvalAnswer = {
       ids,
       nonAuthoritative: ids.filter((id) => nonAuthoritative.get(id) === true).length,
+      nonAuthoritativeAboveExpected: withIdeas
+        .slice(0, firstExpected === -1 ? withIdeas.length : firstExpected)
+        .filter((id) => nonAuthoritative.get(id) === true).length,
     };
     results.push({
       question: question.question,

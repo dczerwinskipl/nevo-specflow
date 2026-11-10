@@ -149,7 +149,7 @@ function printReport(ctx: LauncherContext, report: EvalReport): void {
   const { summary } = report;
   ctx.stdout('');
   ctx.stdout(
-    `questions ${summary.questions}  Recall@5 ${fixed(summary.recallAt5)}  Recall@10 ${fixed(summary.recallAt10)}  MRR ${fixed(summary.mrr)}  non-authoritative in top 10: ${summary.nonAuthoritativeHits}`,
+    `questions ${summary.questions}  Recall@5 ${fixed(summary.recallAt5)}  Recall@10 ${fixed(summary.recallAt10)}  MRR ${fixed(summary.mrr)}  non-authoritative in top 10: ${summary.nonAuthoritativeHits}  non-authoritative above the first expected when included: ${summary.nonAuthoritativeAboveExpected}`,
   );
   const lexical = report.results.filter((result) => result.mode !== 'hybrid').length;
   if (lexical > 0) {

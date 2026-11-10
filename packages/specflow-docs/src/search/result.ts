@@ -55,14 +55,14 @@ export function toHit(
 }
 
 /**
- * The best `SECTIONS_PER_RESULT` sections, one per heading path: the parts of an oversize section
- * share its heading path, and only the best-ranked part is shown.
+ * The best `SECTIONS_PER_RESULT` sections, one per section id: the parts of an oversize section
+ * share its id, and only the best-ranked part is shown.
  */
 function bestSections(chunks: readonly ChunkHit[]): ChunkHit[] {
   const seen = new Set<string>();
   const best: ChunkHit[] = [];
   for (const hit of chunks) {
-    const key = JSON.stringify(hit.chunk.headingPath);
+    const key = hit.chunk.sectionId;
     if (!seen.has(key)) {
       seen.add(key);
       best.push(hit);

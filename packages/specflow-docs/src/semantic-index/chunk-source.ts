@@ -1,13 +1,13 @@
-// The documentation corpus as search chunks. Every search needs every current chunk (BM25 ranks
-// all of them and the index refresh diffs against them), so this source keeps the parsed
-// frontmatter and chunks of each file and re-parses only what changed. Every load reads and hashes
-// every file (about 300 files and 3 MB here: about 20 ms for a warm load on Windows), so any content
-// change is seen, also one that keeps the size and modification time; only a changed hash parses and
+// The documentation corpus as search chunks. Every search needs every current chunk (BM25 ranks all
+// of them and the index refresh diffs against them), so this source keeps the parsed frontmatter
+// and chunks of each file and re-parses only what changed. Every load reads and hashes every file
+// (about 300 files and 3 MB here: about 20 ms for a warm load on Windows), so any content change is
+// seen, also one that keeps the size and modification time; only a changed hash parses and
 // re-chunks the file. A file that disappears between listing and reading (a checkout during a
-// search) is skipped like one the listing did not see. While no hash changes, the validated corpus and its BM25 engine are reused. A persisted copy
-// (`units.json` in the index directory) carries the parsing across CLI invocations (`chunk-cache`);
-// it is disposable cache like the vectors. All file access is asynchronous: a running Runtime loads
-// on every search.
+// search) is skipped like one the listing did not see. While no hash changes, the validated corpus
+// and its BM25 engine are reused. A persisted copy (`units.json` in the index directory) carries
+// the parsing across CLI invocations (`chunk-cache`); it is disposable cache like the vectors. All
+// file access is asynchronous: a running Runtime loads on every search.
 
 import { createHash } from 'node:crypto';
 

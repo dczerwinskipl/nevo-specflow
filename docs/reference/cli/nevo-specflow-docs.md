@@ -167,14 +167,15 @@ next search tries again and reports the same failure rather than a catch-up that
 Search is hybrid only once every current section has a vector. `--no-refresh` skips the embedding
 step entirely and starts no catch-up.
 
-**Sections.** Each document shows up to three matching sections, best first, one per heading
-path. A section is identified by its `sectionId`: the heading path as slugs (each heading's words,
-normalized like the ranking's words, joined by `-`; `section` for a heading without words)
-joined by `/`, for example `guide/install` for `# Guide` > `## Install`. The text before the
-first heading is `_top`; a heading path that occurred earlier in the document gets `~2`, `~3`,
-… . An id changes only when a heading on its path changes (or an earlier section takes the same
-path), not when other sections are edited. `line` is the line of the section's heading in the
-file. `get <id> --section <sectionId>` prints the section.
+**Sections.** Each document shows up to three matching sections, best first, one per section. A
+section is identified by its `sectionId`: the heading path as slugs (each heading's words,
+normalized like the ranking's words, joined by `-`; `section` for a heading without words) joined by
+`/`, for example `guide/install` for `# Guide` > `## Install`. The text before the first heading is
+`_top`; a heading path that occurred earlier in the document gets `~2`, `~3`, … . An id changes only
+when a heading on its path changes (or an earlier section takes the same path), not when other
+sections are edited. `line` is the line of the file where the matching text starts: the section's
+heading, or for a later part of a long section that part's first line. `get <id> --section
+<sectionId>` prints the section with its subsections.
 
 **Excerpts.** Under each section, `search` shows a short excerpt (`snippet`, one line, at most
 280 characters) taken from the section's own text, never generated: the section body is split
@@ -188,15 +189,18 @@ heading. `--no-snippets` leaves them out.
 
 Text output: one block per document with its id, title, type and status, the `summary` (cut at a
 word boundary after 200 characters; `--json` has all of it), the `read_when` situations and the
-matching sections, one per line with its heading path (without a first heading equal to the
-document title; `(top)` for the text directly under it), `[<sectionId>, line <n>]` and the
-excerpt on the next line. Absent fields are omitted. The last line, `read all:`, reads every
-listed result in one line of commands separated by `; ` (valid in POSIX shells and PowerShell):
-first `get --content` with every document that is read whole, in rank order, then one
-`get <id> --section <sectionId>...` per `reference` document with matching sections, in rank
+matching sections, one per line with its heading path (without a first heading equal to the document
+title), `[<sectionId>, line <n>]` and the excerpt on the next line. The section of the title heading
+itself is `(document)`, since with its subsections it is the whole document; the text before the
+first heading is `(before the first heading)`. Absent fields are omitted. The last line, `read
+all:`, reads every listed result in one line of commands separated by `; ` (valid in POSIX shells
+and PowerShell): first `get --content` with every document that is read whole, in rank order, then
+one `get <id> --section <sectionId>...` per `reference` document with matching sections, in rank
 order. Reference documents are lookup material (routes, options, keys) whose matching sections
-answer the question; architecture, engineering and other documents are read whole. A part is
-omitted when it has no documents.
+answer the question; documents of every other type are read whole. Since a section includes its
+subsections, a matching section inside another matching one is not named again, and a reference
+document whose matching sections include a top-level section (for example `(document)`) is read
+whole. A part is omitted when it has no documents.
 
 ```text
 mode: hybrid
@@ -212,7 +216,7 @@ guide — Guide (reference, current)
 
 faq — FAQ (hub, current)
   sections:
-    (top)  [faq, line 8]
+    (document)  [faq, line 8]
       Ask anything.
 
 read all: nevo-specflow docs get --content faq; nevo-specflow docs get guide --section guide/install --section guide/configure

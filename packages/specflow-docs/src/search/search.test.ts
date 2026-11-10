@@ -19,7 +19,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 
 import { DEFAULT_DOCS_SETTINGS, parseDocsConfig } from '../config/docs-settings';
 import { openFileSystemCorpus } from '../corpus/corpus';
-import { createDocsChunkSource } from '../semantic-index/chunk-source';
+import { contextualHeader, createDocsChunkSource } from '../semantic-index/chunk-source';
 import { openDocsIndex, openProjectIndex } from '../semantic-index/index-store';
 import { READ_REFRESH_MAX_CHUNKS } from '../semantic-index/refresh-policy';
 import { toHit } from './result';
@@ -360,6 +360,29 @@ describe('toHit', () => {
 });
 
 describe('docs chunk source', () => {
+  it('embeds what the frontmatter says the document is about, without empty fields', () => {
+    expect(
+      contextualHeader({
+        id: 'guide',
+        title: 'Guide',
+        summary: 'How to\n  install.',
+        scope: 'specflow',
+        areas: ['cli', 'docs'],
+        tags: [],
+        read_when: ['installing', 'configuring'],
+      }),
+    ).toBe(
+      [
+        'Title: Guide',
+        'ID: guide',
+        'Summary: How to install.',
+        'Scope: specflow',
+        'Areas: cli, docs',
+        'Read when: installing; configuring',
+      ].join('\n'),
+    );
+  });
+
   it('re-chunks only changed content, also when size and mtime stay, across instances', async () => {
     const cacheFile = join(root, 'cache', 'units.json');
     const source = createDocsChunkSource({ corpus, cacheFile });

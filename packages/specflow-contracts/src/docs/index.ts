@@ -57,7 +57,10 @@ export const DocsSearchSectionSchema = Type.Object(
      * repeated path. Read the section with `docs get <id> --section <sectionId>`.
      */
     sectionId: Type.String({ minLength: 1 }),
-    /** 1-based line of the section's heading in `file`. */
+    /**
+     * 1-based line in `file` where the matching text starts: the section's heading line, or for a
+     * later part of a long section that part's first line.
+     */
     line: Type.Integer({ minimum: 1 }),
     /**
      * Rank score of the section among all sections: BM25 in lexical mode, reciprocal rank fusion of
@@ -103,7 +106,7 @@ export const DocsSearchHitSchema = Type.Object(
      */
     score: Type.Number(),
     /**
-     * Up to three best matching sections, best first, one per heading path. Empty when none of the
+     * Up to three best matching sections, best first, one per section. Empty when none of the
      * document's sections is among the section ranking's top candidates (for example a document
      * found by its frontmatter only).
      */

@@ -1,6 +1,10 @@
 import type { Command } from 'commander';
 
-import type { DocsSearchHit, DocsSearchResult } from '@nevo/specflow-contracts/docs';
+import type {
+  DocsSearchHit,
+  DocsSearchResult,
+  DocsSearchSection,
+} from '@nevo/specflow-contracts/docs';
 
 import { DocsUsageError } from '../errors';
 import { cutAtWord } from './result';
@@ -138,33 +142,65 @@ function printResult(ctx: DocsCommandContext, query: string, result: DocsSearchR
 
 /**
  * One line that reads every result, commands separated by `; ` (bash and PowerShell alike): first
- * `<get> --content <ids...>` for the whole documents, then `<get> <id> --section <sectionId>...`
- * for each `reference` document with matching sections, in result order. Reference documents are
- * large lookup tables (routes, options, configuration keys) whose matching sections answer the
- * question; architecture, engineering and instruction documents are meant to be read whole.
+ * `<get> --content <ids...>` for the documents read whole, then `<get> <id> --section
+ * <sectionId>...` for each `reference` document with matching sections, in result order.
+ * Reference documents are large lookup tables (routes, options, configuration keys) whose matching
+ * sections answer the question; other documents are meant to be read whole. `get --section`
+ * includes subsections, so a matching section inside another matching one is not named again, and
+ * a reference document whose matching sections include a top-level section (with its subsections
+ * most or all of the document) is read whole too.
  */
 export function readAllCommand(result: DocsSearchResult, getCommand: string): string {
-  const bySection = (hit: DocsSearchHit) => hit.type === 'reference' && hit.sections.length > 0;
+  const sections = new Map(
+    result.results.map((hit) => [
+      hit.id,
+      hit.type === 'reference' ? outermostSections(hit.sections) : [],
+    ]),
+  );
+  const bySection = (hit: DocsSearchHit) => {
+    const selected = sections.get(hit.id)!;
+
+    return selected.length > 0 && selected.every((section) => section.headingPath.length !== 1);
+  };
+
   const whole = result.results.filter((hit) => !bySection(hit)).map((hit) => hit.id);
   const commands = [
     ...(whole.length > 0 ? [`${getCommand} --content ${whole.join(' ')}`] : []),
-    ...result.results
-      .filter(bySection)
-      .map(
-        (hit) =>
-          `${getCommand} ${hit.id} ${hit.sections.map((section) => `--section ${section.sectionId}`).join(' ')}`,
-      ),
+    ...result.results.filter(bySection).map(
+      (hit) =>
+        `${getCommand} ${hit.id} ${sections
+          .get(hit.id)!
+          .map((section) => `--section ${section.sectionId}`)
+          .join(' ')}`,
+    ),
   ];
 
   return commands.join('; ');
 }
 
+/** The sections not inside another of them (a longer heading path that starts with its path). */
+function outermostSections(sections: readonly DocsSearchSection[]): DocsSearchSection[] {
+  const inside = (inner: DocsSearchSection, outer: DocsSearchSection) =>
+    inner.line > outer.line &&
+    outer.headingPath.length > 0 &&
+    inner.headingPath.length > outer.headingPath.length &&
+    outer.headingPath.every((heading, index) => inner.headingPath[index] === heading);
+
+  return sections.filter((section) => !sections.some((other) => inside(section, other)));
+}
+
 /**
- * A heading path without its first heading when that repeats the document title (the usual H1);
- * `(top)` for the text before or directly under it.
+ * How text output names a section: its heading path without a first heading equal to the document
+ * title (the usual H1). The title heading's own section is `(document)`, since with its
+ * subsections it is the whole document; the text before the first heading is
+ * `(before the first heading)`.
  */
 function sectionHeading(path: readonly string[], title: string): string {
+  if (path.length === 0) {
+    return '(before the first heading)';
+  }
+
   const shown = path[0] === title ? path.slice(1) : path;
 
-  return shown.join(' > ') || '(top)';
+  return shown.join(' > ') || '(document)';
 }

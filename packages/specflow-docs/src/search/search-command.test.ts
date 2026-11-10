@@ -63,7 +63,8 @@ describe('docs search and semantic status', () => {
     ]);
   });
 
-  it('reads reference documents by section and the others whole, on one line', () => {
+  it('reads reference documents by their outermost sections and the others whole, on one line', () => {
+    // A section id is its heading path joined by '/', its line the path length.
     const hit = (id: string, type: string, sectionIds: string[]) => ({
       id,
       title: id,
@@ -72,20 +73,21 @@ describe('docs search and semantic status', () => {
       file: `docs/${id}.md`,
       score: 1,
       sections: sectionIds.map((sectionId) => ({
-        headingPath: [sectionId],
+        headingPath: sectionId.split('/'),
         sectionId,
-        line: 1,
+        line: sectionId.split('/').length,
         score: 1,
       })),
     });
     const results = [
-      hit('api', 'reference', ['api/routes', 'api/errors']),
+      hit('api', 'reference', ['api/routes', 'api/routes/post', 'api/errors']),
       hit('arch', 'architecture', ['arch/model']),
       hit('cli', 'reference', []),
+      hit('keys', 'reference', ['keys/list', 'keys']),
     ];
 
     expect(readAllCommand({ mode: 'hybrid', results }, 'pnpm docs:get')).toBe(
-      'pnpm docs:get --content arch cli; pnpm docs:get api --section api/routes --section api/errors',
+      'pnpm docs:get --content arch cli keys; pnpm docs:get api --section api/routes --section api/errors',
     );
   });
 

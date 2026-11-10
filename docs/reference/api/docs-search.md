@@ -33,7 +33,8 @@ The Runtime serves the same documentation search as
 ([ADR 0020](../../architecture/decisions/0020-documentation-discovery-is-a-product-capability.md)).
 The contracts are `DocsSearchResult` and `DocsStatus` in
 `packages/specflow-contracts/src/docs/index.ts`; the feature is
-`packages/specflow-runtime/src/features/docs/`.
+`packages/specflow-runtime/src/features/docs/`. In the [OpenAPI document](openapi.md) both operations are in the
+`Documentation` group, with `DocsSearchResult` and `DocsStatus` as shared components.
 
 ## Endpoint
 

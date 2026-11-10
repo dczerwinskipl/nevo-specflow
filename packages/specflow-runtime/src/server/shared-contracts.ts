@@ -45,8 +45,9 @@ import { TaskReadErrorSchema, TaskSnapshotExpiredSchema } from '@nevo/specflow-c
 /**
  * The response contracts of `@nevo/specflow-contracts` that more than one operation answers, or that
  * one operation answers and another product surface emits too (`DocsSearchResult` and `DocsStatus`
- * are also the `nevo-specflow docs search --json` and `docs semantic status --json` output). Each carries a stable `$id` in the contracts package;
- * here it is only registered as a Fastify shared schema, so routes reference one definition and the
+ * are also the `nevo-specflow docs search --json` and `docs semantic status --json` output). Each
+ * carries a stable `$id` in the contracts package; here it is only registered as a Fastify shared
+ * schema, so routes reference one definition and the
  * OpenAPI document emits it once under `components.schemas` with that `$id` as its name. A contract
  * answered by one operation only, and a separate contract that merely has the same shape as
  * another, stay inline.

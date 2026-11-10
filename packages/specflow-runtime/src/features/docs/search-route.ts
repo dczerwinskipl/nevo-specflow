@@ -76,6 +76,8 @@ export const docsSearchEndpoint: FastifyPluginCallback<{
         capability: DocsCapabilities.capabilities.Search,
       }),
       schema: {
+        tags: ['Documentation'],
+        summary: "Search the project's documentation",
         querystring: DocsSearchQuerySchema,
         response: {
           200: contractRef(DocsSearchResultSchema),

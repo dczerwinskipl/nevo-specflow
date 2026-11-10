@@ -4732,6 +4732,10 @@
     "/api/docs/search": {
       "get": {
         "operationId": "getDocsSearch",
+        "summary": "Search the project's documentation",
+        "tags": [
+          "Documentation"
+        ],
         "parameters": [
           {
             "schema": {
@@ -4816,6 +4820,16 @@
               }
             }
           },
+          "400": {
+            "description": "The request does not match the route schema: the request error with `code` `FST_ERR_VALIDATION`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestErrorResponse"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not authenticated.",
             "content": {
@@ -4832,6 +4846,42 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests: the source exceeded the Runtime default rate limit.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Seconds until the budget renews."
+              },
+              "x-ratelimit-limit": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "The budget of the time window."
+              },
+              "x-ratelimit-remaining": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "`0` on a refusal."
+              },
+              "x-ratelimit-reset": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Seconds until the window resets."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitedErrorResponse"
                 }
               }
             }
@@ -4868,6 +4918,10 @@
     "/api/docs/status": {
       "get": {
         "operationId": "getDocsStatus",
+        "summary": "Read the semantic search status of the documentation",
+        "tags": [
+          "Documentation"
+        ],
         "security": [
           {
             "sessionCookie": []
@@ -4900,6 +4954,42 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests: the source exceeded the Runtime default rate limit.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Seconds until the budget renews."
+              },
+              "x-ratelimit-limit": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "The budget of the time window."
+              },
+              "x-ratelimit-remaining": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "`0` on a refusal."
+              },
+              "x-ratelimit-reset": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Seconds until the window resets."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitedErrorResponse"
                 }
               }
             }
@@ -30560,6 +30650,10 @@
     {
       "name": "Workspaces",
       "description": "Closing a linked worktree and a whole workspace (checkout)."
+    },
+    {
+      "name": "Documentation",
+      "description": "The project's own documentation: search and the status of its semantic search index."
     },
     {
       "name": "Runtime",

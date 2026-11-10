@@ -35,6 +35,8 @@ export const docsStatusEndpoint: FastifyPluginCallback<{
         capability: DocsCapabilities.capabilities.Search,
       }),
       schema: {
+        tags: ['Documentation'],
+        summary: 'Read the semantic search status of the documentation',
         response: {
           200: contractRef(DocsStatusSchema),
           401: contractRef(AuthenticationRequiredErrorResponseSchema),

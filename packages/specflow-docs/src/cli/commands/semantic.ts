@@ -30,7 +30,7 @@ export function addSemanticCommand(
   const status = semantic
     .command('status')
     .description(
-      'Report the semantic search configuration, endpoint reachability and index freshness; exits 1 when semantic search is enabled but unavailable',
+      'Report the semantic search configuration, endpoint reachability, index freshness and the mode search answers in; exits 1 when semantic search is enabled but the configuration, endpoint or index prevents it',
     )
     .option('--json', 'emit JSON on stdout', false);
 
@@ -41,6 +41,9 @@ export function addSemanticCommand(
         openDocsIndex(project.root, corpus),
         configuration,
         environment(ctx),
+        ctx.semanticIndexCommand === undefined
+          ? {}
+          : { semanticIndexCommand: ctx.semanticIndexCommand },
       );
       if (opts.json) {
         ctx.stdout(JSON.stringify(report, null, 2));
@@ -48,7 +51,7 @@ export function addSemanticCommand(
         printStatus(ctx, report);
       }
 
-      if (report.enabled && !report.available) {
+      if (report.failed) {
         throw new DocsError(
           `semantic search is enabled but unavailable: ${report.reason?.message ?? 'unknown cause'}`,
         );

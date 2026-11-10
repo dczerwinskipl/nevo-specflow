@@ -84,7 +84,7 @@ The root `pnpm docs:*` scripts are the product `nevo-specflow docs` command: `to
 same command adapter with this repository as the project, adds `adr new` and the ADR rules, and
 builds only `@nevo/specflow-docs` and its dependencies, never the bundled product or the UI. Running
 an installed `nevo-specflow docs check` in the repository therefore gives the same result as
-`pnpm docs:check`. Hints in the output name the `pnpm docs:*` command lines (`pnpm docs:get`,
+`pnpm docs:check`, except for the repository-only ADR rules, which only `pnpm docs:check` applies. Hints in the output name the `pnpm docs:*` command lines (`pnpm docs:get`,
 `pnpm docs:check --write`, `pnpm docs:semantic index`).
 
 A fresh clone has no Project Home yet: `nevo-specflow start` refuses with "No designated Project

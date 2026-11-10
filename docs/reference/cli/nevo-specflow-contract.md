@@ -35,7 +35,8 @@ nevo-specflow project inspect|bootstrap                  # show the Project Home
 nevo-specflow specs ...                                  # Engine-backed Specifications, worktrees, workspaces and documents (offline)
 nevo-specflow commit [status]                            # manual commit of the uncommitted changes the Engine recorded
 nevo-specflow definitions list|show|validate|install     # the project's archetype and document type definitions
-nevo-specflow docs list|find|get|context|check           # discover and validate the project documentation
+nevo-specflow docs list|find|get|context|check|search    # discover, validate and search the project documentation
+nevo-specflow docs semantic status|index                 # report and build the semantic search index
 nevo-specflow start [--demo]                             # serve the local SpecFlow UI and Runtime API; exit 0 after shutdown
 nevo-specflow auth hash-password --password-stdin        # hash one password line from stdin
 ```
@@ -75,7 +76,8 @@ outputs of:
 
 ## Documentation commands
 
-`nevo-specflow docs list|find|get|context|check` are implemented; see [`nevo-specflow docs` commands](nevo-specflow-docs.md).
+`nevo-specflow docs list|find|get|context|check|search` and `nevo-specflow docs semantic status|index`
+are implemented; see [`nevo-specflow docs` commands](nevo-specflow-docs.md).
 
 ## Not implemented
 

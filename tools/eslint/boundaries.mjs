@@ -75,8 +75,10 @@ export const aiSemanticSearchBoundaries = [
 export const specflowContractsBoundaries = [
   restrict([
     {
-      regex: '^@nevo/(?:specflow|specflow-engine|specflow-runtime|specflow-ui)(?:/|$)',
-      message: 'Shared SpecFlow contracts must not depend on the product shell, Runtime, or UI.',
+      regex:
+        '^@nevo/(?:specflow|specflow-engine|specflow-runtime|specflow-ui|specflow-docs)(?:/|$)',
+      message:
+        'Shared SpecFlow contracts must not depend on the product shell, a SpecFlow capability package (Engine, Runtime, docs) or UI.',
     },
   ]),
 ];

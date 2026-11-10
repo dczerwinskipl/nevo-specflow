@@ -174,8 +174,8 @@ Current ownership is explicit:
 - `git`: project owns everything shareable (`enabled`, `worktrees`, `integrationTargetBranch`,
   `commits.protectedBranches`/`allowedBranches`/`auto`); local owns `worktreesRoot` and may override
   `commits.auto.<capability>` (the local value wins; any other local `git.commits` key is rejected).
-- `docs`: project-owned (documentation root, taxonomy, non-authoritative path prefixes, the
-  `search.semantic` opt-in); local `docs` configuration is rejected, both by Runtime config loading
+- `docs`: project-owned (documentation root, taxonomy, non-authoritative and excluded path
+  prefixes, the `search.semantic` opt-in); local `docs` configuration is rejected, both by Runtime config loading
   and by the `nevo-specflow docs` command.
 - `ai.embeddings`: allowed in both files; project config may hold a team default endpoint and local
   config overrides it, the local value winning per key. The embedding API key is never stored in

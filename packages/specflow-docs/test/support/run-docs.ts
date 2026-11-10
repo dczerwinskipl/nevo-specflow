@@ -27,7 +27,12 @@ export async function runDocs(
   root: string,
   args: readonly string[],
   checkWriteCommand = 'nevo-specflow docs check --write',
-  extra: Partial<Pick<DocsCommandContext, 'env' | 'createEmbeddingProvider' | 'getCommand'>> = {},
+  extra: Partial<
+    Pick<
+      DocsCommandContext,
+      'env' | 'createEmbeddingProvider' | 'getCommand' | 'semanticIndexCommand'
+    >
+  > = {},
 ): Promise<DocsRun> {
   const stdout: string[] = [];
   const stderr: string[] = [];

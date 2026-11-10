@@ -1,6 +1,6 @@
 // `docs semantic status` and `docs semantic index`: report and (re)build the semantic index. Status is
 // the only `docs` operation whose answer turns an unavailable configured semantic mode into a
-// failure; the caller decides the exit code from `available`.
+// failure; the caller decides the exit code from `failed`, separately from the reported mode.
 
 import {
   CHUNKER_VERSION,
@@ -14,8 +14,10 @@ import type { DocsSearchReason } from '@nevo/specflow-contracts/docs';
 import type { DocsConfiguration } from '../config/docs-configuration';
 import type { EmbeddingsSettings } from '../config/embeddings-settings';
 import type { DocsIndex } from './docs-index';
+import { READ_REFRESH_MAX_CHUNKS } from './docs-search';
 import {
   embeddingFailureReason,
+  overLimitReason,
   refreshReason,
   semanticEndpoint,
   unreadableIndexReason,
@@ -38,9 +40,10 @@ export type EndpointReachability =
   | { readonly reachable: false; readonly message: string };
 
 /**
- * - `missing`: no index yet; the next search or `semantic index` builds it.
+ * - `missing`: no index yet; `semantic index` builds it (a search only within its embed bound).
  * - `current`: matches the documents.
- * - `stale`: `changed` chunks differ; the next search or `semantic index` re-embeds them.
+ * - `stale`: `changed` chunks differ; a search re-embeds them within its embed bound, otherwise
+ *   `semantic index` does.
  * - `rebuild`: built with another chunker, protocol, model or dimension; it is rebuilt in full.
  * - `unreadable`: the index cannot be read right now.
  */
@@ -67,8 +70,18 @@ export interface SemanticStatus {
   readonly index: IndexState;
   /** `search` can answer in hybrid mode (after its read-time refresh). */
   readonly available: boolean;
-  /** Why `search` answers lexically; absent when `available`. */
+  /** Why `search` answers lexically, as `search` reports it; absent when `available`. */
   readonly reason?: DocsSearchReason;
+  /**
+   * Semantic search is enabled but cannot work until the configuration, endpoint or index is
+   * fixed. An index that only needs building (`index-building`) is not a failure.
+   */
+  readonly failed: boolean;
+}
+
+export interface SemanticStatusOptions {
+  /** The index build command as the caller's host invokes it, named in `index-building`. */
+  readonly semanticIndexCommand?: string;
 }
 
 type Providers = { readonly providers: EmbeddingProviders } | { readonly reason: DocsSearchReason };
@@ -83,6 +96,7 @@ export async function semanticStatus(
   index: DocsIndex,
   configuration: DocsConfiguration,
   environment: SemanticEnvironment,
+  options: SemanticStatusOptions = {},
 ): Promise<SemanticStatus> {
   const enabled = configuration.docs.search.semantic;
   const settings = configuration.embeddings;
@@ -120,9 +134,14 @@ export async function semanticStatus(
     }
   }
 
-  const indexState = await readIndexState(index, identity, observedDimensions);
+  const { state: indexState, pending } = await readIndexState(index, identity, observedDimensions);
   if (indexState.state === 'unreadable') {
     reason ??= unreadableIndexReason(indexState.message);
+  }
+
+  // The same bound as the search's read-time refresh: a larger gap answers `index-building`.
+  if (pending > READ_REFRESH_MAX_CHUNKS) {
+    reason ??= overLimitReason(pending, READ_REFRESH_MAX_CHUNKS, options.semanticIndexCommand);
   }
 
   return {
@@ -132,6 +151,7 @@ export async function semanticStatus(
     index: indexState,
     available: reason === undefined,
     ...(reason === undefined ? {} : { reason }),
+    failed: enabled && reason !== undefined && reason.code !== 'index-building',
   };
 }
 
@@ -146,12 +166,16 @@ async function readIndexState(
   index: DocsIndex,
   identity: { protocol: string; model: string; dimensions: number | undefined } | undefined,
   observedDimensions: number | undefined,
-): Promise<IndexState> {
+): Promise<{ readonly state: IndexState; readonly pending: number }> {
   const outcome = await index.store.readManifest();
   if (outcome.status !== 'ok') {
     return outcome.status === 'missing'
-      ? { state: 'missing' }
-      : { state: 'unreadable', message: outcome.message };
+      ? {
+          state: { state: 'missing' },
+          // Without an endpoint the mode is already lexical for that reason.
+          pending: identity === undefined ? 0 : index.chunks.load().chunks.length,
+        }
+      : { state: { state: 'unreadable', message: outcome.message }, pending: 0 };
   }
 
   const { manifest } = outcome;
@@ -163,7 +187,7 @@ async function readIndexState(
     dimensions: stored.dimensions,
   };
   if (identity === undefined) {
-    return { state: 'current', ...summary, changed: 0 };
+    return { state: { state: 'current', ...summary, changed: 0 }, pending: 0 };
   }
 
   const plan = planRefresh(
@@ -176,13 +200,14 @@ async function readIndexState(
     },
     manifest,
   );
+  const pending = plan.embed.length;
   if (plan.reset) {
-    return { state: 'rebuild', ...summary, changed: plan.embed.length };
+    return { state: { state: 'rebuild', ...summary, changed: pending }, pending };
   }
 
-  const changed = plan.embed.length + plan.delete.length;
+  const changed = pending + plan.delete.length;
 
-  return { state: changed === 0 ? 'current' : 'stale', ...summary, changed };
+  return { state: { state: changed === 0 ? 'current' : 'stale', ...summary, changed }, pending };
 }
 
 /** Result of `semantic index`: the refresh outcome, or why nothing was attempted. */

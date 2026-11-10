@@ -9,7 +9,8 @@ export { DocsCapabilities } from './capabilities';
  * Why a search answered lexically (ADR 0020, "Semantic search is optional"):
  * - `semantic-disabled`: `docs.search.semantic` is absent or `false`;
  * - `no-endpoint`: no `ai.embeddings` endpoint is configured;
- * - `endpoint-unreachable`: the endpoint failed, timed out or answered unusable vectors;
+ * - `endpoint-unreachable`: the endpoint failed, timed out or answered unusable vectors, or the
+ *   variable named by `ai.embeddings.apiKeyEnv` is not set;
  * - `index-building`: the index is not yet complete for the current documents (another process is
  *   updating it; it is not built yet, was built with another model or more sections lack vectors
  *   than a search embeds; or the search skipped the refresh with `--no-refresh`); it becomes current

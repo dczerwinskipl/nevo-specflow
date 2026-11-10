@@ -54,12 +54,14 @@ export function createDocsFeature(options: CreateDocsFeatureOptions = {}): Runti
             });
       app.register(docsSearchEndpoint, { docs });
 
-      // Only a project that opted into semantic search has an index to refresh; otherwise nothing
-      // is written below `.nevo/`.
+      // Only a project that opted into semantic search and configured an embedding endpoint has an
+      // index to refresh; otherwise nothing is written below `.nevo/` and nothing is logged (a
+      // committed opt-in without a workstation endpoint is a normal lexical setup).
       if (
         docs === undefined ||
         dependencies.startRefresh === false ||
-        !configuration.docs.search.semantic
+        !configuration.docs.search.semantic ||
+        configuration.embeddings === undefined
       ) {
         return;
       }

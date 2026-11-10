@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -62,5 +62,33 @@ describe('docs search and semantic status', () => {
       'reachable: no (The embedding endpoint failed (timeout): no answer)',
     );
     expect(run.stderr.at(-1)).toMatch(/semantic search is enabled but unavailable/);
+  });
+
+  it('semantic status reports an index too large for a search to build as index-building, exit 0', async () => {
+    // A fresh project (no index) with more sections than a search embeds.
+    const large = mkdtempSync(join(tmpdir(), 'specflow-docs-status-cli-'));
+    try {
+      mkdirSync(join(large, 'docs'));
+      mkdirSync(join(large, '.nevo', 'local'), { recursive: true });
+      for (const file of ['config.yaml', join('local', 'config.yaml')]) {
+        writeFileSync(join(large, '.nevo', file), readFileSync(join(root, '.nevo', file)));
+      }
+
+      const sections = Array.from({ length: 20 }, (_, n) => `## Part ${String(n)}\n\nText.`);
+      writeFileSync(
+        join(large, 'docs', 'big.md'),
+        `---\nid: big\ntype: hub\ntitle: Big\nstatus: current\n---\n\n# Big\n\n${sections.join('\n\n')}\n`,
+      );
+      const run = await runDocs(large, ['semantic', 'status'], undefined, {
+        createEmbeddingProvider: () => createFakeEmbeddingProvider(),
+        semanticIndexCommand: 'pnpm docs:semantic index',
+      });
+      expect(run).toMatchObject({ exitCode: 0, stderr: [] });
+      expect(run.stdout.at(-1)).toMatch(
+        /^search mode: lexical \(index-building: .*run `pnpm docs:semantic index`/,
+      );
+    } finally {
+      rmSync(large, { recursive: true, force: true });
+    }
   });
 });

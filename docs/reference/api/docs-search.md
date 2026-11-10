@@ -86,12 +86,14 @@ The Runtime holds one index per process in `.nevo/local/cache/docs-index/`, shar
 - **Read-time refresh:** every request re-embeds the changed sections before answering, at most a
   small bounded number; a larger gap answers `lexical` with `index-building`. The HTTP endpoint
   always refreshes (the CLI's `--no-refresh` has no HTTP counterpart).
-- **Start refresh:** when the project enables `docs.search.semantic`, the Runtime refreshes the
-  whole index in the background once it is ready. Start and readiness do not wait for it; searches
-  meanwhile answer `lexical` with `index-building`. Closing the Runtime stops the refresh's endpoint
-  requests and waits for it to release the index; sections embedded so far stay stored. A refresh
-  that cannot run (endpoint unreachable, index busy or unreadable) is logged as a warning.
-- With semantic search off, nothing is refreshed and nothing is written below `.nevo/`.
+- **Start refresh:** when the project enables `docs.search.semantic` and an embedding endpoint is
+  configured, the Runtime refreshes the whole index in the background once it is ready. Start and
+  readiness do not wait for it; searches meanwhile answer `lexical` with `index-building`. Closing
+  the Runtime stops the refresh's endpoint requests and waits for it to release the index; sections
+  embedded so far stay stored. A refresh that cannot run (endpoint unreachable, index busy or
+  unreadable) is logged as a warning.
+- With semantic search off or no endpoint configured, nothing is refreshed, nothing is logged and
+  nothing is written below `.nevo/`.
 
 Configuration (`docs`, `ai.embeddings`) is validated by Runtime config loading with the rules of the
 [documentation configuration](../configuration/documentation-and-embeddings.md); an invalid section

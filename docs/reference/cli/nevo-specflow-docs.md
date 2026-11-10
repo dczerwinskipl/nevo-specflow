@@ -64,8 +64,7 @@ the document's frontmatter, `file` and `body` (and, for `find`, `score`, `matche
 `read_when`, `scope` (when set), `areas` and `tags`.
 
 Errors are reported on stderr in every mode, including `--json`; stdout stays empty when a command
-fails. This is the one deliberate difference from the repository tool these commands were promoted
-from, which printed an `{"error": …}` object on stdout in `--json` mode.
+fails, and no error object is printed on stdout.
 
 ## `search`
 
@@ -162,9 +161,12 @@ reciprocal-rank-fusion scores in hybrid mode; compare them only within one resul
 `semantic status` reports whether semantic search is enabled, the configured endpoint (never a key),
 a connectivity probe (latency and observed dimensions) and the index: `missing`, `current`, `stale`
 (sections to re-embed), `rebuild` (built with another chunker, protocol, model or dimension) or
-`unreadable`. Its last line is the mode `search` would answer in. It exits 1 when semantic search is
-enabled but unavailable: no endpoint, an unreachable endpoint or unset key variable, or an
-unreadable index. A missing or stale index is not a failure, because the next `search` updates it.
+`unreadable`. Its last line is the mode `search` would answer in, with the same reason: an index
+that lacks vectors for more sections than a search embeds (16) — missing, to be rebuilt or stale
+by that much — reports `lexical` with `index-building` and names the index build command. It exits
+1 when semantic search is enabled but unavailable: no endpoint, an unreachable endpoint or unset
+key variable, or an unreadable index. An index that only needs building is not a failure (exit 0):
+`semantic index` builds it, and a search embeds a gap of at most 16 sections itself.
 It checks configuration, the endpoint and that the index can be read, not that it can be written: a
 write failure shows up on `search` as `index-unavailable`.
 `--json` prints the same report as one JSON object.

@@ -11,7 +11,7 @@ import {
   type DocsConfiguration,
 } from '@nevo/specflow-docs';
 import { Value } from 'typebox/value';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it, vi } from 'vitest';
 
 import type { RuntimeConfig } from '../../src/config/types';
 import { authCookieNames } from '../../src/features/auth/authentication/http/cookies';
@@ -99,6 +99,20 @@ describe('GET /api/docs/search', () => {
     }
 
     expect(existsSync(join(plain, '.nevo'))).toBe(false);
+
+    // Opted in without an endpoint: no start refresh, so no warning on every start.
+    const noEndpoint = await createRuntimeApp(
+      { ...localViewer(), docs: { docs: semantic.docs, embeddings: undefined } },
+      { docs: { projectRoot: project(), createProvider: fake } },
+    );
+    try {
+      const warn = vi.spyOn(noEndpoint.log, 'warn');
+      await noEndpoint.ready();
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      await noEndpoint.close();
+    }
   });
 
   it('needs authentication and docs.search in any scope, and validates the query', async () => {

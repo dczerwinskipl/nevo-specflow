@@ -133,14 +133,14 @@ reason `endpoint-unreachable` and `semantic status` reports it.
 ## Enabling it in `nevo-specflow init`
 
 `init` of a new project asks, after the Git questions and before the review, **Enable semantic
-documentation search?** (default **No**). Declining writes no `docs` or `ai` section; the review
+documentation search?** (choices **No (default)** and **Yes**). Declining writes no `docs` or `ai` section; the review
 shows `Semantic docs search: off`. On **Yes** it asks:
 
-| Prompt                                   | Default                     | Written as                        |
-| ---------------------------------------- | --------------------------- | --------------------------------- |
-| Embedding endpoint (OpenAI-compatible)   | `http://127.0.0.1:11434/v1` | `ai.embeddings.baseUrl` (local)   |
-| Embedding model                          | `qwen3-embedding:0.6b`      | `ai.embeddings.model` (local)     |
-| Environment variable holding the API key | empty (no key sent)         | `ai.embeddings.apiKeyEnv` (local) |
+| Prompt                                                                                    | Default                     | Written as                        |
+| ----------------------------------------------------------------------------------------- | --------------------------- | --------------------------------- |
+| Embedding endpoint (OpenAI-compatible base URL)                                           | `http://127.0.0.1:11434/v1` | `ai.embeddings.baseUrl` (local)   |
+| Embedding model                                                                           | `qwen3-embedding:0.6b`      | `ai.embeddings.model` (local)     |
+| Environment variable holding the API key (the key itself is never stored; empty for none) | empty (no key sent)         | `ai.embeddings.apiKeyEnv` (local) |
 
 The key itself is never asked for or written. The answers are validated with the same rules as
 above before anything else happens; an invalid answer (for example a pasted key instead of a

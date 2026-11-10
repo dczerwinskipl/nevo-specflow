@@ -254,18 +254,33 @@ function parseFile(file: string, content: string, contentHash: string): CachedFi
   return { file, contentHash, frontmatter, chunks };
 }
 
-/** Title, id, summary and tags: embedded with every chunk so small sections keep their document. */
+/**
+ * Title, id, summary, scope, areas, tags and read_when (the frontmatter that says what a document
+ * is about and when to read it): embedded with every chunk so small sections keep their document.
+ * Empty fields are left out.
+ */
 export function contextualHeader(frontmatter: Record<string, unknown>): string {
+  const text = (value: unknown) => (typeof value === 'string' ? oneLine(value) : '');
+  const list = (value: unknown) =>
+    Array.isArray(value) ? value.map((item) => oneLine(asString(item))).filter(Boolean) : [];
   const lines = [`Title: ${asString(frontmatter.title)}`, `ID: ${asString(frontmatter.id)}`];
-  if (typeof frontmatter.summary === 'string' && frontmatter.summary.trim() !== '') {
-    lines.push(`Summary: ${frontmatter.summary.replace(/\s+/g, ' ').trim()}`);
-  }
+  const add = (label: string, value: string) => {
+    if (value !== '') {
+      lines.push(`${label}: ${value}`);
+    }
+  };
 
-  if (Array.isArray(frontmatter.tags) && frontmatter.tags.length > 0) {
-    lines.push(`Tags: ${frontmatter.tags.map((tag) => asString(tag)).join(', ')}`);
-  }
+  add('Summary', text(frontmatter.summary));
+  add('Scope', text(frontmatter.scope));
+  add('Areas', list(frontmatter.areas).join(', '));
+  add('Tags', list(frontmatter.tags).join(', '));
+  add('Read when', list(frontmatter.read_when).join('; '));
 
   return lines.join('\n');
+}
+
+function oneLine(value: string): string {
+  return value.replace(/\s+/g, ' ').trim();
 }
 
 function validatedChunks(

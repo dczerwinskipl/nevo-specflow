@@ -13756,7 +13756,7 @@
             }
           },
           "400": {
-            "description": "The request is invalid.",
+            "description": "The request is invalid. A request that fails its schema validation or JSON parsing is answered in this shape too, with `error` `Bad Request` and `code` `FST_ERR_VALIDATION`, `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -14950,7 +14950,7 @@
             }
           },
           "400": {
-            "description": "The request is invalid.",
+            "description": "The request is invalid. A request that fails its schema validation is answered in this shape too, with `error` `Bad Request` and `code` `FST_ERR_VALIDATION`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -15209,7 +15209,7 @@
             }
           },
           "400": {
-            "description": "The request is invalid.",
+            "description": "The request is invalid. A request that fails its schema validation is answered in this shape too, with `error` `Bad Request` and `code` `FST_ERR_VALIDATION`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -15358,7 +15358,7 @@
             }
           },
           "400": {
-            "description": "The request is invalid.",
+            "description": "The request is invalid. A request that fails its schema validation is answered in this shape too, with `error` `Bad Request` and `code` `FST_ERR_VALIDATION`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -16257,7 +16257,7 @@
             }
           },
           "400": {
-            "description": "The request is invalid.",
+            "description": "The request is invalid. A request that fails its schema validation or JSON parsing is answered in this shape too, with `error` `Bad Request` and `code` `FST_ERR_VALIDATION`, `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -16408,7 +16408,7 @@
             }
           },
           "400": {
-            "description": "The request is invalid.",
+            "description": "The request is invalid. A request that fails its schema validation is answered in this shape too, with `error` `Bad Request` and `code` `FST_ERR_VALIDATION`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -16581,7 +16581,7 @@
             }
           },
           "400": {
-            "description": "The request is invalid.",
+            "description": "The request is invalid. A request that fails its schema validation or JSON parsing is answered in this shape too, with `error` `Bad Request` and `code` `FST_ERR_VALIDATION`, `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -16732,7 +16732,7 @@
             }
           },
           "400": {
-            "description": "The request is invalid.",
+            "description": "The request is invalid. A request that fails its schema validation is answered in this shape too, with `error` `Bad Request` and `code` `FST_ERR_VALIDATION`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -28324,7 +28324,7 @@
             }
           },
           "400": {
-            "description": "The request is invalid.",
+            "description": "The request is invalid. A request that fails its schema validation or JSON parsing is answered in this shape too, with `error` `Bad Request` and `code` `FST_ERR_VALIDATION`, `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -28475,7 +28475,7 @@
             }
           },
           "400": {
-            "description": "The request is invalid.",
+            "description": "The request is invalid. A request that fails its schema validation is answered in this shape too, with `error` `Bad Request` and `code` `FST_ERR_VALIDATION`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -28626,7 +28626,7 @@
             }
           },
           "400": {
-            "description": "The request is invalid.",
+            "description": "The request is invalid. A request that fails its schema validation is answered in this shape too, with `error` `Bad Request` and `code` `FST_ERR_VALIDATION`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -28797,7 +28797,7 @@
             }
           },
           "400": {
-            "description": "The request is invalid.",
+            "description": "The request is invalid. A request that fails its schema validation or JSON parsing is answered in this shape too, with `error` `Bad Request` and `code` `FST_ERR_VALIDATION`, `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -28947,7 +28947,7 @@
             }
           },
           "400": {
-            "description": "The request is invalid.",
+            "description": "The request is invalid. A request that fails its schema validation is answered in this shape too, with `error` `Bad Request` and `code` `FST_ERR_VALIDATION`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -29175,7 +29175,7 @@
             }
           },
           "400": {
-            "description": "The request is invalid.",
+            "description": "The request is invalid. A request that fails its schema validation is answered in this shape too, with `error` `Bad Request` and `code` `FST_ERR_VALIDATION`.",
             "content": {
               "application/json": {
                 "schema": {

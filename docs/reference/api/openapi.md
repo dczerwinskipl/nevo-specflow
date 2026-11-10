@@ -219,11 +219,17 @@ which have the same body. Two kinds of routes do not get it:
 - **Routes with a `400` schema of their own** (Create, close and the operation lists): Fastify
   serializes the validation error through that schema, so the body is that contract, for example
   `{ "error": "Bad Request", "code": "FST_ERR_VALIDATION" }` for `CloseError`, and the route's own
-  `400` documents it. A `400` schema whose `error` is an enum would refuse that body and turn the
-  answer into `500 FST_ERR_FAILED_ERROR_SERIALIZATION`; such a schema is a union with
-  `RequestErrorResponse` instead (the OIDC start: `invalid_return_to` or the request error). The
-  contract is not closed, because the serializer matches the error object itself, which has more
-  fields (`validation`); only the four declared fields are written.
+  `400` documents it. Unless the route describes its `400` itself, the transform describes it as
+  also answering a failed validation (and, with a body, JSON parsing) in that shape, with `error`
+  `Bad Request` and the `FST_ERR_*` code. A `400` schema whose `error` is an enum would refuse that
+  body and turn the answer into `500 FST_ERR_FAILED_ERROR_SERIALIZATION`; such a schema is a union
+  with `RequestErrorResponse` instead (the OIDC start: `invalid_return_to` or the request error).
+  The contract is not closed, because the serializer matches the error object itself, which has
+  more fields (`validation`); only the four declared fields are written. The Runtime refuses to
+  start (`onReady`, when every route and its final `config` are known) with a documented route
+  whose own `400` schema cannot serialize the request error: one that requires another field or
+  constrains `statusCode`, `code`, `error` or `message` against it, or a union without an open
+  member that accepts it. Routes of the Session error handling are exempt.
 
 `test/server/request-validation.http.test.ts` sends a request with an invalid path parameter, query
 and body, checks each answer against `RequestErrorResponse` and checks that the operation documents

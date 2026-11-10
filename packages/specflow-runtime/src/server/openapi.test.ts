@@ -1,6 +1,6 @@
 import Fastify from 'fastify';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
-import type { Static } from 'typebox';
+import { Type, type Static } from 'typebox';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import {
   AuthSessionResponseSchema,
@@ -12,7 +12,10 @@ import { noAuthConfig, oidcConfig, passwordConfig } from '../../test/auth/suppor
 import { pathParameterProblems } from '../openapi-document';
 import { createRuntimeApp, type RuntimeAppDependencies } from './app';
 import { SpecIdSchema } from '@nevo/specflow-contracts/documents';
-import { RateLimitedErrorResponseSchema } from '@nevo/specflow-contracts/runtime';
+import {
+  RateLimitedErrorResponseSchema,
+  RequestErrorResponseSchema,
+} from '@nevo/specflow-contracts/runtime';
 import { Value } from 'typebox/value';
 import {
   generateOpenApiDocument,
@@ -508,5 +511,33 @@ describe('Runtime OpenAPI document', () => {
     } finally {
       await app.close();
     }
+  });
+
+  it('refuses a 400 schema that cannot serialize the Fastify request error, unless it is a union with it', async () => {
+    const enumOnly = Type.Object(
+      { error: Type.Union([Type.Literal('invalid_input'), Type.Literal('other')]) },
+      { additionalProperties: false },
+    );
+    const register = async (badRequest: unknown) => {
+      const app = Fastify();
+      await registerOpenApi(app, { sessionCookie: undefined });
+      registerSharedContracts(app);
+      app.post(
+        '/api/enum',
+        { schema: { ...documented, body: Type.Object({}), response: { 400: badRequest } } },
+        () => '',
+      );
+
+      return app;
+    };
+
+    const refused = await register(enumOnly);
+    await expect(refused.ready()).rejects.toThrow('POST /api/enum has a 400 response schema');
+    await refused.close();
+    const accepted = await register(
+      Type.Union([enumOnly, contractRef(RequestErrorResponseSchema)]),
+    );
+    await expect(accepted.ready()).resolves.toBeDefined();
+    await accepted.close();
   });
 });

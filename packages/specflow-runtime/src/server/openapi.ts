@@ -2,6 +2,7 @@ import swagger from '@fastify/swagger';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import type { FastifyInstance, FastifySchema, RawServerBase } from 'fastify';
 import { Type, type Static, type TSchema } from 'typebox';
+import { Value } from 'typebox/value';
 
 import { AuthenticationRequiredErrorResponseSchema } from '@nevo/specflow-contracts/authorization';
 import {
@@ -268,6 +269,36 @@ export async function registerOpenApi<RawServer extends RawServerBase>(
   const gaps: OpenApiRouteGap[] = [];
   routeGaps.set(app, gaps);
   const operationIds = new Map<string, string>();
+  const badRequestSchemas: {
+    readonly route: {
+      readonly method: unknown;
+      readonly url: string;
+      readonly config?: { readonly openApiOwnValidation?: true };
+    };
+    readonly schema: unknown;
+  }[] = [];
+  // Checked once every route and shared contract is registered, when `route.config` is final
+  // (the Session error handling marks its routes in an `onRoute` hook of its own context).
+  app.addHook('onReady', (done) => {
+    for (const { route, schema } of badRequestSchemas) {
+      if (
+        route.config?.openApiOwnValidation !== true &&
+        !serializesRequestError(schema, (id) => app.getSchema(id))
+      ) {
+        done(
+          new Error(
+            `Route ${String(route.method)} ${route.url} has a 400 response schema that cannot ` +
+              'serialize the Fastify request error (an enum, const or extra required field); make ' +
+              'it a union with RequestErrorResponse.',
+          ),
+        );
+
+        return;
+      }
+    }
+
+    done();
+  });
   app.addHook('onRoute', (route) => {
     const documented = route.config?.openApiResponses;
     const schemaStatuses = Object.keys(route.schema?.response ?? {});
@@ -325,6 +356,11 @@ export async function registerOpenApi<RawServer extends RawServerBase>(
     }
 
     operationIds.set(id, `${route.method} ${route.url}`);
+    const badRequest = (route.schema?.response as Record<string, unknown> | undefined)?.[400];
+    if (badRequest !== undefined) {
+      badRequestSchemas.push({ route, schema: badRequest });
+    }
+
     if (!route.schema?.response && !documented) {
       gaps.push({ method: route.method, url: openApiPath(route.url) });
     }
@@ -383,7 +419,10 @@ export async function registerOpenApi<RawServer extends RawServerBase>(
           ...withDocumentedParameters(
             withDocumentedResponses(
               withSharedResponses(
-                referenceSharedIdentifiers(schema) as FastifySchema | undefined,
+                withRequestErrorNote(
+                  referenceSharedIdentifiers(schema) as FastifySchema | undefined,
+                  route.config?.openApiOwnValidation !== true && hasRequestSchema(schema),
+                ),
                 shared,
               ),
               documented,
@@ -472,6 +511,99 @@ const RATE_LIMITED_RESPONSE = {
     'x-ratelimit-reset': { type: 'string', description: 'Seconds until the window resets.' },
   },
 } as const;
+
+/**
+ * A failed request validation or JSON parsing of a route with a `400` schema of its own is
+ * serialized through that schema: Fastify's error object with `statusCode`, `code`, `error` and
+ * `message` (and more fields, such as `validation`).
+ */
+const REQUEST_ERROR = {
+  statusCode: 400,
+  code: 'FST_ERR_VALIDATION',
+  error: 'Bad Request',
+  message: 'body must be object',
+} as const;
+
+/**
+ * Whether a `400` response schema can serialize Fastify's request error. An object schema can when
+ * it requires no other field and every declared field of the error accepts its value (an `error`
+ * enum cannot); a union can when one member is an open object that can (the serializer validates
+ * the error object, with its extra fields, against each member). A reference is resolved through
+ * the registered shared schemas; an unknown one is left to Fastify.
+ */
+function serializesRequestError(
+  schema: unknown,
+  resolve: (id: string) => unknown,
+  member = false,
+): boolean {
+  const node = schema as {
+    readonly $ref?: string;
+    readonly anyOf?: readonly unknown[];
+    readonly properties?: Readonly<Record<string, unknown>>;
+    readonly required?: readonly string[];
+    readonly additionalProperties?: unknown;
+  };
+  if (node.$ref !== undefined) {
+    const resolved = resolve(node.$ref);
+
+    return resolved === undefined || serializesRequestError(resolved, resolve, member);
+  }
+
+  if (node.anyOf) {
+    return node.anyOf.some((item) => serializesRequestError(item, resolve, true));
+  }
+
+  const fields = REQUEST_ERROR as Readonly<Record<string, unknown>>;
+
+  return (
+    !(member && node.additionalProperties === false) &&
+    (node.required ?? []).every((name) => name in fields) &&
+    Object.entries(node.properties ?? {}).every(
+      ([name, property]) => !(name in fields) || Value.Check(property as TSchema, fields[name]),
+    )
+  );
+}
+
+/**
+ * The route schema with its own `400` described as also carrying the request error, when Fastify
+ * serializes a failed validation or JSON parsing through it (`validated`) and the route gives
+ * the `400` no description of its own.
+ */
+function withRequestErrorNote(
+  schema: FastifySchema | undefined,
+  validated: boolean,
+): FastifySchema | undefined {
+  const response = (schema?.response ?? {}) as Record<string, Record<string, unknown>>;
+  const own = response[400];
+  if (
+    !validated ||
+    !own ||
+    own.description !== undefined ||
+    own['x-response-description'] !== undefined
+  ) {
+    return schema;
+  }
+
+  const description =
+    'The request is invalid. A request that fails its schema validation' +
+    (schema?.body !== undefined ? ' or JSON parsing' : '') +
+    ' is answered in this shape too, with `error` `Bad Request` and `code` ' +
+    (schema?.body !== undefined
+      ? '`FST_ERR_VALIDATION`, `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY`.'
+      : '`FST_ERR_VALIDATION`.');
+
+  return {
+    ...schema,
+    response: {
+      ...response,
+      // See `withDocumentedResponses`: a reference carries a plain `description`.
+      400: {
+        ...own,
+        [own.$ref === undefined ? 'x-response-description' : 'description']: description,
+      },
+    },
+  };
+}
 
 /** The route validates a part of the request: path, query, headers or body. */
 function hasRequestSchema(schema: FastifySchema | undefined): boolean {

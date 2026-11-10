@@ -86,7 +86,7 @@ The current feature-owned resources are:
 - `session`: `session.view`, `session.create`, `session.manage`, `session.delete`,
   `session.execute-write`, `session.view-provider-limits`;
 - `settings`: `settings.view`, `settings.manage`;
-- `docs`: `docs.search` (always checked in the global scope `{}`).
+- `docs`: `docs.search` (checked in any scope: project documentation has no narrower scope).
 
 There is intentionally no `spec.list` capability. A Specs collection endpoint requires the subject
 to possess `spec.view` in at least one scope, then filters rows with target-specific `spec.view`
@@ -231,7 +231,8 @@ withCapabilities(...)
 Target-specific `can/require` always evaluate a concrete required scope. The any-scope pair answers
 a different backend question: whether the subject possesses that capability in at least one scope.
 It never widens a scoped grant into global access and is intended for collection-entry checks where
-row visibility is enforced separately.
+row visibility is enforced separately, and for reads of project-wide data that has no narrower scope:
+documentation search admits any subject holding `docs.search` in some scope.
 
 Product routes are registered normally at the Runtime composition root and do not receive cookie
 names, `AuthenticationStore`, or session-resolution helpers. They are not nested inside the Auth feature just

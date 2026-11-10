@@ -56,6 +56,9 @@ export function addSearchCommand(docs: Command, ctx: DocsCommandContext, open: O
         limit: opts.limit,
         includeNonAuthoritative: opts.includeNonAuthoritative,
         refresh: opts.refresh,
+        ...(ctx.semanticIndexCommand === undefined
+          ? {}
+          : { semanticIndexCommand: ctx.semanticIndexCommand }),
       });
 
       if (opts.json) {

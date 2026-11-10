@@ -105,7 +105,9 @@ falls back to lexical within the query timeout (at most 3000 ms) instead of the 
 A search embeds at most 16 sections (one request at the default batch size). When more lack
 vectors, for example before the first build, after a model change or while a build was
 interrupted, it embeds nothing, answers lexically with `index-building` and names
-`nevo-specflow docs semantic index`, which builds the rest. Search is hybrid only once every current
+`nevo-specflow docs semantic index`, which builds the rest (a host that mounts the command under
+another name, such as this repository's `pnpm docs:*` scripts, names its own command line; the
+HTTP endpoint always names the product command). Search is hybrid only once every current
 section has a vector. `--no-refresh` skips the embedding step entirely.
 
 Text output, hybrid:

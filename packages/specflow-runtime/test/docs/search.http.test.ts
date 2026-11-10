@@ -101,7 +101,7 @@ describe('GET /api/docs/search', () => {
     expect(existsSync(join(plain, '.nevo'))).toBe(false);
   });
 
-  it('needs authentication and docs.search, and validates the query', async () => {
+  it('needs authentication and docs.search in any scope, and validates the query', async () => {
     const config = passwordConfig();
     const store = new InMemoryAuthenticationStore();
     const cookie = (userId: string) => ({
@@ -121,7 +121,10 @@ describe('GET /api/docs/search', () => {
             password: { enabled: true, accounts: {} },
           },
         },
-        authorization: { assignments: [{ userId: 'reader', role: 'viewer', scope: {} }] },
+        // A Specification-scoped viewer: project documentation has no narrower scope.
+        authorization: {
+          assignments: [{ userId: 'reader', role: 'viewer', scope: { specId: 'S1' } }],
+        },
       },
       { projectRoot: project() },
       { store },
@@ -134,7 +137,16 @@ describe('GET /api/docs/search', () => {
       expect(forbidden.json()).toEqual({ error: 'forbidden' });
       const reader = cookie('reader');
       expect((await app.inject({ url, headers: reader })).statusCode).toBe(200);
-      for (const invalid of ['?q=install&limit=0', '?q=install&limit=51', '?q=%20', '?limit=5']) {
+      const included = `${url}&includeNonAuthoritative=true`;
+      expect((await app.inject({ url: included, headers: reader })).statusCode).toBe(200);
+      for (const invalid of [
+        '?q=install&limit=0',
+        '?q=install&limit=51',
+        '?q=%20',
+        '?limit=5',
+        '?q=install&includeNonAuthoritative=1',
+        '?q=install&context=help',
+      ]) {
         const response = await app.inject({ url: `/api/docs/search${invalid}`, headers: reader });
         expect(response.statusCode, invalid).toBe(400);
       }

@@ -54,21 +54,26 @@ Other parameters are rejected. There is no `context` parameter.
 
 ## Authorization
 
-The capability is `docs.search` (resource `docs`, action `search`) in the global scope `{}`. The
-built-in `viewer`, `developer` and `admin` roles carry it
+The capability is `docs.search` (resource `docs`, action `search`), admitted when the principal holds
+it in any scope: an assignment scoped to a project, Specification or Session is enough, because the
+project's documentation has no narrower scope. The built-in `viewer`, `developer` and `admin` roles
+carry it
 ([authorization configuration](../configuration/authorization.md#current-roles)).
 
-| Status | Body                                     | When                                                  |
-| ------ | ---------------------------------------- | ----------------------------------------------------- |
-| `401`  | `{ "error": "authentication_required" }` | required authentication and no authenticated session  |
-| `403`  | `{ "error": "forbidden" }`               | the principal has no `docs.search` assignment in `{}` |
+| Status | Body                                     | When                                                 |
+| ------ | ---------------------------------------- | ---------------------------------------------------- |
+| `401`  | `{ "error": "authentication_required" }` | required authentication and no authenticated session |
+| `403`  | `{ "error": "forbidden" }`               | the principal holds `docs.search` in no scope at all |
 
 ## Errors
 
-| Status | Body / code              | Meaning                                                                                      |
-| ------ | ------------------------ | -------------------------------------------------------------------------------------------- |
-| `400`  | Fastify validation error | `q` missing, empty or too long; `limit` outside `1..50`; an unknown parameter                |
-| `503`  | `DOCS_UNAVAILABLE`       | `docs.root` is not a directory, the corpus fails validation, or the Runtime serves demo data |
+| Status | Body / code              | Meaning                                                                                                                  |
+| ------ | ------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| `400`  | Fastify validation error | `q` missing, empty or too long; `limit` outside `1..50`; `includeNonAuthoritative` not `true`/`false`; unknown parameter |
+| `503`  | `DOCS_UNAVAILABLE`       | `docs.root` is not a directory, the corpus fails validation, or the Runtime serves demo data                             |
+
+The `503` body is `{ "error": "Documentation search is unavailable.", "code": "DOCS_UNAVAILABLE" }`:
+`error` is for people, `code` is the stable value to branch on.
 
 A `503` for the project's documentation is logged on the server with its cause and answered again
 on the next request; fixing the documents is enough, no restart is needed. Embedding endpoint or

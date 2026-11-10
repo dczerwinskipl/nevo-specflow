@@ -23,6 +23,7 @@ export function createProgram(ctx: LauncherContext): Command {
     ...ctx,
     checkWriteCommand: 'pnpm docs:check --write',
     getCommand: 'pnpm docs:get',
+    semanticIndexCommand: 'pnpm docs:semantic index',
     corpusRules: REPOSITORY_CORPUS_RULES,
   })
     .name('nevo-docs')

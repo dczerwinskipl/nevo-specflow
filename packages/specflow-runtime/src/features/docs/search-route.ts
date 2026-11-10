@@ -8,11 +8,12 @@ import { DocsConfigError, DocsCorpusInvalidError } from '@nevo/specflow-docs';
 import type { FastifyPluginCallback } from 'fastify';
 import { Type } from 'typebox';
 
-import { requireCapability } from '../auth';
+import { requireCapabilityInAnyScope } from '../auth';
 import { contractRef } from '../../server/shared-contracts';
 import type { ProjectDocs } from './project-docs';
 
 export const DOCS_UNAVAILABLE_CODE = 'DOCS_UNAVAILABLE';
+export const DOCS_UNAVAILABLE_MESSAGE = 'Documentation search is unavailable.';
 /** Documents returned without `limit`; the same default as `nevo-specflow docs search`. */
 export const DOCS_SEARCH_DEFAULT_LIMIT = 10;
 export const DOCS_SEARCH_MAX_LIMIT = 50;
@@ -47,7 +48,7 @@ const DocsSearchQuerySchema = Type.Object(
 );
 
 const DocsSearchErrorSchema = Type.Object(
-  { error: Type.String(), code: Type.String() },
+  { error: Type.String(), code: Type.Literal(DOCS_UNAVAILABLE_CODE) },
   { additionalProperties: false },
 );
 
@@ -62,10 +63,10 @@ export const docsSearchEndpoint: FastifyPluginCallback<{
   app.withTypeProvider<TypeBoxTypeProvider>().get(
     '/api/docs/search',
     {
-      preHandler: requireCapability({
+      // Project documentation is readable by any principal holding `docs.search` in any scope.
+      preHandler: requireCapabilityInAnyScope({
         resource: DocsCapabilities,
         capability: DocsCapabilities.capabilities.Search,
-        scope: {},
       }),
       schema: {
         querystring: DocsSearchQuerySchema,
@@ -80,7 +81,7 @@ export const docsSearchEndpoint: FastifyPluginCallback<{
     async (request, reply) => {
       reply.header('Cache-Control', 'no-store');
       const unavailable = () =>
-        reply.code(503).send({ error: DOCS_UNAVAILABLE_CODE, code: DOCS_UNAVAILABLE_CODE });
+        reply.code(503).send({ error: DOCS_UNAVAILABLE_MESSAGE, code: DOCS_UNAVAILABLE_CODE });
       if (docs === undefined) {
         return unavailable();
       }
@@ -96,7 +97,7 @@ export const docsSearchEndpoint: FastifyPluginCallback<{
       } catch (error) {
         // The project's documentation is missing or invalid: its state, not a Runtime failure.
         if (error instanceof DocsConfigError || error instanceof DocsCorpusInvalidError) {
-          request.log.warn({ err: error }, 'Documentation search is unavailable.');
+          request.log.warn({ err: error }, DOCS_UNAVAILABLE_MESSAGE);
 
           return unavailable();
         }

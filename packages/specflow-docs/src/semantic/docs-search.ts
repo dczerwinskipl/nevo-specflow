@@ -27,6 +27,7 @@ import {
   overLimitReason,
   refreshReason,
   refreshSkippedReason,
+  SEMANTIC_INDEX_COMMAND,
   searchReason,
   semanticEndpoint,
   unreadableIndexReason,
@@ -115,6 +116,11 @@ export interface DocsSearchRequest {
    * `READ_REFRESH_MAX_CHUNKS`; a larger gap answers lexically with `index-building`.
    */
   readonly refresh: boolean;
+  /**
+   * The command line that builds the index as the caller's host invokes it, named in
+   * `index-building` messages. Default `SEMANTIC_INDEX_COMMAND` (the product command).
+   */
+  readonly semanticIndexCommand?: string;
 }
 
 export async function searchDocumentation(
@@ -122,7 +128,12 @@ export async function searchDocumentation(
   request: DocsSearchRequest,
 ): Promise<DocsSearchResult> {
   const { chunks } = search.chunks.load();
-  const vectors = await vectorsFor(search.vectors, chunks, request.refresh);
+  const vectors = await vectorsFor(
+    search.vectors,
+    chunks,
+    request.refresh,
+    request.semanticIndexCommand ?? SEMANTIC_INDEX_COMMAND,
+  );
   const result = await createSearchEngine(chunks).search({
     query: request.query,
     limit: request.limit,
@@ -142,12 +153,13 @@ async function vectorsFor(
   vectors: DocsSearchVectors,
   chunks: readonly DocsChunk[],
   refresh: boolean,
+  indexCommand: string,
 ): Promise<SearchVectors> {
   if ('reason' in vectors) {
     return { reason: vectors.reason };
   }
 
-  const notReady = await prepareIndex(vectors, chunks, refresh);
+  const notReady = await prepareIndex(vectors, chunks, refresh, indexCommand);
   if (notReady !== undefined) {
     return { reason: notReady };
   }
@@ -166,6 +178,7 @@ async function prepareIndex(
   vectors: Exclude<DocsSearchVectors, { readonly reason: DocsSearchReason }>,
   chunks: readonly DocsChunk[],
   refresh: boolean,
+  indexCommand: string,
 ): Promise<DocsSearchReason | undefined> {
   const { store, providers } = vectors;
   const manifest = await store.readManifest();
@@ -195,11 +208,11 @@ async function prepareIndex(
   }
 
   if (!refresh) {
-    return refreshSkippedReason(missing, chunks.length);
+    return refreshSkippedReason(missing, chunks.length, indexCommand);
   }
 
   if (missing > READ_REFRESH_MAX_CHUNKS) {
-    return overLimitReason(missing, READ_REFRESH_MAX_CHUNKS);
+    return overLimitReason(missing, READ_REFRESH_MAX_CHUNKS, indexCommand);
   }
 
   const probe = await providers.query.probe();
@@ -217,7 +230,7 @@ async function prepareIndex(
   });
 
   return outcome.status === 'over-limit'
-    ? overLimitReason(outcome.pending, READ_REFRESH_MAX_CHUNKS)
+    ? overLimitReason(outcome.pending, READ_REFRESH_MAX_CHUNKS, indexCommand)
     : refreshReason(outcome);
 }
 

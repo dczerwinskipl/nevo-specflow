@@ -4043,7 +4043,10 @@
                       "type": "string"
                     },
                     "code": {
-                      "type": "string"
+                      "type": "string",
+                      "enum": [
+                        "DOCS_UNAVAILABLE"
+                      ]
                     }
                   },
                   "additionalProperties": false

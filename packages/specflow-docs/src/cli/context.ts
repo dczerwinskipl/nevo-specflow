@@ -31,6 +31,11 @@ export interface DocsCommandContext {
    * Default `nevo-specflow docs get`.
    */
   readonly getCommand?: string;
+  /**
+   * The command line that builds the semantic index as this host invokes it, quoted in `search`
+   * `index-building` reasons. Default `nevo-specflow docs semantic index`.
+   */
+  readonly semanticIndexCommand?: string;
   /** Environment the embedding API key variable is read from. Default `process.env`. */
   readonly env?: Readonly<Record<string, string | undefined>>;
   /** Test seam for the embedding endpoint; production uses the OpenAI-compatible adapter. */

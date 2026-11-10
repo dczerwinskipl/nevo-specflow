@@ -73,8 +73,9 @@ one-off local render of the committed file in headless Chromium; there is no aut
 
 A response contract of `@nevo/specflow-contracts` that more than one operation answers, or that one
 operation answers and another product surface emits too, is one component under
-`components.schemas`, and every response that answers it is a `$ref` to that component. For example `GET /api/auth/session` and `POST /api/auth/password/login` both answer
-`200` with `{ "$ref": "#/components/schemas/AuthSessionResponse" }`.
+`components.schemas`, and every response that answers it is a `$ref` to that component. For
+example `GET /api/auth/session` and `POST /api/auth/password/login` both answer `200` with
+`{ "$ref": "#/components/schemas/AuthSessionResponse" }`.
 
 It works with the Fastify shared-schema mechanism, without a second copy of any schema:
 
@@ -108,8 +109,8 @@ route schemas reference.
 Schemas stay inline when they are not one shared response contract:
 
 - a contract answered by one operation only and emitted by no other surface, even under several
-  status codes (for example
-  `PasswordLoginErrorResponse` for `401`, `429` and `503` of password login);
+  status codes (for example `PasswordLoginErrorResponse` for `401`, `429` and `503` of password
+  login);
 - separate contracts that only have the same shape: `StartTurnResult` and `CancelTurnResult` are
   both `{ turnId }`, `CloseError` and `CreateSpecError` differ only by `remedy`, and they keep their
   own schemas;

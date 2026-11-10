@@ -188,7 +188,8 @@ and schemas live in `@nevo/specflow-contracts`.
 - **Corpus:** the project's own `docs.root`. Specification documents and product documentation are
   not part of it; the engine's chunk-source port keeps other corpora possible.
 - **Authorization:** a feature-owned resource `docs` with action `search` (capability
-  `docs.search`). The built-in `viewer`, `developer` and `admin` roles carry it.
+  `docs.search`), admitted when held in any scope, because project documentation has no narrower
+  scope. The built-in `viewer`, `developer` and `admin` roles carry it.
 
 ### 7. Configuration and init
 

@@ -73,6 +73,11 @@ not checked).
 
 ## `ai.embeddings`
 
+The endpoint serves an embedding model, not a chat model: search returns document sections and the
+agent composes answers from them. Any host with the OpenAI-compatible `POST /embeddings` call works
+(Ollama, LM Studio, vLLM, llama.cpp server, Hugging Face TEI, OpenAI, Azure OpenAI), local or
+remote.
+
 ```yaml
 # .nevo/config.yaml — team default
 ai:
@@ -165,9 +170,10 @@ the named variable not set). A failed probe does not fail `init`: the configurat
 and the review says `Semantic docs search: configured but unavailable, lexical for now (...)`;
 `search` answers lexically until `docs semantic status` reports the endpoint available. On success
 the review says `Semantic docs search: enabled (<model> at <baseUrl>, <n> dimensions)`. The probe
-writes no index; the first `search` or `docs semantic index` builds it.
+writes no index; `docs semantic index` builds it (a `search` embeds at most 16 sections itself, so
+it builds only a very small corpus).
 
-Enabling semantic search in an already initialized project is not offered by any command yet: edit
+Enabling semantic search in an already initialized project is not offered by any command: edit
 the two files as shown.
 
 ## Effective search mode

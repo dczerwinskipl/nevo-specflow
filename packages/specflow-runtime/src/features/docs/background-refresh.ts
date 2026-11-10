@@ -55,8 +55,8 @@ export function createBackgroundRefresh(
     { readonly promise: Promise<void>; readonly state: { progress?: RefreshProgress } } | undefined;
 
   const refresh = async (state: { progress?: RefreshProgress }): Promise<void> => {
-    // Yield first: opening the corpus scans it synchronously, which must not delay readiness or
-    // the search that started the refresh.
+    // Yield first, so starting a refresh never delays readiness or the search that started it;
+    // the corpus scan itself is asynchronous.
     await new Promise<void>((resolve) => setImmediate(resolve));
     if (stopping.signal.aborted) {
       return;

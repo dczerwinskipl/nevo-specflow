@@ -56,8 +56,9 @@ Other parameters are rejected. There is no `context` parameter.
 - **Response:** `200` with `DocsSearchResult`, unchanged from the CLI's `--json` output: `mode`
   `hybrid` or `lexical`, the ranked `results` (each document's frontmatter and best sections with
   their `sectionId`, `line` and, unless `snippets=false`, a query-aware `snippet`, ranked as
-  described in [`search`](../cli/nevo-specflow-docs.md#search)) and, when lexical, the `reason`.
-  A section is read with `nevo-specflow docs get <id> --section <sectionId>`. A lexical answer is a normal result, never an error.
+  described in [`search`](../cli/nevo-specflow-docs.md#search)) and, when lexical, the `reason`. A
+  section is read with `nevo-specflow docs get <id> --section <sectionId>`. A lexical answer is a
+  normal result, never an error.
 - **Caching and admission:** `Cache-Control: no-store`; the shared default rate limit of the
   [endpoint policy](../../architecture/runtime/endpoint-policy.md).
 

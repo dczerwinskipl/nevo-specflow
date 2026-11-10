@@ -157,9 +157,9 @@ ai:
 
 An endpoint in the committed project configuration is used as it is, with no local confirmation:
 once `docs.search.semantic` is `true` and the endpoint is set (in either file), the first `search`,
-`semantic index` or Runtime start sends document sections (their text with the document's title,
-id, summary, scope, areas, tags and read_when) to it to embed them, and every search sends the query. Configure in
-`.nevo/config.yaml` only an endpoint every contributor may send the documentation to; a
+`semantic index` or Runtime start sends document sections (their text with the document's title, id,
+summary, scope, areas, tags and read_when) to it to embed them, and every search sends the query.
+Configure in `.nevo/config.yaml` only an endpoint every contributor may send the documentation to; a
 workstation that must not use it sets its own `baseUrl` and `model` in `.nevo/local/config.yaml`
 (`docs.search.semantic` is a project setting and cannot be turned off locally).
 

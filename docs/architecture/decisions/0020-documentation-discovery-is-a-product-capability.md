@@ -206,8 +206,8 @@ A full refresh records its progress next to the index, so `semantic status` and 
 status endpoint show who is updating the index and how far it got, and the outcome of the last
 refresh.
 
-There is no file watcher and no invalidation API. A SpecFlow component that writes corpus documents
-MUST invalidate the units it changes.
+There is no file watcher and no invalidation API: the read-time check of each file's size and
+modification time, then of its content hash, detects changed documents, whoever wrote them.
 
 The CLI and a running Runtime share one index in `.nevo/local/cache/docs-index/`; the index is
 disposable cache, not state ([project configuration and local state](../runtime/configuration.md)).

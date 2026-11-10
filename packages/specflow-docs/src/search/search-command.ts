@@ -8,7 +8,7 @@ import { openDocsSearch, searchDocumentation } from './search';
 import { positiveInteger, runDocsAction, type DocsCommandContext } from '../command/context';
 import type { OpenProject } from '../command/open-project';
 import { createProcessCatchUp, spawnDetachedProcess } from '../semantic-index/catch-up';
-import { openDocsIndex } from '../semantic-index/index-store';
+import { openProjectIndex } from '../semantic-index/index-store';
 import { SEMANTIC_INDEX_COMMAND, SEMANTIC_STATUS_COMMAND } from '../semantic-index/reasons';
 
 /** Documents returned when `--limit` is omitted. */
@@ -52,9 +52,8 @@ export function addSearchCommand(docs: Command, ctx: DocsCommandContext, open: O
       }
 
       const { project, configuration, corpus } = await open();
-      const index = openDocsIndex(project.root, corpus);
+      const index = await openProjectIndex(project.root, corpus, configuration, ctx.isIgnoredByGit);
       const search = openDocsSearch({
-        projectRoot: project.root,
         corpus,
         configuration,
         env: ctx.env ?? process.env,

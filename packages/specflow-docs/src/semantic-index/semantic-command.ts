@@ -3,7 +3,7 @@ import type { Command } from 'commander';
 import { DocsError } from '../errors';
 import { buildDocsIndex } from './build';
 import type { SemanticEnvironment } from './environment';
-import { openDocsIndex } from './index-store';
+import { openProjectIndex } from './index-store';
 import { semanticStatus, type SemanticStatus } from './status';
 import { runDocsAction, type DocsCommandContext } from '../command/context';
 import type { OpenProject } from '../command/open-project';
@@ -35,7 +35,7 @@ export function addSemanticCommand(
     runDocsAction(status, async () => {
       const { project, configuration, corpus } = await open();
       const report = await semanticStatus(
-        openDocsIndex(project.root, corpus),
+        await openProjectIndex(project.root, corpus, configuration, ctx.isIgnoredByGit),
         configuration,
         environment(ctx),
         {
@@ -69,7 +69,7 @@ export function addSemanticCommand(
     runDocsAction(index, async () => {
       const { project, configuration, corpus } = await open();
       const result = await buildDocsIndex(
-        openDocsIndex(project.root, corpus),
+        await openProjectIndex(project.root, corpus, configuration, ctx.isIgnoredByGit),
         configuration,
         environment(ctx),
         ({ embedded, total }) => {

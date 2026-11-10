@@ -98,11 +98,26 @@ function rotateLog(logFile: string): void {
  * a profiler would write its files from a process nobody watches).
  */
 export function backgroundExecArgv(execArgv: readonly string[]): string[] {
-  const dropped =
-    /^--(?:inspect(?:-brk|-port|-wait)?|debug-port|cpu-prof|heap-prof|prof)(?:[-=]|$)/;
+  const kept: string[] = [];
+  for (let index = 0; index < execArgv.length; index += 1) {
+    const flag = execArgv[index]!;
+    if (!DROPPED_FLAG.test(flag)) {
+      kept.push(flag);
+    } else if (VALUE_FLAG.test(flag)) {
+      // `--cpu-prof-dir dir`: the value is the next entry and goes with its flag.
+      index += 1;
+    }
+  }
 
-  return execArgv.filter((flag) => !dropped.test(flag));
+  return kept;
 }
+
+const DROPPED_FLAG =
+  /^--(?:inspect(?:-brk|-port|-wait)?|debug-port|cpu-prof|heap-prof|prof)(?:[-=]|$)/;
+
+/** Dropped flags whose value, when not given with `=`, is the next entry. */
+const VALUE_FLAG =
+  /^--(?:inspect-port|debug-port|cpu-prof-(?:dir|name|interval)|heap-prof-(?:dir|name|interval))$/;
 
 export interface ProcessCatchUpOptions {
   /** Absolute index directory (`DocsIndex.directory`). */

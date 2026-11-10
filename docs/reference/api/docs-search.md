@@ -120,7 +120,9 @@ The Runtime holds one index per process in `.nevo/local/cache/docs-index/`, shar
   already runs (`the Runtime started updating it in the background; GET /api/docs/status reports its
 progress`, later `the Runtime is updating it in the background (<n>/<total> chunks)`). Another
   process holding the index (a CLI `semantic index`) is reported, not raced. The Runtime runs at
-  most one refresh at a time.
+  most one refresh at a time. After a refresh that failed (for example an index that cannot be
+  written), the next one starts no sooner than 60 s later; until then the reason says `the Runtime's
+last background update failed (<cause>); it retries within a minute`.
 - **Start refresh:** when the project enables `docs.search.semantic` and an embedding endpoint is
   configured, the Runtime starts the same background refresh once it is ready. Start and readiness
   do not wait for it; searches meanwhile answer `lexical` with `index-building`.

@@ -113,6 +113,14 @@ export function refreshReason(outcome: RefreshOutcome): DocsSearchReason | undef
   }
 }
 
+/** The project is a Git work tree that does not ignore the index directory. */
+export function cacheNotIgnoredReason(directory: string): DocsSearchReason {
+  return reason(
+    'index-unavailable',
+    `Git does not ignore ${directory}/, so the index is not written there; add \`.nevo/local/\` to the project's .gitignore.`,
+  );
+}
+
 /** The index could not be read before a refresh. */
 export function unreadableIndexReason(message: string): DocsSearchReason {
   return reason('index-unavailable', `The index cannot be read: ${message}`);

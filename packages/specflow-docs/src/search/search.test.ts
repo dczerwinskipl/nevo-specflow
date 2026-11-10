@@ -12,6 +12,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { DEFAULT_DOCS_SETTINGS, parseDocsConfig } from '../config/docs-settings';
 import { openFileSystemCorpus } from '../corpus/corpus';
 import { createDocsChunkSource } from '../semantic-index/chunk-source';
+import { openDocsIndex, openProjectIndex } from '../semantic-index/index-store';
 import { READ_REFRESH_MAX_CHUNKS } from '../semantic-index/refresh-policy';
 import { snippet, toHit } from './result';
 import { openDocsSearch, searchDocumentation, type DocsSearch } from './search';
@@ -97,7 +98,7 @@ describe('searchDocumentation', () => {
 
   it('finds a document by its frontmatter lexically, singular or plural', async () => {
     const search = openDocsSearch({
-      projectRoot: root,
+      index: openDocsIndex(root, corpus, { writable: true }),
       corpus: openFileSystemCorpus(root, DEFAULT_DOCS_SETTINGS),
       configuration: { docs: DEFAULT_DOCS_SETTINGS, embeddings: undefined },
       env: {},
@@ -187,7 +188,7 @@ describe('openDocsSearch', () => {
 
   it('writes nothing under .nevo when semantic search is not enabled', async () => {
     const search = openDocsSearch({
-      projectRoot: root,
+      index: openDocsIndex(root, corpus, { writable: true }),
       corpus: openFileSystemCorpus(root, DEFAULT_DOCS_SETTINGS),
       configuration: { docs: DEFAULT_DOCS_SETTINGS, embeddings: endpoint },
       env: {},
@@ -200,7 +201,7 @@ describe('openDocsSearch', () => {
   it('answers lexically when the API key variable is not set, without calling the endpoint', () => {
     let created = 0;
     const search = openDocsSearch({
-      projectRoot: root,
+      index: openDocsIndex(root, corpus, { writable: true }),
       corpus,
       configuration: { docs: settings, embeddings: { ...endpoint, apiKeyEnv: 'DOCS_TEST_KEY' } },
       env: {},
@@ -213,10 +214,34 @@ describe('openDocsSearch', () => {
     expect('reason' in search.vectors && search.vectors.reason.code).toBe('endpoint-unreachable');
     expect(created).toBe(0);
   });
+  it('writes no index where Git does not ignore it and answers lexically with the cause', async () => {
+    const index = await openProjectIndex(
+      root,
+      corpus,
+      { docs: settings, embeddings: endpoint },
+      () => Promise.resolve(false),
+    );
+    const search = openDocsSearch({
+      corpus,
+      configuration: { docs: settings, embeddings: endpoint },
+      env: {},
+      createProvider: () => createFakeEmbeddingProvider(),
+      index,
+    });
+    const result = await searchDocumentation(search, request);
+    expect(result).toMatchObject({
+      mode: 'lexical',
+      reason: {
+        code: 'index-unavailable',
+        message: expect.stringContaining('add `.nevo/local/` to the project') as unknown,
+      },
+    });
+    expect(existsSync(join(root, '.nevo'))).toBe(false);
+  });
+
   it('reuses an index the process already holds instead of opening another store', () => {
     const index = { chunks: createDocsChunkSource({ corpus }), store: createInMemoryVectorStore() };
     const search = openDocsSearch({
-      projectRoot: root,
       corpus,
       configuration: { docs: settings, embeddings: endpoint },
       env: {},

@@ -54,6 +54,21 @@ docs:
     semantic: true
 ```
 
+Nothing adds the `.nevo/local/` entry to `.gitignore` in such a project, and the semantic index is
+local cache below it. Before writing it, `search`, `semantic index`, `semantic status` and the
+Runtime check with `git check-ignore` (once per process, only with `ai.embeddings` configured) that
+Git ignores `.nevo/local/cache/docs-index/`. In a Git work tree that does not, nothing is written
+below `.nevo/local/`: searches answer lexically with `index-unavailable` (``Git does not ignore
+.nevo/local/cache/docs-index/, so the index is not written there; add `.nevo/local/` to the
+project's .gitignore.``), `semantic index` reports the same reason and `semantic status` exits 1
+with it. Add the entry:
+
+```gitignore
+.nevo/local/
+```
+
+Outside a Git work tree the check does not apply.
+
 Such a project is not initialized: `nevo-specflow start` and `nevo-specflow project bootstrap`
 refuse it and name `nevo-specflow init`, which adds the `runtime` and `git` sections and keeps the
 existing ones (see [Enabling it in `nevo-specflow init`](#enabling-it-in-nevo-specflow-init)).
@@ -73,8 +88,8 @@ docs:
 | `docs.root`            | Relative directory with `/` separators; no `.` or `..` segments | `docs`  |
 | `docs.search.semantic` | `true` or `false`                                               | `false` |
 
-An unknown key under `docs` or `docs.search` is an error. `docs.taxonomy`, `docs.nonAuthoritative`
-and `docs.exclude` are rejected with an error that names `<docs.root>/docs.yaml`, where they belong.
+An unknown key under `docs` or `docs.search` is an error; the taxonomy and path prefixes belong in
+`<docs.root>/docs.yaml`.
 
 ## `<docs.root>/docs.yaml`
 

@@ -1,5 +1,6 @@
 import {
   buildDocsIndex,
+  checkIndexAccess,
   openDocsIndex,
   openDocsSearch,
   openFileSystemCorpus,
@@ -10,6 +11,7 @@ import {
   type DocsConfiguration,
   type DocsSearch,
   type DocsSearchRequest,
+  type IndexAccess,
   type IndexCatchUp,
 } from '@nevo/specflow-docs';
 import type { DocsSearchResult, DocsStatus } from '@nevo/specflow-contracts/docs';
@@ -53,11 +55,13 @@ export function createProjectDocs(options: ProjectDocsOptions): ProjectDocs {
   const { projectRoot, configuration, env, createProvider } = options;
   let opened:
     { readonly index: ReturnType<typeof openDocsIndex>; readonly search: DocsSearch } | undefined;
+  // The Git check of the index directory, once per process (`openProjectIndex`).
+  let access: Promise<IndexAccess> | undefined;
 
   const refresh = createBackgroundRefresh(
-    (signal, onProgress) =>
+    async (signal, onProgress) =>
       buildDocsIndex(
-        open().index,
+        (await open()).index,
         configuration,
         { env, signal, ...(createProvider ? { createProvider } : {}) },
         onProgress,
@@ -79,7 +83,7 @@ export function createProjectDocs(options: ProjectDocsOptions): ProjectDocs {
         }; ${FOLLOW}`;
       }
 
-      const activity = await readIndexActivity(open().index.directory);
+      const activity = await readIndexActivity((await open()).index.directory);
 
       return activity.state === 'updating'
         ? `another process is updating it; ${FOLLOW}`
@@ -88,24 +92,36 @@ export function createProjectDocs(options: ProjectDocsOptions): ProjectDocs {
     start() {
       const start = refresh.start();
 
-      return Promise.resolve(
-        start.status === 'cooling-down'
-          ? `the Runtime's last background update failed (${start.message}) and is retried shortly`
-          : `the Runtime started updating it in the background; ${FOLLOW}`,
-      );
+      switch (start.status) {
+        case 'started':
+          return Promise.resolve(`the Runtime started updating it in the background; ${FOLLOW}`);
+        case 'running':
+          return Promise.resolve(`the Runtime is updating it in the background; ${FOLLOW}`);
+        case 'cooling-down':
+          return Promise.resolve(
+            `the Runtime's last background update failed (${start.message}); it retries within a minute`,
+          );
+        case 'stopped':
+          return Promise.resolve('the Runtime is closing and does not update it');
+      }
     },
   };
 
   // Opened on first use and kept: the store decodes a generation's vectors once and the chunk
   // source keeps the parsed corpus. A missing root is not kept, so creating it later is enough.
-  const open = () => {
+  // `.nevo/local/` must be ignored by Git before anything is written there (`checkIndexAccess`).
+  const open = async () => {
+    // Only an endpoint lets anything write the index (`openProjectIndex` applies the same rule).
+    const checked: IndexAccess =
+      configuration.embeddings === undefined
+        ? { writable: true }
+        : await (access ??= checkIndexAccess(projectRoot));
     if (opened === undefined) {
       const corpus = openFileSystemCorpus(projectRoot, configuration.docs);
-      const index = openDocsIndex(projectRoot, corpus);
+      const index = openDocsIndex(projectRoot, corpus, checked);
       opened = {
         index,
         search: openDocsSearch({
-          projectRoot,
           corpus,
           configuration,
           env,
@@ -120,10 +136,10 @@ export function createProjectDocs(options: ProjectDocsOptions): ProjectDocs {
   };
 
   return {
-    search: (request) => searchDocumentation(open().search, request),
-    status: () =>
+    search: async (request) => searchDocumentation((await open()).search, request),
+    status: async () =>
       semanticStatus(
-        open().index,
+        (await open()).index,
         configuration,
         { env, ...(createProvider ? { createProvider } : {}) },
         { backgroundCatchUp: true },

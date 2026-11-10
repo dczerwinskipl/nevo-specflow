@@ -28,12 +28,7 @@ describe('parseDocsConfig', () => {
     [{ search: { semantic: 'yes' } }, 'docs.search.semantic must be true or false.'],
     [{ search: { mode: 'hybrid' } }, "Unknown configuration key 'docs.search.mode'."],
     ['docs', 'docs must be an object.'],
-    [
-      { root: 'handbook', taxonomy: { areas: ['cli'] } },
-      "docs.taxonomy is not a project configuration key; set 'taxonomy' in handbook/docs.yaml",
-    ],
-    [{ nonAuthoritative: ['ideas'] }, "set 'nonAuthoritative' in docs/docs.yaml"],
-    [{ exclude: ['templates'] }, "set 'exclude' in docs/docs.yaml"],
+    [{ taxonomy: { areas: ['cli'] } }, "Unknown configuration key 'docs.taxonomy'."],
   ])('rejects %j', (value, message) => {
     expect(() => parseDocsConfig(value)).toThrow(message);
   });

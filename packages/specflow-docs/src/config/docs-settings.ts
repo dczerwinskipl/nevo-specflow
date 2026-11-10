@@ -5,7 +5,6 @@
 // share it.
 
 import { DocsConfigError } from '../errors';
-import { DOCS_FILE_NAME } from './docs-file';
 import { onlyKeys, record, relativeDirectory } from './values';
 
 export interface DocsSettings {
@@ -27,8 +26,6 @@ export const DEFAULT_DOCS_SETTINGS: DocsSettings = {
 
 const DOCS_KEYS = new Set(['root', 'search']);
 const SEARCH_KEYS = new Set(['semantic']);
-/** Keys of `<docs.root>/docs.yaml`; named explicitly so the error says where they go. */
-const DOCS_FILE_KEYS = ['taxonomy', 'nonAuthoritative', 'exclude'] as const;
 
 /** Parse the `docs` namespace of the project configuration; `undefined` means all defaults. */
 export function parseDocsConfig(value: unknown): DocsSettings {
@@ -41,14 +38,6 @@ export function parseDocsConfig(value: unknown): DocsSettings {
     docs.root === undefined
       ? DEFAULT_DOCS_SETTINGS.root
       : relativeDirectory(docs.root, 'docs.root');
-  for (const key of DOCS_FILE_KEYS) {
-    if (key in docs) {
-      throw new DocsConfigError(
-        `docs.${key} is not a project configuration key; set '${key}' in ${root}/${DOCS_FILE_NAME}, the documentation settings file next to the documentation.`,
-      );
-    }
-  }
-
   onlyKeys(docs, DOCS_KEYS, 'docs');
 
   let search = DEFAULT_DOCS_SETTINGS.search;

@@ -77,6 +77,11 @@ export async function semanticStatus(
     }
   }
 
+  // An index that must not be written is reported before what it would need.
+  if (enabled && index.unavailable !== undefined) {
+    reason ??= index.unavailable;
+  }
+
   const { state: indexState, pending } = await readIndexState(index, identity, observedDimensions);
   if (indexState.state === 'unreadable') {
     reason ??= unreadableIndexReason(indexState.message);

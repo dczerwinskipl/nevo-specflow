@@ -39,6 +39,10 @@ export async function buildDocsIndex(
     return { status: 'not-attempted', reason: endpoint.reason };
   }
 
+  if (index.unavailable !== undefined) {
+    return { status: 'not-attempted', reason: index.unavailable };
+  }
+
   const resolved = providersFor(endpoint.embeddings, environment);
   if ('reason' in resolved) {
     return { status: 'not-attempted', reason: resolved.reason };

@@ -62,7 +62,8 @@ export const DocsUnavailableErrorSchema = Type.Object(
  * `GET /api/docs/search`: ranked documents of the project's own documentation with their best
  * sections, in the result contract of `nevo-specflow docs search --json`. Every search runs the
  * bounded read-time refresh; a larger gap answers lexically at once and starts the Runtime's
- * background refresh (`GET /api/docs/status` shows its progress). `docs` is `undefined` when the Runtime serves no project documentation (demo data).
+ * background refresh (`GET /api/docs/status` shows its progress). `docs` is `undefined` when the
+ * Runtime serves no project documentation (demo data).
  */
 export const docsSearchEndpoint: FastifyPluginCallback<{
   readonly docs: ProjectDocs | undefined;

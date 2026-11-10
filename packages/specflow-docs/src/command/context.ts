@@ -5,6 +5,7 @@ import type { DocsCorpusRules } from '../corpus/corpus';
 import { DocsUsageError } from '../errors';
 import type { CreateEmbeddingProvider } from '../embeddings/embedding-providers';
 import type { BackgroundIndexLaunch, SpawnDetached } from '../semantic-index/catch-up';
+import type { GitIgnoreCheck } from '../semantic-index/index-store';
 
 /** The project the host resolved: its root and configuration file paths. */
 export interface DocsProject extends DocsConfigPaths {
@@ -51,6 +52,8 @@ export interface DocsCommandContext {
   readonly backgroundIndex?: BackgroundIndexLaunch;
   /** Test seam for starting the background `semantic index`; default a detached child process. */
   readonly spawnDetached?: SpawnDetached;
+  /** Test seam for whether Git ignores the index directory. Default `git check-ignore`. */
+  readonly isIgnoredByGit?: GitIgnoreCheck;
   /** Test seam for the clock of the background catch-up. Default `Date.now`. */
   readonly now?: () => number;
   /** Environment the embedding API key variable is read from. Default `process.env`. */

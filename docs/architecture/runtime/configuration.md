@@ -51,6 +51,10 @@ Do not introduce a sibling `.nevo-local/` namespace.
 subdirectory inside `state/` or `cache/` (for example `cache/docs-index/`). It MUST NOT add another
 top-level entry under `.nevo/local/`, another ignore entry, or a setup step for its directory: the
 single ignore entry already covers it, and the capability creates its subdirectory on first use.
+`nevo-specflow init` writes that entry. A capability that can write below `.nevo/local/` in a
+project `init` has not set up (the documentation search cache, see
+[documentation and embeddings](../../reference/configuration/documentation-and-embeddings.md#documentation-without-an-initialized-project))
+first checks that Git ignores the directory and writes nothing there otherwise.
 
 ## Ownership
 

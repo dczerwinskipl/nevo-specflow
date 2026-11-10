@@ -21,7 +21,14 @@ export {
   type DocsSearch,
   type DocsSearchRequest,
 } from './search/search';
-export { openDocsIndex, type DocsIndex } from './semantic-index/index-store';
+export {
+  checkIndexAccess,
+  openDocsIndex,
+  openProjectIndex,
+  type DocsIndex,
+  type GitIgnoreCheck,
+  type IndexAccess,
+} from './semantic-index/index-store';
 export { type CreateEmbeddingProvider } from './embeddings/embedding-providers';
 export {
   buildDocsIndex,

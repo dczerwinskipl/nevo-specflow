@@ -24,7 +24,7 @@ import {
   type DocsChunkSource,
 } from '../semantic-index/chunk-source';
 import type { IndexCatchUp } from '../semantic-index/catch-up';
-import { openDocsIndex, type DocsIndex } from '../semantic-index/index-store';
+import type { DocsIndex } from '../semantic-index/index-store';
 import { SEMANTIC_INDEX_COMMAND, searchReason, semanticEndpoint } from '../semantic-index/reasons';
 import { refreshForRead, type IndexVectors } from '../semantic-index/refresh-policy';
 import { toHit } from './result';
@@ -49,8 +49,6 @@ export interface DocsSearch {
 }
 
 export interface OpenDocsSearchOptions {
-  /** Absolute project root; the index lives in `DOCS_INDEX_DIRECTORY` below it. */
-  readonly projectRoot: string;
   readonly corpus: DocsCorpus;
   readonly configuration: DocsConfiguration;
   /** Environment the API key variable is read from. */
@@ -58,24 +56,27 @@ export interface OpenDocsSearchOptions {
   /** Test seam; production uses the OpenAI-compatible adapter. */
   readonly createProvider?: CreateEmbeddingProvider;
   /**
-   * The project's index when the process already holds one (for example a Runtime that also
-   * refreshes it on start), so the process keeps one vector store per index directory. Omitted:
-   * `openDocsIndex` opens it.
+   * The project's index (`openDocsIndex` after `checkIndexAccess`). A process keeps one per index
+   * directory, for example a Runtime that also refreshes it. Unused without semantic search, so
+   * nothing is written below `.nevo/` then.
    */
-  readonly index?: DocsIndex;
+  readonly index: DocsIndex;
   /** Catches a large gap up in the background (`IndexVectors.catchUp`). */
   readonly catchUp?: IndexCatchUp;
 }
 
 export function openDocsSearch(options: OpenDocsSearchOptions): DocsSearch {
-  const { projectRoot, corpus, configuration } = options;
+  const { corpus, configuration, index } = options;
   const endpoint = semanticEndpoint(configuration);
   if ('reason' in endpoint) {
     // Nothing is written below `.nevo/` for a project that does not use semantic search.
     return { chunks: createDocsChunkSource({ corpus }), vectors: { reason: endpoint.reason } };
   }
 
-  const index = options.index ?? openDocsIndex(projectRoot, corpus);
+  if (index.unavailable !== undefined) {
+    return { chunks: index.chunks, vectors: { reason: index.unavailable } };
+  }
+
   const created = createEmbeddingProviders(endpoint.embeddings, {
     env: options.env,
     ...(options.createProvider ? { createProvider: options.createProvider } : {}),

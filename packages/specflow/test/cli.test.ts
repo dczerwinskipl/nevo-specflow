@@ -46,7 +46,7 @@ describe('createProgram — nevo-specflow router', () => {
       code: 'commander.helpDisplayed',
     });
     const text = out.join('\n');
-    for (const name of ['list', 'find', 'get', 'context', 'check']) {
+    for (const name of ['list', 'find', 'get', 'context', 'check', 'search', 'semantic']) {
       expect(text).toContain(name);
     }
   });

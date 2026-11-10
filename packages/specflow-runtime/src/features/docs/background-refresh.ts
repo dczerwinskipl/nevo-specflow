@@ -25,7 +25,10 @@ export type RefreshStart =
 export const REFRESH_RETRY_AFTER_MS = 60_000;
 
 export interface BackgroundRefresh {
-  /** Starts a refresh without waiting for it, unless one runs, the last failed recently or it stopped. */
+  /**
+   * Starts a refresh without waiting for it, unless one runs, the last one failed recently or the
+   * refresh was stopped.
+   */
   start(): RefreshStart;
   /** The running refresh, with its progress once it embeds; `undefined` while none runs. */
   current(): { readonly progress: RefreshProgress | undefined } | undefined;
@@ -38,7 +41,8 @@ export interface BackgroundRefresh {
  * ready and again by a search that finds a gap larger than it embeds (the in-process catch-up). At
  * most one runs at a time; start and readiness never wait for it, and searches meanwhile answer
  * lexically with `index-building`. A run never rejects: a failure is logged and a later search
- * retries once `REFRESH_RETRY_AFTER_MS` has passed. `stop` (Runtime close) aborts the running refresh and starts no other.
+ * retries once `REFRESH_RETRY_AFTER_MS` has passed. `stop` (Runtime close) aborts the running
+ * refresh and starts no other.
  */
 export function createBackgroundRefresh(
   run: RunRefresh,

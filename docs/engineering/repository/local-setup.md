@@ -87,6 +87,9 @@ ai:
     model: qwen3-embedding:0.6b
 ```
 
+Without a local endpoint, `pnpm docs:semantic status` exits 1 (semantic search is enabled but
+unavailable) while `pnpm docs:search` keeps answering lexically; that is expected.
+
 Check it, then search:
 
 ```bash

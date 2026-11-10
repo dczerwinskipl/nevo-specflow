@@ -11,6 +11,7 @@ import type { DocsChunk } from './chunk-source';
 import { pendingChunks } from './freshness';
 import {
   catchUpReason,
+  identityChangedReason,
   overLimitReason,
   refreshReason,
   refreshSkippedReason,
@@ -93,6 +94,33 @@ export async function refreshForRead(
   return outcome.status === 'over-limit'
     ? largeGapReason(vectors, outcome.pending, indexCommand)
     : refreshReason(outcome);
+}
+
+/**
+ * The engine found that the query vector does not fit the stored index (`mismatch`) although the
+ * content check of `refreshForRead` found it complete. That check compares content only and costs
+ * no endpoint call, so an endpoint that changed its dimension under the same model name (without
+ * configured dimensions) shows up only here, through the query vector. The rebuild is never run by
+ * the search: with `refresh` on the catch-up runs it (without a probe: the endpoint has just
+ * embedded the query), otherwise, or without a catch-up, the reason names `semantic index`, which
+ * probes the endpoint and rebuilds.
+ */
+export async function identityChangedForRead(
+  { catchUp }: IndexVectors,
+  mismatch: string,
+  total: number,
+  refresh: boolean,
+  indexCommand: string,
+): Promise<DocsSearchReason> {
+  if (!refresh || catchUp === undefined) {
+    return identityChangedReason(mismatch, total, `run \`${indexCommand}\``);
+  }
+
+  return identityChangedReason(
+    mismatch,
+    total,
+    (await catchUp.running()) ?? (await catchUp.start()),
+  );
 }
 
 /** A gap the search does not embed: caught up in the background, or left to `semantic index`. */

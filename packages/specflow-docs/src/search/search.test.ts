@@ -177,6 +177,44 @@ describe('searchDocumentation', () => {
     await refreshIndex({ chunks: many, provider, store });
     expect((await searchDocumentation(search, request)).mode).toBe('hybrid');
   });
+
+  it('turns a query vector of another dimension into a rebuild run by the catch-up', async () => {
+    const store = createInMemoryVectorStore();
+    // Same model name, no declared dimension: the endpoint now answers 16 instead of 8 dimensions.
+    const before = { ...createFakeEmbeddingProvider({ dimensions: 8 }), dimensions: undefined };
+    const after = { ...createFakeEmbeddingProvider({ dimensions: 16 }), dimensions: undefined };
+    const chunks = createDocsChunkSource({ corpus });
+    await refreshIndex({ chunks: chunks.load().chunks, provider: before, store });
+    let starts = 0;
+    const search: DocsSearch = {
+      chunks,
+      vectors: {
+        store,
+        providers: { query: after, documents: after },
+        catchUp: {
+          running: () => Promise.resolve(undefined),
+          start: () => {
+            starts += 1;
+
+            return Promise.resolve('a background rebuild started');
+          },
+        },
+      },
+    };
+
+    const result = await searchDocumentation(search, request);
+    expect(result).toMatchObject({
+      mode: 'lexical',
+      reason: {
+        code: 'index-building',
+        message: expect.stringMatching(/dimensions 8.*16.*a background rebuild started/) as unknown,
+      },
+    });
+    expect(result.results).not.toHaveLength(0);
+    expect(starts).toBe(1);
+    // The search itself embedded only the query: no slow probe and no document embedding.
+    expect(after.calls.map((call) => call.purpose)).toEqual(['query']);
+  });
 });
 
 describe('openDocsSearch', () => {

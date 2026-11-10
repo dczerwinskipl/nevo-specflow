@@ -44,13 +44,16 @@ describe('refreshIndex', () => {
       status: 'current',
       generation: 1,
     });
-    // A provider without configured dimensions is not probed while the index is current.
+    // A provider without configured dimensions is probed once to verify the stored dimension.
     const unconfigured = { ...provider, dimensions: undefined };
     expect(await refreshIndex({ chunks: initial, provider: unconfigured, store })).toEqual({
       status: 'current',
       generation: 1,
     });
-    expect(provider.calls).toHaveLength(1);
+    expect(provider.calls.map((call) => call.texts)).toEqual([
+      initial.map((chunk) => chunk.embeddingText),
+      ['probe'],
+    ]);
 
     const next = corpus([
       unit('locks', '# Locks\nOne writer.\n## Stale\nA dead owner loses the lock.'),
@@ -68,7 +71,7 @@ describe('refreshIndex', () => {
       embedded: 2,
       deleted: 1,
     });
-    expect(provider.calls.slice(1)).toEqual([
+    expect(provider.calls.slice(2)).toEqual([
       { texts: changed.map((chunk) => chunk.embeddingText), purpose: 'document' },
     ]);
     const manifest = await store.readManifest();
@@ -192,6 +195,23 @@ describe('refreshIndex', () => {
     });
     const manifest = await store.readManifest();
     expect(manifest.status === 'ok' && manifest.manifest.generation).toBe(1);
+  });
+
+  it('rebuilds when the endpoint changes its dimension under the same model name', async () => {
+    const store = createInMemoryVectorStore();
+    const chunks = corpus(base);
+    // Neither endpoint declares its dimension: only a probe tells them apart.
+    const before = { ...createFakeEmbeddingProvider({ dimensions: 8 }), dimensions: undefined };
+    const after = { ...createFakeEmbeddingProvider({ dimensions: 16 }), dimensions: undefined };
+    await refreshIndex({ chunks, provider: before, store });
+
+    expect(await refreshIndex({ chunks, provider: after, store })).toMatchObject({
+      status: 'refreshed',
+      rebuilt: true,
+      embedded: chunks.length,
+    });
+    const manifest = await store.readManifest();
+    expect(manifest.status === 'ok' && manifest.manifest.identity.dimensions).toBe(16);
   });
 
   it('answers busy without embedding while another writer holds the store, and keeps it on failure', async () => {

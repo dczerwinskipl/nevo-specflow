@@ -56,3 +56,21 @@ describe('semantic status and the background catch-up', () => {
     ).toBe(false);
   });
 });
+
+describe('semantic index', () => {
+  it('rebuilds when the endpoint changes its dimension under the same model name', async () => {
+    // The configuration declares no dimension, so only a probe of the endpoint can tell.
+    const endpoint = (dimensions: number) => () => ({
+      ...createFakeEmbeddingProvider({ dimensions }),
+      dimensions: undefined,
+    });
+    const index = async (dimensions: number) =>
+      runDocs(root, ['semantic', 'index'], undefined, {
+        createEmbeddingProvider: endpoint(dimensions),
+      });
+
+    expect((await index(8)).stdout).toEqual([expect.stringMatching(/^Index rebuilt: /)]);
+    expect((await index(8)).stdout).toEqual([expect.stringMatching(/^Index current /)]);
+    expect((await index(16)).stdout).toEqual([expect.stringMatching(/^Index rebuilt: /)]);
+  });
+});

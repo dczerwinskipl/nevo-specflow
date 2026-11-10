@@ -3,8 +3,10 @@
 // fail; the corpus and the configuration are validated like for every `docs` command.
 
 import {
+  SEARCH_REASON,
   createSearchEngine,
   reciprocalRankFusion,
+  type SearchReason,
   type SearchVectors,
   type UnitHit,
 } from '@nevo/ai-semantic-search';
@@ -26,7 +28,11 @@ import {
 import type { IndexCatchUp } from '../semantic-index/catch-up';
 import type { DocsIndex } from '../semantic-index/index-store';
 import { SEMANTIC_INDEX_COMMAND, searchReason, semanticEndpoint } from '../semantic-index/reasons';
-import { refreshForRead, type IndexVectors } from '../semantic-index/refresh-policy';
+import {
+  identityChangedForRead,
+  refreshForRead,
+  type IndexVectors,
+} from '../semantic-index/refresh-policy';
 import { toHit } from './result';
 
 /**
@@ -162,7 +168,29 @@ export async function searchDocumentation(
 
   return sections.mode === 'hybrid'
     ? { mode: 'hybrid', results }
-    : { mode: 'lexical', reason: searchReason(sections.reason), results };
+    : {
+        mode: 'lexical',
+        reason: await lexicalReason(search.vectors, sections.reason, chunks.length, request),
+        results,
+      };
+}
+
+/** An identity mismatch the engine found is a rebuild need; any other reason maps as it is. */
+async function lexicalReason(
+  vectors: DocsSearchVectors,
+  engine: SearchReason,
+  total: number,
+  request: DocsSearchRequest,
+): Promise<DocsSearchReason> {
+  return engine.code === SEARCH_REASON.indexMismatch && !('reason' in vectors)
+    ? identityChangedForRead(
+        vectors,
+        engine.message,
+        total,
+        request.refresh,
+        request.semanticIndexCommand ?? SEMANTIC_INDEX_COMMAND,
+      )
+    : searchReason(engine);
 }
 
 async function vectorsFor(

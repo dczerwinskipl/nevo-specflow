@@ -68,14 +68,17 @@ export type RefreshOutcome =
   | StoreWriteFailed;
 
 /**
- * Brings the store up to date with the chunks. The plan is first computed without the lock, so an
- * up-to-date index costs one manifest read (a provider without configured dimensions is then
- * checked against the stored ones, without a probe). Otherwise the refresh resolves the dimensions
- * (probing when not configured), opens the single writer (a held lock answers `busy` without
- * waiting), re-reads the manifest, checks the plan against `maxEmbed` and embeds only the planned
- * chunks, in slices of `commitChunks` (reporting `onProgress` before the first and after each): each slice is applied as soon as it is embedded, with the
- * generation of the previous write as the compare-and-swap base (the first write carries the
- * deletes and, for a rebuild, the reset). Only a contract violation throws.
+ * Brings the store up to date with the chunks. The embedding identity is resolved first: the
+ * configured dimensions, or else the dimension a probe observes, so an endpoint that changed its
+ * dimension under the same model name is rebuilt rather than reported current (a cheap freshness
+ * check that must not call the endpoint compares content only, for example `planRefresh` against
+ * the stored identity). The plan is then computed without the lock, so an up-to-date index costs
+ * one manifest read. Otherwise the refresh opens the single writer (a held lock answers `busy`
+ * without waiting), re-reads the manifest, checks the plan against `maxEmbed` and embeds only the
+ * planned chunks, in slices of `commitChunks` (reporting `onProgress` before the first and after
+ * each): each slice is applied as soon as it is embedded, with the generation of the previous write
+ * as the compare-and-swap base (the first write carries the deletes and, for a rebuild, the reset).
+ * Only a contract violation throws.
  */
 export async function refreshIndex(request: RefreshRequest): Promise<RefreshOutcome> {
   const { chunks, provider, store, onProgress } = request;
@@ -94,15 +97,8 @@ export async function refreshIndex(request: RefreshRequest): Promise<RefreshOutc
     return unlocked;
   }
 
-  const unlockedManifest = manifestOf(unlocked);
-  if (unlockedManifest) {
-    const stored = unlockedManifest.identity;
-    const assumed = identityFor(provider, provider.dimensions ?? stored.dimensions);
-    if (isCurrent(planRefresh(chunks, assumed, unlockedManifest))) {
-      return { status: 'current', generation: unlockedManifest.generation };
-    }
-  }
-
+  // The endpoint's real dimension before the plan: a provider without configured dimensions can change it
+  // under the same model name, and an index of the old dimension is then not current at all.
   let dimensions = provider.dimensions;
   if (dimensions === undefined) {
     const probe = await provider.probe();
@@ -114,6 +110,11 @@ export async function refreshIndex(request: RefreshRequest): Promise<RefreshOutc
   }
 
   const identity = identityFor(provider, dimensions);
+  const unlockedManifest = manifestOf(unlocked);
+  if (unlockedManifest && isCurrent(planRefresh(chunks, identity, unlockedManifest))) {
+    return { status: 'current', generation: unlockedManifest.generation };
+  }
+
   const opened = await store.openWriter();
   if (opened.status !== 'opened') {
     return opened;

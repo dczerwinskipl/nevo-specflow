@@ -17,9 +17,11 @@ export interface EndpointIdentity {
 }
 
 /**
- * The refresh plan of the current chunks against a stored index. An endpoint without known
- * dimensions is compared with the stored dimensions, so only chunker, protocol or model changes
- * reset it.
+ * The refresh plan of the current chunks against a stored index: the cheap content-freshness check,
+ * without an endpoint call. An endpoint without known dimensions is compared with the stored
+ * dimensions, so only chunker, protocol or model changes reset it here; the real dimension is
+ * verified elsewhere, by the query vector of a search (`identityChangedForRead`) and by the probe
+ * of `refreshIndex` and `semantic status`.
  */
 export function planAgainstIndex(
   chunks: readonly Chunk[],

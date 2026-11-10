@@ -83,6 +83,21 @@ export function catchUpReason(pending: number, limit: number, catchUp: string): 
   );
 }
 
+/**
+ * The query vector does not fit an index the content check found complete (`mismatch` is the
+ * engine's description): the endpoint now embeds under another identity, so every chunk is
+ * re-embedded; `next` says by whom (`IndexCatchUp`) or names the command.
+ */
+export function identityChangedReason(
+  mismatch: string,
+  total: number,
+  next: string,
+): DocsSearchReason {
+  return indexIncompleteReason(
+    `${mismatch} The index needs a full rebuild of ${String(total)} chunks; ${next}.`,
+  );
+}
+
 /** `--no-refresh` (or `refresh: false`) on an index that lacks vectors for current chunks. */
 export function refreshSkippedReason(
   pending: number,

@@ -111,6 +111,14 @@ engine does not fail a search because embeddings are unavailable.
   the next refresh embeds only the rest.
 - A mismatch of schema version, chunker version, protocol, model or dimensions, and an incomplete
   or damaged pair, discards the index and rebuilds it in full. There is no index migration.
+- Content freshness and the embedding identity are checked separately. The freshness check compares
+  chunk ids and content hashes with the manifest and calls no endpoint; without configured
+  dimensions it takes the stored dimension as given. The real dimension is verified where an
+  endpoint answer is needed anyway: a refresh probes the endpoint before it decides that the index
+  is current, and a query vector whose dimension differs from the stored one is a mismatch, never a
+  comparison. An endpoint that changes its dimension under the same model name is therefore rebuilt
+  by the next refresh, and a search that meets the mismatch reports a rebuild need instead of
+  ranking.
 - Writes are atomic: each write creates a new generation pair (the vectors first, then the manifest
   through a temporary file renamed to a new name) and never replaces an existing file, so a reader
   always sees a complete pair from one write and an open reader cannot make a write fail on

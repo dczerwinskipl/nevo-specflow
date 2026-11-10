@@ -358,6 +358,11 @@ describe('Runtime OpenAPI document', () => {
       expect(sessionEvents.responses[200]?.content).toEqual({
         'text/event-stream': { schema: { type: 'string' } },
       });
+      // Its own stream limit, not the default rate limit's description and headers.
+      expect(Object.keys(sessionEvents.responses[429]?.headers ?? {})).toEqual(['Retry-After']);
+      expect(sessionEvents.responses[429]?.content?.['application/json']?.schema).toEqual({
+        $ref: '#/components/schemas/RateLimitedErrorResponse',
+      });
       // Merged with the JSON error responses the route serializes from its schema.
       const operationEvents = operation(
         document,

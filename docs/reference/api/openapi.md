@@ -194,7 +194,8 @@ so none has the `401`.
 `RateLimitedErrorResponse` is `{ "error": "rate_limited" }`, with `statusCode: 429` from the
 limiter's error on a route without a `429` schema of its own. Routes with a stricter limit of their
 own (password login, OIDC start) and routes with their own `429` (Session telemetry refresh, the
-operation progress stream) keep their own `429`. Other refusals of shared mechanisms are not added:
+operation progress stream, the Session event stream) keep their own `429`; every other route,
+logout and the OIDC callback included, is under the default limit only. Other refusals of shared mechanisms are not added:
 for example a Session route answers `503 SESSION_DISABLED` before its authentication check while
 managed Sessions are disabled, and the Session routes do not document their `session_error`
 responses yet.
@@ -308,12 +309,15 @@ differ; CI runs it (see [Continuous integration](../../engineering/repository/ci
 After changing a route schema, run `pnpm api:openapi` and commit the regenerated file with the
 change.
 
-## Responses without a JSON body
+## Responses not serialized from a response schema
 
 Some replies are not serialized from a response schema: logout and Session deletion answer `204`
-without a body, the OIDC callback answers a `302` redirect, and the event streams write
-`text/event-stream` to the raw socket. A response schema on such a route would take part in Fastify
-serialization, so the route declares documentation-only responses in its route `config` instead:
+without a body, the OIDC callback answers a `302` redirect, the event streams write
+`text/event-stream` to the raw socket, and the Session event stream refuses a stream above its
+admission limit with a `429` JSON body sent without a schema. A response schema on such a route
+would take part in Fastify serialization (for a JSON body, a schema would reorder the default rate
+limit's `{ statusCode, error }`), so the route declares documentation-only responses in its route
+`config` instead:
 
 ```ts
 config: {
@@ -323,21 +327,23 @@ config: {
 },
 ```
 
-Each entry has a `description`, optional response `headers` (name to description) and an optional
-`mediaType` (only `text/event-stream`; a JSON body is documented by a response schema). Only the
-Swagger `transform` of `src/server/openapi.ts` reads it: a response without `mediaType` becomes a
-response without `content`, and a stream becomes `content` of that media type with a `string`
-schema. A status code documented both ways is refused when the route is registered. An event
+Each entry has a `description`, optional response `headers` (name to description) and either an
+optional `mediaType` (only `text/event-stream`) or a `contract` (a registered shared contract, for a
+JSON body; any other JSON body is documented by a response schema). Only the Swagger `transform` of
+`src/server/openapi.ts` reads it: a response without `mediaType` or `contract` becomes a response
+without `content`, a stream becomes `content` of that media type with a `string` schema, and a
+contract becomes JSON `content` referencing its component. A documentation-only status replaces a
+shared response of the same status code (the default rate limit's `429`). A status code documented both ways is refused when the route is registered. An event
 stream route that also answers JSON errors (the operation progress stream) keeps those in its
 response schema; the documentation-only `200` is added next to them.
 
-| Method   | Path                                                | Documented response                                            |
-| -------- | --------------------------------------------------- | -------------------------------------------------------------- |
-| `POST`   | `/api/auth/logout`                                  | `204`, no body; `Set-Cookie` clears the authentication cookies |
-| `GET`    | `/api/auth/oidc/<providerId>/callback`              | `302`; `Location` and `Set-Cookie`                             |
-| `DELETE` | `/api/sessions/{sessionId}`                         | `204`, no body                                                 |
-| `GET`    | `/api/sessions/{sessionId}/events`                  | `200`, `text/event-stream`                                     |
-| `GET`    | `/api/specs/create/operations/{operationId}/events` | `200`, `text/event-stream`, besides its JSON error responses   |
+| Method   | Path                                                | Documented response                                                                                                         |
+| -------- | --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `POST`   | `/api/auth/logout`                                  | `204`, no body; `Set-Cookie` clears the authentication cookies                                                              |
+| `GET`    | `/api/auth/oidc/<providerId>/callback`              | `302`; `Location` and `Set-Cookie`                                                                                          |
+| `DELETE` | `/api/sessions/{sessionId}`                         | `204`, no body                                                                                                              |
+| `GET`    | `/api/sessions/{sessionId}/events`                  | `200`, `text/event-stream`; `429` (`RateLimitedErrorResponse`, `Retry-After`) of the stream limit or the default rate limit |
+| `GET`    | `/api/specs/create/operations/{operationId}/events` | `200`, `text/event-stream`, besides its JSON error responses                                                                |
 
 ## Undocumented routes
 

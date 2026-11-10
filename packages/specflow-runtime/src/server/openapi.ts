@@ -1,7 +1,7 @@
 import swagger from '@fastify/swagger';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import type { FastifyInstance, FastifySchema, RawServerBase } from 'fastify';
-import { Type, type Static } from 'typebox';
+import { Type, type Static, type TSchema } from 'typebox';
 
 import { AuthenticationRequiredErrorResponseSchema } from '@nevo/specflow-contracts/authorization';
 import { RateLimitedErrorResponseSchema } from '@nevo/specflow-contracts/runtime';
@@ -12,17 +12,26 @@ export const OPENAPI_DOCUMENT_PATH = '/api/openapi.json';
 
 /**
  * Documentation of a response that Runtime does not serialize from a response schema: a reply
- * without a body (`204`, a redirect) or an event stream written to the raw socket. A response schema
- * on such a route would take part in serialization, so the route declares this documentation in
- * its `config` instead and only the OpenAPI document reads it.
+ * without a body (`204`, a redirect), an event stream written to the raw socket, or a JSON refusal
+ * whose serialization a response schema would change. The route declares this documentation in its
+ * `config` instead and only the OpenAPI document reads it.
  */
-export interface OpenApiDocumentedResponse {
+export type OpenApiDocumentedResponse = {
   readonly description: string;
   /** Response headers worth documenting: header name to description. */
   readonly headers?: Readonly<Record<string, string>>;
-  /** The media type of the body; absent for a response without a body. */
-  readonly mediaType?: 'text/event-stream';
-}
+} & (
+  | {
+      /** The media type of the body; absent for a response without a body. */
+      readonly mediaType?: 'text/event-stream';
+      readonly contract?: never;
+    }
+  | {
+      /** A JSON body: a registered shared contract, documented as its component. */
+      readonly contract: TSchema;
+      readonly mediaType?: never;
+    }
+);
 
 declare module 'fastify' {
   interface FastifyContextConfig {
@@ -418,9 +427,11 @@ function withDocumentedResponses(
               ),
             }
           : {}),
-        ...(response.mediaType
-          ? { content: { [response.mediaType]: { schema: { type: 'string' } } } }
-          : { type: 'null' }),
+        ...(response.contract
+          ? contractRef(response.contract)
+          : response.mediaType
+            ? { content: { [response.mediaType]: { schema: { type: 'string' } } } }
+            : { type: 'null' }),
       },
     ]),
   );

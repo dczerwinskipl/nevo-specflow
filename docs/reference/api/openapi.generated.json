@@ -6244,31 +6244,13 @@
             }
           },
           "429": {
-            "description": "Too many requests: the source exceeded the Runtime default rate limit.",
+            "description": "Too many requests: the caller has as many open Session event streams as allowed, or the source exceeded the Runtime default rate limit (then the body also has `statusCode: 429` and the `x-ratelimit-*` headers are set).",
             "headers": {
               "Retry-After": {
                 "schema": {
                   "type": "string"
                 },
-                "description": "Seconds until the budget renews."
-              },
-              "x-ratelimit-limit": {
-                "schema": {
-                  "type": "string"
-                },
-                "description": "The budget of the time window."
-              },
-              "x-ratelimit-remaining": {
-                "schema": {
-                  "type": "string"
-                },
-                "description": "`0` on a refusal."
-              },
-              "x-ratelimit-reset": {
-                "schema": {
-                  "type": "string"
-                },
-                "description": "Seconds until the window resets."
+                "description": "Seconds to wait: `5` when the stream limit refused, the window reset when the default rate limit refused."
               }
             },
             "content": {

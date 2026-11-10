@@ -1,4 +1,5 @@
 import { AuthorizationForbiddenErrorResponseSchema } from '@nevo/specflow-contracts/authorization';
+import { RateLimitedErrorResponseSchema } from '@nevo/specflow-contracts/runtime';
 
 import type { OpenApiDocumentedResponse } from '../../../server/openapi';
 import { contractRef } from '../../../server/shared-contracts';
@@ -34,5 +35,19 @@ export const sessionEventStream: Readonly<Record<number, OpenApiDocumentedRespon
       'comment lines keep the connection alive.',
     headers: { 'Cache-Control': '`no-store`.' },
     mediaType: 'text/event-stream',
+  },
+  // The stream admission (`SessionStreams.admit`) answers this without a response schema, and so
+  // does the default rate limit before it: a schema would reorder the limiter's body.
+  429: {
+    description:
+      'Too many requests: the caller has as many open Session event streams as allowed, or the ' +
+      'source exceeded the Runtime default rate limit (then the body also has `statusCode: 429` ' +
+      'and the `x-ratelimit-*` headers are set).',
+    headers: {
+      'Retry-After':
+        'Seconds to wait: `5` when the stream limit refused, the window reset when the default ' +
+        'rate limit refused.',
+    },
+    contract: RateLimitedErrorResponseSchema,
   },
 };

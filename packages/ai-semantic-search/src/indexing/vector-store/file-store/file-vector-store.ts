@@ -1,6 +1,6 @@
 import { mkdir } from 'node:fs/promises';
 
-import { nearestNeighbours } from '../../ranking/vector-math';
+import { nearestNeighbours } from '../vector-math';
 import {
   sameIdentity,
   type ManifestOutcome,

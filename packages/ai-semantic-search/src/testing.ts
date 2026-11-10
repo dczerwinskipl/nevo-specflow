@@ -6,4 +6,4 @@ export {
   type FakeEmbeddingOptions,
   type FakeEmbeddingProvider,
 } from './embeddings/fake-embedding-provider';
-export { createInMemoryVectorStore } from './indexing/in-memory-vector-store';
+export { createInMemoryVectorStore } from './indexing/vector-store/in-memory-vector-store';

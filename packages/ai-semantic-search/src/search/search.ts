@@ -1,9 +1,9 @@
 import type { Chunk, UnitMetadata } from '../chunking/chunk';
 import { CHUNKER_VERSION } from '../chunking/markdown-chunker';
 import type { EmbeddingProvider } from '../embeddings/embedding-provider';
-import type { IndexIdentity, VectorStore } from '../indexing/vector-store';
+import type { IndexIdentity, VectorStore } from '../indexing/vector-store/vector-store';
 import { createBm25Index } from '../ranking/bm25';
-import { compareIds } from '../ranking/compare';
+import { compareIds } from '../compare';
 import { reciprocalRankFusion } from '../ranking/rrf';
 
 /**

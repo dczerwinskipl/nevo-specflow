@@ -1,4 +1,4 @@
-import { nearestNeighbours, type VectorCandidate } from '../ranking/vector-math';
+import { nearestNeighbours, type VectorCandidate } from './vector-math';
 import {
   sameIdentity,
   validateChange,

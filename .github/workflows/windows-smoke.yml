@@ -30,7 +30,7 @@ on:
       - "packages/specflow-runtime/test/specs/create-async.http.test.ts"
       - "packages/specflow-contracts/src/specs/**"
       - "packages/specflow-contracts/src/operations/**"
-      - "packages/ai-semantic-search/src/indexing/file-store/**"
+      - "packages/ai-semantic-search/src/indexing/vector-store/file-store/**"
       - "tools/ci-windows-smoke*"
       - ".github/workflows/windows-smoke.yml"
   workflow_dispatch:

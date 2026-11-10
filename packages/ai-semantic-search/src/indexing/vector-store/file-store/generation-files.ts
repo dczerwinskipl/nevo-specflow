@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 
-import { compareIds } from '../../ranking/compare';
+import { compareIds } from '../../../compare';
 
 /** A generation file name; `<key>` is `<generation>-<token>`. */
 export const GENERATION_FILE = /^(manifest|vectors)-(\d+)-([0-9a-f]+)\.(json|f32)$/;

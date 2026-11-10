@@ -28,7 +28,7 @@ export type {
   VectorStore,
   VectorStoreChange,
   VectorStoreWriter,
-} from './indexing/vector-store';
+} from './indexing/vector-store/vector-store';
 export {
   CHUNKER_VERSION,
   CHUNK_MAX_CHARS,
@@ -46,18 +46,17 @@ export {
 export {
   createFileVectorStore,
   type FileVectorStoreOptions,
-} from './indexing/file-store/file-vector-store';
-export { FILE_INDEX_SCHEMA_VERSION } from './indexing/file-store/manifest-file';
-export type { WriterLockDependencies } from './indexing/file-store/writer-lock';
+} from './indexing/vector-store/file-store/file-vector-store';
+export { FILE_INDEX_SCHEMA_VERSION } from './indexing/vector-store/file-store/manifest-file';
+export type { WriterLockDependencies } from './indexing/vector-store/file-store/writer-lock';
+export { planRefresh, type RefreshPlan } from './indexing/refresh/plan-refresh';
 export {
   REFRESH_COMMIT_CHUNKS,
-  planRefresh,
   refreshIndex,
   type RefreshOutcome,
-  type RefreshPlan,
   type RefreshProgress,
   type RefreshRequest,
-} from './indexing/refresh-index';
+} from './indexing/refresh/refresh-index';
 export {
   SEARCH_REASON,
   VECTOR_CANDIDATES_PER_RESULT,
@@ -70,5 +69,9 @@ export {
   type SearchVectors,
   type UnitHit,
 } from './search/search';
-export { sameIdentity, validateChange } from './indexing/vector-store';
-export { cosineSimilarity, nearestNeighbours, type VectorCandidate } from './ranking/vector-math';
+export { sameIdentity, validateChange } from './indexing/vector-store/vector-store';
+export {
+  cosineSimilarity,
+  nearestNeighbours,
+  type VectorCandidate,
+} from './indexing/vector-store/vector-math';

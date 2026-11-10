@@ -1,4 +1,4 @@
-import { compareScored, type Scored } from './compare';
+import { compareScored, type Scored } from '../compare';
 import { tokenize } from './tokenize';
 
 /** Okapi BM25 parameters (the common defaults). */

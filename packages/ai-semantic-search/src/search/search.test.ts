@@ -3,13 +3,13 @@ import { describe, expect, it } from 'vitest';
 import type { Chunk } from '../chunking/chunk';
 import { CHUNKER_VERSION, chunkMarkdownUnit } from '../chunking/markdown-chunker';
 import { createFakeEmbeddingProvider } from '../embeddings/fake-embedding-provider';
-import { createInMemoryVectorStore } from '../indexing/in-memory-vector-store';
+import { createInMemoryVectorStore } from '../indexing/vector-store/in-memory-vector-store';
 import type {
   ApplyOutcome,
   IndexIdentity,
   VectorStore,
   VectorStoreChange,
-} from '../indexing/vector-store';
+} from '../indexing/vector-store/vector-store';
 import { RRF_K } from '../ranking/rrf';
 import { SEARCH_REASON, createSearchEngine } from './search';
 

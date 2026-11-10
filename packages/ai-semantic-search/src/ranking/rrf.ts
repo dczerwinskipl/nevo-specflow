@@ -1,4 +1,4 @@
-import { compareScored, type Scored } from './compare';
+import { compareScored, type Scored } from '../compare';
 
 /** Reciprocal rank fusion constant (the value from Cormack et al., widely used as the default). */
 export const RRF_K = 60;

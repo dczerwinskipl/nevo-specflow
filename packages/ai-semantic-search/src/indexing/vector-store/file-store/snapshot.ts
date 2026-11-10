@@ -1,7 +1,7 @@
 import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import type { VectorCandidate } from '../../ranking/vector-math';
+import type { VectorCandidate } from '../vector-math';
 import type { IndexManifest, StoreUnreadable } from '../vector-store';
 import { generationFiles, type GenerationFile } from './generation-files';
 import { errorCode, messageOf } from './io-errors';

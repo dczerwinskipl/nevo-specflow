@@ -1,8 +1,8 @@
 import { readdir, rename, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { compareIds } from '../../ranking/compare';
-import type { VectorCandidate } from '../../ranking/vector-math';
+import { compareIds } from '../../../compare';
+import type { VectorCandidate } from '../vector-math';
 import { validateChange, type ApplyOutcome, type VectorStoreChange } from '../vector-store';
 import { removeQuietly, removeSuperseded } from './cleanup';
 import { generationFiles, newToken } from './generation-files';

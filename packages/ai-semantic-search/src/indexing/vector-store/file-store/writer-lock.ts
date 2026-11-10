@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { readFileSync, readlinkSync } from 'node:fs';
-import { readFile, readdir, stat, unlink, utimes, writeFile } from 'node:fs/promises';
+import { lstat, readFile, readdir, stat, unlink, utimes, writeFile } from 'node:fs/promises';
 import { hostname, uptime } from 'node:os';
 import { join } from 'node:path';
 
@@ -303,17 +303,34 @@ async function removeLowerLocks(directory: string, epoch: number): Promise<void>
   }
 }
 
+/**
+ * Creates `path` only if no file has that name: `false` when the name is taken. On Windows `EPERM`
+ * or `EBUSY` means either a file whose deletion is pending (taken) or a directory this process may
+ * not write; only a name that still exists counts as taken, otherwise the error is thrown, so a
+ * read-only index directory is a write failure and not a writer that never finishes.
+ */
 async function createExclusive(path: string, content: string): Promise<boolean> {
   try {
     await writeFile(path, content, { flag: 'wx' });
 
     return true;
   } catch (error) {
-    if (errorCode(error) === 'EEXIST' || isDeletePending(error)) {
+    if (errorCode(error) === 'EEXIST' || (isDeletePending(error) && (await nameTaken(path)))) {
       return false;
     }
 
     throw error;
+  }
+}
+
+/** Whether a directory entry named `path` exists; one that cannot be inspected counts as taken. */
+async function nameTaken(path: string): Promise<boolean> {
+  try {
+    await lstat(path);
+
+    return true;
+  } catch (error) {
+    return errorCode(error) !== 'ENOENT';
   }
 }
 

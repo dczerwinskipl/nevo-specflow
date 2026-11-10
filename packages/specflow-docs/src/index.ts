@@ -23,4 +23,11 @@ export {
 } from './search/search';
 export { openDocsIndex, type DocsIndex } from './semantic-index/index-store';
 export { type CreateEmbeddingProvider } from './embeddings/embedding-providers';
-export { buildDocsIndex, type SemanticIndexResult } from './semantic-index/build';
+export {
+  buildDocsIndex,
+  type IndexProgress,
+  type SemanticIndexResult,
+} from './semantic-index/build';
+export { type IndexCatchUp } from './semantic-index/catch-up';
+export { readIndexActivity } from './semantic-index/progress';
+export { semanticStatus } from './semantic-index/status';

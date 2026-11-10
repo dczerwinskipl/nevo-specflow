@@ -1,7 +1,7 @@
 ---
 id: reference.api.docs-search
 type: reference
-title: Documentation search HTTP API
+title: Documentation search and status HTTP API
 status: current
 scope: specflow
 areas: [runtime, server, docs, security]
@@ -9,12 +9,14 @@ tags: [semantic-search, authorization]
 read_when:
   - calling the Runtime documentation search endpoint
   - changing GET /api/docs/search, its query or the Runtime start refresh of the docs index
+  - calling or changing GET /api/docs/status
   - diagnosing why a Runtime documentation search answers lexically or 503
 summary: >
   GET /api/docs/search answers ranked documents of the project's own documentation, with their
   frontmatter and best sections, in the result contract of nevo-specflow docs search --json: query
-  parameters (including snippets), the docs.search capability,
-  errors, the read-time refresh and the background index refresh on Runtime start.
+  parameters (including snippets), the docs.search capability, errors, the read-time refresh, the
+  in-process catch-up of a larger gap and the refresh on Runtime start. GET /api/docs/status reports
+  the semantic search status and refresh progress in the contract of docs semantic status --json.
 related:
   - adr.0020-documentation-discovery-is-a-product-capability
   - reference.cli.nevo-specflow-docs
@@ -23,13 +25,15 @@ related:
   - reference.api.openapi
 ---
 
-# Documentation search HTTP API
+# Documentation search and status HTTP API
 
 The Runtime serves the same documentation search as
-[`nevo-specflow docs search`](../cli/nevo-specflow-docs.md#search)
+[`nevo-specflow docs search`](../cli/nevo-specflow-docs.md#search) and the same status as
+[`nevo-specflow docs semantic status`](../cli/nevo-specflow-docs.md#semantic-status-and-semantic-index)
 ([ADR 0020](../../architecture/decisions/0020-documentation-discovery-is-a-product-capability.md)).
-The result contract is `DocsSearchResult` in `packages/specflow-contracts/src/docs/index.ts`; the
-feature is `packages/specflow-runtime/src/features/docs/`.
+The contracts are `DocsSearchResult` and `DocsStatus` in
+`packages/specflow-contracts/src/docs/index.ts`; the feature is
+`packages/specflow-runtime/src/features/docs/`.
 
 ## Endpoint
 
@@ -54,6 +58,28 @@ Other parameters are rejected. There is no `context` parameter.
   `reason`. A lexical answer is a normal result, never an error.
 - **Caching and admission:** `Cache-Control: no-store`; the shared default rate limit of the
   [endpoint policy](../../architecture/runtime/endpoint-policy.md).
+
+## GET /api/docs/status
+
+```http
+GET /api/docs/status
+```
+
+No parameters. `200` with `DocsStatus`, unchanged from `nevo-specflow docs semantic status --json`:
+
+| Field          | Value                                                                                                                                                                                                                                 |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mode`         | `hybrid` or `lexical`: the mode a search answers in now; `lexical` carries `reason` (the search reasons above)                                                                                                                        |
+| `enabled`      | `docs.search.semantic`                                                                                                                                                                                                                |
+| `endpoint`     | `protocol`, `baseUrl`, `model`, `dimensions` and the name of the `apiKeyEnv` variable, or `null` without `ai.embeddings`; never a key                                                                                                 |
+| `reachability` | one probe of the endpoint per request: `{ reachable: true, latencyMs, dimensions }` or `{ reachable: false, message }`; `null` without an endpoint                                                                                    |
+| `index`        | `missing`, `unreadable` (with `message`), or `current`/`stale`/`rebuild` with `generation`, `chunks` (stored vectors), `model`, `dimensions` and `changed` (chunks to embed or delete)                                                |
+| `activity`     | `updating` (with the writer's `pid` and, for a full refresh, `progress`: `startedAt`, `updatedAt`, `embedded`, `total`) or `idle` (with `last`: `outcome` `completed`/`failed`/`interrupted`, times, counts, `generation`, `message`) |
+| `failed`       | semantic search is enabled but cannot work until the configuration, endpoint or index is fixed; an index that only needs building is not a failure                                                                                    |
+
+The status only reports: it starts no refresh. It sees every writer of the shared index, a CLI
+`semantic index` as well as the Runtime's own refresh. Authorization, `Cache-Control`, `503` and its
+cases are those of the search.
 
 ## Authorization
 
@@ -86,15 +112,20 @@ index problems never fail the endpoint: they answer `lexical` with their reason.
 
 The Runtime holds one index per process in `.nevo/local/cache/docs-index/`, shared with the CLI.
 
-- **Read-time refresh:** every request re-embeds the changed sections before answering, at most a
-  small bounded number; a larger gap answers `lexical` with `index-building`. The HTTP endpoint
-  always refreshes (the CLI's `--no-refresh` has no HTTP counterpart).
+- **Read-time refresh:** every request re-embeds the changed sections before answering, at most 16.
+  The HTTP endpoint always refreshes (the CLI's `--no-refresh` has no HTTP counterpart).
+- **Catch-up:** a larger gap answers `lexical` with `index-building` at once and, after a
+  successful endpoint probe, starts the Runtime's background refresh of the whole index unless it
+  already runs (`the Runtime started updating it in the background; GET /api/docs/status reports its
+progress`, later `the Runtime is updating it in the background (<n>/<total> chunks)`). Another
+  process holding the index (a CLI `semantic index`) is reported, not raced. The Runtime runs at
+  most one refresh at a time.
 - **Start refresh:** when the project enables `docs.search.semantic` and an embedding endpoint is
-  configured, the Runtime refreshes the whole index in the background once it is ready. Start and
-  readiness do not wait for it; searches meanwhile answer `lexical` with `index-building`. Closing
-  the Runtime stops the refresh's endpoint requests and waits for it to release the index; sections
-  embedded so far stay stored. A refresh that cannot run (endpoint unreachable, index busy or
-  unreadable) is logged as a warning.
+  configured, the Runtime starts the same background refresh once it is ready. Start and readiness
+  do not wait for it; searches meanwhile answer `lexical` with `index-building`.
+- Closing the Runtime stops the running refresh's endpoint requests and waits for it to release the
+  index; sections embedded so far stay stored. A refresh that cannot run (endpoint unreachable, index
+  unreadable) is logged as a warning; one that finds another process writing the index is not.
 - With semantic search off or no endpoint configured, nothing is refreshed, nothing is logged and
   nothing is written below `.nevo/`.
 

@@ -23,6 +23,10 @@ export interface WriterLockDependencies {
   readonly staleAfterMs: number;
 }
 
+/** Whether a live writer holds the lock of an index directory, by the stale-lock rule above. */
+export type WriterLockState =
+  { readonly status: 'held'; readonly pid: number | undefined } | { readonly status: 'free' };
+
 export type WriterLockAttempt =
   | { readonly status: 'acquired'; readonly release: () => Promise<void> }
   | { readonly status: 'busy'; readonly message: string };
@@ -95,6 +99,20 @@ export async function tryAcquireWriterLock(
   };
 }
 
+/**
+ * Reads the writer lock of `directory` without taking it: `held` while a live writer holds it (`pid`
+ * is `undefined` for a writer that has not written its owner record yet), `free` otherwise. A stale
+ * lock is left for the next writer to reclaim. Filesystem errors other than "gone" are thrown.
+ */
+export async function inspectWriterLock(
+  directory: string,
+  dependencies: WriterLockDependencies,
+): Promise<WriterLockState> {
+  const holder = await inspectHolder(join(directory, WRITER_LOCK_FILE), dependencies);
+
+  return holder.status === 'held' ? { status: 'held', pid: holder.pid } : { status: 'free' };
+}
+
 /** Liveness check by signal 0: `EPERM` means the process exists but belongs to someone else. */
 export function isProcessAlive(pid: number): boolean {
   try {
@@ -121,7 +139,7 @@ async function createExclusive(path: string, content: string): Promise<boolean> 
 }
 
 type Holder =
-  | { readonly status: 'held'; readonly owner: string }
+  | { readonly status: 'held'; readonly owner: string; readonly pid: number | undefined }
   | { readonly status: 'stale' }
   | { readonly status: 'gone' };
 
@@ -149,14 +167,14 @@ async function inspectHolder(path: string, dependencies: WriterLockDependencies)
 
   const record = parseRecord(content);
   if (!record) {
-    return { status: 'held', owner: 'a writer that is starting' };
+    return { status: 'held', owner: 'a writer that is starting', pid: undefined };
   }
 
   const reusedOwnPid = record.pid === dependencies.pid && !heldTokens.has(record.token);
 
   return reusedOwnPid || !dependencies.isProcessAlive(record.pid)
     ? { status: 'stale' }
-    : { status: 'held', owner: `process ${record.pid}` };
+    : { status: 'held', owner: `process ${record.pid}`, pid: record.pid };
 }
 
 function parseRecord(content: string): LockRecord | undefined {

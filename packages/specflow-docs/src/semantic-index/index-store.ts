@@ -14,6 +14,17 @@ export const DOCS_INDEX_DIRECTORY = '.nevo/local/cache/docs-index';
 export interface DocsIndex {
   readonly chunks: DocsChunkSource;
   readonly store: VectorStore;
+  /**
+   * Absolute index directory, which also holds the refresh progress records (`progress.ts`) and
+   * the background catch-up files (`catch-up.ts`). Absent for an index held only in memory (tests):
+   * nothing is recorded and no catch-up is started then.
+   */
+  readonly directory?: string;
+}
+
+/** The vector store directory (with its `writer.lock`) inside an index directory. */
+export function vectorsDirectory(directory: string): string {
+  return join(directory, 'vectors');
 }
 
 /**
@@ -22,11 +33,15 @@ export interface DocsIndex {
  * instance does not notice corruption of a generation it already decoded; the cache is disposable.
  * Opening writes nothing; the directory is created by the first write.
  */
-export function openDocsIndex(projectRoot: string, corpus: DocsCorpus): DocsIndex {
+export function openDocsIndex(
+  projectRoot: string,
+  corpus: DocsCorpus,
+): DocsIndex & { readonly directory: string } {
   const directory = join(projectRoot, ...DOCS_INDEX_DIRECTORY.split('/'));
 
   return {
     chunks: createDocsChunkSource({ corpus, cacheFile: join(directory, 'units.json') }),
-    store: createFileVectorStore({ directory: join(directory, 'vectors') }),
+    store: createFileVectorStore({ directory: vectorsDirectory(directory) }),
+    directory,
   };
 }

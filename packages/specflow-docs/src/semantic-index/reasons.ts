@@ -52,6 +52,9 @@ export function semanticEndpoint(
  */
 export const SEMANTIC_INDEX_COMMAND = 'nevo-specflow docs semantic index';
 
+/** The product command that reports the index, named in background catch-up reasons. */
+export const SEMANTIC_STATUS_COMMAND = 'nevo-specflow docs semantic status';
+
 /** The index lacks vectors for current chunks and this search does not embed them. */
 function indexIncompleteReason(message: string): DocsSearchReason {
   return reason('index-building', message);
@@ -67,6 +70,16 @@ export function overLimitReason(
     `The index lacks vectors for ${String(pending)} chunks, more than a search embeds${
       limit === undefined ? '' : ` (${String(limit)})`
     }; run \`${indexCommand}\`.`,
+  );
+}
+
+/**
+ * More chunks lack vectors than a search embeds and a background catch-up brings the index up to
+ * date; `catchUp` describes it (`IndexCatchUp`).
+ */
+export function catchUpReason(pending: number, limit: number, catchUp: string): DocsSearchReason {
+  return indexIncompleteReason(
+    `The index lacks vectors for ${String(pending)} chunks, more than a search embeds (${String(limit)}); ${catchUp}.`,
   );
 }
 

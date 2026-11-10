@@ -6,9 +6,11 @@ import type { DocsSearchReason } from '@nevo/specflow-contracts/docs';
 
 import type { EmbeddingProviders } from '../embeddings/embedding-providers';
 import { embeddingFailureReason } from '../embeddings/endpoint-reasons';
+import type { IndexCatchUp } from './catch-up';
 import type { DocsChunk } from './chunk-source';
 import { pendingChunks } from './freshness';
 import {
+  catchUpReason,
   overLimitReason,
   refreshReason,
   refreshSkippedReason,
@@ -19,7 +21,7 @@ import {
  * Most chunks a search embeds before answering (the read-time refresh). It is one request at the
  * default batch size, about 10 s on a local CPU model and far less on a hosted API, and covers a
  * typical edit of a few sections. A larger gap (a first build: about 20 minutes on CPU for this
- * repository) is left to `semantic index` or the Runtime start refresh.
+ * repository) is left to the background catch-up, `semantic index` or the Runtime start refresh.
  */
 export const READ_REFRESH_MAX_CHUNKS = 16;
 
@@ -27,6 +29,11 @@ export const READ_REFRESH_MAX_CHUNKS = 16;
 export interface IndexVectors {
   readonly store: VectorStore;
   readonly providers: EmbeddingProviders;
+  /**
+   * Runs a full refresh in the background for a gap above `READ_REFRESH_MAX_CHUNKS`. Absent: the
+   * `index-building` reason asks for `semantic index` instead.
+   */
+  readonly catchUp?: IndexCatchUp;
 }
 
 /**
@@ -34,7 +41,9 @@ export interface IndexVectors {
  * for the current data answers lexically with `index-building`). The manifest is checked first, so
  * a complete index costs no endpoint call here. Otherwise a small gap is embedded before answering,
  * after a short probe (an unreachable endpoint answers lexically after at most the query timeout);
- * a gap above `READ_REFRESH_MAX_CHUNKS`, or any gap with `refresh` off, is not embedded.
+ * a gap above `READ_REFRESH_MAX_CHUNKS`, or any gap with `refresh` off, is not embedded. A larger
+ * gap with `refresh` on has the catch-up run (when the host supplies one): a refresh that already
+ * runs is only described, otherwise one is started after the probe succeeds.
  */
 export async function refreshForRead(
   vectors: IndexVectors,
@@ -64,7 +73,7 @@ export async function refreshForRead(
   }
 
   if (missing > READ_REFRESH_MAX_CHUNKS) {
-    return overLimitReason(missing, READ_REFRESH_MAX_CHUNKS, indexCommand);
+    return largeGapReason(vectors, missing, indexCommand);
   }
 
   const probe = await providers.query.probe();
@@ -82,6 +91,30 @@ export async function refreshForRead(
   });
 
   return outcome.status === 'over-limit'
-    ? overLimitReason(outcome.pending, READ_REFRESH_MAX_CHUNKS, indexCommand)
+    ? largeGapReason(vectors, outcome.pending, indexCommand)
     : refreshReason(outcome);
+}
+
+/** A gap the search does not embed: caught up in the background, or left to `semantic index`. */
+async function largeGapReason(
+  { providers, catchUp }: IndexVectors,
+  missing: number,
+  indexCommand: string,
+): Promise<DocsSearchReason> {
+  if (catchUp === undefined) {
+    return overLimitReason(missing, READ_REFRESH_MAX_CHUNKS, indexCommand);
+  }
+
+  const running = await catchUp.running();
+  if (running !== undefined) {
+    return catchUpReason(missing, READ_REFRESH_MAX_CHUNKS, running);
+  }
+
+  // A catch-up against an unreachable endpoint would only fail; the search says why instead.
+  const probe = await providers.query.probe();
+  if (!probe.ok) {
+    return embeddingFailureReason(probe.failure);
+  }
+
+  return catchUpReason(missing, READ_REFRESH_MAX_CHUNKS, await catchUp.start());
 }

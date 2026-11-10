@@ -52,15 +52,17 @@ const DocsSearchQuerySchema = Type.Object(
   { additionalProperties: false },
 );
 
-const DocsSearchErrorSchema = Type.Object(
+/** `503` of the docs endpoints: the Runtime serves no project documentation, or it is invalid. */
+export const DocsUnavailableErrorSchema = Type.Object(
   { error: Type.String(), code: Type.Literal(DOCS_UNAVAILABLE_CODE) },
   { additionalProperties: false },
 );
 
 /**
  * `GET /api/docs/search`: ranked documents of the project's own documentation with their best
- * sections, in the result contract of `nevo-specflow docs search --json`. Every search runs the bounded read-time
- * refresh. `docs` is `undefined` when the Runtime serves no project documentation (demo data).
+ * sections, in the result contract of `nevo-specflow docs search --json`. Every search runs the
+ * bounded read-time refresh; a larger gap answers lexically at once and starts the Runtime's
+ * background refresh (`GET /api/docs/status` shows its progress). `docs` is `undefined` when the Runtime serves no project documentation (demo data).
  */
 export const docsSearchEndpoint: FastifyPluginCallback<{
   readonly docs: ProjectDocs | undefined;
@@ -79,7 +81,7 @@ export const docsSearchEndpoint: FastifyPluginCallback<{
           200: contractRef(DocsSearchResultSchema),
           401: contractRef(AuthenticationRequiredErrorResponseSchema),
           403: contractRef(AuthorizationForbiddenErrorResponseSchema),
-          503: DocsSearchErrorSchema,
+          503: DocsUnavailableErrorSchema,
         },
       },
     },

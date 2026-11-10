@@ -4721,15 +4721,16 @@
     {
       "id": "reference.api.docs-search",
       "type": "reference",
-      "title": "Documentation search HTTP API",
+      "title": "Documentation search and status HTTP API",
       "status": "current",
       "file": "docs/reference/api/docs-search.md",
       "read_when": [
         "calling the Runtime documentation search endpoint",
         "changing GET /api/docs/search, its query or the Runtime start refresh of the docs index",
+        "calling or changing GET /api/docs/status",
         "diagnosing why a Runtime documentation search answers lexically or 503"
       ],
-      "summary": "GET /api/docs/search answers ranked documents of the project's own documentation, with their frontmatter and best sections, in the result contract of nevo-specflow docs search --json: query parameters (including snippets), the docs.search capability, errors, the read-time refresh and the background index refresh on Runtime start.",
+      "summary": "GET /api/docs/search answers ranked documents of the project's own documentation, with their frontmatter and best sections, in the result contract of nevo-specflow docs search --json: query parameters (including snippets), the docs.search capability, errors, the read-time refresh, the in-process catch-up of a larger gap and the refresh on Runtime start. GET /api/docs/status reports the semantic search status and refresh progress in the contract of docs semantic status --json.",
       "related": [
         "adr.0020-documentation-discovery-is-a-product-capability",
         "reference.cli.nevo-specflow-docs",

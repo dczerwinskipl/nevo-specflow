@@ -159,6 +159,7 @@ describe('refreshIndex', () => {
     });
     expect(chunks).toHaveLength(4);
     expect(progress).toEqual([
+      { embedded: 0, total: 2 },
       { embedded: 1, total: 2 },
       { embedded: 2, total: 2 },
     ]);

@@ -4,6 +4,7 @@ import type { DocsConfigPaths } from '../config/load-docs-settings';
 import type { DocsCorpusRules } from '../corpus/corpus';
 import { DocsUsageError } from '../errors';
 import type { CreateEmbeddingProvider } from '../embeddings/embedding-providers';
+import type { BackgroundIndexLaunch, SpawnDetached } from '../semantic-index/catch-up';
 
 /** The project the host resolved: its root and configuration file paths. */
 export interface DocsProject extends DocsConfigPaths {
@@ -37,6 +38,21 @@ export interface DocsCommandContext {
    * `nevo-specflow docs semantic index`.
    */
   readonly semanticIndexCommand?: string;
+  /**
+   * The command line that reports the semantic index as this host invokes it, quoted in the
+   * background catch-up reasons of `search`. Default `nevo-specflow docs semantic status`.
+   */
+  readonly semanticStatusCommand?: string;
+  /**
+   * How this host's own executable runs `semantic index` (same Node binary and entry). With it, a
+   * `search` whose index lacks more vectors than it embeds starts that command in the background
+   * (ADR 0020 §5); without it, the reason asks for `semantic index`.
+   */
+  readonly backgroundIndex?: BackgroundIndexLaunch;
+  /** Test seam for starting the background `semantic index`; default a detached child process. */
+  readonly spawnDetached?: SpawnDetached;
+  /** Test seam for the clock of the background catch-up. Default `Date.now`. */
+  readonly now?: () => number;
   /** Environment the embedding API key variable is read from. Default `process.env`. */
   readonly env?: Readonly<Record<string, string | undefined>>;
   /** Test seam for the embedding endpoint; production uses the OpenAI-compatible adapter. */

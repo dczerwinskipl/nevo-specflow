@@ -11,7 +11,13 @@ import { createAdrFiles } from '../infra/adr-files.js';
 
 export type LauncherContext = Pick<
   DocsCommandContext,
-  'resolveProject' | 'stdout' | 'stderr' | 'env' | 'createEmbeddingProvider'
+  | 'resolveProject'
+  | 'stdout'
+  | 'stderr'
+  | 'env'
+  | 'createEmbeddingProvider'
+  | 'backgroundIndex'
+  | 'spawnDetached'
 >;
 
 /** Repository-only checks on top of the product contract (ADR 0020). */
@@ -24,6 +30,7 @@ export function createProgram(ctx: LauncherContext): Command {
     checkWriteCommand: 'pnpm docs:check --write',
     getCommand: 'pnpm docs:get',
     semanticIndexCommand: 'pnpm docs:semantic index',
+    semanticStatusCommand: 'pnpm docs:semantic status',
     corpusRules: REPOSITORY_CORPUS_RULES,
   })
     .name('nevo-docs')

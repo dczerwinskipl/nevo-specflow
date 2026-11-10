@@ -6,6 +6,9 @@ import { DocsUsageError } from '../errors';
 import { openDocsSearch, searchDocumentation } from './search';
 import { positiveInteger, runDocsAction, type DocsCommandContext } from '../command/context';
 import type { OpenProject } from '../command/open-project';
+import { createProcessCatchUp, spawnDetachedProcess } from '../semantic-index/catch-up';
+import { openDocsIndex } from '../semantic-index/index-store';
+import { SEMANTIC_INDEX_COMMAND, SEMANTIC_STATUS_COMMAND } from '../semantic-index/reasons';
 
 /** Documents returned when `--limit` is omitted. */
 export const DEFAULT_SEARCH_LIMIT = 10;
@@ -46,12 +49,27 @@ export function addSearchCommand(docs: Command, ctx: DocsCommandContext, open: O
       }
 
       const { project, configuration, corpus } = await open();
+      const index = openDocsIndex(project.root, corpus);
       const search = openDocsSearch({
         projectRoot: project.root,
         corpus,
         configuration,
         env: ctx.env ?? process.env,
+        index,
         ...(ctx.createEmbeddingProvider ? { createProvider: ctx.createEmbeddingProvider } : {}),
+        ...(ctx.backgroundIndex
+          ? {
+              catchUp: createProcessCatchUp({
+                directory: index.directory,
+                projectRoot: project.root,
+                launch: ctx.backgroundIndex,
+                spawn: ctx.spawnDetached ?? spawnDetachedProcess,
+                now: ctx.now ?? Date.now,
+                indexCommand: ctx.semanticIndexCommand ?? SEMANTIC_INDEX_COMMAND,
+                statusCommand: ctx.semanticStatusCommand ?? SEMANTIC_STATUS_COMMAND,
+              }),
+            }
+          : {}),
       });
       const result = await searchDocumentation(search, {
         query,

@@ -119,12 +119,23 @@ and only new or changed sections are embedded. A current index costs no endpoint
 query. When the index needs work, a short reachability probe runs first, so an unreachable endpoint
 falls back to lexical within the query timeout (at most 3000 ms) instead of the document timeout.
 A search embeds at most 16 sections (one request at the default batch size). When more lack
-vectors, for example before the first build, after a model change or while a build was
-interrupted, it embeds nothing, answers lexically with `index-building` and names
-`nevo-specflow docs semantic index`, which builds the rest (a host that mounts the command under
-another name, such as this repository's `pnpm docs:*` scripts, names its own command line; the
-HTTP endpoint always names the product command). Search is hybrid only once every current
-section has a vector. `--no-refresh` skips the embedding step entirely.
+vectors, for example before the first build, after a model change or after editing many documents,
+it embeds nothing and answers lexically with `index-building` at once, and the index is caught up
+in the background: unless a writer already holds the index or a catch-up was started less than a
+minute ago, the search probes the endpoint and starts `nevo-specflow docs semantic index` as a
+detached process of the same executable in the project root (no console window on Windows), with
+its output in `.nevo/local/cache/docs-index/catch-up.log`. The reason says so and how to follow it:
+
+```text
+mode: lexical (index-building: The index lacks vectors for 40 chunks, more than a search embeds (16); a background `nevo-specflow docs semantic index` is updating it; follow it with `nevo-specflow docs semantic status`.)
+```
+
+While it runs, later searches say `process <pid> is updating it in the background (<n>/<total>
+chunks since <time>)` instead. A host that mounts the command under another name, such as this
+repository's `pnpm docs:*` scripts, names and starts its own command line; the HTTP endpoint
+catches up inside the Runtime instead. An unreachable endpoint answers `endpoint-unreachable` and
+starts nothing. Search is hybrid only once every current section has a vector. `--no-refresh` skips
+the embedding step entirely and starts no catch-up.
 
 Text output: one block per document with its id, title, type and status, the `summary`, the
 `read_when` situations, the matching sections (heading paths, `;`-separated) and the command that
@@ -220,23 +231,37 @@ hybrid mode. Only the order is meaningful; compare scores only within one result
 ## `semantic status` and `semantic index`
 
 `semantic status` reports whether semantic search is enabled, the configured endpoint (never a key),
-a connectivity probe (latency and observed dimensions) and the index: `missing`, `current`, `stale`
+a connectivity probe (latency and observed dimensions), the index (`missing`, `current`, `stale`
 (sections to re-embed), `rebuild` (built with another chunker, protocol, model or dimension) or
-`unreadable`. Its last line is the mode `search` would answer in, with the same reason: an index
-that lacks vectors for more sections than a search embeds (16) — missing, to be rebuilt or stale
-by that much — reports `lexical` with `index-building` and names the index build command. It exits
-1 when semantic search is enabled but unavailable: no endpoint, an unreachable endpoint or unset
-key variable, or an unreadable index. An index that only needs building is not a failure (exit 0):
-`semantic index` builds it, and a search embeds a gap of at most 16 sections itself.
+`unreadable`) and who is updating it: while a process holds the index writer, `updating in
+background: <n>/<total> chunks (since <time>, process <pid>)` for a full refresh (a background
+catch-up, `semantic index` or a Runtime refresh), otherwise the outcome of the last full refresh
+(`last update: completed <time> (embedded <n>/<total> chunks, generation <g>)`, `failed …` with the
+cause, or `interrupted …` when its process ended early). Its last line is the mode `search` would
+answer in, with the same reason: an index that lacks vectors for more sections than a search embeds
+(16) — missing, to be rebuilt or stale by that much — reports `lexical` with `index-building`. It
+exits 1 when semantic search is enabled but unavailable: no endpoint, an unreachable endpoint or
+unset key variable, or an unreadable index. An index that only needs building is not a failure
+(exit 0): a search catches it up in the background, and embeds a gap of at most 16 sections itself.
 It checks configuration, the endpoint and that the index can be read, not that it can be written: a
-write failure shows up on `search` as `index-unavailable`.
-`--json` prints the same report as one JSON object.
+write failure shows up on `search` as `index-unavailable`. Status only reports; it starts nothing.
+`--json` prints the same report as one JSON object, the `DocsStatus` contract of
+[`GET /api/docs/status`](../api/docs-search.md#get-apidocsstatus).
 
 ```text
 semantic search: enabled
 endpoint: openai-compatible http://127.0.0.1:11434/v1  model qwen3-embedding:0.6b
 reachable: yes (42 ms, 1024 dimensions)
-index: current  generation 3, 812 chunks, qwen3-embedding:0.6b / 1024 dimensions
+index: stale (40 chunks to update)  generation 20, 812 chunks, qwen3-embedding:0.6b / 1024 dimensions
+updating in background: 16/40 chunks (since 2026-11-10T09:12:03.120Z, process 18244)
+search mode: lexical (index-building: The index lacks vectors for 40 chunks, more than a search embeds (16); it is being updated in the background (16/40 chunks).)
+```
+
+and once it is done:
+
+```text
+index: current  generation 21, 812 chunks, qwen3-embedding:0.6b / 1024 dimensions
+last update: completed 2026-11-10T09:13:10.554Z (embedded 40/40 chunks, generation 21)
 search mode: hybrid
 ```
 
@@ -244,13 +269,15 @@ search mode: hybrid
 (everything after a model or chunker change), and prints what it did, for example
 `Index refreshed: embedded 4, deleted 1 chunks (generation 4).` It embeds in slices of 128 chunks
 and writes each slice to the index as soon as it is embedded, printing `embedded 256/2130 chunks`
-to stderr after each, so an interrupted or failed run keeps its progress and the next run embeds
+to stderr when it starts and after each slice (and recording the same progress for
+`semantic status`), so an interrupted or failed run keeps its progress and the next run embeds
 only the rest. When semantic search is not configured or the update cannot run, it prints the
 reason; it does not fail.
 
 The index is disposable cache in `.nevo/local/cache/docs-index/`; deleting it is always safe. The
 CLI and a running Runtime share it; one process writes at a time, and another one answers lexically
-meanwhile.
+meanwhile. Next to it are the progress records of the last full refresh, the catch-up log and the
+marker of the last catch-up start.
 
 ## Configuration
 

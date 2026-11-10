@@ -14,7 +14,13 @@ import { applyChange } from './apply-change';
 import { newToken } from './generation-files';
 import { writeFailed } from './io-errors';
 import { readSnapshot, type VectorsCache } from './snapshot';
-import { isProcessAlive, tryAcquireWriterLock, type WriterLockDependencies } from './writer-lock';
+import {
+  inspectWriterLock,
+  isProcessAlive,
+  tryAcquireWriterLock,
+  type WriterLockDependencies,
+  type WriterLockState,
+} from './writer-lock';
 
 export interface FileVectorStoreOptions {
   /** Index directory chosen by the consumer; created on the first write. Disposable cache. */
@@ -48,12 +54,7 @@ export interface FileVectorStoreOptions {
  */
 export function createFileVectorStore(options: FileVectorStoreOptions): VectorStore {
   const { directory } = options;
-  const lock: WriterLockDependencies = {
-    pid: options.lock?.pid ?? process.pid,
-    isProcessAlive: options.lock?.isProcessAlive ?? isProcessAlive,
-    now: options.lock?.now ?? Date.now,
-    staleAfterMs: options.lock?.staleAfterMs ?? 60_000,
-  };
+  const lock = lockDependencies(options);
   const cache: VectorsCache = { current: undefined };
 
   return {
@@ -125,5 +126,29 @@ export function createFileVectorStore(options: FileVectorStoreOptions): VectorSt
         matches: nearestNeighbours(vector, outcome.snapshot.candidates, limit),
       };
     },
+  };
+}
+
+/**
+ * Whether a live writer holds the store in `directory` (another process's refresh, for example), read
+ * without taking the lock and with the same stale-lock rule and defaults as `createFileVectorStore`.
+ * Never throws: a lock that cannot be read answers `free`, since the next writer reports the error.
+ */
+export async function inspectFileStoreWriter(
+  options: FileVectorStoreOptions,
+): Promise<WriterLockState> {
+  try {
+    return await inspectWriterLock(options.directory, lockDependencies(options));
+  } catch {
+    return { status: 'free' };
+  }
+}
+
+function lockDependencies(options: FileVectorStoreOptions): WriterLockDependencies {
+  return {
+    pid: options.lock?.pid ?? process.pid,
+    isProcessAlive: options.lock?.isProcessAlive ?? isProcessAlive,
+    now: options.lock?.now ?? Date.now,
+    staleAfterMs: options.lock?.staleAfterMs ?? 60_000,
   };
 }

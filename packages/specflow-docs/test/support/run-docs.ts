@@ -30,7 +30,14 @@ export async function runDocs(
   extra: Partial<
     Pick<
       DocsCommandContext,
-      'env' | 'createEmbeddingProvider' | 'getCommand' | 'semanticIndexCommand'
+      | 'env'
+      | 'createEmbeddingProvider'
+      | 'getCommand'
+      | 'semanticIndexCommand'
+      | 'semanticStatusCommand'
+      | 'backgroundIndex'
+      | 'spawnDetached'
+      | 'now'
     >
   > = {},
 ): Promise<DocsRun> {

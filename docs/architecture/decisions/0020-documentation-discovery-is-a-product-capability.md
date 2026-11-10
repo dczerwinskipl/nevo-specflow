@@ -191,10 +191,20 @@ The index is refreshed incrementally, never rebuilt on every run (rebuild rules 
 1. **Runtime start** refreshes in the background. Startup MUST NOT wait for it; until the index is
    complete, the endpoint answers `mode: lexical` with reason "index building".
 2. **On read**: every `search` (CLI and HTTP) checks the corpus for changes and re-embeds only the
-   changed units before answering. The embedding a search does is bounded: a larger gap (a first
-   build, a model change) is left to `semantic index` or the Runtime start refresh, and the search
-   answers `mode: lexical` with reason "index building" meanwhile. A CLI caller MAY skip the
-   re-embedding explicitly.
+   changed units before answering. The embedding a search does is bounded (a few sections), so the
+   answer never waits for a long refresh. A larger gap (a first build, a model change, many edited
+   documents) is caught up in the background instead: the search answers `mode: lexical` with
+   reason "index building" at once and, unless a full refresh already runs, starts one. The CLI
+   starts a detached `semantic index` process of the same executable; a running Runtime starts its
+   own background refresh, at most one at a time, stopped when the Runtime closes. The index's
+   single-writer lock keeps concurrent refreshes from both writing, and a recently started catch-up
+   is not started again by the searches that follow it. A search does not rank with a partial
+   index: hybrid ranking needs a vector for every current section. A CLI caller MAY skip the
+   re-embedding explicitly; it then starts no catch-up either.
+
+A full refresh records its progress next to the index, so `semantic status` and the Runtime's
+status endpoint show who is updating the index and how far it got, and the outcome of the last
+refresh.
 
 There is no file watcher and no invalidation API. A SpecFlow component that writes corpus documents
 MUST invalidate the units it changes.
@@ -204,8 +214,9 @@ disposable cache, not state ([project configuration and local state](../runtime/
 
 ### 6. Runtime endpoint
 
-Runtime exposes `GET /api/docs/search` with the same result contract as the CLI. The contract types
-and schemas live in `@nevo/specflow-contracts`.
+Runtime exposes `GET /api/docs/search` with the same result contract as the CLI, and
+`GET /api/docs/status` with the contract of `semantic status --json`. The contract types and schemas
+live in `@nevo/specflow-contracts`.
 
 - **Parameters:** `q` (the question), `limit`, and the switch that includes documents under
   non-authoritative prefixes. There is no `context` parameter; contextual input is defined only when
@@ -213,7 +224,7 @@ and schemas live in `@nevo/specflow-contracts`.
 - **Corpus:** the project's own `docs.root`. Specification documents and product documentation are
   not part of it; the engine's chunk-source port keeps other corpora possible.
 - **Authorization:** a feature-owned resource `docs` with action `search` (capability
-  `docs.search`), admitted when held in any scope, because project documentation has no narrower
+  `docs.search`, for both endpoints), admitted when held in any scope, because project documentation has no narrower
   scope. The built-in `viewer`, `developer` and `admin` roles carry it.
 
 ### 7. Configuration and init

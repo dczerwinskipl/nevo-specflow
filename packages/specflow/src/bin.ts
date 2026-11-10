@@ -24,6 +24,15 @@ async function main(argv: string[]): Promise<number> {
     signal: shutdown.signal,
     cwd: process.cwd(),
     initUi: new ClackProjectSetupUi(),
+    // `docs search` starts `docs semantic index` of this same executable in the background.
+    ...(process.argv[1] === undefined
+      ? {}
+      : {
+          docsBackgroundIndex: {
+            command: process.execPath,
+            args: [...process.execArgv, process.argv[1], 'docs', 'semantic', 'index'],
+          },
+        }),
   });
 
   try {

@@ -38,9 +38,12 @@ export function addSemanticCommand(
         openDocsIndex(project.root, corpus),
         configuration,
         environment(ctx),
-        ctx.semanticIndexCommand === undefined
-          ? {}
-          : { semanticIndexCommand: ctx.semanticIndexCommand },
+        {
+          ...(ctx.semanticIndexCommand === undefined
+            ? {}
+            : { semanticIndexCommand: ctx.semanticIndexCommand }),
+          backgroundCatchUp: ctx.backgroundIndex !== undefined,
+        },
       );
       if (opts.json) {
         ctx.stdout(JSON.stringify(report, null, 2));
@@ -50,7 +53,7 @@ export function addSemanticCommand(
 
       if (report.failed) {
         throw new DocsError(
-          `semantic search is enabled but unavailable: ${report.reason?.message ?? 'unknown cause'}`,
+          `semantic search is enabled but unavailable: ${report.mode === 'lexical' ? report.reason.message : 'unknown cause'}`,
         );
       }
     }),
@@ -130,9 +133,43 @@ function printStatus(ctx: DocsCommandContext, report: SemanticStatus): void {
       );
   }
 
+  const activity = activityLine(report.activity);
+  if (activity !== undefined) {
+    ctx.stdout(activity);
+  }
+
   ctx.stdout(
-    report.available
+    report.mode === 'hybrid'
       ? 'search mode: hybrid'
-      : `search mode: lexical (${report.reason?.code ?? ''}: ${report.reason?.message ?? ''})`,
+      : `search mode: lexical (${report.reason.code}: ${report.reason.message})`,
   );
+}
+
+function activityLine(activity: SemanticStatus['activity']): string | undefined {
+  if (activity.state === 'updating') {
+    const who =
+      activity.pid === undefined ? 'a writer that is starting' : `process ${String(activity.pid)}`;
+    const { progress } = activity;
+
+    return progress === undefined
+      ? `updating: ${who} is writing the index`
+      : `updating in background: ${String(progress.embedded)}/${String(progress.total)} chunks (since ${progress.startedAt}, ${who})`;
+  }
+
+  const { last } = activity;
+  if (last === undefined) {
+    return undefined;
+  }
+
+  const chunks = `${String(last.embedded)}/${String(last.total)} chunks`;
+  switch (last.outcome) {
+    case 'completed':
+      return `last update: completed ${last.endedAt} (embedded ${chunks}${
+        last.generation === undefined ? '' : `, generation ${String(last.generation)}`
+      })`;
+    case 'failed':
+      return `last update: failed ${last.endedAt} after ${chunks}: ${last.message ?? 'unknown cause'}`;
+    case 'interrupted':
+      return `last update: interrupted after ${chunks} (last progress ${last.endedAt})`;
+  }
 }

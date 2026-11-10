@@ -17,7 +17,10 @@ import { planRefresh, type RefreshPlan } from './plan-refresh';
  */
 export const REFRESH_COMMIT_CHUNKS = 128;
 
-/** Reported after every store write of a refresh that embeds. */
+/**
+ * Reported by a refresh that embeds: once with `embedded: 0` when the plan is made under the lock,
+ * then after every store write.
+ */
 export interface RefreshProgress {
   readonly embedded: number;
   readonly total: number;
@@ -70,7 +73,7 @@ export type RefreshOutcome =
  * checked against the stored ones, without a probe). Otherwise the refresh resolves the dimensions
  * (probing when not configured), opens the single writer (a held lock answers `busy` without
  * waiting), re-reads the manifest, checks the plan against `maxEmbed` and embeds only the planned
- * chunks, in slices of `commitChunks`: each slice is applied as soon as it is embedded, with the
+ * chunks, in slices of `commitChunks` (reporting `onProgress` before the first and after each): each slice is applied as soon as it is embedded, with the
  * generation of the previous write as the compare-and-swap base (the first write carries the
  * deletes and, for a rebuild, the reset). Only a contract violation throws.
  */
@@ -133,6 +136,10 @@ export async function refreshIndex(request: RefreshRequest): Promise<RefreshOutc
     }
 
     const total = plan.embed.length;
+    if (total > 0) {
+      onProgress?.({ embedded: 0, total });
+    }
+
     let generation = manifest?.generation;
     // At least one write, so a rebuild of an empty corpus or a delete-only plan lands too.
     for (let start = 0; start === 0 || start < total; start += commitChunks) {

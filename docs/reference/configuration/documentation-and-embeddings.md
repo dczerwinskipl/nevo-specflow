@@ -208,8 +208,8 @@ the named variable not set). A failed probe does not fail `init`: the configurat
 and the review says `Semantic docs search: configured but unavailable, lexical for now (...)`;
 `search` answers lexically until `docs semantic status` reports the endpoint available. On success
 the review says `Semantic docs search: enabled (<model> at <baseUrl>, <n> dimensions)`. The probe
-writes no index; `docs semantic index` builds it (a `search` embeds at most 16 sections itself, so
-it builds only a very small corpus).
+writes no index; the first `search` starts building it in the background (a `search` embeds at most
+16 sections itself and leaves a larger gap to a background `docs semantic index`).
 
 In a project whose `.nevo/config.yaml` has no `runtime` section yet (for example a
 documentation-only configuration), `init` completes the existing files instead of refusing: it adds
@@ -233,8 +233,11 @@ configured and reachable, and the index is current; otherwise it answers `lexica
 ## Local cache
 
 The semantic index lives in `.nevo/local/cache/docs-index/` below the project root: the vectors
-(`vectors/`) and the parsed chunks of each document (`units.json`). It is disposable cache
+(`vectors/`), the parsed chunks of each document (`units.json`), the progress records of the last
+full refresh (`progress-*.json`) and the log and start marker of the background catch-up
+(`catch-up.log`, `catch-up.started`). It is disposable cache
 ([project configuration and local state](../../architecture/runtime/configuration.md)): deleting it
 costs only re-embedding. `search` writes nothing there while semantic search is not enabled. A
 running Runtime shares the same index for
-[`GET /api/docs/search`](../api/docs-search.md) and refreshes it in the background on start.
+[`GET /api/docs/search`](../api/docs-search.md), refreshes it in the background on start and
+catches a larger gap up in process.

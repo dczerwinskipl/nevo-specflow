@@ -8,6 +8,11 @@ import { Value } from 'typebox/value';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import { runDocs } from '../../test/support/run-docs';
+import {
+  CATCH_UP_START_COOLDOWN_MS,
+  type DetachedProcessRequest,
+} from '../semantic-index/catch-up';
+import { createProgressRecorder } from '../semantic-index/progress';
 
 // A project with semantic search enabled in the project file and the endpoint in the local file.
 const root = mkdtempSync(join(tmpdir(), 'specflow-docs-search-cli-'));
@@ -91,6 +96,65 @@ describe('docs search and semantic status', () => {
       expect(run).toMatchObject({ exitCode: 0, stderr: [] });
       expect(run.stdout.at(-1)).toMatch(
         /^search mode: lexical \(index-building: .*run `pnpm docs:semantic index`/,
+      );
+
+      // A search answers lexically at once and starts one background `semantic index`; searches
+      // within the cooldown start none, and none starts while a live writer holds the index.
+      const spawned: DetachedProcessRequest[] = [];
+      const search = (now = Date.now()) =>
+        runDocs(large, ['search', 'part', '--json'], undefined, {
+          createEmbeddingProvider: () => createFakeEmbeddingProvider(),
+          semanticIndexCommand: 'pnpm docs:semantic index',
+          semanticStatusCommand: 'pnpm docs:semantic status',
+          backgroundIndex: { command: 'node', args: ['bin.js', 'semantic', 'index'] },
+          spawnDetached: (request) => spawned.push(request),
+          now: () => now,
+        });
+      const first = await search();
+      expect(first.exitCode).toBe(0);
+      expect(JSON.parse(first.stdout.join('\n'))).toMatchObject({
+        mode: 'lexical',
+        reason: {
+          code: 'index-building',
+          message: expect.stringMatching(
+            /\(16\); a background `pnpm docs:semantic index` is updating it; follow it with `pnpm docs:semantic status`\.$/,
+          ) as unknown,
+        },
+      });
+      const index = join(large, '.nevo', 'local', 'cache', 'docs-index');
+      expect(spawned).toEqual([
+        {
+          command: 'node',
+          args: ['bin.js', 'semantic', 'index'],
+          cwd: large,
+          logFile: join(index, 'catch-up.log'),
+        },
+      ]);
+      await search();
+      expect(spawned).toHaveLength(1);
+      await search(Date.now() + 2 * CATCH_UP_START_COOLDOWN_MS);
+      expect(spawned).toHaveLength(2);
+
+      // The parent process stands in for a live writer that recorded its progress.
+      mkdirSync(join(index, 'vectors'), { recursive: true });
+      writeFileSync(
+        join(index, 'vectors', 'writer.lock'),
+        JSON.stringify({ pid: process.ppid, token: 'other' }),
+      );
+      const started = Date.now();
+      const writer = createProgressRecorder(index, { pid: process.ppid, now: () => started });
+      void writer.update({ embedded: 0, total: 21 });
+      await writer.update({ embedded: 16, total: 21 });
+      const during = await search(Date.now() + 4 * CATCH_UP_START_COOLDOWN_MS);
+      expect(spawned).toHaveLength(2);
+      expect(during.stdout.join('\n')).toContain(
+        `process ${String(process.ppid)} is updating it in the background (16/21 chunks since`,
+      );
+      const status = await runDocs(large, ['semantic', 'status'], undefined, {
+        createEmbeddingProvider: () => createFakeEmbeddingProvider(),
+      });
+      expect(status.stdout).toContain(
+        `updating in background: 16/21 chunks (since ${new Date(started).toISOString()}, process ${String(process.ppid)})`,
       );
     } finally {
       rmSync(large, { recursive: true, force: true });

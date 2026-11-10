@@ -26,7 +26,8 @@ function findRepoRoot(start: string): string {
 }
 
 async function main(argv: string[]): Promise<number> {
-  const root = findRepoRoot(dirname(fileURLToPath(import.meta.url)));
+  const entry = fileURLToPath(import.meta.url);
+  const root = findRepoRoot(dirname(entry));
   const program = createProgram({
     resolveProject: () =>
       Promise.resolve({
@@ -36,6 +37,11 @@ async function main(argv: string[]): Promise<number> {
       }),
     stdout: (line) => process.stdout.write(`${line}\n`),
     stderr: (line) => process.stderr.write(`${line}\n`),
+    // A search's background catch-up runs this launcher directly (no build step, no pnpm).
+    backgroundIndex: {
+      command: process.execPath,
+      args: [...process.execArgv, entry, 'semantic', 'index'],
+    },
   });
 
   try {

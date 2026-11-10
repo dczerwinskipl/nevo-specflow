@@ -45,10 +45,14 @@ export {
 } from './embeddings/openai-compatible-embeddings';
 export {
   createFileVectorStore,
+  inspectFileStoreWriter,
   type FileVectorStoreOptions,
 } from './indexing/vector-store/file-store/file-vector-store';
 export { FILE_INDEX_SCHEMA_VERSION } from './indexing/vector-store/file-store/manifest-file';
-export type { WriterLockDependencies } from './indexing/vector-store/file-store/writer-lock';
+export type {
+  WriterLockDependencies,
+  WriterLockState,
+} from './indexing/vector-store/file-store/writer-lock';
 export { planRefresh, type RefreshPlan } from './indexing/refresh/plan-refresh';
 export {
   REFRESH_COMMIT_CHUNKS,

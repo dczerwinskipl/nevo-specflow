@@ -8,7 +8,7 @@ import { DocsCapabilities } from '@nevo/specflow-contracts/docs';
 import type { RuntimeFeature } from '../runtime-feature';
 import { createProjectDocs } from './project-docs';
 import { docsSearchEndpoint } from './search-route';
-import { createStartRefresh } from './start-refresh';
+import { docsStatusEndpoint } from './status-route';
 
 export interface DocsFeatureDependencies {
   /**
@@ -20,7 +20,10 @@ export interface DocsFeatureDependencies {
   readonly env?: Readonly<Record<string, string | undefined>>;
   /** Test seam; production uses the OpenAI-compatible adapter. */
   readonly createProvider?: CreateEmbeddingProvider;
-  /** Refresh the index in the background when the Runtime is ready (default true; tests). */
+  /**
+   * Refresh the index in the background when the Runtime is ready (default true; tests). A search
+   * that finds a gap larger than it embeds starts that refresh either way.
+   */
   readonly startRefresh?: boolean;
 }
 
@@ -48,11 +51,17 @@ export function createDocsFeature(options: CreateDocsFeatureOptions = {}): Runti
               projectRoot,
               configuration,
               env: dependencies.env ?? process.env,
+              log: app.log,
               ...(dependencies.createProvider
                 ? { createProvider: dependencies.createProvider }
                 : {}),
             });
       app.register(docsSearchEndpoint, { docs });
+      app.register(docsStatusEndpoint, { docs });
+      if (docs !== undefined) {
+        // Ends a refresh a search started, whether or not the start refresh runs.
+        app.addHook('onClose', () => docs.close());
+      }
 
       // Only a project that opted into semantic search and configured an embedding endpoint has an
       // index to refresh; otherwise nothing is written below `.nevo/` and nothing is logged (a
@@ -66,12 +75,10 @@ export function createDocsFeature(options: CreateDocsFeatureOptions = {}): Runti
         return;
       }
 
-      const refresh = createStartRefresh(docs, app.log);
       app.addHook('onReady', (done) => {
-        refresh.start();
+        docs.startRefresh();
         done();
       });
-      app.addHook('onClose', () => refresh.stop());
     },
   };
 }

@@ -94,13 +94,22 @@ pnpm docs:semantic status   # endpoint reachable; exits 1 while it is not
 pnpm docs:search "how are document commits owned by the engine"
 ```
 
-Build the index once with `pnpm docs:semantic index`; it embeds the whole corpus into
+There is no separate build step. The first search answers lexically at once (`index-building`)
+and starts `pnpm docs:semantic index` in the background (a detached `node
+tools/docs/dist/bin.js semantic index`, without a console window); it embeds the whole corpus into
 `.nevo/local/cache/docs-index/` (disposable; delete it to rebuild). On CPU this is slow for a corpus
-of this size (about 20 minutes for about 2100 chunks on an 8-core CPU). It prints its progress to
-stderr and writes every slice it embeds, so an interrupted run resumes where it stopped. A search
-never builds the index: until it is complete, `pnpm docs:search` answers lexically at once
-(`index-building`). Later searches re-embed changed sections themselves when at most 16 changed;
-otherwise run `pnpm docs:semantic index`. `docker compose down` stops the model and keeps the
+of this size (about 20 minutes for about 2100 chunks on an 8-core CPU). Watch it with:
+
+```bash
+pnpm docs:semantic status   # updating in background: 384/2130 chunks (since …, process …)
+```
+
+Its output goes to `.nevo/local/cache/docs-index/catch-up.log`. It writes every slice it embeds, so
+an interrupted run resumes where it stopped; a search after that starts it again. Searches re-embed
+up to 16 changed sections themselves; after a larger edit they answer lexically and catch the index
+up in the background the same way, and they are hybrid again once it is current. Run
+`pnpm docs:semantic index` yourself only to build in the foreground (progress on stderr).
+`docker compose down` stops the model and keeps the
 volume. Keys and their validation:
 [documentation and embeddings configuration](../../reference/configuration/documentation-and-embeddings.md).
 

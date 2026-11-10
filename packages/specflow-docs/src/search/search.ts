@@ -23,6 +23,7 @@ import {
   type DocsChunk,
   type DocsChunkSource,
 } from '../semantic-index/chunk-source';
+import type { IndexCatchUp } from '../semantic-index/catch-up';
 import { openDocsIndex, type DocsIndex } from '../semantic-index/index-store';
 import { SEMANTIC_INDEX_COMMAND, searchReason, semanticEndpoint } from '../semantic-index/reasons';
 import { refreshForRead, type IndexVectors } from '../semantic-index/refresh-policy';
@@ -62,6 +63,8 @@ export interface OpenDocsSearchOptions {
    * `openDocsIndex` opens it.
    */
   readonly index?: DocsIndex;
+  /** Catches a large gap up in the background (`IndexVectors.catchUp`). */
+  readonly catchUp?: IndexCatchUp;
 }
 
 export function openDocsSearch(options: OpenDocsSearchOptions): DocsSearch {
@@ -83,7 +86,11 @@ export function openDocsSearch(options: OpenDocsSearchOptions): DocsSearch {
 
   return {
     chunks: index.chunks,
-    vectors: { store: index.store, providers: created.providers },
+    vectors: {
+      store: index.store,
+      providers: created.providers,
+      ...(options.catchUp ? { catchUp: options.catchUp } : {}),
+    },
   };
 }
 
@@ -97,7 +104,8 @@ export interface DocsSearchRequest {
   readonly snippets: boolean;
   /**
    * Re-embed changed documents before answering (ADR 0020 read-time refresh), at most
-   * `READ_REFRESH_MAX_CHUNKS` (`semantic-index/refresh-policy`); a larger gap answers lexically with `index-building`.
+   * `READ_REFRESH_MAX_CHUNKS` (`semantic-index/refresh-policy`); a larger gap answers lexically with
+   * `index-building` and has the search's catch-up, if any, update the index in the background.
    */
   readonly refresh: boolean;
   /**

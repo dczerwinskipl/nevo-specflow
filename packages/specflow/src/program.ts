@@ -9,7 +9,7 @@ import {
   type RuntimeCommandContext,
 } from '@nevo/specflow-runtime/cli';
 import type { RuntimeSetupUi } from '@nevo/specflow-runtime';
-import { createDocsCommand } from '@nevo/specflow-docs/cli';
+import { createDocsCommand, type BackgroundIndexLaunch } from '@nevo/specflow-docs/cli';
 import { Command } from 'commander';
 
 import type { CommitCommandContext } from './commit/command';
@@ -37,6 +37,8 @@ export interface ProgramIO {
   readonly commitApi?: CommitCommandContext['api'];
   readonly initUi?: RuntimeSetupUi;
   readonly initializeProject?: ProjectInitCommandContext['initialize'];
+  /** How this executable runs `docs semantic index`, for the background catch-up of `docs search`. */
+  readonly docsBackgroundIndex?: BackgroundIndexLaunch;
 }
 
 export function createProgram(io: ProgramIO): Command {
@@ -87,6 +89,7 @@ export function createProgram(io: ProgramIO): Command {
       stdout: io.stdout,
       stderr: io.stderr,
       checkWriteCommand: 'nevo-specflow docs check --write',
+      ...(io.docsBackgroundIndex ? { backgroundIndex: io.docsBackgroundIndex } : {}),
     }),
   );
 

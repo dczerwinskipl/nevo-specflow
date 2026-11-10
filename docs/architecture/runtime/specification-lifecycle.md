@@ -184,5 +184,8 @@ The Engine checks source incarnation and inventories ignored/untracked user data
 any managed checkout. Failed or unknown effects preserve the journal, claims and recovery
 evidence. Changed incarnation returns recovery-required instead of deleting the new occupant.
 
-Writer/Session/Task admission belongs to later E3–E5 work and must not be faked by E2.
+A managed agent execution holds a project-wide
+[workspace execution claim](workspace-execution-claims.md), so Create and Close are not admitted
+while one is unsettled. An external agent started outside Runtime holds no claim, and the Engine
+MUST NOT claim it is quiescent. Writer admission for workflow steps is not implemented yet.
 See [durable recovery](../../engineering/shared/specflow-git-recovery.md).

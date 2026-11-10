@@ -57,84 +57,7 @@ Do not solve performance by splitting one semantic state into dozens of unrelate
 
 ---
 
-## 2. Read-model boundaries
-
-A read model should be shaped around one user decision/screen responsibility.
-
-Examples that should normally change together and therefore belong in one coherent projection:
-
-- Task semantic state + available actions + reason why an action is unavailable;
-- Session readiness + pending interaction + current activity;
-- Specification attention summary + Task steering signals;
-- Settings effective value + provenance/source-of-value.
-
-Examples that should normally stay independently loadable:
-
-- a Markdown document body;
-- one file body;
-- one diff;
-- historical Work detail;
-- raw provider/tool output;
-- a large Handover/report body;
-- older Session history.
-
-A screen-level projection may contain lightweight references to those independent resources.
-
----
-
-## 3. Revision and scope identity
-
-Current proposal: mutable screen/read-model responses expose a stable revision or equivalent validator.
-
-Illustrative:
-
-```text
-{
-  revision: "...",
-  updatedAt: "...",
-  ...
-}
-```
-
-A revision changes only when the semantic response changes. It must not be random per request.
-
-Query/cache identity must include every dimension that changes meaning, for example:
-
-```text
-["spec", specId]
-["task", specId, taskId]
-["session", sessionId]
-["document", specId, documentId, contentRevision?]
-["file-diff", provider, repository, prNumber, headSha, path]
-```
-
-When route/resource scope changes, stale in-flight work must not update the new scope.
-
-Use AbortSignal/cancellation where possible and reject/ignore responses that no longer belong to the
-active scope.
-
----
-
-## 4. Initial fetch + live update
-
-For live resources, prefer:
-
-```text
-1. fetch authoritative snapshot
-2. obtain snapshot revision/event cursor
-3. subscribe from that cursor
-4. apply newer events in order
-6. use slow safety refresh only as a backstop where justified
-```
-
-Do not subscribe from event 0 after loading a current snapshot.
-
-Do not use short polling and complete realtime invalidation for the same heavy resource unless there
-is a documented gap that one mechanism cannot observe.
-
----
-
-## 5. Event processing: batch rendering, not semantics
+## 2. Event processing: batch rendering, not semantics
 
 A burst of 300 provider/runtime events must not cause 300 independent React cache writes/renders.
 
@@ -154,7 +77,7 @@ When one semantic event changes several cached projections that the user sees to
 Task detail + parent Specification steering summary), apply those cache changes inside one framework
 batch/transaction so observers do not render an impossible intermediate combination.
 
-### 5.1 Coalescing window
+### 2.1 Coalescing window
 
 Current tuning candidate for high-frequency Session/Work updates:
 
@@ -168,7 +91,7 @@ The exact window is an implementation tuning value, not an API contract.
 This is **coalescing/throttled commit**, not classic trailing debounce. A continuous stream must still
 produce periodic visible progress; it must not wait forever for the stream to become quiet.
 
-### 5.2 Events that flush immediately
+### 2.2 Events that flush immediately
 
 Do not wait for the ordinary coalescing window when an event changes a user-visible control or legal
 action materially, for example:
@@ -183,7 +106,7 @@ action materially, for example:
 These events should cause an immediate semantic commit after all earlier queued events have been
 processed.
 
-### 5.3 Last-write-wins is not enough
+### 2.3 Last-write-wins is not enough
 
 Do not simply keep the last raw event.
 
@@ -193,7 +116,7 @@ coalesce the UI/cache write.
 
 ---
 
-## 6. Interactive query debounce
+## 3. Interactive query debounce
 
 Debounce applies to user-driven remote lookup/search, not to canonical event processing.
 
@@ -211,7 +134,7 @@ needed.
 
 The debounce interval is a UI tuning value, not part of the backend API.
 
-## 7. Event payloads: snapshot vs delta
+## 4. Event payloads: snapshot vs delta
 
 Prefer an event contract that is easy to reconcile.
 
@@ -240,7 +163,7 @@ resource.
 
 ---
 
-## 8. Query invalidation rules
+## 5. Query invalidation rules
 
 Invalidate the smallest authoritative query that can now be stale.
 
@@ -259,9 +182,9 @@ then invalidate only as a consistency backstop if required.
 
 ---
 
-## 9. Batch reads
+## 6. Batch reads
 
-### 8.1 When batching is appropriate
+### 6.1 When batching is appropriate
 
 Batch reads when:
 
@@ -299,7 +222,7 @@ Response:
 
 Partial item failure must not fail unrelated successful items unless the domain requires atomicity.
 
-### 8.2 Windowed client batching
+### 6.2 Windowed client batching
 
 Independent item requests issued nearly together may be merged through a short batching window.
 
@@ -314,7 +237,7 @@ Those values are useful evidence, not frozen new-product constants.
 
 Current proposal: make batching window and maximum batch size configurable.
 
-### 8.3 Do not batch unrelated data blindly
+### 6.3 Do not batch unrelated data blindly
 
 Do not put Settings catalog, Session history, Specification documents, and Git diff data into one
 "page bootstrap" endpoint merely because one route currently displays all of them.
@@ -347,7 +270,7 @@ items succeed or fail without discarding unrelated results. Benchmark real netwo
 and server cost; batching should reduce overhead, not fetch hundreds of heavy diffs
 merely because a PR's file manifest is visible.
 
-## 10. Domain batch commands
+## 7. Domain batch commands
 
 If one user action semantically operates on many domain objects, expose one domain batch operation
 instead of firing N unrelated mutation requests from the browser.
@@ -376,7 +299,7 @@ Conversely, do not batch unrelated mutations just to reduce HTTP request count.
 
 ---
 
-## 11. Documents and heavy detail
+## 8. Documents and heavy detail
 
 Use lightweight-first loading:
 
@@ -413,7 +336,7 @@ deep/raw detail
 
 ---
 
-## 12. Prefetch rules
+## 9. Prefetch rules
 
 Prefetch only when likelihood and cost justify it.
 
@@ -434,46 +357,7 @@ Prefetch must be cancellable/low priority and never block explicit user requests
 
 ---
 
-## 13. Refresh behavior
-
-A Refresh action is not a generic "invalidate everything" button.
-
-Every screen spec must state:
-
-- whether Refresh exists;
-- where it lives;
-- exactly which authoritative queries it refreshes;
-- which cached heavy resources it intentionally does not refresh;
-- whether refresh is also triggered on window focus;
-- whether a live event stream already makes manual refresh unnecessary.
-
-### 12.1 Refresh placement
-
-Use the owning surface header/overflow when refresh applies to the whole visible screen projection.
-
-Use a local Refresh action inside a section/detail only when it refreshes that local resource.
-
-Do not show multiple refresh icons with unclear scope.
-
-### 12.2 Refresh while a request is active
-
-Deduplicate identical in-flight queries.
-
-A candidate Refresh implementation may cancel and replace the previous fetch for the same resource if safe.
-
-Do not start parallel identical fetches that race to write the same cache.
-
-### 12.3 Refresh feedback
-
-Keep existing data visible while refreshing when it is safe.
-
-Show lightweight "Refreshing…" state rather than replacing usable data with an empty loading screen.
-
-On failure, preserve last known data and show that refresh failed/staleness may remain.
-
----
-
-## 14. Suggested refresh policy per current screen
+## 10. Suggested refresh policy per current screen
 
 ### Specs Overview
 
@@ -555,7 +439,7 @@ It uses the same Session cache/live subscription as Full Session.
 
 ---
 
-## 15. Polling policy
+## 11. Polling policy
 
 Short polling is a fallback, not a default.
 
@@ -570,30 +454,7 @@ Current recommendation: avoid polling large document/history/diff payloads every
 
 ---
 
-## 16. Mutations and refresh
-
-After a mutation:
-
-1. use returned canonical result/projection if available;
-2. mark only affected queries stale;
-3. rely on operation/event completion for asynchronous work;
-4. avoid immediate refetch loops while the server operation is still changing the same resource.
-
-For long-running operations:
-
-```text
-command accepted
-  -> operationId
-  -> progress/event updates
-  -> terminal operation event
-  -> targeted authoritative refresh if final event did not already carry final projection
-```
-
-Do not repeatedly invalidate on every progress event.
-
----
-
-## 17. Error isolation
+## 12. Error isolation
 
 An independently loaded resource should fail independently.
 
@@ -609,7 +470,7 @@ an impossible mixed state.
 
 ---
 
-## 18. Observability requirements
+## 13. Observability requirements
 
 Proposed development diagnostics would make it possible to see:
 
@@ -626,7 +487,7 @@ These diagnostics belong in development tooling/logging, not ordinary end-user U
 
 ---
 
-## 19. Proposed evaluation criteria
+## 14. Proposed evaluation criteria
 
 1. A burst of realtime events does not create one React render/cache write per raw event.
 2. Ordered events are never dropped merely because rendering is coalesced.

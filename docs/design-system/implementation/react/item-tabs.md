@@ -85,9 +85,12 @@ owns state, guards and the tab panel; the strip renders no panel.
   counting and listing the tabs already on the strip read as duplicates); its accessible name is
   the full `labels.moreMenu(N)` text (the visible count is `aria-hidden`, so the visible text is
   never outside the name — WCAG 2.5.3).
-- **Tab anatomy.** Icon, label, close `x` at the label's right edge. The unsaved state is a badge on
-  the icon, visible on every pointer and in the switcher; it MUST NOT share the close slot. `loading`
-  shows a spinner, `missing` a warning icon and muted label; neither changes tab geometry.
+- **Tab anatomy.** Glyph slot (when the density shows one), label, close `x` at the label's right
+  edge. In `header` the glyph slot holds the item's icon, with the unsaved state as a badge on it; in
+  `rail` tabs have no icons, so the glyph slot holds only the unsaved dot. The unsaved state is
+  visible on every pointer and in the switcher and MUST NOT share the close slot. `loading` shows a
+  spinner, `missing` a warning icon and muted label, in the glyph slot; neither changes tab
+  geometry.
 - **Close.** On the `header` density the `x` is shown on hover, focus and on the active tab, always
   on coarse pointers, with a 44 px hit area there. On the `rail` density the `x` of every closable
   tab is always visible (like an editor's tabs), and a pinned (non-closable) tab shows a pin in the
@@ -148,21 +151,28 @@ item. The host MUST be content-blind: it receives from each item `label`, `descr
 `state`, `render()` and `actions()` and MUST NOT import code specific to a kind of content. Each
 product supplies a provider; other hosts (read-only previews, diffs) bring their own.
 
-A **content descriptor** declares `views`, `defaultView`, optional `viewMinWidth` per view (measured
-on the content area, not the viewport) and `actions(view, context)`.
+A **content descriptor** declares `views`, `defaultView` and `actions(view, context)` (SpecFlow
+Documents also declares `readOnlyViews`, `features/documents/content-kinds`). An optional
+`viewMinWidth` per view (measured on the content area, not the viewport) is part of the pattern but
+no kind uses it yet.
 
 - **Views.** A view switch exists only where views differ. The chosen view is per tab. A view whose
   `viewMinWidth` is not met MUST fall back to its nearest narrower view.
-- **Action shape.** `{ id, label, icon, group: 'display' | 'actions', promoted?, checked?, tone?,
-disabled?, shortcut?, onPress }`.
+- **Action shape.** The workspace header's `WorkspaceHeaderAction` (`WorkspaceHeader.tsx`):
+  `{ id, label, icon?, presentation?: 'button' | 'icon', group?: 'display' | 'actions', primary?,
+direct?: 'wide' | 'always' | 'never', checked?, pressed?, busy?, disabled?, tone?, shortcut?,
+onMenuClosed?, onPress }`. `pressed` exists only on a non-primary icon action.
 - **Complete menu.** The `...` menu MUST list every action of the active tab: `display` group
   (options and toggles) above `actions`. A promoted action is a shortcut to the same action (same
   `id` and label); the duplicate is intended. A shortcut hint appears only where the key works.
 - **Icon = action.** An icon names the action it performs, never the current state. State is shown
   in the menu's trailing slot (`checked`) and, for icon toggles, through `aria-pressed`.
-- **Promotion.** Direct header actions follow the header action budget of the workspace header. The
-  action that persists changes while there are unsaved changes wins first; then lower `promoted`;
-  the rest stay menu-only. The header MUST NOT change geometry when state changes.
+- **Promotion.** Direct header actions follow the workspace header's budget (two on wide, one on
+  narrow, none in the compact floating row): `direct: 'always'` wins first, then the `primary`
+  action, then `direct: 'wide'` in input order; a danger action is never direct and the rest stay
+  menu-only. The kind decides which actions exist per state (for example Documents' Save, `primary`
+  and `'always'`, exists only while there are unsaved changes). The header MUST NOT change geometry
+  when state changes.
 - **Height.** `ItemTabs` sets its own height (its `density` slot minus the divider), so a host
   renders it inside `WorkspaceHeader.identityContent` without sizing it.
 

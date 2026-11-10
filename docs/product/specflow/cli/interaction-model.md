@@ -28,13 +28,17 @@ related:
 nevo-specflow <noun> <verb> [target] [--flags]
 
 nevo-specflow init
-nevo-specflow status
 nevo-specflow start
-nevo-specflow task next
-nevo-specflow task start <change> <task>
+nevo-specflow project inspect
+nevo-specflow specs list
+nevo-specflow specs create
+nevo-specflow specs documents status <operation-id>
+nevo-specflow definitions validate
+nevo-specflow commit status
 ```
 
-Product lifecycle commands (`start`, and later `stop` / `status`) live at the executable root.
+These are existing commands (`packages/specflow/src/program.ts`). Product lifecycle commands
+(`init`, `start`, and later `stop` / `status`) live at the executable root.
 Resource-oriented commands use short, guessable `<noun> <verb>` forms where a resource has more
 than one operation. The full command set is defined with the implementation; this is only the
 shape it must follow. Whether
@@ -65,7 +69,14 @@ locale, wall-clock time (beyond explicitly-requested timestamps), or ambient env
 - Agents and CI reach the same operations through explicit flags — never through a
   suppressed prompt. A command that would otherwise need interactive input, run
   non-interactively without the flag, **fails with a clear message**.
-- The CLI never writes directly to a protected branch; it opens a PR.
+- Engine commits made through the commit capability (Create, documents, definitions, manual commit)
+  never land on a branch the project protects (`git.commits.protectedBranches` / `allowedBranches`):
+  such a commit is refused with `BRANCH_PROTECTED`, which covers both cases, and
+  `init` offers to switch to a separate branch for the definitions commit. The CLI does not open
+  pull requests; the person merges such a branch.
+  Close archive and integration are not covered by the guard yet
+  ([ADR 0013](../../../architecture/decisions/0013-engine-owned-commits-and-protected-branches.md);
+  [open idea](../../../ideas/specflow-engine/durable-operations-and-recovery.md#protected-branches-for-close-deferred)).
 
 ## Next-action guidance
 

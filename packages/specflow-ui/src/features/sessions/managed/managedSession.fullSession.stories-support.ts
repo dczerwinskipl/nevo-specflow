@@ -19,7 +19,7 @@ import {
 
 /** Isolated presentation adapters for the Full Session state fixtures: never imported by a
  * production route. Each builds a realistic `SessionSnapshot` for one state validated this pass
- * (full-session-screen-structure.md §12/§13/§15/§18/§19/§20). */
+ * (full-session.md; workflow-execution states: full-session-screen-structure.md §1). */
 
 const turnId = '00000000-0000-4000-8000-000000000010';
 
@@ -661,8 +661,8 @@ export function richDefaultApi(): ManagedSessionsApi {
 }
 
 /**
- * Every Work-block state in one realistic multi-Turn conversation (session-chat-v10-design.md
- * §3.1): settled; settled with a failed test across many kinds (four-kinds cap + "i więcej"); a
+ * Every Work-block state in one realistic multi-Turn conversation (full-session.md "Work
+ * block"): settled; settled with a failed test across many kinds (four-kinds cap + "i więcej"); a
  * Turn interrupted mid-work (shown once, in its block — no separate outcome row); a Turn with no
  * tool Work that failed (outcome row alone, the only place that fact exists); a Turn whose entries
  * carry no digest — a Turn recorded before the digest existed (honest "N działań narzędzi"); and the live

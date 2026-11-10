@@ -18,6 +18,8 @@ related:
   - design-system.implementation.react.secondary-navigation
   - product.specflow.specification-creation
   - product.specflow.ui.interaction-model
+  - product.specflow.ui.specification-overview
+  - product.specflow.ui.specs-overview
 ---
 
 # App Shell geometry decisions
@@ -28,8 +30,8 @@ audit and the prototypes are not kept. The rules themselves live in the document
 - the Bounded workspace rule in
   [Layout and containment](../../../design-system/principles/layout-and-containment.md);
 - Create in [Specification creation](../specification-creation.md);
-- Specification Overview in the
-  [Specification workspace screen spec](../../../ideas/specflow-ui/screens/specification-workspace-ui-spec.md).
+- Specification Overview in [Specification overview](specification-overview.md);
+- the Specifications list in [Specifications list](specs-overview.md).
 
 ## Problem
 
@@ -42,7 +44,7 @@ bands, while the Create form and Specification Overview stayed in one narrow col
 
 | Topic                  | Decision                                                                                                                                                                                                                                                                                                                                       |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Screen modes           | Two modes. **Focused**: the Specifications list and Create Specification, sharing one frame. **Workspace**: everything inside a Specification (Overview, Documents, Session), at full width.                                                                                                                                                   |
+| Screen modes           | Two modes. **Focused**: the Specifications list and Create Specification, sharing one frame. **Workspace** (the screen mode, see [vocabulary](../../shared/vocabulary.md#git-and-workspace-vocabulary)): everything inside a Specification (Overview, Documents, Session), at full width.                                                      |
 | Focused frame width    | `grow`: `min(available width, 1440 px)`, border included, centred only once it reaches 1440 px. Pure CSS on the existing shell clamp. No measurement or timer decides the width.                                                                                                                                                               |
 | Specification boundary | One geometry change when entering or leaving a Specification is accepted. Below a 1708 px viewport there is none, because the Focused frame already fills. No extra breakpoint shrinks the jump.                                                                                                                                               |
 | Specifications list    | Fills the frame with bounded column tracks, so related values stay together. Text blocks above the rows (search, notices) keep the title-column width.                                                                                                                                                                                         |

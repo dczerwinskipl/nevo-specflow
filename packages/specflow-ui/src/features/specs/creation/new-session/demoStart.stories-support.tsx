@@ -31,7 +31,7 @@ export const startSpecId = 'api-integration';
 
 /**
  * The New Session route opened directly in a project Runtime whose workspace refuses the start
- * (session-association-ux §5): `forbidden` or Sessions turned off replace the start form.
+ * (full-session.md "Starting a Session"): `forbidden` or Sessions turned off replace the start form.
  */
 export function StartRefusedPreview({
   reason,

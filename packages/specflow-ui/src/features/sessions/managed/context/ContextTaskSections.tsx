@@ -123,7 +123,7 @@ export function ContextAttentionSection({
   );
 }
 
-/** "Related Tasks" (Powiązane zadania, session-association-ux §7): one row per associated Task
+/** "Related Tasks" (Powiązane zadania, full-session.md "Context"): one row per associated Task
  * that was found (title, key), opening that Task's own tab. Optional; an empty list is omitted, an
  * unreadable one is one warning. Tasks that cannot be found are counted in an attention note beside
  * the ones that were found. */

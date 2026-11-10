@@ -2,7 +2,7 @@
 id: reference.api.session-telemetry
 type: reference
 title: Session telemetry HTTP and live update contract
-status: draft
+status: current
 scope: specflow
 areas: [ai, runtime, server, security, ui]
 tags: [sessions, telemetry, usage, cost, limits, context, sse]
@@ -14,16 +14,14 @@ summary: >
   invalidation contract, with provider provenance, freshness and partial availability.
 related:
   - reference.api.sessions
-  - ideas.specflow-runtime.ai-adapters.usage-accounting
-  - ideas.specflow-runtime.session-v10-backend-readiness
+  - reference.protocols.session-provider-driver
+  - ideas.specflow-runtime.provider-migration-plan
 ---
 
 # Session telemetry API
 
-Implemented backend on the current feature branch; independent final validation
-is reported in the PR. This document owns the wire contract. No UI implementation,
-Task/Specification/Workflow integration,
-provider inference, pricing service or credential broker is in this proposal.
+This document owns the telemetry wire contract. It involves no Task/Specification/Workflow
+integration, provider inference, pricing service or credential broker.
 
 ## Resources and operations
 
@@ -119,8 +117,8 @@ not binary floating-point summation. Only validated source scope/currency/meanin
 can share an aggregate. Incompatible or missing costs make that aggregate partial
 or unavailable; do not combine billed charges with API-equivalent estimates.
 
-This delivery enables only provider-reported amounts with established currency,
-scope and basis. `estimated` reserves a distinct future path; estimating requires
+Only provider-reported amounts with established currency, scope and basis are enabled.
+`estimated` reserves a distinct future path; estimating requires
 an explicit versioned pricing contract. Subscription payment/remaining credits
 cannot be inferred from API-equivalent cost. Never infer currency from a bare
 legacy numeric `cost` without native evidence.
@@ -305,16 +303,14 @@ Freshness/refresh state transitions change the validator; do not include request
 wall-clock time in every response. This route-specific policy is an implemented
 exception to existing Sessions `no-store`, not a global cache-policy replacement.
 
-## Implementation readiness and acceptance
+## Provider coverage
 
 Additional source coverage and pricing provenance belong to F16 in the
 [provider capability backlog](../../ideas/specflow-runtime/provider-migration-plan.md#f16--telemetry-coverage-and-provenance).
 That backlog does not promise additional metrics in the current API.
 
-The snapshot, explicit refresh, SSE invalidation, access generation and account-limit
-permission are implemented. Built-in admin has the new account-limit permission;
-developer/viewer do not acquire it implicitly. Trusted local mode retains its
-existing all-capabilities behavior. No frontend adapter/rendering was changed.
+Built-in admin holds `session.view-provider-limits`; developer and viewer do not acquire it
+implicitly. Trusted local mode retains its existing all-capabilities behavior.
 
 | Source      | Implemented observations                                                                                                              | Explicit refresh                                                   |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
@@ -327,17 +323,18 @@ token overlap, usage basis, context meaning and limit windows using controlled
 fixtures before enabling each field. Missing support is a valid unavailable result,
 not evidence that an invented observation should be shown.
 
-Verification includes: GET without launching providers/transcript scans; complete
+Required verification: GET without launching providers/transcript scans; complete
 and partial aggregates across restart/replay; currency/overlap validation; account
 switch and late events; compaction and model change; stale/failed observation;
 403/304 isolation; refresh idempotency/coalescing/timeout/429; snapshot-to-SSE race,
 reconnect/resync, slow readers and terminal flush. Test 32 idle clients: zero
 outbox polling, native provider reads or refresh receipts from opening streams.
 No test uses real subscriptions,
-credentials or paid inference. No UI implementation belongs to this delivery.
+credentials or paid inference.
 
-SQLite schema 1 migrates atomically to additive schema 2. Existing normalized Turn
-summaries migrate asynchronously in batches of at most 100 rows, followed by
+Opening a store created before telemetry adds the telemetry tables atomically with the rest of the
+[schema migration](../../architecture/ai/session-storage-and-lifecycle.md#schema-migration). Existing
+normalized Turn summaries migrate asynchronously in batches of at most 100 rows, followed by
 bounded Session publication. Reads do not scan transcripts. Legacy aggregates are
 unavailable with `BASELINE_MISSING` until their baseline is ready, and imported
 v1 usage remains partial because old records lack coverage provenance. Existing

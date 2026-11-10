@@ -9,8 +9,7 @@ read_when:
   - resolving Project Home from primary and linked worktrees
   - changing registry, canonical discovery or managed workspace capacity
 summary: >
-  Implemented E1/E2 Project Home identity, local registry authority and canonical
-  Specification binding.
+  Project Home identity, local registry authority and canonical Specification binding.
 related:
   - architecture.runtime.specflow-engine
   - architecture.runtime.specflow-lifecycle
@@ -70,5 +69,6 @@ Only verified registered worktrees participate in this authority model. A list r
 alone does not register a workspace or grant access.
 
 See [Git configuration](../../reference/configuration/specflow-git-worktrees.md) and
-[Specification lifecycle](specification-lifecycle.md). E1/E2 does not supply network-distributed
-locks, active provider Session fencing or automatic moved-home repair.
+[Specification lifecycle](specification-lifecycle.md). The Engine does not supply network-distributed
+locks or automatic moved-home repair; managed agent processes are fenced by
+[workspace execution claims](workspace-execution-claims.md).

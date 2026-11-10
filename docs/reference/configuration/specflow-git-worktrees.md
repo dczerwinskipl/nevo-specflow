@@ -58,9 +58,11 @@ machine-specific worktree folder and `git.commits.auto` (see below).
 ## Engine commits and protected branches
 
 When `git.enabled` is `true` the Engine commits the scaffold of a new Specification (see
-[lifecycle](../../architecture/runtime/specification-lifecycle.md)). `git.commits` decides on which
-branches it may do so. It is committed Project Home configuration only: the workstation-local config
-cannot set it and a linked checkout's own copy of the config is never consulted.
+[lifecycle](../../architecture/runtime/specification-lifecycle.md)). `git.commits.protectedBranches`
+and `git.commits.allowedBranches` decide on which branches it may do so. They are committed Project
+Home configuration only: the workstation-local config cannot set them (it may set only
+`git.commits.auto`, see [Auto-commit per capability](#auto-commit-per-capability)), and a linked
+checkout's own copy of the config is never consulted.
 
 - **Nothing is protected by default.** `integrationTargetBranch` is not implicitly protected.
 - A branch is refused when it matches any `protectedBranches` pattern (`branch-protected`), or when

@@ -40,7 +40,7 @@ const pendingSessionId = 'new-session';
 
 /**
  * Starting a new Session inside the Session screen itself
- * (`docs/ideas/specflow-ui/screens/new-session-ui-spec.md`): the full Session shell at once — the
+ * (full-session.md "Starting a Session"): the full Session shell at once — the
  * header (**New session**, the side-panel toggle or Context), Context with the pinned
  * Specification and the executor mirroring the choice, the start form in the conversation column
  * and the Composer inactive until Start. The screen presents and collects; the `source` owns the

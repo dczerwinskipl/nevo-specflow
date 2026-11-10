@@ -11,9 +11,9 @@ import { ModelField } from './ModelField';
 import { WorkModeField } from './WorkModeField';
 
 /**
- * What the agent starts with, as labelled fields (new-session-ui-spec.md section 6): Model, Effort
- * and Work mode. Always all three once a provider is chosen, so choosing a model never adds rows;
- * Effort and Work mode stay disabled until a model decides which efforts and modes exist (a
+ * What the agent starts with, as labelled fields (full-session.md "Starting a Session"): Model,
+ * Effort and Work mode. Always all three once a provider is chosen, so choosing a model never adds
+ * rows; Effort and Work mode stay disabled until a model decides which efforts and modes exist (a
  * provider that offers no model choice shows Model disabled at the provider default and decides
  * them itself). The same composition serves the start form and Create's agent section; the Composer
  * keeps its compact pickers. The provider itself is chosen with `ProviderChoice`.

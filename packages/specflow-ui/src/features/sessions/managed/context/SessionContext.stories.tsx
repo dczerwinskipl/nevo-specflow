@@ -38,7 +38,7 @@ import type { SessionContextViewModel } from './sessionContextTypes';
 /**
  * Isolated catalog entry for the Context panel (no `ManagedSession` composition — that screen is
  * under separate, parallel edit): visual verification for the live-review fixes —
- * - Related Tasks lists one row per associated Task (session-association-ux §7), built from the
+ * - Related Tasks lists one row per associated Task (full-session.md "Context"), built from the
  *   shared `ContextNavigationRow` geometry;
  * - consistent `Typography` tokens across every section instead of ad hoc `text-*`/`font-*`
  *   classes;

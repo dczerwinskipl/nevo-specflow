@@ -4,7 +4,7 @@ import { InlineNote } from '@nevo/ui';
 /**
  * Takes the Composer's place when the caller may only view the Session (no Manage, so no Turn,
  * answer or Stop is ever theirs): the archived bar's quiet shape without an action
- * (full-session-screen-structure §22.1, View-only Session).
+ * (full-session.md "Session actions", View-only Session).
  */
 export function ViewOnlySessionBar() {
   const { t } = useTranslation();

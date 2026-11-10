@@ -23,14 +23,14 @@ related:
 
 ## Required implementation / outcome
 
-Inspect Engine admission/claim/attempt APIs from Plan 03 and Runtime Turn/Session persistence from Plan 04. Define explicit intent/receipt shapes and resource ownership. `sessionId`, `turnId`, `invocationId`, `executionId`, `workspaceId`, `workflowAttemptRef`, and `ProviderSessionRef` stay distinct.
+Inspect Engine admission/claim/attempt APIs from Plan 03 and the implemented Runtime Turn/Session persistence and [workspace execution claims](../../../../../architecture/runtime/workspace-execution-claims.md). Define explicit intent/receipt shapes and resource ownership. `sessionId`, `turnId`, `invocationId`, `executionId`, `workspaceId`, `workflowAttemptRef`, and `ProviderSessionRef` stay distinct.
 
 Consult the [future multi-project direction](../../../../multi-project-hosting.md) when defining context versus execution authority. E5 still demonstrates a single verified checkout, not cross-project dispatch.
 
 ## Prerequisites
 
 - [E3.T10](../../03-offline-workflow-execution/tasks/T10-process-restart-tests.md)
-- [E4.T08](../../04-managed-sessions-foundation/tasks/T08-lifecycle-security-tests.md)
+- Managed Sessions foundation, implemented: [Session storage and lifecycle](../../../../../architecture/ai/session-storage-and-lifecycle.md)
 
 Original planning dependency: Plans 03 & 04. The linked IDs above are the **executable** dependency graph; a separate spec-level gate still applies.
 

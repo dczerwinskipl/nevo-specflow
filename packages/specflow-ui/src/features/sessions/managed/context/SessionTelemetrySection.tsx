@@ -21,7 +21,7 @@ type TokenReading = TelemetrySnapshot['usage']['session'];
 type MoneyReading = TelemetrySnapshot['cost']['session'];
 
 /**
- * Low-emphasis "Session details" (full-session-screen-structure.md §7.2/§23): token usage, cost,
+ * Low-emphasis "Session details" (full-session.md "Context"): token usage, cost,
  * context occupancy and rate limits, placed last in Context — after Related Tasks — and never
  * competing visually with the three Primary-adjacent sections above it. Data comes from the
  * Session telemetry API (reference.api.session-telemetry) through `sessionTelemetryStore.ts`.
@@ -65,10 +65,11 @@ type MoneyReading = TelemetrySnapshot['cost']['session'];
  * already populated data, unlike `usage.turn`/`cost.turn` above) instead of silently inheriting
  * the section's "for the whole session" claim.
  *
- * Provider limits carry the only refresh (full-session-screen-structure §7.7): a ghost "Odśwież" in their
+ * Provider limits carry the only refresh (full-session.md "Context"): a ghost "Odśwież" in their
  * heading row, offered when the reading is `refreshable` and the user may manage the Session
  * (`limitsRefresh` present). With the control the section stays even without rows, saying why;
- * `NOT_AUTHORIZED` limits render nothing at all. `migration` is not shown (full-session-screen-structure §7.7).
+ * `NOT_AUTHORIZED` limits render nothing at all. `migration` is not shown (full-session.md
+ * "Context").
  */
 export function SessionTelemetrySection({
   telemetry,
@@ -116,7 +117,7 @@ export function SessionTelemetrySection({
     snapshot.limits.status === 'unavailable' && snapshot.limits.reason === 'NOT_AUTHORIZED';
   const refreshOffered = isLimitsRefreshOffered(snapshot, canRefresh);
   const showLimits = !limitsMasked && (!!limits || refreshOffered || !!limitsRefresh?.refusedNote);
-  // One indicator for a refresh in flight: the control's own label (full-session-screen-structure §7.7).
+  // One indicator for a refresh in flight: the control's own label (full-session.md "Context").
   const refreshPending =
     !!limitsRefresh?.sending ||
     (snapshot.refresh.state !== 'idle' && snapshot.refresh.groups.includes('limits'));
@@ -332,7 +333,7 @@ function limitsCommandNote(refresh: LimitsRefreshControl | undefined): LimitsNot
 }
 
 /** `InlineNote` has no live region of its own: info and attention notes go to the section's polite
- * status region, only an unconfirmed request to its alert region (full-session-screen-structure §7.7). */
+ * status region, only an unconfirmed request to its alert region (full-session.md "Context"). */
 function LimitsNoteLine({ note }: { note: LimitsNote }) {
   const { t } = useTranslation();
 

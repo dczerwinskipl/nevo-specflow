@@ -178,9 +178,7 @@ runtime page stack.
 
 ### Root tabs and local navigation (split layout)
 
-Decided by the owner (2026-11-03; history and rejected variants in
-[Secondary tabs redesign](../../../ideas/specflow-ui/components/secondary-tabs-redesign.md)): the
-split Secondary's tabs are IDE-style **editor tabs** on a constant 36 px rail, and local depth is a
+Decided by the owner (2026-11-03): the split Secondary's tabs are IDE-style **editor tabs** on a constant 36 px rail, and local depth is a
 detail header row in the content instead of a bar under the rail.
 
 On a split layout the Secondary has no 56 px header while the root-tab strip is shown: its
@@ -455,8 +453,8 @@ its fit marker alone (`:not([data-workspace-fit] *)`). A workspace rendered insi
 workspace's region sizes only that region with its own `fit` (`available` fills the region, and a
 nested `bounded` fills it too, since the region is narrower than the Focused maximum), so it can
 neither turn a full-width page into a Focused frame nor widen a Focused frame. The default
-`content` fit keeps its intrinsic width with a Secondary. `NestedAvailableInBounded*`,
-`NestedBoundedInAvailable1920` and `ContentIntrinsicWithSecondary1920` cover these cases.
+`content` fit keeps its intrinsic width with a Secondary. `NestedAvailableInBounded{1600,1920}Contract`,
+`NestedBoundedInAvailable1920Contract` and `ContentIntrinsicWithSecondary1920Contract` cover these cases.
 
 **Stacked close (opt-in).** `stackedSecondaryClose="hide"` removes the Secondary's own close action (the trailing
 `x`, and the matching item of the compact row) while the layout is stacked, where Back already leaves the

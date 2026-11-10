@@ -44,12 +44,31 @@ When an idea is accepted for implementation:
 3. create an implementation-ready specification or task plan as appropriate;
 4. remove or mark the idea as superseded rather than leaving competing active guidance.
 
+A merged implementation PR does not by itself prove that a whole idea is delivered. Before any part
+of an idea is removed, give each part exactly one disposition:
+
+- **implemented** — described in a current contract that states the delivered scope, including
+  any limited or stand-in behaviour;
+- **superseded** — replaced by a concrete decision, which the remaining text names;
+- **still open** — kept here as backlog.
+
+A current product, architecture or reference document describes only what is implemented; planned
+behaviour next to it is marked as such and linked to its open idea. Decision records kept here
+(rationale, rejected alternatives, follow-ups) stay `status: draft` and non-authoritative; a
+rationale whose premise no longer holds is marked superseded or removed.
+
 ## Current packages
 
 - [Offline Engine, CLI/Runtime boundaries, and Git worktrees](specflow-engine/README.md)
 - [Multi-project hosting, Docker, and future cross-project work](multi-project-hosting.md)
 - [Authorization follow-ups](authorization/README.md)
 - [SpecFlow Runtime / AI adapter hardening](specflow-runtime/ai-adapters/README.md)
+- [SpecFlow Runtime / provider capability backlog](specflow-runtime/provider-migration-plan.md)
+- [SpecFlow Runtime / Session backend gaps](specflow-runtime/session-v10-backend-readiness.md)
+- [SpecFlow Runtime / server-side Work history filter](specflow-runtime/work-history-server-filter.md)
 - [Developer workspace / code inspection and IDE integration](developer-workspace/README.md)
-- [SpecFlow UI / information and navigation inventory](specflow-ui/README.md)
-- [Nevo UI / design-system implementation ideas](nevo-ui/README.md)
+- [SpecFlow UI / open screen and component ideas](specflow-ui/README.md)
+
+Non-authoritative decision records with open follow-ups:
+[Session association registry](specflow-runtime/session-association/README.md),
+[Project-mode Specification Overview](specflow-runtime/project-mode-spec-overview/README.md).

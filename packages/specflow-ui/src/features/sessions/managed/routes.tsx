@@ -19,8 +19,9 @@ import { ManagedSession } from './ManagedSession';
 import { useSessionContextNavigation } from './useSessionContextNavigation';
 
 /**
- * Retired standalone start (session-association-ux §2, U1): every new Session starts from a
- * Specification, so an old link or bookmark lands on the Specifications list, without a toast.
+ * Retired standalone start (interaction-model.md, "Starting a Session and the navigator"): every
+ * new Session starts from a Specification, so an old link or bookmark lands on the Specifications
+ * list, without a toast.
  */
 export const managedNewSessionRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -72,7 +73,7 @@ export function ManagedSessionRouteView({ sessionId }: { sessionId: string }) {
 
   const onSessionDeleted = () => {
     // The destination follows the association read when the delete succeeded
-    // (session-association-ux §4); `replace`: Back does not reopen the deleted Session.
+    // (full-session.md "Session actions"); `replace`: Back does not reopen the deleted Session.
     const destination = home
       ? navigate({
           to: '/specs/$specId/sessions',
@@ -117,7 +118,7 @@ export function ManagedSessionRouteView({ sessionId }: { sessionId: string }) {
 
 /**
  * Focus lands on the destination's page heading after a deleted Session's screen is replaced
- * (full-session-screen-structure §22.1): the Primary `WorkspaceHeader` title, once it has rendered.
+ * (full-session.md "Session actions"): the Primary `WorkspaceHeader` title, once it has rendered.
  */
 function focusPrimaryHeading() {
   requestAnimationFrame(() => {

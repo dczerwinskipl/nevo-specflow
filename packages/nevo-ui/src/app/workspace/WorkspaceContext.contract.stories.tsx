@@ -412,7 +412,7 @@ export const HeaderAndBodyShareOneDataHost: Story = {
   },
 };
 
-// W02: Secondary root-tab state (openTab, tabs, activateTab, close/reopen, open's unchanged slot).
+// Secondary root-tab state (openTab, tabs, activateTab, close/reopen, open's unchanged slot).
 
 const tabItemStack = defineSecondaryStack<
   { itemId: string },

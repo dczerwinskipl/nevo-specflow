@@ -89,17 +89,18 @@ function browserStorage() {
 }
 
 /**
- * Copy action for a specific authored message (session-chat-v10-design.md §2: "Copy and Quote
- * belong to their specific authored message"). Desktop reveals it only on hover/focus of the
+ * Copy action for a specific authored message (full-session.md "Conversation": Copy
+ * belongs to its authored message). Desktop reveals it only on hover/focus of the
  * message (the `group/message` on its `EntryRow` article below); coarse pointers always show it,
  * since hover does not exist on touch — the same `pointer-fine:opacity-0` /
  * `pointer-fine:group-hover/<name>:opacity-100` convention `treeRowActionClassName` already
  * establishes for a trailing row action in this Design System (`treeRecipes.ts`).
  *
- * Quote (quoting a message into the composer draft) is deferred: session-chat-v10-design.md only
- * says Copy and Quote "belong to" the message, without deciding whether Quote replaces or appends
- * to an existing draft, its exact quoted format, or focus handling afterward — material product
- * decisions, not implementation detail, so they are left to a follow-up rather than guessed here.
+ * Quote (quoting a message into the composer draft) is deferred (session-chat-v10-design.md §2):
+ * V10 only says Copy and Quote "belong to" the message, without deciding whether Quote replaces or
+ * appends to an existing draft, its exact quoted format, or focus handling afterward — material
+ * product decisions, not implementation detail, so they are left to a follow-up rather than guessed
+ * here.
  */
 function MessageCopyAction({ onCopy }: { onCopy: () => Promise<boolean> }) {
   const { t } = useTranslation();
@@ -148,7 +149,7 @@ function MessageCopyAction({ onCopy }: { onCopy: () => Promise<boolean> }) {
 }
 
 /**
- * One conversation entry, rendered per its semantic role (session-conversation-ui-spec.md §4-5).
+ * One conversation entry, rendered per its semantic role (full-session.md "Conversation").
  * V10 rule: do not prefix every entry with a repeated "Ty"/"Asystent" speaker label — the kind
  * stays available to assistive tech (`sr-only`) but visual role comes from alignment/surface/
  * typography/Markdown instead of a visible caption on every row.
@@ -577,7 +578,7 @@ function ManagedSessionConversation({
       return;
     }
 
-    // Attachments stay in the composer: nothing transports them (session-composer-design.md §5
+    // Attachments stay in the composer: nothing transports them (session-composer-design.md §1
     // documents the upload contract as a known gap), so clearing the chips on Send would imply they
     // were delivered. They remain visible, with `managedSession.attach.note` under them, until the
     // user removes them.
@@ -604,9 +605,9 @@ function ManagedSessionConversation({
     interrupted: t('managedSession.outcome.interrupted'),
   };
 
-  // Composer toolbar's "+" entry (session-composer-design.md §6). Attachments are
-  // local-only React state: §5 documents the real upload contract as a known gap, so nothing here
-  // is actually sent anywhere — they stay in the composer after Send and the chips carry the
+  // Composer toolbar's "+" entry (full-session.md "Composer"). Attachments are local-only React
+  // state: session-composer-design.md §1 documents the upload contract as a known gap, so nothing
+  // here is actually sent anywhere — they stay in the composer after Send and the chips carry the
   // "local mock" note (`managedSession.attach.note`), so the UI never implies delivery.
   const [attachments, setAttachments] = useState<{ id: string; name: string; size: number }[]>([]);
   // Two hidden inputs, not one: "+" opens a menu offering "Add file"/"Add image"
@@ -869,7 +870,7 @@ function ManagedSessionConversation({
                       )
                     )}
                     {/* Archived in another view: said here until the `session` change brings the
-                        archived bar (full-session-screen-structure §22.1). */}
+                        archived bar (full-session.md "Session actions"). */}
                     <div>
                       <div role="status">
                         {state.archivedRefusal && !archived ? (
@@ -976,7 +977,7 @@ function ManagedSessionConversation({
                               }
                             />
                             <MessageComposer.Toolbar>
-                              {/* Visual order per session-composer-design.md §6: "+", intent/preset,
+                              {/* Visual order per full-session.md "Composer": "+", intent/preset,
                                 conditional operation policy, then the trailing Model+effort/Send
                                 cluster (`ml-auto` keeps that cluster right-aligned, as it already
                                 was). */}
@@ -1134,27 +1135,28 @@ export function ManagedSession({
   namingPending = false,
 }: {
   /**
-   * This view deleted the Session (full-session-screen-structure §22.1); the route composition leaves it
-   * (replace navigation, toast, focus). `ManagedSession` itself stays router-agnostic.
+   * This view deleted the Session (full-session.md "Session actions"); the route composition leaves
+   * it (replace navigation, toast, focus). `ManagedSession` itself stays router-agnostic.
    */
   onSessionDeleted?: () => void;
   /** This view renamed, archived or unarchived the Session: the route refreshes lists showing it. */
   onSessionChanged?: () => void;
   /**
-   * The deleted/unknown Session view's way on (full-session-screen-structure §22.1): the
+   * The deleted/unknown Session view's way on (full-session.md "Session actions"): the
    * Specifications list.
    */
   onGoToSpecifications?: () => void;
   sessionId: string;
   owner: string;
   /**
-   * The agent is still naming a Session started without an own name (new-session-ui-spec.md): the
-   * header shows the provisional title with a "Nadawanie nazwy…" status until the name arrives.
+   * The agent is still naming a Session started without an own name (full-session.md "Starting a
+   * Session"): the header shows the provisional title with a "Nadawanie nazwy…" status until the
+   * name arrives.
    */
   namingPending?: boolean;
   api: ManagedSessionsApi;
   /**
-   * Context Secondary content (full-session-screen-structure.md §7): the route maps the Session's
+   * Context Secondary content (full-session.md "Context"): the route maps the Session's
    * association read onto it (`associationContext`). Without one the Session shows as standalone,
    * with what this screen derives itself (executor, Work history). An `executor`/`workHistory` fact
    * it carries wins over the derived one.
@@ -1341,8 +1343,8 @@ export function ManagedSession({
   // appears once, in the block, never twice.
   const liveInConversation =
     !!snapshot && !!liveActivity(snapshot.activeTurn, snapshot.currentActivity);
-  // One fact, first match wins (full-session-screen-structure §22.1): a connection that is not up, then
-  // archived, then an unknown Turn outcome, then the current activity / readiness.
+  // One fact, first match wins (full-session.md "Session actions"): a connection that is not up,
+  // then archived, then an unknown Turn outcome, then the current activity / readiness.
   const archived = !!snapshot?.session.archivedAt;
   const unknownTurn = snapshot?.activeTurn?.state === 'unknown';
   const activityLabel = snapshot
@@ -1383,7 +1385,7 @@ export function ManagedSession({
         label: t('sessions.context.title'),
         icon: 'file',
         // Directly tappable on narrow instead of buried in the generic "More actions" overflow
-        // (full-session-screen-structure.md §21.1's `[Context]` pill); `'always'` wins the single
+        // (full-session.md "Secondary tabs"'s `[Context]` pill); `'always'` wins the single
         // narrow direct slot regardless of this header's own measured width.
         direct: 'always',
         onPress: () => void navigation.open(sessionContextStack, {}),
@@ -1500,8 +1502,8 @@ export function ManagedSession({
           />
           {sessionActions.dialogs}
         </AppWorkspace.Primary>
-        {/* Context is the default split-capable Secondary (full-session-screen-structure.md §3.1,
-          §3.4): open by default, stays closed once the user explicitly closes it, and is restored
+        {/* Context is the default split-capable Secondary (full-session.md "Secondary tabs"):
+          open by default, stays closed once the user explicitly closes it, and is restored
           by the Primary "Context" action — on narrow layouts it opens the Context Secondary stack;
           on split-capable layouts it reappears whenever Context is closed, so there is always a
           way back in regardless of `supportsSplit` (§24.2). */}

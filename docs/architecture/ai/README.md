@@ -12,7 +12,8 @@ summary: >
 
 - [Canonical Session / Turn / Work model](canonical-session-turn-work.md)
 - [Provider boundary](provider-boundary.md)
-- [Managed Session persistence and lifecycle design](session-storage-and-lifecycle.md) (draft implementation design)
+- [Managed Session persistence and lifecycle](session-storage-and-lifecycle.md)
+- [Provider process ownership and limits](provider-process-ownership.md)
 
 Product presentation belongs under
 [AI session UX](../../product/specflow/ui/ai-session-ux.md).

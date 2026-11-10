@@ -9,21 +9,26 @@ read_when:
   - changing the Engine, CLI or HTTP integration boundary
   - assigning ownership of durable Specification operations
 summary: >
-  Implemented E1/E2 ownership of the offline Engine, Runtime HTTP transport and product
-  CLI.
+  What the offline Engine owns (Project Home, workspaces, Specifications, documents, Git, durable
+  journals, workspace execution claims and the workflow kernel), and how the product CLI and the
+  Runtime HTTP transport call it without owning mutation logic.
 related:
   - architecture.runtime.ownership-and-lifecycle
   - architecture.runtime.specflow-project-home
   - architecture.runtime.specflow-lifecycle
+  - architecture.runtime.workspace-execution-claims
+  - architecture.workflow.workflow-kernel
 ---
 
 # SpecFlow Engine ownership and transport boundaries
 
-## Implemented E1/E2 boundary
+## Engine boundary
 
 `@nevo/specflow-engine` owns verified Project Home discovery, physical workspace identity,
-local registry and binding authority, canonical Specification reads, durable Create/Close journals,
-Git operations and recovery. It runs in a CLI process without starting Runtime, HTTP or an AI
+local registry and binding authority, canonical Specification reads, Specification documents and
+definitions, durable Create/Close/document/commit journals, Git operations and recovery,
+[workspace execution claims](workspace-execution-claims.md) for native agent processes, and the
+[workflow kernel](../workflow/workflow-kernel.md) for Specification and Task execution. It runs in a CLI process without starting Runtime, HTTP or an AI
 provider. There is one Engine-owned state machine for mutations, not parallel HTTP/CLI copies.
 
 `@nevo/specflow` supplies the installed Commander CLI and calls Engine operations.
@@ -48,9 +53,15 @@ the Engine runs `tools/eslint/check-import-cycles.mjs`, which fails on any impor
 known `specs/create` cycle it lists. The lifecycle cycle that predates the gate is reported, not gated.
 
 Runtime remains responsible for long-lived provider processes, streams and managed Sessions.
-Engine-local Create/Close operation records are **not** provider Session/Turn execution records.
-E1/E2 do not implement the proposed E3 Workflow Kernel, E4 Sessions Foundation or E5 managed
-dispatch. See [Runtime ownership](ownership-and-lifecycle.md).
+Engine-local operation records are **not** provider Session/Turn execution records. Runtime admits
+every native agent execution through an Engine workspace execution claim before it starts the
+process, and settles it only with proof that the process stopped.
+
+The workflow kernel exists in the Engine but is not yet called by the Runtime or the CLI: there is no
+workflow command, HTTP endpoint or continuation orchestrator, and Task reads still report
+`not_implemented`. Starting Sessions from continuation decisions, the agent completion signal and
+the Runtime projection are follow-ups (plan 06 F01, F02, F09). See
+[Runtime ownership](ownership-and-lifecycle.md).
 
 ## Sources of authority
 
@@ -63,8 +74,11 @@ dispatch. See [Runtime ownership](ownership-and-lifecycle.md).
 - Engine coordination fences cooperating local processes; it does not assert arbitrary editors or
   Git processes are quiescent.
 
-Implementation: `packages/specflow-engine/src/{project,specs,version-control}/`,
-`packages/specflow-runtime/src/features/specs/`, and `packages/specflow/src/specs/command.ts`.
+Implementation: `packages/specflow-engine/src/` (`project/`, `specs/`, `git/`, `version-control/`,
+`execution/`, `workflow/`, composed in `application.ts`), the Runtime features under
+`packages/specflow-runtime/src/features/` (`specs/`, `documents/`, `operations/`, `tasks/`,
+`sessions/effects/`), and the CLI command modules under `packages/specflow/src/` (`specs/`,
+`documents/`, `commit/`, `definitions/`, `project/`, `init/`).
 
 See [Project Home](project-home-and-workspaces.md), [Specification lifecycle](specification-lifecycle.md),
 and the [implemented HTTP contracts](../../reference/api/specflow-specification-operations.md).

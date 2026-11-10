@@ -165,7 +165,7 @@ export function resolveWorkspacePixelSplit(
  * Minimum viable Primary/Secondary pane widths for `split="dynamic"` (contract
  * workspace-dynamic-split.md §4.2). Tunable defaults, not frozen contracts: "Minimum widths must
  * allow real Conversation and Composer usage, not be picked just to reproduce the screenshot"
- * (session-chat-v10-design.md §7.2). `WORKSPACE_DYNAMIC_SECONDARY_MIN_WIDTH` doubles as the narrow
+ * (workspace-dynamic-split.md §5). `WORKSPACE_DYNAMIC_SECONDARY_MIN_WIDTH` doubles as the narrow
  * auto-mode default (≈330px, same source) — with only one tab open the auto ratio is already as
  * small as the layout allows, so "narrow default" and "Secondary's minimum" are the same value.
  * Both stay comfortably below the existing `WORKSPACE_SPLIT_MIN_WIDTH` (840px) on purpose, with

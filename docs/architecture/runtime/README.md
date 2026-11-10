@@ -19,8 +19,15 @@ The **Nevo SpecFlow Runtime** is the long-lived local application backend.
 AI-specific runtime semantics live under [AI architecture](../ai/). Deterministic workflow
 semantics live under [workflow architecture](../workflow/).
 
-## Implemented Engine E1/E2
+## Engine
 
 - [Engine ownership and transport boundaries](specflow-engine.md)
 - [Project Home and registered workspaces](project-home-and-workspaces.md)
 - [Specification Create/Close lifecycle](specification-lifecycle.md)
+- [Specification documents](specification-documents.md)
+- [Workspace execution claims](workspace-execution-claims.md)
+
+## Runtime reads and policy
+
+- [Task read composition](task-read-composition.md)
+- [Endpoint policy](endpoint-policy.md)

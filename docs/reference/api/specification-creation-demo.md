@@ -19,14 +19,14 @@ summary: >
 related:
   - reference.api.specification-workspace
   - product.specflow.ui.data-loading-and-integration
-  - ideas.specflow-ui.screens.specification-creation
+  - product.specflow.specification-creation
 ---
 
 # Specification creation demo integration contract
 
 **2026-10-18 approved demo implementation.** The owner authorized the accepted mock iteration,
 including document folders and file import. Workspace and Git choice follows the target-aware create contract below ("Gdzie chcesz pracować?").
-The screen contract `ideas.specflow-ui.screens.specification-creation` owns presentation; old screen
+The [demo mode of Specification creation](../../product/specflow/specification-creation.md#demo-mode) owns presentation; old screen
 state and composition impose no compatibility requirement. This integration is bounded process-memory
 support for the connected product demo, with no real Git, worktree, filesystem or provider execution.
 

@@ -1136,8 +1136,8 @@ export const LaterSessionConfiguration: Story = {
     await expect(canvas.getByRole('combobox', { name: 'Model' })).toHaveTextContent(
       'codex model A',
     );
-    // Nothing was saved before Start, so leaving needs no confirmation (new-session-ui-spec.md,
-    // scenario (g)): the list opens at once, in place of the start form.
+    // Nothing was saved before Start, so leaving needs no confirmation (full-session.md "Starting a
+    // Session"): the list opens at once, in place of the start form.
     await userEvent.click(canvas.getByRole('button', { name: /Otwórz nawigację|Open navigation/ }));
     const drawer = await within(document.body).findByRole('dialog');
     await userEvent.click(within(drawer).getByRole('link', { name: 'Specyfikacje' }));

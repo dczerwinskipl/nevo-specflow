@@ -207,7 +207,7 @@ describe('WorkspaceSplitter', () => {
     fireEvent.pointerUp(splitter, { pointerId: 2, clientX: 400 });
   });
 
-  describe('secondarySide="start" (workspace-dynamic-split.md §4.2/§4.3, W06 — Secondary before Primary)', () => {
+  describe('secondarySide="start" (workspace-dynamic-split.md §4.2/§4.3 — Secondary before Primary)', () => {
     it.each([
       ['ArrowLeft', 0.48],
       ['ArrowRight', 0.52],

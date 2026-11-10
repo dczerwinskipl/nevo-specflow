@@ -1,7 +1,7 @@
 import { translateNow } from '../../../i18n/message';
 
 /**
- * The Work history root tab is one tab per Turn (full-session-screen-structure.md §8.3), so the tab
+ * The Work history root tab is one tab per Turn (full-session.md "Work history (L2)"), so the tab
  * name has to tell Turns apart: "Work history · turn 3". The number is the Turn's position among the
  * Turns of the conversation the client has loaded (entries arrive in `ordinal` order), which is
  * stable while the user reads forward and can only shift when older history is loaded above it.

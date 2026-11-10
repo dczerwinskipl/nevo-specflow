@@ -12,7 +12,7 @@ import {
 import type { WorkModeOption } from './workModes';
 
 /**
- * The Composer toolbar's "Tryb pracy" entry (session-composer-design.md §6): the provider's own
+ * The Composer toolbar's "Tryb pracy" entry (full-session.md "Composer"): the provider's own
  * work modes, exactly as its catalogue lists them — in catalogue order, under the catalogue's own
  * titles, usable ones only (a disabled option, with the catalogue's reason, is the Session's
  * current mode once it became unusable; see `runtimeWorkModes`) (the Runtime is the

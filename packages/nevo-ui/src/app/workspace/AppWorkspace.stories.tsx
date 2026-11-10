@@ -603,7 +603,7 @@ export const RuntimeFitContract: Story = {
   },
 };
 
-// --- W03: Secondary root-tab strip composition --------------------------------------------------
+// --- Secondary root-tab strip composition --------------------------------------------------------
 // Fixtures and interaction stories for workspace-dynamic-split.md §4.1's tab strip: absent with one
 // open tab (pixel/DOM-identical to today's single Secondary), present with ItemTabs at two or more.
 
@@ -770,7 +770,7 @@ export const RootTabStripAppearsContract: Story = {
     );
     assert(
       canvas.queryByRole('button', { name: 'Close Context' }) === null,
-      "The pinned tab must offer no close affordance (W01's closable: false).",
+      'The pinned tab must offer no close affordance (closable: false).',
     );
     assert(
       canvas.queryByRole('button', { name: 'Close Item A' }) !== null,

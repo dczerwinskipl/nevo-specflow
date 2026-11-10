@@ -13,14 +13,13 @@ import {
 } from './WorkspaceContext';
 import { WORKSPACE_DYNAMIC_SECONDARY_MIN_WIDTH } from './workspaceSizing';
 
-// End-to-end demonstrations of workspace-dynamic-split.md §5's transition table (W04), composed
-// with W02's tab state (openTab/open/activateTab/closeTab) and W03's Secondary root-tab strip, at
+// End-to-end demonstrations of workspace-dynamic-split.md §5's transition table, composed
+// with the root-tab state (openTab/open/activateTab/closeTab) and the Secondary root-tab strip, at
 // the representative widths `AppWorkspaceFit.contract.stories.tsx` already uses plus widths just
 // above/below the new `WORKSPACE_DYNAMIC_SECONDARY_MIN_WIDTH + WORKSPACE_DYNAMIC_PRIMARY_MIN_WIDTH`
 // combined minimum (730px; exact-px boundary coverage lives in `workspaceSizing.test.ts` against
 // the pure resolver directly). `mode: 'manual'` rows are covered there too, not here: entering
-// `'manual'` requires a drag on `WorkspaceSplitter` (§4.3), which W05 (out of this task's scope)
-// has not added yet.
+// `'manual'` requires a drag on `WorkspaceSplitter` (§4.3), covered by the splitter stories below.
 
 const viewports = {
   w700: { name: '700', styles: { width: '700px', height: '800px' }, type: 'desktop' },
@@ -72,7 +71,7 @@ const legacySlotSecond = itemStack('dynamic-split-legacy', 'Legacy second open')
 function DynamicSplitPrimaryContent({
   onSwapSides,
 }: {
-  /** W06: a product-owned action — `AppWorkspace` itself has no built-in "swap" control. */
+  /** Side swap: a product-owned action — `AppWorkspace` itself has no built-in "swap" control. */
   onSwapSides: () => void;
 }) {
   const navigation = useSecondaryNavigation();
@@ -101,15 +100,15 @@ function DynamicSplitPrimaryContent({
 
 function DynamicSplitFixture() {
   const [contextOpen, setContextOpen] = useState(true);
-  // W05: tracked only so stories can assert on the resolver's own `mode` (uncontrolled
+  // Tracked only so stories can assert on the resolver's own `mode` (uncontrolled
   // `secondaryRatio`/`onSecondaryRatioChange` still owns the actual value; this is read-only).
   const [mode, setMode] = useState<'auto' | 'manual'>('auto');
-  // W06: the fixture owns this exactly like `secondaryRatio` above — `AppWorkspace` never flips it
+  // Side swap: the fixture owns this exactly like `secondaryRatio` above — `AppWorkspace` never flips it
   // itself, only reports the effective value back (see `AppWorkspace`'s `onSecondarySideChange`
   // doc comment). The "Swap sides" button is this fixture's own product-level affordance.
   const [side, setSide] = useState<'start' | 'end'>('end');
   // A declarative Secondary host still registers its pinned tab explicitly (same pattern as
-  // W03's own fixtures — see `useRegisterPinnedSecondaryTab`'s doc comment).
+  // the tab-strip fixtures — see `useRegisterPinnedSecondaryTab`'s doc comment).
   useRegisterPinnedSecondaryTab(contextOpen ? { title: 'Context' } : null);
 
   return (
@@ -477,7 +476,7 @@ export const EntersSplitAboveDynamicMinimumContract: Story = {
   },
 };
 
-// W05 — `WorkspaceSplitter` wired into this `AppWorkspace`: pointer/touch drag committing
+// `WorkspaceSplitter` wired into this `AppWorkspace`: pointer/touch drag committing
 // `mode: 'manual'` (contract §4.3/§5/§7). `DynamicSplitFixture` reports the resolver's own `mode`
 // on the shell (`data-dynamic-split-mode`) purely so these stories can assert on it; it does not
 // change the fixture's rendered sizing for the stories above.
@@ -637,7 +636,7 @@ function tabStripSummary(canvasElement: HTMLElement): { activeLabel: string; tab
   return { activeLabel: label.slice(0, countMatch.index).trim(), tabCount: Number(countMatch[1]) };
 }
 
-// W06 — side swap (contract §4.2 last bullet, §5 "secondarySide changes" row): everything the
+// Side swap (contract §4.2 last bullet, §5 "secondarySide changes" row): everything the
 // resolver/tab-set own (secondaryRatio, mode, tabs, activeTabId) must survive a swap unchanged;
 // only layout order and which edge carries the divider border change. `AppWorkspace` itself has no
 // built-in "swap" control (§6) — the fixture's own "Swap sides" button (`DynamicSplitFixture`
@@ -736,7 +735,7 @@ export const SwapSidesPreservesTabsAndRatioContract: Story = {
 };
 
 // ---------------------------------------------------------------------------------------------
-// W07 — the full §5 transition table proven as ONE connected scenario, not the isolated
+// The full §5 transition table proven as ONE connected scenario, not the isolated
 // per-trigger assertions above. Width is driven by a resizable wrapper (same technique as
 // `WorkspaceHeader.stories.tsx`'s `ResizableHeader`) rather than a Storybook `viewport` global, so
 // a single `play` function can shrink below, then widen back above, the dynamic minimums — a

@@ -2,16 +2,19 @@
 id: architecture.ai.session-storage-and-lifecycle
 type: architecture
 title: Managed Session persistence and lifecycle design
-status: draft
+status: current
 scope: specflow
 areas: [ai, runtime, security, testing]
 tags: [sessions, sqlite, durability, recovery, pagination]
 read_when:
   - implementing managed Session storage or admission
   - implementing Session tail reads and restart recovery
+  - recovering a Session blocked by an unknown Turn
+  - changing the Session SQLite schema
 summary: >
-  Decided implementation design for independent Sessions, worker-owned SQLite,
-  one local Runtime owner, transactional admission, bounded reads and crash recovery.
+  Independent Sessions, worker-owned SQLite, one local Runtime owner, transactional
+  admission, store admission bounds, bounded reads, schema migration, and positive-evidence
+  crash recovery.
 related:
   - architecture.ai.canonical-session-turn-work
   - architecture.ai.provider-boundary
@@ -22,9 +25,6 @@ related:
 
 # Managed Session persistence and lifecycle
 
-Plan 04 implements this design in PR #98. It remains draft pending independent review;
-the migration evidence document records executed verification separately from design obligations.
-Current architecture wins.
 The independent Session boundary is an owner decision recorded in the canonical AI model.
 
 ## Independent capability
@@ -49,15 +49,15 @@ Use Node 24's built-in `node:sqlite` in a dedicated Worker thread, with async re
 ports to Runtime. DatabaseSync and synchronous SQLite operations stay entirely in that worker.
 Do not add a native npm database dependency, block the HTTP event loop or read an entire transcript.
 Package the Worker entry with the installed artifact; test startup from an installed tarball.
-Node 24.20.0 on the inspected host exposes DatabaseSync; portability still needs implementation tests.
 
 Store: `<verified Project Home>/.nevo/local/state/sessions/sessions.sqlite`.
 The feature owns this database, WAL and SHM files. Use foreign keys, WAL, synchronous FULL,
 bounded busy timeout (5 seconds), schema version and transactional schema changes.
-Refuse a future unsupported schema; never silently recreate a nonempty invalid database.
+Refuse a future unsupported schema; never silently recreate a nonempty invalid database
+(see [Schema migration](#schema-migration)).
 No native history import, old-JSON loader, compatibility aliases or automatic transcript conversion.
 Filesystem is local to one host; shared network filesystems and multiple active Session Runtimes
-for the same database are unsupported in this delivery.
+for the same database are unsupported.
 
 Enforce that restriction with a singleton owner row acquired in BEGIN IMMEDIATE, containing
 runtime UUID, monotonically increasing epoch and PID. A second owner fails with
@@ -69,6 +69,18 @@ stops the conflicting process or uses an offline, explicitly confirmed maintenan
 outside this feature. No force-takeover endpoint is included.
 
 Every write transaction verifies runtime UUID/epoch; callbacks carry the invocation ID as well.
+
+Store admission is bounded, not an unbounded retry queue: ordinary requests stop at 48 concurrent
+Worker commands; the remaining slots up to 64 are reserved for lifecycle-critical work (provider
+facts, dispatch, delivery receipts, close). At most 64 lifecycle requests wait, FIFO, each with a
+5-second admission deadline; exhaustion or Worker loss is an explicit `SESSION_STORE_BUSY` /
+unavailable rejection, never dropped success. A sequenced provider fact rejected with transient
+`SESSION_STORE_BUSY` is retried at most twice, identically (same invocation, sequence and fact),
+after 25 ms and 100 ms, and only within a two-second window for starting retries; Worker
+deduplication absorbs a commit whose acknowledgement was lost, and a replayed `lost` fact preserves
+unknown. Provider input is never resent. A failed lifecycle write cannot fabricate a terminal
+result; permanent failure records uncertainty and a persistently unavailable store needs restart
+recovery.
 Startup acquires ownership and reconciles the indexed set of active records before registration.
 Graceful shutdown stops admission, cancels owned invocations, persists settlement, closes streams,
 releases ownership by compare-and-set and closes the worker. If settlement fails, retain evidence;
@@ -91,7 +103,7 @@ These are responsibilities, not mandatory table names. Index tail/history by
 (contentId, revision, byteOffset), events by (sessionId, eventSeq), recovery by nonterminal state.
 IDs are app-owned UUIDs; provider locator is separate (provider, providerSessionId). Neither path,
 route nor provider string shape defines identity. One provider session locator cannot be actively
-bound to two application Sessions in this delivery. Native import/attach is excluded.
+bound to two application Sessions. Native import/attach is excluded.
 
 Schema version 3 adds list projection columns to `sessions`, maintained by `saveSession` in the
 same statement as the JSON snapshot, so a list never decodes a snapshot per row:
@@ -154,7 +166,63 @@ the driver proves settlement; record no invented success on process exit. On cle
 the read-only mock settles interrupted. On restart, a dead owner's mock Turns become interrupted,
 pending live interactions become expired and open Work is explicitly closed. A future real-driver
 invocation with uncertain external effects remains unknown and cannot be automatically replayed.
-Only positive reconciliation evidence can remove that block. Plan 04 does not expose a force-recover API.
+Only positive reconciliation evidence can remove that block. There is no force-recover API.
+
+### Turn flow
+
+The happy path of one Turn whose selected mode writes to the workspace. Every native invocation
+starts from a verified `read-only` execution context; a writing mode takes the Engine
+[workspace execution claim](../runtime/workspace-execution-claims.md) before the provider starts and
+receives `workspace-write` only after admission. A mode without workspace write (for example Plan)
+takes no claim. The Engine receipt is settled before the Turn outcome is published.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant UI as SpecFlow UI
+  participant RT as Runtime sessions
+  participant DB as Session store
+  participant EN as Engine
+  participant PR as Provider CLI
+
+  UI->>RT: POST /api/sessions/:id/turns
+  RT->>DB: persist Turn and invocation intent
+  RT->>EN: admit workspace execution claim (project-write)
+  RT->>EN: mark claim dispatched
+  RT->>PR: start the driver invocation (workspace-write)
+  UI->>RT: GET /api/sessions/:id/events (SSE)
+  loop Provider facts
+    PR-->>RT: native events
+    RT->>DB: normalized Work and messages
+    RT-->>UI: session events
+  end
+  PR-->>RT: terminal result, process tree settled
+  RT->>EN: settle claim with receipt
+  RT->>DB: settle Turn
+```
+
+### Positive evidence and operator recovery
+
+Startup settles an admitted real Turn as interrupted only when its persisted native dispatch
+barrier was not crossed; it never replays the input. Repeated start request IDs return the same
+admission.
+
+| Evidence                                                                 | Safe action                                                                                                                          |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Persisted native context and dispatch-intent = 0 after owner death       | Interrupt the undispatched Turn; a new explicit intent may use the original confirmed context and bindings. Never retry the message. |
+| Confirmed native context and dispatch-intent = 1                         | Context identity alone does not prove the operation stopped or completed. Retain unknown.                                            |
+| Dispatch-intent = 1 without confirmed native context                     | The request may have executed. Retain unknown; never resend or allocate a replacement native context.                                |
+| Failed native answer delivery or uncertain write                         | Retain admission/idempotency; mark the operation unknown. Never resend an answer automatically.                                      |
+| Missing provider/account/workspace, or unproven process-tree termination | Keep the Session unavailable for new Turns; restore and verify the original binding before any reconciliation.                       |
+
+Unknown Turns carry safe reasons distinguishing missing context, unavailable provider evidence and
+missing settlement. There is no force-success or force-failure endpoint. Operators MUST NOT edit
+SQLite, remove a barrier or clear a native context to unblock a Session; preserve the database and
+the original provider state. An operator first establishes that the old Runtime and its owned
+provider tree have stopped. The authenticated reconcile command can consume an exact Engine
+settlement receipt; a dispatched Turn without such evidence stays blocked until provider-specific
+positive reconciliation exists. A separate new Session is a new conversation, not recovery of the
+old one, and must wait until any possibly surviving process affecting the workspace is contained.
 
 ## Archive and delete
 
@@ -248,9 +316,19 @@ CREATE TABLE session_association_tasks(
   implementations. The port must not become the required identity type for the core. A Specification's workspace binding is resolved at read
   time, not stored. Rebinding a workspace cannot silently relocate a provider-native Session.
 
-## Readiness boundary
+## Schema migration
 
-All foundation decisions above are fixed for implementation. Acceptance proves no-effect mock,
-storage/index behavior, scoped API and real UI. Real adapters, document writes, Engine managed
-claims and workflow finish are downstream deliveries with separate acceptance, not hidden work
-inside this store or coordinator.
+The schema version is SQLite `user_version`. Initialization runs every forward migration in a
+single `BEGIN IMMEDIATE` transaction, holding the write lock against concurrent openers and
+re-reading the version under it: ordered DDL, data transforms/backfill and the new version commit
+together, and any failure rolls back schema, data and version together, so an interrupted upgrade
+is retried rather than presented as complete. A migration MUST preserve Session/Turn/Work IDs,
+request hashes and accepted results, content offsets and revisions, and outbox sequences. An unknown
+future version, or a nonempty database without a recognized schema, fails closed with
+`SESSION_STORE_UNAVAILABLE`. There is no general migration framework, legacy-format loader or
+compatibility alias. Migration tests SHOULD open a real fixture of the previous version.
+
+## Scope boundary
+
+Document writes, Engine-managed claims and workflow completion are owned by their own features;
+they are not hidden work inside this store or coordinator.

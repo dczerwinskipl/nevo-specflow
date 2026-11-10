@@ -40,9 +40,9 @@ async function expectMarkCentred(root: HTMLElement) {
 }
 
 /**
- * Continue session (Sessions list §3.5, acceptance 10): the same row as the Session's row in the
- * Specification Sessions list, with the provider mark, age · agent · Tasks and the effective
- * status.
+ * Continue session (specification-sessions.md "The same row elsewhere"): the same row as the
+ * Session's row in the Specification Sessions list, with the provider mark, age · agent · Tasks and
+ * the effective status.
  */
 const meta = {
   title: 'SpecFlow/Screens/Specification Workspace',

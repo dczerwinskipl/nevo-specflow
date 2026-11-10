@@ -44,7 +44,8 @@ read contracts. Runtime does not implement or persist another workflow engine.
   `1404966cca4daf230afc29def0188ae5d3c1e3b4`. Its
   [public exports](https://github.com/dczerwinskipl/nevo-specflow/blob/1404966cca4daf230afc29def0188ae5d3c1e3b4/packages/specflow-engine/src/index.ts)
   implement Project Home, workspace registry/identity and coordination. They do not expose Task
-  workflow/history reads. Plan E3.T09 is future Runtime read projection work.
+  workflow/history reads. The Engine now has the [workflow kernel](../workflow/workflow-kernel.md)
+  (`inspectExecution`); projecting it into Task reads is open (plan 06 F09, plan 03 T09).
 - Sessions in #60 registers capability declarations only. A complete managed Session reader is not
   implemented there. The Engine plan also explicitly identifies that gap.
 - Legacy Nevo is migration evidence, not a dependency to import into Runtime. In particular its
@@ -237,8 +238,9 @@ HTTP adapter separation; owner-specific contract exports; demo adapters; compati
 unchanged truthful project-unavailable behavior; focused boundary tests.
 
 **Dependent on Engine's existing program:** public Task/definition/context/execution/history read
-contracts, immutable/versioned read guarantees and verified workspace binding. Coordinate with
-E3.T02–T09 in #53 rather than creating a competing Engine API from this document.
+contracts, immutable/versioned read guarantees and verified workspace binding. Build them on the
+[workflow kernel](../workflow/workflow-kernel.md) rather than creating a competing Engine API from
+this document.
 
 **Dependent on content/Sessions owners:** real versioned readers and authorized association/status
 queries. Engine cannot fabricate Runtime Sessions for an offline external agent. Absence of a

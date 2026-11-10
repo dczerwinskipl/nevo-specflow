@@ -27,7 +27,7 @@ export interface WorkspaceSplitterProps {
   /** Accessible name (contract §7), sourced from `AppWorkspaceLabels.resizeSecondary`. */
   label: string;
   /**
-   * Which side of Primary Secondary renders on (workspace-dynamic-split.md §4.2/§4.3, W06).
+   * Which side of Primary Secondary renders on (workspace-dynamic-split.md §4.2/§4.3).
    * Default `'end'` (Secondary after Primary, this component's original/only behavior). Flips the
    * sign of every pointer/touch delta and keyboard step so dragging/pressing a given direction
    * always has the same real-world effect ("drag the boundary left/right") regardless of which
@@ -51,7 +51,7 @@ interface DragState {
  * reports nothing: a plain click on the splitter, or the 0-2px jitter a real mouse/touch press
  * produces, used to report a ratio and so silently enter `mode: 'manual'` (contract §5) — after
  * which opening a second root tab no longer switched to the documented 50/50 split
- * (full-session-screen-structure.md §10.2), leaving Secondary at its narrow single-tab width.
+ * (workspace-dynamic-split.md §5), leaving Secondary at its narrow single-tab width.
  * Only a genuine drag is a user's manual sizing choice.
  */
 const DRAG_START_THRESHOLD_PX = 3;

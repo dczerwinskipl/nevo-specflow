@@ -18,7 +18,7 @@ import { useSessionContextSource } from './sessionContextValue';
 import type { SessionContextTaskRef } from './sessionContextTypes';
 
 /**
- * Task root tabs opened from Session Context (full-session-screen-structure.md §7.4/§10.1): a root
+ * Task root tabs opened from Session Context (full-session.md "Secondary tabs"): a root
  * tab is an independently revisitable working surface, and its identity is the OBJECT it shows.
  *
  * - `taskStack` is one root tab PER TASK (`instanceId` = the task id, label = the Task key, e.g.
@@ -33,8 +33,9 @@ import type { SessionContextTaskRef } from './sessionContextTypes';
  *   `openStack`, and `Root.inFlow` is set): the list and a Task are plain pushes onto that flow, and
  *   Back follows the path the user took, duplicates included (Context -> Task A -> Back -> Context
  *   -> Task A pushes again).
- * - Within a Task tab, deeper levels (attempt, review, feedback) push onto that tab's local stack
- *   (`localNavigation` decides how depth shows), keeping their Task provenance.
+ * - Planned, not built: deeper levels of a Task tab (attempt, review, feedback) would push onto that
+ *   tab's local stack (`localNavigation` decides how depth shows), keeping their Task provenance
+ *   (full-session-screen-structure.md "Task tabs in the Session"). Today the Task tab is a stand-in.
  *
  * Both stacks are defined ONCE, at module level, and read the LIVE Tasks from the Session's
  * `SessionContextSourceProvider` (`useData`), never from a value captured when a tab opened: a

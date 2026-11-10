@@ -557,7 +557,7 @@ describe('AppWorkspace Secondary root-tab strip (workspace-dynamic-split.md §4.
   });
 });
 
-describe('AppWorkspace secondarySide (workspace-dynamic-split.md §4.2 last bullet, W06)', () => {
+describe('AppWorkspace secondarySide (workspace-dynamic-split.md §4.2 last bullet)', () => {
   // Each region's content captures a mount-only id (the `useState` initializer runs exactly once
   // per mount lifecycle, unlike a counter incremented in the component body, which would also tick
   // on an ordinary re-render and falsely look like a remount). A true remount across the swap would

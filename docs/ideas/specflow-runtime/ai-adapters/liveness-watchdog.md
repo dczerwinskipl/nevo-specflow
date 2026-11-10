@@ -24,7 +24,7 @@ summary: >
 related:
   - ideas.specflow-runtime.ai-adapters
   - architecture.runtime.ownership-and-lifecycle
-  - ideas.specflow-runtime.ai-adapters.protocol-examples
+  - architecture.ai.provider-process-ownership
 ---
 
 # Provider liveness and watchdogs
@@ -163,6 +163,29 @@ timeoutKind
 
 Do not persist an unbounded process trace just to support the watchdog.
 
+If watchdog decisions are later exported as telemetry, keep attributes closed and low-cardinality:
+closed provider family, phase, timeout kind and outcome, numeric durations/counts, `other`/`unknown`
+for unbounded labels. Never emit prompts, full command lines, paths, raw provider session IDs, error
+bodies or model responses as attributes.
+
+## Example evidence
+
+A command tool where only the protocol is quiet:
+
+```text
+12:00:00 provider emits tool start: pnpm test
+12:00:10 no more provider protocol events
+12:01:00 child compiler still consumes CPU / writes files
+12:02:10 tool emits completion
+```
+
+`protocol = stale, output = maybe stale, process = recent` must not be declared inactivity.
+
+Conversely, a provider may emit a sustained run of empty diagnostic steps (for example repeated
+Antigravity `step_update` frames with `step_type: error_message` and no content) with no other
+progress. One such frame is not a failure; a sustained run is stall evidence, and it must not keep
+a Turn alive indefinitely as if it were progress.
+
 ## Cross-platform strategy
 
 ### Linux
@@ -182,10 +205,13 @@ Initial MVP can rely on:
 - process existence/exit;
 - stdout/stderr activity;
 - protocol activity;
-- existing tree-aware termination.
+- existing Job Object tree ownership and termination.
 
 A future Windows process-activity sampler can use a native/OS-specific implementation behind the
-same optional interface. It must not be required for correctness.
+same optional interface (for example Job Object accounting, which the
+[process owner](../../../architecture/ai/provider-process-ownership.md) already holds). It must not
+be required for correctness. Expose a capability such as "activity sample available" or return
+`unknown`; never report zero activity merely because a sampler is absent.
 
 ### macOS / other POSIX
 

@@ -1,131 +1,97 @@
 ---
 id: ideas.specflow-engine.recovery
 type: architecture
-title: Durable mutation journal and crash recovery
+title: Workflow finish Git stages and external writer recovery
 status: draft
 scope: specflow
-areas: [workflow, runtime, testing, configuration]
+areas: [workflow, runtime, testing]
 tags: [recovery, idempotency, journal, persistence]
 read_when:
-  - making multi-stage create or workflow operations retry-safe
-  - reconciling crashes without a long-running daemon
+  - adding commit or push stages to the workflow finish journal
+  - designing recovery for an external CLI writer that holds a workflow claim
 summary: >
-  Durable intent and stage evidence for recoverable worktree provisioning and workflow mutations,
-  with offline CLI reconciliation, safe replay, and no fabricated Runtime sessions.
+  Open proposals for the durable-operation work that is not implemented: Git stages in the workflow
+  finish journal (plan 06 F04) and the recovery protocol for external CLI writers.
 related:
   - ideas.specflow-engine
-  - ideas.specflow-engine.spec-creation
   - ideas.specflow-engine.locking
   - ideas.specflow-engine.ownership
+  - ideas.specflow-engine.plan-06
   - architecture.workflow.deterministic-workflow
+  - architecture.workflow.workflow-kernel
+  - engineering.shared.specflow-git-recovery
 ---
 
-# Durable operations and crash recovery
+# Workflow finish Git stages and external writer recovery
 
-## Principle
+The durable-operation discipline (intent before an irreversible effect, idempotency by evidence,
+replay only of proven-safe stages, no optimistic cleanup) is implemented for Create, Close, document
+commits and manual commits; see [durable Engine Git mutations](../../engineering/shared/specflow-git-recovery.md).
+The workflow kernel writes one `ExecutionChange` through a per-Specification journal
+([Workflow kernel](../../architecture/workflow/workflow-kernel.md), "State and storage"). Managed
+agent processes are fenced by
+[workspace execution claims](../../architecture/runtime/workspace-execution-claims.md). Two parts are
+still open.
 
-A multi-stage mutation spanning JSON registry, YAML manifest, filesystem and Git cannot be made truly atomic with one file rename. The Engine therefore records durable intent and reconciles stage outcomes. Retrying the same logical command must not repeat a completed destructive stage. This must work when the next caller is a new CLI process with Runtime absent.
+## Git stages in the workflow finish journal (plan 06 F04)
 
-Workflow step start/finish already has useful record concepts in legacy Nevo; copy the evidence and contracts only after reviewing replay safety. The proposed create-Spec slice is a deliberately small test of this architecture.
-
-## Creation operation stages (candidate)
+Today a finish publishes the `.execution/` records and deletes the journal; the files stay ordinary
+working-tree changes. The proposal extends the same journal with stages after the record writes:
 
 ```text
-validated + reserved
- -> worktree-provisioned (optional)
- -> manifest-written
- -> registry-linked
- -> completed
+records-written -> commit-recorded (optional) -> pushed (optional) -> completed
 ```
 
-Operation record includes a stable operation identity, requested spec/slug/workspace, target Git common-dir/branch/root, stage fingerprints, errors and data needed to prove each completed effect. Store journal under the coordination home's ignored state, not in committed Spec files.
+- Commit `.execution/**` with the Engine-owned commit capability and policy (ADR 0013, 0016, 0018),
+  path-limited to the Specification's execution records. An optional per-step
+  `finalize: [commit, push]` follows the legacy semantics.
+- Each stage records the intent before it runs and the proof after it (commit id, pushed ref).
+  Replay continues only uncompleted stages whose preconditions still hold; an unknown Git outcome
+  stays recovery-required, as for other Engine Git mutations.
+- Journal identity, workspace claim and workflow attempt stay distinct: a finished step does not
+  settle a claim, and a settled claim does not finish a step.
 
-The operation must be **idempotent by evidence**. A record saying "stage completed" is useful only if relevant filesystem/Git facts still match it. If the worktree path now belongs to an unrelated checkout, replay must stop. A mismatch is an explicit recovery conflict, not permission to overwrite.
+## Recovery for external CLI writers
 
-## Mutation discipline
+An external agent started outside Runtime holds no managed Session, so the Runtime cannot prove
+that its process stopped. When its workflow claim (see [locking](locking-and-admission.md)) is
+ambiguous, `recovery-required` should carry proof requirements and an action plan:
 
-- Plan/read-only checks do not create claims, run tests, modify Git or persist a new finish operation.
-- Separate validation/preconditions from side effects.
-- Persist intent before an irreversible side effect.
-- After each stage, write proof/revision that allows a later process to check if it already happened.
-- Use atomic local writes and controlled versions for journal records.
-- Terminalize success/failure only with an evidenced final state; keep ambiguous records for inspection and explicit repair.
-- Provide read-only `inspect operation` plus safe `retry/reconcile` rather than deleting unknown records on process restart.
+- inspect the claim and the Git/current artifacts;
+- reconcile idempotent stages;
+- release verified terminal work explicitly;
+- escalate when the agent may still write.
 
-## Example crash outcomes
+Never delete the only available worktree or forge a successful human review to clear a blocked
+state. An ambiguous write may block conflicting actions until reconciliation succeeds; external
+claims are never removed on Runtime shutdown. The operator protocol is proposed in
+[execution scopes and recovery](execution-scopes-and-recovery.md).
 
-| Crash                                        | Next action                                                                                   |
-| -------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| Before intent                                | No mutation happened; normal create can retry                                                 |
-| After reservation                            | Revalidate, continue or release reservation if unmodified                                     |
-| After Git worktree creation, before manifest | Verify worktree membership and ownership then resume manifest                                 |
-| After manifest write, before registry        | Match specId and intent before binding; never silently create duplicate                       |
-| After registry write, before response        | Return existing canonical result                                                              |
-| During locked JSON rewrite                   | Parse validated old/new state or fail with repair instruction                                 |
-| After one workflow finish effect             | Resume only uncompleted stages proven safe                                                    |
-| During worktree deletion                     | Keep cleanup intent; recheck existence/branch and do not accidentally remove a different path |
+## Protected branches for Close (deferred)
 
-Recovery should be driven by the next Engine operation/readiness reconciliation or explicit command; no permanent server is required. Runtime boot may trigger the same reconciliation but does not override the Engine.
+Close keeps its own archive commit and integration code, so the protected-branch guard of the commit
+capability does not cover it: integration into a protected target branch is not forbidden today
+(ADR 0013, decision 7). The follow-up moves the archive commit onto the commit capability so the
+guard applies, and decides whether integration into a protected target is refused or offered as a
+branch for the person to merge.
 
-## Claims and cancellation
+## Merge-conflict resolution after Close (deferred)
 
-Journal identity, execution claim and workflow attempt are distinct. Finishing/clearing a claim does not imply completing the step. On Runtime shutdown, managed providers are cancelled and their claimed writes are reconciled; external claims are not forcibly removed. An ambiguous write may block subsequent conflicting actions until reconciliation succeeds.
+Close reports a known integration conflict and fences it: the Specification settles as
+`archived-linked-awaiting-integration` (or `requires-resolution`), and a later CloseWorktree
+integrates once the conflict is resolved outside the Engine. A resolution capability itself does
+not exist. The owner direction for it:
 
-## Persistence and safety details to resolve
-
-- Crash-consistent atomic write strategy on Windows and POSIX; test fsync/rename/fallback behavior.
-- Multiple node processes accessing one registry; consistent lock ordering.
-- Schema evolution and migrations for local state records.
-- Retention/compaction after terminalization while preserving enough evidence for idempotent retry.
-- Local backup/debug support and sensitive-data redaction.
-- Whether project state home survives moving the primary worktree; no silent reinitialization with loss of open operations.
-- Protection against stale operation ID reused for different inputs (fingerprint or immutable intent).
-
-## No optimistic cleanup
-
-If an operation has created a managed worktree and fails later, automatic rollback is allowed only after proving no new user edits and exact ownership. Otherwise return a repairable state with clear paths and identifiers. Never run force clean/reset/remove simply to restore a pleasing initial state.
+- the UI may offer **Resolve manually** and **Ask agent**, but the Engine never launches an agent
+  or picks changes; it only emits typed conflict evidence;
+- resolution is a separate, separately authorized operation with its own resolution checkout; it
+  never mutates the settled CloseSpecification intent;
+- the following CloseWorktree re-verifies source ancestry and the current target before
+  integrating.
 
 ## Verification
 
-Kill subprocess at each stage and start **a fresh process** to recover. Assert no duplicate Spec/branch/worktree, no lost registry update, same canonical result for same operation ID, structured conflict if filesystem diverges, and no requirement to start the HTTP Runtime. See [test plan](test-plan.md).
-
-## Two independent recovery authorities
-
-Creation/rebind/workflow operations use Engine-owned durable journals. Runtime-managed provider invocation needs a **separate** durable dispatch intent and Turn lifecycle; the Engine claim and Runtime invocation may correlate, but neither journal replaces the other. If Runtime crashes after provider spawn and before correlation is stored, provider work is **unknown** and automatic replay is unsafe. Runtime may settle its Turn while Engine workflow remains unfinished; claim release requires its own proof. See [managed execution integration](managed-session-integration.md).
-
-For an external CLI writer, `recovery-required` should include proof requirements and an action plan: inspect claim and Git/current artifacts, reconcile idempotent stages, safely release verified terminal work, or escalate when the agent may still write. Never delete the only available worktree or forge successful human review to clear a blocked state. See [execution-scopes recovery](execution-scopes-and-recovery.md).
-
-## E2.T04 recovery procedure for local create
-
-The Engine's short Project Home control lock and its durable creation journal are
-separate evidence. Inspect both before an operator retries an interrupted create:
-
-1. Read the create record using `inspectCreateSpecification(engine, operationId)`
-   and the lock using `inspectProjectControlLock(context)`. Preserve the state
-   files in `.nevo/local/state/engine/operations/create/`, any `*.tmp` files,
-   and `.nevo/local/state/engine/control.lock` before manual repair.
-2. Identify the original writer and any descendant Git processes **independently**;
-   an absent PID or elapsed timeout alone cannot prove termination. If work may
-   still be running, do not release its lock or replay its operation.
-3. For `git-initiated`, prove process quiescence **and** inspect the expected Git
-   branch, path, worktree membership, base commit, and checkout identity. Only
-   then may an explicit trusted operator request a retry with
-   `confirmInterruptedGitSettled: true`. A partial ref, unexpected path or
-   substituted identity is a recovery conflict, not permission to recreate.
-4. A stranded `control.lock` or unpublished atomic `*.tmp` remains in place
-   until manual investigation. After independently proving there is no writer
-   and preserving the evidence, an operator may remove the verified orphan
-   lock and archive the abandoned temporary file **out of** the journal
-   directory. Never erase an authoritative published journal or override an
-   unknown lock. If evidence is inconclusive, stop and escalate.
-5. Reopen the Engine in a new process with the **same** `operationId` and
-   immutable input. It verifies stage effects against Git/FS/registry. Never
-   force-clean, reset, or prune an uncertain checkout to unblock creation.
-
-**Discovery admission policy (E2.T04):** create is deliberately blocked when
-any bound canonical Spec has `workspace_unavailable` or `manifest_missing`.
-The local registry currently stores `specId → workspaceId`, not a durable
-authoritative slug for every Spec. Allowing new creates while part of that
-namespace is unreadable would violate global slug uniqueness. A future narrower
-policy requires a validated, coordinated slug-ownership record and recovery
-contract; this checkpoint does not silently infer it from stale primary copies.
+Kill a subprocess at each stage and start **a fresh process** to recover. Assert no duplicate
+commit, no lost record update, the same canonical result for the same operation, a structured
+conflict if the filesystem diverges, and no requirement to start the HTTP Runtime. See the
+[test plan](test-plan.md) (R07, W07, W08).

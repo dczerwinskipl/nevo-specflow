@@ -19,10 +19,10 @@ export type SessionStartStatus = 'idle' | 'starting' | 'failed';
 
 /**
  * Where a new Session is started, inside the Session screen's conversation column
- * (new-session-ui-spec.md section 5): provider tiles, then the labelled Model, Effort and Work mode
- * fields (`AgentFields`), then the optional own name, then the note and **Start session**. Fully
- * controlled: the owner holds the choice and runs the start, the form only presents it and reports
- * `onStart` once, when the choice is complete (or, while an earlier start is unresolved, to
+ * (full-session.md "Starting a Session"): provider tiles, then the labelled Model, Effort and Work
+ * mode fields (`AgentFields`), then the optional own name, then the note and **Start session**.
+ * Fully controlled: the owner holds the choice and runs the start, the form only presents it and
+ * reports `onStart` once, when the choice is complete (or, while an earlier start is unresolved, to
  * resolve it).
  */
 export function SessionStartForm({

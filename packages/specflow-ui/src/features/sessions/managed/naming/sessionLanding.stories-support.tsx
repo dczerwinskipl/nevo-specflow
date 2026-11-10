@@ -16,7 +16,7 @@ import { SessionNamingStatus } from './SessionNamingStatus';
  * screen: the real `WorkspaceHeader` and a Composer. The Session opens idle (provisional title, empty
  * Composer); the agent names it only from the first message sent in it, so the naming state appears
  * after that message. `ManagedSession` itself is not used because its header has no naming state yet
- * — see `SessionNamingStatus` and the hook-up in `docs/ideas/specflow-ui/screens/new-session-ui-spec.md`.
+ * — see `SessionNamingStatus` and the hook-up in full-session.md "Starting a Session".
  *
  * `generatedTitle` arrives after `namingDelayMs` from the first message (the agent naming the
  * Session); `customName` skips naming entirely. A `namingDelayMs` of `null` keeps it pending.

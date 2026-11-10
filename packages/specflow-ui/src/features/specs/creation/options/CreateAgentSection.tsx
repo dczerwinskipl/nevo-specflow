@@ -13,8 +13,9 @@ import { createControlWidth } from '../createFormLayout';
 
 /**
  * The agent of the Specification's initial Session: the provider tiles, then the same labelled
- * Model, Effort and Work mode fields the Session start form uses (`AgentFields`, new-session-ui-spec.md
- * section 9). The first message is written in the Session itself, so there is none here.
+ * Model, Effort and Work mode fields the Session start form uses (`AgentFields`, full-session.md
+ * "Starting a Session"). The first message is written in the Session itself, so there is
+ * none here.
  */
 export function CreateAgentSection({
   catalogue,

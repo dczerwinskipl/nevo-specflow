@@ -619,8 +619,8 @@ function RuntimeSurfaceRegion({
   compactNavigationAction?: WorkspaceHeaderAction;
   divider?: boolean;
   /**
-   * Which edge of this region carries the divider border when `divider` is set (W06,
-   * workspace-dynamic-split.md §4.2 last bullet): `'start'` (default, today's only behavior) is
+   * Which edge of this region carries the divider border when `divider` is set
+   * (workspace-dynamic-split.md §4.2 last bullet): `'start'` (default, today's only behavior) is
    * this region's leading edge (`border-l`); `'end'` is its trailing edge (`border-r`) — used when
    * `secondarySide` places this region before its sibling instead of after it.
    */

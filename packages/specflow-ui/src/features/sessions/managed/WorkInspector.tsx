@@ -212,9 +212,9 @@ type NarrationVoice = 'commentary' | 'reasoning';
  * header of a collapsible operations group, and Thinking looks the same apart from its voice.
  * Both use exactly this one block — same size, colour, spacing and long-text handling —
  * and the ONLY visual difference is the voice: Thinking is italic, Commentary upright. They are
- * still two different kinds of Work (session-chat-v10-design.md §4): the italic voice tells them
- * apart at a glance, and assistive tech gets the kind's own name (`sr-only`), since italics are not
- * announced. No icon, no marker dot, no chevron, no card.
+ * still two different kinds of Work (full-session.md "Work history (L2)"): the italic voice tells
+ * them apart at a glance, and assistive tech gets the kind's own name (`sr-only`), since italics
+ * are not announced. No icon, no marker dot, no chevron, no card.
  *
  * Same text rendering as the chat's own Commentary row (`ManagedSession.tsx`'s `commentary`
  * branch): plain prose (`body-md`, pre-wrapped, no Markdown), `text-content-muted` — so the same
@@ -318,7 +318,7 @@ const chapterMembers = (chapter: WorkChapter) => [
 /** One Commentary-headed phase: `<comment> <timeline> [<thinking> <timeline>] …` — the rail resets
  * at every narration boundary and never spans across one; narration (Commentary, Thinking) is
  * rendered between rails, never as part of a rail itself (see
- * session-work-inspector-ui-spec.md §2) and never gated behind a disclosure either (see
+ * full-session.md "Work history (L2)") and never gated behind a disclosure either (see
  * `WorkNarration`). The leading "Start of Turn" chapter uses a neutral label instead of a
  * Commentary heading — there is no prose to show there. While older history is not loaded, a
  * leading chapter without Commentary is only cut off from its Commentary on an older page, so it
@@ -378,7 +378,7 @@ function WorkChapterSection({
   );
 }
 
-/** The persistent Work summary row (session-chat-v10-design.md §3, mockup's "144 elementy
+/** The persistent Work summary row (full-session.md "Work block", mockup's "144 elementy
  * przebiegu · 1 w toku" / "48 odczytów · 24 zapisy · …" counts row): rendered only when the
  * Runtime's `WorkPage.counts` aggregate is present — hidden entirely otherwise, never computed
  * from `items.length` (which is only ever a bounded page, not the Turn's true total). `byKind`
@@ -518,7 +518,7 @@ function Work({ data }: { data: Data }) {
   // aggregate counts"), omitted for Turns that predate it: the newest by `eventSeq`
   // among the tail and every page loaded — never derived from `items`, so the summary row is
   // hidden entirely when the field is absent instead of faked from `items.length`
-  // (session-chat-v10-design.md §3).
+  // (full-session.md "Work block").
   const counts = newestCounts(state.counts, query.data && workPageCounts(query.data))?.value;
   const olderBusy = state.busy;
   const olderError = state.error;
@@ -740,7 +740,7 @@ function Actions({ data, params }: { data: Data; params: ActionsParams }) {
                 <SingleToolActionDetail item={items[0]!} source={data} withHeader={!headerHosted} />
               ) : (
                 // L3/L4 exact chronology: the generic Timeline is the right default here, unlike
-                // the Commentary-grouped L2 Work log above (session-work-inspector-ui-spec.md §2).
+                // the Commentary-grouped L2 Work log above (full-session.md "Work history (L2)").
                 // Several ToolActions genuinely need the marker rail — see
                 // `ToolActionTimelineItem`'s own doc comment.
                 <div {...historyList} className="w-full">
@@ -763,7 +763,7 @@ function Actions({ data, params }: { data: Data; params: ActionsParams }) {
 }
 
 /**
- * The Work history root tab: one tab per Turn (full-session-screen-structure.md §8.3). The tab's
+ * The Work history root tab: one tab per Turn (full-session.md "Work history (L2)"). The tab's
  * identity is the Turn (`instanceId`), so a Work block in the conversation and Context's "Work
  * history" row, both calling `openTab` with the same `turnId`, land on the SAME tab, while another
  * Turn opens or activates its own. The label names the Turn (`workTabLabel`).

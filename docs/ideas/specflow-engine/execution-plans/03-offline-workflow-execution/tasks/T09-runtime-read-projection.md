@@ -25,7 +25,7 @@ related:
 
 Expose real external workflow status/blocked claim through existing Specs read projections, honoring scoped auth and unavailable source. No automatic Session, artificial provider history or background queue.
 
-**Transferred from E2.T06:** decide and implement any required typed Task/Workflow read port only after E3.T03's canonical state and transition contract is accepted. Do not project raw `SpecificationManifest.tasks: readonly unknown[]` or invent verification/progress statuses. Specify authorization, unavailable/missing behavior and test evidence before introducing a public DTO or HTTP route. A Task read port is not an E2 foundation deliverable.
+**Transferred from E2.T06:** decide and implement any required typed Task/Workflow read port over the workflow kernel's canonical state (`inspectExecution`, former E3.T03). Do not project raw `SpecificationManifest.tasks: readonly unknown[]` or invent verification/progress statuses. Specify authorization, unavailable/missing behavior and test evidence before introducing a public DTO or HTTP route. A Task read port is not an E2 foundation deliverable.
 
 ## Prerequisites
 

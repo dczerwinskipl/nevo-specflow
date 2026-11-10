@@ -3,7 +3,7 @@ import { EmptyState } from '@nevo/ui';
 import { SessionProviderIcon } from '../../shared/SessionProviderIcon';
 
 /**
- * The conversation of a Session that has no message yet (new-session-ui-spec.md, section 5): the
+ * The conversation of a Session that has no message yet (full-session.md "Starting a Session"): the
  * agent's logo at the empty state's large glyph size, that the agent is ready and that writing a
  * message starts the conversation. Names the provider only; the model and work mode are visible in
  * the Composer right below. The provider's colour logo is kept as it is. A view-only Session has

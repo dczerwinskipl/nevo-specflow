@@ -74,6 +74,7 @@ export {
   type UnitHit,
 } from './search/search';
 export { RRF_K, reciprocalRankFusion } from './ranking/rrf';
+export { tokenize } from './ranking/tokenize';
 export { sameIdentity, validateChange } from './indexing/vector-store/vector-store';
 export {
   cosineSimilarity,

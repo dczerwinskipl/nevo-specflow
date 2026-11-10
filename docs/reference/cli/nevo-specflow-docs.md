@@ -44,8 +44,9 @@ nevo-specflow docs semantic index
 
 - `list` prints every document, all statuses, ordered by id.
 - `find` is a lexical OR search over frontmatter (`id`, `title`, `scope`, `areas`, `tags`,
-  `read_when`, `summary`, path, `related`), ranked by matched-term coverage, then field weight,
-  then id. Filters narrow the result; every status and every path is visible.
+  `read_when`, `summary`, path, `related`) with the word normalization of `search`'s frontmatter
+  ranking (see Ranking), ranked by matched-term coverage, then field weight, then id. Filters
+  narrow the result; every status and every path is visible.
 - `get` resolves exact stable ids in the given order. It fails closed: an unknown id or an inactive
   document (`deprecated`, `superseded`) is an error, naming the replacement when `superseded_by` is
   set, and nothing is printed. With `--content` it prints the whole Markdown file of every
@@ -96,8 +97,9 @@ scores never mix) of two rankings, each limited to three times `--limit` candida
    vector similarity in hybrid mode
    ([ADR 0021](../../architecture/decisions/0021-product-neutral-ai-semantic-search-engine.md));
    a document takes the rank of its best section;
-2. the **frontmatter ranking**: `find`'s field weights and term normalization (case and English
-   plural folding, so `task` and `tasks` match each other) over what a document says it is about:
+2. the **frontmatter ranking**: `find`'s field weights and term normalization (the section
+   ranking's words, then English plural folding of ASCII words, so `task` and `tasks` match each
+   other) over what a document says it is about:
    `id`, `title`, `scope`, `areas`, `tags`, `read_when` and `summary`, not its path or `related`.
    A question term in the frontmatter of more than a quarter of the searched documents (and of more
    than one) is ignored, so the words most frontmatter shares ("the", "and", "of") rank nothing;
@@ -106,8 +108,12 @@ scores never mix) of two rankings, each limited to three times `--limit` candida
 
 A document whose `summary` says "Tasks are handled by the engine" is therefore found by
 `search tasks` even when no section says "tasks". A document none of whose sections is among the
-section ranking's candidates has no sections. Section text is matched by exact, diacritic-folded words without stemming, because the
-engine does not know the corpus language.
+section ranking's candidates has no sections. Both rankings split text into the same words:
+Unicode letter and digit runs after compatibility normalization (NFKD), lower-cased, with
+diacritics removed, so `płatności` is one word and matches `PŁATNOŚCI` and `płatnosci` (a letter
+without a decomposition, such as `ł`, stays). Section text is matched by these exact words without
+stemming, because the engine does not know the corpus language; only the frontmatter ranking folds
+English plurals, and only of words that are ASCII after normalization.
 
 **Mode.** With `docs.search.semantic: true` and a reachable `ai.embeddings` endpoint, the section
 ranking is hybrid. Otherwise it is BM25 alone and the result states why. Every result carries
@@ -122,9 +128,10 @@ answer still exits 0.
 | `index-building`       | the index does not cover the current documents yet: another process is updating it, or more sections lack vectors than a search embeds, or `--no-refresh` |
 | `index-unavailable`    | the index cannot be read or written (for example a permission problem); waiting does not help                                                             |
 
-**Freshness.** Before answering, `search` brings the index up to date: unchanged files (same size
-and modification time) are not read, changed files are re-chunked only when their content changed,
-and only new or changed sections are embedded. A current index costs no endpoint call besides the
+**Freshness.** Before answering, `search` brings the index up to date: it reads and hashes every
+document (sizes and modification times are not trusted, so a change that keeps both, such as a
+timestamp-preserving copy, is seen), re-chunks only documents whose content hash changed, and
+embeds only new or changed sections. A current index costs no endpoint call besides the
 query. When the index needs work, a short reachability probe runs first, so an unreachable endpoint
 falls back to lexical within the query timeout (at most 3000 ms) instead of the document timeout.
 A search embeds at most 16 sections (one request at the default batch size). When more lack

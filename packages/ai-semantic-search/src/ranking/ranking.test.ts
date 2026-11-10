@@ -7,6 +7,7 @@ import { tokenize } from './tokenize';
 describe('tokenize', () => {
   it('lower-cases, strips diacritics and splits on non-alphanumerics', () => {
     expect(tokenize('Zażółć GĘŚLĄ-jaźń v2.1')).toEqual(['zazołc', 'gesla', 'jazn', 'v2', '1']);
+    expect(tokenize('płatności ﬁle')).toEqual(['płatnosci', 'file']);
   });
 });
 

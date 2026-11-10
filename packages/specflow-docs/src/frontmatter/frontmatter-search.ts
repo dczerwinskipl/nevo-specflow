@@ -1,65 +1,47 @@
-// Deterministic, dependency-free frontmatter ranking shared by `find` / `context` (discovery) and
+// Deterministic frontmatter ranking shared by `find` / `context` (discovery) and
 // the frontmatter leg of `search`. Term-coverage first, then a small field-weight tie-breaker, then
 // id order. Reads only structured frontmatter.
 
+import { tokenize as tokenizeText } from '@nevo/ai-semantic-search';
+
 import { asString, type DocRecord } from './contract';
 
-function isAsciiAlphanumeric(char: string): boolean {
-  const code = char.charCodeAt(0);
+/**
+ * English plural folding of one token: `policies` → `policy`, `classes` → `class`, `boxes` → `box`,
+ * `tasks` → `task` (not `status`, `analysis`, `class`). A separate step after tokenization, applied
+ * to ASCII tokens only, so words of other languages are never cut.
+ */
+export function foldEnglishPlural(token: string): string {
+  if (!/^[a-z0-9]+$/.test(token)) {
+    return token;
+  }
 
-  return (code >= 48 && code <= 57) || (code >= 97 && code <= 122);
+  if (token.endsWith('ies') && token.length > 4) {
+    return `${token.slice(0, -3)}y`;
+  }
+
+  if (token.endsWith('sses')) {
+    return token.slice(0, -2);
+  }
+
+  if (/(shes|ches|xes|zes)$/.test(token)) {
+    return token.slice(0, -2);
+  }
+
+  if (token.endsWith('s') && !/(ss|us|is)$/.test(token)) {
+    return token.slice(0, -1);
+  }
+
+  return token;
 }
 
-function trimNonAlphanumeric(value: string): string {
-  let start = 0;
-  let end = value.length;
-
-  while (start < end && !isAsciiAlphanumeric(value[start]!)) {
-    start += 1;
-  }
-
-  while (end > start && !isAsciiAlphanumeric(value[end - 1]!)) {
-    end -= 1;
-  }
-
-  return value.slice(start, end);
-}
-
-export function normalizeTerm(term: string): string {
-  const t = trimNonAlphanumeric(term.toLowerCase());
-  if (!t) {
-    return '';
-  }
-
-  if (t.endsWith('ies') && t.length > 4) {
-    return `${t.slice(0, -3)}y`;
-  }
-
-  if (t.endsWith('sses')) {
-    return t.slice(0, -2);
-  }
-
-  if (/(shes|ches|xes|zes)$/.test(t)) {
-    return t.slice(0, -2);
-  }
-
-  if (t.endsWith('s') && !/(ss|us|is)$/.test(t)) {
-    return t.slice(0, -1);
-  }
-
-  return t;
-}
-
+/**
+ * The distinct terms of a text: the search engine's tokenizer (`tokenize` of
+ * `@nevo/ai-semantic-search`: NFKD, diacritics removed, lower-cased, Unicode letter/digit runs), so
+ * the frontmatter ranking and BM25 normalize alike, then `foldEnglishPlural`.
+ */
 export function tokenize(text: string): string[] {
-  return [
-    ...new Set(
-      text
-        .toLowerCase()
-        .split(/[^a-z0-9]+/)
-        .map(normalizeTerm)
-        .filter(Boolean),
-    ),
-  ];
+  return [...new Set(tokenizeText(text).map(foldEnglishPlural))];
 }
 
 type FieldWeights = readonly (readonly [field: string, weight: number])[];

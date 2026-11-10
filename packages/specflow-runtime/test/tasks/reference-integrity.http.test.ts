@@ -1,4 +1,3 @@
-import Fastify from 'fastify';
 import { describe, expect, it } from 'vitest';
 import { createAuthorization } from '@nevo/authorization';
 import { SpecCapabilities } from '@nevo/specflow-contracts/specs';
@@ -19,7 +18,7 @@ import type { TaskHistoryPage } from '@nevo/specflow-contracts/tasks';
 import type { ReferenceVisibility } from '../../src/features/tasks/reads/facts';
 import type { SessionReferenceOwner } from '../../src/features/sessions';
 import { sessionReferences } from '../support/session-references';
-import { registerSharedContracts } from '../../src/server/shared-contracts';
+import { routeTestApp } from '../support/route-app';
 
 async function fixture() {
   const demo = createDemoSpecsRepositories(),
@@ -78,8 +77,7 @@ async function appFor(
   const sessions: TasksFeatureDependencies['sessions'] = sessionReferences((id) =>
     owner.resolve(id),
   );
-  const app = Fastify();
-  registerSharedContracts(app);
+  const app = routeTestApp();
   registerRuntimeErrorHandler(app);
   app.decorateRequest('authz', { getter: () => f.authz });
   app.register(taskReadEndpoint, { dependencies: { ...f.deps, sessions } });

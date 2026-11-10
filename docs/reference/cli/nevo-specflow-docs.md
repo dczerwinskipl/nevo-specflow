@@ -34,7 +34,7 @@ runs in a Git repository and reads the documents under the project's documentati
 ```bash
 nevo-specflow docs list [--type <type>] [--status <status>] [--json]
 nevo-specflow docs find <query...> [--type] [--status] [--scope] [--area] [--tag] [--limit <n>] [--json]
-nevo-specflow docs get <id...> [--json]
+nevo-specflow docs get <id...> [--content] [--json]
 nevo-specflow docs context <query...> [--limit <n>] [--json]
 nevo-specflow docs check [--write]
 nevo-specflow docs search <question...> [--limit <n>] [--include-non-authoritative] [--no-refresh] [--snippets] [--json]
@@ -48,7 +48,9 @@ nevo-specflow docs semantic index
   then id. Filters narrow the result; every status and every path is visible.
 - `get` resolves exact stable ids in the given order. It fails closed: an unknown id or an inactive
   document (`deprecated`, `superseded`) is an error, naming the replacement when `superseded_by` is
-  set.
+  set, and nothing is printed. With `--content` it prints the whole Markdown file of every
+  document, frontmatter included, in one call: each document starts with the delimiter line
+  `===== <id> — "<title>" [<status>]  <file> =====`, and documents are separated by a blank line.
 - `context` lists the files to load for a task: like `find`, but inactive documents and documents
   under non-authoritative prefixes are never returned.
 - `check` validates the whole corpus (frontmatter contract, taxonomy, unique ids, resolvable
@@ -62,7 +64,8 @@ nevo-specflow docs semantic index
 With `--json`, stdout holds one JSON document and nothing else. A `list` or `find` result carries
 the document's frontmatter, `file` and `body` (and, for `find`, `score`, `matchedTerms` and
 `matchedFields`); a `get` or `context` entry carries `id`, `file`, `title`, `status`, `summary`,
-`read_when`, `scope` (when set), `areas` and `tags`.
+`read_when`, `scope` (when set), `areas` and `tags`, and with `get --content` also `content`, the
+whole file.
 
 Errors are reported on stderr in every mode, including `--json`; stdout stays empty when a command
 fails, and no error object is printed on stdout.
@@ -92,12 +95,17 @@ scores never mix) of two rankings, each limited to three times `--limit` candida
    vector similarity in hybrid mode
    ([ADR 0021](../../architecture/decisions/0021-product-neutral-ai-semantic-search-engine.md));
    a document takes the rank of its best section;
-2. the **frontmatter ranking** of `find`: the same fields, weights and term normalization (case and
-   English plural folding, so `task` and `tasks` match each other).
+2. the **frontmatter ranking**: `find`'s field weights and term normalization (case and English
+   plural folding, so `task` and `tasks` match each other) over what a document says it is about:
+   `id`, `title`, `scope`, `areas`, `tags`, `read_when` and `summary`, not its path or `related`.
+   A question term in the frontmatter of more than a quarter of the searched documents (and of more
+   than one) is ignored, so the words most frontmatter shares ("the", "and", "of") rank nothing;
+   the rule needs no language-specific stop-word list. A document needs at least one remaining
+   term.
 
 A document whose `summary` says "Tasks are handled by the engine" is therefore found by
-`search tasks` even when no section says "tasks". A document only the frontmatter matched has no
-sections. Section text is matched by exact, diacritic-folded words without stemming, because the
+`search tasks` even when no section says "tasks". A document none of whose sections is among the
+section ranking's candidates has no sections. Section text is matched by exact, diacritic-folded words without stemming, because the
 engine does not know the corpus language.
 
 **Mode.** With `docs.search.semantic: true` and a reachable `ai.embeddings` endpoint, the section
@@ -137,9 +145,11 @@ catches up inside the Runtime instead. An unreachable endpoint answers `endpoint
 starts nothing. Search is hybrid only once every current section has a vector. `--no-refresh` skips
 the embedding step entirely and starts no catch-up.
 
-Text output: one block per document with its id, title, type and status, the `summary`, the
-`read_when` situations, the matching sections (heading paths, `;`-separated) and the command that
-reads it. Absent fields are omitted.
+Text output: one block per document with its id, title, type and status, the `summary` (cut at a
+word boundary after 200 characters; `--json` has all of it), the `read_when` situations and the
+matching sections (heading paths, `;`-separated, without a first heading equal to the document
+title; `(top)` for the text directly under it). Absent fields are omitted. The last line reads
+every listed document in one call with `get --content`, in rank order:
 
 ```text
 mode: hybrid
@@ -147,16 +157,20 @@ mode: hybrid
 guide — Guide (reference, current)
   How to install and configure the widget.
   read when: installing the widget; pointing it at a local model
-  sections: Guide > Install; Guide > Configure
-  read: nevo-specflow docs get guide
+  sections: Install; Configure
+
+faq — FAQ (hub, current)
+  sections: (top)
+
+read all: nevo-specflow docs get --content guide faq
 ```
 
 With `--snippets`, each section is on its own line with its snippet:
 
 ```text
   sections:
-    Guide > Install: Install the widget with pnpm.
-    Guide > Configure: Point the embedding endpoint at a local model.
+    Install: Install the widget with pnpm.
+    Configure: Point the embedding endpoint at a local model.
 ```
 
 Text output, lexical: the first line names the reason, for example

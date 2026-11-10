@@ -1,7 +1,8 @@
-// Deterministic, dependency-free doc search. Term-coverage first, then a small
-// field-weight tie-breaker, then id order. Reads only structured frontmatter.
+// Deterministic, dependency-free frontmatter ranking shared by `find` / `context` (discovery) and
+// the frontmatter leg of `search`. Term-coverage first, then a small field-weight tie-breaker, then
+// id order. Reads only structured frontmatter.
 
-import { asString, type DocRecord } from '../frontmatter/contract';
+import { asString, type DocRecord } from './contract';
 
 function isAsciiAlphanumeric(char: string): boolean {
   const code = char.charCodeAt(0);
@@ -61,7 +62,9 @@ export function tokenize(text: string): string[] {
   ];
 }
 
-const FIELD_WEIGHTS: readonly (readonly [field: string, weight: number])[] = [
+type FieldWeights = readonly (readonly [field: string, weight: number])[];
+
+const FIELD_WEIGHTS: FieldWeights = [
   ['id', 50],
   ['title', 40],
   ['scope', 35],
@@ -72,6 +75,11 @@ const FIELD_WEIGHTS: readonly (readonly [field: string, weight: number])[] = [
   ['file', 10],
   ['related', 5],
 ];
+
+/** What a document says it is about: every weighted field except its path and its links. */
+const CONTENT_FIELD_WEIGHTS: FieldWeights = FIELD_WEIGHTS.filter(
+  ([field]) => field !== 'file' && field !== 'related',
+);
 
 function fieldText(doc: DocRecord, field: string): string {
   const v = doc[field];
@@ -95,7 +103,14 @@ export interface ScoreResult {
 }
 
 export function scoreDoc(doc: DocRecord, query: string): ScoreResult {
-  const queryTokens = tokenize(query);
+  return scoreTokens(doc, tokenize(query), FIELD_WEIGHTS);
+}
+
+function scoreTokens(
+  doc: DocRecord,
+  queryTokens: readonly string[],
+  weights: FieldWeights,
+): ScoreResult {
   if (queryTokens.length === 0) {
     return { score: 0, matchedTerms: [], matchedFields: [] };
   }
@@ -104,7 +119,7 @@ export function scoreDoc(doc: DocRecord, query: string): ScoreResult {
   const matchedFields = new Set<string>();
   let fieldScore = 0;
 
-  for (const [field, weight] of FIELD_WEIGHTS) {
+  for (const [field, weight] of weights) {
     const fieldTokens = new Set(tokenize(fieldText(doc, field)));
     let hit = false;
     for (const token of queryTokens) {
@@ -188,4 +203,53 @@ export function searchDocs(
   }
 
   return typeof limit === 'number' && limit > 0 ? results.slice(0, limit) : results;
+}
+
+/**
+ * A query term in more than this fraction of the documents' content fields is too common to tell
+ * documents apart and is ignored by `rankByContent`. The rule is language-neutral (no stop-word
+ * list): on this repository's corpus (about 220 documents) a quarter drops the function words that
+ * most summaries and `read_when` entries share ("and", "the", "or", "a", "of", "to", "is") and keeps
+ * domain terms such as "task" or "session" (about a fifth of the documents each). A term only one
+ * document has is never common, so a small corpus keeps its terms.
+ */
+export const COMMON_TERM_DOCUMENT_FRACTION = 0.25;
+
+/**
+ * The frontmatter ranking of `search`: `find`'s scoring over the content fields only (not `file` or
+ * `related`), ignoring common query terms (`COMMON_TERM_DOCUMENT_FRACTION`). A document needs at
+ * least one remaining term; a question of common words only ranks nothing.
+ */
+export function rankByContent(
+  docs: readonly DocRecord[],
+  query: string,
+  limit: number,
+): ScoredDoc[] {
+  const queryTokens = tokenize(query);
+  const documentFrequency = new Map(queryTokens.map((token) => [token, 0]));
+  for (const doc of docs) {
+    const tokens = new Set(
+      CONTENT_FIELD_WEIGHTS.flatMap(([field]) => tokenize(fieldText(doc, field))),
+    );
+    for (const token of queryTokens) {
+      if (tokens.has(token)) {
+        documentFrequency.set(token, documentFrequency.get(token)! + 1);
+      }
+    }
+  }
+
+  const common = Math.max(1, docs.length * COMMON_TERM_DOCUMENT_FRACTION);
+  const terms = queryTokens.filter((token) => documentFrequency.get(token)! <= common);
+
+  return docs
+    .map((doc) => ({ doc, ...scoreTokens(doc, terms, CONTENT_FIELD_WEIGHTS) }))
+    .filter((r) => r.score > 0)
+    .sort((a, b) => b.score - a.score || String(a.doc.id).localeCompare(String(b.doc.id)))
+    .slice(0, limit)
+    .map((r): ScoredDoc => ({
+      ...r.doc,
+      score: r.score,
+      matchedTerms: r.matchedTerms,
+      matchedFields: r.matchedFields,
+    }));
 }

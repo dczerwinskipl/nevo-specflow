@@ -90,7 +90,9 @@ export const DocsSearchHitSchema = Type.Object(
      */
     score: Type.Number(),
     /**
-     * Up to three best matching sections, best first. Empty when only the frontmatter matched.
+     * Up to three best matching sections, best first, one per heading path. Empty when none of the
+     * document's sections is among the section ranking's top candidates (for example a document
+     * found by its frontmatter only).
      */
     sections: Type.Array(DocsSearchSectionSchema, { maxItems: 3 }),
   },

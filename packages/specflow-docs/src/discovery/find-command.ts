@@ -1,7 +1,7 @@
 import type { Command } from 'commander';
 
 import { findDocuments } from './documents';
-import type { ScoredDoc } from './frontmatter-search';
+import type { ScoredDoc } from '../frontmatter/frontmatter-search';
 import { DocsUsageError } from '../errors';
 import { positiveInteger, runDocsAction, type DocsCommandContext } from '../command/context';
 import type { OpenCorpus } from '../command/open-project';

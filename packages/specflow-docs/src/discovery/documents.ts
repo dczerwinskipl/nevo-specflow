@@ -9,7 +9,7 @@ import {
   type DocRecord,
 } from '../frontmatter/contract';
 import { DocsUsageError } from '../errors';
-import { searchDocs, type ScoredDoc } from './frontmatter-search';
+import { searchDocs, type ScoredDoc } from '../frontmatter/frontmatter-search';
 
 export interface FindOptions {
   readonly query?: string;
@@ -80,6 +80,19 @@ export function getDocuments(corpus: DocsCorpus, ids: readonly string[]): Contex
   }
 
   return ids.map((id) => contextEntry(byId.get(id)!));
+}
+
+export interface DocumentContent extends ContextEntry {
+  /** The whole Markdown file, frontmatter included. */
+  readonly content: string;
+}
+
+/** `get --content`: `getDocuments` (same order, same fail-closed rules) with each file's content. */
+export function getDocumentContents(corpus: DocsCorpus, ids: readonly string[]): DocumentContent[] {
+  return getDocuments(corpus, ids).map((entry) => ({
+    ...entry,
+    content: corpus.repo.readMarkdownFile(entry.file),
+  }));
 }
 
 /**

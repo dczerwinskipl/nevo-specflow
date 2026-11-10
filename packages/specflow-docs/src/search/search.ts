@@ -12,7 +12,7 @@ import type { DocsSearchReason, DocsSearchResult } from '@nevo/specflow-contract
 
 import type { DocsConfiguration } from '../config/docs-configuration';
 import type { DocsCorpus } from '../corpus/corpus';
-import { searchDocs } from '../discovery/frontmatter-search';
+import { rankByContent } from '../frontmatter/frontmatter-search';
 import { asString } from '../frontmatter/contract';
 import {
   createEmbeddingProviders,
@@ -120,10 +120,11 @@ export interface DocsSearchRequest {
  * weight, rank-based, so the incomparable scores never mix):
  * - the section ranking of the search engine, documents in the order of their best section (BM25
  *   over heading paths and section text, fused with the vector ranking in hybrid mode);
- * - the frontmatter ranking of `docs find` (`searchDocs`: title, id, scope, areas, tags, read_when,
- *   summary with their field weights and English plural folding), which finds a document by what it
- *   says it is about even when no section repeats the words.
- * A document only the frontmatter matched has no sections.
+ * - the frontmatter ranking (`rankByContent`: `docs find`'s field weights and English plural
+ *   folding over title, id, scope, areas, tags, read_when and summary, ignoring query terms common
+ *   to many documents), which finds a document by what it says it is about even when no section
+ *   repeats the words.
+ * A document with no section among the section ranking's candidates has no sections.
  */
 export async function searchDocumentation(
   search: DocsSearch,
@@ -147,7 +148,7 @@ export async function searchDocumentation(
   const searched = documents
     .filter((document) => request.includeNonAuthoritative || !document.nonAuthoritative)
     .map((document) => document.record);
-  const byFrontmatter = searchDocs(searched, { query: request.query, limit: candidates });
+  const byFrontmatter = rankByContent(searched, request.query, candidates);
 
   const records = new Map(searched.map((record) => [asString(record.id), record]));
   const sectionsById = new Map<string, UnitHit>(sections.hits.map((hit) => [hit.unitId, hit]));

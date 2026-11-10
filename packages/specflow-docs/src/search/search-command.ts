@@ -3,6 +3,7 @@ import type { Command } from 'commander';
 import type { DocsSearchResult } from '@nevo/specflow-contracts/docs';
 
 import { DocsUsageError } from '../errors';
+import { cutAtWord } from './result';
 import { openDocsSearch, searchDocumentation } from './search';
 import { positiveInteger, runDocsAction, type DocsCommandContext } from '../command/context';
 import type { OpenProject } from '../command/open-project';
@@ -12,6 +13,8 @@ import { SEMANTIC_INDEX_COMMAND, SEMANTIC_STATUS_COMMAND } from '../semantic-ind
 
 /** Documents returned when `--limit` is omitted. */
 export const DEFAULT_SEARCH_LIMIT = 10;
+/** Summary characters the text output shows; `--json` carries the whole summary. */
+export const SUMMARY_TEXT_MAX_CHARS = 200;
 
 interface SearchCliOptions {
   readonly limit: number;
@@ -115,14 +118,14 @@ function printResult(
     ctx.stdout('');
     ctx.stdout(`${hit.id} — ${hit.title} (${hit.type}, ${hit.status})`);
     if (hit.summary) {
-      ctx.stdout(`  ${hit.summary}`);
+      ctx.stdout(`  ${cutAtWord(hit.summary, SUMMARY_TEXT_MAX_CHARS)}`);
     }
 
     if (hit.readWhen) {
       ctx.stdout(`  read when: ${hit.readWhen.join('; ')}`);
     }
 
-    const heading = (path: readonly string[]) => path.join(' > ') || '(top)';
+    const heading = (path: readonly string[]) => sectionHeading(path, hit.title);
     if (snippets && hit.sections.length > 0) {
       ctx.stdout('  sections:');
       for (const section of hit.sections) {
@@ -133,7 +136,18 @@ function printResult(
         `  sections: ${hit.sections.map((section) => heading(section.headingPath)).join('; ')}`,
       );
     }
-
-    ctx.stdout(`  read: ${getCommand} ${hit.id}`);
   }
+
+  ctx.stdout('');
+  ctx.stdout(`read all: ${getCommand} --content ${result.results.map((hit) => hit.id).join(' ')}`);
+}
+
+/**
+ * A heading path without its first heading when that repeats the document title (the usual H1);
+ * `(top)` for the text before or directly under it.
+ */
+function sectionHeading(path: readonly string[], title: string): string {
+  const shown = path[0] === title ? path.slice(1) : path;
+
+  return shown.join(' > ') || '(top)';
 }

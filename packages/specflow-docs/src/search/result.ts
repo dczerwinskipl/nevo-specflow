@@ -106,12 +106,17 @@ export function snippet(text: string, continuation = false): string {
     prose = rest === prose ? prose : `…${rest}`;
   }
 
-  if (prose.length <= SNIPPET_MAX_CHARS) {
-    return prose;
+  return cutAtWord(prose, SNIPPET_MAX_CHARS);
+}
+
+/** `text` when it fits `max` characters, otherwise cut at a word boundary with an ellipsis. */
+export function cutAtWord(text: string, max: number): string {
+  if (text.length <= max) {
+    return text;
   }
 
-  const cut = prose.slice(0, SNIPPET_MAX_CHARS);
+  const cut = text.slice(0, max);
   const space = cut.lastIndexOf(' ');
 
-  return `${(space > SNIPPET_MAX_CHARS / 2 ? cut.slice(0, space) : cut).trimEnd()}…`;
+  return `${(space > max / 2 ? cut.slice(0, space) : cut).trimEnd()}…`;
 }

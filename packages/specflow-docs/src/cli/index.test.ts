@@ -14,6 +14,10 @@ writeFileSync(
   '---\nid: guide\ntype: hub\ntitle: Guide\nstatus: current\nscope: anything\n---\n',
 );
 writeFileSync(
+  join(root, 'docs', 'faq.md'),
+  '---\nid: faq\ntype: hub\ntitle: FAQ\nstatus: current\n---\n\n# FAQ\n\nAsk.\n',
+);
+writeFileSync(
   join(root, 'docs', 'old.md'),
   '---\nid: old\ntype: hub\ntitle: Old guide\nstatus: superseded\nsuperseded_by: guide\n---\n',
 );
@@ -34,12 +38,28 @@ describe('docs command', () => {
       exitCode: 0,
       stdout: [
         'Wrote docs/index.generated.json and docs/index.generated.md',
-        'OK — 2 documents, corpus valid, index current.',
+        'OK — 3 documents, corpus valid, index current.',
       ],
     });
     expect((await runDocs(root, ['get', 'guide'])).stdout).toEqual([
       'guide — "Guide" [current]  docs/guide.md',
     ]);
+  });
+
+  it('get --content prints every document in caller order and fails closed on an unknown id', async () => {
+    expect((await runDocs(root, ['get', '--content', 'faq', 'guide'])).stdout).toEqual([
+      '===== faq — "FAQ" [current]  docs/faq.md =====',
+      '---\nid: faq\ntype: hub\ntitle: FAQ\nstatus: current\n---\n\n# FAQ\n\nAsk.',
+      '',
+      '===== guide — "Guide" [current]  docs/guide.md =====',
+      '---\nid: guide\ntype: hub\ntitle: Guide\nstatus: current\nscope: anything\n---',
+    ]);
+    const unknown = await runDocs(root, ['get', '--content', '--json', 'faq', 'nope']);
+    expect(unknown).toMatchObject({
+      exitCode: 2,
+      stdout: [],
+      stderr: ['get: unknown document id(s): nope'],
+    });
   });
 
   it('get fails closed on an inactive document with a usage exit', async () => {

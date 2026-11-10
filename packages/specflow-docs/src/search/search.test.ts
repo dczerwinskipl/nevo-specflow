@@ -13,7 +13,7 @@ import { DEFAULT_DOCS_SETTINGS, parseDocsConfig } from '../config/docs-settings'
 import { openFileSystemCorpus } from '../corpus/corpus';
 import { createDocsChunkSource } from '../semantic-index/chunk-source';
 import { READ_REFRESH_MAX_CHUNKS } from '../semantic-index/refresh-policy';
-import { snippet } from './result';
+import { snippet, toHit } from './result';
 import { openDocsSearch, searchDocumentation, type DocsSearch } from './search';
 
 const root = mkdtempSync(join(tmpdir(), 'specflow-docs-search-'));
@@ -232,6 +232,49 @@ describe('snippet', () => {
   it('drops the partial first word of a continuation part', () => {
     expect(snippet('## Commit\nThe engine commits.')).toBe('The engine commits.');
     expect(snippet('ngine commits the documents.', true)).toBe('…commits the documents.');
+  });
+});
+
+describe('toHit', () => {
+  it('shows one section per heading path, the best-ranked part first', () => {
+    const part = (id: string, headingPath: string[], score: number) => ({
+      chunk: {
+        id,
+        unitId: 'guide',
+        headingPath,
+        text: id,
+        embeddingText: id,
+        contentHash: id,
+        metadata: {},
+      },
+      score,
+    });
+    const hit = toHit(
+      {
+        id: 'guide',
+        type: 'hub',
+        title: 'Guide',
+        status: 'current',
+        file: 'docs/guide.md',
+        body: '',
+      },
+      {
+        unitId: 'guide',
+        metadata: {},
+        score: 3,
+        chunks: [
+          part('a/1', ['Guide', 'A'], 3),
+          part('a/2', ['Guide', 'A'], 2),
+          part('b', ['Guide', 'B'], 1),
+        ],
+      },
+      0.5,
+      false,
+    );
+    expect(hit.sections).toEqual([
+      { headingPath: ['Guide', 'A'], score: 3 },
+      { headingPath: ['Guide', 'B'], score: 1 },
+    ]);
   });
 });
 

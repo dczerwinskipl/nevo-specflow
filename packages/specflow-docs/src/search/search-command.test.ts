@@ -56,8 +56,9 @@ describe('docs search and semantic status', () => {
     expect(lexical.stdout.slice(1)).toEqual([
       '',
       'guide — Guide (hub, current)',
-      '  sections: Guide > Install',
-      '  read: pnpm docs:get guide',
+      '  sections: Install',
+      '',
+      'read all: pnpm docs:get --content guide',
     ]);
   });
 

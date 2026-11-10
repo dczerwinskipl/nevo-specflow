@@ -15,6 +15,7 @@ import {
   type OperationProgressRegistry,
   type StoredProgressEvent,
 } from './progress-registry';
+import { contractRef } from '../../server/shared-contracts';
 
 export const DEFAULT_PROGRESS_HEARTBEAT_MS = 15_000;
 
@@ -42,6 +43,8 @@ export interface OperationEventsRoute {
   readonly path: string;
   /** The operation kind (a key of the contracts registry) this route streams. */
   readonly kind: string;
+  /** The OpenAPI summary of the stream (its group is `Operations`). */
+  readonly summary: string;
   /**
    * Same authentication and authorization as the feature's inspection endpoint. Runs before
    * anything about the operation is revealed; throws an auth error (rendered by the Runtime).
@@ -86,11 +89,33 @@ export function registerOperationEventsRoute<RawServer extends RawServerBase>(
         // The Runtime serves HTTP/1 only; the generic RawServer is just the caller's app type.
         await route.authorize(request as unknown as FastifyRequest);
       },
+      config: {
+        openApiParameters: {
+          header: {
+            'Last-Event-ID':
+              'The `id` of the last progress event the client received (an EventSource sends ' +
+              'it on reconnect): the stream continues after it. Without it, or when it is not a ' +
+              'number up to the latest event id, the stream starts with the current snapshot.',
+          },
+        },
+        openApiResponses: {
+          200: {
+            description:
+              'Server-sent progress events of the operation: each event is named by the progress ' +
+              'event type, its `data` is the JSON progress event and its `id` (when present) ' +
+              'resumes the stream through `Last-Event-ID`. Comment lines keep the connection alive.',
+            headers: { 'Cache-Control': '`no-store`.' },
+            mediaType: 'text/event-stream',
+          },
+        },
+      },
       schema: {
+        tags: ['Operations'],
+        summary: route.summary,
         params: OperationProgressParamsSchema,
         response: {
-          401: AuthenticationRequiredErrorResponseSchema,
-          403: AuthorizationForbiddenErrorResponseSchema,
+          401: contractRef(AuthenticationRequiredErrorResponseSchema),
+          403: contractRef(AuthorizationForbiddenErrorResponseSchema),
           429: Type.Object(
             { error: Type.String(), code: Type.String() },
             { additionalProperties: false },

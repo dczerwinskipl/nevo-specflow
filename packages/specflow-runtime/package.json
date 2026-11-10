@@ -18,6 +18,10 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./openapi-document": {
+      "types": "./dist/openapi-document.d.ts",
+      "default": "./dist/openapi-document.js"
+    },
     "./cli": {
       "types": "./dist/cli/command.d.ts",
       "default": "./dist/cli/command.js"
@@ -35,6 +39,7 @@
   "dependencies": {
     "@fastify/cookie": "11.1.5",
     "@fastify/rate-limit": "11.2.2",
+    "@fastify/swagger": "9.9.3",
     "@fastify/type-provider-typebox": "6.3.0",
     "@modelcontextprotocol/sdk": "1.32.2",
     "@nevo/authorization": "workspace:*",
@@ -48,6 +53,7 @@
     "yaml": "2.9.1"
   },
   "devDependencies": {
+    "@seriousme/openapi-schema-validator": "2.11.0",
     "vitest": "5.1.0"
   },
   "engines": {

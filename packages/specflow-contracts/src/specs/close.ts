@@ -1,6 +1,8 @@
 import { Type, type Static } from 'typebox';
 
 import { DocumentErrorDetailsSchema } from '../documents/errors';
+import { WorkspaceIdSchema } from '../identifiers';
+import { OperationIdSchema } from '../operations/progress';
 
 export const CloseUuidSchema = Type.String({
   pattern:
@@ -11,23 +13,23 @@ export const CloseSpecParamsSchema = Type.Object(
   { additionalProperties: false },
 );
 export const CloseOperationParamsSchema = Type.Object(
-  { specId: CloseUuidSchema, operationId: CloseUuidSchema },
+  { specId: CloseUuidSchema, operationId: OperationIdSchema },
   { additionalProperties: false },
 );
 export const CloseWorkspaceParamsSchema = Type.Object(
-  { workspaceId: CloseUuidSchema },
+  { workspaceId: WorkspaceIdSchema },
   { additionalProperties: false },
 );
 export const CloseWorkspaceOperationParamsSchema = Type.Object(
-  { workspaceId: CloseUuidSchema, operationId: CloseUuidSchema },
+  { workspaceId: WorkspaceIdSchema, operationId: OperationIdSchema },
   { additionalProperties: false },
 );
 export const CloseWorktreeRequestSchema = Type.Object(
-  { operationId: CloseUuidSchema },
+  { operationId: OperationIdSchema },
   { additionalProperties: false },
 );
 export const CloseSpecificationRequestSchema = Type.Object(
-  { operationId: CloseUuidSchema, integrateToTargetBranch: Type.Optional(Type.Boolean()) },
+  { operationId: OperationIdSchema, integrateToTargetBranch: Type.Optional(Type.Boolean()) },
   { additionalProperties: false },
 );
 export type CloseSpecificationRequest = Static<typeof CloseSpecificationRequestSchema>;
@@ -44,17 +46,17 @@ export const CloseScratchReconciliationRequestSchema = Type.Object(
 );
 export const ClosePreviewSchema = Type.Object(
   {
-    operationId: CloseUuidSchema,
+    operationId: OperationIdSchema,
     specId: CloseUuidSchema,
     kind: Type.Union([Type.Literal('worktree-close'), Type.Literal('specification-close')]),
     location: Type.Union([Type.Literal('active'), Type.Literal('archive')]),
     integrationRequired: Type.Boolean(),
   },
-  { additionalProperties: false },
+  { $id: 'ClosePreview', additionalProperties: false },
 );
 export const CloseResultSchema = Type.Object(
   {
-    operationId: CloseUuidSchema,
+    operationId: OperationIdSchema,
     specId: CloseUuidSchema,
     kind: Type.Union([Type.Literal('worktree-close'), Type.Literal('specification-close')]),
     status: Type.Union([
@@ -75,7 +77,7 @@ export const CloseResultSchema = Type.Object(
     conflictPaths: Type.Optional(Type.Array(Type.String())),
     scratchRetired: Type.Optional(Type.Boolean()),
   },
-  { additionalProperties: false },
+  { $id: 'CloseResult', additionalProperties: false },
 );
 export const CloseErrorSchema = Type.Object(
   {
@@ -85,16 +87,16 @@ export const CloseErrorSchema = Type.Object(
     /** Present for `DOCUMENT_COMMITS_PENDING` (`details.cause`: `commit-pending`, `commit-failed`, ...). */
     details: Type.Optional(DocumentErrorDetailsSchema),
   },
-  { additionalProperties: false },
+  { $id: 'CloseError', additionalProperties: false },
 );
 
 export const CloseWorkspacePreviewSchema = Type.Object(
   {
-    operationId: CloseUuidSchema,
-    workspaceId: CloseUuidSchema,
+    operationId: OperationIdSchema,
+    workspaceId: WorkspaceIdSchema,
     kind: Type.Literal('workspace-close'),
     sourceBranch: Type.String(),
-    targetWorkspaceId: CloseUuidSchema,
+    targetWorkspaceId: WorkspaceIdSchema,
     targetBranch: Type.String(),
     wholeBranchIntegration: Type.Literal(true),
     occupantCount: Type.Integer({ minimum: 1 }),
@@ -115,8 +117,8 @@ export const CloseWorkspacePreviewSchema = Type.Object(
 
 export const CloseWorkspaceResultSchema = Type.Object(
   {
-    operationId: CloseUuidSchema,
-    workspaceId: CloseUuidSchema,
+    operationId: OperationIdSchema,
+    workspaceId: WorkspaceIdSchema,
     kind: Type.Literal('workspace-close'),
     status: Type.Union([
       Type.Literal('completed'),
@@ -128,5 +130,5 @@ export const CloseWorkspaceResultSchema = Type.Object(
     occupantCount: Type.Integer({ minimum: 1 }),
     conflictPaths: Type.Optional(Type.Array(Type.String())),
   },
-  { additionalProperties: false },
+  { $id: 'CloseWorkspaceResult', additionalProperties: false },
 );

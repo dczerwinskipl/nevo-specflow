@@ -1,6 +1,6 @@
 import { Type, type Static, type TSchema } from 'typebox';
 import { Value } from 'typebox/value';
-import { SessionIdSchema, SessionSequenceSchema } from './model';
+import { SessionIdSchema, SessionSequenceSchema, SessionUuidSchema, TurnIdSchema } from './model';
 import { utf8Bytes } from './commands';
 
 const closed = { additionalProperties: false } as const;
@@ -102,7 +102,7 @@ export const TelemetryLimitsUsageSchema = Type.Object(
 );
 const contextFields = {
   contextGeneration: opaqueIdentifier,
-  turnId: Type.Optional(SessionIdSchema),
+  turnId: Type.Optional(TurnIdSchema),
   modelId: Type.Optional(identifier),
   occupiedTokens: Type.Optional(SessionSequenceSchema),
   capacityTokens: Type.Optional(SessionSequenceSchema),
@@ -184,7 +184,7 @@ const usageReadings = <T extends TSchema>(schema: T) =>
     {
       session: telemetryReading(schema),
       turn: Type.Optional(
-        Type.Object({ turnId: SessionIdSchema, reading: telemetryReading(schema) }, closed),
+        Type.Object({ turnId: TurnIdSchema, reading: telemetryReading(schema) }, closed),
       ),
     },
     closed,
@@ -223,12 +223,12 @@ export const TelemetrySnapshotSchema = Type.Object(
   closed,
 );
 export const RefreshTelemetrySchema = Type.Object(
-  { requestId: SessionIdSchema, groups: groups(1) },
+  { requestId: SessionUuidSchema, groups: groups(1) },
   closed,
 );
 export const RefreshTelemetryReceiptSchema = Type.Object(
   {
-    requestId: SessionIdSchema,
+    requestId: SessionUuidSchema,
     acceptedGroups: groups(1),
     state: Type.Union([Type.Literal('queued'), Type.Literal('running')]),
     telemetryRevision: SessionSequenceSchema,

@@ -3,6 +3,7 @@ import type { FastifyPluginCallback } from 'fastify';
 
 import { AuthSessionResponseSchema } from '@nevo/specflow-contracts/authentication';
 
+import { contractRef } from '../../../../server/shared-contracts';
 import type { RuntimeAuthenticationConfig } from '../configuration/model';
 import { logout } from './logout';
 import { getAuthSession } from './get-session';
@@ -26,9 +27,12 @@ export const sessionEndpoint: FastifyPluginCallback<SessionEndpointOptions> = (
   routes.get(
     '/api/auth/session',
     {
+      config: { openApiPublic: true },
       schema: {
+        tags: ['Authentication'],
+        summary: 'Read the authentication state',
         response: {
-          200: AuthSessionResponseSchema,
+          200: contractRef(AuthSessionResponseSchema),
         },
       },
     },
@@ -43,17 +47,32 @@ export const sessionEndpoint: FastifyPluginCallback<SessionEndpointOptions> = (
     },
   );
 
-  routes.post('/api/auth/logout', (request, reply) => {
-    logout(
-      options.store,
-      request.cookies[options.cookieNames.session],
-      request.cookies[options.cookieNames.oidc],
-    );
-    reply.clearCookie(options.cookieNames.session, options.cookieOptions);
-    reply.clearCookie(options.cookieNames.oidc, options.cookieOptions);
+  routes.post(
+    '/api/auth/logout',
+    {
+      config: {
+        openApiPublic: true,
+        openApiResponses: {
+          204: {
+            description: 'Logged out. The session, if any, ends. No body.',
+            headers: { 'Set-Cookie': 'Clears the session cookie and the OIDC transaction cookie.' },
+          },
+        },
+      },
+      schema: { tags: ['Authentication'], summary: 'Log out' },
+    },
+    (request, reply) => {
+      logout(
+        options.store,
+        request.cookies[options.cookieNames.session],
+        request.cookies[options.cookieNames.oidc],
+      );
+      reply.clearCookie(options.cookieNames.session, options.cookieOptions);
+      reply.clearCookie(options.cookieNames.oidc, options.cookieOptions);
 
-    return reply.code(204).send();
-  });
+      return reply.code(204).send();
+    },
+  );
 
   done();
 };

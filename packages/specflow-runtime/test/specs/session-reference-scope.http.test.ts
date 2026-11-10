@@ -1,4 +1,3 @@
-import Fastify from 'fastify';
 import { describe, expect, it, vi } from 'vitest';
 import { createAuthorization, type Scope } from '@nevo/authorization';
 import { SpecCapabilities, ProjectGitCapabilities } from '@nevo/specflow-contracts/specs';
@@ -14,6 +13,7 @@ import { createDemoTaskSources } from '../../src/features/tasks';
 import { createDemoSpecsRepositories } from '../../src/features/specs';
 import type { SessionReference, SessionReferenceOwner } from '../../src/features/sessions';
 import { sessionScope } from '../../src/features/sessions/scope';
+import { routeTestApp } from '../support/route-app';
 
 vi.mock('../../src/features/sessions/scope', async (original) => {
   const actual = await original<typeof import('../../src/features/sessions/scope')>();
@@ -106,7 +106,7 @@ async function fixture(role: Role, grant: Scope | undefined) {
     assignments: grant ? [{ subject, role, scope: grant }] : [],
   });
   const authz = createRequestAuthorization({ mode: 'subject', subject }, authorization);
-  const app = Fastify();
+  const app = routeTestApp();
   registerRuntimeErrorHandler(app);
   app.decorateRequest('authz', { getter: () => authz });
   app.register(taskReadEndpoint, {

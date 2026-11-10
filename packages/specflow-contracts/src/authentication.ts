@@ -75,10 +75,10 @@ const UnauthenticatedSessionSchema = Type.Object(
   { additionalProperties: false },
 );
 
-export const AuthSessionResponseSchema = Type.Union([
-  AuthenticatedSessionSchema,
-  UnauthenticatedSessionSchema,
-]);
+export const AuthSessionResponseSchema = Type.Union(
+  [AuthenticatedSessionSchema, UnauthenticatedSessionSchema],
+  { $id: 'AuthSessionResponse' },
+);
 export type AuthSessionResponse = Static<typeof AuthSessionResponseSchema>;
 
 export const PasswordLoginRequestSchema = Type.Object(

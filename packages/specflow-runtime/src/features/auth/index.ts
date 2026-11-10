@@ -5,6 +5,7 @@ export {
   type CreateAuthFeatureOptions,
 } from './feature';
 
+export { authCookieNames } from './authentication/http/cookies';
 export { requireCapability, requireCapabilityInAnyScope } from './authorization/guards';
 export type {
   AuthorizationAnyScopeCapabilityCheck,

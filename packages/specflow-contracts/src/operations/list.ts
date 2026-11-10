@@ -142,7 +142,7 @@ export const OperationListResponseSchema = Type.Object(
     truncated: Type.Boolean(),
     generatedAt: Type.String(),
   },
-  { additionalProperties: false },
+  { $id: 'OperationListResponse', additionalProperties: false },
 );
 export type OperationListResponse = Static<typeof OperationListResponseSchema>;
 

@@ -1,5 +1,7 @@
 import { Type, type Static, type TSchema } from 'typebox';
 
+import { SpecIdSchema, TaskIdSchema } from '../identifiers';
+
 const Id = Type.String({ minLength: 1, maxLength: 200, pattern: '^[a-zA-Z0-9][a-zA-Z0-9._-]*$' });
 const Text = Type.String();
 const NullableText = Type.Union([Text, Type.Null()]);
@@ -13,8 +15,8 @@ const section = <T extends TSchema>(data: T) =>
     Type.Object({ state: Type.Literal('forbidden') }),
   ]);
 const AttemptKey = Type.Object({
-  specId: Id,
-  taskId: Id,
+  specId: SpecIdSchema,
+  taskId: TaskIdSchema,
   stepId: Id,
   attempt: Type.Integer({ minimum: 1 }),
 });
@@ -31,18 +33,28 @@ const Step = Type.Object({
   ),
 });
 const Target = Type.Union([
-  Type.Object({ kind: Type.Literal('task'), specId: Id, taskId: Id }),
+  Type.Object({ kind: Type.Literal('task'), specId: SpecIdSchema, taskId: TaskIdSchema }),
   Type.Object({
     kind: Type.Literal('requirement'),
-    specId: Id,
-    taskId: Id,
+    specId: SpecIdSchema,
+    taskId: TaskIdSchema,
     requirementId: Id,
     revision: Text,
   }),
   Type.Object({ kind: Type.Literal('session'), sessionId: Id }),
-  Type.Object({ kind: Type.Literal('document'), specId: Id, documentId: Id, revision: Text }),
-  Type.Object({ kind: Type.Literal('changes'), specId: Id, comparisonId: Id, revision: Text }),
-  Type.Object({ kind: Type.Literal('report'), specId: Id, reportId: Id, revision: Text }),
+  Type.Object({
+    kind: Type.Literal('document'),
+    specId: SpecIdSchema,
+    documentId: Id,
+    revision: Text,
+  }),
+  Type.Object({
+    kind: Type.Literal('changes'),
+    specId: SpecIdSchema,
+    comparisonId: Id,
+    revision: Text,
+  }),
+  Type.Object({ kind: Type.Literal('report'), specId: SpecIdSchema, reportId: Id, revision: Text }),
 ]);
 const Link = Type.Union([
   Type.Object({ state: Type.Literal('available'), target: Target }),
@@ -183,9 +195,12 @@ export const TaskPageQuerySchema = Type.Object(
   },
   { additionalProperties: false },
 );
-export const TaskSnapshotExpiredSchema = Type.Object({
-  error: Type.Literal('task_snapshot_expired'),
-});
+export const TaskSnapshotExpiredSchema = Type.Object(
+  {
+    error: Type.Literal('task_snapshot_expired'),
+  },
+  { $id: 'TaskSnapshotExpired' },
+);
 const Descriptor = Type.Object({ id: Id, label: Text });
 /** Additive Task detail. Project adapters may omit this until they implement the reader. */
 export const TaskSnapshotSchema = Type.Object({
@@ -239,7 +254,9 @@ export const TaskSnapshotSchema = Type.Object({
       ]),
     ),
     dependencies: section(
-      Type.Object({ items: Type.Array(Type.Object({ taskId: Id, title: Text, link: Link })) }),
+      Type.Object({
+        items: Type.Array(Type.Object({ taskId: TaskIdSchema, title: Text, link: Link })),
+      }),
     ),
     recovery: section(
       Type.Union([Type.Object({ id: Id, state: Text, summary: Text, link: Link }), Type.Null()]),

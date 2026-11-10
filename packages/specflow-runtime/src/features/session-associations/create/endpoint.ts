@@ -14,12 +14,15 @@ import {
 import {
   SessionError,
   authorizeSessionWrite,
+  sessionBodyErrors,
   requireStartSession,
   type SessionsRuntime,
 } from '../../sessions';
 import type { ProjectIdSource } from '../../specs';
 import type { AssociationTargets } from '../targets';
 import { createContextSession } from './create-context-session';
+import { AuthorizationForbiddenErrorResponseSchema } from '@nevo/specflow-contracts/authorization';
+import { contractRef } from '../../../server/shared-contracts';
 
 const specIdOf = (request: FastifyRequest) => (request.params as { specId: string }).specId;
 
@@ -64,14 +67,36 @@ export function registerCreateContextSessionRoute(
     {
       bodyLimit: 256 * 1024,
       preHandler: authorize,
+      // The Session create's refusals (its `503` codes are in the response schema below).
+      config: {
+        openApiResponses: sessionBodyErrors(
+          'SESSION_INPUT_INVALID',
+          'IDEMPOTENCY_CONFLICT',
+          'MODEL_UNSUPPORTED',
+          'CAPABILITY_UNSUPPORTED',
+        ),
+      },
       schema: {
+        tags: ['Sessions'],
+        summary: 'Start a Session in a Specification',
         params: SpecificationWorkspaceParamsSchema,
         body: CreateContextSessionSchema,
         response: {
+          403: contractRef(AuthorizationForbiddenErrorResponseSchema),
           201: CreateContextSessionResultSchema,
-          404: SpecificationReadErrorSchema,
+          404: contractRef(SpecificationReadErrorSchema),
           // Either envelope: the Specification source error or a `session_error`.
-          503: Type.Union([SpecificationReadErrorSchema, SessionErrorSchema]),
+          503: Type.Union(
+            [contractRef(SpecificationReadErrorSchema), contractRef(SessionErrorSchema)],
+            {
+              // Read and dropped by `@fastify/swagger`, so it describes the response only.
+              'x-response-description':
+                'Temporarily unavailable: the Specification source ' +
+                '(`specification_source_unavailable`), or a `session_error` with `code` one of ' +
+                '`SESSION_DISABLED`, `SESSION_STORE_BUSY`, `SESSION_STORE_UNAVAILABLE`, ' +
+                '`PROVIDER_UNAVAILABLE`, `PROVIDER_AUTH_REQUIRED`.',
+            },
+          ),
         },
       },
     },

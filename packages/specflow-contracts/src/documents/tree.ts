@@ -1,5 +1,6 @@
 import { Type, type Static } from 'typebox';
 
+import { OperationIdSchema } from '../operations/progress';
 import {
   ActionSchema,
   CatalogueIdSchema,
@@ -7,7 +8,6 @@ import {
   ContentKindSchema,
   IdSchema,
   KEBAB_CASE_PATTERN,
-  UuidSchema,
   closedUnion,
 } from './vocabulary';
 
@@ -78,7 +78,7 @@ export const DocumentTreeDocumentSchema = Type.Object(
       Type.Object(
         {
           state: DocumentTreeCommitStateSchema,
-          operationId: UuidSchema,
+          operationId: OperationIdSchema,
           recoveryRequired: Type.Optional(Type.Boolean()),
           /** Why `pending` waits or why `failed` / `uncommitted` (open kebab-case, as `CommitInfo.reason`). */
           reason: Type.Optional(Type.String({ pattern: KEBAB_CASE_PATTERN })),

@@ -16,22 +16,23 @@ export interface DocumentReadEndpointOptions {
   readonly projectId?: ProjectIdSource;
 }
 import { documentFailure, type DocumentFailure } from './error-status';
+import { contractRef } from '../../../server/shared-contracts';
 
 /** Error responses shared by the read routes. 400 is the framework's validation answer. */
 export const documentReadErrorResponses = {
-  401: AuthenticationRequiredErrorResponseSchema,
-  403: AuthorizationForbiddenErrorResponseSchema,
-  404: DocumentErrorSchema,
-  409: DocumentErrorSchema,
-  413: DocumentErrorSchema,
-  503: DocumentErrorSchema,
+  401: contractRef(AuthenticationRequiredErrorResponseSchema),
+  403: contractRef(AuthorizationForbiddenErrorResponseSchema),
+  404: contractRef(DocumentErrorSchema),
+  409: contractRef(DocumentErrorSchema),
+  413: contractRef(DocumentErrorSchema),
+  503: contractRef(DocumentErrorSchema),
 } as const;
 
 /** Error responses of the write routes. 400 stays the framework's validation answer and the document refusals with status 400. */
 export const documentWriteErrorResponses = {
   ...documentReadErrorResponses,
-  415: DocumentErrorSchema,
-  422: DocumentErrorSchema,
+  415: contractRef(DocumentErrorSchema),
+  422: contractRef(DocumentErrorSchema),
 } as const;
 
 /** `Retry-After` (whole seconds, at least 1) of a refusal that says when a retry helps. */

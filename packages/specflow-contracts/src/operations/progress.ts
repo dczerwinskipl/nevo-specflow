@@ -6,7 +6,12 @@ import { Type, type TSchema } from 'typebox';
  * generic envelope. Events never carry paths, journal internals or server error text.
  */
 
+/**
+ * A long-running operation (Create, close, document operations): an RFC 4122 UUID, any case. The
+ * `title` names its shared OpenAPI component.
+ */
 export const OperationIdSchema = Type.String({
+  title: 'OperationId',
   pattern:
     '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$',
 });

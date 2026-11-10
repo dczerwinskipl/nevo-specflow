@@ -16,9 +16,20 @@ export const SessionLimits = {
   replayCount: 10_000,
   replayAgeMs: 86_400_000,
 } as const;
-export const SessionIdSchema = Type.String({
-  pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
-});
+/** The UUID format of every Sessions API identifier: lowercase, as the Session store generates it. */
+const SESSION_UUID_PATTERN = '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$';
+/**
+ * The identifiers of the Sessions API share one format. The `title` of an entity id names its
+ * shared OpenAPI component: the Runtime document references it wherever the id is used.
+ */
+const sessionEntityId = (title: string) => Type.String({ title, pattern: SESSION_UUID_PATTERN });
+export const SessionIdSchema = sessionEntityId('SessionId');
+export const TurnIdSchema = sessionEntityId('TurnId');
+export const WorkIdSchema = sessionEntityId('WorkId');
+export const ContentIdSchema = sessionEntityId('ContentId');
+export const InteractionIdSchema = sessionEntityId('InteractionId');
+/** A Sessions API UUID without a component of its own: command request ids, ToolActions, entries. */
+export const SessionUuidSchema = Type.String({ pattern: SESSION_UUID_PATTERN });
 export const SessionSequenceSchema = Type.Integer({ minimum: 0, maximum: Number.MAX_SAFE_INTEGER });
 const text = (maxLength: number) => Type.String({ maxLength });
 export const SessionModeSchema = Type.Union([
@@ -57,7 +68,7 @@ export const WorkStateSchema = Type.Union([
 ]);
 export const ContentRefSchema = Type.Object(
   {
-    contentId: SessionIdSchema,
+    contentId: ContentIdSchema,
     revision: text(128),
     byteLength: SessionSequenceSchema,
   },
@@ -86,9 +97,9 @@ export const CommandPermissionActionSchema = Type.Object(
 export const InteractionSchema = Type.Union([
   Type.Object(
     {
-      interactionId: SessionIdSchema,
-      turnId: SessionIdSchema,
-      workId: SessionIdSchema,
+      interactionId: InteractionIdSchema,
+      turnId: TurnIdSchema,
+      workId: WorkIdSchema,
       revision: SessionSequenceSchema,
       kind: Type.Literal('question'),
       prompt: text(8192),
@@ -102,9 +113,9 @@ export const InteractionSchema = Type.Union([
   ),
   Type.Object(
     {
-      interactionId: SessionIdSchema,
-      turnId: SessionIdSchema,
-      workId: SessionIdSchema,
+      interactionId: InteractionIdSchema,
+      turnId: TurnIdSchema,
+      workId: WorkIdSchema,
       revision: SessionSequenceSchema,
       kind: Type.Literal('permission'),
       prompt: text(8192),
@@ -162,7 +173,7 @@ export const ActiveTurnSchema = Type.Object(
   {
     mode: Type.Optional(SessionModeSchema),
     providerModeId: Type.Optional(text(128)),
-    turnId: SessionIdSchema,
+    turnId: TurnIdSchema,
     state: Type.Union([
       Type.Literal('active'),
       Type.Literal('waiting'),
@@ -187,8 +198,8 @@ export const CurrentActivitySchema = Type.Object(
       Type.Literal('cancelling'),
       Type.Literal('unknown'),
     ]),
-    turnId: SessionIdSchema,
-    workId: Type.Optional(SessionIdSchema),
+    turnId: TurnIdSchema,
+    workId: Type.Optional(WorkIdSchema),
     label: text(1024),
   },
   closed,
@@ -233,10 +244,10 @@ export const WorkDigestSchema = Type.Object(
 );
 export const ConversationEntrySchema = Type.Object(
   {
-    id: SessionIdSchema,
+    id: SessionUuidSchema,
     ordinal: SessionSequenceSchema,
     revision: SessionSequenceSchema,
-    turnId: SessionIdSchema,
+    turnId: TurnIdSchema,
     kind: Type.Union([
       Type.Literal('request'),
       Type.Literal('commentary'),
@@ -245,7 +256,7 @@ export const ConversationEntrySchema = Type.Object(
       Type.Literal('outcome'),
     ]),
     text: TextPreviewSchema,
-    workId: Type.Optional(SessionIdSchema),
+    workId: Type.Optional(WorkIdSchema),
     /** The Turn's latest `work-summary` entry carries the current digest once a ToolAction opened;
      * an earlier entry keeps the value it had while it was the latest. */
     digest: Type.Optional(WorkDigestSchema),
@@ -281,7 +292,7 @@ export const HistoryPageSchema = Type.Object(
 );
 export const ContentPageSchema = Type.Object(
   {
-    contentId: SessionIdSchema,
+    contentId: ContentIdSchema,
     revision: text(128),
     offset: SessionSequenceSchema,
     text: text(65536),
@@ -294,7 +305,7 @@ export const TurnErrorSchema = Type.Object({ code: text(64), message: text(2048)
 const turnFields = {
   mode: Type.Optional(SessionModeSchema),
   providerModeId: Type.Optional(text(128)),
-  turnId: SessionIdSchema,
+  turnId: TurnIdSchema,
   revision: SessionSequenceSchema,
   createdAt: text(40),
   updatedAt: text(40),
@@ -328,7 +339,7 @@ export const TurnSummarySchema = Type.Union([
 ]);
 export const WorkSummarySchema = Type.Object(
   {
-    workId: SessionIdSchema,
+    workId: WorkIdSchema,
     ordinal: SessionSequenceSchema,
     revision: SessionSequenceSchema,
     kind: WorkKindSchema,
@@ -343,7 +354,7 @@ export const WorkSummarySchema = Type.Object(
 );
 export const ToolActionSummarySchema = Type.Object(
   {
-    actionId: SessionIdSchema,
+    actionId: SessionUuidSchema,
     ordinal: SessionSequenceSchema,
     revision: SessionSequenceSchema,
     state: WorkStateSchema,
@@ -389,7 +400,7 @@ export const WorkPageSchema = Type.Object(
 export const ActionPageSchema = Type.Object(
   {
     sessionId: SessionIdSchema,
-    workId: SessionIdSchema,
+    workId: WorkIdSchema,
     eventSeq: SessionSequenceSchema,
     items: Type.Array(ToolActionSummarySchema, { maxItems: 40 }),
     history: HistoryCursorSchema,
@@ -453,7 +464,7 @@ export const SessionChangeSchema = Type.Union([
       kind: Type.Literal('work'),
       changes: Type.Object(
         {
-          turnId: SessionIdSchema,
+          turnId: TurnIdSchema,
           items: Type.Array(WorkSummarySchema, { maxItems: 8 }),
           projection: Type.Optional(LiveProjectionSchema),
         },

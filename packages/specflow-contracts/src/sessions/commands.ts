@@ -1,11 +1,18 @@
 import { Type, type Static } from 'typebox';
-import { SessionIdSchema, SessionModeSchema, TurnOutcomeSchema } from './model';
+import {
+  InteractionIdSchema,
+  SessionIdSchema,
+  SessionModeSchema,
+  SessionUuidSchema,
+  TurnIdSchema,
+  TurnOutcomeSchema,
+} from './model';
 
 const closed = { additionalProperties: false } as const;
 const choice = (maxLength: number) => Type.String({ minLength: 1, maxLength });
 export const CreateSessionSchema = Type.Object(
   {
-    requestId: SessionIdSchema,
+    requestId: SessionUuidSchema,
     providerId: choice(128),
     modelId: Type.Optional(choice(256)),
     mode: SessionModeSchema,
@@ -17,7 +24,7 @@ export const CreateSessionSchema = Type.Object(
 );
 export const StartTurnSchema = Type.Object(
   {
-    requestId: SessionIdSchema,
+    requestId: SessionUuidSchema,
     message: choice(128 * 1024),
     mode: Type.Optional(SessionModeSchema),
     providerModeId: Type.Optional(choice(128)),
@@ -26,11 +33,11 @@ export const StartTurnSchema = Type.Object(
   },
   closed,
 );
-export const CancelTurnSchema = Type.Object({ requestId: SessionIdSchema }, closed);
+export const CancelTurnSchema = Type.Object({ requestId: SessionUuidSchema }, closed);
 export const RespondInteractionSchema = Type.Union([
   Type.Object(
     {
-      requestId: SessionIdSchema,
+      requestId: SessionUuidSchema,
       kind: Type.Literal('question'),
       answer: Type.Object(
         {
@@ -44,7 +51,7 @@ export const RespondInteractionSchema = Type.Union([
   ),
   Type.Object(
     {
-      requestId: SessionIdSchema,
+      requestId: SessionUuidSchema,
       kind: Type.Literal('permission'),
       decision: Type.Union([Type.Literal('allow'), Type.Literal('deny')]),
     },
@@ -54,12 +61,12 @@ export const RespondInteractionSchema = Type.Union([
 /** `201` of `POST /api/sessions`. */
 export const CreateSessionResultSchema = Type.Object({ sessionId: SessionIdSchema }, closed);
 /** `202` of `POST /api/sessions/:id/turns`. */
-export const StartTurnResultSchema = Type.Object({ turnId: SessionIdSchema }, closed);
+export const StartTurnResultSchema = Type.Object({ turnId: TurnIdSchema }, closed);
 /** `202` of `POST /api/sessions/:id/turns/:turnId/cancel`. */
-export const CancelTurnResultSchema = Type.Object({ turnId: SessionIdSchema }, closed);
+export const CancelTurnResultSchema = Type.Object({ turnId: TurnIdSchema }, closed);
 /** `202` of `POST /api/sessions/:id/interactions/:interactionId/respond`. */
 export const RespondInteractionResultSchema = Type.Object(
-  { turnId: SessionIdSchema, interactionId: SessionIdSchema },
+  { turnId: TurnIdSchema, interactionId: InteractionIdSchema },
   closed,
 );
 /**
@@ -67,7 +74,7 @@ export const RespondInteractionResultSchema = Type.Object(
  * request settled it (`false` when the Turn was already terminal with the same outcome).
  */
 export const ReconcileTurnResultSchema = Type.Object(
-  { turnId: SessionIdSchema, outcome: TurnOutcomeSchema, reconciled: Type.Boolean() },
+  { turnId: TurnIdSchema, outcome: TurnOutcomeSchema, reconciled: Type.Boolean() },
   closed,
 );
 export const SessionErrorCodes = [
@@ -95,6 +102,11 @@ export const SessionErrorCodes = [
   'PROVIDER_AUTH_REQUIRED',
   'PROVIDER_CATALOGUE_UNAVAILABLE',
 ] as const;
+/**
+ * The `session_error` envelope of a Session refusal, answered by every Session and Session
+ * association route (the Runtime's Session error handling). Its `$id` names the shared contract:
+ * the Runtime OpenAPI document publishes it once, as the `SessionError` component.
+ */
 export const SessionErrorSchema = Type.Object(
   {
     error: Type.Literal('session_error'),
@@ -104,7 +116,7 @@ export const SessionErrorSchema = Type.Object(
       Type.Object(
         {
           field: Type.Optional(Type.String()),
-          turnId: Type.Optional(SessionIdSchema),
+          turnId: Type.Optional(TurnIdSchema),
           reason: Type.Optional(Type.String()),
           capability: Type.Optional(Type.String()),
         },
@@ -112,7 +124,7 @@ export const SessionErrorSchema = Type.Object(
       ),
     ),
   },
-  closed,
+  { ...closed, $id: 'SessionError' },
 );
 export const ProviderDescriptorSchema = Type.Object(
   {

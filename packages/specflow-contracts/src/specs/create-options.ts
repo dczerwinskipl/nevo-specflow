@@ -1,9 +1,6 @@
 import { Type, type Static } from 'typebox';
 
-const Uuid = Type.String({
-  pattern:
-    '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$',
-});
+import { WorkspaceIdSchema } from '../identifiers';
 
 const Reason = Type.Union([
   Type.Literal('git-disabled'),
@@ -39,11 +36,11 @@ export const CreateCommitsSchema = Type.Object(
 
 export const CreateOptionsSchema = Type.Object(
   {
-    primaryWorkspaceId: Uuid,
+    primaryWorkspaceId: WorkspaceIdSchema,
     workspaces: Type.Array(
       Type.Object(
         {
-          workspaceId: Uuid,
+          workspaceId: WorkspaceIdSchema,
           kind: Type.Union([Type.Literal('primary'), Type.Literal('linked')]),
           /** Display label: the checkout folder name (the repository folder for the primary one). */
           name: Type.String({ minLength: 1 }),
@@ -61,7 +58,7 @@ export const CreateOptionsSchema = Type.Object(
           integrationSelectable: Type.Optional(Type.Boolean()),
           integrationDestination: Type.Optional(
             Type.Object(
-              { workspaceId: Uuid, branch: Type.String({ minLength: 1 }) },
+              { workspaceId: WorkspaceIdSchema, branch: Type.String({ minLength: 1 }) },
               { additionalProperties: false },
             ),
           ),
@@ -116,7 +113,7 @@ export const CreateOptionsSchema = Type.Object(
            * `target.baseRef` override sends. Its display name is `<branch>`.
            */
           ref: Type.String({ pattern: '^refs/heads/.+$' }),
-          checkedOutWorkspaceId: Type.Optional(Uuid),
+          checkedOutWorkspaceId: Type.Optional(WorkspaceIdSchema),
         },
         { additionalProperties: false },
       ),

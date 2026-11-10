@@ -15,6 +15,7 @@ Exact contracts and factual lookup material live here.
 - [SpecFlow CLI contract](cli/nevo-specflow-contract.md)
 - [Authorization configuration](configuration/authorization.md)
 - [Authorization HTTP API](api/authorization.md)
+- [Runtime OpenAPI document](api/openapi.md)
 
 - [Specification Create/Close HTTP API](api/specflow-specification-operations.md)
 - [Offline Specification CLI commands](cli/specflow-specification-commands.md)

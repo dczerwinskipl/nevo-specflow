@@ -26,6 +26,7 @@ import type { SpecsOverviewRepository } from './repository/read-repository';
 import { SpecsReadError, type SpecsReadErrorCode } from '../read/error';
 import { getArchiveOverview } from './archive/get-overview';
 import { getCurrentOverview } from './current/get-overview';
+import { contractRef } from '../../../server/shared-contracts';
 
 export interface SpecsOverviewEndpointOptions {
   readonly repository?: SpecsOverviewRepository;
@@ -47,12 +48,17 @@ export const specsOverviewEndpoint: FastifyPluginCallback<SpecsOverviewEndpointO
         capability: SpecCapabilities.capabilities.View,
       }),
       schema: {
+        tags: ['Specifications'],
+        summary: 'Read the Specifications overview',
         querystring: SpecsOverviewQuerySchema,
         response: {
           200: SpecsOverviewSchema,
-          503: Type.Union([SpecsOverviewReadErrorSchema, SpecificationReadErrorSchema]),
-          401: AuthenticationRequiredErrorResponseSchema,
-          403: AuthorizationForbiddenErrorResponseSchema,
+          503: Type.Union([
+            SpecsOverviewReadErrorSchema,
+            contractRef(SpecificationReadErrorSchema),
+          ]),
+          401: contractRef(AuthenticationRequiredErrorResponseSchema),
+          403: contractRef(AuthorizationForbiddenErrorResponseSchema),
         },
       },
     },

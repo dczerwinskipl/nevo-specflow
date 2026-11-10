@@ -90,7 +90,7 @@ Current shared contracts: `AuthSessionResponse`, `AuthenticationRequiredErrorRes
 `AuthorizationForbiddenErrorResponse`, `CloseError`, `ClosePreview`, `CloseResult`,
 `CloseWorkspaceResult`, `CreateSpecError`, `DocumentError`, `DocumentOperationResult`,
 `DocumentOperationStatus`, `OperationListResponse`, `RateLimitedErrorResponse`,
-`SessionCommandResult`, `SessionError`, `SpecificationReadError`, `TaskReadError` and
+`RequestParsingErrorResponse`, `SessionCommandResult`, `SessionError`, `SpecificationReadError`, `TaskReadError` and
 `TaskSnapshotExpired`.
 
 A test that registers Runtime routes on a bare Fastify instance (without `createRuntimeApp`) creates
@@ -221,7 +221,7 @@ its serialization, so a route documents its refusals as documentation-only respo
 
 ```json
 "409": {
-  "description": "Conflicts with the current state of the Session: a `session_error` with `code` one of `IDEMPOTENCY_CONFLICT`, `SESSION_ARCHIVED`, `TURN_CONFLICT`, `SESSION_RECOVERY_REQUIRED`.",
+  "description": "Conflicts with the current state of the resource: a `session_error` with `code` one of `IDEMPOTENCY_CONFLICT`, `SESSION_ARCHIVED`, `TURN_CONFLICT`, `SESSION_RECOVERY_REQUIRED`.",
   "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SessionError" } } }
 }
 ```
@@ -236,12 +236,25 @@ item over its byte budget, an undecodable row) are not documented. The composed 
 (`POST /api/specs/{specId}/sessions`) answers its `503` from its response schema, a union of the
 Specification read error and `SessionError`, whose description lists both.
 
+Not every `400` of a route with a JSON body is a `session_error`. The Session error handling leaves
+a body the framework cannot read to the Runtime error handling, which answers Fastify's own error
+body, the shared contract `RequestParsingErrorResponse` (`{ statusCode, code, error, message }`,
+`@nevo/specflow-contracts/runtime`): `400` for a malformed or empty JSON body
+(`FST_ERR_CTP_INVALID_JSON_BODY`, `FST_ERR_CTP_EMPTY_JSON_BODY`) and `415` for a media type
+without a parser (`FST_ERR_CTP_INVALID_MEDIA_TYPE`; a `text/plain` body is parsed and fails
+validation as `SESSION_INPUT_INVALID`). `sessionBodyErrors(...codes)` documents the `400` of such
+a route as `anyOf` `SessionError` and `RequestParsingErrorResponse`, and the `415`. A
+documentation-only response with several bodies has `contract: [A, B]`.
+
 The documented codes describe the project-mode surface; the demo Runtime's read-only Session routes
 keep only their success and `403` documentation. `test/sessions/error-contracts.http.test.ts` drives
-a refusal of every Session error status through `inject`, checks the body against
-`SessionErrorSchema` and the code against the documented response of the operation, and checks
-that every documented code has a thrower in the Session code and that every Session operation
-documents its refusals.
+a refusal of every documented Session error status, and the two request parsing errors, through
+`inject`, and checks the status, the body against its contract and the code against the documented
+response of the operation. It also checks that every Session operation documents its refusals,
+that each documented code is under its own `SessionError.statusCode`, and, statically, that each
+has a throw site in the Session or Session association code (`new SessionError(`,
+`new StoreFault(`, `fail(`) or is answered by the Session error handling; that check does not
+prove the throw site is on the route's path.
 
 ## Authentication
 
@@ -410,11 +423,11 @@ The Swagger `transform` adds each as an optional `string` parameter of the opera
 unchanged. A name that the route schema also declares for that location is refused when the route
 is registered.
 
-| Operation                                               | Parameters                                                                                                                                                                                   |
-| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET /api/sessions/{sessionId}/events`                  | header `Last-Event-ID`: replay after that event sequence, the same cursor as `after` (both present: equal); a repeated, unequal, non-integer or future value is `400 SESSION_CURSOR_INVALID` |
-| `GET /api/specs/create/operations/{operationId}/events` | header `Last-Event-ID`: continue after that progress event id; when absent, not a number or beyond the latest id, the stream starts with the current snapshot                                |
-| `GET /api/auth/oidc/<providerId>/callback`              | query `code`, `state`, `iss` and `error` of the authorization response (OpenID Connect Core, RFC 9207); every failure, a missing parameter included, ends in the redirect to the login page  |
+| Operation                                               | Parameters                                                                                                                                                                                                                                                                  |
+| ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/sessions/{sessionId}/events`                  | header `Last-Event-ID`: replay after that event sequence, the same cursor as `after` (both present: equal); a repeated or unequal value, one that is not a non-negative integer or one beyond the latest event is `400 SESSION_CURSOR_INVALID`; an empty value reads as `0` |
+| `GET /api/specs/create/operations/{operationId}/events` | header `Last-Event-ID`: continue after that progress event id; when absent, not a number or beyond the latest id, the stream starts with the current snapshot                                                                                                               |
+| `GET /api/auth/oidc/<providerId>/callback`              | query `code`, `state`, `iss` and `error` of the authorization response (OpenID Connect Core, RFC 9207); every failure, a missing parameter included, ends in the redirect to the login page                                                                                 |
 
 ## Undocumented routes
 

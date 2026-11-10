@@ -2248,6 +2248,32 @@
         },
         "additionalProperties": false
       },
+      "RequestParsingErrorResponse": {
+        "type": "object",
+        "required": [
+          "statusCode",
+          "code",
+          "error",
+          "message"
+        ],
+        "properties": {
+          "statusCode": {
+            "type": "integer",
+            "minimum": 400,
+            "maximum": 499
+          },
+          "code": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "SessionCommandResult": {
         "type": "object",
         "required": [
@@ -4641,7 +4667,7 @@
             }
           },
           "409": {
-            "description": "Conflicts with the current state of the Session: a `session_error` with `code` `SESSION_CURSOR_EXPIRED`.",
+            "description": "Conflicts with the current state of the resource: a `session_error` with `code` `SESSION_CURSOR_EXPIRED`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4792,11 +4818,18 @@
             }
           },
           "400": {
-            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`.",
+            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`; or, for a malformed or empty JSON body, the request parsing error with `code` `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY`.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SessionError"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SessionError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/RequestParsingErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -4822,7 +4855,7 @@
             }
           },
           "409": {
-            "description": "Conflicts with the current state of the Session: a `session_error` with `code` `IDEMPOTENCY_CONFLICT`.",
+            "description": "Conflicts with the current state of the resource: a `session_error` with `code` `IDEMPOTENCY_CONFLICT`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4837,6 +4870,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported media type: the body is neither `application/json` nor `text/plain` (a text body fails validation as `SESSION_INPUT_INVALID`); the request parsing error with `code` `FST_ERR_CTP_INVALID_MEDIA_TYPE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestParsingErrorResponse"
                 }
               }
             }
@@ -5875,7 +5918,7 @@
             }
           },
           "409": {
-            "description": "Conflicts with the current state of the Session: a `session_error` with `code` one of `TURN_CONFLICT`, `SESSION_DELETE_BLOCKED`.",
+            "description": "Conflicts with the current state of the resource: a `session_error` with `code` one of `TURN_CONFLICT`, `SESSION_DELETE_BLOCKED`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5987,11 +6030,18 @@
             }
           },
           "400": {
-            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`.",
+            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`; or, for a malformed or empty JSON body, the request parsing error with `code` `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY`.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SessionError"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SessionError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/RequestParsingErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -6027,7 +6077,7 @@
             }
           },
           "409": {
-            "description": "Conflicts with the current state of the Session: a `session_error` with `code` one of `IDEMPOTENCY_CONFLICT`, `TURN_CONFLICT`.",
+            "description": "Conflicts with the current state of the resource: a `session_error` with `code` one of `IDEMPOTENCY_CONFLICT`, `TURN_CONFLICT`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6042,6 +6092,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported media type: the body is neither `application/json` nor `text/plain` (a text body fails validation as `SESSION_INPUT_INVALID`); the request parsing error with `code` `FST_ERR_CTP_INVALID_MEDIA_TYPE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestParsingErrorResponse"
                 }
               }
             }
@@ -6611,7 +6671,7 @@
             }
           },
           "409": {
-            "description": "Conflicts with the current state of the Session: a `session_error` with `code` `CONTENT_REVISION_UNAVAILABLE`.",
+            "description": "Conflicts with the current state of the resource: a `session_error` with `code` `CONTENT_REVISION_UNAVAILABLE`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6702,7 +6762,7 @@
             "in": "header",
             "name": "Last-Event-ID",
             "required": false,
-            "description": "The sequence of the last Session event the client received (an EventSource sends it on reconnect): the stream replays the events after it. The same cursor as `after`; when both are present they must be equal. Answers `400 SESSION_CURSOR_INVALID` when repeated, not equal to `after`, not an integer or beyond the latest event. Without either, the stream starts at the latest event."
+            "description": "The sequence of the last Session event the client received (an EventSource sends it on reconnect): the stream replays the events after it. The same cursor as `after`; when both are present they must be equal. Answers `400 SESSION_CURSOR_INVALID` when repeated, not equal to `after`, not a non-negative integer or beyond the latest event. An empty value reads as `0` (replay of every retained event). Without either, the stream starts at the latest event."
           }
         ],
         "security": [
@@ -7204,7 +7264,7 @@
             }
           },
           "409": {
-            "description": "Conflicts with the current state of the Session: a `session_error` with `code` `SESSION_CURSOR_EXPIRED`.",
+            "description": "Conflicts with the current state of the resource: a `session_error` with `code` `SESSION_CURSOR_EXPIRED`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -7409,11 +7469,18 @@
             }
           },
           "400": {
-            "description": "The request is invalid: a `session_error` with `code` one of `SESSION_INPUT_INVALID`, `INTERACTION_RESPONSE_INVALID`.",
+            "description": "The request is invalid: a `session_error` with `code` one of `SESSION_INPUT_INVALID`, `INTERACTION_RESPONSE_INVALID`; or, for a malformed or empty JSON body, the request parsing error with `code` `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY`.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SessionError"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SessionError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/RequestParsingErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -7449,7 +7516,7 @@
             }
           },
           "409": {
-            "description": "Conflicts with the current state of the Session: a `session_error` with `code` one of `IDEMPOTENCY_CONFLICT`, `SESSION_ARCHIVED`, `INTERACTION_EXPIRED`.",
+            "description": "Conflicts with the current state of the resource: a `session_error` with `code` one of `IDEMPOTENCY_CONFLICT`, `SESSION_ARCHIVED`, `INTERACTION_EXPIRED`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -7464,6 +7531,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported media type: the body is neither `application/json` nor `text/plain` (a text body fails validation as `SESSION_INPUT_INVALID`); the request parsing error with `code` `FST_ERR_CTP_INVALID_MEDIA_TYPE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestParsingErrorResponse"
                 }
               }
             }
@@ -7578,11 +7655,18 @@
             }
           },
           "400": {
-            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`.",
+            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`; or, for a malformed or empty JSON body, the request parsing error with `code` `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY`.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SessionError"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SessionError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/RequestParsingErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -7618,7 +7702,7 @@
             }
           },
           "409": {
-            "description": "Conflicts with the current state of the Session: a `session_error` with `code` `IDEMPOTENCY_CONFLICT`.",
+            "description": "Conflicts with the current state of the resource: a `session_error` with `code` `IDEMPOTENCY_CONFLICT`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -7633,6 +7717,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported media type: the body is neither `application/json` nor `text/plain` (a text body fails validation as `SESSION_INPUT_INVALID`); the request parsing error with `code` `FST_ERR_CTP_INVALID_MEDIA_TYPE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestParsingErrorResponse"
                 }
               }
             }
@@ -10807,11 +10901,18 @@
             }
           },
           "400": {
-            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`.",
+            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`; or, for a malformed or empty JSON body, the request parsing error with `code` `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY`.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SessionError"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SessionError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/RequestParsingErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -10847,7 +10948,7 @@
             }
           },
           "409": {
-            "description": "Conflicts with the current state of the Session: a `session_error` with `code` `IDEMPOTENCY_CONFLICT`.",
+            "description": "Conflicts with the current state of the resource: a `session_error` with `code` `IDEMPOTENCY_CONFLICT`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -10862,6 +10963,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported media type: the body is neither `application/json` nor `text/plain` (a text body fails validation as `SESSION_INPUT_INVALID`); the request parsing error with `code` `FST_ERR_CTP_INVALID_MEDIA_TYPE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestParsingErrorResponse"
                 }
               }
             }
@@ -11011,11 +11122,18 @@
             }
           },
           "400": {
-            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`.",
+            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`; or, for a malformed or empty JSON body, the request parsing error with `code` `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY`.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SessionError"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SessionError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/RequestParsingErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -11051,7 +11169,7 @@
             }
           },
           "409": {
-            "description": "Conflicts with the current state of the Session: a `session_error` with `code` one of `IDEMPOTENCY_CONFLICT`, `SESSION_ARCHIVED`, `TURN_CONFLICT`, `SESSION_RECOVERY_REQUIRED`.",
+            "description": "Conflicts with the current state of the resource: a `session_error` with `code` one of `IDEMPOTENCY_CONFLICT`, `SESSION_ARCHIVED`, `TURN_CONFLICT`, `SESSION_RECOVERY_REQUIRED`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -11066,6 +11184,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported media type: the body is neither `application/json` nor `text/plain` (a text body fails validation as `SESSION_INPUT_INVALID`); the request parsing error with `code` `FST_ERR_CTP_INVALID_MEDIA_TYPE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestParsingErrorResponse"
                 }
               }
             }
@@ -11200,11 +11328,18 @@
             }
           },
           "400": {
-            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`.",
+            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`; or, for a malformed or empty JSON body, the request parsing error with `code` `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY`.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SessionError"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SessionError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/RequestParsingErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -11240,7 +11375,7 @@
             }
           },
           "409": {
-            "description": "Conflicts with the current state of the Session: a `session_error` with `code` one of `IDEMPOTENCY_CONFLICT`, `SESSION_RECOVERY_REQUIRED`.",
+            "description": "Conflicts with the current state of the resource: a `session_error` with `code` one of `IDEMPOTENCY_CONFLICT`, `SESSION_RECOVERY_REQUIRED`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -11255,6 +11390,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported media type: the body is neither `application/json` nor `text/plain` (a text body fails validation as `SESSION_INPUT_INVALID`); the request parsing error with `code` `FST_ERR_CTP_INVALID_MEDIA_TYPE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestParsingErrorResponse"
                 }
               }
             }
@@ -11412,11 +11557,18 @@
             }
           },
           "400": {
-            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`.",
+            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`; or, for a malformed or empty JSON body, the request parsing error with `code` `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY`.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SessionError"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SessionError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/RequestParsingErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -11452,7 +11604,7 @@
             }
           },
           "409": {
-            "description": "Conflicts with the current state of the Session: a `session_error` with `code` one of `IDEMPOTENCY_CONFLICT`, `SESSION_RECOVERY_REQUIRED`.",
+            "description": "Conflicts with the current state of the resource: a `session_error` with `code` one of `IDEMPOTENCY_CONFLICT`, `SESSION_RECOVERY_REQUIRED`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -11467,6 +11619,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported media type: the body is neither `application/json` nor `text/plain` (a text body fails validation as `SESSION_INPUT_INVALID`); the request parsing error with `code` `FST_ERR_CTP_INVALID_MEDIA_TYPE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestParsingErrorResponse"
                 }
               }
             }
@@ -12587,7 +12749,7 @@
             }
           },
           "409": {
-            "description": "Conflicts with the current state of the Session: a `session_error` with `code` `SESSION_CURSOR_EXPIRED`.",
+            "description": "Conflicts with the current state of the resource: a `session_error` with `code` `SESSION_CURSOR_EXPIRED`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12699,11 +12861,18 @@
             }
           },
           "400": {
-            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`.",
+            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`; or, for a malformed or empty JSON body, the request parsing error with `code` `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY`.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SessionError"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SessionError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/RequestParsingErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -12739,7 +12908,7 @@
             }
           },
           "409": {
-            "description": "Conflicts with the current state of the Session: a `session_error` with `code` `IDEMPOTENCY_CONFLICT`.",
+            "description": "Conflicts with the current state of the resource: a `session_error` with `code` `IDEMPOTENCY_CONFLICT`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12754,6 +12923,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported media type: the body is neither `application/json` nor `text/plain` (a text body fails validation as `SESSION_INPUT_INVALID`); the request parsing error with `code` `FST_ERR_CTP_INVALID_MEDIA_TYPE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestParsingErrorResponse"
                 }
               }
             }
@@ -13250,7 +13429,7 @@
             }
           },
           "409": {
-            "description": "Conflicts with the current state of the Session: a `session_error` with `code` `SESSION_CURSOR_EXPIRED`.",
+            "description": "Conflicts with the current state of the resource: a `session_error` with `code` `SESSION_CURSOR_EXPIRED`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -21117,11 +21296,18 @@
             }
           },
           "400": {
-            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`.",
+            "description": "The request is invalid: a `session_error` with `code` `SESSION_INPUT_INVALID`; or, for a malformed or empty JSON body, the request parsing error with `code` `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY`.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SessionError"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SessionError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/RequestParsingErrorResponse"
+                    }
+                  ]
                 }
               }
             }
@@ -21157,7 +21343,7 @@
             }
           },
           "409": {
-            "description": "Conflicts with the current state of the Session: a `session_error` with `code` `IDEMPOTENCY_CONFLICT`.",
+            "description": "Conflicts with the current state of the resource: a `session_error` with `code` `IDEMPOTENCY_CONFLICT`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -21172,6 +21358,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SessionError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported media type: the body is neither `application/json` nor `text/plain` (a text body fails validation as `SESSION_INPUT_INVALID`); the request parsing error with `code` `FST_ERR_CTP_INVALID_MEDIA_TYPE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestParsingErrorResponse"
                 }
               }
             }
@@ -21234,8 +21430,7 @@
                     {
                       "$ref": "#/components/schemas/SessionError"
                     }
-                  ],
-                  "description": "Temporarily unavailable: the Specification source (`specification_source_unavailable`), or a `session_error` with `code` one of `SESSION_DISABLED`, `SESSION_STORE_BUSY`, `SESSION_STORE_UNAVAILABLE`, `PROVIDER_UNAVAILABLE`, `PROVIDER_AUTH_REQUIRED`."
+                  ]
                 }
               }
             }

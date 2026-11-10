@@ -31,8 +31,11 @@ export type OpenApiDocumentedResponse = {
       readonly contract?: never;
     }
   | {
-      /** A JSON body: a registered shared contract, documented as its component. */
-      readonly contract: TSchema;
+      /**
+       * A JSON body: a registered shared contract, documented as its component, or several of them
+       * (`anyOf` of their components) when the status answers more than one body.
+       */
+      readonly contract: TSchema | readonly [TSchema, TSchema, ...TSchema[]];
       readonly mediaType?: never;
     }
 );
@@ -517,7 +520,11 @@ function withDocumentedResponses(
     Object.entries(documented ?? {}).map(([status, response]) => [
       status,
       {
-        description: response.description,
+        // A reference carries a plain `description` (see above); an inline `anyOf` would keep a
+        // plain one in its body schema too, so it carries `x-response-description`, which
+        // `@fastify/swagger` reads and drops.
+        [Array.isArray(response.contract) ? 'x-response-description' : 'description']:
+          response.description,
         ...(response.headers
           ? {
               headers: Object.fromEntries(
@@ -528,11 +535,13 @@ function withDocumentedResponses(
               ),
             }
           : {}),
-        ...(response.contract
-          ? contractRef(response.contract)
-          : response.mediaType
-            ? { content: { [response.mediaType]: { schema: { type: 'string' } } } }
-            : { type: 'null' }),
+        ...(Array.isArray(response.contract)
+          ? { anyOf: response.contract.map((contract) => contractRef(contract)) }
+          : response.contract
+            ? contractRef(response.contract as TSchema)
+            : response.mediaType
+              ? { content: { [response.mediaType]: { schema: { type: 'string' } } } }
+              : { type: 'null' }),
       },
     ]),
   );

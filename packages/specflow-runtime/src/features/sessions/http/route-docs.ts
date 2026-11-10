@@ -1,5 +1,8 @@
 import { AuthorizationForbiddenErrorResponseSchema } from '@nevo/specflow-contracts/authorization';
-import { RateLimitedErrorResponseSchema } from '@nevo/specflow-contracts/runtime';
+import {
+  RateLimitedErrorResponseSchema,
+  RequestParsingErrorResponseSchema,
+} from '@nevo/specflow-contracts/runtime';
 import { SessionErrorSchema, type SessionErrorCode } from '@nevo/specflow-contracts/sessions';
 
 import type { OpenApiDocumentedResponse } from '../../../server/openapi';
@@ -10,7 +13,7 @@ import { SessionError } from '../errors';
 const SESSION_ERROR_MEANINGS: Readonly<Record<number, string>> = {
   400: 'The request is invalid',
   404: 'Not found',
-  409: 'Conflicts with the current state of the Session',
+  409: 'Conflicts with the current state of the resource',
   413: 'The request or the addressed content is too large',
   422: 'The selected provider, model or capability is unsupported',
   503: 'Temporarily unavailable',
@@ -67,8 +70,40 @@ export const SESSION_ROUTE_REFUSALS = [
   'SESSION_STORE_UNAVAILABLE',
 ] as const satisfies readonly SessionErrorCode[];
 
-/** A route with a body: the body limit (`FST_ERR_CTP_BODY_TOO_LARGE`) answers this. */
-const BODY_TOO_LARGE = 'SESSION_PAYLOAD_TOO_LARGE';
+/**
+ * The Session refusals of a route with a JSON body. The Session error handling also answers the
+ * body limit (`FST_ERR_CTP_BODY_TOO_LARGE`) as `413 SESSION_PAYLOAD_TOO_LARGE`, but it leaves a
+ * body the framework cannot read to the Runtime error handling, which answers Fastify's own error:
+ * a malformed or empty JSON body is a `400` beside the `session_error`, a media type without a
+ * parser (neither JSON nor text) a `415`.
+ */
+export function sessionBodyErrors(
+  ...codes: readonly SessionErrorCode[]
+): Readonly<Record<number, OpenApiDocumentedResponse>> {
+  const errors = sessionErrors(...codes, 'SESSION_PAYLOAD_TOO_LARGE');
+  const invalid = errors[400];
+  if (!invalid) {
+    throw new Error('A route with a body is validated, so it answers SESSION_INPUT_INVALID.');
+  }
+
+  return {
+    ...errors,
+    400: {
+      description:
+        `${invalid.description.slice(0, -1)}; or, for a malformed or empty JSON body, the ` +
+        'request parsing error with `code` `FST_ERR_CTP_INVALID_JSON_BODY` or ' +
+        '`FST_ERR_CTP_EMPTY_JSON_BODY`.',
+      contract: [SessionErrorSchema, RequestParsingErrorResponseSchema],
+    },
+    415: {
+      description:
+        'Unsupported media type: the body is neither `application/json` nor `text/plain` ' +
+        '(a text body fails validation as `SESSION_INPUT_INVALID`); the request parsing error ' +
+        'with `code` `FST_ERR_CTP_INVALID_MEDIA_TYPE`.',
+      contract: RequestParsingErrorResponseSchema,
+    },
+  };
+}
 
 /**
  * The Session refusals of each Session route, from the throwers on its path: the Session lookup of
@@ -112,18 +147,16 @@ export const sessionRouteErrors = {
   events: sessionErrors(...SESSION_ROUTE_REFUSALS, 'SESSION_CURSOR_INVALID', 'SESSION_NOT_FOUND'),
   telemetry: sessionErrors(...SESSION_ROUTE_REFUSALS, 'SESSION_NOT_FOUND'),
   /** The refresh request replay, the refreshable groups and the provider's telemetry source. */
-  telemetryRefresh: sessionErrors(
+  telemetryRefresh: sessionBodyErrors(
     ...SESSION_ROUTE_REFUSALS,
-    BODY_TOO_LARGE,
     'SESSION_NOT_FOUND',
     'IDEMPOTENCY_CONFLICT',
     'CAPABILITY_UNSUPPORTED',
     'PROVIDER_UNAVAILABLE',
   ),
   /** The create replay and the provider validation of the selection. */
-  create: sessionErrors(
+  create: sessionBodyErrors(
     ...SESSION_ROUTE_REFUSALS,
-    BODY_TOO_LARGE,
     'IDEMPOTENCY_CONFLICT',
     'MODEL_UNSUPPORTED',
     'CAPABILITY_UNSUPPORTED',
@@ -131,9 +164,8 @@ export const sessionRouteErrors = {
     'PROVIDER_AUTH_REQUIRED',
   ),
   /** The start replay, the message, archive and Turn state, the provider validation, recovery. */
-  start: sessionErrors(
+  start: sessionBodyErrors(
     ...SESSION_ROUTE_REFUSALS,
-    BODY_TOO_LARGE,
     'SESSION_NOT_FOUND',
     'IDEMPOTENCY_CONFLICT',
     'SESSION_ARCHIVED',
@@ -145,26 +177,23 @@ export const sessionRouteErrors = {
     'PROVIDER_AUTH_REQUIRED',
   ),
   /** The Turn is looked up; an execution of unknown outcome must be reconciled first. */
-  cancel: sessionErrors(
+  cancel: sessionBodyErrors(
     ...SESSION_ROUTE_REFUSALS,
-    BODY_TOO_LARGE,
     'SESSION_NOT_FOUND',
     'SESSION_RESOURCE_NOT_FOUND',
     'IDEMPOTENCY_CONFLICT',
     'SESSION_RECOVERY_REQUIRED',
   ),
   /** A Turn without verifiable pending execution cannot be reconciled. */
-  reconcile: sessionErrors(
+  reconcile: sessionBodyErrors(
     ...SESSION_ROUTE_REFUSALS,
-    BODY_TOO_LARGE,
     'SESSION_NOT_FOUND',
     'IDEMPOTENCY_CONFLICT',
     'SESSION_RECOVERY_REQUIRED',
   ),
   /** The answer must match the open interaction of a live Turn of a writable Session. */
-  respond: sessionErrors(
+  respond: sessionBodyErrors(
     ...SESSION_ROUTE_REFUSALS,
-    BODY_TOO_LARGE,
     'INTERACTION_RESPONSE_INVALID',
     'SESSION_NOT_FOUND',
     'IDEMPOTENCY_CONFLICT',
@@ -172,16 +201,10 @@ export const sessionRouteErrors = {
     'INTERACTION_EXPIRED',
   ),
   /** Rename and unarchive: the command replay. */
-  manage: sessionErrors(
-    ...SESSION_ROUTE_REFUSALS,
-    BODY_TOO_LARGE,
-    'SESSION_NOT_FOUND',
-    'IDEMPOTENCY_CONFLICT',
-  ),
+  manage: sessionBodyErrors(...SESSION_ROUTE_REFUSALS, 'SESSION_NOT_FOUND', 'IDEMPOTENCY_CONFLICT'),
   /** Archiving also needs the current Turn settled. */
-  archive: sessionErrors(
+  archive: sessionBodyErrors(
     ...SESSION_ROUTE_REFUSALS,
-    BODY_TOO_LARGE,
     'SESSION_NOT_FOUND',
     'IDEMPOTENCY_CONFLICT',
     'TURN_CONFLICT',
@@ -226,8 +249,9 @@ export const sessionEventReplayParameters = {
       'The sequence of the last Session event the client received (an EventSource sends it on ' +
       'reconnect): the stream replays the events after it. The same cursor as `after`; when both ' +
       'are present they must be equal. Answers `400 SESSION_CURSOR_INVALID` when repeated, not ' +
-      'equal to `after`, not an integer or beyond the latest event. Without either, the stream ' +
-      'starts at the latest event.',
+      'equal to `after`, not a non-negative integer or beyond the latest event. An empty value ' +
+      'reads as `0` (replay of every retained event). Without either, the stream starts at the ' +
+      'latest event.',
   },
 } as const;
 

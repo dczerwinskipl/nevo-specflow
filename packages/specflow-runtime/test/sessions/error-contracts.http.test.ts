@@ -10,7 +10,11 @@ import {
   SessionErrorSchema,
   type SessionErrorCode,
 } from '@nevo/specflow-contracts/sessions';
+import { RequestParsingErrorResponseSchema } from '@nevo/specflow-contracts/runtime';
 import { SessionError } from '../../src/features/sessions';
+
+/** Fastify's codes for a body it cannot read, answered by the Runtime error handling. */
+type RequestParsingCode = 'FST_ERR_CTP_INVALID_JSON_BODY' | 'FST_ERR_CTP_INVALID_MEDIA_TYPE';
 import { createRuntimeApp } from '../../src/server/app';
 import { generateOpenApiDocument, type RuntimeOpenApiDocument } from '../../src/server/openapi';
 import { passwordConfig } from '../auth/support/config';
@@ -94,9 +98,10 @@ describe('Session error contracts', () => {
       app: FastifyInstance;
       operation: string;
       url?: string;
-      payload?: object;
+      payload?: object | string;
+      contentType?: string;
       status: number;
-      code: SessionErrorCode;
+      code: SessionErrorCode | RequestParsingCode;
     }[] = [
       {
         app: disabled,
@@ -169,28 +174,49 @@ describe('Session error contracts', () => {
         status: 422,
         code: 'MODEL_UNSUPPORTED',
       },
+      // A body the framework cannot read is Fastify's error, not a `session_error`.
+      {
+        app: enabled,
+        operation: 'POST /api/sessions',
+        payload: '{',
+        contentType: 'application/json',
+        status: 400,
+        code: 'FST_ERR_CTP_INVALID_JSON_BODY',
+      },
+      {
+        app: enabled,
+        operation: 'POST /api/sessions/{sessionId}/rename',
+        url: `/api/sessions/${sessionId}/rename`,
+        payload: '<title/>',
+        contentType: 'application/xml',
+        status: 415,
+        code: 'FST_ERR_CTP_INVALID_MEDIA_TYPE',
+      },
     ];
-    const documents = new Map<FastifyInstance, ReturnType<typeof sessionErrorResponses>>();
+    const documents = new Map<FastifyInstance, Operations>();
     for (const app of [disabled, enabled]) {
-      documents.set(app, sessionErrorResponses(await generateOpenApiDocument(app)));
+      documents.set(app, (await generateOpenApiDocument(app)).paths as Operations);
     }
 
-    for (const { app, operation, url, payload, status, code } of cases) {
+    for (const { app, operation, url, payload, contentType, status, code } of cases) {
       const [method, path] = operation.split(' ') as ['GET' | 'POST', string];
       const response = await app.inject({
         method,
         url: url ?? path,
         ...(payload ? { payload } : {}),
+        ...(contentType ? { headers: { 'content-type': contentType } } : {}),
       });
       const label = `${operation} ${code}`;
+      const body = code.startsWith('FST_') ? RequestParsingErrorResponseSchema : SessionErrorSchema;
 
       expect(response.statusCode, label).toBe(status);
-      expect(Value.Check(SessionErrorSchema, response.json()), label).toBe(true);
+      expect(Value.Check(body, response.json()), label).toBe(true);
       expect(response.json<{ code: string }>().code, label).toBe(code);
-      const documented = documents
-        .get(app)!
-        .find((entry) => entry.operation === operation && entry.status === status);
-      expect(documented?.codes, label).toContain(code);
+      const documented = documents.get(app)![path]![method.toLowerCase()]!.responses[status];
+      expect(documented?.description, label).toContain(`\`${code}\``);
+      expect(JSON.stringify(documented?.content), label).toContain(
+        `#/components/schemas/${String((body as { $id?: string }).$id)}`,
+      );
     }
   });
 
@@ -212,25 +238,34 @@ describe('Session error contracts', () => {
       ).toBe(true);
     }
 
-    // A cheap static check: each documented code has a thrower in the Session Runtime code (the
-    // route documentation lists codes, it does not throw them).
+    // A cheap static check, not a path analysis: each documented code has a throw site somewhere in
+    // the Session or Session association code (`new SessionError(`, `new StoreFault(` or `fail(`
+    // with the code), or is a code the Session error handling answers for request validation and
+    // the body limit. It does not prove that the throw site is on the documenting route's path.
     const root = join(import.meta.dirname, '../../src/features');
-    const sources = await Promise.all(
-      ['sessions', 'session-associations'].map(async (feature) =>
-        Promise.all(
-          (await readdir(join(root, feature), { recursive: true }))
-            .filter((file) => file.endsWith('.ts') && !file.endsWith('.test.ts'))
-            .filter((file) => !/route-docs\.ts$|errors\.ts$/.test(file))
-            .map((file) => readFile(join(root, feature, file), 'utf8')),
+    const sources = (
+      await Promise.all(
+        ['sessions', 'session-associations'].map(async (feature) =>
+          Promise.all(
+            (await readdir(join(root, feature), { recursive: true }))
+              .filter((file) => file.endsWith('.ts') && !file.endsWith('.test.ts'))
+              .map((file) => readFile(join(root, feature, file), 'utf8')),
+          ),
         ),
-      ),
-    );
-    const thrown = sources.flat().join('\n');
+      )
+    )
+      .flat()
+      .join('\n');
+    const handling = await readFile(join(root, 'sessions/http/error-handling.ts'), 'utf8');
     for (const { operation, status, codes } of responses) {
       expect(codes.length, `${operation} ${status}`).toBeGreaterThan(0);
       for (const code of codes) {
         expect(new SessionError(code, '').statusCode, `${operation} ${code}`).toBe(status);
-        expect(thrown, code).toMatch(new RegExp(`'${code}'`));
+        const thrown = new RegExp(
+          String.raw`(?:new SessionError|new StoreFault|\bfail)\(\s*'${code}'`,
+        );
+        const answered = new RegExp(String.raw`code: [^\n]*'${code}'`);
+        expect(thrown.test(sources) || answered.test(handling), code).toBe(true);
       }
     }
   });

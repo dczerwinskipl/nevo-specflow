@@ -35,7 +35,10 @@ import {
   CreateSpecErrorSchema,
 } from '@nevo/specflow-contracts/specs';
 import { SpecificationReadErrorSchema } from '@nevo/specflow-contracts/specs/workspace';
-import { RateLimitedErrorResponseSchema } from '@nevo/specflow-contracts/runtime';
+import {
+  RateLimitedErrorResponseSchema,
+  RequestParsingErrorResponseSchema,
+} from '@nevo/specflow-contracts/runtime';
 import { TaskReadErrorSchema, TaskSnapshotExpiredSchema } from '@nevo/specflow-contracts/tasks';
 
 /**
@@ -59,6 +62,7 @@ const SHARED_CONTRACTS: readonly TSchema[] = [
   DocumentOperationStatusSchema,
   OperationListResponseSchema,
   RateLimitedErrorResponseSchema,
+  RequestParsingErrorResponseSchema,
   SessionCommandResultSchema,
   SessionErrorSchema,
   SpecificationReadErrorSchema,

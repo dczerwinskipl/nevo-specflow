@@ -14,7 +14,7 @@ import {
 import {
   SessionError,
   authorizeSessionWrite,
-  sessionErrors,
+  sessionBodyErrors,
   requireStartSession,
   type SessionsRuntime,
 } from '../../sessions';
@@ -69,9 +69,8 @@ export function registerCreateContextSessionRoute(
       preHandler: authorize,
       // The Session create's refusals (its `503` codes are in the response schema below).
       config: {
-        openApiResponses: sessionErrors(
+        openApiResponses: sessionBodyErrors(
           'SESSION_INPUT_INVALID',
-          'SESSION_PAYLOAD_TOO_LARGE',
           'IDEMPOTENCY_CONFLICT',
           'MODEL_UNSUPPORTED',
           'CAPABILITY_UNSUPPORTED',
@@ -90,7 +89,8 @@ export function registerCreateContextSessionRoute(
           503: Type.Union(
             [contractRef(SpecificationReadErrorSchema), contractRef(SessionErrorSchema)],
             {
-              description:
+              // Read and dropped by `@fastify/swagger`, so it describes the response only.
+              'x-response-description':
                 'Temporarily unavailable: the Specification source ' +
                 '(`specification_source_unavailable`), or a `session_error` with `code` one of ' +
                 '`SESSION_DISABLED`, `SESSION_STORE_BUSY`, `SESSION_STORE_UNAVAILABLE`, ' +

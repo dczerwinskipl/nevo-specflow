@@ -60,8 +60,8 @@ Runtime check with `git check-ignore` (once per process, only with `ai.embedding
 Git ignores `.nevo/local/cache/docs-index/`. In a Git work tree that does not, nothing is written
 below `.nevo/local/`: searches answer lexically with `index-unavailable` (``Git does not ignore
 .nevo/local/cache/docs-index/, so the index is not written there; add `.nevo/local/` to the
-project's .gitignore.``), `semantic index` reports the same reason and `semantic status` exits 1
-with it. Add the entry:
+project's .gitignore.``), and `semantic index` and `semantic status` exit 1 with the same
+reason. Add the entry:
 
 ```gitignore
 .nevo/local/
@@ -243,7 +243,9 @@ the two files as shown.
 `search` answers in `hybrid` mode only when `docs.search.semantic` is `true`, an endpoint is
 configured and reachable, and the index is current; otherwise it answers `lexical` with a reason
 (see the [CLI reference](../cli/nevo-specflow-docs.md#search)). Configuration problems fail every
-`docs` command with exit 1; an unavailable endpoint or index never does.
+`docs` command with exit 1; an unavailable endpoint or index never fails `search`, only the
+explicit `semantic status` and `semantic index` (see the
+[exit codes](../cli/nevo-specflow-docs.md#exit-codes)).
 
 ## Local cache
 

@@ -37,9 +37,12 @@ const createDefaultProvider: CreateEmbeddingProvider = (settings, { signal }) =>
   );
 
 export interface EmbeddingProviders {
-  /** Query embedding and reachability probes; at most `QUERY_TIMEOUT_MS` per request. */
+  /**
+   * Query embedding and reachability probes (before a read-time refresh and in `semantic status`);
+   * at most `QUERY_TIMEOUT_MS` per request.
+   */
   readonly query: EmbeddingProvider;
-  /** Document embedding during a refresh and the status probe; the configured timeout. */
+  /** Document embedding during a refresh, with its probe; the configured timeout. */
   readonly documents: EmbeddingProvider;
 }
 

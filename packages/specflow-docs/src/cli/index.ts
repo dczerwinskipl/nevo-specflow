@@ -15,7 +15,7 @@ import { addSemanticCommand } from '../semantic-index/semantic-command';
 import { addCheckCommand } from '../validation/check-command';
 
 export type { DocsCommandContext, DocsProject } from '../command/context';
-export { backgroundExecArgv, type BackgroundIndexLaunch } from '../semantic-index/catch-up';
+export { backgroundExecArgv, type BackgroundIndexLaunch } from '../semantic-index/detached-process';
 
 export function createDocsCommand(ctx: DocsCommandContext): Command {
   const docs = new Command('docs')

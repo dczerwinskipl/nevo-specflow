@@ -37,4 +37,5 @@ export {
 } from './semantic-index/build';
 export { type IndexCatchUp } from './semantic-index/catch-up';
 export { readIndexActivity } from './semantic-index/progress';
+export { createReachabilityCache, type ReachabilityCache } from './semantic-index/reachability';
 export { semanticStatus } from './semantic-index/status';

@@ -160,11 +160,12 @@ nevo-specflow docs semantic index
 - `semantic status` reports whether semantic search is enabled, the endpoint's reachability, the
   model and dimensions, and index freshness. It exits non-zero when semantic search is enabled but
   unavailable.
-- `semantic index` (re)builds the index explicitly.
+- `semantic index` (re)builds the index explicitly. It exits non-zero when the index is not up to
+  date afterwards (nothing attempted, endpoint failure, write failure, another writer).
 
 The exact options and output shapes are defined by the CLI reference.
 
-### 4. Semantic search is optional and never fails a command
+### 4. Semantic search is optional and never fails a search
 
 Semantic search is enabled by the project-owned opt-in `docs.search.semantic` and requires a
 configured embedding endpoint (`ai.embeddings`). When vectors cannot be obtained, `search` answers
@@ -179,8 +180,9 @@ lexically and reports why:
 | index cannot be read or written             | lexical | index unavailable, with cause    |
 | otherwise                                   | hybrid  | —                                |
 
-The fallback MUST NOT fail `search`; only `semantic status` turns an unavailable configured mode
-into a failure exit. Callers do not need to know in advance whether semantic mode is on, because
+The fallback MUST NOT fail `search`. Only the two explicit administrative commands turn an
+unavailable configured mode into a failure exit: `semantic status`, and `semantic index` when it
+could not bring the index up to date. Callers do not need to know in advance whether semantic mode is on, because
 every result states its `mode`.
 
 ### 5. Index freshness without a watcher

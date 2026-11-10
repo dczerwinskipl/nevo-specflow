@@ -3,12 +3,11 @@
 // for `semantic index` by hand. A host supplies the catch-up: the CLI starts a detached
 // `semantic index` process (`createProcessCatchUp`), a running Runtime its in-process refresh.
 
-import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { closeSync, openSync, renameSync, statSync } from 'node:fs';
 import { mkdir, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import type { BackgroundIndexLaunch, SpawnDetached } from './detached-process';
 import { readIndexActivity } from './progress';
 
 /**
@@ -22,32 +21,8 @@ export interface IndexCatchUp {
   start(): Promise<string>;
 }
 
-/** The command line of `semantic index` as the host's own executable runs it. */
-export interface BackgroundIndexLaunch {
-  /** Executable, normally `process.execPath` (the same Node binary). */
-  readonly command: string;
-  /** For example `[<entry script>, 'docs', 'semantic', 'index']`. */
-  readonly args: readonly string[];
-}
-
-export interface DetachedProcessRequest extends BackgroundIndexLaunch {
-  /** Working directory: the project root. */
-  readonly cwd: string;
-  /** Receives the process's stdout and stderr, appended (see `CATCH_UP_LOG_MAX_BYTES`). */
-  readonly logFile: string;
-}
-
-/** Starts a process that outlives the caller; throws only when it cannot be started at all. */
-export type SpawnDetached = (request: DetachedProcessRequest) => void;
-
 /** The log of the latest background `semantic index`, in the index directory. */
 export const CATCH_UP_LOG_FILE = 'catch-up.log';
-
-/**
- * A log above this size is moved to `<log>.1` (replacing the previous one) before the next start,
- * so the two files stay bounded; a log still open by a running process is appended to instead.
- */
-export const CATCH_UP_LOG_MAX_BYTES = 256 * 1024;
 
 /** Written when a background `semantic index` is started; see `CATCH_UP_START_COOLDOWN_MS`. */
 export const CATCH_UP_MARKER_FILE = 'catch-up.started';
@@ -59,65 +34,6 @@ export const CATCH_UP_MARKER_FILE = 'catch-up.started';
  * is started again by the next search, at most once per window.
  */
 export const CATCH_UP_START_COOLDOWN_MS = 60_000;
-
-/**
- * Detached and without a console window (Windows) or terminal session, stdio to the log file and
- * unreferenced, so the search exits at once and the process keeps running after it.
- */
-export const spawnDetachedProcess: SpawnDetached = ({ command, args, cwd, logFile }) => {
-  rotateLog(logFile);
-  const log = openSync(logFile, 'a');
-  try {
-    const child = spawn(command, [...args], {
-      cwd,
-      detached: true,
-      windowsHide: true,
-      stdio: ['ignore', log, log],
-    });
-    // A start failure after spawn returned only means the index stays behind; the log says why.
-    child.once('error', () => undefined);
-    child.unref();
-  } finally {
-    closeSync(log);
-  }
-};
-
-function rotateLog(logFile: string): void {
-  try {
-    if (statSync(logFile).size > CATCH_UP_LOG_MAX_BYTES) {
-      renameSync(logFile, `${logFile}.1`);
-    }
-  } catch {
-    // No log yet, or it cannot be moved (still open on Windows): append to it.
-  }
-}
-
-/**
- * The Node options a detached child keeps from the parent's `process.execArgv`: loader and other
- * runtime flags yes, debugger and profiler flags no (a second `--inspect` would fight for the port,
- * a profiler would write its files from a process nobody watches).
- */
-export function backgroundExecArgv(execArgv: readonly string[]): string[] {
-  const kept: string[] = [];
-  for (let index = 0; index < execArgv.length; index += 1) {
-    const flag = execArgv[index]!;
-    if (!DROPPED_FLAG.test(flag)) {
-      kept.push(flag);
-    } else if (VALUE_FLAG.test(flag)) {
-      // `--cpu-prof-dir dir`: the value is the next entry and goes with its flag.
-      index += 1;
-    }
-  }
-
-  return kept;
-}
-
-const DROPPED_FLAG =
-  /^--(?:inspect(?:-brk|-port|-wait)?|debug-port|cpu-prof|heap-prof|prof)(?:[-=]|$)/;
-
-/** Dropped flags whose value, when not given with `=`, is the next entry. */
-const VALUE_FLAG =
-  /^--(?:inspect-port|debug-port|cpu-prof-(?:dir|name|interval)|heap-prof-(?:dir|name|interval))$/;
 
 export interface ProcessCatchUpOptions {
   /** Absolute index directory (`DocsIndex.directory`). */
@@ -167,7 +83,8 @@ export function createProcessCatchUp(options: ProcessCatchUpOptions): IndexCatch
         await mkdir(directory, { recursive: true });
         claimed = await claimStart(marker, now(), CATCH_UP_START_COOLDOWN_MS);
         if (claimed) {
-          options.spawn({
+          // Resolves once the process has started; a start failure rejects (`SpawnDetached`).
+          await options.spawn({
             ...options.launch,
             cwd: options.projectRoot,
             logFile: join(directory, CATCH_UP_LOG_FILE),
@@ -176,7 +93,8 @@ export function createProcessCatchUp(options: ProcessCatchUpOptions): IndexCatch
 
         return started;
       } catch (error) {
-        // Nothing runs, so the next search may try again at once.
+        // Nothing runs, so the next search may try again at once: it reports this failure again
+        // instead of a catch-up that would never come.
         if (claimed) {
           await unlink(marker).catch(() => undefined);
         }

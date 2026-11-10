@@ -344,3 +344,39 @@ describe('the search catch-up and GET /api/docs/status', () => {
     ).toEqual({ status: 'free' });
   });
 });
+
+describe('GET /api/docs/status reachability', () => {
+  it('probes with the query timeout and shares the result between requests of this Runtime', async () => {
+    // The timeout of every provider whose probe ran.
+    const probes: (number | undefined)[] = [];
+    const createProvider: CreateEmbeddingProvider = (settings) => {
+      const provider = createFakeEmbeddingProvider();
+
+      return {
+        ...provider,
+        probe: () => {
+          probes.push(settings.timeoutMs);
+
+          return provider.probe();
+        },
+      };
+    };
+
+    const app = await docsApp(
+      localViewer(),
+      { projectRoot: project(), createProvider, startRefresh: false },
+      { semantic: true },
+    );
+    try {
+      for (let request = 0; request < 3; request += 1) {
+        const status = (await app.inject('/api/docs/status')).json<DocsStatus>();
+        expect(status.reachability).toMatchObject({ reachable: true });
+      }
+
+      // One probe, by the query provider (3000 ms), not the document one (default 60 s).
+      expect(probes).toEqual([3000]);
+    } finally {
+      await app.close();
+    }
+  });
+});

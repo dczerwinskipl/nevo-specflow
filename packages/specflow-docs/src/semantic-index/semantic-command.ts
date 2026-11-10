@@ -4,6 +4,7 @@ import { DocsError } from '../errors';
 import { buildDocsIndex } from './build';
 import type { SemanticEnvironment } from './environment';
 import { openProjectIndex } from './index-store';
+import { createReachabilityCache } from './reachability';
 import { semanticStatus, type SemanticStatus } from './status';
 import { runDocsAction, type DocsCommandContext } from '../command/context';
 import type { OpenProject } from '../command/open-project';
@@ -24,6 +25,8 @@ export function addSemanticCommand(
     .command('semantic')
     .description('Inspect and build the semantic search index');
 
+  // One per CLI process, like the Runtime's per instance (`SemanticStatusOptions.reachability`).
+  const reachability = createReachabilityCache(ctx.now ? { now: ctx.now } : {});
   const status = semantic
     .command('status')
     .description(
@@ -43,6 +46,7 @@ export function addSemanticCommand(
             ? {}
             : { semanticIndexCommand: ctx.semanticIndexCommand }),
           backgroundCatchUp: ctx.backgroundIndex !== undefined,
+          reachability,
         },
       );
       if (opts.json) {
@@ -62,7 +66,7 @@ export function addSemanticCommand(
   const index = semantic
     .command('index')
     .description(
-      'Embed new and changed documents now (everything after a model or chunker change)',
+      'Embed new and changed documents now (everything after a model or chunker change); exits 1 when the index is not up to date afterwards',
     );
 
   index.action(() =>
@@ -76,10 +80,10 @@ export function addSemanticCommand(
           ctx.stderr(`embedded ${String(embedded)}/${String(total)} chunks`);
         },
       );
+      // An explicit build that did not bring the index up to date fails (exit 1), so automation
+      // can rely on it; `search` degrades to lexical instead.
       if (result.status === 'not-attempted') {
-        ctx.stdout(`Index not built (${result.reason.code}): ${result.reason.message}`);
-
-        return;
+        throw new DocsError(`Index not built (${result.reason.code}): ${result.reason.message}`);
       }
 
       const { outcome } = result;
@@ -90,7 +94,7 @@ export function addSemanticCommand(
           `Index ${outcome.rebuilt ? 'rebuilt' : 'refreshed'}: embedded ${String(outcome.embedded)}, deleted ${String(outcome.deleted)} chunks (generation ${String(outcome.generation)}).`,
         );
       } else {
-        ctx.stdout(
+        throw new DocsError(
           `Index not updated (${result.reason?.code ?? outcome.status}): ${result.reason?.message ?? outcome.status}`,
         );
       }

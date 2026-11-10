@@ -17,6 +17,7 @@ import { planAgainstIndex, type EndpointIdentity } from './freshness';
 import type { DocsIndex } from './index-store';
 import { READ_REFRESH_MAX_CHUNKS } from './refresh-policy';
 import { readIndexActivity } from './progress';
+import { createReachabilityCache, type ReachabilityCache } from './reachability';
 import {
   catchUpReason,
   overLimitReason,
@@ -33,6 +34,11 @@ export interface SemanticStatusOptions {
   readonly semanticIndexCommand?: string;
   /** A search of this host catches a large gap up in the background (`IndexCatchUp`). */
   readonly backgroundCatchUp?: boolean;
+  /**
+   * Probe results shared by the status calls of this process (one per CLI run or Runtime instance).
+   * Default: a cache of this call only, so it probes once.
+   */
+  readonly reachability?: ReachabilityCache;
 }
 
 export async function semanticStatus(
@@ -52,27 +58,31 @@ export async function semanticStatus(
   if (settings !== undefined) {
     const resolved = providersFor(settings, environment);
     if ('reason' in resolved) {
-      reachability = { reachable: false, message: resolved.reason.message };
+      if (enabled) {
+        reachability = { reachable: false, message: resolved.reason.message };
+      }
+
       reason ??= resolved.reason;
     } else {
-      const { documents } = resolved.providers;
-      identity = {
-        protocol: documents.protocol,
-        model: documents.model,
-        dimensions: documents.dimensions,
-      };
-      const probe = await documents.probe();
-      if (probe.ok) {
-        reachability = {
-          reachable: true,
-          latencyMs: probe.latencyMs,
-          dimensions: probe.dimensions,
-        };
-        observedDimensions = probe.dimensions;
-      } else {
-        const failure = embeddingFailureReason(probe.failure);
-        reachability = { reachable: false, message: failure.message };
-        reason ??= failure;
+      // The query provider: an unreachable endpoint answers within the query timeout, as a search
+      // does, never the document timeout. A disabled semantic search sends the endpoint nothing.
+      const { query } = resolved.providers;
+      identity = { protocol: query.protocol, model: query.model, dimensions: query.dimensions };
+      if (enabled) {
+        const cache = options.reachability ?? createReachabilityCache();
+        const probe = await cache.probe(JSON.stringify(publicEndpoint(settings)), query);
+        if (probe.ok) {
+          reachability = {
+            reachable: true,
+            latencyMs: probe.latencyMs,
+            dimensions: probe.dimensions,
+          };
+          observedDimensions = probe.dimensions;
+        } else {
+          const failure = embeddingFailureReason(probe.failure);
+          reachability = { reachable: false, message: failure.message };
+          reason ??= failure;
+        }
       }
     }
   }

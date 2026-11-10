@@ -4,6 +4,7 @@ import {
   openDocsIndex,
   openDocsSearch,
   openFileSystemCorpus,
+  createReachabilityCache,
   readIndexActivity,
   searchDocumentation,
   semanticStatus,
@@ -57,6 +58,8 @@ export function createProjectDocs(options: ProjectDocsOptions): ProjectDocs {
     { readonly index: ReturnType<typeof openDocsIndex>; readonly search: DocsSearch } | undefined;
   // The Git check of the index directory, once per process (`openProjectIndex`).
   let access: Promise<IndexAccess> | undefined;
+  // Status requests of this instance share endpoint probes for a few seconds.
+  const reachability = createReachabilityCache();
 
   const refresh = createBackgroundRefresh(
     async (signal, onProgress) =>
@@ -142,7 +145,7 @@ export function createProjectDocs(options: ProjectDocsOptions): ProjectDocs {
         (await open()).index,
         configuration,
         { env, ...(createProvider ? { createProvider } : {}) },
-        { backgroundCatchUp: true },
+        { backgroundCatchUp: true, reachability },
       ),
     startRefresh: () => {
       refresh.start();

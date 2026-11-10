@@ -111,7 +111,8 @@ Its output goes to `.nevo/local/cache/docs-index/catch-up.log`. It writes every 
 an interrupted run resumes where it stopped; a search after that starts it again. Searches re-embed
 up to 16 changed sections themselves; after a larger edit they answer lexically and catch the index
 up in the background the same way, and they are hybrid again once it is current. Run
-`pnpm docs:semantic index` yourself only to build in the foreground (progress on stderr).
+`pnpm docs:semantic index` yourself only to build in the foreground (progress on stderr; it exits 1
+when the index is not up to date afterwards, for example while the endpoint is down).
 `docker compose down` stops the model and keeps the
 volume. Keys and their validation:
 [documentation and embeddings configuration](../../reference/configuration/documentation-and-embeddings.md).

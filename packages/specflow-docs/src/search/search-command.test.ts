@@ -8,10 +8,8 @@ import { Value } from 'typebox/value';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import { runDocs } from '../../test/support/run-docs';
-import {
-  CATCH_UP_START_COOLDOWN_MS,
-  type DetachedProcessRequest,
-} from '../semantic-index/catch-up';
+import { CATCH_UP_START_COOLDOWN_MS } from '../semantic-index/catch-up';
+import type { DetachedProcessRequest } from '../semantic-index/detached-process';
 import { createProgressRecorder } from '../semantic-index/progress';
 
 // A project with semantic search enabled in the project file and the endpoint in the local file.
@@ -108,7 +106,11 @@ describe('docs search and semantic status', () => {
           semanticIndexCommand: 'pnpm docs:semantic index',
           semanticStatusCommand: 'pnpm docs:semantic status',
           backgroundIndex: { command: 'node', args: ['bin.js', 'semantic', 'index'] },
-          spawnDetached: (request) => spawned.push(request),
+          spawnDetached: (request) => {
+            spawned.push(request);
+
+            return Promise.resolve();
+          },
           now: () => now,
         });
       const first = await search();

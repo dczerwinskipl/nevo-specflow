@@ -7,7 +7,8 @@ import { cutAtWord } from './result';
 import { openDocsSearch, searchDocumentation } from './search';
 import { positiveInteger, runDocsAction, type DocsCommandContext } from '../command/context';
 import type { OpenProject } from '../command/open-project';
-import { createProcessCatchUp, spawnDetachedProcess } from '../semantic-index/catch-up';
+import { createProcessCatchUp } from '../semantic-index/catch-up';
+import { spawnDetachedProcess } from '../semantic-index/detached-process';
 import { openProjectIndex } from '../semantic-index/index-store';
 import { SEMANTIC_INDEX_COMMAND, SEMANTIC_STATUS_COMMAND } from '../semantic-index/reasons';
 

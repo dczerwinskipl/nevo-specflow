@@ -68,7 +68,8 @@ the document's frontmatter, `file` and `body` (and, for `find`, `score`, `matche
 whole file.
 
 Errors are reported on stderr in every mode, including `--json`; stdout stays empty when a command
-fails, and no error object is printed on stdout.
+fails, and no error object is printed on stdout. The one exception is `semantic status`, which
+prints its whole report and then exits 1 when it found enabled semantic search unavailable.
 
 ## `search`
 
@@ -142,7 +143,10 @@ While it runs, later searches say `process <pid> is updating it in the backgroun
 chunks since <time>)` instead. A host that mounts the command under another name, such as this
 repository's `pnpm docs:*` scripts, names and starts its own command line; the HTTP endpoint
 catches up inside the Runtime instead. An unreachable endpoint answers `endpoint-unreachable` and
-starts nothing. Search is hybrid only once every current section has a vector. `--no-refresh` skips
+starts nothing. When the process cannot be started at all (for example a missing executable), the
+search says so (``starting a background `nevo-specflow docs semantic index` failed (<cause>); run it
+yourself``), appends the cause to the catch-up log, leaves no start marker and still exits 0; the
+next search tries again and reports the same failure rather than a catch-up that never runs. Search is hybrid only once every current section has a vector. `--no-refresh` skips
 the embedding step entirely and starts no catch-up.
 
 Text output: one block per document with its id, title, type and status, the `summary` (cut at a
@@ -245,7 +249,9 @@ hybrid mode. Only the order is meaningful; compare scores only within one result
 ## `semantic status` and `semantic index`
 
 `semantic status` reports whether semantic search is enabled, the configured endpoint (never a key),
-a connectivity probe (latency and observed dimensions), the index (`missing`, `current`, `stale`
+a connectivity probe (latency and observed dimensions; with the query timeout, so an endpoint that
+does not answer is reported unreachable within 3000 ms; not sent while `docs.search.semantic` is
+off, when the report has no reachability line), the index (`missing`, `current`, `stale`
 (sections to re-embed), `rebuild` (built with another chunker, protocol, model or dimension) or
 `unreadable`) and who is updating it: while a process holds the index writer, `updating in
 background: <n>/<total> chunks (since <time>, process <pid>)` for a full refresh (a background
@@ -285,8 +291,16 @@ search mode: hybrid
 and writes each slice to the index as soon as it is embedded, printing `embedded 256/2130 chunks`
 to stderr when it starts and after each slice (and recording the same progress for
 `semantic status`), so an interrupted or failed run keeps its progress and the next run embeds
-only the rest. When semantic search is not configured or the update cannot run, it prints the
-reason; it does not fail.
+only the rest. It always probes the endpoint first (the endpoint may have changed its dimension
+under the same model name), so with the endpoint down it fails even for an index that is otherwise
+current. It succeeds (exit 0, the result on stdout) only when the index is up to date afterwards:
+`Index current …`, `Index refreshed …` or `Index rebuilt …`. Otherwise it exits 1 with the reason on
+stderr and nothing on stdout: `Index not built (<code>): <message>` when nothing was attempted
+(semantic search not enabled, no endpoint, unset key variable, an index directory that must not be
+written) and `Index not updated (<code>): <message>` when the update failed (endpoint failure,
+index not writable or unreadable, another process writing the index, which reads
+`index-building: Another process is updating the index: …`), so
+`nevo-specflow docs semantic index && …` runs the next step only after a successful build.
 
 The index is disposable cache in `.nevo/local/cache/docs-index/`; deleting it is always safe. The
 CLI and a running Runtime share it; one process writes at a time, and another one answers lexically
@@ -303,11 +317,11 @@ path prefixes); `docs` is project-owned and rejected in the local file. The keys
 
 ## Exit codes
 
-| Code | Meaning                                                                                                                                               |
-| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0    | Success (also `--help`).                                                                                                                              |
-| 1    | The corpus or the configuration is invalid, `check` found a problem or a stale index, or `semantic status` found enabled semantic search unavailable. |
-| 2    | Usage error: bad arguments or options, an unknown or inactive id for `get`.                                                                           |
+| Code | Meaning                                                                                                                                                                                                    |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0    | Success (also `--help`); `search` in either mode; `semantic status` while semantic search is off, available or only needs its index built; `semantic index` that leaves the index current.                 |
+| 1    | The corpus or the configuration is invalid, `check` found a problem or a stale index, `semantic status` found enabled semantic search unavailable, or `semantic index` did not bring the index up to date. |
+| 2    | Usage error: bad arguments or options, an unknown or inactive id for `get`.                                                                                                                                |
 
 Results go to stdout; problems and error messages go to stderr. An unavailable embedding endpoint or
-index never makes `search` or `semantic index` exit non-zero.
+index never makes `search` exit non-zero: it answers lexically with the reason.

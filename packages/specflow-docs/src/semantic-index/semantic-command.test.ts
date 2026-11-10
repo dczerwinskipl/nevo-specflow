@@ -1,13 +1,17 @@
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { createFileVectorStore } from '@nevo/ai-semantic-search';
 import { createFakeEmbeddingProvider } from '@nevo/ai-semantic-search/testing';
 import { DocsStatusSchema } from '@nevo/specflow-contracts/docs';
 import { Value } from 'typebox/value';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import { runDocs } from '../../test/support/run-docs';
+import { QUERY_TIMEOUT_MS } from '../embeddings/embedding-providers';
 import { CATCH_UP_MARKER_FILE } from './catch-up';
 
 // A project without an index and more sections than a search embeds; the endpoint sets batchSize.
@@ -55,22 +59,164 @@ describe('semantic status and the background catch-up', () => {
       existsSync(join(root, '.nevo', 'local', 'cache', 'docs-index', CATCH_UP_MARKER_FILE)),
     ).toBe(false);
   });
+
+  it('a background executable that fails to start is logged and reported, not claimed running', async () => {
+    // The real spawner: the missing executable fails through the child's asynchronous `error`.
+    const missing = join(root, 'no-such-node.exe');
+    const search = () =>
+      runDocs(root, ['search', 'part'], undefined, {
+        createEmbeddingProvider: provider,
+        backgroundIndex: { command: missing, args: ['bin.js', 'semantic', 'index'] },
+      });
+    const failedStart =
+      /index-building: .*starting a background `nevo-specflow docs semantic index` failed \(.*ENOENT.*\); run it yourself\.\)$/;
+
+    for (const run of [await search(), await search()]) {
+      expect(run).toMatchObject({ exitCode: 0, stderr: [] });
+      expect(run.stdout[0]).toMatch(failedStart);
+    }
+
+    const index = join(root, '.nevo', 'local', 'cache', 'docs-index');
+    expect(existsSync(join(index, CATCH_UP_MARKER_FILE))).toBe(false);
+    expect(readFileSync(join(index, 'catch-up.log'), 'utf8')).toMatch(
+      /could not start .*no-such-node\.exe: .*ENOENT/,
+    );
+  });
 });
 
 describe('semantic index', () => {
+  const index = (extra: Parameters<typeof runDocs>[3] = {}) =>
+    runDocs(root, ['semantic', 'index'], undefined, extra);
+
+  it('fails (exit 1, cause on stderr, nothing on stdout) when nothing could be attempted', async () => {
+    // Without the local endpoint configuration the project has no endpoint.
+    const bare = mkdtempSync(join(tmpdir(), 'specflow-docs-semantic-bare-'));
+    try {
+      mkdirSync(join(bare, 'docs'));
+      mkdirSync(join(bare, '.nevo'));
+      writeFileSync(join(bare, '.nevo', 'config.yaml'), 'docs:\n  search:\n    semantic: true\n');
+      const run = await runDocs(bare, ['semantic', 'index']);
+      expect(run).toEqual({
+        exitCode: 1,
+        stdout: [],
+        stderr: [expect.stringMatching(/^Index not built \(no-endpoint\): /)],
+      });
+    } finally {
+      rmSync(bare, { recursive: true, force: true });
+    }
+  });
+
+  it('fails when the endpoint fails or another writer holds the index', async () => {
+    const failing = () => {
+      const fake = createFakeEmbeddingProvider();
+      fake.failWith({ code: 'unreachable', message: 'connect ECONNREFUSED' });
+
+      return fake;
+    };
+
+    const failed = await index({ createEmbeddingProvider: failing });
+    expect(failed).toMatchObject({ exitCode: 1, stdout: [] });
+    expect(failed.stderr.at(-1)).toMatch(
+      /^Index not updated \(endpoint-unreachable\): .*ECONNREFUSED/,
+    );
+
+    // Another writer, through a second store on the same directory (in-process here).
+    const store = createFileVectorStore({
+      directory: join(root, '.nevo', 'local', 'cache', 'docs-index', 'vectors'),
+    });
+    const held = await store.openWriter();
+    expect(held.status).toBe('opened');
+    try {
+      const busy = await index({ createEmbeddingProvider: provider });
+      expect(busy).toMatchObject({ exitCode: 1, stdout: [] });
+      expect(busy.stderr.at(-1)).toMatch(
+        /^Index not updated \(index-building\): Another process is updating the index/,
+      );
+    } finally {
+      if (held.status === 'opened') {
+        await held.writer.close();
+      }
+    }
+  });
+
   it('rebuilds when the endpoint changes its dimension under the same model name', async () => {
     // The configuration declares no dimension, so only a probe of the endpoint can tell.
     const endpoint = (dimensions: number) => () => ({
       ...createFakeEmbeddingProvider({ dimensions }),
       dimensions: undefined,
     });
-    const index = async (dimensions: number) =>
+    const build = async (dimensions: number) =>
       runDocs(root, ['semantic', 'index'], undefined, {
         createEmbeddingProvider: endpoint(dimensions),
       });
 
-    expect((await index(8)).stdout).toEqual([expect.stringMatching(/^Index rebuilt: /)]);
-    expect((await index(8)).stdout).toEqual([expect.stringMatching(/^Index current /)]);
-    expect((await index(16)).stdout).toEqual([expect.stringMatching(/^Index rebuilt: /)]);
+    expect((await build(8)).stdout).toEqual([expect.stringMatching(/^Index rebuilt: /)]);
+    expect((await build(8)).stdout).toEqual([expect.stringMatching(/^Index current /)]);
+    expect((await build(16)).stdout).toEqual([expect.stringMatching(/^Index rebuilt: /)]);
+  });
+});
+
+describe('semantic status during an endpoint outage', () => {
+  /** A project whose endpoint is a local server that accepts requests and never answers. */
+  async function hangingEndpoint(semantic: boolean) {
+    const requests: string[] = [];
+    const server = createServer((request) => {
+      requests.push(request.url ?? '');
+    });
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const { port } = server.address() as AddressInfo;
+    const project = mkdtempSync(join(tmpdir(), 'specflow-docs-status-outage-'));
+    mkdirSync(join(project, 'docs'));
+    mkdirSync(join(project, '.nevo', 'local'), { recursive: true });
+    writeFileSync(
+      join(project, '.nevo', 'config.yaml'),
+      `docs:\n  search:\n    semantic: ${String(semantic)}\n`,
+    );
+    // The document timeout stays the default 60 s; the status must not wait for it.
+    writeFileSync(
+      join(project, '.nevo', 'local', 'config.yaml'),
+      `ai:\n  embeddings:\n    baseUrl: http://127.0.0.1:${String(port)}/v1\n    model: m\n`,
+    );
+
+    return {
+      project,
+      requests,
+      [Symbol.asyncDispose]: async () => {
+        server.closeAllConnections();
+        await new Promise<void>((resolve) => server.close(() => resolve()));
+        rmSync(project, { recursive: true, force: true });
+      },
+    };
+  }
+
+  it('answers unreachable within the query timeout through the real endpoint adapter', async () => {
+    await using endpoint = await hangingEndpoint(true);
+    const started = performance.now();
+    const run = await runDocs(endpoint.project, ['semantic', 'status', '--json']);
+    const elapsed = performance.now() - started;
+
+    expect(elapsed).toBeLessThan(QUERY_TIMEOUT_MS + 2000);
+    expect(endpoint.requests).toHaveLength(1);
+    expect(run.exitCode).toBe(1);
+    expect(JSON.parse(run.stdout.join('\n'))).toMatchObject({
+      mode: 'lexical',
+      reason: { code: 'endpoint-unreachable' },
+      reachability: { reachable: false },
+      failed: true,
+    });
+  }, 15_000);
+
+  it('sends the endpoint nothing while semantic search is disabled', async () => {
+    await using endpoint = await hangingEndpoint(false);
+    const run = await runDocs(endpoint.project, ['semantic', 'status', '--json']);
+
+    expect(run.exitCode).toBe(0);
+    expect(JSON.parse(run.stdout.join('\n'))).toMatchObject({
+      mode: 'lexical',
+      reason: { code: 'semantic-disabled' },
+      reachability: null,
+      failed: false,
+    });
+    expect(endpoint.requests).toEqual([]);
   });
 });

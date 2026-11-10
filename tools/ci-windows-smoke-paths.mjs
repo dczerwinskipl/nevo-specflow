@@ -58,6 +58,7 @@ const cases = [
     'packages/ai-semantic-search/src/indexing/vector-store/file-store/file-vector-store.test.ts',
     true,
   ],
+  ['packages/ai-semantic-search/src/indexing/vector-store/file-store/writer-lock.test.ts', true],
   ['tools/ci-windows-smoke-tests.json', true],
   ['.github/workflows/windows-smoke.yml', true],
   ['packages/specflow-ui/src/components/button.tsx', false],

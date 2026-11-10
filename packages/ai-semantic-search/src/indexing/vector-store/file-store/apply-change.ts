@@ -5,17 +5,25 @@ import { compareIds } from '../../../compare';
 import type { VectorCandidate } from '../vector-math';
 import { validateChange, type ApplyOutcome, type VectorStoreChange } from '../vector-store';
 import { removeQuietly, removeSuperseded } from './cleanup';
-import { generationFiles, newToken } from './generation-files';
+import { generationFiles, generationKey } from './generation-files';
 import { writeFailed } from './io-errors';
 import { FILE_INDEX_SCHEMA_VERSION, type StoredManifest } from './manifest-file';
 import { readSnapshot, type VectorsCache } from './snapshot';
-import type { WriterLockDependencies } from './writer-lock';
+import type { HeldWriterLock, WriterLockDependencies } from './writer-lock';
 
+/**
+ * One write of the lock holder `owner`: the new pair is named with its epoch (the fencing token) and
+ * a generation above every manifest on disk. Ownership is checked once more right before the
+ * manifest is published; a writer that lost the lock answers `conflict` without publishing. A
+ * former holder that passes the check and publishes later anyway ranks below the new owner, whose
+ * epoch is higher (`compareGenerations`).
+ */
 export async function applyChange(
   directory: string,
   change: VectorStoreChange,
   cache: VectorsCache,
   lock: WriterLockDependencies,
+  owner: Pick<HeldWriterLock, 'epoch' | 'stillHeld'>,
 ): Promise<ApplyOutcome> {
   const current = await readSnapshot(directory, cache);
   if (current.status === 'unreadable') {
@@ -47,14 +55,17 @@ export async function applyChange(
 
   let generation: number;
   try {
-    // Above every manifest on disk, damaged ones included, so the new pair is the highest.
-    const highest = generationFiles(await readdir(directory))[0]?.generation ?? 0;
+    // Above every manifest generation on disk, damaged and fenced-off ones included.
+    const highest = Math.max(
+      0,
+      ...generationFiles(await readdir(directory)).map((file) => file.generation),
+    );
     generation = Math.max(highest, base?.manifest.generation ?? 0) + 1;
   } catch (error) {
     return writeFailed('The index directory cannot be listed', error);
   }
 
-  const key = `${generation}-${newToken()}`;
+  const key = generationKey(owner.epoch, generation);
   const stored: StoredManifest = {
     schemaVersion: FILE_INDEX_SCHEMA_VERSION,
     generation,
@@ -72,6 +83,14 @@ export async function applyChange(
   try {
     await writeFile(vectorsPath, new Uint8Array(data.buffer), { flag: 'wx' });
     await writeFile(tempManifestPath, JSON.stringify(stored), { flag: 'wx' });
+    if (!(await owner.stillHeld())) {
+      await removeQuietly(tempManifestPath);
+      await removeQuietly(vectorsPath);
+
+      return { status: 'conflict' };
+    }
+
+    await lock.checkpoint?.('publish');
     await rename(tempManifestPath, manifestPath);
   } catch (error) {
     await removeQuietly(tempManifestPath);
@@ -80,7 +99,7 @@ export async function applyChange(
     return writeFailed('The index cannot be written', error);
   }
 
-  await removeSuperseded(directory, { generation, key }, base?.key, lock);
+  await removeSuperseded(directory, { epoch: owner.epoch, generation, key }, base?.key, lock);
 
   return { status: 'applied', generation };
 }

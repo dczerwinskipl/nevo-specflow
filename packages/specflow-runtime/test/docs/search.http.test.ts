@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { PROBE_TEXT } from '@nevo/ai-semantic-search';
+import { PROBE_TEXT, inspectFileStoreWriter } from '@nevo/ai-semantic-search';
 import { createFakeEmbeddingProvider } from '@nevo/ai-semantic-search/testing';
 import {
   DocsSearchResultSchema,
@@ -244,9 +244,11 @@ describe('the start refresh', () => {
 
       await app.close();
       closed = true;
-      expect(existsSync(join(root, '.nevo/local/cache/docs-index/vectors/writer.lock'))).toBe(
-        false,
-      );
+      expect(
+        await inspectFileStoreWriter({
+          directory: join(root, '.nevo/local/cache/docs-index/vectors'),
+        }),
+      ).toEqual({ status: 'free' });
     } finally {
       if (!closed) {
         await app.close();
@@ -335,6 +337,10 @@ describe('the search catch-up and GET /api/docs/status', () => {
     }
 
     expect(refreshes).toBe(1);
-    expect(existsSync(join(root, '.nevo/local/cache/docs-index/vectors/writer.lock'))).toBe(false);
+    expect(
+      await inspectFileStoreWriter({
+        directory: join(root, '.nevo/local/cache/docs-index/vectors'),
+      }),
+    ).toEqual({ status: 'free' });
   });
 });

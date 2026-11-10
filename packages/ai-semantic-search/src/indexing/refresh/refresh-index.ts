@@ -185,7 +185,10 @@ export async function refreshIndex(request: RefreshRequest): Promise<RefreshOutc
 
       // Under the lock only a writer that broke the lock protocol can have moved the store on.
       if (outcome.status === 'conflict') {
-        return { status: 'busy', message: 'Another writer changed the index during the refresh.' };
+        return {
+          status: 'busy',
+          message: 'Another writer took the index over or changed it during the refresh.',
+        };
       }
 
       if (outcome.status === 'write-failed') {

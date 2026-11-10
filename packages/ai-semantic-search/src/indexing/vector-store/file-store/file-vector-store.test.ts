@@ -11,8 +11,8 @@ import type {
   VectorStoreChange,
   VectorStoreWriter,
 } from '../vector-store';
-import { createFileVectorStore } from './file-vector-store';
-import { WRITER_LOCK_FILE } from './writer-lock';
+import { createFileVectorStore, inspectFileStoreWriter } from './file-vector-store';
+import { compareGenerations, parseGenerationFile } from './generation-files';
 
 const identity: IndexIdentity = { chunkerVersion: 1, protocol: 'p', model: 'm', dimensions: 2 };
 const entry = (chunkId: string, vector: number[]) => ({
@@ -62,12 +62,18 @@ async function write(store: VectorStore, next: VectorStoreChange): Promise<Apply
   }
 }
 
-/** Path of the highest generation's file with `prefix` (`manifest` or `vectors`). */
-async function latest(prefix: string): Promise<string> {
-  const names = (await readdir(directory)).filter((name) => name.startsWith(`${prefix}-`));
-  const generation = (name: string) => Number(name.split('-')[1]);
+/** The generation files of `kind` (`manifest` or `vectors`), highest first. */
+async function generationNames(kind: string): Promise<string[]> {
+  const files = (await readdir(directory))
+    .map((name) => ({ name, file: parseGenerationFile(name) }))
+    .filter(({ file }) => file?.kind === kind);
 
-  return join(directory, names.sort((a, b) => generation(b) - generation(a))[0]!);
+  return files.sort((a, b) => compareGenerations(b.file!, a.file!)).map(({ name }) => name);
+}
+
+/** Path of the highest generation's file of `kind`. */
+async function latest(kind: string): Promise<string> {
+  return join(directory, (await generationNames(kind))[0]!);
 }
 
 describe('file vector store', () => {
@@ -107,11 +113,15 @@ describe('file vector store', () => {
       stored: identity,
     });
 
-    // The current and the previous pair stay; generation 1 is superseded.
-    const files = await readdir(directory);
-    expect(files.filter((name) => name.startsWith('manifest-'))).toHaveLength(2);
-    expect(files.filter((name) => name.startsWith('vectors-'))).toHaveLength(2);
-    expect(files).toHaveLength(4);
+    // The current and the previous pair stay; generation 1 is superseded. Of the lock files only
+    // the last writer's remain, released.
+    expect(await generationNames('manifest')).toHaveLength(2);
+    expect(await generationNames('vectors')).toHaveLength(2);
+    expect((await readdir(directory)).filter((name) => name.startsWith('writer-')).sort()).toEqual([
+      'writer-3.lock',
+      'writer-3.released',
+    ]);
+    expect(await readdir(directory)).toHaveLength(6);
   });
 
   it('keeps readers on a complete pair and removes an abandoned write only once it is stale', async () => {
@@ -119,19 +129,22 @@ describe('file vector store', () => {
     await write(store, change(undefined, { reset: true, upsert: [entry('b', [0, 1])] }));
     const previous = await latest('vectors');
 
-    // What a writer that died before renaming its manifest leaves behind.
-    await writeFile(join(directory, 'vectors-2-dead.f32'), 'partial');
-    await writeFile(join(directory, 'manifest-2-dead.json.tmp'), '{"schemaVer');
+    // What a write in progress leaves before it renames its manifest: of a writer of a later
+    // epoch (in progress or dead), and of a former lock holder, whose pair could never rank first.
+    await writeFile(join(directory, 'vectors-5-3-dead.f32'), 'partial');
+    await writeFile(join(directory, 'manifest-5-3-dead.json.tmp'), '{"schemaVer');
+    await writeFile(join(directory, 'vectors-1-7-beef.f32'), 'partial');
     expect(await store.query(query)).toMatchObject({ status: 'ok', matches: [{ chunkId: 'b' }] });
 
     await write(store, change(1, { upsert: [entry('c', [1, 0])] }));
     expect((await stat(previous)).size).toBe(2 * Float32Array.BYTES_PER_ELEMENT);
-    expect(await readdir(directory)).toContain('vectors-2-dead.f32');
+    expect(await readdir(directory)).toContain('vectors-5-3-dead.f32');
+    expect(await readdir(directory)).not.toContain('vectors-1-7-beef.f32');
 
     await write(createFileVectorStore({ directory, lock: { now: later } }), change(2));
     const files = await readdir(directory);
-    expect(files).not.toContain('vectors-2-dead.f32');
-    expect(files).not.toContain('manifest-2-dead.json.tmp');
+    expect(files).not.toContain('vectors-5-3-dead.f32');
+    expect(files).not.toContain('manifest-5-3-dead.json.tmp');
   });
 
   it('reads a damaged index as missing so a writer resets it, and an unopenable one as unreadable', async () => {
@@ -154,7 +167,7 @@ describe('file vector store', () => {
     await writeFile(await latest('manifest'), '{"schemaVersion":1');
     expect(await store.readManifest()).toEqual({ status: 'missing' });
 
-    await mkdir(join(directory, 'manifest-99-ab.json'));
+    await mkdir(join(directory, 'manifest-99-99-ab.json'));
     expect((await store.readManifest()).status).toBe('unreadable');
     expect((await store.query(query)).status).toBe('unreadable');
     expect(await write(store, change(undefined, { reset: true }))).toMatchObject({
@@ -162,34 +175,108 @@ describe('file vector store', () => {
     });
   });
 
-  it('lets one writer in at a time and reclaims dead, reused-pid and unrefreshed locks', async () => {
+  it('lets one writer in at a time and takes over dead, reused-pid and unrefreshed locks', async () => {
     const deadPid = 4242;
-    const options = { directory, lock: { isProcessAlive: (pid: number) => pid !== deadPid } };
+    const lock = { scope: 'here', isProcessAlive: (pid: number) => pid !== deadPid };
+    const options = { directory, lock };
     const store = createFileVectorStore(options);
-    const lockPath = join(directory, WRITER_LOCK_FILE);
+    const reclaiming = createFileVectorStore({ directory, lock: { ...lock, now: later } });
+    const holder = (epoch: number, record: object | string) =>
+      writeFile(
+        join(directory, `writer-${String(epoch)}.lock`),
+        typeof record === 'string' ? record : JSON.stringify(record),
+      );
 
     const writer = await openWriter(store);
     expect(await createFileVectorStore(options).openWriter()).toMatchObject({ status: 'busy' });
     expect(await writer.apply(change(5, { reset: true }))).toEqual({ status: 'conflict' });
     await writer.close();
     await expect(writer.apply(change(undefined, { reset: true }))).rejects.toThrow(/closed/);
-    await expect(stat(lockPath)).rejects.toThrow();
+    expect(await inspectFileStoreWriter(options)).toEqual({ status: 'free' });
 
-    await writeFile(lockPath, JSON.stringify({ pid: 1, token: 'live' }));
+    await holder(10, { pid: 1, token: 'live', scope: 'here' });
     expect(await store.openWriter()).toMatchObject({ status: 'busy' });
-    // Not refreshed for longer than the stale bound: a reused pid looks alive but is not the owner.
-    const reclaiming = createFileVectorStore({ ...options, lock: { ...options.lock, now: later } });
+    // A pid of another host or PID namespace says nothing: only the heartbeat counts.
+    await holder(11, { pid: deadPid, token: 'container', scope: 'elsewhere' });
+    expect(await store.openWriter()).toMatchObject({ status: 'busy' });
+    // Not refreshed for longer than the stale bound: an alive-looking pid is not the owner.
     await (await openWriter(reclaiming)).close();
 
-    await writeFile(lockPath, JSON.stringify({ pid: deadPid, token: 'dead' }));
+    await holder(20, { pid: deadPid, token: 'dead', scope: 'here' });
     await (await openWriter(store)).close();
 
-    await writeFile(lockPath, JSON.stringify({ pid: process.pid, token: 'before-restart' }));
+    await holder(30, { pid: process.pid, token: 'before-restart', scope: 'here' });
     await (await openWriter(store)).close();
 
-    await writeFile(lockPath, '');
+    await holder(40, '');
     expect(await store.openWriter()).toMatchObject({ status: 'busy' });
     await (await openWriter(reclaiming)).close();
-    await expect(stat(lockPath)).rejects.toThrow();
+    expect((await readdir(directory)).sort()).toEqual(['writer-41.lock', 'writer-41.released']);
+  });
+
+  it('fences a writer whose lock was taken over: none of its writes becomes the index', async () => {
+    let clock = Date.now();
+    const now = () => clock;
+    let reachedPublish: () => void = () => undefined;
+    const atPublish = new Promise<void>((resolve) => {
+      reachedPublish = resolve;
+    });
+    let resume: () => void = () => undefined;
+    const resumed = new Promise<void>((resolve) => {
+      resume = resolve;
+    });
+    let pausing = false;
+    const checkpoint = async (step: string) => {
+      if (step === 'publish' && pausing) {
+        reachedPublish();
+        await resumed;
+      }
+    };
+
+    const store = createFileVectorStore({ directory, lock: { now } });
+    const written = async () => {
+      const outcome = await store.query({ ...query, limit: 3 });
+
+      return outcome.status === 'ok' ? outcome.matches.map((match) => match.chunkId).sort() : [];
+    };
+
+    // A writer stops refreshing its lock (a suspended machine, for example) and B takes over.
+    const deposed = await openWriter(createFileVectorStore({ directory, lock: { now } }));
+    clock += 120_000;
+    const owner = await openWriter(createFileVectorStore({ directory, lock: { now } }));
+    expect(
+      await deposed.apply(change(undefined, { reset: true, upsert: [entry('x', [1, 0])] })),
+    ).toEqual({ status: 'conflict' });
+    expect(
+      await owner.apply(change(undefined, { reset: true, upsert: [entry('b', [0, 1])] })),
+    ).toEqual({ status: 'applied', generation: 1 });
+    await owner.close();
+    await deposed.close();
+
+    // A writer that passed its last ownership check stops right before it publishes, and is
+    // taken over meanwhile: its late pair never ranks above the new owner's.
+    const late = await openWriter(createFileVectorStore({ directory, lock: { now, checkpoint } }));
+    pausing = true;
+    const publishing = late.apply(change(1, { upsert: [entry('late', [1, 1])] }));
+    await atPublish;
+    clock += 120_000;
+    const next = await openWriter(createFileVectorStore({ directory, lock: { now } }));
+    expect(await next.apply(change(1, { upsert: [entry('next', [1, 0])] }))).toEqual({
+      status: 'applied',
+      generation: 2,
+    });
+    resume();
+    await publishing;
+    expect(await written()).toEqual(['b', 'next']);
+    expect(await late.apply(change(2, { upsert: [entry('late', [1, 1])] }))).toEqual({
+      status: 'conflict',
+    });
+    expect(await next.apply(change(2, { delete: ['b'] }))).toEqual({
+      status: 'applied',
+      generation: 3,
+    });
+    expect(await written()).toEqual(['next']);
+    await late.close();
+    await next.close();
   });
 });

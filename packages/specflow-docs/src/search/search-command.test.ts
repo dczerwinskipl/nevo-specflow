@@ -139,7 +139,7 @@ describe('docs search and semantic status', () => {
       // The parent process stands in for a live writer that recorded its progress.
       mkdirSync(join(index, 'vectors'), { recursive: true });
       writeFileSync(
-        join(index, 'vectors', 'writer.lock'),
+        join(index, 'vectors', 'writer-1.lock'),
         JSON.stringify({ pid: process.ppid, token: 'other' }),
       );
       const started = Date.now();

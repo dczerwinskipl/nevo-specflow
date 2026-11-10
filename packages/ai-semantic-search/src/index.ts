@@ -52,6 +52,7 @@ export { FILE_INDEX_SCHEMA_VERSION } from './indexing/vector-store/file-store/ma
 export type {
   WriterLockDependencies,
   WriterLockState,
+  WriterLockStep,
 } from './indexing/vector-store/file-store/writer-lock';
 export { planRefresh, type RefreshPlan } from './indexing/refresh/plan-refresh';
 export {

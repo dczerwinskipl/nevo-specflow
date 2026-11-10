@@ -86,7 +86,7 @@ export async function checkIndexAccess(
     : { writable: true };
 }
 
-/** The vector store directory (with its `writer.lock`) inside an index directory. */
+/** The vector store directory (with its writer lock files) inside an index directory. */
 export function vectorsDirectory(directory: string): string {
   return join(directory, 'vectors');
 }

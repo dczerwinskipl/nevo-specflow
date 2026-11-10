@@ -17,6 +17,7 @@ import { readSnapshot, type VectorsCache } from './snapshot';
 import {
   inspectWriterLock,
   isProcessAlive,
+  processScope,
   tryAcquireWriterLock,
   type WriterLockDependencies,
   type WriterLockState,
@@ -26,8 +27,9 @@ export interface FileVectorStoreOptions {
   /** Index directory chosen by the consumer; created on the first write. Disposable cache. */
   readonly directory: string;
   /**
-   * Lock and cleanup inputs; defaults use this process, the system clock and 60 s for
-   * `staleAfterMs`, which also bounds how long an abandoned temporary or unreferenced file stays.
+   * Lock and cleanup inputs; defaults use this process and its `processScope`, the system clock
+   * and 60 s for `staleAfterMs`, which also bounds how long an abandoned temporary or unreferenced
+   * file stays.
    */
   readonly lock?: Partial<WriterLockDependencies>;
 }
@@ -35,22 +37,24 @@ export interface FileVectorStoreOptions {
 /**
  * File-backed `VectorStore` in one consumer-chosen directory, safe to share between processes:
  *
- * - Each generation is a pair named by its generation and a random token: `vectors-<key>.f32`
- *   (native `Float32`, little-endian on every supported platform) and `manifest-<key>.json` (schema
- *   version, identity, generation and, per chunk id, the content hash and vector offset). The
- *   vectors file is written first; the manifest is written to a temporary file and renamed to its
- *   new name. No file is ever written or renamed onto an existing name, so an open reader (or a
- *   virus scanner) never makes a write fail on Windows. Readers take the highest generation.
+ * - Each generation is a pair named by the writer's lock epoch, its generation and a random token:
+ *   `vectors-<key>.f32` (native `Float32`, little-endian on every supported platform) and
+ *   `manifest-<key>.json` (schema version, identity, generation and, per chunk id, the content hash
+ *   and vector offset). The vectors file is written first; the manifest is written to a temporary
+ *   file and renamed to its new name. No file is ever written or renamed onto an existing name, so
+ *   an open reader (or a virus scanner) never makes a write fail on Windows. Readers take the
+ *   highest manifest by epoch, then generation (`compareGenerations`).
  * - Files are not fsynced: after a crash or power loss a pair can be incomplete; it then reads as
  *   `missing` and the index is rebuilt.
  * - No manifest, and a highest manifest or vectors file that cannot be parsed, has another schema
  *   version, holds non-finite values or does not match its counterpart (for example a truncated
  *   vectors file), read as `missing`: the index is disposable and a writer resets it. Other I/O
  *   errors (for example a file locked by another program) read as `unreadable`.
- * - Writes go through the single writer of `writer.lock` (see `tryAcquireWriterLock`). After a
- *   write the writer removes pairs superseded by its own, keeping the previous one and whatever the
- *   current highest manifest names; temporary and unreferenced files only once older than
- *   `staleAfterMs`.
+ * - Writes go through the single writer of the highest lock epoch (see `tryAcquireWriterLock`),
+ *   which checks it still owns the index right before it publishes a manifest; a former holder's
+ *   late manifest ranks below the owner's by its lower epoch. After a write the writer removes pairs
+ *   ranked below its own, keeping the previous one and whatever the current highest manifest names;
+ *   other generation and temporary files only once older than `staleAfterMs`.
  */
 export function createFileVectorStore(options: FileVectorStoreOptions): VectorStore {
   const { directory } = options;
@@ -93,7 +97,7 @@ export function createFileVectorStore(options: FileVectorStoreOptions): VectorSt
 
           applying = true;
           try {
-            return await applyChange(directory, change, cache, lock);
+            return await applyChange(directory, change, cache, lock, attempt);
           } finally {
             applying = false;
           }
@@ -147,8 +151,10 @@ export async function inspectFileStoreWriter(
 function lockDependencies(options: FileVectorStoreOptions): WriterLockDependencies {
   return {
     pid: options.lock?.pid ?? process.pid,
+    scope: options.lock?.scope ?? processScope(),
     isProcessAlive: options.lock?.isProcessAlive ?? isProcessAlive,
     now: options.lock?.now ?? Date.now,
     staleAfterMs: options.lock?.staleAfterMs ?? 60_000,
+    ...(options.lock?.checkpoint ? { checkpoint: options.lock.checkpoint } : {}),
   };
 }

@@ -2,22 +2,61 @@ import { randomBytes } from 'node:crypto';
 
 import { compareIds } from '../../../compare';
 
-/** A generation file name; `<key>` is `<generation>-<token>`. */
-export const GENERATION_FILE = /^(manifest|vectors)-(\d+)-([0-9a-f]+)\.(json|f32)$/;
+/**
+ * A generation file name, `<kind>-<key>.<extension>`. The key is `<epoch>-<generation>-<token>`:
+ * the writer lock epoch of the writer that wrote it (see `tryAcquireWriterLock`), the generation and
+ * a random token. A key without an epoch (`<generation>-<token>`, written before epochs) has epoch 0.
+ */
+const GENERATION_FILE = /^(manifest|vectors)-((?:(\d+)-)?(\d+)-[0-9a-f]+)\.(json|f32)$/;
 
 /** One generation's pair of files: `manifest-<key>.json` and `vectors-<key>.f32`. */
 export interface GenerationFile {
+  readonly epoch: number;
   readonly generation: number;
   readonly key: string;
 }
 
-/** Manifest files of a listing, highest generation first (then highest key). */
+/** A generation file's kind and key, or `undefined` for any other name. */
+export function parseGenerationFile(
+  name: string,
+): (GenerationFile & { readonly kind: 'manifest' | 'vectors' }) | undefined {
+  const match = GENERATION_FILE.exec(name);
+  if (!match || (match[1] === 'manifest') !== (match[5] === 'json')) {
+    return undefined;
+  }
+
+  return {
+    kind: match[1] as 'manifest' | 'vectors',
+    key: match[2]!,
+    epoch: match[3] === undefined ? 0 : Number(match[3]),
+    generation: Number(match[4]),
+  };
+}
+
+/**
+ * The publication order: a higher epoch first, then a higher generation, then a higher key. A
+ * former lock holder's late write, under a lower epoch, never ranks above the current owner's.
+ */
+export function compareGenerations(a: GenerationFile, b: GenerationFile): number {
+  return a.epoch - b.epoch || a.generation - b.generation || compareIds(a.key, b.key);
+}
+
+/** Manifest files of a listing in publication order, highest first. */
 export function generationFiles(names: readonly string[]): GenerationFile[] {
-  return names
-    .map((name) => GENERATION_FILE.exec(name))
-    .filter((match) => match?.[1] === 'manifest' && match[4] === 'json')
-    .map((match) => ({ generation: Number(match![2]), key: `${match![2]}-${match![3]}` }))
-    .sort((a, b) => b.generation - a.generation || compareIds(b.key, a.key));
+  const files: GenerationFile[] = [];
+  for (const name of names) {
+    const file = parseGenerationFile(name);
+    if (file?.kind === 'manifest') {
+      files.push({ epoch: file.epoch, generation: file.generation, key: file.key });
+    }
+  }
+
+  return files.sort((a, b) => compareGenerations(b, a));
+}
+
+/** The key of a new generation pair. */
+export function generationKey(epoch: number, generation: number): string {
+  return `${String(epoch)}-${String(generation)}-${newToken()}`;
 }
 
 export function newToken(): string {

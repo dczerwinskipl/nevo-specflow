@@ -122,10 +122,30 @@ engine does not fail a search because embeddings are unavailable.
 - Writes are atomic: each write creates a new generation pair (the vectors first, then the manifest
   through a temporary file renamed to a new name) and never replaces an existing file, so a reader
   always sees a complete pair from one write and an open reader cannot make a write fail on
-  Windows. Readers take the highest generation; superseded pairs are removed.
-- One writer at a time holds a lock in the index directory. A second writer in the CLI or a running
-  Runtime does not wait: it gets `busy`, and its consumer degrades to lexical search. A lock whose
-  owner process is gone, or that its holder stopped refreshing, is stale and reclaimed.
+  Windows. Readers never take a lock: they take the highest pair by writer epoch, then generation;
+  superseded pairs are removed.
+- One writer at a time owns the index. A second writer in the CLI or a running Runtime does not
+  wait: it gets `busy`, and its consumer degrades to lexical search. Ownership works as follows:
+  - Ownership is an epoch. A writer owns the index when it has created the lock file
+    `writer-<epoch>.lock` exclusively (`O_EXCL` on Linux, `CREATE_NEW` on Windows: one atomic
+    create-if-absent on local filesystems, overlay mounts, NFSv3 and later, and SMB) for an epoch above every lock and manifest epoch in the directory, and no
+    higher epoch has appeared since. It lets go by creating `writer-<epoch>.released`.
+  - Taking a lock over never renames or removes it. When the highest lock is released or stale, a
+    writer creates the next epoch's lock; of writers that judged the same lock stale, exactly one
+    create succeeds and the others get `busy`. A writer whose listing was out of date and that
+    created an epoch below a newer one sees the newer one when it lists again, removes its own file
+    and gets `busy`. Only an owner removes lock files, and only those of lower epochs, so the
+    highest epoch is never taken twice.
+  - A lock is stale when its holder stopped refreshing it (touching its own file only, while it
+    still owns the index) for the stale bound, 60 s by default. The holder's pid is an extra signal
+    only where it means something: a lock recorded under the same host, boot and PID namespace as
+    the reader is also stale when that process is gone or the pid is the reader's own. A pid from
+    another container or host never makes a lock stale.
+  - Writes are fenced by the epoch. A writer checks that it still owns the index right before it
+    publishes a manifest and publishes nothing otherwise. Because the epoch is part of every pair's
+    name and readers rank by epoch first, a former holder that was suspended past the stale bound
+    and publishes late anyway never ranks above a pair of the new owner. Every pair stays complete;
+    what such a late write loses, the next refresh embeds again.
 - The consumer chooses the index directory. It is disposable cache: deleting it loses nothing but
   the embedding cost of rebuilding.
 

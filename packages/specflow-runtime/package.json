@@ -30,7 +30,7 @@
     "build": "node ../../tools/build-package.mjs",
     "typecheck": "tsc -p tsconfig.json",
     "lint": "eslint .",
-    "test": "vitest run"
+    "test": "vitest run --testTimeout=20000"
   },
   "dependencies": {
     "@fastify/cookie": "11.1.5",

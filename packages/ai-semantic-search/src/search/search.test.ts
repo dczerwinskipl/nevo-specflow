@@ -81,8 +81,8 @@ describe('createSearchEngine', () => {
     expect(result).toMatchObject({ mode: 'lexical', reason });
     expect(result.hits.map((hit) => hit.unitId)).toEqual(['locks']);
     expect(result.hits[0]!.chunks.map((hit) => hit.chunk.id)).toEqual([
-      'locks#Locks > Stale',
-      'locks#Locks',
+      'locks#locks/stale',
+      'locks#locks',
     ]);
     expect(result.hits[0]!.score).toBe(result.hits[0]!.chunks[0]!.score);
   });

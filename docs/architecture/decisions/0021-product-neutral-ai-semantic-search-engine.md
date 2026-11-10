@@ -83,10 +83,15 @@ dimension that differs from the observed one is an error.
 
 ### 4. Chunking
 
-- Markdown is split on headings; each chunk keeps its heading path (`H1 > H2 > H3`).
+- Markdown is split on headings; each chunk keeps its heading path (`H1 > H2 > H3`) and its
+  section's stable id (the heading path as slugs) and start line.
 - The consumer supplies a short contextual header per unit (for documentation: title, id, summary,
-  tags) that is embedded with each chunk, so small chunks keep their document context.
-- Chunks have a size bound; overlap is used only when a single section exceeds it.
+  scope, areas, tags and read_when) that is embedded with each chunk, so small chunks keep their
+  document context.
+- Chunks have a size bound (2000 characters). A longer section is split on Markdown block
+  boundaries (paragraphs, list items, tables, fenced code blocks), packed in order up to the bound,
+  so a block that fits is never cut; only a single block longer than the bound is cut into
+  character windows, and only those windows overlap.
 - The chunker has a version. Changing chunking behavior MUST change the version.
 
 ### 5. Ranking

@@ -7,12 +7,12 @@ import type { Chunk, SourceUnit } from './chunk';
  * Version of the chunking behavior. Any change to how chunks, their ids, texts or embedding texts
  * are produced MUST increment it, so stored vectors are rebuilt (ADR 0021).
  */
-export const CHUNKER_VERSION = 1;
+export const CHUNKER_VERSION = 2;
 
 /** Size bound of one chunk's section text, in characters. */
 export const CHUNK_MAX_CHARS = 2000;
 
-/** Characters repeated at the start of the next part when one section exceeds the bound. */
+/** Characters repeated at the start of the next window when one Markdown block exceeds the bound. */
 export const CHUNK_OVERLAP_CHARS = 200;
 
 /** Section id of the text before the first heading; `_` never occurs in a heading slug. */
@@ -21,6 +21,7 @@ export const PREAMBLE_SECTION_ID = '_top';
 const HEADING_PATH_SEPARATOR = ' > ';
 const ATX_HEADING = /^ {0,3}(#{1,6})(?:[ \t]+(.*?))?(?:[ \t]+#+)?[ \t]*$/u;
 const FENCE = /^ {0,3}(`{3,}|~{3,})/u;
+const LIST_ITEM = /^( *)(?:[-*+]|\d{1,9}[.)])(?:[ \t]|$)/u;
 
 /** One heading section of a unit's markdown: its heading line and its lines up to the next heading. */
 export interface MarkdownSection {
@@ -48,43 +49,32 @@ interface RawSection {
 /**
  * Splits a unit's markdown into its sections (`splitMarkdownSections`). Each chunk keeps its heading
  * path and section id; sections without content besides their heading produce no chunk. A section
- * longer than `CHUNK_MAX_CHARS` is split into parts that overlap by `CHUNK_OVERLAP_CHARS`.
+ * longer than `CHUNK_MAX_CHARS` is split on Markdown block boundaries (`splitBlocks`: paragraphs,
+ * list items, tables and fenced code blocks, which are never cut) into parts packed up to the bound;
+ * only a single block longer than the bound is cut into character windows that overlap by
+ * `CHUNK_OVERLAP_CHARS`. Parts do not overlap otherwise.
  *
- * Chunk ids are `<unit id>#<heading path>`, with `/<part>` for parts of an oversize section, so
- * editing one section does not change the ids of the others. When that id (or one of its part ids)
- * is already taken, by a repeated heading path or a heading that spells a suffix literally, the
- * section id gets the first free `~<n>` (n >= 2): ids are unique within a unit by construction.
+ * Chunk ids are `<unit id>#<section id>`, with `:<part>` for the parts of an oversize section, so
+ * editing one section does not change the ids of the others; section ids are unique within a unit,
+ * so chunk ids are too.
  */
 export function chunkMarkdownUnit(unit: SourceUnit): Chunk[] {
   const chunks: Chunk[] = [];
-  const used = new Set<string>();
 
   for (const section of splitMarkdownSections(unit.text)) {
-    const text = trimBlankLines(section.lines).join('\n');
     if (!hasContentBesidesHeading(section)) {
       continue;
     }
 
     const pathKey = section.headingPath.join(HEADING_PATH_SEPARATOR);
-    const parts = splitOversize(text);
-    const idsFor = (sectionId: string) =>
-      parts.length === 1 ? [sectionId] : parts.map((_, index) => `${sectionId}/${index + 1}`);
-    const baseId = `${unit.id}#${pathKey}`;
-    let ids = idsFor(baseId);
-    for (let occurrence = 2; ids.some((id) => used.has(id)); occurrence += 1) {
-      ids = idsFor(`${baseId}~${occurrence}`);
-    }
-
-    for (const id of ids) {
-      used.add(id);
-    }
-
+    const parts = splitSection(trimBlankLines(section.lines));
+    const baseId = `${unit.id}#${section.id}`;
     parts.forEach((part, index) => {
       const embeddingText = [unit.header, pathKey, part]
         .filter((value) => value.trim().length > 0)
         .join('\n\n');
       chunks.push({
-        id: ids[index]!,
+        id: parts.length === 1 ? baseId : `${baseId}:${index + 1}`,
         unitId: unit.id,
         headingPath: section.headingPath,
         sectionId: section.id,
@@ -133,20 +123,11 @@ function splitRawSections(markdown: string): RawSection[] {
   const path: string[] = [];
   const levels: number[] = [];
   let current: RawSection = { headingPath: [], startLine: 1, lines: [] };
-  let fence: string | undefined;
+  const fence = createFenceTracker();
 
   for (const [index, line] of markdown.replace(/\r\n?/gu, '\n').split('\n').entries()) {
-    const fenceMatch = FENCE.exec(line);
-    if (fenceMatch) {
-      const marker = fenceMatch[1]!;
-      if (fence === undefined) {
-        fence = marker;
-      } else if (marker.startsWith(fence[0]!) && marker.length >= fence.length) {
-        fence = undefined;
-      }
-    }
-
-    const heading = fence === undefined && !fenceMatch ? ATX_HEADING.exec(line) : null;
+    const fenced = fence.track(line);
+    const heading = fenced === 'outside' ? ATX_HEADING.exec(line) : null;
     if (!heading) {
       current.lines.push(line);
       continue;
@@ -168,6 +149,39 @@ function splitRawSections(markdown: string): RawSection[] {
   sections.push(current);
 
   return sections;
+}
+
+/**
+ * Where a line is relative to fenced code blocks: `outside`, a `fence` line (opening or closing)
+ * or `inside` a block. A block closes at a fence of the same character at least as long; another
+ * fence-like line inside it is `inside`.
+ */
+function createFenceTracker(): { track(line: string): 'outside' | 'fence' | 'inside' } {
+  let open: string | undefined;
+
+  return {
+    track(line) {
+      const match = FENCE.exec(line);
+      if (match) {
+        const marker = match[1]!;
+        if (open === undefined) {
+          open = marker;
+
+          return 'fence';
+        }
+
+        if (marker.startsWith(open[0]!) && marker.length >= open.length) {
+          open = undefined;
+
+          return 'fence';
+        }
+
+        return 'inside';
+      }
+
+      return open === undefined ? 'outside' : 'inside';
+    },
+  };
 }
 
 function isContent(line: string): boolean {
@@ -195,15 +209,133 @@ function trimBlankLines(lines: readonly string[]): string[] {
 }
 
 /**
- * Character windows of at most `CHUNK_MAX_CHARS`. A window ends at the last line break (or else the
- * last whitespace) in its second half when there is one, so words are not cut; the next window
- * starts `CHUNK_OVERLAP_CHARS` before that end.
+ * A section's parts: the whole section when it fits `CHUNK_MAX_CHARS`, otherwise its blocks packed
+ * in order into parts of at most the bound (blocks joined as in the source, by a blank line or, for
+ * list items, a line break). A block longer than the bound alone becomes character windows; the
+ * section's heading line, when nothing else precedes that block, is the start of its first window
+ * rather than a part of its own.
  */
-function splitOversize(text: string): string[] {
+function splitSection(lines: readonly string[]): string[] {
+  const text = lines.join('\n');
   if (text.length <= CHUNK_MAX_CHARS) {
     return [text];
   }
 
+  const parts: string[] = [];
+  let current = '';
+  let headingOnly = false;
+  for (const block of splitBlocks(lines)) {
+    const joined = current === '' ? block.text : `${current}${block.separator}${block.text}`;
+    if (joined.length <= CHUNK_MAX_CHARS) {
+      headingOnly = current === '' && ATX_HEADING.test(block.text);
+      current = joined;
+      continue;
+    }
+
+    if (block.text.length > CHUNK_MAX_CHARS) {
+      if (current !== '' && !headingOnly) {
+        parts.push(current);
+      }
+
+      parts.push(...windows(headingOnly ? joined : block.text));
+      current = '';
+    } else {
+      parts.push(current);
+      current = block.text;
+    }
+
+    headingOnly = false;
+  }
+
+  if (current !== '') {
+    parts.push(current);
+  }
+
+  return parts;
+}
+
+interface Block {
+  readonly text: string;
+  /** What joins the block to the one before it in the source. */
+  readonly separator: string;
+}
+
+/**
+ * The Markdown blocks of a section's lines, each never split: a heading line, a paragraph or table
+ * (lines up to a blank line), a fenced code block (opening to closing fence, blank lines included)
+ * and each item of a list (its marker line and the lines that continue it, also an indented
+ * paragraph after a blank line).
+ */
+function splitBlocks(lines: readonly string[]): Block[] {
+  const blocks: Block[] = [];
+  const fence = createFenceTracker();
+  let current: string[] = [];
+  let separator = '';
+  let sawBlank = false;
+  const flush = () => {
+    if (current.length > 0) {
+      blocks.push({ text: current.join('\n'), separator });
+      current = [];
+    }
+  };
+
+  const start = (line: string) => {
+    flush();
+    separator = sawBlank ? '\n\n' : '\n';
+    sawBlank = false;
+    current = [line];
+  };
+
+  for (const line of lines) {
+    const position = fence.track(line);
+    if (position === 'inside' || (position === 'fence' && current.length > 0 && isFence(current))) {
+      current.push(line);
+      if (position === 'fence') {
+        flush();
+      }
+    } else if (position === 'fence') {
+      start(line);
+    } else if (!isContent(line)) {
+      flush();
+      sawBlank = true;
+    } else if (ATX_HEADING.test(line)) {
+      start(line);
+      flush();
+    } else if (LIST_ITEM.test(line)) {
+      start(line);
+    } else if (current.length > 0) {
+      current.push(line);
+    } else if (sawBlank && /^\s/u.test(line) && isListItem(blocks.at(-1))) {
+      // An indented paragraph after a blank line continues the list item before it.
+      const previous = blocks.pop()!;
+      separator = previous.separator;
+      current = [previous.text, '', line];
+      sawBlank = false;
+    } else {
+      start(line);
+    }
+  }
+
+  flush();
+
+  return blocks;
+}
+
+/** Whether `lines` is an open fenced code block (its first line is a fence). */
+function isFence(lines: readonly string[]): boolean {
+  return FENCE.test(lines[0]!);
+}
+
+function isListItem(block: Block | undefined): boolean {
+  return block !== undefined && LIST_ITEM.test(block.text);
+}
+
+/**
+ * Character windows of at most `CHUNK_MAX_CHARS` over one oversize block. A window ends at the last
+ * line break (or else the last whitespace) in its second half when there is one, so words are not
+ * cut; the next window starts about `CHUNK_OVERLAP_CHARS` before that end, at a word boundary.
+ */
+function windows(text: string): string[] {
   const parts: string[] = [];
   let start = 0;
   for (;;) {
@@ -224,7 +356,9 @@ function splitOversize(text: string): string[] {
       return parts;
     }
 
-    start = end - CHUNK_OVERLAP_CHARS;
+    const overlap = end - CHUNK_OVERLAP_CHARS;
+    const wordStart = text.slice(overlap, end).search(/(?<=\s)\S/u);
+    start = wordStart === -1 ? overlap : overlap + wordStart;
   }
 }
 

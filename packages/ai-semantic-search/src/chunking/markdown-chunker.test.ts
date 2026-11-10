@@ -13,8 +13,12 @@ function unit(text: string, header = 'Title: Guide'): SourceUnit {
   return { id: 'guide', contentHash: 'h', text, header, metadata: { kind: 'guide' } };
 }
 
+/** A paragraph of `words` distinct words on one line. */
+const paragraph = (words: number, prefix = 'p') =>
+  Array.from({ length: words }, (_, index) => `${prefix}${index}`).join(' ');
+
 describe('chunkMarkdownUnit', () => {
-  it('splits on headings and keeps the heading path', () => {
+  it('splits on headings and keeps the heading path, section id and line', () => {
     const chunks = chunkMarkdownUnit(
       unit(
         [
@@ -31,20 +35,14 @@ describe('chunkMarkdownUnit', () => {
       ),
     );
 
-    expect(chunks.map((chunk) => [chunk.id, chunk.headingPath])).toEqual([
-      ['guide#', []],
-      ['guide#Guide', ['Guide']],
-      ['guide#Guide > Install', ['Guide', 'Install']],
-      ['guide#Guide > Install > Windows', ['Guide', 'Install', 'Windows']],
-      ['guide#Guide > Usage', ['Guide', 'Usage']],
+    expect(chunks.map((chunk) => [chunk.id, chunk.headingPath, chunk.startLine])).toEqual([
+      ['guide#_top', [], 1],
+      ['guide#guide', ['Guide'], 2],
+      ['guide#guide/install', ['Guide', 'Install'], 4],
+      ['guide#guide/install/windows', ['Guide', 'Install', 'Windows'], 6],
+      ['guide#guide/usage', ['Guide', 'Usage'], 8],
     ]);
-    expect(chunks.map((chunk) => [chunk.sectionId, chunk.startLine])).toEqual([
-      ['_top', 1],
-      ['guide', 2],
-      ['guide/install', 4],
-      ['guide/install/windows', 6],
-      ['guide/usage', 8],
-    ]);
+    expect(chunks[2]!.sectionId).toBe('guide/install');
     expect(chunks[2]!.text).toBe('## Install\nRun it.');
     expect(chunks[2]!.embeddingText).toBe('Title: Guide\n\nGuide > Install\n\n## Install\nRun it.');
     expect(chunks[2]!.metadata).toEqual({ kind: 'guide' });
@@ -58,18 +56,19 @@ describe('chunkMarkdownUnit', () => {
           '## Empty',
           '',
           '## Notes',
-          '```sh',
+          '````sh',
           '# not a heading',
           '```',
+          '# still not a heading',
+          '````',
           '## Notes',
           'Second notes.',
         ].join('\n'),
       ),
     );
 
-    expect(chunks.map((chunk) => chunk.id)).toEqual(['guide#A > Notes', 'guide#A > Notes~2']);
-    expect(chunks.map((chunk) => chunk.sectionId)).toEqual(['a/notes', 'a/notes~2']);
-    expect(chunks[0]!.text).toContain('# not a heading');
+    expect(chunks.map((chunk) => chunk.id)).toEqual(['guide#a/notes', 'guide#a/notes~2']);
+    expect(chunks[0]!.text).toContain('# still not a heading');
   });
 
   it('slugs section ids with the shared tokenizer and keeps empty sections addressable', () => {
@@ -82,33 +81,66 @@ describe('chunkMarkdownUnit', () => {
     ]);
   });
 
-  it('keeps ids unique when headings spell the suffixes literally', () => {
-    const big = Array.from({ length: 900 }, (_, index) => `w${index}`).join(' ');
-    const chunks = chunkMarkdownUnit(
-      unit(['# A', 'x', '# A', 'y', '# A~2', 'z', `# B`, big, '# B/1', 'q'].join('\n')),
-    );
-    const ids = chunks.map((chunk) => chunk.id);
+  it('splits a long section on block boundaries and never cuts a table or code block that fits', () => {
+    const table = [
+      '| Route | Purpose |',
+      '| --- | --- |',
+      ...Array.from({ length: 30 }, (_, i) => `| /r${i} | does ${i} |`),
+    ].join('\n');
+    const code = [
+      '```ts',
+      ...Array.from({ length: 30 }, (_, i) => `const v${i} = ${i};`),
+      '',
+      'export {};',
+      '```',
+    ].join('\n');
+    const items = Array.from(
+      { length: 12 },
+      (_, i) => `- item ${i}: ${paragraph(8, `i${i}w`)}`,
+    ).join('\n');
+    const body = [
+      paragraph(150, 'a'),
+      table,
+      paragraph(150, 'b'),
+      code,
+      items,
+      paragraph(150, 'c'),
+    ];
+    const chunks = chunkMarkdownUnit(unit(`## Routes\n\n${body.join('\n\n')}`));
 
-    expect(new Set(ids).size).toBe(ids.length);
-    expect(ids).toEqual(
-      expect.arrayContaining(['guide#A', 'guide#A~2', 'guide#A~2~2', 'guide#B/1', 'guide#B/1~2']),
+    expect(chunks.length).toBeGreaterThan(1);
+    expect(chunks.map((chunk) => chunk.id)).toEqual(
+      chunks.map((_, index) => `guide#routes:${index + 1}`),
+    );
+    for (const chunk of chunks) {
+      expect(chunk.text.length).toBeLessThanOrEqual(CHUNK_MAX_CHARS);
+      expect(chunk.sectionId).toBe('routes');
+    }
+
+    expect(chunks.filter((chunk) => chunk.text.includes(table))).toHaveLength(1);
+    expect(chunks.filter((chunk) => chunk.text.includes(code))).toHaveLength(1);
+    expect(chunks.find((chunk) => chunk.text.includes('- item 0:'))!.text).toContain('- item 11:');
+    // Block-packed parts do not overlap: every block appears once.
+    expect(chunks.map((chunk) => chunk.text).join('\n\n')).toBe(
+      `## Routes\n\n${body.join('\n\n')}`,
     );
   });
 
-  it('splits an oversize section into overlapping parts within the bound', () => {
-    const words = Array.from({ length: 900 }, (_, index) => `word${index}`).join(' ');
+  it('cuts only a single oversize block into overlapping windows, starting at words', () => {
+    const words = paragraph(900, 'word');
     const chunks = chunkMarkdownUnit(unit(`# Big\n${words}\n# Small\nTiny.`));
     const big = chunks.filter((chunk) => chunk.headingPath[0] === 'Big');
 
     expect(big.length).toBeGreaterThan(1);
-    expect(big.map((chunk) => chunk.id)).toEqual(big.map((_, index) => `guide#Big/${index + 1}`));
+    expect(big[0]!.text.startsWith('# Big\nword0 ')).toBe(true);
     for (const chunk of big) {
       expect(chunk.text.length).toBeLessThanOrEqual(CHUNK_MAX_CHARS);
+      expect(chunk.text).toMatch(/^(?:# Big|word\d+ )/u);
     }
 
     const overlap = big[0]!.text.slice(-CHUNK_OVERLAP_CHARS / 2);
     expect(big[1]!.text).toContain(overlap);
-    expect(chunks.at(-1)!.id).toBe('guide#Small');
+    expect(chunks.at(-1)!.id).toBe('guide#small');
   });
 
   it('keeps ids and hashes of unchanged sections stable, and hashes include the header', () => {
@@ -116,8 +148,8 @@ describe('chunkMarkdownUnit', () => {
     const after = chunkMarkdownUnit(unit('# New\nInserted.\n# A\nOne.\n# B\nChanged.'));
     const header = chunkMarkdownUnit(unit('# A\nOne.\n# B\nTwo.', 'Title: Renamed'));
 
-    const a = (chunks: typeof before) => chunks.find((chunk) => chunk.id === 'guide#A')!;
-    const b = (chunks: typeof before) => chunks.find((chunk) => chunk.id === 'guide#B')!;
+    const a = (chunks: typeof before) => chunks.find((chunk) => chunk.id === 'guide#a')!;
+    const b = (chunks: typeof before) => chunks.find((chunk) => chunk.id === 'guide#b')!;
     expect(a(after).contentHash).toBe(a(before).contentHash);
     expect(b(after).contentHash).not.toBe(b(before).contentHash);
     expect(a(header).contentHash).not.toBe(a(before).contentHash);

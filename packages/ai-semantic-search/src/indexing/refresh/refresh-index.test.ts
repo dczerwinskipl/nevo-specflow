@@ -63,7 +63,7 @@ describe('refreshIndex', () => {
     const changed = next.filter(
       (chunk) => !initial.some((old) => old.contentHash === chunk.contentHash),
     );
-    expect(changed.map((chunk) => chunk.id)).toEqual(['locks#Locks > Stale', 'search#Search']);
+    expect(changed.map((chunk) => chunk.id)).toEqual(['locks#locks/stale', 'search#search']);
 
     expect(await refreshIndex({ chunks: next, provider, store })).toMatchObject({
       status: 'refreshed',

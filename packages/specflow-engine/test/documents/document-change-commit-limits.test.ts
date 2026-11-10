@@ -251,13 +251,15 @@ describe.skipIf(!onPosix)('a read-only Git process that has to end (real Git)', 
     const pidFile = join(root, '.git', 'read.pid');
     const trapFile = join(root, '.git', 'read.trap');
     // The alias traps SIGTERM (records it) and keeps running: only the escalation can end it.
+    // The trap is installed before the pid is written, and the timeout leaves a loaded runner
+    // time to start git and sh, so SIGTERM cannot arrive before the trap exists.
     const script = join(root, '.git', 'slow-read.sh');
     await writeFile(
       script,
-      `echo $$ > "${pidFile}"\ntrap 'echo term > "${trapFile}"' TERM\nwhile true; do sleep 0.1; done\n`,
+      `trap 'echo term > "${trapFile}"' TERM\necho $$ > "${pidFile}"\nwhile true; do sleep 0.1; done\n`,
     );
     await expect(
-      executeGit(root, ['-c', `alias.hang=!sh "${script}"`, 'hang'], { timeoutMs: 400 }),
+      executeGit(root, ['-c', `alias.hang=!sh "${script}"`, 'hang'], { timeoutMs: 2000 }),
     ).rejects.toMatchObject({ code: 'GIT_UNAVAILABLE' });
 
     const pid = Number((await readFile(pidFile, 'utf8')).trim());

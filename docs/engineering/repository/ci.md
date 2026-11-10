@@ -110,7 +110,8 @@ has a known vulnerability of moderate severity or higher. Its stable check name 
 runs `pnpm api:openapi --check` right after it builds `@nevo/specflow-runtime`, so the check adds
 no build. It runs when that job's relevance gate matches, which includes every change to the Runtime and its
 workspace dependencies (`packages/specflow-runtime/`, `packages/specflow-contracts/`,
-`packages/specflow-engine/`, `packages/authorization/`), where the route schemas and the schemas
+`packages/specflow-engine/`, `packages/authorization/`, `packages/specflow-docs/`,
+`packages/ai-semantic-search/`), where the route schemas and the schemas
 they reuse live, and to the generated file itself; the failure counts towards `verify tests`.
 
 The check regenerates the document, validates it as OpenAPI 3.1 and fails with

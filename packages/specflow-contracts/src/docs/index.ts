@@ -3,6 +3,8 @@
 
 import { Type, type Static } from 'typebox';
 
+export { DocsCapabilities } from './capabilities';
+
 /**
  * Why a search answered lexically (ADR 0020, "Semantic search is optional"):
  * - `semantic-disabled`: `docs.search.semantic` is absent or `false`;

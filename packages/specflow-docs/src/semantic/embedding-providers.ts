@@ -19,10 +19,22 @@ import { missingApiKeyReason } from './effective-mode';
  */
 export const QUERY_TIMEOUT_MS = 3000;
 
-/** Builds a provider from resolved settings; the default is the OpenAI-compatible adapter. */
+/**
+ * Builds a provider from resolved settings; the default is the OpenAI-compatible adapter. `signal`,
+ * when given, aborts the provider's requests: an aborted request answers a failure at once.
+ */
 export type CreateEmbeddingProvider = (
   settings: OpenAiCompatibleEmbeddingSettings,
+  options: { readonly signal?: AbortSignal },
 ) => EmbeddingProvider;
+
+const createDefaultProvider: CreateEmbeddingProvider = (settings, { signal }) =>
+  createOpenAiCompatibleEmbeddingProvider(
+    settings,
+    signal === undefined
+      ? {}
+      : { timeoutSignal: (ms) => AbortSignal.any([AbortSignal.timeout(ms), signal]) },
+  );
 
 export interface EmbeddingProviders {
   /** Query embedding and reachability probes; at most `QUERY_TIMEOUT_MS` per request. */
@@ -34,11 +46,13 @@ export interface EmbeddingProviders {
 export interface EmbeddingProviderEnvironment {
   readonly env: Readonly<Record<string, string | undefined>>;
   readonly createProvider?: CreateEmbeddingProvider;
+  /** Stops the providers' requests, for example when a Runtime closes during a refresh. */
+  readonly signal?: AbortSignal;
 }
 
 export function createEmbeddingProviders(
   settings: EmbeddingsSettings,
-  { env, createProvider = createOpenAiCompatibleEmbeddingProvider }: EmbeddingProviderEnvironment,
+  { env, createProvider = createDefaultProvider, signal }: EmbeddingProviderEnvironment,
 ):
   | { readonly ok: true; readonly providers: EmbeddingProviders }
   | {
@@ -68,11 +82,14 @@ export function createEmbeddingProviders(
   return {
     ok: true,
     providers: {
-      query: createProvider({
-        ...resolved,
-        timeoutMs: Math.min(documentTimeoutMs, QUERY_TIMEOUT_MS),
-      }),
-      documents: createProvider({ ...resolved, timeoutMs: documentTimeoutMs }),
+      query: createProvider(
+        { ...resolved, timeoutMs: Math.min(documentTimeoutMs, QUERY_TIMEOUT_MS) },
+        { ...(signal === undefined ? {} : { signal }) },
+      ),
+      documents: createProvider(
+        { ...resolved, timeoutMs: documentTimeoutMs },
+        { ...(signal === undefined ? {} : { signal }) },
+      ),
     },
   };
 }

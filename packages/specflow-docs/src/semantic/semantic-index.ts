@@ -29,6 +29,8 @@ import {
 export interface SemanticEnvironment {
   readonly env: Readonly<Record<string, string | undefined>>;
   readonly createProvider?: CreateEmbeddingProvider;
+  /** Stops the endpoint requests; `semantic index` then ends with the embedding failure. */
+  readonly signal?: AbortSignal;
 }
 
 export type EndpointReachability =

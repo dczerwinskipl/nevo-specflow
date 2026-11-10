@@ -182,4 +182,6 @@ configured and reachable, and the index is current; otherwise it answers `lexica
 The semantic index lives in `.nevo/local/cache/docs-index/` below the project root: the vectors
 (`vectors/`) and the parsed chunks of each document (`units.json`). It is disposable cache
 ([project configuration and local state](../../architecture/runtime/configuration.md)): deleting it
-costs only re-embedding. `search` writes nothing there while semantic search is not enabled.
+costs only re-embedding. `search` writes nothing there while semantic search is not enabled. A
+running Runtime shares the same index for
+[`GET /api/docs/search`](../api/docs-search.md) and refreshes it in the background on start.

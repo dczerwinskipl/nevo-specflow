@@ -755,6 +755,200 @@
         },
         "additionalProperties": false
       },
+      "DocsSearchResult": {
+        "anyOf": [
+          {
+            "type": "object",
+            "required": [
+              "mode",
+              "results"
+            ],
+            "properties": {
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "hybrid"
+                ]
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "title",
+                    "file",
+                    "score",
+                    "chunks"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "file": {
+                      "type": "string"
+                    },
+                    "score": {
+                      "type": "number"
+                    },
+                    "chunks": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "headingPath",
+                          "snippet",
+                          "score"
+                        ],
+                        "properties": {
+                          "headingPath": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "snippet": {
+                            "type": "string"
+                          },
+                          "score": {
+                            "type": "number"
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "minItems": 1
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "mode",
+              "reason",
+              "results"
+            ],
+            "properties": {
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "lexical"
+                ]
+              },
+              "reason": {
+                "type": "object",
+                "required": [
+                  "code",
+                  "message"
+                ],
+                "properties": {
+                  "code": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "semantic-disabled"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "no-endpoint"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "endpoint-unreachable"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "index-building"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "index-unavailable"
+                        ]
+                      }
+                    ]
+                  },
+                  "message": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "title",
+                    "file",
+                    "score",
+                    "chunks"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "file": {
+                      "type": "string"
+                    },
+                    "score": {
+                      "type": "number"
+                    },
+                    "chunks": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "headingPath",
+                          "snippet",
+                          "score"
+                        ],
+                        "properties": {
+                          "headingPath": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "snippet": {
+                            "type": "string"
+                          },
+                          "score": {
+                            "type": "number"
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "minItems": 1
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
       "DocumentError": {
         "type": "object",
         "required": [
@@ -3369,6 +3563,12 @@
                             "enum": [
                               "settings"
                             ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "docs"
+                            ]
                           }
                         ]
                       },
@@ -3632,6 +3832,52 @@
                         }
                       },
                       "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "resource",
+                        "capabilities"
+                      ],
+                      "properties": {
+                        "resource": {
+                          "type": "object",
+                          "required": [
+                            "name",
+                            "scope"
+                          ],
+                          "properties": {
+                            "name": {
+                              "type": "string",
+                              "enum": [
+                                "docs"
+                              ]
+                            },
+                            "scope": {
+                              "type": "object",
+                              "additionalProperties": {
+                                "type": "string",
+                                "minLength": 1,
+                                "pattern": "\\S"
+                              }
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "capabilities": {
+                          "type": "object",
+                          "required": [
+                            "search"
+                          ],
+                          "properties": {
+                            "search": {
+                              "type": "boolean"
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      },
+                      "additionalProperties": false
                     }
                   ]
                 }
@@ -3690,6 +3936,117 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RateLimitedErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/docs/search": {
+      "get": {
+        "operationId": "getDocsSearch",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "description": "The question, in your own words."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(?:[1-9]|[1-4][0-9]|50)$"
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "description": "Maximum documents, 1 to 50 (default 10)."
+          },
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "false"
+                  ]
+                }
+              ]
+            },
+            "in": "query",
+            "name": "includeNonAuthoritative",
+            "required": false,
+            "description": "Also return documents under the non-authoritative path prefixes (default false)."
+          }
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocsSearchResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticationRequiredErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The principal lacks a required capability.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporarily unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error",
+                    "code"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
                 }
               }
             }

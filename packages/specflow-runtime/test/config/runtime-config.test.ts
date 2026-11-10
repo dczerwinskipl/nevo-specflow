@@ -2,7 +2,10 @@ import { mkdtemp, mkdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { createFakeEmbeddingProvider } from '@nevo/ai-semantic-search/testing';
+import { initDocs } from '@nevo/specflow-docs';
 import { describe, expect, it } from 'vitest';
+import { stringify } from 'yaml';
 
 import {
   loadRuntimeConfig,
@@ -59,6 +62,60 @@ it('loads project-owned Current Overview sections in declared order', async () =
     'utf8',
   );
   await expect(loadFrom(cwd)).rejects.toThrow('project-owned');
+});
+
+describe('documentation configuration', () => {
+  it('loads the sections an enabled "nevo-specflow init" writes', async () => {
+    const docs = await initDocs({
+      ui: {
+        select: <T extends string>() => Promise.resolve('yes' as T),
+        input: (_message: string, defaultValue?: string) => Promise.resolve(defaultValue ?? ''),
+        note: () => undefined,
+      },
+      env: {},
+      createProvider: () => createFakeEmbeddingProvider(),
+    });
+    const cwd = await mkdtemp(join(tmpdir(), 'specflow-docs-config-'));
+    await mkdir(join(cwd, '.nevo/local'), { recursive: true });
+    await writeFile(
+      join(cwd, '.nevo/config.yaml'),
+      `${PROJECT_CONFIG}\n${stringify(docs.projectConfig)}`,
+      'utf8',
+    );
+    await writeFile(join(cwd, '.nevo/local/config.yaml'), stringify(docs.localConfig), 'utf8');
+
+    const { docs: loaded } = (await loadFrom(cwd)).config;
+    expect(loaded?.docs.search.semantic).toBe(true);
+    expect(loaded?.embeddings).toMatchObject({
+      protocol: 'openai-compatible',
+      baseUrl: 'http://127.0.0.1:11434/v1',
+    });
+  });
+
+  it('rejects a local docs section and a secret literal like the docs command', async () => {
+    const cwd = await mkdtemp(join(tmpdir(), 'specflow-docs-local-'));
+    await mkdir(join(cwd, '.nevo/local'), { recursive: true });
+    await writeFile(join(cwd, '.nevo/config.yaml'), PROJECT_CONFIG, 'utf8');
+    await writeFile(
+      join(cwd, '.nevo/local/config.yaml'),
+      'docs:\n  search:\n    semantic: true\n',
+      'utf8',
+    );
+    await expect(loadFrom(cwd)).rejects.toThrowError(
+      new RuntimeConfigError(
+        `${join(cwd, '.nevo/local/config.yaml')}: documentation configuration is project-owned and cannot be set locally; move 'docs' to ${join(cwd, '.nevo/config.yaml')}.`,
+      ),
+    );
+
+    await writeFile(
+      join(cwd, '.nevo/local/config.yaml'),
+      'ai:\n  embeddings:\n    apiKey: sk-live-secret-value\n',
+      'utf8',
+    );
+    const rejected = loadFrom(cwd);
+    await expect(rejected).rejects.toBeInstanceOf(RuntimeConfigError);
+    await expect(rejected).rejects.not.toThrow('sk-live-secret-value');
+  });
 });
 
 const LOCAL_PROJECT_POLICY_OVERRIDES = [

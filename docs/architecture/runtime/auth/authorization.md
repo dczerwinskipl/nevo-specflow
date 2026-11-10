@@ -49,7 +49,7 @@ integration, and backend enforcement boundaries.
 ## Feature ownership and composition
 
 Product features own the capabilities they expose. Specs declares `spec.*`, Sessions declares
-`session.*`, and Settings declares `settings.*`.
+`session.*`, Settings declares `settings.*`, and Docs declares `docs.*`.
 
 Auth does not import those feature definitions. The Runtime composition root creates feature modules,
 collects their authorization resource definitions, defines the product role-to-capability policy, and injects
@@ -85,7 +85,8 @@ The current feature-owned resources are:
   `spec.close-specification`, `spec.start-session`;
 - `session`: `session.view`, `session.create`, `session.manage`, `session.delete`,
   `session.execute-write`, `session.view-provider-limits`;
-- `settings`: `settings.view`, `settings.manage`.
+- `settings`: `settings.view`, `settings.manage`;
+- `docs`: `docs.search` (always checked in the global scope `{}`).
 
 There is intentionally no `spec.list` capability. A Specs collection endpoint requires the subject
 to possess `spec.view` in at least one scope, then filters rows with target-specific `spec.view`

@@ -18,6 +18,7 @@ const runtimeSharedPatterns = [
 ];
 const runtimeFeatures = [
   'auth',
+  'docs',
   'documents',
   'session-associations',
   'sessions',

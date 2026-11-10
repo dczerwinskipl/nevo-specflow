@@ -219,11 +219,16 @@ which have the same body. Two kinds of routes do not get it:
 - **Routes with a `400` schema of their own** (Create, close and the operation lists): Fastify
   serializes the validation error through that schema, so the body is that contract, for example
   `{ "error": "Bad Request", "code": "FST_ERR_VALIDATION" }` for `CloseError`, and the route's own
-  `400` documents it.
+  `400` documents it. A `400` schema whose `error` is an enum would refuse that body and turn the
+  answer into `500 FST_ERR_FAILED_ERROR_SERIALIZATION`; such a schema is a union with
+  `RequestErrorResponse` instead (the OIDC start: `invalid_return_to` or the request error). The
+  contract is not closed, because the serializer matches the error object itself, which has more
+  fields (`validation`); only the four declared fields are written.
 
 `test/server/request-validation.http.test.ts` sends a request with an invalid path parameter, query
 and body, checks each answer against `RequestErrorResponse` and checks that the operation documents
-it, and that a Session route in demo mode does not.
+it, that a Session route in demo mode does not, and that an invalid OIDC start body is a `400` with
+exactly the four fields while `invalid_return_to` keeps its body.
 
 The transform adds no other refusal; each Session route documents its own Session refusals (next
 section).

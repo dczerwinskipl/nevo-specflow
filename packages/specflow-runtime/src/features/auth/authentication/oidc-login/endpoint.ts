@@ -1,5 +1,6 @@
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import type { FastifyPluginCallback } from 'fastify';
+import { Type } from 'typebox';
 
 import {
   OidcStartErrorResponseSchema,
@@ -9,6 +10,9 @@ import {
   type OidcStartErrorResponse,
   type OidcStartSuccessResponse,
 } from '@nevo/specflow-contracts/authentication';
+import { RequestErrorResponseSchema } from '@nevo/specflow-contracts/runtime';
+
+import { contractRef } from '../../../../server/shared-contracts';
 
 import type { RuntimeOidcEnabledProviderConfig } from '../configuration/model';
 import type { OidcClient } from './client';
@@ -54,7 +58,14 @@ export const oidcLoginEndpoint: FastifyPluginCallback<OidcLoginEndpointOptions> 
         body: OidcStartRequestSchema,
         response: {
           200: OidcStartSuccessResponseSchema,
-          400: OidcStartErrorResponseSchema,
+          // A body that fails the request schema (or is not JSON) is Fastify's request error: the
+          // route's own `error` enum alone would make its serialization fail (`500`).
+          400: Type.Union([OidcStartErrorResponseSchema, contractRef(RequestErrorResponseSchema)], {
+            'x-response-description':
+              'The request is invalid: `invalid_return_to` for a return path outside the ' +
+              'Runtime, or the request error with `code` `FST_ERR_VALIDATION`, ' +
+              '`FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY`.',
+          }),
           429: OidcStartErrorResponseSchema,
           503: OidcStartErrorResponseSchema,
         },

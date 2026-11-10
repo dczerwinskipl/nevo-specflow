@@ -2271,8 +2271,7 @@
           "message": {
             "type": "string"
           }
-        },
-        "additionalProperties": false
+        }
       },
       "SessionCommandResult": {
         "type": "object",
@@ -2952,45 +2951,52 @@
             }
           },
           "400": {
-            "description": "The request is invalid.",
+            "description": "The request is invalid: `invalid_return_to` for a return path outside the Runtime, or the request error with `code` `FST_ERR_VALIDATION`, `FST_ERR_CTP_INVALID_JSON_BODY` or `FST_ERR_CTP_EMPTY_JSON_BODY`.",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "required": [
-                    "error"
-                  ],
-                  "properties": {
-                    "error": {
-                      "anyOf": [
-                        {
-                          "type": "string",
-                          "enum": [
-                            "invalid_return_to"
-                          ]
-                        },
-                        {
-                          "type": "string",
-                          "enum": [
-                            "rate_limited"
-                          ]
-                        },
-                        {
-                          "type": "string",
-                          "enum": [
-                            "provider_unavailable"
-                          ]
-                        },
-                        {
-                          "type": "string",
-                          "enum": [
-                            "service_unavailable"
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "required": [
+                        "error"
+                      ],
+                      "properties": {
+                        "error": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "invalid_return_to"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "rate_limited"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "provider_unavailable"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "service_unavailable"
+                              ]
+                            }
                           ]
                         }
-                      ]
+                      },
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/RequestErrorResponse"
                     }
-                  },
-                  "additionalProperties": false
+                  ]
                 }
               }
             }

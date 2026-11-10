@@ -20,6 +20,10 @@ export type RateLimitedErrorResponse = Static<typeof RateLimitedErrorResponseSch
  * request that does not match the route schema (`400`, `FST_ERR_VALIDATION`), a malformed or empty
  * JSON body (`400`, `FST_ERR_CTP_INVALID_JSON_BODY`, `FST_ERR_CTP_EMPTY_JSON_BODY`) or an
  * unsupported media type (`415`, `FST_ERR_CTP_INVALID_MEDIA_TYPE`).
+ *
+ * Not closed: a route whose own `400` schema is a union with this contract serializes the error
+ * object itself through it, and that object has more fields (a validation error carries
+ * `validation`); the serializer writes only the four fields declared here.
  */
 export const RequestErrorResponseSchema = Type.Object(
   {
@@ -28,6 +32,6 @@ export const RequestErrorResponseSchema = Type.Object(
     error: Type.String(),
     message: Type.String(),
   },
-  { $id: 'RequestErrorResponse', additionalProperties: false },
+  { $id: 'RequestErrorResponse' },
 );
 export type RequestErrorResponse = Static<typeof RequestErrorResponseSchema>;

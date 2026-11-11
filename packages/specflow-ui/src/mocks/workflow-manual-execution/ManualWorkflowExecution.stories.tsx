@@ -87,6 +87,14 @@ export const Default: Story = {
         'edit-details',
         'edit-conflict',
         'edit-document',
+        'author',
+        'author-add-menu',
+        'author-add-spec-doc',
+        'author-add-project-doc',
+        'author-add-path',
+        'author-row-menu',
+        'author-dependencies',
+        'author-with-document',
       ],
     },
     documentPlacement: { control: 'inline-radio', options: ['secondary', 'primary'] },
@@ -153,3 +161,19 @@ export const TaskReworkWide = taskStory('rework');
 export const TaskReturnWide = taskStory('return');
 export const TaskReworkCompact900 = taskStory('rework', { width: 900 });
 export const TaskReworkNarrow390 = taskStory('rework', { width: 390, height: 1100 });
+
+/* 2b. Task authoring: documents, context and dependencies on the Task page */
+export const TaskAuthorWide = taskStory('author', { height: 1700 });
+export const TaskAuthorAddMenuWide = taskStory('author-add-menu', { height: 1200 });
+export const TaskAuthorAddSpecDocWide = taskStory('author-add-spec-doc', { height: 1000 });
+export const TaskAuthorAddProjectDocWide = taskStory('author-add-project-doc', { height: 1000 });
+export const TaskAuthorAddPathWide = taskStory('author-add-path', { height: 1000 });
+export const TaskAuthorRowMenuWide = taskStory('author-row-menu', { height: 1500 });
+export const TaskAuthorDependenciesWide = taskStory('author-dependencies', { height: 1000 });
+/** Context edited in the Primary while task.md and screens.md are open in the Secondary editor. */
+export const TaskAuthorWithDocumentWide = taskStory('author-with-document', { height: 1200 });
+export const TaskAuthorWithDocumentCompact900 = taskStory('author-with-document', {
+  width: 900,
+  height: 1200,
+});
+export const TaskAuthorNarrow390 = taskStory('author-with-document', { width: 390, height: 2600 });

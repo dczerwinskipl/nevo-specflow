@@ -18,7 +18,7 @@ import {
   DialogTitle,
   EmptyState,
   Field,
-  Icon,
+  InlineNote,
   InformationList,
   MenuItem,
   OverflowMenu,
@@ -348,10 +348,10 @@ function TaskRowMenu({ item }: { item: MockTask }) {
         <MenuItem onSelect={noop}>Put on hold</MenuItem>
       ) : null}
       {item.status !== 'cancelled' && item.workflow.position.kind !== 'terminal' ? (
-        <MenuItem onSelect={noop}>Cancel task…</MenuItem>
+        <MenuItem onSelect={noop}>Cancel task</MenuItem>
       ) : null}
       {neverStarted && item.status !== 'cancelled' ? (
-        <MenuItem onSelect={noop}>Remove task…</MenuItem>
+        <MenuItem onSelect={noop}>Remove task</MenuItem>
       ) : null}
     </OverflowMenu>
   );
@@ -668,7 +668,12 @@ function CloseDialog({
         </DialogBody>
         <DialogFooter>
           <Button variant="secondary">{mode === 'blocked' ? 'Dismiss' : 'Cancel'}</Button>
-          {mode === 'blocked' ? null : <Button>Close specification</Button>}
+          {mode === 'blocked' ? (
+            // Opens the Abandon dialog (final, with its own reason and consequences).
+            <Button variant="secondary">Abandon instead</Button>
+          ) : (
+            <Button>Close specification</Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -791,13 +796,10 @@ function Overview({
           {specification.title}
         </Typography>
         {abandoned ? (
-          <p role="status" className="inline-flex items-start gap-1.5 text-body-sm font-medium">
-            <Icon name="archive" size="sm" className="mt-0.5 shrink-0" />
-            <span>
-              Abandoned · {abandonReason}{' '}
-              <span className="font-normal text-content-muted">Dominik, today 16:40</span>
-            </span>
-          </p>
+          <InlineNote role="status" icon="archive">
+            <span className="font-medium text-content-primary">Abandoned · {abandonReason}</span>{' '}
+            <span className="text-content-muted">Dominik, today 16:40</span>
+          </InlineNote>
         ) : null}
         <Typography as="p" variant="body-md" className="text-content-secondary">
           {specification.description}
@@ -847,18 +849,18 @@ function Workspace({ scenario, width }: SpecificationMockProps) {
     terminal
       ? {
           id: 'close',
-          label: 'Close specification…',
+          label: 'Close specification',
           primary: true,
           direct: 'always',
           onPress: noop,
         }
-      : { id: 'close', label: 'Close specification…', onPress: noop },
+      : { id: 'close', label: 'Close specification', onPress: noop },
     ...(terminal || scenario === 'empty'
       ? []
       : [
           {
             id: 'abandon',
-            label: 'Abandon specification…',
+            label: 'Abandon specification',
             tone: 'danger',
             onPress: noop,
           } as const,

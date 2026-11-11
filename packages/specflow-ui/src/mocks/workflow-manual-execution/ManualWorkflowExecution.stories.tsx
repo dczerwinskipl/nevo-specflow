@@ -62,6 +62,10 @@ export const Default: Story = {
         'waiting',
         'close-blocked',
         'close-ready',
+        'abandon',
+        'abandon-blocked',
+        'abandoned',
+        'close-after-abandon',
       ],
     },
     task: {
@@ -71,6 +75,7 @@ export const Default: Story = {
         'first-start',
         'start-definition-changed',
         'start-type-not-allowed',
+        'start-changed-since-preview',
         'waiting',
         'rework',
         'finish-review-failed',
@@ -115,6 +120,12 @@ export const SpecCloseBlockedWide = spec('close-blocked', { height: 1000 });
 export const SpecCloseReadyWide = spec('close-ready');
 export const SpecCloseBlockedNarrow390 = spec('close-blocked', { width: 390, height: 900 });
 
+/* 4b. Abandon (close without realization) */
+export const SpecAbandonWide = spec('abandon', { height: 1000 });
+export const SpecAbandonBlockedWide = spec('abandon-blocked');
+export const SpecAbandonedWide = spec('abandoned', { height: 1100 });
+export const SpecCloseAfterAbandonWide = spec('close-after-abandon', { height: 1000 });
+
 /* 2. Task detail: lifecycle and details */
 export const TaskDraftWide = taskStory('draft');
 export const TaskOnHoldWide = taskStory('on-hold');
@@ -133,6 +144,8 @@ export const TaskDocumentNarrow390 = taskStory('edit-document', { width: 390, he
 export const TaskFirstStartWide = taskStory('first-start');
 export const TaskStartDefinitionChangedWide = taskStory('start-definition-changed');
 export const TaskStartTypeNotAllowedWide = taskStory('start-type-not-allowed');
+/** Confirm sent the previewed revision; it changed meanwhile, so nothing started. */
+export const TaskStartChangedSincePreviewWide = taskStory('start-changed-since-preview');
 export const TaskWaitingWide = taskStory('waiting');
 export const TaskFinishReviewFailedWide = taskStory('finish-review-failed', { height: 1000 });
 export const TaskFinishFeedbackMissingWide = taskStory('finish-feedback-missing', { height: 1000 });

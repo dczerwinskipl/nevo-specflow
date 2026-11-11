@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import {
   Alert,
   Badge,
@@ -21,7 +21,7 @@ import {
   cn,
 } from '@nevo/ui';
 import { WorkspaceSection } from '../../shared/workspace-section';
-import type { Blocker, HistoryEntry, Transition, WorkflowView } from './fixtures.stories-support';
+import type { HistoryEntry, Transition, WorkflowView } from './fixtures.stories-support';
 
 /*
  * PRESENTATION MOCK ONLY. One generic step panel for a Specification and a Task. It renders the
@@ -36,38 +36,6 @@ function Step({ children }: { children: ReactNode }) {
   return <span className="font-mono">{children}</span>;
 }
 
-function BlockerList({ blockers, label }: { blockers: readonly Blocker[]; label: string }) {
-  return (
-    // One stable two-line unit at every width: id gutter, then title over state.
-    <ul aria-label={label} className="grid gap-2">
-      {blockers.map((blocker) => (
-        <li key={blocker.id} className="flex min-w-0 items-baseline gap-2 text-left">
-          <span className="w-12 shrink-0 font-mono text-body-sm text-content-muted">
-            {blocker.id}
-          </span>
-          <span className="grid min-w-0 flex-1">
-            <a
-              href={`#${blocker.id}`}
-              className="block min-w-0 truncate text-body-sm text-content-primary hover:text-content-link"
-            >
-              {blocker.title}
-            </a>
-            <span
-              className={cn(
-                'text-body-sm text-content-secondary',
-                blocker.tone === 'attention' && 'text-status-attention',
-                blocker.tone === 'info' && 'text-status-info',
-              )}
-            >
-              {blocker.state}
-            </span>
-          </span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 export interface WorkflowPanelProps {
   readonly view: WorkflowView;
   /** Label of the start action for a not-started workflow (subject-specific wording). */
@@ -75,8 +43,6 @@ export interface WorkflowPanelProps {
   readonly onStart?: () => void;
   readonly onFinish?: () => void;
   readonly onReturn?: () => void;
-  /** Narrow only: opens the history that the Secondary shows on split layouts. */
-  readonly onHistory?: () => void;
   readonly headingId: string;
 }
 
@@ -87,7 +53,6 @@ export function WorkflowPanel({
   onStart = noop,
   onFinish = noop,
   onReturn = noop,
-  onHistory,
   headingId,
 }: WorkflowPanelProps) {
   const { position, definition } = view;
@@ -95,15 +60,20 @@ export function WorkflowPanel({
   const canReturn = (view.returnSteps?.length ?? 0) > 0;
   const canStart =
     view.canStart === true && (position.kind === 'not-started' || position.kind === 'ready');
+  const abandoned = position.kind === 'terminal' && position.outcome === 'abandoned';
 
   let current: ReactNode;
-  let facts: string | undefined;
+  let facts: ReactNode;
   let supporting: ReactNode;
 
   switch (position.kind) {
     case 'not-started':
       current = 'Not started';
-      facts = `First step `;
+      facts = (
+        <>
+          First step <Step>{position.firstStep}</Step>
+        </>
+      );
       supporting = view.unavailableReason ? (
         <Typography variant="body-sm" className="text-content-secondary">
           {view.unavailableReason}
@@ -121,23 +91,30 @@ export function WorkflowPanel({
     case 'waiting':
       current = <Step>{position.step}</Step>;
       facts = position.note;
+      // The blocking work is listed once, in its own section; the panel says how much and links.
       supporting = (
-        <div className="grid gap-2">
-          <span className="inline-flex items-start gap-1.5 text-body-sm font-medium text-status-attention">
-            <Icon name="clock" size="sm" className="mt-0.5 shrink-0" />
+        <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1 text-body-sm">
+          <span className="inline-flex items-center gap-1.5 font-medium text-status-attention">
+            <Icon name="clock" size="sm" className="shrink-0" />
             {position.reason}
           </span>
-          <BlockerList blockers={position.blockers} label="Blocking" />
-        </div>
+          <a
+            href={position.see.href}
+            className="text-content-link underline-offset-2 hover:underline"
+          >
+            {position.see.label}
+          </a>
+        </span>
       );
       break;
     case 'terminal':
-      current = 'Completed';
+      current = abandoned ? 'Abandoned' : 'Completed';
       facts = position.summary;
       break;
   }
 
   const latest = view.latest;
+  const latestNeedsAttention = latest?.attention === true;
 
   return (
     <WorkspaceSection aria-labelledby={headingId}>
@@ -146,24 +123,18 @@ export function WorkflowPanel({
         title="Workflow"
         icon="workflow"
         count={`${definition.title} · rev ${definition.revision}`}
-        actions={
-          onHistory ? (
-            <Button variant="ghost" size="sm" onClick={onHistory}>
-              History
-            </Button>
-          ) : undefined
-        }
       />
       <div className="grid gap-3">
-        <div className="grid gap-0.5">
+        {/* The position is a polite live region: a refresh after an action announces the change. */}
+        <div className="grid gap-0.5" aria-live="polite">
           <Typography
             as="p"
             variant="title-sm"
-            className={cn(position.kind === 'terminal' && 'text-status-success')}
+            className={cn(position.kind === 'terminal' && !abandoned && 'text-status-success')}
           >
             {position.kind === 'terminal' ? (
               <span className="inline-flex items-center gap-1.5">
-                <Icon name="circle-check" size="sm" />
+                <Icon name={abandoned ? 'archive' : 'circle-check'} size="sm" />
                 {current}
               </span>
             ) : (
@@ -173,7 +144,6 @@ export function WorkflowPanel({
           {facts ? (
             <Typography as="p" variant="body-sm" className="text-content-muted">
               {facts}
-              {position.kind === 'not-started' ? <Step>{position.firstStep}</Step> : null}
             </Typography>
           ) : null}
         </div>
@@ -183,13 +153,14 @@ export function WorkflowPanel({
             <Typography as="p" variant="body-sm" className="text-content-secondary">
               {latest.returned ? 'Returned from ' : 'Last: '}
               <Step>{latest.fromStep}</Step> · attempt {latest.attempt} ·{' '}
-              <span
-                className={cn(
-                  latest.toStep !== null && latest.feedback && 'font-medium text-status-attention',
-                )}
-              >
-                {latest.result}
-              </span>{' '}
+              {latestNeedsAttention ? (
+                <span className="inline-flex items-center gap-1 font-medium text-status-attention">
+                  <Icon name="triangle-alert" size="sm" className="shrink-0" />
+                  {latest.result}
+                </span>
+              ) : (
+                latest.result
+              )}{' '}
               · {latest.actor}, {latest.at}
             </Typography>
             {latest.feedback ? (
@@ -199,6 +170,10 @@ export function WorkflowPanel({
             ) : null}
           </div>
         ) : null}
+        {/*
+         * The action row. E6 adds the executor choice to the start action of an eligible step in
+         * this slot (Start step ▸ Do it myself / Ask agent); the primary stays "Start step".
+         */}
         {canStart || canFinish || canReturn ? (
           <div className="flex flex-wrap gap-2" data-slot="workflow-actions">
             {canStart ? <Button onClick={onStart}>{startLabel ?? 'Start step'}</Button> : null}
@@ -281,7 +256,7 @@ export function FinishStepDialog({
             <Field.Label>{required ? 'Feedback (required)' : 'Feedback (optional)'}</Field.Label>
             <TextArea rows={4} defaultValue={initialFeedback} />
             {missing ? (
-              <Field.Error>This result needs feedback for the next step.</Field.Error>
+              <Field.Error role="alert">This result needs feedback for the next step.</Field.Error>
             ) : (
               <Field.Description>Shown to whoever works on the next step.</Field.Description>
             )}
@@ -356,7 +331,7 @@ export function ReturnStepDialog({
             <Field.Label>Reason (required)</Field.Label>
             <TextArea
               rows={3}
-              defaultValue="The provider rejects the refresh grant; the approach from the spike needs to change."
+              defaultValue="The provider rejects the refresh grant; the design needs to change before implementing further."
             />
           </Field>
         </DialogBody>
@@ -373,7 +348,14 @@ export function ReturnStepDialog({
 /* First start of a Task: binding confirmation and refusals                                     */
 /* ------------------------------------------------------------------------------------------ */
 
-export type StartRefusal = 'definition-changed' | 'task-type-not-allowed';
+/**
+ * `definition-changed`: the live definition differs from the Task's creation binding.
+ * `changed-since-preview`: the confirm sent the previewed revision and the Engine refused because
+ * the definition changed while the dialog was open; the dialog re-opens on the new revision.
+ * `task-type-not-allowed`: the archetype no longer allows the Task Type (immutable: remove and
+ * recreate).
+ */
+export type StartRefusal = 'definition-changed' | 'changed-since-preview' | 'task-type-not-allowed';
 
 export function StartTaskDialog({
   taskId,
@@ -390,28 +372,46 @@ export function StartTaskDialog({
   firstStep: string;
   refusal?: StartRefusal;
 }) {
+  const dismissRef = useRef<HTMLButtonElement>(null);
+  const changed = refusal === 'definition-changed' || refusal === 'changed-since-preview';
+  const shown = changed ? revision + 1 : revision;
+
   return (
     <Dialog open>
-      <DialogContent>
+      <DialogContent
+        onOpenAutoFocus={(event) => {
+          // A refusal opens on the harmless dismiss, never on a consequential action.
+          if (refusal) {
+            event.preventDefault();
+            dismissRef.current?.focus();
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Start {taskId}</DialogTitle>
           <DialogDescription>
-            {refusal
-              ? 'This task cannot start with the definitions it was created with.'
-              : 'Starting fixes the workflow this task follows until it ends. Later changes to the task type or workflow do not affect it.'}
+            {refusal === 'task-type-not-allowed'
+              ? 'This task cannot start.'
+              : `Starting fixes the workflow this task follows until it ends. You confirm rev ${shown}; if it changes before you confirm, nothing starts and this dialog shows the new revision.`}
           </DialogDescription>
         </DialogHeader>
         <DialogBody className="grid gap-5">
           {refusal === 'definition-changed' ? (
-            <Alert tone="attention" title={`The ${workflow} workflow changed`}>
-              The task was created with revision {revision}; the current revision is {revision + 1}.
-              Review the difference and use the current revision, or leave the task unstarted.
+            <Alert role="alert" tone="attention" title={`The ${workflow} workflow changed`}>
+              The task was created with rev {revision}; the current revision is rev {revision + 1}.
+              Review the change and start with it, or leave the task unstarted.
+            </Alert>
+          ) : null}
+          {refusal === 'changed-since-preview' ? (
+            <Alert role="alert" tone="attention" title="Not started: the workflow changed just now">
+              You confirmed rev {revision}, but {workflow} is now rev {revision + 1}. Review the
+              change below and confirm again.
             </Alert>
           ) : null}
           {refusal === 'task-type-not-allowed' ? (
-            <Alert tone="danger" title={`${taskType} is no longer allowed here`}>
-              The Feature archetype now allows Backend and UI tasks. Change the task type to start
-              this task, or cancel it.
+            <Alert role="alert" tone="danger" title={`${taskType} is no longer allowed`}>
+              {taskType} is no longer allowed for Feature specifications. A task keeps its type, so
+              remove this task and create a new one with an allowed type, or cancel it.
             </Alert>
           ) : null}
           <DescriptionList>
@@ -422,12 +422,12 @@ export function StartTaskDialog({
             <DescriptionList.Item>
               <DescriptionList.Term>Workflow</DescriptionList.Term>
               <DescriptionList.Detail>
-                {refusal === 'definition-changed'
+                {changed
                   ? `${workflow} · rev ${revision} → rev ${revision + 1}`
                   : `${workflow} · rev ${revision}`}
               </DescriptionList.Detail>
             </DescriptionList.Item>
-            {refusal === 'definition-changed' ? (
+            {changed ? (
               <DescriptionList.Item>
                 <DescriptionList.Term>Change</DescriptionList.Term>
                 <DescriptionList.Detail>
@@ -435,22 +435,27 @@ export function StartTaskDialog({
                 </DescriptionList.Detail>
               </DescriptionList.Item>
             ) : null}
-            <DescriptionList.Item>
-              <DescriptionList.Term>First step</DescriptionList.Term>
-              <DescriptionList.Detail>
-                <Step>{firstStep}</Step>
-              </DescriptionList.Detail>
-            </DescriptionList.Item>
+            {refusal === 'task-type-not-allowed' ? null : (
+              <DescriptionList.Item>
+                <DescriptionList.Term>First step</DescriptionList.Term>
+                <DescriptionList.Detail>
+                  <Step>{firstStep}</Step>
+                </DescriptionList.Detail>
+              </DescriptionList.Item>
+            )}
           </DescriptionList>
         </DialogBody>
         <DialogFooter>
-          <Button variant="secondary">Cancel</Button>
-          {refusal === 'definition-changed' ? (
-            <Button>Use rev {revision + 1} and start</Button>
-          ) : refusal === 'task-type-not-allowed' ? (
-            <Button>Change task type…</Button>
+          <Button ref={dismissRef} variant="secondary">
+            {refusal === 'task-type-not-allowed' ? 'Not now' : 'Cancel'}
+          </Button>
+          {refusal === 'task-type-not-allowed' ? (
+            <>
+              <Button variant="secondary">Cancel task</Button>
+              <Button variant="destructive">Remove task…</Button>
+            </>
           ) : (
-            <Button>Start {firstStep}</Button>
+            <Button>{changed ? `Start with rev ${revision + 1}` : `Start ${firstStep}`}</Button>
           )}
         </DialogFooter>
       </DialogContent>
@@ -494,10 +499,14 @@ export function WorkflowHistory({
               <span className="grid gap-1">
                 <span
                   className={cn(
+                    'inline-flex items-center gap-1',
                     entry.active && 'text-status-info',
                     entry.tone === 'attention' && 'font-medium text-status-attention',
                   )}
                 >
+                  {entry.tone === 'attention' ? (
+                    <Icon name="triangle-alert" size="sm" className="shrink-0" />
+                  ) : null}
                   {entry.active ? 'In progress' : entry.result}
                 </span>
                 {entry.feedback ? (

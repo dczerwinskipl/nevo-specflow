@@ -33,6 +33,8 @@ export interface Handoff {
   readonly actor: string;
   readonly at: string;
   readonly returned?: boolean;
+  /** The result asks for rework: shown with an attention icon, not colour alone. */
+  readonly attention?: boolean;
 }
 
 export interface Blocker {
@@ -60,8 +62,15 @@ export type WorkflowPosition =
       /** Quiet note: how it continues. */
       readonly note: string;
       readonly blockers: readonly Blocker[];
+      /** Where the blocking work is listed; the panel links there instead of repeating it. */
+      readonly see: { readonly href: string; readonly label: string };
     }
-  | { readonly kind: 'terminal'; readonly summary: string; readonly at: string };
+  | {
+      readonly kind: 'terminal';
+      readonly summary: string;
+      readonly at: string;
+      readonly outcome?: 'completed' | 'abandoned';
+    };
 
 export interface WorkflowView {
   readonly definition: WorkflowDefinitionRef;
@@ -95,7 +104,7 @@ export const taskTypes: readonly TaskType[] = [
     id: 'backend',
     title: 'Backend',
     workflow: { id: 'build-and-review', title: 'Build and review', revision: 4 },
-    steps: ['spike', 'implement', 'review'],
+    steps: ['design', 'implement', 'review'],
     useWhen: 'Server or Engine change, reviewed before it counts as done.',
   },
   {
@@ -137,6 +146,7 @@ export const reviewFailed: Handoff = {
   fromStep: 'review',
   attempt: 1,
   result: 'Changes requested',
+  attention: true,
   toStep: 'implement',
   feedback:
     'The refresh path drops the original return URL when the cookie expires mid-request. Keep it in the state parameter and add a test for the expiry case.',
@@ -184,9 +194,9 @@ export const tasks: readonly MockTask[] = [
       position: { kind: 'active', step: 'implement', attempt: 2, since: '11:52', actor: 'you' },
       transitions: [
         { id: 'ready-for-review', label: 'Ready for review', to: 'review', feedback: 'optional' },
-        { id: 'blocked', label: 'Blocked', to: 'spike', feedback: 'required' },
+        { id: 'blocked', label: 'Blocked', to: 'design', feedback: 'required' },
       ],
-      returnSteps: ['spike'],
+      returnSteps: ['design'],
       latest: reviewFailed,
     },
   },
@@ -213,6 +223,7 @@ export const tasks: readonly MockTask[] = [
             tone: 'info',
           },
         ],
+        see: { href: '#task-dependencies-heading', label: 'See Depends on' },
       },
     },
   },
@@ -241,7 +252,7 @@ export const tasks: readonly MockTask[] = [
     started: false,
     workflow: {
       definition: backend,
-      position: { kind: 'not-started', firstStep: 'spike' },
+      position: { kind: 'not-started', firstStep: 'design' },
       unavailableReason: 'Resume the task to start it.',
     },
   },
@@ -265,7 +276,7 @@ export const tasks: readonly MockTask[] = [
     started: false,
     workflow: {
       definition: backend,
-      position: { kind: 'not-started', firstStep: 'spike' },
+      position: { kind: 'not-started', firstStep: 'design' },
       canStart: true,
     },
   },
@@ -322,7 +333,7 @@ export const backendHistory: readonly HistoryEntry[] = [
     artifacts: ['notes/token-exchange.md'],
   },
   {
-    step: 'spike',
+    step: 'design',
     attempt: 1,
     actor: 'Dominik',
     at: 'Yesterday 17:20',

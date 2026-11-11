@@ -18,6 +18,7 @@ import {
   DialogTitle,
   EmptyState,
   Field,
+  Icon,
   InformationList,
   MenuItem,
   OverflowMenu,
@@ -62,7 +63,11 @@ export type SpecificationScenario =
   | 'finish-breakdown'
   | 'waiting'
   | 'close-blocked'
-  | 'close-ready';
+  | 'close-ready'
+  | 'abandon'
+  | 'abandon-blocked'
+  | 'abandoned'
+  | 'close-after-abandon';
 
 export interface SpecificationMockProps {
   width: number;
@@ -104,6 +109,17 @@ function specWorkflow(scenario: SpecificationScenario, list: readonly MockTask[]
           at: 'Yesterday 12:30',
         },
       };
+    case 'abandoned':
+    case 'close-after-abandon':
+      return {
+        definition: specDefinition,
+        position: {
+          kind: 'terminal',
+          outcome: 'abandoned',
+          summary: 'Abandoned at wait-for-tasks · today 16:40 by Dominik',
+          at: 'Today 16:40',
+        },
+      };
     case 'close-ready':
       return {
         definition: specDefinition,
@@ -125,6 +141,7 @@ function specWorkflow(scenario: SpecificationScenario, list: readonly MockTask[]
           step: 'wait-for-tasks',
           reason: `Waiting for ${open.length} of ${list.filter((item) => item.status !== 'cancelled').length} tasks`,
           note: 'Continues by itself when every task is done or cancelled',
+          see: { href: '#tasks-heading', label: 'See Tasks' },
           blockers: open.map((item) => ({
             id: item.id,
             title: item.title,
@@ -170,6 +187,14 @@ function tasksFor(scenario: SpecificationScenario): readonly MockTask[] {
         task('T-04'),
         task('T-05'),
       ];
+    case 'abandoned':
+    case 'close-after-abandon':
+      // Abandon ended every Task run as abandoned and cancelled every non-terminal Task.
+      return tasks.map((item) =>
+        item.workflow.position.kind === 'terminal' || item.status === 'cancelled'
+          ? item
+          : { ...item, status: 'cancelled' as const },
+      );
     case 'close-ready':
       return tasks
         .filter((item) => item.id !== 'T-05')
@@ -332,7 +357,15 @@ function TaskRowMenu({ item }: { item: MockTask }) {
   );
 }
 
-function TasksList({ list, onCreate }: { list: readonly MockTask[]; onCreate: () => void }) {
+function TasksList({
+  list,
+  onCreate,
+  canCreate = true,
+}: {
+  list: readonly MockTask[];
+  onCreate: () => void;
+  canCreate?: boolean;
+}) {
   const [collapsed, setCollapsed] = useState<ReadonlySet<GroupId>>(new Set(['parked']));
   const done = list.filter((item) => item.workflow.position.kind === 'terminal').length;
   const counted = list.filter((item) => item.status !== 'cancelled').length;
@@ -345,9 +378,11 @@ function TasksList({ list, onCreate }: { list: readonly MockTask[]; onCreate: ()
         icon="list-checks"
         count={list.length === 0 ? undefined : `${done} / ${counted} completed`}
         actions={
-          <Button size="sm" variant="secondary" leadingIcon="plus" onClick={onCreate}>
-            New task
-          </Button>
+          canCreate ? (
+            <Button size="sm" variant="secondary" leadingIcon="plus" onClick={onCreate}>
+              New task
+            </Button>
+          ) : undefined
         }
       />
       {list.length === 0 ? (
@@ -490,7 +525,77 @@ function CreateTaskDialog({ existing }: { existing: readonly MockTask[] }) {
   );
 }
 
-function CloseDialog({ ready, list }: { ready: boolean; list: readonly MockTask[] }) {
+interface BlockerItem {
+  key: string;
+  label: ReactNode;
+  href: string;
+  state: string;
+}
+
+interface BlockerGroup {
+  title: string;
+  /** What resolves the whole group, said once instead of per row. */
+  hint?: string;
+  items: readonly BlockerItem[];
+}
+
+const taskHref = (id: string) => `/specs/${specification.id}/tasks/${id}`;
+
+function taskItems(members: readonly MockTask[], state?: (item: MockTask) => string) {
+  return members.map((item) => ({
+    key: item.id,
+    href: taskHref(item.id),
+    label: (
+      <>
+        <span className="font-mono text-content-muted">{item.id}</span> {item.title}
+      </>
+    ),
+    state: state ? state(item) : rowState(item).state,
+  }));
+}
+
+/** The grouped-blocker layout shared by Close and Abandon: every row is a real link. */
+function BlockerGroups({ groups }: { groups: readonly BlockerGroup[] }) {
+  return (
+    <div className="grid gap-4">
+      {groups
+        .filter((group) => group.items.length > 0)
+        .map((group) => (
+          <section key={group.title} className="grid gap-1.5" aria-label={group.title}>
+            <Typography as="h3" variant="label-sm">
+              {group.title} · {group.items.length}
+              {group.hint ? (
+                <span className="font-normal text-content-secondary"> — {group.hint}</span>
+              ) : null}
+            </Typography>
+            <ul className="grid gap-1.5">
+              {group.items.map((item) => (
+                <li key={item.key} className="grid min-w-0 text-body-sm">
+                  <a
+                    href={item.href}
+                    className="min-w-0 truncate text-content-primary underline-offset-2 hover:text-content-link hover:underline"
+                  >
+                    {item.label}
+                  </a>
+                  <span className="text-content-secondary">{item.state}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
+    </div>
+  );
+}
+
+const abandonReason = 'The provider contract was cancelled; single sign-on moves to next quarter.';
+
+function CloseDialog({
+  mode,
+  list,
+}: {
+  mode: 'blocked' | 'ready' | 'after-abandon';
+  list: readonly MockTask[];
+}) {
   const unfinished = list.filter(
     (item) => item.status === 'ready' && item.workflow.position.kind !== 'terminal',
   );
@@ -498,80 +603,164 @@ function CloseDialog({ ready, list }: { ready: boolean; list: readonly MockTask[
   const onHold = list.filter((item) => item.status === 'on-hold');
   const cancelled = list.filter((item) => item.status === 'cancelled');
   const done = list.filter((item) => item.workflow.position.kind === 'terminal');
-  const group = (
-    title: string,
-    members: readonly MockTask[],
-    suffix?: (item: MockTask) => string,
-  ) =>
-    members.length === 0 ? null : (
-      <div className="grid gap-1.5">
-        <Typography as="h3" variant="label-sm">
-          {title} · {members.length}
-        </Typography>
-        <ul className="grid gap-1">
-          {members.map((item) => (
-            <li key={item.id} className="grid grid-cols-[3rem_minmax(0,1fr)] gap-x-2 text-body-sm">
-              <span className="font-mono text-content-muted">{item.id}</span>
-              <span className="min-w-0">
-                <a href={`#${item.id}`} className="text-content-primary hover:text-content-link">
-                  {item.title}
-                </a>
-                <span className="block text-content-secondary">
-                  {suffix ? suffix(item) : rowState(item).state}
-                </span>
-              </span>
-            </li>
-          ))}
-        </ul>
-      </div>
-    );
+  const description =
+    mode === 'blocked'
+      ? 'Not ready to close. Finish, cancel or remove the work below, then close again.'
+      : mode === 'after-abandon'
+        ? `Abandoned today by Dominik: “${abandonReason}” Closing records it as not delivered and runs the repository checks.`
+        : 'Everything required is finished. Closing also runs the repository checks.';
 
   return (
     <Dialog open>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Close {specification.title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
+        </DialogHeader>
+        <DialogBody className="grid gap-5">
+          {mode === 'ready' ? (
+            <Alert tone="success" title="Ready to close">
+              The {specification.workflow.title} workflow is complete and {done.length} tasks are
+              done.
+            </Alert>
+          ) : null}
+          <BlockerGroups
+            groups={
+              mode === 'blocked'
+                ? [
+                    {
+                      title: 'Specification workflow',
+                      items: [
+                        {
+                          key: 'spec',
+                          href: '#spec-workflow-heading',
+                          label: <span className="font-mono">wait-for-tasks</span>,
+                          state: 'Still waiting for its tasks',
+                        },
+                      ],
+                    },
+                    { title: 'Unfinished tasks', items: taskItems(unfinished) },
+                    {
+                      title: 'Drafts',
+                      hint: 'approve and finish, or remove',
+                      items: taskItems(drafts, () => 'Draft'),
+                    },
+                    {
+                      title: 'On hold',
+                      hint: 'resume and finish, or cancel',
+                      items: taskItems(onHold, () => 'On hold'),
+                    },
+                  ]
+                : [
+                    {
+                      title: 'Cancelled, not delivered',
+                      items: taskItems(cancelled, (item) =>
+                        mode === 'after-abandon' && item.id !== 'T-06'
+                          ? item.started
+                            ? 'Cancelled by abandon · its workflow ended as abandoned'
+                            : 'Cancelled by abandon'
+                          : 'Cancelled by Dominik · Yesterday',
+                      ),
+                    },
+                  ]
+            }
+          />
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="secondary">{mode === 'blocked' ? 'Dismiss' : 'Cancel'}</Button>
+          {mode === 'blocked' ? null : <Button>Close specification</Button>}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AbandonDialog({ blocked, list }: { blocked: boolean; list: readonly MockTask[] }) {
+  const open = list.filter(
+    (item) => item.status !== 'cancelled' && item.workflow.position.kind !== 'terminal',
+  );
+  const running = open.filter((item) => item.workflow.position.kind === 'active');
+
+  return (
+    <Dialog open>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Abandon {specification.title}</DialogTitle>
           <DialogDescription>
-            {ready
-              ? 'Everything required is finished. Closing also runs the repository checks.'
-              : 'Closing is checked against the specification workflow and its tasks.'}
+            {blocked
+              ? 'Not possible yet. Resolve the work below, then abandon again.'
+              : 'Ends the specification without delivering it. This cannot be undone.'}
           </DialogDescription>
         </DialogHeader>
         <DialogBody className="grid gap-5">
-          {ready ? (
-            <>
-              <Alert tone="success" title="Ready to close">
-                The {specification.workflow.title} workflow is complete, {done.length} tasks are
-                done and {cancelled.length} was cancelled.
-              </Alert>
-              {group(
-                'Cancelled, not delivered',
-                cancelled,
-                () => 'Cancelled by Dominik · Yesterday',
-              )}
-            </>
+          {blocked ? (
+            <BlockerGroups
+              groups={[
+                {
+                  title: 'Pending writes',
+                  hint: 'wait for them to finish',
+                  items: [
+                    {
+                      key: 'write',
+                      href: taskHref('T-02'),
+                      label: (
+                        <>
+                          <span className="font-mono text-content-muted">T-02</span> task.md
+                        </>
+                      ),
+                      state: 'Save and commit in progress since 16:38',
+                    },
+                  ],
+                },
+                {
+                  title: 'Repository',
+                  hint: 'commit or discard first',
+                  items: [
+                    {
+                      key: 'git',
+                      href: '#repository',
+                      label: 'feature/single-sign-on',
+                      state: '4 uncommitted files',
+                    },
+                  ],
+                },
+              ]}
+            />
           ) : (
             <>
-              <Alert tone="attention" title="Not ready to close">
-                Finish, cancel or remove the work below, then close again.
-              </Alert>
               <div className="grid gap-1.5">
                 <Typography as="h3" variant="label-sm">
-                  Specification workflow · 1
+                  What happens
                 </Typography>
-                <p className="text-body-sm text-content-secondary">
-                  <span className="font-mono">wait-for-tasks</span> is still waiting.
-                </p>
+                <ul className="grid list-disc gap-1 pl-5 text-body-sm text-content-secondary">
+                  <li>
+                    The {specification.workflow.title} workflow ends as abandoned at{' '}
+                    <span className="font-mono">wait-for-tasks</span>.
+                  </li>
+                  <li>
+                    {running.length} task workflow in progress ends as abandoned:{' '}
+                    {running.map((item) => item.id).join(', ')}.
+                  </li>
+                  <li>
+                    {open.length} unfinished tasks are cancelled, including started ones:{' '}
+                    {open.map((item) => item.id).join(', ')}.
+                  </li>
+                  <li>Nothing is marked delivered. Documents, tasks and history stay readable.</li>
+                </ul>
               </div>
-              {group('Unfinished tasks', unfinished)}
-              {group('Drafts', drafts, () => 'Draft · approve and finish it, or remove it')}
-              {group('On hold', onHold, () => 'On hold · resume and finish it, or cancel it')}
+              <Field>
+                <Field.Label>Reason (required)</Field.Label>
+                <TextArea rows={3} defaultValue={abandonReason} />
+                <Field.Description>
+                  Shown on the specification and in its history.
+                </Field.Description>
+              </Field>
             </>
           )}
         </DialogBody>
         <DialogFooter>
-          <Button variant="secondary">{ready ? 'Cancel' : 'Close'}</Button>
-          {ready ? <Button>Close specification</Button> : null}
+          <Button variant="secondary">{blocked ? 'Dismiss' : 'Cancel'}</Button>
+          {blocked ? null : <Button variant="destructive">Abandon specification</Button>}
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -582,17 +771,18 @@ function CloseDialog({ ready, list }: { ready: boolean; list: readonly MockTask[
 /* Workspace                                                                                     */
 /* ------------------------------------------------------------------------------------------ */
 
+const abandonedScenarios: readonly SpecificationScenario[] = ['abandoned', 'close-after-abandon'];
+
 function Overview({
   scenario,
   list,
-  onHistory,
 }: {
   scenario: SpecificationScenario;
   list: readonly MockTask[];
-  onHistory?: () => void;
 }) {
   const [creating, setCreating] = useState(scenario === 'create-task');
   const view = specWorkflow(scenario, list);
+  const abandoned = abandonedScenarios.includes(scenario);
 
   return (
     <div className="grid max-w-content-standard gap-8">
@@ -600,22 +790,21 @@ function Overview({
         <Typography as="h1" variant="title-lg">
           {specification.title}
         </Typography>
+        {abandoned ? (
+          <p role="status" className="inline-flex items-start gap-1.5 text-body-sm font-medium">
+            <Icon name="archive" size="sm" className="mt-0.5 shrink-0" />
+            <span>
+              Abandoned · {abandonReason}{' '}
+              <span className="font-normal text-content-muted">Dominik, today 16:40</span>
+            </span>
+          </p>
+        ) : null}
         <Typography as="p" variant="body-md" className="text-content-secondary">
           {specification.description}
         </Typography>
       </div>
-      <WorkflowPanel
-        view={view}
-        headingId="spec-workflow-heading"
-        startLabel="Start workflow"
-        onHistory={onHistory}
-      />
-      {scenario === 'close-ready' ? (
-        <div className="-mt-4">
-          <Button>Close specification…</Button>
-        </div>
-      ) : null}
-      <TasksList list={list} onCreate={() => setCreating(true)} />
+      <WorkflowPanel view={view} headingId="spec-workflow-heading" startLabel="Start workflow" />
+      <TasksList list={list} onCreate={() => setCreating(true)} canCreate={!abandoned} />
       {creating ? <CreateTaskDialog existing={list} /> : null}
       {scenario === 'finish-breakdown' ? (
         <FinishStepDialog
@@ -626,8 +815,11 @@ function Overview({
           initialFeedback="Four tasks; T-02 and T-04 are drafts that still need approval."
         />
       ) : null}
-      {scenario === 'close-blocked' ? <CloseDialog ready={false} list={list} /> : null}
-      {scenario === 'close-ready' ? <CloseDialog ready list={list} /> : null}
+      {scenario === 'close-blocked' ? <CloseDialog mode="blocked" list={list} /> : null}
+      {scenario === 'close-ready' ? <CloseDialog mode="ready" list={list} /> : null}
+      {scenario === 'close-after-abandon' ? <CloseDialog mode="after-abandon" list={list} /> : null}
+      {scenario === 'abandon' ? <AbandonDialog blocked={false} list={list} /> : null}
+      {scenario === 'abandon-blocked' ? <AbandonDialog blocked list={list} /> : null}
     </div>
   );
 }
@@ -636,21 +828,41 @@ function Workspace({ scenario, width }: SpecificationMockProps) {
   const list = tasksFor(scenario);
   const hasHistory = scenario !== 'empty' && scenario !== 'authoring' && scenario !== 'create-task';
   const narrow = width < 730;
+  const terminal = specWorkflow(scenario, list).position.kind === 'terminal';
   const actions: WorkspaceHeaderAction[] = [
-    ...(hasHistory && !narrow
+    ...(hasHistory
       ? [
           {
+            // The same toggle at every width; on Narrow it opens the history as a pushed page.
             id: 'history',
             label: 'Activity history',
             icon: 'clock',
             presentation: 'icon',
             direct: 'always',
-            checked: true,
+            checked: !narrow,
             onPress: noop,
           } as const,
         ]
       : []),
-    { id: 'close', label: 'Close specification…', onPress: noop },
+    terminal
+      ? {
+          id: 'close',
+          label: 'Close specification…',
+          primary: true,
+          direct: 'always',
+          onPress: noop,
+        }
+      : { id: 'close', label: 'Close specification…', onPress: noop },
+    ...(terminal || scenario === 'empty'
+      ? []
+      : [
+          {
+            id: 'abandon',
+            label: 'Abandon specification…',
+            tone: 'danger',
+            onPress: noop,
+          } as const,
+        ]),
   ];
 
   return (
@@ -670,11 +882,7 @@ function Workspace({ scenario, width }: SpecificationMockProps) {
         >
           <AppContent className="w-full max-w-full">
             <AppWorkspaceBody>
-              <Overview
-                scenario={scenario}
-                list={list}
-                onHistory={narrow && hasHistory ? noop : undefined}
-              />
+              <Overview scenario={scenario} list={list} />
             </AppWorkspaceBody>
           </AppContent>
         </AppWorkspace.Primary>
@@ -686,7 +894,25 @@ function Workspace({ scenario, width }: SpecificationMockProps) {
           >
             <AppContent className="w-full">
               <AppWorkspaceBody>
-                <WorkflowHistory entries={specificationHistory} label="Activity history" />
+                <WorkflowHistory
+                  entries={
+                    abandonedScenarios.includes(scenario)
+                      ? [
+                          {
+                            step: 'wait-for-tasks',
+                            attempt: 1,
+                            actor: 'Dominik',
+                            at: 'Today 16:40',
+                            result: 'Abandoned',
+                            toStep: null,
+                            feedback: abandonReason,
+                          },
+                          ...specificationHistory,
+                        ]
+                      : specificationHistory
+                  }
+                  label="Activity history"
+                />
               </AppWorkspaceBody>
             </AppContent>
           </AppWorkspace.Secondary>

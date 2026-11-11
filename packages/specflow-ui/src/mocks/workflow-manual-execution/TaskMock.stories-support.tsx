@@ -20,6 +20,7 @@ import {
   Field,
   Icon,
   InformationList,
+  ItemTabs,
   TextArea,
   TextInput,
   Typography,
@@ -50,6 +51,7 @@ import {
   specification,
   task,
   taskDocument,
+  taskTypes,
   tasks,
   typeOf,
   type MockTask,
@@ -74,6 +76,7 @@ export type TaskScenario =
   | 'first-start'
   | 'start-definition-changed'
   | 'start-type-not-allowed'
+  | 'start-changed-since-preview'
   | 'waiting'
   | 'rework'
   | 'finish-review-failed'
@@ -121,8 +124,22 @@ function subjectFor(scenario: TaskScenario): MockTask {
       return task('T-04');
     case 'first-start':
     case 'start-definition-changed':
-    case 'start-type-not-allowed':
+    case 'start-changed-since-preview':
       return task('T-07');
+    case 'start-type-not-allowed':
+      // A not-started Spike Task whose type the archetype no longer allows.
+      return {
+        ...task('T-07'),
+        id: 'T-08',
+        title: 'Compare refresh strategies',
+        summary: 'Measure sliding against fixed refresh before choosing one.',
+        type: 'spike',
+        workflow: {
+          definition: taskTypes[0]!.workflow,
+          position: { kind: 'not-started', firstStep: 'spike' },
+          canStart: true,
+        },
+      };
     case 'waiting':
       return task('T-03');
     case 'on-hold':
@@ -153,6 +170,13 @@ function lifecycleActions(item: MockTask): WorkspaceHeaderAction[] {
 
   const edit = { id: 'edit', label: 'Edit details…', icon: 'edit', onPress: noop } as const;
   const hold = { id: 'hold', label: 'Put on hold', onPress: noop } as const;
+  // Hold is not allowed while an attempt runs; the reason is the label so it is not a dead end.
+  const holdUnavailable = {
+    id: 'hold',
+    label: 'Put on hold — finish or return the current step first',
+    disabled: true,
+    onPress: noop,
+  } as const;
   const cancel = { id: 'cancel', label: 'Cancel task…', tone: 'danger', onPress: noop } as const;
   const remove = { id: 'remove', label: 'Remove task…', tone: 'danger', onPress: noop } as const;
   const neverStarted = !item.started;
@@ -173,7 +197,7 @@ function lifecycleActions(item: MockTask): WorkspaceHeaderAction[] {
         ...(neverStarted ? [remove] : []),
       ];
     default:
-      return [edit, ...(active ? [] : [hold]), cancel, ...(neverStarted ? [remove] : [])];
+      return [edit, active ? holdUnavailable : hold, cancel, ...(neverStarted ? [remove] : [])];
   }
 }
 
@@ -221,6 +245,7 @@ function EditDetailsDialog({ item, conflict }: { item: MockTask; conflict: boole
         <DialogBody className="grid gap-6">
           {conflict ? (
             <Alert
+              role="alert"
               tone="danger"
               title={`Not saved: ${item.id} changed since you opened it`}
               actions={
@@ -251,8 +276,8 @@ function EditDetailsDialog({ item, conflict }: { item: MockTask; conflict: boole
               Task type
             </Typography>
             <Typography as="p" variant="body-sm" className="text-content-secondary">
-              {typeOf(item).title} · {item.workflow.definition.title} rev{' '}
-              {item.workflow.definition.revision}. Fixed since the task started.
+              {typeOf(item).title}. A task keeps the type it was created with; to use another type,
+              remove this task and create a new one.
             </Typography>
           </div>
           <fieldset className="grid gap-3">
@@ -288,6 +313,8 @@ const taskDocumentRecord = documentContentFixture({
   path: 'tasks/T-02/task.md',
   content: taskDocument,
   revision: '3',
+  // No type caption: the Task document is identified by its Task, not by a document type.
+  type: undefined,
 });
 
 function DocumentServices({ children }: { children: ReactNode }) {
@@ -320,6 +347,47 @@ function DocumentServices({ children }: { children: ReactNode }) {
 
 function TaskDocumentHeader({ back }: { back?: boolean }) {
   const { actions, dirty } = documentHeaderModel(useDocumentEditor(), useTranslation().t);
+  if (!back) {
+    // A: the same editor-tab rail as the Documents page (one tab, its actions continue the rail).
+    return (
+      <WorkspaceHeader
+        tabRail
+        headingLevel={2}
+        title="task.md"
+        actions={actions}
+        menu="complete"
+        labels={{ moreActions: 'More actions', menuActions: 'Actions', menuDisplay: 'Display' }}
+        identityContent={
+          // As DocumentTabStrip: the strip fills the rail so the tab gets its measured width.
+          <div className="flex min-w-0 items-stretch">
+            <div className="min-w-0 flex-1">
+              <ItemTabs
+                items={[
+                  {
+                    id: 'tasks/T-02/task',
+                    label: 'task.md',
+                    description: 'tasks/T-02/task.md',
+                    ...(dirty ? { dirty: true } : {}),
+                  },
+                ]}
+                activeId="tasks/T-02/task"
+                onActivate={noop}
+                onClose={noop}
+                scope="workflow-manual-task-doc"
+                density="rail"
+                labels={{
+                  tablist: 'Open documents',
+                  openedMenu: (n: number) => `Opened (${n})`,
+                  switcher: ({ label, count }: { label: string; count: number }) =>
+                    `${label} (${count})`,
+                }}
+              />
+            </div>
+          </div>
+        }
+      />
+    );
+  }
 
   return (
     <WorkspaceHeader
@@ -341,7 +409,7 @@ function TaskDocumentHeader({ back }: { back?: boolean }) {
 /* Primary                                                                                       */
 /* ------------------------------------------------------------------------------------------ */
 
-function TaskBody({ item, onHistory }: { item: MockTask; onHistory?: () => void }) {
+function TaskBody({ item }: { item: MockTask }) {
   const type = typeOf(item);
   const dependencies = tasks.filter((other) => item.dependsOn.includes(other.id));
   const view = item.workflow;
@@ -377,7 +445,6 @@ function TaskBody({ item, onHistory }: { item: MockTask; onHistory?: () => void 
               ? `Start ${item.workflow.position.firstStep}…`
               : undefined
           }
-          onHistory={onHistory}
         />
       )}
       <WorkspaceSection aria-labelledby="task-document-heading">
@@ -447,20 +514,23 @@ function dialogFor(item: MockTask, scenario: TaskScenario): ReactNode {
   switch (scenario) {
     case 'first-start':
     case 'start-definition-changed':
+    case 'start-changed-since-preview':
     case 'start-type-not-allowed':
       return (
         <StartTaskDialog
           taskId={item.id}
-          taskType={scenario === 'start-type-not-allowed' ? 'Spike' : type.title}
-          workflow={scenario === 'start-type-not-allowed' ? 'Research' : type.workflow.title}
-          revision={scenario === 'start-type-not-allowed' ? 2 : type.workflow.revision}
+          taskType={type.title}
+          workflow={type.workflow.title}
+          revision={type.workflow.revision}
           firstStep={type.steps[0]!}
           refusal={
             scenario === 'start-definition-changed'
               ? 'definition-changed'
-              : scenario === 'start-type-not-allowed'
-                ? 'task-type-not-allowed'
-                : undefined
+              : scenario === 'start-changed-since-preview'
+                ? 'changed-since-preview'
+                : scenario === 'start-type-not-allowed'
+                  ? 'task-type-not-allowed'
+                  : undefined
           }
         />
       );
@@ -506,7 +576,23 @@ function Workspace({ scenario, width, documentPlacement = 'secondary' }: TaskMoc
       title={`${specification.title} / ${item.id}`}
       icon="list-checks"
       as="span"
-      actions={lifecycleActions(item)}
+      actions={[
+        ...(hasHistory
+          ? [
+              {
+                // The same history toggle as the Overview, at every width.
+                id: 'history',
+                label: 'Task history',
+                icon: 'clock',
+                presentation: 'icon',
+                direct: 'always',
+                checked: !narrow,
+                onPress: noop,
+              } as const,
+            ]
+          : []),
+        ...lifecycleActions(item),
+      ]}
       labels={{ moreActions: 'More actions' }}
     />
   );
@@ -542,12 +628,17 @@ function Workspace({ scenario, width, documentPlacement = 'secondary' }: TaskMoc
         <AppWorkspace.Primary header={header}>
           <AppContent className="w-full max-w-full">
             <AppWorkspaceBody scroll={editing ? 'area' : undefined}>
-              <TaskBody item={item} onHistory={narrow && hasHistory ? noop : undefined} />
+              <TaskBody item={item} />
             </AppWorkspaceBody>
           </AppContent>
         </AppWorkspace.Primary>
         {editing && !narrow ? (
-          <AppWorkspace.Secondary open onOpenChange={noop} header={<TaskDocumentHeader />}>
+          <AppWorkspace.Secondary
+            open
+            onOpenChange={noop}
+            headerVariant="tab-rail"
+            header={<TaskDocumentHeader />}
+          >
             <AppContent className="h-full w-full">
               <DocumentEditor />
             </AppContent>

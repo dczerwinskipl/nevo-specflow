@@ -1,0 +1,38 @@
+# Optional local embedding model for semantic documentation search (`pnpm docs:search`).
+# Nothing in the repository needs it: without an endpoint, search answers lexically.
+# Setup and how to enable it: docs/engineering/repository/local-setup.md
+# ("Semantic documentation search").
+#
+#   docker compose up -d        # start Ollama and pull the model once
+#   pnpm docs:semantic status   # after enabling it in .nevo/local/config.yaml
+
+name: nevo-specflow
+
+services:
+  ollama:
+    image: ollama/ollama:0.40.15
+    # CPU by default; the 0.6B embedding model is usable without a GPU.
+    ports:
+      - 127.0.0.1:11434:11434
+    volumes:
+      - ollama:/root/.ollama
+    healthcheck:
+      test: [CMD, ollama, list]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  # One-shot: pulls the model into the shared volume and exits; a repeated pull is a no-op.
+  ollama-pull:
+    image: ollama/ollama:0.40.15
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: [ollama, pull, "qwen3-embedding:0.6b"]
+    restart: "no"
+
+volumes:
+  ollama:

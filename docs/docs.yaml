@@ -1,0 +1,20 @@
+# Documentation settings of this repository (ADR 0020): the vocabularies documents may use and the
+# path prefixes below docs/. See docs/reference/configuration/documentation-and-embeddings.md.
+
+taxonomy:
+  scopes: [shared, repo, specflow, nevo-ui]
+  areas:
+    - ai
+    - workflow
+    - runtime
+    - server
+    - cli
+    - ui
+    - figma
+    - testing
+    - docs
+    - release
+    - security
+    - configuration
+nonAuthoritative: [ideas/]
+exclude: [templates/]

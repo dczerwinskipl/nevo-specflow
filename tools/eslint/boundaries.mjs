@@ -35,12 +35,39 @@ export const nevoUiBoundaries = [
   ]),
 ];
 
+const neutralFoundationPattern = {
+  regex: '^@nevo/specflow(?:-|/|$)',
+  message: 'Product-neutral foundation packages must not depend on SpecFlow product packages.',
+};
+
 /** `authorization` and `http-client`: product-neutral foundations. */
-export const neutralFoundationBoundaries = [
+export const neutralFoundationBoundaries = [restrict([neutralFoundationPattern])];
+
+/**
+ * `ai-semantic-search`: a product-neutral foundation (ADR 0021) that additionally stays free of UI,
+ * HTTP-server and CLI frameworks, provider SDKs (the adapter uses Node `fetch`) and native vector or
+ * database modules (they break the bundled artifact). All patterns share one `no-restricted-imports`
+ * block because a later block would replace, not extend, an earlier one.
+ */
+export const aiSemanticSearchBoundaries = [
   restrict([
+    neutralFoundationPattern,
     {
-      regex: '^@nevo/specflow(?:-|/|$)',
-      message: 'Product-neutral foundation packages must not depend on SpecFlow product packages.',
+      regex: '^(?:react(?:-dom)?|@fastify/.+|fastify|commander)(?:/|$)',
+      message:
+        'The semantic search engine is product-neutral and must not depend on UI, HTTP server or CLI frameworks.',
+    },
+    {
+      regex:
+        '^(?:openai|@anthropic-ai/.+|ollama|cohere-ai|@google/genai|@huggingface/.+|@mistralai/.+|voyageai|langchain|@langchain/.+)(?:/|$)',
+      message:
+        'The semantic search engine must not use a provider SDK; adapters call the HTTP API with Node fetch.',
+    },
+    {
+      regex:
+        '^(?:better-sqlite3|sqlite3|sqlite-vec|@lancedb/.+|vectordb|hnswlib-node|faiss-node|usearch|onnxruntime-node)(?:/|$)',
+      message:
+        'The semantic search engine must not use native modules; vector math is plain TypeScript.',
     },
   ]),
 ];
@@ -48,8 +75,25 @@ export const neutralFoundationBoundaries = [
 export const specflowContractsBoundaries = [
   restrict([
     {
+      regex:
+        '^@nevo/(?:specflow|specflow-engine|specflow-runtime|specflow-ui|specflow-docs)(?:/|$)',
+      message:
+        'Shared SpecFlow contracts must not depend on the product shell, a SpecFlow capability package (Engine, Runtime, docs) or UI.',
+    },
+  ]),
+];
+
+/**
+ * `specflow-docs`: the documentation capability (ADR 0020). It may build on the neutral semantic
+ * search engine, the shared contracts and neutral foundations, but not on Engine, Runtime, UI or the
+ * product composition root; the shell passes it the project root instead.
+ */
+export const specflowDocsBoundaries = [
+  restrict([
+    {
       regex: '^@nevo/(?:specflow|specflow-engine|specflow-runtime|specflow-ui)(?:/|$)',
-      message: 'Shared SpecFlow contracts must not depend on the product shell, Runtime, or UI.',
+      message:
+        'The documentation capability must not depend on Engine, Runtime, UI or the product shell (ADR 0012, ADR 0020).',
     },
   ]),
 ];

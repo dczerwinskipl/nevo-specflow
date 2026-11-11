@@ -510,6 +510,27 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
     expect(r.stdout).toMatch(/SpecFlow local server/i);
   });
 
+  it('D2. the installed docs command: --help and one get without Runtime or project config', () => {
+    const help = nevoSpec(['docs', '--help']);
+    expect(help.code).toBe(0);
+    expect(help.stdout).toMatch(/search/);
+
+    mkdirSync(join(prefix, 'docs'), { recursive: true });
+    writeFileSync(
+      join(prefix, 'docs', 'guide.md'),
+      '---\nid: smoke.guide\ntype: hub\ntitle: Smoke guide\nstatus: current\n---\n\n# Smoke guide\n',
+    );
+    try {
+      const get = nevoSpec(['docs', 'get', 'smoke.guide']);
+      expect(get).toEqual({
+        code: 0,
+        stdout: 'smoke.guide — "Smoke guide" [current]  docs/guide.md\n',
+      });
+    } finally {
+      rmSync(join(prefix, 'docs'), { recursive: true, force: true });
+    }
+  });
+
   it('E. generates a password hash through the installed auth utility', () => {
     const r = nevoSpec(
       ['auth', 'hash-password', '--password-stdin'],

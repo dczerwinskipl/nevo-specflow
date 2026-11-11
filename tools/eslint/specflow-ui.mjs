@@ -9,6 +9,11 @@ const specflowUiSharedPatterns = [
     message:
       'SpecFlow UI consumes shared contracts and client boundaries; it must not depend on Runtime, the product shell, or authorization policy implementation.',
   },
+  {
+    regex: '^@nevo/(?:specflow-docs|ai-semantic-search)(?:/|$)',
+    message:
+      'The documentation capability and the semantic search engine are Node-only; SpecFlow UI reaches documentation search through the Runtime HTTP API.',
+  },
 ];
 const nonProductionUiSources = [
   'src/**/*.{test,stories}.{ts,tsx}',

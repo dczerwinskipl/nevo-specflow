@@ -71,10 +71,11 @@ one-off local render of the committed file in headless Chromium; there is no aut
 
 ## Shared contracts
 
-A response contract of `@nevo/specflow-contracts` that more than one operation answers is one
-component under `components.schemas`, and every response that answers it is a `$ref` to that
-component. For example `GET /api/auth/session` and `POST /api/auth/password/login` both answer
-`200` with `{ "$ref": "#/components/schemas/AuthSessionResponse" }`.
+A response contract of `@nevo/specflow-contracts` that more than one operation answers, or that one
+operation answers and another product surface emits too, is one component under
+`components.schemas`, and every response that answers it is a `$ref` to that component. For
+example `GET /api/auth/session` and `POST /api/auth/password/login` both answer `200` with
+`{ "$ref": "#/components/schemas/AuthSessionResponse" }`.
 
 It works with the Fastify shared-schema mechanism, without a second copy of any schema:
 
@@ -95,10 +96,11 @@ It works with the Fastify shared-schema mechanism, without a second copy of any 
 
 Current shared contracts: `AuthSessionResponse`, `AuthenticationRequiredErrorResponse`,
 `AuthorizationForbiddenErrorResponse`, `CloseError`, `ClosePreview`, `CloseResult`,
-`CloseWorkspaceResult`, `CreateSpecError`, `DocumentError`, `DocumentOperationResult`,
-`DocumentOperationStatus`, `OperationListResponse`, `RateLimitedErrorResponse`,
-`RequestErrorResponse`, `SessionCommandResult`, `SessionError`, `SpecificationReadError`, `TaskReadError` and
-`TaskSnapshotExpired`.
+`CloseWorkspaceResult`, `CreateSpecError`, `DocsSearchResult` and `DocsStatus` (also the output of
+`nevo-specflow docs search --json` and `docs semantic status --json`), `DocumentError`,
+`DocumentOperationResult`, `DocumentOperationStatus`, `OperationListResponse`,
+`RateLimitedErrorResponse`, `RequestErrorResponse`, `SessionCommandResult`, `SessionError`,
+`SpecificationReadError`, `TaskReadError` and `TaskSnapshotExpired`.
 
 A test that registers Runtime routes on a bare Fastify instance (without `createRuntimeApp`) creates
 it with `routeTestApp()` from `test/support/route-app.ts`, which registers the shared contracts that
@@ -106,8 +108,9 @@ route schemas reference.
 
 Schemas stay inline when they are not one shared response contract:
 
-- a contract answered by one operation only, even under several status codes (for example
-  `PasswordLoginErrorResponse` for `401`, `429` and `503` of password login);
+- a contract answered by one operation only and emitted by no other surface, even under several
+  status codes (for example `PasswordLoginErrorResponse` for `401`, `429` and `503` of password
+  login);
 - separate contracts that only have the same shape: `StartTurnResult` and `CancelTurnResult` are
   both `{ turnId }`, `CloseError` and `CreateSpecError` differ only by `remedy`, and they keep their
   own schemas;
@@ -174,17 +177,19 @@ schema: {
 
 The groups and their descriptions are `OPENAPI_TAGS` in `src/server/openapi/tags.ts`; the document lists
 them in this order as its top-level `tags`: Authentication, Authorization, Sessions, Session
-Providers, Session Telemetry, Specifications, Documents, Tasks, Operations, Workspaces and Runtime.
-A documented route (under `/api/`, not a demo seam) without exactly one known group or without a
-non-empty `summary` is refused when it is registered, so no operation reaches the document without
-them; the OpenAPI test also checks every operation of the canonical document. A group is never
-derived from the URL: document and Task operations live under `/api/specs/` too.
+Providers, Session Telemetry, Specifications, Documents, Tasks, Operations, Workspaces,
+Documentation and Runtime. A documented route (under `/api/`, not a demo seam) without exactly one
+known group or without a non-empty `summary` is refused when it is registered, so no operation
+reaches the document without them; the OpenAPI test also checks every operation of the canonical
+document. A group is never derived from the URL: document and Task operations live under
+`/api/specs/` too.
 
 Operations holds the cross-feature operation lists, the operation progress stream and the status of
 a Specification creation (the shared list and stream mechanisms declare the group, the feature
 gives the summary). The status of a close or document operation stays with its feature
 (Specifications, Workspaces, Documents). Workspaces holds closing a linked worktree and closing a
-whole workspace.
+whole workspace. Documentation holds the search and the semantic search status of the project's
+own documentation (`/api/docs/`); Documents are the documents of a Specification.
 
 ## Shared error responses
 
@@ -201,8 +206,8 @@ code itself:
 The transform never adds `403`: whether an operation can refuse a capability is the route's own
 knowledge. A route whose authorization can deny documents `403` with
 `AuthorizationForbiddenErrorResponse` in its response schema. Every Session route does (the
-capability checks of the Session or of the start), as the Specification, document, Task, close and
-operation routes already did. `GET /api/openapi.json` and `POST /api/authorization/capabilities`
+capability checks of the Session or of the start), as the Specification, document, Task, close,
+operation and documentation search routes already did. `GET /api/openapi.json` and `POST /api/authorization/capabilities`
 only require a principal and never answer `403`. In trusted local mode no operation has `security`,
 so none has the `401`.
 

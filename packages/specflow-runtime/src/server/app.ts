@@ -25,6 +25,7 @@ import {
   createEngineWorkspaceDocuments,
   type DocumentsFeatureDependencies,
 } from '../features/documents';
+import { createDocsFeature, type DocsFeatureDependencies } from '../features/docs';
 import { createSettingsFeature } from '../features/settings';
 import {
   createEngineAssociationTargets,
@@ -66,6 +67,8 @@ export interface RuntimeAppDependencies {
   readonly demoScenarios?: boolean;
   readonly tasks?: TasksFeatureDependencies;
   readonly documents?: DocumentsFeatureDependencies;
+  /** Project documentation search; the Runtime start supplies the project root in project mode. */
+  readonly docs?: DocsFeatureDependencies;
   readonly sessions?: {
     references?: SessionReferenceOwner;
     storage?: { directory: string; projectId: string; workspace?: string };
@@ -290,6 +293,11 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
       ...(demo ? {} : { sessions: sessionsFeature.runtime }),
     }),
     createSettingsFeature(),
+    createDocsFeature({
+      ...(config.docs ? { configuration: config.docs } : {}),
+      // Demo data serves no project documentation.
+      ...(dependencies.docs && !demo ? { dependencies: dependencies.docs } : {}),
+    }),
   ];
 
   const authFeature = createAuthFeature({

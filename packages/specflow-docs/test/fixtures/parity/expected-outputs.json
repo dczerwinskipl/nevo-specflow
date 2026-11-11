@@ -1,0 +1,163 @@
+[
+  {
+    "args": ["check"],
+    "exitCode": 1,
+    "stdout": [],
+    "stderr": [
+      "missing: docs/index.generated.json — run `pnpm docs:check --write`",
+      "missing: docs/index.generated.md — run `pnpm docs:check --write`",
+      "Run `pnpm docs:check --write` to regenerate the index.",
+      "documentation check failed (2 problems)"
+    ]
+  },
+  {
+    "args": ["check", "--write"],
+    "exitCode": 0,
+    "stdout": [
+      "Wrote docs/index.generated.json and docs/index.generated.md",
+      "OK — 6 documents, corpus valid, index current."
+    ],
+    "stderr": []
+  },
+  {
+    "args": ["check"],
+    "exitCode": 0,
+    "stdout": ["OK — 6 documents, corpus valid, index current."],
+    "stderr": []
+  },
+  {
+    "args": ["list"],
+    "exitCode": 0,
+    "stdout": [
+      "adr.0001-use-widgets                     current    docs/architecture/decisions/0001-use-widgets.md",
+      "architecture.widgets                     current    docs/architecture/widgets.md",
+      "docs.readme                              current    docs/README.md",
+      "engineering.old-widgets                  deprecated docs/engineering/old-widgets.md",
+      "engineering.widgets                      current    docs/engineering/widgets.md",
+      "ideas.widget-search                      draft      docs/ideas/widget-search.md"
+    ],
+    "stderr": []
+  },
+  {
+    "args": ["list", "--status", "current", "--json"],
+    "exitCode": 0,
+    "stdout": [
+      "[\n  {\n    \"id\": \"adr.0001-use-widgets\",\n    \"type\": \"adr\",\n    \"title\": \"Use widgets\",\n    \"status\": \"current\",\n    \"date\": \"2026-01-02\",\n    \"summary\": \"Widgets are the unit of composition.\",\n    \"file\": \"docs/architecture/decisions/0001-use-widgets.md\",\n    \"body\": \"# 0001 — Use widgets\\n\"\n  },\n  {\n    \"id\": \"architecture.widgets\",\n    \"type\": \"architecture\",\n    \"title\": \"Widget architecture\",\n    \"status\": \"current\",\n    \"scope\": \"specflow\",\n    \"areas\": [\n      \"cli\",\n      \"docs\"\n    ],\n    \"tags\": [\n      \"widget-flow\"\n    ],\n    \"read_when\": [\n      \"changing how widgets are rendered\",\n      \"adding a widget command\"\n    ],\n    \"summary\": \"Widgets render through one pipeline | a table cell must stay readable.\",\n    \"related\": [\n      \"engineering.widgets\",\n      \"adr.0001-use-widgets\"\n    ],\n    \"file\": \"docs/architecture/widgets.md\",\n    \"body\": \"# Widget architecture\\n\\nBody text.\\n\"\n  },\n  {\n    \"id\": \"docs.readme\",\n    \"type\": \"hub\",\n    \"title\": \"Widget documentation\",\n    \"status\": \"current\",\n    \"related\": [\n      \"architecture.widgets\"\n    ],\n    \"file\": \"docs/README.md\",\n    \"body\": \"# Widget documentation\\n\\nStart with the [widget architecture](architecture/widgets.md#widget-architecture), browse\\nthe [engineering guides](engineering/) or read the [decision](./architecture/decisions/0001-use-widgets.md).\\n\"\n  },\n  {\n    \"id\": \"engineering.widgets\",\n    \"type\": \"engineering\",\n    \"title\": \"Testing widgets\",\n    \"status\": \"current\",\n    \"scope\": \"shared\",\n    \"areas\": [\n      \"testing\"\n    ],\n    \"read_when\": [\n      \"writing widget tests\"\n    ],\n    \"summary\": \"How widget tests are structured.\",\n    \"file\": \"docs/engineering/widgets.md\",\n    \"body\": \"# Testing widgets\\n\"\n  }\n]"
+    ],
+    "stderr": []
+  },
+  {
+    "args": ["find", "widget", "tests"],
+    "exitCode": 0,
+    "stdout": [
+      "engineering.widgets — \"Testing widgets\"  docs/engineering/widgets.md",
+      "    (terms: widget, test; in: id, title, read_when, summary, file)",
+      "engineering.old-widgets — \"Old widget testing\"  docs/engineering/old-widgets.md",
+      "    (terms: widget, test; in: id, title, summary, file)",
+      "architecture.widgets — \"Widget architecture\"  docs/architecture/widgets.md",
+      "    (terms: widget; in: id, title, tags, read_when, summary, file, related)",
+      "ideas.widget-search — \"Widget search idea\"  docs/ideas/widget-search.md",
+      "    (terms: widget; in: id, title, read_when, summary, file)",
+      "adr.0001-use-widgets — \"Use widgets\"  docs/architecture/decisions/0001-use-widgets.md",
+      "    (terms: widget; in: id, title, summary, file)",
+      "docs.readme — \"Widget documentation\"  docs/README.md",
+      "    (terms: widget; in: title, related)"
+    ],
+    "stderr": []
+  },
+  {
+    "args": ["find", "widget", "--area", "testing"],
+    "exitCode": 0,
+    "stdout": [
+      "engineering.widgets — \"Testing widgets\"  docs/engineering/widgets.md",
+      "    (terms: widget; in: id, title, read_when, summary, file)"
+    ],
+    "stderr": []
+  },
+  {
+    "args": ["find", "widget", "--json", "--limit", "2"],
+    "exitCode": 0,
+    "stdout": [
+      "[\n  {\n    \"id\": \"architecture.widgets\",\n    \"type\": \"architecture\",\n    \"title\": \"Widget architecture\",\n    \"status\": \"current\",\n    \"scope\": \"specflow\",\n    \"areas\": [\n      \"cli\",\n      \"docs\"\n    ],\n    \"tags\": [\n      \"widget-flow\"\n    ],\n    \"read_when\": [\n      \"changing how widgets are rendered\",\n      \"adding a widget command\"\n    ],\n    \"summary\": \"Widgets render through one pipeline | a table cell must stay readable.\",\n    \"related\": [\n      \"engineering.widgets\",\n      \"adr.0001-use-widgets\"\n    ],\n    \"file\": \"docs/architecture/widgets.md\",\n    \"body\": \"# Widget architecture\\n\\nBody text.\\n\",\n    \"score\": 1790,\n    \"matchedTerms\": [\n      \"widget\"\n    ],\n    \"matchedFields\": [\n      \"id\",\n      \"title\",\n      \"tags\",\n      \"read_when\",\n      \"summary\",\n      \"file\",\n      \"related\"\n    ]\n  },\n  {\n    \"id\": \"engineering.widgets\",\n    \"type\": \"engineering\",\n    \"title\": \"Testing widgets\",\n    \"status\": \"current\",\n    \"scope\": \"shared\",\n    \"areas\": [\n      \"testing\"\n    ],\n    \"read_when\": [\n      \"writing widget tests\"\n    ],\n    \"summary\": \"How widget tests are structured.\",\n    \"file\": \"docs/engineering/widgets.md\",\n    \"body\": \"# Testing widgets\\n\",\n    \"score\": 1750,\n    \"matchedTerms\": [\n      \"widget\"\n    ],\n    \"matchedFields\": [\n      \"id\",\n      \"title\",\n      \"read_when\",\n      \"summary\",\n      \"file\"\n    ]\n  }\n]"
+    ],
+    "stderr": []
+  },
+  {
+    "args": ["find", "nothing-matches-this"],
+    "exitCode": 0,
+    "stdout": ["(no documents match \"nothing-matches-this\")"],
+    "stderr": []
+  },
+  {
+    "args": ["get", "engineering.widgets", "architecture.widgets"],
+    "exitCode": 0,
+    "stdout": [
+      "engineering.widgets — \"Testing widgets\" [current]  docs/engineering/widgets.md",
+      "    How widget tests are structured.",
+      "architecture.widgets — \"Widget architecture\" [current]  docs/architecture/widgets.md",
+      "    Widgets render through one pipeline | a table cell must stay readable."
+    ],
+    "stderr": []
+  },
+  {
+    "args": ["get", "ideas.widget-search", "--json"],
+    "exitCode": 0,
+    "stdout": [
+      "[\n  {\n    \"id\": \"ideas.widget-search\",\n    \"file\": \"docs/ideas/widget-search.md\",\n    \"title\": \"Widget search idea\",\n    \"status\": \"draft\",\n    \"summary\": \"A non-authoritative widget idea.\",\n    \"read_when\": [\n      \"exploring widget search\"\n    ],\n    \"areas\": [\n      \"docs\"\n    ],\n    \"tags\": []\n  }\n]"
+    ],
+    "stderr": []
+  },
+  {
+    "args": ["get", "engineering.old-widgets"],
+    "exitCode": 2,
+    "stdout": [],
+    "stderr": [
+      "get: inactive document id(s): 'engineering.old-widgets' (deprecated; use 'engineering.widgets' instead)"
+    ]
+  },
+  {
+    "args": ["get", "no.such-doc"],
+    "exitCode": 2,
+    "stdout": [],
+    "stderr": ["get: unknown document id(s): no.such-doc"]
+  },
+  {
+    "args": ["context", "widget", "tests"],
+    "exitCode": 0,
+    "stdout": [
+      "# Context for: widget tests",
+      "# Read these files, most relevant first:",
+      "",
+      "docs/engineering/widgets.md",
+      "  How widget tests are structured.",
+      "docs/architecture/widgets.md",
+      "  Widgets render through one pipeline | a table cell must stay readable.",
+      "docs/architecture/decisions/0001-use-widgets.md",
+      "  Widgets are the unit of composition.",
+      "docs/README.md"
+    ],
+    "stderr": []
+  },
+  {
+    "args": ["context", "widget", "--json", "--limit", "2"],
+    "exitCode": 0,
+    "stdout": [
+      "[\n  {\n    \"id\": \"architecture.widgets\",\n    \"file\": \"docs/architecture/widgets.md\",\n    \"title\": \"Widget architecture\",\n    \"status\": \"current\",\n    \"summary\": \"Widgets render through one pipeline | a table cell must stay readable.\",\n    \"read_when\": [\n      \"changing how widgets are rendered\",\n      \"adding a widget command\"\n    ],\n    \"scope\": \"specflow\",\n    \"areas\": [\n      \"cli\",\n      \"docs\"\n    ],\n    \"tags\": [\n      \"widget-flow\"\n    ]\n  },\n  {\n    \"id\": \"engineering.widgets\",\n    \"file\": \"docs/engineering/widgets.md\",\n    \"title\": \"Testing widgets\",\n    \"status\": \"current\",\n    \"summary\": \"How widget tests are structured.\",\n    \"read_when\": [\n      \"writing widget tests\"\n    ],\n    \"scope\": \"shared\",\n    \"areas\": [\n      \"testing\"\n    ],\n    \"tags\": []\n  }\n]"
+    ],
+    "stderr": []
+  },
+  {
+    "args": ["check"],
+    "exitCode": 1,
+    "stdout": [],
+    "stderr": [
+      "docs/engineering/stray.md: unknown scope 'nowhere' (expected one of: shared, repo, specflow, nevo-ui)",
+      "docs/engineering/stray.md: unknown area 'nonsense' (expected one of: ai, workflow, runtime, server, cli, ui, figma, testing, docs, release, security, configuration)",
+      "docs/engineering/stray.md (body line 3): broken link 'missing.md' (no such file or directory)",
+      "docs/engineering/stray.md (body line 3): broken link 'widgets.md#nope' (no heading '#nope')",
+      "docs/engineering/stray.md (body line 3): broken link '../ReadMe.md' (case differs from 'docs/README.md')",
+      "documentation check failed (5 problems)"
+    ],
+    "addStray": true
+  }
+]

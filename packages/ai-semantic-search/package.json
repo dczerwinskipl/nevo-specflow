@@ -1,0 +1,33 @@
+{
+  "name": "@nevo/ai-semantic-search",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Product-neutral semantic search engine: markdown chunking, embedding provider ports, an OpenAI-compatible embeddings adapter and hybrid BM25 + vector ranking.",
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "default": "./dist/testing.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "node ../../tools/build-package.mjs",
+    "typecheck": "tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "5.1.0"
+  },
+  "engines": {
+    "node": ">=24.20.0 <25"
+  }
+}

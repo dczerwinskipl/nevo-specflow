@@ -118,8 +118,17 @@ engine does not fail a search because embeddings are unavailable.
   and chunks that no longer exist are deleted. A long refresh is applied in several writes, one
   per slice of embedded chunks, so an interrupted or failed refresh keeps the slices it wrote and
   the next refresh embeds only the rest.
-- A mismatch of schema version, chunker version, protocol, model or dimensions, and an incomplete
-  or damaged pair, discards the index and rebuilds it in full. There is no index migration.
+- The index identity is chunker version, protocol, model, embedding space and dimensions. The
+  embedding space names where the vectors come from: by default a fingerprint of protocol,
+  normalized base URL and model, so the same model name on another server is another space; a
+  consumer may declare a space id instead, for servers it knows to serve the same weights. A model
+  whose weights change under the same name and space is not visible in any name: the manifest
+  records the vector of a fixed probe text, and every full refresh embeds the probe once and
+  rebuilds when the cosine similarity to the stored probe is below 0.999. A search's bounded
+  refresh sends no probe, so searches add no endpoint call.
+- A mismatch of schema version, chunker version, protocol, model, space or dimensions, a changed
+  probe, and an incomplete or damaged pair discard the index and rebuild it in full. There is no
+  index migration.
 - Content freshness and the embedding identity are checked separately. The freshness check compares
   chunk ids and content hashes with the manifest and calls no endpoint; without configured
   dimensions it takes the stored dimension as given. The real dimension is verified where an

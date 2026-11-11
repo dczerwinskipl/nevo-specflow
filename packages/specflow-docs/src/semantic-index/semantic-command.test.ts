@@ -158,6 +158,28 @@ describe('semantic index', () => {
     expect((await build(8)).stdout).toEqual([expect.stringMatching(/^Index current /)]);
     expect((await build(16)).stdout).toEqual([expect.stringMatching(/^Index rebuilt: /)]);
   });
+
+  it('rebuilds when the weights change under the same name or the endpoint moves to another server', async () => {
+    // The fake's space follows the configured base URL, like the real adapter's fingerprint.
+    const endpoint =
+      (seed: number): CreateEmbeddingProvider =>
+      (settings) =>
+        createFakeEmbeddingProvider({ seed, space: settings.baseUrl });
+    const build = async (seed: number) =>
+      runDocs(root, ['semantic', 'index'], undefined, { createEmbeddingProvider: endpoint(seed) });
+    const local = join(root, '.nevo', 'local', 'config.yaml');
+    const original = readFileSync(local, 'utf8');
+
+    expect((await build(1)).stdout).toEqual([expect.stringMatching(/^Index (rebuilt|refreshed)/)]);
+    expect((await build(1)).stdout).toEqual([expect.stringMatching(/^Index current /)]);
+    expect((await build(2)).stdout).toEqual([expect.stringMatching(/^Index rebuilt: /)]);
+    try {
+      writeFileSync(local, original.replace('127.0.0.1:1', '127.0.0.1:2'));
+      expect((await build(2)).stdout).toEqual([expect.stringMatching(/^Index rebuilt: /)]);
+    } finally {
+      writeFileSync(local, original);
+    }
+  });
 });
 
 describe('semantic status during an endpoint outage', () => {

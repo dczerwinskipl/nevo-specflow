@@ -67,7 +67,12 @@ export async function semanticStatus(
       // The query provider: an unreachable endpoint answers within the query timeout, as a search
       // does, never the document timeout. A disabled semantic search sends the endpoint nothing.
       const { query } = resolved.providers;
-      identity = { protocol: query.protocol, model: query.model, dimensions: query.dimensions };
+      identity = {
+        protocol: query.protocol,
+        model: query.model,
+        space: query.space,
+        dimensions: query.dimensions,
+      };
       if (enabled) {
         const cache = options.reachability ?? createReachabilityCache();
         const probe = await cache.probe(JSON.stringify(publicEndpoint(settings)), query);

@@ -73,6 +73,7 @@ export function createEmbeddingProviders(
   const resolved: OpenAiCompatibleEmbeddingSettings = {
     baseUrl: settings.baseUrl,
     model: settings.model,
+    ...(settings.spaceId === undefined ? {} : { spaceId: settings.spaceId }),
     ...(settings.dimensions === undefined ? {} : { dimensions: settings.dimensions }),
     ...(apiKey === undefined ? {} : { apiKey }),
     ...(settings.queryInstruction === undefined

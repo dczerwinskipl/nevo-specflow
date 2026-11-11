@@ -13,13 +13,14 @@ import {
 export interface EndpointIdentity {
   readonly protocol: string;
   readonly model: string;
+  readonly space: string;
   readonly dimensions: number | undefined;
 }
 
 /**
  * The refresh plan of the current chunks against a stored index: the cheap content-freshness check,
  * without an endpoint call. An endpoint without known dimensions is compared with the stored
- * dimensions, so only chunker, protocol or model changes reset it here; the real dimension is
+ * dimensions, so only chunker, protocol, model or space changes reset it here; the real dimension is
  * verified elsewhere, by the query vector of a search (`identityChangedForRead`) and by the probe
  * of `refreshIndex` and `semantic status`.
  */
@@ -34,6 +35,7 @@ export function planAgainstIndex(
       chunkerVersion: CHUNKER_VERSION,
       protocol: endpoint.protocol,
       model: endpoint.model,
+      space: endpoint.space,
       dimensions: endpoint.dimensions ?? manifest.identity.dimensions,
     },
     manifest,

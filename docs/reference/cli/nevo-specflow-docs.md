@@ -315,9 +315,9 @@ the question (a search always returns its best candidates, also when none is rel
 `semantic status` reports whether semantic search is enabled, the configured endpoint (never a key),
 a connectivity probe (latency and observed dimensions; with the query timeout, so an endpoint that
 does not answer is reported unreachable within 3000 ms; not sent while `docs.search.semantic` is
-off, when the report has no reachability line), the index (`missing`, `current`, `stale`
-(sections to re-embed), `rebuild` (built with another chunker, protocol, model or dimension) or
-`unreadable`) and who is updating it: while a process holds the index writer, `updating in
+off, when the report has no reachability line), the index (`missing`, `current`, `stale` (sections
+to re-embed), `rebuild` (built with another chunker, protocol, model, embedding space or dimension)
+or `unreadable`) and who is updating it: while a process holds the index writer, `updating in
 background: <n>/<total> chunks (since <time>, process <pid>)` for a full refresh (a background
 catch-up, `semantic index` or a Runtime refresh), otherwise the outcome of the last full refresh
 (`last update: completed <time> (embedded <n>/<total> chunks, generation <g>)`, `failed …` with the
@@ -325,12 +325,12 @@ cause, or `interrupted …` when its process ended early). Its last line is the 
 answer in, with the same reason: an index that lacks vectors for more sections than a search embeds
 (16) — missing, to be rebuilt or stale by that much — reports `lexical` with `index-building`. It
 exits 1 when semantic search is enabled but unavailable: no endpoint, an unreachable endpoint or
-unset key variable, or an unreadable index. An index that only needs building is not a failure
-(exit 0): a search catches it up in the background, and embeds a gap of at most 16 sections itself.
-It checks configuration, the endpoint and that the index can be read, not that it can be written: a
+unset key variable, or an unreadable index. An index that only needs building is not a failure (exit
+0): a search catches it up in the background, and embeds a gap of at most 16 sections itself. It
+checks configuration, the endpoint and that the index can be read, not that it can be written: a
 write failure shows up on `search` as `index-unavailable`. Status only reports; it starts nothing.
-`--json` prints the same report as one JSON object, the `DocsStatus` contract of
-[`GET /api/docs/status`](../api/docs-search.md#get-apidocsstatus).
+`--json` prints the same report as one JSON object, the `DocsStatus` contract of [`GET
+/api/docs/status`](../api/docs-search.md#get-apidocsstatus).
 
 ```text
 semantic search: enabled

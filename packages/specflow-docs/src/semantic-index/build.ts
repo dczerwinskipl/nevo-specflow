@@ -54,6 +54,8 @@ export async function buildDocsIndex(
     chunks: (await index.chunks.load()).chunks,
     provider: resolved.providers.documents,
     store: index.store,
+    // A full refresh checks that the endpoint still produces the index's vectors (one probe).
+    verifySpace: true,
     onProgress: (step) => {
       void progress?.update(step);
       onProgress?.(step);

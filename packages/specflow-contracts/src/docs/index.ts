@@ -168,7 +168,8 @@ export const DocsStatusReachabilitySchema = Type.Union([
  * - `missing`: not built yet;
  * - `current`: matches the documents;
  * - `stale`: `changed` chunks differ (to embed or delete);
- * - `rebuild`: built with another chunker, protocol, model or dimension; it is rebuilt in full;
+ * - `rebuild`: built with another chunker, protocol, model, embedding space or dimension; it is
+ *   rebuilt in full;
  * - `unreadable`: it cannot be read right now.
  */
 export const DocsIndexStateSchema = Type.Union([

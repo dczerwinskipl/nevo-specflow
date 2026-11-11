@@ -15,7 +15,7 @@ read_when:
 summary: >
   The docs namespace (root, search.semantic), the documentation settings file <docs.root>/docs.yaml
   (taxonomy, nonAuthoritative, exclude) and the ai.embeddings endpoint (baseUrl, model, optional
-  protocol, dimensions, apiKeyEnv, queryInstruction, batchSize, timeoutMs): which file holds them,
+  protocol, spaceId, dimensions, apiKeyEnv, queryInstruction, batchSize, timeoutMs): which file holds them,
   how they merge, their validation and defaults, and documentation-only configuration.
 related:
   - adr.0020-documentation-discovery-is-a-product-capability
@@ -173,11 +173,28 @@ endpoint. After merging, `baseUrl` and `model` are required; a minimal endpoint 
 | `protocol`         | `openai-compatible` (`POST {baseUrl}/embeddings`), the only protocol                      | `openai-compatible` |
 | `baseUrl`          | Absolute `http` or `https` URL without credentials, query or fragment                     | required            |
 | `model`            | Model id sent to the endpoint                                                             | required            |
+| `spaceId`          | Declared embedding space of the index (see Embedding space)                               | fingerprint         |
 | `dimensions`       | Expected vector dimension; a different observed dimension is an endpoint error            | observed by probe   |
 | `apiKeyEnv`        | Name of the environment variable holding the API key (upper-case letters, digits and `_`) | no key sent         |
 | `queryInstruction` | Prefix added to queries only, for instruction-tuned models                                | none                |
 | `batchSize`        | Texts per request when embedding documents                                                | 16                  |
 | `timeoutMs`        | Per-request timeout for document embedding; query embedding uses at most 3000 ms of it    | 60000               |
+
+### Embedding space
+
+The index records which embedding space its vectors belong to. By default that is a fingerprint of
+the protocol, the normalized `baseUrl` (lower-case scheme and host, default port and trailing
+slash dropped) and the `model`, so pointing the same model name at another server, or another model
+at the same server, rebuilds the index on the next refresh, and searches answer lexically
+(`index-building`) until it is rebuilt. Set `spaceId` (any non-empty string) when several servers
+serve the same weights and should share one index, for example a team endpoint and a local copy
+of the same model; it then replaces the fingerprint, and changing it rebuilds the index.
+
+A model whose weights change under the same name and server (an updated model tag, for example) is
+caught by a probe: every full refresh (`semantic index`, the background catch-up a search starts
+and the Runtime's refresh) embeds one fixed probe text and compares the vector with the one the
+index recorded when it was built; a cosine similarity below 0.999 rebuilds the index. A search's
+own bounded refresh sends no probe, so a weight change is noticed by the next full refresh.
 
 ### Secrets
 

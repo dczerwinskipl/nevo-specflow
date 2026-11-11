@@ -19,6 +19,12 @@ export interface EmbeddingsSettings {
   /** `http` or `https` base URL; `/embeddings` is appended. */
   readonly baseUrl: string;
   readonly model: string;
+  /**
+   * Declared embedding space. Without it the space is a fingerprint of protocol, base URL and model,
+   * so pointing the same model name at another server rebuilds the index; two servers that serve
+   * the same weights may share a `spaceId` to keep it.
+   */
+  readonly spaceId?: string;
   readonly dimensions?: number;
   /** Name of the environment variable holding the API key, read when the endpoint is called. */
   readonly apiKeyEnv?: string;
@@ -33,6 +39,7 @@ const EMBEDDINGS_KEYS = new Set([
   'protocol',
   'baseUrl',
   'model',
+  'spaceId',
   'dimensions',
   'apiKeyEnv',
   'queryInstruction',

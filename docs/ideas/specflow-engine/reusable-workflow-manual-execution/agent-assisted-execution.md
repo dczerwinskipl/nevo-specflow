@@ -55,6 +55,8 @@ successful Turn authorizes a new Managed Session. Unattended F01 and F12 batchin
   if permitted, or a predictable refusal. Never silently change the definition.
 - A terminal Session Turn, an accepted finish *submission* and a committed Workflow transition
   are different records, with separate crash windows.
+- Incremental Document writes are **durable when their own Engine mutation commits**. They are
+  not delayed until Workflow finish and must not disappear merely because finish is refused.
 
 ## Responsibilities and boundary
 
@@ -76,21 +78,23 @@ adapter; Runtime implements a dispatch decision but never chooses Workflow trans
    `(Run, step, attempt, Session, Turn, workspace)`, including retry/fencing identity, before
    native execution. The project-wide writer claim is admitted and marked dispatched using the
    existing durable claim lifecycle. Unknown native launch is reconciled, never replayed blindly.
-3. Native agent reads its pinned StepContext and required subject context. When allowed, it writes
-   registered Specification/Task documents through a **trusted claim-owned Engine broker**.
-   The broker verifies the exact live claim and capability, permitting only same-invocation writes.
-   All other writers, including UI edits, remain blocked until the claim is positively settled.
+3. Native agent reads pinned StepContext and source-scoped F20 context. When allowed, it writes
+   registered Specification/Task documents through a **trusted claim-owned Engine broker**. Each
+   accepted write has its own recoverable journal, idempotency identity and document revision;
+   it is already published, not awaiting step finish. All unrelated writers, including the UI,
+   remain blocked while the native claim is active.
 4. The agent submits declared result/feedback/artifacts, through F02's authenticated finish
    adapter. Engine records a deduplicated **pending finish proposal**; a reply acknowledging that
    proposal is not a completed Workflow transition. Agent is instructed to stop.
-5. Runtime proves the native process stopped. Engine then finalizes the accepted attempt and all
-   related effects under an exclusive claim/reservation and Project lock. Claim settlement/release
-   cannot expose an unprotected interval before the Workflow publication is durable. The exact
-   order of the journal stages is a D12 decision, with fault-injected recovery evidence.
+5. Runtime proves the native process stopped. Engine then finalizes the **remaining declared
+   transition/effects** under the exclusive claim and Project lock. This does not retroactively
+   commit or roll back previously published Document edits. Claim settlement/release must not
+   expose an unprotected gap before the final Run/effect publication. Fault injection proves the
+   chosen D12 journal stage order.
 6. Only after both the required finish publication and native claim settlement may the owner see
    this step as fully committed and select the next step. No new Session starts automatically.
-   A stopped agent lacking valid finish leaves an unresolved attempt; an unknown-stop process
-   keeps its claim and requires reconciliation.
+   A stopped agent lacking valid finish leaves an unresolved attempt **and its already accepted
+   Document revisions intact**; an unknown-stop process keeps its claim pending reconciliation.
 
 Persisted identities and fingerprinted commands prevent duplicate Sessions, Tasks and finishes.
 Late callbacks from a stopped/replaced invocation are rejected. Cancellation or takeover follows
@@ -100,20 +104,56 @@ F13/F17 and cannot turn a native stop attempt into a fabricated successful Workf
 The native process and Session lifecycle are long-lived. Keep locks short; journals/claims
 bridge asynchronous stages without losing exclusivity.
 
-## Specification writing and documentation search
+## Durable partial work, recovery and retry
 
-An eligible agent writes Specification documents with the existing Engine Document operations
-and revision checks, not a provider-specific file writer. The agent receives required/optional
-context and an auditable description of what was read.
+One agent step is **not** an ACID transaction over the native process's lifetime. Separate:
 
-The product now has
-[`nevo-specflow docs search`](../../../reference/cli/nevo-specflow-docs.md#search) and
-[`GET /api/docs/search`](../../../reference/api/docs-search.md), using hybrid semantic/BM25
-ranking when its index and embedding endpoint are available, with lexical fallback.
-Exact `docs get` and lexical `find/context` remain. **The search API is not automatically
-available to the agent:** E6a must implement/test its chosen CLI/skill/tool path and report the
-actual search mode; do not claim vector RAG merely because the product has an index.
-Documentation search only retrieves context; it confers no write capability.
+- **Incremental Documents:** each successful claim-owned Engine write publishes a durable,
+  individually versioned document. A failed finish does not erase these bytes. A direct OS
+  write outside Engine is a separately reconciled side effect, not an Engine-journal promise.
+- **Task drafts:** each Task create/edit must be internally atomic across its index, manifest
+  and documents (D03); multiple successful Task creates may already be visible as unapproved
+  drafts before the producing step finishes. A finish-time batch of effects can be atomic without
+  rolling back earlier accepted Task mutations.
+- **Workflow finish:** only the accepted, fenced and durable transition advances Run. A pending
+  finish submission and a terminated Turn do not.
+
+If an agent writes two documents then crashes without a valid finish, retain both revisions,
+keep the attempt unresolved and preserve its writer claim until **positive native-stop proof**.
+After reconciliation, expose the partial-work list and origin to the owner. The owner may inspect,
+repair, resume an eligible step or **explicitly revert** selected revisions through ordinary
+versioned Document operations. Never silently roll back or announce completed Workflow. Retried
+invocations reconcile accepted operation IDs/revisions and do not duplicate edits or Task drafts;
+they do not blindly re-dispatch an unknown native process.
+
+**Recovery test:** two accepted edits -> crash -> restart -> same two document revisions and
+unresolved Run/claim -> positive stop -> owner chooses repair/retry. Conflicting writers remain
+blocked until safe release, duplicate writes replay idempotently, and selective revert requires
+an authorized action.
+
+## Specification writing and Workspace-scoped context
+
+The agent edits Specification documents through registered Engine Documents operations and
+revision checks. F20 context references for Specification and Task documents resolve from the
+actual resource registry, with required/optional semantics and revision provenance.
+
+The current [`nevo-specflow docs search`](../../../reference/cli/nevo-specflow-docs.md#search)
+and [`GET /api/docs/search`](../../../reference/api/docs-search.md) search the Runtime
+project's configured **`docs.root`**. They neither search Specification/Task files nor accept
+a selected Worktree. Search may be hybrid semantic/BM25 or lexical; it is not automatically
+wired to a running agent.
+
+For E6, bind retrieval to the verified project, Workspace/incarnation, checkout path,
+branch/HEAD and document revisions as applicable. If context must reflect a particular
+Worktree's repository docs, provide a scoped corpus/index with its own freshness checks **or**
+read verified files from that Worktree and record their origin. A project-wide search result
+must not masquerade as that Worktree's document. Branch switching or Worktree rebind invalidates
+old context evidence. The agent interface must explicitly expose/test the chosen CLI/skill/tool
+path; search alone conveys no write permission.
+
+**Verification:** two Worktrees with different docs give different, correct evidence; switching
+a branch forces re-resolution/refusal of stale references. Specification `overview.md` and
+Task `task.md` always come from the registered resource, never project docs search.
 
 ## Task creation and editing after F20
 
@@ -125,8 +165,10 @@ subject document, Specification document, repository document, path, instruction
 with required/optional flags and bounded budgets. Engine validates all references and revisions.
 
 D06 separates a producing attempt's proposals from other manual drafts: empty or incomplete
-agent results cannot silently delete another author's Tasks. All index/manifest/document/Run
-effects share the accepted cross-resource journal (D03); retries must not publish partial Tasks.
+agent results cannot silently delete another author's Tasks. Each Task create/edit is one
+recoverable multi-file D03 mutation; different accepted draft creates may persist before
+Workflow finish. Finish-time effects are separately atomic. Retry cannot publish half a Task
+or recreate a previously accepted draft.
 An agent's direct edit of `task.yaml` or `.execution` is outside the supported cooperative
 contract but is **not technically impossible** without sandboxing.
 
@@ -139,11 +181,13 @@ contract but is **not technically impossible** without sandboxing.
 3. An agent finishes one selected Task attempt and stops; manual steps in the same Run retain
    correct executor history and definition pins. Manual requirements -> agent specification
    honors the explicit `session: reuse` policy.
-4. Loss after launch, pending finish submission, native stop evidence, Run publication and
-   claim settlement is recoverable without duplicate execution or an unlocked write gap.
+4. Two successful document writes followed by native crash remain visible but do not finish
+   the Workflow. Loss after pending submission, stop evidence, Run publication and claim
+   settlement is recoverable without duplicate execution or an unlocked write gap.
    A finished Turn without a valid Workflow finish cannot advance the Run.
-5. Documentation retrieval is actually exercised via the chosen supported agent interface,
-   using hybrid or lexical mode as reported. No inferred automatic RAG support.
+5. Documentation retrieval is exercised via a real agent adapter. Two Worktrees with differing
+   docs cannot share stale context; Task/Specification documents come from their own registry,
+   and reported hybrid/lexical mode matches the tested retrieval. No inferred automatic RAG.
 6. Existing CLI+skill callers obey their independently documented local OS trust limitations.
 
 **Deferred:** unattended continuation, automatic Task batching, scheduler, generic plugins,

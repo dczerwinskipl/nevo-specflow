@@ -440,7 +440,8 @@
       "read_when": [
         "planning a reusable Workflow capability independent of Specification and Task",
         "adding Task authoring and manual Specification or Task execution through the UI",
-        "reviewing the gates and sequencing of the next workflow implementation slices"
+        "reviewing the gates and sequencing of the next workflow implementation slices",
+        "adding owner-delegated single-step agent execution to Specification and Task"
       ],
       "summary": "Non-authoritative proposal to separate neutral Workflow progression from SpecFlow resource and storage ownership, add standalone Task creation and documents, support fully manual UI execution and optional owner-delegated agent steps, and later render typed transition inputs.",
       "related": [
@@ -463,6 +464,7 @@
         "workflow",
         "task-resource",
         "manual-execution",
+        "agent-execution",
         "implementation-plan"
       ]
     },
@@ -3517,9 +3519,9 @@
       "read_when": [
         "scoping implementation slices for reusable Workflow and Task resources",
         "selecting review checkpoints before Task authoring and manual execution",
-        "checking end-to-end acceptance without Managed Sessions"
+        "checking manual end-to-end execution and optional owner-delegated Managed Sessions"
       ],
-      "summary": "Proposed E0-E6 delivery sequence with isolated reviewable vertical slices, preservation tests, a complete manual UI proof and single-step agent delegation.",
+      "summary": "Proposed E0-E6 delivery sequence with isolated reviewable vertical slices, behavioral regression and recovery tests, a complete manual UI proof and single-step agent delegation.",
       "related": [
         "ideas.specflow-engine.reusable-workflow",
         "ideas.specflow-engine.reusable-workflow.boundaries",

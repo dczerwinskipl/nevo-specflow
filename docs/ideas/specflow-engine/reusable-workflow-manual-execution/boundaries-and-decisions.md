@@ -60,9 +60,9 @@ Decide **only what the next slice consumes**. E0 records every open question but
 
 | Gate                           | Decisions needed                                                                      | What can remain open                                                              |
 | ------------------------------ | ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| Before E1                      | D01, D02, D09; minimal D03 storage/effect seam and D05 Run schema compatibility       | Concrete Task/Document journal, UI permissions, approval and form field catalogue |
-| Before E2                      | D03, D04, D06; Task status authority in F20                                           | Manual UI interaction details and E5 typed renderer                               |
-| Before E3 owner mutations / E4 | D05 human identity/manual policy; D07 before Close integration                        | F01 automatic Session dispatch                                                    |
+| Before E1                      | D01, D02, D09; minimal D03 effect seam and D05 executor-policy extension               | Task journal, UI permissions and typed form catalogue                             |
+| Before E2                      | D03, D04, D06, D07 minimal Close guard; F20 Task authority and definition binding    | E4b owner sign-off UX and E5 typed renderer                                       |
+| Before E3 owner mutations / E4a | D05 identity/manual policy; D07 guard already deployed before earlier authoring/Run  | F01 unattended Session dispatch                                                   |
 | Before E5                      | D08 input validation, persistence and handoff                                         | Arbitrary custom components or a visual designer                                  |
 | Before E6a                     | D10–D12 trusted delegation, claim-owned Engine writes, stop/finish recovery and reuse | Full F01 unattended chaining, F12 auto-batches and scheduled triggers             |
 | Before E6b                     | D13 agent Task authoring; F20 and D06 are implemented                                 | Agent Task scheduling and parallel worktree execution                             |
@@ -75,13 +75,28 @@ Decide **only what the next slice consumes**. E0 records every open question but
 
 **Proof:** existing Specification wait/approval/escalation tests and an unrelated wait event replay using *exactly the same neutral progression implementation*. No generic event bus, speculative DSL or hard-coded branch on Subject in the neutral package.
 
-### D02 — Definition compilation and pinned revisions
+### D02 — Definition compilation, pins and pre-release format policy
 
-**Observed:** `workflowRevision()` currently hashes `canonicalJson` of the fully resolved **SpecFlow** definition. Moving fields or changing canonicalization can invalidate existing `revision` pins even if behaviour looks equivalent.
+**Decision: strict replacement, no backward compatibility.** Nevo SpecFlow has no production
+users or persistent production state requiring migration. Follow the strict-parser approach
+already accepted in [ADR 0015](../../../architecture/decisions/0015-specification-manifest-as-document-registry.md):
+one chosen format is authoritative; do **not** build a compatibility reader, migration pipeline,
+v1-v2 alias or hash-preservation shim just for provisional Workflow/Task files.
 
-**Open:** Keep source YAML and its product schemas owned by SpecFlow. Specify the compatibility boundary between the existing full resolved definition hash and the proposed neutral compiled definition (e.g. a versioned trusted pin passed to Core), including signature/replay validation and future migration rules.
+**Still required:** SpecFlow owns project YAML/schema; the neutral Core consumes a properly
+compiled definition. Each **new** Run pins the chosen definition revision, which must be
+validated during start, finish, return, replay and recovery. If definitions change while a new Run
+exists, fail closed until an explicitly authorized rebind/repin under the current model. The
+revision algorithm and record format may change **once** as part of extraction if the new scheme is
+deterministic, strict and consistently applied.
 
-**Proof:** golden fixtures for v1 YAML, SHA, existing run records, replay and refusal codes before/after extraction. **No silent schema or pin migration in E1.**
+**Implementation:** replace old fixtures, seed definitions, parsers, codecs and tests with the
+new schema. Reject unsupported old records with a clear validation error; do not silently
+reinterpret or overwrite them. This is detection of invalid data, not a migration feature.
+
+**Proof:** freshly created runs across Specification, Task and an unrelated host retain stable
+pins; deterministic replays, bad definition refusal and fault-injected recovery work on the new
+format. No old SHA, YAML or Run-record compatibility test is an exit condition.
 
 ### D03 — One atomic transaction for transitions plus Task/Documents effects
 
@@ -91,21 +106,48 @@ Decide **only what the next slice consumes**. E0 records every open question but
 
 **Proof:** fault injection after each staged write: subsequent read sees all or none of the logical change, retry is safe, competing writers cannot silently overwrite, and Git commit/Close respects pending writes. Avoid inventing a generic distributed transaction framework.
 
-### D04 — Task existence and lifecycle independent of Specification Run
+### D04 — Task existence, definition binding and lifecycle without SpecRun
 
-**Observed:** `loadSubject`, `ExecutionWorkingSet.specification()`, `setTaskStatus` and `settleWait` assume an execution record for Specification. Under F20, the Task index/folder must be authoritative even before a Specification Workflow starts.
+**Observed:** `loadSubject`, `ExecutionWorkingSet.specification()`, `setTaskStatus`
+and `settleWait` require a Specification execution record. F20 makes the Task folder and
+`tasks/index.yaml` authoritative before any SpecificationRun exists.
 
-**Open:** How are resource existence, optional Run and subject-binding records represented? The absence of a Task Run **before first execution** is normal `not-started`; absence of a started Task's folder/index is `broken`. Status changes must settle a Specification wait **only if** an active appropriate SpecRun exists. Resolve allowable Task Types from the Specification archetype's execution binding, **not** the absent Specification Run. Define provenance for manually created Tasks instead of inventing `origin.step`. A Task Type names its Workflow; with no Run record before first start, explicitly choose when this definition becomes pinned, detect revisions changed between create/inspect/start, and show a missing/invalid binding before starting. Creation must not silently create a Specification Run.
+**Decision proposed for E2 (R02): bind expectations at Task creation.** A Task's
+`task.yaml` records **creation-time binding evidence**, distinct from a running Workflow:
+the chosen Task Type id and **canonical content fingerprint** (the current TaskType model
+has no separate revision field), its referenced Workflow id/revision, and the relevant
+Specification archetype execution/task-type-allow-list fingerprint. Compute those fingerprints
+from the canonical **execution-relevant** definition fields, not from display-only metadata. This is **not** a per-Task
+Workflow override or a prematurely created Run. It records what was shown/validated when the
+Task was authored; the authoritative live Task Type still selects the Workflow.
 
-**Proof:** create Spec -> create Task -> edit Task -> approve -> start/finish Task, while no Specification Run exists; enforce archetype Task Type allow-list, changed/missing Task Type and workflow definition, and correct selected/pinned workflow on first start. Verify each operation and read including restart and recovery.
+At first start, Engine atomically validates the current Task Type, Workflow definition and
+Specification archetype policy against that expected binding, then creates and pins the Task Run.
+If the Task Type was removed, `task-type.workflow` changed, a Workflow definition changed,
+the type is no longer allowed or the policy fingerprint differs, **refuse with an explicit
+`definition-changed` / `task-type-not-allowed` result**. A separate owner-authorized
+`rebindUnstartedTask` action may confirm/adopt the current binding, with expected revision;
+it cannot silently change a Task with attempts. The action must show old/new type/workflow/policy
+and requires no speculative compatibility reader.
+
+The absence of a Task Run before first start is `not-started`, not `broken`. The absence of an
+already-started Task's manifest/index is `broken`, isolated to that Task. Status changes settle
+`wait-for-tasks` only when a corresponding active SpecificationRun exists. Manual Task creation
+records real human origin rather than inventing `origin.step`.
+
+**Proof:** create Specification without starting its Workflow; create, edit and approve a Task;
+start it with the originally shown definition. For each of three independently modified inputs
+(Task Type mapping or content fingerprint, Workflow revision, Specification archetype allow-list), starting
+refuses until explicit adopt/rebind; unauthorized or stale rebind refuses. Restart/recovery,
+no-SpecRun readiness and broken Task isolation all pass.
 
 ### D05 — Manual execution capability, mode and authoritative actor
 
 **Observed:** `executor: agent|human` is strict, and replay expects matching executor. `continuation: auto` may yield a Session launch decision. A person must not silently finish an agent attempt as an agent.
 
-**Open:** Separate (1) allowed executors of the pinned definition/policy, (2) durable Run dispatch preference, (3) trusted authorization for this attempt and (4) the actual recorded actor. A manual-only Run must not accidentally prohibit all later owner-requested agent steps. The current `isPositionJustified` requires `record.executor.kind === step.executor`: writing a human executor against a legacy agent step **corrupts replay**. E1 must reserve a versioned, pinned effective-executor policy mechanism, without changing existing hashes or history. E4/E6 then chooses the actual rules and audit model. Existing runs retain strict legacy validation. Human-only sign-off stays human-only; takeover of an active agent requires F17 stop/reconcile, never an impersonated finish. Owner identity comes from Runtime Auth or a proven local boundary, never an untrusted payload.
+**Open:** Separate (1) allowed executors of the pinned definition/policy, (2) durable Run dispatch preference, (3) trusted authorization for this attempt and (4) the actual recorded actor. A manual-only Run must not accidentally prohibit all later owner-requested agent steps. The current `isPositionJustified` requires `record.executor.kind === step.executor`: a human finish on an agent step **fails current replay rules**. E1 may replace that provisional record format and its rule with one strict, coherent model whose allowed executor policy is pinned per Run/attempt. E4/E6 then implements the real policy and attribution; no dual-mode reader or old-hash preservation is required. Human-only sign-off stays human-only; takeover of an active agent requires F17 stop/reconcile, never an impersonated finish. Owner identity comes from Runtime Auth or a proven local boundary, never an untrusted payload.
 
-**Proof:** manual start/finish/return of an agent-oriented step with explicit policy, zero Sessions across restart, and a mixed human/agent Run with separately trusted actor identities. Existing pin/replay fixtures remain unchanged; forged executors, stale attempts and unproven takeover are rejected.
+**Proof:** manual start/finish/return of an agent-oriented step with explicit policy, zero Sessions across restart, and a mixed human/agent Run with separately trusted actor identities. Updated current-model pin/replay fixtures pass; forged executors, stale attempts and unproven takeover are rejected.
 
 ### D06 — Manual Task creation versus full-list Breakdown finish
 
@@ -115,21 +157,60 @@ Decide **only what the next slice consumes**. E0 records every open question but
 
 **Proof:** manually create 3 drafts, finish Breakdown with empty proposals and verify none disappears; concurrent UI/agent edit fails or resolves explicitly; cancelling a Task is a deliberate authorized operation.
 
-### D07 — Workflow completion, owner acceptance and Technical Close
+### D07 — Minimum Close guard before new Task or Workflow use cases
 
-**Observed:** The default Specification seed ends with a human Acceptance step, but user-authored workflows need not contain an identically named step. Existing Technical Close has its own Git/workspace safety rules and is not yet a full Workflow exit-gate integration.
+**Observed:** The current Technical Close preflight guards Git/workspace operations, but does not
+yet enforce Workflow/Task completion. E3 Task CRUD and an early E6a would make unfinished work
+possible before E4b's full owner acceptance UI.
 
-**Open:** Determine which Specifications require completed execution before Close, including a bound-but-never-started workflow. Model required owner acceptance/sign-off **declaratively or as a separate owner evidence**, not by checking literal step id `acceptance`. Preserve legacy/non-workflow Close semantics. Make `cancelled` and `abandoned` work visible and require an explicit owner acknowledgement/waiver where appropriate. Do not mistake owner acceptance for F03 automated verification evidence.
+**Decision proposed:** add a minimal Engine-owned Close eligibility guard **before the first
+user-accessible Task lifecycle or Workflow Run action**. This means E2's resource/CRUD release
+must include its Task blocker check **before E3**, and E4a must include the Workflow blocker
+before an early E6a (if that slice ships first). Both call the existing Close preflight, with
+a single shared rule source; no UI-only gate or separate Close implementation.
 
-**Proof:** required-workflow Spec cannot Close without completion and owner evidence (even when never started); legacy Spec retains existing behaviour; completed Task set with waived exceptions is visible and auditable.
+Guard at least: active/ready/waiting required Workflow Runs; bound-but-never-started required
+flows; Tasks that are draft, ready, on-hold, active, broken or have unresolved dependents;
+pending agent claim/Document write and unreconciled journal. A Specification without a required
+Workflow remains under its normal Close semantics. Do not hard-code step id `acceptance`:
+a declarative required owner sign-off or separately persisted evidence can be an E4b extension,
+but the minimal guard must not declare unfinished work complete.
 
-### D08 — Typed inputs: schema, persistence, handoff and projection
+A waiver, if the product explicitly allows one, must be a **durable, authorized, scoped and
+audited** decision covering the listed blocker(s), not an automatic bypass or a request flag
+silently converting a failed preflight to success. Revalidate it under concurrency and Close's
+existing lock. No claim of F03 test/build verification follows from sign-off.
 
-**Observed:** Current `FinishInput` supports `result`, `feedback`, `artifacts` plus SpecFlow-specific `tasks`/`taskDecisions`; metadata alone cannot carry arbitrary `riskLevel` or `estimatedHours` across attempts. Current `StepContext.finish.transitions` projects IDs, results, labels and feedback requirements **for an active step**; there is no implemented `TransitionActionDescriptor` API. Legacy Nevo had `finishContract.parameters`, `enum` results and action metadata, but it was a different engine.
+**Proof:** Close refuses when Task drafts exist before SpecRun or when a required Workflow has
+not started; refuses on an active Task/agent and on unreconciled writer state; a legally empty
+Specification still closes as before. Tests must run with E2 Task CRUD alone and with E4a/E6a
+before E4b. Full acceptance and optional waiver UX can arrive later without opening a Close gap.
 
-**Open:** Define a versioned, validated input/output contract, where values live (attempt outcome, explicit artifact or effect input), how the next step sees them, and what is retained in history; also define a read-only availability projection for `not-started` / `ready` / `active` / terminal positions without starting a step as a side effect; semantic type (enum/string/boolean/integer/decimal/markdown) is distinct from a UI rendering hint. Treat decimal precision explicitly (prefer a validated decimal string unless a bounded numeric type is justified). A hint can select a **registered** component, not execute arbitrary code from YAML. UI never gets to invent required fields.
+### D08 — Typed inputs, bounded history and handoff (F19)
 
-**Proof:** input submitted through UI, validated server-side, retained/recoverable across restart, available to the declared next step, and rejected for unknown fields/types. E4 needs the small transition-action projection; the general form renderer is E5.
+**Observed:** `FinishInput` currently has `result`, `feedback`, `artifacts`,
+Task-specific `tasks/taskDecisions`; `StepContext.finish.transitions` is only an active-step
+projection, not a standalone UI descriptor. The [F19 backlog](../execution-plans/06-workflow-kernel/README.md#f19--bound-run-history-so-a-long-run-cannot-reach-the-record-byte-budget)
+identifies that repeated valid attempts, long feedback and many artifacts can exhaust
+`RECORD_BYTES_MAX` and permanently block Workflow progression.
+
+**Open for E5:** Define a typed versioned input/output contract (enum, integer, decimal,
+Markdown etc.), Engine validation, a side-effect-free action projection and a declared handoff.
+Do not store unbounded Markdown or arbitrary form results inline in every Run attempt. Agree a
+per-field and cumulative storage budget, and where large immutable values live (e.g. document or
+content-addressed artifact with stable id, digest and revision), and what concise reference is
+kept in the Run. Attempt replay/handoff must validate the referenced evidence and fail closed
+when it is unavailable. Semantic types differ from allowlisted UI widget hints; no executable
+YAML component imports.
+
+**Gate:** resolve F19 or ship an independently proven bounded scheme **before enabling E5**.
+The sequence of valid finishes/returns may not fill the fixed Run record and deadlock progress.
+Do not silently truncate accepted history or strip the last useful handoff.
+
+**Proof:** many attempts/returns with maximal accepted Markdown/enum/decimal/feedback/artifacts
+stay within `RECORD_BYTES_MAX`; large values survive restart and exact replay, stale references
+refuse safely, and the declared next step receives the correct handoff. Check concurrent writes,
+idempotent retry and serializer limits *before* mutation.
 
 ### D09 — Run identity and cardinality beyond the SpecFlow subject
 
@@ -137,7 +218,7 @@ Decide **only what the next slice consumes**. E0 records every open question but
 
 **Open:** Make the neutral coordinator take a stable opaque Run identity or accept a Run value with a separate host-owned execution key; do not require `subject.kind: specification | task`, `specId` or an on-disk Task parent to operate. The host chooses storage and subject linkage; the neutral algorithm must distinguish independent attempts/histories of separate runs of the same definition. Decide where identity and idempotency/fencing tokens live without forcing a global workflow-run registry or changing existing SpecFlow file locations.
 
-**Proof:** two independent runs of one definition, concurrently addressable by different host keys, with separate history, retries and pinned revisions; both survive host reload. Current SpecFlow run paths and attempt semantics remain unchanged.
+**Proof:** two independent runs of one definition, concurrently addressable by different host keys, with separate history, retries and pinned revisions; both survive host reload. New-format SpecFlow records remain deterministic; previous internal file layouts need no compatibility reader.
 
 ### D10 — Trusted owner delegation and Session reuse
 
@@ -198,40 +279,67 @@ the same no-gap property. Pending submissions cannot dispatch the next step. A s
 without finish leaves the attempt unresolved for owner action. Unknown stop/side effects block
 until reconciled, never time out as successful.
 
-**Proof:** replay after crash at every stage (submission, stop receipt, Run publication, claim
-settlement), duplicate finish and late callback; none can execute the step twice, release the
-writer early or advance an unauthorized attempt.
+**Incremental mutations (R04):** An individual successful claim-owned Document write is durable
+as soon as its own Engine journal commits. It is **not** a staged speculative edit waiting for
+Workflow finish. If the agent crashes after two successful document edits but no valid finish,
+both edits remain with their own revisions and auditable source. The Run remains unresolved;
+the claim remains until native stop is positively proved. After reconciliation the owner may
+inspect, repair, resume or **explicitly revert** selected revisions through ordinary versioned
+Document operations. Never auto-rollback already accepted writes or mark the step complete.
+Each Task resource create/edit is atomic *within that mutation*, while several previously
+accepted Task drafts may remain visible after a failed producing step. The finish transaction
+covers only its newly declared effects, not retroactive rollback of prior commits.
 
-### D13 — Agent Task authoring and documentation context
+**Proof:** replay after crash at every stage (two incremental Document writes, pending submission,
+stop receipt, Run publication and claim settlement), duplicate finish and late callback; the
+same two edits survive failure without completed Workflow, no accepted operation is applied
+twice, and no writer enters before verified native stop. A deliberate owner revert is
+revision-checked and never an implicit cancel.
 
-An eligible declared Task-producing attempt may use shared Engine Task operations to create
-complete `task.md`, optional registered documents, permitted Task Types, typed F20 context and
-a valid dependency DAG. D06 prevents cancellation of another owner's drafts. A step result is
-not just a chat summary, and a direct edit to resource metadata is not a supported substitute
-for an Engine mutation. D11's process isolation limitation still applies.
+### D13 — Agent Task authoring and Workspace-bound context
 
-Documentation discovery now includes `nevo-specflow docs search` and
-`GET /api/docs/search`, with semantic+BM25 hybrid ranking when enabled and lexical fallback;
-exact `docs get` and lexical `docs find/context` remain. Search is **not automatically wired to
-Managed Sessions**: require a supported CLI/skill/tool integration and evidence of what was
-actually retrieved. Search cannot override F20 required context or grant write capability.
+An eligible producing attempt may use the **same** Engine Task commands as UI to create
+complete `task.md`, other registered files, allowed Task Type, F20 typed context and a
+dependency DAG. D06 prevents cancellation of unrelated manual drafts. Direct mutation of
+resource metadata bypasses the supported cooperative protocol, but D11's OS access limitation
+still applies.
 
-**Proof:** three substantive linked Task drafts with consistent origin/attempt, no duplicates on
-retry, validated required context and manual approval. Test actual agent documentation access
-and report the search mode; do not claim vector RAG without that evidence.
+**Three distinct sources:** (1) `nevo-specflow docs search` /
+`GET /api/docs/search` currently indexes only the Runtime **project's configured
+`docs.root`**, not a selected Worktree and **not** Specification/Task documents;
+(2) Specification and Task documents are resolved by their resource-scoped Engine Documents
+contract; (3) F20 explicit context entries can include repository documents, paths and
+instructions with required/optional flags. No source inherits another source's authority.
+
+**Open for E6:** bind every retrieval request and returned evidence to the agent's verified
+`(projectId, workspaceId, workspace incarnation, checkout/root, branch/HEAD, document revision)`
+where applicable. For Worktree-specific repository documents either provide an explicitly scoped
+corpus/index with independent freshness/invalidation, **or read verified files from that
+Worktree with provenance**. Do **not** silently send results from Runtime's project-wide
+search index as though they came from a different checkout. A branch switch/rebind or document
+revision change must invalidate or revalidate the context; never carry stale index/document
+evidence into a new attempt. Expose search mode `hybrid|lexical` accurately. The chosen
+agent CLI/skill/tool adapter must be tested; availability in Runtime is not automatic agent access.
+
+**Proof:** an agent on two Worktrees with differing docs reads the expected checkout's
+version, not the other's; rebind/branch change triggers invalidation/refusal or fresh resolution;
+a Task's `task.md` and Specification's `overview.md` are never silently sourced from the
+project-docs corpus. Three linked drafts carry verified context IDs/revisions, reject stale
+references, survive retries without duplication, and still require human approval.
+
 
 ## 3. Additional unresolved integration constraints
 
-- **Task status authority:** The detailed F20 proposal places `status` in `task.yaml`, while a Plan 06 summary still refers to keeping status in execution state. Reconcile in an ADR. No dual authority; one indexed resource and one clear place for status.
+- **Task status authority and schema cutover:** F20 owns `status` in `task.yaml`; the provisional execution record is replaced strictly, without a dual reader or migration. Invalid old-format records are reported explicitly rather than silently rewritten.
 - **Definition kind registration:** Current `specs/definitions/kinds/index.ts` imports workflow kinds (Plan 06 F18). Move registration to a real composition boundary without inducing a cycle.
 - **Task documents:** Extend existing Documents application semantics to a Task-scoped registry. Avoid parallel document editors, writers or revision systems.
 - **CLI trust:** A local agent and owner using the same OS identity are not securely distinguishable merely by a CLI option or execution handle. Supported trust boundary must be documented; do not promise forged-owner prevention unless an enforceable mechanism exists. Refer to [local actor and human gates](../local-actor-and-human-gates.md).
 - **Idempotency/claims:** F16 finish retry and F05 writable admission are relevant even without F01. Specify what is needed for the manual HTTP path and what remains an explicit limitation of unsupervised external agents.
 - **Package viability:** A public neutral API should be tested with the existing Specification and Task consumers and a tiny independent test host. Test host is **evidence**, not a speculative production Automation feature. It should not force an unused action scheduler into E1.
-- **Close and commits:** `terminal: completed` is not equivalent to Git archival, merge, push or successful tests. Reuse the supported Close preflight and commit queue rather than bypassing them.
+- **Close and commits:** `terminal: completed` is not equivalent to Git archival, merge, push or successful tests. D07's minimum Close guard ships with the first Task/Run capability; reuse existing Close preflight, writer claims and commit queue.
 
 ## 4. E0 decision outcome
 
-Before E1, promote D01, D02 and D09 and the minimal D03/D05 extension seams to authoritative architecture. Defer the detailed D03, D04 and D06 choices until before E2, D05/D07 authorization and Close decisions until their consuming E3/E4 slice, D08 until E5, and D10–D12 before E6a and D13 before E6b (after F20/D06). The following are not implied approvals: package creation, step-schema change, `allowedExecutors`, Run-mode persistence, Task status location, generalized input DSL or mandatory Close blocking for every existing Specification.
+Before E1, promote D01, D02 and D09 and the minimal D03/D05 extension seams to authoritative architecture. Decide D03/D04/D06 and the minimum D07 Close guard before E2; D05 plus the Workflow Close guard before E4a or earlier E6a; full owner sign-off before E4b, D08/F19 before E5, D10–D12 before E6a and D13 before E6b (after F20/D06). The following are not implied approvals: package creation, step-schema change, `allowedExecutors`, Run-mode persistence, Task status location, generalized input DSL or mandatory Close blocking for every existing Specification.
 
-The E1 contract must demonstrate an acyclic import graph, reusable coordination intents, a neutral Run identity, pin compatibility and an intentional multi-resource persistence seam. Before E2/E4, prove the concrete journal boundary, a Task without SpecRun and a manual action with trustworthy attribution.
+The E1 contract must demonstrate an acyclic import graph, reusable coordination intents, a neutral Run identity, new-format pin/replay determinism and an intentional multi-resource persistence seam. Before E2/E4, prove the concrete journal boundary, a Task without SpecRun and a manual action with trustworthy attribution.

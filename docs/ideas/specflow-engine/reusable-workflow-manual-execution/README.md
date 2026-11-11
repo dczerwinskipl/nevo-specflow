@@ -5,11 +5,12 @@ title: Reusable Workflow, Task resources and manual/agent execution
 status: draft
 scope: specflow
 areas: [workflow, runtime, ui, cli, docs]
-tags: [proposal, workflow, task-resource, manual-execution, implementation-plan]
+tags: [proposal, workflow, task-resource, manual-execution, agent-execution, implementation-plan]
 read_when:
   - planning a reusable Workflow capability independent of Specification and Task
   - adding Task authoring and manual Specification or Task execution through the UI
   - reviewing the gates and sequencing of the next workflow implementation slices
+  - adding owner-delegated single-step agent execution to Specification and Task
 summary: >
   Non-authoritative proposal to separate neutral Workflow progression from SpecFlow
   resource and storage ownership, add standalone Task creation and documents,
@@ -40,7 +41,7 @@ Each Task Type already selects its workflow definition. The proposal **does not*
 3. [Agent-assisted execution](agent-assisted-execution.md): an owner may delegate an eligible step to a Managed Session; includes Specification writing, Task drafting with content/dependencies/context, and selected Task steps.
 4. Existing [Task Resource F20](../task-resource-and-context.md), [Workflow API requirements](../workflow-api-requirements.md), [Plan 06 follow-ups](../execution-plans/06-workflow-kernel/README.md), [offline CLI and agents](../offline-cli-and-external-agents.md).
 
-**Decision gates are phased.** Before E1, approve the neutral execution/coordinator boundary, definition pin compatibility, and Run identity; reserve the necessary storage/dispatch extension points. Before E2, approve cross-resource recovery, Task Type resolution and draft ownership. Before E3/E4, approve human authorization and manual execution policy; before E4 Close, approve completion/sign-off semantics. Before E5, approve typed input persistence and validation. Before E6a, resolve D10–D12: explicit delegation, claim-owned Engine writes, durable finish/stop recovery and Session reuse. Agent Task authoring additionally requires D13 and F20. E6 does not depend on E5; an early Specification-only agent slice may be delivered separately once its prerequisites hold. See the [decision gates](boundaries-and-decisions.md#2-decision-register-and-gates). None is implicitly accepted by this draft.
+**Decision gates are phased.** Before E1, approve the neutral coordinator, **new-format** deterministic definition pins/replay and Run identity; no legacy readers, hash preservation or migration. Before E2, approve cross-resource recovery, Task creation-time binding, draft ownership, strict schema cutover and the **minimal Close guard**. E4a must also guard Close before any early E6a Run; full owner sign-off follows with E4b. Before E5, resolve typed input storage limits together with F19. Before E6a, resolve D10–D12: explicit delegation, claim-owned Engine writes, durable finish/stop recovery and Session reuse. Agent Task authoring additionally requires D13 and F20. E6 does not depend on E5; an early Specification-only agent slice may be delivered separately once its prerequisites hold. See the [decision gates](boundaries-and-decisions.md#2-decision-register-and-gates). None is implicitly accepted by this draft.
 
 ## What already exists
 
@@ -48,7 +49,7 @@ Each Task Type already selects its workflow definition. The proposal **does not*
 - Specification Create/Close and Documents operations exist; the UI can already edit Specification documents.
 - Product documentation search now exists through `nevo-specflow docs search` and `GET /api/docs/search`. It uses hybrid semantic/BM25 search when configured and indexed, otherwise lexical fallback. Integration into a Managed Session remains to be demonstrated.
 - Task HTTP endpoints primarily expose reads. Task creation/edit as a standalone resource and manual Workflow commands are not yet a complete product path.
-- `tasks/index.yaml`, per-Task `task.yaml` and `task.md`, Task context and the full F20 storage migration remain proposed. The current `.execution/tasks/<id>.yaml` includes Task metadata and run.
+- `tasks/index.yaml`, per-Task `task.yaml` and `task.md`, Task context and the F20 **strict schema replacement** remain proposed. The provisional `.execution/tasks/<id>.yaml` mixes Task metadata and Run; it will not get a legacy reader or migration pipeline.
 - Full F01 **unattended** continuation is deferred, but E6 introduces a narrow, **explicit owner-requested** Managed Session for one selected Workflow step (using F01/F02/F05/F09 integration seams). The Kernel already derives a continuation decision; that alone does not launch a Session.
 
 Use existing implementations wherever possible; do not recreate the Kernel or the document editor.
@@ -61,4 +62,4 @@ Use existing implementations wherever possible; do not recreate the Kernel or th
 
 ## Ownership of this proposal
 
-The decisions are candidates, not accepted rules. Before each implementation slice, reconcile against current `main`, [ADR 0012](../../../architecture/decisions/0012-product-package-topology-and-dependency-direction.md), [ADR 0019](../../../architecture/decisions/0019-workflow-kernel-and-automatic-continuation.md), [code organization](../../../engineering/shared/code-organization.md), and any more recent promoted architecture. This plan does not retire or silently replace other open ideas.
+The decisions are candidates, not accepted rules. **Proposed project-wide pre-release rule:** while Nevo has no real users or production state requiring preservation, choose the correct target model over internal backward-compatibility scaffolding. Rewrite fixtures and callers, keep strict parsing, deterministic behavior, validation, idempotency and recovery. Revisit this rule once real user data exists; do not silently corrupt unsupported records. Before each implementation slice, reconcile against current `main`, [ADR 0012](../../../architecture/decisions/0012-product-package-topology-and-dependency-direction.md), [ADR 0019](../../../architecture/decisions/0019-workflow-kernel-and-automatic-continuation.md), [code organization](../../../engineering/shared/code-organization.md), and any more recent promoted architecture. This plan does not retire or silently replace other open ideas.

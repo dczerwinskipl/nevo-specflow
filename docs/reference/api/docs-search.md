@@ -130,7 +130,10 @@ progress`, later `the Runtime is updating it in the background (<n>/<total> chun
 last background update failed (<cause>); it retries within a minute`.
 - **Start refresh:** when the project enables `docs.search.semantic` and an embedding endpoint is
   configured, the Runtime starts the same background refresh once it is ready. Start and readiness
-  do not wait for it; searches meanwhile answer `lexical` with `index-building`.
+  do not wait for it; searches meanwhile answer `lexical` with `index-building`. While any process
+  updates the index, an endpoint that times out or refuses the connection is reported as
+  `index-building` (busy with that refresh), by the search and by `GET /api/docs/status`, not as
+  `endpoint-unreachable`.
 - Closing the Runtime stops the running refresh's endpoint requests and waits for it to release the
   index; sections embedded so far stay stored. A refresh that cannot run (endpoint unreachable, index
   unreadable) is logged as a warning; one that finds another process writing the index is not.

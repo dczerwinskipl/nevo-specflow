@@ -263,3 +263,50 @@ describe('semantic status during an endpoint outage', () => {
     expect(endpoint.requests).toEqual([]);
   });
 });
+
+describe('an endpoint busy with a running refresh', () => {
+  it('reports index-building while a live writer updates the index, endpoint-unreachable otherwise', async () => {
+    const timingOut = () => {
+      const fake = createFakeEmbeddingProvider();
+      fake.failWith({ code: 'timeout', message: 'no answer within 3000 ms' });
+
+      return fake;
+    };
+
+    // A complete index first, so a search reaches the query embedding.
+    expect(
+      (await runDocs(root, ['semantic', 'index'], undefined, { createEmbeddingProvider: provider }))
+        .exitCode,
+    ).toBe(0);
+
+    const alone = await runDocs(root, ['semantic', 'status'], undefined, {
+      createEmbeddingProvider: timingOut,
+    });
+    expect(alone.exitCode).toBe(1);
+    expect(alone.stdout.at(-1)).toMatch(/^search mode: lexical \(endpoint-unreachable: /);
+
+    const store = createFileVectorStore({
+      directory: join(root, '.nevo', 'local', 'cache', 'docs-index', 'vectors'),
+    });
+    const held = await store.openWriter();
+    expect(held.status).toBe('opened');
+    try {
+      const status = await runDocs(root, ['semantic', 'status'], undefined, {
+        createEmbeddingProvider: timingOut,
+      });
+      expect(status.exitCode).toBe(0);
+      expect(status.stdout.at(-1)).toMatch(
+        /^search mode: lexical \(index-building: The embedding endpoint did not answer \(timeout: .*being updated in the background/,
+      );
+      const search = await runDocs(root, ['search', 'part'], undefined, {
+        createEmbeddingProvider: timingOut,
+      });
+      expect(search.exitCode).toBe(0);
+      expect(search.stdout[0]).toMatch(/^mode: lexical \(index-building: The embedding endpoint/);
+    } finally {
+      if (held.status === 'opened') {
+        await held.writer.close();
+      }
+    }
+  });
+});

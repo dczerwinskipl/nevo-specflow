@@ -1,15 +1,16 @@
 // The read-time refresh (ADR 0020): how much of the index a search brings up to date before it
 // answers. `semantic status` reports `index-building` with the same bound.
 
-import { refreshIndex, type VectorStore } from '@nevo/ai-semantic-search';
-import type { DocsSearchReason } from '@nevo/specflow-contracts/docs';
+import { refreshIndex, type EmbeddingFailure, type VectorStore } from '@nevo/ai-semantic-search';
+import type { DocsIndexActivity, DocsSearchReason } from '@nevo/specflow-contracts/docs';
 
 import type { EmbeddingProviders } from '../embeddings/embedding-providers';
-import { embeddingFailureReason } from '../embeddings/endpoint-reasons';
+import { embeddingFailureReason, isBusyFailure } from '../embeddings/endpoint-reasons';
 import type { IndexCatchUp } from './catch-up';
 import type { DocsChunk } from './chunk-source';
 import { pendingChunks } from './freshness';
 import {
+  busyEndpointReason,
   catchUpReason,
   identityChangedReason,
   overLimitReason,
@@ -35,6 +36,30 @@ export interface IndexVectors {
    * `index-building` reason asks for `semantic index` instead.
    */
   readonly catchUp?: IndexCatchUp;
+  /**
+   * Who writes the index now (`readIndexActivity`), asked only after an endpoint failure, so a
+   * failure while a live writer updates the index reports `index-building`. Absent for an index held
+   * only in memory.
+   */
+  readonly activity?: () => Promise<DocsIndexActivity>;
+}
+
+/**
+ * The reason for an endpoint failure of a search: `index-building` (`busyEndpointReason`) when it
+ * timed out or was refused while a live writer updates the index, otherwise `endpoint-unreachable`.
+ */
+export async function endpointFailureReason(
+  vectors: IndexVectors,
+  failure: EmbeddingFailure,
+): Promise<DocsSearchReason> {
+  if (isBusyFailure(failure) && vectors.activity !== undefined) {
+    const activity = await vectors.activity();
+    if (activity.state === 'updating') {
+      return busyEndpointReason(failure, activity.progress);
+    }
+  }
+
+  return embeddingFailureReason(failure);
 }
 
 /**
@@ -79,7 +104,7 @@ export async function refreshForRead(
 
   const probe = await providers.query.probe();
   if (!probe.ok) {
-    return embeddingFailureReason(probe.failure);
+    return endpointFailureReason(vectors, probe.failure);
   }
 
   // The bound holds under the lock too: a re-probe that observes another dimension, or a manifest

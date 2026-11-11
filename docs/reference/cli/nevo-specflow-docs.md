@@ -131,13 +131,13 @@ ranking is hybrid. Otherwise it is BM25 alone and the result states why. Every r
 `mode`; a lexical result carries `reason.code` and a `reason.message` with the cause. A lexical
 answer still exits 0.
 
-| `reason.code`          | When                                                                                                                                                      |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `semantic-disabled`    | `docs.search.semantic` is absent or `false`                                                                                                               |
-| `no-endpoint`          | semantic search is enabled but `ai.embeddings` is not configured                                                                                          |
-| `endpoint-unreachable` | the endpoint failed, timed out or returned unusable vectors, or the `apiKeyEnv` variable is not set                                                       |
-| `index-building`       | the index does not cover the current documents yet: another process is updating it, or more sections lack vectors than a search embeds, or `--no-refresh` |
-| `index-unavailable`    | the index cannot be read or written (for example a permission problem); waiting does not help                                                             |
+| `reason.code`          | When                                                                                                                                                                                                                             |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `semantic-disabled`    | `docs.search.semantic` is absent or `false`                                                                                                                                                                                      |
+| `no-endpoint`          | semantic search is enabled but `ai.embeddings` is not configured                                                                                                                                                                 |
+| `endpoint-unreachable` | the endpoint failed, timed out or returned unusable vectors, or the `apiKeyEnv` variable is not set, while no process is updating the index                                                                                      |
+| `index-building`       | the index does not cover the current documents yet: another process is updating it (also when the endpoint, busy with that refresh, times out or refuses), or more sections lack vectors than a search embeds, or `--no-refresh` |
+| `index-unavailable`    | the index cannot be read or written (for example a permission problem); waiting does not help                                                                                                                                    |
 
 **Freshness.** Before answering, `search` brings the index up to date: it reads and hashes every
 document (sizes and modification times are not trusted, so a change that keeps both, such as a
@@ -325,8 +325,10 @@ catch-up, `semantic index` or a Runtime refresh), otherwise the outcome of the l
 (`last update: completed <time> (embedded <n>/<total> chunks, generation <g>)`, `failed …` with the
 cause, or `interrupted …` when its process ended early). Its last line is the mode `search` would
 answer in, with the same reason: an index that lacks vectors for more sections than a search embeds
-(16) — missing, to be rebuilt or stale by that much — reports `lexical` with `index-building`. It
-exits 1 when semantic search is enabled but unavailable: no endpoint, an unreachable endpoint or
+(16) — missing, to be rebuilt or stale by that much — reports `lexical` with `index-building`. A
+probe that times out or is refused while a live process updates the index also reports
+`index-building` (with that refresh's progress), because a local endpoint is usually just busy
+with the refresh. It exits 1 when semantic search is enabled but unavailable: no endpoint, an unreachable endpoint or
 unset key variable, or an unreadable index. An index that only needs building is not a failure (exit
 0): a search catches it up in the background, and embeds a gap of at most 16 sections itself. It
 checks configuration, the endpoint and that the index can be read, not that it can be written: a

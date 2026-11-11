@@ -11,7 +11,7 @@ import type {
 
 import type { DocsConfiguration } from '../config/docs-configuration';
 import type { EmbeddingsSettings } from '../embeddings/embeddings-settings';
-import { embeddingFailureReason } from '../embeddings/endpoint-reasons';
+import { embeddingFailureReason, isBusyFailure } from '../embeddings/endpoint-reasons';
 import { providersFor, type SemanticEnvironment } from './environment';
 import { planAgainstIndex, type EndpointIdentity } from './freshness';
 import type { DocsIndex } from './index-store';
@@ -19,6 +19,7 @@ import { READ_REFRESH_MAX_CHUNKS } from './refresh-policy';
 import { readIndexActivity } from './progress';
 import { createReachabilityCache, type ReachabilityCache } from './reachability';
 import {
+  busyEndpointReason,
   catchUpReason,
   overLimitReason,
   SEMANTIC_INDEX_COMMAND,
@@ -52,6 +53,10 @@ export async function semanticStatus(
   const endpoint = semanticEndpoint(configuration);
   let reason = 'reason' in endpoint ? endpoint.reason : undefined;
 
+  // Read first: an endpoint that fails while a live writer updates the index is busy with it.
+  const activity: DocsIndexActivity =
+    index.directory === undefined ? { state: 'idle' } : await readIndexActivity(index.directory);
+
   let reachability: DocsStatus['reachability'] = null;
   let observedDimensions: number | undefined;
   let identity: EndpointIdentity | undefined;
@@ -84,9 +89,14 @@ export async function semanticStatus(
           };
           observedDimensions = probe.dimensions;
         } else {
-          const failure = embeddingFailureReason(probe.failure);
-          reachability = { reachable: false, message: failure.message };
-          reason ??= failure;
+          reachability = {
+            reachable: false,
+            message: embeddingFailureReason(probe.failure).message,
+          };
+          reason ??=
+            activity.state === 'updating' && isBusyFailure(probe.failure)
+              ? busyEndpointReason(probe.failure, activity.progress)
+              : embeddingFailureReason(probe.failure);
         }
       }
     }
@@ -101,9 +111,6 @@ export async function semanticStatus(
   if (indexState.state === 'unreadable') {
     reason ??= unreadableIndexReason(indexState.message);
   }
-
-  const activity: DocsIndexActivity =
-    index.directory === undefined ? { state: 'idle' } : await readIndexActivity(index.directory);
 
   // The same bound as the search's read-time refresh: a larger gap answers `index-building`.
   if (pending > READ_REFRESH_MAX_CHUNKS) {

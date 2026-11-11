@@ -1,6 +1,6 @@
 import type { Chunk, UnitMetadata } from '../chunking/chunk';
 import { CHUNKER_VERSION } from '../chunking/markdown-chunker';
-import type { EmbeddingProvider } from '../embeddings/embedding-provider';
+import type { EmbeddingFailure, EmbeddingProvider } from '../embeddings/embedding-provider';
 import type { IndexIdentity, VectorStore } from '../indexing/vector-store/vector-store';
 import { createBm25Index } from '../ranking/bm25';
 import { compareIds } from '../compare';
@@ -13,6 +13,8 @@ import { reciprocalRankFusion } from '../ranking/rrf';
 export interface SearchReason {
   readonly code: string;
   readonly message: string;
+  /** The provider's failure, for `query-embedding-failed`. */
+  readonly failure?: EmbeddingFailure;
 }
 
 export const SEARCH_REASON = {
@@ -142,6 +144,7 @@ async function rankByVectors(
       reason: {
         code: SEARCH_REASON.queryEmbeddingFailed,
         message: `Query embedding failed (${embedded.failure.code}): ${embedded.failure.message}`,
+        failure: embedded.failure,
       },
     };
   }

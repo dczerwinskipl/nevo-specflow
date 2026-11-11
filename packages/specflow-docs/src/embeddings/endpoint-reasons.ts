@@ -12,6 +12,14 @@ export function missingApiKeyReason(apiKeyEnv: string): DocsSearchReason {
   };
 }
 
+/**
+ * A failure that a busy endpoint also produces: it did not answer in time, or refused the
+ * connection (a local server saturated by a refresh).
+ */
+export function isBusyFailure(failure: EmbeddingFailure): boolean {
+  return failure.code === 'timeout' || failure.code === 'unreachable';
+}
+
 export function embeddingFailureReason(failure: EmbeddingFailure): DocsSearchReason {
   return {
     code: 'endpoint-unreachable',

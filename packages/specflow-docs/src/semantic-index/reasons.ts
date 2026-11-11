@@ -3,7 +3,12 @@
 // functions and the endpoint reasons in `embeddings/endpoint-reasons` are the whole mapping, so each
 // row is testable without an endpoint or an index.
 
-import { SEARCH_REASON, type RefreshOutcome, type SearchReason } from '@nevo/ai-semantic-search';
+import {
+  SEARCH_REASON,
+  type EmbeddingFailure,
+  type RefreshOutcome,
+  type SearchReason,
+} from '@nevo/ai-semantic-search';
 import {
   DOCS_SEARCH_REASON_CODES,
   type DocsSearchReason,
@@ -58,6 +63,24 @@ export const SEMANTIC_STATUS_COMMAND = 'nevo-specflow docs semantic status';
 /** The index lacks vectors for current chunks and this search does not embed them. */
 function indexIncompleteReason(message: string): DocsSearchReason {
   return reason('index-building', message);
+}
+
+/**
+ * The endpoint failed with a timeout or a refused connection while a live writer updates the index:
+ * most likely the endpoint is busy with that refresh, so the index is `index-building` rather than
+ * the endpoint unreachable.
+ */
+export function busyEndpointReason(
+  failure: EmbeddingFailure,
+  progress: { readonly embedded: number; readonly total: number } | undefined,
+): DocsSearchReason {
+  return indexIncompleteReason(
+    `The embedding endpoint did not answer (${failure.code}: ${failure.message}) while the index is being updated in the background${
+      progress === undefined
+        ? ''
+        : ` (${String(progress.embedded)}/${String(progress.total)} chunks)`
+    }; the endpoint is probably busy with that refresh.`,
+  );
 }
 
 /** More chunks lack vectors than a search embeds (`limit`, when known). */

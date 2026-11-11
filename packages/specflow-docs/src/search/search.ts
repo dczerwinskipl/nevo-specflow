@@ -26,8 +26,10 @@ import {
 } from '../semantic-index/chunk-source';
 import type { IndexCatchUp } from '../semantic-index/catch-up';
 import type { DocsIndex } from '../semantic-index/index-store';
+import { readIndexActivity } from '../semantic-index/progress';
 import { SEMANTIC_INDEX_COMMAND, searchReason, semanticEndpoint } from '../semantic-index/reasons';
 import {
+  endpointFailureReason,
   identityChangedForRead,
   refreshForRead,
   type IndexVectors,
@@ -97,6 +99,9 @@ export function openDocsSearch(options: OpenDocsSearchOptions): DocsSearch {
       store: index.store,
       providers: created.providers,
       ...(options.catchUp ? { catchUp: options.catchUp } : {}),
+      ...(index.directory === undefined
+        ? {}
+        : { activity: () => readIndexActivity(index.directory!) }),
     },
   };
 }
@@ -189,6 +194,14 @@ async function lexicalReason(
   total: number,
   request: DocsSearchRequest,
 ): Promise<DocsSearchReason> {
+  if (
+    engine.code === SEARCH_REASON.queryEmbeddingFailed &&
+    engine.failure !== undefined &&
+    !('reason' in vectors)
+  ) {
+    return endpointFailureReason(vectors, engine.failure);
+  }
+
   return engine.code === SEARCH_REASON.indexMismatch && !('reason' in vectors)
     ? identityChangedForRead(
         vectors,

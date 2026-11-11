@@ -84,7 +84,7 @@ dimension that differs from the observed one is an error.
 ### 4. Chunking
 
 - Markdown is split on headings; each chunk keeps its heading path (`H1 > H2 > H3`) and its
-  section's stable id (the heading path as slugs) and start line.
+  section's stable id (its parent section's id and its heading's slug) and start line.
 - The consumer supplies a short contextual header per unit (for documentation: title, id, summary,
   scope, areas, tags and read_when) that is embedded with each chunk, so small chunks keep their
   document context.

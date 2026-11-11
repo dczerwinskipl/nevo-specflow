@@ -6,7 +6,7 @@ import type { Chunk, SourceUnit } from './chunk';
  * Version of the chunking behavior. Any change to how chunks, their ids, texts or embedding texts
  * are produced MUST increment it, so stored vectors are rebuilt (ADR 0021).
  */
-export const CHUNKER_VERSION = 3;
+export const CHUNKER_VERSION = 4;
 
 /** Size bound of one chunk's section text, in characters. */
 export const CHUNK_MAX_CHARS = 2000;
@@ -25,13 +25,17 @@ const LIST_ITEM = /^( *)(?:[-*+]|\d{1,9}[.)])(?:[ \t]|$)/u;
 /** One heading section of a unit's markdown: its heading line and its lines up to the next heading. */
 export interface MarkdownSection {
   /**
-   * Stable and unique within the unit: the heading path as slugs (`headingSlug`: the words of a heading
-   * joined by `-`, `section` when it has none) joined by `/`, and `PREAMBLE_SECTION_ID` for the text
-   * before the first heading. A path that occurred earlier in the unit gets the first free `~<n>`
-   * (n >= 2). It changes only when a heading of its path changes or an earlier section takes the
-   * same path, not when other sections are edited.
+   * Stable and unique within the unit: the id of the parent section (the nearest enclosing heading
+   * of a higher level), `/` and the heading's slug (`headingSlug`: its words joined by `-`,
+   * `section` when it has none); just the slug for a top-level heading, and `PREAMBLE_SECTION_ID`
+   * for the text before the first heading. A slug that a sibling earlier in the same parent already
+   * has gets the first free `~<n>` (n >= 2). So a section's id starts with its parent's id and `/`
+   * exactly when it is inside that parent, also under repeated headings; it changes only when a
+   * heading on its path changes or an earlier sibling takes the same slug.
    */
   readonly id: string;
+  /** The parent section's id; absent for a top-level heading and the preamble. */
+  readonly parentId?: string;
   readonly headingPath: readonly string[];
   /** 1-based line of the heading in the unit text (of the first line, for the preamble). */
   readonly startLine: number;
@@ -43,6 +47,8 @@ interface RawSection {
   readonly headingPath: readonly string[];
   readonly startLine: number;
   readonly lines: string[];
+  /** Index of the parent's raw section; absent at the top level. */
+  readonly parent?: number;
 }
 
 /**
@@ -97,23 +103,33 @@ export function chunkMarkdownUnit(unit: SourceUnit): Chunk[] {
  */
 export function splitMarkdownSections(markdown: string): MarkdownSection[] {
   const used = new Set<string>();
-
-  return splitRawSections(markdown)
-    .filter((section) => section.headingPath.length > 0 || section.lines.some(isContent))
-    .map((section) => {
-      const base =
-        section.headingPath.length === 0
-          ? PREAMBLE_SECTION_ID
-          : section.headingPath.map(headingSlug).join('/');
-      let id = base;
-      for (let occurrence = 2; used.has(id); occurrence += 1) {
-        id = `${base}~${occurrence}`;
+  const ids: string[] = [];
+  const sections: MarkdownSection[] = [];
+  splitRawSections(markdown).forEach((section, index) => {
+    const { parent, ...rest } = section;
+    if (section.headingPath.length === 0) {
+      ids[index] = PREAMBLE_SECTION_ID;
+      if (section.lines.some(isContent)) {
+        sections.push({ id: PREAMBLE_SECTION_ID, ...rest });
       }
 
-      used.add(id);
+      return;
+    }
 
-      return { id, ...section };
-    });
+    const parentId = parent === undefined ? undefined : ids[parent]!;
+    const slug = headingSlug(section.headingPath.at(-1)!);
+    const base = parentId === undefined ? slug : `${parentId}/${slug}`;
+    let id = base;
+    for (let occurrence = 2; used.has(id); occurrence += 1) {
+      id = `${base}~${occurrence}`;
+    }
+
+    used.add(id);
+    ids[index] = id;
+    sections.push({ id, ...(parentId === undefined ? {} : { parentId }), ...rest });
+  });
+
+  return sections;
 }
 
 /**
@@ -152,6 +168,8 @@ function splitRawSections(markdown: string): RawSection[] {
   const sections: RawSection[] = [];
   const path: string[] = [];
   const levels: number[] = [];
+  // Raw section index of each heading on `path`.
+  const owners: number[] = [];
   let current: RawSection = { headingPath: [], startLine: 1, lines: [] };
   const fence = createFenceTracker();
 
@@ -167,13 +185,21 @@ function splitRawSections(markdown: string): RawSection[] {
     while (levels.length > 0 && levels[levels.length - 1]! >= level) {
       levels.pop();
       path.pop();
+      owners.pop();
     }
 
+    const parent = owners.at(-1);
     levels.push(level);
     path.push((heading[2] ?? '').trim());
 
     sections.push(current);
-    current = { headingPath: [...path], startLine: index + 1, lines: [line] };
+    owners.push(sections.length);
+    current = {
+      headingPath: [...path],
+      startLine: index + 1,
+      lines: [line],
+      ...(parent === undefined ? {} : { parent }),
+    };
   }
 
   sections.push(current);

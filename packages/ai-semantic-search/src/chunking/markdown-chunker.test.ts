@@ -81,6 +81,20 @@ describe('chunkMarkdownUnit', () => {
     ]);
   });
 
+  it('derives a section id from its parent id, so repeated headings keep their children', () => {
+    const sections = splitMarkdownSections(
+      '# API\n## Endpoint\nx\n## Endpoint\ny\n### Error handling\nz\n## Errors\nw',
+    );
+
+    expect(sections.map((section) => [section.id, section.parentId])).toEqual([
+      ['api', undefined],
+      ['api/endpoint', 'api'],
+      ['api/endpoint~2', 'api'],
+      ['api/endpoint~2/error-handling', 'api/endpoint~2'],
+      ['api/errors', 'api'],
+    ]);
+  });
+
   it('splits a long section on block boundaries and never cuts a table or code block that fits', () => {
     const table = [
       '| Route | Purpose |',

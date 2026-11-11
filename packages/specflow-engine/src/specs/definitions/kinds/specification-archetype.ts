@@ -25,11 +25,11 @@ import { DOCUMENT_TYPE_KIND } from './document-type';
 export const SPECIFICATION_ARCHETYPE_KIND = 'specification-archetype';
 
 /**
- * The kinds an archetype's execution binding names. Their definitions belong to the workflow
- * capability (which re-exports these ids); the archetype only references them by id.
+ * The kinds an archetype's execution binding names, by id. Their definitions belong to the workflow
+ * capability; `definitions/shipped-registry.test.ts` checks these ids match the registered kinds.
  */
-export const WORKFLOW_KIND = 'workflow';
-export const TASK_TYPE_KIND = 'task-type';
+const WORKFLOW_KIND = 'workflow';
+const TASK_TYPE_KIND = 'task-type';
 
 /** Directory of the template files, below the kind directory. */
 export const ARCHETYPE_TEMPLATES_DIRECTORY = 'templates';

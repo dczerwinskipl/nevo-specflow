@@ -302,48 +302,55 @@ for (const file of files) {
   graph.set(file, [...targets]);
 }
 
-// Tarjan's strongly connected components.
-let counter = 0;
-const index = new Map();
-const low = new Map();
-const stack = [];
-const onStack = new Set();
-const components = [];
-function connect(node) {
-  index.set(node, counter);
-  low.set(node, counter);
-  counter += 1;
-  stack.push(node);
-  onStack.add(node);
-  for (const next of graph.get(node) ?? []) {
-    if (!index.has(next)) {
-      connect(next);
-      low.set(node, Math.min(low.get(node), low.get(next)));
-    } else if (onStack.has(next)) {
-      low.set(node, Math.min(low.get(node), index.get(next)));
+// Tarjan's strongly connected components (of the nodes with more than one member) of a graph given as
+// a map from node to its successors.
+function stronglyConnected(successors) {
+  let counter = 0;
+  const index = new Map();
+  const low = new Map();
+  const stack = [];
+  const onStack = new Set();
+  const result = [];
+  const connect = (node) => {
+    index.set(node, counter);
+    low.set(node, counter);
+    counter += 1;
+    stack.push(node);
+    onStack.add(node);
+    for (const next of successors.get(node) ?? []) {
+      if (!index.has(next)) {
+        connect(next);
+        low.set(node, Math.min(low.get(node), low.get(next)));
+      } else if (onStack.has(next)) {
+        low.set(node, Math.min(low.get(node), index.get(next)));
+      }
+    }
+
+    if (low.get(node) === index.get(node)) {
+      const component = [];
+      let member;
+      do {
+        member = stack.pop();
+        onStack.delete(member);
+        component.push(member);
+      } while (member !== node);
+
+      if (component.length > 1) {
+        result.push(component);
+      }
+    }
+  };
+
+  for (const node of successors.keys()) {
+    if (!index.has(node)) {
+      connect(node);
     }
   }
 
-  if (low.get(node) === index.get(node)) {
-    const component = [];
-    let member;
-    do {
-      member = stack.pop();
-      onStack.delete(member);
-      component.push(member);
-    } while (member !== node);
-
-    if (component.length > 1) {
-      components.push(component);
-    }
-  }
+  return result;
 }
 
-for (const node of graph.keys()) {
-  if (!index.has(node)) {
-    connect(node);
-  }
-}
+const components = stronglyConnected(graph);
 
 const relative = (file) => path.relative(src, file).split(path.sep).join('/');
 let failed = false;
@@ -422,48 +429,9 @@ for (const [file, targets] of graph) {
   workflowGraph.set(from, edges);
 }
 
-{
-  let workflowCounter = 0;
-  const workflowIndex = new Map();
-  const workflowLow = new Map();
-  const workflowStack = [];
-  const workflowOnStack = new Set();
-  const visit = (node) => {
-    workflowIndex.set(node, workflowCounter);
-    workflowLow.set(node, workflowCounter);
-    workflowCounter += 1;
-    workflowStack.push(node);
-    workflowOnStack.add(node);
-    for (const next of workflowGraph.get(node) ?? []) {
-      if (!workflowIndex.has(next)) {
-        visit(next);
-        workflowLow.set(node, Math.min(workflowLow.get(node), workflowLow.get(next)));
-      } else if (workflowOnStack.has(next)) {
-        workflowLow.set(node, Math.min(workflowLow.get(node), workflowIndex.get(next)));
-      }
-    }
-
-    if (workflowLow.get(node) === workflowIndex.get(node)) {
-      const members = [];
-      let member;
-      do {
-        member = workflowStack.pop();
-        workflowOnStack.delete(member);
-        members.push(member);
-      } while (member !== node);
-
-      if (members.length > 1) {
-        failed = true;
-        console.error('Folder cycle in workflow/:\n  ' + members.sort().join('\n  '));
-      }
-    }
-  };
-
-  for (const node of workflowGraph.keys()) {
-    if (!workflowIndex.has(node)) {
-      visit(node);
-    }
-  }
+for (const members of stronglyConnected(workflowGraph)) {
+  failed = true;
+  console.error('Folder cycle in workflow/:\n  ' + members.sort().join('\n  '));
 }
 
 if (failed) {

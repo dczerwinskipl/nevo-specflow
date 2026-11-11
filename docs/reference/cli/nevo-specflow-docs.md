@@ -135,7 +135,7 @@ answer still exits 0.
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `semantic-disabled`    | `docs.search.semantic` is absent or `false`                                                                                                                                                                                      |
 | `no-endpoint`          | semantic search is enabled but `ai.embeddings` is not configured                                                                                                                                                                 |
-| `endpoint-unreachable` | the endpoint failed, timed out or returned unusable vectors, or the `apiKeyEnv` variable is not set, while no process is updating the index                                                                                      |
+| `endpoint-unreachable` | the endpoint failed, timed out or returned unusable vectors, or the `apiKeyEnv` variable is not set; a timeout or refused connection while a process updates the index is `index-building` instead                               |
 | `index-building`       | the index does not cover the current documents yet: another process is updating it (also when the endpoint, busy with that refresh, times out or refuses), or more sections lack vectors than a search embeds, or `--no-refresh` |
 | `index-unavailable`    | the index cannot be read or written (for example a permission problem); waiting does not help                                                                                                                                    |
 
@@ -280,7 +280,7 @@ JSON output, lexical with `--no-snippets`:
   "mode": "lexical",
   "reason": {
     "code": "endpoint-unreachable",
-    "message": "Query embedding failed (unreachable): ..."
+    "message": "The embedding endpoint failed (unreachable): ..."
   },
   "results": [
     {

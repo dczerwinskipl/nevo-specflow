@@ -158,6 +158,7 @@ function publicEndpoint({
   protocol,
   baseUrl,
   model,
+  spaceId,
   dimensions,
   apiKeyEnv,
 }: EmbeddingsSettings): DocsStatus['endpoint'] {
@@ -165,6 +166,7 @@ function publicEndpoint({
     protocol,
     baseUrl,
     model,
+    ...(spaceId === undefined ? {} : { spaceId }),
     ...(dimensions === undefined ? {} : { dimensions }),
     ...(apiKeyEnv === undefined ? {} : { apiKeyEnv }),
   };

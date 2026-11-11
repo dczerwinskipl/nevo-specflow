@@ -1,7 +1,7 @@
 // `eval`: the repository's manual retrieval eval of documentation discovery (not a product command,
 // not in CI). Runs every question through three variants over this repository's configuration and
 // local `.nevo/local/` endpoint and index, without embedding any document (`refresh: false`):
-// - `find`: the frontmatter-only lexical ranking of `docs context` (the discovery before `search`);
+// - `context`: the frontmatter-only lexical ranking of `docs context` (discovery before `search`);
 // - `lexical`: `docs search` without vectors (BM25 over sections fused with the frontmatter ranking);
 // - `hybrid`: `docs search` as it answers (BM25 and vectors fused, then with the frontmatter).
 // It scores the top 10 of each against the expected document ids, overall and per language.
@@ -32,7 +32,7 @@ import {
 /** Documents each question asks for: the depth of Recall@10 and MRR. */
 export const EVAL_DEPTH = 10;
 
-export const EVAL_VARIANTS = ['find', 'lexical', 'hybrid'] as const;
+export const EVAL_VARIANTS = ['context', 'lexical', 'hybrid'] as const;
 export type EvalVariant = (typeof EVAL_VARIANTS)[number];
 
 export interface EvalQuestionResult {
@@ -114,7 +114,7 @@ export async function runEval(
     const answerable = question.expected.length > 0;
     const hybrid = await searchIds(search, false, query);
     const ids: Record<EvalVariant, readonly string[]> = {
-      find: getContext(corpus, { query, limit: EVAL_DEPTH }).map((entry) => entry.id),
+      context: getContext(corpus, { query, limit: EVAL_DEPTH }).map((entry) => entry.id),
       lexical: (await searchIds(lexical, false, query)).ids,
       hybrid: hybrid.ids,
     };

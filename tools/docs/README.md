@@ -57,7 +57,7 @@ good answer must return, plus a few questions the documentation does not answer,
 `expected: []`) through three variants, with this repository's configuration and local index, the
 top 10 documents per question and no document embedding (`--no-refresh`):
 
-- `find`: the frontmatter-only lexical ranking of `docs context` (discovery before `search`);
+- `context`: the frontmatter-only lexical ranking of `docs context` (discovery before `search`);
 - `lexical`: `docs search` without vectors (BM25 over sections fused with the frontmatter ranking);
 - `hybrid`: `docs search` as it answers (BM25 and vectors fused, then with the frontmatter).
 

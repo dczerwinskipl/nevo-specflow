@@ -107,9 +107,9 @@ function printStatus(ctx: DocsCommandContext, report: SemanticStatus): void {
   if (report.endpoint === null) {
     ctx.stdout('endpoint: not configured');
   } else {
-    const { protocol, baseUrl, model, dimensions, apiKeyEnv } = report.endpoint;
+    const { protocol, baseUrl, model, spaceId, dimensions, apiKeyEnv } = report.endpoint;
     ctx.stdout(
-      `endpoint: ${protocol} ${baseUrl}  model ${model}${
+      `endpoint: ${protocol} ${baseUrl}  model ${model}${spaceId === undefined ? '' : `  space ${spaceId}`}${
         dimensions === undefined ? '' : `  dimensions ${String(dimensions)}`
       }${apiKeyEnv === undefined ? '' : `  key from ${apiKeyEnv}`}`,
     );

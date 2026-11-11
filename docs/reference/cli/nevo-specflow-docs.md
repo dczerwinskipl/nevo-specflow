@@ -204,7 +204,9 @@ document with matching sections as `<id>#<sectionId>` references, any other docu
 Reference documents are lookup material (routes, options, keys) whose matching sections answer the
 question; documents of every other type are read whole. Since a section includes its subsections, a
 matching section inside another matching one is not named again, and a reference document whose
-matching sections include a top-level section (for example `(document)`) is read whole.
+matching sections include a top-level section (for example `(document)`) is read whole. The line
+runs as it is in bash, POSIX `sh` and PowerShell; in zsh with `EXTENDED_GLOB` set, `#` and `~` are
+glob operators, so quote the section references there (`'api#api/endpoint~2'`).
 
 ```text
 mode: hybrid
@@ -328,8 +330,12 @@ exits 1 when semantic search is enabled but unavailable: no endpoint, an unreach
 unset key variable, or an unreadable index. An index that only needs building is not a failure (exit
 0): a search catches it up in the background, and embeds a gap of at most 16 sections itself. It
 checks configuration, the endpoint and that the index can be read, not that it can be written: a
-write failure shows up on `search` as `index-unavailable`. Status only reports; it starts nothing.
-`--json` prints the same report as one JSON object, the `DocsStatus` contract of [`GET
+write failure shows up on `search` as `index-unavailable`. It compares the embedding space of the
+index with the configured one, but not the stored probe vector: a model whose weights changed under
+the same name and space is noticed by the next full refresh (`semantic index`, the background
+catch-up or the Runtime start). Status only reports; it starts nothing.
+The endpoint line shows `space <spaceId>` when `ai.embeddings.spaceId` is set. `--json` prints the
+same report as one JSON object, the `DocsStatus` contract of [`GET
 /api/docs/status`](../api/docs-search.md#get-apidocsstatus).
 
 ```text

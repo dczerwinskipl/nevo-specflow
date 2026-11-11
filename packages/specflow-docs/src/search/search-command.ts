@@ -145,7 +145,9 @@ function printResult(ctx: DocsCommandContext, query: string, result: DocsSearchR
  * question; other documents are meant to be read whole. A section is read with its subsections, so
  * a matching section inside another matching one (its id starts with the other's id and `/`) is
  * not named again, and a reference document with a matching top-level section (with its
- * subsections most or all of the document) is read whole too.
+ * subsections most or all of the document) is read whole too. References are not quoted: bash,
+ * POSIX `sh` and PowerShell take `#` and `~` inside a word literally (zsh with `EXTENDED_GLOB` does
+ * not; the CLI reference says to quote them there).
  */
 export function readAllCommand(result: DocsSearchResult, getCommand: string): string {
   const refs = result.results.flatMap((hit) => {

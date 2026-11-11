@@ -140,6 +140,8 @@ export const DocsStatusEndpointSchema = Type.Object(
     protocol: Type.String(),
     baseUrl: Type.String(),
     model: Type.String(),
+    /** The declared `ai.embeddings.spaceId`; absent when the endpoint fingerprint is the space. */
+    spaceId: Type.Optional(Type.String()),
     dimensions: Type.Optional(Type.Integer({ minimum: 1 })),
     /** Name of the environment variable the API key is read from. */
     apiKeyEnv: Type.Optional(Type.String()),

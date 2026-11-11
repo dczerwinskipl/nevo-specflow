@@ -15,8 +15,8 @@ read_when:
 summary: >
   The docs namespace (root, search.semantic), the documentation settings file <docs.root>/docs.yaml
   (taxonomy, nonAuthoritative, exclude) and the ai.embeddings endpoint (baseUrl, model, optional
-  protocol, spaceId, dimensions, apiKeyEnv, queryInstruction, batchSize, timeoutMs): which file holds them,
-  how they merge, their validation and defaults, and documentation-only configuration.
+  protocol, spaceId, dimensions, apiKeyEnv, queryInstruction, batchSize, timeoutMs): which file
+  holds them, how they merge, their validation and defaults, and documentation-only configuration.
 related:
   - adr.0020-documentation-discovery-is-a-product-capability
   - adr.0021-product-neutral-ai-semantic-search-engine
@@ -188,7 +188,11 @@ slash dropped) and the `model`, so pointing the same model name at another serve
 at the same server, rebuilds the index on the next refresh, and searches answer lexically
 (`index-building`) until it is rebuilt. Set `spaceId` (any non-empty string) when several servers
 serve the same weights and should share one index, for example a team endpoint and a local copy
-of the same model; it then replaces the fingerprint, and changing it rebuilds the index.
+of the same model; it then replaces the fingerprint, and changing it rebuilds the index. The
+fingerprint is deliberately conservative: it compares the configured text, not what the server
+resolves it to, so `qwen3-embedding` and `qwen3-embedding:latest`, `localhost` and `127.0.0.1`, or
+the same query parameters in another order are different spaces and cost one rebuild; declare a
+`spaceId` to treat such spellings as one space.
 
 A model whose weights change under the same name and server (an updated model tag, for example) is
 caught by a probe: every full refresh (`semantic index`, the background catch-up a search starts

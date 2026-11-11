@@ -80,7 +80,10 @@ No parameters. `200` with `DocsStatus`, unchanged from `nevo-specflow docs seman
 | `activity`     | `updating` (with the writer's `pid` and, for a full refresh, `progress`: `startedAt`, `updatedAt`, `embedded`, `total`) or `idle` (with `last`: `outcome` `completed`/`failed`/`interrupted`, times, counts, `generation`, `message`)                                                             |
 | `failed`       | semantic search is enabled but cannot work until the configuration, endpoint or index is fixed; an index that only needs building is not a failure                                                                                                                                                |
 
-The status only reports: it starts no refresh. It sees every writer of the shared index, a CLI
+The status only reports: it starts no refresh. It compares the embedding space of the index with
+the configured one, but not the stored probe vector, so a model whose weights changed under the same
+name and space is noticed by the next full refresh (`semantic index`, the background catch-up or the
+Runtime start). It sees every writer of the shared index, a CLI
 `semantic index` as well as the Runtime's own refresh. Authorization, `Cache-Control`, `503` and its
 cases are those of the search.
 

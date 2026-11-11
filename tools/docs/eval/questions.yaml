@@ -123,7 +123,18 @@ questions:
     lang: en
     expected: [reference.configuration.documentation-and-embeddings]
 
-  # No answer in the documentation
+  # No answer in the documentation, near the repository's domain
+  - question: Which database engine stores Specifications in production?
+    lang: en
+    expected: []
+  - question: How do I deploy the Runtime to Kubernetes with Helm?
+    lang: en
+    expected: []
+  - question: Jak skonfigurować logowanie przez SSO w Nevo SpecFlow?
+    lang: pl
+    expected: []
+
+  # No answer in the documentation, unrelated
   - question: How do I configure the office printer on the third floor?
     lang: en
     expected: []

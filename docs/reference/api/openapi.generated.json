@@ -1079,6 +1079,9 @@
                       "model": {
                         "type": "string"
                       },
+                      "spaceId": {
+                        "type": "string"
+                      },
                       "dimensions": {
                         "type": "integer",
                         "minimum": 1
@@ -1458,6 +1461,9 @@
                         "type": "string"
                       },
                       "model": {
+                        "type": "string"
+                      },
+                      "spaceId": {
                         "type": "string"
                       },
                       "dimensions": {

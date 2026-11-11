@@ -115,7 +115,7 @@ function addEvalCommand(program: Command, ctx: LauncherContext): void {
   program
     .command('eval')
     .description(
-      'Score find, lexical and hybrid search against the repository question set: Recall@5, Recall@10 and MRR per language, vector similarity diagnostics and non-authoritative hits (manual, uses the local index; embeds no documents)',
+      'Score context, lexical and hybrid search against the repository question set: Recall@5, Recall@10 and MRR per language, vector similarity diagnostics and non-authoritative hits (manual, uses the local index; embeds no documents)',
     )
     .option('--questions <file>', 'question set (YAML)', EVAL_QUESTIONS_FILE)
     .option('--json', 'emit JSON on stdout', false)
@@ -147,13 +147,15 @@ function printReport(ctx: LauncherContext, report: EvalReport): void {
   const similarity = (value: number | undefined) =>
     value === undefined ? 'sim   -  ' : `sim ${fixed(value)}`;
 
-  ctx.stdout('first expected rank per variant (find / lexical / hybrid), best vector similarity:');
+  ctx.stdout(
+    'first expected rank per variant (context / lexical / hybrid), best vector similarity:',
+  );
   for (const result of report.results) {
-    const { find, lexical, hybrid } = result.variants;
+    const { context, lexical, hybrid } = result.variants;
     const answer =
       result.expected.length === 0
         ? 'no answer   '
-        : `${rank(find.score)} /${rank(lexical.score)} /${rank(hybrid.score)}`;
+        : `${rank(context.score)} /${rank(lexical.score)} /${rank(hybrid.score)}`;
     ctx.stdout(
       `${answer}  ${similarity(result.bestSimilarity)}  ${result.lang}  ${result.question}`,
     );

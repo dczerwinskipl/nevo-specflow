@@ -1,13 +1,17 @@
 import type { ExecutionCatalogue } from '../definitions/catalogue';
 import type { TaskType, TaskTypes, WorkflowStep } from '../definitions/model';
-import { handoffOf, type Handoff } from '../progression/progression';
+import {
+  handoffOf,
+  type ExecutorClass,
+  type Handoff,
+  type RunPosition,
+  type WorkflowPin,
+} from '../core';
 import { isTaskTypeAllowed, taskReadiness, type TaskReadiness } from '../tasks/tasks';
 import type {
-  RunPosition,
   TaskRecord,
   TaskStatus,
   TaskStatusChange,
-  WorkflowPin,
   WorkflowRun,
   WorkflowSubject,
 } from '../state/model';
@@ -26,7 +30,8 @@ export interface StepContext {
     readonly kind: WorkflowStep['kind'];
     readonly purpose: string;
     readonly instructions?: string;
-    readonly executor?: 'agent' | 'human';
+    /** Who may do the step (a work step); who does this attempt is its recorded actor. */
+    readonly executors?: readonly ExecutorClass[];
     readonly interaction?: 'interactive' | 'autonomous';
     readonly produces?: 'tasks';
   };
@@ -96,8 +101,8 @@ export interface StepContextInput {
 export function compileStepContext(input: StepContextInput): StepContext {
   const { step, catalogue } = input;
   const archetype =
-    step.kind === 'work' && step.archetype !== undefined
-      ? catalogue.archetype(step.archetype)
+    step.kind === 'work' && step.annotations.archetype !== undefined
+      ? catalogue.archetype(step.annotations.archetype)
       : undefined;
   const handoff = handoffOf({
     ...input.run,
@@ -119,9 +124,11 @@ export function compileStepContext(input: StepContextInput): StepContext {
       ...(step.instructions !== undefined ? { instructions: step.instructions } : {}),
       ...(step.kind === 'work'
         ? {
-            executor: step.executor,
-            interaction: step.interaction,
-            ...(step.produces !== undefined ? { produces: step.produces } : {}),
+            executors: step.executors,
+            interaction: step.annotations.interaction,
+            ...(step.annotations.produces !== undefined
+              ? { produces: step.annotations.produces }
+              : {}),
           }
         : {}),
     },
@@ -158,7 +165,7 @@ export function compileStepContext(input: StepContextInput): StepContext {
           },
         }
       : {}),
-    ...(step.kind === 'work' && step.produces === 'tasks'
+    ...(step.kind === 'work' && step.annotations.produces === 'tasks'
       ? {
           taskTypes: catalogue
             .taskTypes()

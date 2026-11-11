@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import type { ExecutionCatalogue } from '../definitions/catalogue';
-import type { ExecutorRecord } from '../state/model';
+import type { WorkflowActor } from '../state/model';
 import { finishStep, type FinishStepInput } from './finish';
 import { inspectExecution } from './inspect';
 import {
@@ -98,7 +98,7 @@ describe('continuation after a finished step', () => {
       step: 'breakdown-review',
       attempt: 1,
       input: { result: 'fail', feedback: 'Split the UI task.' },
-      executor: claude,
+      actor: claude,
     });
     const started = await startSpecification(dependencies);
 
@@ -120,19 +120,19 @@ describe('continuation after a finished step', () => {
 describe('the executor of a finished step', () => {
   const finishRequirements = (
     dependencies: ReturnType<typeof memoryDependencies>,
-    executor: ExecutorRecord | undefined,
+    executor: WorkflowActor | undefined,
   ) =>
     finishStep(dependencies, {
       subject: specification,
       step: 'requirements',
       attempt: 1,
       input: {},
-      ...(executor ? { executor } : {}),
+      ...(executor ? { actor: executor } : {}),
     } as FinishStepInput);
 
-  it.each<[string, ExecutorRecord | undefined]>([
+  it.each<[string, WorkflowActor | undefined]>([
     ['the owner', owner],
-    ['no executor', undefined],
+    ['no actor', undefined],
     ['another Session of the provider', agent('claude', 'session-b', 'claude-opus-5-5')],
     ['the same Session id of another provider', agent('codex', 'session-a')],
   ])('refuses %s finishing the attempt of an agent Session', async (_name, executor) => {
@@ -168,7 +168,7 @@ describe('fail closed', () => {
         step: 'requirements',
         attempt: 2,
         input: {},
-        executor: claude,
+        actor: claude,
       }),
     ).rejects.toMatchObject({ code: 'WORKFLOW_ATTEMPT_MISMATCH' });
   });
@@ -192,7 +192,7 @@ describe('fail closed', () => {
         step: 'requirements',
         attempt: 1,
         input: {},
-        executor: claude,
+        actor: claude,
       }),
     ).rejects.toMatchObject({ code: 'WORKFLOW_DEFINITION_CHANGED' });
   });
@@ -219,7 +219,7 @@ describe('fail closed', () => {
         step: 'requirements',
         attempt: 1,
         input,
-        executor: claude,
+        actor: claude,
       }),
     ).rejects.toMatchObject({ code: 'WORKFLOW_INPUT_INVALID' });
     expect(dependencies.store.applied).toHaveLength(applied);
@@ -237,9 +237,81 @@ describe('fail closed', () => {
         step: 'breakdown',
         attempt: 1,
         input: { tasks: [{ id: 'api', title: 'x'.repeat(201), type: 'implementation' }] },
-        executor: claude,
+        actor: claude,
       }),
     ).rejects.toMatchObject({ code: 'WORKFLOW_INPUT_INVALID' });
     expect(dependencies.store.applied).toHaveLength(applied);
+  });
+});
+
+describe('a step done by hand', () => {
+  it('reports session-unavailable when the next step would reuse the Session of a person (D10)', async () => {
+    const dependencies = memoryDependencies(catalogue);
+    const result = await work(dependencies, specification, {}, owner);
+
+    expect(result.continuation).toEqual({
+      kind: 'attention',
+      step: 'specification',
+      reason: 'session-unavailable',
+      archetype: 'spec-writer',
+    });
+    const inspection = await inspectExecution(dependencies, SPEC);
+    expect(inspection.attention).toEqual([
+      expect.objectContaining({ step: 'specification', reason: 'session-unavailable' }),
+    ]);
+    expect(inspection.specification?.record.run.attempts[0]).toMatchObject({
+      actor: owner,
+      finishedBy: owner,
+    });
+  });
+
+  it('ships acceptance as a human-only gate, and an agent never takes over a person attempt', async () => {
+    const dependencies = memoryDependencies(catalogue);
+    const human = (step: string) =>
+      catalogue
+        .workflow('specification-standard')
+        ?.steps.find((candidate) => candidate.id === step);
+    expect(human('acceptance')).toMatchObject({ executors: ['human'] });
+    expect(human('breakdown')).toMatchObject({ executors: ['agent', 'human'] });
+    await startSpecification(dependencies, owner);
+
+    await expect(work(dependencies, specification, {}, claude)).rejects.toMatchObject({
+      code: 'WORKFLOW_EXECUTOR_NOT_ALLOWED',
+    });
+  });
+});
+
+describe('a repeated finish (F16)', () => {
+  const finishRequirements = (
+    dependencies: ReturnType<typeof memoryDependencies>,
+    feedback?: string,
+  ) =>
+    finishStep(dependencies, {
+      subject: specification,
+      step: 'requirements',
+      attempt: 1,
+      input: feedback !== undefined ? { feedback } : {},
+      actor: claude,
+    });
+
+  it('returns the recorded result without writing again', async () => {
+    const dependencies = memoryDependencies(catalogue);
+    await startSpecification(dependencies);
+    const first = await finishRequirements(dependencies, 'Agreed.');
+    const applied = dependencies.store.applied.length;
+
+    const again = await finishRequirements(dependencies, 'Agreed.');
+    expect(again).toEqual({ ...first, replayed: true });
+    expect(dependencies.store.applied).toHaveLength(applied);
+  });
+
+  it('refuses another finish of the same attempt', async () => {
+    const dependencies = memoryDependencies(catalogue);
+    await startSpecification(dependencies);
+    await finishRequirements(dependencies, 'Agreed.');
+
+    await expect(finishRequirements(dependencies, 'Something else.')).rejects.toMatchObject({
+      code: 'WORKFLOW_ATTEMPT_MISMATCH',
+    });
   });
 });

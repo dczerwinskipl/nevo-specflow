@@ -1,7 +1,7 @@
 import type { AttentionItem } from '../attention/model';
 import type { ContinuationDecision } from '../continuation/resolve';
 import type { ExecutionCatalogue } from '../definitions/catalogue';
-import { findStep } from '../definitions/model';
+import { findStep } from '../core';
 import type { WorkflowSubject } from '../state/model';
 import type { ExecutionSnapshot } from '../state/store';
 import { continuationOf, waitDecision } from './advance';
@@ -51,7 +51,7 @@ export function deriveAttention(
   } else if (
     definition &&
     position.state === 'active' &&
-    findStep(definition, position.step)?.kind === 'wait-for-tasks'
+    findStep(definition, position.step)?.kind === 'wait'
   ) {
     add(
       { kind: 'specification', specId: specification.specId },

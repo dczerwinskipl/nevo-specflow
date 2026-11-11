@@ -11,9 +11,9 @@ import {
   TASK_TITLE_MAX,
   isValidTaskId,
 } from '../limits';
-import { newRun } from '../progression/progression';
+import { newRun } from '../core';
 import { dependencyCycle } from '../state/dependency-cycle';
-import type { TaskRecord, TaskStatus } from '../state/model';
+import type { TaskRecord, TaskStatus, WorkflowActor } from '../state/model';
 
 /**
  * Tasks of a Specification: drafted from the structured finish input of a step that `produces: tasks`
@@ -142,7 +142,7 @@ export function materializeTasks(input: MaterializeTasksInput): MaterializedTask
 
     const type = input.taskType(proposal.type);
     const workflow = type ? input.workflow(type.workflow) : undefined;
-    if (!type || workflow?.subject !== 'task') {
+    if (!type || workflow?.annotations.subject !== 'task') {
       throw new WorkflowError(
         'WORKFLOW_NOT_CONFIGURED',
         `The task type "${proposal.type}" or its workflow is not defined.`,
@@ -166,7 +166,7 @@ export function materializeTasks(input: MaterializeTasksInput): MaterializedTask
       dependsOn: [...new Set(proposal.dependsOn ?? [])],
       origin: input.origin,
       status: 'draft',
-      run: newRun(workflow),
+      run: newRun<WorkflowActor>(workflow),
     };
   });
   const cycle = dependencyCycle(graph);

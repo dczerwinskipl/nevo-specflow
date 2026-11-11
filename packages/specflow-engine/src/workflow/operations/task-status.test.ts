@@ -5,6 +5,7 @@ import { loadDefinitions } from '../../specs/definitions/loader';
 import { MemoryDefinitionSource } from '../../specs/definitions/test-support';
 import { resolveExecutionCatalogue, type ExecutionCatalogue } from '../definitions/catalogue';
 import { FEEDBACK_MAX } from '../limits';
+import type { OwnerActor } from '../state/model';
 import { finishStep, type FinishStepInput } from './finish';
 import { inspectExecution } from './inspect';
 import {
@@ -62,11 +63,11 @@ const decide = (
     taskId,
     status,
     ...(reason !== undefined ? { reason } : {}),
-    executor: owner,
+    actor: owner,
   });
 
 const startTask = (dependencies: Dependencies, taskId: string) =>
-  startTaskExecution(dependencies, { specId: SPEC, taskId, executor: claude });
+  startTaskExecution(dependencies, { specId: SPEC, taskId, actor: claude });
 
 const statusOf = async (dependencies: Dependencies, taskId: string) =>
   (await inspectExecution(dependencies, SPEC)).tasks.find((entry) => entry.record.taskId === taskId)
@@ -82,7 +83,7 @@ describe('setTaskStatus', () => {
         specId: SPEC,
         taskId: 'api',
         status: 'on-hold',
-        executor: claude,
+        actor: claude as unknown as OwnerActor,
       }),
     ).rejects.toMatchObject({ code: 'WORKFLOW_EXECUTOR_NOT_ALLOWED' });
   });
@@ -101,7 +102,7 @@ describe('setTaskStatus', () => {
       step: 'implement',
       attempt: started.context.attempt,
       input: {},
-      executor: claude,
+      actor: claude,
     });
 
     expect(finished.continuation).toEqual({ kind: 'none', reason: 'on-hold' });
@@ -173,7 +174,7 @@ describe('setTaskStatus', () => {
       step: 'breakdown',
       attempt: 1,
       input: { tasks: TWO_TASKS },
-      executor: claude,
+      actor: claude,
     });
     const reviewer = agent('codex', 'session-r', 'x');
     const review = (taskDecisions: FinishStepInput['input']['taskDecisions']) =>
@@ -182,7 +183,7 @@ describe('setTaskStatus', () => {
         step: 'breakdown-review',
         attempt: 1,
         input: { result: 'pass', ...(taskDecisions ? { taskDecisions } : {}) },
-        executor: reviewer,
+        actor: reviewer,
       });
     await startSpecification(dependencies, reviewer);
     const before = await inspectExecution(dependencies, SPEC);
@@ -219,7 +220,7 @@ describe('setTaskStatus', () => {
       step: 'breakdown',
       attempt: 1,
       input: { tasks: TWO_TASKS },
-      executor: claude,
+      actor: claude,
     });
 
     const reviewed = await work(
@@ -255,7 +256,7 @@ describe('setTaskStatus', () => {
       step: 'breakdown',
       attempt: 1,
       input: { tasks: TWO_TASKS },
-      executor: claude,
+      actor: claude,
     });
 
     await expect(
@@ -305,7 +306,7 @@ describe('setTaskStatus', () => {
         step: 'implement',
         attempt: 1,
         input: { taskDecisions: [{ taskId: 'screen', status: 'on-hold' }] },
-        executor: claude,
+        actor: claude,
       }),
     ).rejects.toMatchObject({ code: 'WORKFLOW_INPUT_INVALID' });
   });
@@ -335,7 +336,7 @@ describe('escalation to the Specification', () => {
           { id: 'web', title: 'Web', type: 'implementation' },
         ],
       },
-      executor: claude,
+      actor: claude,
     });
     await work(dependencies, specification, { result: 'pass' }, agent('codex', 'session-r', 'x'));
     await work(dependencies, task('api'));
@@ -430,7 +431,7 @@ describe('escalation to the Specification', () => {
       step: 'breakdown',
       attempt: 1,
       input: { tasks: TWO_TASKS },
-      executor: claude,
+      actor: claude,
     });
     await work(
       dependencies,
@@ -452,7 +453,7 @@ describe('escalation to the Specification', () => {
       step: 'breakdown',
       attempt: 2,
       input: { tasks: [{ id: 'extra', title: 'Extra', type: 'implementation' }] },
-      executor: claude,
+      actor: claude,
     });
     await startSpecification(dependencies);
     const before = await inspectExecution(dependencies, SPEC);
@@ -463,7 +464,7 @@ describe('escalation to the Specification', () => {
         step: 'breakdown-review',
         attempt: 2,
         input: { result: 'pass' },
-        executor: claude,
+        actor: claude,
       }),
     ).rejects.toMatchObject({
       code: 'WORKFLOW_INPUT_INVALID',
@@ -529,7 +530,7 @@ describe('escalation to the Specification', () => {
     await specificationWithTasks(dependencies);
     await work(dependencies, task('api'));
     await returnToStep(dependencies, {
-      executor: owner,
+      actor: owner,
       subject: specification,
       step: 'breakdown',
       feedback: 'x',
@@ -558,7 +559,7 @@ describe('escalation to the Specification', () => {
     await specificationWithTasks(dependencies);
     await work(dependencies, task('api'));
     await returnToStep(dependencies, {
-      executor: owner,
+      actor: owner,
       subject: specification,
       step: 'breakdown',
       feedback: 'x',
@@ -587,7 +588,7 @@ describe('escalation to the Specification', () => {
     await specificationWithTasks(dependencies);
     await work(dependencies, task('api'));
     await returnToStep(dependencies, {
-      executor: owner,
+      actor: owner,
       subject: specification,
       step: 'breakdown',
       feedback: 'x',
@@ -603,7 +604,7 @@ describe('escalation to the Specification', () => {
       step: 'breakdown',
       attempt: 2,
       input: { tasks: [] },
-      executor: claude,
+      actor: claude,
     });
     await expect(work(dependencies, specification, { result: 'pass' })).rejects.toMatchObject({
       code: 'WORKFLOW_INPUT_INVALID',

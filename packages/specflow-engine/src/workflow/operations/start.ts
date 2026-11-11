@@ -1,16 +1,11 @@
 import { ANY_TASK_TYPE } from '@nevo/specflow-contracts/documents';
 
+import { decide, findStep, newRun } from '../core';
 import { resolveSpecificationExecution } from '../definitions/catalogue';
 import { WorkflowError } from '../errors';
-import { assertExecutorAllowed } from '../progression/executor';
-import { applyStart, newRun, planStart } from '../progression/progression';
 import { isTaskClosed, taskReadiness } from '../tasks/tasks';
-import {
-  activeAttempt,
-  type ExecutorRecord,
-  type SpecificationExecutionRecord,
-  type WorkflowSubject,
-} from '../state/model';
+import type { SpecificationExecutionRecord, WorkflowActor, WorkflowSubject } from '../state/model';
+import { assertSameSession } from './actors';
 import type { ExecutionChange, ExecutionSnapshot } from '../state/store';
 import {
   executionTasks,
@@ -31,10 +26,10 @@ export type StartResult =
 
 export interface StartOptions {
   /**
-   * Who works on the attempt, from trusted Runtime/CLI context. Its kind must be the step's; the
-   * Session of an agent attempt is the only one that can resume or finish it.
+   * Who works on the attempt, from trusted Runtime/CLI context (never a request payload). Its class
+   * must be one the step allows; the Session of an agent attempt is the only one that resumes it.
    */
-  readonly executor: ExecutorRecord;
+  readonly actor: WorkflowActor;
 }
 
 /**
@@ -50,36 +45,41 @@ async function startSubject(
   seed?: ExecutionChange['specification'],
 ): Promise<StartResult> {
   const loaded = loadSubject(dependencies.catalogue, snapshot, subject);
-  const plan = planStart(loaded.run, loaded.definition);
-  if (plan.kind === 'terminal') {
+  if (loaded.run.position.state === 'terminal') {
     return { kind: 'terminal', subject };
   }
 
-  // The Engine enters and settles a wait step itself; nobody starts or resumes one.
-  if (plan.step.kind === 'wait-for-tasks') {
-    throw new WorkflowError('WORKFLOW_POSITION_INVALID', 'A wait step is entered by the Engine.');
+  // A resume continues the active attempt: only its own Session may resume an agent attempt. The
+  // core refuses a wait step (the Engine enters and settles it) and an actor of the wrong class.
+  assertSameSession(loaded.run, options.actor);
+  const decision = decide(loaded.definition, loaded.run, {
+    kind: 'start',
+    at: isoNow(dependencies),
+    actor: options.actor,
+  });
+  const intent = decision.intent;
+  const step = findStep(loaded.definition, intent.kind === 'execute' ? intent.step : '');
+  if (intent.kind !== 'execute' || step?.kind !== 'work') {
+    throw new WorkflowError('WORKFLOW_STATE_CORRUPT', 'A start activated no work step.');
   }
 
-  // A resume continues the active attempt: only its own Session may resume an agent attempt.
-  assertExecutorAllowed(plan.step, options.executor, activeAttempt(loaded.run));
-  if (plan.kind === 'activate') {
+  if (!intent.resumed) {
     assertTaskReady(dependencies, snapshot, loaded);
   }
 
-  const at = isoNow(dependencies);
-  const run = applyStart(loaded.run, plan, { at, executor: options.executor });
+  const run = decision.nextRun;
   if (run !== loaded.run || seed) {
     await dependencies.store.apply(subject.specId, changeFor(snapshot, loaded, run, seed));
   }
 
   return {
-    kind: plan.kind === 'resume' ? 'resumed' : 'started',
+    kind: intent.resumed ? 'resumed' : 'started',
     subject,
     context: compileStepContext({
       subject,
       run,
-      step: plan.step,
-      attempt: plan.attempt,
+      step,
+      attempt: intent.attempt,
       catalogue: dependencies.catalogue,
       ...(loaded.task ? { task: loaded.task } : {}),
       allowedTaskTypes: snapshot.specification?.value.taskTypes ?? [ANY_TASK_TYPE],
@@ -200,7 +200,7 @@ function newSpecificationRecord(
     archetype: input.archetype,
     taskTypes: resolved.taskTypes,
     taskIds: [],
-    run: newRun(resolved.workflow),
+    run: newRun<WorkflowActor>(resolved.workflow),
   };
 }
 

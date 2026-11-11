@@ -1,5 +1,5 @@
 import type { AttentionItem } from '../attention/model';
-import { handoffOf, type Handoff } from '../progression/progression';
+import { handoffOf, type Handoff } from '../core';
 import { taskReadiness, type TaskReadiness } from '../tasks/tasks';
 import type { SpecificationExecutionRecord, TaskRecord, WorkflowRun } from '../state/model';
 import { deriveAttention } from './attention';

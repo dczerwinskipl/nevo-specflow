@@ -21,10 +21,10 @@ const workflow: WorkflowDefinition = {
   version: 1,
   title: 'Task',
   description: 'Task.',
-  subject: 'task',
   entryStep: 'implement',
   steps: [],
   returns: [],
+  annotations: { subject: 'task' },
 };
 const implementation: TaskType = {
   id: 'implementation',

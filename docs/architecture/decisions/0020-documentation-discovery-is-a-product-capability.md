@@ -5,7 +5,7 @@ title: Documentation discovery is a product capability
 status: current
 date: 2026-11-09
 summary: >
-  Documentation discovery is deliberately promoted into the product as `@nevo/specflow-docs`: it
+  Amended by ADR 0022 (workspace-scoped documentation reader). Documentation discovery is deliberately promoted into the product as `@nevo/specflow-docs`: it
   owns the frontmatter contract, deterministic discovery and optional semantic search, takes its
   taxonomy from a settings file next to the documentation, works without an initialized project,
   is exposed as the ordinary CLI command `nevo-specflow docs`
@@ -16,6 +16,7 @@ related:
   - adr.0007-documentation-architecture-and-taxonomy
   - adr.0012-product-package-topology-and-dependency-direction
   - adr.0021-product-neutral-ai-semantic-search-engine
+  - adr.0022-workspace-scoped-documentation-reader
   - architecture.runtime.configuration
   - architecture.runtime.authorization
   - architecture.repository-structure
@@ -28,6 +29,13 @@ related:
 Current. The decisions below were taken by the product owner on 2026-11-09; where the taxonomy lives
 (section 2), documentation without an initialized project (section 3) and the init interaction
 (section 7) on 2026-11-10.
+
+**Amended by [ADR 0022](0022-workspace-scoped-documentation-reader.md).** Sections 3, 5 and 6 are
+amended: the Runtime serves every registered workspace's documentation under
+`/api/workspaces/:workspaceId/docs` with `docs.view` at project scope, and `/api/docs/*` is removed;
+every checkout has its own index, and the Runtime embeds only through its own `ai.embeddings`;
+invalid documents are skipped everywhere except `check`; the Runtime keeps a bounded number of
+workspace corpora. Where this ADR says otherwise, ADR 0022 wins.
 
 ## Context
 
@@ -131,6 +139,8 @@ The exact keys are defined by the configuration reference; ownership rules are i
 
 ### 3. Command surface
 
+(Amended 2026-11-12 by [ADR 0022](0022-workspace-scoped-documentation-reader.md): the CLI's checkout configuration, skipped invalid documents and per-checkout indexes.)
+
 `nevo-specflow docs` is an ordinary CLI command. It MUST NOT start Runtime, require a running
 Runtime, load UI assets or require the UI build.
 
@@ -193,6 +203,8 @@ is on, because every result states its `mode`.
 
 ### 5. Index freshness without a watcher
 
+(Amended 2026-11-12 by [ADR 0022](0022-workspace-scoped-documentation-reader.md): per-checkout indexes, seeding, write admission and bounded Runtime refreshes.)
+
 The index is refreshed incrementally, never rebuilt on every run (rebuild rules are in
 [ADR 0021](0021-product-neutral-ai-semantic-search-engine.md)). Two triggers keep it fresh:
 
@@ -222,6 +234,8 @@ The CLI and a running Runtime share one index in `.nevo/local/cache/docs-index/`
 disposable cache, not state ([project configuration and local state](../runtime/configuration.md)).
 
 ### 6. Runtime endpoint
+
+(Amended 2026-11-12 by [ADR 0022](0022-workspace-scoped-documentation-reader.md): the endpoints are replaced by workspace-scoped routes with `docs.view` at project scope.)
 
 Runtime exposes `GET /api/docs/search` with the same result contract as the CLI, and
 `GET /api/docs/status` with the contract of `semantic status --json`. The contract types and schemas

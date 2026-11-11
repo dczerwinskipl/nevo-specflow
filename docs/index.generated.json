@@ -1998,12 +1998,13 @@
       "status": "current",
       "file": "docs/architecture/decisions/0020-documentation-discovery-is-a-product-capability.md",
       "read_when": [],
-      "summary": "Documentation discovery is deliberately promoted into the product as `@nevo/specflow-docs`: it owns the frontmatter contract, deterministic discovery and optional semantic search, takes its taxonomy from a settings file next to the documentation, works without an initialized project, is exposed as the ordinary CLI command `nevo-specflow docs` and as the Runtime endpoint `GET /api/docs/search`, and keeps its index fresh on Runtime start and on read without a file watcher.",
+      "summary": "Amended by ADR 0022 (workspace-scoped documentation reader). Documentation discovery is deliberately promoted into the product as `@nevo/specflow-docs`: it owns the frontmatter contract, deterministic discovery and optional semantic search, takes its taxonomy from a settings file next to the documentation, works without an initialized project, is exposed as the ordinary CLI command `nevo-specflow docs` and as the Runtime endpoint `GET /api/docs/search`, and keeps its index fresh on Runtime start and on read without a file watcher.",
       "related": [
         "adr.0005-repository-tooling-is-separate-from-the-product-api",
         "adr.0007-documentation-architecture-and-taxonomy",
         "adr.0012-product-package-topology-and-dependency-direction",
         "adr.0021-product-neutral-ai-semantic-search-engine",
+        "adr.0022-workspace-scoped-documentation-reader",
         "architecture.runtime.configuration",
         "architecture.runtime.authorization",
         "architecture.repository-structure"
@@ -2023,6 +2024,27 @@
         "adr.0012-product-package-topology-and-dependency-direction",
         "architecture.runtime.configuration",
         "architecture.repository-structure"
+      ]
+    },
+    {
+      "id": "adr.0022-workspace-scoped-documentation-reader",
+      "type": "adr",
+      "title": "Workspace-scoped documentation reader",
+      "status": "current",
+      "file": "docs/architecture/decisions/0022-workspace-scoped-documentation-reader.md",
+      "read_when": [],
+      "summary": "Amends ADR 0020 sections 3, 5 and 6: the Runtime serves each registered workspace's documentation under /api/workspaces/:workspaceId/docs with docs.view at project scope, replacing /api/docs/*; every checkout has its own index, embedded only through the Runtime's trusted ai.embeddings; and invalid documents are skipped everywhere except docs check.",
+      "related": [
+        "adr.0020-documentation-discovery-is-a-product-capability",
+        "adr.0021-product-neutral-ai-semantic-search-engine",
+        "architecture.runtime.authorization",
+        "architecture.runtime.configuration",
+        "architecture.runtime.specflow-project-home",
+        "reference.api.docs-search",
+        "reference.configuration.documentation-and-embeddings",
+        "reference.configuration.specflow-git-worktrees",
+        "reference.cli.nevo-specflow-docs",
+        "product.specflow.ui.documentation-reader"
       ]
     },
     {

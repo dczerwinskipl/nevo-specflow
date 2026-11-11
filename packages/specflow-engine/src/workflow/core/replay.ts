@@ -67,13 +67,24 @@ function attemptFollows(
  *   step an attempt replayed so far (the returned attempt included) was of, with feedback when the
  *   return requires it.
  *
- * The position the replay ends at must be the stored one. Anything else is a hand-edited or foreign
+ * Sequences are unique, and so is each (step, attempt). The position the replay ends at must be
+ * the stored one. Anything else is a hand-edited or foreign
  * record.
  */
 export function isPositionJustified<A extends HostAnnotations>(
   run: WorkflowRun,
   definition: WorkflowDefinition<A>,
 ): boolean {
+  // Each record has its own sequence, and each attempt of a step its own number.
+  const records = historyOf(run);
+  const attempts = run.attempts.map((record) => `${record.step}#${String(record.attempt)}`);
+  if (
+    new Set(records.map((record) => record.sequence)).size !== records.length ||
+    new Set(attempts).size !== attempts.length
+  ) {
+    return false;
+  }
+
   const reached = new Set<string>();
   const returnAllowed = (to: string, feedback: string | undefined) => {
     const entry = definition.returns.find((candidate) => candidate.step === to);
@@ -87,7 +98,7 @@ export function isPositionJustified<A extends HostAnnotations>(
 
   let expected: RunPosition = { state: 'not-started' };
   let entering = false;
-  for (const record of historyOf(run)) {
+  for (const record of records) {
     if (isReturnRecord(record)) {
       if (
         entering ||

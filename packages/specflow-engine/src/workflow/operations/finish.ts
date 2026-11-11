@@ -1,7 +1,12 @@
 import type { ContinuationDecision } from '../continuation/resolve';
 import { decide, findStep, type RunPosition } from '../core';
 import { WorkflowError } from '../errors';
-import { assertFinishInput, assertFinishInputShape, type FinishInput } from '../input-schema';
+import {
+  assertActorShape,
+  assertFinishInput,
+  assertFinishInputShape,
+  type FinishInput,
+} from '../input-schema';
 import {
   applyTaskDecisions,
   materializeTasks,
@@ -97,7 +102,18 @@ export function finishStep(
     const snapshot = await dependencies.store.read(subject.specId);
     const loaded = loadSubject(dependencies.catalogue, snapshot, subject);
     assertFinishInput(request.input);
-    assertSameSession(loaded.run, request.actor);
+    assertActorShape(request.actor);
+    // Only the active attempt has a Session to match; a finish of an ended attempt is a retry (or
+    // a stale request) that the coordinator decides by its digest and actor.
+    const position = loaded.run.position;
+    if (
+      position.state === 'active' &&
+      position.step === request.step &&
+      position.attempt === request.attempt
+    ) {
+      assertSameSession(loaded.run, request.actor);
+    }
+
     const context: AdvanceContext = {
       set: new ExecutionWorkingSet(snapshot, dependencies.catalogue),
       catalogue: dependencies.catalogue,
@@ -115,6 +131,10 @@ export function finishStep(
       requestDigest: finishDigest(request),
     });
     if (decision.replayed) {
+      // The read showed the finish through a pending journal when its publication crashed: an
+      // empty change publishes that journal, so the retry leaves the files complete.
+      await dependencies.store.apply(subject.specId, { tasks: [] });
+
       return replayedFinish(context, loaded, decision);
     }
 
@@ -203,7 +223,7 @@ export function finishStep(
 
 /**
  * The result of a repeated finish, read from the state as it is now (the Engine may have settled
- * the wait the finish entered since): nothing is planned or written.
+ * the wait the finish entered since): nothing is planned.
  */
 function replayedFinish(
   context: AdvanceContext,

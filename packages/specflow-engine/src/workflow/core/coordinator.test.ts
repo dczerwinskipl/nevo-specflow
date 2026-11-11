@@ -336,6 +336,37 @@ describe('replay', () => {
         attempts: run(...inWait).attempts.filter((record) => record.step !== 'collect'),
       },
     ],
+    [
+      'two records with one sequence',
+      {
+        ...run(...inWait),
+        attempts: run(...inWait).attempts.map((record) =>
+          record.step === 'collect' ? { ...record, sequence: 1 } : record,
+        ),
+      },
+    ],
+    [
+      'two attempts with one number',
+      {
+        ...run(
+          start(agent),
+          finish('draft', 1, agent),
+          start(person),
+          finish('review', 1, person, { result: 'fail', feedback: 'No.' }),
+          start(agent),
+        ),
+        attempts: run(
+          start(agent),
+          finish('draft', 1, agent),
+          start(person),
+          finish('review', 1, person, { result: 'fail', feedback: 'No.' }),
+          start(agent),
+        ).attempts.map((record) =>
+          record.step === 'draft' && record.sequence === 3 ? { ...record, attempt: 1 } : record,
+        ),
+        position: { state: 'active', step: 'draft', attempt: 1 },
+      },
+    ],
   ])('rejects %s', (_name, value) => {
     expect(isPositionJustified(value, DEFINITION)).toBe(false);
     expect(() => decide(DEFINITION, value, start(agent))).toThrow(
@@ -389,15 +420,35 @@ describe('a repeated finish (F16)', () => {
     );
   });
 
-  it('is a stale finish, not a retry, once a later finish happened', () => {
-    const later = run(
-      ...finishOnce,
-      start(person),
-      finish('review', 1, person, { result: 'fail', feedback: 'No.' }),
+  const review = finish('review', 1, person, { result: 'pass', requestDigest: 'r1' });
+  const reviewed = [...draftedByAgent, start(person), review];
+  const back: WorkflowCommand = { kind: 'return', at: AT, step: 'draft', feedback: 'Again.' };
+
+  it.each<[string, WorkflowCommand[], WorkflowCommand]>([
+    [
+      'a later finish, with nothing active',
+      [
+        ...finishOnce,
+        start(person),
+        finish('review', 1, person, { result: 'fail', feedback: 'No.' }),
+      ],
+      finish('draft', 1, agent, { requestDigest: 'd1' }),
+    ],
+    [
+      'a later start',
+      [...finishOnce, start(person)],
+      finish('draft', 1, agent, { requestDigest: 'd1' }),
+    ],
+    ['an owner return from the wait step it entered', [...reviewed, back], review],
+    [
+      'an owner return from a ready step',
+      [...finishOnce, back],
+      finish('draft', 1, agent, { requestDigest: 'd1' }),
+    ],
+  ])('is a stale finish, not a retry, after %s', (_name, before, command) => {
+    expect(() => decide(DEFINITION, run(...before), command)).toThrow(
+      expect.objectContaining({ code: 'WORKFLOW_ATTEMPT_MISMATCH' }),
     );
-    expect(() =>
-      decide(DEFINITION, later, finish('draft', 1, agent, { requestDigest: 'd1' })),
-    ).toThrow(expect.objectContaining({ code: 'WORKFLOW_POSITION_INVALID' }));
   });
 });
 

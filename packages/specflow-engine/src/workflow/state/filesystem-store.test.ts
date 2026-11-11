@@ -494,8 +494,17 @@ describe('filesystem workflow store: a finish retried after a crash (F16)', () =
     } as const;
     armed = true;
     await expect(finishStep(crashing, breakdown)).rejects.toThrow('Crash');
+    // Half the change is on disk: the journal is pending, the Specification record is published
+    // and the Task files are not.
+    const taskFiles = async () =>
+      (await readdir(tasksDirectory()).catch(() => [] as string[]))
+        .filter((name) => name.endsWith('.yaml'))
+        .sort();
+    expect(await readFile(journalPath(), 'utf8')).toContain(SPEC);
+    expect(await taskFiles()).toEqual([]);
+    expect(await readFile(specificationPath(), 'utf8')).toContain('state: ready');
 
-    // The journal is pending; a read sees the whole change, so the retry is the same finish.
+    // A read sees the whole change, so the retry is the same finish; it publishes the journal.
     const dependencies = { ...base, store: store() };
     await expect(finishStep(dependencies, breakdown)).resolves.toMatchObject({
       replayed: true,
@@ -503,14 +512,12 @@ describe('filesystem workflow store: a finish retried after a crash (F16)', () =
       position: { state: 'ready', step: 'breakdown-review' },
       createdTasks: ['api', 'screen'],
     });
+    await expect(readFile(journalPath(), 'utf8')).rejects.toMatchObject({ code: 'ENOENT' });
+    expect(await taskFiles()).toEqual(['api.yaml', 'screen.yaml']);
+    expect(await readFile(specificationPath(), 'utf8')).toContain('state: ready');
     await expect(
       finishStep(dependencies, { ...breakdown, input: { tasks: [TWO_TASKS[0]] } }),
     ).rejects.toMatchObject({ code: 'WORKFLOW_ATTEMPT_MISMATCH' });
-
-    // The next change completes the pending journal.
-    await startSpecification(dependencies);
-    await expect(readFile(journalPath(), 'utf8')).rejects.toMatchObject({ code: 'ENOENT' });
-    expect((await inspectExecution(dependencies, SPEC)).tasks).toHaveLength(2);
   });
 });
 

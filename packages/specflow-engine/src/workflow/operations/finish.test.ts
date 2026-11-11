@@ -314,4 +314,15 @@ describe('a repeated finish (F16)', () => {
       code: 'WORKFLOW_ATTEMPT_MISMATCH',
     });
   });
+
+  it('reports a stale retry as an attempt mismatch while another Session works on the run', async () => {
+    const dependencies = memoryDependencies(catalogue);
+    await startSpecification(dependencies);
+    await finishRequirements(dependencies, 'Agreed.');
+    await startSpecification(dependencies, agent('codex', 'session-other'));
+
+    await expect(finishRequirements(dependencies, 'Agreed.')).rejects.toMatchObject({
+      code: 'WORKFLOW_ATTEMPT_MISMATCH',
+    });
+  });
 });

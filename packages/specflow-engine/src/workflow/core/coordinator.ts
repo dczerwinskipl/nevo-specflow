@@ -357,16 +357,66 @@ function decideStart<A extends HostAnnotations, TActor extends ActorRecord>(
   };
 }
 
-/** The last finish by an actor: the latest record that is not an attempt of a wait step. */
-function lastWorkRecord<TActor extends ActorRecord>(
+/**
+ * The last event an actor or the owner caused: the latest record, skipping the attempts of wait
+ * steps the coordinator entered (and an event completed, or that are still waiting). A wait attempt
+ * the owner ended with a return is such an event, like a return record.
+ */
+function lastActedRecord<TActor extends ActorRecord>(
   definition: WorkflowDefinition<HostAnnotations>,
   run: WorkflowRun<TActor>,
 ) {
   return historyOf(run)
     .filter(
-      (record) => isReturnRecord(record) || findStep(definition, record.step)?.kind !== 'wait',
+      (record) =>
+        isReturnRecord(record) ||
+        findStep(definition, record.step)?.kind !== 'wait' ||
+        record.outcome?.kind === 'returned',
     )
     .at(-1);
+}
+
+/**
+ * A finish naming an attempt that already ended: the retry of the run's last finish (same digest
+ * and actor) returns the recorded result; anything else, also after any later event, is
+ * `WORKFLOW_ATTEMPT_MISMATCH`. `undefined` when the command names no ended attempt.
+ */
+function repeatedFinish<A extends HostAnnotations, TActor extends ActorRecord>(
+  definition: WorkflowDefinition<A>,
+  run: WorkflowRun<TActor>,
+  command: Extract<WorkflowCommand<TActor>, { kind: 'finish' }>,
+): WorkflowDecision<A, TActor> | undefined {
+  const ended = run.attempts.find(
+    (record) =>
+      record.step === command.step &&
+      record.attempt === command.attempt &&
+      record.outcome !== undefined,
+  );
+  if (!ended) {
+    return undefined;
+  }
+
+  const last = lastActedRecord(definition, run);
+  if (
+    last !== ended ||
+    ended.outcome?.kind !== 'transition' ||
+    command.requestDigest === undefined ||
+    ended.requestDigest !== command.requestDigest ||
+    !isDeepStrictEqual(ended.finishedBy, command.actor)
+  ) {
+    throw new WorkflowError(
+      'WORKFLOW_ATTEMPT_MISMATCH',
+      `The attempt ${command.step}#${String(command.attempt)} already ended; this finish is not a retry of the run's last finish.`,
+    );
+  }
+
+  return {
+    nextRun: run,
+    intent: intentOf(definition, run),
+    declaredEffects: [],
+    finished: ended,
+    replayed: true,
+  };
 }
 
 function decideFinish<A extends HostAnnotations, TActor extends ActorRecord>(
@@ -379,34 +429,9 @@ function decideFinish<A extends HostAnnotations, TActor extends ActorRecord>(
     position.state === 'active' &&
     position.step === command.step &&
     position.attempt === command.attempt;
-  if (!named) {
-    const last = lastWorkRecord(definition, run);
-    if (
-      last &&
-      !isReturnRecord(last) &&
-      last.outcome?.kind === 'transition' &&
-      last.step === command.step &&
-      last.attempt === command.attempt
-    ) {
-      if (
-        command.requestDigest === undefined ||
-        last.requestDigest !== command.requestDigest ||
-        !isDeepStrictEqual(last.finishedBy, command.actor)
-      ) {
-        throw new WorkflowError(
-          'WORKFLOW_ATTEMPT_MISMATCH',
-          `The attempt ${command.step}#${String(command.attempt)} already finished with another request.`,
-        );
-      }
-
-      return {
-        nextRun: run,
-        intent: intentOf(definition, run),
-        declaredEffects: [],
-        finished: last,
-        replayed: true,
-      };
-    }
+  const repeated = named ? undefined : repeatedFinish(definition, run, command);
+  if (repeated) {
+    return repeated;
   }
 
   if (position.state !== 'active') {

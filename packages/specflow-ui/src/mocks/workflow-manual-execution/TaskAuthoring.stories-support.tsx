@@ -25,6 +25,10 @@ import {
   RadioGroup,
   RadioGroupOption,
   TextInput,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
   Typography,
 } from '@nevo/ui';
 import { OperationalRow } from '../../shared/operational-list';
@@ -84,6 +88,34 @@ const kindIcon: Record<ContextKind, IconName> = {
   instructions: 'info',
   'path-hint': 'filter',
 };
+
+/**
+ * A section's add action once it has rows: the WorkspaceHeader icon-action pattern (ghost sm
+ * IconButton named by its label, the same label as tooltip).
+ */
+function SectionAddButton({ label }: { label: string }) {
+  return (
+    <TooltipProvider delayDuration={400}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <IconButton icon="plus" size="sm" variant="ghost" aria-label={label} onClick={noop} />
+        </TooltipTrigger>
+        <TooltipContent>{label}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
+/** An empty section's one call to action: a labelled button, replaced by "+" once rows exist. */
+function SectionCallToAction({ label }: { label: string }) {
+  return (
+    <div>
+      <Button size="sm" variant="secondary" onClick={noop}>
+        {label}
+      </Button>
+    </div>
+  );
+}
 
 /** T-04's effective context, in declared order (defaults written out on first edit). */
 export const draftContext: readonly ContextEntry[] = [
@@ -170,30 +202,39 @@ export function TaskDocumentsSection({ editable }: { editable: boolean }) {
         title="Documents"
         icon="file"
         count={2}
-        actions={
-          editable ? (
-            <Button size="sm" variant="secondary" leadingIcon="plus">
-              New document
-            </Button>
-          ) : undefined
-        }
+        actions={editable ? <SectionAddButton label="New document" /> : undefined}
       />
       <InformationList>
         {[
-          { name: 'task.md', facts: ['Task content', 'Edited today 09:12'] as const },
-          { name: 'screens.md', facts: ['Task document', 'Edited yesterday'] as const },
+          { name: 'task.md', facts: ['Task content', 'Edited today 09:12'] as const, fixed: true },
+          {
+            name: 'screens.md',
+            facts: ['Task document', 'Edited yesterday'] as const,
+            fixed: false,
+          },
         ].map((doc) => (
           <OperationalRow
             key={doc.name}
             primary={doc.name}
+            // Opens the document as a tab in the Secondary editor.
             onPrimaryClick={noop}
+            primaryAriaLabel={`Open ${doc.name}`}
             factsLayout="inline"
             compactFacts={[doc.facts[0], doc.facts[1]]}
             trailing={
-              editable ? (
-                <Button size="sm" variant="secondary" leadingIcon="edit">
-                  Edit
-                </Button>
+              editable && !doc.fixed ? (
+                <Menu modal={false}>
+                  <MenuTrigger asChild>
+                    <IconButton icon="ellipsis" size="sm" aria-label={`Actions for ${doc.name}`} />
+                  </MenuTrigger>
+                  <MenuContent align="end">
+                    <MenuItem onSelect={noop}>Rename</MenuItem>
+                    <MenuSeparator />
+                    <MenuItem tone="danger" onSelect={noop}>
+                      Delete document
+                    </MenuItem>
+                  </MenuContent>
+                </Menu>
               ) : undefined
             }
           />
@@ -262,10 +303,9 @@ function EntryMenu({ entry, open }: { entry: ContextEntry; open?: boolean }) {
 function AddContextMenu({ open }: { open?: boolean }) {
   return (
     <Menu modal={false} defaultOpen={open}>
+      {/* No Tooltip around a menu trigger: nested asChild triggers swallow taps on touch. */}
       <MenuTrigger asChild>
-        <Button size="sm" variant="secondary" leadingIcon="plus">
-          Add
-        </Button>
+        <IconButton icon="plus" size="sm" variant="ghost" aria-label="Add context" />
       </MenuTrigger>
       <MenuContent align="end">
         <MenuItem leadingIcon="file" onSelect={noop}>
@@ -335,6 +375,8 @@ export function TaskContextSection({
                   entry.name
                 )
               }
+              // Opens the referenced target (document preview, matched files, or the entry itself).
+              onPrimaryClick={noop}
               factsLayout="inline"
               compactFacts={[
                 kindLabel[entry.kind],
@@ -536,16 +578,22 @@ export function TaskDependenciesSection({ item, editable }: { item: MockTask; ed
         id="task-dependencies-heading"
         title="Depends on"
         icon="network"
-        count={dependencies.length}
+        count={dependencies.length > 0 ? dependencies.length : undefined}
         actions={
-          editable && !locked ? (
-            <Button size="sm" variant="secondary" leadingIcon="plus">
-              Add
-            </Button>
+          editable && !locked && dependencies.length > 0 ? (
+            <SectionAddButton label="Add dependency" />
           ) : undefined
         }
       />
       <div className="grid gap-3">
+        {dependencies.length === 0 ? (
+          <>
+            <Typography as="p" variant="body-sm" className="text-content-secondary">
+              No dependencies: the task can start as soon as it is approved.
+            </Typography>
+            <SectionCallToAction label="Add dependency" />
+          </>
+        ) : null}
         {locked ? (
           <InlineNote tone="info">Dependencies are fixed once the task has started.</InlineNote>
         ) : null}

@@ -2667,16 +2667,17 @@
     {
       "id": "ideas.semantic-docs.surfaces-and-setup",
       "type": "engineering",
-      "title": "Semantic docs search — surfaces, corpora and setup follow-ups",
+      "title": "Semantic docs search — human reader, workspace retrieval and setup follow-ups",
       "status": "draft",
       "file": "docs/ideas/semantic-docs/surfaces-and-setup.md",
       "read_when": [
-        "planning a contextual help or related-documents surface in the UI",
+        "planning workspace-aware documentation search, a human reader or contextual help in the UI",
+        "defining workspace-scope access, corpus revisions and branch-switch refresh behavior",
         "indexing another corpus (Specification documents, code) with @nevo/ai-semantic-search",
         "enabling semantic search in an initialized project, or supporting another embedding endpoint",
         "splitting model adapters or agent drivers into separate packages"
       ],
-      "summary": "Proposals beyond PR #138: contextual help and live updates in the UI, other corpora through the chunk-source port, assisted enabling of semantic search in an initialized project, endpoints that need a query string or an api-key header, the status probe on client close, and the @nevo/ai-models and @nevo/ai-agents splits.",
+      "summary": "Proposals beyond PR #138: a workspace-aware human documentation reader, project-level authorization, trusted embedding configuration, corpus revisions and refresh, plus contextual help, other corpora, semantic setup, endpoint gaps and future AI package splits.",
       "related": [
         "ideas.semantic-docs",
         "adr.0020-documentation-discovery-is-a-product-capability",
@@ -2696,7 +2697,11 @@
         "semantic-search",
         "help",
         "corpora",
-        "embeddings"
+        "embeddings",
+        "worktree",
+        "workspace",
+        "reader",
+        "authorization"
       ]
     },
     {
@@ -4498,6 +4503,40 @@
         "product.shared.vocabulary",
         "design-system.principles.ui-ux-guidelines",
         "architecture.ai.canonical-session-turn-work"
+      ]
+    },
+    {
+      "id": "product.specflow.ui.documentation-reader",
+      "type": "product",
+      "title": "Documentation reader (UI)",
+      "status": "draft",
+      "file": "docs/product/specflow/ui/documentation-reader.md",
+      "read_when": [
+        "designing or implementing the read-only reader of the project documentation in the UI",
+        "choosing how a workspace is chosen or switched for documentation",
+        "presenting documentation search results, non-authoritative documents or blocked links"
+      ],
+      "summary": "Draft screen contract for the read-only reader of the project documentation (docs.root) of one registered workspace: entry points, current workspace and picker, tree, search results, the article with contents, links and images, states and recovery, Wide/Compact/Narrow, and the facts the reader needs from the Runtime. Mock: Storybook SpecFlow/Screens/Documentation reader (mock).",
+      "related": [
+        "ideas.semantic-docs.surfaces-and-setup",
+        "product.specflow.ui.interaction-model",
+        "product.specflow.ui.documents-editor-mode",
+        "product.shared.vocabulary",
+        "reference.api.docs-search",
+        "design-system.principles.layout-and-containment",
+        "design-system.principles.information-hierarchy"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "docs"
+      ],
+      "tags": [
+        "documentation",
+        "reader",
+        "workspace",
+        "worktree",
+        "search"
       ]
     },
     {

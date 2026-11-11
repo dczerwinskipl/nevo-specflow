@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { decide, type WorkflowCommand } from './coordinator';
-import { checkDefinition, type WorkflowDefinition } from './definition';
+import { checkDefinition, type WorkflowDefinition } from '../definitions/definition';
 import { handoffOf, isPositionJustified } from './replay';
 import { newRun, type ActorRecord, type WorkflowRun } from './run';
 

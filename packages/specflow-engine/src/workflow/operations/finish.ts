@@ -1,5 +1,5 @@
 import type { ContinuationDecision } from '../continuation/resolve';
-import { decide, findStep, type RunPosition } from '../core';
+import { decide, findStep, type RunPosition } from '@nevo/workflow';
 import { WorkflowError } from '../errors';
 import {
   assertActorShape,

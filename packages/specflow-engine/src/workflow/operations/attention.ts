@@ -1,7 +1,7 @@
 import type { AttentionItem } from '../attention/model';
 import type { ContinuationDecision } from '../continuation/resolve';
 import type { ExecutionCatalogue } from '../definitions/catalogue';
-import { findStep } from '../core';
+import { findStep } from '@nevo/workflow';
 import type { WorkflowSubject } from '../state/model';
 import type { ExecutionSnapshot } from '../state/store';
 import { continuationOf, waitDecision } from './advance';

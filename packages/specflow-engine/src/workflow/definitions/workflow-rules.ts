@@ -1,5 +1,5 @@
 import type { DefinitionIssue } from '../../specs/definitions/kind-registry';
-import { checkDefinition, findStep } from '../core';
+import { checkDefinition, findStep } from '@nevo/workflow';
 import type { WorkflowDefinition, WorkflowStep } from './model';
 
 /**

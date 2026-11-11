@@ -1,6 +1,6 @@
 import { sha256Hex } from '../../hash';
 import type { FinishingSession } from '../continuation/resolve';
-import { activeAttempt, canonicalJson } from '../core';
+import { activeAttempt, canonicalJson } from '@nevo/workflow';
 import { WorkflowError } from '../errors';
 import { assertActorShape } from '../input-schema';
 import type { OwnerActor, WorkflowActor, WorkflowRun } from '../state/model';

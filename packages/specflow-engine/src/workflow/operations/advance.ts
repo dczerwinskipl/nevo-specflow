@@ -5,7 +5,7 @@ import {
   type DeclaredEffect,
   type WorkflowDecision,
   type WorkflowIntent,
-} from '../core';
+} from '@nevo/workflow';
 import type { ExecutionCatalogue } from '../definitions/catalogue';
 import type { SpecFlowAnnotations, WorkflowDefinition } from '../definitions/model';
 import { resolveContinuation, type ContinuationDecision } from '../continuation/resolve';

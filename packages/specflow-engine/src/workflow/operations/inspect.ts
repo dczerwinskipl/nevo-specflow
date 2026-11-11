@@ -1,5 +1,5 @@
 import type { AttentionItem } from '../attention/model';
-import { handoffOf, type Handoff } from '../core';
+import { handoffOf, type Handoff } from '@nevo/workflow';
 import { taskReadiness, type TaskReadiness } from '../tasks/tasks';
 import type { SpecificationExecutionRecord, TaskRecord, WorkflowRun } from '../state/model';
 import { deriveAttention } from './attention';

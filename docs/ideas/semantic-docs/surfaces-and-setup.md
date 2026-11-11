@@ -100,40 +100,40 @@ Promote accepted parts into the owning product, API and architecture contracts b
 
 ### Verified gap and separation
 
-PR #138's Runtime creates one \`ProjectDocs\` from its \`projectRoot\`. Its \`GET /api/docs/search\`
-and \`GET /api/docs/status\` do not resolve a workspace identity. Thus a Runtime hosted from Project
+PR #138's Runtime creates one `ProjectDocs` from its `projectRoot`. Its `GET /api/docs/search`
+and `GET /api/docs/status` do not resolve a workspace identity. Thus a Runtime hosted from Project
 Home can search that checkout even when the human or agent is working in another linked worktree.
 The CLI resolves its project root from the invoking checkout; using the CLI *from* a worktree can
 already search that checkout. These are different paths and must not be conflated.
 
 The index already hashes current Markdown on read and updates changed chunks incrementally. Dirty
 changes are detectable. Branch switching need not trigger a blind full rebuild, but the selected
-corpus and its settings must be re-resolved. \`Documents\` at \`/specs/:specId/documents\` is the
-Specification document editor and **not** the project's \`docs.root\` corpus.
+corpus and its settings must be re-resolved. `Documents` at `/specs/:specId/documents` is the
+Specification document editor and **not** the project's `docs.root` corpus.
 
 ### Resource identity and HTTP proposal
 
-Use a stable registered \`workspaceId\` as a route parameter, not a search query filter:
+Use a stable registered `workspaceId` as a route parameter, not a search query filter:
 
-\`\`\`http
+```http
 GET /api/workspaces/:workspaceId/docs
 GET /api/workspaces/:workspaceId/docs/documents/:documentId
 GET /api/workspaces/:workspaceId/docs/search?q=...&limit=...
 GET /api/workspaces/:workspaceId/docs/status
-\`\`\`
+```
 
-The server resolves \`workspaceId\` via the existing verified registry and derives the physical
+The server resolves `workspaceId` via the existing verified registry and derives the physical
 checkout. Never accept a client-provided root or arbitrary Git ref. Search query parameters
 control search behavior, not resource identity. Reuse the existing UUID type and do not invent
-a second workspace identity. No synthetic \`projectId\` is needed in the current single-project
+a second workspace identity. No synthetic `projectId` is needed in the current single-project
 Runtime. Multi-project hosting may later need its own explicit route hierarchy.
 
-The current \`/api/docs/*\` contract remains defined during migration. Do not silently reinterpret
+The current `/api/docs/*` contract remains defined during migration. Do not silently reinterpret
 it as the last selected UI workspace. The exact compatibility policy is an open decision.
 Document IDs and section references are resolved **inside the selected corpus**. Treat missing,
 removed, forbidden, invalid and temporarily unavailable worktrees differently.
 
-**Authorization must be re-reviewed.** The existing \`docs.search\` capability admitted in any
+**Authorization must be re-reviewed.** The existing `docs.search` capability admitted in any
 scope was defined for one project corpus. It must not inadvertently authorize every worktree merely
 because a principal can see one Session or Specification. Workstation-local workspace IDs must not
 be persisted as portable authorization grants.
@@ -141,17 +141,17 @@ be persisted as portable authorization grants.
 ### Freshness, branch changes and lifecycle
 
 - A worktree's live filesystem is the documentation truth, including uncommitted edits and its
-  own \`docs.yaml\` and checked-out \`.nevo/config.yaml\` documentation settings. Endpoint
+  own `docs.yaml` and checked-out `.nevo/config.yaml` documentation settings. Endpoint
   credentials and trusted model configuration remain host-managed; do not execute or trust
   arbitrary configuration/paths from a checkout without validation.
 - Start with isolated corpus/index instances per verified workspace. Cache writes remain subject
   to the existing Git-ignore policy. Bound the number of open instances and handle removed
   worktrees, close, rebind, cancellation and Runtime shutdown.
-- \`workspaceId\` alone is not a **content revision**. Branch/HEAD can change under the same
+- `workspaceId` alone is not a **content revision**. Branch/HEAD can change under the same
   workspace identity, and dirty files can change without a Git commit. Return sufficient source
   provenance to identify checkout, observed branch/HEAD and the current corpus/index revision;
   never treat HEAD as an exhaustive revision token.
-- Detect changed/added/deleted Markdown and \`docs.yaml\` changes. Reuse existing content-hash
+- Detect changed/added/deleted Markdown and `docs.yaml` changes. Reuse existing content-hash
   comparison, incremental embedding, versioned chunker, index fingerprint and single-writer lock.
   Full rebuild is justified by incompatible embedding/chunker identity, not by every branch switch.
 - Until vectors for the current corpus are complete, return lexical results **from that corpus**
@@ -163,13 +163,13 @@ be persisted as portable authorization grants.
 ### Human UI: established Nevo SpecFlow patterns
 
 The first draft resembling a separate documentation portal is **rejected**. Use the existing
-\`SpecFlowShell\` / \`AppShell\`, \`AppWorkspace\`, workspace headers, navigation semantics, design
+`SpecFlowShell` / `AppShell`, `AppWorkspace`, workspace headers, navigation semantics, design
 tokens and scroll ownership. The prototype HTML is exploratory and must not introduce new
 design-system primitives.
 
 - A standalone project documentation activity may justify one global **Documentation** entry
   next to **Specifications**, but the interaction model explicitly keeps global navigation
-  small. This placement requires a product-owner decision. Do not add a nested \`Project\` menu
+  small. This placement requires a product-owner decision. Do not add a nested `Project` menu
   or create a permanent new global section by default.
 - On Wide and Compact, use the existing Specification Documents composition as precedent:
   a bounded Primary (approximately 360px) holds the workspace selector, search and document
@@ -182,13 +182,13 @@ design-system primitives.
   Selecting a hit opens the real section. Hybrid and lexical fallback are both valid; index state
   belongs in compact contextual status. Do not introduce an AI-generated answer/chat surface yet.
 - The reader supports headings, lists, code, internal links, the document path, section linking and
-  an optional local TOC affordance. Content is read-only. Keep \`Specification Documents\` and
+  an optional local TOC affordance. Content is read-only. Keep `Specification Documents` and
   their edit/commit workflow distinct.
 - Entering from a Session/Specification resolves its real bound checkout. A global entry needs a
   deliberate authorized default; don't guess from browser history or a last-opened Specification.
   An in-reader workspace change clears old data before showing the new corpus.
-- Candidate canonical UI locations: \`/workspaces/:workspaceId/docs\` and
-  \`/workspaces/:workspaceId/docs/:documentId\`. The optional \`/docs\` entry requires an explicit
+- Candidate canonical UI locations: `/workspaces/:workspaceId/docs` and
+  `/workspaces/:workspaceId/docs/:documentId`. The optional `/docs` entry requires an explicit
   redirect rule. TanStack Router owns routable state; TanStack Query keys include workspace
   identity and coherent source revision.
 
@@ -198,7 +198,7 @@ design-system primitives.
    test conflicting files in two worktrees, dirty edits, branch switch, changed settings,
    missing/closed worktree, concurrent refresh, and a denied scoped principal.
 2. **Read-only document API:** corpus navigation, exact document/section reads, stable source
-   links, typed statuses and errors. Reuse \`@nevo/specflow-docs\`; avoid another Markdown parser.
+   links, typed statuses and errors. Reuse `@nevo/specflow-docs`; avoid another Markdown parser.
 3. **Nevo-native UI:** the same tree/search/detail surface across Wide, Compact and Narrow,
    typed feature APIs, shared HTTP transport and app-level TanStack Query, with working Back,
    selection retention and honest lexical/index-building states.

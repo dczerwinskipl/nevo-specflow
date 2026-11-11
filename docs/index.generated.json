@@ -5158,7 +5158,7 @@
         "changing the semantic search step of nevo-specflow init",
         "diagnosing a docs or ai.embeddings configuration error"
       ],
-      "summary": "The docs namespace (root, search.semantic), the documentation settings file <docs.root>/docs.yaml (taxonomy, nonAuthoritative, exclude) and the ai.embeddings endpoint (baseUrl, model, optional protocol, dimensions, apiKeyEnv, queryInstruction, batchSize, timeoutMs): which file holds them, how they merge, their validation and defaults, and documentation-only configuration.",
+      "summary": "The docs namespace (root, search.semantic), the documentation settings file <docs.root>/docs.yaml (taxonomy, nonAuthoritative, exclude) and the ai.embeddings endpoint (baseUrl, model, optional protocol, spaceId, dimensions, apiKeyEnv, queryInstruction, batchSize, timeoutMs): which file holds them, how they merge, their validation and defaults, and documentation-only configuration.",
       "related": [
         "adr.0020-documentation-discovery-is-a-product-capability",
         "adr.0021-product-neutral-ai-semantic-search-engine",

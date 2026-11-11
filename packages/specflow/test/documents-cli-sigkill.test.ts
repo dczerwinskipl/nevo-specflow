@@ -31,7 +31,8 @@ afterEach(async () => {
       .splice(0)
       .map((root) => rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })),
   );
-});
+  // rm backs off linearly: ten retries of 250 ms add up to about 14 s, more than the 10 s default.
+}, 30_000);
 
 function git(cwd: string, ...args: string[]): string {
   return execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();

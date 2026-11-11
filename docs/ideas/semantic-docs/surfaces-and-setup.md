@@ -1,21 +1,21 @@
 ---
 id: ideas.semantic-docs.surfaces-and-setup
 type: engineering
-title: Semantic docs search — surfaces, corpora and setup follow-ups
+title: Semantic docs search — human reader, workspace retrieval and setup follow-ups
 status: draft
 scope: specflow
 areas: [docs, ai, ui, runtime, configuration]
-tags: [semantic-search, help, corpora, embeddings]
+tags: [semantic-search, help, corpora, embeddings, worktree, workspace, reader, authorization]
 read_when:
-  - planning a contextual help or related-documents surface in the UI
+  - planning workspace-aware documentation search, a human reader or contextual help in the UI
+  - defining workspace-scope access, corpus revisions and branch-switch refresh behavior
   - indexing another corpus (Specification documents, code) with @nevo/ai-semantic-search
   - enabling semantic search in an initialized project, or supporting another embedding endpoint
   - splitting model adapters or agent drivers into separate packages
 summary: >
-  Proposals beyond PR #138: contextual help and live updates in the UI, other corpora through the
-  chunk-source port, assisted enabling of semantic search in an initialized project, endpoints that
-  need a query string or an api-key header, the status probe on client close, and the
-  @nevo/ai-models and @nevo/ai-agents splits.
+  Proposals beyond PR #138: a workspace-aware human documentation reader, project-level
+  authorization, trusted embedding configuration, corpus revisions and refresh, plus contextual
+  help, other corpora, semantic setup, endpoint gaps and future AI package splits.
 related:
   - ideas.semantic-docs
   - adr.0020-documentation-discovery-is-a-product-capability
@@ -95,25 +95,58 @@ consumer outside the Runtime needs them. Neither has a consumer today.
 
 ## Workspace-aware retrieval and Nevo-native documentation reader (proposal, 2026-11-11)
 
-This is **non-authoritative design exploration**, not behavior implemented by PR #138.
-Promote accepted parts into the owning product, API and architecture contracts before implementation.
+This is a **non-authoritative idea**, not behavior implemented by PR #138. The choices below
+are the proposed **target contract** for a future implementation, to be promoted to the owning
+ADR, API, product and authorization documents together. They are not a request to add
+compatibility layers, new design-system components or a new AI chat.
 
-### Verified gap and separation
+### Observed gap and resource boundary
 
-PR #138's Runtime creates one `ProjectDocs` from its `projectRoot`. Its `GET /api/docs/search`
-and `GET /api/docs/status` do not resolve a workspace identity. Thus a Runtime hosted from Project
-Home can search that checkout even when the human or agent is working in another linked worktree.
-The CLI resolves its project root from the invoking checkout; using the CLI *from* a worktree can
-already search that checkout. These are different paths and must not be conflated.
+- Current Runtime creates one `ProjectDocs` from its `projectRoot`. The `/api/docs/search`
+  and `/api/docs/status` endpoints have no workspace parameter; a request from a Specification
+  using a linked worktree may read the Project Home checkout's documentation.
+- The CLI resolves the checkout from its invoking working directory, so a `docs search` issued
+  *inside* a linked worktree can already read that checkout; CLI and Runtime behavior differ.
+- `DocsChunkSource` hashes Markdown files on each search and supports incremental updates,
+  including uncommitted changes. It does **not** automatically reload `docs.root`, `docs.yaml`,
+  `exclude` or taxonomy when a long-lived `ProjectDocs` was opened before a branch switch.
+- Project documentation under `docs.root` is not Specification Documents under
+  `/specs/:specId/documents`; the latter is a separate corpus and edit workflow.
 
-The index already hashes current Markdown on read and updates changed chunks incrementally. Dirty
-changes are detectable. Branch switching need not trigger a blind full rebuild, but the selected
-corpus and its settings must be re-resolved. `Documents` at `/specs/:specId/documents` is the
-Specification document editor and **not** the project's `docs.root` corpus.
+### Chosen scope and authorization model
 
-### Resource identity and HTTP proposal
+Documentation of any registered workspace belongs to the **current project** for access-control
+purposes. Use one project-level read capability, provisionally **`docs.view`**, for **list,
+read, search and ordinary indexing-status inspection**. Replace the existing `docs.search` action
+when the new API is implemented; do not layer an alias only for pre-production compatibility.
+The built-in viewer/developer/admin role compositions keep documentation read access.
 
-Use a stable registered `workspaceId` as a route parameter, not a search query filter:
+- Every docs HTTP read must call `request.authz.require` (or the matching scoped guard) for
+  the **resolved current project scope** `{ projectId: engine.context.project.projectId }`.
+  Do not use `requireCapabilityInAnyScope`, and do not derive access from the selected
+  `workspaceId`, `specId` or `sessionId`. A grant bounded to one Specification or Session
+  does **not** authorize any project documentation; a global grant covers the current project.
+- `projectId` here is the Runtime's required **authorization target**, **not** a newly invented
+  public route parameter or a recommended literal in committed policy. Existing workstation-local
+  identities are not necessarily portable between clones. Until portable per-project grant
+  identity is explicitly defined, use global role assignments for the single-project deployment;
+  do not write local `projectId` or `workspaceId` values into Git-tracked role assignments.
+- Perform the project-level authorization check before revealing the registration/existence of
+  the requested workspace; afterwards resolve it via the verified Engine registry. Never accept
+  an absolute path, unchecked Git ref or arbitrary directory from the caller. Recheck membership
+  before filesystem access and when the workspace is closed/rebound.
+- Return `401` for missing authentication and `403` for absent project capability. Once authorized,
+  distinguish unknown workspace (`404`), unavailable/changed workspace (`409` or `503`, by
+  cause), unknown/removed document (`404`) and invalid corpus (`503`).
+- Ordinary `status` responses expose mode, index freshness and progress, but should not disclose
+  credentials or sensitive embedding endpoint diagnostics to viewers. Keep detailed host settings
+  inspection behind the existing `settings.view` capability if offered.
+- UI visibility of the navigation link is not an authorization boundary; Runtime checks every
+  operation. Standalone CLI retains its explicitly separate local trust model.
+
+### HTTP and UI resource identity
+
+Use the registered checkout UUID, `workspaceId`, in the **route**, not the search query:
 
 ```http
 GET /api/workspaces/:workspaceId/docs
@@ -122,90 +155,163 @@ GET /api/workspaces/:workspaceId/docs/search?q=...&limit=...
 GET /api/workspaces/:workspaceId/docs/status
 ```
 
-The server resolves `workspaceId` via the existing verified registry and derives the physical
-checkout. Never accept a client-provided root or arbitrary Git ref. Search query parameters
-control search behavior, not resource identity. Reuse the existing UUID type and do not invent
-a second workspace identity. No synthetic `projectId` is needed in the current single-project
-Runtime. Multi-project hosting may later need its own explicit route hierarchy.
+The first returns the human-reader tree/list, the second the active document (optionally a
+section reference), the third ranked document/section results, and the fourth indexing state.
+Document and section references resolve only inside the selected validated corpus.
+`q`, `limit`, `snippets` and `includeNonAuthoritative` remain search options.
 
-The current `/api/docs/*` contract remains defined during migration. Do not silently reinterpret
-it as the last selected UI workspace. The exact compatibility policy is an open decision.
-Document IDs and section references are resolved **inside the selected corpus**. Treat missing,
-removed, forbidden, invalid and temporarily unavailable worktrees differently.
+**No backward compatibility by default.** In the implementing PR migrate internal consumers,
+contracts, API tests, OpenAPI, authorization documentation and agents together, then remove
+`GET /api/docs/search` and `GET /api/docs/status`. The public CLI commands keep their own
+checkout-relative semantics; this decision is not a CLI deprecation. Reconsider compatibility
+only if an actual external consumer is found before implementation.
 
-**Authorization must be re-reviewed.** The existing `docs.search` capability admitted in any
-scope was defined for one project corpus. It must not inadvertently authorize every worktree merely
-because a principal can see one Session or Specification. Workstation-local workspace IDs must not
-be persisted as portable authorization grants.
+Canonical reader routes proposed for the UI:
+`/workspaces/:workspaceId/docs` and `/workspaces/:workspaceId/docs/:documentId`.
+`/docs` may show an explicit workspace chooser, not silently redirect to `main`, browser
+history or the last-selected Specification. A permanent global Documentation navigation entry
+remains a product decision; having a route does not imply it.
 
-### Freshness, branch changes and lifecycle
+### Configuration ownership, refresh and trust
 
-- A worktree's live filesystem is the documentation truth, including uncommitted edits and its
-  own `docs.yaml` and checked-out `.nevo/config.yaml` documentation settings. Endpoint
-  credentials and trusted model configuration remain host-managed; do not execute or trust
-  arbitrary configuration/paths from a checkout without validation.
-- Start with isolated corpus/index instances per verified workspace. Cache writes remain subject
-  to the existing Git-ignore policy. Bound the number of open instances and handle removed
-  worktrees, close, rebind, cancellation and Runtime shutdown.
-- `workspaceId` alone is not a **content revision**. Branch/HEAD can change under the same
-  workspace identity, and dirty files can change without a Git commit. Return sufficient source
-  provenance to identify checkout, observed branch/HEAD and the current corpus/index revision;
-  never treat HEAD as an exhaustive revision token.
-- Detect changed/added/deleted Markdown and `docs.yaml` changes. Reuse existing content-hash
-  comparison, incremental embedding, versioned chunker, index fingerprint and single-writer lock.
-  Full rebuild is justified by incompatible embedding/chunker identity, not by every branch switch.
-- Until vectors for the current corpus are complete, return lexical results **from that corpus**
-  with an accurate reason. Never mix stale vectors or in-flight search results from a previous
-  workspace into a newly selected workspace's UI.
-- A shared, content-addressed embedding cache across worktrees may later reduce cost, keyed by
-  chunk content and embedding identity. Do not start by sharing one mutable vector index.
+Separate three lifecycles:
 
-### Human UI: established Nevo SpecFlow patterns
+1. **Selected checkout corpus configuration:** read the checkout's current `.nevo/config.yaml`
+   **`docs` namespace only** (`docs.root`, `docs.search.semantic`) and the selected
+   `<docs.root>/docs.yaml` (`taxonomy`, `exclude`, `nonAuthoritative`) as untrusted
+   data. Validate paths, absence of symlink/junction traversal, schema and allowed roots.
+   Changes to either file must take effect even if all Markdown hashes are unchanged.
+2. **Trusted embedding configuration:** Runtime takes `ai.embeddings` (provider, endpoint,
+   model, embedding-space identity, credentials and egress permission) exclusively from its
+   trusted host/Project Home configuration. **Do not merge or execute `ai.embeddings` from a
+   selected worktree**: otherwise checking out a branch could redirect source documents
+   to an attacker-controlled endpoint. Host policy may disable semantic/remote egress.
+3. **Derived corpus and index state:** open a `ProjectDocs` for one verified workspace and
+   effective corpus configuration, with an isolated logical vector index and cache. Indexes
+   are disposable, never a source of authority. Respect Git-ignore checks for every worktree
+   and use lexical fallback if the cache cannot safely be written.
 
-The first draft resembling a separate documentation portal is **rejected**. Use the existing
-`SpecFlowShell` / `AppShell`, `AppWorkspace`, workspace headers, navigation semantics, design
-tokens and scroll ownership. The prototype HTML is exploratory and must not introduce new
-design-system primitives.
+Before any list/get/search/status operation, detect a changed effective `docs` configuration or
+`docs.yaml` and retire/reopen the old corpus instance (including its file walker, filters,
+validation, chunk cache and pending refresh). This is not only a `refreshIndex` call:
+the old `createFileSystemDocRepository` captures `exclude` and the old corpus captures taxonomy.
+Re-evaluate added, deleted and changed Markdown under the **new** rules; refresh vectors
+incrementally when the embedding/chunker identity is compatible. Removed/excluded documents
+must disappear immediately from lexical results and reader navigation.
 
-- A standalone project documentation activity may justify one global **Documentation** entry
-  next to **Specifications**, but the interaction model explicitly keeps global navigation
-  small. This placement requires a product-owner decision. Do not add a nested `Project` menu
-  or create a permanent new global section by default.
-- On Wide and Compact, use the existing Specification Documents composition as precedent:
-  a bounded Primary (approximately 360px) holds the workspace selector, search and document
-  tree/results. Secondary holds the read-only Markdown document. The article is **not** nested
-  inside another card, and there is no permanent third TOC panel.
-- On Narrow, tree/results is the visible level. Selecting an article pushes the reader with an
-  explicit Back to the list, preserving the search and list scroll. Global navigation uses the
-  existing drawer behavior; never shrink a desktop three-pane layout into mobile.
-- Search operates within the selected workspace and returns ranked documents plus section links.
-  Selecting a hit opens the real section. Hybrid and lexical fallback are both valid; index state
-  belongs in compact contextual status. Do not introduce an AI-generated answer/chat surface yet.
-- The reader supports headings, lists, code, internal links, the document path, section linking and
-  an optional local TOC affordance. Content is read-only. Keep `Specification Documents` and
-  their edit/commit workflow distinct.
-- Entering from a Session/Specification resolves its real bound checkout. A global entry needs a
-  deliberate authorized default; don't guess from browser history or a last-opened Specification.
-  An in-reader workspace change clears old data before showing the new corpus.
-- Candidate canonical UI locations: `/workspaces/:workspaceId/docs` and
-  `/workspaces/:workspaceId/docs/:documentId`. The optional `/docs` entry requires an explicit
-  redirect rule. TanStack Router owns routable state; TanStack Query keys include workspace
-  identity and coherent source revision.
+A branch switch under the same workspace UUID does not require a full rebuild merely because
+HEAD changed. An embedding model/space, dimension, chunker or incompatible index schema
+change does require re-embedding under the existing engine rules. A changed docs root or taxonomy
+must revalidate and may change included chunks. On a large gap return current-corpus lexical
+results with `index-building`, never old-workspace/old-revision vector results.
 
-### Implementation slices and acceptance evidence
+Instances and background refreshes need bounded memory, per-workspace cancellation/disposal,
+locks and no stale publish after workspace close, rebind or Runtime shutdown. Keeping many
+simultaneously open `ProjectDocs` instances must not grow without limit. A future shared
+content-addressed **embedding cache** is optional; do not share one mutable vector store
+between workspaces now.
 
-1. **Workspace-aware Runtime read/search:** resolve/authorize checkout and index ownership;
-   test conflicting files in two worktrees, dirty edits, branch switch, changed settings,
-   missing/closed worktree, concurrent refresh, and a denied scoped principal.
-2. **Read-only document API:** corpus navigation, exact document/section reads, stable source
-   links, typed statuses and errors. Reuse `@nevo/specflow-docs`; avoid another Markdown parser.
-3. **Nevo-native UI:** the same tree/search/detail surface across Wide, Compact and Narrow,
-   typed feature APIs, shared HTTP transport and app-level TanStack Query, with working Back,
-   selection retention and honest lexical/index-building states.
-4. **Later:** context-sensitive related documents, event-driven live refresh, Specification
-   documents/code as **separate corpora**, optional embedding deduplication.
+### Corpus revision, snapshots and cache consistency
 
-Acceptance for the UI includes rendered *composed* AppShell/AppWorkspace captures at 1440px,
-around 1024px, 375px and 320px, plus long paths, many documents, empty/error states,
-keyboard navigation, deep links, rapid workspace changes and no horizontal overflow. A
-standalone HTML screenshot by itself does not establish production fidelity.
+Do not equate Git HEAD, source revision, index generation and workspace identity:
+
+- **`workspaceId`** identifies the registered checkout on this workstation, not the content.
+- **`corpusRevision`** is an opaque digest of the *effective* docs configuration
+  (`docs.root` and parsed `docs.yaml` semantics) plus a deterministic sorted list of
+  included documentation paths and file-content hashes (including frontmatter). It changes
+  with dirty edits and config/filter changes even if HEAD stays unchanged. It excludes secret
+  host embedding settings and disposable caches. The server owns the digest algorithm/version.
+- **`index`** reports separate `state`, `generation`, pending chunk count and embedding
+  identity/status, all scoped to that workspace; its generation is not the corpus revision.
+  **`branch`, `HEAD` and dirty flag** are informative source provenance only, never
+  cache-invalidation keys or proof of a stable corpus snapshot.
+
+Every successful list/get/search response identifies `workspaceId` and
+`corpusRevision` (for example in a shared response envelope). Include index mode/status
+on search/status, and document ID, path and section ID on results. The corresponding HTTP
+`ETag` names the selected corpus revision (scoped to the workspace). When opening an article
+from a tree/search revision, the UI may send `If-Match`; if the corpus has changed, return
+`412 Precondition Failed` and reload the selected workspace's tree/search before opening it.
+A direct article link without a revision reads the current corpus.
+
+Prevent a request from returning mixed-version file metadata and content: load/validate a
+coherent corpus read snapshot, verify its inputs have not changed before committing the response,
+and retry a bounded number of times. If concurrent branch checkout/file writes prevent a
+consistent observation, return an explicit `409 DOCS_CORPUS_CHANGED` rather than fabricating
+atomic filesystem semantics. Check configuration and documents in the same snapshot, not as
+independent cached objects.
+
+TanStack Query keys include `workspaceId`, `corpusRevision` where known, and the query or
+document ID. Switching workspace immediately resets the visible tree/article/search and cancels
+or ignores in-flight old-context requests; responses with a mismatched source identity are never
+rendered under the new context. A revision mismatch within one workspace invalidates the tree,
+article, search results and section selection together, preserving user input where possible.
+Deep links remain routable even if their original revision became stale.
+
+### Visibility and links
+
+For the initial reader, show **active** documents in the tree and exact reads. Inactive
+(`deprecated`, `superseded`) entries are hidden and `get` remains fail-closed for them;
+an explicit archive reader would require a later API/product decision. `exclude` paths are
+never visible or searchable.
+
+`nonAuthoritative` is **not** an inactive status: include these active documents in the tree
+and allow their explicit read, with a quiet "Non-authoritative" marker and relevant explanation.
+Keep search's existing default exclusion of those paths unless
+`includeNonAuthoritative=true`; preserve `context`'s stricter exclusion. Do not quietly
+merge non-authoritative results into default agent context.
+
+For documentation Markdown use the existing `@nevo/ui` **`MarkdownDocument`** renderer
+(`react-markdown`, GFM, raw HTML not rendered), with a product-owned `renderLink` policy.
+Treat the source and all href/src attributes as **untrusted**. Block scriptable schemes
+(`javascript:`, `data:`, `file:`, etc.), disallow raw HTML execution, canonicalize
+relative workspace-local references under the selected docs root, reject traversal/symlink
+escapes and resolve internal document links through stable document routes. External links
+need explicit safe protocols and `noopener noreferrer`; don't silently fetch remote
+images or embedded resources from documentation in the local product without a separate
+policy (avoid leaking project access tokens/context or triggering remote requests).
+No new HTML/Markdown rendering engine or unrestricted plugin execution.
+
+### Session/Specification origin and user interaction
+
+A Specification entry derives the current verified workspace via its authoritative Engine
+binding, including later rebind. For a Session, first resolve a verified authoritative
+execution workspace if Runtime actually provides it; otherwise use the associated
+Specification's current binding. **Standalone Sessions can have neither**. In that case
+open an explicit authorized workspace chooser, not an inferred Project Home or last
+visited checkout. A workspace switch from the reader is explicit and clears stale data.
+Do not use a caller-provided session/workspace mapping as authorization.
+
+The first prototype resembling an independent docs portal was rejected. Reuse the actual
+`SpecFlowShell`/`AppShell`, `AppWorkspace`, workspace headers, navigation, scroll
+ownership and design tokens. The existing Specification Documents pattern is the geometric
+precedent: Wide/Compact uses a bounded Primary tree/results pane (approximately 360px)
+and a read-only Markdown Secondary. Narrow pushes the article with Back while preserving
+search, tree selection and scroll. No always-on third TOC pane, additional card around prose,
+new global navigation level, cloned editor or AI-generated answer chat.
+
+### Delivery and verification
+
+1. **Workspace-aware Runtime and authorization:** registered checkout resolution, project-scoped
+   `docs.view` on every operation, trusted embedding egress and safe filesystem boundary;
+   no unauthorized cross-worktree data disclosure.
+2. **Corpus lifecycle and revision:** reread effective configuration, reopen on change,
+   incremental index refresh, content revisions, coherent reads/`If-Match`, correct branch
+   checkout and dirty document behavior; cancellation on close/rebind.
+3. **Read-only API and UI:** active tree, exact Markdown read, lexical/hybrid search, safe links,
+   source/version metadata, Standalone Session selector, error and fallback states.
+4. **Later only:** related-document suggestions, live filesystem events, optional global
+   navigation promotion, Specification/code corpora, shared embedding deduplication.
+
+Acceptance tests must cover two registered worktrees with conflicting text; branch switches with
+unchanged and changed Markdown; dirty edits; modified `docs.root`, `exclude`, taxonomy and
+`nonAuthoritative` with identical Markdown hashes; untrusted worktree `ai.embeddings` attempting
+endpoint redirection; denied Specification-only or Session-only users; permitted global viewer;
+deleted/excluded/inactive documents; stale tree-to-article `If-Match`; branch switch during
+search; long-running index refresh during workspace removal; and internal/external Markdown
+link/image sanitization.
+
+For UI render **composed** AppShell/AppWorkspace stories at 1440px, approximately 1024px,
+375px and 320px, with long paths, no horizontal overflow, workspace changes, keyboard
+navigation and correct Back/scroll restoration. Standalone HTML is only design evidence,
+not implementation verification.

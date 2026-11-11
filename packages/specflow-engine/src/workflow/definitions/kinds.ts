@@ -23,6 +23,7 @@ import {
   type AgentArchetype,
   type TaskType,
   type WorkflowDefinition,
+  type WorkflowSubjectKind,
   type WorkflowStep,
   type WorkflowTransition,
 } from './model';
@@ -64,11 +65,13 @@ function parseTransition(file: WorkflowTransitionFile): WorkflowTransition {
         ? { kind: 'step', step: file.to.step }
         : { kind: 'terminal', outcome: file.to.terminal },
     continuation: file.continuation ?? 'owner-action',
-    session: file.session ?? 'fresh',
     feedback: file.feedback ?? 'optional',
-    effects: file.effects ?? [],
-    escalate: file.escalate ?? false,
     ...(file.on !== undefined ? { on: file.on } : {}),
+    annotations: {
+      session: file.session ?? 'fresh',
+      effects: file.effects ?? [],
+      escalate: file.escalate ?? false,
+    },
   };
 }
 
@@ -84,21 +87,24 @@ function parseStep(file: WorkflowDefinitionFile['steps'][number]): WorkflowStep 
     // A wait-step transition without a trigger is the one taken when the Tasks are finished.
     return {
       ...common,
-      kind: 'wait-for-tasks',
+      kind: 'wait',
       transitions: common.transitions.map((transition) => ({
         ...transition,
         on: transition.on ?? 'tasks-finished',
       })),
+      annotations: {},
     };
   }
 
   return {
     ...common,
     kind: 'work',
-    executor: file.executor,
-    ...(file.archetype !== undefined ? { archetype: file.archetype } : {}),
-    interaction: file.interaction ?? 'autonomous',
-    ...(file.produces !== undefined ? { produces: file.produces } : {}),
+    executors: [...file.executors],
+    annotations: {
+      ...(file.archetype !== undefined ? { archetype: file.archetype } : {}),
+      interaction: file.interaction ?? 'autonomous',
+      ...(file.produces !== undefined ? { produces: file.produces } : {}),
+    },
   };
 }
 
@@ -108,15 +114,15 @@ export function parseWorkflowFile(file: WorkflowDefinitionFile): WorkflowDefinit
     version: file.version,
     title: file.title,
     description: file.description,
-    subject: file.subject,
     entryStep: file.entryStep,
     steps: file.steps.map(parseStep),
     returns: (file.returns ?? []).map((entry) => ({
       step: entry.step,
       ...(entry.label !== undefined ? { label: entry.label } : {}),
       feedback: entry.feedback ?? 'required',
-      effects: entry.effects ?? [],
+      annotations: { effects: entry.effects ?? [] },
     })),
+    annotations: { subject: file.subject },
   };
 }
 
@@ -142,7 +148,9 @@ export const workflowKind = defineDefinitionKind<WorkflowDefinitionFile, Workflo
     [
       ...new Set(
         workflow.steps.flatMap((step) =>
-          step.kind === 'work' && step.archetype !== undefined ? [step.archetype] : [],
+          step.kind === 'work' && step.annotations.archetype !== undefined
+            ? [step.annotations.archetype]
+            : [],
         ),
       ),
     ]
@@ -236,11 +244,14 @@ export const taskTypeKind = defineDefinitionKind<TaskTypeDefinitionFile, TaskTyp
 function subjectIssue(
   context: DefinitionCheckContext,
   workflowId: string,
-  subject: WorkflowDefinition['subject'],
+  subject: WorkflowSubjectKind,
   location: string,
 ): DefinitionIssue[] {
   const found = context.lookup(WORKFLOW_KIND, workflowId);
-  if (found.state !== 'valid' || (found.entity as WorkflowDefinition).subject === subject) {
+  if (
+    found.state !== 'valid' ||
+    (found.entity as WorkflowDefinition).annotations.subject === subject
+  ) {
     return [];
   }
 

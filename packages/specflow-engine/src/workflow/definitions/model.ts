@@ -1,9 +1,15 @@
-import type { WaitTrigger, WorkflowEffect } from '@nevo/specflow-contracts/documents';
+import type { WorkflowEffect } from '@nevo/specflow-contracts/documents';
+
+import type * as core from '../core';
 
 /**
  * Resolved execution definitions: workflows, agent archetypes and task types, as the kind registry
  * builds them from `.nevo/definitions/{workflow,agent-archetype,task-type}/`. Defaults of the file
  * format are applied here, so progression code never re-derives them.
+ *
+ * A workflow is a compiled core definition (`../core`) carrying the SpecFlow annotations below,
+ * which only the SpecFlow adapter interprets. Its wait-step triggers are the Task events
+ * `tasks-finished` and `task-escalated`.
  */
 
 export const WORKFLOW_KIND = 'workflow';
@@ -14,69 +20,32 @@ export const TASK_TYPE_KIND = 'task-type';
 export type TaskTypes = readonly ['*'] | readonly string[];
 
 export type WorkflowSubjectKind = 'specification' | 'task';
-export type TerminalOutcome = 'completed' | 'abandoned';
 
-export type TransitionTarget =
-  | { readonly kind: 'step'; readonly step: string }
-  | { readonly kind: 'terminal'; readonly outcome: TerminalOutcome };
-
-export interface WorkflowTransition {
-  readonly id: string;
-  readonly result?: string;
-  readonly label?: string;
-  readonly target: TransitionTarget;
-  readonly continuation: 'auto' | 'owner-action';
-  readonly session: 'fresh' | 'reuse';
-  readonly feedback: 'required' | 'optional';
-  readonly effects: readonly WorkflowEffect[];
-  /** Task workflows only: the finish puts the Task on hold and escalates to the Specification. */
-  readonly escalate: boolean;
-  /**
-   * Wait steps only: the Task event that takes the transition. Every wait-step transition has one
-   * (`tasks-finished` when the file names none); a work-step transition has none.
-   */
-  readonly on?: WaitTrigger;
+/** What SpecFlow declares on a workflow, beyond the neutral definition. */
+export interface SpecFlowAnnotations extends core.HostAnnotations {
+  readonly definition: { readonly subject: WorkflowSubjectKind };
+  readonly work: {
+    /** The preferred agent archetype; named exactly when an agent may do the step. */
+    readonly archetype?: string;
+    readonly interaction: 'interactive' | 'autonomous';
+    readonly produces?: 'tasks';
+  };
+  readonly wait: Readonly<Record<string, never>>;
+  readonly transition: {
+    readonly session: 'fresh' | 'reuse';
+    readonly effects: readonly WorkflowEffect[];
+    /** Task workflows only: the finish puts the Task on hold and escalates to the Specification. */
+    readonly escalate: boolean;
+  };
+  readonly return: { readonly effects: readonly WorkflowEffect[] };
 }
 
-interface StepCommon {
-  readonly id: string;
-  readonly title: string;
-  readonly purpose: string;
-  readonly instructions?: string;
-  readonly transitions: readonly WorkflowTransition[];
-}
-
-export interface WorkStep extends StepCommon {
-  readonly kind: 'work';
-  readonly executor: 'agent' | 'human';
-  readonly archetype?: string;
-  readonly interaction: 'interactive' | 'autonomous';
-  readonly produces?: 'tasks';
-}
-
-export interface WaitForTasksStep extends StepCommon {
-  readonly kind: 'wait-for-tasks';
-}
-
-export type WorkflowStep = WorkStep | WaitForTasksStep;
-
-export interface WorkflowReturn {
-  readonly step: string;
-  readonly label?: string;
-  readonly feedback: 'required' | 'optional';
-  readonly effects: readonly WorkflowEffect[];
-}
-
-export interface WorkflowDefinition {
-  readonly id: string;
-  readonly version: number;
-  readonly title: string;
-  readonly description: string;
-  readonly subject: WorkflowSubjectKind;
-  readonly entryStep: string;
-  readonly steps: readonly WorkflowStep[];
-  readonly returns: readonly WorkflowReturn[];
-}
+export type WorkflowDefinition = core.WorkflowDefinition<SpecFlowAnnotations>;
+export type WorkflowStep = core.WorkflowStep<SpecFlowAnnotations>;
+export type WorkStep = core.WorkStep<SpecFlowAnnotations>;
+export type WaitStep = core.WaitStep<SpecFlowAnnotations>;
+export type WorkflowTransition = core.WorkflowTransition<SpecFlowAnnotations>;
+export type WorkflowReturn = core.WorkflowReturn<SpecFlowAnnotations>;
 
 export interface AgentArchetypeProvider {
   readonly provider: string;
@@ -101,10 +70,6 @@ export interface TaskType {
   readonly useWhen: string;
   readonly instructions?: string;
   readonly workflow: string;
-}
-
-export function findStep(definition: WorkflowDefinition, id: string): WorkflowStep | undefined {
-  return definition.steps.find((step) => step.id === id);
 }
 
 export function providerOf(

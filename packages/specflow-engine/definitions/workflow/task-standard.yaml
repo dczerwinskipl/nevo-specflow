@@ -10,7 +10,7 @@ steps:
   - id: implement
     kind: work
     title: Implement
-    executor: agent
+    executors: [agent, human]
     archetype: implementer
     purpose: Implement the Task within its scope and run its verification.
     transitions:
@@ -20,7 +20,7 @@ steps:
   - id: review
     kind: work
     title: Review
-    executor: agent
+    executors: [agent, human]
     archetype: reviewer
     purpose: Review the change independently against the Task and the repository rules.
     transitions:

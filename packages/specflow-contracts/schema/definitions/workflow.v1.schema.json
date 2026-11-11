@@ -74,7 +74,7 @@
               "purpose",
               "transitions",
               "kind",
-              "executor"
+              "executors"
             ],
             "properties": {
               "id": {
@@ -232,17 +232,23 @@
                 "type": "string",
                 "const": "work"
               },
-              "executor": {
-                "anyOf": [
-                  {
-                    "type": "string",
-                    "const": "agent"
-                  },
-                  {
-                    "type": "string",
-                    "const": "human"
-                  }
-                ]
+              "executors": {
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "agent"
+                    },
+                    {
+                      "type": "string",
+                      "const": "human"
+                    }
+                  ]
+                },
+                "minItems": 1,
+                "maxItems": 2,
+                "uniqueItems": true
               },
               "archetype": {
                 "type": "string",

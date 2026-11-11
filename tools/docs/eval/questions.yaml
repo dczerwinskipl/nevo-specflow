@@ -1,0 +1,152 @@
+# Retrieval eval of documentation discovery for this repository (`pnpm docs:eval`; manual, not in
+# CI). Realistic agent questions, English and Polish (`lang`), each with the 1..3 active,
+# authoritative document ids a good answer must return. Keep `expected` to documents that really
+# answer the question; add a question when a search regression is found. Questions the
+# documentation does not answer have `expected: []`: they are not scored, only their best vector
+# similarity is reported next to the answerable ones.
+
+questions:
+  # Design system and Storybook
+  - question: How do I write a Storybook story for a component and what must it cover?
+    lang: en
+    expected: [design-system.implementation.storybook.guidelines]
+  - question: Jakie są zasady pisania stories w Storybooku?
+    lang: pl
+    expected: [design-system.implementation.storybook.guidelines]
+  - question: How should Tailwind classes and design tokens be used in components?
+    lang: en
+    expected: [design-system.implementation.tailwind.styling-guidelines]
+  - question: Jak tworzyć nowy komponent React w design systemie?
+    lang: pl
+    expected:
+      - design-system.implementation.react.component-authoring-contract
+      - design-system.implementation.react.component-guidelines
+
+  # Workflow and tasks
+  - question: jak obsługujemy taski
+    lang: pl
+    expected:
+      - architecture.workflow.workflow-kernel
+      - architecture.runtime.task-read-composition
+      - reference.api.task-reads
+  - question: How does the workflow continue automatically to the next step?
+    lang: en
+    expected:
+      - architecture.workflow.workflow-kernel
+      - adr.0019-workflow-kernel-and-automatic-continuation
+  - question: Which HTTP endpoint reads a task and its documents?
+    lang: en
+    expected: [reference.api.task-reads]
+  - question: Jak przebiega cykl życia specyfikacji od utworzenia do zamknięcia?
+    lang: pl
+    expected:
+      - architecture.runtime.specflow-lifecycle
+      - product.specflow.specification-creation
+
+  # Sessions: architecture vs API reference
+  - question: Which HTTP route starts a new agent session turn and what does it return?
+    lang: en
+    expected: [reference.api.sessions]
+  - question: Where are AI session transcripts stored and how is a crash recovered?
+    lang: en
+    expected: [architecture.ai.session-storage-and-lifecycle]
+  - question: Kto jest właścicielem procesu providera i jak jest zatrzymywany?
+    lang: pl
+    expected: [architecture.ai.provider-process-ownership]
+  - question: How does the session provider driver protocol exchange messages?
+    lang: en
+    expected: [reference.protocols.session-provider-driver]
+  - question: What does the Full Session screen show?
+    lang: en
+    expected: [product.specflow.ui.full-session]
+
+  # Recovery
+  - question: How do we recover after an engine Git commit failed halfway?
+    lang: en
+    expected: [engineering.shared.specflow-git-recovery]
+  - question: Jak UI odzyskuje sesję po wygaśnięciu uwierzytelnienia?
+    lang: pl
+    expected: [product.specflow.ui.authentication-recovery]
+  - question: How do workspace execution claims prevent two runs in the same worktree?
+    lang: en
+    expected: [architecture.runtime.workspace-execution-claims]
+
+  # Engineering and repository workflow
+  - question: What is the commit message format?
+    lang: en
+    expected: [engineering.repository.commit-conventions]
+  - question: Jak przygotować pull request i co powinien zawierać opis?
+    lang: pl
+    expected: [engineering.repository.pull-requests]
+  - question: Where do test files go and how are tests organized?
+    lang: en
+    expected: [engineering.shared.testing]
+  - question: Jak testować komendy CLI?
+    lang: pl
+    expected: [engineering.cli.testing]
+  - question: How do I run slow integration tests on Linux from Windows?
+    lang: en
+    expected: [engineering.repository.local-setup]
+  - question: How is a release line cut and promoted?
+    lang: en
+    expected: [engineering.repository.releasing, adr.0003-branch-and-release-model]
+  - question: Jak obsługiwać anulowanie i cykl życia operacji asynchronicznych w kodzie?
+    lang: pl
+    expected: [engineering.shared.async-and-lifecycle]
+
+  # Runtime architecture and API
+  - question: How does authorization decide which capabilities a principal has?
+    lang: en
+    expected: [architecture.runtime.authorization, reference.api.authorization]
+  - question: Gdzie są przechowywane lokalna konfiguracja i cache?
+    lang: pl
+    expected: [architecture.runtime.configuration]
+  - question: How do I report progress of a long-running operation to the UI?
+    lang: en
+    expected: [engineering.shared.operation-progress, reference.api.operation-progress]
+  - question: How is the OpenAPI document generated and checked?
+    lang: en
+    expected: [reference.api.openapi]
+  - question: Jak wyglądają zależności między pakietami produktu?
+    lang: pl
+    expected:
+      - adr.0012-product-package-topology-and-dependency-direction
+      - architecture.repository-structure
+
+  # Documentation tooling
+  - question: Which docs command should an agent use to find documents for a task?
+    lang: en
+    expected:
+      - reference.cli.nevo-specflow-docs
+      - adr.0020-documentation-discovery-is-a-product-capability
+  - question: How do I configure an embedding endpoint for semantic documentation search?
+    lang: en
+    expected: [reference.configuration.documentation-and-embeddings]
+
+  # No answer in the documentation, near the repository's domain
+  - question: Which database engine stores Specifications in production?
+    lang: en
+    expected: []
+  - question: How do I deploy the Runtime to Kubernetes with Helm?
+    lang: en
+    expected: []
+  - question: Jak skonfigurować logowanie przez SSO w Nevo SpecFlow?
+    lang: pl
+    expected: []
+
+  # No answer in the documentation, unrelated
+  - question: How do I configure the office printer on the third floor?
+    lang: en
+    expected: []
+  - question: What is the recipe for the team's Friday pizza?
+    lang: en
+    expected: []
+  - question: Which Kubernetes cluster runs the production database?
+    lang: en
+    expected: []
+  - question: Jak zamówić nowy laptop służbowy?
+    lang: pl
+    expected: []
+  - question: Ile dni urlopu przysługuje w tym roku?
+    lang: pl
+    expected: []

@@ -40,6 +40,17 @@ describe('createProgram — nevo-specflow router', () => {
     });
   });
 
+  it('docs is composed from the documentation capability and lists its commands', async () => {
+    const { run, out } = harness();
+    await expect(run(['docs', '--help'])).rejects.toMatchObject({
+      code: 'commander.helpDisplayed',
+    });
+    const text = out.join('\n');
+    for (const name of ['list', 'find', 'get', 'context', 'check', 'search', 'semantic']) {
+      expect(text).toContain(name);
+    }
+  });
+
   it('--version prints the injected version constant', async () => {
     const { run, out } = harness();
     await expect(run(['--version'])).rejects.toMatchObject({ code: 'commander.version' });

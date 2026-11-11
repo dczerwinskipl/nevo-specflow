@@ -1,8 +1,20 @@
-import { planNewAdr, type AdrPlan } from '../domain/adr.js';
-import { collectCorpusProblems } from '../domain/corpus.js';
-import { buildIndex } from '../domain/index-file.js';
-import { CorpusInvalidError } from '../errors.js';
-import type { DocRepository } from '../ports.js';
+import {
+  buildIndex,
+  DocsCorpusInvalidError,
+  inspectCorpus,
+  type DocsCorpus,
+} from '@nevo/specflow-docs';
+
+import { ADR_DIRECTORY, planNewAdr, type AdrPlan } from '../domain/adr.js';
+
+/** The ADR writes `adr new` needs beyond the product's read-only corpus port. */
+export interface AdrFiles {
+  /** Basenames of the `*.md` files in the ADR directory. */
+  filenames(): string[];
+  /** Write a file (project-root-relative path, `/` separators). */
+  write(file: string, content: string): void;
+  remove(file: string): void;
+}
 
 export interface CreateAdrInput {
   readonly title: string;
@@ -18,35 +30,43 @@ export interface CreateAdrResult {
 
 /**
  * Create the next-numbered ADR as a `draft`. Transactional:
- *   1. plan + render + validate the file in memory (planNewAdr);
- *   2. refuse if the current corpus is already invalid;
+ *   1. refuse if the current corpus is already invalid;
+ *   2. plan + render + validate the file in memory (planNewAdr);
  *   3. write the file;
  *   4. re-validate — on any problem, remove the file and throw (no half-apply);
  *   5. regenerate the deterministic index.
  */
-export function createAdr(repo: DocRepository, input: CreateAdrInput): CreateAdrResult {
-  const preProblems = collectCorpusProblems(repo.scan());
-  if (preProblems.length) {
-    throw new CorpusInvalidError(preProblems);
+export function createAdr(
+  corpus: DocsCorpus,
+  files: AdrFiles,
+  input: CreateAdrInput,
+): CreateAdrResult {
+  const before = inspectCorpus(corpus);
+  if (before.problems.length) {
+    throw new DocsCorpusInvalidError(before.problems);
   }
 
-  const plan = planNewAdr({ title: input.title, filenames: repo.adrFilenames(), date: input.date });
+  const plan = planNewAdr({
+    title: input.title,
+    directory: `${corpus.settings.root}/${ADR_DIRECTORY}`,
+    filenames: files.filenames(),
+    ...(input.date === undefined ? {} : { date: input.date }),
+  });
 
   if (input.dryRun) {
     return { plan, written: false, indexRegenerated: false };
   }
 
-  repo.writeDoc(plan.file, plan.content);
+  files.write(plan.file, plan.content);
 
-  const scan = repo.scan();
-  const problems = collectCorpusProblems(scan);
-  if (problems.length) {
-    repo.removeDoc(plan.file);
+  const after = inspectCorpus(corpus);
+  if (after.problems.length) {
+    files.remove(plan.file);
 
-    throw new CorpusInvalidError(problems);
+    throw new DocsCorpusInvalidError(after.problems);
   }
 
-  repo.writeIndex(buildIndex(scan.docs));
+  corpus.repo.writeIndex(buildIndex(after.docs, { root: corpus.settings.root }));
 
   return { plan, written: true, indexRegenerated: true };
 }

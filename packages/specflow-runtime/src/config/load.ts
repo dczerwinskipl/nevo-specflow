@@ -5,6 +5,7 @@ import { isAbsolute } from 'node:path';
 import { parse } from 'yaml';
 
 import { assertNoLocalAuthorization, validateProjectAuthorizationSource } from '../features/auth';
+import { parseDocsFeatureConfig } from '../features/docs';
 import { parseSpecsFeatureConfig } from '../features/specs';
 import { RuntimeConfigError } from './parsing/runtime-config-error';
 import {
@@ -46,11 +47,12 @@ export async function loadRuntimeConfig(
 
   let localExists = false;
   let localSource: Record<string, unknown> | undefined;
+  let localDocument: unknown;
 
   if (localPath) {
     localExists = await fileExists(localPath);
     if (localExists) {
-      const localDocument = await readRequiredConfig(localPath);
+      localDocument = await readRequiredConfig(localPath);
       if (isRecord(localDocument) && localDocument.sessions !== undefined) {
         throw new RuntimeConfigError(
           'Session configuration is project-owned and cannot be set locally.',
@@ -71,10 +73,16 @@ export async function loadRuntimeConfig(
     }
   }
 
+  const docs = parseDocsFeatureConfig({
+    project: projectDocument,
+    local: localDocument,
+    projectPath,
+    localPath,
+  });
   const merged = localSource ? mergeRuntimeConfigValues(projectSource, localSource) : projectSource;
 
   return {
-    config: { ...parseRuntimeConfig(merged), specs, sessions },
+    config: { ...parseRuntimeConfig(merged), specs, sessions, docs },
     sources: {
       project: projectPath,
       ...(localExists && localPath ? { local: localPath } : {}),
@@ -125,6 +133,14 @@ function runtimeSection(
   const runtime = value.runtime;
   if (runtime === undefined && !required) {
     return undefined;
+  }
+
+  // A project configuration without `runtime` is valid for the `docs` commands (for example one
+  // with only a `docs` section), but the project is not initialized.
+  if (runtime === undefined) {
+    throw new RuntimeConfigError(
+      `Nevo SpecFlow is not initialized: ${path} has no 'runtime' section. Run "nevo-specflow init"; it keeps the existing sections.`,
+    );
   }
 
   if (!isRecord(runtime)) {

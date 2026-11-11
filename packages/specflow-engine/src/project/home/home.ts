@@ -131,7 +131,7 @@ export async function resolveProjectHome(
   if (!selected) {
     throw new ProjectHomeError(
       'PROJECT_HOME_NOT_FOUND',
-      'No designated Project Home exists for this local Git repository. Repair or initialize explicitly.',
+      'No designated Project Home exists for this local Git repository. Run "nevo-specflow init" in the primary checkout to initialize Nevo SpecFlow, or "nevo-specflow project bootstrap" when its configuration is already initialized.',
     );
   }
 

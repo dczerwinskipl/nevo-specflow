@@ -755,6 +755,1012 @@
         },
         "additionalProperties": false
       },
+      "DocsSearchResult": {
+        "anyOf": [
+          {
+            "type": "object",
+            "required": [
+              "mode",
+              "results"
+            ],
+            "properties": {
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "hybrid"
+                ]
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "title",
+                    "type",
+                    "status",
+                    "file",
+                    "score",
+                    "sections"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "scope": {
+                      "type": "string"
+                    },
+                    "areas": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1
+                    },
+                    "tags": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1
+                    },
+                    "summary": {
+                      "type": "string"
+                    },
+                    "readWhen": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1
+                    },
+                    "file": {
+                      "type": "string"
+                    },
+                    "score": {
+                      "type": "number"
+                    },
+                    "sections": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "headingPath",
+                          "sectionId",
+                          "line",
+                          "score"
+                        ],
+                        "properties": {
+                          "headingPath": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "sectionId": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "line": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "score": {
+                            "type": "number"
+                          },
+                          "snippet": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "maxItems": 3
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "mode",
+              "reason",
+              "results"
+            ],
+            "properties": {
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "lexical"
+                ]
+              },
+              "reason": {
+                "type": "object",
+                "required": [
+                  "code",
+                  "message"
+                ],
+                "properties": {
+                  "code": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "semantic-disabled"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "no-endpoint"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "endpoint-unreachable"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "index-building"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "index-unavailable"
+                        ]
+                      }
+                    ]
+                  },
+                  "message": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "title",
+                    "type",
+                    "status",
+                    "file",
+                    "score",
+                    "sections"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "scope": {
+                      "type": "string"
+                    },
+                    "areas": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1
+                    },
+                    "tags": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1
+                    },
+                    "summary": {
+                      "type": "string"
+                    },
+                    "readWhen": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1
+                    },
+                    "file": {
+                      "type": "string"
+                    },
+                    "score": {
+                      "type": "number"
+                    },
+                    "sections": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "headingPath",
+                          "sectionId",
+                          "line",
+                          "score"
+                        ],
+                        "properties": {
+                          "headingPath": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "sectionId": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "line": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "score": {
+                            "type": "number"
+                          },
+                          "snippet": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "maxItems": 3
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "DocsStatus": {
+        "anyOf": [
+          {
+            "type": "object",
+            "required": [
+              "mode",
+              "enabled",
+              "endpoint",
+              "reachability",
+              "index",
+              "activity",
+              "failed"
+            ],
+            "properties": {
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "hybrid"
+                ]
+              },
+              "enabled": {
+                "type": "boolean"
+              },
+              "endpoint": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "required": [
+                      "protocol",
+                      "baseUrl",
+                      "model"
+                    ],
+                    "properties": {
+                      "protocol": {
+                        "type": "string"
+                      },
+                      "baseUrl": {
+                        "type": "string"
+                      },
+                      "model": {
+                        "type": "string"
+                      },
+                      "spaceId": {
+                        "type": "string"
+                      },
+                      "dimensions": {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      "apiKeyEnv": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "reachability": {
+                "anyOf": [
+                  {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "required": [
+                          "reachable",
+                          "latencyMs",
+                          "dimensions"
+                        ],
+                        "properties": {
+                          "reachable": {
+                            "type": "boolean",
+                            "enum": [
+                              true
+                            ]
+                          },
+                          "latencyMs": {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          "dimensions": {
+                            "type": "integer",
+                            "minimum": 1
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "required": [
+                          "reachable",
+                          "message"
+                        ],
+                        "properties": {
+                          "reachable": {
+                            "type": "boolean",
+                            "enum": [
+                              false
+                            ]
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "index": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "required": [
+                      "state"
+                    ],
+                    "properties": {
+                      "state": {
+                        "type": "string",
+                        "enum": [
+                          "missing"
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "state",
+                      "message"
+                    ],
+                    "properties": {
+                      "state": {
+                        "type": "string",
+                        "enum": [
+                          "unreadable"
+                        ]
+                      },
+                      "message": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "state",
+                      "generation",
+                      "chunks",
+                      "model",
+                      "dimensions",
+                      "changed"
+                    ],
+                    "properties": {
+                      "state": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "current"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "stale"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "rebuild"
+                            ]
+                          }
+                        ]
+                      },
+                      "generation": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "chunks": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "model": {
+                        "type": "string"
+                      },
+                      "dimensions": {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      "changed": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "activity": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "required": [
+                      "state"
+                    ],
+                    "properties": {
+                      "state": {
+                        "type": "string",
+                        "enum": [
+                          "updating"
+                        ]
+                      },
+                      "pid": {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      "progress": {
+                        "type": "object",
+                        "required": [
+                          "startedAt",
+                          "updatedAt",
+                          "embedded",
+                          "total"
+                        ],
+                        "properties": {
+                          "startedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "embedded": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "total": {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "state"
+                    ],
+                    "properties": {
+                      "state": {
+                        "type": "string",
+                        "enum": [
+                          "idle"
+                        ]
+                      },
+                      "last": {
+                        "type": "object",
+                        "required": [
+                          "outcome",
+                          "startedAt",
+                          "endedAt",
+                          "embedded",
+                          "total"
+                        ],
+                        "properties": {
+                          "outcome": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "completed"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "failed"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "interrupted"
+                                ]
+                              }
+                            ]
+                          },
+                          "startedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "endedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "embedded": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "total": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "generation": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "failed": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "mode",
+              "reason",
+              "enabled",
+              "endpoint",
+              "reachability",
+              "index",
+              "activity",
+              "failed"
+            ],
+            "properties": {
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "lexical"
+                ]
+              },
+              "reason": {
+                "type": "object",
+                "required": [
+                  "code",
+                  "message"
+                ],
+                "properties": {
+                  "code": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "semantic-disabled"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "no-endpoint"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "endpoint-unreachable"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "index-building"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "index-unavailable"
+                        ]
+                      }
+                    ]
+                  },
+                  "message": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "enabled": {
+                "type": "boolean"
+              },
+              "endpoint": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "required": [
+                      "protocol",
+                      "baseUrl",
+                      "model"
+                    ],
+                    "properties": {
+                      "protocol": {
+                        "type": "string"
+                      },
+                      "baseUrl": {
+                        "type": "string"
+                      },
+                      "model": {
+                        "type": "string"
+                      },
+                      "spaceId": {
+                        "type": "string"
+                      },
+                      "dimensions": {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      "apiKeyEnv": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "reachability": {
+                "anyOf": [
+                  {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "required": [
+                          "reachable",
+                          "latencyMs",
+                          "dimensions"
+                        ],
+                        "properties": {
+                          "reachable": {
+                            "type": "boolean",
+                            "enum": [
+                              true
+                            ]
+                          },
+                          "latencyMs": {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          "dimensions": {
+                            "type": "integer",
+                            "minimum": 1
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "required": [
+                          "reachable",
+                          "message"
+                        ],
+                        "properties": {
+                          "reachable": {
+                            "type": "boolean",
+                            "enum": [
+                              false
+                            ]
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "index": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "required": [
+                      "state"
+                    ],
+                    "properties": {
+                      "state": {
+                        "type": "string",
+                        "enum": [
+                          "missing"
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "state",
+                      "message"
+                    ],
+                    "properties": {
+                      "state": {
+                        "type": "string",
+                        "enum": [
+                          "unreadable"
+                        ]
+                      },
+                      "message": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "state",
+                      "generation",
+                      "chunks",
+                      "model",
+                      "dimensions",
+                      "changed"
+                    ],
+                    "properties": {
+                      "state": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "current"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "stale"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "rebuild"
+                            ]
+                          }
+                        ]
+                      },
+                      "generation": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "chunks": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "model": {
+                        "type": "string"
+                      },
+                      "dimensions": {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      "changed": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "activity": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "required": [
+                      "state"
+                    ],
+                    "properties": {
+                      "state": {
+                        "type": "string",
+                        "enum": [
+                          "updating"
+                        ]
+                      },
+                      "pid": {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      "progress": {
+                        "type": "object",
+                        "required": [
+                          "startedAt",
+                          "updatedAt",
+                          "embedded",
+                          "total"
+                        ],
+                        "properties": {
+                          "startedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "embedded": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "total": {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "state"
+                    ],
+                    "properties": {
+                      "state": {
+                        "type": "string",
+                        "enum": [
+                          "idle"
+                        ]
+                      },
+                      "last": {
+                        "type": "object",
+                        "required": [
+                          "outcome",
+                          "startedAt",
+                          "endedAt",
+                          "embedded",
+                          "total"
+                        ],
+                        "properties": {
+                          "outcome": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "completed"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "failed"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "interrupted"
+                                ]
+                              }
+                            ]
+                          },
+                          "startedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "endedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "embedded": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "total": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "generation": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "failed": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
       "DocumentError": {
         "type": "object",
         "required": [
@@ -3369,6 +4375,12 @@
                             "enum": [
                               "settings"
                             ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "docs"
+                            ]
                           }
                         ]
                       },
@@ -3632,6 +4644,52 @@
                         }
                       },
                       "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "resource",
+                        "capabilities"
+                      ],
+                      "properties": {
+                        "resource": {
+                          "type": "object",
+                          "required": [
+                            "name",
+                            "scope"
+                          ],
+                          "properties": {
+                            "name": {
+                              "type": "string",
+                              "enum": [
+                                "docs"
+                              ]
+                            },
+                            "scope": {
+                              "type": "object",
+                              "additionalProperties": {
+                                "type": "string",
+                                "minLength": 1,
+                                "pattern": "\\S"
+                              }
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "capabilities": {
+                          "type": "object",
+                          "required": [
+                            "search"
+                          ],
+                          "properties": {
+                            "search": {
+                              "type": "boolean"
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      },
+                      "additionalProperties": false
                     }
                   ]
                 }
@@ -3690,6 +4748,300 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RateLimitedErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/docs/search": {
+      "get": {
+        "operationId": "getDocsSearch",
+        "summary": "Search the project's documentation",
+        "tags": [
+          "Documentation"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "description": "The question, in your own words."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(?:[1-9]|[1-4][0-9]|50)$"
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "description": "Maximum documents, 1 to 50 (default 10)."
+          },
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "false"
+                  ]
+                }
+              ]
+            },
+            "in": "query",
+            "name": "includeNonAuthoritative",
+            "required": false,
+            "description": "Also return documents under the non-authoritative path prefixes (default false)."
+          },
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "true"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "false"
+                  ]
+                }
+              ]
+            },
+            "in": "query",
+            "name": "snippets",
+            "required": false,
+            "description": "Add a query-aware excerpt (`snippet`) to each matching section (default true; `false` omits it)."
+          }
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocsSearchResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the route schema: the request error with `code` `FST_ERR_VALIDATION`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticationRequiredErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The principal lacks a required capability.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests: the source exceeded the Runtime default rate limit.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Seconds until the budget renews."
+              },
+              "x-ratelimit-limit": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "The budget of the time window."
+              },
+              "x-ratelimit-remaining": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "`0` on a refusal."
+              },
+              "x-ratelimit-reset": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Seconds until the window resets."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitedErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporarily unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error",
+                    "code"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "DOCS_UNAVAILABLE"
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/docs/status": {
+      "get": {
+        "operationId": "getDocsStatus",
+        "summary": "Read the semantic search status of the documentation",
+        "tags": [
+          "Documentation"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocsStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticationRequiredErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The principal lacks a required capability.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests: the source exceeded the Runtime default rate limit.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Seconds until the budget renews."
+              },
+              "x-ratelimit-limit": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "The budget of the time window."
+              },
+              "x-ratelimit-remaining": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "`0` on a refusal."
+              },
+              "x-ratelimit-reset": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Seconds until the window resets."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitedErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporarily unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error",
+                    "code"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "DOCS_UNAVAILABLE"
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
                 }
               }
             }
@@ -29324,6 +30676,10 @@
     {
       "name": "Workspaces",
       "description": "Closing a linked worktree and a whole workspace (checkout)."
+    },
+    {
+      "name": "Documentation",
+      "description": "The project's own documentation: search and the status of its semantic search index."
     },
     {
       "name": "Runtime",

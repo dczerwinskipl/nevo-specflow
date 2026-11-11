@@ -7,11 +7,15 @@ read_when:
   - adding or moving SpecFlow configuration
   - deciding whether a setting is committed or workstation-local
   - adding Runtime-owned local persistence
+  - adding a local cache or index
 summary: >
   Nevo SpecFlow uses one .nevo namespace: committed project configuration and definitions,
-  ignored workstation-local configuration, and application-owned local Runtime state.
+  ignored workstation-local configuration, persistent application-owned local state and a
+  disposable local cache.
 related:
   - adr.0017-definitions-as-project-data
+  - adr.0020-documentation-discovery-is-a-product-capability
+  - adr.0021-product-neutral-ai-semantic-search-engine
   - docs.architecture-runtime-readme
   - architecture.runtime.ownership-and-lifecycle
   - reference.cli.nevo-specflow-contract
@@ -31,7 +35,8 @@ Nevo SpecFlow uses one repository namespace:
 │                               #   workflows, agent archetypes, task types (ADR 0019)
 └── local/                      # entirely Git-ignored
     ├── config.yaml             # workstation/operator configuration + secrets
-    └── state/                  # application-owned local persistence as capabilities migrate
+    ├── state/                  # persistent application-owned local data; must not be deleted
+    └── cache/                  # disposable, rebuildable data; safe to delete
 ```
 
 The canonical ignore entry is:
@@ -41,6 +46,15 @@ The canonical ignore entry is:
 ```
 
 Do not introduce a sibling `.nevo-local/` namespace.
+
+`.nevo/local/` has exactly these three top-level entries. A capability that needs local data adds a
+subdirectory inside `state/` or `cache/` (for example `cache/docs-index/`). It MUST NOT add another
+top-level entry under `.nevo/local/`, another ignore entry, or a setup step for its directory: the
+single ignore entry already covers it, and the capability creates its subdirectory on first use.
+`nevo-specflow init` writes that entry. A capability that can write below `.nevo/local/` in a
+project `init` has not set up (the documentation search cache, see
+[documentation and embeddings](../../reference/configuration/documentation-and-embeddings.md#documentation-without-an-initialized-project))
+first checks that Git ignores the directory and writes nothing there otherwise.
 
 ## Ownership
 
@@ -82,6 +96,14 @@ git:
   worktrees: ...
   integrationTargetBranch: ...
   commits: ...
+
+docs:
+  root: docs # the taxonomy and path prefixes are in <docs.root>/docs.yaml
+  search:
+    semantic: true
+
+ai:
+  embeddings: ...
 ```
 
 Runtime infrastructure owns composition and file loading, while feature modules own the meaning of
@@ -89,7 +111,28 @@ their configuration. Auth owns `runtime.authentication` and `runtime.authorizati
 composition owns `runtime.server`; Specs owns the top-level `specs` namespace; Runtime Sessions
 owns the top-level `sessions` namespace (`features/sessions/configuration.ts`); the Engine's
 version-control capability owns `git`, whose keys and defaults are in
-[SpecFlow Git/worktree configuration](../../reference/configuration/specflow-git-worktrees.md).
+[SpecFlow Git/worktree configuration](../../reference/configuration/specflow-git-worktrees.md). The documentation
+capability (`@nevo/specflow-docs`,
+[ADR 0020](../decisions/0020-documentation-discovery-is-a-product-capability.md)) owns the `docs`
+namespace and, while it is the only consumer, `ai.embeddings`. Runtime config loading invokes that
+package's parsers for these namespaces like any other feature parser. The `nevo-specflow docs`
+command uses the same parsers but is not Runtime config loading: it works without either config
+file (using the defaults in ADR 0020), reads and validates only `docs` and `ai.embeddings`, and does
+not require the `runtime` section.
+
+**Documentation-only configuration.** A `.nevo/config.yaml` with only a `docs` section (and
+optionally `ai.embeddings`) is a valid configuration for the `docs` commands; using documentation
+does not require initializing the project. It is not an initialized project: the `runtime` section
+is the initialization marker. Runtime config loading and `nevo-specflow project bootstrap` refuse a
+project configuration without `runtime` and name `nevo-specflow init`, which completes the file (see
+Initialization).
+
+**Documentation settings file.** What describes the documentation itself — the `scope`/`areas`
+taxonomy, non-authoritative and excluded path prefixes — is not in `.nevo/config.yaml` but in the
+optional `<docs.root>/docs.yaml`, committed next to the documents. The documentation capability owns
+and validates it whenever it opens the corpus (the `docs` commands, and the Runtime when it first
+uses the corpus); it is not part of the corpus. The keys are in the
+[configuration reference](../../reference/configuration/documentation-and-embeddings.md).
 
 Configuration dependencies flow in one direction:
 
@@ -148,13 +191,28 @@ Current ownership is explicit:
 - `git`: project owns everything shareable (`enabled`, `worktrees`, `integrationTargetBranch`,
   `commits.protectedBranches`/`allowedBranches`/`auto`); local owns `worktreesRoot` and may override
   `commits.auto.<capability>` (the local value wins; any other local `git.commits` key is rejected).
+- `docs`: project-owned (the documentation root and the `search.semantic` opt-in); local `docs`
+  configuration is rejected, both by Runtime config loading and by the `nevo-specflow docs`
+  command. The taxonomy and path prefixes are in `<docs.root>/docs.yaml`, which is committed with
+  the documentation and has no local counterpart.
+- `ai.embeddings`: allowed in both files; project config may hold a team default endpoint and local
+  config overrides it, the local value winning per key. The embedding API key is never stored in
+  either file: configuration holds only the name of the environment variable that contains it.
+  Either file may be absent; the local file alone may configure the endpoint.
 
 A local file that attempts to set project-owned policy is rejected before composition. Likewise,
 project config cannot contain local-owned credentials or workstation-specific TLS paths.
 
-`.nevo/local/state/` is reserved for application-owned data such as Session bindings,
-transcript/read-model caches, workflow operation records, human-verification records, provider
-aliases, and bounded diagnostics. Users should not treat that state as editable configuration.
+`.nevo/local/state/` is reserved for persistent application-owned data that cannot be rebuilt, such as
+Session bindings, transcript and read-model records, workflow operation records, human-verification records, provider
+aliases, and bounded diagnostics. Users should not treat that state as editable configuration, and
+it MUST NOT be deleted to recover from a problem.
+
+`.nevo/local/cache/` holds data that can always be rebuilt from project files and configuration,
+such as the semantic documentation index (`cache/docs-index/`). Cache contents are never migrated:
+a capability that finds an incompatible cache discards and rebuilds it. Deleting `cache/` or any
+subdirectory is always safe and costs only the rebuild. Data that cannot be rebuilt belongs in
+`state/`, not `cache/`.
 
 ## Definitions are not flattened into config.yaml
 
@@ -169,10 +227,15 @@ select/default such definitions, but should not absorb their full bodies.
 `nevo-specflow init` owns repository bootstrap only:
 
 - discover the Git repository root;
-- create `.nevo/config.yaml` and `.nevo/local/config.yaml`;
+- create `.nevo/config.yaml` and `.nevo/local/config.yaml`, or complete existing ones that have no
+  `runtime` section (for example a documentation-only configuration): it adds its sections, keeps
+  the existing sections and comments, and refuses a section it writes that already exists before
+  the first question. A configuration
+  with `runtime` is an initialized project and init refuses it;
 - ensure `.nevo/local/` is ignored and verify the concrete local config path with Git;
 - compose and serialize capability-owned contributions;
-- write local config first and committed config last as the success marker, rolling back on failure.
+- write local config first and committed config last as the success marker, rolling back on failure
+  (a completed file gets its previous content back).
 
 The product shell resolves the Git repository root for both `init` and `start`, then passes
 absolute config paths and the project root into Runtime. Runtime does not discover product file

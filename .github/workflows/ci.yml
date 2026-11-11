@@ -210,7 +210,7 @@ jobs:
         shell: bash
         run: |
           git diff --name-only "${TURBO_SCM_BASE}" "${TURBO_SCM_HEAD}" > .ci-packaged-changed
-          if grep -Eq '^(packages/(specflow|specflow-runtime|specflow-engine|specflow-contracts|specflow-ui|nevo-ui)/|\.github/workflows/ci\.yml$|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$)' .ci-packaged-changed; then
+          if grep -Eq '^(packages/(specflow|specflow-runtime|specflow-engine|specflow-contracts|specflow-docs|ai-semantic-search|authorization|specflow-ui|nevo-ui)/|\.github/workflows/ci\.yml$|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$)' .ci-packaged-changed; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "No packaged product changes."
@@ -282,8 +282,8 @@ jobs:
         id: affected
         shell: bash
         run: |
-          matcher='^(packages/(specflow-engine|specflow-runtime|specflow-contracts|specflow|authorization)/|docs/reference/api/openapi\.generated\.json$|tools/ci-engine-|\.github/workflows/(ci|engine-filesystem)\.yml$|\.github/actions/setup(/|$)|\.github/actions/[^/]+/action\.yml$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|package\.json$|\.npmrc$|\.node-version$|\.nvmrc$|turbo\.json$|tools/(build-package|build-config)\.mjs$)'
-          for path in packages/specflow-engine/src/index.ts packages/authorization/src/validation.ts docs/reference/api/openapi.generated.json packages/specflow-runtime/test/specs/create.http.test.ts packages/specflow/src/specs/command.ts packages/specflow-contracts/src/specs/close.ts tools/ci-engine-hot-shard.mjs .github/workflows/ci.yml pnpm-lock.yaml pnpm-workspace.yaml package.json .github/actions/setup/action.yml; do
+          matcher='^(packages/(specflow-engine|specflow-runtime|specflow-contracts|specflow-docs|ai-semantic-search|specflow|authorization)/|docs/reference/api/openapi\.generated\.json$|tools/ci-engine-|\.github/workflows/(ci|engine-filesystem)\.yml$|\.github/actions/setup(/|$)|\.github/actions/[^/]+/action\.yml$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|package\.json$|\.npmrc$|\.node-version$|\.nvmrc$|turbo\.json$|tools/(build-package|build-config)\.mjs$)'
+          for path in packages/specflow-engine/src/index.ts packages/authorization/src/validation.ts packages/specflow-docs/src/search/search.ts packages/ai-semantic-search/src/indexing/refresh/refresh-index.ts docs/reference/api/openapi.generated.json packages/specflow-runtime/test/specs/create.http.test.ts packages/specflow/src/specs/command.ts packages/specflow-contracts/src/specs/close.ts tools/ci-engine-hot-shard.mjs .github/workflows/ci.yml pnpm-lock.yaml pnpm-workspace.yaml package.json .github/actions/setup/action.yml; do
             printf '%s\n' "$path" | grep -Eq "$matcher" || exit 1
           done
           for path in docs/README.md packages/specflow-ui/src/index.ts tools/storybook/package.json; do

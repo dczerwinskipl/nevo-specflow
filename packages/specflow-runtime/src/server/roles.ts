@@ -1,6 +1,7 @@
 import type { CapabilityId } from '@nevo/authorization';
 
 import type { SpecFlowRoleId } from '../features/auth';
+import { DocsCapabilities } from '../features/docs';
 import { SessionCapabilities } from '../features/sessions';
 import { SettingsCapabilities } from '../features/settings';
 import { SpecCapabilities, ProjectGitCapabilities } from '../features/specs';
@@ -16,6 +17,7 @@ export function specFlowRoleCapabilities(): Readonly<
   const viewer = [
     SpecCapabilities.capabilities.View,
     SessionCapabilities.capabilities.View,
+    DocsCapabilities.capabilities.Search,
   ] as const;
 
   const developer = [

@@ -5,6 +5,7 @@ import { SessionCapabilities } from '@nevo/specflow-contracts/sessions';
 import { createRequestAuthorization } from '../../src/features/auth/authorization/request-authorization';
 import { registerRuntimeErrorHandler } from '../../src/server/error-handler';
 import { specFlowRoleCapabilities } from '../../src/server/roles';
+import { DocsCapabilities } from '../../src/features/docs';
 import { SettingsCapabilities } from '../../src/features/settings';
 import { taskReadEndpoint } from '../../src/features/tasks/endpoint';
 import { specificationWorkspaceEndpoint } from '../../src/features/specs/workspace/endpoint';
@@ -101,6 +102,7 @@ async function fixture(role: Role, grant: Scope | undefined) {
       SessionCapabilities,
       SettingsCapabilities,
       ProjectGitCapabilities,
+      DocsCapabilities,
     ],
     roles: specFlowRoleCapabilities(),
     assignments: grant ? [{ subject, role, scope: grant }] : [],

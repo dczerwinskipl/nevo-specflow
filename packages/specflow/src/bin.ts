@@ -3,6 +3,7 @@
 
 import process from 'node:process';
 
+import { backgroundExecArgv } from '@nevo/specflow-docs/cli';
 import { CommanderError } from 'commander';
 
 import { ClackProjectSetupUi, ProjectSetupCancelledError } from './init/clack-setup-ui';
@@ -24,6 +25,21 @@ async function main(argv: string[]): Promise<number> {
     signal: shutdown.signal,
     cwd: process.cwd(),
     initUi: new ClackProjectSetupUi(),
+    // `docs search` starts `docs semantic index` of this same executable in the background.
+    ...(process.argv[1] === undefined
+      ? {}
+      : {
+          docsBackgroundIndex: {
+            command: process.execPath,
+            args: [
+              ...backgroundExecArgv(process.execArgv),
+              process.argv[1],
+              'docs',
+              'semantic',
+              'index',
+            ],
+          },
+        }),
   });
 
   try {

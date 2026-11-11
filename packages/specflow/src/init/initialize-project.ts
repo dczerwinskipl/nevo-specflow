@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { constants } from 'node:fs';
-import { access, link, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { access, link, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
-import { stringify } from 'yaml';
+import { parseDocument, stringify } from 'yaml';
 
 import {
   installProjectDefinitionFiles,
@@ -20,6 +20,24 @@ export interface ProjectConfigContribution {
 
 export interface ConfigWriteOptions {
   readonly local: boolean;
+  /**
+   * The content of the existing file this write replaces (a configuration without `runtime`, for
+   * example with only `docs`); absent: the file must not exist.
+   */
+  readonly replaces?: string;
+}
+
+/** A configuration file that exists before init and that init completes instead of refusing. */
+export interface ExistingConfigFile {
+  readonly content: string;
+  /** Its top-level section names. */
+  readonly sections: readonly string[];
+}
+
+/** What init found: the existing files whose sections it keeps; absent: no file. */
+export interface InitAdmission {
+  readonly project?: ExistingConfigFile;
+  readonly local?: ExistingConfigFile;
 }
 
 export interface InitializeProjectOptions {
@@ -54,26 +72,114 @@ interface GitignoreSnapshot {
   readonly changed: boolean;
 }
 
-export async function assertProjectCanInitialize(layout: GitCheckoutLayout): Promise<void> {
-  if (await fileExists(layout.projectConfigPath)) {
+/**
+ * Sections other than `runtime` that init may write into each file. An existing one is refused
+ * before anything is asked, so a conflict never surfaces after the interactive flow. (`docs` and
+ * `ai` are not here: init keeps an existing documentation configuration and does not ask about it.)
+ */
+const INIT_PROJECT_SECTIONS = ['git'] as const;
+const INIT_LOCAL_SECTIONS = ['git'] as const;
+
+/**
+ * The `runtime` section marks an initialized project. A configuration without it (for example one
+ * with only `docs`, which the `docs` commands use on their own) is completed: init adds its
+ * sections and keeps the existing ones.
+ */
+export async function assertProjectCanInitialize(
+  layout: GitCheckoutLayout,
+): Promise<InitAdmission> {
+  const project = await readExistingConfig(layout.projectConfigPath);
+  if (project?.sections.includes('runtime')) {
     throw new Error(`Nevo SpecFlow is already initialized: ${layout.projectConfigPath}`);
   }
 
-  if (await fileExists(layout.localConfigPath)) {
+  const local = await readExistingConfig(layout.localConfigPath);
+  if (local?.sections.includes('runtime')) {
     throw new Error(
       `Refusing to overwrite existing workstation-local SpecFlow config: ${layout.localConfigPath}`,
     );
   }
+
+  assertNoInitSection(layout.projectConfigPath, project, INIT_PROJECT_SECTIONS);
+  assertNoInitSection(layout.localConfigPath, local, INIT_LOCAL_SECTIONS);
+
+  return { ...(project ? { project } : {}), ...(local ? { local } : {}) };
+}
+
+function assertNoInitSection(
+  path: string,
+  existing: ExistingConfigFile | undefined,
+  sections: readonly string[],
+): void {
+  const section = sections.find((name) => existing?.sections.includes(name));
+  if (section !== undefined) {
+    throw new Error(sectionConflict(path, section));
+  }
+}
+
+function sectionConflict(path: string, section: string): string {
+  return `Refusing to overwrite the existing '${section}' section of ${path}; remove it and run init again.`;
+}
+
+async function readExistingConfig(path: string): Promise<ExistingConfigFile | undefined> {
+  if (!(await fileExists(path))) {
+    return undefined;
+  }
+
+  const content = await readFile(path, 'utf8');
+  const document = parseDocument(content);
+  const value: unknown = document.errors.length > 0 ? undefined : document.toJS();
+  if (value !== null && !isRecord(value)) {
+    throw new Error(`Cannot initialize: ${path} is not a valid YAML mapping.`);
+  }
+
+  return { content, sections: value === null ? [] : Object.keys(value) };
+}
+
+/** Add the contributed sections to an existing file, keeping its sections and comments. */
+function completeConfig(
+  path: string,
+  existing: ExistingConfigFile,
+  contribution: Record<string, unknown>,
+): string {
+  for (const section of Object.keys(contribution)) {
+    if (existing.sections.includes(section)) {
+      throw new Error(sectionConflict(path, section));
+    }
+  }
+
+  const document = parseDocument(existing.content);
+  if (document.contents === null) {
+    // Empty, or only comments: keep them above the new sections.
+    const kept = existing.content.trimEnd();
+
+    return `${kept === '' ? '' : `${kept}\n`}${stringify(contribution, { lineWidth: 0 }).trimEnd()}\n`;
+  }
+
+  for (const [section, value] of Object.entries(contribution)) {
+    document.set(section, document.createNode(value));
+  }
+
+  return `${document.toString({ lineWidth: 0 }).trimEnd()}\n`;
 }
 
 export async function initializeProject(
   options: InitializeProjectOptions,
 ): Promise<InitializeProjectResult> {
   const { layout } = options;
-  await assertProjectCanInitialize(layout);
+  const existing = await assertProjectCanInitialize(layout);
 
-  const projectConfig = options.contribution.projectConfig;
-  const localConfig = options.contribution.localConfig;
+  // Composed before anything is written, so a section that already exists refuses init up front.
+  const localContent = configContent(
+    layout.localConfigPath,
+    existing.local,
+    options.contribution.localConfig,
+  );
+  const projectContent = configContent(
+    layout.projectConfigPath,
+    existing.project,
+    options.contribution.projectConfig,
+  );
   const checkIgnored = options.isIgnored ?? isGitIgnored;
   const writeConfig = options.writeConfigFile ?? defaultWriteConfigFile;
 
@@ -101,18 +207,24 @@ export async function initializeProject(
 
     // Local config may contain secrets, so write it only after Git ignore has been
     // proven effective. The committed config is written last and is the success marker.
-    await writeConfig(layout.localConfigPath, serializeConfig(localConfig), { local: true });
+    await writeConfig(layout.localConfigPath, localContent, {
+      local: true,
+      ...(existing.local ? { replaces: existing.local.content } : {}),
+    });
     localWritten = true;
 
-    await writeConfig(layout.projectConfigPath, serializeConfig(projectConfig), { local: false });
+    await writeConfig(layout.projectConfigPath, projectContent, {
+      local: false,
+      ...(existing.project ? { replaces: existing.project.content } : {}),
+    });
     projectWritten = true;
   } catch (error) {
     if (projectWritten) {
-      await rm(layout.projectConfigPath, { force: true });
+      await restoreConfig(layout.projectConfigPath, existing.project);
     }
 
     if (localWritten) {
-      await rm(layout.localConfigPath, { force: true });
+      await restoreConfig(layout.localConfigPath, existing.local);
     }
 
     if (!definitionsExisted) {
@@ -132,8 +244,26 @@ export async function initializeProject(
   };
 }
 
-function serializeConfig(value: unknown): string {
-  return `${stringify(value, { lineWidth: 0 }).trimEnd()}\n`;
+function configContent(
+  path: string,
+  existing: ExistingConfigFile | undefined,
+  contribution: Record<string, unknown>,
+): string {
+  return existing === undefined
+    ? `${stringify(contribution, { lineWidth: 0 }).trimEnd()}\n`
+    : completeConfig(path, existing, contribution);
+}
+
+/** Undo a write: remove a file init created, put back the content of one it completed. */
+async function restoreConfig(
+  path: string,
+  existing: ExistingConfigFile | undefined,
+): Promise<void> {
+  if (existing === undefined) {
+    await rm(path, { force: true });
+  } else {
+    await writeFile(path, existing.content, 'utf8');
+  }
 }
 
 async function defaultWriteConfigFile(
@@ -150,6 +280,18 @@ async function defaultWriteConfigFile(
       flag: 'wx',
       ...(options.local ? { mode: 0o600 } : {}),
     });
+
+    if (options.replaces !== undefined) {
+      // The file init completes must still be the one it read.
+      if ((await readFile(path, 'utf8').catch(() => undefined)) !== options.replaces) {
+        throw new Error(`Refusing to overwrite SpecFlow config that changed during init: ${path}`);
+      }
+
+      // Nothing to undo here: the rename is the last step and replaces the file at once.
+      await rename(stagedPath, path);
+
+      return;
+    }
 
     try {
       await link(stagedPath, path);
@@ -268,4 +410,8 @@ async function fileExists(path: string): Promise<boolean> {
 
     throw error;
   }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

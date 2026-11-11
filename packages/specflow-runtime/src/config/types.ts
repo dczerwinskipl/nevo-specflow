@@ -1,3 +1,5 @@
+import type { DocsConfiguration } from '@nevo/specflow-docs';
+
 import type { RuntimeAuthenticationConfig, RuntimeAuthorizationConfig } from '../features/auth';
 import type { SpecsFeatureConfig } from '../features/specs';
 import type { SessionsFeatureConfig } from '../features/sessions';
@@ -23,6 +25,8 @@ export interface RuntimeConfig {
   readonly authorization?: RuntimeAuthorizationConfig;
   readonly specs?: SpecsFeatureConfig;
   readonly sessions?: SessionsFeatureConfig;
+  /** `docs` and `ai.embeddings` (config loading always sets it); absent: the defaults. */
+  readonly docs?: DocsConfiguration;
 }
 
 export interface LoadedRuntimeConfig {

@@ -1,0 +1,10 @@
+# Project configuration of this repository: documentation only (ADR 0020). The repository uses the
+# `docs` commands without being an initialized Nevo SpecFlow project; `nevo-specflow init` would add
+# the Runtime sections and keep this one. Taxonomy and path prefixes live in docs/docs.yaml.
+
+docs:
+  # The team opt-in only: without an `ai.embeddings` endpoint `search` stays lexical (reason
+  # `no-endpoint`). A workstation enables hybrid search by adding the endpoint to the git-ignored
+  # .nevo/local/config.yaml (docs/engineering/repository/local-setup.md).
+  search:
+    semantic: true

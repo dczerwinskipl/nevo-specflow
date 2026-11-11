@@ -81,7 +81,7 @@ describe('project initialization', () => {
     const projectConfigPath = join(root, '.nevo', 'config.yaml');
 
     await assertProjectCanInitialize(layout(root));
-    await writeFile(projectConfigPath, 'concurrent: project\n', 'utf8');
+    await writeFile(projectConfigPath, 'runtime: { concurrent: project }\n', 'utf8');
 
     await expect(
       initializeProject({
@@ -91,10 +91,47 @@ describe('project initialization', () => {
       }),
     ).rejects.toThrowError(/already initialized/);
 
-    await expect(readFile(projectConfigPath, 'utf8')).resolves.toBe('concurrent: project\n');
+    await expect(readFile(projectConfigPath, 'utf8')).resolves.toBe(
+      'runtime: { concurrent: project }\n',
+    );
     await expect(
       readFile(join(root, '.nevo', 'local', 'config.yaml'), 'utf8'),
     ).rejects.toMatchObject({ code: 'ENOENT' });
+  });
+
+  it('completes a configuration without runtime, keeping its sections and comments', async () => {
+    const root = await repository();
+    const projectConfigPath = join(root, '.nevo', 'config.yaml');
+    const localConfigPath = join(root, '.nevo', 'local', 'config.yaml');
+    await mkdir(join(root, '.nevo', 'local'), { recursive: true });
+    await writeFile(projectConfigPath, '# Documentation only.\ndocs:\n  root: handbook\n', 'utf8');
+    await writeFile(localConfigPath, 'ai:\n  embeddings: { baseUrl: x, model: m }\n', 'utf8');
+
+    await initializeProject({
+      layout: layout(root),
+      contribution,
+      isIgnored: () => Promise.resolve(true),
+    });
+
+    await expect(readFile(projectConfigPath, 'utf8')).resolves.toBe(
+      '# Documentation only.\ndocs:\n  root: handbook\nruntime:\n  marker: runtime-project\n',
+    );
+    await expect(readFile(localConfigPath, 'utf8')).resolves.toContain(
+      'ai:\n  embeddings: { baseUrl: x, model: m }\nruntime:\n',
+    );
+    await expect(assertProjectCanInitialize(layout(root))).rejects.toThrowError(
+      `Nevo SpecFlow is already initialized: ${projectConfigPath}`,
+    );
+  });
+
+  it('refuses a section init writes before anything is asked', async () => {
+    const root = await repository();
+    const projectConfigPath = join(root, '.nevo', 'config.yaml');
+    await writeFile(projectConfigPath, 'docs: {}\ngit:\n  enabled: true\n', 'utf8');
+
+    await expect(assertProjectCanInitialize(layout(root))).rejects.toThrowError(
+      `Refusing to overwrite the existing 'git' section of ${projectConfigPath}; remove it and run init again.`,
+    );
   });
 
   it('does not treat existing committed .nevo definitions as an initialized config', async () => {
@@ -179,6 +216,34 @@ describe('project initialization', () => {
       code: 'ENOENT',
     });
     expect(await readFile(join(root, '.gitignore'), 'utf8')).toBe('node_modules/\n');
+  });
+
+  it('puts back a completed local config byte for byte when the project write fails', async () => {
+    const root = await repository();
+    const projectConfigPath = join(root, '.nevo', 'config.yaml');
+    const localConfigPath = join(root, '.nevo', 'local', 'config.yaml');
+    const local = '# mine\r\nai:\r\n  embeddings: { baseUrl: x, model: m }\r\n';
+    await mkdir(join(root, '.nevo', 'local'), { recursive: true });
+    await writeFile(projectConfigPath, 'docs: {}\n', 'utf8');
+    await writeFile(localConfigPath, local, 'utf8');
+
+    await expect(
+      initializeProject({
+        layout: layout(root),
+        contribution,
+        isIgnored: () => Promise.resolve(true),
+        writeConfigFile: async (path, content, options) => {
+          if (!options.local) {
+            throw new Error('simulated project write failure');
+          }
+
+          await writeFile(path, content, 'utf8');
+        },
+      }),
+    ).rejects.toThrowError(/simulated project write failure/);
+
+    expect(await readFile(localConfigPath, 'utf8')).toBe(local);
+    expect(await readFile(projectConfigPath, 'utf8')).toBe('docs: {}\n');
   });
 
   describe('default definitions', () => {

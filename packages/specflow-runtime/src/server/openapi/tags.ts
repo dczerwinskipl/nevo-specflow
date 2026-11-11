@@ -37,6 +37,11 @@ export const OPENAPI_TAGS = [
     name: 'Workspaces',
     description: 'Closing a linked worktree and a whole workspace (checkout).',
   },
+  {
+    name: 'Documentation',
+    description:
+      "The project's own documentation: search and the status of its semantic search index.",
+  },
   { name: 'Runtime', description: 'The Runtime itself: its mode and this OpenAPI document.' },
 ] as const;
 

@@ -30,6 +30,7 @@ related:
 nevo-specflow/
   apps/                 optional standalone hosts     (workspace glob; currently empty)
   packages/             product packages (@nevo/* scope)
+    ai-semantic-search/  @nevo/ai-semantic-search       — product-neutral chunking, embeddings, local vector index and hybrid ranking; private, bundled into specflow
     authorization/       @nevo/authorization            — product-neutral scoped capability resolver
     figma-capture/       @nevo/figma-capture             — React metadata for opt-in design capture
     figma-core/          @nevo/figma-core               — neutral Figma authoring and canonical IR contracts
@@ -38,11 +39,12 @@ nevo-specflow/
     specflow-contracts/  @nevo/specflow-contracts       — shared SpecFlow resource/capability contracts
     specflow-engine/     @nevo/specflow-engine          — offline Engine: Project Home, Specifications, documents, Git, claims, workflow kernel; private
     specflow/            @nevo/specflow                 — the `nevo-specflow` CLI shell + command composition
+    specflow-docs/       @nevo/specflow-docs            — documentation capability: frontmatter contract, discovery, semantic search (.) + CLI adapter (./cli); private, bundled into specflow
     specflow-runtime/    @nevo/specflow-runtime         — Runtime vertical: capability (.) + CLI adapter (./cli); private, bundled into specflow
     specflow-ui/         @nevo/specflow-ui              — product UI capability and React application; private
   tools/                repository-internal tooling — never published, all TypeScript
     agents/             nevo-repo-agents  — agent profile generation and validation
-    docs/               nevo-repo-docs    — doc discovery, index, ADR authoring
+    docs/               nevo-repo-docs    — ADR authoring and repository-only doc checks on top of @nevo/specflow-docs
     release/            nevo-repo-release — version model, cut-release-line, promote, release
     github/             nevo-repo-github  — idempotent GitHub governance apply/verify (gh API)
     figma-export/       nevo-figma-export  — source-agnostic browser capture and canonical Figma IR export
@@ -91,7 +93,11 @@ design-system package — reusable UI behavior remains owned by the Nevo UI desi
 Package dependencies flow toward neutral foundations and shared contracts, never from a capability
 back into the composition root. `@nevo/specflow-engine` (private, bundled like Runtime) is the offline
 application boundary that both the CLI shell and Runtime call. Runtime and UI may share
-`@nevo/specflow-contracts`; UI does not import Runtime internals. The enforceable directions and the `apps/*` criterion are defined by
+`@nevo/specflow-contracts`; UI does not import Runtime internals. The documentation capability
+`@nevo/specflow-docs` builds on the neutral `@nevo/ai-semantic-search` engine; Runtime consumes it for
+the documentation search endpoint and the shell mounts its `./cli` adapter as `nevo-specflow docs`
+([ADR 0020](decisions/0020-documentation-discovery-is-a-product-capability.md),
+[ADR 0021](decisions/0021-product-neutral-ai-semantic-search-engine.md)). The enforceable directions and the `apps/*` criterion are defined by
 [ADR 0012](decisions/0012-product-package-topology-and-dependency-direction.md).
 
 ## Task graph (Turborepo)

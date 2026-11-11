@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react';
+import { useRef, useState, type ComponentProps, type ReactNode } from 'react';
 import {
   Alert,
   Badge,
@@ -13,6 +13,7 @@ import {
   DialogTitle,
   Field,
   Icon,
+  InlineNote,
   RadioGroup,
   RadioGroupOption,
   TextArea,
@@ -30,6 +31,22 @@ import type { HistoryEntry, Transition, WorkflowView } from './fixtures.stories-
  */
 
 const noop = () => undefined;
+
+/**
+ * An icon inside running text: it sits on the text line, optically centred on the x-height, with no
+ * flex box around it (a flex box shifts the whole chunk off the line). Standalone status lines use
+ * the design-system InlineNote instead.
+ */
+export function InlineIcon({ name }: { name: ComponentProps<typeof Icon>['name'] }) {
+  return (
+    <Icon
+      name={name}
+      size="sm"
+      aria-hidden="true"
+      className="mr-1 inline-block shrink-0 align-[-0.1875rem]"
+    />
+  );
+}
 
 function Step({ children }: { children: ReactNode }) {
   // Step ids are user-defined identifiers: shown as written, mono, never translated.
@@ -75,9 +92,7 @@ export function WorkflowPanel({
         </>
       );
       supporting = view.unavailableReason ? (
-        <Typography variant="body-sm" className="text-content-secondary">
-          {view.unavailableReason}
-        </Typography>
+        <InlineNote tone="info">{view.unavailableReason}</InlineNote>
       ) : undefined;
       break;
     case 'ready':
@@ -93,18 +108,15 @@ export function WorkflowPanel({
       facts = position.note;
       // The blocking work is listed once, in its own section; the panel says how much and links.
       supporting = (
-        <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1 text-body-sm">
-          <span className="inline-flex items-center gap-1.5 font-medium text-status-attention">
-            <Icon name="clock" size="sm" className="shrink-0" />
-            {position.reason}
-          </span>
+        <InlineNote tone="attention" icon="clock">
+          <span className="font-medium text-content-primary">{position.reason}</span>{' '}
           <a
             href={position.see.href}
-            className="text-content-link underline-offset-2 hover:underline"
+            className="ml-1 text-content-link underline-offset-2 hover:underline"
           >
             {position.see.label}
           </a>
-        </span>
+        </InlineNote>
       );
       break;
     case 'terminal':
@@ -133,10 +145,10 @@ export function WorkflowPanel({
             className={cn(position.kind === 'terminal' && !abandoned && 'text-status-success')}
           >
             {position.kind === 'terminal' ? (
-              <span className="inline-flex items-center gap-1.5">
-                <Icon name={abandoned ? 'archive' : 'circle-check'} size="sm" />
+              <>
+                <InlineIcon name={abandoned ? 'archive' : 'circle-check'} />
                 {current}
-              </span>
+              </>
             ) : (
               current
             )}
@@ -154,8 +166,8 @@ export function WorkflowPanel({
               {latest.returned ? 'Returned from ' : 'Last: '}
               <Step>{latest.fromStep}</Step> · attempt {latest.attempt} ·{' '}
               {latestNeedsAttention ? (
-                <span className="inline-flex items-center gap-1 font-medium text-status-attention">
-                  <Icon name="triangle-alert" size="sm" className="shrink-0" />
+                <span className="font-medium text-status-attention">
+                  <InlineIcon name="triangle-alert" />
                   {latest.result}
                 </span>
               ) : (
@@ -177,10 +189,10 @@ export function WorkflowPanel({
         {canStart || canFinish || canReturn ? (
           <div className="flex flex-wrap gap-2" data-slot="workflow-actions">
             {canStart ? <Button onClick={onStart}>{startLabel ?? 'Start step'}</Button> : null}
-            {canFinish ? <Button onClick={onFinish}>Finish step…</Button> : null}
+            {canFinish ? <Button onClick={onFinish}>Finish step</Button> : null}
             {canReturn ? (
               <Button variant="secondary" onClick={onReturn}>
-                Return to earlier step…
+                Return to earlier step
               </Button>
             ) : null}
           </div>
@@ -276,7 +288,7 @@ export function FinishStepDialog({
             ) : null}
             <div>
               <Button variant="ghost" size="sm" leadingIcon="file">
-                Attach document…
+                Attach document
               </Button>
             </div>
           </div>
@@ -452,7 +464,7 @@ export function StartTaskDialog({
           {refusal === 'task-type-not-allowed' ? (
             <>
               <Button variant="secondary">Cancel task</Button>
-              <Button variant="destructive">Remove task…</Button>
+              <Button variant="destructive">Remove task</Button>
             </>
           ) : (
             <Button>{changed ? `Start with rev ${revision + 1}` : `Start ${firstStep}`}</Button>
@@ -499,14 +511,11 @@ export function WorkflowHistory({
               <span className="grid gap-1">
                 <span
                   className={cn(
-                    'inline-flex items-center gap-1',
                     entry.active && 'text-status-info',
                     entry.tone === 'attention' && 'font-medium text-status-attention',
                   )}
                 >
-                  {entry.tone === 'attention' ? (
-                    <Icon name="triangle-alert" size="sm" className="shrink-0" />
-                  ) : null}
+                  {entry.tone === 'attention' ? <InlineIcon name="triangle-alert" /> : null}
                   {entry.active ? 'In progress' : entry.result}
                 </span>
                 {entry.feedback ? (

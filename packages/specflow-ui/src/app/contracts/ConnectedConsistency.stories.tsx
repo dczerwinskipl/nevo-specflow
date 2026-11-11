@@ -1352,7 +1352,7 @@ export const DocumentsIdleSecondary: Story = {
     await expect(area.getByText('Brak otwartego dokumentu')).toBeVisible();
     await expect(area.queryByRole('list')).toBeNull();
     const [primary, secondary] = area.getAllByRole('button');
-    await expect(primary).toHaveAccessibleName('Nowy dokument…');
+    await expect(primary).toHaveAccessibleName('Nowy dokument');
     await expect(primary!.className).toContain('bg-action-primary');
     await expect(secondary).toHaveAccessibleName('Wgraj pliki');
     await expect(secondary!.className).not.toContain('bg-action-primary');

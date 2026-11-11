@@ -60,7 +60,14 @@ mutation is an explicit action with the actor recorded as the person.
    longer allowed is removed (or cancelled) and recreated.
 5. **State is never colour alone.** Every toned state line carries an icon or words; refusals and
    conflicts are `role="alert"`; the panel position is a polite live region.
-6. **Reuse.** Shell, Overview sections, Task rows, Full Task, history and the Documents editor are
+6. **Action labels carry no trailing ellipsis**, also when they open a dialog (`Finish step`,
+   `Remove task`, `Abandon specification`); hidden actions sit behind the More (`⋯`) icon button;
+   only in-progress status text may end with `…`
+   ([UI/UX guidelines, Action labels](../../../design-system/principles/ui-ux-guidelines.md#action-labels)).
+7. **Icons sit on the text line.** A standalone status line is the design-system `InlineNote`; an
+   icon inside running text (`Last: review · attempt 1 · ⚠ Changes requested · …`) is an inline
+   icon on the same line, never a flex box that shifts the chunk off the baseline.
+8. **Reuse.** Shell, Overview sections, Task rows, Full Task, history and the Documents editor are
    the existing ones; new compositions are listed in the component map.
 
 ## Specification Overview
@@ -93,8 +100,8 @@ a bound Specification workflow, the Workflow section takes the preparation block
    Depends on**). The blocking Tasks are not repeated in the panel.
 3. **Latest hand-off**: `Last: review · attempt 1 · Changes requested · Dominik, 11:40` plus its
    feedback. This is how review-failed → rework reads on the new `implement` attempt.
-4. **Action row**: Start (`Start workflow` / `Start <first step>…` / `Start step`), **Finish
-   step…** (primary while active), **Return to earlier step…** (secondary).
+4. **Action row**: Start (`Start workflow` / `Start <first step>` / `Start step`), **Finish
+   step** (primary while active), **Return to earlier step** (secondary).
 
 Full attempt history stays in the existing Secondary (Task history / Activity history), opened by
 the header history toggle at every width. A terminal position is **Completed** or **Abandoned**.
@@ -114,7 +121,7 @@ the header history toggle at every width. A terminal position is **Completed** o
     dialog re-opens on the new revision and change; **Start with rev N+1** confirms again);
   - _Task Type no longer allowed_ (danger; "Spike is no longer allowed for Feature
     specifications… remove this task and create a new one with an allowed type"; **Not now**,
-    **Cancel task**, **Remove task…**).
+    **Cancel task**, **Remove task**).
 
   Later steps start without confirmation.
 
@@ -123,18 +130,53 @@ the header history toggle at every width. A terminal position is **Completed** o
 ## Full Task (`/specs/:specId/tasks/:taskId`)
 
 Back to specification, title, `id · Task Type`, preparation notice (draft / on hold with reason /
-cancelled with reason; absent when ready), summary; sections **Workflow** (omitted when
-cancelled), **Task document** (`task.md` row with **Edit**), **Depends on** (Task rows with state).
-Task history is the Secondary.
+cancelled with reason; absent when ready), summary; then sections **Workflow** (omitted when
+cancelled), **Documents**, **Context**, **Depends on**. Task history is the Secondary.
 
-- **Edit details** dialog: Title, Summary, Depends on; Task Type always read-only, with the
-  remove-and-recreate hint.
-  **Revision conflict** mirrors the Documents conflict: danger alert "Not saved: T-02 changed since
-  you opened it", **Copy my changes**, **Load the latest version…**, Save disabled, edits kept.
-- **task.md** opens in the existing Documents editor in the **Secondary** (decided, A): the same
-  editor-tab rail as the Documents page (one `task.md` tab, the document actions continuing the
-  rail), no document-type caption; save, conflict and leave guard unchanged. It replaces Task
-  history while open. On Narrow it is a pushed page with Back.
+- **Edit details** dialog: Title and Summary only; Task Type always read-only, with the
+  remove-and-recreate hint. **Revision conflict** mirrors the Documents conflict: danger alert "Not
+  saved: T-02 changed since you opened it", **Copy my changes**, **Load the latest version**, Save
+  disabled, edits kept. The same alert appears when a section edit (context, dependencies) meets a
+  newer Task revision.
+
+### Task authoring: documents, context, dependencies
+
+Editing a Task is more than `task.md`: its other registered documents, the context a step reads
+(F20 entry kinds) and its dependencies.
+
+- **Placement (decided):** structured facts are edited where they are read, in the Task page
+  sections (header **Add** + row `⋯` menu, no separate edit mode); documents open in the
+  **Secondary** editor (variant A, unchanged), several as tabs on the Documents tab rail. Checked
+  at real widths: at 1440 the Task page (about 590 px) and the editor (about 580 px) sit side by side
+  and context rows stay one line of facts; at 900 both panes keep working with stacked facts; at 390
+  one surface shows the Task page, a document is a pushed page with Back. Rejected: everything in
+  the Secondary (it would need tabs that hide the workflow and context while writing, and a
+  580 px pane is too narrow for the context list) and a separate edit page (a second surface for the
+  same object).
+- **Documents** section: `task.md` (Task content) first, then other registered Task documents;
+  **New document**; each row **Edit** opens it in the Secondary.
+- **Context** section: the effective list in declared order, with a one-line explanation ("What
+  the person or agent doing a step reads, in this order. task.md always comes first."). Row: kind
+  icon, name, facts `kind · Required|Optional` (or `Always first` for `task.md`), supporting
+  `ref · detail · note`. Kinds: Task document, Specification document, Project document
+  (repository document), Code path (file or glob, with the current match count), Instructions,
+  Where to change (path hint: allowed / not allowed). **Add** menu per kind opens a dialog (pick
+  Specification documents with already-added and missing ones disabled; search project
+  documentation; type a path and see its match count), each with **When the step starts:
+  Required / Optional** and an optional "why" note; entries are appended at the end. Row menu:
+  Required / Optional, Edit note, Replace, Move up, Move down, Remove from context.
+- **Defaults:** with no explicit list the effective context is `task.md`, the Task's documents and
+  the Specification overview; the section shows them, and the first edit writes them out as
+  explicit entries so nothing drops silently (an explicit list replaces the default).
+- **Broken and stale references:** a missing required entry is a danger row ("Not found: … Required,
+  so the next step cannot start until you replace or remove it") plus one danger line above the
+  list; a superseded or missing optional entry is an attention row ("… Optional, so the next step
+  skips it"). Starting the step is refused by the Engine with the same cause.
+- **Depends on** section: rows with the dependency's state; **Add** opens a checklist where
+  existing dependencies are checked and disabled and a cycle is disabled with its reason; row menu
+  **Remove dependency**. After the Task has started, dependencies are fixed (InlineNote, no Add,
+  no row menu).
+
 - **Lifecycle matrix** (the projection decides; this is the mock's assumption):
 
 | Preparation | Never started                           | Started, between steps   | Active attempt                          | Terminal |
@@ -146,20 +188,21 @@ Task history is the Secondary.
 
 ## Close
 
-**Close specification…** is in the Overview header overflow and becomes the header's primary
+**Close specification** is in the Overview header overflow and becomes the header's primary
 action once the workflow is terminal (completed or abandoned). It opens the Engine Close
 preflight (D07):
 
 - **Blocked**: the description says what to do once ("Finish, cancel or remove the work below");
   grouped blockers follow (Specification workflow, Unfinished tasks, Drafts, On hold, and active
   Runs or pending writers when present), each group with its resolving hint once, each row a real
-  link to the Task. Only **Dismiss**.
+  link to the Task. **Dismiss**, and **Abandon instead** (secondary) which opens the Abandon
+  dialog.
 - **Ready**: success summary and the cancelled Tasks listed as not delivered; **Close
   specification**; existing Git/workspace checks still run.
 
 ## Abandon (close without realization)
 
-Owner decision. **Abandon specification…** is a danger item in the Overview header overflow, shown
+Owner decision. **Abandon is final**: there is no reopen. **Abandon specification** is a danger item in the Overview header overflow, shown
 only when the projection allows it (never for a terminal Specification).
 
 - **Dialog**: "Ends the specification without delivering it. This cannot be undone." A consequence
@@ -171,10 +214,11 @@ only when the projection allows it (never for a terminal Specification).
   **Dismiss**.
 - **Afterwards**: the Overview shows "Abandoned · <reason>" under the title (archive icon, status
   role), the Workflow position reads **Abandoned**, New task is gone, Activity history records the
-  reason, and **Close specification…** is the header primary. Close lists every cancelled Task as
+  reason, and **Close specification** is the header primary. Close lists every cancelled Task as
   not delivered (cancelled by abandon, or earlier by a person).
 
-This also covers the D07 waiver need: no separate waiver is designed.
+This also covers the D07 waiver need: no separate waiver is designed. Later idea, not in scope: a
+front-end-only undo toast for about 5 seconds before the abandon request is sent.
 
 ## Responsive
 
@@ -187,7 +231,7 @@ Dialogs keep one column at every width. The blocker and Task rows keep id → ti
 Not rendered. The action row (`data-slot="workflow-actions"`) is the single attachment point. For
 an eligible step the start action becomes a split choice: the main part stays **Start step** (do
 it myself; same label, primary identity, position and keyboard order) and an attached menu adds
-**Ask agent…**. Non-eligible steps keep the plain button. An active agent attempt shows in the
+**Ask agent**. Non-eligible steps keep the plain button. An active agent attempt shows in the
 same position line with its Session link and Stop. No other panel region changes.
 
 ## Component and ownership map
@@ -198,6 +242,7 @@ same position line with its Session link and Stop. No other panel region changes
 | Sections, groups, rows                     | `WorkspaceSection`, `TaskGroupHeader`, `InformationList` + `OperationalRow` — reuse                    |
 | History                                    | `Timeline` (md) in the existing Secondaries — reuse                                                    |
 | `task.md`                                  | `DocumentEditorProvider` + `DocumentEditor` — reuse unchanged                                          |
+| Context and dependency rows                | `OperationalRow` (inline facts) + `Menu` — reuse; status lines `InlineNote` — reuse                    |
 | Dialogs                                    | `Dialog`, `RadioGroupOption`, `Field`, `TextArea`, `CheckboxField`, `Alert`, `DescriptionList` — reuse |
 | Step panel, grouped blockers, step-id mono | product-owned composition (SpecFlow tasks/workflow feature)                                            |
 | Depends on picker                          | checkbox list; Nevo UI has no multi-select Combobox (gap, not blocking)                                |
@@ -220,8 +265,9 @@ the mock fixtures name the scenarios implementation fixtures must cover.
 - Hold during an active attempt: **disallowed**, shown disabled with its reason.
 - Close waiver: **deferred**; Abandon covers closing without realization.
 - Task Type: **immutable** after creation.
+- Abandon: **final**, also reachable from Close-blocked as **Abandon instead**.
+- Task authoring placement: sections in the Primary, documents in the Secondary.
 
 ## Open questions
 
-- Is abandon final, or can a person reopen an abandoned Specification before Close?
 - Should Close-blocked point to Abandon as an alternative, or stay silent about it?

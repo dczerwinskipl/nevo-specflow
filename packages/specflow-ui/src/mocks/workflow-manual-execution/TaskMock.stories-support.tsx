@@ -9,7 +9,6 @@ import {
   AppWorkspaceBody,
   AppWorkspaceProvider,
   Button,
-  CheckboxField,
   Dialog,
   DialogBody,
   DialogContent,
@@ -18,8 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
   Field,
-  Icon,
-  InformationList,
+  InlineNote,
   ItemTabs,
   TextArea,
   TextInput,
@@ -42,8 +40,6 @@ import {
 import { documentHeaderModel } from '../../features/documents/editor/documentHeaderModel';
 import { StoryLocalization } from '../../i18n/StoryLocalization';
 import { createSpecFlowAppServices } from '../../services';
-import { OperationalRow } from '../../shared/operational-list';
-import { WorkspaceSection } from '../../shared/workspace-section';
 import { MockNavigation } from '../editor-mode/MockNavigation.stories-support';
 import {
   backendHistory,
@@ -52,11 +48,19 @@ import {
   task,
   taskDocument,
   taskTypes,
-  tasks,
   typeOf,
   type MockTask,
   type WorkflowView,
 } from './fixtures.stories-support';
+import {
+  AddContextDialog,
+  AddDependencyDialog,
+  TaskContextSection,
+  TaskDependenciesSection,
+  TaskDocumentsSection,
+  draftContext,
+  type ContextEntry,
+} from './TaskAuthoring.stories-support';
 import {
   FinishStepDialog,
   ReturnStepDialog,
@@ -87,7 +91,15 @@ export type TaskScenario =
   | 'done'
   | 'edit-details'
   | 'edit-conflict'
-  | 'edit-document';
+  | 'edit-document'
+  | 'author'
+  | 'author-add-menu'
+  | 'author-add-spec-doc'
+  | 'author-add-project-doc'
+  | 'author-add-path'
+  | 'author-row-menu'
+  | 'author-dependencies'
+  | 'author-with-document';
 
 export interface TaskMockProps {
   width: number;
@@ -119,6 +131,10 @@ const reviewView: WorkflowView = {
 };
 
 function subjectFor(scenario: TaskScenario): MockTask {
+  if (scenario.startsWith('author')) {
+    return task('T-04');
+  }
+
   switch (scenario) {
     case 'draft':
       return task('T-04');
@@ -168,7 +184,7 @@ function lifecycleActions(item: MockTask): WorkspaceHeaderAction[] {
     return [];
   }
 
-  const edit = { id: 'edit', label: 'Edit details…', icon: 'edit', onPress: noop } as const;
+  const edit = { id: 'edit', label: 'Edit details', icon: 'edit', onPress: noop } as const;
   const hold = { id: 'hold', label: 'Put on hold', onPress: noop } as const;
   // Hold is not allowed while an attempt runs; the reason is the label so it is not a dead end.
   const holdUnavailable = {
@@ -177,8 +193,8 @@ function lifecycleActions(item: MockTask): WorkspaceHeaderAction[] {
     disabled: true,
     onPress: noop,
   } as const;
-  const cancel = { id: 'cancel', label: 'Cancel task…', tone: 'danger', onPress: noop } as const;
-  const remove = { id: 'remove', label: 'Remove task…', tone: 'danger', onPress: noop } as const;
+  const cancel = { id: 'cancel', label: 'Cancel task', tone: 'danger', onPress: noop } as const;
+  const remove = { id: 'remove', label: 'Remove task', tone: 'danger', onPress: noop } as const;
   const neverStarted = !item.started;
   switch (item.status) {
     case 'draft':
@@ -205,10 +221,10 @@ function PreparationNotice({ item }: { item: MockTask }) {
   switch (item.status) {
     case 'draft':
       return (
-        <span className="inline-flex items-center gap-1.5 text-body-sm font-medium text-status-attention">
-          <Icon name="triangle-alert" size="sm" />
-          Draft · approve it to make it ready to start
-        </span>
+        <InlineNote tone="attention">
+          <span className="font-medium text-content-primary">Draft</span> · approve it to make it
+          ready to start
+        </InlineNote>
       );
     case 'on-hold':
       return (
@@ -239,7 +255,7 @@ function EditDetailsDialog({ item, conflict }: { item: MockTask; conflict: boole
         <DialogHeader>
           <DialogTitle>Edit {item.id}</DialogTitle>
           <DialogDescription>
-            Title, summary and dependencies. The content is in task.md.
+            Title and summary. Content, context and dependencies are edited on the task page.
           </DialogDescription>
         </DialogHeader>
         <DialogBody className="grid gap-6">
@@ -254,13 +270,12 @@ function EditDetailsDialog({ item, conflict }: { item: MockTask; conflict: boole
                     Copy my changes
                   </Button>
                   <Button size="sm" variant="secondary">
-                    Load the latest version…
+                    Load the latest version
                   </Button>
                 </>
               }
             >
-              Dominik changed the summary and the dependencies a minute ago. Your edits are still in
-              the form.
+              Dominik changed the summary a minute ago. Your edits are still in the form.
             </Alert>
           ) : null}
           <Field>
@@ -280,19 +295,6 @@ function EditDetailsDialog({ item, conflict }: { item: MockTask; conflict: boole
               remove this task and create a new one.
             </Typography>
           </div>
-          <fieldset className="grid gap-3">
-            <legend className="mb-3 text-label-sm text-content-primary">Depends on</legend>
-            {tasks
-              .filter((other) => other.id !== item.id && other.status !== 'cancelled')
-              .slice(0, 4)
-              .map((other) => (
-                <CheckboxField
-                  key={other.id}
-                  label={`${other.id} · ${other.title}`}
-                  defaultChecked={item.dependsOn.includes(other.id)}
-                />
-              ))}
-          </fieldset>
         </DialogBody>
         <DialogFooter>
           <Button variant="secondary">Cancel</Button>
@@ -307,17 +309,33 @@ function EditDetailsDialog({ item, conflict }: { item: MockTask; conflict: boole
 /* task.md through the real Documents editor                                                     */
 /* ------------------------------------------------------------------------------------------ */
 
-const taskDocumentRecord = documentContentFixture({
-  id: 'tasks/T-02/task',
-  title: 'Token exchange endpoint and session cookie',
-  path: 'tasks/T-02/task.md',
-  content: taskDocument,
-  revision: '3',
-  // No type caption: the Task document is identified by its Task, not by a document type.
-  type: undefined,
-});
+const draftTaskDocument = `# Return users to where they were
 
-function DocumentServices({ children }: { children: ReactNode }) {
+## Goal
+
+After a successful sign-in, restore the project, document and scroll position the user had open.
+
+## Acceptance
+
+- The previous route is kept in the sign-in state and restored after the callback.
+- Scroll position and open document tab are restored.
+- A deep link opened while signed out lands on that link after sign-in.
+`;
+
+function recordFor(id: string) {
+  return documentContentFixture({
+    id: `tasks/${id}/task`,
+    title: id,
+    path: `tasks/${id}/task.md`,
+    content: id === 'T-02' ? taskDocument : draftTaskDocument,
+    revision: '3',
+    // No type caption: the Task document is identified by its Task, not by a document type.
+    type: undefined,
+  });
+}
+
+function DocumentServices({ taskId, children }: { taskId: string; children: ReactNode }) {
+  const taskDocumentRecord = useMemo(() => recordFor(taskId), [taskId]);
   const client = useMemo(() => new QueryClient(), []);
   const services = useMemo(() => {
     const base = createSpecFlowAppServices();
@@ -345,7 +363,15 @@ function DocumentServices({ children }: { children: ReactNode }) {
   );
 }
 
-function TaskDocumentHeader({ back }: { back?: boolean }) {
+function TaskDocumentHeader({
+  back,
+  taskId,
+  more,
+}: {
+  back?: boolean;
+  taskId: string;
+  more?: boolean;
+}) {
   const { actions, dirty } = documentHeaderModel(useDocumentEditor(), useTranslation().t);
   if (!back) {
     // A: the same editor-tab rail as the Documents page (one tab, its actions continue the rail).
@@ -364,13 +390,22 @@ function TaskDocumentHeader({ back }: { back?: boolean }) {
               <ItemTabs
                 items={[
                   {
-                    id: 'tasks/T-02/task',
+                    id: `tasks/${taskId}/task`,
                     label: 'task.md',
-                    description: 'tasks/T-02/task.md',
+                    description: `tasks/${taskId}/task.md`,
                     ...(dirty ? { dirty: true } : {}),
                   },
+                  ...(more
+                    ? [
+                        {
+                          id: `tasks/${taskId}/screens`,
+                          label: 'screens.md',
+                          description: `tasks/${taskId}/screens.md`,
+                        },
+                      ]
+                    : []),
                 ]}
-                activeId="tasks/T-02/task"
+                activeId={`tasks/${taskId}/task`}
                 onActivate={noop}
                 onClose={noop}
                 scope="workflow-manual-task-doc"
@@ -391,7 +426,7 @@ function TaskDocumentHeader({ back }: { back?: boolean }) {
 
   return (
     <WorkspaceHeader
-      title={back ? 'T-02 · task.md' : 'task.md'}
+      title={back ? `${taskId} · task.md` : 'task.md'}
       icon="file"
       headingLevel={2}
       actions={[
@@ -409,10 +444,22 @@ function TaskDocumentHeader({ back }: { back?: boolean }) {
 /* Primary                                                                                       */
 /* ------------------------------------------------------------------------------------------ */
 
-function TaskBody({ item }: { item: MockTask }) {
+const defaultContext: readonly ContextEntry[] = [
+  { key: 'task', kind: 'task-document', name: 'task.md', required: true, locked: true },
+  {
+    key: 'overview',
+    kind: 'specification-document',
+    name: 'Overview',
+    ref: 'overview.md',
+    required: true,
+    note: 'Default',
+  },
+];
+
+function TaskBody({ item, scenario }: { item: MockTask; scenario: TaskScenario }) {
   const type = typeOf(item);
-  const dependencies = tasks.filter((other) => item.dependsOn.includes(other.id));
   const view = item.workflow;
+  const editable = item.status !== 'cancelled' && item.workflow.position.kind !== 'terminal';
 
   return (
     <div className="grid max-w-content-standard gap-8">
@@ -442,69 +489,19 @@ function TaskBody({ item }: { item: MockTask }) {
           headingId="task-workflow-heading"
           startLabel={
             item.workflow.position.kind === 'not-started'
-              ? `Start ${item.workflow.position.firstStep}…`
+              ? `Start ${item.workflow.position.firstStep}`
               : undefined
           }
         />
       )}
-      <WorkspaceSection aria-labelledby="task-document-heading">
-        <WorkspaceSection.Header id="task-document-heading" title="Task document" icon="file" />
-        <InformationList>
-          <OperationalRow
-            primary="task.md"
-            onPrimaryClick={noop}
-            compactFacts={['Markdown', 'Edited today 09:12']}
-            trailing={
-              item.status === 'cancelled' ? undefined : (
-                <Button size="sm" variant="secondary" leadingIcon="edit">
-                  Edit
-                </Button>
-              )
-            }
-          />
-        </InformationList>
-      </WorkspaceSection>
-      {dependencies.length > 0 ? (
-        <WorkspaceSection aria-labelledby="task-dependencies-heading">
-          <WorkspaceSection.Header
-            id="task-dependencies-heading"
-            title="Depends on"
-            icon="network"
-            count={dependencies.length}
-          />
-          <InformationList>
-            {dependencies.map((other) => {
-              const finished = other.workflow.position.kind === 'terminal';
-
-              return (
-                <OperationalRow
-                  key={other.id}
-                  primary={other.title}
-                  onPrimaryClick={noop}
-                  compactFacts={[{ text: other.id, mono: true }, typeOf(other).title]}
-                  supporting={
-                    finished
-                      ? { text: 'Completed', tone: 'success', icon: 'circle-check' }
-                      : other.status === 'draft'
-                        ? {
-                            text: 'Draft · needs approval',
-                            tone: 'attention',
-                            icon: 'triangle-alert',
-                          }
-                        : other.workflow.position.kind === 'active'
-                          ? {
-                              text: `${other.workflow.position.step} · attempt ${other.workflow.position.attempt} · in progress`,
-                              tone: 'info',
-                              icon: 'workflow',
-                            }
-                          : { text: 'Not finished', icon: 'clock' }
-                  }
-                />
-              );
-            })}
-          </InformationList>
-        </WorkspaceSection>
-      ) : null}
+      <TaskDocumentsSection editable={editable} />
+      <TaskContextSection
+        entries={item.id === 'T-04' ? draftContext : defaultContext}
+        editable={editable}
+        menuOpen={scenario === 'author-add-menu'}
+        rowMenuFor={scenario === 'author-row-menu' ? 'interaction' : undefined}
+      />
+      <TaskDependenciesSection item={item} editable={editable} />
     </div>
   );
 }
@@ -556,11 +553,19 @@ function dialogFor(item: MockTask, scenario: TaskScenario): ReactNode {
         />
       );
     case 'return':
-      return <ReturnStepDialog current="implement" steps={['spike']} />;
+      return <ReturnStepDialog current="implement" steps={['design']} />;
     case 'edit-details':
       return <EditDetailsDialog item={item} conflict={false} />;
     case 'edit-conflict':
       return <EditDetailsDialog item={item} conflict />;
+    case 'author-add-spec-doc':
+      return <AddContextDialog kind="specification-document" />;
+    case 'author-add-project-doc':
+      return <AddContextDialog kind="repository-document" />;
+    case 'author-add-path':
+      return <AddContextDialog kind="path" />;
+    case 'author-dependencies':
+      return <AddDependencyDialog item={item} />;
     default:
       return null;
   }
@@ -569,7 +574,9 @@ function dialogFor(item: MockTask, scenario: TaskScenario): ReactNode {
 function Workspace({ scenario, width, documentPlacement = 'secondary' }: TaskMockProps) {
   const item = subjectFor(scenario);
   const narrow = width < 730;
-  const editing = scenario === 'edit-document';
+  const authoringWithDocument = scenario === 'author-with-document';
+  // Narrow shows one surface: while authoring, the Task page (the document is a pushed page).
+  const editing = scenario === 'edit-document' || (authoringWithDocument && !narrow);
   const hasHistory = item.started && !editing;
   const header = (
     <WorkspaceHeader
@@ -597,17 +604,17 @@ function Workspace({ scenario, width, documentPlacement = 'secondary' }: TaskMoc
     />
   );
 
-  if (editing && (narrow || documentPlacement === 'primary')) {
+  if (scenario === 'edit-document' && (narrow || documentPlacement === 'primary')) {
     // B (and Narrow for A): the document replaces the Task page; Back returns to the Task.
     return (
-      <DocumentServices>
+      <DocumentServices taskId={item.id}>
         <AppWorkspaceProvider scopeKey="workflow-manual-task-doc">
           <AppWorkspace
             scroll="content"
             fit="available"
             labels={{ backToPrimary: 'Back to task', closeSecondary: 'Close' }}
           >
-            <AppWorkspace.Primary header={<TaskDocumentHeader back />}>
+            <AppWorkspace.Primary header={<TaskDocumentHeader back taskId={item.id} />}>
               <AppContent className="h-full w-full">
                 <DocumentEditor />
               </AppContent>
@@ -628,7 +635,7 @@ function Workspace({ scenario, width, documentPlacement = 'secondary' }: TaskMoc
         <AppWorkspace.Primary header={header}>
           <AppContent className="w-full max-w-full">
             <AppWorkspaceBody scroll={editing ? 'area' : undefined}>
-              <TaskBody item={item} />
+              <TaskBody item={item} scenario={scenario} />
             </AppWorkspaceBody>
           </AppContent>
         </AppWorkspace.Primary>
@@ -637,7 +644,7 @@ function Workspace({ scenario, width, documentPlacement = 'secondary' }: TaskMoc
             open
             onOpenChange={noop}
             headerVariant="tab-rail"
-            header={<TaskDocumentHeader />}
+            header={<TaskDocumentHeader taskId={item.id} more={authoringWithDocument} />}
           >
             <AppContent className="h-full w-full">
               <DocumentEditor />
@@ -679,7 +686,7 @@ function Workspace({ scenario, width, documentPlacement = 'secondary' }: TaskMoc
     </AppWorkspaceProvider>
   );
 
-  return editing ? <DocumentServices>{workspace}</DocumentServices> : workspace;
+  return editing ? <DocumentServices taskId={item.id}>{workspace}</DocumentServices> : workspace;
 }
 
 export function TaskMock(props: TaskMockProps): ReactNode {

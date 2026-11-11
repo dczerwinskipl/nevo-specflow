@@ -585,7 +585,7 @@ export const AssignTypeFollowsTheId: Story = {
         name: 'Actions: meeting-2026-10-20-with-the-identity-team.md',
       }),
     );
-    await userEvent.click(await screen.findByRole('menuitem', { name: 'Assign type…' }));
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Assign type' }));
     const dialog = within(await screen.findByRole('dialog', { name: 'Assign a type' }));
     await userEvent.click(dialog.getByRole('radio', { name: /Decisions/ }));
     await userEvent.click(dialog.getByRole('button', { name: 'Assign type' }));
@@ -632,7 +632,7 @@ export const SaveConflict: Story = {
     const alert = within(await screen.findByRole('alert'));
     await expect(alert.getByText('Not saved: ux.md changed on disk')).toBeTruthy();
     await expect(alert.getByRole('button', { name: 'Copy my version' })).toBeTruthy();
-    await expect(alert.getByRole('button', { name: 'Load the version on disk…' })).toBeTruthy();
+    await expect(alert.getByRole('button', { name: 'Load the version on disk' })).toBeTruthy();
     // Save waits for a choice but keeps the focus of whoever pressed it (aria-disabled).
     const save = screen.getByRole<HTMLButtonElement>('button', { name: 'Save' });
     await expect(save).toHaveAttribute('aria-disabled', 'true');
@@ -640,7 +640,7 @@ export const SaveConflict: Story = {
     await expect(save).toHaveFocus();
     await expect(editor.textContent).toContain('My change.');
     // Load the version on disk asks first, then replaces the draft and ends the conflict.
-    await userEvent.click(alert.getByRole('button', { name: 'Load the version on disk…' }));
+    await userEvent.click(alert.getByRole('button', { name: 'Load the version on disk' }));
     const confirm = within(
       await screen.findByRole('alertdialog', { name: 'Load the version on disk?' }),
     );

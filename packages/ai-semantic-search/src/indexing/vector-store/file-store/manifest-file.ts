@@ -1,7 +1,7 @@
 import type { IndexIdentity } from '../vector-store';
 
 /** Version of the on-disk format. Another version is read as `missing`, so the index is rebuilt. */
-export const FILE_INDEX_SCHEMA_VERSION = 2;
+export const FILE_INDEX_SCHEMA_VERSION = 1;
 
 /** One vector per manifest chunk; `offset` is the chunk's vector index in the vectors file. */
 export interface StoredChunk {

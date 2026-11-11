@@ -9,7 +9,7 @@ import { dirname } from 'node:path';
 import { CHUNKER_VERSION, type Chunk } from '@nevo/ai-semantic-search';
 
 /** Bump when the cached shape or what it is derived from changes; a mismatch discards the cache. */
-export const UNIT_CACHE_SCHEMA_VERSION = 4;
+export const UNIT_CACHE_SCHEMA_VERSION = 1;
 
 export type CachedChunk = Pick<
   Chunk,

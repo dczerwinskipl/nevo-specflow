@@ -6,7 +6,7 @@ import type { Chunk, SourceUnit } from './chunk';
  * Version of the chunking behavior. Any change to how chunks, their ids, texts or embedding texts
  * are produced MUST increment it, so stored vectors are rebuilt (ADR 0021).
  */
-export const CHUNKER_VERSION = 4;
+export const CHUNKER_VERSION = 1;
 
 /** Size bound of one chunk's section text, in characters. */
 export const CHUNK_MAX_CHARS = 2000;

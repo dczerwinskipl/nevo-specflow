@@ -5,9 +5,9 @@ import { compareIds } from '../../../compare';
 /**
  * A generation file name, `<kind>-<key>.<extension>`. The key is `<epoch>-<generation>-<token>`:
  * the writer lock epoch of the writer that wrote it (see `tryAcquireWriterLock`), the generation and
- * a random token. A key without an epoch (`<generation>-<token>`, written before epochs) has epoch 0.
+ * a random token.
  */
-const GENERATION_FILE = /^(manifest|vectors)-((?:(\d+)-)?(\d+)-[0-9a-f]+)\.(json|f32)$/;
+const GENERATION_FILE = /^(manifest|vectors)-((\d+)-(\d+)-[0-9a-f]+)\.(json|f32)$/;
 
 /** One generation's pair of files: `manifest-<key>.json` and `vectors-<key>.f32`. */
 export interface GenerationFile {
@@ -28,7 +28,7 @@ export function parseGenerationFile(
   return {
     kind: match[1] as 'manifest' | 'vectors',
     key: match[2]!,
-    epoch: match[3] === undefined ? 0 : Number(match[3]),
+    epoch: Number(match[3]),
     generation: Number(match[4]),
   };
 }

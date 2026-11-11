@@ -676,12 +676,17 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
         }),
       });
       expect(startTurn.status).toBe(202);
-      await vi.waitFor(async () => {
-        const snapshot = (await (
-          await fetch(`http://127.0.0.1:${port}/api/sessions/${sessionId}`)
-        ).json()) as { entries: { kind: string }[] };
-        expect(snapshot.entries.at(-1)?.kind).toBe('outcome');
-      });
+      // The Turn runs in the installed SQLite worker: a loaded Windows runner needs more than the
+      // 1 s waitFor default to persist its outcome.
+      await vi.waitFor(
+        async () => {
+          const snapshot = (await (
+            await fetch(`http://127.0.0.1:${port}/api/sessions/${sessionId}`)
+          ).json()) as { entries: { kind: string }[] };
+          expect(snapshot.entries.at(-1)?.kind).toBe('outcome');
+        },
+        { timeout: 10_000, interval: 100 },
+      );
       await expect(response.json()).resolves.toEqual({
         authenticationRequired: false,
         authenticated: false,

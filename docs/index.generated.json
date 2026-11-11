@@ -3990,6 +3990,41 @@
       ]
     },
     {
+      "id": "ideas.specflow-engine.reusable-workflow.ux-contract",
+      "type": "product",
+      "title": "Manual Specification and Task workflow execution — UX contract (mock)",
+      "status": "draft",
+      "file": "docs/ideas/specflow-engine/reusable-workflow-manual-execution/ux-contract.md",
+      "read_when": [
+        "designing or implementing the E3/E4 manual Specification and Task UI",
+        "reviewing the manual workflow execution Storybook mock",
+        "adding Ask agent to a workflow step (E6) without redesigning the step panel"
+      ],
+      "summary": "Draft screen contract, for owner acceptance, of manual Specification and Task workflow execution in the UI: Tasks on the Overview, Task creation and authoring, lifecycle actions, one generic workflow step panel driven by a read-only action projection, first-start binding confirmation and refusals, review-failed rework, wait-for-tasks and Close blockers.",
+      "related": [
+        "ideas.specflow-engine.reusable-workflow",
+        "ideas.specflow-engine.reusable-workflow.delivery",
+        "ideas.specflow-engine.reusable-workflow.boundaries",
+        "ideas.specflow-engine.reusable-workflow.agent-execution",
+        "ideas.specflow-engine.task-resource-and-context",
+        "product.specflow.ui.specification-overview",
+        "product.specflow.ui.interaction-model"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "workflow"
+      ],
+      "tags": [
+        "proposal",
+        "ux-contract",
+        "manual-execution",
+        "task-authoring",
+        "workflow-step-panel",
+        "close"
+      ]
+    },
+    {
       "id": "ideas.specflow-ui.components.session-chat-v10-design",
       "type": "product",
       "title": "Session Chat V10 — open directions",

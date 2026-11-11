@@ -157,6 +157,10 @@ GET /api/workspaces/:workspaceId/docs/status
 
 The first returns the human-reader tree/list, the second the active document (optionally a
 section reference), the third ranked document/section results, and the fourth indexing state.
+**The reader's document response separates structured frontmatter-derived metadata from the
+renderable Markdown body, which excludes the YAML frontmatter delimiter and fields.** Do not pass
+raw file contents from the existing `getDocumentReads()` into `MarkdownDocument` as-is; that CLI
+helper currently returns frontmatter in full-file reads. Preserve the CLI contract unchanged.
 Document and section references resolve only inside the selected validated corpus.
 `q`, `limit`, `snippets` and `includeNonAuthoritative` remain search options.
 
@@ -189,7 +193,12 @@ Separate three lifecycles:
 3. **Derived corpus and index state:** open a `ProjectDocs` for one verified workspace and
    effective corpus configuration, with an isolated logical vector index and cache. Indexes
    are disposable, never a source of authority. Respect Git-ignore checks for every worktree
-   and use lexical fallback if the cache cannot safely be written.
+   and use lexical fallback if the cache cannot safely be written. The current `index-store.ts`
+   caches `git check-ignore` in the process-wide `ignoreChecks` map by root/path; that answer can
+   become stale when branches or `.gitignore` / Git exclude rules change. Revalidate write
+   admission on checkout or ignore-policy change and before subsequent cache writes, including
+   writes by ongoing background refreshes. Do not rely indefinitely on a path-only cached `true`.
+   If ignore safety cannot be established, do not persist the index in that checkout.
 
 Before any list/get/search/status operation, detect a changed effective `docs` configuration or
 `docs.yaml` and retire/reopen the old corpus instance (including its file walker, filters,
@@ -228,11 +237,18 @@ Do not equate Git HEAD, source revision, index generation and workspace identity
 
 Every successful list/get/search response identifies `workspaceId` and
 `corpusRevision` (for example in a shared response envelope). Include index mode/status
-on search/status, and document ID, path and section ID on results. The corresponding HTTP
-`ETag` names the selected corpus revision (scoped to the workspace). When opening an article
-from a tree/search revision, the UI may send `If-Match`; if the corpus has changed, return
-`412 Precondition Failed` and reload the selected workspace's tree/search before opening it.
-A direct article link without a revision reads the current corpus.
+on search/status, and document ID, path and section ID on results. For **tree and article**
+reads, an HTTP `ETag` derived from the workspace-scoped corpus revision can be used as a source
+precondition; when opening an article from a tree/search revision, the UI may send `If-Match`
+(or an explicit corpus-revision precondition using the same semantics). If the source changed,
+return `412 Precondition Failed` and reload the selected workspace's tree/search before opening
+it. A direct article link without a revision reads the current corpus.
+
+**Search and status are different representations:** completion of background embeddings can
+change ranking, search mode, progress and index generation without changing `corpusRevision`.
+Do not use a source-only `ETag` for them. Initially send `Cache-Control: no-store` and **omit
+`ETag` on search/status**; expose `corpusRevision` and index generation/state separately in the
+response. A future cache validator must cover the complete representation and request options.
 
 Prevent a request from returning mixed-version file metadata and content: load/validate a
 coherent corpus read snapshot, verify its inputs have not changed before committing the response,
@@ -262,14 +278,22 @@ Keep search's existing default exclusion of those paths unless
 merge non-authoritative results into default agent context.
 
 For documentation Markdown use the existing `@nevo/ui` **`MarkdownDocument`** renderer
-(`react-markdown`, GFM, raw HTML not rendered), with a product-owned `renderLink` policy.
+(`react-markdown`, GFM, raw HTML not rendered) with a product-owned `renderLink` policy.
 Treat the source and all href/src attributes as **untrusted**. Block scriptable schemes
 (`javascript:`, `data:`, `file:`, etc.), disallow raw HTML execution, canonicalize
 relative workspace-local references under the selected docs root, reject traversal/symlink
 escapes and resolve internal document links through stable document routes. External links
-need explicit safe protocols and `noopener noreferrer`; don't silently fetch remote
-images or embedded resources from documentation in the local product without a separate
-policy (avoid leaking project access tokens/context or triggering remote requests).
+need explicit safe protocols and `noopener noreferrer`. A blocked `renderLink` must return a
+**safe non-link element**, not `null`/`undefined`: those values trigger the renderer's default
+link fallback.
+
+The current `MarkdownDocument` renders `<img src>` unconditionally, and `renderLink` cannot
+intercept images. Extend this **existing component** with an optional `renderImage` callback
+(or equivalent image-source policy) and have the docs reader block external/remote, unsafe-scheme
+and unverified local sources by default; render inert alt text or a safe placeholder instead.
+Only serve local images via an authorized, traversal-safe workspace docs resource endpoint if
+support for them is explicitly implemented. Do not silently fetch remote images or embedded
+resources (avoid leaking project context and triggering third-party requests).
 No new HTML/Markdown rendering engine or unrestricted plugin execution.
 
 ### Session/Specification origin and user interaction
@@ -308,8 +332,10 @@ unchanged and changed Markdown; dirty edits; modified `docs.root`, `exclude`, ta
 `nonAuthoritative` with identical Markdown hashes; untrusted worktree `ai.embeddings` attempting
 endpoint redirection; denied Specification-only or Session-only users; permitted global viewer;
 deleted/excluded/inactive documents; stale tree-to-article `If-Match`; branch switch during
-search; long-running index refresh during workspace removal; and internal/external Markdown
-link/image sanitization.
+search; long-running index refresh during workspace removal; Git ignore rules changing from
+ignored to unignored after a branch switch (including an already-running refresh); lexical-to-hybrid
+search changing without corpus changes; separate metadata/body with hidden YAML frontmatter;
+blocked-link fallback behavior; and internal/external Markdown link/image sanitization.
 
 For UI render **composed** AppShell/AppWorkspace stories at 1440px, approximately 1024px,
 375px and 320px, with long paths, no horizontal overflow, workspace changes, keyboard

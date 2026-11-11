@@ -197,8 +197,10 @@ the same query parameters in another order are different spaces and cost one reb
 A model whose weights change under the same name and server (an updated model tag, for example) is
 caught by a probe: every full refresh (`semantic index`, the background catch-up a search starts
 and the Runtime's refresh) embeds one fixed probe text and compares the vector with the one the
-index recorded when it was built; a cosine similarity below 0.999 rebuilds the index. A search's
-own bounded refresh sends no probe, so a weight change is noticed by the next full refresh.
+index recorded when it was built (every build records it, also one a search makes); a cosine
+similarity below 0.999, or an index without a recorded probe, rebuilds the index. A search's own
+bounded refresh does not compare the probe, so a weight change is noticed by the next full
+refresh.
 
 ### Secrets
 

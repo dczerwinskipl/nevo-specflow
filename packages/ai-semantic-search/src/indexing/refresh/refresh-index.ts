@@ -52,9 +52,10 @@ export interface RefreshRequest {
   readonly maxEmbed?: number;
   /**
    * Check that the endpoint still produces the stored index's vectors: embed `PROBE_TEXT` (one
-   * request) and compare it with the probe the index recorded; a similarity below
-   * `PROBE_MIN_SIMILARITY` rebuilds the index, and an index without a probe records it. For full
-   * refreshes (explicit, background, Runtime), not for a search's bounded refresh.
+   * request) and compare it with the probe the index recorded. A similarity below
+   * `PROBE_MIN_SIMILARITY`, or an index without a recorded probe (its space is unproven), rebuilds
+   * the index. For full refreshes (explicit, background, Runtime), not for a search's bounded
+   * refresh.
    */
   readonly verifySpace?: boolean;
   readonly onProgress?: (progress: RefreshProgress) => void;
@@ -97,8 +98,10 @@ export type RefreshOutcome =
  * planned chunks, in slices of `commitChunks` (reporting `onProgress` before the first and after
  * each): each slice is applied as soon as it is embedded, with the generation of the previous write
  * as the compare-and-swap base (the first write carries the deletes and, for a rebuild, the reset).
- * With `verifySpace`, the probe replaces the dimension probe, a changed probe turns the plan into a
- * rebuild, and the first write records the probe. Only a contract violation throws.
+ * With `verifySpace`, the probe replaces the dimension probe, and a changed or missing stored probe
+ * turns the plan into a rebuild. Every write that creates or resets the index records the probe
+ * (embedding it then when no verification did), so an index never has vectors without one. Only a
+ * contract violation throws.
  */
 export async function refreshIndex(request: RefreshRequest): Promise<RefreshOutcome> {
   const { chunks, provider, store, onProgress } = request;
@@ -140,12 +143,9 @@ export async function refreshIndex(request: RefreshRequest): Promise<RefreshOutc
 
   const identity = identityFor(provider, dimensions);
   const planFor = (manifest: IndexManifest | undefined) =>
-    planRefresh(chunks, identity, probe && probeChanged(manifest, probe) ? undefined : manifest);
-  // An index without a recorded probe is current only once the probe is written.
-  const settled = (manifest: IndexManifest, plan: RefreshPlan) =>
-    isCurrent(plan) && (probe === undefined || manifest.probe !== undefined);
+    planRefresh(chunks, identity, probe && !probeMatches(manifest, probe) ? undefined : manifest);
   const unlockedManifest = manifestOf(unlocked);
-  if (unlockedManifest && settled(unlockedManifest, planFor(unlockedManifest))) {
+  if (unlockedManifest && isCurrent(planFor(unlockedManifest))) {
     return { status: 'current', generation: unlockedManifest.generation };
   }
 
@@ -162,12 +162,26 @@ export async function refreshIndex(request: RefreshRequest): Promise<RefreshOutc
 
     const manifest = manifestOf(locked);
     const plan = planFor(manifest);
-    if (manifest && settled(manifest, plan)) {
+    if (manifest && isCurrent(plan)) {
       return { status: 'current', generation: manifest.generation };
     }
 
     if (maxEmbed !== undefined && plan.embed.length > maxEmbed) {
       return { status: 'over-limit', pending: plan.embed.length };
+    }
+
+    // A created or reset index records the probe it was built with, also on a bounded refresh.
+    if (plan.reset && probe === undefined) {
+      const embedded = await provider.embed([PROBE_TEXT], 'document');
+      if (!embedded.ok) {
+        return { status: 'embedding-failed', failure: embedded.failure };
+      }
+
+      probe = embedded.vectors[0]!;
+    }
+
+    if (probe !== undefined && probe.length !== dimensions) {
+      return { status: 'embedding-failed', failure: dimensionMismatch(probe.length, dimensions) };
     }
 
     const total = plan.embed.length;
@@ -194,10 +208,7 @@ export async function refreshIndex(request: RefreshRequest): Promise<RefreshOutc
         if (wrong) {
           return {
             status: 'embedding-failed',
-            failure: {
-              code: 'dimension-mismatch',
-              message: `The provider returned ${wrong.length}-dimensional vectors; the index has ${dimensions}.`,
-            },
+            failure: dimensionMismatch(wrong.length, dimensions),
           };
         }
 
@@ -258,14 +269,15 @@ function identityFor(provider: EmbeddingProvider, dimensions: number): IndexIden
   };
 }
 
-/** A stored probe the fresh one does not reproduce (another dimension, or below the bound). */
-function probeChanged(manifest: IndexManifest | undefined, probe: Float32Array): boolean {
+/**
+ * Whether the index's stored probe proves that `probe` comes from the same model: it exists, has
+ * the same dimension and is at least `PROBE_MIN_SIMILARITY` similar. An index without one is
+ * unproven.
+ */
+function probeMatches(manifest: IndexManifest | undefined, probe: Float32Array): boolean {
   const stored = manifest?.probe;
 
-  return (
-    stored !== undefined &&
-    (stored.length !== probe.length || cosineSimilarity(stored, probe) < PROBE_MIN_SIMILARITY)
-  );
+  return stored?.length === probe.length && cosineSimilarity(stored, probe) >= PROBE_MIN_SIMILARITY;
 }
 
 function manifestOf(outcome: Exclude<ManifestOutcome, StoreUnreadable>): IndexManifest | undefined {
@@ -274,4 +286,11 @@ function manifestOf(outcome: Exclude<ManifestOutcome, StoreUnreadable>): IndexMa
 
 function isCurrent(plan: RefreshPlan): boolean {
   return !plan.reset && plan.embed.length === 0 && plan.delete.length === 0;
+}
+
+function dimensionMismatch(observed: number, dimensions: number): EmbeddingFailure {
+  return {
+    code: 'dimension-mismatch',
+    message: `The provider returned ${observed}-dimensional vectors; the index has ${dimensions}.`,
+  };
 }

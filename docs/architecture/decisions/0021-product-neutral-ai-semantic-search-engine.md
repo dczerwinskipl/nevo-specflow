@@ -122,13 +122,14 @@ engine does not fail a search because embeddings are unavailable.
   embedding space names where the vectors come from: by default a fingerprint of protocol,
   normalized base URL and model, so the same model name on another server is another space; a
   consumer may declare a space id instead, for servers it knows to serve the same weights. A model
-  whose weights change under the same name and space is not visible in any name: the manifest
-  records the vector of a fixed probe text, and every full refresh embeds the probe once and
-  rebuilds when the cosine similarity to the stored probe is below 0.999. A search's bounded
-  refresh sends no probe, so searches add no endpoint call.
-- A mismatch of schema version, chunker version, protocol, model, space or dimensions, a changed
-  probe, and an incomplete or damaged pair discard the index and rebuild it in full. There is no
-  index migration.
+  whose weights change under the same name and space is not visible in any name: every write
+  that creates or resets the index records the vector of a fixed probe text with it (also a
+  search's bounded refresh, which embeds the probe only then), and every full refresh embeds the
+  probe once and rebuilds when the stored probe is missing (its space is unproven) or its cosine
+  similarity to the new one is below 0.999. A search's bounded refresh does not verify, so a
+  search adds no endpoint call for an existing index.
+- A mismatch of schema version, chunker version, protocol, model, space or dimensions, a missing
+  or changed probe, and an incomplete or damaged pair discard the index and rebuild it in full.
 - Content freshness and the embedding identity are checked separately. The freshness check compares
   chunk ids and content hashes with the manifest and calls no endpoint; without configured
   dimensions it takes the stored dimension as given. The real dimension is verified where an

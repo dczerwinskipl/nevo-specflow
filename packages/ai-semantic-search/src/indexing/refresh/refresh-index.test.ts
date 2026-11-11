@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import type { SourceUnit } from '../../chunking/chunk';
-import { chunkMarkdownUnit } from '../../chunking/markdown-chunker';
+import { CHUNKER_VERSION, chunkMarkdownUnit } from '../../chunking/markdown-chunker';
 import type { EmbeddingProvider } from '../../embeddings/embedding-provider';
 import { createFakeEmbeddingProvider } from '../../embeddings/fake-embedding-provider';
 import { createFileVectorStore } from '../vector-store/file-store/file-vector-store';
@@ -32,14 +32,11 @@ describe('refreshIndex', () => {
     const chunks = corpus(base);
     const store = createInMemoryVectorStore();
     const before = createFakeEmbeddingProvider();
-    // Without verification nothing is recorded; a verifying refresh records the probe, no re-embed.
+    // A non-verifying refresh records the probe when it creates the index.
     await refreshIndex({ chunks, provider: before, store });
-    expect(
-      await refreshIndex({ chunks, provider: before, store, verifySpace: true }),
-    ).toMatchObject({ status: 'refreshed', rebuilt: false, embedded: 0 });
     expect(await refreshIndex({ chunks, provider: before, store, verifySpace: true })).toEqual({
       status: 'current',
-      generation: 2,
+      generation: 1,
     });
 
     // The same model name and space with other weights: only the verifying refresh notices.
@@ -57,6 +54,46 @@ describe('refreshIndex', () => {
       status: 'refreshed',
       rebuilt: true,
     });
+  });
+
+  it('rebuilds a model swapped after a non-verifying build, and an index without a probe', async () => {
+    const chunks = corpus(base);
+    const store = createInMemoryVectorStore();
+    // Built by a search's bounded refresh, then the model changes under the same identity.
+    await refreshIndex({ chunks, provider: createFakeEmbeddingProvider({ seed: 1 }), store });
+    const swapped = createFakeEmbeddingProvider({ seed: 2 });
+    expect(
+      await refreshIndex({ chunks, provider: swapped, store, verifySpace: true }),
+    ).toMatchObject({ status: 'refreshed', rebuilt: true, embedded: chunks.length });
+
+    // Vectors without a recorded probe prove no space: a verifying refresh rebuilds them.
+    const bare = createInMemoryVectorStore();
+    const opened = await bare.openWriter();
+    if (opened.status !== 'opened') {
+      throw new Error('writer');
+    }
+
+    await opened.writer.apply({
+      baseGeneration: undefined,
+      identity: {
+        chunkerVersion: CHUNKER_VERSION,
+        protocol: swapped.protocol,
+        model: swapped.model,
+        space: swapped.space,
+        dimensions: swapped.dimensions!,
+      },
+      reset: true,
+      delete: [],
+      upsert: chunks.map((chunk) => ({
+        chunkId: chunk.id,
+        contentHash: chunk.contentHash,
+        vector: new Float32Array(swapped.dimensions!).fill(1),
+      })),
+    });
+    await opened.writer.close();
+    expect(
+      await refreshIndex({ chunks, provider: swapped, store: bare, verifySpace: true }),
+    ).toMatchObject({ status: 'refreshed', rebuilt: true });
   });
 
   it('embeds every chunk once, then only new or changed chunks, and drops removed ones', async () => {
@@ -81,7 +118,9 @@ describe('refreshIndex', () => {
       status: 'current',
       generation: 1,
     });
+    // Creating the index embeds the probe it records, then the chunks.
     expect(provider.calls.map((call) => call.texts)).toEqual([
+      ['probe'],
       initial.map((chunk) => chunk.embeddingText),
       ['probe'],
     ]);
@@ -102,7 +141,7 @@ describe('refreshIndex', () => {
       embedded: 2,
       deleted: 1,
     });
-    expect(provider.calls.slice(2)).toEqual([
+    expect(provider.calls.slice(3)).toEqual([
       { texts: changed.map((chunk) => chunk.embeddingText), purpose: 'document' },
     ]);
     const manifest = await store.readManifest();
@@ -155,11 +194,11 @@ describe('refreshIndex', () => {
     const chunks = corpus(base);
     const progress: unknown[] = [];
 
-    // The second slice fails: the first stays applied.
+    // The second slice fails (after the probe and the first slice): the first stays applied.
     const failing: EmbeddingProvider = {
       ...provider,
       embed: (texts, purpose) => {
-        if (provider.calls.length === 1) {
+        if (provider.calls.length === 2) {
           provider.failWith({ code: 'timeout', message: 'slow' });
         }
 
@@ -217,7 +256,7 @@ describe('refreshIndex', () => {
       status: 'over-limit',
       pending: next.length,
     });
-    expect(provider.calls).toHaveLength(1);
+    expect(provider.calls).toHaveLength(2);
 
     // Unbounded, the 32-dimensional vectors no longer match the probed dimension.
     expect(await refreshIndex({ chunks: next, provider: reprobed, store })).toMatchObject({

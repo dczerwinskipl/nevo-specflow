@@ -19,6 +19,10 @@ export async function createGitTestProject(prefix: string, configYaml: string): 
   // Keep checkout bytes stable across Windows, macOS and Linux, regardless of
   // the Git for Windows runner's global core.autocrlf setting.
   git(root, 'config', '--local', 'core.autocrlf', 'false');
+  // Commits can start detached auto-maintenance, which briefly leaves
+  // `.git/objects/maintenance.lock` behind and breaks "nothing changed" tree snapshots.
+  git(root, 'config', '--local', 'maintenance.auto', 'false');
+  git(root, 'config', '--local', 'gc.auto', '0');
   await mkdir(join(root, '.nevo'), { recursive: true });
   await writeFile(join(root, '.gitignore'), '.nevo/local/\n');
   await writeFile(join(root, '.nevo/config.yaml'), configYaml);

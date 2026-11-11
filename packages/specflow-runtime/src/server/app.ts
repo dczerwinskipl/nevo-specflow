@@ -8,7 +8,7 @@ import Fastify, {
   type RawServerBase,
 } from 'fastify';
 
-import { createAuthFeature, type AuthFeatureDependencies } from '../features/auth';
+import { authCookieNames, createAuthFeature, type AuthFeatureDependencies } from '../features/auth';
 import type { RuntimeConfig } from '../config/types';
 import {
   createSessionsFeature,
@@ -25,6 +25,7 @@ import {
   createEngineWorkspaceDocuments,
   type DocumentsFeatureDependencies,
 } from '../features/documents';
+import { createDocsFeature, type DocsFeatureDependencies } from '../features/docs';
 import { createSettingsFeature } from '../features/settings';
 import {
   createEngineAssociationTargets,
@@ -52,6 +53,8 @@ import {
 import type { RuntimeFeature } from '../features/runtime-feature';
 import { registerRuntimeErrorHandler } from './error-handler';
 import { registerEndpointPolicy } from './endpoint-policy';
+import { registerOpenApi, registerOpenApiRoute } from './openapi';
+import { registerSharedContracts } from './shared-contracts';
 import { serializeRuntimeRequest } from './logging';
 import { isRequestAtPublicOrigin } from './origin';
 import { registerRuntimeWebApp, type RuntimeWebApp } from './web-app';
@@ -64,6 +67,8 @@ export interface RuntimeAppDependencies {
   readonly demoScenarios?: boolean;
   readonly tasks?: TasksFeatureDependencies;
   readonly documents?: DocumentsFeatureDependencies;
+  /** Project documentation search; the Runtime start supplies the project root in project mode. */
+  readonly docs?: DocsFeatureDependencies;
   readonly sessions?: {
     references?: SessionReferenceOwner;
     storage?: { directory: string; projectId: string; workspace?: string };
@@ -127,6 +132,15 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
   await app.register(cookie);
   registerRuntimeErrorHandler(app);
   await registerEndpointPolicy(app, config.server.rateLimit);
+  // Before any route: OpenAPI generation captures only routes registered after it.
+  await registerOpenApi(app, {
+    // Trusted local mode needs no credential; required authentication reads the session cookie.
+    sessionCookie:
+      config.authentication.mode === 'required'
+        ? authCookieNames(config.server.port).session
+        : undefined,
+  });
+  registerSharedContracts(app);
 
   const mode = dependencies.dataMode ?? 'project';
   const demo =
@@ -279,6 +293,11 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
       ...(demo ? {} : { sessions: sessionsFeature.runtime }),
     }),
     createSettingsFeature(),
+    createDocsFeature({
+      ...(config.docs ? { configuration: config.docs } : {}),
+      // Demo data serves no project documentation.
+      ...(dependencies.docs && !demo ? { dependencies: dependencies.docs } : {}),
+    }),
   ];
 
   const authFeature = createAuthFeature({
@@ -297,7 +316,12 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
   app.withTypeProvider<TypeBoxTypeProvider>().get(
     '/api/runtime/info',
     {
-      schema: { response: { 200: RuntimeInfoResponseSchema } },
+      config: { openApiPublic: true },
+      schema: {
+        tags: ['Runtime'],
+        summary: 'Read the Runtime data mode',
+        response: { 200: RuntimeInfoResponseSchema },
+      },
     },
     (_request, reply) => {
       reply.header('Cache-Control', 'no-store');
@@ -307,6 +331,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
       };
     },
   );
+  registerOpenApiRoute(app);
 
   for (const feature of productFeatures) {
     await feature.register?.(app);

@@ -1,9 +1,10 @@
-import Fastify, { type FastifyInstance } from 'fastify';
+import type { FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { registerOperationListRoute } from './list-route';
 import type { OperationListSource } from './operation-source';
 import { createOperationProgressRegistry } from './progress-registry';
+import { routeTestApp } from '../../../test/support/route-app';
 
 const apps: FastifyInstance[] = [];
 afterEach(async () => {
@@ -15,7 +16,7 @@ const operationId = '3f0a6d4e-8f2a-4b6e-9d0a-1c2b3d4e5f60';
 
 /** A second feature with its own kind and its own admission policy: one registration. */
 async function fakeFeature(options: { allowed: boolean }) {
-  const app = Fastify();
+  const app = routeTestApp();
   apps.push(app);
   const source: OperationListSource = {
     kind: 'widget-build',
@@ -31,6 +32,7 @@ async function fakeFeature(options: { allowed: boolean }) {
   };
   registerOperationListRoute(app, {
     path: '/api/widgets/operations',
+    summary: 'List widget builds',
     sources: [source],
     registry,
     authorize: () => undefined,
@@ -60,10 +62,11 @@ describe('registerOperationListRoute (reuse by another feature)', () => {
   });
 
   it('keeps feature errors out of the response', async () => {
-    const app = Fastify();
+    const app = routeTestApp();
     apps.push(app);
     registerOperationListRoute(app, {
       path: '/x/operations',
+      summary: 'List operations',
       sources: [{ kind: 'k', list: () => Promise.reject(new Error('C:\\secret\\path leaked')) }],
       registry,
       authorize: () => undefined,

@@ -62,19 +62,19 @@ The scope names the area of the change and is **required** on the PR title. The 
 present, so a new real package or capability area is added simply by using it. Current
 conventional scopes:
 
-| Scope        | Area                                                     |
-| ------------ | -------------------------------------------------------- |
-| `workspace`  | root workspace config, monorepo plumbing, formatting     |
-| `cli`        | Nevo SpecFlow CLI                                        |
-| `runtime`    | Nevo SpecFlow Runtime                                    |
-| `ui`         | Nevo SpecFlow UI                                         |
-| `core`       | shared product library                                   |
-| `release`    | `tools/release` — version model, cut / promote / release |
-| `docs`       | documentation under `docs/`                              |
-| `docs-tools` | `tools/docs` — discovery, index, ADR authoring           |
-| `github`     | `tools/github` — GitHub governance                       |
-| `ci`         | GitHub Actions workflows / CI configuration              |
-| `deps`       | dependency version bumps                                 |
+| Scope        | Area                                                      |
+| ------------ | --------------------------------------------------------- |
+| `workspace`  | root workspace config, monorepo plumbing, formatting      |
+| `cli`        | Nevo SpecFlow CLI                                         |
+| `runtime`    | Nevo SpecFlow Runtime                                     |
+| `ui`         | Nevo SpecFlow UI                                          |
+| `core`       | shared product library                                    |
+| `release`    | `tools/release` — version model, cut / promote / release  |
+| `docs`       | documentation under `docs/`                               |
+| `docs-tools` | `tools/docs` — docs launcher, ADR authoring and ADR rules |
+| `github`     | `tools/github` — GitHub governance                        |
+| `ci`         | GitHub Actions workflows / CI configuration               |
+| `deps`       | dependency version bumps                                  |
 
 Pick the tightest scope that fits. Add a new one when a genuinely new area appears —
 do not stretch an existing scope, and do not invent noise.

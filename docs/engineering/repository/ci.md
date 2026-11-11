@@ -103,6 +103,24 @@ Pull requests run the official Dependency Review Action and fail when a newly in
 has a known vulnerability of moderate severity or higher. Its stable check name is
 `dependency review`.
 
+## Runtime OpenAPI document
+
+`docs/reference/api/openapi.generated.json` is the committed copy of the Runtime OpenAPI document
+(see [Runtime OpenAPI document](../../reference/api/openapi.md)). The `engine transport smoke` job
+runs `pnpm api:openapi --check` right after it builds `@nevo/specflow-runtime`, so the check adds
+no build. It runs when that job's relevance gate matches, which includes every change to the Runtime and its
+workspace dependencies (`packages/specflow-runtime/`, `packages/specflow-contracts/`,
+`packages/specflow-engine/`, `packages/authorization/`, `packages/specflow-docs/`,
+`packages/ai-semantic-search/`), where the route schemas and the schemas
+they reuse live, and to the generated file itself; the failure counts towards `verify tests`.
+
+The check regenerates the document, validates it as OpenAPI 3.1 and fails with
+`The generated OpenAPI document is invalid:` and the list of problems when the document is not
+valid, or with ``docs/reference/api/openapi.generated.json is stale: run `pnpm api:openapi`.`` when
+the committed bytes differ. Fix it by running `pnpm api:openapi` and committing the result; the API change is then
+visible in the pull request diff (`.gitattributes` keeps this generated file diffable). Routes
+without a response schema are printed to stderr as information and never fail the check.
+
 ## Packaged product smoke
 
 A dedicated matrix runs `packages/specflow/test/packaging.smoke.test.ts` on:
@@ -128,8 +146,9 @@ build; the tests themselves take about 1 to 2 minutes when green.
 
 - It runs on pull requests only when files that affect Create, its journal or Git/worktree handling
   change (engine `specs`, `git`, `version-control`, `project`, Runtime `features/specs`,
-  `features/operations`, `server`, contracts `specs`/`operations`, the smoke tests and tooling, the
-  workflow). UI-only and unrelated changes do not start a Windows runner.
+  `features/operations`, `server`, contracts `specs`/`operations`, the semantic index file store
+  and writer lock in `ai-semantic-search`, the smoke tests and tooling, the workflow). UI-only and
+  unrelated changes do not start a Windows runner.
 - It does not run on push or nightly (the full suite does) and is not a required check. It can be
   started manually through **Actions → Windows smoke → Run workflow**.
 - A failure lists every failing test name in the log and the job summary. A listed test whose title
@@ -304,4 +323,5 @@ pnpm turbo run lint --filter=...[origin/main]
 pnpm --filter @nevo/specflow-ui lint
 pnpm exec turbo run build test typecheck --affected --dry
 pnpm --filter @nevo/specflow test:packaged
+pnpm api:openapi --check
 ```

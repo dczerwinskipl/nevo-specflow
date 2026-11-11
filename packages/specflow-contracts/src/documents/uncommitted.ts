@@ -2,7 +2,8 @@ import { Type, type Static } from 'typebox';
 
 import { CommitInfoSchema } from './operations';
 import { CommitPolicyModeSchema } from './tree';
-import { IdSchema, UuidSchema, closedUnion } from './vocabulary';
+import { IdSchema, closedUnion } from './vocabulary';
+import { OperationIdSchema } from '../operations/progress';
 
 /** Most entries the ledger of one Specification holds (the Engine refuses a 201st path). */
 export const UNCOMMITTED_ENTRIES_MAX = 200;
@@ -76,7 +77,7 @@ export type ManualCommitScope = (typeof MANUAL_COMMIT_HTTP_SCOPES)[number];
  */
 export const ManualCommitInputSchema = Type.Object(
   {
-    operationId: UuidSchema,
+    operationId: OperationIdSchema,
     scope: Type.Optional(ManualCommitScopeSchema),
     message: Type.Optional(Type.String()),
     paths: Type.Optional(
@@ -95,7 +96,7 @@ export type ManualCommitInput = Static<typeof ManualCommitInputSchema>;
  */
 export const ManualCommitResultSchema = Type.Object(
   {
-    operationId: UuidSchema,
+    operationId: OperationIdSchema,
     commit: CommitInfoSchema,
     paths: Type.Array(Type.String({ minLength: 1 }), { maxItems: MANUAL_COMMIT_PATHS_MAX }),
     remaining: Type.Object(

@@ -18,6 +18,7 @@ import { requireCapability } from '../auth';
 import { specScope } from '../specs';
 import { readTaskDetail, type TaskReadDependencies } from './detail/read-task-detail';
 import { readTaskPage } from './reads/read-page';
+import { contractRef } from '../../server/shared-contracts';
 
 export const taskReadEndpoint: FastifyPluginCallback<{ dependencies: TaskReadDependencies }> = (
   app,
@@ -31,17 +32,19 @@ export const taskReadEndpoint: FastifyPluginCallback<{ dependencies: TaskReadDep
       specScope(options.dependencies.projectId?.(), (request.params as { specId: string }).specId),
   });
   const errors = {
-    401: AuthenticationRequiredErrorResponseSchema,
-    403: AuthorizationForbiddenErrorResponseSchema,
-    404: TaskReadErrorSchema,
-    409: TaskSnapshotExpiredSchema,
-    503: TaskReadErrorSchema,
+    401: contractRef(AuthenticationRequiredErrorResponseSchema),
+    403: contractRef(AuthorizationForbiddenErrorResponseSchema),
+    404: contractRef(TaskReadErrorSchema),
+    409: contractRef(TaskSnapshotExpiredSchema),
+    503: contractRef(TaskReadErrorSchema),
   };
   app.withTypeProvider<TypeBoxTypeProvider>().get(
     '/api/specs/:specId/tasks/:taskId',
     {
       preHandler: authorization,
       schema: {
+        tags: ['Tasks'],
+        summary: 'Read a Task',
         params: SpecificationTaskParamsSchema,
         response: { 200: SpecificationTaskResponseSchema, ...errors },
       },
@@ -71,6 +74,9 @@ export const taskReadEndpoint: FastifyPluginCallback<{ dependencies: TaskReadDep
       {
         preHandler: authorization,
         schema: {
+          tags: ['Tasks'],
+          summary:
+            kind === 'resources' ? 'Read the resources of a Task' : 'Read the history of a Task',
           params: SpecificationTaskParamsSchema,
           querystring: TaskPageQuerySchema,
           response: {

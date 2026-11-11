@@ -1,0 +1,190 @@
+---
+id: adr.0021-product-neutral-ai-semantic-search-engine
+type: adr
+title: Product-neutral AI semantic search engine
+status: current
+date: 2026-11-09
+summary: >
+  `@nevo/ai-semantic-search` is a product-neutral engine with embedding provider, chunk source and
+  vector store ports, an OpenAI-compatible embeddings adapter with a probe, heading-aware versioned
+  markdown chunking and hybrid BM25 + cosine ranking fused by reciprocal rank fusion. Its local index
+  is disposable, file-backed, written atomically under a single-writer lock and rebuilt in full on
+  any manifest mismatch; it uses no native modules and no provider SDK.
+related:
+  - adr.0020-documentation-discovery-is-a-product-capability
+  - adr.0011-product-artifact-packaging-and-pnpm-compatibility
+  - adr.0012-product-package-topology-and-dependency-direction
+  - architecture.runtime.configuration
+  - architecture.repository-structure
+---
+
+# 0021 — Product-neutral AI semantic search engine
+
+## Status
+
+Current. The decisions below were taken by the product owner on 2026-11-09.
+
+## Context
+
+- **Semantic retrieval is not documentation-specific.** Chunking, embeddings, a vector index and
+  ranking apply equally to documentation, Specification documents or code. Documentation search
+  ([ADR 0020](0020-documentation-discovery-is-a-product-capability.md)) is the first consumer.
+- **The product ships as one self-contained artifact**
+  ([ADR 0011](0011-product-artifact-packaging-and-pnpm-compatibility.md)) and is developed and used
+  on Windows. Native vector libraries (sqlite-vec, LanceDB, hnswlib bindings) break the bundled
+  artifact and are a recurring Windows installation problem.
+- **The corpus is small.** This repository has a few hundred markdown files, i.e. a few thousand
+  chunks. Brute-force cosine similarity over a `Float32Array` answers in milliseconds; a vector
+  database is not needed.
+- **Embedding hosts are many but share one protocol.** Ollama, LM Studio, vLLM, llama.cpp server,
+  Hugging Face TEI, OpenAI and Azure OpenAI expose the OpenAI-compatible `POST /embeddings` call,
+  locally or remotely.
+- **Instruction-tuned embedding models** (for example Qwen3-Embedding) expect an instruction prefix
+  on queries but not on documents.
+- **The CLI and a running Runtime use the same index** at the same time, on Windows, where an
+  interrupted or concurrent write must never leave a half-written index.
+- The `ai-` prefix makes the AI nature of the package visible; "knowledge" is reserved for a broader
+  future product layer over documentation, Specifications and code.
+
+## Decision
+
+### 1. Boundary
+
+`@nevo/ai-semantic-search` (`packages/ai-semantic-search`) knows chunks, vectors and queries. It
+does not know documentation frontmatter, taxonomies or Specifications.
+
+- It MUST NOT depend on any SpecFlow package (`@nevo/specflow*`). It MAY depend on other neutral
+  Nevo packages when a real shared dependency exists.
+- It MUST NOT use native modules. Vector math is plain TypeScript over typed arrays.
+- It MUST NOT use a provider SDK. The adapter uses Node `fetch`.
+- It receives resolved settings from its consumer; it does not read SpecFlow configuration files.
+- It is `private: true` and bundled into the `@nevo/specflow` artifact, like `@nevo/specflow-runtime`;
+  it is not published on its own.
+
+### 2. Ports
+
+| Port                | Responsibility                                                                                           |
+| ------------------- | -------------------------------------------------------------------------------------------------------- |
+| `EmbeddingProvider` | `embed(texts, purpose)` with `purpose` `document` or `query`; returns vectors, model id and dimensions.  |
+| `ChunkSource`       | Enumerates units with stable ids, content hash, text and filterable metadata. The consumer provides it.  |
+| `VectorStore`       | Upserts and deletes vectors by chunk id, answers nearest-neighbour queries, reads and writes a manifest. |
+
+The query instruction prefix is consumer configuration, applied for `purpose: query` only.
+
+### 3. OpenAI-compatible embeddings adapter
+
+The first `EmbeddingProvider` calls `POST {baseUrl}/embeddings` with `{ model, input: string[] }`,
+batched and with a timeout. A `protocol` discriminator in the settings selects the adapter;
+`openai-compatible` is the only protocol, and further protocols are further adapters.
+
+`probe()` embeds a fixed short text and returns reachability, latency and the observed dimension.
+Consumers use it for connectivity checks, status reports and before (re)indexing. A configured
+dimension that differs from the observed one is an error.
+
+### 4. Chunking
+
+- Markdown is split on headings; each chunk keeps its heading path (`H1 > H2 > H3`) and its
+  section's stable id (its parent section's id and its heading's slug) and start line.
+- The consumer supplies a short contextual header per unit (for documentation: title, id, summary,
+  scope, areas, tags and read_when) that is embedded with each chunk, so small chunks keep their
+  document context.
+- Chunks have a size bound (2000 characters). A longer section is split on Markdown block
+  boundaries (paragraphs, list items, tables, fenced code blocks), packed in order up to the bound,
+  so a block that fits is never cut; only a single block longer than the bound is cut into
+  character windows, and only those windows overlap.
+- The chunker has a version. Changing chunking behavior MUST change the version.
+
+### 5. Ranking
+
+With vectors, ranking is hybrid:
+
+1. BM25 over chunk text;
+2. cosine similarity against the query embedding, bounded to a number of candidates;
+3. reciprocal rank fusion of both lists, then grouping by parent unit.
+
+Consumer filters (for example "no non-authoritative documents") apply before any candidate cut:
+rejected chunks are left out of the BM25 list and of the vector query, so they neither take a
+candidate place nor shift the ranks that are fused.
+
+Without vectors the same call returns BM25-only results with `mode: lexical` and a `reason`. The
+engine does not fail a search because embeddings are unavailable.
+
+### 6. Local index
+
+- The local `VectorStore` keeps each index generation as a pair of files: a manifest (schema
+  version, chunker version, protocol, model, dimensions, and per chunk id its content hash and
+  vector offset) and a binary `Float32` vector file.
+- Refresh is incremental: only chunks that are new or whose content hash changed are re-embedded,
+  and chunks that no longer exist are deleted. A long refresh is applied in several writes, one
+  per slice of embedded chunks, so an interrupted or failed refresh keeps the slices it wrote and
+  the next refresh embeds only the rest.
+- The index identity is chunker version, protocol, model, embedding space and dimensions. The
+  embedding space names where the vectors come from: by default a fingerprint of protocol,
+  normalized base URL and model, so the same model name on another server is another space; a
+  consumer may declare a space id instead, for servers it knows to serve the same weights. A model
+  whose weights change under the same name and space is not visible in any name: every write
+  that creates or resets the index records the vector of a fixed probe text with it (also a
+  search's bounded refresh, which embeds the probe only then), and every full refresh embeds the
+  probe once and rebuilds when the stored probe is missing (its space is unproven) or its cosine
+  similarity to the new one is below 0.999. A search's bounded refresh does not verify, so a
+  search adds no endpoint call for an existing index.
+- A mismatch of schema version, chunker version, protocol, model, space or dimensions, a missing
+  or changed probe, and an incomplete or damaged pair discard the index and rebuild it in full.
+- Content freshness and the embedding identity are checked separately. The freshness check compares
+  chunk ids and content hashes with the manifest and calls no endpoint; without configured
+  dimensions it takes the stored dimension as given. The real dimension is verified where an
+  endpoint answer is needed anyway: a refresh probes the endpoint before it decides that the index
+  is current, and a query vector whose dimension differs from the stored one is a mismatch, never a
+  comparison. An endpoint that changes its dimension under the same model name is therefore rebuilt
+  by the next refresh, and a search that meets the mismatch reports a rebuild need instead of
+  ranking.
+- Writes are atomic: each write creates a new generation pair (the vectors first, then the manifest
+  through a temporary file renamed to a new name) and never replaces an existing file, so a reader
+  always sees a complete pair from one write and an open reader cannot make a write fail on
+  Windows. Readers never take a lock: they take the highest pair by writer epoch, then generation;
+  superseded pairs are removed.
+- One writer at a time holds the writer lock. A second writer in the CLI or a running Runtime does
+  not wait: it gets `busy`, and its consumer degrades to lexical search. Ownership works as follows:
+  - Ownership is an epoch. A writer takes the lock by creating the lock file `writer-<epoch>.lock`
+    exclusively (`O_EXCL` on Linux, `CREATE_NEW` on Windows: one atomic create-if-absent on local
+    filesystems, overlay mounts, NFSv3 and later, and SMB) for an epoch above every lock and
+    manifest epoch it lists, and keeps it while its listings show no higher epoch. It lets go by
+    creating `writer-<epoch>.released`.
+  - Taking a lock over never renames or removes it. When the highest lock is released or stale, a
+    writer creates the next epoch's lock; of writers that judged the same lock stale, exactly one
+    create succeeds and the others get `busy`. A writer whose listing was out of date and that
+    created an epoch below a newer one sees the newer one when it lists again, removes its own file
+    and gets `busy`. Only an owner removes lock files, and only those of lower epochs, so the
+    highest epoch is never taken twice.
+  - A lock is stale when its holder stopped refreshing it (touching its own file only, while it
+    still owns the index) for the stale bound, 60 s by default. The holder's pid is an extra signal
+    only where it means something: a lock recorded under the same host, boot and PID namespace as
+    the reader is also stale when that process is gone or the pid is the reader's own. A pid from
+    another container or host never makes a lock stale.
+  - Listings are only as fresh as the filesystem makes them. On a local filesystem a listing
+    shows every file created before it; a network filesystem (NFS, SMB) can serve a cached listing,
+    so two writers can briefly both believe they hold the lock. Safety then rests on the epoch
+    fencing below, not on the lock: the writer with the lower epoch wastes its write, whose pair
+    ranks below the other's and never becomes the index.
+  - Writes are fenced by the epoch. A writer checks that it still owns the index right before it
+    publishes a manifest and publishes nothing otherwise. Because the epoch is part of every pair's
+    name and readers rank by epoch first, a former holder that was suspended past the stale bound
+    and publishes late anyway never ranks above a pair of the new owner. Every pair stays complete;
+    what such a late write loses, the next refresh embeds again.
+- The consumer chooses the index directory. It is disposable cache: deleting it loses nothing but
+  the embedding cost of rebuilding.
+
+An external `VectorStore` (for example a hosted shared index) is a possible later adapter and is not
+part of this decision.
+
+## Consequences
+
+- Other corpora (Specification documents, code) can reuse the engine by providing a chunk source,
+  without depending on the documentation capability.
+- The bundled artifact keeps working on every platform without native builds.
+- Brute-force search bounds the practical corpus size; a larger corpus is the trigger to add an
+  approximate index or an external `VectorStore` adapter.
+- Model or chunker changes cost one full re-embedding, never a migration.
+- Unit tests use a deterministic fake `EmbeddingProvider`; no test needs a real model or the network.
+- Model endpoint adapters move to a separate `@nevo/ai-models` package only when a second consumer
+  of model endpoints appears.

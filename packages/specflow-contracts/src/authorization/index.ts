@@ -48,7 +48,7 @@ export type AuthorizationScope = Static<typeof AuthorizationScopeSchema>;
 
 export const AuthenticationRequiredErrorResponseSchema = Type.Object(
   { error: Type.Literal('authentication_required') },
-  { additionalProperties: false },
+  { $id: 'AuthenticationRequiredErrorResponse', additionalProperties: false },
 );
 export type AuthenticationRequiredErrorResponse = Static<
   typeof AuthenticationRequiredErrorResponseSchema
@@ -56,7 +56,7 @@ export type AuthenticationRequiredErrorResponse = Static<
 
 export const AuthorizationForbiddenErrorResponseSchema = Type.Object(
   { error: Type.Literal('forbidden') },
-  { additionalProperties: false },
+  { $id: 'AuthorizationForbiddenErrorResponse', additionalProperties: false },
 );
 export type AuthorizationForbiddenErrorResponse = Static<
   typeof AuthorizationForbiddenErrorResponseSchema

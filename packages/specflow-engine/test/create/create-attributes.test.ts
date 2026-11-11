@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { readFile, rm, writeFile } from 'node:fs/promises';
+import { readFile, rm, utimes, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
@@ -163,15 +163,23 @@ describe('Create with .gitattributes line-ending rules', () => {
       await expect(
         createSpecification(engine, request, { afterEffect: crashAfter('manifest') }),
       ).rejects.toBeInstanceOf(Crash);
+      // Make the index stat entry unambiguously non-racy. Otherwise Git sometimes re-hashes
+      // this just-created file, accidentally hiding the stale clean-filter cache problem.
+      const old = new Date('2000-01-01T00:00:00.000Z');
+      await utimes(join(root, NOTES_PATH), old, old);
       git(root, 'add', 'specs');
       git(root, '-c', 'user.name=H', '-c', 'user.email=h@e.invalid', 'commit', '-qm', 'by hand');
+      expect(git(root, 'rev-parse', 'HEAD:' + NOTES_PATH)).not.toBe(storedOid(root));
+      expect(
+        git(root, '-c', 'core.autocrlf=false', 'status', '--porcelain', '--', NOTES_PATH),
+      ).toBe('');
       await expect(
         createSpecification(engine, request, { resumeInterruptedOperation: true }),
       ).rejects.toMatchObject({ code: 'CREATE_RECOVERY_REQUIRED' });
 
       // The documented remedy: a follow-up commit of the same files with autocrlf=false. History is
       // not rewritten: the refused resume already pinned the parent HEAD in the journal.
-      git(root, '-c', 'core.autocrlf=false', 'add', 'specs');
+      git(root, '-c', 'core.autocrlf=false', 'add', '--renormalize', 'specs');
       git(root, '-c', 'user.name=H', '-c', 'user.email=h@e.invalid', 'commit', '-qm', 'by hand');
       await createSpecification(engine, request, { resumeInterruptedOperation: true });
       expect(git(root, 'rev-list', '--count', parent + '..HEAD')).toBe('2');

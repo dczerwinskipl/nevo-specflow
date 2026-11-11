@@ -1,12 +1,18 @@
-// ADR authoring + ADR-specific validation. Pure — no filesystem here.
+// ADR authoring + ADR-specific validation: rules of this repository on top of the product
+// frontmatter contract (ADR 0020). Pure — no filesystem here.
 
+import {
+  asString,
+  DocsUsageError,
+  parseFrontmatter,
+  validateDoc,
+  type DocRecord,
+} from '@nevo/specflow-docs';
 import { stringify as stringifyYaml } from 'yaml';
 
-import { UsageError } from '../errors.js';
-import { asString, parseFrontmatter, validateDoc, type DocRecord } from './frontmatter.js';
-
 const ADR_FILE_RE = /^(\d{4})-([a-z0-9]+(?:-[a-z0-9]+)*)\.md$/;
-export const ADR_DIR = 'docs/architecture/decisions';
+/** Where ADRs live, relative to `docs.root`. */
+export const ADR_DIRECTORY = 'architecture/decisions';
 
 /** A newly-authored ADR is a `draft` until a human fills it in and promotes it. */
 export const NEW_ADR_STATUS = 'draft';
@@ -22,7 +28,7 @@ export function slugify(title: string): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
   if (!s) {
-    throw new UsageError(`Cannot slugify title ${JSON.stringify(title)} — no alphanumerics.`);
+    throw new DocsUsageError(`Cannot slugify title ${JSON.stringify(title)} — no alphanumerics.`);
   }
 
   return s;
@@ -43,7 +49,7 @@ export function nextAdrNumber(filenames: readonly string[]): { next: number } {
 
     const m = ADR_FILE_RE.exec(f);
     if (!m) {
-      throw new UsageError(`ADR filename '${f}' does not match NNNN-kebab-title.md`);
+      throw new DocsUsageError(`ADR filename '${f}' does not match NNNN-kebab-title.md`);
     }
 
     nums.push(Number(m[1]));
@@ -52,7 +58,7 @@ export function nextAdrNumber(filenames: readonly string[]): { next: number } {
   nums.sort((a, b) => a - b);
   for (let i = 0; i < nums.length; i++) {
     if (nums[i] !== i + 1) {
-      throw new UsageError(
+      throw new DocsUsageError(
         `ADR numbering is not a gap-free 0001.. sequence (got [${nums.join(', ')}]). ` +
           `Fix before adding one.`,
       );
@@ -181,34 +187,37 @@ export interface AdrPlan {
 /** Plan a new ADR. Transactional: the rendered file is validated before it can be written. */
 export function planNewAdr({
   title,
+  directory,
   filenames,
   date = isoDate(),
 }: {
   title: string;
+  /** The ADR directory relative to the project root, for example `docs/architecture/decisions`. */
+  directory: string;
   filenames: readonly string[];
   date?: string;
 }): AdrPlan {
   if (!title.trim()) {
-    throw new UsageError('An ADR title is required.');
+    throw new DocsUsageError('An ADR title is required.');
   }
 
   if (!isIsoDate(date)) {
-    throw new UsageError(`date must be ISO YYYY-MM-DD, got ${JSON.stringify(date)}`);
+    throw new DocsUsageError(`date must be ISO YYYY-MM-DD, got ${JSON.stringify(date)}`);
   }
 
   const { next } = nextAdrNumber(filenames);
   const slug = slugify(title);
   const name = `${padNumber(next)}-${slug}.md`;
   if (filenames.includes(name)) {
-    throw new UsageError(`${ADR_DIR}/${name} already exists.`);
+    throw new DocsUsageError(`${directory}/${name} already exists.`);
   }
 
-  const file = `${ADR_DIR}/${name}`;
+  const file = `${directory}/${name}`;
   const content = renderAdr({ number: next, slug, title: title.trim(), date });
 
   const problems = validateRenderedAdr(content, file);
   if (problems.length) {
-    throw new UsageError(`refusing to create an invalid ADR:\n  - ${problems.join('\n  - ')}`);
+    throw new DocsUsageError(`refusing to create an invalid ADR:\n  - ${problems.join('\n  - ')}`);
   }
 
   return { number: next, slug, file, id: `adr.${padNumber(next)}-${slug}`, content };

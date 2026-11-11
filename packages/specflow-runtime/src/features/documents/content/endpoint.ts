@@ -5,7 +5,7 @@ import {
   DocumentContentSchema,
   DocumentQuerySchema,
   DocumentTreeSchema,
-  IdSchema,
+  SpecIdSchema,
   SpecificationDocumentParamsSchema,
 } from '@nevo/specflow-contracts/documents';
 
@@ -21,7 +21,7 @@ import {
 } from './route-support';
 
 export const DocumentTreeParamsSchema = Type.Object(
-  { specId: IdSchema },
+  { specId: SpecIdSchema },
   { additionalProperties: false },
 );
 
@@ -37,6 +37,8 @@ export const documentContentEndpoint: FastifyPluginCallback<DocumentReadEndpoint
     {
       preHandler: viewGuard(options.projectId),
       schema: {
+        tags: ['Documents'],
+        summary: 'Read the document tree of a Specification',
         params: DocumentTreeParamsSchema,
         response: { 200: DocumentTreeSchema, 304: Type.Null(), ...documentReadErrorResponses },
       },
@@ -63,6 +65,8 @@ export const documentContentEndpoint: FastifyPluginCallback<DocumentReadEndpoint
     {
       preHandler: viewGuard(options.projectId),
       schema: {
+        tags: ['Documents'],
+        summary: 'Read a document',
         params: SpecificationDocumentParamsSchema,
         querystring: DocumentQuerySchema,
         response: { 200: DocumentContentSchema, ...documentReadErrorResponses },

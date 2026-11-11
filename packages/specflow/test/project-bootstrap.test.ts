@@ -59,6 +59,17 @@ async function invoke(cwd: string, ...args: string[]) {
 }
 
 describe('Explicit Project Home bootstrap', () => {
+  it('refuses a docs-only configuration and points to init', async () => {
+    const primary = await fixture();
+    await writeFile(join(primary, '.nevo/config.yaml'), 'docs:\n  root: docs\n');
+    await expect(invoke(primary, 'project', 'bootstrap')).rejects.toThrowError(
+      `Nevo SpecFlow is not initialized: .nevo/config.yaml has no 'runtime' section. Run "nevo-specflow init"; it keeps the existing sections.`,
+    );
+    await expect(
+      readFile(join(primary, PROJECT_HOME_MARKER_RELATIVE_PATH), 'utf8'),
+    ).rejects.toMatchObject({ code: 'ENOENT' });
+  });
+
   it('designates one durable home and makes offline CLI inspection available', async () => {
     const primary = await fixture();
     const before = await readFile(join(primary, '.nevo/config.yaml'), 'utf8');

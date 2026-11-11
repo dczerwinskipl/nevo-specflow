@@ -50,6 +50,7 @@ Current resource names are:
 spec
 session
 settings
+docs
 ```
 
 `scope` is optional. Omitting it means `{}`, the global required scope.

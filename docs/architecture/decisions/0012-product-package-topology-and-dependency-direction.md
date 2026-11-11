@@ -11,6 +11,8 @@ summary: >
   contracts and neutral foundations, with @nevo/specflow as the product composition root.
 related:
   - architecture.repository-structure
+  - adr.0020-documentation-discovery-is-a-product-capability
+  - adr.0021-product-neutral-ai-semantic-search-engine
   - adr.0005-repository-tooling-is-separate-from-the-product-api
   - adr.0011-product-artifact-packaging-and-pnpm-compatibility
   - design-system.principles.system-boundary
@@ -68,6 +70,9 @@ Arrows point from a consumer to a dependency:
   |                            \-> @nevo/specflow-contracts -> @nevo/authorization
   |                            \-> neutral foundations as needed
   |
+  |-> @nevo/specflow-docs ----> @nevo/ai-semantic-search (neutral)
+  |      (also consumed by Runtime)  \-> @nevo/specflow-contracts
+  |
   \-> @nevo/specflow-ui -----> @nevo/specflow-contracts
                                \-> @nevo/http-client
 ```
@@ -75,11 +80,11 @@ Arrows point from a consumer to a dependency:
 The diagram shows allowed direction, not a requirement that every package directly depends on every
 package reachable below it.
 
-- Product-neutral packages such as `@nevo/authorization` and `@nevo/http-client` MUST NOT depend
-  on SpecFlow product packages. They MAY depend on other neutral Nevo packages if a real shared
-  dependency is introduced later.
+- Product-neutral packages such as `@nevo/authorization`, `@nevo/http-client` and
+  `@nevo/ai-semantic-search` MUST NOT depend on SpecFlow product packages. They MAY depend on
+  other neutral Nevo packages if a real shared dependency is introduced later.
 - `@nevo/specflow-contracts` MAY depend on neutral primitives but MUST NOT depend on Runtime, UI,
-  or the product composition root.
+  `@nevo/specflow-docs`, any other SpecFlow capability package, or the product composition root.
 - `@nevo/specflow-engine` MAY import the neutral documents vocabulary and schemas from
   `@nevo/specflow-contracts/documents` (archetype and template definitions, document ids, limits and
   error codes) and nothing else from that package. It MUST NOT import Runtime, UI, the product
@@ -87,6 +92,10 @@ package reachable below it.
 - Runtime MAY consume the Engine's application API, shared contracts and neutral foundations. It
   MUST NOT import `@nevo/specflow-engine/testing` in production code, and MUST NOT depend on UI or
   `@nevo/specflow`.
+- `@nevo/specflow-docs` MAY depend on `@nevo/ai-semantic-search`, `@nevo/specflow-contracts` and
+  neutral foundations. It MUST NOT depend on Runtime, Engine, UI or the product composition root.
+  Runtime MAY consume it (amended 2026-11-09 by
+  [ADR 0020](0020-documentation-discovery-is-a-product-capability.md)).
 - UI MAY consume shared SpecFlow contracts and neutral client infrastructure. It MUST NOT import
   Runtime internals, the product composition root, or the authorization policy implementation.
   Server-owned authorization decisions reach UI through product contracts/capabilities instead.

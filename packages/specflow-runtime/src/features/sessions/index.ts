@@ -20,6 +20,7 @@ export type {
   StoredAssociation,
 } from './persistence/protocol';
 export { registerSessionErrorHandling } from './http/error-handling';
+export { SESSION_ROUTE_REFUSALS, sessionBodyErrors, sessionErrors } from './http/route-docs';
 export { listedSession } from './http/projection';
 export { authorizeSessionWrite } from './http/authorization';
 export { canStartSession, requireStartSession } from './start-authorization';

@@ -15,6 +15,7 @@ import type { SessionCoordinator } from '../lifecycle/coordinator';
 import { TelemetryRateLimited } from '../lifecycle/telemetry';
 import { SessionError } from '../errors';
 import { authorizeSession, authorizedIdentity } from './authorization';
+import { capabilityRefusal, sessionReadDocs, sessionRouteErrors } from './route-docs';
 import type { SessionIdentity } from '../persistence/protocol';
 import { resolveSessionPermissions, sessionScope } from '../scope';
 
@@ -76,7 +77,12 @@ export function registerTelemetryRoutes(
       '/api/sessions/:sessionId/telemetry',
       {
         preHandler: (request) => authorizeSession(request, coordinator(), sid(request)),
-        schema: { params, response: { 200: TelemetrySnapshotSchema, 304: Type.Null() } },
+        config: { openApiResponses: sessionRouteErrors.telemetry },
+        schema: {
+          ...sessionReadDocs.telemetry,
+          params,
+          response: { 200: TelemetrySnapshotSchema, 304: Type.Null(), ...capabilityRefusal },
+        },
       },
       async (request, reply) => {
         const value = projectTelemetry(
@@ -110,6 +116,7 @@ export function registerTelemetryRoutes(
     '/api/sessions/:sessionId/telemetry/refresh',
     {
       bodyLimit: 4096,
+      config: { openApiResponses: sessionRouteErrors.telemetryRefresh },
       preHandler: async (request) => {
         await authorizeSession(request, coordinator(), sid(request));
         const identity = await authorizeSession(request, coordinator(), sid(request), true);
@@ -122,9 +129,12 @@ export function registerTelemetryRoutes(
         }
       },
       schema: {
+        tags: ['Session Telemetry'],
+        summary: 'Refresh the telemetry of a Session',
         params,
         body: RefreshTelemetrySchema,
         response: {
+          ...capabilityRefusal,
           202: RefreshTelemetryReceiptSchema,
           429: Type.Object(
             { error: Type.Literal('rate_limited') },

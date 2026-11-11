@@ -7,6 +7,10 @@ import {
   CancelTurnSchema,
   RespondInteractionSchema,
   SessionIdSchema,
+  TurnIdSchema,
+  WorkIdSchema,
+  ContentIdSchema,
+  InteractionIdSchema,
   SessionSnapshotSchema,
   HistoryPageSchema,
   WorkPageSchema,
@@ -37,6 +41,13 @@ import { createSessionStreams } from './stream';
 import { registerTelemetryRoutes } from './telemetry';
 import { registerSessionManagementRoutes } from './management';
 import { registerSessionErrorHandling } from './error-handling';
+import {
+  capabilityRefusal,
+  sessionEventReplayParameters,
+  sessionEventStream,
+  sessionReadDocs,
+  sessionRouteErrors,
+} from './route-docs';
 import { registerSessionListRoute, storeSessionListSource, type SessionListSource } from './list';
 import {
   registerDemoManagedSessionReads,
@@ -150,9 +161,11 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
       feature.get(
         '/api/session-providers',
         {
+          config: { openApiResponses: sessionRouteErrors.providers },
           schema: {
+            ...sessionReadDocs.providers,
             querystring: ProviderCatalogueQuerySchema,
-            response: { 200: ProviderCatalogueSchema },
+            response: { 200: ProviderCatalogueSchema, ...capabilityRefusal },
           },
         },
         async (request) => {
@@ -180,7 +193,12 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
         '/api/sessions/:sessionId',
         {
           preHandler: (request) => authorize(request),
-          schema: { params: params(), response: { 200: SessionSnapshotSchema } },
+          config: { openApiResponses: sessionRouteErrors.snapshot },
+          schema: {
+            ...sessionReadDocs.snapshot,
+            params: params(),
+            response: { 200: SessionSnapshotSchema, ...capabilityRefusal },
+          },
         },
         async (request) =>
           effective(
@@ -194,10 +212,12 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
         '/api/sessions/:sessionId/history',
         {
           preHandler: (request) => authorize(request),
+          config: { openApiResponses: sessionRouteErrors.history },
           schema: {
+            ...sessionReadDocs.history,
             params: params(),
             querystring: pageQuery,
-            response: { 200: HistoryPageSchema },
+            response: { 200: HistoryPageSchema, ...capabilityRefusal },
           },
         },
         async (request) => {
@@ -222,10 +242,12 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
         '/api/sessions/:sessionId/turns/:turnId/work',
         {
           preHandler: (request) => authorize(request),
+          config: { openApiResponses: sessionRouteErrors.page },
           schema: {
-            params: params({ turnId: SessionIdSchema }),
+            ...sessionReadDocs.work,
+            params: params({ turnId: TurnIdSchema }),
             querystring: pageQuery,
-            response: { 200: WorkPageSchema },
+            response: { 200: WorkPageSchema, ...capabilityRefusal },
           },
         },
         (request) =>
@@ -242,10 +264,12 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
         '/api/sessions/:sessionId/work/:workId/actions',
         {
           preHandler: (request) => authorize(request),
+          config: { openApiResponses: sessionRouteErrors.page },
           schema: {
-            params: params({ workId: SessionIdSchema }),
+            ...sessionReadDocs.actions,
+            params: params({ workId: WorkIdSchema }),
             querystring: pageQuery,
-            response: { 200: ActionPageSchema },
+            response: { 200: ActionPageSchema, ...capabilityRefusal },
           },
         },
         (request) =>
@@ -262,8 +286,10 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
         '/api/sessions/:sessionId/content/:contentId',
         {
           preHandler: (request) => authorize(request),
+          config: { openApiResponses: sessionRouteErrors.content },
           schema: {
-            params: params({ contentId: SessionIdSchema }),
+            ...sessionReadDocs.content,
+            params: params({ contentId: ContentIdSchema }),
             querystring: Type.Object(
               {
                 revision: Type.String({ pattern: '^[0-9]+$', maxLength: 16 }),
@@ -272,7 +298,7 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
               },
               closed,
             ),
-            response: { 200: ContentPageSchema },
+            response: { 200: ContentPageSchema, ...capabilityRefusal },
           },
         },
         (request) =>
@@ -289,7 +315,13 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
         '/api/sessions/:sessionId/events',
         {
           preHandler: (request) => authorize(request),
+          config: {
+            openApiResponses: { ...sessionEventStream, ...sessionRouteErrors.events },
+            openApiParameters: sessionEventReplayParameters,
+          },
           schema: {
+            ...sessionReadDocs.events,
+            response: { ...capabilityRefusal },
             params: params(),
             querystring: Type.Object(
               { after: Type.Optional(Type.String({ pattern: '^[0-9]+$', maxLength: 16 })) },
@@ -331,7 +363,13 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
       {
         bodyLimit: 256 * 1024,
         preHandler: authorizeCreate,
-        schema: { body: CreateSessionSchema, response: { 201: CreateSessionResultSchema } },
+        config: { openApiResponses: sessionRouteErrors.create },
+        schema: {
+          tags: ['Sessions'],
+          summary: 'Create a standalone Session',
+          body: CreateSessionSchema,
+          response: { 201: CreateSessionResultSchema, ...capabilityRefusal },
+        },
       },
       async (request, reply) => {
         return reply
@@ -345,10 +383,13 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
       {
         bodyLimit: 256 * 1024,
         preHandler: (request) => authorizeExecution(request),
+        config: { openApiResponses: sessionRouteErrors.start },
         schema: {
+          tags: ['Sessions'],
+          summary: 'Start a Turn',
           params: params(),
           body: StartTurnSchema,
-          response: { 202: StartTurnResultSchema },
+          response: { 202: StartTurnResultSchema, ...capabilityRefusal },
         },
       },
       async (request, reply) => {
@@ -368,10 +409,13 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
       {
         bodyLimit: 65536,
         preHandler: (request) => authorize(request, true),
+        config: { openApiResponses: sessionRouteErrors.cancel },
         schema: {
-          params: params({ turnId: SessionIdSchema }),
+          tags: ['Sessions'],
+          summary: 'Cancel a Turn',
+          params: params({ turnId: TurnIdSchema }),
           body: CancelTurnSchema,
-          response: { 202: CancelTurnResultSchema },
+          response: { 202: CancelTurnResultSchema, ...capabilityRefusal },
         },
       },
       async (request, reply) =>
@@ -391,10 +435,13 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
       {
         bodyLimit: 65536,
         preHandler: (request) => authorize(request, true),
+        config: { openApiResponses: sessionRouteErrors.reconcile },
         schema: {
-          params: params({ turnId: SessionIdSchema }),
+          tags: ['Sessions'],
+          summary: 'Reconcile the outcome of a Turn',
+          params: params({ turnId: TurnIdSchema }),
           body: CancelTurnSchema,
-          response: { 200: ReconcileTurnResultSchema },
+          response: { 200: ReconcileTurnResultSchema, ...capabilityRefusal },
         },
       },
       async (request, reply) =>
@@ -414,10 +461,13 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
       {
         bodyLimit: 65536,
         preHandler: (request) => authorizeExecution(request, true),
+        config: { openApiResponses: sessionRouteErrors.respond },
         schema: {
-          params: params({ interactionId: SessionIdSchema }),
+          tags: ['Sessions'],
+          summary: 'Respond to an interaction of a Turn',
+          params: params({ interactionId: InteractionIdSchema }),
           body: RespondInteractionSchema,
-          response: { 202: RespondInteractionResultSchema },
+          response: { 202: RespondInteractionResultSchema, ...capabilityRefusal },
         },
       },
       async (request, reply) =>

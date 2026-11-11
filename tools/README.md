@@ -4,7 +4,7 @@ Repository-internal tooling. **Never** published and never a Nevo SpecFlow produ
 
 | Directory             | Purpose                                                           |
 | --------------------- | ----------------------------------------------------------------- |
-| `tools/docs`          | Deterministic documentation discovery/index and ADR authoring.    |
+| `tools/docs`          | Launcher for the product docs command, ADR authoring and rules.   |
 | `tools/agents`        | Canonical agent-profile validation and provider projections.      |
 | `tools/release`       | Version lines, promotions, tags and GitHub Release orchestration. |
 | `tools/github`        | Repository governance reconciliation and verification.            |

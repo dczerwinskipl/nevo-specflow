@@ -1,0 +1,7 @@
+{
+  "extends": "../../tsconfig.package-node.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./.tsbuild/ai-semantic-search.tsbuildinfo"
+  },
+  "include": ["src/**/*.ts"]
+}

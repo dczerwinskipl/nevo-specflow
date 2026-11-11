@@ -102,6 +102,6 @@ export const DocumentErrorSchema = Type.Object(
     code: DocumentErrorCodeSchema,
     details: Type.Optional(DocumentErrorDetailsSchema),
   },
-  { additionalProperties: false },
+  { $id: 'DocumentError', additionalProperties: false },
 );
 export type DocumentErrorBody = Static<typeof DocumentErrorSchema>;

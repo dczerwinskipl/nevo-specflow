@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -88,13 +88,20 @@ describe('init: automatic commit of documents', () => {
 
   it('writes nothing when the choice is declined or left to its default (non-interactive)', async () => {
     await repository();
-    const { ui } = scripted({ confirm: [true, false, true], select: ['trunk', 'feature/{slug}'] });
+    const { ui, asked } = scripted({
+      confirm: [true, false, true],
+      select: ['trunk', 'feature/{slug}'],
+    });
     await runInit(ui);
 
     const local = await readFile(join(root, '.nevo', 'local', 'config.yaml'), 'utf8');
     const project = await readFile(join(root, '.nevo', 'config.yaml'), 'utf8');
     expect(local).not.toContain('auto');
     expect(project).not.toContain('auto');
+    // Semantic docs search is offered and, left to its default (no), writes nothing either.
+    expect(asked.at(-1)).toBe('Enable semantic documentation search?');
+    expect(project).not.toContain('docs:');
+    expect(local).not.toContain('ai:');
   });
 
   it('is not asked while Git is disabled', async () => {
@@ -102,5 +109,24 @@ describe('init: automatic commit of documents', () => {
     const { ui, asked } = scripted({ confirm: [false, true] });
     await runInit(ui);
     expect(asked).not.toContain('Commit documents automatically?');
+  });
+});
+
+describe('init: an existing documentation configuration', () => {
+  it('is kept and the semantic search question is not asked', async () => {
+    await repository();
+    await mkdir(join(root, '.nevo'));
+    const docsOnly = 'docs:\n  search:\n    semantic: true\n';
+    await writeFile(join(root, '.nevo', 'config.yaml'), docsOnly);
+    const { ui, asked } = scripted({ confirm: [false, true] });
+    const notes: string[] = [];
+    (ui as { note: (message: string) => void }).note = (message) => notes.push(message);
+    await runInit(ui);
+
+    expect(asked).not.toContain('Enable semantic documentation search?');
+    expect(notes.join('\n')).toContain('Documentation: the existing configuration is kept');
+    expect(await readFile(join(root, '.nevo', 'config.yaml'), 'utf8')).toMatch(
+      new RegExp(`^${docsOnly}runtime:`),
+    );
   });
 });

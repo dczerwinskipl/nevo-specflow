@@ -9,6 +9,7 @@ import {
   type RuntimeCommandContext,
 } from '@nevo/specflow-runtime/cli';
 import type { RuntimeSetupUi } from '@nevo/specflow-runtime';
+import { createDocsCommand, type BackgroundIndexLaunch } from '@nevo/specflow-docs/cli';
 import { Command } from 'commander';
 
 import type { CommitCommandContext } from './commit/command';
@@ -18,6 +19,7 @@ import { printDefinitionsMissingHint } from './definitions/startup-hint';
 import type { DocumentsCommandContext } from './documents/command';
 import { createProjectInitCommand, type ProjectInitCommandContext } from './init/cli';
 import { createProjectInspectCommand } from './project/inspect-command';
+import { resolveProjectLayout } from './project/layout';
 import { createSpecsCommand } from './specs/command';
 import { startProjectRuntime } from './runtime/start-project-runtime';
 import { NEVO_SPECFLOW_VERSION } from './version';
@@ -35,6 +37,8 @@ export interface ProgramIO {
   readonly commitApi?: CommitCommandContext['api'];
   readonly initUi?: RuntimeSetupUi;
   readonly initializeProject?: ProjectInitCommandContext['initialize'];
+  /** How this executable runs `docs semantic index`, for the background catch-up of `docs search`. */
+  readonly docsBackgroundIndex?: BackgroundIndexLaunch;
 }
 
 export function createProgram(io: ProgramIO): Command {
@@ -75,6 +79,17 @@ export function createProgram(io: ProgramIO): Command {
       stdout: io.stdout,
       stderr: io.stderr,
       ...(io.commitApi ? { api: io.commitApi } : {}),
+    }),
+  );
+
+  // An ordinary command: it never starts Runtime or loads UI assets (ADR 0020).
+  program.addCommand(
+    createDocsCommand({
+      resolveProject: () => resolveProjectLayout(io.cwd ?? '.'),
+      stdout: io.stdout,
+      stderr: io.stderr,
+      checkWriteCommand: 'nevo-specflow docs check --write',
+      ...(io.docsBackgroundIndex ? { backgroundIndex: io.docsBackgroundIndex } : {}),
     }),
   );
 

@@ -33,6 +33,8 @@ export const rawDocumentEndpoint: FastifyPluginCallback<DocumentReadEndpointOpti
     {
       preHandler: viewGuard(options.projectId),
       schema: {
+        tags: ['Documents'],
+        summary: 'Read the raw content of a document',
         params: SpecificationDocumentParamsSchema,
         querystring: RawQuerySchema,
         // The 200 payload is a byte stream: it is sent as is and never serialized.

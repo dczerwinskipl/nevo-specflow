@@ -52,6 +52,13 @@ const cases = [
   ['packages/specflow-contracts/src/specs/create.ts', true],
   ['packages/specflow/src/documents/command.ts', true],
   ['packages/specflow-engine/src/specs/documents/queue/claim.ts', true],
+  ['packages/ai-semantic-search/src/indexing/vector-store/file-store/file-vector-store.ts', true],
+  ['packages/ai-semantic-search/src/indexing/vector-store/file-store/writer-lock.ts', true],
+  [
+    'packages/ai-semantic-search/src/indexing/vector-store/file-store/file-vector-store.test.ts',
+    true,
+  ],
+  ['packages/ai-semantic-search/src/indexing/vector-store/file-store/writer-lock.test.ts', true],
   ['tools/ci-windows-smoke-tests.json', true],
   ['.github/workflows/windows-smoke.yml', true],
   ['packages/specflow-ui/src/components/button.tsx', false],
@@ -59,6 +66,8 @@ const cases = [
   ['packages/specflow-runtime/src/features/auth/login.ts', false],
   ['packages/specflow-contracts/src/tasks/task.ts', false],
   ['packages/specflow/src/program.ts', false],
+  ['packages/ai-semantic-search/src/search/search.ts', false],
+  ['packages/ai-semantic-search/src/indexing/refresh/refresh-index.ts', false],
   ['docs/engineering/repository/ci.md', false],
   ['.github/workflows/ci.yml', false],
 ];

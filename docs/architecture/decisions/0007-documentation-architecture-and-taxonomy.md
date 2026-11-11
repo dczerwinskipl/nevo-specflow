@@ -10,6 +10,7 @@ summary: >
   contracts, operational instructions, and a non-authoritative idea backlog, while using
   searchable scope, area, and tag metadata so discovery does not depend on folder paths alone.
 related:
+  - adr.0020-documentation-discovery-is-a-product-capability
   - docs.readme
   - docs.architecture-readme
   - architecture.repository-structure
@@ -249,6 +250,14 @@ configuration
 
 `scope` and `areas` use one machine-readable taxonomy enforced by `nevo-docs` validation.
 
+(Amended 2026-11-09 by [ADR 0020](0020-documentation-discovery-is-a-product-capability.md):
+documentation discovery is a product capability. Amended 2026-11-10 by the same ADR: the `scope` and
+`areas` vocabularies are declared in the documentation settings file `<docs.root>/docs.yaml` (`taxonomy`). The vocabularies
+above are this repository's taxonomy, declared in its `docs/docs.yaml` and enforced by the product
+documentation capability. Where
+this ADR names `nevo-docs` as the validator or indexer, read the product `nevo-specflow docs`
+command.)
+
 Tags are normalized and extensible rather than fully closed. They exist for search precision, not
 for authorization or architecture enforcement.
 
@@ -318,7 +327,7 @@ Those subjects use this documentation model but are decided independently.
 
 ### Costs
 
-- the controlled taxonomy is enforced by repository tooling, so adding a genuinely new scope or area requires an intentional taxonomy change;
+- the controlled taxonomy is enforced by the documentation capability from the documentation settings file, so adding a genuinely new scope or area requires an intentional taxonomy change;
 - authors must classify both semantic role and ownership scope;
 - the controlled scope/area vocabulary requires maintenance;
 - some subjects naturally cross namespaces, so links between authoritative documents remain

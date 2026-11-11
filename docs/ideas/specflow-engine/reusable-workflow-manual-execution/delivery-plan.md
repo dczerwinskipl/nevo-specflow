@@ -1,7 +1,7 @@
 ---
 id: ideas.specflow-engine.reusable-workflow.delivery
 type: engineering
-title: Reusable Workflow and manual execution delivery plan
+title: Reusable Workflow and manual/agent execution delivery plan
 status: draft
 scope: specflow
 areas: [workflow, runtime, ui, cli, testing]
@@ -11,8 +11,8 @@ read_when:
   - selecting review checkpoints before Task authoring and manual execution
   - checking end-to-end acceptance without Managed Sessions
 summary: >
-  Proposed E0-E5 delivery sequence with isolated reviewable vertical slices,
-  preservation tests, no automatic AI dispatch and a complete manual UI proof.
+  Proposed E0-E6 delivery sequence with isolated reviewable vertical slices,
+  preservation tests, a complete manual UI proof and single-step agent delegation.
 related:
   - ideas.specflow-engine.reusable-workflow
   - ideas.specflow-engine.reusable-workflow.boundaries
@@ -28,7 +28,7 @@ This is **not** an implementation instruction. Each phase requires only the deci
 ## E0 — Boundary audit and accepted design
 
 - Map actual imports of `workflow/{progression,state,definitions,operations,continuation,tasks}`, Engine Documents, Task reads, definition-kind registration and Spec Close. Explicitly list cycles and public package exports.
-- Inventory [D01–D09](boundaries-and-decisions.md#2-decision-register-and-gates) with alternatives, expected first consumer, rejected paths and test evidence. **Approve D01, D02 and D09 before E1**; reserve the minimal D03 effect/storage boundary and D05 backward-compatible Run policy seam. Detailed Task journal, UI authorization, Close and typed form decisions stay gated by E2/E3/E4/E5 respectively.
+- Inventory [D01–D13](boundaries-and-decisions.md#2-decision-register-and-gates) with alternatives, expected first consumer, rejected paths and test evidence. **Approve D01, D02 and D09 before E1**; reserve the minimal D03 effect/storage boundary and D05 backward-compatible Run policy seam. Detailed Task journal, UI authorization, Close and typed form decisions stay gated by E2/E3/E4/E5 respectively.
 - Capture baseline fixtures: v1 YAML/compiled hash and stored record replay, task status/dependency, approval, escalation, wait, errors, process-crash journal replay. Add import-boundary and package-artifact requirements compatible with ADR 0012.
 - Promote approved architecture into current ADR/architecture documents **before coding**; the draft idea itself is never normative.
 
@@ -36,8 +36,8 @@ This is **not** an implementation instruction. Each phase requires only the deci
 
 ## E1a — Separate neutral progression inside Engine
 
-- Isolate deterministic Run, attempts/history, transition selection, replay and planning from SpecFlow Subject, Task state, document/FS, agent-provider/session semantics. Provide the **coordinator contract** from the boundaries proposal: command/event plus resolved definition and Run produces a lawful next execution/attention/wait intent, not just low-level progression functions.
-- Define a **minimal neutral** `work/wait` and host-effect protocol sufficient to express existing `wait-for-tasks` as a SpecFlow adapter, including event identity and replay evidence. Host/Runtime selects when to initiate a Run and provides actual drivers; neutral coordination decides what action is legal and next. No second state machine, automatic Session dispatch or general plugin registry.
+- Isolate deterministic Run, attempts/history, transition selection, replay and planning from SpecFlow Subject, Task state, document/FS, agent-provider/session semantics. Provide the neutral coordinator contract: command/event plus resolved definition and Run produces a lawful provider-independent next work/wait/return/terminal intent, not just low-level progression functions. **Do not move the existing `resolveContinuation` provider/archetype/model/session resolver into the neutral package.**
+- Define a **minimal neutral** `work/wait` and host-effect protocol sufficient to express existing `wait-for-tasks` as a SpecFlow adapter, including event identity and replay evidence. Neutral Core decides transition legality; SpecFlow Engine adapter resolves Task waits/effects and agent configuration/attention; Runtime dispatches Sessions. None should implement a second transition algorithm. No automatic Session dispatch or general plugin registry.
 - Keep v1 source YAML/schema and old revision algorithm stable; use a versioned compiled/adapted form where necessary. Preserve Engine application APIs `startSpecificationExecution`, `startTaskExecution`, `finishStep`, `returnToStep`, `setTaskStatus`.
 - Plan all declared Task effects, updates and wait settlement in one Engine-controlled mutation before persisting. Move definition-kind registration to a composition root (F18), avoid Task ↔ Workflow application import cycles.
 
@@ -80,15 +80,19 @@ Use existing Documents UI and Design System, not a duplicate Markdown editor. Pr
 
 ## E4 — Manual Workflow execution via UI, with no AI session
 
+**E4a: shared, transport-neutral action foundation.** Add a trusted owner action and read-only Engine action projection before either manual UI execution or early E6a delegated execution. It must validate exact subject/Run/step/attempt, executor eligibility, pinned version, idempotency and dispatch choice without side-effectful inspection. Reserve a versioned effective-executor policy so existing strictly pinned runs still replay. An E6a implementation may consume E4a **before E4b or Task Resource E2**, but may not invent a separate Workflow start/finish or owner permission mechanism.
+
+**E4b: full manual UI execution.** Reuse E4a and complete the user-facing flow.
+
 - Introduce/persist accepted manual Run policy and per-step executor permissions without reinterpreting old runs. Display current step, allowed actions/results, required feedback, handoff, dependencies, attention, attempt identity and history. Publish a **read-only Engine action projection** covering `not-started`, `ready`, `active`, blocked and terminal positions; today's `StepContext.finish.transitions` exists only for an active step. The UI must never mutate a Run merely to discover its possible actions. Keep the projection extensible for E5, without inventing a contract name before it is implemented.
 - Generic UI `Start step`, `Finish step`, `Return to step` and status decisions call authenticated Runtime HTTP adapters over Engine. They do not branch on literal names `implementation`/`review`/`acceptance` or invent `pass` rules.
-- Allow a person to do agent-oriented work **only where explicitly permitted by the pinned definition/policy**. Record actual human actor, not a forged agent Session. Active agent attempts require separate F17 takeover; implement the narrowest safe behavior or refuse while occupied.
-- In manual mode, even a transition with `continuation: auto` does **not** spawn a Session. The Run stays ready for the owner's next step, after refresh/restart too. Don't rewrite transition definitions or use React-only state to enforce this.
+- Allow a person to do agent-oriented work **only where explicitly permitted by the pinned, versioned effective executor policy**, never by writing `executor.kind: human` against a legacy agent-only workflow and breaking replay. Record actual human actor, not a forged agent Session. A Run's dispatch preference and a particular attempt's authorized actor are different facts. Active agent attempts require F17 takeover with verified stop/reconcile, otherwise refuse.
+- In manual mode, even a transition with `continuation: auto` does **not** spawn a Session. The Run stays ready for owner action after refresh/restart. Preserve the definition/pin and store the dispatch policy outside React. For mixed execution, the `session: reuse` transition after a manually completed step needs D10's explicit owner-authorized fresh override or a visible `session-unavailable` refusal, never silent reinterpretation.
 - The flow covers manual Specification preparation, Task breakdown/approval, wait-for-tasks, individual Task workflows with review failure/rework loops and Specification owner acceptance. The selected Task Type still chooses its own workflow.
 - Integrate minimum **functional completion prerequisite** into the *existing* Specification Close preflight, when policy requires it; preserve unrelated legacy/technical Close semantics. Required sign-off is declarative/authorized evidence, not a literal step id. Show cancelled/abandoned Task waivers; do not claim automated tests passed without F03.
 - Idempotent finish retry (F16), cross-process/writer admission as applicable (F05), stale attempt refusal, durable context and explicit recovery are acceptance criteria, not optional cleanup.
 
-**Exit:** UI-only Spec and Task end-to-end; multiple Task Types/flows; implementation -> review fail -> rework -> pass; no Session or Turn created; restart and same-payload retry; unauthorized actor blocked; no Close before required completion/sign-off, valid Technical Close after it.
+**Exit:** E4a serves one canonical set of allowed actions to UI and E6; E4b completes the UI-only Spec and Task path with multiple Task Types, review failure/rework, no Session/Turn, restart and same-payload retry, authorization and Close. Legacy replay is unchanged; manual-to-agent reuse policy is exercised separately.
 
 ## E5 — Definition-driven transition input forms
 
@@ -103,20 +107,34 @@ Use the **new read-only action projection from E4**, grounded in today's `StepCo
 
 ## E6 — Agent-assisted execution, selected per step
 
-The user can **execute an eligible step manually or explicitly ask an agent** through the UI. The agent is a bounded executor of the same deterministic Workflow, not its orchestrator. See [Agent-assisted execution](agent-assisted-execution.md). E6 depends on E4's manual/owner action model, but **not E5's generic form renderer**.
+An eligible step may be performed manually or delegated by an authenticated owner for a **single**
+attempt. Agent execution uses the same deterministic Engine commands, not a second Workflow.
+See the [protocol](agent-assisted-execution.md) and D10–D13 in
+[boundaries and decisions](boundaries-and-decisions.md). Full F01 unattended continuation and F12
+Task batches remain deferred.
 
-| Slice                    | Outcome                                                                                                                                                                                       | Prerequisites                                                                              |
-| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| E6a: Specification agent | Ask agent starts one Managed Session for an eligible Specification step. The agent gets canonical StepContext, edits registered Specification documents and finishes; no unattended next step | E1, trusted owner action, narrow F01 launch, F02 finish, F05/F16 claims and retries        |
-| E6b: Task drafts         | On a declared producing step, agent creates complete draft Tasks: task.md, optional docs, allowed type, dependsOn links and F20 context; human inspects/approves                              | E2/F20 resource, Task/Document Engine writers, D06 ownership, atomic multi-resource finish |
-| E6c: Task agent          | Owner delegates one eligible Task step; agent gets pinned Task Type workflow and resolved context, reports declared result, stops                                                             | E6a session/finish, E2 readiness, F20 context, identity/admission                          |
-| E6d: mixed path          | The next eligible step may be executed by owner or agent. Show actor, linked Session, attempt, artifacts, retry/stop/takeover; never forge a human gate                                       | E4, E6a–E6c, F13/F17                                                                       |
+| Slice                    | Outcome                                                                                                                                                                             | Mandatory prerequisites                                                                                                        |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| E6a: Specification agent | Owner requests one eligible Specification step; a Session writes a registered document through claim-owned Engine operations, submits a result and stops; no automatic next Session | E1, **E4a** shared owner/action contract, D05 and D10–D12; narrow F01/F02/F05/F09/F16/F17 invocation/claim/finish/stop support |
+| E6b: Task drafts         | A producing agent step creates complete draft Tasks with `task.md`, dependencies and typed context; human reviews/approves                                                          | E2/F20 Task Resource, D03/D06/D13, D11 claim-owned Task/Document writes and crash-safe multi-resource publication              |
+| E6c: Task agent          | Owner delegates one eligible Task step with pinned Task Type workflow and context; one declared finish; stop                                                                        | E6a protocol, E2 readiness/F20 context and D10–D12                                                                             |
+| E6d: mixed path          | Manual and agent attempts coexist, with actor/Session correlation, retry/stop/takeover; never forge owner approval                                                                  | E4b, E6a–E6c and F13/F17                                                                                                       |
 
-A producing step is identified by workflow metadata, **not** a hard-coded name such as breakdown. Its Task-writer commands and the ordinary UI call the **same** Engine operations. An agent cannot directly edit Task registry or .execution records. Task dependencies, required contexts, rights, revisions, and admission are validated before durable mutation. Agent outputs remain draft until authorized approval.
+A producing step is selected through metadata, not literal `breakdown` or `implementation`
+identifiers. Task-writer commands and UI mutations call the same Engine operations. The native
+process still has broad filesystem access; cooperative operation scoping is not an OS sandbox.
+A pending finish submission is **not** a completed Workflow step: finalization and claim settlement
+must preserve exclusive admission until the process has positively stopped.
 
-**Exit:** An owner-requested agent can write a Specification, propose three Tasks with substantive content/dependencies/context, and perform one selected Task step. Another step is done manually in the same Run. Retry and restart do not duplicate Tasks, Sessions, or finish; no automatic Task batching or chained Sessions.
+**Exit:** One owner-requested agent writes Specification documents, proposes three substantive
+linked Task drafts with context, and performs one selected Task step; a separate step runs manually.
+A manual `requirements` -> delegated `specification` `session: reuse` case obeys the recorded
+owner override/refusal. Recovery and duplicate submissions never duplicate Tasks, Sessions or
+finish, bypass a claim, or accidentally trigger automatic chaining.
 
-**Scheduling:** E6a can be delivered earlier than E2/E5 as an isolated Specification-only milestone if trusted invocation, document-writing and recovery prerequisites exist. E6b and E6c require F20 Task resources. Do not bypass those requirements with a separate ad hoc agent writer.
+**Scheduling:** E6a may precede E2, E3 and E4b if E4a and all D10–D12 preconditions are
+implemented. It cannot be a standalone ad hoc agent endpoint. E6b/c require F20. E6 does not depend
+on E5's generic form renderer.
 
 ## Explicitly deferred
 
@@ -132,6 +150,6 @@ Full F01 unattended provider continuation (E6 allows explicitly requested single
 6. Restart Runtime mid-run and retry the same finish after injected ambiguous response; observe the same durable outcome and no new Session.
 7. Confirm external CLI can read and perform its supported Task operations offline, with the same rules and no invented owner identity.
 8. Optionally extend a Task workflow with typed inputs and verify the generic E5 renderer, Engine validation, stored values and handoff. Separately prove two independent runs of one user definition in the E1 neutral test host.
-9. Under E6, ask an agent to write Specification documents and finish one step. On another, have the agent create fully described linked Tasks with context, approve them manually, delegate one Task step, and perform another step personally; verify no auto-chain or forged sign-off.
+9. Under E6, ask an agent to write Specification documents **through its own verified claim**, submit finish, stop and reconcile; inspect the exact pending/committed result. Create fully described linked Task drafts with context, approve manually, delegate one Task step and complete another personally. Test owner authentication, claim self-mutations, `session: reuse` after manual work, retries, crashes, and absence of auto-chain or forged sign-off.
 
 **Test environments:** actual production project mode and repository/worktree; demo-only coverage is insufficient. Include fault injection for multi-file publication, stale revisions, race with external writer, pinned legacy fixtures and boundary enforcement. UI verification should include narrow/medium/wide layouts and screenshots compared with approved design.

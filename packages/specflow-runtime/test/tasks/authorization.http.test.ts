@@ -1,4 +1,3 @@
-import Fastify from 'fastify';
 import { describe, expect, it } from 'vitest';
 import { createAuthorization } from '@nevo/authorization';
 import { SpecCapabilities } from '@nevo/specflow-contracts/specs';
@@ -11,6 +10,7 @@ import { PageLeases } from '../../src/features/tasks/reads/page-leases';
 import { createDemoTaskSources } from '../../src/features/tasks';
 import { createDemoSpecsRepositories } from '../../src/features/specs';
 import { sessionReferences } from '../support/session-references';
+import { routeTestApp } from '../support/route-app';
 
 describe('Task read authorization through the real HTTP adapter', () => {
   it('redacts Session metadata and invalidates existing tokens after subject/policy change', async () => {
@@ -68,7 +68,7 @@ describe('Task read authorization through the real HTTP adapter', () => {
       });
     let authorization = policy(true),
       user = subject;
-    const app = Fastify();
+    const app = routeTestApp();
     registerRuntimeErrorHandler(app);
     app.decorateRequest('authz', {
       getter: () => createRequestAuthorization({ mode: 'subject', subject: user }, authorization),

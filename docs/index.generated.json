@@ -305,6 +305,34 @@
       ]
     },
     {
+      "id": "ideas.semantic-docs",
+      "type": "hub",
+      "title": "Semantic documentation search follow-ups",
+      "status": "draft",
+      "file": "docs/ideas/semantic-docs/README.md",
+      "read_when": [
+        "planning work on docs search, the semantic index or @nevo/ai-semantic-search beyond what is implemented",
+        "looking for the open items left by the semantic documentation search PR (#138)"
+      ],
+      "summary": "Non-authoritative backlog of what the semantic documentation search (PR #138) deliberately left open: search quality and scale, other corpora and UI surfaces, setup and endpoint gaps, package splits and eval tracking. Each item names the current authoritative document and what is missing.",
+      "related": [
+        "adr.0020-documentation-discovery-is-a-product-capability",
+        "adr.0021-product-neutral-ai-semantic-search-engine",
+        "reference.cli.nevo-specflow-docs",
+        "reference.configuration.documentation-and-embeddings"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "docs",
+        "ai"
+      ],
+      "tags": [
+        "semantic-search",
+        "embeddings",
+        "follow-ups"
+      ]
+    },
+    {
       "id": "ideas.specflow-engine",
       "type": "hub",
       "title": "Open SpecFlow Engine proposals",
@@ -406,7 +434,7 @@
     {
       "id": "ideas.specflow-engine.reusable-workflow",
       "type": "hub",
-      "title": "Reusable Workflow, Task resources and manual execution",
+      "title": "Reusable Workflow, Task resources and manual/agent execution",
       "status": "draft",
       "file": "docs/ideas/specflow-engine/reusable-workflow-manual-execution/README.md",
       "read_when": [
@@ -414,7 +442,7 @@
         "adding Task authoring and manual Specification or Task execution through the UI",
         "reviewing the gates and sequencing of the next workflow implementation slices"
       ],
-      "summary": "Non-authoritative proposal to separate neutral Workflow progression from SpecFlow resource and storage ownership, add standalone Task creation and documents, support fully manual UI execution, and later render typed transition inputs.",
+      "summary": "Non-authoritative proposal to separate neutral Workflow progression from SpecFlow resource and storage ownership, add standalone Task creation and documents, support fully manual UI execution and optional owner-delegated agent steps, and later render typed transition inputs.",
       "related": [
         "ideas.specflow-engine",
         "ideas.specflow-engine.task-resource-and-context",
@@ -796,11 +824,14 @@
       "read_when": [
         "adding or moving SpecFlow configuration",
         "deciding whether a setting is committed or workstation-local",
-        "adding Runtime-owned local persistence"
+        "adding Runtime-owned local persistence",
+        "adding a local cache or index"
       ],
-      "summary": "Nevo SpecFlow uses one .nevo namespace: committed project configuration and definitions, ignored workstation-local configuration, and application-owned local Runtime state.",
+      "summary": "Nevo SpecFlow uses one .nevo namespace: committed project configuration and definitions, ignored workstation-local configuration, persistent application-owned local state and a disposable local cache.",
       "related": [
         "adr.0017-definitions-as-project-data",
+        "adr.0020-documentation-discovery-is-a-product-capability",
+        "adr.0021-product-neutral-ai-semantic-search-engine",
         "docs.architecture-runtime-readme",
         "architecture.runtime.ownership-and-lifecycle",
         "reference.cli.nevo-specflow-contract",
@@ -1540,7 +1571,7 @@
         "designing Task CRUD without a running Specification workflow",
         "deciding human execution, transition inputs, or close eligibility"
       ],
-      "summary": "Candidate responsibility map and open P1/P2 decisions that must be resolved before extracting Workflow and exposing manual Task execution.",
+      "summary": "Candidate responsibility map and phased design decisions for reusable Workflow, independent Task resources, manual execution and agent delegation.",
       "related": [
         "ideas.specflow-engine.reusable-workflow",
         "ideas.specflow-engine.task-resource-and-context",
@@ -1829,6 +1860,7 @@
       "read_when": [],
       "summary": "Defines a documentation architecture that separates product behavior, durable system architecture, engineering guidance, reusable design-system knowledge, exact reference contracts, operational instructions, and a non-authoritative idea backlog, while using searchable scope, area, and tag metadata so discovery does not depend on folder paths alone.",
       "related": [
+        "adr.0020-documentation-discovery-is-a-product-capability",
         "docs.readme",
         "docs.architecture-readme",
         "architecture.repository-structure"
@@ -1904,6 +1936,8 @@
       "summary": "Nevo SpecFlow is one npm-distributed local product composed from source packages. Product capabilities, including Runtime and UI, live under packages; apps is reserved for a future independently deployed or independently operated host. Package dependencies flow toward shared contracts and neutral foundations, with @nevo/specflow as the product composition root.",
       "related": [
         "architecture.repository-structure",
+        "adr.0020-documentation-discovery-is-a-product-capability",
+        "adr.0021-product-neutral-ai-semantic-search-engine",
         "adr.0005-repository-tooling-is-separate-from-the-product-api",
         "adr.0011-product-artifact-packaging-and-pnpm-compatibility",
         "design-system.principles.system-boundary"
@@ -2027,6 +2061,40 @@
         "adr.0015-specification-manifest-as-document-registry",
         "ideas.specflow-engine.plan-05",
         "ideas.specflow-engine.plan-06"
+      ]
+    },
+    {
+      "id": "adr.0020-documentation-discovery-is-a-product-capability",
+      "type": "adr",
+      "title": "Documentation discovery is a product capability",
+      "status": "current",
+      "file": "docs/architecture/decisions/0020-documentation-discovery-is-a-product-capability.md",
+      "read_when": [],
+      "summary": "Documentation discovery is deliberately promoted into the product as `@nevo/specflow-docs`: it owns the frontmatter contract, deterministic discovery and optional semantic search, takes its taxonomy from a settings file next to the documentation, works without an initialized project, is exposed as the ordinary CLI command `nevo-specflow docs` and as the Runtime endpoint `GET /api/docs/search`, and keeps its index fresh on Runtime start and on read without a file watcher.",
+      "related": [
+        "adr.0005-repository-tooling-is-separate-from-the-product-api",
+        "adr.0007-documentation-architecture-and-taxonomy",
+        "adr.0012-product-package-topology-and-dependency-direction",
+        "adr.0021-product-neutral-ai-semantic-search-engine",
+        "architecture.runtime.configuration",
+        "architecture.runtime.authorization",
+        "architecture.repository-structure"
+      ]
+    },
+    {
+      "id": "adr.0021-product-neutral-ai-semantic-search-engine",
+      "type": "adr",
+      "title": "Product-neutral AI semantic search engine",
+      "status": "current",
+      "file": "docs/architecture/decisions/0021-product-neutral-ai-semantic-search-engine.md",
+      "read_when": [],
+      "summary": "`@nevo/ai-semantic-search` is a product-neutral engine with embedding provider, chunk source and vector store ports, an OpenAI-compatible embeddings adapter with a probe, heading-aware versioned markdown chunking and hybrid BM25 + cosine ranking fused by reciprocal rank fusion. Its local index is disposable, file-backed, written atomically under a single-writer lock and rebuilt in full on any manifest mismatch; it uses no native modules and no provider SDK.",
+      "related": [
+        "adr.0020-documentation-discovery-is-a-product-capability",
+        "adr.0011-product-artifact-packaging-and-pnpm-compatibility",
+        "adr.0012-product-package-topology-and-dependency-direction",
+        "architecture.runtime.configuration",
+        "architecture.repository-structure"
       ]
     },
     {
@@ -2393,10 +2461,12 @@
       "file": "docs/engineering/repository/dogfooding.md",
       "read_when": [
         "installing a local build of nevo-specflow to use it elsewhere",
-        "checking that a packaging change did not break the installed CLI"
+        "checking that a packaging change did not break the installed CLI",
+        "changing this repository's own .nevo/config.yaml, docs/docs.yaml or the pnpm docs scripts"
       ],
-      "summary": "`pnpm dogfood:install` builds the real distributable, packs it, installs THAT tarball globally with pnpm, and smokes the installed `nevo-specflow`. It deliberately uses a tarball — not a workspace link — so it catches packaging problems a linked install would hide.",
+      "summary": "`pnpm dogfood:install` builds the real distributable, packs it, installs THAT tarball globally with pnpm, and smokes the installed `nevo-specflow`. It deliberately uses a tarball — not a workspace link — so it catches packaging problems a linked install would hide. This repository's `pnpm docs:*` scripts run the product documentation command over a documentation-only configuration; the repository is not an initialized SpecFlow project.",
       "related": [
+        "adr.0020-documentation-discovery-is-a-product-capability",
         "engineering.repository.product-packaging",
         "adr.0011-product-artifact-packaging-and-pnpm-compatibility"
       ]
@@ -2430,10 +2500,12 @@
       "read_when": [
         "setting up the development environment",
         "running standard repository commands",
-        "understanding Turborepo inputs"
+        "understanding Turborepo inputs",
+        "running a local embedding model for semantic documentation search"
       ],
-      "summary": "Node/Corepack/pnpm prerequisites, standard root commands, and the repository task graph.",
+      "summary": "Node/Corepack/pnpm prerequisites, standard root commands, the optional local embedding model for semantic documentation search, and the repository task graph.",
       "related": [
+        "reference.configuration.documentation-and-embeddings",
         "engineering.repository.ci",
         "engineering.repository.git-workflow",
         "adr.0011-product-artifact-packaging-and-pnpm-compatibility"
@@ -2633,6 +2705,70 @@
         "server",
         "ui",
         "security"
+      ]
+    },
+    {
+      "id": "ideas.semantic-docs.search-quality",
+      "type": "engineering",
+      "title": "Semantic docs search — quality and scale follow-ups",
+      "status": "draft",
+      "file": "docs/ideas/semantic-docs/search-quality.md",
+      "read_when": [
+        "improving docs search ranking, excerpts or scale",
+        "deciding whether docs search can say that nothing answers a question",
+        "extending the repository retrieval eval"
+      ],
+      "summary": "Proposals for docs search quality and scale: a BM25 inverted index for large corpora, better excerpts for semantic-only matches, no-answer detection (blocked: similarity ranges overlap), partial vector ranking during a full rebuild, and eval tracking. Measurements from PR #138.",
+      "related": [
+        "ideas.semantic-docs",
+        "adr.0021-product-neutral-ai-semantic-search-engine",
+        "reference.cli.nevo-specflow-docs"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "docs",
+        "ai"
+      ],
+      "tags": [
+        "semantic-search",
+        "bm25",
+        "excerpts",
+        "eval"
+      ]
+    },
+    {
+      "id": "ideas.semantic-docs.surfaces-and-setup",
+      "type": "engineering",
+      "title": "Semantic docs search — surfaces, corpora and setup follow-ups",
+      "status": "draft",
+      "file": "docs/ideas/semantic-docs/surfaces-and-setup.md",
+      "read_when": [
+        "planning a contextual help or related-documents surface in the UI",
+        "indexing another corpus (Specification documents, code) with @nevo/ai-semantic-search",
+        "enabling semantic search in an initialized project, or supporting another embedding endpoint",
+        "splitting model adapters or agent drivers into separate packages"
+      ],
+      "summary": "Proposals beyond PR #138: contextual help and live updates in the UI, other corpora through the chunk-source port, assisted enabling of semantic search in an initialized project, endpoints that need a query string or an api-key header, the status probe on client close, and the @nevo/ai-models and @nevo/ai-agents splits.",
+      "related": [
+        "ideas.semantic-docs",
+        "adr.0020-documentation-discovery-is-a-product-capability",
+        "adr.0021-product-neutral-ai-semantic-search-engine",
+        "reference.api.docs-search",
+        "reference.configuration.documentation-and-embeddings"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "docs",
+        "ai",
+        "ui",
+        "runtime",
+        "configuration"
+      ],
+      "tags": [
+        "semantic-search",
+        "help",
+        "corpora",
+        "embeddings"
       ]
     },
     {
@@ -3350,7 +3486,10 @@
         "ideas.specflow-engine.reusable-workflow.boundaries",
         "ideas.specflow-engine.task-resource-and-context",
         "ideas.specflow-engine.plan-06",
-        "architecture.workflow.workflow-kernel"
+        "architecture.workflow.workflow-kernel",
+        "architecture.runtime.workspace-execution-claims",
+        "reference.api.docs-search",
+        "reference.cli.nevo-specflow-docs"
       ],
       "scope": "specflow",
       "areas": [
@@ -3372,7 +3511,7 @@
     {
       "id": "ideas.specflow-engine.reusable-workflow.delivery",
       "type": "engineering",
-      "title": "Reusable Workflow and manual execution delivery plan",
+      "title": "Reusable Workflow and manual/agent execution delivery plan",
       "status": "draft",
       "file": "docs/ideas/specflow-engine/reusable-workflow-manual-execution/delivery-plan.md",
       "read_when": [
@@ -3380,7 +3519,7 @@
         "selecting review checkpoints before Task authoring and manual execution",
         "checking end-to-end acceptance without Managed Sessions"
       ],
-      "summary": "Proposed E0-E5 delivery sequence with isolated reviewable vertical slices, preservation tests, no automatic AI dispatch and a complete manual UI proof.",
+      "summary": "Proposed E0-E6 delivery sequence with isolated reviewable vertical slices, preservation tests, a complete manual UI proof and single-step agent delegation.",
       "related": [
         "ideas.specflow-engine.reusable-workflow",
         "ideas.specflow-engine.reusable-workflow.boundaries",
@@ -4819,6 +4958,69 @@
       ]
     },
     {
+      "id": "reference.api.docs-search",
+      "type": "reference",
+      "title": "Documentation search and status HTTP API",
+      "status": "current",
+      "file": "docs/reference/api/docs-search.md",
+      "read_when": [
+        "calling the Runtime documentation search endpoint",
+        "changing GET /api/docs/search, its query or the Runtime start refresh of the docs index",
+        "calling or changing GET /api/docs/status",
+        "diagnosing why a Runtime documentation search answers lexically or 503"
+      ],
+      "summary": "GET /api/docs/search answers ranked documents of the project's own documentation, with their frontmatter and best sections, in the result contract of nevo-specflow docs search --json: query parameters (including snippets), the docs.search capability, errors, the read-time refresh, the in-process catch-up of a larger gap and the refresh on Runtime start. GET /api/docs/status reports the semantic search status and refresh progress in the contract of docs semantic status --json.",
+      "related": [
+        "adr.0020-documentation-discovery-is-a-product-capability",
+        "reference.cli.nevo-specflow-docs",
+        "reference.configuration.documentation-and-embeddings",
+        "architecture.runtime.authorization",
+        "reference.api.openapi"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "server",
+        "docs",
+        "security"
+      ],
+      "tags": [
+        "semantic-search",
+        "authorization"
+      ]
+    },
+    {
+      "id": "reference.api.openapi",
+      "type": "reference",
+      "title": "Runtime OpenAPI document",
+      "status": "current",
+      "file": "docs/reference/api/openapi.md",
+      "read_when": [
+        "reading or importing the Runtime HTTP API description",
+        "changing a Runtime route schema and regenerating the committed OpenAPI document",
+        "the `pnpm api:openapi --check` drift check fails"
+      ],
+      "summary": "Runtime serves an OpenAPI 3.1 document of its HTTP API at GET /api/openapi.json, generated from the TypeBox route schemas; a committed copy of the project-mode surface lives in docs/reference/api/openapi.generated.json and is regenerated with pnpm api:openapi.",
+      "related": [
+        "architecture.runtime.endpoint-policy",
+        "architecture.runtime.authorization",
+        "engineering.repository.ci"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "server",
+        "security",
+        "docs"
+      ],
+      "tags": [
+        "openapi",
+        "fastify",
+        "typebox",
+        "generated"
+      ]
+    },
+    {
       "id": "reference.api.operation-progress",
       "type": "reference",
       "title": "Operation progress events (SSE) HTTP reference",
@@ -5102,11 +5304,37 @@
         "describing the product CLI to a user or in product copy",
         "planning a new nevo-specflow command"
       ],
-      "summary": "The currently implemented nevo-specflow CLI: version, init, project, specs (including documents), commit, definitions, start (UI and Runtime API) and auth, plus commands not implemented yet.",
+      "summary": "The currently implemented nevo-specflow CLI: version, init, project, specs (including documents), commit, definitions, docs, start (UI and Runtime API) and auth, plus commands not implemented yet.",
       "related": [
         "docs.product-specflow-cli-readme",
         "engineering.cli.architecture",
         "engineering.repository.product-packaging"
+      ]
+    },
+    {
+      "id": "reference.cli.nevo-specflow-docs",
+      "type": "reference",
+      "title": "nevo-specflow docs commands",
+      "status": "current",
+      "file": "docs/reference/cli/nevo-specflow-docs.md",
+      "read_when": [
+        "using nevo-specflow docs list, find, get, context, check, search or semantic",
+        "checking the output, search mode or exit codes of documentation discovery"
+      ],
+      "summary": "The documentation commands of nevo-specflow docs: deterministic list, find, get, context and check, semantic search with its hybrid or lexical mode and reasons, semantic status and index, their output and exit codes.",
+      "related": [
+        "adr.0020-documentation-discovery-is-a-product-capability",
+        "adr.0021-product-neutral-ai-semantic-search-engine",
+        "adr.0007-documentation-architecture-and-taxonomy",
+        "reference.cli.nevo-specflow-contract",
+        "reference.configuration.documentation-and-embeddings",
+        "architecture.runtime.configuration"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "cli",
+        "docs",
+        "configuration"
       ]
     },
     {
@@ -5152,6 +5380,35 @@
       "areas": [
         "configuration",
         "runtime",
+        "security"
+      ]
+    },
+    {
+      "id": "reference.configuration.documentation-and-embeddings",
+      "type": "reference",
+      "title": "Documentation and embeddings configuration",
+      "status": "current",
+      "file": "docs/reference/configuration/documentation-and-embeddings.md",
+      "read_when": [
+        "configuring the documentation root, taxonomy, non-authoritative or excluded paths of a project",
+        "writing or validating a docs/docs.yaml documentation settings file",
+        "using the docs commands in a project that is not initialized (documentation-only configuration)",
+        "enabling semantic documentation search or configuring an embedding endpoint",
+        "changing the semantic search step of nevo-specflow init",
+        "diagnosing a docs or ai.embeddings configuration error"
+      ],
+      "summary": "The docs namespace (root, search.semantic), the documentation settings file <docs.root>/docs.yaml (taxonomy, nonAuthoritative, exclude) and the ai.embeddings endpoint (baseUrl, model, optional protocol, spaceId, dimensions, apiKeyEnv, queryInstruction, batchSize, timeoutMs): which file holds them, how they merge, their validation and defaults, and documentation-only configuration.",
+      "related": [
+        "adr.0020-documentation-discovery-is-a-product-capability",
+        "adr.0021-product-neutral-ai-semantic-search-engine",
+        "architecture.runtime.configuration",
+        "reference.cli.nevo-specflow-docs"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "configuration",
+        "docs",
+        "ai",
         "security"
       ]
     },

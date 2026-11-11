@@ -741,6 +741,10 @@ answers its Engine verification failures with the Specification read envelope
 | 422    | CAPABILITY_UNSUPPORTED (capability), MODEL_UNSUPPORTED                                                                                                                                                                  |
 | 503    | SESSION_DISABLED, SESSION_STORE_BUSY, SESSION_STORE_UNAVAILABLE, PROVIDER_UNAVAILABLE, PROVIDER_AUTH_REQUIRED, PROVIDER_CATALOGUE_UNAVAILABLE                                                                           |
 
+The body is the shared `SessionError` contract (`SessionErrorSchema`). The
+[OpenAPI document](openapi.md#session-error-responses) lists, per operation, the statuses and codes
+that operation can answer.
+
 Missing/replaced/corrupt store never returns an invented ready/empty snapshot. Store ownership
 failure prevents feature startup and is reported in startup diagnostics using the same code.
 Cursor expiry calls for a bounded new snapshot/page path, not a retry loop of the same token.

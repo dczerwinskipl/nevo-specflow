@@ -22,6 +22,7 @@ import { matchesEtag, sendNotModified } from '../../server/etag';
 import { buildOperationList, type OperationListConfig } from './list-service';
 import type { OperationListSource } from './operation-source';
 import type { OperationProgressRegistry } from './progress-registry';
+import { contractRef } from '../../server/shared-contracts';
 
 export const OPERATIONS_UNAVAILABLE_CODE = 'OPERATIONS_UNAVAILABLE';
 export const OPERATION_LIST_QUERY_INVALID_CODE = 'OPERATION_LIST_QUERY_INVALID';
@@ -47,6 +48,8 @@ const OperationListErrorSchema = Type.Object(
 export interface OperationListRoute {
   /** Route path owned by the consuming feature (for example `/api/specs/operations`). */
   readonly path: string;
+  /** The OpenAPI summary of the list (its group is `Operations`). */
+  readonly summary: string;
   /** The feature kinds. `undefined` = the backing source is unavailable (answers 503). */
   readonly sources: readonly OperationListSource[] | undefined;
   readonly registry: OperationProgressRegistry;
@@ -82,12 +85,14 @@ export function registerOperationListRoute<RawServer extends RawServerBase>(
         await route.authorize(request as unknown as FastifyRequest);
       },
       schema: {
+        tags: ['Operations'],
+        summary: route.summary,
         querystring: OperationListQueryStringSchema,
         response: {
-          200: OperationListResponseSchema,
+          200: contractRef(OperationListResponseSchema),
           400: OperationListErrorSchema,
-          401: AuthenticationRequiredErrorResponseSchema,
-          403: AuthorizationForbiddenErrorResponseSchema,
+          401: contractRef(AuthenticationRequiredErrorResponseSchema),
+          403: contractRef(AuthorizationForbiddenErrorResponseSchema),
           503: OperationListErrorSchema,
         },
       },

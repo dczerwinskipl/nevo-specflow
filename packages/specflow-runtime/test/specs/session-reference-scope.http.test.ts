@@ -1,4 +1,3 @@
-import Fastify from 'fastify';
 import { describe, expect, it, vi } from 'vitest';
 import { createAuthorization, type Scope } from '@nevo/authorization';
 import { SpecCapabilities, ProjectGitCapabilities } from '@nevo/specflow-contracts/specs';
@@ -6,6 +5,7 @@ import { SessionCapabilities } from '@nevo/specflow-contracts/sessions';
 import { createRequestAuthorization } from '../../src/features/auth/authorization/request-authorization';
 import { registerRuntimeErrorHandler } from '../../src/server/error-handler';
 import { specFlowRoleCapabilities } from '../../src/server/roles';
+import { DocsCapabilities } from '../../src/features/docs';
 import { SettingsCapabilities } from '../../src/features/settings';
 import { taskReadEndpoint } from '../../src/features/tasks/endpoint';
 import { specificationWorkspaceEndpoint } from '../../src/features/specs/workspace/endpoint';
@@ -14,6 +14,7 @@ import { createDemoTaskSources } from '../../src/features/tasks';
 import { createDemoSpecsRepositories } from '../../src/features/specs';
 import type { SessionReference, SessionReferenceOwner } from '../../src/features/sessions';
 import { sessionScope } from '../../src/features/sessions/scope';
+import { routeTestApp } from '../support/route-app';
 
 vi.mock('../../src/features/sessions/scope', async (original) => {
   const actual = await original<typeof import('../../src/features/sessions/scope')>();
@@ -23,11 +24,14 @@ vi.mock('../../src/features/sessions/scope', async (original) => {
 
 type Role = 'viewer' | 'developer' | 'admin';
 const SPEC = 'admission';
+const SESSION_A = '00000000-0000-4000-8000-000000000001';
+const SESSION_B = '00000000-0000-4000-8000-000000000002';
+const SESSION_C = '00000000-0000-4000-8000-000000000003';
 const grants: Record<string, Scope | undefined> = {
   global: {},
   project: { projectId: 'demo-project' },
   spec: { specId: SPEC },
-  session: { sessionId: 'session-a' },
+  session: { sessionId: SESSION_A },
   otherProject: { projectId: 'other-project' },
   otherSpec: { specId: 'other' },
   none: undefined,
@@ -43,8 +47,8 @@ async function fixture(role: Role, grant: Scope | undefined) {
     target: { kind: 'session' as const, sessionId },
   });
   definition.dependencies = [
-    { taskId: 'dependency-a', title: 'Dependency A', link: link('session-a') },
-    { taskId: 'dependency-b', title: 'Dependency B', link: link('session-b') },
+    { taskId: 'dependency-a', title: 'Dependency A', link: link(SESSION_A) },
+    { taskId: 'dependency-b', title: 'Dependency B', link: link(SESSION_B) },
   ];
   execution.requirements = [
     {
@@ -63,7 +67,7 @@ async function fixture(role: Role, grant: Scope | undefined) {
       instruction: null,
       state: 'pending',
       actions: [],
-      evidence: [{ title: 'Evidence C', link: link('session-c') }],
+      evidence: [{ title: 'Evidence C', link: link(SESSION_C) }],
     },
   ];
   execution.pendingCount = 1;
@@ -71,13 +75,13 @@ async function fixture(role: Role, grant: Scope | undefined) {
     id: 'recovery',
     state: 'required',
     summary: 'Recovery A',
-    link: link('session-a'),
+    link: link(SESSION_A),
   };
 
   // session-a belongs to the Specification, session-b to another one, session-c is standalone.
   const owners: Record<string, SessionReference> = {
-    'session-a': { ...definition.identity, specId: SPEC, sessionId: 'session-a' },
-    'session-b': { ...definition.identity, specId: 'other', sessionId: 'session-b' },
+    [SESSION_A]: { ...definition.identity, specId: SPEC, sessionId: SESSION_A },
+    [SESSION_B]: { ...definition.identity, specId: 'other', sessionId: SESSION_B },
   };
   const batches: string[][] = [];
   const sessions: SessionReferenceOwner = {
@@ -98,12 +102,13 @@ async function fixture(role: Role, grant: Scope | undefined) {
       SessionCapabilities,
       SettingsCapabilities,
       ProjectGitCapabilities,
+      DocsCapabilities,
     ],
     roles: specFlowRoleCapabilities(),
     assignments: grant ? [{ subject, role, scope: grant }] : [],
   });
   const authz = createRequestAuthorization({ mode: 'subject', subject }, authorization);
-  const app = Fastify();
+  const app = routeTestApp();
   registerRuntimeErrorHandler(app);
   app.decorateRequest('authz', { getter: () => authz });
   app.register(taskReadEndpoint, {
@@ -125,7 +130,7 @@ async function fixture(role: Role, grant: Scope | undefined) {
           section: {
             state: 'available',
             data: {
-              items: ['session-a', 'session-b', 'session-c'].map((id) => ({
+              items: [SESSION_A, SESSION_B, SESSION_C].map((id) => ({
                 id,
                 title: 'Title ' + id,
                 taskIds: [],
@@ -166,20 +171,20 @@ describe('Session references in Specification and Task reads', () => {
         }
 
         // Every built-in role carries session.view, scoped {projectId, specId, sessionId}.
-        expect(workspace.body).toContain('session-a');
-        expect(task.body).toContain('session-a');
+        expect(workspace.body).toContain(SESSION_A);
+        expect(task.body).toContain(SESSION_A);
         // The workspace lists only its own Specification's Sessions; a Task may reference another
         // Specification's Session, visible only where the grant covers that Specification.
-        expect(workspace.body).not.toContain('session-b');
-        expect(task.body.includes('session-b')).toBe(grant !== 'spec');
+        expect(workspace.body).not.toContain(SESSION_B);
+        expect(task.body.includes(SESSION_B)).toBe(grant !== 'spec');
         // A standalone or unknown Session never resolves to a reference.
-        expect(workspace.body).not.toContain('session-c');
-        expect(task.body).not.toContain('session-c');
+        expect(workspace.body).not.toContain(SESSION_C);
+        expect(task.body).not.toContain(SESSION_C);
 
         // One batch per read, never a per-reference loop.
         expect(batches).toEqual([
-          ['session-a', 'session-b', 'session-c'],
-          expect.arrayContaining(['session-a', 'session-b', 'session-c']),
+          [SESSION_A, SESSION_B, SESSION_C],
+          expect.arrayContaining([SESSION_A, SESSION_B, SESSION_C]),
         ]);
         expect(batches[1]).toHaveLength(3);
       } finally {
@@ -198,7 +203,7 @@ describe('Session references in Specification and Task reads', () => {
         expect.objectContaining({
           projectId: 'demo-project',
           specId: SPEC,
-          sessionId: 'session-a',
+          sessionId: SESSION_A,
         }),
         SessionCapabilities.capabilities.View,
       ]);
@@ -208,7 +213,7 @@ describe('Session references in Specification and Task reads', () => {
         expect.objectContaining({
           projectId: 'demo-project',
           specId: SPEC,
-          sessionId: 'session-a',
+          sessionId: SESSION_A,
         }),
         SessionCapabilities.capabilities.View,
       ]);

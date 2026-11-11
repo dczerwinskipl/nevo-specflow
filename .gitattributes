@@ -39,3 +39,6 @@ pnpm-lock.yaml            linguist-generated=true
 docs/**/*.generated.*     linguist-generated=true -diff
 **/*.generated.*          linguist-generated=true
 docs/**                   linguist-documentation=true
+# The Runtime OpenAPI document is generated (`pnpm api:openapi`) but its diff is the API review
+# surface of a pull request, so it stays diffable (overrides `-diff` above).
+docs/reference/api/openapi.generated.json  linguist-generated=true diff text eol=lf

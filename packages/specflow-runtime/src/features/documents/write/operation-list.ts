@@ -97,6 +97,7 @@ export function registerDocumentOperationList<RawServer extends RawServerBase>(
 ): void {
   registerOperationListRoute(app, {
     path: DOCUMENT_OPERATIONS_PATH,
+    summary: 'List document operations across Specifications',
     sources: options.engine
       ? [
           createDocumentOperationSource(options.engine),

@@ -4,14 +4,17 @@ import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import { Value } from 'typebox/value';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   SpecificationWorkspaceResponseSchema,
   type SpecificationWorkspaceResponse,
 } from '@nevo/specflow-contracts/specs/workspace';
 import { createRuntimeApp } from '../../src/server/app';
 import { openSessionStore } from '../../src/features/sessions/persistence/store';
-import type { AssociationWrite } from '../../src/features/sessions/persistence/protocol';
+import type {
+  AssociationWrite,
+  SessionView,
+} from '../../src/features/sessions/persistence/protocol';
 import type { SpecificationWorkspaceRepository } from '../../src/features/specs/workspace/repository';
 import { createMockDriver } from '../../src/features/sessions/providers/mock';
 import type { SessionDriver } from '../../src/features/sessions/providers/driver';
@@ -97,12 +100,17 @@ async function seed(
     }
 
     for (const sessionId of store.rename) {
-      await opened.call({
+      // The worker stores millisecond timestamps. Advance beyond the creates before renaming,
+      // so this fixture proves a strictly later update even on a coarse platform clock.
+      const createdBy = Date.now();
+      await vi.waitFor(() => expect(Date.now()).toBeGreaterThan(createdBy), { interval: 1 });
+      const renamed = await opened.call<SessionView>({
         op: 'rename',
         actor: 'someone-else',
         sessionId,
         input: { requestId: randomUUID(), title: 'Renamed later' },
       });
+      expect(Date.parse(renamed.session.updatedAt)).toBeGreaterThan(createdBy);
     }
 
     return ids;
@@ -394,6 +402,8 @@ describe('workspace Session references when the Engine registry is unreadable', 
 
 describe('workspace Session recommendation', () => {
   it('recommends the first candidate the caller may view', async () => {
+    const hidden = '00000000-0000-4000-8000-000000000001';
+    const visible = '00000000-0000-4000-8000-000000000002';
     const config = passwordConfig();
     app = await createRuntimeApp(
       {
@@ -411,16 +421,16 @@ describe('workspace Session recommendation', () => {
                   state: 'available',
                   data: {
                     items: [
-                      { id: 'hidden', taskIds: [], status: 'attention', ...row },
-                      { id: 'visible', taskIds: [], status: 'quiet', ...row },
+                      { id: hidden, taskIds: [], status: 'attention', ...row },
+                      { id: visible, taskIds: [], status: 'quiet', ...row },
                     ],
                     attention: [],
                   },
                 },
-                recommendedSessionIds: ['hidden', 'visible'],
+                recommendedSessionIds: [hidden, visible],
                 sessionStarts: [
-                  { sessionId: 'hidden', title: 'Hidden', createdAt: '2026-11-08T10:00:00.000Z' },
-                  { sessionId: 'visible', createdAt: '2026-11-08T09:00:00.000Z' },
+                  { sessionId: hidden, title: 'Hidden', createdAt: '2026-11-08T10:00:00.000Z' },
+                  { sessionId: visible, createdAt: '2026-11-08T09:00:00.000Z' },
                 ],
               }),
           },
@@ -429,7 +439,7 @@ describe('workspace Session recommendation', () => {
         sessions: {
           references: sessionReferences((sessionId) =>
             Promise.resolve(
-              sessionId === 'visible'
+              sessionId === visible
                 ? { sessionId, specId: 'S', projectId: 'project', workspaceId: 'workspace' }
                 : null,
             ),
@@ -438,13 +448,13 @@ describe('workspace Session recommendation', () => {
       },
     );
     const body = await workspace(app);
-    expect(body.recommendedSessionId).toBe('visible');
+    expect(body.recommendedSessionId).toBe(visible);
     // The activity history is authorized per Session: the caller sees the other event, not this one.
     expect(body.sections.activity).toEqual({
       state: 'available',
-      data: { items: [expect.objectContaining({ id: 'session-started.visible' })] },
+      data: { items: [expect.objectContaining({ id: `session-started.${visible}` })] },
     });
-    expect(JSON.stringify(body)).not.toContain('hidden');
+    expect(JSON.stringify(body)).not.toContain(hidden);
     expect(JSON.stringify(body)).not.toContain('Hidden');
   });
 });

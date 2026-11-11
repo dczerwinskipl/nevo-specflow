@@ -510,6 +510,27 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
     expect(r.stdout).toMatch(/SpecFlow local server/i);
   });
 
+  it('D2. the installed docs command: --help and one get without Runtime or project config', () => {
+    const help = nevoSpec(['docs', '--help']);
+    expect(help.code).toBe(0);
+    expect(help.stdout).toMatch(/search/);
+
+    mkdirSync(join(prefix, 'docs'), { recursive: true });
+    writeFileSync(
+      join(prefix, 'docs', 'guide.md'),
+      '---\nid: smoke.guide\ntype: hub\ntitle: Smoke guide\nstatus: current\n---\n\n# Smoke guide\n',
+    );
+    try {
+      const get = nevoSpec(['docs', 'get', 'smoke.guide']);
+      expect(get).toEqual({
+        code: 0,
+        stdout: 'smoke.guide — "Smoke guide" [current]  docs/guide.md\n',
+      });
+    } finally {
+      rmSync(join(prefix, 'docs'), { recursive: true, force: true });
+    }
+  });
+
   it('E. generates a password hash through the installed auth utility', () => {
     const r = nevoSpec(
       ['auth', 'hash-password', '--password-stdin'],
@@ -655,12 +676,17 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
         }),
       });
       expect(startTurn.status).toBe(202);
-      await vi.waitFor(async () => {
-        const snapshot = (await (
-          await fetch(`http://127.0.0.1:${port}/api/sessions/${sessionId}`)
-        ).json()) as { entries: { kind: string }[] };
-        expect(snapshot.entries.at(-1)?.kind).toBe('outcome');
-      });
+      // The Turn runs in the installed SQLite worker: a loaded Windows runner needs more than the
+      // 1 s waitFor default to persist its outcome.
+      await vi.waitFor(
+        async () => {
+          const snapshot = (await (
+            await fetch(`http://127.0.0.1:${port}/api/sessions/${sessionId}`)
+          ).json()) as { entries: { kind: string }[] };
+          expect(snapshot.entries.at(-1)?.kind).toBe('outcome');
+        },
+        { timeout: 10_000, interval: 100 },
+      );
       await expect(response.json()).resolves.toEqual({
         authenticationRequired: false,
         authenticated: false,

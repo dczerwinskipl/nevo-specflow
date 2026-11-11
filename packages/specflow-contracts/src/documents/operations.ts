@@ -1,11 +1,12 @@
 import { Type, type Static } from 'typebox';
 
+import { SpecIdSchema } from '../identifiers';
+import { OperationIdSchema } from '../operations/progress';
 import {
   ActionSchema,
   CatalogueIdSchema,
   IdSchema,
   KEBAB_CASE_PATTERN,
-  UuidSchema,
   closedUnion,
 } from './vocabulary';
 
@@ -101,7 +102,7 @@ export const REVISION_CONFLICTS_MAX = 25;
  */
 export const SaveInputSchema = Type.Object(
   {
-    operationId: UuidSchema,
+    operationId: OperationIdSchema,
     content: Type.String(),
     expectedRevision: Type.String({ minLength: 1 }),
   },
@@ -111,7 +112,7 @@ export type SaveInput = Static<typeof SaveInputSchema>;
 
 export const SaveResultSchema = Type.Object(
   {
-    operationId: UuidSchema,
+    operationId: OperationIdSchema,
     document: WrittenDocumentSchema,
     commit: CommitInfoSchema,
   },
@@ -121,7 +122,7 @@ export type SaveResult = Static<typeof SaveResultSchema>;
 
 export const BatchSaveInputSchema = Type.Object(
   {
-    operationId: UuidSchema,
+    operationId: OperationIdSchema,
     documents: Type.Array(
       Type.Object(
         {
@@ -141,7 +142,7 @@ export type BatchSaveInput = Static<typeof BatchSaveInputSchema>;
 /** One commit for the whole batch. */
 export const BatchSaveResultSchema = Type.Object(
   {
-    operationId: UuidSchema,
+    operationId: OperationIdSchema,
     documents: Type.Array(WrittenDocumentSchema),
     commit: CommitInfoSchema,
   },
@@ -157,7 +158,7 @@ export const DocumentOperationTargetKindSchema = closedUnion(DOCUMENT_OPERATION_
 /** Which fields apply to which action is validated by the Engine (`DOCUMENT_OPERATION_INVALID`). */
 export const DocumentOperationInputSchema = Type.Object(
   {
-    operationId: UuidSchema,
+    operationId: OperationIdSchema,
     action: DocumentOperationActionSchema,
     kind: DocumentOperationTargetKindSchema,
     /** Document target, by id. */
@@ -181,7 +182,7 @@ export type DocumentOperationInput = Static<typeof DocumentOperationInputSchema>
 
 export const DocumentOperationResultSchema = Type.Object(
   {
-    operationId: UuidSchema,
+    operationId: OperationIdSchema,
     /** Tree revision after the write. */
     revision: Type.String({ minLength: 1 }),
     documents: Type.Array(WrittenDocumentSchema),
@@ -189,7 +190,7 @@ export const DocumentOperationResultSchema = Type.Object(
     folders: Type.Array(Type.String()),
     commit: CommitInfoSchema,
   },
-  { additionalProperties: false },
+  { $id: 'DocumentOperationResult', additionalProperties: false },
 );
 export type DocumentOperationResult = Static<typeof DocumentOperationResultSchema>;
 
@@ -244,8 +245,8 @@ export type DocumentOperationAvailableActions = Static<
 /** `GET .../document-operations/:operationId`; also the result of `retry` and `abandon`. */
 export const DocumentOperationStatusSchema = Type.Object(
   {
-    operationId: UuidSchema,
-    specId: IdSchema,
+    operationId: OperationIdSchema,
+    specId: SpecIdSchema,
     action: DocumentOperationStatusActionSchema,
     documentIds: Type.Array(IdSchema),
     /** ISO. */
@@ -259,19 +260,21 @@ export const DocumentOperationStatusSchema = Type.Object(
      * The operations that share the commit batch (the operation itself included), in the order they
      * were made. At most 50. Absent while the operation is not part of a batch.
      */
-    batchMembers: Type.Optional(Type.Array(UuidSchema, { maxItems: DOCUMENT_BATCH_MEMBERS_MAX })),
+    batchMembers: Type.Optional(
+      Type.Array(OperationIdSchema, { maxItems: DOCUMENT_BATCH_MEMBERS_MAX }),
+    ),
     /** Whether the process that was writing or committing is known to run (`unknown`: it cannot be told). */
     executor: Type.Optional(DocumentExecutorHintSchema),
     /** What a person can do now. Each action is available only where the operation is in a state that allows it. */
     actions: Type.Optional(DocumentOperationAvailableActionsSchema),
   },
-  { additionalProperties: false },
+  { $id: 'DocumentOperationStatus', additionalProperties: false },
 );
 export type DocumentOperationStatus = Static<typeof DocumentOperationStatusSchema>;
 
 /** `POST .../folders`. */
 export const FolderInputSchema = Type.Object(
-  { operationId: UuidSchema, path: Type.String({ minLength: 1 }) },
+  { operationId: OperationIdSchema, path: Type.String({ minLength: 1 }) },
   { additionalProperties: false },
 );
 export type FolderInput = Static<typeof FolderInputSchema>;
@@ -320,7 +323,7 @@ export const CreateDocumentEntrySchema = Type.Union([
 
 export const CreateDocumentsInputSchema = Type.Object(
   {
-    operationId: UuidSchema,
+    operationId: OperationIdSchema,
     documents: Type.Array(CreateDocumentEntrySchema),
     folders: Type.Optional(Type.Array(Type.String({ minLength: 1 }))),
     /**

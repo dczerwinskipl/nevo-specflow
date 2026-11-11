@@ -11,11 +11,11 @@ import {
   FlushInputSchema,
   FlushResultSchema,
   FolderInputSchema,
-  IdSchema,
   ManualCommitInputSchema,
   ManualCommitResultSchema,
   SaveInputSchema,
   SaveResultSchema,
+  SpecIdSchema,
   SpecificationDocumentParamsSchema,
   UncommittedViewSchema,
 } from '@nevo/specflow-contracts/documents';
@@ -40,12 +40,13 @@ import {
   SAVE_BODY_LIMIT_BYTES,
 } from './limits';
 import type { DocumentWriteSource } from './write-source';
+import { contractRef } from '../../../server/shared-contracts';
 
-const SpecParamsSchema = Type.Object({ specId: IdSchema }, { additionalProperties: false });
+const SpecParamsSchema = Type.Object({ specId: SpecIdSchema }, { additionalProperties: false });
 
 /** The operation id of a path is judged by the Engine: a malformed one does not exist (404). */
 const OperationParamsSchema = Type.Object(
-  { specId: IdSchema, operationId: Type.String({ minLength: 1, maxLength: 100 }) },
+  { specId: SpecIdSchema, operationId: Type.String({ minLength: 1, maxLength: 100 }) },
   { additionalProperties: false },
 );
 
@@ -99,6 +100,8 @@ export const documentWriteEndpoint: FastifyPluginCallback<DocumentWriteRoutesOpt
       bodyLimit: SAVE_BODY_LIMIT_BYTES,
       config: OVERSIZED_BODY,
       schema: {
+        tags: ['Documents'],
+        summary: 'Write a document',
         params: SpecificationDocumentParamsSchema,
         body: SaveInputSchema,
         response: { 200: SaveResultSchema, ...documentWriteErrorResponses },
@@ -118,6 +121,8 @@ export const documentWriteEndpoint: FastifyPluginCallback<DocumentWriteRoutesOpt
       bodyLimit: BATCH_SAVE_BODY_LIMIT_BYTES,
       config: OVERSIZED_BODY,
       schema: {
+        tags: ['Documents'],
+        summary: 'Save several documents',
         params: SpecParamsSchema,
         body: BatchSaveInputSchema,
         response: { 200: BatchSaveResultSchema, ...documentWriteErrorResponses },
@@ -135,9 +140,14 @@ export const documentWriteEndpoint: FastifyPluginCallback<DocumentWriteRoutesOpt
       bodyLimit: CREATE_DOCUMENTS_BODY_LIMIT_BYTES,
       config: OVERSIZED_BODY,
       schema: {
+        tags: ['Documents'],
+        summary: 'Add a document',
         params: SpecParamsSchema,
         body: CreateDocumentsInputSchema,
-        response: { 200: DocumentOperationResultSchema, ...documentWriteErrorResponses },
+        response: {
+          200: contractRef(DocumentOperationResultSchema),
+          ...documentWriteErrorResponses,
+        },
       },
     },
     documentRoute(async (request, reply) => {
@@ -152,9 +162,14 @@ export const documentWriteEndpoint: FastifyPluginCallback<DocumentWriteRoutesOpt
       bodyLimit: OPERATION_BODY_LIMIT_BYTES,
       config: OVERSIZED_BODY,
       schema: {
+        tags: ['Documents'],
+        summary: 'Add a document folder',
         params: SpecParamsSchema,
         body: FolderInputSchema,
-        response: { 200: DocumentOperationResultSchema, ...documentWriteErrorResponses },
+        response: {
+          200: contractRef(DocumentOperationResultSchema),
+          ...documentWriteErrorResponses,
+        },
       },
     },
     documentRoute(async (request, reply) => {
@@ -169,9 +184,14 @@ export const documentWriteEndpoint: FastifyPluginCallback<DocumentWriteRoutesOpt
       bodyLimit: OPERATION_BODY_LIMIT_BYTES,
       config: OVERSIZED_BODY,
       schema: {
+        tags: ['Documents'],
+        summary: 'Start a document operation',
         params: SpecParamsSchema,
         body: DocumentOperationInputSchema,
-        response: { 200: DocumentOperationResultSchema, ...documentWriteErrorResponses },
+        response: {
+          200: contractRef(DocumentOperationResultSchema),
+          ...documentWriteErrorResponses,
+        },
       },
     },
     documentRoute(async (request, reply) => {
@@ -184,9 +204,11 @@ export const documentWriteEndpoint: FastifyPluginCallback<DocumentWriteRoutesOpt
     {
       onRequest: viewGuard(options.projectId),
       schema: {
+        tags: ['Documents'],
+        summary: 'Read a document operation',
         params: OperationParamsSchema,
         response: {
-          200: DocumentOperationStatusSchema,
+          200: contractRef(DocumentOperationStatusSchema),
           304: Type.Null(),
           ...documentWriteErrorResponses,
         },
@@ -210,6 +232,8 @@ export const documentWriteEndpoint: FastifyPluginCallback<DocumentWriteRoutesOpt
     {
       onRequest: viewGuard(options.projectId),
       schema: {
+        tags: ['Documents'],
+        summary: 'Read the uncommitted document changes',
         params: SpecParamsSchema,
         response: {
           200: UncommittedViewSchema,
@@ -239,6 +263,8 @@ export const documentWriteEndpoint: FastifyPluginCallback<DocumentWriteRoutesOpt
       bodyLimit: MANUAL_COMMIT_BODY_LIMIT_BYTES,
       config: OVERSIZED_BODY,
       schema: {
+        tags: ['Documents'],
+        summary: 'Commit document changes',
         params: SpecParamsSchema,
         body: ManualCommitInputSchema,
         response: { 200: ManualCommitResultSchema, ...documentWriteErrorResponses },
@@ -271,9 +297,15 @@ export const documentWriteEndpoint: FastifyPluginCallback<DocumentWriteRoutesOpt
           next();
         },
         schema: {
+          tags: ['Documents'],
+          summary:
+            action === 'retry' ? 'Retry a document operation' : 'Abandon a document operation',
           params: OperationParamsSchema,
           body: EmptyBodySchema,
-          response: { 200: DocumentOperationStatusSchema, ...documentWriteErrorResponses },
+          response: {
+            200: contractRef(DocumentOperationStatusSchema),
+            ...documentWriteErrorResponses,
+          },
         },
       },
       documentRoute(async (request, reply) => {
@@ -295,6 +327,8 @@ export const documentWriteEndpoint: FastifyPluginCallback<DocumentWriteRoutesOpt
         next();
       },
       schema: {
+        tags: ['Documents'],
+        summary: 'Flush the queued document commits',
         params: SpecParamsSchema,
         body: FlushInputSchema,
         response: { 200: FlushResultSchema, ...documentWriteErrorResponses },

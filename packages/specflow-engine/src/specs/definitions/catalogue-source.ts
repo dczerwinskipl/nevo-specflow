@@ -4,7 +4,6 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import { DocumentError } from '../document-rules/errors';
 
 import type { DefinitionKindRegistry } from './kind-registry';
-import { createDefaultDefinitionRegistry } from './kinds';
 import {
   CATALOGUE_LOAD_ATTEMPTS,
   CATALOGUE_MEMO_MAX_HOMES,
@@ -57,8 +56,8 @@ export interface CatalogueSource {
 }
 
 export interface CatalogueSourceOptions {
-  /** The registered kinds. Default: the kinds the product ships. */
-  readonly registry?: DefinitionKindRegistry;
+  /** The registered kinds. */
+  readonly registry: DefinitionKindRegistry;
   /** The definitions tree of one Project Home. Default: the filesystem below `.nevo/definitions`. */
   readonly sourceFor?: (homeRoot: string) => DefinitionSource;
   /** Wall clock in milliseconds. */
@@ -106,10 +105,10 @@ function filesystemSourceFor(homeRoot: string): DefinitionSource {
   return createFilesystemDefinitionSource(join(homeRoot, ...DEFINITIONS_RELATIVE_PATH.split('/')));
 }
 
-export function createCatalogueSource(options: CatalogueSourceOptions = {}): CatalogueSource {
+export function createCatalogueSource(options: CatalogueSourceOptions): CatalogueSource {
   const sourceFor = options.sourceFor ?? filesystemSourceFor;
   const nowMs = options.nowMs ?? Date.now;
-  const registry = options.registry ?? createDefaultDefinitionRegistry();
+  const registry = options.registry;
   const memo = new Map<string, MemoEntry>();
 
   const remember = (homeRoot: string, entry: MemoEntry): void => {
@@ -226,28 +225,6 @@ export function createCatalogueSource(options: CatalogueSourceOptions = {}): Cat
   return { get, lookupArchetype, clear: () => memo.clear() };
 }
 
-let processCatalogueSource: CatalogueSource | undefined;
-
-/** The per-process catalogue source used by the Engine entry points. */
-export function defaultCatalogueSource(): CatalogueSource {
-  processCatalogueSource ??= createCatalogueSource();
-
-  return processCatalogueSource;
-}
-
-/** The catalogue of the Project Home of an Engine (stat-on-read, see {@link createCatalogueSource}). */
-export function getProjectCatalogue(engine: ProjectHomeLike): Promise<ProjectCatalogueResult> {
-  return defaultCatalogueSource().get(engine.context.project.homeRoot);
-}
-
-/** The state of one archetype definition of an Engine's Project Home: one `lstat` plus the memo. */
-export function lookupProjectArchetype(
-  engine: ProjectHomeLike,
-  archetypeId: string,
-): Promise<ArchetypeLookup> {
-  return defaultCatalogueSource().lookupArchetype(engine.context.project.homeRoot, archetypeId);
-}
-
 export interface StableReadOptions {
   /** Loads in all before giving up (default 3). */
   readonly attempts?: number;
@@ -284,11 +261,4 @@ export async function loadStableProjectCatalogue(
 
     await pause(options.delayMs ?? CATALOGUE_STABLE_READ_DELAY_MS);
   }
-}
-
-/** {@link loadStableProjectCatalogue} over the per-process source, for the Engine entry points. */
-export function getStableProjectCatalogue(
-  engine: ProjectHomeLike,
-): Promise<ProjectCatalogueResult> {
-  return loadStableProjectCatalogue(defaultCatalogueSource(), engine.context.project.homeRoot);
 }

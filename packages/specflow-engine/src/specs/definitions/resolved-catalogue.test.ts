@@ -5,7 +5,7 @@ import type {
 import { describe, expect, it } from 'vitest';
 
 import { canonicalJson, resolveCatalogue, type CatalogueEntities } from './resolved-catalogue';
-import { seedCatalogueForTesting } from './testing-install';
+import { seedCatalogueForTesting } from '../../definitions/testing-install';
 
 const seeds = await seedCatalogueForTesting();
 

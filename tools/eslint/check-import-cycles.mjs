@@ -5,7 +5,8 @@
 // touches a gated slice: `specs/document-rules`, `specs/documents`, `specs/archetypes`, `specs/definitions`, `specs/durable`, `specs/uncommitted`, `specs/manual-commit`, `specs/model.ts`,
 // `specs/scaffold.ts`, `specs/create` or `version-control/commits`. A cycle that touches none of them (the lifecycle one that predates the gate) is
 // reported as informational only. One known `specs/create` cycle is accepted by its exact member
-// list; it must not grow, and any new cycle through a gated slice fails.
+// list; it must not grow, and any new cycle through a gated slice fails. The subfolders of `workflow/`
+// are gated at folder level too: they must form an acyclic graph (see the end of this file).
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -68,6 +69,9 @@ const FORBIDDEN_EDGES = [
     from: 'specs/definitions/',
     to: ['specs/create/', 'specs/archetypes/', 'specs/scaffold.ts', 'specs/documents/'],
   },
+  // The generic definitions module knows no capability that registers a kind: the shipped kinds are
+  // composed in `definitions/` (the composition root), which depends on it, never the reverse.
+  { from: 'specs/definitions/', to: ['workflow/', 'definitions/'] },
   // The pure document rules are the lowest slice: both the documents layer and the definitions
   // loader depend on them, so they import no other Specification slice.
   {
@@ -389,6 +393,76 @@ for (const component of components) {
     console.log(
       (accepted ? 'Accepted' : 'Ungated') + ' import cycle (' + members.length + ' modules).',
     );
+  }
+}
+
+// Folder-level gate for the workflow capability: its subfolders (`workflow/state`, `workflow/tasks`,
+// ...) must form an acyclic dependency graph, so a subfolder can later be extracted on its own. A file
+// directly in `workflow/` is its own node (the composition root and the shared leaves).
+const workflowNode = (file) => {
+  const parts = relative(file).split('/');
+
+  return parts.length > 2 ? parts.slice(0, 2).join('/') : parts.join('/');
+};
+
+const workflowGraph = new Map();
+for (const [file, targets] of graph) {
+  if (!relative(file).startsWith('workflow/')) {
+    continue;
+  }
+
+  const from = workflowNode(file);
+  const edges = workflowGraph.get(from) ?? new Set();
+  for (const target of targets) {
+    if (relative(target).startsWith('workflow/') && workflowNode(target) !== from) {
+      edges.add(workflowNode(target));
+    }
+  }
+
+  workflowGraph.set(from, edges);
+}
+
+{
+  let workflowCounter = 0;
+  const workflowIndex = new Map();
+  const workflowLow = new Map();
+  const workflowStack = [];
+  const workflowOnStack = new Set();
+  const visit = (node) => {
+    workflowIndex.set(node, workflowCounter);
+    workflowLow.set(node, workflowCounter);
+    workflowCounter += 1;
+    workflowStack.push(node);
+    workflowOnStack.add(node);
+    for (const next of workflowGraph.get(node) ?? []) {
+      if (!workflowIndex.has(next)) {
+        visit(next);
+        workflowLow.set(node, Math.min(workflowLow.get(node), workflowLow.get(next)));
+      } else if (workflowOnStack.has(next)) {
+        workflowLow.set(node, Math.min(workflowLow.get(node), workflowIndex.get(next)));
+      }
+    }
+
+    if (workflowLow.get(node) === workflowIndex.get(node)) {
+      const members = [];
+      let member;
+      do {
+        member = workflowStack.pop();
+        workflowOnStack.delete(member);
+        members.push(member);
+      } while (member !== node);
+
+      if (members.length > 1) {
+        failed = true;
+        console.error('Folder cycle in workflow/:\n  ' + members.sort().join('\n  '));
+      }
+    }
+  };
+
+  for (const node of workflowGraph.keys()) {
+    if (!workflowIndex.has(node)) {
+      visit(node);
+    }
   }
 }
 

@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path';
 import type { SpecFlowEngine } from '../application';
 import { withProjectControlLock } from '../project/control-lock';
 import { resolveSpecification } from '../specs/discovery';
-import { createDefaultDefinitionRegistry } from '../specs/definitions/kinds';
+import { createDefaultDefinitionRegistry } from '../definitions/shipped-registry';
 import { loadDefinitions } from '../specs/definitions/loader';
 import {
   DEFINITIONS_RELATIVE_PATH,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { seedCatalogueForTesting } from '../definitions/testing-install';
+import { seedCatalogueForTesting } from '../../definitions/testing-install';
 import {
   GOAL_PROMPT_FALLBACK,
   TEMPLATE_PLACEHOLDERS,

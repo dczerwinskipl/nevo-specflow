@@ -1,4 +1,4 @@
-import type { TerminalOutcome } from '../definitions/model';
+import type { TaskTypes, TerminalOutcome } from '../definitions/model';
 import { WorkflowError } from '../errors';
 
 /**
@@ -97,8 +97,6 @@ export interface WorkflowRun {
   readonly attempts: readonly AttemptRecord[];
   readonly returns: readonly ReturnRecord[];
 }
-
-export type TaskTypes = readonly ['*'] | readonly string[];
 
 export interface SpecificationExecutionRecord {
   readonly specId: string;

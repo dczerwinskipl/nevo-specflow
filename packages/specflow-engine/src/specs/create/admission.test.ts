@@ -6,8 +6,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import type { SpecFlowEngine } from '../../application';
 import type { ProjectCatalogue } from '../definitions/project-catalogue';
-import { installProjectDefinitionFiles } from '../definitions/install-project';
-import { seedCatalogueForTesting } from '../definitions/testing-install';
+import { installProjectDefinitionFiles } from '../../definitions/install-project';
+import { seedCatalogueForTesting } from '../../definitions/testing-install';
 import { TEXT_CONTENT_MAX_BYTES } from '../documents';
 import { ADDED_DOCUMENTS_MAX_FILES } from './limits';
 import { admitCreateArchetype, resolveCreateArchetype } from './admission';

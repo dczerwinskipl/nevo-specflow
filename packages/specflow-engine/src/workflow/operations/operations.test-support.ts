@@ -2,8 +2,8 @@ import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { loadDefinitions } from '../../specs/definitions/loader';
-import { createDefaultDefinitionRegistry } from '../../specs/definitions/kinds';
-import { locateSeedDirectory, openSeedSource } from '../../specs/definitions/seed';
+import { createDefaultDefinitionRegistry } from '../../definitions/shipped-registry';
+import { locateSeedDirectory, openSeedSource } from '../../definitions/seed';
 import { resolveExecutionCatalogue, type ExecutionCatalogue } from '../definitions/catalogue';
 import { createMemoryWorkflowStore } from '../state/memory-store.test-support';
 import type { ExecutorRecord, WorkflowSubject } from '../state/model';

@@ -1,5 +1,5 @@
 import type { ExecutionCatalogue } from '../definitions/catalogue';
-import type { TaskType, WorkflowStep } from '../definitions/model';
+import type { TaskType, TaskTypes, WorkflowStep } from '../definitions/model';
 import { handoffOf, type Handoff } from '../progression/progression';
 import { isTaskTypeAllowed, taskReadiness, type TaskReadiness } from '../tasks/tasks';
 import type {
@@ -7,7 +7,6 @@ import type {
   TaskRecord,
   TaskStatus,
   TaskStatusChange,
-  TaskTypes,
   WorkflowPin,
   WorkflowRun,
   WorkflowSubject,

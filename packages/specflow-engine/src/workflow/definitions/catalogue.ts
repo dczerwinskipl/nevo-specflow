@@ -6,13 +6,13 @@ import {
 
 import type { LoadResult } from '../../specs/definitions/loader';
 import { SPECIFICATION_ARCHETYPE_KIND } from '../../specs/definitions/kinds/specification-archetype';
-import type { TaskTypes } from '../state/model';
 import {
   AGENT_ARCHETYPE_KIND,
   TASK_TYPE_KIND,
   WORKFLOW_KIND,
   type AgentArchetype,
   type TaskType,
+  type TaskTypes,
   type WorkflowDefinition,
 } from './model';
 

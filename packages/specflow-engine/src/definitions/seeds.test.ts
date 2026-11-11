@@ -5,12 +5,15 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import goldenFixtures from '../archetypes/fixtures/overview-golden.json';
-import { toArchetypeCatalogue } from '../archetypes/projection';
-import { renderTemplate, templateValues } from '../archetypes/template-renderer';
-import { createDefaultDefinitionRegistry } from './kinds';
-import { loadDefinitions, type LoadResult } from './loader';
-import { resolveProjectCatalogue, type ProjectCatalogue } from './project-catalogue';
+import goldenFixtures from '../specs/archetypes/fixtures/overview-golden.json';
+import { toArchetypeCatalogue } from '../specs/archetypes/projection';
+import { renderTemplate, templateValues } from '../specs/archetypes/template-renderer';
+import { createDefaultDefinitionRegistry } from './shipped-registry';
+import { loadDefinitions, type LoadResult } from '../specs/definitions/loader';
+import {
+  resolveProjectCatalogue,
+  type ProjectCatalogue,
+} from '../specs/definitions/project-catalogue';
 import {
   DefinitionSeedError,
   SEED_DIRECTORY_NAME,
@@ -101,10 +104,7 @@ describe('seed files against the product document matrix', () => {
     doc = (
       await readFile(
         fileURLToPath(
-          new URL(
-            '../../../../../docs/product/specflow/specification-documents.md',
-            import.meta.url,
-          ),
+          new URL('../../../../docs/product/specflow/specification-documents.md', import.meta.url),
         ),
         'utf8',
       )
@@ -305,8 +305,8 @@ describe('locating the seed folder', () => {
     await expect(
       locateSeedDirectory({ fromUrl: pathToFileURL(join(deep, 'seed.js')).href }),
     ).rejects.toBeInstanceOf(DefinitionSeedError);
-    // Three levels up (the source layout) is found.
-    const source = join(far, 'src', 'specs', 'definitions');
+    // Two levels up (the source layout) is found.
+    const source = join(far, 'src', 'definitions');
     await mkdir(source, { recursive: true });
     expect(
       await locateSeedDirectory({ fromUrl: pathToFileURL(join(source, 'seed.ts')).href }),

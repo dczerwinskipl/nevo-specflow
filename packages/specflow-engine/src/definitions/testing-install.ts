@@ -1,14 +1,14 @@
 import { stat } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import type { SpecFlowEngine } from '../../application';
+import type { SpecFlowEngine } from '../application';
 import { installProjectDefinitions } from './install-project';
-import { createDefaultDefinitionRegistry } from './kinds';
-import { loadDefinitions } from './loader';
-import { resolveProjectCatalogue } from './project-catalogue';
-import type { ResolvedCatalogue } from './resolved-catalogue';
+import { createDefaultDefinitionRegistry } from './shipped-registry';
+import { loadDefinitions } from '../specs/definitions/loader';
+import { resolveProjectCatalogue } from '../specs/definitions/project-catalogue';
+import type { ResolvedCatalogue } from '../specs/definitions/resolved-catalogue';
 import { openSeedSource } from './seed';
-import { DEFINITIONS_RELATIVE_PATH } from './source';
+import { DEFINITIONS_RELATIVE_PATH } from '../specs/definitions/source';
 
 const installing = new Map<string, Promise<void>>();
 

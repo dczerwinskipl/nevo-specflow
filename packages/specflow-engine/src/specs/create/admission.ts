@@ -1,5 +1,5 @@
 import type { SpecFlowEngine } from '../../application';
-import { getStableProjectCatalogue } from '../definitions/catalogue-source';
+import { getStableProjectCatalogue } from '../../definitions/process-catalogue';
 import type { ProjectCatalogue } from '../definitions/project-catalogue';
 import { requireArchetype } from '../definitions/archetype-lookup';
 import { DocumentError } from '../documents';

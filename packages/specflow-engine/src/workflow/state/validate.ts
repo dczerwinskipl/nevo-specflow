@@ -1,6 +1,6 @@
 import { WorkflowError } from '../errors';
 import { TASKS_PER_SPECIFICATION_MAX } from '../limits';
-import { dependencyCycle } from '../tasks/tasks';
+import { dependencyCycle } from './dependency-cycle';
 import {
   type AttemptRecord,
   type SpecificationExecutionRecord,

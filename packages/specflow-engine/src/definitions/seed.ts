@@ -2,9 +2,12 @@ import { realpath, stat } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { DefinitionKindRegistry } from './kind-registry';
-import { createDefaultDefinitionRegistry } from './kinds';
-import { createFilesystemDefinitionSource, type DefinitionSource } from './source';
+import type { DefinitionKindRegistry } from '../specs/definitions/kind-registry';
+import {
+  createFilesystemDefinitionSource,
+  type DefinitionSource,
+} from '../specs/definitions/source';
+import { createDefaultDefinitionRegistry } from './shipped-registry';
 
 /**
  * The default definitions the product ships. They are data files in the same layout as a project's
@@ -34,9 +37,9 @@ export interface LocateSeedOptions {
  * Where the seed folder is, relative to the directory of the resolving module, in the three layouts
  * the product has: next to the CLI bundle (`<bundle>/bin.js` and `<bundle>/definitions`), in the built
  * Engine package (`dist/*.js` and `<package>/definitions`) and in the repository source tree
- * (`src/specs/definitions/seed.ts` and `<package>/definitions`). Nothing else is searched.
+ * (`src/definitions/seed.ts` and `<package>/definitions`). Nothing else is searched.
  */
-const SEED_LAYOUTS: readonly string[] = ['.', '..', '../../..'];
+const SEED_LAYOUTS: readonly string[] = ['.', '..', '../..'];
 
 /** The folder name of the seeds next to the bundle and in the package. */
 export const SEED_DIRECTORY_NAME = 'definitions';

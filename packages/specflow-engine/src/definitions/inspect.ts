@@ -3,15 +3,15 @@ import { join } from 'node:path';
 
 import type { DefinitionProblem } from '@nevo/specflow-contracts/documents';
 
-import type { SpecFlowEngine } from '../../application';
-import { createDefaultDefinitionRegistry } from './kinds';
-import { loadDefinitions, type LoadResult } from './loader';
-import { capProblems } from './project-catalogue';
+import type { SpecFlowEngine } from '../application';
+import { createDefaultDefinitionRegistry } from './shipped-registry';
+import { loadDefinitions, type LoadResult } from '../specs/definitions/loader';
+import { capProblems } from '../specs/definitions/project-catalogue';
 import {
   DEFINITIONS_RELATIVE_PATH,
   createFilesystemDefinitionSource,
   type DefinitionSource,
-} from './source';
+} from '../specs/definitions/source';
 
 /**
  * Read-only views of a definitions tree for the `definitions` commands: what is defined, one

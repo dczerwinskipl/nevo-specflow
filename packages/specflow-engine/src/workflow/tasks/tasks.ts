@@ -1,6 +1,6 @@
 import { ANY_TASK_TYPE, type WorkflowEffect } from '@nevo/specflow-contracts/documents';
 
-import type { TaskType, WorkflowDefinition } from '../definitions/model';
+import type { TaskType, TaskTypes, WorkflowDefinition } from '../definitions/model';
 import { WorkflowError } from '../errors';
 import {
   FEEDBACK_MAX,
@@ -12,7 +12,8 @@ import {
   isValidTaskId,
 } from '../limits';
 import { newRun } from '../progression/progression';
-import type { TaskRecord, TaskStatus, TaskTypes } from '../state/model';
+import { dependencyCycle } from '../state/dependency-cycle';
+import type { TaskRecord, TaskStatus } from '../state/model';
 
 /**
  * Tasks of a Specification: drafted from the structured finish input of a step that `produces: tasks`
@@ -184,38 +185,6 @@ export function materializeTasks(input: MaterializeTasksInput): MaterializedTask
     ],
     created: created.map((proposal) => proposal.id),
   };
-}
-
-/** A Task id on a dependency cycle of the graph, or `undefined` when it has none. */
-export function dependencyCycle(graph: ReadonlyMap<string, readonly string[]>): string | undefined {
-  const state = new Map<string, 'visiting' | 'done'>();
-  const visit = (id: string): string | undefined => {
-    const seen = state.get(id);
-    if (seen !== undefined) {
-      return seen === 'visiting' ? id : undefined;
-    }
-
-    state.set(id, 'visiting');
-    for (const dependency of graph.get(id) ?? []) {
-      const cycle = visit(dependency);
-      if (cycle !== undefined) {
-        return cycle;
-      }
-    }
-
-    state.set(id, 'done');
-
-    return undefined;
-  };
-
-  for (const id of graph.keys()) {
-    const cycle = visit(id);
-    if (cycle !== undefined) {
-      return cycle;
-    }
-  }
-
-  return undefined;
 }
 
 /** A status a decision may set; `draft` is only ever the status of a new Task. */

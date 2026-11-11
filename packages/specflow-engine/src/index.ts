@@ -191,13 +191,13 @@ export {
   type ProjectCatalogue,
   type ProjectCatalogueResult,
   type ResolvedCatalogue,
-} from './specs/definitions';
+} from './definitions';
 
 // Pure document rules (no I/O). The demo Runtime builds its in-memory Specifications with them, so
 // its document answers (catalogue, scaffold, ids, paths, kinds, titles, tree) match the Engine's.
 export { renderTemplate, templateValues } from './specs/archetypes';
 // Builds a catalogue from definitions already in memory (the demo Runtime's copy of the seeds).
-export { resolveCatalogue } from './specs/definitions';
+export { resolveCatalogue } from './definitions';
 export {
   OVERVIEW_DOCUMENT_ID,
   OVERVIEW_DOCUMENT_TYPE,

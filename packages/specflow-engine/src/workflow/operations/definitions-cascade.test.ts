@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { createDefaultDefinitionRegistry } from '../../specs/definitions/kinds';
+import { createDefaultDefinitionRegistry } from '../../definitions/shipped-registry';
 import { loadDefinitions } from '../../specs/definitions/loader';
 import { MemoryDefinitionSource } from '../../specs/definitions/test-support';
 import { resolveExecutionCatalogue } from '../definitions/catalogue';

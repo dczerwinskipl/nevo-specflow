@@ -2,19 +2,19 @@ import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import type { SpecFlowEngine } from '../../application';
-import { sha256Hex } from '../../hash';
-import { GitCapabilityError } from '../../git/errors';
-import { executeGit } from '../../git/process';
-import { openVersionControl } from '../../version-control';
-import { engineCommitRefusal } from '../../version-control/commits/branch-patterns';
-import type { EngineCommitRequest } from '../../version-control/commits/port';
-import { inspectLocalBranches } from '../../version-control/git/branches';
-import { readProjectGitPolicy } from '../../version-control/worktrees/config';
-import type { GitCommitsPolicy } from '../../version-control/worktrees/policy';
-import { recordLedgerEntries, withLedgerLock } from '../durable';
-import { pruneUncommitted } from '../uncommitted';
-import { createFilesystemDefinitionWriter } from './filesystem-writer';
+import type { SpecFlowEngine } from '../application';
+import { sha256Hex } from '../hash';
+import { GitCapabilityError } from '../git/errors';
+import { executeGit } from '../git/process';
+import { openVersionControl } from '../version-control';
+import { engineCommitRefusal } from '../version-control/commits/branch-patterns';
+import type { EngineCommitRequest } from '../version-control/commits/port';
+import { inspectLocalBranches } from '../version-control/git/branches';
+import { readProjectGitPolicy } from '../version-control/worktrees/config';
+import type { GitCommitsPolicy } from '../version-control/worktrees/policy';
+import { recordLedgerEntries, withLedgerLock } from '../specs/durable';
+import { pruneUncommitted } from '../specs/uncommitted';
+import { createFilesystemDefinitionWriter } from '../specs/definitions/filesystem-writer';
 import {
   applyInstall,
   planInstall,
@@ -22,10 +22,13 @@ import {
   type InstallOptions,
   type InstallPlan,
   type InstallResult,
-} from './install';
-import { createDefaultDefinitionRegistry } from './kinds';
+} from '../specs/definitions/install';
+import { createDefaultDefinitionRegistry } from './shipped-registry';
 import { openSeedSource } from './seed';
-import { DEFINITIONS_RELATIVE_PATH, createFilesystemDefinitionSource } from './source';
+import {
+  DEFINITIONS_RELATIVE_PATH,
+  createFilesystemDefinitionSource,
+} from '../specs/definitions/source';
 
 /**
  * Installing the shipped definitions into a Project Home (`definitions install`, `init`).

@@ -11,7 +11,7 @@ import {
   createDefaultDefinitionRegistry,
   loadDefinitions,
   openSeedSource,
-} from '../../src/specs/definitions';
+} from '../../src/definitions';
 
 const repositoryRoot = fileURLToPath(new URL('../../../../', import.meta.url));
 

@@ -2,7 +2,7 @@ import type { DocumentTree } from '@nevo/specflow-contracts/documents';
 
 import type { SpecFlowEngine } from '../../application';
 import { mapBounded } from '../../concurrency';
-import { lookupProjectArchetype } from '../definitions/catalogue-source';
+import { lookupProjectArchetype } from '../../definitions/process-catalogue';
 import { advisoryPolicyReason } from './advisory-policy';
 import { readCommitPolicyMode } from './commit-policy';
 import { countArchiveInventory, listSpecificationFiles, SKIPPED_PATHS_MAX } from './directory-scan';

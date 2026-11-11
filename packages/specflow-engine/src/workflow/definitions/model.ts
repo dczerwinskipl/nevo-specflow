@@ -1,14 +1,21 @@
 import type { WaitTrigger, WorkflowEffect } from '@nevo/specflow-contracts/documents';
 
+import {
+  TASK_TYPE_KIND,
+  WORKFLOW_KIND,
+} from '../../specs/definitions/kinds/specification-archetype';
+
 /**
  * Resolved execution definitions: workflows, agent archetypes and task types, as the kind registry
  * builds them from `.nevo/definitions/{workflow,agent-archetype,task-type}/`. Defaults of the file
  * format are applied here, so progression code never re-derives them.
  */
 
-export const WORKFLOW_KIND = 'workflow';
+export { TASK_TYPE_KIND, WORKFLOW_KIND };
 export const AGENT_ARCHETYPE_KIND = 'agent-archetype';
-export const TASK_TYPE_KIND = 'task-type';
+
+/** The Task types a Specification may create: `['*']` for any, otherwise the allowed ids. */
+export type TaskTypes = readonly ['*'] | readonly string[];
 
 export type WorkflowSubjectKind = 'specification' | 'task';
 export type TerminalOutcome = 'completed' | 'abandoned';

@@ -463,6 +463,29 @@ export const CloseAndReopenRestoresModeAndPosition: Story = {
   },
 };
 
+/**
+ * S6b: closing keeps the position shown at that moment, not the last one a scroll event reported
+ * (the editor can re-measure lines without scrolling). The scroll and the close happen in one task,
+ * before the browser dispatches the scroll event.
+ */
+export const CloseKeepsThePositionAtThatMoment: Story = {
+  play: async (context) => {
+    const { canvas, canvasElement, userEvent } = context;
+    const view = await openEditor(context);
+    await scrollEditorToLine(view, 60);
+    await settled(() => editorTopLine(view));
+    const target = view.lineBlockAt(view.state.doc.line(140).from);
+    view.scrollDOM.scrollTop = Math.ceil(target.top + view.documentPadding.top);
+    const shown = editorTopLine(view);
+    // A native click closes in this task; userEvent would wait first and let the scroll event fire.
+    canvas.getByRole('button', { name: 'Zamknij panel' }).click();
+    // The same button opens the panel again.
+    await userEvent.click(canvas.getByRole('button', { name: 'Zamknij panel' }));
+    const reopened = await openEditorOnly(canvasElement);
+    await waitFor(() => expect(Math.abs(editorTopLine(reopened) - shown)).toBeLessThanOrEqual(1));
+  },
+};
+
 /** S7: A -> B -> A returns to the last position of A. */
 export const SwitchingDocumentsRestoresLastPosition: Story = {
   play: async ({ canvas, canvasElement, userEvent }) => {

@@ -3333,6 +3333,43 @@
       ]
     },
     {
+      "id": "ideas.specflow-engine.reusable-workflow.agent-execution",
+      "type": "engineering",
+      "title": "Agent-assisted deterministic Specification and Task execution",
+      "status": "draft",
+      "file": "docs/ideas/specflow-engine/reusable-workflow-manual-execution/agent-assisted-execution.md",
+      "read_when": [
+        "adding an Ask agent action beside manual Workflow execution",
+        "implementing agent-written Specification documents and Task resources",
+        "integrating Managed Sessions with Workflow start and finish"
+      ],
+      "summary": "Owner-delegated execution of one declared Workflow step by an agent, including Specification authoring, Task descriptions, dependencies and context, with durable Session and attempt correlation and shared Engine validation.",
+      "related": [
+        "ideas.specflow-engine.reusable-workflow",
+        "ideas.specflow-engine.reusable-workflow.delivery",
+        "ideas.specflow-engine.reusable-workflow.boundaries",
+        "ideas.specflow-engine.task-resource-and-context",
+        "ideas.specflow-engine.plan-06",
+        "architecture.workflow.workflow-kernel"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "workflow",
+        "runtime",
+        "ai",
+        "ui",
+        "cli",
+        "security",
+        "testing"
+      ],
+      "tags": [
+        "agent-execution",
+        "task-authoring",
+        "managed-sessions",
+        "deterministic"
+      ]
+    },
+    {
       "id": "ideas.specflow-engine.reusable-workflow.delivery",
       "type": "engineering",
       "title": "Reusable Workflow and manual execution delivery plan",

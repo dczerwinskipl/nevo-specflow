@@ -40,7 +40,7 @@ Arrows express allowed dependencies, not required imports. `@nevo/workflow` is a
 | Neutral `@nevo/workflow`                 | Compiled definitions, deterministic progression/history/pin/replay, neutral step coordination yielding executable, suspended, ready or terminal intents, and a host-facing continuation contract | Specification/Task types, Documents, Task effects, Git/worktrees, HTTP/UI, provider Sessions, source YAML format and application triggers |
 | `@nevo/specflow-engine` Workflow adapter | Spec/Task subject binding, definition compilation, trusted admission, atomic multi-resource plans, domain-specific wait/effect evaluation, persistence/journal and workspace identity            | A second progression or continuation algorithm, provider/Session dispatch or UI rendering                                                 |
 | `@nevo/specflow-engine` Task resource    | Task index, manifest, `task.md`, Task Type selection, dependency/status policy, drafts, provenance and context                                                                                   | Generic transition mechanics, independent workflow Run store                                                                              |
-| Runtime                                  | Authenticated HTTP commands/projections; eventual F01 provider dispatch with durable intent                                                                                                      | Canonical Task mutations, independent Run policy or silent auto-start merely because a Task is ready                                      |
+| Runtime                                  | Authenticated HTTP commands and projections; E6 explicit owner-requested step dispatch, eventually F01 auto continuation                                                                         | No independent Workflow progress logic and no automatic launch just because a Task is ready                                               |
 | CLI + skill                              | Offline commands over the same Engine operations                                                                                                                                                 | A separate lifecycle implementation or proof of human approval from caller-provided `executor`                                            |
 | UI                                       | Existing Spec/Task screens, documents editing, canonical actions and generic input renderer                                                                                                      | Calculating transition legality, forging an executor, defining backend validation                                                         |
 
@@ -58,12 +58,13 @@ Suggested cohesive boundaries, **not mandatory directories**: `packages/workflow
 
 Decide **only what the next slice consumes**. E0 records every open question but does not force E5 form semantics to be designed before E1.
 
-| Gate                           | Decisions needed                                                                | What can remain open                                                              |
-| ------------------------------ | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| Before E1                      | D01, D02, D09; minimal D03 storage/effect seam and D05 Run schema compatibility | Concrete Task/Document journal, UI permissions, approval and form field catalogue |
-| Before E2                      | D03, D04, D06; Task status authority in F20                                     | Manual UI interaction details and E5 typed renderer                               |
-| Before E3 owner mutations / E4 | D05 human identity/manual policy; D07 before Close integration                  | F01 automatic Session dispatch                                                    |
-| Before E5                      | D08 input validation, persistence and handoff                                   | Arbitrary custom components or a visual designer                                  |
+| Gate                           | Decisions needed                                                                      | What can remain open                                                              |
+| ------------------------------ | ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Before E1                      | D01, D02, D09; minimal D03 storage/effect seam and D05 Run schema compatibility       | Concrete Task/Document journal, UI permissions, approval and form field catalogue |
+| Before E2                      | D03, D04, D06; Task status authority in F20                                           | Manual UI interaction details and E5 typed renderer                               |
+| Before E3 owner mutations / E4 | D05 human identity/manual policy; D07 before Close integration                        | F01 automatic Session dispatch                                                    |
+| Before E5                      | D08 input validation, persistence and handoff                                         | Arbitrary custom components or a visual designer                                  |
+| Before E6                      | D10 delegation, bounded agent writers, Session/attempt correlation and durable finish | Full F01 unattended chaining, F12 auto-batches and scheduled triggers             |
 
 ### D01 — Neutral step semantics, special steps and replay
 
@@ -101,7 +102,7 @@ Decide **only what the next slice consumes**. E0 records every open question but
 
 **Observed:** `executor: agent|human` is strict, and replay expects matching executor. `continuation: auto` may yield a Session launch decision. A person must not silently finish an agent attempt as an agent.
 
-**Open:** Separate (1) allowed executors of a step, (2) durable execution mode/dispatch policy for a particular Run, and (3) actual trusted executor of each attempt. Before E1, reserve a backward-compatible way to represent per-Run execution policy without deciding the UI design; before E4, decide manual mode storage, allowed mode changes and auditable attribution. Never rewrite historical executor fields or invalidate pinned definitions to make an agent-owned step look human-owned. An active agent Session needs explicit F17 takeover/stop/reconciliation, not `finish` with `executor: human`. Human review/approval identity comes from HTTP Auth or a proven offline local trust model, never an untrusted payload.
+**Open:** Separate (1) allowed executors of a step, (2) durable execution mode/dispatch policy for a particular Run, and (3) actual trusted executor of each attempt. E6 needs an owner choice of executor **per eligible attempt**, rather than a permanent manual-only lock on the Run; human-only approval remains human-only. Before E1, reserve a backward-compatible way to represent per-Run execution policy without deciding the UI design; before E4, decide manual mode storage, allowed mode changes and auditable attribution. Never rewrite historical executor fields or invalidate pinned definitions to make an agent-owned step look human-owned. An active agent Session needs explicit F17 takeover/stop/reconciliation, not `finish` with `executor: human`. Human review/approval identity comes from HTTP Auth or a proven offline local trust model, never an untrusted payload.
 
 **Proof:** manual UI start/finish/return through a user-defined agent-oriented flow with explicit permission, zero Sessions even after Runtime restart; rejected unauthorized finish, safe existing attempts and replay.
 
@@ -137,6 +138,18 @@ Decide **only what the next slice consumes**. E0 records every open question but
 
 **Proof:** two independent runs of one definition, concurrently addressable by different host keys, with separate history, retries and pinned revisions; both survive host reload. Current SpecFlow run paths and attempt semantics remain unchanged.
 
+### D10 — Agent delegation and Task-authoring permissions
+
+**Observed:** Existing Managed Sessions and the Workflow Kernel are not yet wired together for step start/finish. Plan 06 F01/F02/F05/F09/F16/F17 cover dispatch, completion transport, admission, UI, retries and takeover. Legacy Nevo's deterministic protocol supplied authoritative StepContext and finishContract, with start -> scoped work -> finish -> stop; the agent did not choose the next step.
+
+**Open:** Specify one authenticated owner-requested launch for an exact subject/step/attempt, durable Session/Turn correlation, trusted executor identity, writer claim, unknown-outcome reconciliation, cancellation, and finish. An agent receives permitted Document/Task operations through one supported thin adapter (CLI+skill, scoped HTTP, or MCP) and cannot override Engine transition rules or submit human approval. E6 is one step at a time by default; no unattended auto-dispatch.
+
+**Task authoring:** An agent can draft Task resources with substantial task.md content, title/summary, Type, registered documents, dependsOn DAG, and F20 typed context. Engine validates Task Type allow-list, referential integrity, context budgets and required refs, concurrency and journal/recovery. D06 prevents a producing finish from cancelling someone else's draft. Agent never edits task.yaml, tasks/index.yaml or .execution files as a substitute for an Engine mutation.
+
+**Documentation context:** Available docs:get is an exact lookup; docs:find/docs:context are deterministic lexical discovery, not proof of a semantic/vector RAG implementation. A step gets explicit F20 resolved context, including required/optional refs and provenance. Search does not grant write permission or replace context validation.
+
+**Proof:** The owner can choose agent on a Specification step, agent writes actual documents and finishes once. On a declared task-producing step, the agent creates 3 complete, linked Task drafts, owner inspects/approves. Owner executes one Task step manually and delegates another. No agent can forge owner sign-off or run a human-only step; lost responses and duplicate submissions do not duplicate resources.
+
 ## 3. Additional unresolved integration constraints
 
 - **Task status authority:** The detailed F20 proposal places `status` in `task.yaml`, while a Plan 06 summary still refers to keeping status in execution state. Reconcile in an ADR. No dual authority; one indexed resource and one clear place for status.
@@ -149,6 +162,6 @@ Decide **only what the next slice consumes**. E0 records every open question but
 
 ## 4. E0 decision outcome
 
-Before E1, promote the approved D01, D02 and D09 boundary decisions and the minimal D03/D05 extension seams to the authoritative ADR/architecture. Defer the detailed D03, D04 and D06 choices until before E2, D05/D07 authorization and Close decisions until their consuming E3/E4 slice, and D08 until E5. The following are not implied approvals: package creation, step-schema change, `allowedExecutors`, Run-mode persistence, Task status location, generalized input DSL or mandatory Close blocking for every existing Specification.
+Before E1, promote the approved D01, D02 and D09 boundary decisions and the minimal D03/D05 extension seams to the authoritative ADR/architecture. Defer the detailed D03, D04 and D06 choices until before E2, D05/D07 authorization and Close decisions until their consuming E3/E4 slice, D08 until E5, and D10 until E6 (or an approved early agent-only Specification slice). The following are not implied approvals: package creation, step-schema change, `allowedExecutors`, Run-mode persistence, Task status location, generalized input DSL or mandatory Close blocking for every existing Specification.
 
 The E1 contract must demonstrate an acyclic import graph, reusable coordination intents, a neutral Run identity, pin compatibility and an intentional multi-resource persistence seam. Before E2/E4, prove the concrete journal boundary, a Task without SpecRun and a manual action with trustworthy attribution.

@@ -28,17 +28,18 @@ related:
 
 ## Product outcome
 
-A person can create a Specification, author its documents, create Tasks of different user-defined types (e.g. spike, backend, UI, integration), edit their own task documents, approve work, advance their workflows and finish the Specification **entirely in the UI**, without creating a provider Session or involving an AI agent. CLI + skill remain an offline path for external agents and users; neither transport invents its own progression rules.
+A person can create a Specification, author its documents, create Tasks of different user-defined types (e.g. spike, backend, UI, integration), edit their own task documents, approve work, advance their workflows and finish the Specification **entirely in the UI**, without creating a provider Session or involving an AI agent. In E6 the owner can instead **ask an agent** to execute an eligible individual step using the same Engine contracts, including writing Specification documents and preparing complete linked Task drafts. CLI + skill remain an offline path for external agents and users; neither transport invents its own progression rules.
 
 Each Task Type already selects its workflow definition. The proposal **does not** introduce hard-coded step names such as `implement`, `review`, `spike` or `discovery`. Future Automation/scheduled work is a prospective second product consumer of the same Workflow capability, **not** a new synonym for a SpecFlow Task. Multiple independent runs of one definition must be possible without inventing a Specification or Task. Scheduled triggers and managed agent dispatch are out of scope.
 
 ## Reading order and implementation gates
 
 1. [Architecture boundaries and open decisions](boundaries-and-decisions.md): package ownership, special steps, atomic effects, pinning, manual policy, Task provenance and Close.
-2. [Delivery plan](delivery-plan.md): E0–E5 with explicit dependencies, review checkpoints and end-to-end evidence.
-3. Existing [Task Resource F20](../task-resource-and-context.md), [Workflow API requirements](../workflow-api-requirements.md), [Plan 06 follow-ups](../execution-plans/06-workflow-kernel/README.md), [offline CLI and agents](../offline-cli-and-external-agents.md).
+2. [Delivery plan](delivery-plan.md): E0–E6 with explicit dependencies, review checkpoints and end-to-end evidence.
+3. [Agent-assisted execution](agent-assisted-execution.md): an owner may delegate an eligible step to a Managed Session; includes Specification writing, Task drafting with content/dependencies/context, and selected Task steps.
+4. Existing [Task Resource F20](../task-resource-and-context.md), [Workflow API requirements](../workflow-api-requirements.md), [Plan 06 follow-ups](../execution-plans/06-workflow-kernel/README.md), [offline CLI and agents](../offline-cli-and-external-agents.md).
 
-**Decision gates are phased.** Before E1, approve the neutral execution/coordinator boundary, definition pin compatibility, and Run identity; reserve the necessary storage/dispatch extension points. Before E2, approve cross-resource recovery, Task Type resolution and draft ownership. Before E3/E4, approve human authorization and manual execution policy; before E4 Close, approve completion/sign-off semantics. Before E5, approve typed input persistence and validation. See the [decision gates](boundaries-and-decisions.md#2-decision-register-and-gates). None is implicitly accepted by this draft.
+**Decision gates are phased.** Before E1, approve the neutral execution/coordinator boundary, definition pin compatibility, and Run identity; reserve the necessary storage/dispatch extension points. Before E2, approve cross-resource recovery, Task Type resolution and draft ownership. Before E3/E4, approve human authorization and manual execution policy; before E4 Close, approve completion/sign-off semantics. Before E5, approve typed input persistence and validation. Before E6, decide owner-requested delegation, durable Session/attempt identity, Task-authoring capabilities and retry/stop behavior. E6 does not depend on E5; an early Specification-only agent slice may be delivered separately once its prerequisites hold. See the [decision gates](boundaries-and-decisions.md#2-decision-register-and-gates). None is implicitly accepted by this draft.
 
 ## What already exists
 
@@ -46,15 +47,15 @@ Each Task Type already selects its workflow definition. The proposal **does not*
 - Specification Create/Close and Documents operations exist; the UI can already edit Specification documents.
 - Task HTTP endpoints primarily expose reads. Task creation/edit as a standalone resource and manual Workflow commands are not yet a complete product path.
 - `tasks/index.yaml`, per-Task `task.yaml` and `task.md`, Task context and the full F20 storage migration remain proposed. The current `.execution/tasks/<id>.yaml` includes Task metadata and run.
-- The automatic continuation dispatcher that launches/reuses Managed Sessions (F01) is not part of this plan; a pure continuation decision already exists. The reusable core still needs a host-facing coordination contract so a later Runtime does not implement a second execution state machine.
+- Full F01 **unattended** continuation is deferred, but E6 introduces a narrow, **explicit owner-requested** Managed Session for one selected Workflow step (using F01/F02/F05/F09 integration seams). The Kernel already derives a continuation decision; that alone does not launch a Session.
 
 Use existing implementations wherever possible; do not recreate the Kernel or the document editor.
 
 ## Scope boundary
 
-**In:** neutral Workflow extraction; SpecFlow-owned Task resources, lifecycle and documents; shared Engine use cases exposed via HTTP/UI and offline CLI; manual steps and owner approvals; minimal completion/Close integration; later typed input metadata and form rendering.
+**In:** neutral Workflow extraction; SpecFlow-owned Task resources, lifecycle and documents; shared Engine use cases exposed via HTTP/UI and offline CLI; manual steps and owner approvals; minimal completion/Close integration; later typed input metadata and form rendering; E6 agent delegation of eligible Specification/Task steps, with Task drafts, their documents, dependencies and context.
 
-**Out:** automatic provider Session creation, scheduled triggers, arbitrary plugin/action framework, parallel Task worktrees, full F03 gates, MCP as a mandatory transport, browser execution of the neutral package and a visual Workflow designer. Do not promise automatically verified tests when only a human result is recorded.
+**Out:** unattended automatic provider Session chaining and automatic Task scheduling, scheduled triggers, arbitrary plugin/action framework, parallel Task worktrees, full F03 gates, MCP as a mandatory transport, browser execution of the neutral package and a visual Workflow designer. Do not promise automatically verified tests when only a human result is recorded.
 
 ## Ownership of this proposal
 

@@ -21,7 +21,7 @@ related:
   - architecture.workflow.workflow-kernel
 ---
 
-# Delivery plan E0–E5 (proposal)
+# Delivery plan E0–E6 (proposal)
 
 This is **not** an implementation instruction. Each phase requires only the decisions it consumes and its own test evidence before the next dependent slice starts. Actual tasks/PRs should be drafted after reconciling the current main branch and accepting architecture decisions. Keep high-risk journal, identity and recovery changes independently reviewable.
 
@@ -101,9 +101,26 @@ Use the **new read-only action projection from E4**, grounded in today's `StepCo
 
 **Exit:** add a custom `enum`, `boolean`, `integer`, `decimal` and `markdown` input to a definition; the UI adapts without feature-specific code, the Engine validates/records the values and the next step receives only the declared handoff.
 
+## E6 — Agent-assisted execution, selected per step
+
+The user can **execute an eligible step manually or explicitly ask an agent** through the UI. The agent is a bounded executor of the same deterministic Workflow, not its orchestrator. See [Agent-assisted execution](agent-assisted-execution.md). E6 depends on E4's manual/owner action model, but **not E5's generic form renderer**.
+
+| Slice                    | Outcome                                                                                                                                                                                       | Prerequisites                                                                              |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| E6a: Specification agent | Ask agent starts one Managed Session for an eligible Specification step. The agent gets canonical StepContext, edits registered Specification documents and finishes; no unattended next step | E1, trusted owner action, narrow F01 launch, F02 finish, F05/F16 claims and retries        |
+| E6b: Task drafts         | On a declared producing step, agent creates complete draft Tasks: task.md, optional docs, allowed type, dependsOn links and F20 context; human inspects/approves                              | E2/F20 resource, Task/Document Engine writers, D06 ownership, atomic multi-resource finish |
+| E6c: Task agent          | Owner delegates one eligible Task step; agent gets pinned Task Type workflow and resolved context, reports declared result, stops                                                             | E6a session/finish, E2 readiness, F20 context, identity/admission                          |
+| E6d: mixed path          | The next eligible step may be executed by owner or agent. Show actor, linked Session, attempt, artifacts, retry/stop/takeover; never forge a human gate                                       | E4, E6a–E6c, F13/F17                                                                       |
+
+A producing step is identified by workflow metadata, **not** a hard-coded name such as breakdown. Its Task-writer commands and the ordinary UI call the **same** Engine operations. An agent cannot directly edit Task registry or .execution records. Task dependencies, required contexts, rights, revisions, and admission are validated before durable mutation. Agent outputs remain draft until authorized approval.
+
+**Exit:** An owner-requested agent can write a Specification, propose three Tasks with substantive content/dependencies/context, and perform one selected Task step. Another step is done manually in the same Run. Retry and restart do not duplicate Tasks, Sessions, or finish; no automatic Task batching or chained Sessions.
+
+**Scheduling:** E6a can be delivered earlier than E2/E5 as an isolated Specification-only milestone if trusted invocation, document-writing and recovery prerequisites exist. E6b and E6c require F20 Task resources. Do not bypass those requirements with a separate ad hoc agent writer.
+
 ## Explicitly deferred
 
-F01 automatic provider Session lifecycle, F12 automatic selection/batches, scheduler/Automation triggers, arbitrary plugin registry, multi-instance/parallel Task worktrees, generic visual workflow editor, and full F03 automated gates. MCP `workflow_finish` can be added later as a thin adapter; the first release does not require it.
+Full F01 unattended provider continuation (E6 allows explicitly requested single-step dispatch), F12 automatic selection/batches, scheduler/Automation triggers, arbitrary plugin registry, multi-instance/parallel Task worktrees, generic visual workflow editor, and full F03 automated gates. MCP `workflow_finish` can be added later as a thin adapter; the first release does not require it.
 
 ## Full user acceptance scenario
 
@@ -114,6 +131,7 @@ F01 automatic provider Session lifecycle, F12 automatic selection/batches, sched
 5. Complete or explicitly waive outstanding/cancelled work; provide owner acceptance; verify a premature Technical Close is blocked and then execute a legal Close without bypassing Git/workspace checks.
 6. Restart Runtime mid-run and retry the same finish after injected ambiguous response; observe the same durable outcome and no new Session.
 7. Confirm external CLI can read and perform its supported Task operations offline, with the same rules and no invented owner identity.
-8. Extend a Task workflow with typed inputs and verify the generic E5 renderer, Engine validation, stored values and handoff. Separately prove two independent runs of one user definition in the E1 neutral test host.
+8. Optionally extend a Task workflow with typed inputs and verify the generic E5 renderer, Engine validation, stored values and handoff. Separately prove two independent runs of one user definition in the E1 neutral test host.
+9. Under E6, ask an agent to write Specification documents and finish one step. On another, have the agent create fully described linked Tasks with context, approve them manually, delegate one Task step, and perform another step personally; verify no auto-chain or forged sign-off.
 
 **Test environments:** actual production project mode and repository/worktree; demo-only coverage is insufficient. Include fault injection for multi-file publication, stale revisions, race with external writer, pinned legacy fixtures and boundary enforcement. UI verification should include narrow/medium/wide layouts and screenshots compared with approved design.

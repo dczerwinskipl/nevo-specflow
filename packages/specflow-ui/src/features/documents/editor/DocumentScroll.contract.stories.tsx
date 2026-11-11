@@ -444,8 +444,20 @@ export const CloseAndReopenRestoresModeAndPosition: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Zamknij panel' }));
     await userEvent.click(canvas.getByRole('button', { name: 'Zamknij panel' }));
     const reopened = await openEditorOnly(canvasElement);
+    // Rarely 3 lines off in CI only: the message says whether the restore landed on the entry line
+    // (a stale remembered anchor) or elsewhere (the restore itself).
     await waitFor(() =>
-      expect(Math.abs(editorTopLine(reopened) - beforeClose)).toBeLessThanOrEqual(1),
+      expect(
+        Math.abs(editorTopLine(reopened) - beforeClose),
+        JSON.stringify({
+          entered,
+          beforeClose,
+          reopened: editorTopLine(reopened),
+          scrollTop: reopened.scrollDOM.scrollTop,
+          scrollHeight: reopened.scrollDOM.scrollHeight,
+          clientHeight: reopened.scrollDOM.clientHeight,
+        }),
+      ).toBeLessThanOrEqual(1),
     );
     await expect(reopened.state.doc.toString()).toContain('SZKIC');
   },

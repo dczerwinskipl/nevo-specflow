@@ -6,7 +6,7 @@ import { createDefaultDefinitionRegistry } from '../../definitions/shipped-regis
 import { locateSeedDirectory, openSeedSource } from '../../definitions/seed';
 import { resolveExecutionCatalogue, type ExecutionCatalogue } from '../definitions/catalogue';
 import { createMemoryWorkflowStore } from '../state/memory-store.test-support';
-import type { ExecutorRecord, WorkflowSubject } from '../state/model';
+import type { OwnerActor, WorkflowActor, WorkflowSubject } from '../state/model';
 import { finishStep, type FinishStepInput } from './finish';
 import { inspectExecution } from './inspect';
 import type { WorkflowDependencies } from './loaded-execution';
@@ -58,14 +58,12 @@ export function memoryDependencies(catalogue: ExecutionCatalogue): WorkflowDepen
   };
 }
 
-export const agent = (provider: string, sessionId: string, model?: string): ExecutorRecord => ({
-  kind: 'agent',
-  provider,
-  sessionId,
-  ...(model !== undefined ? { model } : {}),
+export const agent = (provider: string, sessionId: string, model?: string): WorkflowActor => ({
+  class: 'agent',
+  details: { provider, sessionId, ...(model !== undefined ? { model } : {}) },
 });
 
-export const owner: ExecutorRecord = { kind: 'human', actorId: 'owner' };
+export const owner: OwnerActor = { class: 'human', details: { actorId: 'owner', trust: 'local' } };
 
 /** The agent Session that works on the Specification in most tests. */
 export const claude = agent('claude', 'session-a', 'claude-opus-5-5');
@@ -80,12 +78,12 @@ export type Dependencies = ReturnType<typeof memoryDependencies>;
 /** Start the Specification's next step (creating its run from the `feature` archetype). */
 export function startSpecification(
   dependencies: WorkflowDependencies,
-  executor: ExecutorRecord = claude,
+  actor: WorkflowActor = claude,
 ) {
   return startSpecificationExecution(dependencies, {
     specId: SPEC,
     archetype: 'feature',
-    executor,
+    actor,
   });
 }
 
@@ -104,12 +102,12 @@ export async function work(
   dependencies: WorkflowDependencies,
   subject: WorkflowSubject,
   input: FinishStepInput['input'] = {},
-  executor: ExecutorRecord = claude,
+  actor: WorkflowActor = claude,
 ) {
   const started =
     subject.kind === 'specification'
-      ? await startSpecification(dependencies, executor)
-      : await startTaskExecution(dependencies, { specId: SPEC, taskId: subject.taskId, executor });
+      ? await startSpecification(dependencies, actor)
+      : await startTaskExecution(dependencies, { specId: SPEC, taskId: subject.taskId, actor });
   if (started.kind === 'terminal') {
     throw new Error('Nothing to start.');
   }
@@ -119,7 +117,7 @@ export async function work(
     step: started.context.step.id,
     attempt: started.context.attempt,
     input,
-    executor,
+    actor,
   });
 }
 
@@ -140,7 +138,7 @@ export async function specificationWithTasks(dependencies: WorkflowDependencies)
     step: 'breakdown',
     attempt: 1,
     input: { tasks: TWO_TASKS },
-    executor: claude,
+    actor: claude,
   });
 
   return work(dependencies, specification, { result: 'pass' }, agent('codex', 'session-r', 'x'));

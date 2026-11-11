@@ -1,12 +1,7 @@
+import { assertPinned, assertPositionJustified, isPinnedTo, isPositionJustified } from '../core';
 import type { ExecutionCatalogue } from '../definitions/catalogue';
 import type { WorkflowDefinition } from '../definitions/model';
 import { WorkflowError } from '../errors';
-import {
-  assertPinned,
-  assertPositionJustified,
-  isPositionJustified,
-  pinOf,
-} from '../progression/progression';
 import {
   brokenTask,
   subjectKey,
@@ -53,7 +48,7 @@ export function pinnedDefinition(
     );
   }
 
-  assertPinned(run, definition);
+  assertPinned(run.workflow, definition);
   assertPositionJustified(run, definition);
 
   return definition;
@@ -65,15 +60,8 @@ function unchangedDefinition(
   run: WorkflowRun,
 ): WorkflowDefinition | undefined {
   const definition = catalogue.workflow(run.workflow.id);
-  if (!definition) {
-    return undefined;
-  }
 
-  const pin = pinOf(definition);
-
-  return pin.id === run.workflow.id && pin.revision === run.workflow.revision
-    ? definition
-    : undefined;
+  return definition && isPinnedTo(run.workflow, definition) ? definition : undefined;
 }
 
 /**

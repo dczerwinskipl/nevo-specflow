@@ -102,13 +102,21 @@ const stepCommon = () => ({
   transitions: Type.Array(WorkflowTransitionFileSchema, { minItems: 1, maxItems: 16 }),
 });
 
-/** Work done by an agent (through an agent archetype) or by a person. */
+/** Work done by an agent (through an agent archetype), by a person, or by either. */
 export const WorkflowWorkStepFileSchema = Type.Object(
   {
     ...stepCommon(),
     kind: Type.Literal('work'),
-    executor: Type.Union([Type.Literal('agent'), Type.Literal('human')]),
-    /** Preferred agent archetype; required for an agent step (checked by the Engine). */
+    /**
+     * Who may do the step: `[agent, human]` lets the owner do an agent step by hand, `[human]` is a
+     * human-only gate (for example acceptance). Each class at most once.
+     */
+    executors: Type.Array(Type.Union([Type.Literal('agent'), Type.Literal('human')]), {
+      minItems: 1,
+      maxItems: 2,
+      uniqueItems: true,
+    }),
+    /** Preferred agent archetype; required exactly when an agent may do the step (checked by the Engine). */
     archetype: Type.Optional(catalogueId()),
     /** `interactive`: the step is a conversation with the owner (for example gathering requirements). */
     interaction: Type.Optional(

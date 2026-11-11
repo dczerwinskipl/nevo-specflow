@@ -23,11 +23,13 @@ import {
   claude,
   memoryDependencies,
   owner,
+  runToBreakdown,
   seedExecutionCatalogue,
   specification as operationSpecification,
   specificationWithTasks,
   startSpecification,
   task as operationTask,
+  TWO_TASKS,
   work,
 } from '../operations/operations.test-support';
 import { startSpecificationExecution, startTaskExecution } from '../operations/start';
@@ -81,7 +83,7 @@ const journalPath = () => join(stateRoot, 'engine', 'operations', 'workflow', `$
 
 async function writeJournal(writes: readonly unknown[]): Promise<void> {
   await mkdir(join(stateRoot, 'engine', 'operations', 'workflow'), { recursive: true });
-  await writeFile(journalPath(), JSON.stringify({ version: 1, specId: SPEC, writes }));
+  await writeFile(journalPath(), JSON.stringify({ version: 2, specId: SPEC, writes }));
 }
 
 async function seedSpecification(step = 'requirements') {
@@ -97,18 +99,18 @@ async function seedSpecification(step = 'requirements') {
 describe('filesystem workflow store', () => {
   it('runs the operations end to end and keeps the canonical state next to the Specification', async () => {
     const dependencies = { ...memoryDependencies(await seedExecutionCatalogue()), store: store() };
-    const executor = { kind: 'agent', provider: 'antigravity', sessionId: 's' } as const;
+    const executor = agent('antigravity', 's');
     await startSpecificationExecution(dependencies, {
       specId: SPEC,
       archetype: 'feature',
-      executor,
+      actor: executor,
     });
     await finishStep(dependencies, {
       subject: { kind: 'specification', specId: SPEC },
       step: 'requirements',
       attempt: 1,
       input: { feedback: 'Scope agreed.' },
-      executor,
+      actor: executor,
     });
 
     const text = await readFile(specificationPath(), 'utf8');
@@ -467,6 +469,73 @@ describe('filesystem workflow store: publication re-checks each target', () => {
   });
 });
 
+describe('filesystem workflow store: a finish retried after a crash (F16)', () => {
+  it('returns the recorded result when the publication of the finish crashed midway', async () => {
+    const base = memoryDependencies(await seedExecutionCatalogue());
+    let armed = false;
+    let published = 0;
+    const crashing = {
+      ...base,
+      store: storeWithPublishHook(() => {
+        if (armed && (published += 1) === 2) {
+          return Promise.reject(new Error('Crash after the first published target.'));
+        }
+
+        return Promise.resolve();
+      }),
+    };
+    await runToBreakdown(crashing);
+    const breakdown = {
+      subject: operationSpecification,
+      step: 'breakdown',
+      attempt: 1,
+      input: { tasks: TWO_TASKS },
+      actor: claude,
+    } as const;
+    armed = true;
+    await expect(finishStep(crashing, breakdown)).rejects.toThrow('Crash');
+    // Half the change is on disk: the journal is pending, the Specification record is published
+    // and the Task files are not.
+    const taskFiles = async () =>
+      (await readdir(tasksDirectory()).catch(() => [] as string[]))
+        .filter((name) => name.endsWith('.yaml'))
+        .sort();
+    expect(await readFile(journalPath(), 'utf8')).toContain(SPEC);
+    expect(await taskFiles()).toEqual([]);
+    expect(await readFile(specificationPath(), 'utf8')).toContain('state: ready');
+
+    // A read sees the whole change, so the retry is the same finish; it publishes the journal.
+    const dependencies = { ...base, store: store() };
+    await expect(finishStep(dependencies, breakdown)).resolves.toMatchObject({
+      replayed: true,
+      transition: 'proposed',
+      position: { state: 'ready', step: 'breakdown-review' },
+      createdTasks: ['api', 'screen'],
+    });
+    await expect(readFile(journalPath(), 'utf8')).rejects.toMatchObject({ code: 'ENOENT' });
+    expect(await taskFiles()).toEqual(['api.yaml', 'screen.yaml']);
+    expect(await readFile(specificationPath(), 'utf8')).toContain('state: ready');
+    await expect(
+      finishStep(dependencies, { ...breakdown, input: { tasks: [TWO_TASKS[0]] } }),
+    ).rejects.toMatchObject({ code: 'WORKFLOW_ATTEMPT_MISMATCH' });
+  });
+});
+
+describe('filesystem workflow store: the previous record format', () => {
+  it.each<[string, (text: string) => string]>([
+    ['the previous version', (text) => text.replace(/^version: 2$/mu, 'version: 1')],
+    [
+      'an attempt with the previous executor field',
+      (text) => text.replace(/^(\s+)actor:$/mu, '$1executor:'),
+    ],
+  ])('is corrupt state: %s', async (_name, edit) => {
+    const dependencies = { ...memoryDependencies(await seedExecutionCatalogue()), store: store() };
+    await startSpecification(dependencies);
+    await writeFile(specificationPath(), edit(await readFile(specificationPath(), 'utf8')));
+
+    await expect(store().read(SPEC)).rejects.toMatchObject(corrupt);
+  });
+});
 describe('filesystem workflow store: read budgets', () => {
   it('refuses more Task records than a Specification may have', async () => {
     for (let index = 0; index <= TASKS_PER_SPECIFICATION_MAX; index += 1) {
@@ -561,14 +630,14 @@ describe('filesystem workflow store: the Task set is the one the Specification l
       message: expect.stringContaining('"screen"') as unknown,
     };
     await expect(
-      startTaskExecution(dependencies, { specId: SPEC, taskId: 'screen', executor: claude }),
+      startTaskExecution(dependencies, { specId: SPEC, taskId: 'screen', actor: claude }),
     ).rejects.toMatchObject(broken);
     await expect(
       setTaskStatus(dependencies, {
         specId: SPEC,
         taskId: 'screen',
         status: 'cancelled',
-        executor: owner,
+        actor: owner,
       }),
     ).rejects.toMatchObject(broken);
   });
@@ -585,7 +654,7 @@ describe('filesystem workflow store: the Task set is the one the Specification l
     ]);
     expect(inspection.attention).toMatchObject([{ reason: 'tasks-stuck' }]);
     await expect(
-      startTaskExecution(dependencies, { specId: SPEC, taskId: 'screen', executor: claude }),
+      startTaskExecution(dependencies, { specId: SPEC, taskId: 'screen', actor: claude }),
     ).rejects.toMatchObject({ code: 'WORKFLOW_DEPENDENCY_UNSATISFIED' });
   });
 
@@ -626,7 +695,7 @@ describe('filesystem workflow store: the Task set is the one the Specification l
   it('refuses to finish or return a broken Task', async () => {
     const dependencies = await operations();
     await specificationWithTasks(dependencies);
-    await startTaskExecution(dependencies, { specId: SPEC, taskId: 'api', executor: claude });
+    await startTaskExecution(dependencies, { specId: SPEC, taskId: 'api', actor: claude });
     await rm(join(tasksDirectory(), 'api.yaml'));
     const broken = {
       code: 'WORKFLOW_STATE_CORRUPT',
@@ -639,14 +708,14 @@ describe('filesystem workflow store: the Task set is the one the Specification l
         step: 'implement',
         attempt: 1,
         input: {},
-        executor: claude,
+        actor: claude,
       }),
     ).rejects.toMatchObject(broken);
     await expect(
       returnToStep(dependencies, {
         subject: operationTask('api'),
         step: 'implement',
-        executor: owner,
+        actor: owner,
       }),
     ).rejects.toMatchObject(broken);
   });
@@ -659,7 +728,7 @@ describe('filesystem workflow store: the Task set is the one the Specification l
       subject: operationSpecification,
       step: 'breakdown',
       feedback: 'Again.',
-      executor: owner,
+      actor: owner,
     });
     await startSpecification(dependencies);
 
@@ -669,7 +738,7 @@ describe('filesystem workflow store: the Task set is the one the Specification l
         step: 'breakdown',
         attempt: 2,
         input: { tasks: [{ id: 'screen', title: 'Screen', type: 'ui-implementation' }] },
-        executor: claude,
+        actor: claude,
       }),
     ).rejects.toMatchObject({ code: 'WORKFLOW_STATE_CORRUPT' });
     await expect(readFile(join(tasksDirectory(), 'screen.yaml'), 'utf8')).rejects.toMatchObject({
@@ -716,14 +785,14 @@ describe('filesystem workflow store: the Task set is the one the Specification l
         specId: SPEC,
         taskId: 'screen',
         status: 'cancelled',
-        executor: owner,
+        actor: owner,
       }),
     ).rejects.toMatchObject(broken);
     await expect(
       returnToStep(dependencies, {
         subject: operationTask('screen'),
         step: 'implement',
-        executor: owner,
+        actor: owner,
       }),
     ).rejects.toMatchObject(broken);
   });
@@ -748,14 +817,14 @@ describe('filesystem workflow store: the Task set is the one the Specification l
       waitingFor: ['api'],
     });
     await expect(
-      startTaskExecution(dependencies, { specId: SPEC, taskId: 'screen', executor: claude }),
+      startTaskExecution(dependencies, { specId: SPEC, taskId: 'screen', actor: claude }),
     ).rejects.toMatchObject({ code: 'WORKFLOW_DEPENDENCY_UNSATISFIED' });
     const broken = {
       code: 'WORKFLOW_STATE_CORRUPT',
       message: expect.stringContaining('"api"') as unknown,
     };
     await expect(
-      startTaskExecution(dependencies, { specId: SPEC, taskId: 'api', executor: claude }),
+      startTaskExecution(dependencies, { specId: SPEC, taskId: 'api', actor: claude }),
     ).rejects.toMatchObject(broken);
     await expect(
       finishStep(dependencies, {
@@ -763,7 +832,7 @@ describe('filesystem workflow store: the Task set is the one the Specification l
         step: 'implement',
         attempt: 1,
         input: {},
-        executor: claude,
+        actor: claude,
       }),
     ).rejects.toMatchObject(broken);
 
@@ -771,7 +840,7 @@ describe('filesystem workflow store: the Task set is the one the Specification l
       subject: operationSpecification,
       step: 'breakdown',
       feedback: 'Again.',
-      executor: owner,
+      actor: owner,
     });
     const started = await startSpecification(dependencies);
     expect(started.kind === 'started' && started.context.existingTasks).toMatchObject([
@@ -802,7 +871,7 @@ describe('filesystem workflow store: the Task set is the one the Specification l
         step: 'acceptance',
         attempt: started.context.attempt,
         input: {},
-        executor: owner,
+        actor: owner,
       });
     const before = await readFile(specificationPath(), 'utf8');
     await expect(accept()).rejects.toMatchObject({
@@ -968,17 +1037,17 @@ describe('filesystem workflow store: the position follows from the history', () 
       }),
     ],
     [
-      'an agent attempt without its executor',
+      'a work attempt without its actor',
       (run) => ({
         ...run,
-        attempts: run.attempts.map(({ executor: _executor, ...attempt }) => attempt),
+        attempts: run.attempts.map(({ actor: _actor, ...attempt }) => attempt),
       }),
     ],
     [
-      'an agent attempt with a human executor',
+      'an attempt started by another class than the one that finished it',
       (run) => ({
         ...run,
-        attempts: run.attempts.map((attempt) => ({ ...attempt, executor: owner })),
+        attempts: run.attempts.map((attempt) => ({ ...attempt, actor: owner })),
       }),
     ],
     [
@@ -1008,7 +1077,7 @@ describe('filesystem workflow store: the position follows from the history', () 
             attempt: 1,
             sequence: 2,
             startedAt: '2026-11-05T10:00:05.000Z',
-            executor: claude,
+            actor: claude,
             endedAt: '2026-11-05T10:00:06.000Z',
             outcome: { kind: 'returned', to: 'specification' },
           },
@@ -1022,7 +1091,7 @@ describe('filesystem workflow store: the position follows from the history', () 
     await expect(startSpecification(dependencies)).rejects.toMatchObject(corrupt);
   });
 
-  it('refuses a finish from another Session once the active attempt lost its executor', async () => {
+  it('refuses a finish from another Session once the active attempt lost its actor', async () => {
     const dependencies = await operations();
     await startSpecification(dependencies);
     const stored = parseSpecificationRecord(await readFile(specificationPath(), 'utf8'));
@@ -1032,7 +1101,7 @@ describe('filesystem workflow store: the position follows from the history', () 
         ...stored,
         run: {
           ...stored.run,
-          attempts: stored.run.attempts.map(({ executor: _executor, ...attempt }) => attempt),
+          attempts: stored.run.attempts.map(({ actor: _actor, ...attempt }) => attempt),
         },
       }),
     );
@@ -1044,7 +1113,7 @@ describe('filesystem workflow store: the position follows from the history', () 
         step: 'requirements',
         attempt: 1,
         input: {},
-        executor: agent('claude', 'session-other'),
+        actor: agent('claude', 'session-other'),
       }),
     ).rejects.toMatchObject(corrupt);
   });
@@ -1079,7 +1148,7 @@ describe('filesystem workflow store: the position follows from the history', () 
       }),
     ],
     [
-      'an active agent attempt without its executor',
+      'an active agent attempt without its actor',
       [],
       (run) => ({
         ...run,
@@ -1102,7 +1171,7 @@ describe('filesystem workflow store: the position follows from the history', () 
     }
 
     if (finishes.length === 0) {
-      await startTaskExecution(dependencies, { specId: SPEC, taskId: 'api', executor: claude });
+      await startTaskExecution(dependencies, { specId: SPEC, taskId: 'api', actor: claude });
     }
 
     const path = join(tasksDirectory(), 'api.yaml');
@@ -1111,7 +1180,7 @@ describe('filesystem workflow store: the position follows from the history', () 
 
     expect((await inspectExecution(dependencies, SPEC)).brokenTasks).toEqual(['api']);
     await expect(
-      startTaskExecution(dependencies, { specId: SPEC, taskId: 'api', executor: claude }),
+      startTaskExecution(dependencies, { specId: SPEC, taskId: 'api', actor: claude }),
     ).rejects.toMatchObject(corrupt);
   });
 
@@ -1126,7 +1195,7 @@ describe('filesystem workflow store: the position follows from the history', () 
           attempt: 1,
           sequence: 2,
           startedAt: '2026-11-05T10:00:05.000Z',
-          executor: claude,
+          actor: claude,
           endedAt: '2026-11-05T10:00:06.000Z',
           outcome: { kind: 'returned', to: 'specification', feedback: 'Again.' },
         },

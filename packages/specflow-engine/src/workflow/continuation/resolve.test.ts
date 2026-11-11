@@ -20,20 +20,22 @@ const review: WorkStep = {
   id: 'review',
   title: 'Review',
   purpose: 'Review.',
-  executor: 'agent',
-  archetype: 'reviewer',
-  interaction: 'autonomous',
+  executors: ['agent', 'human'],
+  annotations: { archetype: 'reviewer', interaction: 'autonomous' },
   transitions: [],
 };
 
-const transition = (overrides: Partial<WorkflowTransition> = {}): WorkflowTransition => ({
+const transition = ({
+  session = 'fresh',
+  ...overrides
+}: Partial<WorkflowTransition> & {
+  readonly session?: 'fresh' | 'reuse';
+} = {}): WorkflowTransition => ({
   id: 'done',
   target: { kind: 'step', step: 'review' },
   continuation: 'auto',
-  session: 'fresh',
   feedback: 'optional',
-  effects: [],
-  escalate: false,
+  annotations: { session, effects: [], escalate: false },
   ...overrides,
 });
 
@@ -137,14 +139,21 @@ describe('resolveContinuation', () => {
     expect(
       resolveContinuation({
         transition: transition(),
-        next: { ...review, executor: 'human' },
+        next: { ...review, executors: ['human'], annotations: { interaction: 'autonomous' } },
         archetypes,
       }),
     ).toEqual({ kind: 'attention', step: 'review', reason: 'human-step' });
     expect(
       resolveContinuation({
         transition: transition(),
-        next: { kind: 'wait-for-tasks', id: 'wait', title: 'W', purpose: 'W', transitions: [] },
+        next: {
+          kind: 'wait',
+          id: 'wait',
+          title: 'W',
+          purpose: 'W',
+          transitions: [],
+          annotations: {},
+        },
         archetypes,
       }),
     ).toEqual({ kind: 'none', reason: 'waiting-for-tasks' });

@@ -1,10 +1,12 @@
-import type { TaskTypes, TerminalOutcome } from '../definitions/model';
+import type * as core from '../core';
+import type { TaskTypes } from '../definitions/model';
 import { WorkflowError } from '../errors';
 
 /**
  * Canonical execution state of one Specification: the run of its own workflow and one record per Task,
  * each with its own type and workflow run. Only the position and the history are stored; readiness,
- * lanes and statuses are derived (architecture `architecture.workflow.deterministic-workflow`).
+ * lanes and statuses are derived (architecture `architecture.workflow.deterministic-workflow`). The
+ * run format is the core's (`../core`); SpecFlow keys each run by its subject.
  */
 
 export type WorkflowSubject =
@@ -19,84 +21,38 @@ export function subjectKey(subject: WorkflowSubject): string {
 }
 
 /**
- * - `not-started`: the next start activates the entry step;
- * - `active`: one attempt of one step is in progress;
- * - `ready`: the previous step finished (or the owner returned) and `step` is the next to start;
- *   finish never starts it, so this checkpoint is observable;
- * - `terminal`: the run ended.
+ * An agent working on an attempt, from trusted Runtime context (never from the agent's own input):
+ * the archetype it works as, its provider and model, and the Session it runs in. An active agent
+ * attempt started in a Session is resumed and finished only by that Session.
  */
-export type RunPosition =
-  | { readonly state: 'not-started' }
-  | { readonly state: 'active'; readonly step: string; readonly attempt: number }
-  | { readonly state: 'ready'; readonly step: string }
-  | { readonly state: 'terminal'; readonly outcome: TerminalOutcome };
+export interface AgentActor {
+  readonly class: 'agent';
+  readonly details: {
+    readonly archetype?: string;
+    readonly provider: string;
+    readonly model?: string;
+    readonly sessionId?: string;
+  };
+}
 
 /**
- * The definition an attempt is interpreted with. A changed definition never silently reinterprets a
- * running workflow: the run keeps its pin until it is re-pinned explicitly.
+ * The owner acting in person: built only by the Runtime (from the authenticated subject) or the CLI
+ * (from the local OS user), never from a request payload. `trust` says how the person was
+ * identified; `local` is not proof of a human (an agent running as the same OS user looks alike).
  */
-export interface WorkflowPin {
-  readonly id: string;
-  readonly version: number;
-  /** sha256 of the canonical JSON of the resolved definition. */
-  readonly revision: string;
+export interface OwnerActor {
+  readonly class: 'human';
+  readonly details: {
+    readonly actorId: string;
+    readonly trust: 'local' | 'authenticated';
+  };
 }
 
-/** Who did the work of an attempt. Always taken from trusted Runtime/CLI context, never from an agent. */
-export type ExecutorRecord =
-  | {
-      readonly kind: 'agent';
-      readonly archetype?: string;
-      readonly provider: string;
-      readonly model?: string;
-      readonly sessionId?: string;
-    }
-  | { readonly kind: 'human'; readonly actorId?: string };
+/** Who works on, finishes or decides something in a SpecFlow run. */
+export type WorkflowActor = AgentActor | OwnerActor;
 
-export type AttemptOutcome =
-  | {
-      readonly kind: 'transition';
-      readonly transition: string;
-      readonly result?: string;
-      readonly feedback?: string;
-      readonly artifacts: readonly string[];
-    }
-  /** The owner returned the run to an earlier step while this attempt was active. */
-  | { readonly kind: 'returned'; readonly to: string; readonly feedback?: string };
-
-export interface AttemptRecord {
-  readonly step: string;
-  readonly attempt: number;
-  /**
-   * Order of the record among the run's attempts and returns (1, 2, ...). It decides which event came
-   * last; timestamps do not, because clocks can repeat or go back.
-   */
-  readonly sequence: number;
-  readonly startedAt: string;
-  readonly executor?: ExecutorRecord;
-  /** Absent while the attempt is active. */
-  readonly endedAt?: string;
-  /** Who finished the attempt; the Session a `reuse` continuation continues. */
-  readonly finishedBy?: ExecutorRecord;
-  readonly outcome?: AttemptOutcome;
-}
-
-/** An owner return from a non-active position (no attempt was running). */
-export interface ReturnRecord {
-  /** See {@link AttemptRecord.sequence}. */
-  readonly sequence: number;
-  readonly at: string;
-  readonly from: RunPosition;
-  readonly to: string;
-  readonly feedback?: string;
-}
-
-export interface WorkflowRun {
-  readonly workflow: WorkflowPin;
-  readonly position: RunPosition;
-  readonly attempts: readonly AttemptRecord[];
-  readonly returns: readonly ReturnRecord[];
-}
+export type WorkflowRun = core.WorkflowRun<WorkflowActor>;
+export type AttemptRecord = core.AttemptRecord<WorkflowActor>;
 
 export interface SpecificationExecutionRecord {
   readonly specId: string;
@@ -147,40 +103,6 @@ export interface TaskRecord {
   readonly status: TaskStatus;
   readonly statusChange?: TaskStatusChange;
   readonly run: WorkflowRun;
-}
-
-export function nextAttemptNumber(run: WorkflowRun, step: string): number {
-  return (
-    run.attempts.reduce(
-      (highest, record) => (record.step === step ? Math.max(highest, record.attempt) : highest),
-      0,
-    ) + 1
-  );
-}
-
-/** The sequence of the next attempt or return record of a run. */
-export function nextSequence(run: WorkflowRun): number {
-  return (
-    [...run.attempts, ...run.returns].reduce(
-      (highest, record) => Math.max(highest, record.sequence),
-      0,
-    ) + 1
-  );
-}
-
-export function activeAttempt(run: WorkflowRun): AttemptRecord | undefined {
-  const position = run.position;
-  if (position.state !== 'active') {
-    return undefined;
-  }
-
-  return run.attempts.find(
-    (record) => record.step === position.step && record.attempt === position.attempt,
-  );
-}
-
-export function isTerminal(run: WorkflowRun): boolean {
-  return run.position.state === 'terminal';
 }
 
 /** A broken Task (`executionTasks`) is refused by every operation on it. */

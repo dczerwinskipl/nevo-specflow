@@ -115,7 +115,7 @@ describe('attention derived from the state', () => {
       { subject: task('api'), step: 'review' },
     ]);
 
-    await startTaskExecution(dependencies, { specId: SPEC, taskId: 'api', executor: claude });
+    await startTaskExecution(dependencies, { specId: SPEC, taskId: 'api', actor: claude });
 
     expect((await inspectExecution(dependencies, SPEC)).attention).toEqual([]);
   });
@@ -141,7 +141,7 @@ describe('inspection during a mutation', () => {
       step: 'requirements',
       attempt: 1,
       input: {},
-      executor: claude,
+      actor: claude,
     });
     const inspecting = inspectExecution(gated, SPEC);
     release();

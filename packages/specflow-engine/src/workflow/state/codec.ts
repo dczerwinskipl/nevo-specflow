@@ -30,7 +30,7 @@ import { TASK_STATUSES, type SpecificationExecutionRecord, type TaskRecord } fro
  * before anything is stored; a stored file over the budget fails a read as corrupt.
  */
 
-export const EXECUTION_STATE_VERSION = 1;
+export const EXECUTION_STATE_VERSION = 2;
 
 const id = () => Type.String({ pattern: CATALOGUE_ID_PATTERN });
 const text = (maxLength = 4000) => Type.String({ minLength: 1, maxLength });
@@ -50,15 +50,24 @@ const PositionSchema = Type.Union([
   }),
 ]);
 
-const ExecutorSchema = Type.Union([
+/** An actor: its class and the details SpecFlow records for it (`AgentActor`, `OwnerActor`). */
+export const ActorSchema = Type.Union([
   closed({
-    kind: Type.Literal('agent'),
-    archetype: optional(id()),
-    provider: id(),
-    model: optional(text(200)),
-    sessionId: optional(text(200)),
+    class: Type.Literal('agent'),
+    details: closed({
+      archetype: optional(id()),
+      provider: id(),
+      model: optional(text(200)),
+      sessionId: optional(text(200)),
+    }),
   }),
-  closed({ kind: Type.Literal('human'), actorId: optional(text(200)) }),
+  closed({
+    class: Type.Literal('human'),
+    details: closed({
+      actorId: text(200),
+      trust: Type.Union([Type.Literal('local'), Type.Literal('authenticated')]),
+    }),
+  }),
 ]);
 
 const OutcomeSchema = Type.Union([
@@ -85,9 +94,10 @@ const RunSchema = closed({
       attempt: Type.Integer({ minimum: 1 }),
       sequence: sequence(),
       startedAt: timestamp(),
-      executor: optional(ExecutorSchema),
+      actor: optional(ActorSchema),
       endedAt: optional(timestamp()),
-      finishedBy: optional(ExecutorSchema),
+      finishedBy: optional(ActorSchema),
+      requestDigest: optional(Type.String({ pattern: '^[0-9a-f]{64}$' })),
       outcome: optional(OutcomeSchema),
     }),
     { maxItems: ATTEMPTS_MAX },

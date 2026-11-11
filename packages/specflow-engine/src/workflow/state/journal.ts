@@ -11,7 +11,7 @@ import { isValidTaskId, JOURNAL_BYTES_MAX } from '../limits';
  * published the journal is removed.
  */
 
-const JOURNAL_VERSION = 1;
+const JOURNAL_VERSION = 2;
 
 /** `expected`: sha256 of the text the write replaces, `null` when the file did not exist. */
 export type JournalWrite = { readonly text: string; readonly expected: string | null } & (

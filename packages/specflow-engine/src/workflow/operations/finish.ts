@@ -1,22 +1,35 @@
 import type { ContinuationDecision } from '../continuation/resolve';
+import { decide, findStep, type RunPosition } from '../core';
 import { WorkflowError } from '../errors';
-import { assertFinishInputShape } from '../input-schema';
-import { assertExecutorAllowed } from '../progression/executor';
-import { applyFinish, planFinish, type FinishInput } from '../progression/progression';
+import {
+  assertActorShape,
+  assertFinishInput,
+  assertFinishInputShape,
+  type FinishInput,
+} from '../input-schema';
 import {
   applyTaskDecisions,
   materializeTasks,
   type TaskDecision,
   type TaskProposal,
 } from '../tasks/tasks';
+import type { WorkflowActor, WorkflowSubject } from '../state/model';
+import { assertSameSession, finishDigest } from './actors';
 import {
-  activeAttempt,
-  type ExecutorRecord,
-  type RunPosition,
-  type WorkflowSubject,
-} from '../state/model';
-import { advance, applyEffects, settleWait, type AdvanceContext } from './advance';
-import { isoNow, loadSubject, type WorkflowDependencies } from './loaded-execution';
+  advance,
+  applyEffects,
+  continuationOf,
+  settleWait,
+  waitDecision,
+  type AdvanceContext,
+  type Decision,
+} from './advance';
+import {
+  isoNow,
+  loadSubject,
+  type LoadedSubject,
+  type WorkflowDependencies,
+} from './loaded-execution';
 import { ExecutionWorkingSet } from './working-set';
 
 export interface FinishStepInput {
@@ -37,10 +50,11 @@ export interface FinishStepInput {
     readonly taskDecisions?: readonly TaskDecision[];
   };
   /**
-   * Who finished, from trusted Runtime/CLI context (never an agent-supplied value). Its kind must be
-   * the step's, and an agent attempt started in a Session is finished by that Session only.
+   * Who finished, from trusted Runtime/CLI context (never an agent-supplied value). Its class must be
+   * one the step allows and the class of the attempt's actor (a person never finishes an agent's
+   * attempt), and an agent attempt started in a Session is finished by that Session only.
    */
-  readonly executor: ExecutorRecord;
+  readonly actor: WorkflowActor;
 }
 
 export interface FinishStepResult {
@@ -48,6 +62,7 @@ export interface FinishStepResult {
   readonly transition: string;
   readonly position: RunPosition;
   readonly continuation: ContinuationDecision;
+  /** The Tasks the finish drafted (created or revised). */
   readonly createdTasks: readonly string[];
   /**
    * After a Task's finish, what the Specification needs: what it does next when the
@@ -55,6 +70,11 @@ export interface FinishStepResult {
    * `task-escalated` (listing every escalated Task).
    */
   readonly specification?: ContinuationDecision;
+  /**
+   * The request repeated the subject's last finish (same attempt, input and actor), for example after
+   * a lost response: nothing changed, and the result is read from the recorded state.
+   */
+  readonly replayed?: true;
 }
 
 /**
@@ -68,6 +88,9 @@ export interface FinishStepResult {
  * that would enter a wait step while a Task is `draft` or escalated is refused (`advance`), and so is
  * one that would end the run `terminal completed` while a Task is broken (`executionTasks`). A Task
  * that is not `ready` after its finish gets no continuation (`none {on-hold}`) and no attention.
+ *
+ * The attempt records the digest of the request: repeating the same finish returns the recorded
+ * result without a change, and any other finish of that attempt is `WORKFLOW_ATTEMPT_MISMATCH`.
  */
 export function finishStep(
   dependencies: WorkflowDependencies,
@@ -78,16 +101,57 @@ export function finishStep(
     const { subject } = request;
     const snapshot = await dependencies.store.read(subject.specId);
     const loaded = loadSubject(dependencies.catalogue, snapshot, subject);
-    const plan = planFinish(loaded.run, loaded.definition, request, request.input);
-    assertExecutorAllowed(plan.step, request.executor, activeAttempt(loaded.run));
+    assertFinishInput(request.input);
+    assertActorShape(request.actor);
+    // Only the active attempt has a Session to match; a finish of an ended attempt is a retry (or
+    // a stale request) that the coordinator decides by its digest and actor.
+    const position = loaded.run.position;
+    if (
+      position.state === 'active' &&
+      position.step === request.step &&
+      position.attempt === request.attempt
+    ) {
+      assertSameSession(loaded.run, request.actor);
+    }
 
-    const produces = plan.step.produces === 'tasks';
+    const context: AdvanceContext = {
+      set: new ExecutionWorkingSet(snapshot, dependencies.catalogue),
+      catalogue: dependencies.catalogue,
+      at: isoNow(dependencies),
+    };
+    const decision = decide(loaded.definition, loaded.run, {
+      kind: 'finish',
+      at: context.at,
+      step: request.step,
+      attempt: request.attempt,
+      actor: request.actor,
+      ...(request.input.result !== undefined ? { result: request.input.result } : {}),
+      ...(request.input.feedback !== undefined ? { feedback: request.input.feedback } : {}),
+      ...(request.input.artifacts !== undefined ? { artifacts: request.input.artifacts } : {}),
+      requestDigest: finishDigest(request),
+    });
+    if (decision.replayed) {
+      // The read showed the finish through a pending journal when its publication crashed: an
+      // empty change publishes that journal, so the retry leaves the files complete.
+      await dependencies.store.apply(subject.specId, { tasks: [] });
+
+      return replayedFinish(context, loaded, decision);
+    }
+
+    const [taken] = decision.declaredEffects;
+    const step = findStep(loaded.definition, request.step);
+    if (taken?.source !== 'transition' || step?.kind !== 'work') {
+      throw new WorkflowError('WORKFLOW_STATE_CORRUPT', 'A finish took no transition.');
+    }
+
+    const transition = taken.transition;
+    const produces = step.annotations.produces === 'tasks';
     if (produces !== (request.input.tasks !== undefined)) {
       throw new WorkflowError(
         'WORKFLOW_INPUT_INVALID',
         produces
-          ? `The step "${plan.step.id}" finishes with the list of Tasks it produced.`
-          : `The step "${plan.step.id}" does not produce Tasks.`,
+          ? `The step "${step.id}" finishes with the list of Tasks it produced.`
+          : `The step "${step.id}" does not produce Tasks.`,
       );
     }
 
@@ -98,17 +162,12 @@ export function finishStep(
       );
     }
 
-    const context: AdvanceContext = {
-      set: new ExecutionWorkingSet(snapshot, dependencies.catalogue),
-      catalogue: dependencies.catalogue,
-      at: isoNow(dependencies),
-    };
     // A Specification completes only with every Task intact: a broken Task's work is not known.
     const broken = context.set.brokenTasks();
     if (
       subject.kind === 'specification' &&
-      plan.next.state === 'terminal' &&
-      plan.next.outcome === 'completed' &&
+      transition.target.kind === 'terminal' &&
+      transition.target.outcome === 'completed' &&
       broken.length > 0
     ) {
       throw new WorkflowError(
@@ -117,11 +176,8 @@ export function finishStep(
       );
     }
 
-    context.set.setRun(
-      subject,
-      applyFinish(loaded.run, plan, request.input, context.at, request.executor),
-    );
-    const createdTasks = produces ? draftTasks(context, request, plan.attempt) : [];
+    context.set.setRun(subject, decision.nextRun);
+    const createdTasks = produces ? draftTasks(context, request) : [];
     for (const task of applyTaskDecisions(
       context.set.tasks(),
       request.input.taskDecisions ?? [],
@@ -130,8 +186,8 @@ export function finishStep(
       context.set.setTask(task);
     }
 
-    applyEffects(context, plan.transition.effects);
-    if (subject.kind === 'task' && plan.transition.escalate) {
+    applyEffects(context, decision.declaredEffects);
+    if (subject.kind === 'task' && transition.annotations.escalate) {
       const feedback = request.input.feedback?.trim();
       context.set.setTask({
         ...context.set.task(subject.taskId),
@@ -146,17 +202,17 @@ export function finishStep(
 
     const held =
       subject.kind === 'task' &&
-      plan.next.state !== 'terminal' &&
+      transition.target.kind !== 'terminal' &&
       context.set.task(subject.taskId).status !== 'ready';
     const continuation: ContinuationDecision = held
       ? { kind: 'none', reason: 'on-hold' }
-      : advance(context, subject, loaded.definition);
+      : advance(context, subject, loaded.definition, decision.intent);
     const specification = subject.kind === 'task' ? settleWait(context) : undefined;
     await dependencies.store.apply(subject.specId, context.set.change());
 
     return {
       subject,
-      transition: plan.transition.id,
+      transition: transition.id,
       position: context.set.run(subject).position,
       continuation,
       createdTasks,
@@ -165,11 +221,47 @@ export function finishStep(
   });
 }
 
-function draftTasks(
+/**
+ * The result of a repeated finish, read from the state as it is now (the Engine may have settled
+ * the wait the finish entered since): nothing is planned.
+ */
+function replayedFinish(
   context: AdvanceContext,
-  request: FinishStepInput,
-  attempt: number,
-): readonly string[] {
+  loaded: LoadedSubject,
+  decision: Decision,
+): FinishStepResult {
+  const { subject, definition } = loaded;
+  const finished = decision.finished;
+  if (finished?.outcome?.kind !== 'transition') {
+    throw new WorkflowError('WORKFLOW_STATE_CORRUPT', 'A repeated finish names no transition.');
+  }
+
+  const run = decision.nextRun;
+  const task = subject.kind === 'task' ? context.set.task(subject.taskId) : undefined;
+  const continuation: ContinuationDecision =
+    decision.intent.kind === 'await-event'
+      ? waitDecision(decision.intent.step, context.set.tasks(), context.set.brokenTasks())
+      : task && run.position.state !== 'terminal' && task.status !== 'ready'
+        ? { kind: 'none', reason: 'on-hold' }
+        : continuationOf(run, definition, context.catalogue);
+
+  return {
+    subject,
+    transition: finished.outcome.transition,
+    position: run.position,
+    continuation,
+    createdTasks: context.set
+      .tasks()
+      .filter(
+        (candidate) =>
+          candidate.origin.step === finished.step && candidate.origin.attempt === finished.attempt,
+      )
+      .map((candidate) => candidate.taskId),
+    replayed: true,
+  };
+}
+
+function draftTasks(context: AdvanceContext, request: FinishStepInput): readonly string[] {
   const specification = context.set.specification();
   const drafted = materializeTasks({
     specId: specification.specId,
@@ -178,7 +270,7 @@ function draftTasks(
     allowedTypes: specification.taskTypes,
     taskType: (id) => context.catalogue.taskType(id),
     workflow: (id) => context.catalogue.workflow(id),
-    origin: { step: request.step, attempt },
+    origin: { step: request.step, attempt: request.attempt },
     at: context.at,
   });
   for (const task of drafted.changed) {

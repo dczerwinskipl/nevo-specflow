@@ -14,9 +14,9 @@ export {
   WORKFLOW_KIND,
   type AgentArchetype,
   type AgentArchetypeProvider,
+  type SpecFlowAnnotations,
   type TaskType,
-  type TransitionTarget,
-  type WaitForTasksStep,
+  type WaitStep,
   type WorkStep,
   type WorkflowDefinition,
   type WorkflowReturn,
@@ -59,7 +59,7 @@ export {
   type SetTaskStatusInput,
   type SetTaskStatusResult,
 } from './operations/task-status';
-export type { FinishInput, Handoff } from './progression/progression';
+export type { FinishInput } from './input-schema';
 export {
   EXECUTION_DIRECTORY,
   createFilesystemWorkflowStore,
@@ -67,18 +67,27 @@ export {
 } from './state/filesystem-store';
 export { TASK_STATUSES } from './state/model';
 export type {
-  AttemptOutcome,
+  AgentActor,
   AttemptRecord,
-  ExecutorRecord,
-  ReturnRecord,
-  RunPosition,
+  OwnerActor,
   SpecificationExecutionRecord,
   TaskRecord,
   TaskStatus,
   TaskStatusChange,
-  WorkflowPin,
+  WorkflowActor,
   WorkflowRun,
   WorkflowSubject,
 } from './state/model';
 export type { ExecutionChange, ExecutionSnapshot, Versioned, WorkflowStore } from './state/store';
 export type { TaskDecision, TaskDecisionStatus, TaskProposal, TaskReadiness } from './tasks/tasks';
+// The neutral core's run model, as SpecFlow stores and returns it.
+export type {
+  AttemptOutcome,
+  ExecutorClass,
+  Handoff,
+  ReturnRecord,
+  RunPosition,
+  TerminalOutcome,
+  TransitionTarget,
+  WorkflowPin,
+} from './core';

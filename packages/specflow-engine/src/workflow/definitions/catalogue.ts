@@ -58,7 +58,7 @@ export function resolveSpecificationExecution(
   }
 
   const workflow = catalogue.workflow(binding.workflow);
-  if (workflow?.subject !== 'specification') {
+  if (workflow?.annotations.subject !== 'specification') {
     return {
       kind: 'problem',
       message: `The workflow "${binding.workflow}" of the Specification archetype "${archetypeId}" is not a valid Specification workflow.`,

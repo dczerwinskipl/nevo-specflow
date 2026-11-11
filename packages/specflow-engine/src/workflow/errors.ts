@@ -1,4 +1,4 @@
-import { WORKFLOW_CORE_ERROR_CODES, WorkflowError as CoreWorkflowError } from './core';
+import { WORKFLOW_CORE_ERROR_CODES, WorkflowError as CoreWorkflowError } from '@nevo/workflow';
 
 /**
  * Machine-readable workflow failures: the core's codes (thrown by the coordinator) and the ones the

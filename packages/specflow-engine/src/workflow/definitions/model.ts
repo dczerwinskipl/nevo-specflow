@@ -1,6 +1,6 @@
 import type { WorkflowEffect } from '@nevo/specflow-contracts/documents';
 
-import type * as core from '../core';
+import type * as core from '@nevo/workflow';
 
 /**
  * Resolved execution definitions: workflows, agent archetypes and task types, as the kind registry

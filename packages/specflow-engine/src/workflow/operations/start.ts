@@ -1,6 +1,6 @@
 import { ANY_TASK_TYPE } from '@nevo/specflow-contracts/documents';
 
-import { decide, findStep, newRun } from '../core';
+import { decide, findStep, newRun } from '@nevo/workflow';
 import { resolveSpecificationExecution } from '../definitions/catalogue';
 import { WorkflowError } from '../errors';
 import { isTaskClosed, taskReadiness } from '../tasks/tasks';

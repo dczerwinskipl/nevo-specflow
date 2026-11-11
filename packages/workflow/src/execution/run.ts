@@ -3,8 +3,8 @@ import type {
   HostAnnotations,
   TerminalOutcome,
   WorkflowDefinition,
-} from './definition';
-import { pinOf, type WorkflowPin } from './revision';
+} from '../definitions/definition';
+import { pinOf, type WorkflowPin } from '../definitions/revision';
 
 /**
  * One run of a definition: its pin, its position and its history. Only these are stored; anything a

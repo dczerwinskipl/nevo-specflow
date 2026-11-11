@@ -9,8 +9,8 @@ import {
   type WorkflowStep,
   type WorkflowTransition,
   type WorkStep,
-} from './definition';
-import { WorkflowError } from './errors';
+} from '../definitions/definition';
+import { WorkflowError } from '../errors';
 import { assertPositionJustified, lastArrival, positionAfter } from './replay';
 import {
   activeAttempt,
@@ -22,7 +22,7 @@ import {
   type AttemptRecord,
   type WorkflowRun,
 } from './run';
-import { assertPinned } from './revision';
+import { assertPinned } from '../definitions/revision';
 
 /**
  * The deterministic coordinator of one run: given the pinned definition, the run and a command, it

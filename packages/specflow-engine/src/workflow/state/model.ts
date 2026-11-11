@@ -1,4 +1,4 @@
-import type * as core from '../core';
+import type * as core from '@nevo/workflow';
 import type { TaskTypes } from '../definitions/model';
 import { WorkflowError } from '../errors';
 

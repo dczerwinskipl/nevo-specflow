@@ -74,29 +74,20 @@ export const aiSemanticSearchBoundaries = [
 
 /**
  * `workflow`: the product-neutral workflow kernel (ADR 0012). It is a pure decision library over
- * values: no other workspace package (so no SpecFlow package and no Engine path), no file system,
- * network, process or path module, and no UI, HTTP or CLI framework. Hosts persist what it returns.
+ * values, so its imports are an allowlist: its own relative modules, `node:crypto` (revision hash),
+ * `node:util` (deep equality) and, in tests, `vitest`. Everything else (workspace packages, the
+ * file system, network, process, UI/HTTP/CLI frameworks) is refused. Hosts persist what it returns.
  */
 export const workflowBoundaries = [
   restrict([
     {
-      regex: '^@nevo/',
+      regex: String.raw`^(?!\.{1,2}(?:/|$))(?!node:(?:crypto|util)$)(?!vitest$)`,
       message:
-        'The workflow kernel is product-neutral and must not depend on any other workspace package, SpecFlow packages included.',
+        'The workflow kernel is pure: it may import only its own modules, node:crypto and node:util (and vitest in tests).',
     },
     {
       regex: String.raw`^(?:\.\./){2,}`,
       message: 'The workflow kernel must not reach outside its package by relative path.',
-    },
-    {
-      regex:
-        '^(?:node:)?(?:fs|fs/promises|http|https|http2|net|tls|dgram|dns|child_process|cluster|worker_threads|os|path|readline|stream)(?:/|$)',
-      message:
-        'The workflow kernel is pure: it uses no file system, network, process or path module; hosts persist its values.',
-    },
-    {
-      regex: '^(?:react(?:-dom)?|@fastify/.+|fastify|commander)(?:/|$)',
-      message: 'The workflow kernel must not depend on UI, HTTP server or CLI frameworks.',
     },
   ]),
 ];

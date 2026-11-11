@@ -51,20 +51,29 @@ plan.
 
 ## Retrieval eval
 
-`pnpm docs:eval` runs every question of [`eval/questions.yaml`](eval/questions.yaml) (25–30
-realistic agent questions in English and Polish, each with the 1–3 document ids a good answer must
-return) through the same `search` as `pnpm docs:search`, with this repository's configuration and
-local index, the top 10 documents per question and no embedding (`--no-refresh`). It prints each
-question's Recall@5, Recall@10, the rank of its first expected document and what is missing, then
-the means: Recall@5, Recall@10, MRR (mean of 1 / rank of the first expected document in the top
-10, 0 when none), the number of non-authoritative documents in all top-10 lists (the default
-search excludes them, so this only checks the filter: expected 0) and, from a second search per
-question with them included, how many non-authoritative documents rank above the first expected
-document (how much they would compete if included). Expected ids must be active, authoritative
-documents.
-A question answered lexically is flagged; build the index first (`pnpm docs:semantic index`).
-`--json` emits the full report, `--questions <file>` another set. It is a manual measurement for
-chunking and ranking changes, not a CI check: results depend on the local embedding model.
+`pnpm docs:eval` runs every question of [`eval/questions.yaml`](eval/questions.yaml) (about 30
+realistic agent questions in English and Polish, marked by `lang`, each with the 1–3 document ids a
+good answer must return, plus a few questions the documentation does not answer, with
+`expected: []`) through three variants, with this repository's configuration and local index, the
+top 10 documents per question and no document embedding (`--no-refresh`):
+
+- `find`: the frontmatter-only lexical ranking of `docs context` (discovery before `search`);
+- `lexical`: `docs search` without vectors (BM25 over sections fused with the frontmatter ranking);
+- `hybrid`: `docs search` as it answers (BM25 and vectors fused, then with the frontmatter).
+
+It prints per question the rank of the first expected document in each variant and the cosine
+similarity of the best stored section to the question (straight from the vector store, a
+diagnostic: a search always returns its best candidates, so the similarity of a question nothing
+answers shows how far apart the two cases are, if at all), then per variant and per language
+(all, `en`, `pl`) Recall@5, Recall@10 and MRR (mean of 1 / rank of the first expected document in
+the top 10, 0 when none) over the answerable questions. Finally it counts the non-authoritative
+documents in the hybrid top-10 lists (the default search excludes them, so this only checks the
+filter: expected 0) and, from a second hybrid search per question with them included, how many rank
+above the first expected document (how much they would compete if included). Expected ids must be
+active, authoritative documents. Questions answered lexically in the hybrid variant are flagged;
+build the index first (`pnpm docs:semantic index`). `--json` emits the full report,
+`--questions <file>` another set. It is a manual measurement for chunking and ranking changes, not
+a CI check: results depend on the local embedding model.
 
 ## Layout
 

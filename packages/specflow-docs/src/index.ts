@@ -8,6 +8,7 @@ export { DEFAULT_DOCS_SETTINGS } from './config/docs-settings';
 export { parseDocsConfiguration, type DocsConfiguration } from './config/docs-configuration';
 export { loadDocsSettings } from './config/load-docs-settings';
 export { initDocs } from './init/docs-init';
+export { getContext, type ContextEntry } from './discovery/documents';
 export {
   inspectCorpus,
   openFileSystemCorpus,

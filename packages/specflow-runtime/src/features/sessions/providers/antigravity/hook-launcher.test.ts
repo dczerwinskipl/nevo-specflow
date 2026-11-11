@@ -8,7 +8,8 @@ import { createInvocationScope, launchOwnedProcess, projectProviderEnvironment }
 import { antigravityHooks } from './hook-launcher';
 import { createDiagnosticStore } from '../process/diagnostics';
 
-const launchDeadlineMs = 10000;
+// cmd.exe -> PowerShell -> node: a cold PowerShell start on a loaded Windows runner can pass 10 s.
+const launchDeadlineMs = 30000;
 const settlementBudgetMs = 5000;
 
 function hookScript(command: string) {

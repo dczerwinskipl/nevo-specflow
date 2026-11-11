@@ -305,6 +305,34 @@
       ]
     },
     {
+      "id": "ideas.semantic-docs",
+      "type": "hub",
+      "title": "Semantic documentation search follow-ups",
+      "status": "draft",
+      "file": "docs/ideas/semantic-docs/README.md",
+      "read_when": [
+        "planning work on docs search, the semantic index or @nevo/ai-semantic-search beyond what is implemented",
+        "looking for the open items left by the semantic documentation search PR (#138)"
+      ],
+      "summary": "Non-authoritative backlog of what the semantic documentation search (PR #138) deliberately left open: search quality and scale, other corpora and UI surfaces, setup and endpoint gaps, package splits and eval tracking. Each item names the current authoritative document and what is missing.",
+      "related": [
+        "adr.0020-documentation-discovery-is-a-product-capability",
+        "adr.0021-product-neutral-ai-semantic-search-engine",
+        "reference.cli.nevo-specflow-docs",
+        "reference.configuration.documentation-and-embeddings"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "docs",
+        "ai"
+      ],
+      "tags": [
+        "semantic-search",
+        "embeddings",
+        "follow-ups"
+      ]
+    },
+    {
       "id": "ideas.specflow-engine",
       "type": "hub",
       "title": "Open SpecFlow Engine proposals",
@@ -2605,6 +2633,70 @@
         "server",
         "ui",
         "security"
+      ]
+    },
+    {
+      "id": "ideas.semantic-docs.search-quality",
+      "type": "engineering",
+      "title": "Semantic docs search — quality and scale follow-ups",
+      "status": "draft",
+      "file": "docs/ideas/semantic-docs/search-quality.md",
+      "read_when": [
+        "improving docs search ranking, excerpts or scale",
+        "deciding whether docs search can say that nothing answers a question",
+        "extending the repository retrieval eval"
+      ],
+      "summary": "Proposals for docs search quality and scale: a BM25 inverted index for large corpora, better excerpts for semantic-only matches, no-answer detection (blocked: similarity ranges overlap), partial vector ranking during a full rebuild, and eval tracking. Measurements from PR #138.",
+      "related": [
+        "ideas.semantic-docs",
+        "adr.0021-product-neutral-ai-semantic-search-engine",
+        "reference.cli.nevo-specflow-docs"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "docs",
+        "ai"
+      ],
+      "tags": [
+        "semantic-search",
+        "bm25",
+        "excerpts",
+        "eval"
+      ]
+    },
+    {
+      "id": "ideas.semantic-docs.surfaces-and-setup",
+      "type": "engineering",
+      "title": "Semantic docs search — surfaces, corpora and setup follow-ups",
+      "status": "draft",
+      "file": "docs/ideas/semantic-docs/surfaces-and-setup.md",
+      "read_when": [
+        "planning a contextual help or related-documents surface in the UI",
+        "indexing another corpus (Specification documents, code) with @nevo/ai-semantic-search",
+        "enabling semantic search in an initialized project, or supporting another embedding endpoint",
+        "splitting model adapters or agent drivers into separate packages"
+      ],
+      "summary": "Proposals beyond PR #138: contextual help and live updates in the UI, other corpora through the chunk-source port, assisted enabling of semantic search in an initialized project, endpoints that need a query string or an api-key header, the status probe on client close, and the @nevo/ai-models and @nevo/ai-agents splits.",
+      "related": [
+        "ideas.semantic-docs",
+        "adr.0020-documentation-discovery-is-a-product-capability",
+        "adr.0021-product-neutral-ai-semantic-search-engine",
+        "reference.api.docs-search",
+        "reference.configuration.documentation-and-embeddings"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "docs",
+        "ai",
+        "ui",
+        "runtime",
+        "configuration"
+      ],
+      "tags": [
+        "semantic-search",
+        "help",
+        "corpora",
+        "embeddings"
       ]
     },
     {

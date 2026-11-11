@@ -25,6 +25,13 @@ export interface FakeEmbeddingProvider extends EmbeddingProvider {
 export interface FakeEmbeddingOptions {
   readonly model?: string;
   readonly dimensions?: number;
+  /** `EmbeddingProvider.space`; default `fake`. */
+  readonly space?: string;
+  /**
+   * Mixed into every token hash: another seed gives other vectors under the same model and space,
+   * like a model whose weights changed under the same name.
+   */
+  readonly seed?: number;
 }
 
 /**
@@ -35,6 +42,7 @@ export function createFakeEmbeddingProvider(
   options: FakeEmbeddingOptions = {},
 ): FakeEmbeddingProvider {
   const dimensions = options.dimensions ?? 32;
+  const seed = options.seed ?? 0;
   const calls: FakeEmbeddingCall[] = [];
   let failure: EmbeddingFailure | undefined;
 
@@ -44,13 +52,14 @@ export function createFakeEmbeddingProvider(
     return Promise.resolve(
       failure
         ? { ok: false, failure }
-        : { ok: true, vectors: texts.map((text) => hashedVector(text, dimensions)) },
+        : { ok: true, vectors: texts.map((text) => hashedVector(text, dimensions, seed)) },
     );
   };
 
   return {
     protocol: FAKE_EMBEDDING_PROTOCOL,
     model: options.model ?? 'fake-embedding',
+    space: options.space ?? 'fake',
     dimensions,
     calls,
     failWith(next) {
@@ -67,10 +76,10 @@ export function createFakeEmbeddingProvider(
   };
 }
 
-function hashedVector(text: string, dimensions: number): Float32Array {
+function hashedVector(text: string, dimensions: number, seed: number): Float32Array {
   const vector = new Float32Array(dimensions);
   for (const token of tokenize(text)) {
-    const hash = fnv1a(token);
+    const hash = fnv1a(seed === 0 ? token : `${seed}:${token}`);
     vector[hash % dimensions]! += (hash & 0x8000_0000) === 0 ? 1 : -1;
   }
 

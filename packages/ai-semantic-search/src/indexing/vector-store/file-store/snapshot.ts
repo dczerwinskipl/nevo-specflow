@@ -98,6 +98,7 @@ export async function readSnapshot(
     identity: stored.identity,
     generation: stored.generation,
     chunks: new Map(stored.chunks.map((chunk) => [chunk.id, chunk.contentHash])),
+    ...(stored.probe ? { probe: Float32Array.from(stored.probe) } : {}),
   };
 
   return { status: 'ok', snapshot: { key: top.key, manifest, candidates } };

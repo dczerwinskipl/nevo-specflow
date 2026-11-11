@@ -1,6 +1,11 @@
 import type { Chunk } from '../../chunking/chunk';
 import { CHUNKER_VERSION } from '../../chunking/markdown-chunker';
-import type { EmbeddingFailure, EmbeddingProvider } from '../../embeddings/embedding-provider';
+import {
+  PROBE_TEXT,
+  type EmbeddingFailure,
+  type EmbeddingProvider,
+} from '../../embeddings/embedding-provider';
+import { cosineSimilarity } from '../vector-store/vector-math';
 import {
   type IndexIdentity,
   type IndexManifest,
@@ -16,6 +21,13 @@ import { planRefresh, type RefreshPlan } from './plan-refresh';
  * lands in several writes, so an interruption or a failed request loses at most one slice.
  */
 export const REFRESH_COMMIT_CHUNKS = 128;
+
+/**
+ * Lowest cosine similarity between the stored and a fresh probe vector of one model: the same
+ * weights reproduce the vector up to floating-point noise (cosine of about 1), while other weights
+ * under the same name and space land clearly below it.
+ */
+export const PROBE_MIN_SIMILARITY = 0.999;
 
 /**
  * Reported by a refresh that embeds: once with `embedded: 0` when the plan is made under the lock,
@@ -38,6 +50,13 @@ export interface RefreshRequest {
    * answers `over-limit` without embedding. Unbounded when omitted.
    */
   readonly maxEmbed?: number;
+  /**
+   * Check that the endpoint still produces the stored index's vectors: embed `PROBE_TEXT` (one
+   * request) and compare it with the probe the index recorded; a similarity below
+   * `PROBE_MIN_SIMILARITY` rebuilds the index, and an index without a probe records it. For full
+   * refreshes (explicit, background, Runtime), not for a search's bounded refresh.
+   */
+  readonly verifySpace?: boolean;
   readonly onProgress?: (progress: RefreshProgress) => void;
 }
 
@@ -78,7 +97,8 @@ export type RefreshOutcome =
  * planned chunks, in slices of `commitChunks` (reporting `onProgress` before the first and after
  * each): each slice is applied as soon as it is embedded, with the generation of the previous write
  * as the compare-and-swap base (the first write carries the deletes and, for a rebuild, the reset).
- * Only a contract violation throws.
+ * With `verifySpace`, the probe replaces the dimension probe, a changed probe turns the plan into a
+ * rebuild, and the first write records the probe. Only a contract violation throws.
  */
 export async function refreshIndex(request: RefreshRequest): Promise<RefreshOutcome> {
   const { chunks, provider, store, onProgress } = request;
@@ -100,18 +120,32 @@ export async function refreshIndex(request: RefreshRequest): Promise<RefreshOutc
   // The endpoint's real dimension before the plan: a provider without configured dimensions can change it
   // under the same model name, and an index of the old dimension is then not current at all.
   let dimensions = provider.dimensions;
-  if (dimensions === undefined) {
-    const probe = await provider.probe();
-    if (!probe.ok) {
-      return { status: 'embedding-failed', failure: probe.failure };
+  let probe: Float32Array | undefined;
+  if (request.verifySpace) {
+    const embedded = await provider.embed([PROBE_TEXT], 'document');
+    if (!embedded.ok) {
+      return { status: 'embedding-failed', failure: embedded.failure };
     }
 
-    dimensions = probe.dimensions;
+    probe = embedded.vectors[0]!;
+    dimensions ??= probe.length;
+  } else if (dimensions === undefined) {
+    const probed = await provider.probe();
+    if (!probed.ok) {
+      return { status: 'embedding-failed', failure: probed.failure };
+    }
+
+    dimensions = probed.dimensions;
   }
 
   const identity = identityFor(provider, dimensions);
+  const planFor = (manifest: IndexManifest | undefined) =>
+    planRefresh(chunks, identity, probe && probeChanged(manifest, probe) ? undefined : manifest);
+  // An index without a recorded probe is current only once the probe is written.
+  const settled = (manifest: IndexManifest, plan: RefreshPlan) =>
+    isCurrent(plan) && (probe === undefined || manifest.probe !== undefined);
   const unlockedManifest = manifestOf(unlocked);
-  if (unlockedManifest && isCurrent(planRefresh(chunks, identity, unlockedManifest))) {
+  if (unlockedManifest && settled(unlockedManifest, planFor(unlockedManifest))) {
     return { status: 'current', generation: unlockedManifest.generation };
   }
 
@@ -127,8 +161,8 @@ export async function refreshIndex(request: RefreshRequest): Promise<RefreshOutc
     }
 
     const manifest = manifestOf(locked);
-    const plan = planRefresh(chunks, identity, manifest);
-    if (manifest && isCurrent(plan)) {
+    const plan = planFor(manifest);
+    if (manifest && settled(manifest, plan)) {
       return { status: 'current', generation: manifest.generation };
     }
 
@@ -181,6 +215,7 @@ export async function refreshIndex(request: RefreshRequest): Promise<RefreshOutc
           vector: vectors[index]!,
         })),
         delete: first ? plan.delete : [],
+        ...(first && probe ? { probe } : {}),
       });
 
       // Under the lock only a writer that broke the lock protocol can have moved the store on.
@@ -218,8 +253,19 @@ function identityFor(provider: EmbeddingProvider, dimensions: number): IndexIden
     chunkerVersion: CHUNKER_VERSION,
     protocol: provider.protocol,
     model: provider.model,
+    space: provider.space,
     dimensions,
   };
+}
+
+/** A stored probe the fresh one does not reproduce (another dimension, or below the bound). */
+function probeChanged(manifest: IndexManifest | undefined, probe: Float32Array): boolean {
+  const stored = manifest?.probe;
+
+  return (
+    stored !== undefined &&
+    (stored.length !== probe.length || cosineSimilarity(stored, probe) < PROBE_MIN_SIMILARITY)
+  );
 }
 
 function manifestOf(outcome: Exclude<ManifestOutcome, StoreUnreadable>): IndexManifest | undefined {

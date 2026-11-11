@@ -54,6 +54,7 @@ async function indexedStore(
     chunkerVersion: CHUNKER_VERSION,
     protocol: provider.protocol,
     model: provider.model,
+    space: provider.space,
     dimensions: provider.dimensions!,
   };
   await write(store, {
@@ -224,7 +225,13 @@ describe('createSearchEngine', () => {
 });
 
 describe('in-memory vector store contract', () => {
-  const identity: IndexIdentity = { chunkerVersion: 1, protocol: 'p', model: 'm', dimensions: 2 };
+  const identity: IndexIdentity = {
+    chunkerVersion: 1,
+    protocol: 'p',
+    model: 'm',
+    space: 's',
+    dimensions: 2,
+  };
   const entry = (chunkId: string, vector: number[]) => ({
     chunkId,
     contentHash: chunkId,

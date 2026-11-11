@@ -18,7 +18,7 @@ export interface SearchReason {
 export const SEARCH_REASON = {
   /** The store holds no index yet. */
   indexMissing: 'index-missing',
-  /** The stored index was built with another chunker version, protocol, model or dimension. */
+  /** The stored index was built with another chunker version, protocol, model, space or dimension. */
   indexMismatch: 'index-mismatch',
   /** The store could not be read (for example a locked or damaged index). */
   indexUnreadable: 'index-unreadable',
@@ -151,6 +151,7 @@ async function rankByVectors(
     chunkerVersion: CHUNKER_VERSION,
     protocol: vectors.provider.protocol,
     model: vectors.provider.model,
+    space: vectors.provider.space,
     dimensions: vector.length,
   };
   const outcome = await vectors.store.query({
@@ -194,7 +195,7 @@ async function rankByVectors(
 }
 
 function describeMismatch(stored: IndexIdentity, expected: IndexIdentity): string {
-  for (const field of ['chunkerVersion', 'protocol', 'model', 'dimensions'] as const) {
+  for (const field of ['chunkerVersion', 'protocol', 'model', 'space', 'dimensions'] as const) {
     if (stored[field] !== expected[field]) {
       return `The index was built with ${field} ${String(stored[field])}; the current value is ${String(expected[field])}.`;
     }

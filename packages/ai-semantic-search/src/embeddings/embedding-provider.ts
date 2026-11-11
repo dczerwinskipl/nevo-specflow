@@ -29,6 +29,13 @@ export interface EmbeddingProvider {
   /** Protocol discriminator of the adapter (part of the index identity). */
   readonly protocol: string;
   readonly model: string;
+  /**
+   * The embedding space the vectors belong to (part of the index identity): vectors of providers
+   * with the same space are comparable. Adapters derive it from where the model is served and what
+   * it is called, unless the consumer declares one; a model whose weights change under the same
+   * name and space is caught by the refresh's probe comparison, not by this name.
+   */
+  readonly space: string;
   /** Configured dimensions, when the consumer declared them; every returned vector must match. */
   readonly dimensions: number | undefined;
   /** One vector per text, in input order. The query instruction applies to `query` only. */

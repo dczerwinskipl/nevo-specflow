@@ -3,7 +3,12 @@ import { join } from 'node:path';
 
 import { compareIds } from '../../../compare';
 import type { VectorCandidate } from '../vector-math';
-import { validateChange, type ApplyOutcome, type VectorStoreChange } from '../vector-store';
+import {
+  probeAfter,
+  validateChange,
+  type ApplyOutcome,
+  type VectorStoreChange,
+} from '../vector-store';
 import { removeQuietly, removeSuperseded } from './cleanup';
 import { generationFiles, generationKey } from './generation-files';
 import { writeFailed } from './io-errors';
@@ -67,10 +72,12 @@ export async function applyChange(
   }
 
   const key = generationKey(owner.epoch, generation);
+  const probe = probeAfter(change, base?.manifest);
   const stored: StoredManifest = {
     schemaVersion: FILE_INDEX_SCHEMA_VERSION,
     generation,
     identity: change.identity,
+    ...(probe ? { probe: [...probe] } : {}),
     chunks: ordered.map((entry, offset) => ({
       id: entry.chunkId,
       contentHash: entry.contentHash,

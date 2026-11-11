@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import {
   PROBE_TEXT,
   type EmbeddingFailure,
@@ -24,6 +26,12 @@ export interface OpenAiCompatibleEmbeddingSettings {
   /** Base URL of the API, for example `http://127.0.0.1:11434/v1`; `/embeddings` is appended. */
   readonly baseUrl: string;
   readonly model: string;
+  /**
+   * Declared embedding space (`EmbeddingProvider.space`), for example to state that two servers
+   * serve the same weights. Default: a fingerprint of the protocol, the normalized base URL and the
+   * model, so another server or model is another space.
+   */
+  readonly spaceId?: string;
   /** Expected vector dimension; when set, any other observed dimension is an error. */
   readonly dimensions?: number;
   /** Bearer token value, already read by the consumer (for example from an environment variable). */
@@ -53,7 +61,11 @@ export function createOpenAiCompatibleEmbeddingProvider(
   settings: OpenAiCompatibleEmbeddingSettings,
   dependencies: OpenAiCompatibleEmbeddingDependencies = {},
 ): EmbeddingProvider {
-  const { href: endpointHref, display: endpoint } = embeddingsEndpoint(settings.baseUrl);
+  const {
+    href: endpointHref,
+    display: endpoint,
+    base: normalizedBaseUrl,
+  } = embeddingsEndpoint(settings.baseUrl);
   const batchSize = positiveInteger(
     'batchSize',
     settings.batchSize ?? DEFAULT_EMBEDDING_BATCH_SIZE,
@@ -156,6 +168,9 @@ export function createOpenAiCompatibleEmbeddingProvider(
   return {
     protocol: OPENAI_COMPATIBLE_PROTOCOL,
     model: settings.model,
+    space:
+      settings.spaceId ??
+      embeddingSpaceFingerprint(OPENAI_COMPATIBLE_PROTOCOL, normalizedBaseUrl, settings.model),
     dimensions: settings.dimensions,
     embed,
     async probe(): Promise<ProbeResult> {
@@ -216,9 +231,14 @@ function parseEmbeddings(body: unknown, expectedCount: number): EmbeddingResult 
 /**
  * `{baseUrl}/embeddings`, keeping a query string (for example Azure's `api-version`). Credentials in
  * the URL are rejected: fetch cannot send them and they would leak into messages. `display` (origin
- * and path only) is what failure messages show.
+ * and path only) is what failure messages show; `base` is the normalized base URL (lower-case
+ * scheme and host, default port dropped, no trailing slash, query kept) the space fingerprint uses.
  */
-function embeddingsEndpoint(baseUrl: string): { readonly href: string; readonly display: string } {
+function embeddingsEndpoint(baseUrl: string): {
+  readonly href: string;
+  readonly display: string;
+  readonly base: string;
+} {
   let url: URL;
   try {
     url = new URL(baseUrl);
@@ -236,9 +256,26 @@ function embeddingsEndpoint(baseUrl: string): { readonly href: string; readonly 
     );
   }
 
-  url.pathname = `${url.pathname.replace(/\/+$/u, '')}/embeddings`;
+  const path = url.pathname.replace(/\/+$/u, '');
+  const base = `${url.origin}${path}${url.search}`;
+  url.pathname = `${path}/embeddings`;
 
-  return { href: url.href, display: `${url.origin}${url.pathname}` };
+  return { href: url.href, display: `${url.origin}${url.pathname}`, base };
+}
+
+/**
+ * The default embedding space of an endpoint: `fp-` and the first 16 hex digits of the SHA-256 of
+ * protocol, normalized base URL and model. Moving the same model to another server is another
+ * space, so the index is rebuilt there, unless the consumer declares a `spaceId`.
+ */
+export function embeddingSpaceFingerprint(
+  protocol: string,
+  baseUrl: string,
+  model: string,
+): string {
+  const digest = createHash('sha256').update(`${protocol}\n${baseUrl}\n${model}`).digest('hex');
+
+  return `fp-${digest.slice(0, 16)}`;
 }
 
 function positiveInteger(name: string, value: number): number {

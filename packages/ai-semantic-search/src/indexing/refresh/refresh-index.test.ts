@@ -28,6 +28,37 @@ const base = [
 ];
 
 describe('refreshIndex', () => {
+  it('rebuilds for another embedding space or for changed weights under the same name', async () => {
+    const chunks = corpus(base);
+    const store = createInMemoryVectorStore();
+    const before = createFakeEmbeddingProvider();
+    // Without verification nothing is recorded; a verifying refresh records the probe, no re-embed.
+    await refreshIndex({ chunks, provider: before, store });
+    expect(
+      await refreshIndex({ chunks, provider: before, store, verifySpace: true }),
+    ).toMatchObject({ status: 'refreshed', rebuilt: false, embedded: 0 });
+    expect(await refreshIndex({ chunks, provider: before, store, verifySpace: true })).toEqual({
+      status: 'current',
+      generation: 2,
+    });
+
+    // The same model name and space with other weights: only the verifying refresh notices.
+    const retrained = createFakeEmbeddingProvider({ seed: 7 });
+    expect(await refreshIndex({ chunks, provider: retrained, store })).toMatchObject({
+      status: 'current',
+    });
+    expect(
+      await refreshIndex({ chunks, provider: retrained, store, verifySpace: true }),
+    ).toMatchObject({ status: 'refreshed', rebuilt: true, embedded: chunks.length });
+
+    // Another space (for example another server) is another identity: rebuilt by any refresh.
+    const moved = createFakeEmbeddingProvider({ seed: 7, space: 'other-server' });
+    expect(await refreshIndex({ chunks, provider: moved, store })).toMatchObject({
+      status: 'refreshed',
+      rebuilt: true,
+    });
+  });
+
   it('embeds every chunk once, then only new or changed chunks, and drops removed ones', async () => {
     const provider = createFakeEmbeddingProvider();
     const store = createInMemoryVectorStore();

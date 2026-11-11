@@ -199,6 +199,21 @@ describe('OpenAI-compatible embeddings adapter', () => {
     expect(await provider.probe()).toMatchObject({ ok: false, failure: { code: 'unreachable' } });
   });
 
+  it('derives the embedding space from the normalized base URL and model unless declared', () => {
+    const space = (url: string, model = 'm', spaceId?: string) =>
+      createOpenAiCompatibleEmbeddingProvider({
+        baseUrl: url,
+        model,
+        ...(spaceId === undefined ? {} : { spaceId }),
+      }).space;
+
+    expect(space('http://Ollama:80/v1/')).toBe(space('http://ollama/v1'));
+    expect(space('http://ollama/v1')).toMatch(/^fp-[0-9a-f]{16}$/u);
+    expect(space('http://other-host/v1')).not.toBe(space('http://ollama/v1'));
+    expect(space('http://ollama/v1', 'n')).not.toBe(space('http://ollama/v1'));
+    expect(space('http://ollama/v1', 'm', 'shared')).toBe(space('http://other/v1', 'm', 'shared'));
+  });
+
   it('rejects invalid settings at construction', () => {
     expect(() =>
       createOpenAiCompatibleEmbeddingProvider({ baseUrl: 'ftp://x', model: 'm' }),

@@ -3,6 +3,8 @@ export interface IndexIdentity {
   readonly chunkerVersion: number;
   readonly protocol: string;
   readonly model: string;
+  /** `EmbeddingProvider.space`. */
+  readonly space: string;
   readonly dimensions: number;
 }
 
@@ -12,6 +14,11 @@ export interface IndexManifest {
   readonly generation: number;
   /** Chunk id -> content hash of the chunk the stored vector was computed from. */
   readonly chunks: ReadonlyMap<string, string>;
+  /**
+   * The vector of `PROBE_TEXT` when the index was built (or last verified), so a refresh can tell a
+   * model whose weights changed under the same identity. Absent when not recorded.
+   */
+  readonly probe?: Float32Array;
 }
 
 export interface VectorEntry {
@@ -34,6 +41,8 @@ export interface VectorStoreChange {
   readonly reset: boolean;
   readonly upsert: readonly VectorEntry[];
   readonly delete: readonly string[];
+  /** Records `IndexManifest.probe`; without it a reset clears it and another change keeps it. */
+  readonly probe?: Float32Array;
 }
 
 /**
@@ -139,6 +148,12 @@ export function validateChange(change: VectorStoreChange, stored: IndexIdentity 
     }
   }
 
+  if (change.probe !== undefined && change.probe.length !== change.identity.dimensions) {
+    throw new RangeError(
+      `The probe vector has ${change.probe.length} dimensions; the index has ${change.identity.dimensions}.`,
+    );
+  }
+
   const upserted = new Set<string>();
   for (const entry of change.upsert) {
     if (entry.vector.length !== change.identity.dimensions) {
@@ -155,11 +170,20 @@ export function validateChange(change: VectorStoreChange, stored: IndexIdentity 
   }
 }
 
+/** The probe a change leaves in the manifest (`VectorStoreChange.probe`). */
+export function probeAfter(
+  change: VectorStoreChange,
+  base: IndexManifest | undefined,
+): Float32Array | undefined {
+  return change.probe ?? (change.reset ? undefined : base?.probe);
+}
+
 export function sameIdentity(a: IndexIdentity, b: IndexIdentity): boolean {
   return (
     a.chunkerVersion === b.chunkerVersion &&
     a.protocol === b.protocol &&
     a.model === b.model &&
+    a.space === b.space &&
     a.dimensions === b.dimensions
   );
 }

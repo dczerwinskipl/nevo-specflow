@@ -43,6 +43,7 @@ export {
   DEFAULT_EMBEDDING_TIMEOUT_MS,
   OPENAI_COMPATIBLE_PROTOCOL,
   createOpenAiCompatibleEmbeddingProvider,
+  embeddingSpaceFingerprint,
   type OpenAiCompatibleEmbeddingDependencies,
   type OpenAiCompatibleEmbeddingSettings,
 } from './embeddings/openai-compatible-embeddings';
@@ -58,6 +59,7 @@ export type {
 } from './indexing/vector-store/file-store/writer-lock';
 export { planRefresh, type RefreshPlan } from './indexing/refresh/plan-refresh';
 export {
+  PROBE_MIN_SIMILARITY,
   REFRESH_COMMIT_CHUNKS,
   refreshIndex,
   type RefreshOutcome,

@@ -1,5 +1,6 @@
 import { nearestNeighbours, type VectorCandidate } from './vector-math';
 import {
+  probeAfter,
   sameIdentity,
   validateChange,
   type ApplyOutcome,
@@ -57,7 +58,16 @@ export function createInMemoryVectorStore(): VectorStore {
     const chunks = new Map(
       [...vectors.values()].map((entry) => [entry.chunkId, entry.contentHash]),
     );
-    snapshot = { manifest: { identity: change.identity, generation, chunks }, vectors };
+    const probe = probeAfter(change, snapshot?.manifest);
+    snapshot = {
+      manifest: {
+        identity: change.identity,
+        generation,
+        chunks,
+        ...(probe ? { probe: Float32Array.from(probe) } : {}),
+      },
+      vectors,
+    };
 
     return Promise.resolve({ status: 'applied', generation });
   };

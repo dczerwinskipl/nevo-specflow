@@ -18,7 +18,13 @@ import {
 } from './file-vector-store';
 import { compareGenerations, parseGenerationFile } from './generation-files';
 
-const identity: IndexIdentity = { chunkerVersion: 1, protocol: 'p', model: 'm', dimensions: 2 };
+const identity: IndexIdentity = {
+  chunkerVersion: 1,
+  protocol: 'p',
+  model: 'm',
+  space: 's',
+  dimensions: 2,
+};
 const entry = (chunkId: string, vector: number[]) => ({
   chunkId,
   contentHash: `h-${chunkId}`,
@@ -81,6 +87,19 @@ async function latest(kind: string): Promise<string> {
 }
 
 describe('file vector store', () => {
+  it('keeps the recorded probe across changes until a reset without one', async () => {
+    const store = createFileVectorStore({ directory });
+    const probe = Float32Array.of(0.6, 0.8);
+    await write(store, change(undefined, { reset: true, upsert: [entry('a', [1, 0])], probe }));
+    await write(store, change(1, { upsert: [entry('b', [0, 1])] }));
+    const reread = await createFileVectorStore({ directory }).readManifest();
+    expect(reread.status === 'ok' && [...reread.manifest.probe!]).toEqual([...probe]);
+
+    await write(store, change(2, { reset: true, upsert: [entry('a', [1, 0])] }));
+    const reset = await createFileVectorStore({ directory }).readManifest();
+    expect(reset.status === 'ok' && reset.manifest.probe).toBeUndefined();
+  });
+
   it('writes pairs another instance reads while a reader holds the current manifest open', async () => {
     const store = createFileVectorStore({ directory });
     expect(await store.readManifest()).toEqual({ status: 'missing' });

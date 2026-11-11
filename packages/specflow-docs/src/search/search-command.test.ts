@@ -87,7 +87,7 @@ describe('docs search and semantic status', () => {
     ];
 
     expect(readAllCommand({ mode: 'hybrid', results }, 'pnpm docs:get')).toBe(
-      'pnpm docs:get --content arch cli keys; pnpm docs:get api --section api/routes --section api/errors',
+      'pnpm docs:get --content api#api/routes api#api/errors arch cli keys',
     );
   });
 

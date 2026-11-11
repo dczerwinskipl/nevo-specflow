@@ -1,98 +1,67 @@
 import type { Command } from 'commander';
 
-import { getDocumentContents, getDocuments, getDocumentSections } from './documents';
+import { getDocumentReads, getDocuments, SECTION_REFERENCE_SEPARATOR } from './documents';
 import { runDocsAction, type DocsCommandContext } from '../command/context';
 import type { OpenCorpus } from '../command/open-project';
 import { DocsUsageError } from '../errors';
 
 interface GetCliOptions {
   readonly content: boolean;
-  readonly section: string[];
   readonly json: boolean;
 }
-
-const collect = (value: string, previous: string[]): string[] => [...previous, value];
 
 export function addGetCommand(docs: Command, ctx: DocsCommandContext, open: OpenCorpus): void {
   const command = docs
     .command('get')
     .description('Resolve one or more exact active stable document ids')
-    .argument('<id...>', 'stable document ids')
-    .option(
-      '--content',
-      'also print the full Markdown of every document, in the given order',
-      false,
+    .argument(
+      '<ref...>',
+      'stable document ids; with --content also <id>#<sectionId> for one section of a document',
     )
     .option(
-      '--section <sectionId>',
-      'print only this section of the one given document, with its subsections (repeatable; ids as `search` reports them)',
-      collect,
-      [],
+      '--content',
+      'also print the Markdown of every reference in the given order: the whole document, or the section with its subsections',
+      false,
     )
     .option('--json', 'emit JSON on stdout', false);
 
-  command.action((ids: string[], opts: GetCliOptions) =>
+  command.action((refs: string[], opts: GetCliOptions) =>
     runDocsAction(command, async () => {
-      if (opts.section.length > 0) {
-        if (opts.content) {
-          throw new DocsUsageError('get: --section and --content cannot be combined');
-        }
-
-        if (ids.length !== 1) {
-          throw new DocsUsageError('get: --section reads sections of exactly one document id');
-        }
-
-        const document = getDocumentSections(await open(), ids[0]!, opts.section);
-        if (opts.json) {
-          ctx.stdout(JSON.stringify(document, null, 2));
-
-          return;
-        }
-
-        // The document delimiter line, then per section a delimiter with its heading path, id and
-        // line, then its Markdown; a blank line between sections.
-        ctx.stdout(
-          `===== ${document.id} — "${document.title}" [${document.status}]  ${document.file} =====`,
-        );
-        document.sections.forEach((section, index) => {
-          if (index > 0) {
-            ctx.stdout('');
-          }
-
-          ctx.stdout(
-            `----- ${section.headingPath.join(' > ') || '(top)'}  [${section.sectionId}, line ${String(section.line)}] -----`,
-          );
-          ctx.stdout(section.content);
-        });
-
-        return;
-      }
-
       const corpus = await open();
       if (opts.content) {
-        const documents = getDocumentContents(corpus, ids);
+        const reads = getDocumentReads(corpus, refs);
         if (opts.json) {
-          ctx.stdout(JSON.stringify(documents, null, 2));
+          ctx.stdout(JSON.stringify(reads, null, 2));
 
           return;
         }
 
-        // One delimiter line per document, then the whole file; a blank line between documents.
-        documents.forEach((document, index) => {
+        // One delimiter line per reference, then its Markdown; a blank line between references.
+        reads.forEach((read, index) => {
           if (index > 0) {
             ctx.stdout('');
           }
 
+          const { section } = read;
           ctx.stdout(
-            `===== ${document.id} — "${document.title}" [${document.status}]  ${document.file} =====`,
+            section === undefined
+              ? `===== ${read.id} — "${read.title}" [${read.status}]  ${read.file} =====`
+              : `===== ${read.id}${SECTION_REFERENCE_SEPARATOR}${section.sectionId} — "${read.title}" > ${section.headingPath.join(' > ') || '(before the first heading)'} [${read.status}]  ${read.file}:${String(section.line)} =====`,
           );
-          ctx.stdout(document.content.trimEnd());
+          ctx.stdout(read.content.trimEnd());
         });
 
         return;
       }
 
-      const entries = getDocuments(corpus, ids);
+      const sectionRefs = refs.filter((ref) => ref.includes(SECTION_REFERENCE_SEPARATOR));
+      if (sectionRefs.length > 0) {
+        throw new DocsUsageError(
+          `get: section references need --content: ${sectionRefs.join(', ')}`,
+        );
+      }
+
+      const entries = getDocuments(corpus, refs);
       if (opts.json) {
         ctx.stdout(JSON.stringify(entries, null, 2));
 

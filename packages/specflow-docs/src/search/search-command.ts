@@ -1,11 +1,8 @@
 import type { Command } from 'commander';
 
-import type {
-  DocsSearchHit,
-  DocsSearchResult,
-  DocsSearchSection,
-} from '@nevo/specflow-contracts/docs';
+import type { DocsSearchResult, DocsSearchSection } from '@nevo/specflow-contracts/docs';
 
+import { SECTION_REFERENCE_SEPARATOR } from '../discovery/documents';
 import { DocsUsageError } from '../errors';
 import { cutAtWord } from './result';
 import { openDocsSearch, searchDocumentation } from './search';
@@ -141,52 +138,38 @@ function printResult(ctx: DocsCommandContext, query: string, result: DocsSearchR
 }
 
 /**
- * One line that reads every result, commands separated by `; ` (bash and PowerShell alike): first
- * `<get> --content <ids...>` for the documents read whole, then `<get> <id> --section
- * <sectionId>...` for each `reference` document with matching sections, in result order.
- * Reference documents are large lookup tables (routes, options, configuration keys) whose matching
- * sections answer the question; other documents are meant to be read whole. `get --section`
- * includes subsections, so a matching section inside another matching one is not named again, and
- * a reference document whose matching sections include a top-level section (with its subsections
- * most or all of the document) is read whole too.
+ * One command that reads every result in rank order, validated as a whole by `get --content`
+ * (an unknown reference fails it before anything is printed): a `reference` document with matching
+ * sections as `<id>#<sectionId>` references, any other document whole. Reference documents are
+ * large lookup tables (routes, options, configuration keys) whose matching sections answer the
+ * question; other documents are meant to be read whole. A section is read with its subsections, so
+ * a matching section inside another matching one (its id starts with the other's id and `/`) is
+ * not named again, and a reference document with a matching top-level section (with its
+ * subsections most or all of the document) is read whole too.
  */
 export function readAllCommand(result: DocsSearchResult, getCommand: string): string {
-  const sections = new Map(
-    result.results.map((hit) => [
-      hit.id,
-      hit.type === 'reference' ? outermostSections(hit.sections) : [],
-    ]),
-  );
-  const bySection = (hit: DocsSearchHit) => {
-    const selected = sections.get(hit.id)!;
+  const refs = result.results.flatMap((hit) => {
+    const sections = hit.type === 'reference' ? outermostSections(hit.sections) : [];
+    const whole = sections.length === 0 || sections.some((section) => isTopLevel(section));
 
-    return selected.length > 0 && selected.every((section) => section.headingPath.length !== 1);
-  };
+    return whole
+      ? [hit.id]
+      : sections.map((section) => `${hit.id}${SECTION_REFERENCE_SEPARATOR}${section.sectionId}`);
+  });
 
-  const whole = result.results.filter((hit) => !bySection(hit)).map((hit) => hit.id);
-  const commands = [
-    ...(whole.length > 0 ? [`${getCommand} --content ${whole.join(' ')}`] : []),
-    ...result.results.filter(bySection).map(
-      (hit) =>
-        `${getCommand} ${hit.id} ${sections
-          .get(hit.id)!
-          .map((section) => `--section ${section.sectionId}`)
-          .join(' ')}`,
-    ),
-  ];
-
-  return commands.join('; ');
+  return `${getCommand} --content ${refs.join(' ')}`;
 }
 
-/** The sections not inside another of them (a longer heading path that starts with its path). */
+/** The sections not inside another of them. */
 function outermostSections(sections: readonly DocsSearchSection[]): DocsSearchSection[] {
-  const inside = (inner: DocsSearchSection, outer: DocsSearchSection) =>
-    inner.line > outer.line &&
-    outer.headingPath.length > 0 &&
-    inner.headingPath.length > outer.headingPath.length &&
-    outer.headingPath.every((heading, index) => inner.headingPath[index] === heading);
+  return sections.filter(
+    (section) => !sections.some((other) => section.sectionId.startsWith(`${other.sectionId}/`)),
+  );
+}
 
-  return sections.filter((section) => !sections.some((other) => inside(section, other)));
+/** A top-level heading's section: its id has no parent part (`_top` is not a heading). */
+function isTopLevel(section: DocsSearchSection): boolean {
+  return section.headingPath.length > 0 && !section.sectionId.includes('/');
 }
 
 /**

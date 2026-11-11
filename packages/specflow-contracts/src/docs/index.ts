@@ -54,7 +54,8 @@ export const DocsSearchSectionSchema = Type.Object(
     /**
      * Stable id of the section within its document: the heading path as slugs (lower-cased words
      * without diacritics joined by `-`) joined by `/`, `_top` before the first heading, `~<n>` for a
-     * repeated path. Read the section with `docs get <id> --section <sectionId>`.
+     * repeated heading under the same parent, whose subsections inherit it (a section's id starts with
+     * its parent's id and `/`). Read it with `docs get --content <id>#<sectionId>`.
      */
     sectionId: Type.String({ minLength: 1 }),
     /**
@@ -102,7 +103,9 @@ export const DocsSearchHitSchema = Type.Object(
     file: Type.String(),
     /**
      * Document rank score: reciprocal rank fusion of the section ranking (BM25, fused with the vector
-     * ranking in hybrid mode) and the frontmatter ranking. Only the order is meaningful.
+     * ranking in hybrid mode) and the frontmatter ranking. It only orders the results of one search;
+     * it is not a confidence or probability, and a search returns its best candidates also when none
+     * is relevant.
      */
     score: Type.Number(),
     /**

@@ -23,7 +23,7 @@ pnpm docs:find react git testing
 pnpm docs:get engineering.repository.git-workflow engineering.shared.testing
 ```
 
-Route natural-language questions, and questions whose repository vocabulary you do not know, to `docs:search`; use `docs:find` for known terms and taxonomy filters. Pick the applicable documents from the result metadata and section excerpts and read them before relying on them: whole documents with `docs:get --content <id...>`, and `reference` documents by their matching sections with `docs:get <id> --section <sectionId>...` (`docs:search` ends with a `read all:` line of these commands for its results). Each `docs:search` result states its `mode` (`hybrid`, or `lexical` with a `reason`), so there is no need to check semantic search status first:
+Route natural-language questions, and questions whose repository vocabulary you do not know, to `docs:search`; use `docs:find` for known terms and taxonomy filters. Pick the applicable documents from the result metadata and section excerpts and read them before relying on them: whole documents with `docs:get --content <id...>`, and `reference` documents by their matching sections as `<id>#<sectionId>` references in the same `docs:get --content` call (`docs:search` ends with a `read all:` line, one such command for its results). Each `docs:search` result states its `mode` (`hybrid`, or `lexical` with a `reason`), so there is no need to check semantic search status first:
 
 ```bash
 pnpm docs:search "how are document commits owned by the engine"

@@ -34,8 +34,8 @@ runs in a Git repository and reads the documents under the project's documentati
 ```bash
 nevo-specflow docs list [--type <type>] [--status <status>] [--json]
 nevo-specflow docs find <query...> [--type] [--status] [--scope] [--area] [--tag] [--limit <n>] [--json]
-nevo-specflow docs get <id...> [--content] [--json]
-nevo-specflow docs get <id> --section <sectionId> [--section <sectionId>...] [--json]
+nevo-specflow docs get <id...> [--json]
+nevo-specflow docs get --content <id | id#sectionId...> [--json]
 nevo-specflow docs context <query...> [--limit <n>] [--json]
 nevo-specflow docs check [--write]
 nevo-specflow docs search <question...> [--limit <n>] [--include-non-authoritative] [--no-refresh] [--no-snippets] [--json]
@@ -50,15 +50,16 @@ nevo-specflow docs semantic index
   narrow the result; every status and every path is visible.
 - `get` resolves exact stable ids in the given order. It fails closed: an unknown id or an inactive
   document (`deprecated`, `superseded`) is an error, naming the replacement when `superseded_by` is
-  set, and nothing is printed. With `--content` it prints the whole Markdown file of every
-  document, frontmatter included, in one call: each document starts with the delimiter line
-  `===== <id> — "<title>" [<status>]  <file> =====`, and documents are separated by a blank line.
-  With `--section <sectionId>` (repeatable, one document id, not with `--content`) it prints only
-  those sections, in the given order, after the same delimiter line: each section starts with
-  `----- <heading path>  [<sectionId>, line <n>] -----` and holds its Markdown from the heading
-  line up to the next heading of the same or a higher level, so its subsections are included
-  (`_top` is the text before the first heading). An id that is not a section of the document is
-  an error that lists the document's section ids, and nothing is printed.
+  set, and nothing is printed. With `--content` it reads every reference in one call, in the
+  given order: a document id prints the whole Markdown file, frontmatter included, after the
+  delimiter line `===== <id> — "<title>" [<status>]  <file> =====`; `<id>#<sectionId>` prints one
+  section of the document, from its heading line up to the next heading that is not inside it (so
+  its subsections are included; `_top` is the text before the first heading), after the delimiter
+  line `===== <id>#<sectionId> — "<title>" > <heading path> [<status>]  <file>:<line> =====`.
+  References are separated by a blank line. Every reference is checked before anything is printed:
+  an unknown or inactive document or a section id that is not one of the document's (the error
+  lists the document's section ids) fails the whole call with exit 2 and an empty stdout. A section
+  reference without `--content` is a usage error.
 - `context` lists the files to load for a task: like `find`, but inactive documents and documents
   under non-authoritative prefixes are never returned.
 - `check` validates the whole corpus (frontmatter contract, taxonomy, unique ids, resolvable
@@ -72,9 +73,9 @@ nevo-specflow docs semantic index
 With `--json`, stdout holds one JSON document and nothing else. A `list` or `find` result carries
 the document's frontmatter, `file` and `body` (and, for `find`, `score`, `matchedTerms` and
 `matchedFields`); a `get` or `context` entry carries `id`, `file`, `title`, `status`, `summary`,
-`read_when`, `scope` (when set), `areas` and `tags`, and with `get --content` also `content`, the
-whole file; `get --section` prints one such entry with `sections`, each with `sectionId`,
-`headingPath`, `line` and `content`.
+`read_when`, `scope` (when set), `areas` and `tags`, and with `get --content` also `content`: the
+whole file, or for a section reference the section's Markdown and `section` (`sectionId`,
+`headingPath` and the heading's `line`).
 
 Errors are reported on stderr in every mode, including `--json`; stdout stays empty when a command
 fails, and no error object is printed on stdout. The one exception is `semantic status`, which
@@ -168,14 +169,17 @@ Search is hybrid only once every current section has a vector. `--no-refresh` sk
 step entirely and starts no catch-up.
 
 **Sections.** Each document shows up to three matching sections, best first, one per section. A
-section is identified by its `sectionId`: the heading path as slugs (each heading's words,
-normalized like the ranking's words, joined by `-`; `section` for a heading without words) joined by
-`/`, for example `guide/install` for `# Guide` > `## Install`. The text before the first heading is
-`_top`; a heading path that occurred earlier in the document gets `~2`, `~3`, … . An id changes only
-when a heading on its path changes (or an earlier section takes the same path), not when other
-sections are edited. `line` is the line of the file where the matching text starts: the section's
-heading, or for a later part of a long section that part's first line. `get <id> --section
-<sectionId>` prints the section with its subsections.
+section is identified by its `sectionId`: its parent section's id (the nearest enclosing heading of
+a higher level), `/` and its heading's slug (the heading's words, normalized like the ranking's
+words, joined by `-`; `section` for a heading without words), or just the slug for a top-level
+heading; for example `guide/install` for `# Guide` > `## Install`. The text before the first
+heading is `_top`. A heading whose slug an earlier sibling under the same parent already has gets
+`~2`, `~3`, …, and its subsections inherit that id (`api/endpoint~2/errors`), so an id starts with
+another id and `/` exactly when the section is inside the other. An id changes only when a heading
+on its path changes (or an earlier sibling takes the same slug), not when other sections are
+edited. `line` is the line of the file where the matching text starts: the section's heading, or
+for a later part of a long section that part's first line. `get --content <id>#<sectionId>` prints
+the section with its subsections.
 
 **Excerpts.** Under each section, `search` shows a short excerpt (`snippet`, one line, at most
 280 characters) taken from the section's own text, never generated: the section body is split
@@ -185,7 +189,8 @@ the section contain it (words of at least four letters also match by a long comm
 `taski` matches `taskami` and `session` matches `sessions`); the following and then the
 preceding pieces are added while they fit, and `…` marks text left out. When no piece contains a
 query word (a section found by its meaning only), the excerpt is the first sentences after the
-heading. `--no-snippets` leaves them out.
+heading, which may not be the part that matched: the excerpt says what the section is about, not
+why it was chosen, so read the section before relying on it. `--no-snippets` leaves them out.
 
 Text output: one block per document with its id, title, type and status, the `summary` (cut at a
 word boundary after 200 characters; `--json` has all of it), the `read_when` situations and the
@@ -193,14 +198,13 @@ matching sections, one per line with its heading path (without a first heading e
 title), `[<sectionId>, line <n>]` and the excerpt on the next line. The section of the title heading
 itself is `(document)`, since with its subsections it is the whole document; the text before the
 first heading is `(before the first heading)`. Absent fields are omitted. The last line, `read
-all:`, reads every listed result in one line of commands separated by `; ` (valid in POSIX shells
-and PowerShell): first `get --content` with every document that is read whole, in rank order, then
-one `get <id> --section <sectionId>...` per `reference` document with matching sections, in rank
-order. Reference documents are lookup material (routes, options, keys) whose matching sections
-answer the question; documents of every other type are read whole. Since a section includes its
-subsections, a matching section inside another matching one is not named again, and a reference
-document whose matching sections include a top-level section (for example `(document)`) is read
-whole. A part is omitted when it has no documents.
+all:`, is one `get --content` command that reads every listed result in rank order, checked as a
+whole (it fails before printing anything when a reference is no longer valid): a `reference`
+document with matching sections as `<id>#<sectionId>` references, any other document whole.
+Reference documents are lookup material (routes, options, keys) whose matching sections answer the
+question; documents of every other type are read whole. Since a section includes its subsections, a
+matching section inside another matching one is not named again, and a reference document whose
+matching sections include a top-level section (for example `(document)`) is read whole.
 
 ```text
 mode: hybrid
@@ -219,7 +223,7 @@ faq — FAQ (hub, current)
     (document)  [faq, line 8]
       Ask anything.
 
-read all: nevo-specflow docs get --content faq; nevo-specflow docs get guide --section guide/install --section guide/configure
+read all: nevo-specflow docs get --content guide#guide/install guide#guide/configure faq
 ```
 
 Text output, lexical: the first line names the reason, for example
@@ -302,7 +306,9 @@ JSON output, lexical with `--no-snippets`:
 `scope`, `areas`, `tags`, `summary` and `readWhen` are present only when the frontmatter has a
 non-empty value; `snippet` is left out with `--no-snippets`. A document's `score` is its fused rank
 score; a section's `score` is BM25 in lexical mode and the section-level reciprocal-rank-fusion
-score in hybrid mode. Only the order is meaningful; compare scores only within one result.
+score in hybrid mode. Scores only order the results of one search: they are not a confidence or a
+probability, do not compare across searches, and a high score does not mean the document answers
+the question (a search always returns its best candidates, also when none is relevant).
 
 ## `semantic status` and `semantic index`
 

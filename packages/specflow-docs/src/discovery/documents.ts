@@ -1,6 +1,6 @@
 // `list` / `find` / `get` / `context` over a validated corpus.
 
-import { splitMarkdownSections } from '@nevo/ai-semantic-search';
+import { splitMarkdownSections, type MarkdownSection } from '@nevo/ai-semantic-search';
 
 import { isNonAuthoritative } from '../config/docs-file';
 import { loadValidatedCorpus, type DocsCorpus } from '../corpus/corpus';
@@ -85,77 +85,117 @@ export function getDocuments(corpus: DocsCorpus, ids: readonly string[]): Contex
   return ids.map((id) => contextEntry(byId.get(id)!));
 }
 
-export interface DocumentContent extends ContextEntry {
-  /** The whole Markdown file, frontmatter included. */
-  readonly content: string;
-}
+/** Separates a document id from a section id in a `get --content` reference (`<id>#<sectionId>`). */
+export const SECTION_REFERENCE_SEPARATOR = '#';
 
-/** `get --content`: `getDocuments` (same order, same fail-closed rules) with each file's content. */
-export function getDocumentContents(corpus: DocsCorpus, ids: readonly string[]): DocumentContent[] {
-  return getDocuments(corpus, ids).map((entry) => ({
-    ...entry,
-    content: corpus.repo.readMarkdownFile(entry.file),
-  }));
-}
-
-export interface DocumentSection {
+export interface ReadSection {
   /** The section id `docs search` reports (`sections[].sectionId`). */
   readonly sectionId: string;
   readonly headingPath: string[];
   /** 1-based line of the section's heading in the file. */
   readonly line: number;
-  /** The section's Markdown from its heading line, its subsections included. */
-  readonly content: string;
-}
-
-export interface DocumentSections extends ContextEntry {
-  readonly sections: DocumentSection[];
 }
 
 /**
- * `get <id> --section <sectionId>...`: `getDocuments` for one id (same fail-closed rules) with the
- * requested sections in the given order. A section reaches from its heading to the next heading of
- * the same or a higher level, so it includes its subsections; `_top` is the text before the first
- * heading. Fails closed when a section id is not one of the document's (it names the valid ones).
+ * One item of `get --content`: a whole document (its whole file, frontmatter included), or with
+ * `section` one of its sections (its Markdown from the heading line, subsections included).
  */
-export function getDocumentSections(
-  corpus: DocsCorpus,
-  id: string,
-  sectionIds: readonly string[],
-): DocumentSections {
-  const [entry] = getDocuments(corpus, [id]);
-  const parsed = parseFrontmatter(corpus.repo.readMarkdownFile(entry!.file), entry!.file)!;
-  const lines = parsed.body.replace(/\r\n?/gu, '\n').split('\n');
-  const sections = splitMarkdownSections(parsed.body);
-  const byId = new Map(sections.map((section, index) => [section.id, index]));
-  const unknown = sectionIds.filter((sectionId) => !byId.has(sectionId));
+export interface DocumentRead extends ContextEntry {
+  readonly section?: ReadSection;
+  readonly content: string;
+}
+
+/**
+ * `get --content <ref...>`: each reference is a stable document id (the whole document) or
+ * `<id>#<sectionId>` (one section with its subsections; `_top` is the text before the first
+ * heading), returned in the given order. Every reference is checked before anything is read out:
+ * any unknown or inactive document or unknown section fails the whole call with one
+ * `DocsUsageError` naming all of them (and the valid section ids of each document concerned).
+ */
+export function getDocumentReads(corpus: DocsCorpus, refs: readonly string[]): DocumentRead[] {
+  const parsedRefs = refs.map((ref) => {
+    const at = ref.indexOf(SECTION_REFERENCE_SEPARATOR);
+
+    return at === -1
+      ? { ref, id: ref, sectionId: undefined }
+      : { ref, id: ref.slice(0, at), sectionId: ref.slice(at + 1) };
+  });
+  const ids = [...new Set(parsedRefs.map((ref) => ref.id))];
+  const entries = new Map(getDocuments(corpus, ids).map((entry) => [entry.id, entry]));
+
+  const outlines = new Map<string, DocumentOutline>();
+  const outline = (id: string) => {
+    let known = outlines.get(id);
+    if (known === undefined) {
+      known = readOutline(corpus, entries.get(id)!.file);
+      outlines.set(id, known);
+    }
+
+    return known;
+  };
+
+  const unknown = parsedRefs.filter(
+    (ref) => ref.sectionId !== undefined && !outline(ref.id).byId.has(ref.sectionId),
+  );
   if (unknown.length > 0) {
+    const documents = [...new Set(unknown.map((ref) => ref.id))];
+
     throw new DocsUsageError(
-      `get: unknown section id(s) in '${id}': ${unknown.join(', ')} (sections: ${sections.map((section) => section.id).join(', ')})`,
+      `get: unknown section id(s): ${unknown.map((ref) => ref.ref).join(', ')} (${documents
+        .map(
+          (id) =>
+            `sections of '${id}': ${outline(id)
+              .sections.map((section) => section.id)
+              .join(', ')}`,
+        )
+        .join('; ')})`,
     );
   }
 
-  return {
-    ...entry!,
-    sections: sectionIds.map((sectionId) => {
-      const index = byId.get(sectionId)!;
-      const section = sections[index]!;
-      const depth = section.headingPath.length;
-      const next = sections
-        .slice(index + 1)
-        .find((other) => depth === 0 || other.headingPath.length <= depth);
-      const end = next === undefined ? lines.length : next.startLine - 1;
+  return parsedRefs.map(({ id, sectionId }) => {
+    const entry = entries.get(id)!;
+    if (sectionId === undefined) {
+      return { ...entry, content: corpus.repo.readMarkdownFile(entry.file) };
+    }
 
-      return {
+    const { sections, byId, lines, bodyLine } = outline(id);
+    const index = byId.get(sectionId)!;
+    const section = sections[index]!;
+    const next = sections.slice(index + 1).find((other) => !other.id.startsWith(`${sectionId}/`));
+    const end = next === undefined ? lines.length : next.startLine - 1;
+
+    return {
+      ...entry,
+      section: {
         sectionId,
         headingPath: [...section.headingPath],
-        line: parsed.bodyLine + section.startLine - 1,
-        content: lines
-          .slice(section.startLine - 1, end)
-          .join('\n')
-          .trimEnd(),
-      };
-    }),
+        line: bodyLine + section.startLine - 1,
+      },
+      content: lines
+        .slice(section.startLine - 1, end)
+        .join('\n')
+        .trimEnd(),
+    };
+  });
+}
+
+interface DocumentOutline {
+  readonly sections: readonly MarkdownSection[];
+  readonly byId: ReadonlyMap<string, number>;
+  /** The body's lines. */
+  readonly lines: readonly string[];
+  readonly bodyLine: number;
+}
+
+function readOutline(corpus: DocsCorpus, file: string): DocumentOutline {
+  const parsed = parseFrontmatter(corpus.repo.readMarkdownFile(file), file)!;
+  const sections = splitMarkdownSections(parsed.body);
+
+  return {
+    sections,
+    byId: new Map(sections.map((section, index) => [section.id, index])),
+    lines: parsed.body.replace(/\r\n?/gu, '\n').split('\n'),
+    bodyLine: parsed.bodyLine,
   };
 }
 

@@ -85,7 +85,7 @@ describe('docs command', () => {
     expect(excluded).toMatchObject({ exitCode: 0, stderr: [] });
   });
 
-  it('get --section prints sections with their subsections and fails closed on an unknown section', async () => {
+  it('get --content reads whole documents and sections in one checked call', async () => {
     writeFileSync(
       join(root, 'docs', 'manual.md'),
       [
@@ -94,31 +94,62 @@ describe('docs command', () => {
       ].join('\n'),
     );
     try {
-      const sections = await runDocs(root, [
+      const reads = await runDocs(root, [
         'get',
-        'manual',
-        '--section',
-        'manual/install',
-        '--section',
-        'manual/usage',
+        '--content',
+        'manual#manual/install',
+        'faq',
+        'manual#manual/usage',
       ]);
-      expect(sections).toMatchObject({ exitCode: 0, stderr: [] });
-      expect(sections.stdout).toEqual([
-        '===== manual — "Manual" [current]  docs/manual.md =====',
-        '----- Manual > Install  [manual/install, line 12] -----',
+      expect(reads).toMatchObject({ exitCode: 0, stderr: [] });
+      expect(reads.stdout).toEqual([
+        '===== manual#manual/install — "Manual" > Manual > Install [current]  docs/manual.md:12 =====',
         '## Install\n\nRun it.\n\n### Windows\n\nUse PowerShell.',
         '',
-        '----- Manual > Usage  [manual/usage, line 20] -----',
+        '===== faq — "FAQ" [current]  docs/faq.md =====',
+        '---\nid: faq\ntype: hub\ntitle: FAQ\nstatus: current\n---\n\n# FAQ\n\nAsk.',
+        '',
+        '===== manual#manual/usage — "Manual" > Manual > Usage [current]  docs/manual.md:20 =====',
         '## Usage\n\nCall it.',
       ]);
-      const unknown = await runDocs(root, ['get', 'manual', '--section', 'manual/nope']);
+
+      // One bad reference fails the whole call before anything is printed.
+      const unknown = await runDocs(root, ['get', '--content', 'faq', 'manual#manual/nope']);
       expect(unknown).toMatchObject({ exitCode: 2, stdout: [] });
       expect(unknown.stderr.join('\n')).toMatch(
-        /unknown section id\(s\) in 'manual': manual\/nope \(sections: manual, manual\/install,/,
+        /unknown section id\(s\): manual#manual\/nope \(sections of 'manual': manual, manual\/install,/,
       );
-      expect((await runDocs(root, ['get', 'manual', 'faq', '--section', 'faq'])).exitCode).toBe(2);
+      expect((await runDocs(root, ['get', '--content', 'faq', 'nope#x'])).stdout).toEqual([]);
+      expect((await runDocs(root, ['get', 'manual#manual'])).exitCode).toBe(2);
     } finally {
       rmSync(join(root, 'docs', 'manual.md'));
+    }
+  });
+
+  it('read all names the right sections under repeated headings, and get reads them', async () => {
+    writeFileSync(
+      join(root, 'docs', 'api.md'),
+      [
+        '---\nid: api\ntype: reference\ntitle: API\nstatus: current\nsummary: The API.\nread_when: [calling it]\n---\n',
+        '# API\n\nIntro.\n\n## Endpoint\n\nGET /a returns widgets.\n\n## Endpoint\n\nPOST /b creates items.\n',
+        '### Error handling\n\nA conflict answers 409 gadgetconflict.\n\n## Usage\n\nCall it.\n',
+      ].join('\n'),
+    );
+    try {
+      const search = await runDocs(root, ['search', 'widgets', 'gadgetconflict']);
+      expect(search).toMatchObject({ exitCode: 0, stderr: [] });
+      // The child of the second Endpoint is not inside the first Endpoint.
+      expect(search.stdout.at(-1)).toMatch(
+        /^read all: nevo-specflow docs get --content (?=.*api#api\/endpoint(?: |$))(?=.*api#api\/endpoint~2\/error-handling)/u,
+      );
+      const refs = search.stdout.at(-1)!.split(' --content ')[1]!.split(' ');
+      const reads = await runDocs(root, ['get', '--content', ...refs]);
+      expect(reads.exitCode).toBe(0);
+      expect(reads.stdout.join('\n')).toContain('GET /a returns widgets.');
+      expect(reads.stdout.join('\n')).toContain('A conflict answers 409 gadgetconflict.');
+      expect(reads.stdout.join('\n')).not.toContain('POST /b creates items.');
+    } finally {
+      rmSync(join(root, 'docs', 'api.md'));
     }
   });
 

@@ -4,6 +4,15 @@ description: Enable Corepack, set up Node from .nvmrc, install pnpm deps from th
 runs:
   using: composite
   steps:
+    # Git fixtures commit constantly; detached auto-maintenance after a commit takes
+    # .git/objects/maintenance.lock and keeps writing under .git while tests snapshot or
+    # delete the repository. The Engine strips GIT_* variables, so this has to be config.
+    - name: Disable Git auto-maintenance
+      shell: bash
+      run: |
+        git config --global maintenance.auto false
+        git config --global gc.auto 0
+
     - name: Enable Corepack
       shell: bash
       run: corepack enable

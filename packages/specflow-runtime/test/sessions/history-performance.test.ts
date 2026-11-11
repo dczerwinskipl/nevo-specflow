@@ -125,5 +125,6 @@ it.each([1, 64])(
       await rm(directory, { recursive: true, force: true });
     }
   },
-  30000,
+  // A hang guard, not a performance budget: seeding 64 MiB took over 30 s on one slow Windows runner.
+  120_000,
 );

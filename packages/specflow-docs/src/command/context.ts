@@ -5,7 +5,7 @@ import type { DocsCorpusRules } from '../corpus/corpus';
 import { DocsUsageError } from '../errors';
 import type { CreateEmbeddingProvider } from '../embeddings/embedding-providers';
 import type { BackgroundIndexLaunch, SpawnDetached } from '../semantic-index/detached-process';
-import type { GitIgnoreCheck } from '../semantic-index/index-store';
+import type { GitIgnoreCheck } from '../semantic-index/write-admission';
 
 /** The project the host resolved: its root and configuration file paths. */
 export interface DocsProject extends DocsConfigPaths {

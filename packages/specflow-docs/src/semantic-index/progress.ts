@@ -71,11 +71,13 @@ export interface ProgressRecorderDependencies {
  * The writer side, for one refresh. `update` is called synchronously from the refresh's progress
  * callback; the writes run one after another in the background and `finish` waits for them. A
  * refresh that never reported progress (nothing to embed, or it failed before embedding) records
- * nothing, so the previous refresh stays the last one.
+ * nothing, so the previous refresh stays the last one. `admitted` is asked when `update` or
+ * `finish` is called: when it is `false`, that record is not written.
  */
 export function createProgressRecorder(
   directory: string,
   dependencies: ProgressRecorderDependencies,
+  admitted: () => boolean = () => true,
 ): ProgressRecorder {
   const token = randomBytes(6).toString('hex');
   let started: number | undefined;
@@ -105,13 +107,17 @@ export function createProgressRecorder(
 
   return {
     update(progress) {
+      if (!admitted()) {
+        return writes;
+      }
+
       started ??= dependencies.now();
       latest = progress;
 
       return write({ state: 'running' });
     },
     async finish(end) {
-      if (started !== undefined) {
+      if (started !== undefined && admitted()) {
         await write({ state: 'finished', ...end });
       }
 

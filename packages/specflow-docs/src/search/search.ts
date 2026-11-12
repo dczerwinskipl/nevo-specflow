@@ -29,6 +29,7 @@ import {
 } from '../semantic-index/chunk-source';
 import type { IndexCatchUp } from '../semantic-index/catch-up';
 import type { DocsIndex } from '../semantic-index/index-store';
+import type { IndexWrites } from '../semantic-index/write-admission';
 import { readIndexActivity } from '../semantic-index/progress';
 import { SEMANTIC_INDEX_COMMAND, searchReason, semanticEndpoint } from '../semantic-index/reasons';
 import {
@@ -45,8 +46,12 @@ import { toHit } from './result';
  */
 export const DOCUMENT_CANDIDATES_PER_RESULT = 3;
 
-/** Vectors for a search, or why there are none. */
-export type DocsSearchVectors = { readonly reason: DocsSearchReason } | IndexVectors;
+/**
+ * Vectors for a search, or why there are none. With `writes`, a refused write admission is reported
+ * before that reason.
+ */
+export type DocsSearchVectors =
+  { readonly reason: DocsSearchReason; readonly writes?: IndexWrites } | IndexVectors;
 
 /**
  * Everything a project's searches share. Open it once per project and process (a CLI invocation, or
@@ -67,9 +72,9 @@ export interface OpenDocsSearchOptions {
   /** Test seam; production uses the OpenAI-compatible adapter. */
   readonly createProvider?: CreateEmbeddingProvider;
   /**
-   * The project's index (`openDocsIndex` after `checkIndexAccess`). A process keeps one per index
-   * directory, for example a Runtime that also refreshes it. Unused without semantic search, so
-   * nothing is written below `.nevo/` then.
+   * The project's index (`openDocsIndex`), whose writes its admission gates. A process keeps one per
+   * index directory, for example a Runtime that also refreshes it. Unused without semantic search,
+   * so nothing is written below `.nevo/` then.
    */
   readonly index: DocsIndex;
   /** Catches a large gap up in the background (`IndexVectors.catchUp`). */
@@ -84,22 +89,19 @@ export function openDocsSearch(options: OpenDocsSearchOptions): DocsSearch {
     return { chunks: createDocsChunkSource({ corpus }), vectors: { reason: endpoint.reason } };
   }
 
-  if (index.unavailable !== undefined) {
-    return { chunks: index.chunks, vectors: { reason: index.unavailable } };
-  }
-
   const created = createEmbeddingProviders(endpoint.embeddings, {
     env: options.env,
     ...(options.createProvider ? { createProvider: options.createProvider } : {}),
   });
   if (!created.ok) {
-    return { chunks: index.chunks, vectors: { reason: created.reason } };
+    return { chunks: index.chunks, vectors: { reason: created.reason, writes: index.writes } };
   }
 
   return {
     chunks: index.chunks,
     vectors: {
       store: index.store,
+      writes: index.writes,
       providers: created.providers,
       ...(options.catchUp ? { catchUp: options.catchUp } : {}),
       ...(index.directory === undefined
@@ -310,6 +312,13 @@ async function vectorsFor(
   refresh: boolean,
   indexCommand: string,
 ): Promise<SearchVectors> {
+  // While the index must not be written (a refused write admission), the search is lexical, also
+  // when the endpoint is unusable: the index is reported first, as `semantic index` does.
+  const blocked = await vectors.writes?.blocked();
+  if (blocked !== undefined) {
+    return { reason: blocked };
+  }
+
   if ('reason' in vectors) {
     return { reason: vectors.reason };
   }

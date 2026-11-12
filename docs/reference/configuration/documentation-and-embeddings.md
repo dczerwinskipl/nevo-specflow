@@ -55,13 +55,16 @@ docs:
 ```
 
 Nothing adds the `.nevo/local/` entry to `.gitignore` in such a project, and the semantic index is
-local cache below it. Before writing it, `search`, `semantic index`, `semantic status` and the
-Runtime check with `git check-ignore` (once per process, only with `ai.embeddings` configured) that
-Git ignores `.nevo/local/cache/docs-index/`. In a Git work tree that does not, nothing is written
-below `.nevo/local/`: searches answer lexically with `index-unavailable` (``Git does not ignore
-.nevo/local/cache/docs-index/, so the index is not written there; add `.nevo/local/` to the
-project's .gitignore.``), and `semantic index` and `semantic status` exit 1 with the same
-reason. Add the entry:
+local cache below it. The CLI and the Runtime check with an uncached `git check-ignore` that Git
+ignores `.nevo/local/cache/docs-index/` when they open the index (only with `ai.embeddings`
+configured) and again immediately before every write batch of it (the writer lock, each slice of
+a refresh, a refresh already running included, the chunk cache, the start of a background
+catch-up). In a Git work tree that does not, nothing is written below `.nevo/local/`: searches
+answer lexically with `index-unavailable` (``Git does not ignore .nevo/local/cache/docs-index/, so
+the index is not written there; add `.nevo/local/` to the project's .gitignore.``), and
+`semantic index` and `semantic status` exit 1 with the same reason. While a check has refused,
+each search and status checks again, so search recovers once the path is ignored again. Add the
+entry:
 
 ```gitignore
 .nevo/local/

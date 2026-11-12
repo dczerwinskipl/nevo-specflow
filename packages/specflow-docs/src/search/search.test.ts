@@ -21,7 +21,9 @@ import { DEFAULT_DOCS_SETTINGS, parseDocsConfig } from '../config/docs-settings'
 import { openFileSystemCorpus } from '../corpus/corpus';
 import { contextualHeader, createDocsChunkSource } from '../semantic-index/chunk-source';
 import { openDocsIndex, openProjectIndex } from '../semantic-index/index-store';
+import { cacheNotIgnoredReason } from '../semantic-index/reasons';
 import { READ_REFRESH_MAX_CHUNKS } from '../semantic-index/refresh-policy';
+import { createIndexWrites } from '../semantic-index/write-admission';
 import { toHit } from './result';
 import {
   openDocsSearch,
@@ -62,13 +64,17 @@ afterAll(() => rmSync(root, { recursive: true, force: true }));
 
 const settings = parseDocsConfig({ search: { semantic: true } });
 const corpus = openFileSystemCorpus(root, settings);
+// An index held in memory: every write is admitted.
+const admitted = () => createIndexWrites(() => Promise.resolve(true), cacheNotIgnoredReason('x'));
+const cachedSource = (file: string) =>
+  createDocsChunkSource({ corpus, cache: { file, admitWrite: () => Promise.resolve(true) } });
 
 function semanticSearch() {
   const provider = createFakeEmbeddingProvider();
   const store = createInMemoryVectorStore();
   const search: DocsSearch = {
     chunks: createDocsChunkSource({ corpus }),
-    vectors: { store, providers: { query: provider, documents: provider } },
+    vectors: { store, writes: admitted(), providers: { query: provider, documents: provider } },
   };
 
   return { provider, store, search };
@@ -217,7 +223,7 @@ describe('searchDocumentation', () => {
             searchEngine: () => createSearchEngine(many),
           }),
       },
-      vectors: { store, providers: { query: provider, documents: provider } },
+      vectors: { store, writes: admitted(), providers: { query: provider, documents: provider } },
     };
 
     const empty = await searchDocumentation(search, request);
@@ -248,6 +254,7 @@ describe('searchDocumentation', () => {
       chunks,
       vectors: {
         store,
+        writes: admitted(),
         providers: { query: after, documents: after },
         catchUp: {
           running: () => Promise.resolve(undefined),
@@ -336,7 +343,11 @@ describe('openDocsSearch', () => {
   });
 
   it('reuses an index the process already holds instead of opening another store', () => {
-    const index = { chunks: createDocsChunkSource({ corpus }), store: createInMemoryVectorStore() };
+    const index = {
+      chunks: createDocsChunkSource({ corpus }),
+      store: createInMemoryVectorStore(),
+      writes: admitted(),
+    };
     const search = openDocsSearch({
       corpus,
       configuration: { docs: settings, embeddings: endpoint },
@@ -420,7 +431,7 @@ describe('docs chunk source', () => {
 
   it('re-chunks only changed content, also when size and mtime stay, across instances', async () => {
     const cacheFile = join(root, 'cache', 'units.json');
-    const source = createDocsChunkSource({ corpus, cacheFile });
+    const source = cachedSource(cacheFile);
     const first = await source.load();
     expect(first.reparsed).toBe(4);
     const second = await source.load();
@@ -442,7 +453,7 @@ describe('docs chunk source', () => {
     const third = await source.load();
     expect(third.reparsed).toBe(1);
     expect(third.searchEngine()).not.toBe(first.searchEngine());
-    expect((await createDocsChunkSource({ corpus, cacheFile }).load()).reparsed).toBe(0);
+    expect((await cachedSource(cacheFile).load()).reparsed).toBe(0);
   });
 
   it('shares a pending load between concurrent calls and skips a file that vanished', async () => {
@@ -477,6 +488,6 @@ describe('docs chunk source', () => {
     const cacheFile = join(root, 'cache', 'null.json');
     mkdirSync(join(root, 'cache'), { recursive: true });
     writeFileSync(cacheFile, 'null');
-    expect((await createDocsChunkSource({ corpus, cacheFile }).load()).reparsed).toBe(4);
+    expect((await cachedSource(cacheFile).load()).reparsed).toBe(4);
   });
 });

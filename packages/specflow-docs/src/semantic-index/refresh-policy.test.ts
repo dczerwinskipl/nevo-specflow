@@ -5,13 +5,16 @@ import {
 import type { DocsIndexActivity } from '@nevo/specflow-contracts/docs';
 import { describe, expect, it } from 'vitest';
 
-import { endpointFailureReason, type IndexVectors } from './refresh-policy';
+import { cacheNotIgnoredReason } from './reasons';
+import { endpointFailureReason, identityChangedForRead, type IndexVectors } from './refresh-policy';
+import { createIndexWrites } from './write-admission';
 
 const vectors = (activity: DocsIndexActivity): IndexVectors => {
   const provider = createFakeEmbeddingProvider();
 
   return {
     store: createInMemoryVectorStore(),
+    writes: createIndexWrites(() => Promise.resolve(true), cacheNotIgnoredReason('x')),
     providers: { query: provider, documents: provider },
     activity: () => Promise.resolve(activity),
   };
@@ -47,5 +50,32 @@ describe('endpointFailureReason', () => {
     expect((await endpointFailureReason(vectors({ state: 'idle' }), timeout)).code).toBe(
       'endpoint-unreachable',
     );
+  });
+});
+
+describe('catch-up start', () => {
+  it('starts no catch-up when the write admission refuses, and answers the refusal', async () => {
+    const refusal = cacheNotIgnoredReason('.nevo/local/cache/docs-index');
+    let starts = 0;
+    const reason = await identityChangedForRead(
+      {
+        ...vectors({ state: 'idle' }),
+        writes: createIndexWrites(() => Promise.resolve(false), refusal),
+        catchUp: {
+          running: () => Promise.resolve(undefined),
+          start: () => {
+            starts += 1;
+
+            return Promise.resolve('started');
+          },
+        },
+      },
+      'Another dimension.',
+      3,
+      true,
+      'index',
+    );
+    expect(reason).toEqual(refusal);
+    expect(starts).toBe(0);
   });
 });

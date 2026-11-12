@@ -103,8 +103,10 @@ export async function semanticStatus(
   }
 
   // An index that must not be written is reported before what it would need.
-  if (enabled && index.unavailable !== undefined) {
-    reason ??= index.unavailable;
+  // Checked again while refused, so a fixed `.gitignore` is reported at once.
+  const refusal = enabled ? await index.writes.blocked() : undefined;
+  if (refusal !== undefined) {
+    reason ??= refusal;
   }
 
   const { state: indexState, pending } = await readIndexState(index, identity, observedDimensions);

@@ -29,9 +29,13 @@ export {
   openDocsIndex,
   openProjectIndex,
   type DocsIndex,
-  type GitIgnoreCheck,
   type IndexAccess,
 } from './semantic-index/index-store';
+export {
+  type AdmitWrite,
+  type GitIgnoreCheck,
+  type IndexWrites,
+} from './semantic-index/write-admission';
 export { type CreateEmbeddingProvider } from './embeddings/embedding-providers';
 export {
   buildDocsIndex,

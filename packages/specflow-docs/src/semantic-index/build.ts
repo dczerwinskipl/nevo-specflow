@@ -39,8 +39,9 @@ export async function buildDocsIndex(
     return { status: 'not-attempted', reason: endpoint.reason };
   }
 
-  if (index.unavailable !== undefined) {
-    return { status: 'not-attempted', reason: index.unavailable };
+  const blocked = await index.writes.blocked();
+  if (blocked !== undefined) {
+    return { status: 'not-attempted', reason: blocked };
   }
 
   const resolved = providersFor(endpoint.embeddings, environment);
@@ -48,10 +49,25 @@ export async function buildDocsIndex(
     return { status: 'not-attempted', reason: resolved.reason };
   }
 
+  const { chunks } = await index.chunks.load();
+  // A refused chunk cache write: the store writes would be refused too.
+  const refused = index.writes.refusal();
+  if (refused !== undefined) {
+    return { status: 'not-attempted', reason: refused };
+  }
+
+  // A record reports the store write just admitted, so it follows that write's check: nothing is
+  // recorded once a check has refused.
   const progress =
-    index.directory === undefined ? undefined : createProgressRecorder(index.directory, recorder);
+    index.directory === undefined
+      ? undefined
+      : createProgressRecorder(
+          index.directory,
+          recorder,
+          () => index.writes.refusal() === undefined,
+        );
   const outcome = await refreshIndex({
-    chunks: (await index.chunks.load()).chunks,
+    chunks,
     provider: resolved.providers.documents,
     store: index.store,
     // A full refresh checks that the endpoint still produces the index's vectors (one probe).
@@ -61,7 +77,8 @@ export async function buildDocsIndex(
       onProgress?.(step);
     },
   });
-  const reason = refreshReason(outcome);
+  const refusal = outcome.status === 'write-failed' ? index.writes.refusal() : undefined;
+  const reason = refusal ?? refreshReason(outcome);
   await progress?.finish(
     outcome.status === 'refreshed'
       ? { outcome: 'completed', generation: outcome.generation }

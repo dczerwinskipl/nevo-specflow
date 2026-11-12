@@ -30,6 +30,7 @@ import {
 } from '../frontmatter/contract';
 import { DocsError } from '../errors';
 import { readCache, writeCache, type CachedFile } from './chunk-cache';
+import type { AdmitWrite } from './write-admission';
 
 /** What every docs chunk carries for filtering and presentation. */
 export interface DocsChunkMetadata {
@@ -89,17 +90,17 @@ export interface DocsChunkSource {
 
 export interface DocsChunkSourceOptions {
   readonly corpus: DocsCorpus;
-  /** Where the cache persists across processes; `undefined` keeps it in memory only. */
-  readonly cacheFile?: string;
+  /**
+   * Where the cache persists across processes, written only when `admitWrite` admits it (asked
+   * before each write); `undefined` keeps it in memory only.
+   */
+  readonly cache?: { readonly file: string; readonly admitWrite: AdmitWrite };
 }
 
 /** Files read at the same time by a load. */
 const READ_CONCURRENCY = 16;
 
-export function createDocsChunkSource({
-  corpus,
-  cacheFile,
-}: DocsChunkSourceOptions): DocsChunkSource {
+export function createDocsChunkSource({ corpus, cache }: DocsChunkSourceOptions): DocsChunkSource {
   let cached: Map<string, CachedFile> | undefined;
   // The readable corpus of `cached`; recomputed only when a file changed.
   let version: Omit<DocsChunks, 'reparsed'> | undefined;
@@ -107,7 +108,7 @@ export function createDocsChunkSource({
   let pending: Promise<DocsChunks> | undefined;
 
   const refresh = async (): Promise<DocsChunks> => {
-    cached ??= cacheFile === undefined ? new Map() : await readCache(cacheFile);
+    cached ??= cache === undefined ? new Map() : await readCache(cache.file);
     const previous = cached;
     let reparsed = 0;
     const files = await corpus.repo.listMarkdownFiles();
@@ -140,8 +141,8 @@ export function createDocsChunkSource({
       });
     }
 
-    if (changed && cacheFile !== undefined) {
-      await writeCache(cacheFile, next);
+    if (changed && cache !== undefined && (await cache.admitWrite())) {
+      await writeCache(cache.file, next);
     }
 
     return { ...version, reparsed };

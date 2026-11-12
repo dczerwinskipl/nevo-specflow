@@ -2,7 +2,12 @@
 // repository's `tools/docs` launcher consume. The Commander adapter is the `./cli` export.
 
 export * from './errors';
-export { asString, parseFrontmatter, type DocRecord } from './frontmatter/contract';
+export {
+  asString,
+  isInactiveStatus,
+  parseFrontmatter,
+  type DocRecord,
+} from './frontmatter/contract';
 export { validateDoc } from './frontmatter/validate';
 export { DEFAULT_DOCS_SETTINGS } from './config/docs-settings';
 export { parseDocsConfiguration, type DocsConfiguration } from './config/docs-configuration';

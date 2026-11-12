@@ -78,7 +78,8 @@ outputs of:
   flush, retry, abandon, resolve, recover);
 - `tasks list|inspect|create|edit|remove|status` and `workflow actions|start|finish|return`
   ([Task and workflow commands](specflow-specification-commands.md#task-and-workflow-commands)),
-  plus `specs documents read|list ... --task <task-id>` for the documents of a Task;
+  plus `specs documents read` and the `--task <task-id>` scope of `specs documents list|read|add|folder|save|rename|move|delete|classify`
+  for the documents of a Task;
 - `commit` and `commit status`;
 - `definitions list|show|validate|install`
   ([Definitions commands](specflow-specification-commands.md#definitions-commands)).

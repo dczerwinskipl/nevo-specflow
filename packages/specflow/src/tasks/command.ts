@@ -20,6 +20,7 @@ import {
 import { localOwner } from '../local-actor';
 import { actionLines } from '../workflow/present';
 import { collectContext, contextOf, type TaskContextEntry } from './context-input';
+import { editTaskInput } from './edit-input';
 import { listLines, resourceLines, taskDetailLines } from './present';
 
 export interface TasksCommandContext extends ExecutionOutput {
@@ -250,28 +251,10 @@ export function createTasksCommand(context: TasksCommandContext): Command {
 
       await run(options, async ({ workflow }) => {
         const entries = await contextOf(context.cwd, options);
-        const result = await editTask(workflow, {
-          specId,
-          taskId,
-          expectedRevision: options.expectedRevision,
-          ...(options.title !== undefined ? { title: options.title } : {}),
-          ...(options.summary !== undefined
-            ? { summary: options.summary }
-            : options.clearSummary
-              ? { summary: null }
-              : {}),
-          ...(options.dependencies === false
-            ? { dependsOn: [] }
-            : options.dependsOn?.length
-              ? { dependsOn: options.dependsOn }
-              : {}),
-          ...(options.defaultContext
-            ? { context: null }
-            : entries !== undefined
-              ? { context: entries }
-              : {}),
-          actor: owner(),
-        });
+        const result = await editTask(
+          workflow,
+          editTaskInput({ specId, taskId, options, context: entries, actor: owner() }),
+        );
         emit(options, result, resourceLines('Edited', result));
       });
     },

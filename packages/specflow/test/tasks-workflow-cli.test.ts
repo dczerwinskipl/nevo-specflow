@@ -186,6 +186,22 @@ describe('tasks and workflow against a real project', () => {
     expect(finished.exit).toBe(0);
     expect(json<{ transition: string }>(finished).transition).toBe('implemented');
 
+    // Repeating the same finish (a lost response) returns the recorded result.
+    const repeated = await cli(root, [
+      'workflow',
+      'finish',
+      specId,
+      '--task',
+      'build',
+      '--step',
+      'implement',
+      '--attempt',
+      '1',
+      '--json',
+    ]);
+    expect(repeated.exit).toBe(0);
+    expect(json<{ replayed?: boolean }>(repeated).replayed).toBe(true);
+
     // The recorded actor is the local owner built by the CLI, never one from an option.
     const inspected = json<{
       task: { record: { run: { attempts: { actor: unknown }[] } } };

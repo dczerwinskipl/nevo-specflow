@@ -5,7 +5,9 @@ import {
 } from '@nevo/specflow-engine';
 
 import { engineAt } from './engine-at';
+import { reportingRefusals } from './documents/report';
 import { ReportedFailure } from './exit-code';
+import { projectDocumentLookup } from './project-document-lookup';
 
 export interface ExecutionOutput {
   readonly stdout: (line: string) => void;
@@ -21,7 +23,12 @@ export interface ExecutionSession {
 export async function openExecution(cwd: string, projectRoot?: string): Promise<ExecutionSession> {
   const engine = await engineAt(cwd, projectRoot);
 
-  return { engine, workflow: await openWorkflow(engine) };
+  return {
+    engine,
+    workflow: await openWorkflow(engine, {
+      projectDocument: projectDocumentLookup(engine.context.project.homeRoot),
+    }),
+  };
 }
 
 interface CodedError {
@@ -69,7 +76,8 @@ export async function reportingWorkflowRefusals<T>(
   body: () => Promise<T>,
 ): Promise<T> {
   try {
-    return await body();
+    // A refusal of the documents layer (a Task document, a context reference) reports like `specs documents`.
+    return await reportingRefusals(output, json, body);
   } catch (error) {
     const refusal = workflowRefusal(error);
     if (refusal === undefined) {

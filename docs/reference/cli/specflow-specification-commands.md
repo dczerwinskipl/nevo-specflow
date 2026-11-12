@@ -219,7 +219,8 @@ run. Every command accepts `--project-root <path>` and `--json`.
   `project-doc` (document ids), `path` and `instructions` (the text). `--context-file <path>` reads a YAML or JSON
   list in the shape of the `context` of `task.yaml` (optional entries, notes); its entries come first. On `edit`,
   context options replace the whole list and `--default-context` restores the default. The Engine checks that
-  every entry resolves; offline, `project-doc` entries are not resolvable and are refused.
+  every entry resolves; a `project-doc` entry resolves to an active document of the project documentation
+  (a deprecated or superseded one does not).
 - **Task text.** `tasks create` takes the first text of `task.md` from `--content-file` or `--stdin`. Later
   changes and extra Task documents use `specs documents ... --task <task-id>`.
 - **Not here yet.** Closing and abandoning a Specification (`abandon`) are not part of these commands.

@@ -304,6 +304,10 @@ export function createDocumentsCommand(context: DocumentsCommandContext): Comman
         usage(command, 'Give exactly one of --template, --content-file and --stdin.');
       }
 
+      if (options.template !== undefined && options.task !== undefined) {
+        usage(command, '--template applies to a Specification, not to a Task (--task).');
+      }
+
       if (options.template === undefined && options.path === undefined) {
         usage(command, '--path is required without --template.');
       }

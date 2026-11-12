@@ -294,9 +294,9 @@ full refresh (`progress-*.json`) and the log and start marker of the background 
 (`catch-up.log`, `catch-up.started`). It is disposable cache
 ([project configuration and local state](../../architecture/runtime/configuration.md)): deleting it
 costs only re-embedding. `search` writes nothing there while semantic search is not enabled. A
-running Runtime shares the same index for
-[`GET /api/docs/search`](../api/docs-search.md), refreshes it in the background on start and
-catches a larger gap up in process.
+running Runtime shares the same index for the
+[workspace documentation search](../api/workspace-docs.md) of that checkout, refreshes its own
+checkout's index in the background on start and catches a larger gap up in process.
 
 Each checkout has its own index; linked worktrees never share one. In a linked worktree without an
 index, `search` and `semantic index` first copy the Project Home's index when the identity is the

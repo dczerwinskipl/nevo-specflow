@@ -15,6 +15,8 @@ export type CheckoutDocsSettings =
   | {
       /** The resolved `docs.root` (default `docs`) is not an existing directory. */
       readonly status: 'not-configured';
+      /** That `docs.root`, relative to the checkout. */
+      readonly root: string;
     }
   | {
       readonly status: 'configured';
@@ -65,7 +67,7 @@ export function readCheckoutDocsSettings(
   if (
     !statSync(join(checkoutRoot, ...docs.root.split('/')), { throwIfNoEntry: false })?.isDirectory()
   ) {
-    return { status: 'not-configured' };
+    return { status: 'not-configured', root: docs.root };
   }
 
   const file = loadDocsFile(checkoutRoot, docs.root);

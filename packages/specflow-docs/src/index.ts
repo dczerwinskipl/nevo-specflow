@@ -73,4 +73,5 @@ export {
   type TreeSkippedDocument,
 } from './reader/tree';
 export { type DocsChunks } from './semantic-index/chunk-source';
+export { pathsUnderDocsRoot, skippedUnderDocsRoot, underDocsRoot } from './reader/paths';
 export { searchDocumentationWithLeftOut, type DocsSearchWithLeftOut } from './search/search';

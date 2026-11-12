@@ -15,7 +15,7 @@ related:
   - architecture.runtime.authorization
   - architecture.runtime.configuration
   - architecture.runtime.specflow-project-home
-  - reference.api.docs-search
+  - reference.api.workspace-docs
   - reference.configuration.documentation-and-embeddings
   - reference.configuration.specflow-git-worktrees
   - reference.cli.nevo-specflow-docs

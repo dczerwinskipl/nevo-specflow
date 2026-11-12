@@ -3,7 +3,6 @@ import {
   openDocsSearch,
   openProjectIndex,
   readIndexActivity,
-  searchDocumentation,
   searchDocumentationWithLeftOut,
   seedIndexIfMissing,
   type CreateEmbeddingProvider,
@@ -17,7 +16,6 @@ import {
   type IndexCatchUp,
   type IndexProgress,
 } from '@nevo/specflow-docs';
-import type { DocsSearchResult } from '@nevo/specflow-contracts/docs';
 import type { FastifyBaseLogger } from 'fastify';
 
 import {
@@ -47,8 +45,6 @@ export interface CorpusInstanceOptions {
    * semantic search is on (ADR 0022 §3). Absent for Project Home itself.
    */
   readonly seed?: { readonly from: string; readonly settingsFingerprint: string };
-  /** Where the progress of a background refresh is followed, appended to the catch-up clauses. */
-  readonly follow?: string;
 }
 
 /** What an operation of an instance reads; valid only inside `CorpusInstance.use`. */
@@ -63,7 +59,6 @@ export interface CorpusReads {
     snapshot: DocsChunks,
     request: DocsSearchRequest,
   ): Promise<DocsSearchWithLeftOut>;
-  search(request: DocsSearchRequest): Promise<DocsSearchResult>;
   /** The progress of the running background job, if one runs and embeds. */
   progress(): IndexProgress | undefined;
 }
@@ -95,7 +90,6 @@ export async function openCorpusInstance(options: CorpusInstanceOptions): Promis
   const { root, corpus, configuration, env, createProvider, log, seed } = options;
   const refresh = createBackgroundRefresh(options.slot, log);
   const index = await openProjectIndex(root, corpus, configuration);
-  const follow = options.follow === undefined ? '' : `; ${options.follow}`;
 
   const catchUp: IndexCatchUp = {
     async running() {
@@ -107,12 +101,12 @@ export async function openCorpusInstance(options: CorpusInstanceOptions): Promis
           progress === undefined
             ? ''
             : ` (${String(progress.embedded)}/${String(progress.total)} chunks)`
-        }${follow}`;
+        }`;
       }
 
       const activity = await readIndexActivity(index.directory);
 
-      return activity.state === 'updating' ? `another process is updating it${follow}` : undefined;
+      return activity.state === 'updating' ? 'another process is updating it' : undefined;
     },
     start() {
       const start = refresh.start(refreshRun);
@@ -122,9 +116,9 @@ export async function openCorpusInstance(options: CorpusInstanceOptions): Promis
 
       switch (start.status) {
         case 'started':
-          return Promise.resolve(`the Runtime started updating it in the background${follow}`);
+          return Promise.resolve('the Runtime started updating it in the background');
         case 'running':
-          return Promise.resolve(`the Runtime is updating it in the background${follow}`);
+          return Promise.resolve('the Runtime is updating it in the background');
         case 'waiting':
           return Promise.resolve(
             "the Runtime is updating another checkout's index and starts this one on a later search",
@@ -219,7 +213,6 @@ export async function openCorpusInstance(options: CorpusInstanceOptions): Promis
         request,
       );
     },
-    search: (request) => searchDocumentation(search, request),
     progress: () => refresh.current()?.progress,
   };
 

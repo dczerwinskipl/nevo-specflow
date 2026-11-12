@@ -5,7 +5,7 @@ import {
   DOCS_SEARCH_REASON_CODES,
   DocsSearchReasonCodeSchema,
   DocsSearchResultSchema,
-} from './index';
+} from './search-result';
 
 const hit = {
   id: 'guide',

@@ -2040,7 +2040,7 @@
         "architecture.runtime.authorization",
         "architecture.runtime.configuration",
         "architecture.runtime.specflow-project-home",
-        "reference.api.docs-search",
+        "reference.api.workspace-docs",
         "reference.configuration.documentation-and-embeddings",
         "reference.configuration.specflow-git-worktrees",
         "reference.cli.nevo-specflow-docs",
@@ -2704,7 +2704,7 @@
         "ideas.semantic-docs",
         "adr.0020-documentation-discovery-is-a-product-capability",
         "adr.0021-product-neutral-ai-semantic-search-engine",
-        "reference.api.docs-search",
+        "reference.api.workspace-docs",
         "reference.configuration.documentation-and-embeddings"
       ],
       "scope": "specflow",
@@ -4544,7 +4544,7 @@
         "product.specflow.ui.interaction-model",
         "product.specflow.ui.documents-editor-mode",
         "product.shared.vocabulary",
-        "reference.api.docs-search",
+        "reference.api.workspace-docs",
         "design-system.principles.layout-and-containment",
         "design-system.principles.information-hierarchy"
       ],
@@ -4872,38 +4872,6 @@
       ]
     },
     {
-      "id": "reference.api.docs-search",
-      "type": "reference",
-      "title": "Documentation search and status HTTP API",
-      "status": "current",
-      "file": "docs/reference/api/docs-search.md",
-      "read_when": [
-        "calling the Runtime documentation search endpoint",
-        "changing GET /api/docs/search, its query or the Runtime start refresh of the docs index",
-        "calling or changing GET /api/docs/status",
-        "diagnosing why a Runtime documentation search answers lexically or 503"
-      ],
-      "summary": "GET /api/docs/search answers ranked documents of the project's own documentation, with their frontmatter and best sections, in the result contract of nevo-specflow docs search --json: query parameters (including snippets), the docs.search capability, errors, the read-time refresh, the in-process catch-up of a larger gap and the refresh on Runtime start. GET /api/docs/status reports the semantic search status and refresh progress in the contract of docs semantic status --json.",
-      "related": [
-        "adr.0020-documentation-discovery-is-a-product-capability",
-        "reference.cli.nevo-specflow-docs",
-        "reference.configuration.documentation-and-embeddings",
-        "architecture.runtime.authorization",
-        "reference.api.openapi"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "runtime",
-        "server",
-        "docs",
-        "security"
-      ],
-      "tags": [
-        "semantic-search",
-        "authorization"
-      ]
-    },
-    {
       "id": "reference.api.openapi",
       "type": "reference",
       "title": "Runtime OpenAPI document",
@@ -5205,6 +5173,42 @@
         "documents",
         "pagination",
         "compatibility"
+      ]
+    },
+    {
+      "id": "reference.api.workspace-docs",
+      "type": "reference",
+      "title": "Workspace documentation HTTP API",
+      "status": "current",
+      "file": "docs/reference/api/workspace-docs.md",
+      "read_when": [
+        "calling or changing GET /api/workspaces/:workspaceId/docs, its documents or its search",
+        "building a client of the documentation reader (tree, article, search, corpus revision)",
+        "changing the docs.view capability or the Runtime start refresh of the docs index",
+        "diagnosing why a Runtime documentation search answers lexically, 404, 409, 410 or 503"
+      ],
+      "summary": "The Runtime serves the documentation of each registered workspace: GET /api/workspaces/:workspaceId/docs lists its documents (active, inactive, skipped), .../docs/documents/:documentId reads one article (body without frontmatter, sections, related states; 410 for an inactive one) and .../docs/search ranks documents in the result of nevo-specflow docs search --json, with the non-authoritative documents left out and the index progress. Every answer carries a corpusRevision; docs.view at the project scope, errors, the read-time refresh, the background catch-up and the start refresh.",
+      "related": [
+        "adr.0022-workspace-scoped-documentation-reader",
+        "adr.0020-documentation-discovery-is-a-product-capability",
+        "reference.api.workspaces",
+        "reference.cli.nevo-specflow-docs",
+        "reference.configuration.documentation-and-embeddings",
+        "architecture.runtime.authorization",
+        "product.specflow.ui.documentation-reader",
+        "reference.api.openapi"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "server",
+        "docs",
+        "security"
+      ],
+      "tags": [
+        "semantic-search",
+        "authorization",
+        "workspace"
       ]
     },
     {

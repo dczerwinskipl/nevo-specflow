@@ -40,8 +40,7 @@ export const OPENAPI_TAGS = [
   },
   {
     name: 'Documentation',
-    description:
-      "The project's own documentation: search and the status of its semantic search index.",
+    description: 'The documentation of a registered workspace: its tree, its documents and search.',
   },
   { name: 'Runtime', description: 'The Runtime itself: its mode and this OpenAPI document.' },
 ] as const;

@@ -1,18 +1,15 @@
-import {
-  DEFAULT_DOCS_SETTINGS,
-  type CreateEmbeddingProvider,
-  type DocsConfiguration,
-} from '@nevo/specflow-docs';
+import type { CreateEmbeddingProvider, DocsConfiguration } from '@nevo/specflow-docs';
 import { DocsCapabilities } from '@nevo/specflow-contracts/docs';
 import type { SpecFlowEngine } from '@nevo/specflow-engine';
 
 import type { RuntimeFeature } from '../runtime-feature';
-import type { DocsProjectId } from './access';
-import { docsSearchEndpoint } from './search-route';
-import { docsStatusEndpoint } from './status-route';
+import type { DocsProjectId } from './route-support';
+import { docsArticleEndpoint } from './article/endpoint';
+import { docsSearchEndpoint } from './search/endpoint';
+import { docsTreeEndpoint } from './tree/endpoint';
 import { createRefreshSlot } from './workspace-corpus/background-refresh';
 import { engineWorkspaceResolver } from './workspace-corpus/engine-resolution';
-import { createProjectDocs } from './workspace-corpus/project-docs';
+import { createWorkspaceDocsOperations } from './workspace-corpus/operations';
 import {
   createWorkspaceCorpora,
   type WorkspaceCorpora,
@@ -20,29 +17,31 @@ import {
 } from './workspace-corpus/workspace-corpora';
 
 export interface DocsFeatureDependencies {
-  /**
-   * Absolute project root whose `docs.root` is the corpus. Absent (demo data, most tests): the
-   * search answers `503 DOCS_UNAVAILABLE` and nothing is refreshed.
-   */
-  readonly projectRoot?: string;
   /** Environment the embedding API key variable is read from (default `process.env`). */
   readonly env?: Readonly<Record<string, string | undefined>>;
   /** Test seam; production uses the OpenAI-compatible adapter. */
   readonly createProvider?: CreateEmbeddingProvider;
   /**
-   * Refresh the index in the background when the Runtime is ready (default true; tests). A search
-   * that finds a gap larger than it embeds starts that refresh either way.
+   * Refresh the index of the Runtime's own checkout in the background when the Runtime is ready
+   * (default true; tests). A search that finds a gap larger than it embeds starts that refresh
+   * either way.
    */
   readonly startRefresh?: boolean;
 }
 
 export interface CreateDocsFeatureOptions {
-  /** The loaded `docs` and `ai.embeddings` settings; absent: the defaults (lexical search). */
+  /**
+   * The settings loaded at start. Only its trusted `ai.embeddings` is used (C10); each checkout's
+   * `docs` settings are read again on every request. Absent: no endpoint (lexical search).
+   */
   readonly configuration?: DocsConfiguration;
   readonly dependencies?: DocsFeatureDependencies;
   /** The Runtime's project, the scope of `docs.view`; without one every docs route answers `503`. */
   readonly projectId: DocsProjectId;
-  /** Resolves the registered workspaces whose documentation is read; absent: none is. */
+  /**
+   * Resolves the registered workspaces whose documentation is read; absent (demo data): every docs
+   * route answers `503 DOCS_UNAVAILABLE`.
+   */
   readonly engine?: SpecFlowEngine;
 }
 
@@ -60,15 +59,10 @@ export interface DocsFeature extends RuntimeFeature {
 const NOTHING_HELD: WorkspaceDocsRelease = { end: () => undefined };
 
 export function createDocsFeature(options: CreateDocsFeatureOptions): DocsFeature {
-  const configuration = options.configuration ?? {
-    docs: DEFAULT_DOCS_SETTINGS,
-    embeddings: undefined,
-  };
+  const trustedEmbeddings = options.configuration?.embeddings;
   const dependencies = options.dependencies ?? {};
-  const { projectRoot } = dependencies;
   const env = dependencies.env ?? process.env;
-  // Created when the feature registers; before that no instance exists to release. The workspace
-  // documentation endpoints read through `createWorkspaceDocsOperations(corpora)`.
+  // Created when the feature registers; before that no instance exists to release.
   let corpora: WorkspaceCorpora | undefined;
 
   return {
@@ -76,58 +70,56 @@ export function createDocsFeature(options: CreateDocsFeatureOptions): DocsFeatur
     releaseWorkspaceDocs: (workspaceId) =>
       corpora === undefined ? Promise.resolve(NOTHING_HELD) : corpora.release(workspaceId),
     register(app) {
-      // One background index job at a time in the whole Runtime (E8).
-      const slot = createRefreshSlot();
-      const providerSeam = dependencies.createProvider
-        ? { createProvider: dependencies.createProvider }
-        : {};
-      const docs =
-        projectRoot === undefined
+      const { engine, projectId } = options;
+      // Without an Engine there are no workspaces: every route answers `503 DOCS_UNAVAILABLE`.
+      const workspaces =
+        engine === undefined
           ? undefined
-          : createProjectDocs({
-              projectRoot,
-              configuration,
+          : createWorkspaceCorpora({
+              resolve: engineWorkspaceResolver(engine),
+              projectHome: engine.context.project.homeRoot,
+              trustedEmbeddings,
               env,
               log: app.log,
-              slot,
-              ...providerSeam,
+              // One background index job at a time in the whole Runtime (E8).
+              slot: createRefreshSlot(),
+              ...(dependencies.createProvider
+                ? { createProvider: dependencies.createProvider }
+                : {}),
             });
-      const { engine } = options;
-      if (engine !== undefined) {
-        corpora = createWorkspaceCorpora({
-          resolve: engineWorkspaceResolver(engine),
-          projectHome: engine.context.project.homeRoot,
-          trustedEmbeddings: configuration.embeddings,
-          env,
-          log: app.log,
-          slot,
-          ...providerSeam,
-        });
+      corpora = workspaces;
+
+      const endpoint = {
+        operations:
+          workspaces === undefined ? undefined : createWorkspaceDocsOperations(workspaces),
+        projectId,
+      };
+      app.register(docsTreeEndpoint, endpoint);
+      app.register(docsArticleEndpoint, endpoint);
+      app.register(docsSearchEndpoint, endpoint);
+
+      if (workspaces === undefined) {
+        return;
       }
 
-      const { projectId } = options;
-      app.register(docsSearchEndpoint, { docs, projectId });
-      app.register(docsStatusEndpoint, { docs, projectId });
-      // Ends every refresh, whether or not the start refresh runs.
-      app.addHook('onClose', async () => {
-        await Promise.all([docs?.close(), corpora?.close()]);
-      });
-
-      // Only a project that opted into semantic search and configured an embedding endpoint has an
-      // index to refresh; otherwise nothing is written below `.nevo/` and nothing is logged (a
-      // committed opt-in without a workstation endpoint is a normal lexical setup). It targets the
-      // Runtime's own checkout only.
+      // Ends every refresh, the start refresh included.
+      app.addHook('onClose', () => workspaces.close());
+      // ADR 0020's start refresh, for the Runtime's own checkout only, through its workspace
+      // instance, so a release before Close stops it too. Without a trusted endpoint there is
+      // nothing to refresh; a checkout with semantic search off opens nothing.
       if (
-        docs === undefined ||
+        engine === undefined ||
         dependencies.startRefresh === false ||
-        !configuration.docs.search.semantic ||
-        configuration.embeddings === undefined
+        trustedEmbeddings === undefined
       ) {
         return;
       }
 
+      const ownWorkspace = engine.workspace.workspaceId;
       app.addHook('onReady', (done) => {
-        docs.startRefresh();
+        void workspaces.startRefresh(ownWorkspace).catch((error: unknown) => {
+          app.log.warn({ err: error }, 'The documentation index was not refreshed.');
+        });
         done();
       });
     },

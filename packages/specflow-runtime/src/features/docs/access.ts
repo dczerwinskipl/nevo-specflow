@@ -1,10 +1,7 @@
 import { DocsCapabilities } from '@nevo/specflow-contracts/docs';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
-import { docsUnavailableBody } from './unavailable';
-
-/** The Runtime's project id: `undefined` without an Engine (demo data, Runtimes without a project). */
-export type DocsProjectId = () => string | undefined;
+import { workspaceDocsError, type DocsProjectId } from './route-support';
 
 /**
  * Pre-handler of every docs route (ADR 0022 §2): `docs.view` at the Runtime's project scope
@@ -18,7 +15,7 @@ export function requireDocsView(projectId: DocsProjectId) {
     const id = projectId();
     if (id === undefined) {
       // A pre-handler that sends ends the request; the route handler does not run.
-      await reply.code(503).header('Cache-Control', 'no-store').send(docsUnavailableBody);
+      await reply.code(503).send(workspaceDocsError('DOCS_UNAVAILABLE'));
 
       return;
     }

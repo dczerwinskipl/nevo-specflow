@@ -96,11 +96,10 @@ It works with the Fastify shared-schema mechanism, without a second copy of any 
 
 Current shared contracts: `AuthSessionResponse`, `AuthenticationRequiredErrorResponse`,
 `AuthorizationForbiddenErrorResponse`, `CloseError`, `ClosePreview`, `CloseResult`,
-`CloseWorkspaceResult`, `CreateSpecError`, `DocsSearchResult` and `DocsStatus` (also the output of
-`nevo-specflow docs search --json` and `docs semantic status --json`), `DocumentError`,
-`DocumentOperationResult`, `DocumentOperationStatus`, `OperationListResponse`,
-`RateLimitedErrorResponse`, `RequestErrorResponse`, `SessionCommandResult`, `SessionError`,
-`SpecificationReadError`, `TaskReadError` and `TaskSnapshotExpired`.
+`CloseWorkspaceResult`, `CreateSpecError`, `DocumentError`, `DocumentOperationResult`,
+`DocumentOperationStatus`, `OperationListResponse`, `RateLimitedErrorResponse`,
+`RequestErrorResponse`, `SessionCommandResult`, `SessionError`, `SpecificationReadError`,
+`TaskReadError`, `TaskSnapshotExpired` and `WorkspaceDocsError`.
 
 A test that registers Runtime routes on a bare Fastify instance (without `createRuntimeApp`) creates
 it with `routeTestApp()` from `test/support/route-app.ts`, which registers the shared contracts that
@@ -188,8 +187,9 @@ Operations holds the cross-feature operation lists, the operation progress strea
 a Specification creation (the shared list and stream mechanisms declare the group, the feature
 gives the summary). The status of a close or document operation stays with its feature
 (Specifications, Workspaces, Documents). Workspaces holds the workspace list ([`GET /api/workspaces`](workspaces.md)), closing a linked
-worktree and closing a whole workspace. Documentation holds the search and the semantic search status of the project's
-own documentation (`/api/docs/`); Documents are the documents of a Specification.
+worktree and closing a whole workspace. Documentation holds the tree, the documents and the search of a registered workspace's
+documentation ([`/api/workspaces/{workspaceId}/docs`](workspace-docs.md)); Documents are the
+documents of a Specification.
 
 ## Shared error responses
 
@@ -207,7 +207,7 @@ The transform never adds `403`: whether an operation can refuse a capability is 
 knowledge. A route whose authorization can deny documents `403` with
 `AuthorizationForbiddenErrorResponse` in its response schema. Every Session route does (the
 capability checks of the Session or of the start), as the Specification, document, Task, close,
-operation and documentation search routes already did. `GET /api/openapi.json` and `POST /api/authorization/capabilities`
+operation and workspace documentation routes already did. `GET /api/openapi.json` and `POST /api/authorization/capabilities`
 only require a principal and never answer `403`. In trusted local mode no operation has `security`,
 so none has the `401`.
 

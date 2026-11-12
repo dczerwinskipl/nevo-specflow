@@ -347,8 +347,9 @@ index with the configured one, but not the stored probe vector: a model whose we
 the same name and space is noticed by the next full refresh (`semantic index`, the background
 catch-up or the Runtime start). Status only reports; it starts nothing.
 The endpoint line shows `space <spaceId>` when `ai.embeddings.spaceId` is set. `--json` prints the
-same report as one JSON object, the `DocsStatus` contract of [`GET
-/api/docs/status`](../api/docs-search.md#get-apidocsstatus).
+same report as one JSON object, the `DocsStatus` contract. The Runtime has no status endpoint; its
+[workspace search](../api/workspace-docs.md#get-apiworkspacesworkspaceiddocssearch) carries the
+index progress.
 
 ```text
 semantic search: enabled

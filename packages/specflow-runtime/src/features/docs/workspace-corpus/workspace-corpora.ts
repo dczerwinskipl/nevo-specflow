@@ -34,10 +34,10 @@ export type ResolveWorkspace = (workspaceId: string) => Promise<WorkspaceResolut
  * - `not-configured`: the checkout's `docs.root` is not a directory;
  * - `docs-unavailable`: the checkout's `docs` settings or `docs.yaml` are invalid or a link.
  */
-export interface WorkspaceDocsFailure {
-  readonly kind:
-    'workspace-not-found' | 'workspace-unavailable' | 'not-configured' | 'docs-unavailable';
-}
+export type WorkspaceDocsFailure =
+  | { readonly kind: 'workspace-not-found' | 'workspace-unavailable' | 'docs-unavailable' }
+  /** `docsRoot`: the configured `docs.root`, relative to the checkout. */
+  | { readonly kind: 'not-configured'; readonly docsRoot: string };
 
 export type WorkspaceDocsResult<T> =
   | {
@@ -83,6 +83,13 @@ export interface WorkspaceCorpora {
    * until `end`. Nothing of the instance writes once this resolves.
    */
   release(workspaceId: string): Promise<WorkspaceDocsRelease>;
+  /**
+   * Starts the full background refresh of a workspace whose checkout has semantic search on (the
+   * Runtime start refresh of its own checkout), in the Runtime-wide slot. Its instance is one of
+   * these instances, so `release` and `close` stop it; after `close`, or while released, nothing
+   * is opened.
+   */
+  startRefresh(workspaceId: string): Promise<void>;
   /** Disposes every instance (Runtime close); later requests answer `workspace-unavailable`. */
   close(): Promise<void>;
 }
@@ -175,78 +182,95 @@ export function createWorkspaceCorpora(options: WorkspaceCorporaOptions): Worksp
     return { root, fingerprint, instance };
   };
 
-  return {
-    async use(workspaceId, operation) {
-      if (refused(workspaceId)) {
-        return unavailable;
+  type Acquired =
+    | { readonly kind: 'acquired'; readonly entry: Entry; readonly docsRoot: string }
+    | WorkspaceDocsFailure
+    | { readonly kind: 'semantic-off' };
+
+  // Resolves the workspace, re-reads its settings and finds or opens its entry. `semanticOnly`
+  // (the start refresh) opens nothing for a checkout without semantic search.
+  const acquire = async (workspaceId: string, semanticOnly: boolean): Promise<Acquired> => {
+    if (refused(workspaceId)) {
+      return unavailable;
+    }
+
+    const resolution = await resolve(workspaceId);
+    if (resolution.status !== 'available') {
+      await evict(workspaceId);
+
+      return resolution.status === 'not-registered' ? { kind: 'workspace-not-found' } : unavailable;
+    }
+
+    // Nothing below awaits until the entry is in place, so a release either sees it or this
+    // request sees the release.
+    if (refused(workspaceId)) {
+      return unavailable;
+    }
+
+    const { root, projectHome } = resolution;
+    let settings: ReturnType<typeof readCheckoutDocsSettings>;
+    try {
+      settings = readCheckoutDocsSettings(root, { rejectLinks: true });
+    } catch (error) {
+      return docsFailure(workspaceId, error);
+    }
+
+    if (settings.status === 'not-configured') {
+      void evict(workspaceId);
+
+      return { kind: 'not-configured', docsRoot: settings.root };
+    }
+
+    // C10: only the checkout's `docs.search.semantic` decides, and only to turn it off.
+    const embeddings = settings.docs.search.semantic ? options.trustedEmbeddings : undefined;
+    let entry = entries.get(workspaceId);
+    if (
+      entry !== undefined &&
+      (entry.root !== root || entry.fingerprint !== settings.fingerprint)
+    ) {
+      void evict(workspaceId);
+      entry = undefined;
+    }
+
+    if (entry === undefined) {
+      if (semanticOnly && embeddings === undefined) {
+        return { kind: 'semantic-off' };
       }
 
-      const resolution = await resolve(workspaceId);
-      if (resolution.status !== 'available') {
-        await evict(workspaceId);
-
-        return resolution.status === 'not-registered'
-          ? { kind: 'workspace-not-found' }
-          : unavailable;
-      }
-
-      // Nothing below awaits until the entry is in place, so a release either sees it or this
-      // request sees the release.
-      if (refused(workspaceId)) {
-        return unavailable;
-      }
-
-      const { root, projectHome } = resolution;
-      let settings: ReturnType<typeof readCheckoutDocsSettings>;
+      let corpus: DocsCorpus;
       try {
-        settings = readCheckoutDocsSettings(root, { rejectLinks: true });
+        corpus = openCorpus(root, settings.corpus);
       } catch (error) {
         return docsFailure(workspaceId, error);
       }
 
-      if (settings.status === 'not-configured') {
-        void evict(workspaceId);
-
-        return { kind: 'not-configured' };
-      }
-
-      let entry = entries.get(workspaceId);
-      if (
-        entry !== undefined &&
-        (entry.root !== root || entry.fingerprint !== settings.fingerprint)
-      ) {
-        void evict(workspaceId);
-        entry = undefined;
-      }
-
-      if (entry === undefined) {
-        let corpus: DocsCorpus;
-        try {
-          corpus = openCorpus(root, settings.corpus);
-        } catch (error) {
-          return docsFailure(workspaceId, error);
+      const configuration: DocsConfiguration = { docs: settings.docs, embeddings };
+      entry = open(workspaceId, root, settings.fingerprint, corpus, configuration, projectHome);
+      entries.set(workspaceId, entry);
+      for (const oldest of entries.keys()) {
+        if (entries.size <= MAX_WORKSPACE_INSTANCES) {
+          break;
         }
 
-        // C10: only the checkout's `docs.search.semantic` decides, and only to turn it off.
-        const configuration: DocsConfiguration = {
-          docs: settings.docs,
-          embeddings: settings.docs.search.semantic ? options.trustedEmbeddings : undefined,
-        };
-        entry = open(workspaceId, root, settings.fingerprint, corpus, configuration, projectHome);
-        entries.set(workspaceId, entry);
-        for (const oldest of entries.keys()) {
-          if (entries.size <= MAX_WORKSPACE_INSTANCES) {
-            break;
-          }
+        void evict(oldest);
+      }
+    } else {
+      entries.delete(workspaceId);
+      entries.set(workspaceId, entry);
+    }
 
-          void evict(oldest);
-        }
-      } else {
-        entries.delete(workspaceId);
-        entries.set(workspaceId, entry);
+    return { kind: 'acquired', entry, docsRoot: settings.docs.root };
+  };
+
+  return {
+    async use(workspaceId, operation) {
+      const acquired = await acquire(workspaceId, false);
+      if (acquired.kind !== 'acquired') {
+        // Only the start refresh asks for a semantic-only acquisition.
+        return acquired.kind === 'semantic-off' ? unavailable : acquired;
       }
 
-      const docsRoot = settings.docs.root;
+      const { entry, docsRoot } = acquired;
       let instance: CorpusInstance;
       try {
         instance = await entry.instance;
@@ -262,6 +286,24 @@ export function createWorkspaceCorpora(options: WorkspaceCorporaOptions): Worksp
       }
 
       return used === undefined ? unavailable : { kind: 'ok', workspaceId, docsRoot, ...used };
+    },
+    async startRefresh(workspaceId) {
+      const acquired = await acquire(workspaceId, true);
+      if (acquired.kind !== 'acquired') {
+        return;
+      }
+
+      let instance: CorpusInstance;
+      try {
+        instance = await acquired.entry.instance;
+      } catch (error) {
+        docsFailure(workspaceId, error, acquired.entry);
+
+        return;
+      }
+
+      // A disposed instance (released or closed meanwhile) answers `stopped` and starts nothing.
+      instance.startRefresh();
     },
     async release(workspaceId) {
       fences.set(workspaceId, (fences.get(workspaceId) ?? 0) + 1);

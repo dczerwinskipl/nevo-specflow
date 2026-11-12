@@ -20,7 +20,7 @@ related:
   - ideas.semantic-docs
   - adr.0020-documentation-discovery-is-a-product-capability
   - adr.0021-product-neutral-ai-semantic-search-engine
-  - reference.api.docs-search
+  - reference.api.workspace-docs
   - reference.configuration.documentation-and-embeddings
 ---
 
@@ -32,7 +32,7 @@ Proposal language throughout; each item names the current document.
 
 **Now:** documentation search is available to agents and scripts through
 [`nevo-specflow docs search`](../../reference/cli/nevo-specflow-docs.md#search) and
-[`GET /api/docs/search`](../../reference/api/docs-search.md); the UI has no documentation surface.
+the [workspace documentation HTTP API](../../reference/api/workspace-docs.md); the UI has no documentation surface.
 
 **Missing:** a UX contract first (where help appears, what "related documents" means for a screen or
 an open document, how results and sections are shown and opened), then a UI port on the existing
@@ -106,7 +106,7 @@ compatibility layers, new design-system components or a new AI chat.
   and `/api/docs/status` endpoints have no workspace parameter; a request from a Specification
   using a linked worktree may read the Project Home checkout's documentation.
 - The CLI resolves the checkout from its invoking working directory, so a `docs search` issued
-  *inside* a linked worktree can already read that checkout; CLI and Runtime behavior differ.
+  _inside_ a linked worktree can already read that checkout; CLI and Runtime behavior differ.
 - `DocsChunkSource` hashes Markdown files on each search and supports incremental updates,
   including uncommitted changes. It does **not** automatically reload `docs.root`, `docs.yaml`,
   `exclude` or taxonomy when a long-lived `ProjectDocs` was opened before a branch switch.
@@ -225,7 +225,7 @@ between workspaces now.
 Do not equate Git HEAD, source revision, index generation and workspace identity:
 
 - **`workspaceId`** identifies the registered checkout on this workstation, not the content.
-- **`corpusRevision`** is an opaque digest of the *effective* docs configuration
+- **`corpusRevision`** is an opaque digest of the _effective_ docs configuration
   (`docs.root` and parsed `docs.yaml` semantics) plus a deterministic sorted list of
   included documentation paths and file-content hashes (including frontmatter). It changes
   with dirty edits and config/filter changes even if HEAD stays unchanged. It excludes secret

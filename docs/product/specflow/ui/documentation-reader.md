@@ -20,7 +20,7 @@ related:
   - product.specflow.ui.interaction-model
   - product.specflow.ui.documents-editor-mode
   - product.shared.vocabulary
-  - reference.api.docs-search
+  - reference.api.workspace-docs
   - design-system.principles.layout-and-containment
   - design-system.principles.information-hierarchy
 ---

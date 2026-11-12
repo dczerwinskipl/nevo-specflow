@@ -87,8 +87,13 @@ function harness(workspaces: Map<string, WorkspaceResolution>, home: string) {
     };
   };
 
+  const resolved: string[] = [];
   const corpora = createWorkspaceCorpora({
-    resolve: (id) => Promise.resolve(workspaces.get(id) ?? { status: 'not-registered' }),
+    resolve: (id) => {
+      resolved.push(id);
+
+      return Promise.resolve(workspaces.get(id) ?? { status: 'not-registered' });
+    },
     projectHome: home,
     trustedEmbeddings: { protocol: 'openai-compatible', baseUrl: TRUSTED, model: 'm' },
     env: {},
@@ -101,6 +106,7 @@ function harness(workspaces: Map<string, WorkspaceResolution>, home: string) {
     corpora,
     docs: createWorkspaceDocsOperations(corpora),
     baseUrls,
+    resolved,
     /** Resolves once a refresh is blocked on a document request. */
     embedding: () => embedding.promise,
     open: () => {
@@ -286,6 +292,47 @@ describe('workspace documentation instances', () => {
       expect(reopened).toBe(false);
       h.open();
       expect(await again).toMatchObject({ kind: 'ok' });
+    } finally {
+      h.open();
+      await h.corpora.close();
+    }
+  });
+
+  it('runs the start refresh in an instance that release stops, and opens nothing after close', async () => {
+    const home = checkout('home4', { large: true });
+    const off = checkout('off4', { large: true });
+    writeFileSync(join(off, '.nevo', 'config.yaml'), 'docs:\n  root: docs\n');
+    const workspaces = new Map<string, WorkspaceResolution>([
+      ['home', { status: 'available', root: home, projectHome: true }],
+      ['off', linked(off)],
+    ]);
+    const h = harness(workspaces, home);
+    try {
+      // Semantic search off in the checkout: no instance, so nothing to refresh or release.
+      await h.corpora.startRefresh('off');
+      expect(indexFiles(off)).toEqual([]);
+
+      await h.corpora.startRefresh('home');
+      await h.embedding();
+      let released = false;
+      const releasing = h.corpora.release('home').then((hold) => {
+        released = true;
+
+        return hold;
+      });
+      await tick();
+      await tick();
+      expect(released).toBe(false);
+      h.open();
+      (await releasing).end();
+      expect(await inspectFileStoreWriter({ directory: join(home, ...INDEX, 'vectors') })).toEqual({
+        status: 'free',
+      });
+
+      await h.corpora.close();
+      const before = h.resolved.length;
+      await h.corpora.startRefresh('home');
+      expect(h.resolved).toHaveLength(before);
     } finally {
       h.open();
       await h.corpora.close();

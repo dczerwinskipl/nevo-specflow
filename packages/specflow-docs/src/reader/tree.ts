@@ -2,7 +2,7 @@
 
 import { asString } from '../frontmatter/contract';
 import type { DocsChunks } from '../semantic-index/chunk-source';
-import { underDocsRoot } from './paths';
+import { skippedUnderDocsRoot, underDocsRoot } from './paths';
 
 export interface TreeDocument {
   readonly documentId: string;
@@ -70,9 +70,6 @@ export function projectDocsTree(snapshot: DocsChunks, root: string): DocsTree {
         ...(supersededBy === undefined ? {} : { supersededBy }),
       };
     }),
-    skipped: snapshot.skipped.map(({ path, error }) => ({
-      path: underDocsRoot(root, path),
-      error,
-    })),
+    skipped: skippedUnderDocsRoot(root, snapshot.skipped),
   };
 }

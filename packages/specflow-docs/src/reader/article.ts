@@ -7,7 +7,7 @@ import type { DocsCorpus } from '../corpus/corpus';
 import { asString, parseFrontmatter } from '../frontmatter/contract';
 import { DocsError } from '../errors';
 import { sha256, type DocsChunks } from '../semantic-index/chunk-source';
-import { underDocsRoot } from './paths';
+import { skippedUnderDocsRoot, underDocsRoot } from './paths';
 
 export type RelatedState = 'active' | 'inactive' | 'skipped' | 'missing';
 
@@ -162,10 +162,7 @@ function describeUnreadable(
       kind: 'skipped',
       revision,
       documentId,
-      skipped: skipped.map(({ path, error }) => ({
-        path: underDocsRoot(corpus.settings.root, path),
-        error,
-      })),
+      skipped: skippedUnderDocsRoot(corpus.settings.root, skipped),
     };
   }
 

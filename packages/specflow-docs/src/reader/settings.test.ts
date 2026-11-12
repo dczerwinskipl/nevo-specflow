@@ -64,7 +64,7 @@ describe('readCheckoutDocsSettings', () => {
     ).toMatchObject({ status: 'configured', docs: { root: 'docs' } });
     expect(
       readCheckoutDocsSettings(checkout('docs:\n  root: missing\n'), { rejectLinks: true }),
-    ).toEqual({ status: 'not-configured' });
+    ).toEqual({ status: 'not-configured', root: 'missing' });
     expect(() =>
       readCheckoutDocsSettings(checkout('docs:\n  root: docs\n  bogus: 1\n'), {
         rejectLinks: true,

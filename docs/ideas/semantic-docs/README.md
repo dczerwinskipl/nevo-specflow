@@ -26,7 +26,7 @@ Proposals only. What is implemented is described in the current documents:
 [ADR 0020](../../architecture/decisions/0020-documentation-discovery-is-a-product-capability.md)
 (the `docs` capability), [ADR 0021](../../architecture/decisions/0021-product-neutral-ai-semantic-search-engine.md)
 (the engine), the [`nevo-specflow docs` reference](../../reference/cli/nevo-specflow-docs.md), the
-[search HTTP API](../../reference/api/docs-search.md) and the
+[workspace documentation HTTP API](../../reference/api/workspace-docs.md) and the
 [documentation and embeddings configuration](../../reference/configuration/documentation-and-embeddings.md).
 Those documents win on any conflict; an item here becomes a requirement only once it is promoted
 there.

@@ -396,6 +396,7 @@ describe('removing a Task', () => {
     await remove(dependencies, 'api');
 
     expect(dependencies.store.applied.at(-1)).toEqual({
+      summary: 'remove task api',
       index: expect.objectContaining({ next: { tasks: [{ id: 'web' }] } }) as unknown,
       manifests: [expect.objectContaining({ taskId: 'api', next: null }) as unknown],
       documents: [{ taskId: 'api', path: 'task.md', text: null }],

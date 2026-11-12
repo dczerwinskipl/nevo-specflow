@@ -82,6 +82,28 @@ describe('finishLines', () => {
       'Next: needs the owner: "review" (owner-action)',
     ]);
   });
+
+  it('shows a post action that failed', () => {
+    const result = {
+      subject,
+      transition: 'implemented',
+      position: { state: 'ready', step: 'review' },
+      continuation: { kind: 'none', reason: 'on-hold' },
+      createdTasks: [],
+      postActions: [
+        {
+          action: 'commit-execution-state',
+          status: 'failed',
+          code: 'MANUAL_COMMIT_CONFLICT',
+          message: 'A path was edited.',
+        },
+      ],
+    } as unknown as FinishStepResult;
+
+    expect(finishLines(result).at(-1)).toBe(
+      'Post action commit-execution-state failed: MANUAL_COMMIT_CONFLICT A path was edited.',
+    );
+  });
 });
 
 describe('exit lines', () => {

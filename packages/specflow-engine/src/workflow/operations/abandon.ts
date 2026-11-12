@@ -91,6 +91,7 @@ export function abandonSpecification(
       await archetypeOf(dependencies, snapshot),
     );
     const change: ExecutionChange = {
+      summary: 'abandon the specification',
       specification: {
         expected: snapshot.specification?.revision ?? null,
         next: { ...record, run: abandonRun<WorkflowActor>(record.run, command) },

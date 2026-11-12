@@ -128,9 +128,10 @@ export async function admitDocumentChange(
   const paths = result.plan.paths.map((path) => path.path);
 
   const git = await admitGitCommit(engine, commits, loaded.workspaceRoot, paths, options.git);
-  // A Task's `task.yaml` is also written by the Specification execution store, whose writes are not
-  // committed for it (D14): it is not judged dirty. The whole-file revision checked again under the
-  // control lock and the mutual exclusion with that store (D03) protect it instead.
+  // A Task's `task.yaml` is also written by the Specification execution store, whose writes are
+  // committed as `workflow` operations (`./execution-state.ts`) and may be uncommitted (auto-commit
+  // off, or a stop before they were recorded): it is not judged dirty. The whole-file revision checked
+  // again under the control lock and the mutual exclusion with that store (D03) protect it instead.
   if (changesManifest && loaded.container.kind === 'specification') {
     const baseline = await findManifestBaseline(engine.context, {
       workspaceId: loaded.workspaceId,

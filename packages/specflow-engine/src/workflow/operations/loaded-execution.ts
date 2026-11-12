@@ -20,6 +20,7 @@ import type { TaskRunRecord } from '../state/model';
 import type { ExecutionSnapshot, Versioned, WorkflowStore } from '../state/store';
 import type { SpecificationExitPort } from './actions';
 import type { TaskReferences } from './task-references';
+import type { WorkflowPostActions } from './post-actions';
 
 /**
  * Dependencies of the workflow operations. Every mutation runs inside `serialize` (the project control
@@ -37,6 +38,8 @@ export interface WorkflowDependencies {
   readonly serialize: <T>(operation: () => Promise<T>) => Promise<T>;
   /** Close/Abandon availability for the action projection; `openWorkflow` provides it. */
   readonly specificationExit?: SpecificationExitPort;
+  /** What the host does after a step's finish (`./post-actions.ts`); none when absent. */
+  readonly postActions?: WorkflowPostActions;
 }
 
 /**
@@ -252,6 +255,11 @@ export function loadSubject(
     definition: pinnedDefinition(catalogue, run.value.run),
     task,
   };
+}
+
+/** The words a commit subject names a subject with: nothing for the Specification, ` of task <id>`. */
+export function ofSubject(subject: WorkflowSubject): string {
+  return subject.kind === 'task' ? ` of task ${subject.taskId}` : '';
 }
 
 export function isoNow(dependencies: WorkflowDependencies): string {

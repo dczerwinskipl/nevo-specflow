@@ -180,9 +180,10 @@ describe('fingerprint', () => {
     expect(fingerprintDocumentChange(save)).toBe(fingerprintDocumentChange({ ...save }));
   });
 
-  it('covers every action', () => {
+  it('covers every action a client requests', () => {
+    // `workflow` has no client request: the Specification execution store records it.
     expect(new Set(requests.map((request) => request.action))).toEqual(
-      new Set(DOCUMENT_CHANGE_ACTIONS),
+      new Set(DOCUMENT_CHANGE_ACTIONS.filter((action) => action !== 'workflow')),
     );
   });
 

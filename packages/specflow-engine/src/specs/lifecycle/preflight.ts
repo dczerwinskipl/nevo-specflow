@@ -11,6 +11,7 @@ import {
 import { readProjectGitPolicy } from '../../version-control/worktrees/config';
 import { resolveSpecification } from '../discovery';
 import { listWorkspaceSpecifications } from '../repository';
+import { isExecutionStatePathOf } from '../execution-paths';
 import { isValidSpecificationId } from '../model';
 import {
   CloseOperationError,
@@ -89,14 +90,20 @@ function isMissing(error: unknown): boolean {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT';
 }
 
-/** Read-only: git status may refresh index by default; disable optional locks. */
-export async function inspectCleanGitWorkspace(workspace: {
-  readonly workspaceId: string;
-  readonly root: string;
-  readonly instanceId?: string;
-}): Promise<CloseWorkspaceEvidence> {
-  const root = workspace.root;
-  await requireNoGitOperation(root);
+/** A path `git status` reports, with its two-letter status (`??` untracked). */
+export interface UncleanPath {
+  readonly status: string;
+  readonly path: string;
+}
+
+/** How many unclean paths a refusal names. */
+const UNCLEAN_PATHS_NAMED = 10;
+
+/**
+ * Every path `git status` reports as staged, modified, removed or untracked (renames name both
+ * paths). Read-only: optional locks are off, so the status does not refresh the index.
+ */
+export async function listUncleanPaths(root: string): Promise<readonly UncleanPath[]> {
   const state = await executeGit(root, [
     '-c',
     'core.optionalLocks=false',
@@ -105,9 +112,69 @@ export async function inspectCleanGitWorkspace(workspace: {
     '-z',
     '--untracked-files=all',
   ]);
-  if (state.exitCode !== 0 || state.stdout) {
-    throw invalid(
-      'Checkout has staged, modified or untracked files, or Git status is unavailable.',
+  if (state.exitCode !== 0) {
+    throw invalid('Git status is unavailable.');
+  }
+
+  const fields = state.stdout.split('\0');
+  const paths: UncleanPath[] = [];
+  for (let index = 0; index < fields.length; index += 1) {
+    const field = fields[index]!;
+    if (field === '') {
+      continue;
+    }
+
+    const status = field.slice(0, 2);
+    paths.push({ status, path: field.slice(3) });
+    // A rename or copy is followed by its origin.
+    if (status.includes('R') || status.includes('C')) {
+      index += 1;
+      paths.push({ status, path: fields[index] ?? '' });
+    }
+  }
+
+  return paths;
+}
+
+/**
+ * The paths a clean-tree check accepts: the execution state (`.execution/**`, `tasks/**`) of the
+ * Specification a Specification Close archives, which its archive commit takes along (owner decision
+ * 2026-11-12). Absent: nothing is accepted.
+ */
+export interface CleanTreeAllowance {
+  /** The checkout-relative directory of the Specification (`specs/active/<slug>`). */
+  readonly executionStateOf: string;
+}
+
+/** Read-only: git status may refresh index by default; disable optional locks. */
+export async function inspectCleanGitWorkspace(
+  workspace: {
+    readonly workspaceId: string;
+    readonly root: string;
+    readonly instanceId?: string;
+  },
+  allowance?: CleanTreeAllowance,
+): Promise<CloseWorkspaceEvidence> {
+  const root = workspace.root;
+  await requireNoGitOperation(root);
+  const unclean = (await listUncleanPaths(root))
+    .map((entry) => entry.path)
+    .filter(
+      (path) =>
+        allowance === undefined || !isExecutionStatePathOf(allowance.executionStateOf, path),
+    );
+  if (unclean.length > 0) {
+    const named = unclean.slice(0, UNCLEAN_PATHS_NAMED).join(', ');
+    const more =
+      unclean.length > UNCLEAN_PATHS_NAMED
+        ? ` and ${unclean.length - UNCLEAN_PATHS_NAMED} more`
+        : '';
+
+    throw new CloseOperationError(
+      'CLOSE_PREFLIGHT',
+      `Checkout has staged, modified or untracked files: ${named}${more}.`,
+      [],
+      unclean,
     );
   }
 
@@ -241,7 +308,13 @@ export async function previewCloseOperation(
     }
   }
 
-  const source = await inspectCleanGitWorkspace(sourceWorkspace);
+  // A Specification Close commits the Specification's uncommitted execution state with its archive.
+  const source = await inspectCleanGitWorkspace(
+    sourceWorkspace,
+    request.kind === 'specification-close'
+      ? { executionStateOf: 'specs/active/' + canonical.specification.slug }
+      : undefined,
+  );
   const needsTarget = integrate || !linked;
   let target: CloseWorkspaceEvidence | undefined;
   let targetBranch: string | undefined;

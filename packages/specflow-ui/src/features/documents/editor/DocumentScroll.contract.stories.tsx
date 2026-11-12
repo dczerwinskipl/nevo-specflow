@@ -486,6 +486,27 @@ export const CloseKeepsThePositionAtThatMoment: Story = {
   },
 };
 
+/** A pending editor measurement can change scrollTop while the close handler reads the anchor. */
+export const CloseUsesTheMeasuredSourcePosition: Story = {
+  play: async (context) => {
+    const { canvas, canvasElement, userEvent } = context;
+    const view = await openEditor(context);
+    await scrollEditorToLine(view, 60);
+    const close = canvas.getByRole('button', { name: 'Zamknij panel' });
+    const target = 140;
+    view.dispatch({
+      effects: EditorView.scrollIntoView(view.state.doc.line(target).from, {
+        y: 'start',
+        yMargin: 0,
+      }),
+    });
+    close.click();
+    await userEvent.click(close);
+    const reopened = await openEditorOnly(canvasElement);
+    await waitFor(() => expect(Math.abs(editorTopLine(reopened) - target)).toBeLessThanOrEqual(1));
+  },
+};
+
 /** S7: A -> B -> A returns to the last position of A. */
 export const SwitchingDocumentsRestoresLastPosition: Story = {
   play: async ({ canvas, canvasElement, userEvent }) => {

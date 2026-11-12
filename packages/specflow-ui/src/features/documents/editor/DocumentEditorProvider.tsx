@@ -36,8 +36,8 @@ import {
   documentOutline,
   type DocumentOutlineData,
   type OutlineNavigator,
-} from '../outline/outlineData';
-import { DocumentOutlineSheet } from '../outline/DocumentOutlineSheet';
+} from '../../../shared/document-reading/outlineData';
+import { DocumentOutlineSheet } from '../../../shared/document-reading/DocumentOutlineSheet';
 import { regionHeading } from '../outline/regionHeading';
 import type { DocumentGuidance } from '../catalogue/documentTypePolicy';
 import { DocumentGuidanceSheet } from '../guidance/DocumentGuidance';

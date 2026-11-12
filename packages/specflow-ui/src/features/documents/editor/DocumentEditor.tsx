@@ -27,17 +27,20 @@ import {
   trackUserScroll,
   type ScrollAnchor,
 } from './documentScrollAnchor';
-import { DocumentOutline } from '../outline/DocumentOutline';
-import type { DocumentOutlineData, OutlineNavigator } from '../outline/outlineData';
+import { DocumentOutline } from '../../../shared/document-reading/DocumentOutline';
+import type {
+  DocumentOutlineData,
+  OutlineNavigator,
+} from '../../../shared/document-reading/outlineData';
 import {
   guidanceColumnMinWidth,
   guidanceColumnWidth,
   outlineColumnMinWidth,
   outlineColumnWidth,
-} from '../outline/markdownOutline';
+} from '../../../shared/document-reading/markdownOutline';
 import type { DocumentGuidance } from '../catalogue/documentTypePolicy';
 import { DocumentGuidanceColumn } from '../guidance/DocumentGuidance';
-import { DocumentProperties } from '../frontmatter/DocumentProperties';
+import { DocumentProperties } from '../../../shared/document-reading/DocumentProperties';
 import { useMarkdownLabels } from '../../../i18n/useMarkdownLabels';
 import { applyPreviewAnchor, readPreviewAnchor } from './previewScroll';
 

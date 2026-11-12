@@ -1,4 +1,4 @@
-import { parseFrontmatter, type FrontmatterProperty } from '../frontmatter/frontmatter';
+import { parseFrontmatter, type FrontmatterProperty } from './frontmatter';
 import { markdownOutline, type OutlineHeading } from './markdownOutline';
 
 /** What the preview derives from the text of a markdown document, parsed once per change. */

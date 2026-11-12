@@ -56,14 +56,14 @@ import {
 import { NevoBrandLogo, defaultNevoBrand } from '../../brand';
 import { StoryLocalization } from '../../i18n/StoryLocalization';
 import { LoadingPresentation } from '../../app/loading/LoadingPresentation';
-import { DocumentOutline } from '../../features/documents/outline/DocumentOutline';
-import { DocumentOutlineSheet } from '../../features/documents/outline/DocumentOutlineSheet';
+import { DocumentOutline } from '../../shared/document-reading/DocumentOutline';
+import { DocumentOutlineSheet } from '../../shared/document-reading/DocumentOutlineSheet';
 import {
   markdownOutline,
   outlineColumnMinWidth,
   outlineColumnWidth,
-} from '../../features/documents/outline/markdownOutline';
-import { DocumentProperties } from '../../features/documents/frontmatter/DocumentProperties';
+} from '../../shared/document-reading/markdownOutline';
+import { DocumentProperties } from '../../shared/document-reading/DocumentProperties';
 import {
   docsFor,
   inactiveDocs,

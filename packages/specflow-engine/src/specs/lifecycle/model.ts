@@ -223,16 +223,20 @@ export class CloseOperationError extends Error {
   readonly code: CloseOperationErrorCode;
   /** `CLOSE_BLOCKED`: the grouped blockers of the Specification exit gate; empty otherwise. */
   readonly blockers: readonly SpecificationExitBlocker[];
+  /** `CLOSE_PREFLIGHT` of a dirty checkout: the paths that are not clean; empty otherwise. */
+  readonly paths: readonly string[];
 
   constructor(
     code: CloseOperationErrorCode,
     message: string,
     blockers: readonly SpecificationExitBlocker[] = [],
+    paths: readonly string[] = [],
   ) {
     super(message);
     this.name = 'CloseOperationError';
     this.code = code;
     this.blockers = blockers;
+    this.paths = paths;
   }
 }
 

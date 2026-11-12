@@ -203,6 +203,8 @@ export const DOCUMENT_OPERATION_STATUS_ACTIONS = [
   'move',
   'delete',
   'classify',
+  /** The commit of writes of the Specification execution store (`.execution/**`, `tasks/**`). */
+  'workflow',
   'manual-commit',
 ] as const;
 export const DocumentOperationStatusActionSchema = closedUnion(DOCUMENT_OPERATION_STATUS_ACTIONS);

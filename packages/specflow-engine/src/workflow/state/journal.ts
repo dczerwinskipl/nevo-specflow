@@ -37,11 +37,29 @@ export type JournalTarget =
 export type JournalWrite = JournalTarget & {
   readonly text: string | null;
   readonly expected: string | null;
+  /**
+   * The content the write replaces (sha256 and size, `null` for no file), kept so the commit record
+   * of a change finished after a crash names its real `pre` (see {@link JournalCommit}).
+   */
+  readonly pre?: { readonly sha256: string; readonly bytes: number } | null;
 };
+
+/**
+ * How the change is recorded for its commit (`ExecutionStateCommits`): the document operation id and
+ * the words, fixed before any file is written. The record is made from the journal BEFORE the journal
+ * is removed and is idempotent by `operationId`, so a crash at any point records the change exactly
+ * once, with its original `pre` (the next change finishes it).
+ */
+export interface JournalCommit {
+  readonly operationId: string;
+  readonly summary: string;
+}
 
 export interface Journal {
   readonly version: number;
   readonly specId: string;
+  /** Absent only in a journal written without a commit policy (tests, hand-made journals). */
+  readonly commit?: JournalCommit;
   readonly writes: readonly JournalWrite[];
 }
 
@@ -65,8 +83,56 @@ export function targetKey(target: JournalTarget): string {
 export const isTaskDocumentPath = (path: string): boolean =>
   validateDocumentPath(path).ok && foldPathKey(path) !== TASK_MANIFEST_FILE;
 
-export function pendingJournal(specId: string, writes: readonly JournalWrite[]): Journal {
-  return { version: JOURNAL_VERSION, specId, writes };
+export function pendingJournal(
+  specId: string,
+  writes: readonly JournalWrite[],
+  commit?: JournalCommit,
+): Journal {
+  return { version: JOURNAL_VERSION, specId, ...(commit ? { commit } : {}), writes };
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
+
+function isJournalCommit(value: unknown): boolean {
+  if (value === undefined) {
+    return true;
+  }
+
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
+  const commit = value as Record<string, unknown>;
+
+  return (
+    Object.keys(commit).length === 2 &&
+    typeof commit.operationId === 'string' &&
+    UUID.test(commit.operationId) &&
+    typeof commit.summary === 'string' &&
+    commit.summary.length > 0 &&
+    commit.summary.length <= 200
+  );
+}
+
+function isPreState(value: unknown): boolean {
+  if (value === undefined || value === null) {
+    return true;
+  }
+
+  if (typeof value !== 'object') {
+    return false;
+  }
+
+  const state = value as Record<string, unknown>;
+
+  return (
+    Object.keys(state).length === 2 &&
+    typeof state.sha256 === 'string' &&
+    /^[0-9a-f]{64}$/u.test(state.sha256) &&
+    typeof state.bytes === 'number' &&
+    Number.isSafeInteger(state.bytes) &&
+    state.bytes >= 0
+  );
 }
 
 /** A target may be published when it still holds the planned-against revision or already the new state. */
@@ -92,6 +158,7 @@ export function parseJournal(text: string, specId: string): Journal {
     if (
       journal.version === JOURNAL_VERSION &&
       journal.specId === specId &&
+      isJournalCommit(journal.commit) &&
       Array.isArray(journal.writes) &&
       journal.writes.every(isJournalWrite) &&
       new Set(journal.writes.map(targetKey)).size === journal.writes.length
@@ -111,9 +178,13 @@ function isJournalWrite(value: unknown): value is JournalWrite {
   }
 
   const write = value as Record<string, unknown>;
+  const pre = write.pre as { sha256: string } | null | undefined;
   const expected =
-    write.expected === null ||
-    (typeof write.expected === 'string' && /^[0-9a-f]{64}$/u.test(write.expected));
+    isPreState(pre) &&
+    (pre === undefined ||
+      (pre === null ? write.expected === null : pre.sha256 === write.expected)) &&
+    (write.expected === null ||
+      (typeof write.expected === 'string' && /^[0-9a-f]{64}$/u.test(write.expected)));
   const taskId = typeof write.taskId === 'string' && isValidTaskId(write.taskId);
   const removable = typeof write.text === 'string' || write.text === null;
   switch (write.target) {

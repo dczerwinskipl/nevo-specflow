@@ -14,7 +14,8 @@ import {
   readWorkspaceRegistry,
 } from '../../project/workspace/registry/registry';
 import { renameWindowsSafe } from '../../project/fs/windows-safe-fs';
-import { inspectCleanGitWorkspace } from './preflight';
+import { inspectCleanGitWorkspace, listUncleanPaths } from './preflight';
+import { isExecutionStatePathOf } from '../execution-paths';
 import { disabledIntegrationHooksDirectory } from './git/scratch';
 import { readCloseJournal } from './journal/store';
 import {
@@ -118,8 +119,36 @@ function destinationPath(inventory: CloseArchiveEvidence, old: string): string {
   return inventory.destinationPath + old.slice(inventory.sourcePath.length);
 }
 
-function plannedArchivePaths(inventory: CloseArchiveEvidence): readonly string[] {
-  return inventory.files.map((x) => x.relativePath);
+/**
+ * The paths the archive commit changes: every path of the source directory at the pinned commit
+ * (removed) and every archived file (added). They are the source inventory moved, unless the
+ * Specification's execution state was uncommitted: a new Task's files are only added, a removed
+ * Task's only removed, a changed record is both.
+ */
+async function archiveCommitPaths(
+  root: string,
+  archive: CloseArchiveEvidence,
+): Promise<readonly string[]> {
+  const committed = (
+    await gitRaw(root, [
+      'ls-tree',
+      '-r',
+      '-z',
+      '--name-only',
+      archive.sourceCommit,
+      '--',
+      archive.sourcePath,
+    ])
+  )
+    .split('\0')
+    .filter(Boolean);
+
+  return [
+    ...new Set([
+      ...committed,
+      ...archive.files.map((file) => destinationPath(archive, file.relativePath)),
+    ]),
+  ].sort();
 }
 
 /**
@@ -212,7 +241,10 @@ export async function archiveSpecificationWithCommit(
     throw invalid('Canonical source checkout unavailable.');
   }
 
-  const facts = await inspectCleanGitWorkspace(actual.workspace);
+  const oldPath = 'specs/active/' + record.plan.slug;
+  const newPath = 'specs/archive/' + record.plan.slug;
+  // The Specification's uncommitted execution state goes into the archive commit; nothing else may be dirty.
+  const facts = await inspectCleanGitWorkspace(actual.workspace, { executionStateOf: oldPath });
   if (
     facts.head !== source.head ||
     facts.branch !== source.branch ||
@@ -221,8 +253,6 @@ export async function archiveSpecificationWithCommit(
     throw invalid('Source Git commit or physical incarnation changed.');
   }
 
-  const oldPath = 'specs/active/' + record.plan.slug;
-  const newPath = 'specs/archive/' + record.plan.slug;
   if (!(await absent(join(source.root, newPath)))) {
     throw invalid('Archive destination already exists; never overwrite.');
   }
@@ -237,24 +267,22 @@ export async function archiveSpecificationWithCommit(
   }
 
   // Explicitly disallow ignored/untracked files: every physical file must be
-  // indexed in Git at the pinned commit, including ancillary directories.
-  const tracked = (await gitRaw(source.root, ['ls-files', '-z', '--', oldPath]))
-    .split('\0')
-    .filter(Boolean)
-    .sort();
+  // indexed in Git at the pinned commit, including ancillary directories. The
+  // only exception is the Specification's execution state, which may be
+  // untracked (a new Task) or removed (a removed Task) and is committed here.
+  const tracked = new Set(
+    (await gitRaw(source.root, ['ls-files', '-z', '--', oldPath])).split('\0').filter(Boolean),
+  );
+  const untracked = new Set(
+    (await listUncleanPaths(source.root))
+      .filter((entry) => entry.status === '??')
+      .map((entry) => entry.path),
+  );
+  const physical = new Set(files.map((file) => file.relativePath));
+  const execution = (path: string): boolean => isExecutionStatePathOf(oldPath, path);
   if (
-    !isDeepStrictEqual(
-      tracked,
-      plannedArchivePaths({
-        sourceCommit: source.head,
-        sourcePath: oldPath,
-        destinationPath: newPath,
-        files,
-        archivedManifestSha256: '0'.repeat(64),
-      })
-        .slice()
-        .sort(),
-    )
+    [...physical].some((path) => !tracked.has(path) && !(untracked.has(path) && execution(path))) ||
+    [...tracked].some((path) => !physical.has(path) && !execution(path))
   ) {
     throw invalid('Archive directory contains ignored or non-versioned data.');
   }
@@ -345,10 +373,7 @@ export async function archiveSpecificationWithCommit(
       .split('\0')
       .filter(Boolean)
       .sort();
-    const expected = [
-      ...files.map((f) => f.relativePath),
-      ...files.map((f) => destinationPath(archive, f.relativePath)),
-    ].sort();
+    const expected = await archiveCommitPaths(source.root, archive);
     if (!isDeepStrictEqual(staged, expected)) {
       throw failure('Unexpected staged path or incomplete archive change: commit refused.');
     }
@@ -445,10 +470,7 @@ export async function reconcileArchiveCommit(
     .split('\0')
     .filter(Boolean)
     .sort();
-  const exact = [
-    ...archive.files.map((f) => f.relativePath),
-    ...archive.files.map((f) => destinationPath(archive, f.relativePath)),
-  ].sort();
+  const exact = await archiveCommitPaths(root, archive);
   if (!isDeepStrictEqual(diffs, exact)) {
     throw failure('Archive commit includes unrelated paths or omitted planned data.');
   }
@@ -504,10 +526,7 @@ async function proveArchiveCommitPhysical(
     .split('\0')
     .filter(Boolean)
     .sort();
-  const exact = [
-    ...archive.files.map((f) => f.relativePath),
-    ...archive.files.map((f) => destinationPath(archive, f.relativePath)),
-  ].sort();
+  const exact = await archiveCommitPaths(root, archive);
   if (!isDeepStrictEqual(diffs, exact)) {
     throw failure('Archive commit includes unrelated paths or omitted planned data.');
   }

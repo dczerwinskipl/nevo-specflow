@@ -185,14 +185,24 @@ position it ended from), and cancels every Task that is not cancelled or ended w
 `abandon`. It is final: the same reason again returns the same result, another reason is
 `WORKFLOW_SPECIFICATION_ENDED`. It is not a bypass: pending writes, broken Tasks and other operations on the
 Specification refuse it with `WORKFLOW_EXIT_BLOCKED` and the same blockers (plus `operation-in-progress`). After
-it the gate reports nothing; the execution store leaves its writes uncommitted (D14), so the owner commits them
-and Close's Git and workspace rules apply unchanged. Workflow mutations after the Close reservation are not yet
+it the gate reports nothing. Abandon is a workflow change committed like the others (queued with auto-commit
+on, in the ledger with it off), and Close's Git and workspace rules apply unchanged except for the execution
+state, below. Workflow mutations after the Close reservation are not yet
 refused (writer admission for workflow steps is not implemented).
 
 Every Close and integration first flushes the document commit queue of the checkouts it touches and is refused
 with `DOCUMENT_COMMITS_PENDING` while document commits are pending, failed or uncommitted; the rule, its precedence and
 the recovery of document operations are owned by the [documents layer](specification-documents.md) and
 [ADR 0016](../decisions/0016-engine-owned-document-commits.md).
+
+**Uncommitted execution state (owner decision 2026-11-12).** A Specification Close takes the Specification's
+uncommitted execution state (`.execution/**` and `tasks/**` below `specs/active/<slug>`) into its archive
+commit: its clean-tree check and the ledger hold accept exactly those paths of that Specification (modified,
+untracked or removed), the archive inventory admits them as untracked or removed files, and the archive commit
+and its proof expect the paths of the source directory at the pinned commit plus every archived file. Any other
+staged, modified or untracked path still refuses with `CLOSE_PREFLIGHT`, and the refusal names the paths
+(`CloseOperationError.paths`, at most ten in the message). Worktree and Workspace Close archive nothing and keep
+the strict check. So an Abandon followed by Close needs no manual commit.
 
 ## Safe integration, rebind and disposal
 

@@ -10,7 +10,9 @@ import {
   bootstrapProjectHome,
   closeSpecification,
   createTask,
+  finishStep,
   installProjectDefinitions,
+  startSpecificationExecution,
   openWorkflow,
   closeWorktree,
   closeWorkspace,
@@ -108,8 +110,16 @@ describe('E2.T15 Specification Close (real Git filesystem)', () => {
   }, 120000);
 
   it('refuses a draft Task before any Specification run (D07) until the owner abandons it', async () => {
+    // Auto-commit is off (the default): workflow writes are in the ledger until a step's finish.
     const { root, engine, spec } = await fixture(false, 'feature');
     const owner = { class: 'human', details: { actorId: 'local:owner', trust: 'local' } } as const;
+    const directory = 'specs/active/' + spec.slug;
+    const dirty = () =>
+      git(root, 'status', '--porcelain', '--untracked-files=all')
+        .split('\n')
+        .filter(Boolean)
+        .map((line) => line.slice(3))
+        .sort();
     await createTask(await openWorkflow(engine), {
       specId: spec.specId,
       taskId: 'docs',
@@ -117,6 +127,11 @@ describe('E2.T15 Specification Close (real Git filesystem)', () => {
       type: 'implementation',
       actor: owner,
     });
+    expect(dirty()).toEqual([
+      `${directory}/tasks/docs/task.md`,
+      `${directory}/tasks/docs/task.yaml`,
+      `${directory}/tasks/index.yaml`,
+    ]);
 
     await expect(
       closeSpecification(engine, { operationId: randomUUID(), specId: spec.specId }),
@@ -125,21 +140,64 @@ describe('E2.T15 Specification Close (real Git filesystem)', () => {
       blockers: [{ kind: 'draft-tasks', subjectIds: ['docs'] }],
     });
 
+    // "Next": the finish of a step commits the Specification's execution state (its post action).
+    const started = await startSpecificationExecution(await openWorkflow(engine), {
+      specId: spec.specId,
+      archetype: 'feature',
+      actor: owner,
+    });
+    if (started.kind === 'terminal') {
+      throw new Error('The Specification run did not start.');
+    }
+
+    const finished = await finishStep(await openWorkflow(engine), {
+      subject: { kind: 'specification', specId: spec.specId },
+      step: started.context.step.id,
+      attempt: started.context.attempt,
+      input: {},
+      actor: owner,
+    });
+    expect(finished.postActions).toMatchObject([
+      { action: 'commit-execution-state', status: 'completed' },
+    ]);
+    const [post] = finished.postActions ?? [];
+    expect(post?.status === 'completed' ? post.commit?.paths.length : 0).toBeGreaterThan(0);
+    // Shortened to the subject bound (72 characters).
+    expect(git(root, 'log', '-1', '--format=%s')).toMatch(
+      new RegExp(
+        `^spec\\(workflow\\): finish step ${started.context.step.id} .* in ${spec.slug}$`,
+        'u',
+      ),
+    );
+    expect(dirty()).toEqual([]);
+
     const abandoned = await abandonSpecification(await openWorkflow(engine), {
       specId: spec.specId,
       reason: 'Not needed any more.',
       actor: owner,
     });
     expect(abandoned.cancelledTasks).toEqual(['docs']);
-    // The execution store leaves its writes for the owner to commit (D14); Close's Git rules stand.
-    git(root, 'add', '-A', '--', 'specs');
-    commitStaged(root, 'abandon specification');
+    expect(dirty().length).toBeGreaterThan(0);
 
+    // Anything else dirty still refuses the Close, and the refusal names it.
+    await writeFile(join(root, 'stray.txt'), 'not the workflow\n');
+    await expect(
+      closeSpecification(engine, { operationId: randomUUID(), specId: spec.specId }),
+    ).rejects.toMatchObject({ code: 'CLOSE_PREFLIGHT', paths: ['stray.txt'] });
+    await rm(join(root, 'stray.txt'));
+
+    // The abandon is not committed by hand: the archive commit takes the execution state along.
+    const head = git(root, 'rev-parse', 'HEAD');
     await expect(
       closeSpecification(engine, { operationId: randomUUID(), specId: spec.specId }),
     ).resolves.toMatchObject({ status: 'completed' });
     expect((await readWorkspaceSpecification(root, spec.specId)).location).toBe('archive');
-  }, 120000);
+    expect(git(root, 'rev-list', '--count', head + '..HEAD')).toBe('1');
+    expect(dirty()).toEqual([]);
+    expect(
+      git(root, 'show', 'HEAD:specs/archive/' + spec.slug + '/tasks/docs/task.yaml'),
+    ).toContain('status: cancelled');
+  }, 180000);
 
   it('keeps a linked canonical archive and worktree after archive-only close', async () => {
     const { root, engine, spec } = await fixture(true);

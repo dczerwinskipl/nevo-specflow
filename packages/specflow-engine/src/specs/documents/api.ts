@@ -6,6 +6,11 @@ import { catalogueTemplateResolver } from './templates/resolve';
 import { documentAndManualCommitViews } from './manual-commit';
 import { notifyDocumentChangeApplied } from './scheduler/notifier';
 import {
+  admitExecutionStateCommit,
+  type ExecutionStateCommitOptions,
+  type ExecutionStateWrite,
+} from './write/execution-state';
+import {
   replayDocumentChange,
   writeDocumentChange,
   type DocumentChangeResult,
@@ -108,6 +113,39 @@ function wake(engine: SpecFlowEngine, result: DocumentChangeResult): void {
   if (result.stage === 'queued') {
     notifyDocumentChangeApplied({ stateRoot: engine.context.project.stateRoot });
   }
+}
+
+/**
+ * The commit policy of the Specification execution store's writes (`write/execution-state.ts`),
+ * bound to the cross-slice claim check and the real batch records. Under the project control lock.
+ */
+export async function admitExecutionStateChange(
+  engine: SpecFlowEngine,
+  specId: string,
+  paths: readonly string[],
+  operationId: string,
+  options?: ExecutionStateCommitOptions,
+): Promise<{
+  record(summary: string, writes: readonly ExecutionStateWrite[]): Promise<void>;
+}> {
+  const admitted = await admitExecutionStateCommit(
+    engine,
+    { assertClaims: assertSharedResourcesAvailable, batches: documentAndManualCommitViews },
+    specId,
+    paths,
+    operationId,
+    options,
+  );
+
+  return {
+    async record(summary, writes) {
+      const recorded = await admitted.record(summary, writes);
+      // A change that now waits for its commit wakes the scheduler of this process, if one runs.
+      if (recorded === 'queued') {
+        notifyDocumentChangeApplied({ stateRoot: engine.context.project.stateRoot });
+      }
+    },
+  };
 }
 
 /** D03, for the Specification execution store (Task edit, removal, status, Close): see the module. */

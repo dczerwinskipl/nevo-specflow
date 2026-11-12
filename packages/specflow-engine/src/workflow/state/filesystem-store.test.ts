@@ -1,4 +1,5 @@
 import {
+  access,
   mkdir,
   mkdtemp,
   readdir,
@@ -56,7 +57,7 @@ import {
 } from './filesystem-store';
 import type { JournalWrite } from './journal';
 import type { TaskRunRecord, WorkflowRun } from './model';
-import type { ExecutionChange } from './store';
+import type { ExecutionChange, ExecutionFileWrite, ExecutionStateCommits } from './store';
 import {
   creating,
   EMPTY,
@@ -99,6 +100,12 @@ const tasksDirectory = () => join(executionDirectory(), 'tasks');
 /** The Task resources: `tasks/index.yaml` and one folder per Task. */
 const resourceDirectory = () => join(specificationDirectory, 'tasks');
 const journalPath = () => join(stateRoot, 'engine', 'operations', 'workflow', `${SPEC}.json`);
+
+const exists = (path: string) =>
+  access(path).then(
+    () => true,
+    () => false,
+  );
 
 async function writeJournal(writes: readonly unknown[]): Promise<void> {
   await mkdir(join(stateRoot, 'engine', 'operations', 'workflow'), { recursive: true });
@@ -386,6 +393,132 @@ async function linkDirectory(target: string, link: string): Promise<void> {
   await mkdir(dirname(link), { recursive: true });
   await symlink(target, link, 'junction');
 }
+
+describe('filesystem workflow store: commits of its writes', () => {
+  it('admits a change with its paths before writing, then records what it published', async () => {
+    const calls: unknown[] = [];
+    const committing = (refuse: boolean) =>
+      createFilesystemWorkflowStore({
+        ...options(),
+        commits: {
+          admit: async (specId, paths) => {
+            calls.push({ specId, admit: [...paths], journal: await exists(journalPath()) });
+            if (refuse) {
+              throw new Error('refused by the commit policy');
+            }
+
+            return {
+              record: (summary, writes) => {
+                calls.push({ summary, writes });
+
+                return Promise.resolve();
+              },
+            };
+          },
+        },
+      });
+
+    await expect(
+      committing(true).apply(SPEC, {
+        summary: 'start step requirements (attempt 1)',
+        specification: { expected: null, next: record('requirements') },
+      }),
+    ).rejects.toThrow('refused by the commit policy');
+    // A refused change writes nothing.
+    expect(await exists(specificationPath())).toBe(false);
+    expect(await exists(journalPath())).toBe(false);
+
+    calls.length = 0;
+    await committing(false).apply(SPEC, {
+      summary: 'create task api',
+      ...creating([manifest('api')], { runs: false }),
+    });
+    const text = await readFile(join(resourceDirectory(), 'api', 'task.yaml'), 'utf8');
+    expect(calls).toEqual([
+      {
+        specId: SPEC,
+        admit: ['tasks/index.yaml', 'tasks/api/task.yaml', 'tasks/api/task.md'],
+        journal: false,
+      },
+      {
+        summary: 'create task api',
+        writes: expect.arrayContaining([
+          {
+            path: 'tasks/api/task.yaml',
+            pre: null,
+            post: { sha256: sha256Hex(text), bytes: Buffer.byteLength(text, 'utf8') },
+          },
+        ]) as unknown,
+      },
+    ]);
+    expect((calls[1] as { writes: unknown[] }).writes).toHaveLength(3);
+  });
+});
+
+describe('filesystem workflow store: a change interrupted around its commit record', () => {
+  it.each(['beforeRecord', 'afterRecord'] as const)(
+    'records it exactly once with its original pre after a stop %s',
+    async (point) => {
+      // A commit policy that, like the document journal store, records an operation id once.
+      const recorded = new Map<
+        string,
+        { summary: string; writes: readonly ExecutionFileWrite[] }
+      >();
+      let records = 0;
+      const commits: ExecutionStateCommits = {
+        admit: (_specId, _paths, operationId) =>
+          Promise.resolve({
+            record: (summary, writes) => {
+              records += 1;
+              if (!recorded.has(operationId)) {
+                recorded.set(operationId, { summary, writes });
+              }
+
+              return Promise.resolve();
+            },
+          }),
+      };
+      const plain = createFilesystemWorkflowStore({ ...options(), commits });
+      await plain.apply(SPEC, { specification: { expected: null, next: record('requirements') } });
+      const before = await readFile(specificationPath(), 'utf8');
+      recorded.clear();
+      records = 0;
+
+      const cut = createFilesystemWorkflowStoreForTest(
+        { ...options(), commits },
+        () => Promise.resolve(),
+        { [point]: () => Promise.reject(new Error('stopped')) },
+      );
+      await expect(
+        cut.apply(SPEC, {
+          summary: 'finish step requirements (attempt 1)',
+          specification: { expected: sha256Hex(before), next: record('specification') },
+        }),
+      ).rejects.toThrow('stopped');
+      // The files are published and the journal survives the stop.
+      const after = await readFile(specificationPath(), 'utf8');
+      expect(after).not.toBe(before);
+      expect(await exists(journalPath())).toBe(true);
+
+      // The next change finishes it: recorded under the same id, with the content it replaced.
+      await plain.apply(SPEC, {});
+      expect(await exists(journalPath())).toBe(false);
+      expect([...recorded.values()]).toEqual([
+        {
+          summary: 'finish step requirements (attempt 1)',
+          writes: [
+            {
+              path: '.execution/specification.yaml',
+              pre: { sha256: sha256Hex(before), bytes: Buffer.byteLength(before, 'utf8') },
+              post: { sha256: sha256Hex(after), bytes: Buffer.byteLength(after, 'utf8') },
+            },
+          ],
+        },
+      ]);
+      expect(records).toBe(point === 'beforeRecord' ? 1 : 2);
+    },
+  );
+});
 
 describe('filesystem workflow store: identity of the stored records', () => {
   it('refuses a Task record whose id is not its file name', async () => {

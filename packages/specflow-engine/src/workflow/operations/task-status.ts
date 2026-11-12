@@ -58,7 +58,10 @@ export function setTaskStatus(
     const task = decideTaskStatus(context.set.task(request.taskId), decision, context.at);
     context.set.setTask(task);
     const specification = settleWait(context);
-    await dependencies.store.apply(request.specId, context.set.change());
+    await dependencies.store.apply(request.specId, {
+      ...context.set.change(),
+      summary: `set task ${request.taskId} ${task.status}`,
+    });
 
     return {
       subject,

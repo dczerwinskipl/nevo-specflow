@@ -26,7 +26,12 @@ export type PathSource =
   /** The bytes are those of another path of the same plan, which the operation removes (rename, move). */
   | { readonly kind: 'moved-from'; readonly path: string }
   /** Nothing to write: the path is removed (or unchanged). */
-  | { readonly kind: 'none' };
+  | { readonly kind: 'none' }
+  /**
+   * Already written by another writer (the Specification execution store) before the journal was
+   * published: the operation only commits the path. Only a `workflow` plan has it.
+   */
+  | { readonly kind: 'written' };
 
 export const PLANNED_PATH_ROLES = ['document', 'manifest'] as const;
 export type PlannedPathRole = (typeof PLANNED_PATH_ROLES)[number];
@@ -96,6 +101,11 @@ export interface DocumentChangePlan {
   readonly registry?: PlannedRegistry;
   /** A folder delete: the folder it removes (Specification-relative). Absent for every other plan. */
   readonly removedFolder?: string;
+  /**
+   * A `workflow` plan only, and required there: what the execution-store change did, in words
+   * (`create task api`); the commit subject is made of it.
+   */
+  readonly summary?: string;
 }
 
 /** Content the writer must put in the payload store before the journal is published. */

@@ -42,6 +42,26 @@ export {
   type LaunchBlocker,
 } from './continuation/resolve';
 export { WORKFLOW_ERROR_CODES, WorkflowError, type WorkflowErrorCode } from './errors';
+export {
+  AGENT_UNAVAILABLE_REASONS,
+  inspectActions,
+  type ActionDependencies,
+  type ActionPosition,
+  type ActionProjection,
+  type AgentOption,
+  type AgentUnavailableReason,
+  type Availability,
+  type PinPreview,
+  type SpecificationExitActions,
+  type SpecificationExitPort,
+  type SpecificationLevelActions,
+  type StartBlocker,
+  type StartableStep,
+  type TaskActionUnavailableReason,
+  type TaskLifecycleActions,
+  type WorkflowActions,
+  type WorkflowSummary,
+} from './operations/actions';
 export { finishStep, type FinishStepInput, type FinishStepResult } from './operations/finish';
 export { inspectExecution, type ExecutionInspection } from './operations/inspect';
 export type { WorkflowDependencies } from './operations/loaded-execution';
@@ -53,7 +73,11 @@ export {
   type StartSpecificationInput,
   type StartTaskInput,
 } from './operations/start';
-export type { StepContext } from './operations/step-context';
+export type {
+  StepContext,
+  StepDescription,
+  TransitionDescription,
+} from './operations/step-context';
 export {
   createTask,
   editTask,

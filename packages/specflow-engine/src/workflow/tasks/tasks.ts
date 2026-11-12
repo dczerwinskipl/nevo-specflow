@@ -286,6 +286,30 @@ const ALLOWED_DECISIONS: Readonly<Record<TaskStatus, readonly string[]>> = {
   cancelled: [],
 };
 
+/** Why a status decision is not allowed (`decideTaskStatus`), or `undefined` when it is. */
+export type TaskDecisionRefusal = 'ended' | 'status' | 'active-attempt';
+
+/**
+ * The rule of {@link decideTaskStatus} without the input checks: a Task whose run ended keeps its
+ * status (`ended`), the status must allow the change (`status`), and a running Task is not cancelled
+ * (`active-attempt`). Pure; the action projection asks the same rule.
+ */
+export function taskDecisionRefusal(
+  task: ExecutionTask,
+  status: TaskStatus,
+): TaskDecisionRefusal | undefined {
+  const state = taskPosition(task).state;
+  if (state === 'terminal') {
+    return 'ended';
+  }
+
+  if (!ALLOWED_DECISIONS[task.status].includes(status)) {
+    return 'status';
+  }
+
+  return status === 'cancelled' && state === 'active' ? 'active-attempt' : undefined;
+}
+
 /**
  * The Task after a decision, or a refusal (`WORKFLOW_INPUT_INVALID`) when the change is not allowed:
  * a Task whose run ended keeps its status, and a running Task may go on hold (its current step
@@ -301,17 +325,18 @@ export function decideTaskStatus(
     invalid(`The reason for the Task "${task.taskId}" is longer than ${FEEDBACK_MAX}.`);
   }
 
-  if (taskPosition(task).state === 'terminal') {
+  const refusal = taskDecisionRefusal(task, decision.status);
+  if (refusal === 'ended') {
     invalid(`The Task "${task.taskId}" has ended; its status can no longer change.`);
   }
 
-  if (!ALLOWED_DECISIONS[task.status].includes(decision.status)) {
+  if (refusal === 'status') {
     invalid(
       `The Task "${task.taskId}" cannot go from ${task.status} to ${String(decision.status).slice(0, 40)}.`,
     );
   }
 
-  if (decision.status === 'cancelled' && taskPosition(task).state === 'active') {
+  if (refusal === 'active-attempt') {
     invalid(`The Task "${task.taskId}" is running; it cannot be cancelled now.`);
   }
 
@@ -407,6 +432,21 @@ export function taskReadiness(task: ExecutionTask, tasks: readonly ExecutionTask
  * The Specification's wait step is satisfied when every Task is closed (also when there is none). A
  * broken Task (`executionTasks`) is never closed.
  */
+/**
+ * The dependencies of `waitingFor` that can no longer complete: they ended without completing, were
+ * cancelled, or are not among `tasks` (broken, `executionTasks`).
+ */
+export function unsatisfiableDependencies(
+  waitingFor: readonly string[],
+  tasks: readonly ExecutionTask[],
+): string[] {
+  return waitingFor.filter((id) => {
+    const dependency = tasks.find((task) => task.taskId === id);
+
+    return !dependency || isTaskClosed(dependency);
+  });
+}
+
 export function allTasksClosed(
   tasks: readonly ExecutionTask[],
   broken: readonly string[],

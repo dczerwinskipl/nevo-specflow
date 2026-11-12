@@ -3,7 +3,7 @@ import { ANY_TASK_TYPE } from '@nevo/specflow-contracts/documents';
 import { decide, findStep, newRun } from '@nevo/workflow';
 import { resolveSpecificationExecution } from '../definitions/catalogue';
 import { WorkflowError } from '../errors';
-import { isTaskClosed, resolveTaskType, taskReadiness } from '../tasks/tasks';
+import { resolveTaskType, taskReadiness, unsatisfiableDependencies } from '../tasks/tasks';
 import type {
   ExecutionTask,
   SpecificationExecutionRecord,
@@ -154,12 +154,7 @@ function assertTaskReady(
   }
 
   if (readiness.kind === 'dependencies') {
-    // A dependency that ended without completing, was cancelled or is broken (`executionTasks`).
-    const abandoned = readiness.waitingFor.filter((id) => {
-      const dependency = tasks.find((task) => task.taskId === id);
-
-      return !dependency || isTaskClosed(dependency);
-    });
+    const abandoned = unsatisfiableDependencies(readiness.waitingFor, tasks);
 
     throw new WorkflowError(
       'WORKFLOW_DEPENDENCY_UNSATISFIED',

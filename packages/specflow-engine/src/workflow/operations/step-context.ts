@@ -5,6 +5,7 @@ import {
   type ExecutorClass,
   type Handoff,
   type RunPosition,
+  type TransitionTarget,
   type WorkflowPin,
 } from '@nevo/workflow';
 import { isTaskTypeAllowed, taskReadiness, type TaskReadiness } from '../tasks/tasks';
@@ -17,6 +18,58 @@ import {
   type WorkflowSubject,
 } from '../state/model';
 
+/** A step as an executor and the owner see it (the step context, the action projection). */
+export interface StepDescription {
+  readonly id: string;
+  readonly title: string;
+  readonly kind: WorkflowStep['kind'];
+  readonly purpose: string;
+  readonly instructions?: string;
+  /** Who may do the step (a work step); who does an attempt is its recorded actor. */
+  readonly executors?: readonly ExecutorClass[];
+  readonly interaction?: 'interactive' | 'autonomous';
+  readonly produces?: 'tasks';
+}
+
+/** A result a work step may finish with: where it leads and whether it needs feedback. */
+export interface TransitionDescription {
+  readonly id: string;
+  readonly result?: string;
+  readonly label?: string;
+  readonly target: TransitionTarget;
+  readonly feedback: 'required' | 'optional';
+}
+
+export function describeStep(step: WorkflowStep): StepDescription {
+  return {
+    id: step.id,
+    title: step.title,
+    kind: step.kind,
+    purpose: step.purpose,
+    ...(step.instructions !== undefined ? { instructions: step.instructions } : {}),
+    ...(step.kind === 'work'
+      ? {
+          executors: step.executors,
+          interaction: step.annotations.interaction,
+          ...(step.annotations.produces !== undefined
+            ? { produces: step.annotations.produces }
+            : {}),
+        }
+      : {}),
+  };
+}
+
+/** The transitions a finish of the step chooses from, in declared order. */
+export function describeTransitions(step: WorkflowStep): TransitionDescription[] {
+  return step.transitions.map((transition) => ({
+    id: transition.id,
+    ...(transition.result !== undefined ? { result: transition.result } : {}),
+    ...(transition.label !== undefined ? { label: transition.label } : {}),
+    target: transition.target,
+    feedback: transition.feedback,
+  }));
+}
+
 /**
  * What the executor of an active attempt works with: the step contract, the results it may finish
  * with, what the previous step handed over and the bound agent archetype. Compiling it is read-only;
@@ -25,25 +78,10 @@ import {
 export interface StepContext {
   readonly subject: WorkflowSubject;
   readonly workflow: WorkflowPin;
-  readonly step: {
-    readonly id: string;
-    readonly title: string;
-    readonly kind: WorkflowStep['kind'];
-    readonly purpose: string;
-    readonly instructions?: string;
-    /** Who may do the step (a work step); who does this attempt is its recorded actor. */
-    readonly executors?: readonly ExecutorClass[];
-    readonly interaction?: 'interactive' | 'autonomous';
-    readonly produces?: 'tasks';
-  };
+  readonly step: StepDescription;
   readonly attempt: number;
   readonly finish: {
-    readonly transitions: readonly {
-      readonly id: string;
-      readonly result?: string;
-      readonly label?: string;
-      readonly feedback: 'required' | 'optional';
-    }[];
+    readonly transitions: readonly TransitionDescription[];
   };
   readonly handoff?: Handoff;
   readonly archetype?: {
@@ -117,31 +155,9 @@ export function compileStepContext(input: StepContextInput): StepContext {
   return {
     subject: input.subject,
     workflow: input.run.workflow,
-    step: {
-      id: step.id,
-      title: step.title,
-      kind: step.kind,
-      purpose: step.purpose,
-      ...(step.instructions !== undefined ? { instructions: step.instructions } : {}),
-      ...(step.kind === 'work'
-        ? {
-            executors: step.executors,
-            interaction: step.annotations.interaction,
-            ...(step.annotations.produces !== undefined
-              ? { produces: step.annotations.produces }
-              : {}),
-          }
-        : {}),
-    },
+    step: describeStep(step),
     attempt: input.attempt,
-    finish: {
-      transitions: step.transitions.map((transition) => ({
-        id: transition.id,
-        ...(transition.result !== undefined ? { result: transition.result } : {}),
-        ...(transition.label !== undefined ? { label: transition.label } : {}),
-        feedback: transition.feedback,
-      })),
-    },
+    finish: { transitions: describeTransitions(step) },
     ...(handoff ? { handoff } : {}),
     ...(archetype
       ? {

@@ -136,9 +136,15 @@ Full attempt history stays in the existing Secondary (Task history / Activity hi
 
   Later steps start without confirmation.
 
-- **Approve with missing required context** stays allowed (a dependency may produce it) and
-  confirms first: an attention alert names the entry and says the task cannot start until it is
-  fixed. Without such a warning Approve acts directly.
+- **Approve with missing required context** stays allowed and confirms first: an attention alert
+  names the entry and says the task cannot start until it is fixed. Awaited process artifacts give
+  no warning. Without a warning Approve acts directly.
+- **Exit gates** come from the projection per result (label, met or not, detail, optional action);
+  the UI knows nothing else about them. In the Finish dialog the selected result lists its gates
+  ("Needed to finish with Done": met ones as satisfied checks, unmet ones with what is missing and
+  an action such as **Create findings document**); while one is unmet, Finish is disabled for that
+  result and other results stay available. In the Now block an active step lists its unmet gates
+  under "To finish with <result>:".
 - **wait-for-tasks** has no Finish; it settles by itself. Only Return is offered when allowed.
 
 ## Full Task (`/specs/:specId/tasks/:taskId`)
@@ -196,6 +202,13 @@ Editing a Task is more than `task.md`: its other registered documents, the conte
 - **Defaults:** with no explicit list the effective context is `task.md`, the Task's documents and
   the Specification overview; the section shows them, and the first edit writes them out as
   explicit entries so nothing drops silently (an explicit list replaces the default).
+- **Process artifacts:** an entry (Specification, Task or project document, or a path) can be marked
+  as a process artifact, a document produced during the process. The add dialogs start with "It's
+  a process artifact (created later)"; when checked, the item is named (path or id) instead of
+  picked. A missing artifact is **Awaited**: neutral row ("Awaited: … is created during the
+  process. Needed when the step starts."), fact `Process artifact`, no warning and no blocker on
+  Approve; the Now block lists it as one neutral line. A required artifact is still part of the
+  entry gate: the step does not start while it is missing. Who produces it is not shown.
 - **Broken and stale references:** a missing required entry is a danger row ("Not found: … Required,
   so the next step cannot start until you replace or remove it") plus one danger line above the
   list; a superseded or missing optional entry is an attention row ("… Optional, so the next step

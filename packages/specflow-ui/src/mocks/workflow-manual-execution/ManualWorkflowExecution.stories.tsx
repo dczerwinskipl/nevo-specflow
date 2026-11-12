@@ -105,6 +105,11 @@ export const Default: Story = {
         'author-with-document',
         'approve-missing-context',
         'long-title',
+        'context-artifact',
+        'context-artifact-add',
+        'finish-gate-unmet',
+        'finish-gate-met',
+        'now-gate',
       ],
     },
     documentPlacement: { control: 'inline-radio', options: ['secondary', 'primary'] },
@@ -195,3 +200,11 @@ export const SpecHistoryOpenWide = spec('waiting', { height: 1200, historyOpen: 
 export const TaskHistoryOpenWide = taskStory('rework', { historyOpen: true });
 export const TaskApproveMissingContextWide = taskStory('approve-missing-context', { height: 1000 });
 export const TaskLongTitleCompact900 = taskStory('long-title', { width: 900 });
+
+/* 6. Process artifacts and exit gates */
+/** An awaited process artifact in Context: neutral, not a problem on Approve. */
+export const TaskContextArtifactWide = taskStory('context-artifact', { height: 1800 });
+export const TaskContextArtifactAddWide = taskStory('context-artifact-add', { height: 1000 });
+export const TaskFinishGateUnmetWide = taskStory('finish-gate-unmet', { height: 1000 });
+export const TaskFinishGateMetWide = taskStory('finish-gate-met', { height: 1000 });
+export const TaskNowGateNarrow390 = taskStory('now-gate', { width: 390, height: 760 });

@@ -15,6 +15,19 @@ export interface WorkflowDefinitionRef {
   readonly revision: number;
 }
 
+/**
+ * An exit gate from the projection. The UI knows only its label, status and optional action; the
+ * Engine owns what it checks.
+ */
+export interface Gate {
+  readonly id: string;
+  readonly label: string;
+  readonly met: boolean;
+  /** Current evidence or what is missing ("none registered yet", "findings.md"). */
+  readonly detail?: string;
+  readonly action?: { readonly label: string; readonly href: string };
+}
+
 export interface Transition {
   readonly id: string;
   /** The definition's label for the result. */
@@ -22,6 +35,8 @@ export interface Transition {
   /** Target step id, or `null` when the transition ends the workflow. */
   readonly to: string | null;
   readonly feedback: 'required' | 'optional';
+  /** Exit gates that apply when finishing with this result. */
+  readonly gates?: readonly Gate[];
 }
 
 export interface Handoff {

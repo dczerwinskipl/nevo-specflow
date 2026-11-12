@@ -1,7 +1,12 @@
 // The Task command routes over HTTP with a fake command port: `spec.manage` before the body, the
 // actor from the authenticated subject (never the body), the request schemas and the status of the
 // workflow refusals. The Engine behind the routes: test/tasks/task-commands.http.test.ts.
-import { ProjectControlLockError, WorkflowError, type OwnerActor } from '@nevo/specflow-engine';
+import {
+  ProjectControlLockError,
+  TaskContextUnresolvedError,
+  WorkflowError,
+  type OwnerActor,
+} from '@nevo/specflow-engine';
 import { WorkflowErrorSchema } from '@nevo/specflow-contracts/workflow';
 import type { FastifyInstance } from 'fastify';
 import { Value } from 'typebox/value';
@@ -206,10 +211,20 @@ describe('Task command routes', () => {
   it('names the context entries that do not resolve in details.unresolved', async () => {
     const unresolved = [{ index: 1, key: 'specification-document:ux', reason: 'not-found' }];
     const { app } = await listen({
-      commands: fakeCommands([], () =>
-        Object.assign(new WorkflowError('WORKFLOW_TASK_CONTEXT_UNRESOLVED', 'Unresolved.'), {
-          unresolved,
-        }),
+      commands: fakeCommands(
+        [],
+        () =>
+          new TaskContextUnresolvedError(
+            'task-1',
+            [
+              {
+                index: 1,
+                entry: { kind: 'specification-document', id: 'ux', required: true },
+                reason: 'not-found',
+              },
+            ],
+            'Replace or remove it.',
+          ),
       ),
     });
     const response = await app.inject({

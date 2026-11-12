@@ -83,15 +83,19 @@ Availability and action states describe only what actually exists.
   exists), in project and demo mode alike. Clients expand the summary into this document only; when
   it is absent they offer no expand action and never substitute another document (for example the
   first item).
-- `sections.tasks` is read by the Tasks feature from one Engine inspection of the Specification's
-  Task resources (`tasks/index.yaml`, `tasks/<id>/task.yaml`) and runs. Groups follow what the owner
-  has to do, in this order, empty ones omitted: `needs-approval` (drafts), `in-progress`, `ready`
-  (ready to start), `waiting` (dependencies), `done`, `held` (on hold, cancelled or abandoned).
-  `total` counts the Tasks that are not cancelled (a broken Task included), `completed` those whose
-  run completed; `attention` lists each broken Task and the Engine's attention items. An execution
-  the Engine cannot read makes only this section `unavailable` / `source_unavailable`.
-- `specification.preparationState` follows the same inspection: `empty` without Tasks, `preparing`
-  while a Task is a draft, else `prepared`. When the Tasks cannot be read it stays `empty`.
+- `sections.tasks` is one Engine read (`readExecution`) of the Specification's Task resources
+  (`tasks/index.yaml`, `tasks/<id>/task.yaml`), runs and action projections. Groups present the
+  Engine's Task lanes ([Task reads](task-reads.md#project-mode-engine-reads)), in this order, empty
+  ones omitted: `needs-approval`, `in-progress`, `ready` (ready to start), `waiting` (dependencies
+  that can all still complete), `blocked`, `done`, `held` (on hold, cancelled or abandoned).
+  `completed` and `total` are the Engine's `TaskProgress`: `total` counts the Tasks that are neither
+  cancelled nor ended by an abandon (a broken Task included), `completed` those whose run
+  completed. `attention` lists each broken Task and the Engine's attention items. An execution the
+  Engine cannot read (also a busy project lock) makes only this section `unavailable` /
+  `source_unavailable`.
+- `specification.preparationState` is the Engine's `TaskPreparation` of the same read: `empty`
+  without Tasks, `preparing` while a Task is a draft, else `prepared`. When the Tasks cannot be
+  read it stays `empty`.
 - `sections.activity` is `available` and a **partial** history with exactly two event kinds, newest
   first, at most 50 items counted **after** the per-Session authorization (hidden Sessions never
   shorten the visible history):

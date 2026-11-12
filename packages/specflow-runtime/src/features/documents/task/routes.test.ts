@@ -95,12 +95,17 @@ describe('Task document routes', () => {
     const tree = await app.inject(`${base}/document-tree`);
     expect(tree.statusCode, tree.body).toBe(200);
     expect(tree.json()).toMatchObject({ taskId: 'build', registryRevision: 'registry-1' });
+    const again = await app.inject({
+      url: `${base}/document-tree`,
+      headers: { 'if-none-match': String(tree.headers.etag) },
+    });
+    expect(again.statusCode).toBe(304);
     expect((await app.inject(`${base}/documents/task`)).statusCode).toBe(200);
     expect(
       (await app.inject({ method: 'PUT', url: `${base}/documents/task`, payload: save }))
         .statusCode,
     ).toBe(403);
-    expect(calls).toEqual(['tree', 'read']);
+    expect(calls).toEqual(['tree', 'tree', 'read']);
   });
 
   it('writes through the source and answers its refusals with the document error body', async () => {

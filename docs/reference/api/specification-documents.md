@@ -592,7 +592,9 @@ Specification does not list is `DOCUMENT_NOT_FOUND`.
 
 `TaskDocumentTree` lists each document with `id`, `path` (relative to the Task folder), `type`,
 `classification`, `required` and, when its file is readable, `file` (`kind`, `mediaType`, `size`,
-`revision` for a save, `editable`). The Task's metadata (title, dependencies, context) is not a
+`revision` for a save, `editable`). Like the Specification tree it answers an `ETag` (over the whole
+listing, so a file change changes it) and `304` to a matching `If-None-Match`. A write's status is
+read at the Specification's `GET /api/specs/:specId/document-operations/:operationId`. The Task's metadata (title, dependencies, context) is not a
 document: it changes through the [Task commands](task-reads.md#task-commands).
 
 ## Errors

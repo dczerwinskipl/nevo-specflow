@@ -22,6 +22,8 @@ const AttemptKey = Type.Object({
 });
 /** The executor classes of the workflow core: an agent, or a person. */
 export const TaskExecutorClassSchema = Type.Union([Type.Literal('agent'), Type.Literal('human')]);
+/** Who worked on an attempt: its executor class and, for a person, the recorded actor id. */
+const AttemptActor = Type.Object({ class: TaskExecutorClassSchema, actorId: Type.Optional(Text) });
 const Step = Type.Object({
   id: Id,
   /**
@@ -91,7 +93,14 @@ const Transition = Type.Object({
 });
 const Position = Type.Union([
   Type.Object({ state: Type.Literal('not_started'), next: Type.Union([Step, Type.Null()]) }),
-  Type.Object({ state: Type.Literal('active'), key: AttemptKey, step: Step, semanticStatus: Text }),
+  Type.Object({
+    state: Type.Literal('active'),
+    key: AttemptKey,
+    step: Step,
+    semanticStatus: Text,
+    /** Who works on the attempt (absent where the source records none). */
+    actor: Type.Optional(AttemptActor),
+  }),
   Type.Object({
     state: Type.Literal('checkpoint'),
     completed: AttemptKey,
@@ -183,10 +192,7 @@ export const TaskHistoryEntrySchema = Type.Object({
    * Who worked on the attempt: its executor class and, for a person, the recorded actor id. `null`
    * for an attempt without an actor (a wait step).
    */
-  actor: Type.Union([
-    Type.Object({ class: TaskExecutorClassSchema, actorId: Type.Optional(Text) }),
-    Type.Null(),
-  ]),
+  actor: Type.Union([AttemptActor, Type.Null()]),
   resources: Type.Array(TaskResourceSchema),
   provenance: Type.Array(
     Type.Object({

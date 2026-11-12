@@ -1,6 +1,8 @@
 import type {
   ExecutionCatalogue,
   ExecutionInspection,
+  ExecutionReading,
+  TaskLane,
   WorkflowDefinition,
 } from '@nevo/specflow-engine';
 import { describe, expect, it } from 'vitest';
@@ -105,19 +107,34 @@ const active = task('build', {
   },
 });
 
-function basis(tasks: unknown[], brokenTasks: string[] = []): InspectionBasis {
+function basis(
+  tasks: unknown[],
+  lanes: Record<string, TaskLane> = {},
+  extra: Partial<ExecutionReading> = {},
+): InspectionBasis {
+  const inspection = {
+    specId: 'spec',
+    tasks,
+    brokenTasks: [],
+    issues: [],
+    attention: [],
+  } as unknown as ExecutionInspection;
+  const reading: ExecutionReading = {
+    inspection,
+    actions: new Map(),
+    lanes: new Map(Object.entries(lanes)),
+    progress: { completed: 0, total: tasks.length },
+    preparation: 'prepared',
+    ...extra,
+  };
+
   return {
     projectId: 'project',
     workspaceId: 'workspace',
     specificationTitle: 'Spec',
     catalogue,
-    inspection: {
-      specId: 'spec',
-      tasks,
-      brokenTasks,
-      issues: [],
-      attention: [],
-    } as unknown as ExecutionInspection,
+    inspection,
+    reading,
   };
 }
 
@@ -160,7 +177,10 @@ describe('Engine Task projection', () => {
     });
     // No legacy human-requirement projection: that section stays unavailable.
     expect(facts.requirements).toBeUndefined();
-    expect(taskStatusOf(entry as never)).toEqual({
+    expect(facts.workflow.position).toMatchObject({
+      actor: { class: 'human', actorId: 'user:ann' },
+    });
+    expect(taskStatusOf('in-progress')).toEqual({
       id: 'in-progress',
       label: 'In progress',
       lifecycle: 'in_progress',
@@ -187,31 +207,42 @@ describe('Engine Task projection', () => {
     expect(historyFactsOf(basis([changed]), changed as never)).toBeUndefined();
   });
 
-  it('groups the workspace Tasks by what the owner has to do and derives the preparation', () => {
-    const draft = task('draft-1', { status: 'draft' });
-    const waiting = {
-      ...task('waiting-1', { dependsOn: ['build'] }),
-      readiness: { kind: 'dependencies', waitingFor: ['build'] },
-    };
-    const cancelled = task('cancelled-1', { status: 'cancelled' });
-    const contribution = workspaceTasksOf(basis([active, draft, waiting, cancelled]).inspection);
+  it('groups the workspace Tasks by their Engine lanes and passes progress and preparation on', () => {
+    const tasks = ['draft-1', 'build', 'ready-1', 'waiting-1', 'blocked-1', 'done-1', 'gone-1'].map(
+      (taskId) => task(taskId),
+    );
+    const contribution = workspaceTasksOf(
+      basis(
+        tasks,
+        {
+          'draft-1': 'needs-approval',
+          build: 'in-progress',
+          'ready-1': 'ready',
+          'waiting-1': 'waiting',
+          'blocked-1': 'blocked',
+          'done-1': 'done',
+          'gone-1': 'ended',
+        },
+        { progress: { completed: 1, total: 6 }, preparation: 'preparing' },
+      ).reading,
+    );
 
     expect(contribution.preparationState).toBe('preparing');
     expect(contribution.section).toMatchObject({
       state: 'available',
       data: {
         groups: [
-          { id: 'needs-approval', tasks: [{ id: 'draft-1' }] },
+          { id: 'needs-approval', tasks: [{ id: 'draft-1', status: { id: 'draft' } }] },
           { id: 'in-progress', tasks: [{ id: 'build' }] },
+          { id: 'ready', tasks: [{ id: 'ready-1' }] },
           { id: 'waiting', tasks: [{ id: 'waiting-1' }] },
-          { id: 'held', tasks: [{ id: 'cancelled-1' }] },
+          { id: 'blocked', tasks: [{ id: 'blocked-1', status: { id: 'blocked' } }] },
+          { id: 'done', tasks: [{ id: 'done-1' }] },
+          { id: 'held', tasks: [{ id: 'gone-1', status: { id: 'abandoned' } }] },
         ],
-        completed: 0,
-        // Cancelled Tasks are not counted.
-        total: 3,
+        completed: 1,
+        total: 6,
       },
     });
-    expect(workspaceTasksOf(basis([]).inspection).preparationState).toBe('empty');
-    expect(workspaceTasksOf(basis([active]).inspection).preparationState).toBe('prepared');
   });
 });

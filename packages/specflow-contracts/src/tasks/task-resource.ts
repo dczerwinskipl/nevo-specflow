@@ -42,6 +42,20 @@ export const TaskPreparationStatusSchema = Type.Union([
   Type.Literal('cancelled'),
 ]);
 
+/** Where a Task stands for the owner (the Engine's `TaskLane`); the workspace groups follow it. */
+export const TaskLaneSchema = Type.Union([
+  Type.Literal('needs-approval'),
+  Type.Literal('in-progress'),
+  Type.Literal('ready'),
+  Type.Literal('waiting'),
+  Type.Literal('blocked'),
+  Type.Literal('done'),
+  Type.Literal('ended'),
+  Type.Literal('held'),
+  Type.Literal('cancelled'),
+  Type.Literal('broken'),
+]);
+
 /** Whether the Task may start now (`ready`), or what keeps it: its status or unfinished dependencies. */
 export const TaskReadinessSchema = Type.Union([
   Type.Object({ kind: Type.Literal('ready') }),
@@ -81,6 +95,8 @@ export const TaskResourceFactsSchema = Type.Object({
   /** The explicit context list; `null`: the default context. */
   context: Type.Union([Type.Array(TaskContextEntrySchema), Type.Null()]),
   readiness: TaskReadinessSchema,
+  /** Where the Task stands for the owner, as the Engine derives it (`TaskLane`). */
+  lane: TaskLaneSchema,
   position: TaskRunPositionSchema,
   /** The workflow the run is pinned to changed: its next operation is refused. */
   definitionChanged: Type.Boolean(),

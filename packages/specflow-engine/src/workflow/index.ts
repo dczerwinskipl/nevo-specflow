@@ -90,6 +90,14 @@ export {
   type WorkflowPostActions,
 } from './operations/post-actions';
 export { inspectExecution, type ExecutionInspection } from './operations/inspect';
+export {
+  readExecution,
+  type ExecutionReading,
+  type ReadExecutionOptions,
+  type TaskLane,
+  type TaskPreparation,
+  type TaskProgress,
+} from './operations/execution-read';
 export type { ExecutionHolds, WorkflowDependencies } from './operations/loaded-execution';
 export { returnToStep, type ReturnToStepInput, type ReturnToStepResult } from './operations/return';
 export {

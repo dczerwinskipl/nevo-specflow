@@ -10,6 +10,7 @@ import {
   pinnedDefinitionIfUnchanged,
   type WorkflowDependencies,
 } from './loaded-execution';
+import type { ExecutionSnapshot } from '../state/store';
 
 export interface ExecutionInspection {
   readonly specId: string;
@@ -53,54 +54,63 @@ export function inspectExecution(
   dependencies: Pick<WorkflowDependencies, 'store' | 'serialize' | 'catalogue'>,
   specId: string,
 ): Promise<ExecutionInspection> {
-  return dependencies.serialize(async () => {
-    const snapshot = await dependencies.store.read(specId);
-    const { tasks, broken } = executionTasks(dependencies.catalogue, snapshot);
-    const revisions = new Map(
-      snapshot.manifests.map((entry) => [entry.value.id, entry.revision] as const),
-    );
-    // Every Task of `tasks` has its manifest; a missing revision is a defect, never a default.
-    const revisionOf = (taskId: string) => {
-      const revision = revisions.get(taskId);
-      if (revision === undefined) {
-        throw new WorkflowError('WORKFLOW_STATE_CORRUPT', `The Task "${taskId}" has no manifest.`);
-      }
+  return dependencies.serialize(async () =>
+    inspectSnapshot(dependencies.catalogue, await dependencies.store.read(specId)),
+  );
+}
 
-      return revision;
-    };
+/** {@link inspectExecution} of a snapshot already read (inside `serialize`). */
+export function inspectSnapshot(
+  catalogue: WorkflowDependencies['catalogue'],
+  snapshot: ExecutionSnapshot,
+): ExecutionInspection {
+  const dependencies = { catalogue };
+  const specId = snapshot.specId;
+  const { tasks, broken } = executionTasks(dependencies.catalogue, snapshot);
+  const revisions = new Map(
+    snapshot.manifests.map((entry) => [entry.value.id, entry.revision] as const),
+  );
+  // Every Task of `tasks` has its manifest; a missing revision is a defect, never a default.
+  const revisionOf = (taskId: string) => {
+    const revision = revisions.get(taskId);
+    if (revision === undefined) {
+      throw new WorkflowError('WORKFLOW_STATE_CORRUPT', `The Task "${taskId}" has no manifest.`);
+    }
 
-    const specification = snapshot.specification?.value;
-    const specificationHandoff = specification ? handoffOf(specification.run) : undefined;
-    const changed = (run: WorkflowRun) =>
-      pinnedDefinitionIfUnchanged(dependencies.catalogue, run)
-        ? {}
-        : { definitionChanged: true as const };
+    return revision;
+  };
 
-    return {
-      specId,
-      ...(specification
-        ? {
-            specification: {
-              record: specification,
-              ...(specificationHandoff ? { handoff: specificationHandoff } : {}),
-              ...changed(specification.run),
-            },
-          }
-        : {}),
-      tasks: tasks.map((record) => {
-        const handoff = record.run ? handoffOf(record.run) : undefined;
+  const specification = snapshot.specification?.value;
+  const specificationHandoff = specification ? handoffOf(specification.run) : undefined;
+  const changed = (run: WorkflowRun) =>
+    pinnedDefinitionIfUnchanged(dependencies.catalogue, run)
+      ? {}
+      : { definitionChanged: true as const };
 
-        return {
-          record,
-          revision: revisionOf(record.taskId),
-          readiness: taskReadiness(record, tasks),
-          ...(handoff ? { handoff } : {}),
-          ...(record.run ? changed(record.run) : {}),
-        };
-      }),
-      brokenTasks: broken,
-      issues: snapshot.issues,
-      attention: deriveAttention(dependencies.catalogue, snapshot),
-    };
-  });
+  return {
+    specId,
+    ...(specification
+      ? {
+          specification: {
+            record: specification,
+            ...(specificationHandoff ? { handoff: specificationHandoff } : {}),
+            ...changed(specification.run),
+          },
+        }
+      : {}),
+    tasks: tasks.map((record) => {
+      const handoff = record.run ? handoffOf(record.run) : undefined;
+
+      return {
+        record,
+        revision: revisionOf(record.taskId),
+        readiness: taskReadiness(record, tasks),
+        ...(handoff ? { handoff } : {}),
+        ...(record.run ? changed(record.run) : {}),
+      };
+    }),
+    brokenTasks: broken,
+    issues: snapshot.issues,
+    attention: deriveAttention(dependencies.catalogue, snapshot),
+  };
 }

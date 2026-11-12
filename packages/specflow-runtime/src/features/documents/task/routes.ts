@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import type { FastifyPluginCallback } from 'fastify';
 import { Type } from 'typebox';
@@ -18,6 +20,7 @@ import { DocumentError } from '@nevo/specflow-engine';
 
 import type { ProjectIdSource } from '../../specs';
 import { contractRef } from '../../../server/shared-contracts';
+import { matchesEtag, sendNotModified } from '../../../server/etag';
 import {
   documentReadErrorResponses,
   documentRoute,
@@ -78,13 +81,20 @@ export const taskDocumentRoutes: FastifyPluginCallback<TaskDocumentRoutesOptions
         tags: ['Documents'],
         summary: 'Read the documents of a Task',
         params: TaskParamsSchema,
-        response: { 200: TaskDocumentTreeSchema, ...documentReadErrorResponses },
+        response: { 200: TaskDocumentTreeSchema, 304: Type.Null(), ...documentReadErrorResponses },
       },
     },
     documentRoute(async (request, reply) => {
       const { specId, taskId } = request.params;
+      const tree = await need().tree(specId, taskId);
+      // Over the whole listing: a file revision changes it, not only the registry.
+      const etag = '"' + createHash('sha1').update(JSON.stringify(tree)).digest('base64url') + '"';
+      reply.header('ETag', etag);
+      if (matchesEtag(request.headers['if-none-match'], etag)) {
+        return sendNotModified(reply);
+      }
 
-      return reply.code(200).send(await need().tree(specId, taskId));
+      return reply.code(200).send(tree);
     }),
   );
 

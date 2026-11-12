@@ -11,6 +11,8 @@ import {
   ProjectControlLockError,
   ProjectHomeError,
   SpecificationError,
+  SpecificationExitBlockedError,
+  TaskContextUnresolvedError,
   WorkspaceRegistryError,
   type OwnerActor,
 } from '@nevo/specflow-engine';
@@ -82,15 +84,13 @@ export function workflowFailure(error: unknown): WorkflowFailure | undefined {
     return failure(error.code, error.message);
   }
 
-  // The Engine's Specification lookup refuses an unknown Specification itself.
-  if (error instanceof SpecificationError && error.code === 'SPEC_NOT_FOUND') {
-    return failure('WORKFLOW_SUBJECT_NOT_FOUND', 'The Specification does not exist.');
+  // The Engine's Specification lookup refuses a Specification itself; its message may name paths.
+  if (error instanceof SpecificationError) {
+    return specificationFailure(error);
   }
 
-  // The canonical source (manifest, registry, Project Home, Git) cannot be used now; its own message
-  // may name paths, so it is not passed on.
+  // The canonical source (registry, Project Home, Git) cannot be used now.
   if (
-    error instanceof SpecificationError ||
     error instanceof WorkspaceRegistryError ||
     error instanceof ProjectHomeError ||
     error instanceof GitCapabilityError
@@ -98,26 +98,48 @@ export function workflowFailure(error: unknown): WorkflowFailure | undefined {
     return failure('WORKFLOW_UNAVAILABLE', 'The Specification source is unavailable.');
   }
 
+  if (error instanceof SpecificationExitBlockedError) {
+    return failure(error.code, error.message, {
+      blockers: error.blockers.map((blocker) => ({
+        ...blocker,
+        subjectIds: [...blocker.subjectIds],
+      })),
+    });
+  }
+
+  if (error instanceof TaskContextUnresolvedError) {
+    return failure(error.code, error.message, { unresolved: [...error.unresolved] });
+  }
+
   if (!(error instanceof Error) || error.name !== 'WorkflowError') {
     return undefined;
   }
 
-  const { code, blockers, unresolved } = error as Error & {
-    code?: unknown;
-    blockers?: unknown;
-    unresolved?: unknown;
-  };
-  if (!isWorkflowErrorCode(code)) {
-    return undefined;
+  const { code } = error as Error & { code?: unknown };
+
+  return isWorkflowErrorCode(code) ? failure(code, error.message) : undefined;
+}
+
+/** The workflow refusal of each Specification lookup failure. */
+function specificationFailure(error: SpecificationError): WorkflowFailure {
+  switch (error.code) {
+    case 'SPEC_NOT_FOUND':
+      return failure('WORKFLOW_SUBJECT_NOT_FOUND', 'The Specification does not exist.');
+    case 'SPEC_VALIDATION_ERROR':
+      return failure('WORKFLOW_INPUT_INVALID', 'The Specification identity is not valid.');
+    case 'SPEC_CONFLICT':
+      return failure(
+        'WORKFLOW_STATE_CONFLICT',
+        'The Specification conflicts with another canonical Specification.',
+      );
+    case 'SPEC_SOURCE_INVALID':
+      return failure('WORKFLOW_UNAVAILABLE', 'The Specification source is unavailable.');
+    default: {
+      const exhaustive: never = error.code;
+
+      return exhaustive;
+    }
   }
-
-  type Details = NonNullable<WorkflowErrorContract['details']>;
-  const details: Details = {
-    ...(Array.isArray(blockers) ? { blockers: blockers as Details['blockers'] } : {}),
-    ...(Array.isArray(unresolved) ? { unresolved: unresolved as Details['unresolved'] } : {}),
-  };
-
-  return failure(code, error.message, Object.keys(details).length > 0 ? details : undefined);
 }
 
 /**

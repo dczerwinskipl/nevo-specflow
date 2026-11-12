@@ -1,11 +1,11 @@
-import { inspectExecution, type ExecutionInspection } from '@nevo/specflow-engine';
+import { readExecution, type ExecutionReading, type TaskLane } from '@nevo/specflow-engine';
 
 import {
   inspectSpecification,
   TaskSourceUnavailableError,
   type TaskEngine,
 } from '../engine/sources';
-import { taskStatusOf, type InspectedTask } from '../engine/projection';
+import { taskStatusOf } from '../engine/projection';
 
 interface WorkspaceTaskRow {
   readonly id: string;
@@ -44,61 +44,33 @@ export interface WorkspaceTasksContribution {
 
 /**
  * The groups follow what the owner has to do (UX contract "Specification Overview"), in this order;
- * an empty group is omitted.
+ * an empty group is omitted. Each is a presentation of the Engine's lanes (`TaskLane`); a broken
+ * Task has no readable row and is attention instead.
  */
-const GROUPS = [
-  { id: 'needs-approval', name: 'Needs approval' },
-  { id: 'in-progress', name: 'In progress' },
-  { id: 'ready', name: 'Ready to start' },
-  { id: 'waiting', name: 'Waiting' },
-  { id: 'done', name: 'Done' },
-  { id: 'held', name: 'On hold or cancelled' },
-] as const;
+const GROUPS: readonly { id: string; name: string; lanes: readonly TaskLane[] }[] = [
+  { id: 'needs-approval', name: 'Needs approval', lanes: ['needs-approval'] },
+  { id: 'in-progress', name: 'In progress', lanes: ['in-progress'] },
+  { id: 'ready', name: 'Ready to start', lanes: ['ready'] },
+  { id: 'waiting', name: 'Waiting', lanes: ['waiting'] },
+  { id: 'blocked', name: 'Blocked', lanes: ['blocked'] },
+  { id: 'done', name: 'Done', lanes: ['done'] },
+  { id: 'held', name: 'On hold or cancelled', lanes: ['held', 'cancelled', 'ended'] },
+];
 
-function groupOf(entry: InspectedTask): (typeof GROUPS)[number]['id'] {
-  switch (taskStatusOf(entry).id) {
-    case 'draft':
-      return 'needs-approval';
-    case 'in-progress':
-      return 'in-progress';
-    case 'ready':
-      return 'ready';
-    case 'waiting':
-      return 'waiting';
-    case 'completed':
-      return 'done';
-    default:
-      return 'held';
-  }
-}
-
-/** Completed Tasks of all that are still meant to be done (cancelled ones are not). */
-export function taskProgress(inspection: ExecutionInspection): {
-  completed: number;
-  total: number;
-} {
-  const counted = inspection.tasks.filter((entry) => entry.record.status !== 'cancelled');
-
-  return {
-    completed: counted.filter((entry) => taskStatusOf(entry).id === 'completed').length,
-    // A broken Task is still one of the Specification's Tasks; it is not done.
-    total: counted.length + inspection.brokenTasks.length,
-  };
-}
-
-/** The workspace `tasks` section and preparation state of one inspection. Pure. */
-export function workspaceTasksOf(inspection: ExecutionInspection): WorkspaceTasksContribution {
+/** The workspace `tasks` section and preparation state of one Engine reading (`tasks: 'all'`). Pure. */
+export function workspaceTasksOf(reading: ExecutionReading): WorkspaceTasksContribution {
+  const { inspection, lanes } = reading;
   const titles = new Map(
     inspection.tasks.map((entry) => [entry.record.taskId, entry.record.title]),
   );
   const groups = GROUPS.flatMap((group) => {
-    const tasks = inspection.tasks
-      .filter((entry) => groupOf(entry) === group.id)
-      .map((entry) => ({
-        id: entry.record.taskId,
-        title: entry.record.title,
-        status: taskStatusOf(entry),
-      }));
+    const tasks = inspection.tasks.flatMap((entry) => {
+      const lane = lanes.get(entry.record.taskId);
+
+      return lane && group.lanes.includes(lane)
+        ? [{ id: entry.record.taskId, title: entry.record.title, status: taskStatusOf(lane) }]
+        : [];
+    });
 
     return tasks.length ? [{ id: group.id, name: group.name, tasks }] : [];
   });
@@ -130,37 +102,33 @@ export function workspaceTasksOf(inspection: ExecutionInspection): WorkspaceTask
           },
     ),
   ];
-  const { completed, total } = taskProgress(inspection);
-  const count = inspection.tasks.length + inspection.brokenTasks.length;
+  const progress = reading.progress;
 
   return {
-    section: { state: 'available', data: { groups, completed, total, attention } },
-    preparationState:
-      count === 0
-        ? 'empty'
-        : inspection.tasks.some((entry) => entry.record.status === 'draft')
-          ? 'preparing'
-          : 'prepared',
+    section: { state: 'available', data: { groups, ...progress, attention } },
+    preparationState: reading.preparation,
   };
 }
 
+const unavailable: WorkspaceTasksContribution = {
+  section: { state: 'unavailable', reason: 'source_unavailable' },
+};
+
 /**
- * Project mode's `tasks` contribution: one Engine inspection of the Specification's Task resources
- * and runs. An unreadable execution degrades only this section (`source_unavailable`).
+ * Project mode's `tasks` contribution: one Engine reading of every Task. An execution the Engine
+ * cannot read now (also a busy lock) degrades only this section (`source_unavailable`).
  */
 export function createEngineWorkspaceTasks(
   source: TaskEngine,
 ): (specId: string) => Promise<WorkspaceTasksContribution> {
   return async (specId) => {
     try {
-      const basis = await inspectSpecification(source, specId);
+      const basis = await inspectSpecification(source, specId, 'all');
 
-      return basis
-        ? workspaceTasksOf(basis.inspection)
-        : { section: { state: 'unavailable', reason: 'source_unavailable' } };
+      return basis ? workspaceTasksOf(basis.reading) : unavailable;
     } catch (error) {
       if (error instanceof TaskSourceUnavailableError) {
-        return { section: { state: 'unavailable', reason: 'source_unavailable' } };
+        return unavailable;
       }
 
       throw error;
@@ -173,9 +141,9 @@ export type TaskProgressSource = (
 ) => Promise<ReadonlyMap<string, { completed: number; total: number } | null>>;
 
 /**
- * The Specs Overview `progress` of the listed Specifications: the definitions are loaded once, each
- * Specification is inspected on its own. A Specification whose execution cannot be read has
- * `null` (not projected), never a guessed count; the other rows are unaffected.
+ * The Specs Overview `progress` of the listed Specifications, the Engine's `TaskProgress`: the
+ * definitions are loaded once, each Specification is read on its own. One whose execution cannot be
+ * read has `null` (not projected), never a guessed count; the other rows are unaffected.
  */
 export function createEngineTaskProgress(source: TaskEngine): TaskProgressSource {
   return async (specIds) => {
@@ -193,7 +161,7 @@ export function createEngineTaskProgress(source: TaskEngine): TaskProgressSource
 
     for (const specId of specIds) {
       try {
-        progress.set(specId, taskProgress(await inspectExecution(workflow, specId)));
+        progress.set(specId, (await readExecution(workflow, specId, { tasks: [] })).progress);
       } catch {
         progress.set(specId, null);
       }

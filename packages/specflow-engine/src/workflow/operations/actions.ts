@@ -606,7 +606,8 @@ function definitionChanged(run: WorkflowRun): Pick<ActionProjection, 'position' 
   };
 }
 
-async function taskProjection(
+/** The action projection of one Task of a snapshot already read (inside `serialize`). */
+export async function taskProjection(
   dependencies: ActionDependencies,
   snapshot: ExecutionSnapshot,
   subject: Extract<WorkflowSubject, { kind: 'task' }>,

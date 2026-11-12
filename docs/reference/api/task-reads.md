@@ -200,29 +200,37 @@ authenticated identity and their resource-specific keys; server tokens are not U
 
 ## Project mode: Engine reads
 
-With an Engine (`nevo-specflow start`), the Task detail, history and the workspace `tasks` section
-are read from one Engine inspection of the Specification's execution (`inspectExecution`: the Task
-resources `tasks/index.yaml` and `tasks/<id>/task.yaml`, and the run records, read under the project
-control lock, so never half a mutation), with the definitions loaded for that request:
+With an Engine (`nevo-specflow start`), a Task detail or history page is ONE Engine read,
+`readExecution`: the inspection of the Specification's execution (the Task resources
+`tasks/index.yaml` and `tasks/<id>/task.yaml`, and the run records), the action projection of the
+Task and its lane, all from one snapshot read under the project control lock, with the definitions
+loaded for that request. Every section of the answer comes from that read, so none reflects
+another moment; only `task.md`'s revision is read separately (the Documents owner's own version).
 
-- `task.status` is the preparation status, else the run position: `draft` (pending), `ready` or
-  `waiting` for dependencies (pending), `in-progress` (in progress), `completed`, `on-hold`,
-  `cancelled` and `abandoned` (blocked).
 - `resource` is the Task resource: `revision` (the manifest revision an edit or removal names),
   `type`, `status`, `statusChange`, `dependsOn`, `origin`, `documents`, `context` (`null`: the
-  default context), `readiness`, the run `position` and `definitionChanged`.
+  default context), `readiness`, the run `position`, `lane` and `definitionChanged`.
+- `resource.lane` is the Engine's `TaskLane`, derived from the status, the run and the action
+  projection: `needs-approval`, `in-progress`, `ready` (can start now), `waiting` (only for
+  dependencies that can all still complete), `blocked` (the type is no longer allowed, the
+  definition is missing or changed, a required context entry does not resolve, or a dependency can
+  never complete), `done`, `ended` (abandoned), `held`, `cancelled`, `broken`. `task.status`
+  presents it (`draft`, `in-progress`, `ready`, `waiting`, `blocked`, `completed`, `abandoned`,
+  `on-hold`, `cancelled`, `broken`).
 - `snapshot.sections.work` projects the run with the definition it is pinned to (before the first
-  start: the task type's workflow, and `definition.revision` is the definition version). When the
-  pinned definition changed, `work` and `history` are unavailable; nothing is reinterpreted. Its
-  `blockers` stay empty: what may be done now is the workflow action projection.
+  start: the task type's workflow, and `definition.revision` is the definition version). An active
+  position names the attempt's `actor`. When the pinned definition changed, `work` and `history`
+  are unavailable; nothing is reinterpreted. Its `blockers` stay empty: what may be done now is
+  the workflow action projection.
 - `history` pages the run's attempts, newest first; a page whose execution changed since the
   detail answers `409 task_snapshot_expired`.
 - `document` is `task.md` with its revision; `humanRequirements`, `resources` and `recovery` are
   `unavailable` / `not_implemented` (no Engine projection of them).
 
 An unknown Specification or Task is `404 specification_task_not_found`; an execution the Engine
-cannot read (an unavailable checkout, unreadable records) is `503 specification_source_unavailable`.
-The demo Runtime keeps its own sources; a Runtime without either still answers 503.
+cannot read (an unavailable checkout, unreadable records) is `503 specification_source_unavailable`,
+with `Retry-After: 1` when the project control lock was busy (a retry soon can succeed). The demo
+Runtime keeps its own sources; a Runtime without either still answers 503.
 
 ## Task commands
 

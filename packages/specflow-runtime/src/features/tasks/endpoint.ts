@@ -1,4 +1,4 @@
-import type { FastifyPluginCallback } from 'fastify';
+import type { FastifyPluginCallback, FastifyReply } from 'fastify';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import {
   SpecificationTaskParamsSchema,
@@ -28,11 +28,22 @@ async function unlessUnavailable<T>(read: () => Promise<ReadOutcome<T>>): Promis
     return await read();
   } catch (error) {
     if (error instanceof TaskSourceUnavailableError) {
-      return { kind: 'unavailable' };
+      return { kind: 'unavailable', retryable: error.retryable };
     }
 
     throw error;
   }
+}
+
+/** 503 `specification_source_unavailable`; `Retry-After` only when the lock was busy. */
+function unavailableReply<R extends FastifyReply>(reply: R, retryable: boolean): R {
+  if (retryable) {
+    reply.header('Retry-After', '1');
+  }
+
+  (reply as FastifyReply).code(503).send({ error: 'specification_source_unavailable' });
+
+  return reply;
 }
 
 export const taskReadEndpoint: FastifyPluginCallback<{ dependencies: TaskReadDependencies }> = (
@@ -82,7 +93,7 @@ export const taskReadEndpoint: FastifyPluginCallback<{ dependencies: TaskReadDep
         return reply.code(404).send({ error: 'specification_task_not_found' });
       }
 
-      return reply.code(503).send({ error: 'specification_source_unavailable' });
+      return unavailableReply(reply, result.kind === 'unavailable' && result.retryable === true);
     },
   );
   for (const kind of ['resources', 'history'] as const) {
@@ -126,7 +137,7 @@ export const taskReadEndpoint: FastifyPluginCallback<{ dependencies: TaskReadDep
           return reply.code(404).send({ error: 'specification_task_not_found' });
         }
 
-        return reply.code(503).send({ error: 'specification_source_unavailable' });
+        return unavailableReply(reply, result.kind === 'unavailable' && result.retryable === true);
       },
     );
   }

@@ -1,8 +1,10 @@
 import {
-  inspectExecution,
+  ProjectControlLockError,
+  readExecution,
   readTaskDocuments,
   resolveSpecificationForRead,
   SpecificationError,
+  type ReadExecutionOptions,
   type SpecFlowEngine,
   type WorkflowDependencies,
 } from '@nevo/specflow-engine';
@@ -13,6 +15,8 @@ import type {
   ExecutionSource,
   HistorySource,
   TaskIdentity,
+  TaskReading,
+  TaskReadingSource,
 } from '../reads/facts';
 import { sameTask } from '../reads/facts';
 import {
@@ -34,16 +38,22 @@ export interface TaskEngine {
   readonly openWorkflow: () => Promise<WorkflowDependencies>;
 }
 
-/** The Engine could not read the Specification's execution: the read answers 503. */
+/**
+ * The Engine could not read the Specification's execution: the read answers 503. `retryable` when
+ * the project control lock was busy (another writer), so a retry soon can succeed.
+ */
 export class TaskSourceUnavailableError extends Error {
+  readonly retryable: boolean;
+
   constructor(cause: unknown) {
     super('The Task source is unavailable.', { cause });
     this.name = 'TaskSourceUnavailableError';
+    this.retryable = cause instanceof ProjectControlLockError && cause.code === 'CONTROL_LOCK_BUSY';
   }
 }
 
 /** A workflow refusal; the core and the SpecFlow adapter throw two classes of one name. */
-export function workflowErrorCode(error: unknown): string | undefined {
+function workflowErrorCode(error: unknown): string | undefined {
   return error instanceof Error &&
     error.name === 'WorkflowError' &&
     typeof (error as { code?: unknown }).code === 'string'
@@ -52,13 +62,15 @@ export function workflowErrorCode(error: unknown): string | undefined {
 }
 
 /**
- * One Engine inspection of a Specification's execution (`inspectExecution`, read under the project
- * control lock, so never half a mutation) with the Specification it belongs to. `null`: the
- * Specification does not exist. Any other failure is an outage.
+ * ONE Engine read of a Specification's execution (`readExecution`: the inspection, the action
+ * projections of the requested Tasks and their lanes, from one snapshot read under the project
+ * control lock) with the Specification it belongs to. `null`: the Specification does not exist. Any
+ * other failure is an outage.
  */
 export async function inspectSpecification(
   source: TaskEngine,
   specId: string,
+  tasks: ReadExecutionOptions['tasks'],
 ): Promise<InspectionBasis | null> {
   try {
     const found = await resolveSpecificationForRead(source.engine, specId);
@@ -67,13 +79,15 @@ export async function inspectSpecification(
     }
 
     const workflow = await source.openWorkflow();
+    const reading = await readExecution(workflow, specId, { tasks });
 
     return {
       projectId: source.engine.context.project.projectId,
       workspaceId: found.workspaceId,
       specificationTitle: found.specification.title,
       catalogue: workflow.catalogue,
-      inspection: await inspectExecution(workflow, specId),
+      inspection: reading.inspection,
+      reading,
     };
   } catch (error) {
     if (
@@ -89,7 +103,10 @@ export async function inspectSpecification(
   }
 }
 
-/** The `task.md` of a Task and its revision, read independently of the inspection (its own version). */
+/**
+ * The `task.md` of a Task and its revision. It is the Documents owner's body version (a separate
+ * version by design, `architecture.runtime.task-read-composition`), not part of the execution read.
+ */
 async function mainDocument(
   engine: SpecFlowEngine,
   specId: string,
@@ -109,67 +126,78 @@ async function mainDocument(
 }
 
 /**
- * The project-mode Task read sources (`architecture.runtime.task-read-composition`): definition,
- * execution and history facts, each from one inspection. The execution and history reads name the
- * Task manifest revision and the execution version the detail saw; a newer one is not spliced in
- * (the detail reports the section unavailable, a page answers 409 expired).
+ * The project-mode Task read sources (`architecture.runtime.task-read-composition`). A detail or a
+ * page is ONE `reading`: definition, execution and history all from one Engine read, so no section
+ * mixes two moments. A history page names the execution version its detail saw; a newer one is not
+ * spliced in (409 expired). The separate ports read the same way, for consumers that need only one
+ * of them (Session association titles).
  */
 export function createEngineTaskSources(source: TaskEngine): {
+  reading: TaskReadingSource;
   definitions: DefinitionSource;
   execution: ExecutionSource;
   history: HistorySource;
 } {
-  // The Task the detail resolved, still in the same checkout (a moved binding is another Task read).
-  const task = async (identity: TaskIdentity) => {
-    const basis = await inspectSpecification(source, identity.specId);
-    const entry = basis && findInspectedTask(basis.inspection, identity.taskId);
+  const reading: TaskReadingSource = {
+    async read(specId, taskId): Promise<TaskReading | null> {
+      const basis = await inspectSpecification(source, specId, [taskId]);
+      const entry = basis && findInspectedTask(basis.inspection, taskId);
+      if (!basis || !entry) {
+        return null;
+      }
 
-    return basis && entry && sameTask(identity, identityOf(basis, identity.taskId))
-      ? { basis, entry }
-      : undefined;
+      const history = historyFactsOf(basis, entry);
+
+      return {
+        definition: definitionFactsOf(
+          basis,
+          entry,
+          await mainDocument(source.engine, specId, taskId),
+        ),
+        execution: executionFactsOf(basis, entry) ?? null,
+        history: history
+          ? {
+              read: {
+                identity: identityOf(basis, taskId),
+                handle: history.version,
+                version: history.version,
+                coverage: 'complete',
+              },
+              items: history.items,
+            }
+          : null,
+      };
+    },
   };
+  const same = async (identity: TaskIdentity) => {
+    const read = await reading.read(identity.specId, identity.taskId);
 
-  const history = async (identity: TaskIdentity) => {
-    const found = await task(identity);
-
-    return found && historyFactsOf(found.basis, found.entry);
+    return read && sameTask(identity, read.definition.identity) ? read : undefined;
   };
 
   return {
+    reading,
     definitions: {
       async resolve(specId, taskId) {
-        const basis = await inspectSpecification(source, specId);
-        const entry = basis && findInspectedTask(basis.inspection, taskId);
-        if (!basis || !entry) {
-          return null;
-        }
-
-        return definitionFactsOf(basis, entry, await mainDocument(source.engine, specId, taskId));
+        return (await reading.read(specId, taskId))?.definition ?? null;
       },
     },
     execution: {
       async inspect(identity, definitionVersion) {
-        const found = await task(identity);
-        if (found?.entry.revision !== definitionVersion) {
-          return null;
-        }
+        const read = await same(identity);
 
-        return executionFactsOf(found.basis, found.entry) ?? null;
+        return read?.definition.version === definitionVersion ? read.execution : null;
       },
     },
     history: {
       async open(identity) {
-        const facts = await history(identity);
-
-        return facts
-          ? { identity, handle: facts.version, version: facts.version, coverage: 'complete' }
-          : null;
+        return (await same(identity))?.history?.read ?? null;
       },
       async read(identity, handle, continuation, limit) {
-        const facts = await history(identity);
+        const history = (await same(identity))?.history;
         const start = continuation === null ? 0 : Number(continuation);
         if (
-          facts?.version !== handle ||
+          history?.read.version !== handle ||
           !Number.isSafeInteger(start) ||
           start < 0 ||
           !Number.isSafeInteger(limit) ||
@@ -178,13 +206,13 @@ export function createEngineTaskSources(source: TaskEngine): {
           return null;
         }
 
-        const end = Math.min(start + limit, facts.items.length);
+        const end = Math.min(start + limit, history.items.length);
 
         return {
           identity,
-          version: facts.version,
-          items: facts.items.slice(start, end),
-          next: end < facts.items.length ? String(end) : null,
+          version: history.read.version,
+          items: history.items.slice(start, end),
+          next: end < history.items.length ? String(end) : null,
           coverage: 'complete',
         };
       },

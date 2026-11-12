@@ -4,6 +4,8 @@ import type {
   AttemptRecord,
   ExecutionCatalogue,
   ExecutionInspection,
+  ExecutionReading,
+  TaskLane,
   WorkflowDefinition,
   WorkflowRun,
   WorkflowStep,
@@ -39,6 +41,8 @@ export interface InspectionBasis {
   readonly specificationTitle: string;
   readonly catalogue: ExecutionCatalogue;
   readonly inspection: ExecutionInspection;
+  /** The one Engine read the inspection is part of (same snapshot). */
+  readonly reading: ExecutionReading;
 }
 
 export function findInspectedTask(
@@ -57,35 +61,32 @@ export function identityOf(basis: InspectionBasis, taskId: string): TaskIdentity
   };
 }
 
-/** The status line of a Task: its preparation status, else its run position. */
-export function taskStatusOf(entry: InspectedTask): TaskDefinitionFacts['task']['status'] {
-  const { record, readiness } = entry;
-  const position = record.run?.position ?? { state: 'not-started' as const };
-  if (record.status === 'cancelled') {
-    return { id: 'cancelled', label: 'Cancelled', lifecycle: 'blocked' };
+const STATUS_OF_LANE: Readonly<Record<TaskLane, TaskDefinitionFacts['task']['status']>> = {
+  'needs-approval': { id: 'draft', label: 'Draft', lifecycle: 'pending' },
+  'in-progress': { id: 'in-progress', label: 'In progress', lifecycle: 'in_progress' },
+  ready: { id: 'ready', label: 'Ready', lifecycle: 'pending' },
+  waiting: { id: 'waiting', label: 'Waiting', lifecycle: 'pending' },
+  blocked: { id: 'blocked', label: 'Blocked', lifecycle: 'blocked' },
+  done: { id: 'completed', label: 'Completed', lifecycle: 'completed' },
+  ended: { id: 'abandoned', label: 'Abandoned', lifecycle: 'blocked' },
+  held: { id: 'on-hold', label: 'On hold', lifecycle: 'blocked' },
+  cancelled: { id: 'cancelled', label: 'Cancelled', lifecycle: 'blocked' },
+  broken: { id: 'broken', label: 'Broken', lifecycle: 'blocked' },
+};
+
+/** The status line of a Task: the presentation of its Engine lane (`readExecution`). */
+export function taskStatusOf(lane: TaskLane): TaskDefinitionFacts['task']['status'] {
+  return { ...STATUS_OF_LANE[lane] };
+}
+
+/** The Engine lane of a Task the reading covers. */
+export function laneOf(basis: InspectionBasis, taskId: string): TaskLane {
+  const lane = basis.reading.lanes.get(taskId);
+  if (!lane) {
+    throw new Error(`The reading has no lane for the Task "${taskId}".`);
   }
 
-  if (position.state === 'terminal') {
-    return position.outcome === 'completed'
-      ? { id: 'completed', label: 'Completed', lifecycle: 'completed' }
-      : { id: 'abandoned', label: 'Abandoned', lifecycle: 'blocked' };
-  }
-
-  if (record.status === 'on-hold') {
-    return { id: 'on-hold', label: 'On hold', lifecycle: 'blocked' };
-  }
-
-  if (record.status === 'draft') {
-    return { id: 'draft', label: 'Draft', lifecycle: 'pending' };
-  }
-
-  if (position.state !== 'not-started') {
-    return { id: 'in-progress', label: 'In progress', lifecycle: 'in_progress' };
-  }
-
-  return readiness.kind === 'dependencies'
-    ? { id: 'waiting', label: 'Waiting', lifecycle: 'pending' }
-    : { id: 'ready', label: 'Ready', lifecycle: 'pending' };
+  return lane;
 }
 
 /** The workflow a Task runs: the pinned one once it started, else its task type's. */
@@ -108,7 +109,7 @@ export function workflowOf(
   return type ? catalogue.workflow(type.workflow) : undefined;
 }
 
-export function resourceFactsOf(entry: InspectedTask): TaskResourceFacts {
+export function resourceFactsOf(entry: InspectedTask, lane: TaskLane): TaskResourceFacts {
   const { record } = entry;
 
   return {
@@ -126,6 +127,7 @@ export function resourceFactsOf(entry: InspectedTask): TaskResourceFacts {
         : entry.readiness.kind === 'status'
           ? { kind: 'status', status: entry.readiness.status }
           : { kind: 'ready' },
+    lane,
     position: structuredClone(record.run?.position ?? { state: 'not-started' }),
     definitionChanged: entry.definitionChanged === true,
   };
@@ -142,12 +144,13 @@ export function definitionFactsOf(
   );
   const taskType = basis.catalogue.taskType(record.type);
   const workflow = record.run?.workflow.id ?? taskType?.workflow;
+  const lane = laneOf(basis, record.taskId);
 
   return {
     identity: identityOf(basis, record.taskId),
     version: entry.revision,
     specificationTitle: basis.specificationTitle,
-    task: { id: record.taskId, title: record.title, status: taskStatusOf(entry) },
+    task: { id: record.taskId, title: record.title, status: taskStatusOf(lane) },
     acceptanceCriteria: [],
     ...(workflow !== undefined ? { workflow } : {}),
     summary: record.summary ?? null,
@@ -163,7 +166,7 @@ export function definitionFactsOf(
         target: { kind: 'task', specId: basis.inspection.specId, taskId },
       },
     })),
-    resource: resourceFactsOf(entry),
+    resource: resourceFactsOf(entry, lane),
   };
 }
 
@@ -229,6 +232,26 @@ export function executionVersion(entry: InspectedTask, definition: WorkflowDefin
     .digest('hex');
 }
 
+/** Who worked on an attempt, as the read facts name them (a person by the recorded actor id). */
+function actorOf(record: AttemptRecord): HistoryFacts['actor'] {
+  return record.actor
+    ? {
+        class: record.actor.class,
+        ...(record.actor.class === 'human' ? { actorId: record.actor.details.actorId } : {}),
+      }
+    : null;
+}
+
+/** The actor of the active attempt, from the run record of the same reading. */
+function activeActor(run: WorkflowRun | undefined, step: string, attempt: number) {
+  const record = run?.attempts.find(
+    (candidate) => candidate.step === step && candidate.attempt === attempt,
+  );
+  const actor = record && actorOf(record);
+
+  return actor ? { actor } : {};
+}
+
 const keyOf = (specId: string, taskId: string, record: AttemptRecord): AttemptIdentity => ({
   specId,
   taskId,
@@ -279,6 +302,7 @@ export function executionFactsOf(
       key: { specId, taskId, stepId: position.step, attempt: position.attempt },
       step: stepFacts(step),
       semanticStatus: position.step,
+      ...activeActor(run, position.step, position.attempt),
     };
     transitions = transitionsOf(definition, step);
   } else if (position.state === 'ready') {
@@ -382,12 +406,7 @@ export function historyFactsOf(
             : outcome.kind,
       transitionedTo: transition ? (destination(definition, transition) ?? null) : null,
       feedback: outcome && outcome.kind !== 'abandoned' ? (outcome.feedback ?? null) : null,
-      actor: record.actor
-        ? {
-            class: record.actor.class,
-            ...(record.actor.class === 'human' ? { actorId: record.actor.details.actorId } : {}),
-          }
-        : null,
+      actor: actorOf(record),
       resources: [],
       provenance: [{ source: 'workflow_history', sourceId: id }],
     });

@@ -12,7 +12,7 @@ import { DocumentContent } from '../../documents';
 import { OperationalRow } from '../../../shared/operational-list';
 import type { FullTaskData } from '../read-model/model';
 import { TaskSourceState } from './TaskDetails';
-import { executorsLabel } from './stepExecutors';
+import { stepLine } from './stepExecutors';
 
 export function TaskInspection({
   task,
@@ -66,7 +66,7 @@ export function TaskInspection({
               {definedStep.expectedWork?.summary ?? definedStep.id}
             </Typography>
             <Typography variant="body-sm" className="text-content-muted">
-              {definedStep.id} · {executorsLabel(t, definedStep.executors)}
+              {stepLine(t, definedStep)}
               {position.state === 'active' && position.step.id === definedStep.id
                 ? ` · ${t('taskDetails.currentPosition')} · ${t('taskDetails.attempt', { count: position.key.attempt })}`
                 : (position.state === 'checkpoint' || position.state === 'not_started') &&

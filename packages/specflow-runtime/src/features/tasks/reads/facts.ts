@@ -92,7 +92,13 @@ export interface ExecutionFacts {
     };
     position:
       | { state: 'not_started'; next: StepFacts | null }
-      | { state: 'active'; key: AttemptIdentity; step: StepFacts; semanticStatus: string }
+      | {
+          state: 'active';
+          key: AttemptIdentity;
+          step: StepFacts;
+          semanticStatus: string;
+          actor?: { class: ExecutorClass; actorId?: string };
+        }
       | { state: 'checkpoint'; completed: AttemptIdentity; next: StepFacts; nextAttempt: null }
       | {
           state: 'terminal';
@@ -160,6 +166,19 @@ export interface SourcePage<T> {
   coverage: 'complete' | 'partial';
 }
 export type ReferenceVisibility = (link: ReferenceFacts) => Promise<boolean>;
+/**
+ * One read of a Task for one request: its definition and, from the same source read, its execution
+ * and its whole history (bounded by the run), so no section of a detail or a page reflects another
+ * moment. `execution` and `history` are `null` when the source cannot project them truthfully.
+ */
+export interface TaskReading {
+  definition: TaskDefinitionFacts;
+  execution: ExecutionFacts | null;
+  history: { read: SourceRead; items: HistoryFacts[] } | null;
+}
+export interface TaskReadingSource {
+  read(specId: string, taskId: string): Promise<TaskReading | null>;
+}
 export interface DefinitionSource {
   resolve(specId: string, taskId: string): Promise<TaskDefinitionFacts | null>;
 }

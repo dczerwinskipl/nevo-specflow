@@ -2642,6 +2642,12 @@
               {
                 "type": "string",
                 "enum": [
+                  "workflow"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
                   "manual-commit"
                 ]
               }
@@ -26872,6 +26878,7 @@
                         "documents",
                         "context",
                         "readiness",
+                        "lane",
                         "position",
                         "definitionChanged"
                       ],
@@ -27272,6 +27279,70 @@
                                   }
                                 }
                               }
+                            }
+                          ]
+                        },
+                        "lane": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "needs-approval"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "in-progress"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "ready"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "waiting"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "blocked"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "done"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "ended"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "held"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "cancelled"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "broken"
+                              ]
                             }
                           ]
                         },
@@ -28111,6 +28182,33 @@
                                                 },
                                                 "semanticStatus": {
                                                   "type": "string"
+                                                },
+                                                "actor": {
+                                                  "type": "object",
+                                                  "required": [
+                                                    "class"
+                                                  ],
+                                                  "properties": {
+                                                    "class": {
+                                                      "anyOf": [
+                                                        {
+                                                          "type": "string",
+                                                          "enum": [
+                                                            "agent"
+                                                          ]
+                                                        },
+                                                        {
+                                                          "type": "string",
+                                                          "enum": [
+                                                            "human"
+                                                          ]
+                                                        }
+                                                      ]
+                                                    },
+                                                    "actorId": {
+                                                      "type": "string"
+                                                    }
+                                                  }
                                                 }
                                               }
                                             },
@@ -31611,6 +31709,9 @@
                 }
               }
             }
+          },
+          "304": {
+            "description": "Not modified: the representation identified by the request `If-None-Match` is current."
           },
           "400": {
             "description": "The request does not match the route schema: the request error with `code` `FST_ERR_VALIDATION`.",

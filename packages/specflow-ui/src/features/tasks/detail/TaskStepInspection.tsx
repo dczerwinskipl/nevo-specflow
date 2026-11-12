@@ -14,7 +14,7 @@ import {
 } from './taskInspectionModel';
 
 import { TaskHints } from './hints/TaskHints';
-import { executorsLabel } from './stepExecutors';
+import { stepLine } from './stepExecutors';
 export { TaskHints } from './hints/TaskHints';
 
 export function TaskStepInspection({
@@ -92,7 +92,7 @@ export function TaskStepInspection({
       ))}
       {step ? (
         <Typography as="p" variant="body-sm" className="text-content-muted">
-          {step.id} · {executorsLabel(t, step.executors)} ·{' '}
+          {stepLine(t, step)} ·{' '}
           {position?.state === 'active'
             ? `${t('taskDetails.currentPosition')} · ${t('taskDetails.attempt', { count: position.key.attempt })} · ${position.semanticStatus}`
             : t('taskDetails.nextPosition')}

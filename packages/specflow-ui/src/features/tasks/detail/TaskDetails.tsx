@@ -24,6 +24,7 @@ import { matchesWork } from './taskInspectionModel';
 import { taskStatusLabel } from '../status';
 import { canInspectTaskReference } from './taskReference';
 import { TaskReferenceAvailability } from './TaskReferenceAvailability';
+import { executorsLabel, isHumanStep } from './stepExecutors';
 
 export function mergeTaskResources(
   recommended: readonly TaskResource[],
@@ -119,7 +120,7 @@ export function TaskDetails({
   const status =
     position?.state === 'terminal'
       ? t(`taskDetails.outcome.${position.outcome}`)
-      : position?.state === 'active' && position.step.executor === 'human'
+      : position?.state === 'active' && isHumanStep(position.step)
         ? t('taskDetails.waitingHuman')
         : position?.state === 'checkpoint'
           ? t('taskDetails.checkpoint')
@@ -221,7 +222,7 @@ export function TaskDetails({
                     variant="body-sm"
                     className="text-content-muted [overflow-wrap:anywhere]"
                   >
-                    {step.id} · {t(`taskDetails.executor.${step.executor}`)}
+                    {step.id} · {executorsLabel(t, step.executors)}
                     {position?.state === 'active'
                       ? ` · ${t('taskDetails.attempt', { count: position.key.attempt })}`
                       : ` · ${t('taskDetails.notStarted')}`}
@@ -265,7 +266,7 @@ export function TaskDetails({
             />
             {humanStep && step ? (
               <Typography variant="body-sm" className="mt-2.5 text-content-muted">
-                {step.id} · {t(`taskDetails.executor.${step.executor}`)}
+                {step.id} · {executorsLabel(t, step.executors)}
                 {position?.state === 'active'
                   ? ` · ${t('taskDetails.attempt', { count: position.key.attempt })}`
                   : ''}

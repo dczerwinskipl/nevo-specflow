@@ -19,6 +19,21 @@ import { specScope } from '../specs';
 import { readTaskDetail, type TaskReadDependencies } from './detail/read-task-detail';
 import { readTaskPage } from './reads/read-page';
 import { contractRef } from '../../server/shared-contracts';
+import { TaskSourceUnavailableError } from './engine/sources';
+import type { ReadOutcome } from './reads/outcome';
+
+/** A source outage (the Engine could not read the execution) is the read's `unavailable` (503). */
+async function unlessUnavailable<T>(read: () => Promise<ReadOutcome<T>>): Promise<ReadOutcome<T>> {
+  try {
+    return await read();
+  } catch (error) {
+    if (error instanceof TaskSourceUnavailableError) {
+      return { kind: 'unavailable' };
+    }
+
+    throw error;
+  }
+}
 
 export const taskReadEndpoint: FastifyPluginCallback<{ dependencies: TaskReadDependencies }> = (
   app,
@@ -51,11 +66,13 @@ export const taskReadEndpoint: FastifyPluginCallback<{ dependencies: TaskReadDep
     },
     async (request, reply) => {
       reply.header('Cache-Control', 'no-store');
-      const result = await readTaskDetail(
-        options.dependencies,
-        request.params.specId,
-        request.params.taskId,
-        request.authz,
+      const result = await unlessUnavailable(() =>
+        readTaskDetail(
+          options.dependencies,
+          request.params.specId,
+          request.params.taskId,
+          request.authz,
+        ),
       );
       if (result.kind === 'ok') {
         return result.value;
@@ -87,13 +104,15 @@ export const taskReadEndpoint: FastifyPluginCallback<{ dependencies: TaskReadDep
       },
       async (request, reply) => {
         reply.header('Cache-Control', 'no-store');
-        const result = await readTaskPage(
-          options.dependencies,
-          kind,
-          request.params.specId,
-          request.params.taskId,
-          request.query,
-          request.authz,
+        const result = await unlessUnavailable(() =>
+          readTaskPage(
+            options.dependencies,
+            kind,
+            request.params.specId,
+            request.params.taskId,
+            request.query,
+            request.authz,
+          ),
         );
         if (result.kind === 'ok') {
           return result.value;

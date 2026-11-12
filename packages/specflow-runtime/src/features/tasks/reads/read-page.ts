@@ -20,7 +20,7 @@ export async function readTaskPage(
     capability: SpecCapabilities.capabilities.View,
     scope: specScope(deps.projectId?.(), specId),
   });
-  if (!deps.definitions || !deps[kind]) {
+  if (!deps.definitions) {
     return { kind: 'unavailable' };
   }
 
@@ -42,7 +42,9 @@ export async function readTaskPage(
     query.cursor,
     query.limit === undefined ? undefined : Number(query.limit),
   );
-  if (!resolved) {
+  // Without a page source of this kind no detail issued a lease for it, so every token is unknown.
+  const { resources, history } = deps;
+  if (!resolved || (kind === 'resources' ? !resources : !history)) {
     return { kind: 'expired' };
   }
 
@@ -50,8 +52,8 @@ export async function readTaskPage(
   const { lease, continuation, limit } = resolved;
   const page =
     kind === 'resources'
-      ? await deps.resources!.read(identity, lease.source.handle, continuation, limit, visible)
-      : await deps.history!.read(identity, lease.source.handle, continuation, limit);
+      ? await resources!.read(identity, lease.source.handle, continuation, limit, visible)
+      : await history!.read(identity, lease.source.handle, continuation, limit);
   if (
     !page ||
     !sameTask(page.identity, identity) ||

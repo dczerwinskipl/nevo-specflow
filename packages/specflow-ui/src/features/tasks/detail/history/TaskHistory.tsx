@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 import type { TaskSnapshot } from '@nevo/specflow-contracts/specs/workspace';
 import { TaskSourceState } from '../TaskDetails';
 import { useTaskHistory } from '../useTaskPages';
+import { executorsLabel } from '../stepExecutors';
 
 export function TaskHistory({
   specId,
@@ -87,7 +88,7 @@ export function TaskHistory({
             >
               <div className="grid min-w-0 gap-1 [overflow-wrap:anywhere]">
                 <Typography as="p" variant="body-sm" className="text-content-muted">
-                  {entry.step.id} · {t(`taskDetails.executor.${entry.step.executor}`)} ·{' '}
+                  {entry.step.id} · {executorsLabel(t, entry.step.executors)} ·{' '}
                   {t('taskDetails.attempt', { count: entry.key.attempt })}
                   {entry.result ? ` · ${entry.result}` : ''}
                 </Typography>

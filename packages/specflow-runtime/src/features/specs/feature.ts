@@ -9,7 +9,10 @@ import { registerSpecsOperationList } from './create/operation-list';
 import { specsCloseEndpoint } from './close/endpoint';
 import { specsOverviewEndpoint } from './overview/endpoint';
 import type { SpecsOverviewRepository } from './overview/repository/read-repository';
-import { createEngineSpecsOverviewRepository } from './overview/repository/engine-repository';
+import {
+  createEngineSpecsOverviewRepository,
+  type OverviewTaskProgress,
+} from './overview/repository/engine-repository';
 import { specificationWorkspaceEndpoint } from './workspace/endpoint';
 import { createEngineWorkspaceRepository } from './workspace/engine-repository';
 import type {
@@ -24,6 +27,8 @@ export interface SpecsFeatureDependencies {
   readonly engine?: SpecFlowEngine;
   readonly workspaceRepository?: SpecificationWorkspaceRepository;
   readonly contributions?: WorkspaceContributions;
+  /** The Tasks owner's progress of each listed Specification (project mode Overview). */
+  readonly taskProgress?: OverviewTaskProgress;
   readonly sessions?: SessionReferenceOwner;
   /** The Runtime's project when there is no Engine to read it from (demo catalogue); see `specScope`. */
   readonly projectId?: ProjectIdSource;
@@ -48,7 +53,10 @@ export function createSpecsFeature(options: CreateSpecsFeatureOptions = {}): Run
   const repository =
     options.dependencies?.overviewRepository ??
     (options.dependencies?.engine
-      ? createEngineSpecsOverviewRepository(options.dependencies.engine)
+      ? createEngineSpecsOverviewRepository(
+          options.dependencies.engine,
+          options.dependencies.taskProgress,
+        )
       : undefined);
   // Same rule for the workspace identity: an injected repository (demo) wins, the Engine is the
   // production source and its absence is an unavailable source.

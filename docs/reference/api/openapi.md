@@ -100,7 +100,8 @@ Current shared contracts: `AuthSessionResponse`, `AuthenticationRequiredErrorRes
 `nevo-specflow docs search --json` and `docs semantic status --json`), `DocumentError`,
 `DocumentOperationResult`, `DocumentOperationStatus`, `OperationListResponse`,
 `RateLimitedErrorResponse`, `RequestErrorResponse`, `SessionCommandResult`, `SessionError`,
-`SpecificationReadError`, `TaskReadError` and `TaskSnapshotExpired`.
+`SpecificationReadError`, `TaskChangeResult` (Task create and edit), `TaskCommandError` (every Task
+command refusal), `TaskReadError` and `TaskSnapshotExpired`.
 
 A test that registers Runtime routes on a bare Fastify instance (without `createRuntimeApp`) creates
 it with `routeTestApp()` from `test/support/route-app.ts`, which registers the shared contracts that

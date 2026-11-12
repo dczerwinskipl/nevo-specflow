@@ -17,10 +17,10 @@ export async function readWorkspace(
     return null;
   }
 
-  const { created, manifestTasks, ...specification } = read;
+  const { created, ...specification } = read;
   const missing = { state: 'unavailable' as const, reason: 'not_implemented' as const };
   const [tasks, documents, sessions] = await Promise.all([
-    contributions?.tasks?.(specId, manifestTasks ? { manifestTasks } : {}),
+    contributions?.tasks?.(specId),
     contributions?.documents?.(specId),
     contributions?.sessions?.(specId, { authz }),
   ]);
@@ -33,13 +33,21 @@ export async function readWorkspace(
 
   return {
     ...specification,
+    ...(tasks?.preparationState
+      ? {
+          specification: {
+            ...specification.specification,
+            preparationState: tasks.preparationState,
+          },
+        }
+      : {}),
     ...(sessions?.recommendedSessionIds?.length
       ? { recommendedSessionIds: sessions.recommendedSessionIds }
       : {}),
     ...(sessions?.sessionIdentities ? { sessionIdentities: sessions.sessionIdentities } : {}),
     sections: {
       ...specification.sections,
-      tasks: tasks ?? missing,
+      tasks: tasks?.section ?? missing,
       documents: documents ?? missing,
       sessions: sessions?.section ?? missing,
       activity: activity ?? missing,

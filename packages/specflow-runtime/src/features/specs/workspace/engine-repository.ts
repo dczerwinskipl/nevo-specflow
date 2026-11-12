@@ -50,8 +50,8 @@ export function createEngineWorkspaceRepository(
           id: source.specId,
           title: source.specification.title,
           summary: source.overviewPrefix ? summarizeOverview(source.overviewPrefix) : '',
-          // TODO(T8a): derived from the Engine's Task resources (`tasks/index.yaml`). The manifest no
-          // longer lists Tasks, so until then nothing verifies that the Specification was prepared.
+          // The manifest lists no Tasks: the Tasks contribution (the Engine's Task resources)
+          // replaces this with the state they imply; without it nothing verifies a preparation.
           preparationState: 'empty',
           attention: [],
         },

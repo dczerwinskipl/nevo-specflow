@@ -1,3 +1,5 @@
+import type { TaskResourceFacts } from '@nevo/specflow-contracts/tasks';
+
 /** Runtime adapter facts. These are not an Engine API or an authorized HTTP snapshot. */
 export interface TaskIdentity {
   projectId: string;
@@ -11,9 +13,11 @@ export interface AttemptIdentity {
   stepId: string;
   attempt: number;
 }
+export type ExecutorClass = 'agent' | 'human';
 export interface StepFacts {
   id: string;
-  executor: 'agent' | 'human';
+  /** Empty for a wait step. */
+  executors: ExecutorClass[];
   purpose: string | null;
   expectedWork: { summary: string } | null;
   hints: { kind: 'doc' | 'skill' | 'file'; ref: string }[];
@@ -100,7 +104,8 @@ export interface ExecutionFacts {
     blockers: { code: string; message: string; operation: 'start' | 'finish' }[];
     previousFeedback: { key: AttemptIdentity; result: string | null; text: string } | null;
   };
-  requirements: RequirementFacts[];
+  /** Absent: the source has no human-requirement projection (the section stays unavailable). */
+  requirements?: RequirementFacts[];
   pendingCount: number;
   recovery: { id: string; state: string; summary: string; link: ReferenceFacts } | null;
 }
@@ -125,6 +130,8 @@ export interface TaskDefinitionFacts {
   taskType: { id: string; label: string } | null;
   document: Availability<{ id: string; revision: string } | null>;
   dependencies: { taskId: string; title: string; link: ReferenceFacts }[];
+  /** The Task resource (project mode); the demo has none. */
+  resource?: TaskResourceFacts;
 }
 export interface HistoryFacts {
   id: string;
@@ -135,6 +142,7 @@ export interface HistoryFacts {
   result: string | null;
   transitionedTo: TransitionDestination | null;
   feedback: string | null;
+  actor: { class: ExecutorClass; actorId?: string } | null;
   resources: ResourceFacts[];
   provenance: { source: 'workflow_history' | 'operation_record' | 'activity'; sourceId: string }[];
 }

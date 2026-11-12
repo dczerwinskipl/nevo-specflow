@@ -5,12 +5,12 @@ import { TaskSnapshotSchema, type TaskSnapshot } from './task-read';
 function snapshot(): TaskSnapshot {
   const build = {
     id: 'build',
-    executor: 'agent' as const,
+    executors: ['agent' as const],
     purpose: null,
     expectedWork: null,
     hints: [],
   };
-  const verify = { ...build, id: 'verify', executor: 'human' as const };
+  const verify = { ...build, id: 'verify', executors: ['human' as const] };
   const transitions = [
     {
       id: 'pass',

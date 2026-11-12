@@ -43,8 +43,8 @@ groups and document manifest ordering are authoritative.
 ## Data source
 
 Normal `nevo-specflow start` uses project mode. The workspace identity (id, title, revision of the
-canonical manifest, `preparationState`) is read from the Engine-verified manifest. The `documents`
-section is `available` and lists the registered documents of the manifest whose file exists
+canonical manifest) is read from the Engine-verified manifest, `preparationState` from its Tasks
+(below). The `documents` section is `available` and lists the registered documents of the manifest whose file exists
 (`kind` is the document type id, `filename` the relative path, `revision` the content revision, `title`
 the derived title); unclassified and dangling entries are not part of it, the document tree
 (`reference.api.specification-documents`) shows them. When the documents of a readable
@@ -60,7 +60,8 @@ an outage from a missing adapter. Demonstration data is never substituted. The e
 selects Runtime-owned demonstration repositories over the same endpoints.
 Demo Overview and Workspace derive from one consistent sample catalogue.
 
-This increment does **not** implement real project Tasks, mutations,
+This increment does **not** implement Specification mutations other than the Task commands
+([Task reads](task-reads.md#task-commands)),
 multi-project routing, or multi-worktree execution.
 Availability and action states describe only what actually exists.
 
@@ -82,13 +83,15 @@ Availability and action states describe only what actually exists.
   exists), in project and demo mode alike. Clients expand the summary into this document only; when
   it is absent they offer no expand action and never substitute another document (for example the
   first item).
-- `sections.tasks` (temporary source): a verified manifest `tasks: []` is `available` with
-  `{groups: [], completed: 0, total: 0, attention: []}`; a non-empty manifest list has no verified
-  schema and stays `unavailable` / `not_implemented`. The manifest `tasks` come from the same
-  manifest read as the identity (the Specification source hands them to the contribution). This rule is **temporary**: on the workflow
-  kernel Tasks live in `.execution/tasks/<id>.yaml` and the manifest `tasks` stays `[]`; when the
-  kernel merges, this section and `preparationState` move to the kernel Task source and the manifest
-  rule is deleted.
+- `sections.tasks` is read by the Tasks feature from one Engine inspection of the Specification's
+  Task resources (`tasks/index.yaml`, `tasks/<id>/task.yaml`) and runs. Groups follow what the owner
+  has to do, in this order, empty ones omitted: `needs-approval` (drafts), `in-progress`, `ready`
+  (ready to start), `waiting` (dependencies), `done`, `held` (on hold, cancelled or abandoned).
+  `total` counts the Tasks that are not cancelled (a broken Task included), `completed` those whose
+  run completed; `attention` lists each broken Task and the Engine's attention items. An execution
+  the Engine cannot read makes only this section `unavailable` / `source_unavailable`.
+- `specification.preparationState` follows the same inspection: `empty` without Tasks, `preparing`
+  while a Task is a draft, else `prepared`. When the Tasks cannot be read it stays `empty`.
 - `sections.activity` is `available` and a **partial** history with exactly two event kinds, newest
   first, at most 50 items counted **after** the per-Session authorization (hidden Sessions never
   shorten the visible history):

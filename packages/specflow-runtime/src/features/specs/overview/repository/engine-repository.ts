@@ -7,15 +7,29 @@ import {
 
 import { SpecsReadError } from '../../read/error';
 import { manifestOverviewFacts } from './manifest-facts';
-import type { ArchivedSpecRecord, CurrentSpecRecord, SpecOverviewRecord } from './model';
+import type {
+  ArchivedSpecRecord,
+  CurrentSpecRecord,
+  SpecOverviewRecord,
+  SpecProgressRecord,
+} from './model';
 import type { SpecsOverviewRepository } from './read-repository';
 
 /**
- * Live Overview projection of Engine-verified canonical manifests.
- * Never reads generated indexes, primary fallbacks or demonstration records.
+ * The progress of each listed Specification from the Tasks owner (the Engine's Task resources and
+ * runs); `null` for a Specification whose Tasks cannot be read.
+ */
+export type OverviewTaskProgress = (
+  specIds: readonly string[],
+) => Promise<ReadonlyMap<string, SpecProgressRecord | null>>;
+
+/**
+ * Live Overview projection of Engine-verified canonical manifests, with the progress the Tasks
+ * owner reports. Never reads generated indexes, primary fallbacks or demonstration records.
  */
 export function createEngineSpecsOverviewRepository(
   engine: SpecFlowEngine,
+  taskProgress?: OverviewTaskProgress,
 ): SpecsOverviewRepository {
   async function read(isVisibleSpec?: (specId: string) => boolean) {
     const discovered = await readCanonicalSpecSources(engine, isVisibleSpec);
@@ -41,7 +55,9 @@ export function createEngineSpecsOverviewRepository(
       (item): item is Extract<CanonicalSpecSource, { status: 'available' }> =>
         item.status === 'available',
     );
-    const projected = available.map(project);
+    const progress: ReadonlyMap<string, SpecProgressRecord | null> =
+      (await taskProgress?.(available.map((item) => item.specId))) ?? new Map();
+    const projected = available.map((item) => project(item, progress.get(item.specId) ?? null));
     const revision = createHash('sha256').update(JSON.stringify(projected)).digest('hex');
 
     return { revision, items: projected };
@@ -71,7 +87,10 @@ export function createEngineSpecsOverviewRepository(
   };
 }
 
-function project(item: Extract<CanonicalSpecSource, { status: 'available' }>) {
+function project(
+  item: Extract<CanonicalSpecSource, { status: 'available' }>,
+  progress: SpecProgressRecord | null,
+) {
   const spec = item.specification;
   const facts = manifestOverviewFacts();
   const common: SpecOverviewRecord = {
@@ -80,7 +99,7 @@ function project(item: Extract<CanonicalSpecSource, { status: 'available' }>) {
     // The key Create gave it; a Specification created before keys has none (shown as absent).
     ...(spec.key !== undefined ? { key: spec.key } : {}),
     updatedAt: item.sourceUpdatedAt,
-    progress: facts.progress,
+    progress,
   };
   const current: CurrentSpecRecord = {
     ...common,

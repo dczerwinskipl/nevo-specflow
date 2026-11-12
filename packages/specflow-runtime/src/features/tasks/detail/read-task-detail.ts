@@ -60,7 +60,7 @@ export async function readTaskDetail(
   await visible.prefetch([
     ...definition.dependencies.map((dependency) => dependency.link),
     ...(coherent
-      ? execution.requirements.flatMap((requirement) =>
+      ? (execution.requirements ?? []).flatMap((requirement) =>
           requirement.evidence.map((item) => item.link),
         )
       : []),
@@ -89,7 +89,7 @@ export async function readTaskDetail(
     }
   }
 
-  if (coherent) {
+  if (coherent && execution.requirements) {
     const requirements = structuredClone(execution.requirements);
     for (const requirement of requirements) {
       const evidence = [];
@@ -111,6 +111,9 @@ export async function readTaskDetail(
       state: 'available',
       data: { items: requirements, pendingCount: execution.pendingCount },
     };
+  }
+
+  if (coherent) {
     snapshot.sections.recovery =
       !execution.recovery || (await visible(execution.recovery.link))
         ? { state: 'available', data: execution.recovery }
@@ -187,6 +190,8 @@ export async function readTaskDetail(
       coherent ? execution.version : null,
       resources?.version ?? null,
       history?.version ?? null,
+      // Readiness follows the dependencies, which the definition version does not cover.
+      definition.resource ? JSON.stringify(definition.resource) : null,
     ],
     snapshot,
   );
@@ -198,6 +203,7 @@ export async function readTaskDetail(
       purpose: definition.purpose,
       acceptanceCriteria: definition.acceptanceCriteria,
       workflow: definition.workflow,
+      ...(definition.resource ? { resource: definition.resource } : {}),
       snapshot,
     },
   };

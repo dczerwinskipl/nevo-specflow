@@ -1,7 +1,9 @@
 import { Type, type Static } from 'typebox';
 import { SpecIdSchema, TaskIdSchema } from '../identifiers';
 import { TaskSnapshotSchema } from './task-read';
+import { TaskResourceFactsSchema } from './task-resource';
 export * from './task-read';
+export * from './task-resource';
 export const TaskReadErrorSchema = Type.Object(
   {
     error: Type.Union([
@@ -41,6 +43,8 @@ export const SpecificationTaskResponseSchema = Type.Object({
   purpose: Type.Optional(Type.String()),
   acceptanceCriteria: Type.Array(Type.String()),
   workflow: Type.Optional(Type.String()),
+  /** The Task resource (status, dependencies, context, revision); project mode, from the Engine. */
+  resource: Type.Optional(TaskResourceFactsSchema),
   snapshot: Type.Optional(TaskSnapshotSchema),
 });
 export type SpecificationTaskResponse = Static<typeof SpecificationTaskResponseSchema>;

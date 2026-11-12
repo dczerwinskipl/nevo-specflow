@@ -7,12 +7,13 @@ export function createHistoryDetailsFixture(): TaskHistoryPage['items'][number] 
   return {
     id: 'history-record',
     key: { ...fixture.key, stepId: 'build', attempt: 1 },
-    step: { ...fixture.step, id: 'build', executor: 'agent' },
+    step: { ...fixture.step, id: 'build', executors: ['agent'] },
     startedAt: '2026-10-10T10:00:00Z',
     completedAt: '2026-10-10T11:00:00Z',
     result: 'pass',
     transitionedTo: { kind: 'step', step: fixture.step },
     feedback: 'Historical feedback',
+    actor: { class: 'agent' },
     resources: [
       { ...fixture.resources[0]!, id: 'legal-material-id', title: 'Available historical document' },
       {

@@ -14,13 +14,10 @@ describe('manifestOverviewFacts', () => {
         title: 'Spec',
         updatedAt: '2026-10-29T10:00:00Z',
         ...facts,
+        progress: null,
         signals: [],
         currentExecutions: [],
       }),
     ).toEqual({ section: 'draft' });
-  });
-
-  it('never guesses progress from the manifest', () => {
-    expect(manifestOverviewFacts().progress).toBeNull();
   });
 });

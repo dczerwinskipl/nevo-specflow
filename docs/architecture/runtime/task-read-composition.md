@@ -32,8 +32,11 @@ document-content access. Specification Workspace consumes summaries and contribu
 owners. A route containing `specId` does not transfer ownership to Specs.
 
 The Runtime ownership/application refactor is implemented with explicit demo adapters and bounded
-source ports. Production Engine reads remain unavailable until their owner supplies safe coherent
-read contracts. Runtime does not implement or persist another workflow engine.
+source ports. In project mode the definition, execution and history sources are Engine adapters
+(`features/tasks/engine`) over one `inspectExecution` per read, which reads under the project control
+lock (never half a mutation); execution and history name the manifest revision and execution
+version the detail saw, so a newer read is not spliced in. Runtime does not implement or persist
+another workflow engine.
 
 ## Migration evidence baseline (before refactor)
 
@@ -45,7 +48,7 @@ read contracts. Runtime does not implement or persist another workflow engine.
   [public exports](https://github.com/dczerwinskipl/nevo-specflow/blob/1404966cca4daf230afc29def0188ae5d3c1e3b4/packages/specflow-engine/src/index.ts)
   implement Project Home, workspace registry/identity and coordination. They do not expose Task
   workflow/history reads. The Engine now has the [workflow kernel](../workflow/workflow-kernel.md)
-  (`inspectExecution`); projecting it into Task reads is open (plan 06 F09, plan 03 T09).
+  (`inspectExecution`); the Runtime projects it into the Task reads (`reference.api.task-reads`, "Project mode").
 - Sessions in #60 registers capability declarations only. A complete managed Session reader is not
   implemented there. The Engine plan also explicitly identifies that gap.
 - Legacy Nevo is migration evidence, not a dependency to import into Runtime. In particular its
@@ -235,7 +238,9 @@ finish a Task, and finishing one step does not implicitly start its successor.
 
 **Implemented:** Runtime feature ownership; application use cases; port and
 HTTP adapter separation; owner-specific contract exports; demo adapters; compatible page leases;
-unchanged truthful project-unavailable behavior; focused boundary tests.
+Engine-backed project-mode definition, execution and history sources and the workspace `tasks`
+section; focused boundary tests. Resources, human requirements and recovery have no Engine
+projection and stay unavailable in project mode.
 
 **Dependent on Engine's existing program:** public Task/definition/context/execution/history read
 contracts, immutable/versioned read guarantees and verified workspace binding. Build them on the

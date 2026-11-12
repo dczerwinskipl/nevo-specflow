@@ -109,7 +109,7 @@ export function TaskWorkbenchFixture({
                       step: {
                         ...fixture.step,
                         id: 'build',
-                        executor: 'agent',
+                        executors: ['agent'],
                         hints: emptyHistoryHints
                           ? []
                           : [
@@ -126,6 +126,7 @@ export function TaskWorkbenchFixture({
                       },
                       startedAt: '2026-10-10T10:00:00Z',
                       completedAt: '2026-10-10T11:00:00Z',
+                      actor: { class: 'agent' },
                       result: 'pass',
                       transitionedTo: { kind: 'step', step: fixture.step },
                       feedback: 'Historical return test completed.',

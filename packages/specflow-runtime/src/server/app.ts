@@ -2,6 +2,7 @@ import cookie from '@fastify/cookie';
 import { join } from 'node:path';
 import { RuntimeInfoResponseSchema } from '@nevo/specflow-contracts/runtime';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { openWorkflow } from '@nevo/specflow-engine';
 import Fastify, {
   type FastifyInstance,
   type FastifyServerOptions,
@@ -16,7 +17,9 @@ import {
   type SessionDriver,
 } from '../features/sessions';
 import {
-  manifestWorkspaceTasks,
+  createEngineTaskProgress,
+  createEngineTaskSources,
+  createEngineWorkspaceTasks,
   createTasksFeature,
   type TasksFeatureDependencies,
 } from '../features/tasks';
@@ -25,7 +28,11 @@ import {
   createEngineWorkspaceDocuments,
   type DocumentsFeatureDependencies,
 } from '../features/documents';
-import { createDocsFeature, type DocsFeatureDependencies } from '../features/docs';
+import {
+  createDocsFeature,
+  openProjectDocumentLookup,
+  type DocsFeatureDependencies,
+} from '../features/docs';
 import { createSettingsFeature } from '../features/settings';
 import {
   createEngineAssociationTargets,
@@ -172,6 +179,16 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
       : {}),
   };
   const engine = dependencies.specs?.engine;
+  // Project mode: the Engine's workflow operations, opened per request with the definitions and
+  // the project documentation (for `project-document` context references) as they are now.
+  const projectDocument = openProjectDocumentLookup(dependencies.docs?.projectRoot, config.docs);
+  const taskEngine =
+    engine && !demo
+      ? {
+          engine,
+          openWorkflow: () => openWorkflow(engine, { projectDocument: projectDocument() }),
+        }
+      : undefined;
   const sessionsFeature = createSessionsFeature({
     ...(engine ? { engine } : {}),
     config: mode === 'project' ? config.sessions : undefined,
@@ -199,7 +216,11 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
   const associationTargets =
     demo?.associationTargets ??
     dependencies.sessions?.targets ??
-    createEngineAssociationTargets(engine, dependencies.tasks?.definitions);
+    createEngineAssociationTargets(
+      engine,
+      dependencies.tasks?.definitions ??
+        (taskEngine ? createEngineTaskSources(taskEngine).definitions : undefined),
+    );
   const associations =
     demo?.sessionReferences ??
     createStoreSessionAssociations(sessionsFeature.runtime, associationTargets);
@@ -212,15 +233,17 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
     demo
       ? demo.environment.state.catalogue.project.id
       : (engine?.context.project.projectId ?? dependencies.sessions?.storage?.projectId);
-  // Project mode: the Engine is the source of the workspace `tasks` (temporarily, the verified
-  // manifest) and `documents` sections, the Session association registry of the `sessions`
+  // Project mode: the Engine is the source of the workspace `tasks` (the Task resources and runs)
+  // and `documents` sections, the Session association registry of the `sessions`
   // section, and both feed the partial `activity` history, unless a contribution was injected (tests).
   const specContributions = dependencies.specs?.contributions ?? demo?.contributions;
   const contributions = demo
     ? specContributions
     : {
         ...specContributions,
-        ...(engine && !specContributions?.tasks ? { tasks: manifestWorkspaceTasks } : {}),
+        ...(taskEngine && !specContributions?.tasks
+          ? { tasks: createEngineWorkspaceTasks(taskEngine) }
+          : {}),
         ...(engine && !specContributions?.documents
           ? { documents: createEngineWorkspaceDocuments(engine) }
           : {}),
@@ -247,6 +270,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
         overviewRepository: dependencies.specs?.overviewRepository ?? demo?.overviewRepository,
         workspaceRepository: dependencies.specs?.workspaceRepository ?? demo?.workspaceRepository,
         contributions,
+        ...(taskEngine ? { taskProgress: createEngineTaskProgress(taskEngine) } : {}),
         sessions: sessionReferences,
         projectId,
         // The demo Runtime serves its own Create routes (and events route) below.
@@ -266,6 +290,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
     }),
     createTasksFeature({
       ...(demo ? demo.taskSources : {}),
+      ...(taskEngine ? { engine: taskEngine } : {}),
       ...dependencies.tasks,
       sessions: dependencies.tasks?.sessions ?? sessionReferences,
       projectId,
@@ -282,6 +307,9 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
       },
       ...(dependencies.documents?.writeSource
         ? { writeSource: dependencies.documents.writeSource }
+        : {}),
+      ...(dependencies.documents?.taskDocuments
+        ? { taskDocuments: dependencies.documents.taskDocuments }
         : {}),
     }),
     sessionsFeature,

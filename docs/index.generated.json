@@ -5308,9 +5308,10 @@
       "read_when": [
         "implementing the Task read ownership refactor",
         "migrating Task schemas out of Specification Workspace",
-        "implementing scoped Task page tokens and continuation"
+        "implementing scoped Task page tokens and continuation",
+        "creating, editing, removing or deciding the status of a Task over HTTP"
       ],
-      "summary": "Compatible Task and Document HTTP ownership, application outcomes, page lease semantics and migration constraints; production Engine adapters remain dependent.",
+      "summary": "Compatible Task and Document HTTP ownership, application outcomes, page lease semantics, the Engine-backed project-mode reads and the owner's Task commands (create, edit, remove, status) with their refusal statuses.",
       "related": [
         "architecture.runtime.task-read-composition",
         "reference.api.specification-workspace",
@@ -5327,7 +5328,8 @@
         "tasks",
         "documents",
         "pagination",
-        "compatibility"
+        "compatibility",
+        "commands"
       ]
     },
     {

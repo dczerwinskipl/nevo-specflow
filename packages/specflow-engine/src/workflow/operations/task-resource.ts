@@ -180,6 +180,16 @@ async function storedTask(
   return { subject: subjectOf(specId, taskId), task, revision: manifest.revision };
 }
 
+/** The Tasks of a Specification whose workflow ended (completed or abandoned) are final. */
+function assertSpecificationOpen(snapshot: ExecutionSnapshot): void {
+  if (snapshot.specification?.value.run.position.state === 'terminal') {
+    throw new WorkflowError(
+      'WORKFLOW_SPECIFICATION_ENDED',
+      `The workflow of the Specification "${snapshot.specId}" ended; its Tasks can no longer change.`,
+    );
+  }
+}
+
 /**
  * Create a Task by hand: a `draft` with its index entry, its manifest and its `task.md`, in one
  * change and without a run record. Its type must exist and be allowed by the effective policy (the
@@ -197,6 +207,7 @@ export function createTask(
     }
 
     const snapshot = await dependencies.store.read(input.specId);
+    assertSpecificationOpen(snapshot);
     const ids = snapshot.index?.value.tasks.map((entry) => entry.id) ?? [];
     if (
       ids.includes(input.taskId) ||
@@ -269,6 +280,7 @@ export function editTask(
   return dependencies.serialize(async () => {
     assertOwner(input.actor, 'edits a Task');
     const snapshot = await dependencies.store.read(input.specId);
+    assertSpecificationOpen(snapshot);
     const { task, manifest: stored } = loadTask(dependencies.catalogue, snapshot, input.taskId);
     if (stored.revision !== input.expectedRevision) {
       throw new WorkflowError(

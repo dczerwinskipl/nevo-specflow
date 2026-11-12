@@ -35,6 +35,8 @@ export const WORKFLOW_ERROR_CODES = [
   'WORKFLOW_TASK_BUSY',
   /** The Specification's workflow ended already: completed, or abandoned (for another reason). */
   'WORKFLOW_SPECIFICATION_ENDED',
+  /** A Close of the Specification is unsettled: its workflow cannot change until it settles. */
+  'WORKFLOW_SPECIFICATION_BUSY',
   /** Unfinished work or pending writes hold the Specification; the error lists them (`blockers`). */
   'WORKFLOW_EXIT_BLOCKED',
 ] as const;

@@ -93,6 +93,7 @@ describe('abandonSpecification', () => {
     const applied = dependencies.store.applied.length;
     await expect(abandon(dependencies, `  ${REASON} `)).resolves.toEqual(first);
     expect(dependencies.store.applied).toHaveLength(applied);
+    await refused(dependencies, draft(dependencies, 'late'), 'WORKFLOW_SPECIFICATION_ENDED');
     await refused(
       dependencies,
       abandon(dependencies, 'Another reason.'),

@@ -28,6 +28,8 @@ import {
   type PendingTaskDocumentChange,
 } from './state/task-document-guard';
 import { checkoutPathExists } from './checkout-paths';
+import { guardCloseReservations } from './state/close-guard';
+import { listCloseJournals } from '../specs/lifecycle';
 
 /**
  * Production wiring of the workflow operations for one opened Engine: definitions from the Project
@@ -94,6 +96,17 @@ function pendingTaskDocuments(engine: SpecFlowEngine): PendingTaskDocumentChange
   return (specId, taskId) => hasPendingTaskDocumentChange(engine.context, specId, taskId);
 }
 
+/** An unsettled Close journal names the Specification (its subject, or a Workspace Close occupant). */
+async function closeInProgress(engine: SpecFlowEngine, specId: string): Promise<boolean> {
+  return (await listCloseJournals(engine.context)).some(
+    (journal) =>
+      journal.stage !== 'completed' &&
+      journal.stage !== 'archived-linked-awaiting-integration' &&
+      (journal.plan.specId === specId ||
+        (journal.plan.occupants ?? []).some((occupant) => occupant.specId === specId)),
+  );
+}
+
 /** What holds a Specification besides its execution records: the store's journal and the claims. */
 function engineHolds(engine: SpecFlowEngine): ExecutionHolds {
   return {
@@ -130,12 +143,15 @@ export async function openWorkflow(
 
   return {
     catalogue: resolveExecutionCatalogue(loaded),
-    store: guardTaskDocumentChanges(
-      createFilesystemWorkflowStore({
-        stateRoot: engine.context.project.stateRoot,
-        specificationDirectory: (specId) => specificationDirectory(engine, specId),
-      }),
-      pendingTaskDocuments(engine),
+    store: guardCloseReservations(
+      guardTaskDocumentChanges(
+        createFilesystemWorkflowStore({
+          stateRoot: engine.context.project.stateRoot,
+          specificationDirectory: (specId) => specificationDirectory(engine, specId),
+        }),
+        pendingTaskDocuments(engine),
+      ),
+      (specId) => closeInProgress(engine, specId),
     ),
     references: engineReferences(engine, options),
     holds: engineHolds(engine),

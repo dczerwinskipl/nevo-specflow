@@ -8,6 +8,7 @@ import type { SpecificationWorkspaceResponse } from '@nevo/specflow-contracts/sp
 export function createWorkspaceIntegrationApi(): SpecificationApi {
   const snapshot: SpecificationWorkspaceResponse = {
     revision: 'integration-story-1',
+    workspaceId: '0b8f1c1e-0a11-4c6e-9a01-000000000001',
     specification: {
       id: 'api-integration',
       title: 'Integrated API Workspace',

@@ -28328,6 +28328,7 @@
                   "type": "object",
                   "required": [
                     "revision",
+                    "workspaceId",
                     "specification",
                     "sections",
                     "actions"
@@ -28335,6 +28336,9 @@
                   "properties": {
                     "revision": {
                       "type": "string"
+                    },
+                    "workspaceId": {
+                      "$ref": "#/components/schemas/WorkspaceId"
                     },
                     "recommendedSessionId": {
                       "$ref": "#/components/schemas/SessionId"

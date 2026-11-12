@@ -97,7 +97,21 @@ describe('validateTaskResources', () => {
     [
       'a dependency cycle',
       state([manifest('api', { dependsOn: ['web'] }), manifest('web', { dependsOn: ['api'] })]),
-      [{ kind: 'cycle', taskId: 'api' }],
+      [
+        { kind: 'cycle', taskId: 'api' },
+        { kind: 'cycle', taskId: 'web' },
+      ],
+    ],
+    [
+      'two cycles and a Task that only depends on one',
+      state([
+        manifest('api', { dependsOn: ['web'] }),
+        manifest('web', { dependsOn: ['api'] }),
+        manifest('c', { dependsOn: ['d'] }),
+        manifest('d', { dependsOn: ['c'] }),
+        manifest('e', { dependsOn: ['c'] }),
+      ]),
+      ['api', 'c', 'd', 'web'].map((taskId) => ({ kind: 'cycle', taskId })),
     ],
   ])('reports %s', (_name, input, issues) => {
     expect(validateTaskResources(input)).toEqual(issues);

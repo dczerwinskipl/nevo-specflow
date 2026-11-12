@@ -468,9 +468,11 @@ function createStore(
       };
       const before = await currentText(target);
       if (write.text !== null && before !== undefined) {
+        // Not a concurrent writer: a file the snapshot does not show (for example the `task.md` left
+        // in the folder of a dangling index entry) would be overwritten.
         throw new WorkflowError(
-          'WORKFLOW_STATE_CONFLICT',
-          `The Task document "${write.taskId}/${write.path}" exists already.`,
+          'WORKFLOW_STATE_CORRUPT',
+          `The Task folder holds "tasks/${write.taskId}/${write.path}" already, so the Task cannot be created there; restore its task.yaml or remove the file.`,
         );
       }
 

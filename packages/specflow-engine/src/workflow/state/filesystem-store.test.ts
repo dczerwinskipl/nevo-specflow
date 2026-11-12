@@ -1354,6 +1354,7 @@ describe('filesystem workflow store: the position follows from the history', () 
     expect((await store().read(SPEC)).issues).toEqual([
       { kind: 'dependency', taskId: 'web', dependency: 'ghost', reason: 'unknown' },
       { kind: 'cycle', taskId: 'api' },
+      { kind: 'cycle', taskId: 'web' },
     ]);
   });
 });

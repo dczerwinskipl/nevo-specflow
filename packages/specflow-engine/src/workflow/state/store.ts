@@ -37,7 +37,8 @@ export interface RecordWrite<T> {
 }
 
 /**
- * A file of a Task folder other than its manifest: created (`text`; it must not exist yet) or
+ * A file of a Task folder other than its manifest: created (`text`; it must not exist yet, else the
+ * change is refused with `WORKFLOW_STATE_CORRUPT`, since the snapshot does not show the file) or
  * removed (`null`; the store records the revision it removes). Only the initial `task.md` is created
  * here; later edits of Task documents belong to the Task's documents.
  */

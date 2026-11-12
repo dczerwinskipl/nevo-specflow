@@ -141,6 +141,25 @@ describe('Task resource issues of the execution state', () => {
     ]);
   });
 
+  it('refuses a change that adds a second dependency cycle next to an existing one', () => {
+    const cycle = (left: string, right: string) => [
+      { ...manifest(left), dependsOn: [right] },
+      { ...manifest(right), dependsOn: [left] },
+    ];
+    const state = (manifests: ReturnType<typeof manifest>[]): ExecutionState => ({
+      index: { tasks: manifests.map((entry) => ({ id: entry.id })) },
+      manifests,
+      folders: manifests.map((entry) => entry.id).sort(),
+      runs: [],
+    });
+    const before = validateExecutionState(SPEC, state(cycle('api', 'web')));
+    const after = validateExecutionState(SPEC, state([...cycle('api', 'web'), ...cycle('c', 'd')]));
+
+    expect(() => assertNoNewIssues(before, after)).toThrow(
+      expect.objectContaining({ code: 'WORKFLOW_STATE_CORRUPT' }),
+    );
+  });
+
   it('lets a change keep the issues the state has, but not add one', () => {
     const before = [{ kind: 'unregistered', taskId: 'stray' }] as const;
     expect(() => assertNoNewIssues(before, before)).not.toThrow();

@@ -167,7 +167,6 @@ export function describeWorkflowStoreContract(name: string, create: () => Workfl
           ],
         },
         { runs: [{ taskId: 'api', expected: null, next: runRecord('api') }] },
-        { documents: [{ taskId: 'api', path: 'task.md', text: '# Again\n' }] },
       ] satisfies ExecutionChange[]) {
         await expect(store.apply(SPEC, change)).rejects.toMatchObject({
           code: 'WORKFLOW_STATE_CONFLICT',
@@ -369,6 +368,19 @@ export function describeWorkflowStoreContract(name: string, create: () => Workfl
       expect(removed.manifests.map((entry) => entry.value.id)).toEqual(['web']);
       expect(removed.folders).toEqual(['web']);
       expect(removed.issues).toEqual([]);
+    });
+
+    it('refuses to create a Task document over a file the folder holds already', async () => {
+      const store = await seeded();
+      const before = await store.read(SPEC);
+
+      await expect(
+        store.apply(SPEC, { documents: [{ taskId: 'api', path: 'task.md', text: '# Again\n' }] }),
+      ).rejects.toMatchObject({
+        code: 'WORKFLOW_STATE_CORRUPT',
+        message: expect.stringContaining('task.md') as unknown,
+      });
+      expect(await store.read(SPEC)).toEqual(before);
     });
 
     it('applies an empty change as nothing', async () => {

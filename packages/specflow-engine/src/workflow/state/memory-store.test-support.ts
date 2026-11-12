@@ -122,7 +122,10 @@ export function createMemoryWorkflowStore(): WorkflowStore & {
         for (const write of change.documents ?? []) {
           const existing = state.documents.get(write.taskId)?.get(foldPathKey(write.path));
           if (write.text !== null && existing !== undefined) {
-            throw new WorkflowError('WORKFLOW_STATE_CONFLICT', 'The Task document exists already.');
+            throw new WorkflowError(
+              'WORKFLOW_STATE_CORRUPT',
+              `The Task folder holds "tasks/${write.taskId}/${write.path}" already.`,
+            );
           }
         }
 

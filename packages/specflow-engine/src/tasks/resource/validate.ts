@@ -1,4 +1,3 @@
-import { dependencyCycle } from '../../workflow/state/dependency-cycle';
 import type { TaskContextEntry, TaskManifest } from './model';
 
 /**
@@ -13,7 +12,7 @@ import type { TaskContextEntry, TaskManifest } from './model';
  *   a run that contradicts the Task's status (a `draft` that ran, a `cancelled` Task with an active
  *   step);
  * - `dependency`: a dependency on a Task that is not registered, or on a dangling one;
- * - `cycle`: a Task on a dependency cycle.
+ * - `cycle`: one per Task that lies on a dependency cycle, so a second cycle is a new issue.
  */
 
 export type TaskResourceIssue =
@@ -100,14 +99,39 @@ export function validateTaskResources(state: TaskResourceState): TaskResourceIss
     }
   }
 
-  const cycle = dependencyCycle(
+  for (const taskId of tasksOnCycles(
     new Map([...state.manifests].map(([taskId, manifest]) => [taskId, manifest.dependsOn])),
-  );
-  if (cycle !== undefined) {
-    issues.push({ kind: 'cycle', taskId: cycle });
+  )) {
+    issues.push({ kind: 'cycle', taskId });
   }
 
   return issues;
+}
+
+/**
+ * Every Task that lies on a dependency cycle, in id order: a Task that reaches itself through its
+ * dependencies. At most `TASKS_PER_SPECIFICATION_MAX` Tasks, so one walk per Task is cheap.
+ */
+function tasksOnCycles(graph: ReadonlyMap<string, readonly string[]>): string[] {
+  const onCycle = (start: string): boolean => {
+    const seen = new Set<string>();
+    const pending = [...(graph.get(start) ?? [])];
+    while (pending.length > 0) {
+      const next = pending.pop() ?? start;
+      if (next === start) {
+        return true;
+      }
+
+      if (!seen.has(next)) {
+        seen.add(next);
+        pending.push(...(graph.get(next) ?? []));
+      }
+    }
+
+    return false;
+  };
+
+  return [...graph.keys()].filter(onCycle).sort();
 }
 
 /** Stable identity of an issue, to compare the issues of two states. */

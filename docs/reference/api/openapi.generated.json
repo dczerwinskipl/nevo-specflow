@@ -4417,6 +4417,12 @@
                           {
                             "type": "string",
                             "enum": [
+                              "workspace"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
                               "docs"
                             ]
                           }
@@ -4675,6 +4681,52 @@
                               "type": "boolean"
                             },
                             "manage": {
+                              "type": "boolean"
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "resource",
+                        "capabilities"
+                      ],
+                      "properties": {
+                        "resource": {
+                          "type": "object",
+                          "required": [
+                            "name",
+                            "scope"
+                          ],
+                          "properties": {
+                            "name": {
+                              "type": "string",
+                              "enum": [
+                                "workspace"
+                              ]
+                            },
+                            "scope": {
+                              "type": "object",
+                              "additionalProperties": {
+                                "type": "string",
+                                "minLength": 1,
+                                "pattern": "\\S"
+                              }
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "capabilities": {
+                          "type": "object",
+                          "required": [
+                            "view"
+                          ],
+                          "properties": {
+                            "view": {
                               "type": "boolean"
                             }
                           },
@@ -15757,8 +15809,8 @@
                           "kind",
                           "name",
                           "path",
-                          "managed",
                           "specCount",
+                          "managed",
                           "state",
                           "selectable"
                         ],
@@ -15790,12 +15842,12 @@
                             "type": "string",
                             "minLength": 1
                           },
-                          "managed": {
-                            "type": "boolean"
-                          },
                           "specCount": {
                             "type": "integer",
                             "minimum": 0
+                          },
+                          "managed": {
+                            "type": "boolean"
                           },
                           "state": {
                             "anyOf": [
@@ -30128,6 +30180,228 @@
         }
       }
     },
+    "/api/workspaces": {
+      "get": {
+        "operationId": "getWorkspaces",
+        "summary": "List the registered workspaces of the project",
+        "tags": [
+          "Workspaces"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "projectFolderId",
+                    "workspaces"
+                  ],
+                  "properties": {
+                    "projectFolderId": {
+                      "$ref": "#/components/schemas/WorkspaceId"
+                    },
+                    "workspaces": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "workspaceId",
+                          "kind",
+                          "name",
+                          "path",
+                          "available",
+                          "isRuntimeWorkspace",
+                          "specifications"
+                        ],
+                        "properties": {
+                          "workspaceId": {
+                            "$ref": "#/components/schemas/WorkspaceId"
+                          },
+                          "kind": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "primary"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "linked"
+                                ]
+                              }
+                            ]
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "path": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "available": {
+                            "type": "boolean"
+                          },
+                          "unavailableReason": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "checkout-unavailable"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "checkout-mismatch"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "git-unavailable"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "git-membership-mismatch"
+                                ]
+                              }
+                            ]
+                          },
+                          "isRuntimeWorkspace": {
+                            "type": "boolean"
+                          },
+                          "specifications": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "required": [
+                                "specId",
+                                "title"
+                              ],
+                              "properties": {
+                                "specId": {
+                                  "$ref": "#/components/schemas/SpecId"
+                                },
+                                "title": {
+                                  "type": "string"
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "dirty": {
+                            "type": "boolean"
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticationRequiredErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The principal lacks a required capability.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizationForbiddenErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests: the source exceeded the Runtime default rate limit.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Seconds until the budget renews."
+              },
+              "x-ratelimit-limit": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "The budget of the time window."
+              },
+              "x-ratelimit-remaining": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "`0` on a refusal."
+              },
+              "x-ratelimit-reset": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Seconds until the window resets."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitedErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Temporarily unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error",
+                    "code"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "enum": [
+                        "WORKSPACES_UNAVAILABLE"
+                      ]
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "WORKSPACES_UNAVAILABLE"
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/workspaces/{workspaceId}/close": {
       "post": {
         "operationId": "postWorkspacesByWorkspaceIdClose",
@@ -30717,7 +30991,7 @@
     },
     {
       "name": "Workspaces",
-      "description": "Closing a linked worktree and a whole workspace (checkout)."
+      "description": "The registered workspaces (checkouts) of the project: list them, close a linked worktree and a whole workspace."
     },
     {
       "name": "Documentation",

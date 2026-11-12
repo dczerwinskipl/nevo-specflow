@@ -5,6 +5,7 @@ import { DocsCapabilities } from '../features/docs';
 import { SessionCapabilities } from '../features/sessions';
 import { SettingsCapabilities } from '../features/settings';
 import { SpecCapabilities, ProjectGitCapabilities } from '../features/specs';
+import { WorkspaceCapabilities } from '../features/workspaces';
 
 /**
  * The built-in product role policy. Capabilities stay granular: none implies another, so a role is
@@ -18,6 +19,7 @@ export function specFlowRoleCapabilities(): Readonly<
     SpecCapabilities.capabilities.View,
     SessionCapabilities.capabilities.View,
     DocsCapabilities.capabilities.View,
+    WorkspaceCapabilities.capabilities.View,
   ] as const;
 
   const developer = [

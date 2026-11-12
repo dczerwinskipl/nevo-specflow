@@ -122,15 +122,32 @@ export async function inspectRegistryWorkspaces(
   gitEnabled: boolean,
 ): Promise<{ readonly workspaces: readonly InspectedWorkspace[]; readonly gitReachable: boolean }> {
   const git = createLocalGitClient(engine.context.project.homeRoot);
-  const [worktreesResult, discovered] = await Promise.all([
+  const [worktreesResult, verified] = await Promise.all([
     gitEnabled
       ? git.listWorktrees().then(
           (value) => ({ value }),
           (reason: unknown) => ({ reason }),
         )
       : Promise.resolve({ value: [] }),
-    discoverSpecifications(engine),
+    mapBounded(registry.workspaces, READ_GIT_CONCURRENCY, (workspace) =>
+      verifyForRead(engine, registry, workspace.workspaceId),
+    ),
   ]);
+  // One bad checkout never fails the list: Specifications bound to a checkout that failed its
+  // verification are not discovered (discovery would rethrow a mismatch); they are only counted.
+  const unusable = new Set(
+    registry.workspaces
+      .filter((_, index) => verified[index]!.status !== 'available')
+      .map((workspace) => workspace.workspaceId),
+  );
+  const boundTo = new Map(
+    registry.specBindings.map((binding) => [binding.specId, binding.workspaceId]),
+  );
+  const discovered = await discoverSpecifications(engine, (specId) => {
+    const workspaceId = boundTo.get(specId);
+
+    return workspaceId === undefined || !unusable.has(workspaceId);
+  });
   if ('reason' in worktreesResult && !isGitUnavailable(worktreesResult.reason)) {
     throw worktreesResult.reason;
   }
@@ -140,6 +157,12 @@ export async function inspectRegistryWorkspaces(
   const gitReachable = gitEnabled && worktrees !== undefined;
   const bound = new Map<string, { specId: string; title: string }[]>();
   const counts = new Map<string, number>();
+  for (const [, workspaceId] of boundTo) {
+    if (unusable.has(workspaceId)) {
+      counts.set(workspaceId, (counts.get(workspaceId) ?? 0) + 1);
+    }
+  }
+
   for (const spec of discovered) {
     counts.set(spec.workspaceId, (counts.get(spec.workspaceId) ?? 0) + 1);
     if (spec.status === 'available') {
@@ -152,7 +175,7 @@ export async function inspectRegistryWorkspaces(
   const workspaces = await mapBounded(
     registry.workspaces,
     READ_GIT_CONCURRENCY,
-    async (workspace) => {
+    async (workspace, index) => {
       const common = {
         workspaceId: workspace.workspaceId,
         kind: workspace.kind,
@@ -163,7 +186,7 @@ export async function inspectRegistryWorkspaces(
         specifications: bound.get(workspace.workspaceId) ?? [],
         specCount: counts.get(workspace.workspaceId) ?? 0,
       };
-      const checked = await verifyForRead(engine, registry, workspace.workspaceId);
+      const checked = verified[index]!;
       if (checked.status === 'mismatch') {
         return { ...common, available: false, unavailableReason: 'checkout-mismatch' as const };
       }

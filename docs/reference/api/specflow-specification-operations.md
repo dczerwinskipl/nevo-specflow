@@ -83,6 +83,12 @@ only to roles that may see it. Restricting `path`/`worktreesRoot` to an operator
 Create options include `primaryWorkspaceId`, `workspaces[]` (`workspaceId,kind,name,path,managed,specCount,
 state,selectable,integrationSelectable,branch?,reason?,integrationDestination?`),
 `newWorktree` (`status,reason?,branchProtected?`), `defaultBaseRef`, `branchPattern`, `worktreesRoot`, `integrationTargetBranch?`, `commits?`, `baseRefs[]`.
+Each `workspaces[]` entry is keyed by `workspaceId`, the key of the same workspace in
+[`GET /api/workspaces`](workspaces.md). `kind`, `name` and `path` are registry facts that
+the workspace list serves for every reader, and `specCount` counts every Specification bound to the workspace,
+where the list gives `specifications[]` (only readable manifests the caller may view, so it can be shorter).
+They are transitional here and are removed from create-options once Create Specification reads the list. The Create-only facts are `managed`, `state`,
+`selectable`, `integrationSelectable`, `integrationDestination`, `branch` and `reason`.
 `commits` is `{protectedBranches[],allowedBranches?[]}` and is present **exactly when Git is enabled** (the
 Engine then commits the scaffold), even with empty lists; it is absent when Git is disabled, as are the two
 reasons `branch-protected` and `branch-not-allowed` and `newWorktree.branchProtected`. A workspace whose branch

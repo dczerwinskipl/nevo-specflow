@@ -187,8 +187,8 @@ document. A group is never derived from the URL: document and Task operations li
 Operations holds the cross-feature operation lists, the operation progress stream and the status of
 a Specification creation (the shared list and stream mechanisms declare the group, the feature
 gives the summary). The status of a close or document operation stays with its feature
-(Specifications, Workspaces, Documents). Workspaces holds closing a linked worktree and closing a
-whole workspace. Documentation holds the search and the semantic search status of the project's
+(Specifications, Workspaces, Documents). Workspaces holds the workspace list ([`GET /api/workspaces`](workspaces.md)), closing a linked
+worktree and closing a whole workspace. Documentation holds the search and the semantic search status of the project's
 own documentation (`/api/docs/`); Documents are the documents of a Specification.
 
 ## Shared error responses

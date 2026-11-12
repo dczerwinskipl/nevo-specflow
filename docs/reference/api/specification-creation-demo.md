@@ -278,10 +278,12 @@ The operations list and the status read honour the `demoScenario` query like the
 an unknown scenario answers 400.
 
 Create-options require `spec.create` at the demo project scope. The default registry is a realistic
-happy path: primary `develop` (0 specs, not Nevo-managed, no pin), linked `feature/platform` (2),
+happy path: primary `develop` (1 spec, the archived sample; not Nevo-managed, no pin), linked `feature/platform` (2),
 `feature/payments` (1, dirty: selectable, not an integration target, **pinned** to the primary
-workspace/`develop`), `spec/architecture` (3), a detached entry and an unavailable entry (both not
-selectable and, like the Engine, without `branch`); `newWorktree` available, `defaultBaseRef`
+workspace/`develop`), `spec/architecture` (3), a detached entry and an unavailable entry (both without
+Specifications, not selectable and, like the Engine, without `branch`). The counts are the seeded
+Specifications bound to each workspace: their workspace reads report the same `workspaceId`, and
+`GET /api/workspaces` lists them (see [Workspaces](workspaces.md#demo-runtime)); `newWorktree` available, `defaultBaseRef`
 `develop`, `branchPattern` `feature/{slug}`, `integrationTargetBranch` `develop`. Like the Engine, every
 workspace carries `name` (checkout folder; the primary one is `acme-app`) and `path`, and the
 response carries `worktreesRoot` `{ path: '/work/acme-app-worktrees', exists: true }`; a new

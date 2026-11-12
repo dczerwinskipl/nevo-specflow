@@ -18,3 +18,4 @@ export type { CurrentSpecRecord } from './overview/repository/model';
 export { createDemoSpecsRepositories, type DemoSpecsRepositoriesDeps } from './demo/repositories';
 export { createDemoSpecs, type DemoSpecs } from './demo/operations';
 export { registerDemoSpecRoutes } from './demo/endpoints';
+export { createDemoWorkspaceList } from './demo/workspace-list';

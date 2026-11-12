@@ -170,12 +170,21 @@ describe('workspace inspection', () => {
   it('reports a moved or substituted checkout as unavailable, and a Git outage as not reachable', async () => {
     const { engine, linked } = await fixture('runtime: {}\ngit:\n  enabled: true\n');
     const live = await linked('spec/mismatch');
+    // A Specification bound to the checkout must not fail the whole list once it mismatches.
+    const specId = randomUUID();
+    await persistSpec(live.root, specId, 'Bound to a replaced checkout');
+    await bind(engine, specId, live.workspaceId);
     await writeFile(join(live.root, WORKSPACE_IDENTITY_RELATIVE_PATH), '{}');
 
     const result = await inspectWorkspaces(engine);
     expect(result.find((item) => item.workspaceId === live.workspaceId)).toMatchObject({
       available: false,
       unavailableReason: 'checkout-mismatch',
+      specifications: [],
+      specCount: 1,
+    });
+    expect(result.find((item) => item.workspaceId === engine.workspace.workspaceId)).toMatchObject({
+      available: true,
     });
     await expect(inspectWorkspaceForRead(engine, live.workspaceId)).resolves.toMatchObject({
       status: 'unavailable',

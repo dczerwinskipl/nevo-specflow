@@ -35,7 +35,8 @@ export const OPENAPI_TAGS = [
   },
   {
     name: 'Workspaces',
-    description: 'Closing a linked worktree and a whole workspace (checkout).',
+    description:
+      'The registered workspaces (checkouts) of the project: list them, close a linked worktree and a whole workspace.',
   },
   {
     name: 'Documentation',

@@ -1,5 +1,11 @@
 // Deterministic execution of Specifications and Tasks: one workflow core, two entry points.
-export { openArchetypeEditing, openWorkflow, type OpenWorkflowOptions } from './composition';
+export {
+  openArchetypeEditing,
+  inspectActionsForRead,
+  openWorkflow,
+  readExecutionForRead,
+  type OpenWorkflowOptions,
+} from './composition';
 export {
   createExecutionCatalogue,
   resolveExecutionCatalogue,

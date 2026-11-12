@@ -31,6 +31,7 @@ describe('read endpoints never spawn Git (HTTP regression guard)', () => {
     ['overview archive', () => '/api/specs/overview?collection=archive'],
     ['workspace', (specId: string) => `/api/specs/${specId}/workspace`],
     ['create-options', () => '/api/specs/create-options'],
+    ['workflow actions', (specId: string) => `/api/specs/${specId}/workflow/actions`],
   ])(
     '%s spawns zero Git processes with git.enabled false',
     async (_name, url) => {

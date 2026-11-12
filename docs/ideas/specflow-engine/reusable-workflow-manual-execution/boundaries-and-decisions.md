@@ -48,7 +48,7 @@ Arrows express allowed dependencies, not required imports. `@nevo/workflow` is a
 
 The neutral package must be more useful than exported `planStart` / `planFinish` functions. It should accept a resolved definition, a particular Run state and a host command or event; choose the legal step/transition; and yield a deterministic **next intent** such as `execute`, `await-input`, `wait-for-event`, `ready` or `terminal`. The host supplies narrowly typed execution drivers and domain data/effects. This is coordination of a declared workflow, **not** an autonomous process or automatic Session launcher.
 
-An execution host selects *when* to initiate a Run (UI, CLI, Runtime, future scheduler), resolves the appropriate step driver, enforces identity/writer admission and commits domain effects and Run state in a recoverable transaction. It cannot privately skip steps or choose transitions that the neutral coordinator did not authorize. **Provider choice is not neutral continuation:** the current Engine `resolveContinuation` chooses archetype/provider/model, `session: reuse` and product attention. Keep that logic in the SpecFlow adapter, not `@nevo/workflow`. Runtime executes the resulting dispatch request; it must not reimplement transition selection. Later F01 dispatches a provider Session from this resolution without creating a second state machine.
+An execution host selects _when_ to initiate a Run (UI, CLI, Runtime, future scheduler), resolves the appropriate step driver, enforces identity/writer admission and commits domain effects and Run state in a recoverable transaction. It cannot privately skip steps or choose transitions that the neutral coordinator did not authorize. **Provider choice is not neutral continuation:** the current Engine `resolveContinuation` chooses archetype/provider/model, `session: reuse` and product attention. Keep that logic in the SpecFlow adapter, not `@nevo/workflow`. Runtime executes the resulting dispatch request; it must not reimplement transition selection. Later F01 dispatches a provider Session from this resolution without creating a second state machine.
 
 **E1 proof:** one SpecFlow Specification, one Task of a custom Task Type, and a tiny non-SpecFlow host each drive the same coordinator through start, finish, wait, resume and return. The non-SpecFlow host must demonstrate two distinct Run instances of one definition. No network service, plugin marketplace, action scheduler, or implicit synchronous callbacks under a held project lock.
 
@@ -58,14 +58,14 @@ Suggested cohesive boundaries, **not mandatory directories**: `packages/workflow
 
 Decide **only what the next slice consumes**. E0 records every open question but does not force E5 form semantics to be designed before E1.
 
-| Gate                           | Decisions needed                                                                      | What can remain open                                                              |
-| ------------------------------ | ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| Before E1                      | D01, D02, D09; minimal D03 effect seam and D05 executor-policy extension               | Task journal, UI permissions and typed form catalogue                             |
-| Before E2                      | D03, D04, D06, D07 minimal Close guard; F20 Task authority and definition binding    | E4b owner sign-off UX and E5 typed renderer                                       |
-| Before E3 owner mutations / E4a | D05 identity/manual policy; D07 guard already deployed before earlier authoring/Run  | F01 unattended Session dispatch                                                   |
-| Before E5                      | D08 input validation, persistence and handoff                                         | Arbitrary custom components or a visual designer                                  |
-| Before E6a                     | D10–D12 trusted delegation, claim-owned Engine writes, stop/finish recovery and reuse | Full F01 unattended chaining, F12 auto-batches and scheduled triggers             |
-| Before E6b                     | D13 agent Task authoring; F20 and D06 are implemented                                 | Agent Task scheduling and parallel worktree execution                             |
+| Gate                            | Decisions needed                                                                      | What can remain open                                                  |
+| ------------------------------- | ------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| Before E1                       | D01, D02, D09; minimal D03 effect seam and D05 executor-policy extension              | Task journal, UI permissions and typed form catalogue                 |
+| Before E2                       | D03, D04, D06, D07 minimal Close guard; F20 Task authority and definition binding     | E4b owner sign-off UX and E5 typed renderer                           |
+| Before E3 owner mutations / E4a | D05 identity/manual policy; D07 guard already deployed before earlier authoring/Run   | F01 unattended Session dispatch                                       |
+| Before E5                       | D08 input validation, persistence and handoff                                         | Arbitrary custom components or a visual designer                      |
+| Before E6a                      | D10–D12 trusted delegation, claim-owned Engine writes, stop/finish recovery and reuse | Full F01 unattended chaining, F12 auto-batches and scheduled triggers |
+| Before E6b                      | D13 agent Task authoring; F20 and D06 are implemented                                 | Agent Task scheduling and parallel worktree execution                 |
 
 ### D01 — Neutral step semantics, special steps and replay
 
@@ -73,7 +73,7 @@ Decide **only what the next slice consumes**. E0 records every open question but
 
 **Open:** Define the smallest neutral representation of executable and suspended steps, external completion triggers, host-supplied effects and evidence, without requiring the Core to know `tasks-finished`. Who resolves a domain wait and how does replay prove it? A generic `wait` could be viable, but must preserve wait-attempt history and deterministic trigger selection. Specify the input/event and output-intent contract of the neutral coordinator; the SpecFlow adapter evaluates `tasks-finished` without adding Task awareness to the neutral package. A host callback that can arbitrarily mutate Run position is not acceptable.
 
-**Proof:** existing Specification wait/approval/escalation tests and an unrelated wait event replay using *exactly the same neutral progression implementation*. No generic event bus, speculative DSL or hard-coded branch on Subject in the neutral package.
+**Proof:** existing Specification wait/approval/escalation tests and an unrelated wait event replay using _exactly the same neutral progression implementation_. No generic event bus, speculative DSL or hard-coded branch on Subject in the neutral package.
 
 ### D02 — Definition compilation, pins and pre-release format policy
 
@@ -151,7 +151,7 @@ no-SpecRun readiness and broken Task isolation all pass.
 
 ### D06 — Manual Task creation versus full-list Breakdown finish
 
-**Observed:** `materializeTasks` treats `finish.tasks` as the *complete* draft list and cancels omitted drafts. A valid `expectedRevision` only detects concurrent modifications, not unintended deletion of a user's previously created draft.
+**Observed:** `materializeTasks` treats `finish.tasks` as the _complete_ draft list and cancels omitted drafts. A valid `expectedRevision` only detects concurrent modifications, not unintended deletion of a user's previously created draft.
 
 **Open:** Model task authoring separately from finishing a step. Define proposal ownership/scope (for example, Breakdown attempt), explicit replace-vs-merge intent, approval and cancellation. Omission **never implicitly cancels drafts owned by a separate author/attempt**. Determine legal create/edit/status transitions before, during and after Specification `wait-for-tasks`, and after terminal state.
 
@@ -210,7 +210,7 @@ Do not silently truncate accepted history or strip the last useful handoff.
 **Proof:** many attempts/returns with maximal accepted Markdown/enum/decimal/feedback/artifacts
 stay within `RECORD_BYTES_MAX`; large values survive restart and exact replay, stale references
 refuse safely, and the declared next step receives the correct handoff. Check concurrent writes,
-idempotent retry and serializer limits *before* mutation.
+idempotent retry and serializer limits _before_ mutation.
 
 ### D09 — Run identity and cardinality beyond the SpecFlow subject
 
@@ -250,7 +250,7 @@ is active, as the current E6 draft implies.
 **Decision:** Define narrowly scoped, claim-owned self-mutations. A trusted Engine/Runtime broker
 checks the exact current invocation, Session/Turn actor, workspace incarnation, intended
 Specification/Task and permitted capability before admitting a Document/Task write under its
-*own* claim. Do not accept a caller-provided claim ID as proof and do not add a blanket
+_own_ claim. Do not accept a caller-provided claim ID as proof and do not add a blanket
 `ignoreClaims` flag. Project control lock, fencing, all unrelated writer exclusions and
 recovery rules remain effective. Specify admission/lock order to avoid cycles.
 
@@ -286,7 +286,7 @@ both edits remain with their own revisions and auditable source. The Run remains
 the claim remains until native stop is positively proved. After reconciliation the owner may
 inspect, repair, resume or **explicitly revert** selected revisions through ordinary versioned
 Document operations. Never auto-rollback already accepted writes or mark the step complete.
-Each Task resource create/edit is atomic *within that mutation*, while several previously
+Each Task resource create/edit is atomic _within that mutation_, while several previously
 accepted Task drafts may remain visible after a failed producing step. The finish transaction
 covers only its newly declared effects, not retroactive rollback of prior commits.
 
@@ -326,7 +326,6 @@ version, not the other's; rebind/branch change triggers invalidation/refusal or 
 a Task's `task.md` and Specification's `overview.md` are never silently sourced from the
 project-docs corpus. Three linked drafts carry verified context IDs/revisions, reject stale
 references, survive retries without duplication, and still require human approval.
-
 
 ## 3. Additional unresolved integration constraints
 

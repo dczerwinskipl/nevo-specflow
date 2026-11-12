@@ -2,6 +2,7 @@ import { dirname, join } from 'node:path';
 
 import type { SpecFlowEngine } from '../application';
 import { withProjectControlLock } from '../project/control-lock';
+import { runReadRequest } from '../project/request-verification-memo';
 import { resolveSpecification } from '../specs/discovery';
 import { createDefaultDefinitionRegistry } from '../definitions/shipped-registry';
 import { loadDefinitions } from '../specs/definitions/loader';
@@ -21,7 +22,7 @@ import {
   type CloseBlocker,
   type SpecificationLifecycleActions,
 } from './close/blockers';
-import type { SpecificationExitPort } from './operations/actions';
+import { inspectActions, type SpecificationExitPort } from './operations/actions';
 import { assertSharedResourcesAvailable } from '../specs/coordination/resources';
 import { SharedResourceError } from '../specs/durable';
 import type { RememberModelDependencies } from './definitions/remember-model';
@@ -38,6 +39,7 @@ import {
   type PendingTaskDocumentChange,
 } from './state/task-document-guard';
 import { checkoutPathExists } from './checkout-paths';
+import { readExecution } from './operations/execution-read';
 import { guardCloseReservations } from './state/close-guard';
 import { listCloseJournals } from '../specs/lifecycle';
 
@@ -176,6 +178,24 @@ export async function openWorkflow(
 
   return { ...dependencies, specificationExit: specificationExitPort(dependencies) };
 }
+
+/**
+ * A read-only workflow operation as an Engine read request: the Project Home and checkout
+ * verification (the control lock's included) uses on-disk evidence only and spawns no Git process,
+ * like every other read path (`resolveSpecificationForRead`). For presentation reads only; a mutation
+ * keeps the full verification of its own operation.
+ */
+function asReadRequest<Args extends unknown[], Result>(
+  operation: (...args: Args) => Promise<Result>,
+): (...args: Args) => Promise<Result> {
+  return (...args) => runReadRequest(() => operation(...args));
+}
+
+/** {@link readExecution} without Git (Overview progress, Workspace and Task reads). */
+export const readExecutionForRead = asReadRequest(readExecution);
+
+/** {@link inspectActions} without Git (the workflow `actions` read). */
+export const inspectActionsForRead = asReadRequest(inspectActions);
 
 /**
  * The post actions of an opened Engine (`operations/post-actions.ts`): after a step's finish, commit

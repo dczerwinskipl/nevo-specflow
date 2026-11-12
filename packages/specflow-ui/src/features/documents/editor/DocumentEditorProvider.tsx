@@ -218,6 +218,20 @@ export function DocumentEditorProvider({
   useLayoutEffect(() => {
     shown.current = { specId, key, document, draft };
   });
+  // Closing unmounts the view without a scroll: read the position first, as the mode toggle does.
+  // The last scroll-time anchor misses lines the editor re-measured since. React runs this layout
+  // cleanup before the children's (which clear the reader) and before it removes the DOM, so the
+  // reader is still set and the view can still be measured.
+  useLayoutEffect(
+    () => () => {
+      const { specId: openSpec, document: open } = shown.current;
+      const position = anchorReader.current?.();
+      if (open && position) {
+        store.setAnchor(openSpec, open.id, position);
+      }
+    },
+    [store],
+  );
   const markdown = kindIdOf(document?.path) === 'markdown';
   const content = draft?.content ?? '';
   const outline = useMemo(() => documentOutline(content, markdown), [content, markdown]);

@@ -1,6 +1,6 @@
 import {
   ProjectControlLockError,
-  readExecution,
+  readExecutionForRead,
   readTaskDocuments,
   resolveSpecificationForRead,
   SpecificationError,
@@ -79,7 +79,7 @@ export async function inspectSpecification(
     }
 
     const workflow = await source.openWorkflow();
-    const reading = await readExecution(workflow, specId, { tasks });
+    const reading = await readExecutionForRead(workflow, specId, { tasks });
 
     return {
       projectId: source.engine.context.project.projectId,

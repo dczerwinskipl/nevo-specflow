@@ -80,7 +80,7 @@ export function createTasksCommand(context: TasksCommandContext): Command {
       .option('--summary <text>', 'A short summary')
       .option(
         '--context <kind:value>',
-        'A required context entry (repeatable): task-doc|spec-doc|project-doc|path|instructions',
+        'A required context entry (repeatable): task-doc|spec-doc|project-doc|path|instructions; prefix artifact: for a process artifact that may not exist yet',
         collectContext,
         [] as TaskContextEntry[],
       )

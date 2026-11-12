@@ -11,7 +11,9 @@ import type { TaskResourceFacts } from '@nevo/specflow-contracts/tasks';
 import type {
   AbandonSpecificationResult,
   ActionProjection,
+  AwaitedContextEntry,
   FinishStepResult,
+  GateUnsatisfiedError,
   ReturnToStepResult,
   RunPosition,
   TaskLane,
@@ -37,7 +39,10 @@ type Same<Engine, Contract> = [Mutable<Engine>] extends [Contract]
 
 const same = <Engine, Contract>(_proof: Same<Engine, Contract>): void => undefined;
 
-type Unresolved = NonNullable<NonNullable<WorkflowError['details']>['unresolved']>[number];
+type Details = NonNullable<WorkflowError['details']>;
+type Unresolved = NonNullable<Details['unresolved']>[number];
+type AwaitedEntry = NonNullable<Details['awaited']>[number];
+type GateRefusal = NonNullable<Details['gate']>;
 
 describe('workflow contract types', () => {
   it('match the Engine both ways', () => {
@@ -47,6 +52,8 @@ describe('workflow contract types', () => {
     same<AbandonSpecificationResult, AbandonContract>(true);
     same<TaskProposal, TaskProposalContract>(true);
     same<UnresolvedContextEntry, Unresolved>(true);
+    same<AwaitedContextEntry, AwaitedEntry>(true);
+    same<Pick<GateUnsatisfiedError, 'phase' | 'step' | 'gates'>, GateRefusal>(true);
     // The Task resource facts of a detail are Engine facts, passed on unchanged.
     same<TaskReadiness, TaskResourceFacts['readiness']>(true);
     same<RunPosition, TaskResourceFacts['position']>(true);

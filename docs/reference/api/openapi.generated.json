@@ -4086,6 +4086,130 @@
                             }
                           }
                         ]
+                      },
+                      "entryGates": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "required": [
+                            "id",
+                            "type",
+                            "label",
+                            "documentType",
+                            "scope",
+                            "status"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "type": {
+                              "type": "string",
+                              "enum": [
+                                "document"
+                              ]
+                            },
+                            "label": {
+                              "type": "string"
+                            },
+                            "documentType": {
+                              "type": "string"
+                            },
+                            "scope": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "kind",
+                                    "specId"
+                                  ],
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "specification"
+                                      ]
+                                    },
+                                    "specId": {
+                                      "$ref": "#/components/schemas/SpecId"
+                                    }
+                                  }
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "kind",
+                                    "specId",
+                                    "taskId"
+                                  ],
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "task"
+                                      ]
+                                    },
+                                    "specId": {
+                                      "$ref": "#/components/schemas/SpecId"
+                                    },
+                                    "taskId": {
+                                      "$ref": "#/components/schemas/TaskId"
+                                    }
+                                  }
+                                }
+                              ]
+                            },
+                            "status": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "satisfied"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "unsatisfied"
+                                  ]
+                                }
+                              ]
+                            },
+                            "documentId": {
+                              "type": "string"
+                            },
+                            "reason": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "no-document"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "file-missing"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "sections-missing"
+                                  ]
+                                }
+                              ]
+                            },
+                            "missingSections": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              },
+                              "maxItems": 1000
+                            }
+                          }
+                        },
+                        "maxItems": 1000
                       }
                     }
                   }
@@ -4266,6 +4390,130 @@
                             }
                           }
                         ]
+                      },
+                      "entryGates": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "required": [
+                            "id",
+                            "type",
+                            "label",
+                            "documentType",
+                            "scope",
+                            "status"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "type": {
+                              "type": "string",
+                              "enum": [
+                                "document"
+                              ]
+                            },
+                            "label": {
+                              "type": "string"
+                            },
+                            "documentType": {
+                              "type": "string"
+                            },
+                            "scope": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "kind",
+                                    "specId"
+                                  ],
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "specification"
+                                      ]
+                                    },
+                                    "specId": {
+                                      "$ref": "#/components/schemas/SpecId"
+                                    }
+                                  }
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "kind",
+                                    "specId",
+                                    "taskId"
+                                  ],
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "task"
+                                      ]
+                                    },
+                                    "specId": {
+                                      "$ref": "#/components/schemas/SpecId"
+                                    },
+                                    "taskId": {
+                                      "$ref": "#/components/schemas/TaskId"
+                                    }
+                                  }
+                                }
+                              ]
+                            },
+                            "status": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "satisfied"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "unsatisfied"
+                                  ]
+                                }
+                              ]
+                            },
+                            "documentId": {
+                              "type": "string"
+                            },
+                            "reason": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "no-document"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "file-missing"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "sections-missing"
+                                  ]
+                                }
+                              ]
+                            },
+                            "missingSections": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              },
+                              "maxItems": 1000
+                            }
+                          }
+                        },
+                        "maxItems": 1000
                       }
                     }
                   }
@@ -4940,6 +5188,205 @@
                               "maxItems": 1000
                             }
                           }
+                        },
+                        {
+                          "type": "object",
+                          "required": [
+                            "kind",
+                            "entries"
+                          ],
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "context-awaited"
+                              ]
+                            },
+                            "entries": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "required": [
+                                  "index",
+                                  "kind"
+                                ],
+                                "properties": {
+                                  "index": {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  },
+                                  "kind": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "task-document"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "specification-document"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "project-document"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "path"
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                }
+                              },
+                              "maxItems": 1000
+                            }
+                          }
+                        },
+                        {
+                          "type": "object",
+                          "required": [
+                            "kind",
+                            "gates"
+                          ],
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "gates-unsatisfied"
+                              ]
+                            },
+                            "gates": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "required": [
+                                  "id",
+                                  "type",
+                                  "label",
+                                  "documentType",
+                                  "scope",
+                                  "status"
+                                ],
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "document"
+                                    ]
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "documentType": {
+                                    "type": "string"
+                                  },
+                                  "scope": {
+                                    "anyOf": [
+                                      {
+                                        "type": "object",
+                                        "required": [
+                                          "kind",
+                                          "specId"
+                                        ],
+                                        "properties": {
+                                          "kind": {
+                                            "type": "string",
+                                            "enum": [
+                                              "specification"
+                                            ]
+                                          },
+                                          "specId": {
+                                            "$ref": "#/components/schemas/SpecId"
+                                          }
+                                        }
+                                      },
+                                      {
+                                        "type": "object",
+                                        "required": [
+                                          "kind",
+                                          "specId",
+                                          "taskId"
+                                        ],
+                                        "properties": {
+                                          "kind": {
+                                            "type": "string",
+                                            "enum": [
+                                              "task"
+                                            ]
+                                          },
+                                          "specId": {
+                                            "$ref": "#/components/schemas/SpecId"
+                                          },
+                                          "taskId": {
+                                            "$ref": "#/components/schemas/TaskId"
+                                          }
+                                        }
+                                      }
+                                    ]
+                                  },
+                                  "status": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "satisfied"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "unsatisfied"
+                                        ]
+                                      }
+                                    ]
+                                  },
+                                  "documentId": {
+                                    "type": "string"
+                                  },
+                                  "reason": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "no-document"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "file-missing"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "sections-missing"
+                                        ]
+                                      }
+                                    ]
+                                  },
+                                  "missingSections": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    },
+                                    "maxItems": 1000
+                                  }
+                                }
+                              },
+                              "maxItems": 1000
+                            }
+                          }
                         }
                       ]
                     },
@@ -5136,6 +5583,130 @@
                             }
                           }
                         ]
+                      },
+                      "entryGates": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "required": [
+                            "id",
+                            "type",
+                            "label",
+                            "documentType",
+                            "scope",
+                            "status"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "type": {
+                              "type": "string",
+                              "enum": [
+                                "document"
+                              ]
+                            },
+                            "label": {
+                              "type": "string"
+                            },
+                            "documentType": {
+                              "type": "string"
+                            },
+                            "scope": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "kind",
+                                    "specId"
+                                  ],
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "specification"
+                                      ]
+                                    },
+                                    "specId": {
+                                      "$ref": "#/components/schemas/SpecId"
+                                    }
+                                  }
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "kind",
+                                    "specId",
+                                    "taskId"
+                                  ],
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "task"
+                                      ]
+                                    },
+                                    "specId": {
+                                      "$ref": "#/components/schemas/SpecId"
+                                    },
+                                    "taskId": {
+                                      "$ref": "#/components/schemas/TaskId"
+                                    }
+                                  }
+                                }
+                              ]
+                            },
+                            "status": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "satisfied"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "unsatisfied"
+                                  ]
+                                }
+                              ]
+                            },
+                            "documentId": {
+                              "type": "string"
+                            },
+                            "reason": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "no-document"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "file-missing"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "sections-missing"
+                                  ]
+                                }
+                              ]
+                            },
+                            "missingSections": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              },
+                              "maxItems": 1000
+                            }
+                          }
+                        },
+                        "maxItems": 1000
                       }
                     }
                   }
@@ -5390,10 +5961,144 @@
                           "type": "object",
                           "properties": {
                             "unavailable": {
-                              "type": "string",
-                              "enum": [
-                                "task-document-change"
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "task-document-change"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "gate-unsatisfied"
+                                  ]
+                                }
                               ]
+                            },
+                            "gates": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "required": [
+                                  "id",
+                                  "type",
+                                  "label",
+                                  "documentType",
+                                  "scope",
+                                  "status"
+                                ],
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "document"
+                                    ]
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "documentType": {
+                                    "type": "string"
+                                  },
+                                  "scope": {
+                                    "anyOf": [
+                                      {
+                                        "type": "object",
+                                        "required": [
+                                          "kind",
+                                          "specId"
+                                        ],
+                                        "properties": {
+                                          "kind": {
+                                            "type": "string",
+                                            "enum": [
+                                              "specification"
+                                            ]
+                                          },
+                                          "specId": {
+                                            "$ref": "#/components/schemas/SpecId"
+                                          }
+                                        }
+                                      },
+                                      {
+                                        "type": "object",
+                                        "required": [
+                                          "kind",
+                                          "specId",
+                                          "taskId"
+                                        ],
+                                        "properties": {
+                                          "kind": {
+                                            "type": "string",
+                                            "enum": [
+                                              "task"
+                                            ]
+                                          },
+                                          "specId": {
+                                            "$ref": "#/components/schemas/SpecId"
+                                          },
+                                          "taskId": {
+                                            "$ref": "#/components/schemas/TaskId"
+                                          }
+                                        }
+                                      }
+                                    ]
+                                  },
+                                  "status": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "satisfied"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "unsatisfied"
+                                        ]
+                                      }
+                                    ]
+                                  },
+                                  "documentId": {
+                                    "type": "string"
+                                  },
+                                  "reason": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "no-document"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "file-missing"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "sections-missing"
+                                        ]
+                                      }
+                                    ]
+                                  },
+                                  "missingSections": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    },
+                                    "maxItems": 1000
+                                  }
+                                }
+                              },
+                              "maxItems": 1000
                             }
                           }
                         }
@@ -6800,6 +7505,12 @@
               {
                 "type": "string",
                 "enum": [
+                  "WORKFLOW_GATE_UNSATISFIED"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
                   "WORKFLOW_UNAVAILABLE"
                 ]
               },
@@ -6978,6 +7689,12 @@
               {
                 "type": "string",
                 "enum": [
+                  "WORKFLOW_GATE_UNSATISFIED"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
                   "WORKFLOW_UNAVAILABLE"
                 ]
               },
@@ -7128,6 +7845,177 @@
                           ]
                         }
                       ]
+                    }
+                  }
+                }
+              },
+              "awaited": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "index",
+                    "key"
+                  ],
+                  "properties": {
+                    "index": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "key": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "gate": {
+                "type": "object",
+                "required": [
+                  "phase",
+                  "step",
+                  "gates"
+                ],
+                "properties": {
+                  "phase": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "entry"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "exit"
+                        ]
+                      }
+                    ]
+                  },
+                  "step": {
+                    "type": "string"
+                  },
+                  "gates": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "id",
+                        "type",
+                        "label",
+                        "documentType",
+                        "scope",
+                        "status"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "document"
+                          ]
+                        },
+                        "label": {
+                          "type": "string"
+                        },
+                        "documentType": {
+                          "type": "string"
+                        },
+                        "scope": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "required": [
+                                "kind",
+                                "specId"
+                              ],
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "specification"
+                                  ]
+                                },
+                                "specId": {
+                                  "$ref": "#/components/schemas/SpecId"
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "kind",
+                                "specId",
+                                "taskId"
+                              ],
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "task"
+                                  ]
+                                },
+                                "specId": {
+                                  "$ref": "#/components/schemas/SpecId"
+                                },
+                                "taskId": {
+                                  "$ref": "#/components/schemas/TaskId"
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        "status": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "satisfied"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "unsatisfied"
+                              ]
+                            }
+                          ]
+                        },
+                        "documentId": {
+                          "type": "string"
+                        },
+                        "reason": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "no-document"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "file-missing"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "sections-missing"
+                              ]
+                            }
+                          ]
+                        },
+                        "missingSections": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "maxItems": 1000
+                        }
+                      }
                     }
                   }
                 }
@@ -26480,6 +27368,9 @@
                               "type": "string",
                               "minLength": 1,
                               "maxLength": 500
+                            },
+                            "artifact": {
+                              "type": "boolean"
                             }
                           },
                           "additionalProperties": false
@@ -26509,6 +27400,9 @@
                               "type": "string",
                               "minLength": 1,
                               "maxLength": 500
+                            },
+                            "artifact": {
+                              "type": "boolean"
                             }
                           },
                           "additionalProperties": false
@@ -26538,6 +27432,9 @@
                               "type": "string",
                               "minLength": 1,
                               "maxLength": 500
+                            },
+                            "artifact": {
+                              "type": "boolean"
                             }
                           },
                           "additionalProperties": false
@@ -26568,6 +27465,9 @@
                               "type": "string",
                               "minLength": 1,
                               "maxLength": 500
+                            },
+                            "artifact": {
+                              "type": "boolean"
                             }
                           },
                           "additionalProperties": false
@@ -27076,6 +27976,9 @@
                                         "type": "string",
                                         "minLength": 1,
                                         "maxLength": 500
+                                      },
+                                      "artifact": {
+                                        "type": "boolean"
                                       }
                                     },
                                     "additionalProperties": false
@@ -27105,6 +28008,9 @@
                                         "type": "string",
                                         "minLength": 1,
                                         "maxLength": 500
+                                      },
+                                      "artifact": {
+                                        "type": "boolean"
                                       }
                                     },
                                     "additionalProperties": false
@@ -27134,6 +28040,9 @@
                                         "type": "string",
                                         "minLength": 1,
                                         "maxLength": 500
+                                      },
+                                      "artifact": {
+                                        "type": "boolean"
                                       }
                                     },
                                     "additionalProperties": false
@@ -27164,6 +28073,9 @@
                                         "type": "string",
                                         "minLength": 1,
                                         "maxLength": 500
+                                      },
+                                      "artifact": {
+                                        "type": "boolean"
                                       }
                                     },
                                     "additionalProperties": false
@@ -30848,6 +31760,9 @@
                                   "type": "string",
                                   "minLength": 1,
                                   "maxLength": 500
+                                },
+                                "artifact": {
+                                  "type": "boolean"
                                 }
                               },
                               "additionalProperties": false
@@ -30877,6 +31792,9 @@
                                   "type": "string",
                                   "minLength": 1,
                                   "maxLength": 500
+                                },
+                                "artifact": {
+                                  "type": "boolean"
                                 }
                               },
                               "additionalProperties": false
@@ -30906,6 +31824,9 @@
                                   "type": "string",
                                   "minLength": 1,
                                   "maxLength": 500
+                                },
+                                "artifact": {
+                                  "type": "boolean"
                                 }
                               },
                               "additionalProperties": false
@@ -30936,6 +31857,9 @@
                                   "type": "string",
                                   "minLength": 1,
                                   "maxLength": 500
+                                },
+                                "artifact": {
+                                  "type": "boolean"
                                 }
                               },
                               "additionalProperties": false

@@ -20,6 +20,9 @@ export {
   WORKFLOW_KIND,
   type AgentArchetype,
   type AgentArchetypeProvider,
+  type DocumentGate,
+  type EntryGate,
+  type ExitGate,
   type SpecFlowAnnotations,
   type TaskType,
   type WaitStep,
@@ -127,7 +130,18 @@ export {
   type RemoveTaskInput,
   type TaskResourceResult,
 } from './operations/task-resource';
-export { TaskContextUnresolvedError, type UnresolvedContextEntry } from './operations/task-policy';
+export {
+  TaskContextUnresolvedError,
+  type AwaitedContextEntry,
+  type UnresolvedContextEntry,
+} from './operations/task-policy';
+export {
+  GATE_UNSATISFIED_REASONS,
+  type GateScopeRef,
+  type GateStatus,
+  type GateUnsatisfiedReason,
+} from './gates/evaluate';
+export { GateUnsatisfiedError } from './gates/read';
 export type { TaskReferences } from './operations/task-references';
 export {
   setTaskStatus,

@@ -221,7 +221,14 @@ run. Every command accepts `--project-root <path>` and `--json`.
   list in the shape of the `context` of `task.yaml` (optional entries, notes); its entries come first. On `edit`,
   context options replace the whole list and `--default-context` restores the default. The Engine checks that
   every entry resolves; a `project-doc` entry resolves to an active document of the project documentation
-  (a deprecated or superseded one does not).
+  (a deprecated or superseded one does not). The prefix `artifact:` marks a reference as a **process artifact**
+  that another step or Task produces (`--context artifact:task-doc:findings`, `artifact: true` in a context
+  file; not for `instructions`): it is accepted while missing and shown as awaited, and a required one still
+  refuses a start until it exists (the refusal lists it as `awaited artifact`).
+- **Gates.** `workflow actions` prints the gates of each finish transition and the entry gates of the next step
+  as `[x]`/`[ ] gate <id>: <label>, <document type> in <Task|Specification> (<why>)`. A start or finish that a
+  gate refuses (`WORKFLOW_GATE_UNSATISFIED`) prints the unsatisfied gates the same way; `--json` adds
+  `error.gate {phase, step, gates}`.
 - **Task text.** `tasks create` takes the first text of `task.md` from `--content-file` or `--stdin`. Later
   changes and extra Task documents use `specs documents ... --task <task-id>`.
 - **Specification exit.** `workflow actions <spec-id>` also prints whether `Close` and `Abandon` are available and,

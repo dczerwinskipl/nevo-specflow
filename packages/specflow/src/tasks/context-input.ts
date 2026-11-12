@@ -13,29 +13,41 @@ const SHORTHAND_KINDS = {
   instructions: 'instructions',
 } as const;
 
+/** `artifact:<kind>:<value>` marks a process artifact: awaited while missing, not refused. */
+const ARTIFACT_PREFIX = 'artifact:';
+
 /**
  * One `--context <kind>:<value>` entry; it is always required. The kinds are `task-doc`, `spec-doc`,
- * `project-doc` (a document id), `path` and `instructions` (the text). An optional entry or one with
- * a note comes from `--context-file`. The Engine validates the entry and that it resolves.
+ * `project-doc` (a document id), `path` and `instructions` (the text). The prefix `artifact:` marks a
+ * reference as a process artifact (`artifact: true`; not for `instructions`). An optional entry or
+ * one with a note comes from `--context-file`. The Engine validates the entry and that it resolves.
  */
 export function parseContextShorthand(text: string): TaskContextEntry {
-  const separator = text.indexOf(':');
-  const kind = separator < 0 ? '' : text.slice(0, separator);
-  const value = separator < 0 ? '' : text.slice(separator + 1);
+  const artifact = text.startsWith(ARTIFACT_PREFIX);
+  const body = artifact ? text.slice(ARTIFACT_PREFIX.length) : text;
+  const separator = body.indexOf(':');
+  const kind = separator < 0 ? '' : body.slice(0, separator);
+  const value = separator < 0 ? '' : body.slice(separator + 1);
   if (!Object.hasOwn(SHORTHAND_KINDS, kind) || value.trim() === '') {
     throw new InvalidArgumentError(
-      `"${text}" is not <kind>:<value> with a kind of ${Object.keys(SHORTHAND_KINDS).join(', ')}.`,
+      `"${text}" is not [artifact:]<kind>:<value> with a kind of ${Object.keys(SHORTHAND_KINDS).join(', ')}.`,
     );
   }
 
   const mapped = SHORTHAND_KINDS[kind as keyof typeof SHORTHAND_KINDS];
-  if (mapped === 'path') {
-    return { kind: mapped, path: value, required: true };
+  if (mapped === 'instructions') {
+    if (artifact) {
+      throw new InvalidArgumentError(`"${text}": instructions cannot be an artifact.`);
+    }
+
+    return { kind: mapped, text: value, required: true };
   }
 
-  return mapped === 'instructions'
-    ? { kind: mapped, text: value, required: true }
-    : { kind: mapped, id: value, required: true };
+  const marker = artifact ? { artifact: true } : {};
+
+  return mapped === 'path'
+    ? { kind: mapped, path: value, required: true, ...marker }
+    : { kind: mapped, id: value, required: true, ...marker };
 }
 
 export function collectContext(value: string, previous: TaskContextEntry[]): TaskContextEntry[] {

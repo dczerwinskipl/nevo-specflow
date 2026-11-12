@@ -28,6 +28,8 @@ import { SharedResourceError } from '../specs/durable';
 import type { RememberModelDependencies } from './definitions/remember-model';
 import type { TaskReferences } from './operations/task-references';
 import { hasPendingTaskDocumentChange } from '../specs/documents/write/pending-task-change';
+import { readRegisteredDocumentsOfType } from '../specs/documents/document-reader';
+import { DocumentError } from '../specs/document-rules/errors';
 import { admitExecutionStateChange } from '../specs/documents/api';
 import { commitExecutionState } from '../specs/documents/execution-state-commit';
 import { ofSubject } from './operations/loaded-execution';
@@ -100,6 +102,22 @@ function engineReferences(engine: SpecFlowEngine, options: OpenWorkflowOptions):
     path: async (specId, path) =>
       checkoutPathExists((await availableSpecification(engine, specId)).workspaceRoot, path),
     pendingDocumentChange: pendingTaskDocuments(engine),
+    documentsOfType: async (scope, documentType) => {
+      try {
+        return await readRegisteredDocumentsOfType(engine, scope, documentType);
+      } catch (error) {
+        if (error instanceof DocumentError) {
+          throw new WorkflowError(
+            error.code === 'DOCUMENT_NOT_FOUND'
+              ? 'WORKFLOW_SUBJECT_NOT_FOUND'
+              : 'WORKFLOW_STATE_CORRUPT',
+            `The documents a gate reads are unavailable (${error.code}).`,
+          );
+        }
+
+        throw error;
+      }
+    },
   };
 }
 

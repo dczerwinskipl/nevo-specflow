@@ -39,6 +39,8 @@ export const WORKFLOW_ERROR_CODES = [
   'WORKFLOW_SPECIFICATION_BUSY',
   /** Unfinished work or pending writes hold the Specification; the error lists them (`blockers`). */
   'WORKFLOW_EXIT_BLOCKED',
+  /** A declared entry or exit gate of the step does not hold; the error lists them (`gates`). */
+  'WORKFLOW_GATE_UNSATISFIED',
 ] as const;
 export type WorkflowErrorCode = (typeof WORKFLOW_ERROR_CODES)[number];
 

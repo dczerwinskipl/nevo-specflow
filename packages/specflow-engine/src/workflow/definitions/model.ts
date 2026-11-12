@@ -1,4 +1,4 @@
-import type { WorkflowEffect } from '@nevo/specflow-contracts/documents';
+import type { WorkflowEffect, WorkflowGateScope } from '@nevo/specflow-contracts/documents';
 
 import type * as core from '@nevo/workflow';
 
@@ -21,6 +21,31 @@ export type TaskTypes = readonly ['*'] | readonly string[];
 
 export type WorkflowSubjectKind = 'specification' | 'task';
 
+/**
+ * A condition the Engine checks before a step starts (entry) or finishes (exit); `../gates`
+ * evaluates it. The only type today is `document`: the scope registers a document of
+ * `documentType` whose file exists and has a heading for each of `requiredSections`. The core never
+ * reads a gate: it is a SpecFlow annotation of the work step, so it is part of the definition's
+ * revision and a run keeps the gates it was pinned with.
+ */
+export interface DocumentGate {
+  /** Unique among the step's gates; `entry-<n>` / `exit-<n>` (from 1) when the file names none. */
+  readonly id: string;
+  readonly type: 'document';
+  readonly label?: string;
+  readonly documentType: string;
+  /** `subject`: the Task or Specification the run drives; `specification`: its Specification. */
+  readonly scope: WorkflowGateScope;
+  readonly requiredSections: readonly string[];
+}
+
+export type EntryGate = DocumentGate;
+
+export interface ExitGate extends DocumentGate {
+  /** Only for the transitions of these results; absent: every transition of the step. */
+  readonly when?: readonly string[];
+}
+
 /** What SpecFlow declares on a workflow, beyond the neutral definition. */
 export interface SpecFlowAnnotations extends core.HostAnnotations {
   readonly definition: { readonly subject: WorkflowSubjectKind };
@@ -29,6 +54,12 @@ export interface SpecFlowAnnotations extends core.HostAnnotations {
     readonly archetype?: string;
     readonly interaction: 'interactive' | 'autonomous';
     readonly produces?: 'tasks';
+    /**
+     * Absent when the step declares none, so a workflow without gates keeps the revision it had
+     * before gates existed (its pinned runs stay valid).
+     */
+    readonly entryGates?: readonly EntryGate[];
+    readonly exitGates?: readonly ExitGate[];
   };
   readonly wait: Readonly<Record<string, never>>;
   readonly transition: {

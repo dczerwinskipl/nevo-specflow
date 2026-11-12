@@ -35,4 +35,16 @@ describe('parseContextShorthand', () => {
   it.each(['nokind', 'bogus:x', 'path:', 'path:  '])('rejects %j', (text) => {
     expect(() => parseContextShorthand(text)).toThrow(/kind/u);
   });
+
+  it('marks a reference as a process artifact with the artifact: prefix', () => {
+    expect(parseContextShorthand('artifact:task-doc:findings')).toEqual({
+      kind: 'task-document',
+      id: 'findings',
+      required: true,
+      artifact: true,
+    });
+    expect(parseContextShorthand('artifact:path:out/report.md')).toMatchObject({ artifact: true });
+    expect(() => parseContextShorthand('artifact:instructions:x')).toThrow(/artifact/u);
+    expect(() => parseContextShorthand('artifact:artifact:path:a')).toThrow(/kind/u);
+  });
 });

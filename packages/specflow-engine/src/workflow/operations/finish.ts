@@ -1,6 +1,8 @@
 import type { ContinuationDecision } from '../continuation/resolve';
 import { decide, findStep, type RunPosition } from '@nevo/workflow';
 import { WorkflowError } from '../errors';
+import { exitGatesFor } from '../gates/evaluate';
+import { assertGatesSatisfied } from '../gates/read';
 import {
   assertActorShape,
   assertFinishInput,
@@ -93,8 +95,12 @@ export interface FinishStepResult {
  * one that would end the run `terminal completed` while a Task is broken (`executionTasks`). A Task
  * that is not `ready` after its finish gets no continuation (`none {on-hold}`) and no attention.
  *
+ * The exit gates of the step that apply to the taken transition (`when`) must hold
+ * (`WORKFLOW_GATE_UNSATISFIED` otherwise), checked inside the lock before anything is written.
+ *
  * The attempt records the digest of the request: repeating the same finish returns the recorded
- * result without a change, and any other finish of that attempt is `WORKFLOW_ATTEMPT_MISMATCH`.
+ * result without a change (its gates are not evaluated again), and any other finish of that attempt
+ * is `WORKFLOW_ATTEMPT_MISMATCH`.
  *
  * Once the change is published (outside the lock) the host's post actions run (`./post-actions.ts`,
  * for a repeated finish too); their results are `postActions`. A failed post action does not fail
@@ -199,6 +205,16 @@ function recordFinish(
         `The Specification cannot complete while Tasks are broken: ${broken.join(', ')}; restore them from Git.`,
       );
     }
+
+    // The authoritative check of the exit gates, after every input rule and before anything is
+    // planned or written. A repeated finish (above) never evaluates them again.
+    await assertGatesSatisfied(
+      dependencies.references,
+      subject,
+      'exit',
+      step.id,
+      exitGatesFor(step, transition.result),
+    );
 
     context.set.setRun(subject, decision.nextRun);
     const createdTasks = produces ? draftTasks(context, request) : [];

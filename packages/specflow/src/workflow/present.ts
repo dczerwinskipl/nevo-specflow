@@ -5,11 +5,13 @@ import type {
   CloseBlocker,
   ContinuationDecision,
   FinishStepResult,
+  GateStatus,
   ReturnToStepResult,
   RunPosition,
   SpecificationExitActions,
   StartBlocker,
   StartResult,
+  StartableStep,
   WorkflowSubject,
 } from '@nevo/specflow-engine';
 
@@ -58,7 +60,32 @@ function blockerLine(blocker: StartBlocker): string {
       return blocker.message;
     case 'context-unresolved':
       return `required context does not resolve (entries ${blocker.entries.map((entry) => entry.index).join(', ')})`;
+    case 'context-awaited':
+      return `awaits process artifacts that do not exist yet (entries ${blocker.entries.map((entry) => entry.index).join(', ')})`;
+    case 'gates-unsatisfied':
+      return `entry gates do not hold: ${blocker.gates.map((gate) => gate.id).join(', ')}`;
   }
+}
+
+/** Where a gate looked, as a person reads it. */
+function scopeLabel(gate: GateStatus): string {
+  return gate.scope.kind === 'task' ? `Task ${gate.scope.taskId}` : 'Specification';
+}
+
+/** One gate with its status: `[x]` satisfied, `[ ]` not, and why. */
+export function gateLine(gate: GateStatus): string {
+  const why =
+    gate.status === 'satisfied'
+      ? ` (document ${gate.documentId ?? '?'})`
+      : gate.reason === 'sections-missing'
+        ? ` (document ${gate.documentId ?? '?'} lacks: ${(gate.missingSections ?? []).join(', ')})`
+        : ` (${gate.reason ?? 'unsatisfied'})`;
+
+  return `[${gate.status === 'satisfied' ? 'x' : ' '}] gate ${gate.id}: ${gate.label}, ${gate.documentType} in ${scopeLabel(gate)}${why}`;
+}
+
+function entryGateLines(next: StartableStep | undefined): string[] {
+  return (next?.entryGates ?? []).map((gate) => `  ${gateLine(gate)}`);
 }
 
 function positionLines(position: ActionPosition): string[] {
@@ -67,9 +94,14 @@ function positionLines(position: ActionPosition): string[] {
       return [
         `State: not started; a first start pins ${position.preview.workflowId} (revision ${position.preview.revision})`,
         `Next step: ${position.next.step.id}`,
+        ...entryGateLines(position.next),
       ];
     case 'ready':
-      return [`State: ready`, `Next step: ${position.next.step.id}`];
+      return [
+        `State: ready`,
+        `Next step: ${position.next.step.id}`,
+        ...entryGateLines(position.next),
+      ];
     case 'active':
       return [
         `State: active on "${position.step.id}" (attempt ${position.attempt.number})`,
@@ -84,6 +116,8 @@ function positionLines(position: ActionPosition): string[] {
       return [
         'State: blocked',
         ...position.blockers.map((blocker) => `Blocked: ${blockerLine(blocker)}`),
+        ...(position.next ? [`Next step: ${position.next.step.id}`] : []),
+        ...entryGateLines(position.next),
       ];
     case 'terminal':
       return [`State: ended (${position.outcome})`];
@@ -118,6 +152,7 @@ export function actionLines(projection: ActionProjection): string[] {
           ` (${transition.id}${transition.feedback === 'required' ? ', feedback required' : ''}` +
           `${transition.unavailable ? `, unavailable: ${transition.unavailable}` : ''})`,
       );
+      lines.push(...(transition.gates ?? []).map((gate) => `  ${gateLine(gate)}`));
     }
   }
 

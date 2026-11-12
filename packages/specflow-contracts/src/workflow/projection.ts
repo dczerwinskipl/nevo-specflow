@@ -120,10 +120,42 @@ export const AgentOptionSchema = Type.Union([
   }),
 ]);
 
+export const GATE_UNSATISFIED_REASONS = [
+  'no-document',
+  'file-missing',
+  'sections-missing',
+] as const;
+
+/** Where a gate looked: the Specification or one of its Tasks (link to its documents). */
+export const GateScopeSchema = Type.Union([
+  Type.Object({ kind: Type.Literal('specification'), specId: SpecIdSchema }),
+  Type.Object({ kind: Type.Literal('task'), specId: SpecIdSchema, taskId: TaskIdSchema }),
+]);
+
+/**
+ * A declared entry or exit gate of a step with its status now (a `document` gate: a registered
+ * document of `documentType` with a file and the required section headings). `label` is display text.
+ */
+export const GateStatusSchema = Type.Object({
+  id: Type.String(),
+  type: Type.Literal('document'),
+  label: Type.String(),
+  documentType: Type.String(),
+  scope: GateScopeSchema,
+  status: Type.Union([Type.Literal('satisfied'), Type.Literal('unsatisfied')]),
+  /** Satisfied: the document that satisfies it; `sections-missing`: the closest one. */
+  documentId: Type.Optional(Type.String()),
+  reason: Type.Optional(literals(GATE_UNSATISFIED_REASONS)),
+  missingSections: Type.Optional(array(Type.String())),
+});
+export type GateStatus = Static<typeof GateStatusSchema>;
+
 export const StartableStepSchema = Type.Object({
   step: WorkflowStepSchema,
   human: Type.Boolean(),
   agent: AgentOptionSchema,
+  /** The step's entry gates; absent when it declares none. */
+  entryGates: Type.Optional(array(GateStatusSchema)),
 });
 
 export const START_BLOCKER_KINDS = [
@@ -135,6 +167,8 @@ export const START_BLOCKER_KINDS = [
   'definition-missing',
   'not-configured',
   'context-unresolved',
+  'context-awaited',
+  'gates-unsatisfied',
 ] as const;
 export const BROKEN_REASONS = [
   'missing-folder',
@@ -145,6 +179,11 @@ export const BROKEN_REASONS = [
   'position',
 ] as const;
 export const CONTEXT_ISSUE_REASONS = ['not-registered', 'not-found'] as const;
+/** The context entry kinds that can be a process artifact (every reference, not `instructions`). */
+const ARTIFACT_CONTEXT_KINDS = TASK_CONTEXT_KINDS.filter(
+  (kind): kind is Exclude<(typeof TASK_CONTEXT_KINDS)[number], 'instructions'> =>
+    kind !== 'instructions',
+);
 
 /** Why the next step cannot start. `message` of the kinds that carry one is display-only. */
 export const StartBlockerSchema = Type.Union([
@@ -175,6 +214,18 @@ export const StartBlockerSchema = Type.Union([
       }),
     ),
   }),
+  /** Required process artifacts (`artifact: true`) that do not exist yet: expected, not stale. */
+  Type.Object({
+    kind: Type.Literal('context-awaited'),
+    entries: array(
+      Type.Object({
+        index: Type.Integer({ minimum: 0 }),
+        kind: literals(ARTIFACT_CONTEXT_KINDS),
+      }),
+    ),
+  }),
+  /** The unsatisfied entry gates of the step a start would activate. */
+  Type.Object({ kind: Type.Literal('gates-unsatisfied'), gates: array(GateStatusSchema) }),
 ]);
 
 export const WORKFLOW_ATTENTION_REASONS = ['tasks-stuck', 'task-escalated'] as const;
@@ -244,7 +295,13 @@ export const WorkflowActionsSchema = Type.Object({
       transitions: array(
         Type.Intersect([
           WorkflowTransitionSchema,
-          Type.Object({ unavailable: Type.Optional(Type.Literal('task-document-change')) }),
+          Type.Object({
+            unavailable: Type.Optional(
+              Type.Union([Type.Literal('task-document-change'), Type.Literal('gate-unsatisfied')]),
+            ),
+            /** The exit gates that apply to the transition; absent when none do. */
+            gates: Type.Optional(array(GateStatusSchema)),
+          }),
         ]),
       ),
     }),

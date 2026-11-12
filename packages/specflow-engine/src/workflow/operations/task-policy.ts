@@ -50,7 +50,22 @@ function describeEntry(issue: TaskContextIssue): string {
         ? 'instructions'
         : `${entry.kind} "${entry.id}"`;
 
-  return `${String(issue.index + 1)} (${what}: ${issue.reason})`;
+  return isAwaited(issue)
+    ? `${String(issue.index + 1)} (${what})`
+    : `${String(issue.index + 1)} (${what}: ${issue.reason})`;
+}
+
+/**
+ * A missing process artifact (`artifact: true`): the entry is awaited, not stale. It is never refused
+ * on create or edit, but a required one still blocks the start of a step until it exists.
+ */
+export function isAwaited(issue: TaskContextIssue): boolean {
+  return issue.entry.kind !== 'instructions' && issue.entry.artifact === true;
+}
+
+/** The issues that are stale references, leaving out the awaited process artifacts. */
+export function staleReferences(issues: readonly TaskContextIssue[]): TaskContextIssue[] {
+  return issues.filter((issue) => !isAwaited(issue));
 }
 
 /** One context entry that does not resolve, as a refusal names it. */
@@ -62,24 +77,51 @@ export interface UnresolvedContextEntry {
   readonly reason: TaskContextIssue['reason'];
 }
 
-/** `WORKFLOW_TASK_CONTEXT_UNRESOLVED` with the entries that do not resolve (`unresolved`). */
+/** One required process artifact that does not exist yet, as a refusal names it. */
+export interface AwaitedContextEntry {
+  /** Position in the context list, from 0. */
+  readonly index: number;
+  readonly key: string;
+}
+
+/**
+ * `WORKFLOW_TASK_CONTEXT_UNRESOLVED` with the stale references (`unresolved`) and, apart, the
+ * process artifacts that do not exist yet (`awaited`).
+ */
 export class TaskContextUnresolvedError extends WorkflowError {
   readonly unresolved: readonly UnresolvedContextEntry[];
+  readonly awaited: readonly AwaitedContextEntry[];
 
   constructor(taskId: string, issues: readonly TaskContextIssue[], consequence: string) {
+    const stale = staleReferences(issues);
+    const awaited = issues.filter(isAwaited);
     super(
       'WORKFLOW_TASK_CONTEXT_UNRESOLVED',
-      `The context of the Task "${taskId}" names references that do not resolve: ${issues.map(describeEntry).join(', ')}. ${consequence}`,
+      [
+        `The context of the Task "${taskId}"`,
+        stale.length > 0
+          ? ` names references that do not resolve: ${stale.map(describeEntry).join(', ')}`
+          : '',
+        stale.length > 0 && awaited.length > 0 ? ';' : '',
+        awaited.length > 0
+          ? ` awaits process artifacts that do not exist yet: ${awaited.map(describeEntry).join(', ')}`
+          : '',
+        `. ${consequence}`,
+      ].join(''),
     );
-    this.unresolved = issues.map((issue) => ({
+    this.unresolved = stale.map((issue) => ({
       index: issue.index,
       key: contextKey(issue.entry),
       reason: issue.reason,
     }));
+    this.awaited = awaited.map((issue) => ({ index: issue.index, key: contextKey(issue.entry) }));
   }
 }
 
-/** Refuse with `WORKFLOW_TASK_CONTEXT_UNRESOLVED`, listing each entry by its position (from 1). */
+/**
+ * Refuse with `WORKFLOW_TASK_CONTEXT_UNRESOLVED`, listing each entry by its position (from 1). The
+ * caller decides which issues refuse (a create or an edit passes only {@link staleReferences}).
+ */
 export function assertContextResolved(
   taskId: string,
   issues: readonly TaskContextIssue[],

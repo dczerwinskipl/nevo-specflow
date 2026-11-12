@@ -7,6 +7,7 @@ import {
 } from '@nevo/specflow-contracts/workflow';
 import { TRUSTED_LOCAL_SUBJECT } from '../auth/authorization/request-authorization';
 import {
+  GateUnsatisfiedError,
   GitCapabilityError,
   ProjectControlLockError,
   ProjectHomeError,
@@ -17,6 +18,8 @@ import {
   type OwnerActor,
 } from '@nevo/specflow-engine';
 import type { FastifyReply } from 'fastify';
+
+import { toWire } from './wire';
 
 export type WorkflowFailureStatus = 404 | 409 | 422 | 503;
 
@@ -108,7 +111,17 @@ export function workflowFailure(error: unknown): WorkflowFailure | undefined {
   }
 
   if (error instanceof TaskContextUnresolvedError) {
-    return failure(error.code, error.message, { unresolved: [...error.unresolved] });
+    return failure(error.code, error.message, {
+      unresolved: [...error.unresolved],
+      ...(error.awaited.length > 0 ? { awaited: [...error.awaited] } : {}),
+    });
+  }
+
+  // 409: the documents the gate needs are not there yet; the same request can succeed later.
+  if (error instanceof GateUnsatisfiedError) {
+    return failure(error.code, error.message, {
+      gate: { phase: error.phase, step: error.step, gates: toWire(error.gates) },
+    });
   }
 
   if (!(error instanceof Error) || error.name !== 'WorkflowError') {

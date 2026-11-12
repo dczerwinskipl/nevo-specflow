@@ -3,6 +3,7 @@ import { SpecCapabilities } from '@nevo/specflow-contracts/specs';
 import { WORKFLOW_ERROR_CODES } from '@nevo/specflow-contracts/workflow';
 import {
   ProjectControlLockError,
+  GateUnsatisfiedError,
   SpecificationExitBlockedError,
   WORKFLOW_ERROR_CODES as ENGINE_ERROR_CODES,
   WorkflowError,
@@ -298,6 +299,27 @@ describe('workflow action routes', () => {
       details: { blockers },
     });
     await app.close();
+  });
+
+  it('answers an unsatisfied gate with 409 and the gates', () => {
+    const gate = {
+      id: 'findings',
+      type: 'document' as const,
+      label: 'Findings',
+      documentType: 'research',
+      scope: { kind: 'task' as const, specId: SPEC, taskId: 'build' },
+      status: 'unsatisfied' as const,
+      reason: 'no-document' as const,
+    };
+    const failure = workflowFailure(new GateUnsatisfiedError('exit', 'implement', [gate]));
+
+    expect(failure).toMatchObject({
+      status: 409,
+      body: {
+        code: 'WORKFLOW_GATE_UNSATISFIED',
+        details: { gate: { phase: 'exit', step: 'implement', gates: [gate] } },
+      },
+    });
   });
 
   it('maps a refusal of the Engine to its status; a defect is not a refusal', async () => {

@@ -11,6 +11,7 @@ import { finishStep, type FinishStepInput } from './finish';
 import { inspectExecution } from './inspect';
 import type { ExecutionHolds, WorkflowDependencies } from './loaded-execution';
 import { startSpecificationExecution, startTaskExecution } from './start';
+import type { GateDocument, GateScopeRef } from '../gates/evaluate';
 import type { TaskReferences } from './task-references';
 
 /** The execution catalogue of the shipped seed definitions. */
@@ -36,6 +37,12 @@ export async function seedDefinitionFiles(): Promise<Record<string, string>> {
   return files;
 }
 
+/** A typed document a gate can find: in the Specification (`taskId` absent) or a Task. */
+export interface FakeGateDocument extends GateDocument {
+  readonly taskId?: string;
+  readonly type: string;
+}
+
 /**
  * {@link TaskReferences} over sets a test fills: what exists in the Specification, the project
  * documentation and the checkout. The archetype is `feature` unless a test changes it.
@@ -46,6 +53,9 @@ export function fakeReferences(): TaskReferences & {
   readonly projectDocuments: Set<string>;
   readonly paths: Set<string>;
   readonly pendingDocuments: Set<string>;
+  /** The typed documents gates read, in registry order; `gateReads` counts the reads. */
+  readonly gateDocuments: FakeGateDocument[];
+  gateReads: number;
 } {
   const references = {
     archetypeId: 'feature',
@@ -53,6 +63,21 @@ export function fakeReferences(): TaskReferences & {
     projectDocuments: new Set(['architecture.workflow.workflow-kernel']),
     paths: new Set(['packages/specflow-engine/src', 'packages/**/*.ts']),
     pendingDocuments: new Set<string>(),
+    gateDocuments: [] as FakeGateDocument[],
+    gateReads: 0,
+    documentsOfType: (scope: GateScopeRef, type: string) => {
+      references.gateReads += 1;
+
+      return Promise.resolve(
+        references.gateDocuments
+          .filter(
+            (document) =>
+              document.type === type &&
+              document.taskId === (scope.kind === 'task' ? scope.taskId : undefined),
+          )
+          .map(({ taskId: _taskId, type: _type, ...document }) => document),
+      );
+    },
     archetype: () => Promise.resolve(references.archetypeId),
     specificationDocument: (_specId: string, id: string) =>
       Promise.resolve(references.specificationDocuments.has(id)),

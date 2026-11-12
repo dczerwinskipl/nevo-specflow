@@ -1,4 +1,8 @@
-import type { WorkflowDefinitionFile } from '@nevo/specflow-contracts/documents';
+import {
+  WorkflowDefinitionFileSchema,
+  type WorkflowDefinitionFile,
+} from '@nevo/specflow-contracts/documents';
+import { Value } from 'typebox/value';
 import { describe, expect, it } from 'vitest';
 
 import { parseWorkflowFile } from './kinds';
@@ -359,5 +363,90 @@ describe('checkWorkflow', () => {
         ),
       ).toEqual([expect.objectContaining({ location: '/returns/0/step' })]);
     });
+  });
+});
+
+describe('step gates', () => {
+  const gated = (gates: Record<string, unknown>): WorkflowDefinitionFile => {
+    const file = workflowFile();
+    const [first, second] = file.steps;
+
+    return {
+      ...file,
+      steps: [first!, { ...second!, ...gates }],
+    };
+  };
+
+  const documentGate = { type: 'document', documentType: 'research' } as const;
+
+  it('parses defaults: derived ids, scope subject, no sections; a step without gates has none', () => {
+    const workflow = parseWorkflowFile(
+      gated({
+        entryGates: [documentGate],
+        exitGates: [{ ...documentGate, scope: 'specification', when: ['pass'] }, documentGate],
+      }),
+    );
+    const gatedReview = workflow.steps[1] as Extract<WorkflowStep, { kind: 'work' }>;
+
+    expect(gatedReview.annotations.entryGates).toEqual([
+      { id: 'entry-1', ...documentGate, scope: 'subject', requiredSections: [] },
+    ]);
+    expect(gatedReview.annotations.exitGates).toEqual([
+      {
+        id: 'exit-1',
+        ...documentGate,
+        scope: 'specification',
+        requiredSections: [],
+        when: ['pass'],
+      },
+      { id: 'exit-2', ...documentGate, scope: 'subject', requiredSections: [] },
+    ]);
+    expect(checkWorkflow(workflow)).toEqual([]);
+    // Omitted, not empty: a workflow without gates keeps its revision.
+    expect(Object.keys(implement.annotations)).not.toContain('entryGates');
+    expect(Object.keys(implement.annotations)).not.toContain('exitGates');
+  });
+
+  it.each<[string, Record<string, unknown>, string]>([
+    [
+      'a `when` result the step does not declare',
+      { exitGates: [{ ...documentGate, when: ['pass', 'later'] }] },
+      '/steps/1/exitGates/0/when',
+    ],
+    [
+      'a repeated gate id',
+      {
+        entryGates: [{ ...documentGate, id: 'docs' }],
+        exitGates: [{ ...documentGate, id: 'docs' }],
+      },
+      '/steps/1/exitGates/0/id',
+    ],
+  ])('rejects %s', (_name, gates, location) => {
+    expect(checkWorkflow(parseWorkflowFile(gated(gates)))).toEqual([
+      expect.objectContaining({ location }),
+    ]);
+  });
+
+  it('rejects a `when` on a step with one unconditional transition', () => {
+    const file = workflowFile();
+    const [first, second] = file.steps;
+    const workflow = parseWorkflowFile({
+      ...file,
+      steps: [{ ...first!, exitGates: [{ ...documentGate, when: ['pass'] }] } as never, second!],
+    });
+
+    expect(checkWorkflow(workflow)).toEqual([
+      expect.objectContaining({ location: '/steps/0/exitGates/0/when' }),
+    ]);
+  });
+
+  it.each<[string, Record<string, unknown>]>([
+    ['an unknown gate type', { exitGates: [{ type: 'command', documentType: 'research' }] }],
+    ['a `when` on an entry gate', { entryGates: [{ ...documentGate, when: ['pass'] }] }],
+    ['an unknown scope', { exitGates: [{ ...documentGate, scope: 'project' }] }],
+  ])('the file schema rejects %s', (_name, gates) => {
+    expect(Value.Check(WorkflowDefinitionFileSchema, gated(gates))).toBe(false);
+    // The same file without the gates is valid, so the gates are what the schema refuses.
+    expect(Value.Check(WorkflowDefinitionFileSchema, gated({}))).toBe(true);
   });
 });

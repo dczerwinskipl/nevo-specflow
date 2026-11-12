@@ -3,6 +3,7 @@ import { Type, type Static } from 'typebox';
 import { SpecIdSchema, TaskIdSchema } from '../identifiers';
 import {
   ExitBlockerSchema,
+  GateStatusSchema,
   WorkflowActorSchema,
   WorkflowRunPositionSchema,
   WorkflowStepSchema,
@@ -223,6 +224,7 @@ export const WORKFLOW_ERROR_CODES = [
   'WORKFLOW_SPECIFICATION_ENDED',
   'WORKFLOW_SPECIFICATION_BUSY',
   'WORKFLOW_EXIT_BLOCKED',
+  'WORKFLOW_GATE_UNSATISFIED',
   'WORKFLOW_UNAVAILABLE',
   /** The project control lock (as in Close): only `CONTROL_LOCK_BUSY` is worth a retry. */
   'CONTROL_LOCK_BUSY',
@@ -261,6 +263,24 @@ export const WorkflowErrorSchema = Type.Object(
               reason: Type.Union([Type.Literal('not-registered'), Type.Literal('not-found')]),
             }),
           ),
+        ),
+        /**
+         * `WORKFLOW_TASK_CONTEXT_UNRESOLVED`: the required process artifacts (`artifact: true`) that
+         * do not exist yet, apart from the stale references.
+         */
+        awaited: Type.Optional(
+          Type.Array(Type.Object({ index: Type.Integer({ minimum: 0 }), key: Type.String() })),
+        ),
+        /**
+         * `WORKFLOW_GATE_UNSATISFIED`: whether the step's entry gates refused a start or its exit
+         * gates a finish, the step, and every unsatisfied gate.
+         */
+        gate: Type.Optional(
+          Type.Object({
+            phase: Type.Union([Type.Literal('entry'), Type.Literal('exit')]),
+            step: Type.String(),
+            gates: Type.Array(GateStatusSchema),
+          }),
         ),
       }),
     ),

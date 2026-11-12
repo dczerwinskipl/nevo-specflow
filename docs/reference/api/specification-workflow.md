@@ -67,6 +67,18 @@ not be parsed. A step the owner may do has `human: true`; `agent` states whether
 (`unavailable` with a reason such as `provider-not-chosen` or `session-unavailable`) and nothing is
 dispatched.
 
+**Gates.** A step's declared gates
+([workflow kernel](../../architecture/workflow/workflow-kernel.md#gates)) are reported as `GateStatus`
+`{id, type: document, label, documentType, scope, status: satisfied|unsatisfied, documentId?, reason?,
+missingSections?}`; `scope` is the Specification or Task the gate looked in (`{kind, specId, taskId?}`,
+to link its documents) and `reason` is `no-document`, `file-missing` or `sections-missing`. Each
+`actions.finish.transitions[]` entry lists the exit gates that apply to it in `gates`, and is
+`unavailable: gate-unsatisfied` while one does not hold. A startable step (`next`) lists its
+`entryGates`, and unsatisfied ones block the start (`StartBlocker` `gates-unsatisfied`). A Task's
+required context entry marked as a process artifact (`artifact: true`) that does not exist yet is the
+blocker `context-awaited` (expected, not a warning), apart from the stale references of
+`context-unresolved`.
+
 `specification.exit` holds `close` (`allowed`, or `blocked` with blockers) and `abandon` (`allowed`,
 `blocked` with blockers, or `unavailable`: `ended` or `not-configured`). It reports the workflow's view;
 Close still checks Git and the workspace itself.
@@ -104,16 +116,19 @@ A refusal is `{error, code, message, details?}`: `error` repeats `code`, `messag
 Specification id for Specification-wide holds), so a client can link them.
 `details.unresolved` (`WORKFLOW_TASK_CONTEXT_UNRESOLVED`) names each context entry that does not
 resolve as `{index, key, reason}`: its position from 0, its key (`<kind>:<id>` or `path:<path>`) and
-`not-found` or `not-registered`. An unknown Specification is `WORKFLOW_SUBJECT_NOT_FOUND`; a canonical
+`not-found` or `not-registered`; `details.awaited` lists, apart, the required process artifacts that do
+not exist yet as `{index, key}`. `details.gate` (`WORKFLOW_GATE_UNSATISFIED`, 409) is `{phase: entry|exit,
+step, gates}` with every unsatisfied `GateStatus`; it refuses a start or a finish before anything is
+written, and a repeated finish (`replayed`) never evaluates gates again. An unknown Specification is `WORKFLOW_SUBJECT_NOT_FOUND`; a canonical
 source that cannot be used now is `WORKFLOW_UNAVAILABLE`. The same refusals, statuses and body answer
 the [Task commands](task-reads.md#task-commands) (`workflowFailure` in `features/workflow`).
 
-| Status | Codes                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 404    | `WORKFLOW_SUBJECT_NOT_FOUND`                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| 409    | `WORKFLOW_DEFINITION_CHANGED`, `WORKFLOW_ATTEMPT_MISMATCH`, `WORKFLOW_POSITION_INVALID`, `WORKFLOW_EXECUTOR_NOT_ALLOWED`, `WORKFLOW_TASK_BLOCKED`, `WORKFLOW_DEPENDENCY_UNSATISFIED`, `WORKFLOW_SPECIFICATION_NOT_STARTED`, `WORKFLOW_SPECIFICATION_ENDED`, `WORKFLOW_SPECIFICATION_BUSY`, `WORKFLOW_EXIT_BLOCKED`, `WORKFLOW_TASK_BUSY`, `WORKFLOW_STATE_CONFLICT`, `WORKFLOW_TASK_REVISION_CONFLICT`, `WORKFLOW_TASK_EXISTS`, `WORKFLOW_TASK_NOT_REMOVABLE` |
-| 422    | `WORKFLOW_INPUT_INVALID`, `WORKFLOW_RETURN_NOT_ALLOWED`, `WORKFLOW_NOT_CONFIGURED`, `WORKFLOW_DEFINITION_MISSING`, `WORKFLOW_TASK_TYPE_NOT_ALLOWED`, `WORKFLOW_TASK_TYPE_IMMUTABLE`, `WORKFLOW_TASK_CONTEXT_UNRESOLVED`                                                                                                                                                                                                                                       |
-| 503    | `WORKFLOW_STATE_CORRUPT`, `WORKFLOW_UNAVAILABLE`, and the project lock's `CONTROL_LOCK_BUSY` (with `Retry-After`; the only retryable one), `CONTROL_LOCK_CORRUPT`, `CONTROL_LOCK_OWNERSHIP_LOST`, `CONTROL_LOCK_INVALID_HOME`                                                                                                                                                                                                                                 |
+| Status | Codes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 404    | `WORKFLOW_SUBJECT_NOT_FOUND`                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| 409    | `WORKFLOW_DEFINITION_CHANGED`, `WORKFLOW_ATTEMPT_MISMATCH`, `WORKFLOW_POSITION_INVALID`, `WORKFLOW_EXECUTOR_NOT_ALLOWED`, `WORKFLOW_TASK_BLOCKED`, `WORKFLOW_DEPENDENCY_UNSATISFIED`, `WORKFLOW_SPECIFICATION_NOT_STARTED`, `WORKFLOW_SPECIFICATION_ENDED`, `WORKFLOW_SPECIFICATION_BUSY`, `WORKFLOW_EXIT_BLOCKED`, `WORKFLOW_TASK_BUSY`, `WORKFLOW_STATE_CONFLICT`, `WORKFLOW_TASK_REVISION_CONFLICT`, `WORKFLOW_TASK_EXISTS`, `WORKFLOW_TASK_NOT_REMOVABLE`, `WORKFLOW_GATE_UNSATISFIED` |
+| 422    | `WORKFLOW_INPUT_INVALID`, `WORKFLOW_RETURN_NOT_ALLOWED`, `WORKFLOW_NOT_CONFIGURED`, `WORKFLOW_DEFINITION_MISSING`, `WORKFLOW_TASK_TYPE_NOT_ALLOWED`, `WORKFLOW_TASK_TYPE_IMMUTABLE`, `WORKFLOW_TASK_CONTEXT_UNRESOLVED`                                                                                                                                                                                                                                                                    |
+| 503    | `WORKFLOW_STATE_CORRUPT`, `WORKFLOW_UNAVAILABLE`, and the project lock's `CONTROL_LOCK_BUSY` (with `Retry-After`; the only retryable one), `CONTROL_LOCK_CORRUPT`, `CONTROL_LOCK_OWNERSHIP_LOST`, `CONTROL_LOCK_INVALID_HOME`                                                                                                                                                                                                                                                              |
 
 `401`, `403` and `400` (request validation) are the shared Runtime answers. A Specification Close that
 the workflow refuses is `409 CLOSE_BLOCKED` with the same `blockers` (see

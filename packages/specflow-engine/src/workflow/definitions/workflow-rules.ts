@@ -1,6 +1,6 @@
 import type { DefinitionIssue } from '../../specs/definitions/kind-registry';
 import { checkDefinition, findStep } from '@nevo/workflow';
-import type { WorkflowDefinition, WorkflowStep } from './model';
+import type { EntryGate, ExitGate, WorkStep, WorkflowDefinition, WorkflowStep } from './model';
 
 /**
  * Whole-workflow rules the per-file schema cannot express. A workflow that breaks one never loads,
@@ -132,6 +132,60 @@ function stepIssues(
   if (step.annotations.produces === 'tasks' && subject !== 'specification') {
     issues.push(invalid(`${at}/produces`, 'Only a Specification workflow produces Tasks.'));
   }
+
+  issues.push(...gateIssues(step, at));
+
+  return issues;
+}
+
+/** The gates of a step with their location in it (`/entryGates/<n>` or `/exitGates/<n>`). */
+export function stepGates(
+  step: WorkflowStep,
+): { readonly gate: EntryGate | ExitGate; readonly location: string }[] {
+  if (step.kind !== 'work') {
+    return [];
+  }
+
+  return [
+    ...(step.annotations.entryGates ?? []).map((gate, index) => ({
+      gate,
+      location: `/entryGates/${String(index)}`,
+    })),
+    ...(step.annotations.exitGates ?? []).map((gate, index) => ({
+      gate,
+      location: `/exitGates/${String(index)}`,
+    })),
+  ];
+}
+
+/**
+ * Gate ids are unique among a step's gates (entry and exit together), and an exit gate's `when`
+ * names results the step's transitions declare (a step with one unconditional transition has none).
+ */
+function gateIssues(step: WorkStep, at: string): DefinitionIssue[] {
+  const issues: DefinitionIssue[] = [];
+  const ids = new Set<string>();
+  for (const { gate, location } of stepGates(step)) {
+    if (ids.has(gate.id)) {
+      issues.push(invalid(`${at}${location}/id`, `The gate id "${gate.id}" is repeated.`));
+    }
+
+    ids.add(gate.id);
+  }
+
+  const results = new Set(step.transitions.flatMap((transition) => transition.result ?? []));
+  (step.annotations.exitGates ?? []).forEach((gate, index) => {
+    for (const result of gate.when ?? []) {
+      if (!results.has(result)) {
+        issues.push(
+          invalid(
+            `${at}/exitGates/${String(index)}/when`,
+            `The result "${result}" is not a result of the step's transitions.`,
+          ),
+        );
+      }
+    }
+  });
 
   return issues;
 }

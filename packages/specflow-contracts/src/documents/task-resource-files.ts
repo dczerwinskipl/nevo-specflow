@@ -114,28 +114,38 @@ const contextCommon = () => ({
   note: Type.Optional(text(TASK_CONTEXT_NOTE_MAX_LENGTH)),
 });
 
+/**
+ * A reference that may name something not there yet: a process artifact another step or Task
+ * produces. While it is missing the entry is `awaited` (expected, not stale), never refused on create
+ * or edit; a required one still blocks the start of a step until it exists. `instructions` have none.
+ */
+const referenceCommon = () => ({
+  ...contextCommon(),
+  artifact: Type.Optional(Type.Boolean()),
+});
+
 /** One entry of the typed, ordered context list of a Task. */
 export const TaskContextEntrySchema = Type.Union([
   closed({
     kind: Type.Literal('task-document'),
     id: Type.String({ pattern: DOCUMENT_ID_PATTERN }),
-    ...contextCommon(),
+    ...referenceCommon(),
   }),
   closed({
     kind: Type.Literal('specification-document'),
     id: Type.String({ pattern: DOCUMENT_ID_PATTERN }),
-    ...contextCommon(),
+    ...referenceCommon(),
   }),
   closed({
     kind: Type.Literal('project-document'),
     id: Type.String({ pattern: PROJECT_DOCUMENT_ID_PATTERN }),
-    ...contextCommon(),
+    ...referenceCommon(),
   }),
   /** A file, folder or glob relative to the repository root. */
   closed({
     kind: Type.Literal('path'),
     path: text(DOCUMENT_PATH_MAX_LENGTH),
-    ...contextCommon(),
+    ...referenceCommon(),
   }),
   closed({
     kind: Type.Literal('instructions'),

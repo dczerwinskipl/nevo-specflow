@@ -3,6 +3,8 @@ import { ANY_TASK_TYPE } from '@nevo/specflow-contracts/documents';
 import { decide, findStep, newRun } from '@nevo/workflow';
 import { resolveSpecificationExecution } from '../definitions/catalogue';
 import { WorkflowError } from '../errors';
+import { entryGatesOf } from '../gates/evaluate';
+import { assertGatesSatisfied } from '../gates/read';
 import { resolveTaskType, taskReadiness, unsatisfiableDependencies } from '../tasks/tasks';
 import type {
   ExecutionTask,
@@ -80,13 +82,25 @@ async function startSubject(
       assertTaskReady(dependencies, snapshot, loaded.task);
     }
 
-    // A required context entry that does not resolve blocks every start of a step (not a resume).
+    // A required context entry that does not resolve blocks every start of a step (not a resume);
+    // an awaited process artifact is listed apart from the stale references.
     assertContextResolved(
       loaded.task.taskId,
       (await unresolvedContext(dependencies, subject.specId, loaded.task)).filter(
         (issue) => issue.entry.required,
       ),
-      'The next step cannot start until they are replaced or removed.',
+      'The next step cannot start until they exist, or are replaced or removed.',
+    );
+  }
+
+  // The declared entry gates of the step, after the Task's own checks (a resume is not a start).
+  if (!intent.resumed) {
+    await assertGatesSatisfied(
+      dependencies.references,
+      subject,
+      'entry',
+      step.id,
+      entryGatesOf(step),
     );
   }
 

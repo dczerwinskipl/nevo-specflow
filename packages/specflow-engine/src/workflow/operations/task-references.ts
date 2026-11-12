@@ -1,12 +1,14 @@
 import type { TaskContextEntry } from '../../tasks/resource/model';
 import type { TaskContextLookup } from '../../tasks/resource/validate';
+import type { GateDocuments } from '../gates/read';
 
 /**
  * What the Task operations look up outside the execution store, one question at a time and without
  * network access. Production (`openWorkflow`) reads the Specification's manifest and its checkout;
- * the project documentation index is supplied by the caller that has it (the Runtime).
+ * the project documentation index is supplied by the caller that has it (the Runtime). The step
+ * gates read the documents of a type the Specification or a Task registers (`GateDocuments`).
  */
-export interface TaskReferences {
+export interface TaskReferences extends GateDocuments {
   /**
    * The Specification archetype of the manifest: its execution binding's `taskTypes` is the live
    * Task Type policy while the Specification has no run.

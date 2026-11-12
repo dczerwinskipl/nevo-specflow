@@ -10,6 +10,7 @@ import {
   loadDocumentContainer,
   loadSpecification,
   locateDocument,
+  type DocumentContainerRef,
   type LoadedDocumentContainer,
 } from './loaded-specification';
 import { resolveReadOptions, type DocumentReadOptions } from './read-options';
@@ -47,6 +48,58 @@ export async function readTaskDocument(
   );
 
   return readDocumentOfLoaded(loaded, documentId, options);
+}
+
+/** One registered document of a type, as a workflow gate reads it. */
+export interface TypedDocumentReading {
+  readonly id: string;
+  /** Whether the registered document has a file. */
+  readonly present: boolean;
+  /** The text of a text file within the JSON read limit; absent otherwise. */
+  readonly text?: string;
+}
+
+/**
+ * The documents of a type the Specification or one of its Tasks registers, in registry order, with
+ * each file's text (the workflow gates, `workflow/gates`). Read-only, no lock, no Git; a registered
+ * document without a file is `present: false`, a binary or oversized one has no `text`.
+ */
+export async function readRegisteredDocumentsOfType(
+  engine: SpecFlowEngine,
+  ref: DocumentContainerRef,
+  documentType: string,
+  options: DocumentReadOptions = {},
+): Promise<TypedDocumentReading[]> {
+  const loaded = await loadDocumentContainer(engine, ref, resolveReadOptions(options).fs);
+  const readings: TypedDocumentReading[] = [];
+  for (const entry of loaded.manifest.documents) {
+    if (entry.type !== documentType) {
+      continue;
+    }
+
+    try {
+      const document = await readDocumentOfLoaded(loaded, entry.id, options);
+      readings.push({
+        id: entry.id,
+        present: true,
+        ...(document.content !== undefined ? { text: document.content } : {}),
+      });
+    } catch (error) {
+      if (!(error instanceof DocumentError)) {
+        throw error;
+      }
+
+      if (error.code === 'DOCUMENT_FILE_MISSING') {
+        readings.push({ id: entry.id, present: false });
+      } else if (error.code === 'DOCUMENT_TOO_LARGE') {
+        readings.push({ id: entry.id, present: true });
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  return readings;
 }
 
 /** One document of an already loaded container. */

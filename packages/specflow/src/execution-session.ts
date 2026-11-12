@@ -1,11 +1,17 @@
 import {
+  GateUnsatisfiedError,
+  TaskContextUnresolvedError,
   openWorkflow,
+  type AwaitedContextEntry,
   type CloseBlocker,
+  type GateStatus,
   type SpecFlowEngine,
+  type UnresolvedContextEntry,
   type WorkflowDependencies,
 } from '@nevo/specflow-engine';
 
 import { engineAt } from './engine-at';
+import { gateLine } from './workflow/present';
 import { reportingRefusals } from './documents/report';
 import { ReportedFailure } from './exit-code';
 import { projectDocumentLookup } from './project-document-lookup';
@@ -37,6 +43,15 @@ interface CodedError {
   readonly message: string;
   /** `WORKFLOW_EXIT_BLOCKED`: what holds the Specification. */
   readonly blockers?: readonly CloseBlocker[];
+  /** `WORKFLOW_GATE_UNSATISFIED`: the phase, the step and the unsatisfied gates. */
+  readonly gate?: {
+    readonly phase: 'entry' | 'exit';
+    readonly step: string;
+    readonly gates: readonly GateStatus[];
+  };
+  /** `WORKFLOW_TASK_CONTEXT_UNRESOLVED`: stale references and, apart, awaited process artifacts. */
+  readonly unresolved?: readonly UnresolvedContextEntry[];
+  readonly awaited?: readonly AwaitedContextEntry[];
 }
 
 /**
@@ -51,7 +66,17 @@ function workflowRefusal(error: unknown): CodedError | undefined {
   ) {
     const { code, blockers } = error as unknown as CodedError;
 
-    return { code, message: error.message, ...(Array.isArray(blockers) ? { blockers } : {}) };
+    return {
+      code,
+      message: error.message,
+      ...(Array.isArray(blockers) ? { blockers } : {}),
+      ...(error instanceof GateUnsatisfiedError
+        ? { gate: { phase: error.phase, step: error.step, gates: error.gates } }
+        : {}),
+      ...(error instanceof TaskContextUnresolvedError
+        ? { unresolved: error.unresolved, awaited: error.awaited }
+        : {}),
+    };
   }
 
   return undefined;
@@ -72,6 +97,8 @@ const HINTS: Readonly<Record<string, string>> = {
     'The Specification workflow has ended already (a completed one is not abandoned; an abandon is final).',
   WORKFLOW_EXECUTOR_NOT_ALLOWED:
     'The step is not allowed for the owner, or an agent attempt is still active.',
+  WORKFLOW_GATE_UNSATISFIED:
+    'Create or complete the documents the gates name (see "nevo-specflow workflow actions"), then repeat.',
 };
 
 /**
@@ -101,6 +128,18 @@ export async function reportingWorkflowRefusals<T>(
       );
     }
 
+    for (const gate of refusal.gate?.gates ?? []) {
+      output.stderr(`  ${gateLine(gate)}`);
+    }
+
+    for (const entry of refusal.unresolved ?? []) {
+      output.stderr(`  unresolved context ${String(entry.index)}: ${entry.key} (${entry.reason})`);
+    }
+
+    for (const entry of refusal.awaited ?? []) {
+      output.stderr(`  awaited artifact ${String(entry.index)}: ${entry.key}`);
+    }
+
     if (hint !== undefined) {
       output.stderr(`Hint: ${hint}`);
     }
@@ -112,6 +151,9 @@ export async function reportingWorkflowRefusals<T>(
             code: refusal.code,
             message: refusal.message,
             ...(refusal.blockers ? { blockers: refusal.blockers } : {}),
+            ...(refusal.gate ? { gate: refusal.gate } : {}),
+            ...(refusal.unresolved ? { unresolved: refusal.unresolved } : {}),
+            ...(refusal.awaited && refusal.awaited.length > 0 ? { awaited: refusal.awaited } : {}),
             ...(hint ? { hint } : {}),
           },
         }),

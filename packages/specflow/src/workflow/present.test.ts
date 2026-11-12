@@ -63,6 +63,48 @@ describe('actionLines', () => {
       'Action: finish "review" attempt 2 --result fail (changes-requested, feedback required)',
     );
   });
+
+  it('lists the gates of a finish transition under it', () => {
+    const projection = {
+      subject,
+      position: {
+        kind: 'active',
+        step: { id: 'implement' },
+        attempt: { number: 1, startedAt: 'now', actor: { class: 'human', details: {} } },
+      },
+      actions: {
+        finish: {
+          step: 'implement',
+          attempt: 1,
+          transitions: [
+            {
+              id: 'implemented',
+              feedback: 'optional',
+              unavailable: 'gate-unsatisfied',
+              gates: [
+                {
+                  id: 'findings',
+                  type: 'document',
+                  label: 'Findings written',
+                  documentType: 'research',
+                  scope: { kind: 'task', specId: 'spec', taskId: 'build' },
+                  status: 'unsatisfied',
+                  reason: 'sections-missing',
+                  documentId: 'notes',
+                  missingSections: ['Findings'],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    } as unknown as ActionProjection;
+
+    expect(actionLines(projection).slice(-2)).toEqual([
+      'Action: finish "implement" attempt 1 (implemented, unavailable: gate-unsatisfied)',
+      '  [ ] gate findings: Findings written, research in Task build (document notes lacks: Findings)',
+    ]);
+  });
 });
 
 describe('finishLines', () => {

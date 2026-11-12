@@ -54,7 +54,9 @@ import {
   type StepDescription,
   type TransitionDescription,
 } from './step-context';
-import { effectiveTaskTypesOf, unresolvedContext } from './task-policy';
+import { effectiveTaskTypesOf, isAwaited, unresolvedContext } from './task-policy';
+import { entryGatesOf, exitGatesFor, type GateStatus } from '../gates/evaluate';
+import { evaluateGates, type GateDocuments } from '../gates/read';
 
 /**
  * The read-only action projection (E4a): where a Specification or a Task stands and what the owner
@@ -115,6 +117,8 @@ export interface StartableStep {
   /** A person may do the step (the owner's start). */
   readonly human: boolean;
   readonly agent: AgentOption;
+  /** The step's entry gates with their status now; absent when it declares none. */
+  readonly entryGates?: readonly GateStatus[];
 }
 
 /** Why the next step of a subject cannot start. */
@@ -150,7 +154,20 @@ export type StartBlocker =
         readonly kind: TaskContextEntry['kind'];
         readonly reason: TaskContextIssue['reason'];
       }[];
-    };
+    }
+  /**
+   * A required process artifact (`artifact: true`) does not exist yet: expected, not stale. The start
+   * is refused like an unresolved entry (`WORKFLOW_TASK_CONTEXT_UNRESOLVED`, `awaited`).
+   */
+  | {
+      readonly kind: 'context-awaited';
+      readonly entries: readonly {
+        readonly index: number;
+        readonly kind: Exclude<TaskContextEntry['kind'], 'instructions'>;
+      }[];
+    }
+  /** An entry gate of the step does not hold (`WORKFLOW_GATE_UNSATISFIED`); the unsatisfied ones. */
+  | { readonly kind: 'gates-unsatisfied'; readonly gates: readonly GateStatus[] };
 
 export type ActionPosition =
   | { readonly kind: 'not-started'; readonly preview: PinPreview; readonly next: StartableStep }
@@ -204,9 +221,12 @@ export interface WorkflowActions {
     readonly transitions: readonly (TransitionDescription & {
       /**
        * Taking it now is refused: an escalating Task transition writes the Task's `task.yaml`
-       * while one of its documents has a pending change (`WORKFLOW_TASK_BUSY`).
+       * while one of its documents has a pending change (`WORKFLOW_TASK_BUSY`), or one of its exit
+       * gates does not hold (`WORKFLOW_GATE_UNSATISFIED`).
        */
-      readonly unavailable?: 'task-document-change';
+      readonly unavailable?: 'task-document-change' | 'gate-unsatisfied';
+      /** The exit gates that apply to it (`when`), with their status now; absent when none do. */
+      readonly gates?: readonly GateStatus[];
     })[];
   };
   /** Declared returns to steps the run reached. */
@@ -378,25 +398,62 @@ function startable(step: WorkflowStep, decision: ContinuationDecision): Startabl
   };
 }
 
+/** Where the gates of a subject's steps are evaluated (read-only). */
+interface GateReading {
+  readonly subject: WorkflowSubject;
+  readonly documents: GateDocuments;
+}
+
+/** The startable step with the status of its entry gates, when it declares any. */
+async function withEntryGates(
+  gates: GateReading,
+  step: WorkflowStep,
+  next: StartableStep,
+): Promise<StartableStep> {
+  const declared = step.kind === 'work' ? entryGatesOf(step) : [];
+  if (declared.length === 0) {
+    return next;
+  }
+
+  return { ...next, entryGates: await evaluateGates(gates.documents, gates.subject, declared) };
+}
+
+/** The unsatisfied entry gates of the next step, as a start blocker. */
+function entryGateBlockers(next: StartableStep): StartBlocker[] {
+  const unsatisfied = (next.entryGates ?? []).filter((gate) => gate.status === 'unsatisfied');
+
+  return unsatisfied.length > 0 ? [{ kind: 'gates-unsatisfied', gates: unsatisfied }] : [];
+}
+
 /** The entry step of a run that does not exist yet: an agent would start it in a fresh Session. */
-function firstStepOf(definition: WorkflowDefinition, catalogue: ExecutionCatalogue): StartableStep {
+function firstStepOf(
+  definition: WorkflowDefinition,
+  catalogue: ExecutionCatalogue,
+  gates: GateReading,
+): Promise<StartableStep> {
   const entry = stepOf(definition, definition.entryStep);
 
-  return startable(
+  return withEntryGates(
+    gates,
     entry,
-    resolveContinuation({ next: entry, archetypes: (id) => catalogue.archetype(id) }),
+    startable(
+      entry,
+      resolveContinuation({ next: entry, archetypes: (id) => catalogue.archetype(id) }),
+    ),
   );
 }
 
 /** A first start: `not-started` with its preview, or `blocked` with the preview. */
-function firstStart(
+async function firstStart(
   definition: WorkflowDefinition,
   catalogue: ExecutionCatalogue,
-  blockers: readonly StartBlocker[],
+  gates: GateReading,
+  checks: readonly StartBlocker[],
   expectedRevision: boolean,
-): Pick<ActionProjection, 'workflow' | 'position' | 'actions'> {
+): Promise<Pick<ActionProjection, 'workflow' | 'position' | 'actions'>> {
   const preview = previewOf(definition);
-  const next = firstStepOf(definition, catalogue);
+  const next = await firstStepOf(definition, catalogue, gates);
+  const blockers = [...checks, ...entryGateBlockers(next)];
 
   return {
     workflow: summaryOf(definition),
@@ -428,6 +485,45 @@ interface RunInput {
   /** A Task with a pending document change (D03): a finish that writes its folder is refused. */
   readonly documentChangePending: boolean;
   readonly tasks: ExecutionTasks;
+  readonly gates: GateReading;
+}
+
+/**
+ * The finish transitions of an active work step, each with the exit gates that apply to it. Every
+ * gate is read once, whichever transitions it applies to.
+ */
+async function finishTransitions(
+  input: RunInput,
+  step: Extract<WorkflowStep, { kind: 'work' }>,
+): Promise<NonNullable<WorkflowActions['finish']>['transitions']> {
+  const statuses = new Map(
+    (
+      await evaluateGates(
+        input.gates.documents,
+        input.gates.subject,
+        step.annotations.exitGates ?? [],
+      )
+    ).map((status) => [status.id, status] as const),
+  );
+
+  return describeTransitions(step).map((transition, index) => {
+    const declared = step.transitions[index];
+    const gates = exitGatesFor(step, transition.result).flatMap(
+      (gate) => statuses.get(gate.id) ?? [],
+    );
+    const unavailable =
+      input.documentChangePending && declared?.annotations.escalate
+        ? ('task-document-change' as const)
+        : gates.some((gate) => gate.status === 'unsatisfied')
+          ? ('gate-unsatisfied' as const)
+          : undefined;
+
+    return {
+      ...transition,
+      ...(unavailable ? { unavailable } : {}),
+      ...(gates.length > 0 ? { gates } : {}),
+    };
+  });
 }
 
 /** The position and the workflow actions of a run whose pinned definition is loaded. */
@@ -450,11 +546,13 @@ async function runProjection(
   }
 
   if (position.state === 'ready') {
-    const next = startable(
-      stepOf(definition, position.step),
-      continuationOf(run, definition, input.catalogue),
+    const ready = stepOf(definition, position.step);
+    const next = await withEntryGates(
+      input.gates,
+      ready,
+      startable(ready, continuationOf(run, definition, input.catalogue)),
     );
-    const blockers = await input.startBlockers();
+    const blockers = [...(await input.startBlockers()), ...entryGateBlockers(next)];
 
     return {
       ...common,
@@ -517,11 +615,7 @@ async function runProjection(
             finish: {
               step: step.id,
               attempt: attempt.attempt,
-              transitions: describeTransitions(step).map((transition, index) =>
-                input.documentChangePending && step.transitions[index]?.annotations.escalate
-                  ? { ...transition, unavailable: 'task-document-change' as const }
-                  : transition,
-              ),
+              transitions: await finishTransitions(input, step),
             },
           }
         : {}),
@@ -556,6 +650,7 @@ async function specificationProjection(
       ? { exit: await dependencies.specificationExit.exitActions(snapshot) }
       : {}),
   };
+  const gates: GateReading = { subject, documents: dependencies.references };
   const record = snapshot.specification?.value;
   if (!record) {
     const resolved = resolveSpecificationExecution(
@@ -574,7 +669,11 @@ async function specificationProjection(
       };
     }
 
-    return { subject, ...firstStart(resolved.workflow, catalogue, [], false), specification };
+    return {
+      subject,
+      ...(await firstStart(resolved.workflow, catalogue, gates, [], false)),
+      specification,
+    };
   }
 
   const definition = pinnedDefinitionIfUnchanged(catalogue, record.run);
@@ -594,6 +693,7 @@ async function specificationProjection(
       // effects); the store refuses such a finish then, which no projection can tell beforehand.
       documentChangePending: false,
       tasks: executionTasks(catalogue, snapshot),
+      gates,
     })),
     specification,
   };
@@ -660,21 +760,31 @@ export async function taskProjection(
     const issues = (await unresolvedContext(dependencies, subject.specId, task)).filter(
       (issue) => issue.entry.required,
     );
+    const stale = issues.filter((issue) => !isAwaited(issue));
+    const awaited = issues.flatMap((issue) =>
+      isAwaited(issue) && issue.entry.kind !== 'instructions'
+        ? [{ index: issue.index, kind: issue.entry.kind }]
+        : [],
+    );
 
-    return issues.length > 0
-      ? [
-          {
-            kind: 'context-unresolved',
-            entries: issues.map((issue) => ({
-              index: issue.index,
-              kind: issue.entry.kind,
-              reason: issue.reason,
-            })),
-          },
-        ]
-      : [];
+    return [
+      ...(stale.length > 0
+        ? [
+            {
+              kind: 'context-unresolved' as const,
+              entries: stale.map((issue) => ({
+                index: issue.index,
+                kind: issue.entry.kind,
+                reason: issue.reason,
+              })),
+            },
+          ]
+        : []),
+      ...(awaited.length > 0 ? [{ kind: 'context-awaited' as const, entries: awaited }] : []),
+    ];
   };
 
+  const gates: GateReading = { subject, documents: dependencies.references };
   const run = task.run;
   if (!run) {
     let workflow: WorkflowDefinition | undefined;
@@ -695,7 +805,11 @@ export async function taskProjection(
       return { subject, position: { kind: 'blocked', blockers }, actions: {}, task: lifecycle };
     }
 
-    return { subject, ...firstStart(workflow, catalogue, blockers, true), task: lifecycle };
+    return {
+      subject,
+      ...(await firstStart(workflow, catalogue, gates, blockers, true)),
+      task: lifecycle,
+    };
   }
 
   const definition = pinnedDefinitionIfUnchanged(catalogue, run);
@@ -713,6 +827,7 @@ export async function taskProjection(
       returnable: task.status === 'ready',
       documentChangePending: pending,
       tasks,
+      gates,
     })),
     task: lifecycle,
   };

@@ -25,7 +25,12 @@ import type { ExecutionChange, ExecutionSnapshot } from '../state/store';
 import { resolveTaskType } from '../tasks/tasks';
 import { assertOwner } from './actors';
 import { executionTasks, loadTask, type WorkflowDependencies } from './loaded-execution';
-import { assertContextResolved, effectiveTaskTypesOf, unresolvedContext } from './task-policy';
+import {
+  assertContextResolved,
+  effectiveTaskTypesOf,
+  staleReferences,
+  unresolvedContext,
+} from './task-policy';
 
 /**
  * The owner's Task use cases (D04): create, edit and remove a Task as a resource of its
@@ -34,9 +39,10 @@ import { assertContextResolved, effectiveTaskTypesOf, unresolvedContext } from '
  * here is a `draft` with the origin `{kind: manual, actorId}` and no run record: its first start
  * (`startTaskExecution`) validates the live task type and workflow and pins it.
  *
- * Every context reference must resolve when it is added (`WORKFLOW_TASK_CONTEXT_UNRESOLVED`); a
- * reference that stops resolving later is reported as stale and, when required, blocks the next
- * start. An edit and a removal name the manifest revision they were planned against
+ * Every context reference must resolve when it is added (`WORKFLOW_TASK_CONTEXT_UNRESOLVED`), except
+ * a process artifact (`artifact: true`), which is awaited while it is missing; a reference that stops
+ * resolving later is reported as stale and, when required, blocks the next start (as does a
+ * required awaited artifact). An edit and a removal name the manifest revision they were planned against
  * (`WORKFLOW_TASK_REVISION_CONFLICT` otherwise), as the inspection shows it.
  */
 
@@ -244,7 +250,7 @@ export function createTask(
     assertDependencies(dependencies, snapshot, manifest.id, manifest.dependsOn, []);
     assertContextResolved(
       manifest.id,
-      await unresolvedContext(dependencies, input.specId, manifest),
+      staleReferences(await unresolvedContext(dependencies, input.specId, manifest)),
       'Replace or remove them.',
     );
 
@@ -326,11 +332,13 @@ export function editTask(
     const before = new Set((previous.context ?? []).map(keptEntryKey));
     assertContextResolved(
       manifest.id,
-      await unresolvedContext(
-        dependencies,
-        input.specId,
-        manifest,
-        (manifest.context ?? []).filter((entry) => !before.has(keptEntryKey(entry))),
+      staleReferences(
+        await unresolvedContext(
+          dependencies,
+          input.specId,
+          manifest,
+          (manifest.context ?? []).filter((entry) => !before.has(keptEntryKey(entry))),
+        ),
       ),
       'Replace or remove them.',
     );
@@ -345,7 +353,9 @@ export function editTask(
 }
 
 /** An entry is kept as it was when its reference and its `required` flag are unchanged. */
-const keptEntryKey = (entry: TaskContextEntry) => `${contextKey(entry)}|${String(entry.required)}`;
+/** An entry whose reference, `required` or `artifact` changed is a changed entry of an edit. */
+const keptEntryKey = (entry: TaskContextEntry) =>
+  `${contextKey(entry)}|${String(entry.required)}|${String(entry.kind !== 'instructions' && entry.artifact === true)}`;
 
 const sameList = (left: readonly string[], right: readonly string[]) =>
   left.length === right.length && left.every((value, index) => value === right[index]);

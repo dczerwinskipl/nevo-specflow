@@ -207,6 +207,9 @@
                 "type": "string",
                 "minLength": 1,
                 "maxLength": 500
+              },
+              "artifact": {
+                "type": "boolean"
               }
             },
             "additionalProperties": false
@@ -234,6 +237,9 @@
                 "type": "string",
                 "minLength": 1,
                 "maxLength": 500
+              },
+              "artifact": {
+                "type": "boolean"
               }
             },
             "additionalProperties": false
@@ -261,6 +267,9 @@
                 "type": "string",
                 "minLength": 1,
                 "maxLength": 500
+              },
+              "artifact": {
+                "type": "boolean"
               }
             },
             "additionalProperties": false
@@ -289,6 +298,9 @@
                 "type": "string",
                 "minLength": 1,
                 "maxLength": 500
+              },
+              "artifact": {
+                "type": "boolean"
               }
             },
             "additionalProperties": false

@@ -53,9 +53,9 @@ mutation is an explicit action with the actor recorded as the person.
    sentence says why (for example "Approve the task to make it ready to start."). One exception:
    **Put on hold** during an active attempt stays visible, disabled, with its reason ("finish or
    return the current step first").
-3. **Two action families, two places.** Task lifecycle (Approve, Resume, Edit details, Put on hold,
-   Cancel, Remove) lives in the Task header: at most one primary (Approve for a draft, Resume when
-   on hold), the rest in overflow. Workflow actions live only in the step panel.
+3. **One primary action, in the Now block.** The single primary action available now (Approve,
+   Resume, Start, Finish step, Close specification) sits in the Now block; secondary lifecycle
+   actions (Edit details, Put on hold, Cancel, Remove) stay in the header overflow.
 4. **Task Type is immutable.** It is chosen at creation and never edited; a Task whose type is no
    longer allowed is removed (or cancelled) and recreated.
 5. **State is never colour alone.** Every toned state line carries an icon or words; refusals and
@@ -78,7 +78,8 @@ Order (extends [Specification Overview](../../../product/specflow/ui/specificati
 summary → Requires attention → Continue session → **Workflow** → Tasks → context sections. With
 a bound Specification workflow, the Workflow section takes the preparation block's place.
 
-- **Tasks section.** Header keeps the progress count and adds **New task** (secondary, always
+- **Tasks section.** The progress count reconciles with the groups: `1 of 6 done · 1 cancelled`
+  (cancelled Tasks are not in the denominator but are named). Header keeps the progress count and adds **New task** (secondary, always
   when creation is allowed). The empty state is unchanged (inline, no action) with copy saying
   Tasks can be created before the workflow starts. Groups follow what the owner must do: **Needs
   approval** (drafts), **In progress**, **Ready to start**, **Waiting** (dependencies), **Done**,
@@ -91,22 +92,30 @@ a bound Specification workflow, the Workflow section takes the preparation block
 - **Activity history** (existing Secondary) carries the Specification step attempts. Its header
   toggle (clock icon) is the history entry at every width; on Narrow it opens a pushed page.
 
-## Workflow step panel (Specification and Task)
+## Now block (Specification and Task)
 
-`WORKFLOW` section, count = workflow title and revision. Reading order:
+The top of the Task page and of the Specification Overview, directly under the summary, is the
+**Now** block: the one prominent region (accent block, section label "Now"). Everything below it
+(Tasks, Documents, Context, Depends on) supports it with ordinary section weight. All of it comes
+from the projection. Reading order:
 
-1. **Position**: the step id (primary) or Not started / Completed; one quiet facts line (attempt,
-   since, by whom; or first step; or how it continues).
-2. **Semantic line** when it changes the next action: waiting (`Waiting for 5 of 6 tasks`,
-   `Waiting for 1 dependency`) with a link to the section that lists them (**See Tasks**, **See
-   Depends on**). The blocking Tasks are not repeated in the panel.
-3. **Latest hand-off**: `Last: review · attempt 1 · Changes requested · Dominik, 11:40` plus its
-   feedback. This is how review-failed → rework reads on the new `implement` attempt.
-4. **Action row**: Start (`Start workflow` / `Start <first step>` / `Start step`), **Finish
-   step** (primary while active), **Return to earlier step** (secondary).
+1. **Subject status** when it changes what can happen (draft "needs approval before it can start",
+   on hold with its reason; for an abandoned Specification its reason).
+2. **Position**: the step id (primary) or Not started / Completed / Abandoned, then one quiet line
+   (attempt, since, by whom; or first step; or how it continues) ending with the workflow and
+   revision.
+3. **Blocking reasons**, one line each with a link to where it is fixed: waiting (`Waiting for 5 of
+6 tasks · See Tasks`, `Waiting for 1 dependency · See Depends on`, never repeating the list);
+   missing required context (`1 required context entry is missing: Old login flow … See Context`).
+4. **Latest hand-off**: `Last: review · attempt 1 · Changes requested · Dominik, 11:40` plus its
+   feedback (how review-failed → rework reads on the new attempt).
+5. **The one primary action**: Approve (draft), Resume (on hold), Start `<first step>`, Finish step,
+   or Close specification (terminal); Return to earlier step is its secondary. A lifecycle primary
+   (Approve, Resume) replaces the workflow actions and is not repeated in the header, whose overflow
+   keeps the other lifecycle actions.
 
-Full attempt history stays in the existing Secondary (Task history / Activity history), opened by
-the header history toggle at every width. A terminal position is **Completed** or **Abandoned**.
+Full attempt history stays in the existing Secondary (Task history / Activity history). It is
+**closed by default** and opened by the header history toggle (no half-empty side band). A terminal position is **Completed** or **Abandoned**.
 
 - **Finish dialog.** Result = radio list of the projection's transitions, each with its target
   ("Goes to implement · feedback required", "Ends the workflow"). Feedback is required when the
@@ -127,6 +136,9 @@ the header history toggle at every width. A terminal position is **Completed** o
 
   Later steps start without confirmation.
 
+- **Approve with missing required context** stays allowed (a dependency may produce it) and
+  confirms first: an attention alert names the entry and says the task cannot start until it is
+  fixed. Without such a warning Approve acts directly.
 - **wait-for-tasks** has no Finish; it settles by itself. Only Return is offered when allowed.
 
 ## Full Task (`/specs/:specId/tasks/:taskId`)
@@ -157,6 +169,9 @@ Editing a Task is more than `task.md`: its other registered documents, the conte
   call to action ("Add dependency"); once rows exist only **+** remains. Primary and consequential
   actions keep text labels (Approve, Start, Finish step, Return to earlier step, Abandon
   specification, Close specification).
+- **Narrow:** the Now block comes first; Documents, Context and Depends on are disclosures (title
+  and count as the trigger, the **+** beside it), collapsed by default unless they hold a blocker
+  (Context with a missing required entry opens).
 - **Placement (decided):** structured facts are edited where they are read, in the Task page
   sections (no separate edit mode); documents open in the
   **Secondary** editor (variant A, unchanged), several as tabs on the Documents tab rail. Checked
@@ -200,8 +215,8 @@ Editing a Task is more than `task.md`: its other registered documents, the conte
 
 ## Close
 
-**Close specification** is in the Overview header overflow and becomes the header's primary
-action once the workflow is terminal (completed or abandoned). It opens the Engine Close
+**Close specification** is in the Overview header overflow; once the workflow is terminal
+(completed or abandoned) it is also the Now block's one action. It opens the Engine Close
 preflight (D07):
 
 - **Blocked**: the description is one sentence saying why ("Single sign-on cannot close yet: its
@@ -209,9 +224,9 @@ preflight (D07):
   in a fixed order: **Workflow** → **Unfinished tasks** → **Pending writes**. Each has a heading
   with its count, one explanation sentence, its items as links (linked id and title, then the
   state; at most five, then "and N more") and its resolving action where one exists (See workflow,
-  Go to Tasks). No text repeats between the description, explanations and rows. Footer: primary
-  **Dismiss** (initial focus), secondary **Abandon instead**, which opens the Abandon dialog. The
-  Abandon-blocked dialog uses the same layout (Pending writes → Repository).
+  Go to Tasks). No text repeats. Below the groups a quiet line: "Not going to finish this work?
+  **Abandon instead**" (text link to the Abandon dialog, which keeps its reason and confirmation).
+  Footer: only **Dismiss** (primary, initial focus).
 - **Ready**: success summary and the cancelled Tasks listed as not delivered; **Close
   specification**; existing Git/workspace checks still run.
 
@@ -221,15 +236,17 @@ Owner decision. **Abandon is final**: there is no reopen. **Abandon specificatio
 only when the projection allows it (never for a terminal Specification).
 
 - **Dialog**: "Ends the specification without delivering it. This cannot be undone." A consequence
-  list: the Specification workflow and every running Task workflow end as **abandoned**; every
+  list: the Specification workflow ends as **abandoned**; every **active attempt** is listed (Task,
+  step, attempt, actor) and ends as abandoned with its work kept; every
   non-terminal Task is **cancelled**, including started ones (listed by id); nothing is marked
   delivered; documents, Tasks and history stay readable. A **required reason**. **Abandon
   specification** (destructive) / Cancel.
-- **Blocked**: the same grouped-blocker layout as Close (pending writes, Git/workspace rules); only
-  **Dismiss**.
-- **Afterwards**: the Overview shows "Abandoned · <reason>" under the title (archive icon, status
-  role), the Workflow position reads **Abandoned**, New task is gone, Activity history records the
-  reason, and **Close specification** is the header primary. Close lists every cancelled Task as
+- **Blocked**: the same grouped-blocker layout as Close, in order **Pending writes** → **Agent
+  sessions** (a running Managed Session on a Task step must be stopped first) → **Repository**
+  (Git/workspace rules); only **Dismiss**.
+- **Afterwards**: the Now block reads **Abandoned** with the reason (archive icon, status role) and
+  **Close specification** as its one action; New task is gone; Activity history records the
+  reason. Close lists every cancelled Task as
   not delivered (cancelled by abandon, or earlier by a person).
 
 This also covers the D07 waiver need: no separate waiver is designed. Later idea, not in scope: a

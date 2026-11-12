@@ -1,6 +1,7 @@
 import { useState, type ComponentProps, type ReactNode } from 'react';
 import {
   Button,
+  Collapsible,
   CheckboxField,
   Dialog,
   DialogBody,
@@ -44,6 +45,7 @@ import { tasks, typeOf, type MockTask } from './fixtures.stories-support';
 
 const noop = () => undefined;
 type IconName = ComponentProps<typeof Icon>['name'];
+type IconKey = NonNullable<ComponentProps<typeof WorkspaceSection.Header>['icon']>;
 
 /* ------------------------------------------------------------------------------------------ */
 /* Fixtures                                                                                     */
@@ -190,20 +192,85 @@ export const draftContext: readonly ContextEntry[] = [
   },
 ];
 
+/**
+ * A supporting section of the Task page. On Narrow it is a disclosure: the title and count are the
+ * trigger, the add action stays beside it; collapsed unless it holds a blocker.
+ */
+function SupportSection({
+  id,
+  title,
+  icon,
+  count,
+  actions,
+  collapsible,
+  defaultExpanded,
+  children,
+}: {
+  id: string;
+  title: string;
+  icon: IconKey;
+  count?: number | string;
+  actions?: ReactNode;
+  collapsible: boolean;
+  defaultExpanded: boolean;
+  children: ReactNode;
+}) {
+  if (!collapsible) {
+    return (
+      <WorkspaceSection aria-labelledby={id}>
+        <WorkspaceSection.Header
+          id={id}
+          title={title}
+          icon={icon}
+          count={count}
+          actions={actions}
+        />
+        {children}
+      </WorkspaceSection>
+    );
+  }
+
+  return (
+    <Collapsible defaultExpanded={defaultExpanded} className="grid gap-2">
+      <div className="flex min-h-6 items-center justify-between gap-2">
+        <Collapsible.Trigger className="min-w-0 flex-1 px-0">
+          <span id={id} className="text-section-label uppercase text-content-primary">
+            {title}
+          </span>
+          {count !== undefined ? (
+            <span className="ml-2 text-body-sm text-content-muted">{count}</span>
+          ) : null}
+        </Collapsible.Trigger>
+        {actions ? <div className="flex shrink-0 items-center">{actions}</div> : null}
+      </div>
+      <Collapsible.Content>{children}</Collapsible.Content>
+    </Collapsible>
+  );
+}
+
 /* ------------------------------------------------------------------------------------------ */
 /* Documents                                                                                    */
 /* ------------------------------------------------------------------------------------------ */
 
-export function TaskDocumentsSection({ editable }: { editable: boolean }) {
+export function TaskDocumentsSection({
+  editable,
+  collapsible = false,
+}: {
+  editable: boolean;
+  collapsible?: boolean;
+}) {
+  const expanded = false;
+
   return (
-    <WorkspaceSection aria-labelledby="task-documents-heading">
-      <WorkspaceSection.Header
-        id="task-documents-heading"
-        title="Documents"
-        icon="file"
-        count={2}
-        actions={editable ? <SectionAddButton label="New document" /> : undefined}
-      />
+    <SupportSection
+      id="task-documents-heading"
+      title="Documents"
+      icon="file"
+      count={2}
+      actions={editable ? <SectionAddButton label="New document" /> : undefined}
+      collapsible={collapsible}
+      defaultExpanded={expanded}
+    >
       <InformationList>
         {[
           { name: 'task.md', facts: ['Task content', 'Edited today 09:12'] as const, fixed: true },
@@ -240,7 +307,7 @@ export function TaskDocumentsSection({ editable }: { editable: boolean }) {
           />
         ))}
       </InformationList>
-    </WorkspaceSection>
+    </SupportSection>
   );
 }
 
@@ -333,23 +400,28 @@ export function TaskContextSection({
   editable,
   menuOpen,
   rowMenuFor,
+  collapsible = false,
 }: {
   entries: readonly ContextEntry[];
   editable: boolean;
   menuOpen?: boolean;
   rowMenuFor?: string;
+  collapsible?: boolean;
 }) {
   const blocking = entries.filter((entry) => entry.problem === 'missing' && entry.required);
+  // Collapsed on Narrow unless it holds a blocker.
+  const expanded = blocking.length > 0;
 
   return (
-    <WorkspaceSection aria-labelledby="task-context-heading">
-      <WorkspaceSection.Header
-        id="task-context-heading"
-        title="Context"
-        icon="book-open"
-        count={`${entries.length} entries`}
-        actions={editable ? <AddContextMenu open={menuOpen} /> : undefined}
-      />
+    <SupportSection
+      id="task-context-heading"
+      title="Context"
+      icon="book-open"
+      count={`${entries.length} entries`}
+      actions={editable ? <AddContextMenu open={menuOpen} /> : undefined}
+      collapsible={collapsible}
+      defaultExpanded={expanded}
+    >
       <div className="grid gap-3">
         <Typography as="p" variant="body-sm" className="text-content-secondary">
           What the person or agent doing a step reads, in this order. task.md always comes first.
@@ -397,7 +469,7 @@ export function TaskContextSection({
           ))}
         </InformationList>
       </div>
-    </WorkspaceSection>
+    </SupportSection>
   );
 }
 
@@ -566,26 +638,36 @@ function dependencySupporting(other: MockTask): SemanticSupporting {
   return { text: 'Not finished', icon: 'clock' };
 }
 
-export function TaskDependenciesSection({ item, editable }: { item: MockTask; editable: boolean }) {
+export function TaskDependenciesSection({
+  item,
+  editable,
+  collapsible = false,
+}: {
+  item: MockTask;
+  editable: boolean;
+  collapsible?: boolean;
+}) {
   const dependencies = tasks.filter((other) => item.dependsOn.includes(other.id));
   const locked = item.started;
+  const expanded = false;
   if (dependencies.length === 0 && !editable) {
     return null;
   }
 
   return (
-    <WorkspaceSection aria-labelledby="task-dependencies-heading">
-      <WorkspaceSection.Header
-        id="task-dependencies-heading"
-        title="Depends on"
-        icon="network"
-        count={dependencies.length > 0 ? dependencies.length : undefined}
-        actions={
-          editable && !locked && dependencies.length > 0 ? (
-            <SectionAddButton label="Add dependency" />
-          ) : undefined
-        }
-      />
+    <SupportSection
+      id="task-dependencies-heading"
+      title="Depends on"
+      icon="network"
+      count={dependencies.length > 0 ? dependencies.length : undefined}
+      actions={
+        editable && !locked && dependencies.length > 0 ? (
+          <SectionAddButton label="Add dependency" />
+        ) : undefined
+      }
+      collapsible={collapsible}
+      defaultExpanded={expanded}
+    >
       <div className="grid gap-3">
         {dependencies.length === 0 ? (
           <>
@@ -628,7 +710,7 @@ export function TaskDependenciesSection({ item, editable }: { item: MockTask; ed
           ))}
         </InformationList>
       </div>
-    </WorkspaceSection>
+    </SupportSection>
   );
 }
 

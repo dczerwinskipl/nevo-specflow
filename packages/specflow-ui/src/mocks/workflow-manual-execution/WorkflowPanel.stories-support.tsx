@@ -1,5 +1,6 @@
 import { useRef, useState, type ComponentProps, type ReactNode } from 'react';
 import {
+  AccentBlock,
   Alert,
   Button,
   DescriptionList,
@@ -21,7 +22,6 @@ import {
   Typography,
   cn,
 } from '@nevo/ui';
-import { WorkspaceSection } from '../../shared/workspace-section';
 import type { HistoryEntry, Transition, WorkflowView } from './fixtures.stories-support';
 
 /*
@@ -58,6 +58,15 @@ export interface WorkflowPanelProps {
   readonly onFinish?: () => void;
   readonly onReturn?: () => void;
   readonly headingId: string;
+  /** The subject's own status when it changes what can happen now (draft, on hold). */
+  readonly status?: ReactNode;
+  /** Blocking reasons from the projection, each one line with its cause. */
+  readonly blockers?: ReactNode;
+  /**
+   * The one primary action when it is not a workflow action (Approve, Resume, Close). Replaces
+   * the workflow action row: only one primary action is offered now.
+   */
+  readonly primaryAction?: ReactNode;
 }
 
 /** The panel: current position first, the latest hand-off second, then the allowed actions. */
@@ -68,6 +77,9 @@ export function WorkflowPanel({
   onFinish = noop,
   onReturn = noop,
   headingId,
+  status,
+  blockers,
+  primaryAction,
 }: WorkflowPanelProps) {
   const { position, definition } = view;
   const canFinish = position.kind === 'active' && (view.transitions?.length ?? 0) > 0;
@@ -88,9 +100,11 @@ export function WorkflowPanel({
           First step <Step>{position.firstStep}</Step>
         </>
       );
-      supporting = view.unavailableReason ? (
-        <InlineNote tone="info">{view.unavailableReason}</InlineNote>
-      ) : undefined;
+      // With a primary action (Approve, Resume) the reason would only repeat it.
+      supporting =
+        view.unavailableReason && !primaryAction ? (
+          <InlineNote tone="info">{view.unavailableReason}</InlineNote>
+        ) : undefined;
       break;
     case 'ready':
       current = <Step>{position.step}</Step>;
@@ -126,14 +140,13 @@ export function WorkflowPanel({
   const latestNeedsAttention = latest?.attention === true;
 
   return (
-    <WorkspaceSection aria-labelledby={headingId}>
-      <WorkspaceSection.Header
-        id={headingId}
-        title="Workflow"
-        icon="workflow"
-        count={`${definition.title} · rev ${definition.revision}`}
-      />
+    // The "Now" block: the one prominent region of the page (state, blockers, the one action).
+    <AccentBlock aria-labelledby={headingId} role="region">
       <div className="grid gap-3">
+        <Typography as="h2" variant="section-label" id={headingId}>
+          Now
+        </Typography>
+        {status}
         {/* The position is a polite live region: a refresh after an action announces the change. */}
         <div className="grid gap-0.5" aria-live="polite">
           <Typography
@@ -150,13 +163,13 @@ export function WorkflowPanel({
               current
             )}
           </Typography>
-          {facts ? (
-            <Typography as="p" variant="body-sm" className="text-content-muted">
-              {facts}
-            </Typography>
-          ) : null}
+          <Typography as="p" variant="body-sm" className="text-content-muted">
+            {facts ? <>{facts} · </> : null}
+            {definition.title} rev {definition.revision}
+          </Typography>
         </div>
         {supporting}
+        {blockers}
         {latest && position.kind !== 'terminal' ? (
           <div className="grid gap-1 border-l-2 border-border-default pl-3">
             <Typography as="p" variant="body-sm" className="text-content-secondary">
@@ -183,7 +196,11 @@ export function WorkflowPanel({
          * The action row. E6 adds the executor choice to the start action of an eligible step in
          * this slot (Start step ▸ Do it myself / Ask agent); the primary stays "Start step".
          */}
-        {canStart || canFinish || canReturn ? (
+        {primaryAction ? (
+          <div className="flex flex-wrap gap-2" data-slot="workflow-actions">
+            {primaryAction}
+          </div>
+        ) : canStart || canFinish || canReturn ? (
           <div className="flex flex-wrap gap-2" data-slot="workflow-actions">
             {canStart ? <Button onClick={onStart}>{startLabel ?? 'Start step'}</Button> : null}
             {canFinish ? <Button onClick={onFinish}>Finish step</Button> : null}
@@ -195,7 +212,7 @@ export function WorkflowPanel({
           </div>
         ) : null}
       </div>
-    </WorkspaceSection>
+    </AccentBlock>
   );
 }
 

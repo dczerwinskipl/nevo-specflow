@@ -229,9 +229,9 @@ export const tasks: readonly MockTask[] = [
   },
   {
     id: 'T-04',
-    title:
-      'Return users to the project, document and scroll position they had open before the identity provider redirected them away',
-    summary: 'Restore the previous route and its view state after a successful sign-in.',
+    title: 'Return users to where they were',
+    summary:
+      'Return users to the project, document and scroll position they had open before the identity provider redirected them away.',
     type: 'ui',
     status: 'draft',
     dependsOn: ['T-02', 'T-03'],

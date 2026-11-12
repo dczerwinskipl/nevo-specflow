@@ -99,12 +99,16 @@ export type TaskScenario =
   | 'author-add-path'
   | 'author-row-menu'
   | 'author-dependencies'
-  | 'author-with-document';
+  | 'author-with-document'
+  | 'approve-missing-context'
+  | 'long-title';
 
 export interface TaskMockProps {
   width: number;
   height?: number;
   scenario: TaskScenario;
+  /** Task history Secondary: closed by default, opened with the header history toggle. */
+  historyOpen?: boolean;
   /** A/B for editing task.md: the document as a Secondary tab (A) or as the Primary (B). */
   documentPlacement?: 'secondary' | 'primary';
 }
@@ -131,8 +135,16 @@ const reviewView: WorkflowView = {
 };
 
 function subjectFor(scenario: TaskScenario): MockTask {
-  if (scenario.startsWith('author')) {
+  if (scenario.startsWith('author') || scenario === 'approve-missing-context') {
     return task('T-04');
+  }
+
+  if (scenario === 'long-title') {
+    return {
+      ...task('T-02'),
+      title:
+        'Exchange the identity provider authorization code for a SpecFlow session, set the HTTP-only cookie and refresh it before it expires without losing the return URL',
+    };
   }
 
   switch (scenario) {
@@ -198,20 +210,9 @@ function lifecycleActions(item: MockTask): WorkspaceHeaderAction[] {
   const neverStarted = !item.started;
   switch (item.status) {
     case 'draft':
-      return [
-        { id: 'approve', label: 'Approve', primary: true, direct: 'always', onPress: noop },
-        edit,
-        hold,
-        cancel,
-        remove,
-      ];
+      return [edit, hold, cancel, remove];
     case 'on-hold':
-      return [
-        { id: 'resume', label: 'Resume', primary: true, direct: 'always', onPress: noop },
-        edit,
-        cancel,
-        ...(neverStarted ? [remove] : []),
-      ];
+      return [edit, cancel, ...(neverStarted ? [remove] : [])];
     default:
       return [edit, active ? holdUnavailable : hold, cancel, ...(neverStarted ? [remove] : [])];
   }
@@ -222,8 +223,8 @@ function PreparationNotice({ item }: { item: MockTask }) {
     case 'draft':
       return (
         <InlineNote tone="attention">
-          <span className="font-medium text-content-primary">Draft</span> · approve it to make it
-          ready to start
+          <span className="font-medium text-content-primary">Draft</span> · needs approval before it
+          can start
         </InlineNote>
       );
     case 'on-hold':
@@ -456,10 +457,26 @@ const defaultContext: readonly ContextEntry[] = [
   },
 ];
 
-function TaskBody({ item, scenario }: { item: MockTask; scenario: TaskScenario }) {
+function TaskBody({
+  item,
+  scenario,
+  narrow,
+}: {
+  item: MockTask;
+  scenario: TaskScenario;
+  narrow: boolean;
+}) {
   const type = typeOf(item);
   const view = item.workflow;
   const editable = item.status !== 'cancelled' && item.workflow.position.kind !== 'terminal';
+  const entries = item.id === 'T-04' ? draftContext : defaultContext;
+  const missing = entries.filter((entry) => entry.problem === 'missing' && entry.required);
+  const primaryAction =
+    item.status === 'draft' ? (
+      <Button>Approve</Button>
+    ) : item.status === 'on-hold' ? (
+      <Button>Resume</Button>
+    ) : undefined;
 
   return (
     <div className="grid max-w-content-standard gap-8">
@@ -478,7 +495,7 @@ function TaskBody({ item, scenario }: { item: MockTask; scenario: TaskScenario }
         <Typography as="p" variant="body-sm" className="text-content-muted">
           <span className="font-mono">{item.id}</span> · {type.title}
         </Typography>
-        <PreparationNotice item={item} />
+        {item.status === 'cancelled' ? <PreparationNotice item={item} /> : null}
         <Typography as="p" variant="body-md" className="text-content-secondary">
           {item.summary}
         </Typography>
@@ -486,7 +503,27 @@ function TaskBody({ item, scenario }: { item: MockTask; scenario: TaskScenario }
       {item.status === 'cancelled' ? null : (
         <WorkflowPanel
           view={view}
-          headingId="task-workflow-heading"
+          headingId="task-now-heading"
+          status={
+            item.status === 'draft' || item.status === 'on-hold' ? (
+              <PreparationNotice item={item} />
+            ) : undefined
+          }
+          blockers={
+            missing.length > 0 ? (
+              <InlineNote tone="danger">
+                <span className="font-medium text-content-primary">
+                  {missing.length} required context entry is missing:
+                </span>{' '}
+                {missing.map((entry) => entry.name).join(', ')}. The task cannot start until it is
+                replaced or removed.{' '}
+                <a href="#task-context-heading" className="text-content-link hover:underline">
+                  See Context
+                </a>
+              </InlineNote>
+            ) : undefined
+          }
+          primaryAction={primaryAction}
           startLabel={
             item.workflow.position.kind === 'not-started'
               ? `Start ${item.workflow.position.firstStep}`
@@ -494,15 +531,42 @@ function TaskBody({ item, scenario }: { item: MockTask; scenario: TaskScenario }
           }
         />
       )}
-      <TaskDocumentsSection editable={editable} />
+      <TaskDocumentsSection editable={editable} collapsible={narrow} />
       <TaskContextSection
-        entries={item.id === 'T-04' ? draftContext : defaultContext}
+        entries={entries}
         editable={editable}
         menuOpen={scenario === 'author-add-menu'}
         rowMenuFor={scenario === 'author-row-menu' ? 'interaction' : undefined}
+        collapsible={narrow}
       />
-      <TaskDependenciesSection item={item} editable={editable} />
+      <TaskDependenciesSection item={item} editable={editable} collapsible={narrow} />
     </div>
+  );
+}
+
+/** Approve is allowed with missing context (a dependency may produce it), but it says so first. */
+function ApproveDialog({ item }: { item: MockTask }) {
+  return (
+    <Dialog open>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Approve {item.id}</DialogTitle>
+          <DialogDescription>
+            The task becomes ready and can start once its dependencies are done.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogBody>
+          <Alert tone="attention" title="1 required context entry is missing">
+            Old login flow (notes/old-login-flow.md). The task cannot start until it is fixed; you
+            can approve now if a dependency will produce it.
+          </Alert>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="secondary">Cancel</Button>
+          <Button>Approve</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -566,18 +630,26 @@ function dialogFor(item: MockTask, scenario: TaskScenario): ReactNode {
       return <AddContextDialog kind="path" />;
     case 'author-dependencies':
       return <AddDependencyDialog item={item} />;
+    case 'approve-missing-context':
+      return <ApproveDialog item={item} />;
     default:
       return null;
   }
 }
 
-function Workspace({ scenario, width, documentPlacement = 'secondary' }: TaskMockProps) {
+function Workspace({
+  scenario,
+  width,
+  documentPlacement = 'secondary',
+  historyOpen = false,
+}: TaskMockProps) {
   const item = subjectFor(scenario);
   const narrow = width < 730;
   const authoringWithDocument = scenario === 'author-with-document';
   // Narrow shows one surface: while authoring, the Task page (the document is a pushed page).
   const editing = scenario === 'edit-document' || (authoringWithDocument && !narrow);
   const hasHistory = item.started && !editing;
+  const showHistory = hasHistory && historyOpen;
   const header = (
     <WorkspaceHeader
       title={`${specification.title} / ${item.id}`}
@@ -593,7 +665,7 @@ function Workspace({ scenario, width, documentPlacement = 'secondary' }: TaskMoc
                 icon: 'clock',
                 presentation: 'icon',
                 direct: 'always',
-                checked: !narrow,
+                checked: showHistory && !narrow,
                 onPress: noop,
               } as const,
             ]
@@ -635,7 +707,7 @@ function Workspace({ scenario, width, documentPlacement = 'secondary' }: TaskMoc
         <AppWorkspace.Primary header={header}>
           <AppContent className="w-full max-w-full">
             <AppWorkspaceBody scroll={editing ? 'area' : undefined}>
-              <TaskBody item={item} scenario={scenario} />
+              <TaskBody item={item} scenario={scenario} narrow={narrow} />
             </AppWorkspaceBody>
           </AppContent>
         </AppWorkspace.Primary>
@@ -650,7 +722,7 @@ function Workspace({ scenario, width, documentPlacement = 'secondary' }: TaskMoc
               <DocumentEditor />
             </AppContent>
           </AppWorkspace.Secondary>
-        ) : hasHistory && !narrow ? (
+        ) : showHistory && !narrow ? (
           <AppWorkspace.Secondary
             open
             onOpenChange={noop}

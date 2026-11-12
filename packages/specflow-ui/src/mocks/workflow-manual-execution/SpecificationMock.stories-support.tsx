@@ -73,6 +73,8 @@ export interface SpecificationMockProps {
   width: number;
   height?: number;
   scenario: SpecificationScenario;
+  /** Activity history Secondary: closed by default, opened with the header history toggle. */
+  historyOpen?: boolean;
 }
 
 const noop = () => undefined;
@@ -376,7 +378,13 @@ function TasksList({
         id="tasks-heading"
         title="Tasks"
         icon="list-checks"
-        count={list.length === 0 ? undefined : `${done} / ${counted} completed`}
+        count={
+          list.length === 0
+            ? undefined
+            : `${done} of ${counted} done${
+                list.length > counted ? ` · ${list.length - counted} cancelled` : ''
+              }`
+        }
         actions={
           canCreate ? (
             <Button size="sm" variant="secondary" leadingIcon="plus" onClick={onCreate}>
@@ -703,14 +711,19 @@ function CloseDialog({
                   ]
             }
           />
+          {mode === 'blocked' ? (
+            // Opens the Abandon dialog (final, with its own reason and confirmation).
+            <p className="text-body-sm text-content-secondary">
+              Not going to finish this work?{' '}
+              <a href="#abandon" className="text-content-link underline-offset-2 hover:underline">
+                Abandon instead
+              </a>
+            </p>
+          ) : null}
         </DialogBody>
         <DialogFooter>
           {mode === 'blocked' ? (
-            <>
-              {/* Opens the Abandon dialog (final, with its own reason and consequences). */}
-              <Button variant="secondary">Abandon instead</Button>
-              <Button autoFocus>Dismiss</Button>
-            </>
+            <Button autoFocus>Dismiss</Button>
           ) : (
             <>
               <Button variant="secondary">Cancel</Button>
@@ -736,7 +749,7 @@ function AbandonDialog({ blocked, list }: { blocked: boolean; list: readonly Moc
           <DialogTitle>Abandon {specification.title}</DialogTitle>
           <DialogDescription>
             {blocked
-              ? `${specification.title} cannot be abandoned yet: a save is still running and the branch has uncommitted changes.`
+              ? `${specification.title} cannot be abandoned yet: a save and an agent session are still running, and the branch has uncommitted changes.`
               : 'Ends the specification without delivering it. This cannot be undone.'}
           </DialogDescription>
         </DialogHeader>
@@ -748,6 +761,18 @@ function AbandonDialog({ blocked, list }: { blocked: boolean; list: readonly Moc
                   title: 'Pending writes',
                   explanation: 'A save in progress; it settles by itself in a moment.',
                   items: [pendingWrite],
+                },
+                {
+                  title: 'Agent sessions',
+                  explanation: 'A running agent session works on a task step. Stop it first.',
+                  items: [
+                    {
+                      key: 'session',
+                      href: '/sessions/implement-token-exchange',
+                      label: 'Implement token exchange',
+                      state: 'T-02 · implement · attempt 2 · running',
+                    },
+                  ],
                 },
                 {
                   title: 'Repository',
@@ -776,8 +801,19 @@ function AbandonDialog({ blocked, list }: { blocked: boolean; list: readonly Moc
                     <span className="font-mono">wait-for-tasks</span>.
                   </li>
                   <li>
-                    {running.length} task workflow in progress ends as abandoned:{' '}
-                    {running.map((item) => item.id).join(', ')}.
+                    Active attempts end as abandoned, their work is kept:
+                    <ul className="mt-1 grid gap-0.5 pl-4">
+                      {running.map((item) =>
+                        item.workflow.position.kind === 'active' ? (
+                          <li key={item.id}>
+                            <span className="font-mono">{item.id}</span> ·{' '}
+                            <span className="font-mono">{item.workflow.position.step}</span> ·
+                            attempt {item.workflow.position.attempt} · by{' '}
+                            {item.workflow.position.actor}
+                          </li>
+                        ) : null,
+                      )}
+                    </ul>
                   </li>
                   <li>
                     {open.length} unfinished tasks are cancelled, including started ones:{' '}
@@ -834,17 +870,26 @@ function Overview({
         <Typography as="h1" variant="title-lg">
           {specification.title}
         </Typography>
-        {abandoned ? (
-          <InlineNote role="status" icon="archive">
-            <span className="font-medium text-content-primary">Abandoned · {abandonReason}</span>{' '}
-            <span className="text-content-muted">Dominik, today 16:40</span>
-          </InlineNote>
-        ) : null}
         <Typography as="p" variant="body-md" className="text-content-secondary">
           {specification.description}
         </Typography>
       </div>
-      <WorkflowPanel view={view} headingId="spec-workflow-heading" startLabel="Start workflow" />
+      <WorkflowPanel
+        view={view}
+        headingId="spec-workflow-heading"
+        startLabel="Start workflow"
+        status={
+          abandoned ? (
+            <InlineNote role="status" icon="archive">
+              <span className="font-medium text-content-primary">{abandonReason}</span>{' '}
+              <span className="text-content-muted">Dominik, today 16:40</span>
+            </InlineNote>
+          ) : undefined
+        }
+        primaryAction={
+          view.position.kind === 'terminal' ? <Button>Close specification</Button> : undefined
+        }
+      />
       <TasksList list={list} onCreate={() => setCreating(true)} canCreate={!abandoned} />
       {creating ? <CreateTaskDialog existing={list} /> : null}
       {scenario === 'finish-breakdown' ? (
@@ -865,9 +910,10 @@ function Overview({
   );
 }
 
-function Workspace({ scenario, width }: SpecificationMockProps) {
+function Workspace({ scenario, width, historyOpen = false }: SpecificationMockProps) {
   const list = tasksFor(scenario);
   const hasHistory = scenario !== 'empty' && scenario !== 'authoring' && scenario !== 'create-task';
+  const showHistory = hasHistory && historyOpen;
   const narrow = width < 730;
   const terminal = specWorkflow(scenario, list).position.kind === 'terminal';
   const actions: WorkspaceHeaderAction[] = [
@@ -880,20 +926,12 @@ function Workspace({ scenario, width }: SpecificationMockProps) {
             icon: 'clock',
             presentation: 'icon',
             direct: 'always',
-            checked: !narrow,
+            checked: showHistory && !narrow,
             onPress: noop,
           } as const,
         ]
       : []),
-    terminal
-      ? {
-          id: 'close',
-          label: 'Close specification',
-          primary: true,
-          direct: 'always',
-          onPress: noop,
-        }
-      : { id: 'close', label: 'Close specification', onPress: noop },
+    { id: 'close', label: 'Close specification', onPress: noop },
     ...(terminal || scenario === 'empty'
       ? []
       : [
@@ -927,7 +965,7 @@ function Workspace({ scenario, width }: SpecificationMockProps) {
             </AppWorkspaceBody>
           </AppContent>
         </AppWorkspace.Primary>
-        {hasHistory && !narrow ? (
+        {showHistory && !narrow ? (
           <AppWorkspace.Secondary
             open
             onOpenChange={noop}

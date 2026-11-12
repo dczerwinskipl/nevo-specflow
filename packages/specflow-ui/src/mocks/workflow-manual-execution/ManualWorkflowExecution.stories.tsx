@@ -14,19 +14,26 @@ interface MockArgs {
   specification: SpecificationScenario;
   task: TaskScenario;
   documentPlacement: 'secondary' | 'primary';
+  historyOpen: boolean;
   width: number;
   height: number;
 }
 
 function ManualWorkflowMock(args: MockArgs) {
   return args.screen === 'specification' ? (
-    <SpecificationMock width={args.width} height={args.height} scenario={args.specification} />
+    <SpecificationMock
+      width={args.width}
+      height={args.height}
+      scenario={args.specification}
+      historyOpen={args.historyOpen}
+    />
   ) : (
     <TaskMock
       width={args.width}
       height={args.height}
       scenario={args.task}
       documentPlacement={args.documentPlacement}
+      historyOpen={args.historyOpen}
     />
   );
 }
@@ -40,6 +47,7 @@ const meta = {
     specification: 'waiting',
     task: 'rework',
     documentPlacement: 'secondary',
+    historyOpen: false,
     width: 1440,
     height: 900,
   },
@@ -95,9 +103,12 @@ export const Default: Story = {
         'author-row-menu',
         'author-dependencies',
         'author-with-document',
+        'approve-missing-context',
+        'long-title',
       ],
     },
     documentPlacement: { control: 'inline-radio', options: ['secondary', 'primary'] },
+    historyOpen: { control: 'boolean' },
     width: { control: { type: 'number', min: 320, max: 1920, step: 10 } },
     height: { control: { type: 'number', min: 360, max: 1600, step: 10 } },
   },
@@ -176,4 +187,11 @@ export const TaskAuthorWithDocumentCompact900 = taskStory('author-with-document'
   width: 900,
   height: 1200,
 });
-export const TaskAuthorNarrow390 = taskStory('author-with-document', { width: 390, height: 2600 });
+export const TaskAuthorNarrow390 = taskStory('author-with-document', { width: 390, height: 1950 });
+
+/* 5. Now block follow-ups */
+/** History opened with the header toggle (closed by default). */
+export const SpecHistoryOpenWide = spec('waiting', { height: 1200, historyOpen: true });
+export const TaskHistoryOpenWide = taskStory('rework', { historyOpen: true });
+export const TaskApproveMissingContextWide = taskStory('approve-missing-context', { height: 1000 });
+export const TaskLongTitleCompact900 = taskStory('long-title', { width: 900 });

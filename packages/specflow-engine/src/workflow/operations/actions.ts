@@ -58,6 +58,10 @@ import { effectiveTaskTypesOf, unresolvedContext } from './task-policy';
  * `resolveTaskType`, `taskDecisionRefusal`, the continuation of a ready run), so a projected action
  * is refused only when the state changed in between or by a rule listed under "Known gaps" below.
  *
+ * A pending Task document change (D03) refuses every change that writes the Task's folder: the
+ * status decisions, the edits, the removal and an escalating finish. A start writes only the run
+ * record, so it is not refused.
+ *
  * Known gaps: a removal is still refused when the Task folder holds files it does not register
  * (`removeTask` lists the folder; the projection does not).
  */
@@ -193,7 +197,13 @@ export interface WorkflowActions {
   readonly finish?: {
     readonly step: string;
     readonly attempt: number;
-    readonly transitions: readonly TransitionDescription[];
+    readonly transitions: readonly (TransitionDescription & {
+      /**
+       * Taking it now is refused: an escalating Task transition writes the Task's `task.yaml`
+       * while one of its documents has a pending change (`WORKFLOW_TASK_BUSY`).
+       */
+      readonly unavailable?: 'task-document-change';
+    })[];
   };
   /** Declared returns to steps the run reached. */
   readonly return?: {
@@ -217,8 +227,11 @@ export type TaskActionUnavailableReason =
   /** The Task has started: its dependencies are fixed; it is cancelled, not removed. */
   | 'started'
   | 'has-dependents'
-  /** A change of one of the Task's documents is pending (D03 mutual exclusion). */
-  | 'pending-document-change'
+  /**
+   * A change of one of the Task's documents is pending (D03): the change would write its folder,
+   * which the store refuses (`WORKFLOW_TASK_BUSY`, reason `task-document-change`).
+   */
+  | 'task-document-change'
   | 'broken';
 
 /** The owner's Task lifecycle actions (`setTaskStatus`, `editTask`, `removeTask`). */
@@ -409,6 +422,8 @@ interface RunInput {
   readonly startBlockers: () => Promise<readonly StartBlocker[]>;
   /** The owner may return the run (a Task returns only while `ready`). */
   readonly returnable: boolean;
+  /** A Task with a pending document change (D03): a finish that writes its folder is refused. */
+  readonly documentChangePending: boolean;
   readonly tasks: ExecutionTasks;
 }
 
@@ -499,7 +514,11 @@ async function runProjection(
             finish: {
               step: step.id,
               attempt: attempt.attempt,
-              transitions: describeTransitions(step),
+              transitions: describeTransitions(step).map((transition, index) =>
+                input.documentChangePending && step.transitions[index]?.annotations.escalate
+                  ? { ...transition, unavailable: 'task-document-change' as const }
+                  : transition,
+              ),
             },
           }
         : {}),
@@ -568,6 +587,9 @@ async function specificationProjection(
       catalogue,
       startBlockers: () => Promise.resolve([]),
       returnable: true,
+      // A Specification finish writes Task folders only through its input (drafts, decisions,
+      // effects); the store refuses such a finish then, which no projection can tell beforehand.
+      documentChangePending: false,
       tasks: executionTasks(catalogue, snapshot),
     })),
     specification,
@@ -678,6 +700,7 @@ async function taskProjection(
       catalogue,
       startBlockers: async () => [...readinessBlockers(), ...(await contextBlockers())],
       returnable: task.status === 'ready',
+      documentChangePending: pending,
       tasks,
     })),
     task: lifecycle,
@@ -723,9 +746,8 @@ function taskReadinessBlockers(
 
 /**
  * The owner's lifecycle actions on a Task that is not broken: the status decisions ask
- * `taskDecisionRefusal`, the edits and the removal follow `editTask` and `removeTask`. Holding a Task
- * during an active attempt is refused here although the decision rule allows it (UX contract: finish
- * or return the current step first).
+ * `taskDecisionRefusal` (no hold or cancel during an active attempt), the edits and the removal
+ * follow `editTask` and `removeTask`.
  */
 function lifecycleOf(
   task: ExecutionTask,
@@ -745,11 +767,11 @@ function lifecycleOf(
       return unavailable('status');
     }
 
-    if (refusal === 'active-attempt' || (to === 'on-hold' && state === 'active')) {
+    if (refusal === 'active-attempt') {
       return unavailable('active-attempt');
     }
 
-    return pending ? unavailable('pending-document-change') : allowed;
+    return pending ? unavailable('task-document-change') : allowed;
   };
 
   const edit: Action =
@@ -758,7 +780,7 @@ function lifecycleOf(
       : state === 'terminal'
         ? unavailable('ended')
         : pending
-          ? unavailable('pending-document-change')
+          ? unavailable('task-document-change')
           : allowed;
   const dependents = snapshot.manifests
     .filter((entry) => entry.value.dependsOn.includes(task.taskId))
@@ -776,7 +798,7 @@ function lifecycleOf(
       : dependents.length > 0
         ? unavailable('has-dependents', dependents)
         : pending
-          ? unavailable('pending-document-change')
+          ? unavailable('task-document-change')
           : allowed,
     editDetails: edit,
     editContext: edit,

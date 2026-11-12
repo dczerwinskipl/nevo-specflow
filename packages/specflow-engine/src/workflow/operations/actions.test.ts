@@ -15,6 +15,8 @@ import {
   work,
   type Dependencies,
 } from './operations.test-support';
+import { guardTaskDocumentChanges } from '../state/task-document-guard';
+import { finishStep } from './finish';
 import { startTaskExecution } from './start';
 import { createTask, type CreateTaskInput } from './task-resource';
 import { setTaskStatus } from './task-status';
@@ -395,22 +397,53 @@ describe('Task positions', () => {
     });
   });
 
-  it('a pending Task document change keeps the resource changes, not the start', async () => {
+  it('a pending Task document change refuses what writes the Task folder, as the guarded store does (D03)', async () => {
     const dependencies = memoryDependencies(catalogue);
     await create(dependencies, 'api');
     await decide(dependencies, 'api', 'ready');
     dependencies.references.pendingDocuments.add('api');
+    // The production store (`openWorkflow`) is guarded the same way.
+    const guarded = {
+      ...dependencies,
+      store: guardTaskDocumentChanges(dependencies.store, (specId, taskId) =>
+        dependencies.references.pendingDocumentChange(specId, taskId),
+      ),
+    };
 
     expect(await project(dependencies, task('api'))).toMatchObject({
       position: { kind: 'not-started' },
       actions: { start: { step: 'implement' } },
       task: {
-        hold: no('pending-document-change'),
-        cancel: no('pending-document-change'),
-        remove: no('pending-document-change'),
-        editDetails: no('pending-document-change'),
+        hold: no('task-document-change'),
+        cancel: no('task-document-change'),
+        remove: no('task-document-change'),
+        editDetails: no('task-document-change'),
       },
     });
+    await expect(
+      setTaskStatus(guarded, { specId: SPEC, taskId: 'api', status: 'on-hold', actor: owner }),
+    ).rejects.toMatchObject({
+      code: 'WORKFLOW_TASK_BUSY',
+    });
+
+    // A first start writes only the run record, so the guard lets it through.
+    await work(guarded, task('api'), {}, owner);
+    await startTaskExecution(guarded, { specId: SPEC, taskId: 'api', actor: owner });
+    const review = await project(dependencies, task('api'));
+    expect(review.actions.finish?.transitions).toEqual([
+      expect.not.objectContaining({ unavailable: expect.anything() as unknown }),
+      expect.not.objectContaining({ unavailable: expect.anything() as unknown }),
+      expect.objectContaining({ id: 'escalated', unavailable: 'task-document-change' }),
+    ]);
+    await expect(
+      finishStep(guarded, {
+        subject: task('api'),
+        step: 'review',
+        attempt: 1,
+        input: { result: 'needs-spec-change', feedback: 'The contract is wrong.' },
+        actor: owner,
+      }),
+    ).rejects.toMatchObject({ code: 'WORKFLOW_TASK_BUSY' });
   });
 
   it('a run whose pinned workflow changed offers nothing', async () => {

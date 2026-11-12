@@ -117,7 +117,7 @@ describe('setTaskStatus', () => {
     await expect(hold('api')).resolves.toMatchObject({ status: 'on-hold' });
   });
 
-  it('holds a running Task: its step finishes, the next start is refused until it is resumed', async () => {
+  it('refuses to hold a Task with an active attempt; between steps it holds until it is resumed', async () => {
     const dependencies = memoryDependencies(catalogue);
     await specificationWithTasks(dependencies);
     const started = await startTask(dependencies, 'api');
@@ -125,7 +125,15 @@ describe('setTaskStatus', () => {
       throw new Error('Unexpected end.');
     }
 
-    await decide(dependencies, 'api', 'on-hold', 'The API contract is being revised.');
+    const applied = dependencies.store.applied.length;
+    await expect(
+      decide(dependencies, 'api', 'on-hold', 'The API contract is being revised.'),
+    ).rejects.toMatchObject({
+      code: 'WORKFLOW_TASK_BLOCKED',
+      message: expect.stringContaining('active-attempt') as unknown,
+    });
+    expect(dependencies.store.applied).toHaveLength(applied);
+
     const finished = await finishStep(dependencies, {
       subject: task('api'),
       step: 'implement',
@@ -133,9 +141,8 @@ describe('setTaskStatus', () => {
       input: {},
       actor: claude,
     });
-
-    expect(finished.continuation).toEqual({ kind: 'none', reason: 'on-hold' });
     expect(finished.position).toEqual({ state: 'ready', step: 'review' });
+    await decide(dependencies, 'api', 'on-hold', 'The API contract is being revised.');
     await expect(startTask(dependencies, 'api')).rejects.toMatchObject({
       code: 'WORKFLOW_TASK_BLOCKED',
       message: expect.stringContaining('on-hold') as unknown,
@@ -320,7 +327,9 @@ describe('setTaskStatus', () => {
     await specificationWithTasks(dependencies);
 
     await expect(run(dependencies)).rejects.toMatchObject({
-      code: expect.stringMatching(/^WORKFLOW_(INPUT_INVALID|SUBJECT_NOT_FOUND)$/u) as unknown,
+      code: expect.stringMatching(
+        /^WORKFLOW_(INPUT_INVALID|SUBJECT_NOT_FOUND|TASK_BLOCKED)$/u,
+      ) as unknown,
     });
   });
 

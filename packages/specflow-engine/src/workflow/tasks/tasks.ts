@@ -291,8 +291,9 @@ export type TaskDecisionRefusal = 'ended' | 'status' | 'active-attempt';
 
 /**
  * The rule of {@link decideTaskStatus} without the input checks: a Task whose run ended keeps its
- * status (`ended`), the status must allow the change (`status`), and a running Task is not cancelled
- * (`active-attempt`). Pure; the action projection asks the same rule.
+ * status (`ended`), the status must allow the change (`status`), and a Task with an active attempt
+ * is neither put on hold nor cancelled (`active-attempt`, owner decision: finish or return the
+ * current step first). Pure; the action projection asks the same rule.
  */
 export function taskDecisionRefusal(
   task: ExecutionTask,
@@ -307,13 +308,15 @@ export function taskDecisionRefusal(
     return 'status';
   }
 
-  return status === 'cancelled' && state === 'active' ? 'active-attempt' : undefined;
+  return (status === 'cancelled' || status === 'on-hold') && state === 'active'
+    ? 'active-attempt'
+    : undefined;
 }
 
 /**
- * The Task after a decision, or a refusal (`WORKFLOW_INPUT_INVALID`) when the change is not allowed:
- * a Task whose run ended keeps its status, and a running Task may go on hold (its current step
- * finishes; the next start is refused) but is not cancelled.
+ * The Task after a decision, or a refusal when the change is not allowed (`taskDecisionRefusal`):
+ * `WORKFLOW_INPUT_INVALID` when its run ended or its status does not allow it, `WORKFLOW_TASK_BLOCKED`
+ * while it has an active attempt (no hold, no cancel until the current step is finished or returned).
  */
 export function decideTaskStatus(
   task: ExecutionTask,
@@ -337,7 +340,10 @@ export function decideTaskStatus(
   }
 
   if (refusal === 'active-attempt') {
-    invalid(`The Task "${task.taskId}" is running; it cannot be cancelled now.`);
+    throw new WorkflowError(
+      'WORKFLOW_TASK_BLOCKED',
+      `The Task "${task.taskId}" has an active attempt (active-attempt); finish or return the current step before it goes ${decision.status}.`,
+    );
   }
 
   return {

@@ -358,19 +358,23 @@ describe('Task status, readiness and the wait', () => {
     ['a decision that changes nothing', api, 'ready'],
     ['an unknown status', api, 'done' as TaskDecision['status']],
     ['a Task whose run ended', ended(api, 'completed'), 'cancelled'],
-    ['a running Task cancelled', started, 'cancelled'],
   ])('refuses %s', (_name, task, status) => {
     expect(() => decide(task, status)).toThrow(
       expect.objectContaining({ code: 'WORKFLOW_INPUT_INVALID' }),
     );
   });
 
-  it('puts a running Task on hold', () => {
-    expect(decide(started, 'on-hold')).toMatchObject({
-      status: 'on-hold',
-      run: { position: { state: 'active' } },
-    });
-  });
+  it.each<TaskDecision['status']>(['on-hold', 'cancelled'])(
+    'refuses to set a Task with an active attempt %s (active-attempt)',
+    (status) => {
+      expect(() => decide(started, status)).toThrow(
+        expect.objectContaining({
+          code: 'WORKFLOW_TASK_BLOCKED',
+          message: expect.stringContaining('active-attempt') as unknown,
+        }),
+      );
+    },
+  );
 
   it('applies decisions as a whole and refuses an unknown Task or two decisions for one', () => {
     expect(

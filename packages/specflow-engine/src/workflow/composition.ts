@@ -2,6 +2,7 @@ import { dirname, join } from 'node:path';
 
 import type { SpecFlowEngine } from '../application';
 import { withProjectControlLock } from '../project/control-lock';
+import { runReadRequest } from '../project/request-verification-memo';
 import { resolveSpecification } from '../specs/discovery';
 import { createDefaultDefinitionRegistry } from '../definitions/shipped-registry';
 import { loadDefinitions } from '../specs/definitions/loader';
@@ -38,6 +39,11 @@ import {
   type PendingTaskDocumentChange,
 } from './state/task-document-guard';
 import { checkoutPathExists } from './checkout-paths';
+import {
+  readExecution,
+  type ExecutionReading,
+  type ReadExecutionOptions,
+} from './operations/execution-read';
 import { guardCloseReservations } from './state/close-guard';
 import { listCloseJournals } from '../specs/lifecycle';
 
@@ -175,6 +181,20 @@ export async function openWorkflow(
   };
 
   return { ...dependencies, specificationExit: specificationExitPort(dependencies) };
+}
+
+/**
+ * {@link readExecution} as an Engine read request: the Project Home and checkout verification (the
+ * control lock's included) uses on-disk evidence only and spawns no Git process, like every other
+ * read path (`resolveSpecificationForRead`). For presentation reads (Overview progress, Workspace
+ * and Task reads); a mutation keeps the full verification of its own operation.
+ */
+export function readExecutionForRead(
+  workflow: WorkflowDependencies,
+  specId: string,
+  options: ReadExecutionOptions,
+): Promise<ExecutionReading> {
+  return runReadRequest(() => readExecution(workflow, specId, options));
 }
 
 /**

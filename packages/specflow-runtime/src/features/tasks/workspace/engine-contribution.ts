@@ -1,4 +1,4 @@
-import { readExecution, type ExecutionReading, type TaskLane } from '@nevo/specflow-engine';
+import { readExecutionForRead, type ExecutionReading, type TaskLane } from '@nevo/specflow-engine';
 
 import {
   inspectSpecification,
@@ -161,7 +161,10 @@ export function createEngineTaskProgress(source: TaskEngine): TaskProgressSource
 
     for (const specId of specIds) {
       try {
-        progress.set(specId, (await readExecution(workflow, specId, { tasks: [] })).progress);
+        progress.set(
+          specId,
+          (await readExecutionForRead(workflow, specId, { tasks: [] })).progress,
+        );
       } catch {
         progress.set(specId, null);
       }

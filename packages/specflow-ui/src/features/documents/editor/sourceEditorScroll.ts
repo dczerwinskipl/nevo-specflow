@@ -48,9 +48,11 @@ export function attachSourceScroll(
 ) {
   const scroller = editor.scrollDOM;
   const readAnchor = (): ScrollAnchor => {
-    const padding = editor.documentPadding.top;
-    const top = Math.max(0, scroller.scrollTop - padding);
-    const block = editor.lineBlockAtHeight(top);
+    const beforeMeasure = Math.max(0, scroller.scrollTop - editor.documentPadding.top);
+    const initialBlock = editor.lineBlockAtHeight(beforeMeasure);
+    // CodeMirror can flush a pending measurement in lineBlockAtHeight and adjust the scroll.
+    const top = Math.max(0, scroller.scrollTop - editor.documentPadding.top);
+    const block = top === beforeMeasure ? initialBlock : editor.lineBlockAtHeight(top);
 
     return {
       line: editor.state.doc.lineAt(block.from).number,
@@ -72,6 +74,9 @@ export function attachSourceScroll(
         block.top + next.offset * block.height + editor.documentPadding.top,
       );
     }
+
+    // Measure the new viewport before checking the anchor, even if the scroll event is pending.
+    editor.requestMeasure();
   };
 
   // The editor estimates the heights of lines it has not measured yet (wrapped lines above the

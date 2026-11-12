@@ -115,6 +115,7 @@ the revision of what it changes, and an `--operation-id <uuid>` (generated when 
 | Command                                                                                                                    | Engine function                                              |
 | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
 | `specs documents list <spec-id>`                                                                                           | `readSpecificationDocumentTree`                              |
+| `specs documents read <spec-id> <document-id> [--task <task-id>]`                                                          | `readSpecificationDocument` / `readTaskDocument`             |
 | `specs documents validate <spec-id>`                                                                                       | `readSpecificationDocumentTree` (completeness, issues)       |
 | `specs documents add <spec-id> (--path <p> [--type <t>] (--content-file <f> \| --stdin) \| --template <id> [--path <p>])`  | `applyDocumentChange` (`create`)                             |
 | `specs documents folder <spec-id> <path>`                                                                                  | `applyDocumentChange` (`folder`)                             |
@@ -134,6 +135,12 @@ the revision of what it changes, and an `--operation-id <uuid>` (generated when 
 Every command accepts `--project-root <path>` and `--json`; every write command also accepts `--operation-id`,
 `--wait` and `--wait-ms <ms>`.
 
+- **Task scope.** `list`, `read` and every write command (`add`, `folder`, `save`, `rename`, `move`, `delete`,
+  `classify`) accept `--task <task-id>` and then act on the documents of that Task of the Specification
+  (`readTaskDocuments`, `readTaskDocument`, `applyTaskDocumentChange`); the main document of a Task is `task`
+  (`task.md`) and cannot be deleted or renamed. `list --task` prints the Task registry (`registryRevision`, each
+  document with the `revision` a save names); `validate` has no Task scope. `read` prints the text (or, with
+  `--json`, the document with its revision).
 - **Revisions.** `--expected-revision` is the `revision` of the document (or of the folder, for a folder
   target) that `list --json` shows. A stale revision is `DOCUMENT_REVISION_CONFLICT`.
 - **Templates.** `add --template <id>` renders the template of the Specification's archetype from the project's
@@ -175,6 +182,51 @@ Every command accepts `--project-root <path>` and `--json`; every write command 
 Exit codes: `0` success; `1` a refusal of the documents layer, any other operation failure, `validate` finding an
 invalid Specification, a `flush` or `--wait` that did not settle, or a refused takeover; `2` a usage error (a
 missing or conflicting option, an unknown command, a malformed `--operation-id`).
+
+## Task and workflow commands
+
+`nevo-specflow tasks ...` and `nevo-specflow workflow ...` create and drive the manual execution of a
+Specification and of its Tasks, offline, through the same Engine use cases as the Runtime
+(`createTask`, `editTask`, `removeTask`, `setTaskStatus`, `inspectExecution`, `inspectActions`,
+`startSpecificationExecution`, `startTaskExecution`, `finishStep`, `returnToStep`). A Task needs no Specification
+run. Every command accepts `--project-root <path>` and `--json`.
+
+| Command                                                                                                                                                                                        | Engine function                                      |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| `tasks list <spec-id>`                                                                                                                                                                         | `inspectExecution`                                   |
+| `tasks inspect <spec-id> <task-id>`                                                                                                                                                            | `inspectExecution`, `inspectActions`                 |
+| `tasks create <spec-id> --id <task-id> --title <t> --type <task-type> [--summary <s>] [--depends-on <id>]... [--context <kind:value>]... [--context-file <f>] [--content-file <f> \| --stdin]` | `createTask`                                         |
+| `tasks edit <spec-id> <task-id> --expected-revision <r> [--title <t>] [--summary <s> \| --clear-summary] [--depends-on <id>]... \| --no-dependencies] [context options \| --default-context]`  | `editTask`                                           |
+| `tasks remove <spec-id> <task-id> --expected-revision <r>`                                                                                                                                     | `removeTask`                                         |
+| `tasks status <spec-id> <task-id> approve\|hold\|resume\|cancel [--reason <text>]`                                                                                                             | `setTaskStatus`                                      |
+| `workflow actions <spec-id> [--task <task-id>]`                                                                                                                                                | `inspectActions` (read-only)                         |
+| `workflow start <spec-id> [--task <task-id> [--expected-workflow-revision <r>]]`                                                                                                               | `startSpecificationExecution` / `startTaskExecution` |
+| `workflow finish <spec-id> [--task <task-id>] --step <id> --attempt <n> [--result <r>] [--feedback <t>] [--artifact <ref>]... [--tasks-file <f>] [--task-decisions-file <f>]`                  | `finishStep`                                         |
+| `workflow return <spec-id> [--task <task-id>] --step <id> [--reason <text>]`                                                                                                                   | `returnToStep`                                       |
+
+- **Actor.** The CLI builds the actor itself: the owner `{class: human, actorId: local:<os-user>, trust: local}`,
+  used for every write and for `workflow start|finish|return`. No option sets an actor, an executor class or a
+  trust level. **`trust: local` is not proof of a human**: a local agent runs under the same OS identity and can
+  run the same commands, so the CLI cannot tell it from the owner. Treat the recorded actor as a guardrail for
+  cooperating processes, not as a security boundary (see
+  [local actors and human gates](../../ideas/specflow-engine/local-actor-and-human-gates.md)).
+- **Revisions and the pin.** `tasks edit|remove` name the `revision` that `tasks list|inspect --json` shows
+  (`WORKFLOW_TASK_REVISION_CONFLICT` otherwise). `workflow actions` shows what a first Task start would pin;
+  `--expected-workflow-revision` makes the start refuse (`WORKFLOW_DEFINITION_CHANGED`) when the workflow changed.
+  `workflow finish` names the `--step` and `--attempt` it worked on, so a stale caller never finishes a newer
+  attempt; repeating the same finish returns the recorded result (`replayed`).
+- **Context.** `--context <kind:value>` (repeatable) adds a required entry; kinds are `task-doc`, `spec-doc`,
+  `project-doc` (document ids), `path` and `instructions` (the text). `--context-file <path>` reads a YAML or JSON
+  list in the shape of the `context` of `task.yaml` (optional entries, notes); its entries come first. On `edit`,
+  context options replace the whole list and `--default-context` restores the default. The Engine checks that
+  every entry resolves; offline, `project-doc` entries are not resolvable and are refused.
+- **Task text.** `tasks create` takes the first text of `task.md` from `--content-file` or `--stdin`. Later
+  changes and extra Task documents use `specs documents ... --task <task-id>`.
+- **Not here yet.** Closing and abandoning a Specification (`abandon`) are not part of these commands.
+- **Output and exit codes.** stdout carries the result (human lines, or one JSON document with `--json`);
+  stderr carries diagnostics. A workflow refusal is printed as `CODE: message` followed by `Hint: ...` where one
+  helps and, with `--json`, stdout also carries `{ "error": { code, message, hint? } }`. Exit codes: `0` success;
+  `1` a refusal or another failure; `2` a usage error.
 
 ## Manual commit
 

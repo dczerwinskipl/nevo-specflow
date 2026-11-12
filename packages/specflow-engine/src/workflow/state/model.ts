@@ -1,10 +1,11 @@
 import type * as core from '../core';
+import type { TaskManifest } from '../../tasks/resource/model';
 import type { TaskTypes } from '../definitions/model';
 import { WorkflowError } from '../errors';
 
 /**
- * Canonical execution state of one Specification: the run of its own workflow and one record per Task,
- * each with its own type and workflow run. Only the position and the history are stored; readiness,
+ * Canonical execution state of one Specification: the run of its own workflow, the Task resources
+ * (`tasks/index.yaml`, `tasks/<id>/task.yaml`) and one run record per started Task. Only the position and the history are stored; readiness,
  * lanes and statuses are derived (architecture `architecture.workflow.deterministic-workflow`). The
  * run format is the core's (`../core`); SpecFlow keys each run by its subject.
  */
@@ -60,17 +61,27 @@ export interface SpecificationExecutionRecord {
   readonly archetype: string;
   /** The task types allowed when the run started. */
   readonly taskTypes: TaskTypes;
-  /**
-   * Every Task of the Specification, in creation order: the authoritative Task set. A Task is added
-   * in the same change that creates its record and never removed (a left-out draft is cancelled, not
-   * deleted). A listed Task without a record is broken; a record that is not listed is corrupt state.
-   */
-  readonly taskIds: readonly string[];
+  readonly run: WorkflowRun;
+}
+
+export { TASK_STATUSES, type TaskStatus, type TaskStatusChange } from '../../tasks/resource/model';
+
+/**
+ * The run record of one Task (`.execution/tasks/<id>.yaml`): only its run. What the Task is (title,
+ * type, status, dependencies, origin, documents, context) is its resource, `tasks/<id>/task.yaml`
+ * (`tasks/resource`). A run record whose Task is not registered is broken.
+ */
+export interface TaskRunRecord {
+  readonly specId: string;
+  readonly taskId: string;
   readonly run: WorkflowRun;
 }
 
 /**
- * Preparation status of a Task: whether it may be worked on, separate from its run position.
+ * A Task as the operations see it: its manifest joined with its run record (`executionTasks`).
+ *
+ * The preparation status (`status`, `TASK_STATUSES`) says whether the Task may be worked on,
+ * separately from its run position:
  * - `draft`: created by a step that produces Tasks and not approved yet; it never ran;
  * - `ready`: approved; it can start once its dependencies completed;
  * - `on-hold`: kept, but no step of it starts until a decision makes it `ready` again;
@@ -80,35 +91,43 @@ export interface SpecificationExecutionRecord {
  * effect `approve-draft-tasks` and the Task's own escalation change it; a Specification return never
  * does. There is no `completed`: completion is the run reaching `terminal`.
  */
-export const TASK_STATUSES = ['draft', 'ready', 'on-hold', 'cancelled'] as const;
-export type TaskStatus = (typeof TASK_STATUSES)[number];
-
-/** The last explicit status change of a Task: a decision or the Task's own escalation. */
-export interface TaskStatusChange {
-  readonly source: 'decision' | 'escalation';
-  readonly at: string;
-  /** The decision's reason, or the escalation feedback. */
-  readonly reason?: string;
-}
-
-export interface TaskRecord {
+export interface ExecutionTask extends Omit<TaskManifest, 'id'> {
   readonly specId: string;
   readonly taskId: string;
-  readonly title: string;
-  readonly summary?: string;
-  readonly type: string;
-  readonly dependsOn: readonly string[];
-  /** The Specification attempt that created (or last revised) the Task. */
-  readonly origin: { readonly step: string; readonly attempt: number };
-  readonly status: TaskStatus;
-  readonly statusChange?: TaskStatusChange;
   readonly run: WorkflowRun;
+}
+
+/** The manifest part of a Task, in the field order of `task.yaml`. */
+export function manifestOf(task: ExecutionTask): TaskManifest {
+  return {
+    id: task.taskId,
+    title: task.title,
+    ...(task.summary !== undefined ? { summary: task.summary } : {}),
+    type: task.type,
+    status: task.status,
+    ...(task.statusChange !== undefined ? { statusChange: task.statusChange } : {}),
+    dependsOn: task.dependsOn,
+    origin: task.origin,
+    documents: task.documents,
+    ...(task.context !== undefined ? { context: task.context } : {}),
+  };
+}
+
+/** The Task of a manifest and its run. */
+export function executionTaskOf(
+  specId: string,
+  manifest: TaskManifest,
+  run: WorkflowRun,
+): ExecutionTask {
+  const { id, ...rest } = manifest;
+
+  return { specId, taskId: id, ...rest, run };
 }
 
 /** A broken Task (`executionTasks`) is refused by every operation on it. */
 export function brokenTask(taskId: string): never {
   throw new WorkflowError(
     'WORKFLOW_STATE_CORRUPT',
-    `The Task "${taskId}" is broken: its record is missing or its position does not follow from its history; restore it from Git.`,
+    `The Task "${taskId}" is broken: its resource or its run record is missing, or its run does not follow from its history or its status; restore it from Git.`,
   );
 }

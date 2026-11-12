@@ -9,7 +9,7 @@ import {
 } from '../core';
 import { isTaskTypeAllowed, taskReadiness, type TaskReadiness } from '../tasks/tasks';
 import type {
-  TaskRecord,
+  ExecutionTask,
   TaskStatus,
   TaskStatusChange,
   WorkflowRun,
@@ -90,10 +90,10 @@ export interface StepContextInput {
   readonly step: WorkflowStep;
   readonly attempt: number;
   readonly catalogue: ExecutionCatalogue;
-  readonly task?: TaskRecord;
+  readonly task?: ExecutionTask;
   readonly allowedTaskTypes: TaskTypes;
   /** The Tasks of the Specification that are not broken (`executionTasks`). */
-  readonly tasks: readonly TaskRecord[];
+  readonly tasks: readonly ExecutionTask[];
   /** The broken Tasks, in list order. */
   readonly broken: readonly string[];
 }

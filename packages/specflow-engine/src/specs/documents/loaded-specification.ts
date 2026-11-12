@@ -10,7 +10,7 @@ import {
   type SpecificationManifest,
 } from '../model';
 import { deriveUnclassifiedDocumentId, isDerivedDocumentId } from '../document-rules/document-ids';
-import { isReservedRootName } from '../document-rules/document-paths';
+import { isReservedSpecificationPath } from '../document-rules/document-paths';
 import { listSpecificationFiles } from './directory-scan';
 import { DocumentError } from '../document-rules/errors';
 import { MANIFEST_MAX_BYTES } from './limits';
@@ -134,7 +134,7 @@ export async function locateDocument(
     const matches = listed.paths.filter(
       (candidate) =>
         !registeredPaths.has(candidate) &&
-        !(!candidate.includes('/') && isReservedRootName(candidate)) &&
+        !isReservedSpecificationPath(candidate) &&
         deriveUnclassifiedDocumentId(candidate) === documentId,
     );
     // Two files with one derived id cannot happen in practice (128 bits); if it ever does, neither

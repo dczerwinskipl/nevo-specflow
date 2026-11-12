@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:nevo:specflow:task-resource:task-index:1",
+  "title": "Nevo SpecFlow Task index",
+  "description": "tasks/index.yaml of a Specification: which Tasks exist and in which order (schemaVersion 1).",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "tasks"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "type": "number",
+      "const": 1
+    },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^(?!(?:con|prn|aux|nul|com[1-9]|lpt[1-9])$)[a-z0-9][a-z0-9-]{0,63}$"
+          }
+        },
+        "additionalProperties": false
+      },
+      "maxItems": 200
+    }
+  },
+  "additionalProperties": false
+}

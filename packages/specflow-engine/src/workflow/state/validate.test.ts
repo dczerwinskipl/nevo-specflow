@@ -1,8 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import type { AttemptRecord, TaskRecord, WorkflowRun } from './model';
-import { endedAttempt, OTHER_SPEC, record, SPEC, task } from './store-contract.test-support';
-import { validateExecutionSnapshot, type ExecutionState } from './validate';
+import type { AttemptRecord, TaskRunRecord, WorkflowRun } from './model';
+import {
+  endedAttempt,
+  manifest,
+  OTHER_SPEC,
+  record,
+  runRecord,
+  SPEC,
+} from './store-contract.test-support';
+import { assertNoNewIssues, validateExecutionState, type ExecutionState } from './validate';
 
 const open = (attempt: number, sequence: number, step = 'requirements'): AttemptRecord => ({
   step,
@@ -11,37 +18,43 @@ const open = (attempt: number, sequence: number, step = 'requirements'): Attempt
   startedAt: '2026-11-05T10:00:00.000Z',
 });
 
+const NONE = { manifests: [], runs: [], folders: [] } as const;
+
 const withRun = (run: Partial<WorkflowRun>): ExecutionState => ({
+  ...NONE,
   specification: { ...record('requirements'), run: { ...record('requirements').run, ...run } },
-  tasks: [],
 });
 
-/** The Specification lists `api` and `web`; `tasks` are the records that exist. */
-const withTasks = (...tasks: TaskRecord[]): ExecutionState => ({
-  specification: record('requirements', SPEC, ['api', 'web']),
-  tasks,
+/** `api` and `web` are registered with their manifests and folders; `runs` are the run records. */
+const withRuns = (...runs: TaskRunRecord[]): ExecutionState => ({
+  specification: record('requirements'),
+  index: { tasks: [{ id: 'api' }, { id: 'web' }] },
+  manifests: [manifest('api'), manifest('web')],
+  folders: ['api', 'web'],
+  runs,
 });
 
 const active = { state: 'active', step: 'requirements', attempt: 2 } as const;
 
-describe('validateExecutionSnapshot', () => {
+describe('validateExecutionState', () => {
   it('accepts coherent state, including an empty one', () => {
-    expect(() => validateExecutionSnapshot(SPEC, { tasks: [] })).not.toThrow();
+    expect(validateExecutionState(SPEC, NONE)).toEqual([]);
     const run = {
       ...record('requirements').run,
       position: active,
       attempts: [endedAttempt(1), open(2, 3)],
     };
-    expect(() =>
-      validateExecutionSnapshot(SPEC, {
-        specification: { ...record('requirements', SPEC, ['api', 'web']), run },
-        tasks: [task('api'), { ...task('web'), dependsOn: ['api'] }],
+    expect(
+      validateExecutionState(SPEC, {
+        ...withRuns(runRecord('api'), runRecord('web')),
+        specification: { ...record('requirements'), run },
+        manifests: [manifest('api'), { ...manifest('web'), dependsOn: ['api'] }],
       }),
-    ).not.toThrow();
-    // A listed Task without a record is that Task broken, not incoherent state.
-    expect(() => validateExecutionSnapshot(SPEC, withTasks(task('api')))).not.toThrow();
+    ).toEqual([]);
+    // A registered Task without a run record has not started.
+    expect(validateExecutionState(SPEC, withRuns(runRecord('api')))).toEqual([]);
     expect(() =>
-      validateExecutionSnapshot(
+      validateExecutionState(
         SPEC,
         withRun({
           attempts: [endedAttempt(1)],
@@ -98,49 +111,41 @@ describe('validateExecutionSnapshot', () => {
     ],
     [
       'a Specification record of another Specification',
-      { specification: record('x', OTHER_SPEC), tasks: [] },
+      { ...NONE, specification: record('x', OTHER_SPEC) },
     ],
-    ['a Task of another Specification', withTasks(task('api', 'api', OTHER_SPEC))],
-    ['two Tasks with one id', withTasks(task('api'), task('api', 'again'))],
-    ['a Task the Specification does not list', withTasks(task('other'))],
-    ['a Task without a Specification', { tasks: [task('api')] }],
-    [
-      'a dependency on a Task that is not listed',
-      withTasks({ ...task('api'), dependsOn: ['ghost'] }),
-    ],
-    [
-      'a dependency cycle',
-      withTasks({ ...task('api'), dependsOn: ['web'] }, { ...task('web'), dependsOn: ['api'] }),
-    ],
+    ['a Task run of another Specification', withRuns(runRecord('api', OTHER_SPEC))],
+    ['two Task runs with one id', withRuns(runRecord('api'), runRecord('api'))],
     [
       'an invalid Task run',
-      withTasks({
-        ...task('api'),
-        run: { ...task('api').run, attempts: [open(1, 1)] },
-      } satisfies TaskRecord),
-    ],
-    [
-      'a draft Task that ran',
-      withTasks({
-        ...task('api'),
-        status: 'draft',
-        run: { ...task('api').run, position: { state: 'ready', step: 'implement' } },
-      } satisfies TaskRecord),
-    ],
-    [
-      'a cancelled Task with an active step',
-      withTasks({
-        ...task('api'),
-        status: 'cancelled',
-        run: {
-          ...task('api').run,
-          position: { state: 'active', step: 'implement', attempt: 1 },
-          attempts: [open(1, 1, 'implement')],
-        },
-      } satisfies TaskRecord),
+      withRuns({ ...runRecord('api'), run: { ...runRecord('api').run, attempts: [open(1, 1)] } }),
     ],
   ])('refuses %s', (_name, state) => {
-    expect(() => validateExecutionSnapshot(SPEC, state)).toThrow(
+    expect(() => validateExecutionState(SPEC, state)).toThrow(
+      expect.objectContaining({ code: 'WORKFLOW_STATE_CORRUPT' }),
+    );
+  });
+});
+
+describe('Task resource issues of the execution state', () => {
+  it('reports inconsistencies between the Task files instead of failing', () => {
+    const state: ExecutionState = {
+      ...withRuns(runRecord('api'), runRecord('gone')),
+      manifests: [manifest('api')],
+      folders: ['api', 'stray'],
+    };
+
+    expect(validateExecutionState(SPEC, state)).toEqual([
+      { kind: 'dangling', taskId: 'web', reason: 'missing-folder' },
+      { kind: 'unregistered', taskId: 'stray' },
+      { kind: 'broken', taskId: 'gone', reason: 'unregistered-run' },
+    ]);
+  });
+
+  it('lets a change keep the issues the state has, but not add one', () => {
+    const before = [{ kind: 'unregistered', taskId: 'stray' }] as const;
+    expect(() => assertNoNewIssues(before, before)).not.toThrow();
+    expect(() => assertNoNewIssues(before, [])).not.toThrow();
+    expect(() => assertNoNewIssues(before, [...before, { kind: 'cycle', taskId: 'api' }])).toThrow(
       expect.objectContaining({ code: 'WORKFLOW_STATE_CORRUPT' }),
     );
   });

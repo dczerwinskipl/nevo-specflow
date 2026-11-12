@@ -47,7 +47,6 @@ describe('attention derived from the state', () => {
 
     await dependencies.store.apply(SPEC, {
       specification: { expected: current.revision, next: switched.value },
-      tasks: [],
     });
 
     expect((await inspectExecution(dependencies, SPEC)).attention).toEqual([

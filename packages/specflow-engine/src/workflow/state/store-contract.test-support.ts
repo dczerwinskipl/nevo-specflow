@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
+import { TASK_MAIN_DOCUMENT, type TaskManifest } from '../../tasks/resource/model';
 import { FEEDBACK_MAX } from '../limits';
-import type { AttemptRecord, SpecificationExecutionRecord, TaskRecord } from './model';
-import type { ExecutionChange, WorkflowStore } from './store';
+import type { AttemptRecord, SpecificationExecutionRecord, TaskRunRecord } from './model';
+import type { ExecutionChange, ExecutionSnapshot, WorkflowStore } from './store';
 
 /**
  * The behaviour every {@link WorkflowStore} shares, run against the memory store and the filesystem
@@ -11,16 +12,12 @@ import type { ExecutionChange, WorkflowStore } from './store';
 
 export const SPEC = '0b9d2f9e-4f1c-4a8e-9d55-5f2b6c1a7e10';
 export const OTHER_SPEC = '6f3c1d2e-8a4b-4c5d-9e6f-7a8b9c0d1e2f';
-/** A Specification ready on `step` that lists `taskIds`. */
-export const record = (
-  step: string,
-  specId = SPEC,
-  taskIds: readonly string[] = [],
-): SpecificationExecutionRecord => ({
+
+/** A Specification run ready on `step`. */
+export const record = (step: string, specId = SPEC): SpecificationExecutionRecord => ({
   specId,
   archetype: 'feature',
   taskTypes: ['*'],
-  taskIds,
   run: {
     workflow: { id: 'specification-standard', version: 1, revision: 'a'.repeat(64) },
     position: { state: 'ready', step },
@@ -29,14 +26,21 @@ export const record = (
   },
 });
 
-export const task = (taskId: string, title = taskId, specId = SPEC): TaskRecord => ({
-  specId,
-  taskId,
+/** A `ready` Task drafted by the first breakdown, with only its `task` document. */
+export const manifest = (taskId: string, title = taskId): TaskManifest => ({
+  id: taskId,
   title,
   type: 'implementation',
-  dependsOn: [],
-  origin: { step: 'breakdown', attempt: 1 },
   status: 'ready',
+  dependsOn: [],
+  origin: { kind: 'produced', step: 'breakdown', attempt: 1 },
+  documents: [{ ...TASK_MAIN_DOCUMENT }],
+});
+
+/** A not-started run record of a Task. */
+export const runRecord = (taskId: string, specId = SPEC): TaskRunRecord => ({
+  specId,
+  taskId,
   run: {
     workflow: { id: 'task-standard', version: 1, revision: 'b'.repeat(64) },
     position: { state: 'not-started' },
@@ -63,50 +67,86 @@ export const endedAttempt = (
   },
 });
 
-/** The Specification write that lists `taskIds`, for a store that has no Specification yet. */
-export const listing = (...taskIds: string[]) => ({
-  expected: null,
-  next: record('requirements', SPEC, taskIds),
-});
+/**
+ * The change that creates `manifests` in a store without Tasks: the index lists them, each gets its
+ * manifest and initial `task.md`, and, with `runs`, its run record.
+ */
+export function creating(
+  manifests: readonly TaskManifest[],
+  options: { readonly runs?: boolean; readonly index?: string | null } = {},
+): ExecutionChange {
+  return {
+    index: {
+      expected: options.index ?? null,
+      next: { tasks: manifests.map((entry) => ({ id: entry.id })) },
+    },
+    manifests: manifests.map((next) => ({ taskId: next.id, expected: null, next })),
+    documents: manifests.map((next) => ({
+      taskId: next.id,
+      path: 'task.md',
+      text: `# ${next.title}\n`,
+    })),
+    ...(options.runs === false
+      ? {}
+      : {
+          runs: manifests.map((next) => ({
+            taskId: next.id,
+            expected: null,
+            next: runRecord(next.id),
+          })),
+        }),
+  };
+}
+
+export const EMPTY: ExecutionSnapshot = { manifests: [], runs: [], folders: [], issues: [] };
 
 export function describeWorkflowStoreContract(name: string, create: () => WorkflowStore): void {
   describe(`${name}: workflow store contract`, () => {
     const seeded = async () => {
       const store = create();
       await store.apply(SPEC, {
-        specification: { expected: null, next: record('requirements', SPEC, ['web', 'api']) },
-        tasks: [
-          { taskId: 'web', expected: null, next: task('web') },
-          { taskId: 'api', expected: null, next: task('api') },
-        ],
+        specification: { expected: null, next: record('requirements') },
+        ...creating([manifest('web'), manifest('api')]),
       });
 
       return store;
     };
 
-    it('reads back what it applied, Tasks in id order, and accepts writes at the read revision', async () => {
+    it('reads back what it applied and accepts writes at the read revision', async () => {
       const store = await seeded();
       const snapshot = await store.read(SPEC);
-      expect(snapshot.specification?.value).toEqual(record('requirements', SPEC, ['web', 'api']));
-      expect(snapshot.tasks.map((entry) => entry.value.taskId)).toEqual(['api', 'web']);
-      expect(await store.read(OTHER_SPEC)).toEqual({ tasks: [] });
+      expect(snapshot.specification?.value).toEqual(record('requirements'));
+      expect(snapshot.index?.value).toEqual({ tasks: [{ id: 'web' }, { id: 'api' }] });
+      // Manifests in index order, runs and folders in id order.
+      expect(snapshot.manifests.map((entry) => entry.value)).toEqual([
+        manifest('web'),
+        manifest('api'),
+      ]);
+      expect(snapshot.runs.map((entry) => entry.value)).toEqual([
+        runRecord('api'),
+        runRecord('web'),
+      ]);
+      expect(snapshot.folders).toEqual(['api', 'web']);
+      expect(snapshot.issues).toEqual([]);
+      expect(await store.read(OTHER_SPEC)).toEqual(EMPTY);
 
       await store.apply(SPEC, {
         specification: {
           expected: snapshot.specification?.revision ?? null,
-          next: record('solution', SPEC, ['web', 'api']),
+          next: record('solution'),
         },
-        tasks: [
+        manifests: [
           {
             taskId: 'api',
-            expected: snapshot.tasks[0]?.revision ?? null,
-            next: task('api', 'API'),
+            expected: snapshot.manifests[1]?.revision ?? null,
+            next: manifest('api', 'API'),
           },
         ],
       });
       const next = await store.read(SPEC);
       expect(next.specification?.value.run.position).toEqual({ state: 'ready', step: 'solution' });
-      expect(next.tasks.map((entry) => entry.value.title)).toEqual(['API', 'web']);
+      expect(next.manifests.map((entry) => entry.value.title)).toEqual(['web', 'API']);
+      expect(next.runs).toEqual(snapshot.runs);
     });
 
     it('refuses writes planned against another revision and writes nothing', async () => {
@@ -114,16 +154,20 @@ export function describeWorkflowStoreContract(name: string, create: () => Workfl
       const before = await store.read(SPEC);
 
       for (const change of [
+        { specification: { expected: null, next: record('solution') } },
+        { index: { expected: 'f'.repeat(64), next: { tasks: [] } } },
         {
-          specification: { expected: null, next: record('solution') },
-          tasks: [],
-        },
-        {
-          tasks: [
-            { taskId: 'api', expected: before.tasks[0]?.revision ?? null, next: task('api', 'x') },
-            { taskId: 'web', expected: 'f'.repeat(64), next: task('web', 'y') },
+          manifests: [
+            {
+              taskId: 'web',
+              expected: before.manifests[0]?.revision ?? null,
+              next: manifest('web', 'x'),
+            },
+            { taskId: 'api', expected: 'f'.repeat(64), next: manifest('api', 'y') },
           ],
         },
+        { runs: [{ taskId: 'api', expected: null, next: runRecord('api') }] },
+        { documents: [{ taskId: 'api', path: 'task.md', text: '# Again\n' }] },
       ] satisfies ExecutionChange[]) {
         await expect(store.apply(SPEC, change)).rejects.toMatchObject({
           code: 'WORKFLOW_STATE_CONFLICT',
@@ -133,47 +177,72 @@ export function describeWorkflowStoreContract(name: string, create: () => Workfl
       expect(await store.read(SPEC)).toEqual(before);
     });
 
+    const draftWithRun = (): ExecutionChange => {
+      const change = creating([{ ...manifest('api'), status: 'draft' }]);
+      const run = runRecord('api');
+
+      return {
+        ...change,
+        runs: [
+          {
+            taskId: 'api',
+            expected: null,
+            next: {
+              ...run,
+              run: {
+                ...run.run,
+                position: { state: 'ready', step: 'implement' },
+                attempts: [{ ...endedAttempt(1), step: 'implement' }],
+              },
+            },
+          },
+        ],
+      };
+    };
+
     it.each<[string, () => ExecutionChange]>([
       [
         'a valid Specification next to a Task over the title limit',
         () => ({
-          specification: listing('api'),
-          tasks: [{ taskId: 'api', expected: null, next: task('api', 'x'.repeat(201)) }],
+          specification: { expected: null, next: record('requirements') },
+          ...creating([manifest('api', 'x'.repeat(201))]),
         }),
       ],
       [
         'a Task with an unknown status',
+        () => creating([{ ...manifest('api'), status: 'blocked' } as unknown as TaskManifest]),
+      ],
+      [
+        'a Task manifest without its task document',
+        () =>
+          creating([
+            { ...manifest('api'), documents: [{ id: 'notes', path: 'notes.md', type: 'note' }] },
+          ]),
+      ],
+      [
+        'a manifest write naming another Task',
         () => ({
-          specification: listing('api'),
-          tasks: [
-            {
-              taskId: 'api',
-              expected: null,
-              next: { ...task('api'), status: 'blocked' } as unknown as TaskRecord,
-            },
-          ],
+          ...creating([manifest('api')]),
+          manifests: [{ taskId: 'api', expected: null, next: manifest('web') }],
         }),
       ],
       [
-        'a Task write naming another Task',
+        'a run write naming another Task',
         () => ({
-          specification: listing('api', 'web'),
-          tasks: [{ taskId: 'api', expected: null, next: task('web') }],
+          ...creating([manifest('api')]),
+          runs: [{ taskId: 'api', expected: null, next: runRecord('web') }],
         }),
       ],
       [
-        'a Task of another Specification',
+        'a Task run of another Specification',
         () => ({
-          specification: listing('api'),
-          tasks: [{ taskId: 'api', expected: null, next: task('api', 'api', OTHER_SPEC) }],
+          ...creating([manifest('api')]),
+          runs: [{ taskId: 'api', expected: null, next: runRecord('api', OTHER_SPEC) }],
         }),
       ],
       [
         'a Specification record of another Specification',
-        () => ({
-          specification: { expected: null, next: record('requirements', OTHER_SPEC) },
-          tasks: [],
-        }),
+        () => ({ specification: { expected: null, next: record('requirements', OTHER_SPEC) } }),
       ],
       [
         'an active position without its attempt',
@@ -188,19 +257,39 @@ export function describeWorkflowStoreContract(name: string, create: () => Workfl
               },
             },
           },
-          tasks: [],
         }),
       ],
       [
-        'a Task the Specification does not list',
+        'a run record of a Task that is not registered',
+        () => ({ runs: [{ taskId: 'api', expected: null, next: runRecord('api') }] }),
+      ],
+      [
+        'a Task folder the index does not list',
+        () => ({ ...creating([manifest('api')]), index: { expected: null, next: { tasks: [] } } }),
+      ],
+      [
+        'an index entry without its manifest',
+        () => ({ index: { expected: null, next: { tasks: [{ id: 'api' }] } } }),
+      ],
+      [
+        'a dependency on a Task that is not registered',
+        () => creating([{ ...manifest('api'), dependsOn: ['web'] }]),
+      ],
+      [
+        'a dependency cycle',
+        () =>
+          creating([
+            { ...manifest('api'), dependsOn: ['web'] },
+            { ...manifest('web'), dependsOn: ['api'] },
+          ]),
+      ],
+      ['a draft that ran', draftWithRun],
+      [
+        'a document path outside the Task folder',
         () => ({
-          specification: listing('web'),
-          tasks: [{ taskId: 'api', expected: null, next: task('api') }],
+          ...creating([manifest('api')]),
+          documents: [{ taskId: 'api', path: '../overview.md', text: 'x' }],
         }),
-      ],
-      [
-        'a Task without a Specification that lists it',
-        () => ({ tasks: [{ taskId: 'api', expected: null, next: task('api') }] }),
       ],
     ])('writes nothing for %s', async (_name, change) => {
       const store = create();
@@ -208,7 +297,7 @@ export function describeWorkflowStoreContract(name: string, create: () => Workfl
       await expect(store.apply(SPEC, change())).rejects.toMatchObject({
         code: 'WORKFLOW_STATE_CORRUPT',
       });
-      expect(await store.read(SPEC)).toEqual({ tasks: [] });
+      expect(await store.read(SPEC)).toEqual(EMPTY);
     });
 
     it('refuses a record over the byte budget as invalid input and writes nothing', async () => {
@@ -226,46 +315,67 @@ export function describeWorkflowStoreContract(name: string, create: () => Workfl
             },
           },
         },
-        tasks: [],
       };
 
       await expect(store.apply(SPEC, change)).rejects.toMatchObject({
         code: 'WORKFLOW_INPUT_INVALID',
       });
-      expect(await store.read(SPEC)).toEqual({ tasks: [] });
+      expect(await store.read(SPEC)).toEqual(EMPTY);
     });
 
-    it('keeps a Task status with its last change', async () => {
+    it('keeps a Task status with its last change, its origin and its context', async () => {
       const store = create();
-      const held: TaskRecord = {
-        ...task('api'),
+      const held: TaskManifest = {
+        ...manifest('api'),
         status: 'on-hold',
         statusChange: { source: 'escalation', at: '2026-11-05T10:00:00.000Z', reason: 'Unclear.' },
-      };
-      await store.apply(SPEC, {
-        specification: listing('api', 'web'),
-        tasks: [
-          { taskId: 'api', expected: null, next: held },
-          { taskId: 'web', expected: null, next: { ...task('web'), status: 'draft' } },
+        origin: { kind: 'manual', actorId: 'local:owner' },
+        context: [
+          { kind: 'specification-document', id: 'overview', required: true },
+          { kind: 'path', path: 'packages/**/*.ts', required: false, note: 'Code.' },
         ],
-      });
+      };
+      await store.apply(SPEC, creating([held, { ...manifest('web'), status: 'draft' }]));
 
-      expect((await store.read(SPEC)).tasks.map((entry) => entry.value)).toEqual([
+      expect((await store.read(SPEC)).manifests.map((entry) => entry.value)).toEqual([
         held,
-        { ...task('web'), status: 'draft' },
+        { ...manifest('web'), status: 'draft' },
       ]);
     });
 
-    it('reads a listed Task without a record as missing, not as an error', async () => {
+    it('creates a Task without a run and removes it with its folder as one change', async () => {
       const store = create();
-      await store.apply(SPEC, {
-        specification: listing('api', 'web'),
-        tasks: [{ taskId: 'api', expected: null, next: task('api') }],
-      });
+      await store.apply(SPEC, creating([manifest('api'), manifest('web')], { runs: false }));
+      const created = await store.read(SPEC);
+      expect(created.runs).toEqual([]);
+      expect(created.folders).toEqual(['api', 'web']);
+      expect(created.issues).toEqual([]);
 
-      const snapshot = await store.read(SPEC);
-      expect(snapshot.specification?.value.taskIds).toEqual(['api', 'web']);
-      expect(snapshot.tasks.map((entry) => entry.value.taskId)).toEqual(['api']);
+      // Removing only the index entry would leave an unregistered folder: refused.
+      await expect(
+        store.apply(SPEC, {
+          index: { expected: created.index?.revision ?? null, next: { tasks: [{ id: 'web' }] } },
+        }),
+      ).rejects.toMatchObject({ code: 'WORKFLOW_STATE_CORRUPT' });
+
+      await store.apply(SPEC, {
+        index: { expected: created.index?.revision ?? null, next: { tasks: [{ id: 'web' }] } },
+        manifests: [
+          { taskId: 'api', expected: created.manifests[0]?.revision ?? null, next: null },
+        ],
+        documents: [{ taskId: 'api', path: 'task.md', text: null }],
+      });
+      const removed = await store.read(SPEC);
+      expect(removed.manifests.map((entry) => entry.value.id)).toEqual(['web']);
+      expect(removed.folders).toEqual(['web']);
+      expect(removed.issues).toEqual([]);
+    });
+
+    it('applies an empty change as nothing', async () => {
+      const store = await seeded();
+      const before = await store.read(SPEC);
+      await store.apply(SPEC, {});
+      expect(await store.read(SPEC)).toEqual(before);
     });
   });
 }

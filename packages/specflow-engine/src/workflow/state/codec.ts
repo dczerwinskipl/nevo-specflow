@@ -12,16 +12,13 @@ import {
   FEEDBACK_MAX,
   RECORD_BYTES_MAX,
   RETURNS_MAX,
-  TASK_DEPENDENCIES_MAX,
   TASK_ID_PATTERN_SOURCE,
-  TASK_SUMMARY_MAX,
-  TASK_TITLE_MAX,
-  TASKS_PER_SPECIFICATION_MAX,
 } from '../limits';
-import { TASK_STATUSES, type SpecificationExecutionRecord, type TaskRecord } from './model';
+import type { SpecificationExecutionRecord, TaskRunRecord } from './model';
 
 /**
- * Text format of the stored execution state: YAML records, reviewed and committed with the
+ * Text format of the stored run records (`.execution/specification.yaml`, `.execution/tasks/<id>.yaml`):
+ * YAML records, reviewed and committed with the
  * Specification. Every read validates the full
  * shape, so a hand-edited or truncated file fails closed instead of being interpreted, and every
  * write validates the text it produces the same way, so a record that would not read back is never
@@ -30,7 +27,8 @@ import { TASK_STATUSES, type SpecificationExecutionRecord, type TaskRecord } fro
  * before anything is stored; a stored file over the budget fails a read as corrupt.
  */
 
-export const EXECUTION_STATE_VERSION = 2;
+/** 3: the Task run record holds only the run; the Task itself is its resource (`tasks/resource`). */
+export const EXECUTION_STATE_VERSION = 3;
 
 const id = () => Type.String({ pattern: CATALOGUE_ID_PATTERN });
 const text = (maxLength = 4000) => Type.String({ minLength: 1, maxLength });
@@ -124,27 +122,13 @@ const SpecificationFileSchema = closed({
     Type.Tuple([Type.Literal('*')]),
     Type.Array(id(), { minItems: 1, maxItems: 64 }),
   ]),
-  taskIds: Type.Array(TaskIdSchema, { maxItems: TASKS_PER_SPECIFICATION_MAX, uniqueItems: true }),
   run: RunSchema,
 });
 
-const TaskFileSchema = closed({
+const TaskRunFileSchema = closed({
   version: Type.Literal(EXECUTION_STATE_VERSION),
   specId: text(200),
   taskId: TaskIdSchema,
-  title: text(TASK_TITLE_MAX),
-  summary: optional(text(TASK_SUMMARY_MAX)),
-  type: id(),
-  dependsOn: Type.Array(TaskIdSchema, { maxItems: TASK_DEPENDENCIES_MAX }),
-  origin: closed({ step: id(), attempt: Type.Integer({ minimum: 1 }) }),
-  status: Type.Union(TASK_STATUSES.map((status) => Type.Literal(status))),
-  statusChange: optional(
-    closed({
-      source: Type.Union([Type.Literal('decision'), Type.Literal('escalation')]),
-      at: timestamp(),
-      reason: optional(text(FEEDBACK_MAX)),
-    }),
-  ),
   run: RunSchema,
 });
 
@@ -229,15 +213,15 @@ export function parseSpecificationRecord(source: string): SpecificationExecution
   );
 }
 
-export function serializeTaskRecord(record: TaskRecord): string {
+export function serializeTaskRunRecord(record: TaskRunRecord): string {
   return checkedText(
     yamlOf({ version: EXECUTION_STATE_VERSION, ...record }),
     RECORD_BYTES_MAX,
-    parseTaskRecord,
-    'Task',
+    parseTaskRunRecord,
+    'Task run',
   );
 }
 
-export function parseTaskRecord(source: string): TaskRecord {
-  return withoutVersion(decode(TaskFileSchema, parseYaml(source, 'Task'), 'Task'));
+export function parseTaskRunRecord(source: string): TaskRunRecord {
+  return withoutVersion(decode(TaskRunFileSchema, parseYaml(source, 'Task run'), 'Task run'));
 }

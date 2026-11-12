@@ -88,7 +88,6 @@ describe('createSpecificationScaffold', () => {
           status: 'draft',
           priority: 10,
           created: '2026-10-24',
-          tasks: [],
           location: 'active',
         });
       }

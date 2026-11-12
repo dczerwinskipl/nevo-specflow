@@ -133,7 +133,7 @@ export function finishStep(
     if (decision.replayed) {
       // The read showed the finish through a pending journal when its publication crashed: an
       // empty change publishes that journal, so the retry leaves the files complete.
-      await dependencies.store.apply(subject.specId, { tasks: [] });
+      await dependencies.store.apply(subject.specId, {});
 
       return replayedFinish(context, loaded, decision);
     }
@@ -254,7 +254,9 @@ function replayedFinish(
       .tasks()
       .filter(
         (candidate) =>
-          candidate.origin.step === finished.step && candidate.origin.attempt === finished.attempt,
+          candidate.origin.kind === 'produced' &&
+          candidate.origin.step === finished.step &&
+          candidate.origin.attempt === finished.attempt,
       )
       .map((candidate) => candidate.taskId),
     replayed: true,
@@ -270,7 +272,7 @@ function draftTasks(context: AdvanceContext, request: FinishStepInput): readonly
     allowedTypes: specification.taskTypes,
     taskType: (id) => context.catalogue.taskType(id),
     workflow: (id) => context.catalogue.workflow(id),
-    origin: { step: request.step, attempt: request.attempt },
+    origin: { kind: 'produced', step: request.step, attempt: request.attempt },
     at: context.at,
   });
   for (const task of drafted.changed) {

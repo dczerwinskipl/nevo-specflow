@@ -6,7 +6,7 @@ import { lookupProjectArchetype } from '../../definitions/process-catalogue';
 import { advisoryPolicyReason } from './advisory-policy';
 import { readCommitPolicyMode } from './commit-policy';
 import { countArchiveInventory, listSpecificationFiles, SKIPPED_PATHS_MAX } from './directory-scan';
-import { isReservedRootName } from '../document-rules/document-paths';
+import { isReservedSpecificationPath } from '../document-rules/document-paths';
 import { loadSpecification, type LoadedSpecification } from './loaded-specification';
 import { observe } from './observation';
 import { projectDocumentTree, type ObservedFile, type PolicyReason } from './projection';
@@ -57,7 +57,7 @@ async function buildDocumentTree(
   const candidates = [
     ...listed.paths,
     ...manifest.documents.map((document) => document.path).filter((path) => !listedSet.has(path)),
-  ].filter((path) => !(!path.includes('/') && isReservedRootName(path)));
+  ].filter((path) => !isReservedSpecificationPath(path));
 
   const observations = await mapBounded(candidates, ANALYSIS_CONCURRENCY, (path) =>
     observe(loaded, path, resolved),

@@ -123,11 +123,8 @@ describe('Engine-backed specification workspace read', () => {
         });
         const unavailable = { state: 'unavailable', reason: 'not_implemented' };
         expect(body.sections).toEqual({
-          // Temporary manifest source: no Tasks is a verified, available empty section.
-          tasks: {
-            state: 'available',
-            data: { groups: [], completed: 0, total: 0, attention: [] },
-          },
+          // The manifest lists no Tasks any more; the Engine Task source is not wired yet.
+          tasks: { state: 'unavailable', reason: 'source_unavailable' },
           documents: body.sections.documents,
           // Managed Sessions are disabled in this Runtime: the registry is unreadable.
           sessions: { state: 'unavailable', reason: 'source_unavailable' },

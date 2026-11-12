@@ -117,10 +117,10 @@ describe('Tasks of a Specification', () => {
       { taskId: 'api', title: 'API and screen', status: 'ready', origin: { attempt: 2 } },
       { taskId: 'screen', status: 'cancelled' },
     ]);
-    // A draft left out of the breakdown is cancelled, never removed from the Task list.
-    expect((await inspectExecution(dependencies, SPEC)).specification?.record.taskIds).toEqual([
-      'api',
-      'screen',
+    // A draft left out of the breakdown is cancelled, never removed from the Task index.
+    expect((await dependencies.store.read(SPEC)).index?.value.tasks).toEqual([
+      { id: 'api' },
+      { id: 'screen' },
     ]);
   });
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { TaskType, WorkflowDefinition } from '../definitions/model';
-import type { TaskRecord } from '../state/model';
+import type { ExecutionTask } from '../state/model';
 import {
   LEFT_OUT_OF_BREAKDOWN,
   allTasksClosed,
@@ -44,7 +44,7 @@ const input = (
   allowedTypes: ['*'],
   taskType: (id) => (id === 'implementation' ? implementation : undefined),
   workflow: (id) => (id === 'task-standard' ? workflow : undefined),
-  origin: { step: 'breakdown', attempt: 1 },
+  origin: { kind: 'produced', step: 'breakdown', attempt: 1 },
   at: 'now',
   ...overrides,
 });
@@ -59,7 +59,7 @@ const proposal = (id: string, dependsOn: string[] = []): TaskProposal => ({
   dependsOn,
 });
 
-const ready = (task: TaskRecord): TaskRecord => ({ ...task, status: 'ready' });
+const ready = (task: ExecutionTask): ExecutionTask => ({ ...task, status: 'ready' });
 
 describe('materializeTasks', () => {
   it('creates draft Tasks pinned to their type workflow', () => {
@@ -78,12 +78,15 @@ describe('materializeTasks', () => {
   });
 
   it('takes the list as every draft: revises listed drafts and cancels the others', () => {
-    const [api, docs] = drafts([proposal('api'), proposal('docs')]) as [TaskRecord, TaskRecord];
+    const [api, docs] = drafts([proposal('api'), proposal('docs')]) as [
+      ExecutionTask,
+      ExecutionTask,
+    ];
     const core = ready(drafts([proposal('core')])[0]!);
     const result = materializeTasks(
       input([{ ...proposal('api', ['core']), title: 'API v2' }, proposal('web', ['api'])], {
         existing: [api, docs, core],
-        origin: { step: 'breakdown', attempt: 2 },
+        origin: { kind: 'produced', step: 'breakdown', attempt: 2 },
       }),
     );
 
@@ -193,13 +196,13 @@ describe('leaving out a draft another Task depends on', () => {
 
 describe('Task status, readiness and the wait', () => {
   const [draftApi, draftScreen] = drafts([proposal('api'), proposal('screen', ['api'])]) as [
-    TaskRecord,
-    TaskRecord,
+    ExecutionTask,
+    ExecutionTask,
   ];
   const api = ready(draftApi);
   const screen = ready(draftScreen);
   const attempt = { step: 'implement', attempt: 1, sequence: 1, startedAt: 'now' };
-  const started: TaskRecord = {
+  const started: ExecutionTask = {
     ...api,
     run: {
       ...api.run,
@@ -207,11 +210,11 @@ describe('Task status, readiness and the wait', () => {
       attempts: [attempt],
     },
   };
-  const ended = (task: TaskRecord, outcome: 'completed' | 'abandoned'): TaskRecord => ({
+  const ended = (task: ExecutionTask, outcome: 'completed' | 'abandoned'): ExecutionTask => ({
     ...task,
     run: { ...task.run, position: { state: 'terminal', outcome }, attempts: [attempt] },
   });
-  const decide = (task: TaskRecord, status: TaskDecision['status'], reason?: string) =>
+  const decide = (task: ExecutionTask, status: TaskDecision['status'], reason?: string) =>
     decideTaskStatus(
       task,
       { taskId: task.taskId, status, ...(reason !== undefined ? { reason } : {}) },
@@ -223,7 +226,7 @@ describe('Task status, readiness and the wait', () => {
     expect(applyTaskEffects([draftApi], [])).toEqual([]);
   });
 
-  it.each<[TaskRecord['status'], TaskDecision['status']]>([
+  it.each<[ExecutionTask['status'], TaskDecision['status']]>([
     ['draft', 'ready'],
     ['draft', 'cancelled'],
     ['ready', 'on-hold'],
@@ -237,7 +240,7 @@ describe('Task status, readiness and the wait', () => {
     });
   });
 
-  it.each<[string, TaskRecord, TaskDecision['status']]>([
+  it.each<[string, ExecutionTask, TaskDecision['status']]>([
     ['a cancelled Task', { ...api, status: 'cancelled' }, 'ready'],
     ['a draft put on hold', draftApi, 'on-hold'],
     ['a decision that changes nothing', api, 'ready'],
@@ -323,7 +326,7 @@ describe('Task status, readiness and the wait', () => {
       kind: 'dependencies',
       waitingFor: ['api'],
     });
-    const done: TaskRecord = {
+    const done: ExecutionTask = {
       ...api,
       run: { ...api.run, position: { state: 'terminal', outcome: 'completed' } },
     };

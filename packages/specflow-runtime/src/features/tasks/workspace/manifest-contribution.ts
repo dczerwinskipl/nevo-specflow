@@ -27,9 +27,10 @@ export function manifestTasksSection(tasks: readonly unknown[]): WorkspaceTasksS
  * read (one manifest read per workspace read). Without them (a source that reads no manifest) the
  * section is `source_unavailable`.
  *
- * TEMPORARY source: on the workflow kernel Tasks live in `.execution/tasks/<id>.yaml` and the
- * manifest `tasks` stays `[]`. When the kernel merges, this contribution and the workspace
- * `preparationState` move to the kernel Task source and the manifest rule is deleted.
+ * TEMPORARY source: the Specification manifest no longer lists Tasks (they are its
+ * `tasks/index.yaml`), so the Engine source hands over none and project mode reports
+ * `source_unavailable`. TODO(T8a): replace this contribution and the workspace `preparationState`
+ * with the Engine-backed Task source.
  */
 export function manifestWorkspaceTasks(
   _specId: string,

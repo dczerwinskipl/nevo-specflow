@@ -104,9 +104,9 @@ describe('E2.T06 — production Engine-backed specification reads', () => {
         expect(value.items[0]).toMatchObject({
           id: created.specId,
           title: 'Actual canonical Spec',
-          // Every Specification is `draft` until a workflow exists; `tasks: []` is "No tasks".
+          // Every Specification is `draft` until a workflow exists; the manifest is no progress evidence.
           status: 'draft',
-          progress: { completed: 0, total: 0 },
+          progress: null,
           classification: { section: 'draft' },
           // Sessions cannot be bound to a Specification: no execution or attention belongs to it.
           signals: [],
@@ -146,7 +146,8 @@ describe('E2.T06 — production Engine-backed specification reads', () => {
           manifestPath,
           (await readFile(manifestPath, 'utf8'))
             .replace('status: draft', 'status: impl-verified')
-            .replace('tasks: []', 'tasks:\n  - id: TASK-01\n    status: done'),
+            // A stale manifest `tasks` list is not read.
+            .concat('tasks:\n  - id: TASK-01\n    status: done\n'),
         );
         const populated = await app.inject('/api/specs/overview');
         expect(populated.statusCode, populated.body).toBe(200);

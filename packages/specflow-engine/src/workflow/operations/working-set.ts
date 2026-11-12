@@ -1,26 +1,35 @@
+import { isDeepStrictEqual } from 'node:util';
+
+import { initialTaskDocument } from '../../tasks/resource/codec';
+import { TASK_MAIN_DOCUMENT } from '../../tasks/resource/model';
 import type { ExecutionCatalogue } from '../definitions/catalogue';
 import { WorkflowError } from '../errors';
 import {
   brokenTask,
+  manifestOf,
+  type ExecutionTask,
   type SpecificationExecutionRecord,
-  type TaskRecord,
   type WorkflowRun,
   type WorkflowSubject,
 } from '../state/model';
 import type { ExecutionChange, ExecutionSnapshot } from '../state/store';
-import { executionTasks } from './loaded-execution';
+import { executionTasks, findTask } from './loaded-execution';
 
 /**
  * The records one operation reads and rewrites, collected into a single {@link ExecutionChange}.
- * Every write is planned against the revision of the snapshot it was read from. A Task created here
- * is added to the Specification's Task list in the same change; a broken Task (`executionTasks`) is
- * left out of `tasks()` and refused before anything is planned on it.
+ * Every write is planned against the revision of the snapshot it was read from, and only what
+ * changed is written: a Task's manifest when its resource changed, its run record when its run did.
+ * A Task created here gets, in the same change, its index entry, its manifest, its initial `task.md`
+ * and its run record. A broken Task (`executionTasks`) is left out of `tasks()` and refused before
+ * anything is planned on it.
  */
 export class ExecutionWorkingSet {
   private specificationRecord: SpecificationExecutionRecord | undefined;
   private specificationChanged = false;
-  private readonly taskRecords = new Map<string, TaskRecord>();
+  private readonly taskRecords = new Map<string, ExecutionTask>();
   private readonly changedTasks = new Set<string>();
+  /** Tasks created by this change, in creation order (their index order). */
+  private readonly createdTasks: string[] = [];
   private readonly broken: ReadonlySet<string>;
   private readonly snapshot: ExecutionSnapshot;
 
@@ -43,16 +52,16 @@ export class ExecutionWorkingSet {
     return this.specificationRecord;
   }
 
-  tasks(): TaskRecord[] {
+  tasks(): ExecutionTask[] {
     return [...this.taskRecords.values()];
   }
 
-  /** The broken Tasks, in list order. */
+  /** The broken Tasks, in id order. */
   brokenTasks(): string[] {
     return [...this.broken];
   }
 
-  task(taskId: string): TaskRecord {
+  task(taskId: string): ExecutionTask {
     if (this.broken.has(taskId)) {
       brokenTask(taskId);
     }
@@ -82,18 +91,14 @@ export class ExecutionWorkingSet {
     this.setTask({ ...this.task(subject.taskId), run });
   }
 
-  setTask(task: TaskRecord): void {
+  setTask(task: ExecutionTask): void {
     if (this.broken.has(task.taskId)) {
       brokenTask(task.taskId);
     }
 
-    const specification = this.specification();
-    if (!specification.taskIds.includes(task.taskId)) {
-      this.specificationRecord = {
-        ...specification,
-        taskIds: [...specification.taskIds, task.taskId],
-      };
-      this.specificationChanged = true;
+    const { manifest } = findTask(this.snapshot, task.taskId);
+    if (!manifest && !this.createdTasks.includes(task.taskId)) {
+      this.createdTasks.push(task.taskId);
     }
 
     this.taskRecords.set(task.taskId, task);
@@ -101,10 +106,35 @@ export class ExecutionWorkingSet {
   }
 
   change(): ExecutionChange {
-    const revisions = new Map(
-      this.snapshot.tasks.map((entry) => [entry.value.taskId, entry.revision] as const),
-    );
     const specification = this.specificationRecord;
+    const manifests: NonNullable<ExecutionChange['manifests']>[number][] = [];
+    const runs: NonNullable<ExecutionChange['runs']>[number][] = [];
+    const documents: NonNullable<ExecutionChange['documents']>[number][] = [];
+    for (const taskId of [...this.changedTasks].sort()) {
+      const task = this.task(taskId);
+      const stored = findTask(this.snapshot, taskId);
+      const manifest = manifestOf(task);
+      if (!isDeepStrictEqual(stored.manifest?.value, manifest)) {
+        manifests.push({ taskId, expected: stored.manifest?.revision ?? null, next: manifest });
+      }
+
+      if (!stored.manifest) {
+        documents.push({ taskId, path: TASK_MAIN_DOCUMENT.path, text: initialTaskDocument(task) });
+      }
+
+      if (!isDeepStrictEqual(stored.run?.value.run, task.run)) {
+        runs.push({
+          taskId,
+          expected: stored.run?.revision ?? null,
+          next: { specId: task.specId, taskId, run: task.run },
+        });
+      }
+    }
+
+    const index = this.snapshot.index;
+    // A created Task the index lists already was a dangling entry: its folder is written again.
+    const listed = new Set(index?.value.tasks.map((entry) => entry.id) ?? []);
+    const registered = this.createdTasks.filter((id) => !listed.has(id));
 
     return {
       ...(this.specificationChanged && specification
@@ -115,11 +145,19 @@ export class ExecutionWorkingSet {
             },
           }
         : {}),
-      tasks: [...this.changedTasks].sort().map((taskId) => ({
-        taskId,
-        expected: revisions.get(taskId) ?? null,
-        next: this.task(taskId),
-      })),
+      ...(registered.length > 0
+        ? {
+            index: {
+              expected: index?.revision ?? null,
+              next: {
+                tasks: [...(index?.value.tasks ?? []), ...registered.map((id) => ({ id }))],
+              },
+            },
+          }
+        : {}),
+      ...(manifests.length > 0 ? { manifests } : {}),
+      ...(documents.length > 0 ? { documents } : {}),
+      ...(runs.length > 0 ? { runs } : {}),
     };
   }
 }

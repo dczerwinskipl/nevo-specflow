@@ -50,7 +50,6 @@ export function buildSnapshot(input: SnapshotInput = {}): PlanningSnapshot {
     folders: [...(input.folders ?? [])],
     status: 'draft',
     location,
-    tasks: [],
   };
   const manifestText = serializeSpecificationManifest(manifest);
   const files = input.files ?? [{ path: 'overview.md', content: '# Overview\n' }];

@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 
 import type { SpecFlowEngine } from '../../../application';
 import { mapBounded } from '../../../concurrency';
-import { isReservedRootName } from '../../document-rules/document-paths';
+import { isReservedSpecificationPath } from '../../document-rules/document-paths';
 import { FileChangedDuringOpen, readAt, withOpenFile } from '../../document-rules/verified-file';
 import { documentChangeError } from '../changes/errors';
 import type { ObservedFile as PlanObservedFile, PlanningSnapshot } from '../changes/plan/snapshot';
@@ -49,7 +49,7 @@ export async function readSpecificationSnapshot(
 
   const registered = loaded.manifest.documents.map((document) => document.path);
   const candidates = [...new Set([...listed.paths, ...registered])].filter(
-    (path) => !(!path.includes('/') && isReservedRootName(path)),
+    (path) => !isReservedSpecificationPath(path),
   );
   const observations = await mapBounded(candidates, OBSERVATION_CONCURRENCY, (path) =>
     observe(loaded, path, resolved),

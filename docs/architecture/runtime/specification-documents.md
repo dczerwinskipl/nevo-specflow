@@ -65,7 +65,6 @@ title: <string> # existing
 status: draft # existing
 priority: 10 # existing, optional
 created: 2026-10-23 # existing, optional
-tasks: [] # existing
 archetype: # REQUIRED; replaces `type`
   id: feature # catalogue id: ^[a-z][a-z0-9-]{0,31}$
   version: 1 # positive integer
@@ -84,7 +83,8 @@ folders: # OPTIONAL: explicit folders that may hold no file (see below)
 
 Parser rules (strict, `SPEC_SOURCE_INVALID` otherwise; no alias, no default, no legacy fallback):
 
-1. `type` (the old field) is not read. A manifest lacking `archetype` or `documents` is invalid.
+1. `type` and `tasks` (old fields) are not read; Tasks are registered in the reserved `tasks/index.yaml`
+   (draft F20, `ideas.specflow-engine.task-resource-and-context`). A manifest lacking `archetype` or `documents` is invalid.
 2. `archetype` and each `documents[]`/`requirements[]` entry accept only the keys above (unknown keys rejected).
    Unknown **top-level** keys are tolerated and preserved on rewrite.
 3. `documents[].id` matches `^[a-z0-9][a-z0-9-]{0,63}$`, is unique, and MUST NOT start with `u-` (reserved for
@@ -311,7 +311,9 @@ and `DocumentTree.archetype.defined` is `defined | invalid | absent`.
   A hand-dropped root entry whose name equals `specification.yaml` or `change.yaml` ignoring case but is not the
   canonical manifest is not a document problem: the existing Specification listing already fails closed for it
   (`repository.ts` requires exactly one manifest-named entry, spelled `specification.yaml`), so the tree is never
-  reached; this is documented behaviour, not new.
+  reached; this is documented behaviour, not new. The root folder `tasks/` (ignoring case) is reserved for the
+  Specification's Task resources (`tasks/index.yaml`, `tasks/<id>/`): no document or folder path lies in it
+  (`DOCUMENT_PATH_INVALID`) and the tree never lists it.
 - **Symlinks and special files** are never followed and never listed; such an entry is skipped, counted in
   `skippedEntries` and reported as the issue `skipped-entry`. The count is a lower bound once the archive count traversal
   reached its own bound (entries beyond it were not visited; `archive-limit` is reported then). Names with control,

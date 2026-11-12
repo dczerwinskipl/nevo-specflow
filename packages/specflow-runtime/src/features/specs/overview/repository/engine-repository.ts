@@ -73,7 +73,7 @@ export function createEngineSpecsOverviewRepository(
 
 function project(item: Extract<CanonicalSpecSource, { status: 'available' }>) {
   const spec = item.specification;
-  const facts = manifestOverviewFacts(spec);
+  const facts = manifestOverviewFacts();
   const common: SpecOverviewRecord = {
     id: item.specId,
     title: spec.title,

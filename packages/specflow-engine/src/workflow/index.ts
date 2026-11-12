@@ -69,9 +69,10 @@ export { TASK_STATUSES } from './state/model';
 export type {
   AgentActor,
   AttemptRecord,
+  ExecutionTask,
   OwnerActor,
   SpecificationExecutionRecord,
-  TaskRecord,
+  TaskRunRecord,
   TaskStatus,
   TaskStatusChange,
   WorkflowActor,

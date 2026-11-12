@@ -4,6 +4,7 @@ import {
   readdir,
   readFile,
   realpath,
+  rename,
   rm,
   symlink,
   writeFile,
@@ -36,11 +37,13 @@ import { startSpecificationExecution, startTaskExecution } from '../operations/s
 import { returnToStep } from '../operations/return';
 import { setTaskStatus } from '../operations/task-status';
 import { TASKS_PER_SPECIFICATION_MAX } from '../limits';
+import { serializeTaskIndex, serializeTaskManifest } from '../../tasks/resource/codec';
+import type { TaskManifest } from '../../tasks/resource/model';
 import {
   parseSpecificationRecord,
-  parseTaskRecord,
+  parseTaskRunRecord,
   serializeSpecificationRecord,
-  serializeTaskRecord,
+  serializeTaskRunRecord,
 } from './codec';
 import {
   createFilesystemWorkflowStore,
@@ -48,9 +51,18 @@ import {
   EXECUTION_DIRECTORY,
 } from './filesystem-store';
 import type { JournalWrite } from './journal';
-import type { TaskRecord, WorkflowRun } from './model';
+import type { WorkflowRun } from './model';
 import type { ExecutionChange } from './store';
-import { listing, OTHER_SPEC, record, SPEC, task } from './store-contract.test-support';
+import {
+  creating,
+  EMPTY,
+  manifest,
+  OTHER_SPEC,
+  record,
+  runRecord,
+  SPEC,
+} from './store-contract.test-support';
+import { stateOfSnapshot } from './validate';
 
 let root: string;
 let stateRoot: string;
@@ -78,19 +90,21 @@ const storeWithPublishHook = (beforePublishTarget: (write: JournalWrite) => Prom
 
 const executionDirectory = () => join(specificationDirectory, EXECUTION_DIRECTORY);
 const specificationPath = () => join(executionDirectory(), 'specification.yaml');
+/** The Task run records. */
 const tasksDirectory = () => join(executionDirectory(), 'tasks');
+/** The Task resources: `tasks/index.yaml` and one folder per Task. */
+const resourceDirectory = () => join(specificationDirectory, 'tasks');
 const journalPath = () => join(stateRoot, 'engine', 'operations', 'workflow', `${SPEC}.json`);
 
 async function writeJournal(writes: readonly unknown[]): Promise<void> {
   await mkdir(join(stateRoot, 'engine', 'operations', 'workflow'), { recursive: true });
-  await writeFile(journalPath(), JSON.stringify({ version: 2, specId: SPEC, writes }));
+  await writeFile(journalPath(), JSON.stringify({ version: 3, specId: SPEC, writes }));
 }
 
 async function seedSpecification(step = 'requirements') {
   const target = store();
   await target.apply(SPEC, {
     specification: { expected: null, next: record(step) },
-    tasks: [],
   });
 
   return target;
@@ -131,7 +145,6 @@ describe('filesystem workflow store', () => {
     await expect(
       target.apply(SPEC, {
         specification: { expected: null, next: record('specification') },
-        tasks: [],
       }),
     ).rejects.toMatchObject({ code: 'WORKFLOW_STATE_CONFLICT' });
   });
@@ -150,7 +163,6 @@ describe('filesystem workflow store', () => {
     expect(read.specification?.value.run.position).toEqual({ state: 'ready', step: 'solution' });
     await target.apply(SPEC, {
       specification: { expected: read.specification?.revision ?? null, next: record('breakdown') },
-      tasks: [],
     });
     expect((await target.read(SPEC)).specification?.value.run.position).toEqual({
       state: 'ready',
@@ -162,16 +174,38 @@ describe('filesystem workflow store', () => {
   it('replays a journal whose targets were partly written before the crash', async () => {
     const target = await seedSpecification();
     const previous = sha256Hex(await readFile(specificationPath(), 'utf8'));
-    const next = serializeSpecificationRecord(record('solution', SPEC, ['api']));
+    const next = serializeSpecificationRecord(record('solution'));
     await writeFile(specificationPath(), next);
     await writeJournal([
       { target: 'specification', text: next, expected: previous },
-      { target: 'task', taskId: 'api', text: serializeTaskRecord(task('api')), expected: null },
+      {
+        target: 'task-index',
+        text: serializeTaskIndex({ tasks: [{ id: 'api' }] }),
+        expected: null,
+      },
+      {
+        target: 'task-manifest',
+        taskId: 'api',
+        text: serializeTaskManifest(manifest('api')),
+        expected: null,
+      },
+      { target: 'task-document', taskId: 'api', path: 'task.md', text: '# api\n', expected: null },
+      {
+        target: 'task-run',
+        taskId: 'api',
+        text: serializeTaskRunRecord(runRecord('api')),
+        expected: null,
+      },
     ]);
 
     const read = await target.read(SPEC);
     expect(read.specification?.value.run.position).toEqual({ state: 'ready', step: 'solution' });
-    expect(read.tasks.map((entry) => entry.value.taskId)).toEqual(['api']);
+    expect(read.manifests.map((entry) => entry.value.id)).toEqual(['api']);
+    expect(read.runs.map((entry) => entry.value.taskId)).toEqual(['api']);
+    expect(read.folders).toEqual(['api']);
+    expect(read.issues).toEqual([]);
+    await target.apply(SPEC, {});
+    expect(await readFile(join(resourceDirectory(), 'api', 'task.md'), 'utf8')).toBe('# api\n');
   });
 
   it('refuses to replay a journal over state that changed outside the Engine', async () => {
@@ -191,7 +225,6 @@ describe('filesystem workflow store', () => {
     await expect(
       target.apply(SPEC, {
         specification: { expected: sha256Hex(switched), next: record('solution') },
-        tasks: [],
       }),
     ).rejects.toMatchObject({ code: 'WORKFLOW_STATE_CONFLICT' });
     expect(await readFile(specificationPath(), 'utf8')).toBe(switched);
@@ -221,10 +254,7 @@ describe('filesystem workflow store', () => {
 
   it('ignores names among the Tasks that are not Task records', async () => {
     const target = store();
-    await target.apply(SPEC, {
-      specification: listing('api'),
-      tasks: [{ taskId: 'api', expected: null, next: task('api') }],
-    });
+    await target.apply(SPEC, creating([manifest('api')]));
     for (const name of [
       '.gitkeep',
       'Thumbs.db',
@@ -236,9 +266,18 @@ describe('filesystem workflow store', () => {
       '.hidden.yaml',
     ]) {
       await writeFile(join(tasksDirectory(), name), 'not a record');
+      await writeFile(join(resourceDirectory(), name), 'not a Task');
     }
 
-    expect((await target.read(SPEC)).tasks.map((entry) => entry.value.taskId)).toEqual(['api']);
+    // Folders below `tasks/` that cannot be Tasks are not Tasks either.
+    for (const name of ['.git', 'Not_A_Task', 'con']) {
+      await mkdir(join(resourceDirectory(), name));
+    }
+
+    const read = await target.read(SPEC);
+    expect(read.runs.map((entry) => entry.value.taskId)).toEqual(['api']);
+    expect(read.folders).toEqual(['api']);
+    expect(read.issues).toEqual([]);
 
     await writeFile(join(tasksDirectory(), 'Not_A_Task.yaml'), 'not a record');
     await expect(target.read(SPEC)).rejects.toMatchObject({ code: 'WORKFLOW_STATE_CORRUPT' });
@@ -247,21 +286,32 @@ describe('filesystem workflow store', () => {
   it('ignores stage files of an interrupted write and removes them on the next change', async () => {
     const target = store();
     await target.apply(SPEC, {
-      specification: listing('api'),
-      tasks: [{ taskId: 'api', expected: null, next: task('api') }],
+      specification: { expected: null, next: record('requirements') },
+      ...creating([manifest('api')]),
     });
     const uuid = '0f8fad5b-d9cb-469f-a165-70867728950e';
     await writeFile(join(tasksDirectory(), `.api.yaml.${uuid}.tmp`), 'version: 1\npartial');
     await writeFile(join(executionDirectory(), `.specification.yaml.${uuid}.tmp`), 'partial');
+    await writeFile(join(resourceDirectory(), `.index.yaml.${uuid}.tmp`), 'partial');
+    await writeFile(join(resourceDirectory(), 'api', `.task.yaml.${uuid}.tmp`), 'partial');
 
     const read = await target.read(SPEC);
-    expect(read.tasks.map((entry) => entry.value.taskId)).toEqual(['api']);
+    expect(read.manifests.map((entry) => entry.value.id)).toEqual(['api']);
     await target.apply(SPEC, {
-      tasks: [
-        { taskId: 'api', expected: read.tasks[0]?.revision ?? null, next: task('api', 'API') },
+      manifests: [
+        {
+          taskId: 'api',
+          expected: read.manifests[0]?.revision ?? null,
+          next: manifest('api', 'API'),
+        },
       ],
     });
     expect(await readdir(tasksDirectory())).toEqual(['api.yaml']);
+    expect((await readdir(resourceDirectory())).sort()).toEqual(['api', 'index.yaml']);
+    expect((await readdir(join(resourceDirectory(), 'api'))).sort()).toEqual([
+      'task.md',
+      'task.yaml',
+    ]);
     expect((await readdir(executionDirectory())).sort()).toEqual(['specification.yaml', 'tasks']);
   });
 
@@ -269,8 +319,8 @@ describe('filesystem workflow store', () => {
     [
       'a Task title over the limit',
       () => ({
-        specification: listing('api'),
-        tasks: [{ taskId: 'api', expected: null, next: task('api', 'x'.repeat(201)) }],
+        specification: { expected: null, next: record('requirements') },
+        ...creating([manifest('api', 'x'.repeat(201))]),
       }),
     ],
     [
@@ -279,7 +329,7 @@ describe('filesystem workflow store', () => {
         specification: {
           expected: null,
           next: {
-            ...record('solution', SPEC, ['api']),
+            ...record('solution'),
             run: {
               ...record('solution').run,
               attempts: [
@@ -295,7 +345,7 @@ describe('filesystem workflow store', () => {
             },
           },
         },
-        tasks: [{ taskId: 'api', expected: null, next: task('api') }],
+        ...creating([manifest('api')]),
       }),
     ],
   ])('writes nothing for %s, and later reads still work', async (_name, change) => {
@@ -305,8 +355,9 @@ describe('filesystem workflow store', () => {
       code: 'WORKFLOW_STATE_CORRUPT',
     });
     await expect(readdir(executionDirectory())).rejects.toMatchObject({ code: 'ENOENT' });
+    await expect(readdir(resourceDirectory())).rejects.toMatchObject({ code: 'ENOENT' });
     await expect(readFile(journalPath(), 'utf8')).rejects.toMatchObject({ code: 'ENOENT' });
-    expect(await target.read(SPEC)).toEqual({ tasks: [] });
+    expect(await target.read(SPEC)).toEqual(EMPTY);
   });
 
   it('fails closed on a hand-edited record', async () => {
@@ -334,13 +385,13 @@ async function linkDirectory(target: string, link: string): Promise<void> {
 
 describe('filesystem workflow store: identity of the stored records', () => {
   it('refuses a Task record whose id is not its file name', async () => {
-    await writeTaskFile('api.yaml', serializeTaskRecord(task('web')));
+    await writeTaskFile('api.yaml', serializeTaskRunRecord(runRecord('web')));
 
     await expect(store().read(SPEC)).rejects.toMatchObject(corrupt);
   });
 
   it('refuses a Task record of another Specification', async () => {
-    await writeTaskFile('api.yaml', serializeTaskRecord(task('api', 'api', OTHER_SPEC)));
+    await writeTaskFile('api.yaml', serializeTaskRunRecord(runRecord('api', OTHER_SPEC)));
 
     await expect(store().read(SPEC)).rejects.toMatchObject(corrupt);
   });
@@ -357,14 +408,33 @@ describe('filesystem workflow store: identity of the stored records', () => {
 
   it('refuses a journal that writes one Task twice', async () => {
     await writeJournal([
-      { target: 'task', taskId: 'api', text: serializeTaskRecord(task('api')), expected: null },
       {
-        target: 'task',
+        target: 'task-manifest',
         taskId: 'api',
-        text: serializeTaskRecord(task('api', 'B')),
+        text: serializeTaskManifest(manifest('api')),
+        expected: null,
+      },
+      {
+        target: 'task-manifest',
+        taskId: 'api',
+        text: serializeTaskManifest(manifest('api', 'B')),
         expected: null,
       },
     ]);
+
+    await expect(store().read(SPEC)).rejects.toMatchObject(corrupt);
+  });
+
+  it('refuses a Task manifest whose id is not its folder name', async () => {
+    await mkdir(join(resourceDirectory(), 'api'), { recursive: true });
+    await writeFile(
+      join(resourceDirectory(), 'index.yaml'),
+      serializeTaskIndex({ tasks: [{ id: 'api' }] }),
+    );
+    await writeFile(
+      join(resourceDirectory(), 'api', 'task.yaml'),
+      serializeTaskManifest(manifest('web')),
+    );
 
     await expect(store().read(SPEC)).rejects.toMatchObject(corrupt);
   });
@@ -397,26 +467,38 @@ describe('filesystem workflow store: symlinks', () => {
     );
 
     await expect(store().read(SPEC)).rejects.toMatchObject(corrupt);
-    await expect(
-      store().apply(SPEC, {
-        tasks: [{ taskId: 'api', expected: null, next: task('api') }],
-      }),
-    ).rejects.toMatchObject(corrupt);
+    await expect(store().apply(SPEC, creating([manifest('api')]))).rejects.toMatchObject(corrupt);
     expect(await readdir(outside())).toEqual(['specification.yaml']);
   });
 
-  it('refuses a Task folder that is a link', async () => {
+  it('refuses a Task run folder that is a link', async () => {
     await mkdir(executionDirectory(), { recursive: true });
     await linkDirectory(outside(), tasksDirectory());
-    await writeFile(join(outside(), 'api.yaml'), serializeTaskRecord(task('api')));
+    await writeFile(join(outside(), 'api.yaml'), serializeTaskRunRecord(runRecord('api')));
+
+    await expect(store().read(SPEC)).rejects.toMatchObject(corrupt);
+    await expect(store().apply(SPEC, creating([manifest('web')]))).rejects.toMatchObject(corrupt);
+    expect(await readdir(outside())).toEqual(['api.yaml']);
+  });
+
+  it('refuses a Task resource folder that is a link', async () => {
+    await linkDirectory(outside(), resourceDirectory());
+    await writeFile(join(outside(), 'index.yaml'), serializeTaskIndex({ tasks: [] }));
 
     await expect(store().read(SPEC)).rejects.toMatchObject(corrupt);
     await expect(
-      store().apply(SPEC, {
-        tasks: [{ taskId: 'web', expected: null, next: task('web') }],
-      }),
+      store().apply(SPEC, creating([manifest('web')], { runs: false })),
     ).rejects.toMatchObject(corrupt);
-    expect(await readdir(outside())).toEqual(['api.yaml']);
+    expect(await readdir(outside())).toEqual(['index.yaml']);
+  });
+
+  it('refuses a Task folder that is a link', async () => {
+    await store().apply(SPEC, creating([manifest('api')], { runs: false }));
+    await rm(join(resourceDirectory(), 'api'), { recursive: true });
+    await linkDirectory(outside(), join(resourceDirectory(), 'api'));
+    await writeFile(join(outside(), 'task.yaml'), serializeTaskManifest(manifest('api')));
+
+    await expect(store().read(SPEC)).rejects.toMatchObject(corrupt);
   });
 
   it('refuses a journal folder that is a link', async () => {
@@ -430,16 +512,12 @@ describe('filesystem workflow store: symlinks', () => {
 
   it.skipIf(!symlinksAvailable)('refuses a record file that is a link', async () => {
     await mkdir(outside(), { recursive: true });
-    await writeFile(join(outside(), 'api.yaml'), serializeTaskRecord(task('api')));
+    await writeFile(join(outside(), 'api.yaml'), serializeTaskRunRecord(runRecord('api')));
     await mkdir(tasksDirectory(), { recursive: true });
     await symlink(join(outside(), 'api.yaml'), join(tasksDirectory(), 'api.yaml'), 'file');
 
     await expect(store().read(SPEC)).rejects.toMatchObject(corrupt);
-    await expect(
-      store().apply(SPEC, {
-        tasks: [{ taskId: 'web', expected: null, next: task('web') }],
-      }),
-    ).rejects.toMatchObject(corrupt);
+    await expect(store().apply(SPEC, creating([manifest('web')]))).rejects.toMatchObject(corrupt);
   });
 });
 
@@ -447,9 +525,12 @@ describe('filesystem workflow store: publication re-checks each target', () => {
   it('refuses to overwrite a target that changed after the change was planned', async () => {
     const seeded = await seedSpecification();
     const before = await seeded.read(SPEC);
-    const external = serializeTaskRecord(task('api', 'from git'));
+    const external = serializeTaskRunRecord({
+      ...runRecord('api'),
+      run: { ...runRecord('api').run, workflow: { ...runRecord('api').run.workflow, version: 2 } },
+    });
     const target = storeWithPublishHook(async (write) => {
-      if (write.target === 'task') {
+      if (write.target === 'task-run') {
         await writeTaskFile('api.yaml', external);
       }
     });
@@ -458,9 +539,9 @@ describe('filesystem workflow store: publication re-checks each target', () => {
       target.apply(SPEC, {
         specification: {
           expected: before.specification?.revision ?? null,
-          next: record('solution', SPEC, ['api']),
+          next: record('solution'),
         },
-        tasks: [{ taskId: 'api', expected: null, next: task('api') }],
+        ...creating([manifest('api')]),
       }),
     ).rejects.toMatchObject({ code: 'WORKFLOW_STATE_CONFLICT' });
     expect(await readFile(join(tasksDirectory(), 'api.yaml'), 'utf8')).toBe(external);
@@ -514,6 +595,7 @@ describe('filesystem workflow store: a finish retried after a crash (F16)', () =
     });
     await expect(readFile(journalPath(), 'utf8')).rejects.toMatchObject({ code: 'ENOENT' });
     expect(await taskFiles()).toEqual(['api.yaml', 'screen.yaml']);
+    expect((await readdir(resourceDirectory())).sort()).toEqual(['api', 'index.yaml', 'screen']);
     expect(await readFile(specificationPath(), 'utf8')).toContain('state: ready');
     await expect(
       finishStep(dependencies, { ...breakdown, input: { tasks: [TWO_TASKS[0]] } }),
@@ -523,7 +605,7 @@ describe('filesystem workflow store: a finish retried after a crash (F16)', () =
 
 describe('filesystem workflow store: the previous record format', () => {
   it.each<[string, (text: string) => string]>([
-    ['the previous version', (text) => text.replace(/^version: 2$/mu, 'version: 1')],
+    ['the previous version', (text) => text.replace(/^version: 3$/mu, 'version: 2')],
     [
       'an attempt with the previous executor field',
       (text) => text.replace(/^(\s+)actor:$/mu, '$1executor:'),
@@ -540,7 +622,7 @@ describe('filesystem workflow store: read budgets', () => {
   it('refuses more Task records than a Specification may have', async () => {
     for (let index = 0; index <= TASKS_PER_SPECIFICATION_MAX; index += 1) {
       const taskId = `t-${String(index)}`;
-      await writeTaskFile(`${taskId}.yaml`, serializeTaskRecord(task(taskId)));
+      await writeTaskFile(`${taskId}.yaml`, serializeTaskRunRecord(runRecord(taskId)));
     }
 
     await expect(store().read(SPEC)).rejects.toMatchObject(corrupt);
@@ -556,7 +638,20 @@ describe('filesystem workflow store: read budgets', () => {
         await writeFile(specificationPath(), padding + serializeSpecificationRecord(record('x')));
       },
     ],
-    ['Task record', () => writeTaskFile('api.yaml', padding + serializeTaskRecord(task('api')))],
+    [
+      'Task run record',
+      () => writeTaskFile('api.yaml', padding + serializeTaskRunRecord(runRecord('api'))),
+    ],
+    [
+      'Task index',
+      async () => {
+        await mkdir(resourceDirectory(), { recursive: true });
+        await writeFile(
+          join(resourceDirectory(), 'index.yaml'),
+          padding + serializeTaskIndex({ tasks: [] }),
+        );
+      },
+    ],
   ])('refuses an oversized %s', async (_name, seed) => {
     await seed();
 
@@ -567,8 +662,8 @@ describe('filesystem workflow store: read budgets', () => {
 describe('filesystem workflow store: stage files', () => {
   it('removes only stage files of known record names', async () => {
     await store().apply(SPEC, {
-      specification: listing('api'),
-      tasks: [{ taskId: 'api', expected: null, next: task('api') }],
+      specification: { expected: null, next: record('requirements') },
+      ...creating([manifest('api')]),
     });
     const kept = [
       `.Notes.txt.${UUID}.tmp`,
@@ -585,8 +680,18 @@ describe('filesystem workflow store: stage files', () => {
 
     const before = await store().read(SPEC);
     await store().apply(SPEC, {
-      tasks: [
-        { taskId: 'api', expected: before.tasks[0]?.revision ?? null, next: task('api', 'API') },
+      runs: [
+        {
+          taskId: 'api',
+          expected: before.runs[0]?.revision ?? null,
+          next: {
+            ...runRecord('api'),
+            run: {
+              ...runRecord('api').run,
+              workflow: { ...runRecord('api').run.workflow, version: 2 },
+            },
+          },
+        },
       ],
     });
     expect((await readdir(tasksDirectory())).sort()).toEqual(['api.yaml', ...kept].sort());
@@ -596,16 +701,16 @@ describe('filesystem workflow store: stage files', () => {
   });
 });
 
-describe('filesystem workflow store: the Task set is the one the Specification lists', () => {
+describe('filesystem workflow store: the Task set is the one the index lists', () => {
   const operations = async () => ({
     ...memoryDependencies(await seedExecutionCatalogue()),
     store: store(),
   });
 
-  it('keeps the wait open when an unfinished Task file vanished, and shows that Task as broken', async () => {
+  it('keeps the wait open when an unfinished Task folder vanished, and shows that Task as broken', async () => {
     const dependencies = await operations();
     await specificationWithTasks(dependencies);
-    await rm(join(tasksDirectory(), 'screen.yaml'));
+    await rm(join(resourceDirectory(), 'screen'), { recursive: true });
 
     await work(dependencies, operationTask('api'));
     const last = await work(dependencies, operationTask('api'), { result: 'pass' });
@@ -622,6 +727,10 @@ describe('filesystem workflow store: the Task set is the one the Specification l
       step: 'implementation',
     });
     expect(inspection.brokenTasks).toEqual(['screen']);
+    expect(inspection.issues).toEqual([
+      { kind: 'dangling', taskId: 'screen', reason: 'missing-folder' },
+      { kind: 'broken', taskId: 'screen', reason: 'unregistered-run' },
+    ]);
     expect(inspection.attention).toMatchObject([
       { subject: { kind: 'specification' }, reason: 'tasks-stuck' },
     ]);
@@ -645,7 +754,7 @@ describe('filesystem workflow store: the Task set is the one the Specification l
   it('keeps the dependents of a broken Task from starting', async () => {
     const dependencies = await operations();
     await specificationWithTasks(dependencies);
-    await rm(join(tasksDirectory(), 'api.yaml'));
+    await rm(join(resourceDirectory(), 'api'), { recursive: true });
 
     const inspection = await inspectExecution(dependencies, SPEC);
     expect(inspection.brokenTasks).toEqual(['api']);
@@ -667,7 +776,7 @@ describe('filesystem workflow store: the Task set is the one the Specification l
       await work(finished, operationTask(id), { result: 'pass' });
     }
 
-    const restored = (await finished.store.read(SPEC)).tasks.find(
+    const restored = (await finished.store.read(SPEC)).runs.find(
       (entry) => entry.value.taskId === 'screen',
     );
     if (!restored) {
@@ -679,7 +788,7 @@ describe('filesystem workflow store: the Task set is the one the Specification l
     await rm(join(tasksDirectory(), 'screen.yaml'));
     await work(dependencies, operationTask('api'));
     await work(dependencies, operationTask('api'), { result: 'pass' });
-    await writeTaskFile('screen.yaml', serializeTaskRecord(restored.value));
+    await writeTaskFile('screen.yaml', serializeTaskRunRecord(restored.value));
 
     const inspection = await inspectExecution(dependencies, SPEC);
     expect(inspection.brokenTasks).toEqual([]);
@@ -696,7 +805,7 @@ describe('filesystem workflow store: the Task set is the one the Specification l
     const dependencies = await operations();
     await specificationWithTasks(dependencies);
     await startTaskExecution(dependencies, { specId: SPEC, taskId: 'api', actor: claude });
-    await rm(join(tasksDirectory(), 'api.yaml'));
+    await rm(join(resourceDirectory(), 'api'), { recursive: true });
     const broken = {
       code: 'WORKFLOW_STATE_CORRUPT',
       message: expect.stringContaining('"api"') as unknown,
@@ -723,7 +832,7 @@ describe('filesystem workflow store: the Task set is the one the Specification l
   it('refuses a breakdown that would recreate a broken Task', async () => {
     const dependencies = await operations();
     await specificationWithTasks(dependencies);
-    await rm(join(tasksDirectory(), 'screen.yaml'));
+    await rm(join(resourceDirectory(), 'screen'), { recursive: true });
     await returnToStep(dependencies, {
       subject: operationSpecification,
       step: 'breakdown',
@@ -741,7 +850,7 @@ describe('filesystem workflow store: the Task set is the one the Specification l
         actor: claude,
       }),
     ).rejects.toMatchObject({ code: 'WORKFLOW_STATE_CORRUPT' });
-    await expect(readFile(join(tasksDirectory(), 'screen.yaml'), 'utf8')).rejects.toMatchObject({
+    await expect(readdir(join(resourceDirectory(), 'screen'))).rejects.toMatchObject({
       code: 'ENOENT',
     });
   });
@@ -750,10 +859,10 @@ describe('filesystem workflow store: the Task set is the one the Specification l
     const dependencies = await operations();
     await specificationWithTasks(dependencies);
     const path = join(tasksDirectory(), 'screen.yaml');
-    const stored = parseTaskRecord(await readFile(path, 'utf8'));
+    const stored = parseTaskRunRecord(await readFile(path, 'utf8'));
     await writeFile(
       path,
-      serializeTaskRecord({
+      serializeTaskRunRecord({
         ...stored,
         run: { ...stored.run, position: { state: 'terminal', outcome: 'completed' } },
       }),
@@ -801,10 +910,10 @@ describe('filesystem workflow store: the Task set is the one the Specification l
     const dependencies = await operations();
     await specificationWithTasks(dependencies);
     const path = join(tasksDirectory(), 'api.yaml');
-    const stored = parseTaskRecord(await readFile(path, 'utf8'));
+    const stored = parseTaskRunRecord(await readFile(path, 'utf8'));
     await writeFile(
       path,
-      serializeTaskRecord({
+      serializeTaskRunRecord({
         ...stored,
         run: { ...stored.run, position: { state: 'terminal', outcome: 'completed' } },
       }),
@@ -857,9 +966,9 @@ describe('filesystem workflow store: the Task set is the one the Specification l
       await work(dependencies, operationTask(id), { result: 'pass' });
     }
 
-    const path = join(tasksDirectory(), 'screen.yaml');
-    const kept = await readFile(path, 'utf8');
-    await rm(path);
+    const folder = join(resourceDirectory(), 'screen');
+    const kept = join(root, 'kept-screen');
+    await rename(folder, kept);
     const started = await startSpecification(dependencies, owner);
     if (started.kind === 'terminal') {
       throw new Error('Unexpected end.');
@@ -880,17 +989,25 @@ describe('filesystem workflow store: the Task set is the one the Specification l
     });
     expect(await readFile(specificationPath(), 'utf8')).toBe(before);
 
-    await writeFile(path, kept);
+    await rename(kept, folder);
     expect((await accept()).position).toEqual({ state: 'terminal', outcome: 'completed' });
   });
 
-  it('refuses a Task file the Specification does not list', async () => {
+  it('reports a run record and a folder the index does not list, and keeps the other Tasks working', async () => {
     const dependencies = await operations();
     await specificationWithTasks(dependencies);
-    await writeTaskFile('extra.yaml', serializeTaskRecord(task('extra')));
+    await writeTaskFile('extra.yaml', serializeTaskRunRecord(runRecord('extra')));
+    await mkdir(join(resourceDirectory(), 'stray'));
 
-    await expect(store().read(SPEC)).rejects.toMatchObject(corrupt);
-    await expect(inspectExecution(dependencies, SPEC)).rejects.toMatchObject(corrupt);
+    const inspection = await inspectExecution(dependencies, SPEC);
+    expect(inspection.brokenTasks).toEqual(['extra']);
+    expect(inspection.issues).toEqual([
+      { kind: 'unregistered', taskId: 'stray' },
+      { kind: 'broken', taskId: 'extra', reason: 'unregistered-run' },
+    ]);
+    await expect(
+      startTaskExecution(dependencies, { specId: SPEC, taskId: 'api', actor: claude }),
+    ).resolves.toMatchObject({ kind: 'started' });
   });
 });
 
@@ -1175,8 +1292,8 @@ describe('filesystem workflow store: the position follows from the history', () 
     }
 
     const path = join(tasksDirectory(), 'api.yaml');
-    const stored = parseTaskRecord(await readFile(path, 'utf8'));
-    await writeFile(path, serializeTaskRecord({ ...stored, run: edit(stored.run) }));
+    const stored = parseTaskRunRecord(await readFile(path, 'utf8'));
+    await writeFile(path, serializeTaskRunRecord({ ...stored, run: edit(stored.run) }));
 
     expect((await inspectExecution(dependencies, SPEC)).brokenTasks).toEqual(['api']);
     await expect(
@@ -1216,25 +1333,174 @@ describe('filesystem workflow store: the position follows from the history', () 
     );
   });
 
-  it.each<[string, readonly TaskRecord[]]>([
-    [
-      'a dependency cycle',
-      [
-        { ...task('api'), dependsOn: ['web'] },
-        { ...task('web'), dependsOn: ['api'] },
-      ],
-    ],
-    ['a dependency on a Task that is not listed', [{ ...task('api'), dependsOn: ['ghost'] }]],
-  ])('refuses %s among the stored Tasks', async (_name, tasks) => {
-    await mkdir(executionDirectory(), { recursive: true });
+  it('reports Task dependencies that form a cycle or name no registered Task, instead of failing', async () => {
+    const manifests: TaskManifest[] = [
+      { ...manifest('api'), dependsOn: ['web'] },
+      { ...manifest('web'), dependsOn: ['api', 'ghost'] },
+    ];
+    await mkdir(resourceDirectory(), { recursive: true });
     await writeFile(
-      specificationPath(),
-      serializeSpecificationRecord({ ...record('requirements'), taskIds: ['api', 'web'] }),
+      join(resourceDirectory(), 'index.yaml'),
+      serializeTaskIndex({ tasks: manifests.map((entry) => ({ id: entry.id })) }),
     );
-    for (const entry of tasks) {
-      await writeTaskFile(`${entry.taskId}.yaml`, serializeTaskRecord(entry));
+    for (const entry of manifests) {
+      await mkdir(join(resourceDirectory(), entry.id));
+      await writeFile(
+        join(resourceDirectory(), entry.id, 'task.yaml'),
+        serializeTaskManifest(entry),
+      );
     }
 
-    await expect(store().read(SPEC)).rejects.toMatchObject(corrupt);
+    expect((await store().read(SPEC)).issues).toEqual([
+      { kind: 'dependency', taskId: 'web', dependency: 'ghost', reason: 'unknown' },
+      { kind: 'cycle', taskId: 'api' },
+    ]);
   });
+});
+
+describe('filesystem workflow store: a Task change crashed before one of its targets', () => {
+  /** A fresh Specification directory and state root, so each crash point starts from scratch. */
+  let attempt = 0;
+  const fresh = async () => {
+    attempt += 1;
+    const base = join(root, `crash-${String(attempt)}`);
+    const directory = join(base, 'spec');
+    await mkdir(directory, { recursive: true });
+
+    return {
+      directory,
+      options: {
+        stateRoot: join(base, 'state'),
+        specificationDirectory: () => Promise.resolve(directory),
+      },
+    };
+  };
+
+  /** Creating a Task by hand (T4 `createTask`): index entry, manifest and `task.md`, no run yet. */
+  const createTask = creating([manifest('api')], { runs: false });
+
+  /**
+   * Run `scenario` once without a crash to learn its targets and the state it produces, then once
+   * per target with a crash right before that target is published: every read then sees the whole
+   * change, and the retry (`retry`) completes it without writing it twice.
+   */
+  async function crashBeforeEachTarget(
+    scenario: (target: ReturnType<typeof createFilesystemWorkflowStore>) => Promise<unknown>,
+    retry: (target: ReturnType<typeof createFilesystemWorkflowStore>) => Promise<void>,
+    prepare: (target: ReturnType<typeof createFilesystemWorkflowStore>) => Promise<void>,
+  ) {
+    const reference = await fresh();
+    const targets: string[] = [];
+    let recording = false;
+    const recorder = createFilesystemWorkflowStoreForTest(reference.options, (write) => {
+      if (recording) {
+        targets.push(write.target);
+      }
+
+      return Promise.resolve();
+    });
+    await prepare(recorder);
+    recording = true;
+    await scenario(recorder);
+    const expected = stateOfSnapshot(
+      await createFilesystemWorkflowStore(reference.options).read(SPEC),
+    );
+    expect(targets.length).toBeGreaterThan(2);
+
+    for (let crashAt = 0; crashAt < targets.length; crashAt += 1) {
+      const { options: crashOptions, directory } = await fresh();
+      let armed = false;
+      let published = 0;
+      const crashing = createFilesystemWorkflowStoreForTest(crashOptions, () => {
+        if (armed && published++ === crashAt) {
+          return Promise.reject(new Error(`Crash before ${targets[crashAt] ?? ''}.`));
+        }
+
+        return Promise.resolve();
+      });
+      await prepare(crashing);
+      armed = true;
+      await expect(scenario(crashing)).rejects.toThrow('Crash');
+
+      const target = createFilesystemWorkflowStore(crashOptions);
+      expect(
+        stateOfSnapshot(await target.read(SPEC)),
+        `crash before target ${String(crashAt)}`,
+      ).toEqual(expected);
+      await retry(target);
+      expect(stateOfSnapshot(await target.read(SPEC))).toEqual(expected);
+      await expect(
+        readFile(join(crashOptions.stateRoot, 'engine', 'operations', 'workflow', `${SPEC}.json`)),
+      ).rejects.toMatchObject({ code: 'ENOENT' });
+      await expect(readFile(join(directory, 'tasks', 'api', 'task.md'), 'utf8')).resolves.toContain(
+        '# ',
+      );
+    }
+  }
+
+  it.each([
+    [
+      'creating a Task',
+      () =>
+        crashBeforeEachTarget(
+          (target) => target.apply(SPEC, createTask),
+          async (target) => {
+            // The same change again is planned against the state before it: refused, nothing doubled.
+            await expect(target.apply(SPEC, createTask)).rejects.toMatchObject({
+              code: 'WORKFLOW_STATE_CONFLICT',
+            });
+            await target.apply(SPEC, {});
+          },
+          async (target) => {
+            await target.apply(SPEC, {
+              specification: { expected: null, next: record('breakdown') },
+            });
+          },
+        ),
+    ],
+    [
+      'a Breakdown',
+      async () => {
+        const catalogue = await seedExecutionCatalogue();
+        const breakdown = {
+          subject: operationSpecification,
+          step: 'breakdown',
+          attempt: 1,
+          input: { tasks: TWO_TASKS },
+          actor: claude,
+        } as const;
+        // One clock per store, so every run of the scenario records the same timestamps.
+        const clocks = new Map<unknown, ReturnType<typeof memoryDependencies>>();
+        const dependencies = (target: ReturnType<typeof createFilesystemWorkflowStore>) => {
+          const existing = clocks.get(target);
+          if (existing) {
+            return { ...existing, store: target };
+          }
+
+          const created = memoryDependencies(catalogue);
+          clocks.set(target, created);
+
+          return { ...created, store: target };
+        };
+
+        await crashBeforeEachTarget(
+          (target) => finishStep(dependencies(target), breakdown),
+          async (target) => {
+            await expect(
+              finishStep({ ...memoryDependencies(catalogue), store: target }, breakdown),
+            ).resolves.toMatchObject({ replayed: true, createdTasks: ['api', 'screen'] });
+          },
+          async (target) => {
+            await runToBreakdown(dependencies(target));
+          },
+        );
+      },
+    ],
+  ])(
+    '%s: reads see the whole change and the retry is safe',
+    async (_name, run) => {
+      await run();
+    },
+    120_000,
+  );
 });

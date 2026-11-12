@@ -1,7 +1,7 @@
 import { lstat, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { isUnaddressable } from '../document-rules/document-paths';
+import { isInReservedTasksFolder, isUnaddressable } from '../document-rules/document-paths';
 import { DocumentError } from '../document-rules/errors';
 import { isAbsent } from '../document-rules/errno';
 import {
@@ -46,7 +46,8 @@ function compareNames(left: string, right: string): number {
 
 /**
  * List the regular files of a Specification directory for the tree: no symlinks, no special files, no
- * hidden entries (a name starting with `.`), the root manifest excluded by the caller. At most
+ * hidden entries (a name starting with `.`), not the reserved Task folder `tasks/` (the Tasks'
+ * resources), the root manifest excluded by the caller. At most
  * {@link LISTED_FILES_MAX} files, {@link FOLDER_DEPTH_MAX} folder levels and
  * {@link ARCHIVE_COUNT_TRAVERSAL_ENTRIES_MAX} entries; beyond that the walk is `truncated`.
  */
@@ -89,6 +90,10 @@ export async function listSpecificationFiles(specDir: string): Promise<ListedFil
       }
 
       if (entry.name.startsWith('.')) {
+        continue;
+      }
+
+      if (relativeDir === '' && isInReservedTasksFolder(entry.name)) {
         continue;
       }
 

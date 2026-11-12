@@ -1,10 +1,13 @@
-import type { SpecificationExecutionRecord, TaskRecord } from './model';
+import type { TaskIndex, TaskManifest } from '../../tasks/resource/model';
+import type { TaskResourceIssue } from '../../tasks/resource/validate';
+import type { SpecificationExecutionRecord, TaskRunRecord } from './model';
 
 /**
- * Persistence port of execution state, one Specification at a time: the canonical records (the
- * Specification run and its Tasks), Git-tracked next to the Specification. Attention is not stored;
- * it is derived from these records (`inspectExecution`). A store applies one change as a unit: a
- * later read sees all of it or none of it, also after a crash in the middle.
+ * Persistence port of the "Specification execution store", one Specification at a time: the
+ * Specification run, the Task resources (`tasks/index.yaml`, `tasks/<id>/task.yaml`, the initial
+ * `tasks/<id>/task.md`) and the Task run records, Git-tracked next to the Specification. Attention is
+ * not stored; it is derived (`inspectExecution`). A store applies one change as a unit: a later read
+ * sees all of it or none of it, also after a crash in the middle.
  */
 
 export interface Versioned<T> {
@@ -15,8 +18,16 @@ export interface Versioned<T> {
 
 export interface ExecutionSnapshot {
   readonly specification?: Versioned<SpecificationExecutionRecord>;
-  /** The Task records that exist, in Task id order (a listed Task without a record is broken). */
-  readonly tasks: readonly Versioned<TaskRecord>[];
+  /** `tasks/index.yaml`; absent when the Specification has no index (no Task yet). */
+  readonly index?: Versioned<TaskIndex>;
+  /** The manifests of the registered Tasks that have one, in index order. */
+  readonly manifests: readonly Versioned<TaskManifest>[];
+  /** The Task run records that exist, in Task id order. */
+  readonly runs: readonly Versioned<TaskRunRecord>[];
+  /** The Task folders below `tasks/`, in name order (registered or not). */
+  readonly folders: readonly string[];
+  /** The consistency issues of the Task resources (`validateTaskResources`), never a failed read. */
+  readonly issues: readonly TaskResourceIssue[];
 }
 
 export interface RecordWrite<T> {
@@ -25,17 +36,35 @@ export interface RecordWrite<T> {
   readonly next: T;
 }
 
+/**
+ * A file of a Task folder other than its manifest: created (`text`; it must not exist yet) or
+ * removed (`null`; the store records the revision it removes). Only the initial `task.md` is created
+ * here; later edits of Task documents belong to the Task's documents.
+ */
+export interface TaskDocumentWrite {
+  readonly taskId: string;
+  /** A registered document path of the Task, relative to its folder. */
+  readonly path: string;
+  readonly text: string | null;
+}
+
 export interface ExecutionChange {
   readonly specification?: RecordWrite<SpecificationExecutionRecord>;
-  readonly tasks: readonly (RecordWrite<TaskRecord> & { readonly taskId: string })[];
+  readonly index?: RecordWrite<TaskIndex>;
+  /** `next: null` removes the manifest; the Task folder goes with it once it is empty. */
+  readonly manifests?: readonly (RecordWrite<TaskManifest | null> & { readonly taskId: string })[];
+  readonly runs?: readonly (RecordWrite<TaskRunRecord> & { readonly taskId: string })[];
+  readonly documents?: readonly TaskDocumentWrite[];
 }
 
 export interface WorkflowStore {
   read(specId: string): Promise<ExecutionSnapshot>;
   /**
    * Apply all writes or none. Throws `WORKFLOW_STATE_CONFLICT` when a record's revision is not the
-   * expected one; callers serialize mutations (the project control lock), so a conflict means the
-   * state changed outside the Engine.
+   * expected one, or a created document exists already; callers serialize mutations (the project
+   * control lock), so a conflict means the state changed outside the Engine. A change with an invalid
+   * record, or one that would add a Task resource issue, is refused with `WORKFLOW_STATE_CORRUPT`
+   * before anything is written. An empty change only finishes a pending change.
    */
   apply(specId: string, change: ExecutionChange): Promise<void>;
 }

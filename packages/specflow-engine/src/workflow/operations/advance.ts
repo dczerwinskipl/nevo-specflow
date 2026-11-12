@@ -11,7 +11,7 @@ import type { SpecFlowAnnotations, WorkflowDefinition } from '../definitions/mod
 import { resolveContinuation, type ContinuationDecision } from '../continuation/resolve';
 import { WorkflowError } from '../errors';
 import { allTasksClosed, applyTaskEffects, isTaskEscalated, tasksStuck } from '../tasks/tasks';
-import type { TaskRecord, WorkflowActor, WorkflowRun, WorkflowSubject } from '../state/model';
+import type { ExecutionTask, WorkflowActor, WorkflowRun, WorkflowSubject } from '../state/model';
 import { finishingSession } from './actors';
 import { pinnedDefinitionIfUnchanged } from './loaded-execution';
 import type { ExecutionWorkingSet } from './working-set';
@@ -111,7 +111,7 @@ export function advance(
   return continuationOf(context.set.run(subject), definition, context.catalogue);
 }
 
-const escalatedTasks = (tasks: readonly TaskRecord[]) =>
+const escalatedTasks = (tasks: readonly ExecutionTask[]) =>
   tasks.filter(isTaskEscalated).sort((left, right) => (left.taskId < right.taskId ? -1 : 1));
 
 /** Checked on the state the change would produce, before anything is written. */
@@ -138,7 +138,7 @@ function assertTasksDecided(context: AdvanceContext, step: string): void {
  * in its status change, which the next step sees in its context; the text stays far below the
  * stored feedback limit.
  */
-function escalationFeedback(escalated: readonly TaskRecord[]): string {
+function escalationFeedback(escalated: readonly ExecutionTask[]): string {
   return `Escalated Tasks: ${escalated.map((task) => task.taskId).join(', ')}. Each Task's escalation feedback is in its status change.`;
 }
 
@@ -162,7 +162,7 @@ function completeWait(
  */
 export function waitDecision(
   step: string,
-  tasks: readonly TaskRecord[],
+  tasks: readonly ExecutionTask[],
   broken: readonly string[],
 ): ContinuationDecision {
   const escalated = escalatedTasks(tasks);

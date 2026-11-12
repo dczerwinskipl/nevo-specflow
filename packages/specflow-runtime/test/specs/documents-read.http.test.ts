@@ -142,7 +142,6 @@ async function handBuilt(
       location,
       priority: 10,
       created: '2026-10-24',
-      tasks: [],
     }),
   );
   for (const [path, content] of Object.entries(options.files)) {

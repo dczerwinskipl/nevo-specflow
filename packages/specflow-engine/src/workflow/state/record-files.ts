@@ -1,5 +1,5 @@
 import type { BigIntStats } from 'node:fs';
-import { lstat, mkdir, open, readdir, realpath, type FileHandle } from 'node:fs/promises';
+import { lstat, mkdir, open, readdir, realpath, rmdir, type FileHandle } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { writeTextAtomically } from '../../project/fs/atomic-json';
@@ -96,6 +96,40 @@ export async function listFolder(folder: RecordFolder): Promise<string[]> {
   }
 
   return readdir(pathOf(folder));
+}
+
+/**
+ * The names of the plain directories of a folder that `accept` takes; dot-entries, files and links
+ * are not listed (a link is refused when it is read as a record folder).
+ */
+export async function listSubfolders(
+  folder: RecordFolder,
+  accept: (name: string) => boolean,
+): Promise<string[]> {
+  if ((await inspectFolder(folder)) === 'absent') {
+    return [];
+  }
+
+  const entries = await readdir(pathOf(folder), { withFileTypes: true });
+
+  return entries
+    .filter((entry) => entry.isDirectory() && !entry.name.startsWith('.') && accept(entry.name))
+    .map((entry) => entry.name)
+    .sort();
+}
+
+/** Remove the folder when it exists and is empty; a folder that still holds anything stays. */
+export async function removeFolderIfEmpty(folder: RecordFolder): Promise<void> {
+  if ((await inspectFolder(folder)) === 'absent') {
+    return;
+  }
+
+  await retryTransientFs(() => rmdir(pathOf(folder))).catch((error: unknown) => {
+    const code = errnoCode(error);
+    if (!isAbsent(error) && code !== 'ENOTEMPTY' && code !== 'EEXIST') {
+      throw error;
+    }
+  });
 }
 
 function sameFile(left: BigIntStats, right: BigIntStats): boolean {

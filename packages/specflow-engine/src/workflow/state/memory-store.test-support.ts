@@ -1,16 +1,30 @@
 import { isDeepStrictEqual } from 'node:util';
 
 import { sha256Hex } from '../../hash';
+import { foldPathKey } from '../../specs/document-rules/document-paths';
 import { canonicalJson } from '../../specs/definitions/resolved-catalogue';
+import { serializeTaskIndex, serializeTaskManifest } from '../../tasks/resource/codec';
+import type { TaskIndex, TaskManifest } from '../../tasks/resource/model';
 import { WorkflowError } from '../errors';
-import { serializeSpecificationRecord, serializeTaskRecord } from './codec';
-import type { SpecificationExecutionRecord, TaskRecord } from './model';
+import { serializeSpecificationRecord, serializeTaskRunRecord } from './codec';
+import type { SpecificationExecutionRecord, TaskRunRecord } from './model';
 import type { ExecutionChange, ExecutionSnapshot, Versioned, WorkflowStore } from './store';
-import { stateOfSnapshot, validateExecutionSnapshot } from './validate';
+import {
+  assertChangeIdentity,
+  assertNoNewIssues,
+  nextExecutionState,
+  stateOfSnapshot,
+  validateExecutionState,
+} from './validate';
 
 interface SpecState {
   specification?: Versioned<SpecificationExecutionRecord>;
-  tasks: Map<string, Versioned<TaskRecord>>;
+  index?: Versioned<TaskIndex>;
+  /** Every manifest, also of a folder the index does not list. */
+  manifests: Map<string, Versioned<TaskManifest>>;
+  runs: Map<string, Versioned<TaskRunRecord>>;
+  /** The other files of the Task folders: Task id → folded path → text. */
+  documents: Map<string, Map<string, string>>;
 }
 
 const versioned = <T>(value: T): Versioned<T> => ({
@@ -23,11 +37,14 @@ const settled = <T>(operation: () => T): Promise<T> => Promise.resolve().then(op
 
 /**
  * An in-memory {@link WorkflowStore} with the same revision, identity, coherence
- * ({@link validateExecutionSnapshot}) and codec checks before any write as the filesystem store; the
- * shared contract is `./store-contract.test-support.ts`.
+ * ({@link validateExecutionState}), issue and codec checks before any write as the filesystem store;
+ * the shared contract is `./store-contract.test-support.ts`. A Task folder exists while it holds its
+ * manifest or a document.
  */
 export function createMemoryWorkflowStore(): WorkflowStore & {
   readonly applied: ExecutionChange[];
+  /** The text of a Task document, for tests. */
+  readonly document: (specId: string, taskId: string, path: string) => string | undefined;
 } {
   const specs = new Map<string, SpecState>();
   const applied: ExecutionChange[] = [];
@@ -37,7 +54,7 @@ export function createMemoryWorkflowStore(): WorkflowStore & {
       return existing;
     }
 
-    const created: SpecState = { tasks: new Map() };
+    const created: SpecState = { manifests: new Map(), runs: new Map(), documents: new Map() };
     specs.set(specId, created);
 
     return created;
@@ -49,62 +66,121 @@ export function createMemoryWorkflowStore(): WorkflowStore & {
     }
   };
 
+  const folderIds = (state: SpecState) =>
+    [
+      ...new Set([
+        ...state.manifests.keys(),
+        ...[...state.documents].filter(([, files]) => files.size > 0).map(([taskId]) => taskId),
+      ]),
+    ].sort();
+
+  const snapshotOf = (specId: string, state: SpecState): ExecutionSnapshot => {
+    const snapshot: ExecutionSnapshot = structuredClone({
+      ...(state.specification ? { specification: state.specification } : {}),
+      ...(state.index ? { index: state.index } : {}),
+      manifests: (state.index?.value.tasks ?? []).flatMap(({ id }) => {
+        const manifest = state.manifests.get(id);
+
+        return manifest ? [manifest] : [];
+      }),
+      runs: [...state.runs.values()].sort((left, right) =>
+        left.value.taskId < right.value.taskId ? -1 : 1,
+      ),
+      folders: folderIds(state),
+      issues: [],
+    });
+
+    return { ...snapshot, issues: validateExecutionState(specId, stateOfSnapshot(snapshot)) };
+  };
+
   return {
     applied,
-    read: (specId) =>
-      settled(() => {
-        const state = stateOf(specId);
-        const snapshot: ExecutionSnapshot = structuredClone({
-          ...(state.specification ? { specification: state.specification } : {}),
-          tasks: [...state.tasks.values()].sort((left, right) =>
-            left.value.taskId < right.value.taskId ? -1 : 1,
-          ),
-        });
-        validateExecutionSnapshot(specId, stateOfSnapshot(snapshot));
-
-        return snapshot;
-      }),
+    document: (specId, taskId, path) =>
+      specs.get(specId)?.documents.get(taskId)?.get(foldPathKey(path)),
+    read: (specId) => settled(() => snapshotOf(specId, stateOf(specId))),
     apply: (specId, change) =>
       settled(() => {
+        assertChangeIdentity(change);
         const state = stateOf(specId);
+        const snapshot = snapshotOf(specId, state);
         if (change.specification) {
           check(state.specification, change.specification.expected);
         }
 
-        for (const write of change.tasks) {
-          check(state.tasks.get(write.taskId), write.expected);
-          if (write.next.taskId !== write.taskId) {
-            throw new WorkflowError('WORKFLOW_STATE_CORRUPT', 'A Task write names another Task.');
+        if (change.index) {
+          check(state.index, change.index.expected);
+        }
+
+        for (const write of change.manifests ?? []) {
+          check(state.manifests.get(write.taskId), write.expected);
+        }
+
+        for (const write of change.runs ?? []) {
+          check(state.runs.get(write.taskId), write.expected);
+        }
+
+        for (const write of change.documents ?? []) {
+          const existing = state.documents.get(write.taskId)?.get(foldPathKey(write.path));
+          if (write.text !== null && existing !== undefined) {
+            throw new WorkflowError('WORKFLOW_STATE_CONFLICT', 'The Task document exists already.');
           }
         }
 
-        const tasks = new Map([...state.tasks].map(([taskId, entry]) => [taskId, entry.value]));
-        for (const write of change.tasks) {
-          tasks.set(write.taskId, write.next);
-        }
-
-        const specification = change.specification?.next ?? state.specification?.value;
-        validateExecutionSnapshot(specId, {
-          ...(specification ? { specification } : {}),
-          tasks: [...tasks.values()],
-        });
         if (change.specification) {
           serializeSpecificationRecord(change.specification.next);
         }
 
-        for (const write of change.tasks) {
-          serializeTaskRecord(write.next);
+        if (change.index) {
+          serializeTaskIndex(change.index.next);
         }
+
+        for (const write of change.manifests ?? []) {
+          if (write.next !== null) {
+            serializeTaskManifest(write.next);
+          }
+        }
+
+        for (const write of change.runs ?? []) {
+          serializeTaskRunRecord(write.next);
+        }
+
+        assertNoNewIssues(
+          snapshot.issues,
+          validateExecutionState(specId, nextExecutionState(stateOfSnapshot(snapshot), change)),
+        );
 
         if (change.specification) {
           state.specification = versioned(change.specification.next);
         }
 
-        for (const write of change.tasks) {
-          state.tasks.set(write.taskId, versioned(write.next));
+        if (change.index) {
+          state.index = versioned(change.index.next);
         }
 
-        if (!isDeepStrictEqual(change, { tasks: [] })) {
+        for (const write of change.manifests ?? []) {
+          if (write.next === null) {
+            state.manifests.delete(write.taskId);
+          } else {
+            state.manifests.set(write.taskId, versioned(write.next));
+          }
+        }
+
+        for (const write of change.documents ?? []) {
+          const files = state.documents.get(write.taskId) ?? new Map<string, string>();
+          if (write.text === null) {
+            files.delete(foldPathKey(write.path));
+          } else {
+            files.set(foldPathKey(write.path), write.text);
+          }
+
+          state.documents.set(write.taskId, files);
+        }
+
+        for (const write of change.runs ?? []) {
+          state.runs.set(write.taskId, versioned(write.next));
+        }
+
+        if (!isDeepStrictEqual(change, {})) {
           applied.push(structuredClone(change));
         }
       }),

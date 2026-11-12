@@ -96,11 +96,11 @@ function changeFor(
 ): ExecutionChange {
   if (loaded.subject.kind === 'task' && loaded.task) {
     return {
-      tasks: [
+      runs: [
         {
           taskId: loaded.task.taskId,
           expected: loaded.revision,
-          next: { ...loaded.task, run },
+          next: { specId: loaded.task.specId, taskId: loaded.task.taskId, run },
         },
       ],
     };
@@ -116,7 +116,6 @@ function changeFor(
       expected: seed ? seed.expected : loaded.revision,
       next: { ...record, run },
     },
-    tasks: [],
   };
 }
 
@@ -199,7 +198,6 @@ function newSpecificationRecord(
     specId: input.specId,
     archetype: input.archetype,
     taskTypes: resolved.taskTypes,
-    taskIds: [],
     run: newRun<WorkflowActor>(resolved.workflow),
   };
 }

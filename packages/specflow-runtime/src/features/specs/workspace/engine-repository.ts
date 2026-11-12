@@ -50,15 +50,14 @@ export function createEngineWorkspaceRepository(
           id: source.specId,
           title: source.specification.title,
           summary: source.overviewPrefix ? summarizeOverview(source.overviewPrefix) : '',
-          // A manifest without tasks has not been prepared for work yet. Temporary source: it moves
-          // to the workflow kernel's Task source together with the `tasks` contribution.
-          preparationState: source.specification.tasks.length === 0 ? 'empty' : 'prepared',
+          // TODO(T8a): derived from the Engine's Task resources (`tasks/index.yaml`). The manifest no
+          // longer lists Tasks, so until then nothing verifies that the Specification was prepared.
+          preparationState: 'empty',
           attention: [],
         },
         ...(source.specification.created !== undefined
           ? { created: source.specification.created }
           : {}),
-        manifestTasks: source.specification.tasks,
         sections: {
           repository: notImplemented,
           changes: notImplemented,

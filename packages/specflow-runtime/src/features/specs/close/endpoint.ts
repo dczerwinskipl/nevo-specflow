@@ -49,9 +49,13 @@ import { requireCapability } from '../../auth';
 import { specScope } from '../scope';
 import { documentFailure } from '../../documents';
 import { contractRef } from '../../../server/shared-contracts';
+import { whileReleased, type ReleaseWorkspace } from './release-workspace';
+
+export type { ReleaseWorkspace } from './release-workspace';
 
 export interface SpecsCloseEndpointOptions {
   readonly engine?: SpecFlowEngine;
+  readonly releaseWorkspace?: ReleaseWorkspace;
 }
 
 type CloseKind = 'worktree-close' | 'specification-close';
@@ -271,7 +275,7 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
         try {
           const { specId } = request.params;
           const body = request.body as { operationId: string; integrateToTargetBranch?: boolean };
-          await authorizedPlan(
+          const plan = await authorizedPlan(
             request,
             engine,
             kind,
@@ -281,16 +285,17 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
             // The admission commits the queued document changes first; the authorization plan must too.
             { flushDocumentCommits: true },
           );
-          const result =
+          const result = await whileReleased(options.releaseWorkspace, plan.sourceWorkspace, () =>
             kind === 'worktree-close'
-              ? await closeWorktreeOperation(engine, { specId, operationId: body.operationId })
-              : await closeSpecificationOperation(engine, {
+              ? closeWorktreeOperation(engine, { specId, operationId: body.operationId })
+              : closeSpecificationOperation(engine, {
                   specId,
                   operationId: body.operationId,
                   ...(body.integrateToTargetBranch === undefined
                     ? {}
                     : { integrateToTargetBranch: body.integrateToTargetBranch }),
-                });
+                }),
+          );
 
           return reply.code(result.status === 'completed' ? 200 : 202).send(result);
         } catch (error) {
@@ -444,8 +449,12 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
           operationId: request.body.operationId,
         };
         // A retry uses the stored immutable plan, not a client supplied list.
-        await planPublicWorkspaceCloseOperation(engine, params, { flushDocumentCommits: true });
-        const result = await closeWorkspaceOperation(engine, params);
+        const plan = await planPublicWorkspaceCloseOperation(engine, params, {
+          flushDocumentCommits: true,
+        });
+        const result = await whileReleased(options.releaseWorkspace, plan.sourceWorkspace, () =>
+          closeWorkspaceOperation(engine, params),
+        );
 
         return reply.code(result.status === 'completed' ? 200 : 202).send(result);
       } catch (error) {

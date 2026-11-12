@@ -129,6 +129,9 @@ workspace response carries the bound `workspaceId`.
 - **New worktrees.** When the Engine creates a linked worktree, it copies Project Home's
   `.nevo/local/config.yaml` into the new worktree if the worktree has none, so the CLI there has
   the workstation endpoint.
+- **Worktree disposal.** Worktree disposal treats `.nevo/local/cache/` and the local configuration
+  (`.nevo/local/config.yaml`) as disposable, so a read index or a copied configuration does not
+  block Close from removing the worktree.
 
 ### 4. Corpus behaviour (amends sections 3, 5 and 6)
 

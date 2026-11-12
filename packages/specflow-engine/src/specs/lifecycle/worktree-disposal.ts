@@ -12,6 +12,7 @@ import {
   type WorkspaceRegistry,
 } from '../../project/workspace/registry/registry';
 import { WORKSPACE_IDENTITY_RELATIVE_PATH } from '../../project/workspace/identity';
+import { LOCAL_CONFIG_RELATIVE_PATH } from '../../project/git-checkout';
 import {
   rebindLifecycleSpec,
   retireLifecycleWorkspace,
@@ -223,10 +224,22 @@ export async function rebindVerifiedClose(
   });
 }
 
+/**
+ * Product-owned disposable data a worktree may hold besides its tracked files (ADR 0022 §3): the
+ * local cache directory (for example the documentation index) and the per-checkout local
+ * configuration. Nothing else that Git does not track is ever deleted with a worktree.
+ */
+const DISPOSABLE_CACHE_DIRECTORY = '.nevo/local/cache';
+const DISPOSABLE_FILES: ReadonlySet<string> = new Set([
+  WORKSPACE_IDENTITY_RELATIVE_PATH,
+  LOCAL_CONFIG_RELATIVE_PATH,
+]);
+
 async function sourceInventorySafe(root: string): Promise<void> {
   // A physically clean Git status does NOT reveal ignored user data. Every
-  // physical file is checked against the index, except Git's own .git pointer
-  // and the ONE independently verified Engine incarnation marker.
+  // physical file is checked against the index, except Git's own .git pointer,
+  // the ONE independently verified Engine incarnation marker and the
+  // product-owned disposable paths above.
   const tracked = await executeGit(root, ['ls-files', '-z', '--cached', '--full-name']);
   if (tracked.exitCode !== 0) {
     throw recovery('Cannot inspect exact source Git index.');
@@ -250,8 +263,10 @@ async function sourceInventorySafe(root: string): Promise<void> {
       }
 
       if (e.isDirectory()) {
-        await visit(path);
-      } else if (path !== WORKSPACE_IDENTITY_RELATIVE_PATH && !names.has(path)) {
+        if (path !== DISPOSABLE_CACHE_DIRECTORY) {
+          await visit(path);
+        }
+      } else if (!DISPOSABLE_FILES.has(path) && !names.has(path)) {
         throw recovery('Unknown ignored or untracked source file blocks disposal: ' + path);
       }
     }

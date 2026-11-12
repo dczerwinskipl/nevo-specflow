@@ -4,12 +4,20 @@ import {
   type DocsConfiguration,
 } from '@nevo/specflow-docs';
 import { DocsCapabilities } from '@nevo/specflow-contracts/docs';
+import type { SpecFlowEngine } from '@nevo/specflow-engine';
 
 import type { RuntimeFeature } from '../runtime-feature';
 import type { DocsProjectId } from './access';
-import { createProjectDocs } from './project-docs';
 import { docsSearchEndpoint } from './search-route';
 import { docsStatusEndpoint } from './status-route';
+import { createRefreshSlot } from './workspace-corpus/background-refresh';
+import { engineWorkspaceResolver } from './workspace-corpus/engine-resolution';
+import { createProjectDocs } from './workspace-corpus/project-docs';
+import {
+  createWorkspaceCorpora,
+  type WorkspaceCorpora,
+  type WorkspaceDocsRelease,
+} from './workspace-corpus/workspace-corpora';
 
 export interface DocsFeatureDependencies {
   /**
@@ -34,42 +42,81 @@ export interface CreateDocsFeatureOptions {
   readonly dependencies?: DocsFeatureDependencies;
   /** The Runtime's project, the scope of `docs.view`; without one every docs route answers `503`. */
   readonly projectId: DocsProjectId;
+  /** Resolves the registered workspaces whose documentation is read; absent: none is. */
+  readonly engine?: SpecFlowEngine;
 }
 
-export function createDocsFeature(options: CreateDocsFeatureOptions): RuntimeFeature {
+/**
+ * E9: called before Close deletes a workspace's checkout. Resolves once nothing of the Runtime's
+ * documentation reads or writes there; the workspace's documentation answers unavailable until
+ * `end`.
+ */
+export type ReleaseWorkspaceDocs = (workspaceId: string) => Promise<WorkspaceDocsRelease>;
+
+export interface DocsFeature extends RuntimeFeature {
+  readonly releaseWorkspaceDocs: ReleaseWorkspaceDocs;
+}
+
+const NOTHING_HELD: WorkspaceDocsRelease = { end: () => undefined };
+
+export function createDocsFeature(options: CreateDocsFeatureOptions): DocsFeature {
   const configuration = options.configuration ?? {
     docs: DEFAULT_DOCS_SETTINGS,
     embeddings: undefined,
   };
   const dependencies = options.dependencies ?? {};
   const { projectRoot } = dependencies;
+  const env = dependencies.env ?? process.env;
+  // Created when the feature registers; before that no instance exists to release. The workspace
+  // documentation endpoints read through `createWorkspaceDocsOperations(corpora)`.
+  let corpora: WorkspaceCorpora | undefined;
 
   return {
     authorizationResources: [DocsCapabilities],
+    releaseWorkspaceDocs: (workspaceId) =>
+      corpora === undefined ? Promise.resolve(NOTHING_HELD) : corpora.release(workspaceId),
     register(app) {
+      // One background index job at a time in the whole Runtime (E8).
+      const slot = createRefreshSlot();
+      const providerSeam = dependencies.createProvider
+        ? { createProvider: dependencies.createProvider }
+        : {};
       const docs =
         projectRoot === undefined
           ? undefined
           : createProjectDocs({
               projectRoot,
               configuration,
-              env: dependencies.env ?? process.env,
+              env,
               log: app.log,
-              ...(dependencies.createProvider
-                ? { createProvider: dependencies.createProvider }
-                : {}),
+              slot,
+              ...providerSeam,
             });
+      const { engine } = options;
+      if (engine !== undefined) {
+        corpora = createWorkspaceCorpora({
+          resolve: engineWorkspaceResolver(engine),
+          projectHome: engine.context.project.homeRoot,
+          trustedEmbeddings: configuration.embeddings,
+          env,
+          log: app.log,
+          slot,
+          ...providerSeam,
+        });
+      }
+
       const { projectId } = options;
       app.register(docsSearchEndpoint, { docs, projectId });
       app.register(docsStatusEndpoint, { docs, projectId });
-      if (docs !== undefined) {
-        // Ends a refresh a search started, whether or not the start refresh runs.
-        app.addHook('onClose', () => docs.close());
-      }
+      // Ends every refresh, whether or not the start refresh runs.
+      app.addHook('onClose', async () => {
+        await Promise.all([docs?.close(), corpora?.close()]);
+      });
 
       // Only a project that opted into semantic search and configured an embedding endpoint has an
       // index to refresh; otherwise nothing is written below `.nevo/` and nothing is logged (a
-      // committed opt-in without a workstation endpoint is a normal lexical setup).
+      // committed opt-in without a workstation endpoint is a normal lexical setup). It targets the
+      // Runtime's own checkout only.
       if (
         docs === undefined ||
         dependencies.startRefresh === false ||

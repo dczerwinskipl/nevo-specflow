@@ -6,7 +6,7 @@ import type { ProjectIdSource } from './scope';
 import { defaultSpecsFeatureConfig, type SpecsFeatureConfig } from './configuration';
 import { specsCreateEndpoint } from './create/endpoint';
 import { registerSpecsOperationList } from './create/operation-list';
-import { specsCloseEndpoint } from './close/endpoint';
+import { specsCloseEndpoint, type ReleaseWorkspace } from './close/endpoint';
 import { specsOverviewEndpoint } from './overview/endpoint';
 import type { SpecsOverviewRepository } from './overview/repository/read-repository';
 import { createEngineSpecsOverviewRepository } from './overview/repository/engine-repository';
@@ -27,6 +27,8 @@ export interface SpecsFeatureDependencies {
   readonly sessions?: SessionReferenceOwner;
   /** The Runtime's project when there is no Engine to read it from (demo catalogue); see `specScope`. */
   readonly projectId?: ProjectIdSource;
+  /** What the Runtime holds open in a checkout, released before Close may delete it (E9). */
+  readonly releaseWorkspace?: ReleaseWorkspace;
   /** Generic operation progress registry; absent disables live progress. */
   readonly progress?: {
     readonly registry: OperationProgressRegistry;
@@ -92,7 +94,12 @@ export function createSpecsFeature(options: CreateSpecsFeatureOptions = {}): Run
         });
       }
 
-      app.register(specsCloseEndpoint, { engine: options.dependencies?.engine });
+      app.register(specsCloseEndpoint, {
+        engine: options.dependencies?.engine,
+        ...(options.dependencies?.releaseWorkspace
+          ? { releaseWorkspace: options.dependencies.releaseWorkspace }
+          : {}),
+      });
       app.register(specsOverviewEndpoint, {
         repository,
         currentSections: config.overview.current.sections,

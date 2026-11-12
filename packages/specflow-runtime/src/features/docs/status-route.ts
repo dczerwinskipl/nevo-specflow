@@ -9,7 +9,7 @@ import type { FastifyPluginCallback } from 'fastify';
 
 import { contractRef } from '../../server/shared-contracts';
 import { requireDocsView, type DocsProjectId } from './access';
-import type { ProjectDocs } from './project-docs';
+import type { ProjectDocs } from './workspace-corpus/project-docs';
 import {
   docsUnavailableBody,
   DOCS_UNAVAILABLE_MESSAGE,

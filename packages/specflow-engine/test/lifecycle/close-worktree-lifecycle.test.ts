@@ -169,6 +169,17 @@ describe('E2.T12–T13 linked Worktree Close lifecycle', () => {
     ).rejects.toMatchObject({ code: 'CLOSE_PREFLIGHT' });
   }, 120000);
 
+  it('removes a worktree holding the disposable local cache and local configuration', async () => {
+    const { engine, spec } = await fixture();
+    const cache = join(spec.workspaceRoot, '.nevo/local/cache/docs-index/units.json');
+    await mkdir(dirname(cache), { recursive: true });
+    await writeFile(cache, '{}\n');
+    await writeFile(join(spec.workspaceRoot, '.nevo/local/config.yaml'), 'ai: {}\n');
+    const outcome = await closeWorktree(engine, { operationId: randomUUID(), specId: spec.specId });
+    expect(outcome.status).toBe('completed');
+    await expect(lstat(spec.workspaceRoot)).rejects.toMatchObject({ code: 'ENOENT' });
+  }, 300000);
+
   it('retains verified primary binding and original linked data when ignored user files block disposal', async () => {
     const { root, engine, spec } = await fixture();
     const operationId = randomUUID();

@@ -282,6 +282,7 @@ export {
   type PublicCreateOperation,
   type PublicCloseOperation,
   type PublicClosePreview,
+  type PublicCloseSourceWorkspace,
   type PublicCloseStatus,
   type PublicWorkspaceClosePreview,
   type PublicWorkspaceCloseOperation,

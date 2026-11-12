@@ -5208,6 +5208,39 @@
       ]
     },
     {
+      "id": "reference.api.workspaces",
+      "type": "reference",
+      "title": "Workspaces HTTP API",
+      "status": "current",
+      "file": "docs/reference/api/workspaces.md",
+      "read_when": [
+        "calling or changing GET /api/workspaces",
+        "listing the registered workspaces of a project in a client (documentation reader, Create Specification)",
+        "changing the workspace.view capability or the workspace list of the demo Runtime"
+      ],
+      "summary": "GET /api/workspaces lists the project's registered workspaces (primary checkout and linked worktrees): id, kind, name, absolute folder, availability with a closed reason, whether it is the Runtime's own checkout, the bound Specifications the caller may view and, with Git enabled, uncommitted changes. Admitted by workspace.view at the project scope.",
+      "related": [
+        "adr.0022-workspace-scoped-documentation-reader",
+        "architecture.runtime.authorization",
+        "reference.configuration.authorization",
+        "reference.api.specflow-specification-operations",
+        "reference.api.specification-workspace",
+        "product.specflow.ui.documentation-reader",
+        "reference.api.openapi"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "server",
+        "security"
+      ],
+      "tags": [
+        "workspace",
+        "worktree",
+        "authorization"
+      ]
+    },
+    {
       "id": "reference.cli.nevo-specflow-contract",
       "type": "reference",
       "title": "nevo-specflow public CLI contract",

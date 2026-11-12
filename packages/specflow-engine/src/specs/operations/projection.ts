@@ -25,12 +25,28 @@ export interface PublicCloseOperation {
   readonly scratchRetired?: true;
 }
 
+/** The checkout a Close plan was made for, from the immutable plan (not the live bindings). */
+export interface PublicCloseSourceWorkspace {
+  readonly workspaceId: string;
+  /** Only a linked checkout can be removed by Close. */
+  readonly kind: 'primary' | 'linked';
+}
+
 export interface PublicClosePreview {
   readonly operationId: string;
   readonly specId: string;
   readonly kind: Exclude<CloseKind, 'workspace-close'>;
   readonly location: 'active' | 'archive';
   readonly integrationRequired: boolean;
+  readonly sourceWorkspace: PublicCloseSourceWorkspace;
+}
+
+/** A linked registration always records its instance; the primary never does. */
+function sourceWorkspace(plan: ClosePlan): PublicCloseSourceWorkspace {
+  return {
+    workspaceId: plan.source.workspaceId,
+    kind: plan.source.instanceId === undefined ? 'primary' : 'linked',
+  };
 }
 
 /** Transport-independent result. Never serialize workstation paths or journal evidence. */
@@ -100,6 +116,7 @@ export function projectClosePreview(plan: ClosePlan): PublicClosePreview {
     kind: plan.kind,
     location: plan.location,
     integrationRequired: plan.kind === 'worktree-close' || plan.integrateToTargetBranch === true,
+    sourceWorkspace: sourceWorkspace(plan),
   };
 }
 
@@ -108,6 +125,7 @@ export interface PublicWorkspaceClosePreview {
   readonly operationId: string;
   readonly workspaceId: string;
   readonly kind: 'workspace-close';
+  readonly sourceWorkspace: PublicCloseSourceWorkspace;
   readonly sourceBranch: string;
   readonly targetWorkspaceId: string;
   readonly targetBranch: string;
@@ -146,6 +164,7 @@ export function projectWorkspaceClosePreview(plan: ClosePlan): PublicWorkspaceCl
     operationId: plan.operationId,
     workspaceId: plan.workspaceId,
     kind: 'workspace-close',
+    sourceWorkspace: sourceWorkspace(plan),
     sourceBranch: plan.source.branch,
     targetWorkspaceId: plan.target.workspaceId,
     targetBranch: plan.targetBranch,

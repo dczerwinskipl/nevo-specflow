@@ -28,6 +28,7 @@ import {
   createEngineWorkspaceDocuments,
   type DocumentsFeatureDependencies,
 } from '../features/documents';
+import { createWorkflowFeature, type WorkflowFeatureDependencies } from '../features/workflow';
 import {
   createDocsFeature,
   openProjectDocumentLookup,
@@ -74,6 +75,8 @@ export interface RuntimeAppDependencies {
   readonly demoScenarios?: boolean;
   readonly tasks?: TasksFeatureDependencies;
   readonly documents?: DocumentsFeatureDependencies;
+  /** Workflow action routes; the Engine of `specs` unless a backend is injected (tests). */
+  readonly workflow?: Pick<WorkflowFeatureDependencies, 'port'>;
   /** Project documentation search; the Runtime start supplies the project root in project mode. */
   readonly docs?: DocsFeatureDependencies;
   readonly sessions?: {
@@ -311,6 +314,14 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
       ...(dependencies.documents?.taskDocuments
         ? { taskDocuments: dependencies.documents.taskDocuments }
         : {}),
+    }),
+    createWorkflowFeature({
+      ...(engine ? { engine } : {}),
+      ...(taskEngine ? { openWorkflow: taskEngine.openWorkflow } : {}),
+      ...dependencies.workflow,
+      // The demo Runtime has no Engine and serves no workflow routes.
+      ...(demo ? { routes: false } : {}),
+      projectId,
     }),
     sessionsFeature,
     createSessionAssociationsFeature({

@@ -142,6 +142,22 @@ describe('Task commands and reads against the real Engine', () => {
           expect.objectContaining({ id: 'task', path: 'task.md', required: true }),
         ]);
 
+        // A Task document save is an operation of its Specification: the UI polls its status there.
+        const operationId = randomUUID();
+        const saved = await app.inject({
+          method: 'PUT',
+          url: `/api/specs/${specId}/tasks/build/documents/task`,
+          payload: {
+            operationId,
+            content: '# Build it\n\nWith tests.\n',
+            expectedRevision: tree.documents[0]!.file!.revision,
+          },
+        });
+        expect(saved.statusCode, saved.body).toBe(200);
+        const status = await app.inject(`/api/specs/${specId}/document-operations/${operationId}`);
+        expect(status.statusCode, status.body).toBe(200);
+        expect(status.json()).toMatchObject({ operationId, specId, documentIds: ['task'] });
+
         const edited = await app.inject({
           method: 'PATCH',
           url: `/api/specs/${specId}/tasks/build`,

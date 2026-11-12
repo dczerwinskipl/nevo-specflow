@@ -228,9 +228,11 @@ The demo Runtime keeps its own sources; a Runtime without either still answers 5
 
 The owner creates, edits, removes and decides the status of a Task through the Engine's Task use
 cases, with `spec.manage` at `specScope(projectId, specId)`, checked before the body is read. The
-actor is always the authenticated subject (or the trusted local identity), recorded as
-`{ class: 'human', details: { actorId, trust: 'authenticated' } }`; a body that names an actor, an
-executor or a type change fails validation (`400`). Every answer is `Cache-Control: no-store`.
+actor is always the caller, recorded as `{ class: 'human', details: { actorId, trust } }`: the
+authenticated subject with `trust: 'authenticated'`, the trusted local identity (no local user) as
+`runtime:trusted-local` with `trust: 'local'` (the same `ownerActorOf` as the workflow action
+routes). A body that names an actor, an executor or a type change fails validation (`400`). Every
+answer is `Cache-Control: no-store`.
 
 | Operation                                                    | Body / query                                                                                               | Success                  |
 | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- | ------------------------ |
@@ -239,22 +241,16 @@ executor or a type change fails validation (`400`). Every answer is `Cache-Contr
 | `DELETE /api/specs/:specId/tasks/:taskId?expectedRevision=…` | the revision the removal was planned against                                                               | `200 { taskId }`         |
 | `PUT /api/specs/:specId/tasks/:taskId/status`                | `status` (`ready`, `on-hold`, `cancelled`), optional `reason`                                              | `200 { taskId, status }` |
 
-`TaskChangeResult` is `{ taskId, revision }`, the manifest revision for the next edit or removal.
-A refusal is `TaskCommandError` `{ error, code, message? }` with the Engine's workflow code; the
-message is the Engine's explanation (for example which context entries do not resolve, by position),
-never present on a 503:
-
-| Status | Codes                                                                                                                                                                                                                                                                 |
-| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `404`  | `WORKFLOW_SUBJECT_NOT_FOUND` (unknown Specification or Task)                                                                                                                                                                                                          |
-| `409`  | `WORKFLOW_TASK_REVISION_CONFLICT`, `WORKFLOW_TASK_EXISTS`, `WORKFLOW_TASK_NOT_REMOVABLE`, `WORKFLOW_TASK_BUSY`, `WORKFLOW_STATE_CONFLICT`, `WORKFLOW_SPECIFICATION_ENDED`, `WORKFLOW_SPECIFICATION_BUSY`, and the position and executor refusals of the workflow core |
-| `422`  | `WORKFLOW_INPUT_INVALID`, `WORKFLOW_TASK_CONTEXT_UNRESOLVED`, `WORKFLOW_TASK_TYPE_NOT_ALLOWED`, `WORKFLOW_TASK_TYPE_IMMUTABLE`, `WORKFLOW_DEFINITION_MISSING`, `WORKFLOW_NOT_CONFIGURED`                                                                              |
-| `503`  | `WORKFLOW_STATE_CORRUPT` (restore from Git), `WORKFLOW_SOURCE_UNAVAILABLE` (no Engine, or the canonical source cannot be used)                                                                                                                                        |
-
-The mapping of every workflow code is `statusForWorkflowError` (`features/tasks`). A
-`project-document` context reference resolves against the project documentation the Runtime serves
-(`/api/docs/`), read once per request. The documents of a Task are the
-[Task document routes](specification-documents.md#task-documents).
+`TaskChangeResult` is `{ taskId, revision }`, the manifest revision for the next edit or removal. A
+refusal is the shared `WorkflowError` body with the statuses of the
+[workflow refusals](specification-workflow.md#refusals): for example `409
+WORKFLOW_TASK_REVISION_CONFLICT` for a stale `expectedRevision`, and `422
+WORKFLOW_TASK_CONTEXT_UNRESOLVED` with `details.unresolved` naming each context entry that does not
+resolve. A `project-document` context reference resolves against the project documentation the
+Runtime serves (`/api/docs/`), read once per request. The documents of a Task are the
+[Task document routes](specification-documents.md#task-documents); a Task document save is a
+document operation of its Specification, so its status is read at
+`GET /api/specs/:specId/document-operations/:operationId`.
 
 ## Versioned document read
 

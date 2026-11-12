@@ -106,6 +106,7 @@ export {
   type RemoveTaskInput,
   type TaskResourceResult,
 } from './operations/task-resource';
+export { TaskContextUnresolvedError, type UnresolvedContextEntry } from './operations/task-policy';
 export type { TaskReferences } from './operations/task-references';
 export {
   setTaskStatus,

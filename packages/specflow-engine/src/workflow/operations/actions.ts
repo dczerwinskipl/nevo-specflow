@@ -13,6 +13,7 @@ import {
   type ContinuationDecision,
   type LaunchBlocker,
 } from '../continuation/resolve';
+import type { SpecificationLifecycleActions } from '../close/blockers';
 import { resolveSpecificationExecution, type ExecutionCatalogue } from '../definitions/catalogue';
 import type { WorkflowDefinition, WorkflowStep } from '../definitions/model';
 import { WorkflowError } from '../errors';
@@ -256,11 +257,8 @@ export interface TaskLifecycleActions {
   readonly editDependencies: Availability<TaskActionUnavailableReason>;
 }
 
-/** Close and Abandon of a Specification (T6, D07); this module does not decide them. */
-export interface SpecificationExitActions {
-  readonly close: Availability<string>;
-  readonly abandon: Availability<string>;
-}
+/** Close and Abandon of a Specification (T6, D07), with the blockers that refuse them. */
+export type SpecificationExitActions = SpecificationLifecycleActions;
 
 /** The port T6 provides: Close/Abandon availability from the snapshot the projection read. */
 export interface SpecificationExitPort {
@@ -269,7 +267,7 @@ export interface SpecificationExitPort {
 
 export interface SpecificationLevelActions {
   readonly createTask: Availability<'task-limit'>;
-  /** Absent until the Close/Abandon port (T6) is wired. */
+  /** Absent when no Close/Abandon port is given (`openWorkflow` wires it). */
   readonly exit?: SpecificationExitActions;
 }
 

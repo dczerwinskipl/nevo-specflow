@@ -284,6 +284,26 @@ describe('creating and editing Tasks', () => {
     await refused(dependencies, create(dependencies, overrides.taskId ?? 'web', overrides), code);
   });
 
+  it('names each context entry that does not resolve, by position, key and reason', async () => {
+    const dependencies = memoryDependencies(catalogue);
+
+    await expect(
+      create(dependencies, 'web', {
+        context: [
+          { kind: 'instructions', text: 'Keep it small.', required: true },
+          { kind: 'specification-document', id: 'ux', required: false },
+          { kind: 'task-document', id: 'notes', required: true },
+        ],
+      }),
+    ).rejects.toMatchObject({
+      code: 'WORKFLOW_TASK_CONTEXT_UNRESOLVED',
+      unresolved: [
+        { index: 1, key: 'specification-document:ux', reason: 'not-found' },
+        { index: 2, key: 'task-document:notes', reason: 'not-registered' },
+      ],
+    });
+  });
+
   it('refuses a type the live archetype does not allow', async () => {
     const dependencies = memoryDependencies(catalogue);
     dependencies.references.archetypeId = 'architecture';

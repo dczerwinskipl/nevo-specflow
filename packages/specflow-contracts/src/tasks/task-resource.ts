@@ -158,21 +158,6 @@ export const TaskStatusResultSchema = Type.Object(
 );
 export type TaskStatusResult = Static<typeof TaskStatusResultSchema>;
 
-/**
- * A refused Task command. `code` is the Engine's workflow error code (`WORKFLOW_*`), or
- * `WORKFLOW_SOURCE_UNAVAILABLE` when the Runtime has no workflow source; `message` is the Engine's
- * explanation of a refusal (404, 409, 422), never present for an outage (503).
- */
-export const TaskCommandErrorSchema = Type.Object(
-  {
-    error: Type.String({ pattern: '^WORKFLOW_[A-Z_]+$' }),
-    code: Type.String({ pattern: '^WORKFLOW_[A-Z_]+$' }),
-    message: Type.Optional(Type.String()),
-  },
-  { $id: 'TaskCommandError' },
-);
-export type TaskCommandError = Static<typeof TaskCommandErrorSchema>;
-
 /** One document of a Task as `GET /api/specs/:specId/tasks/:taskId/document-tree` lists it. */
 export const TaskDocumentListingSchema = Type.Object({
   id: Type.String({ minLength: 1, maxLength: 200 }),

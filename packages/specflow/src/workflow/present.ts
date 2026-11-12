@@ -1,10 +1,13 @@
 import type {
+  AbandonSpecificationResult,
   ActionPosition,
   ActionProjection,
+  CloseBlocker,
   ContinuationDecision,
   FinishStepResult,
   ReturnToStepResult,
   RunPosition,
+  SpecificationExitActions,
   StartBlocker,
   StartResult,
   WorkflowSubject,
@@ -131,7 +134,47 @@ export function actionLines(projection: ActionProjection): string[] {
     lines.push(`Task actions: ${open.length > 0 ? open.join(', ') : 'none'}`);
   }
 
+  const exit = projection.specification?.exit;
+  if (exit) {
+    lines.push(...exitLines(exit));
+  }
+
   return lines;
+}
+
+function blockerLines(blockers: readonly CloseBlocker[]): string[] {
+  return blockers.map(
+    (blocker) => `  held by ${blocker.kind} (${blocker.subjectIds.join(', ')}): ${blocker.message}`,
+  );
+}
+
+/** Close and Abandon of a Specification as the owner reads them, with what holds each. */
+export function exitLines(exit: SpecificationExitActions): string[] {
+  const { close, abandon } = exit;
+
+  return [
+    close.kind === 'allowed'
+      ? 'Close: allowed (Git and workspace rules are checked by the close itself)'
+      : 'Close: blocked',
+    ...(close.kind === 'blocked' ? blockerLines(close.blockers) : []),
+    abandon.kind === 'allowed'
+      ? 'Abandon: allowed ("specs abandon <spec-id> --reason <text> --yes")'
+      : abandon.kind === 'blocked'
+        ? 'Abandon: blocked'
+        : `Abandon: unavailable (${abandon.reason})`,
+    ...(abandon.kind === 'blocked' ? blockerLines(abandon.blockers) : []),
+  ];
+}
+
+export function abandonLines(result: AbandonSpecificationResult): string[] {
+  const list = (ids: readonly string[]) => (ids.length > 0 ? ids.join(', ') : 'none');
+
+  return [
+    `Abandoned: Specification ${result.specId}`,
+    `Reason: ${result.abandonment.reason}`,
+    `Cancelled Tasks: ${list(result.cancelledTasks)}`,
+    `Ended Task runs: ${list(result.abandonedTaskRuns)}`,
+  ];
 }
 
 export function startLines(result: StartResult): string[] {

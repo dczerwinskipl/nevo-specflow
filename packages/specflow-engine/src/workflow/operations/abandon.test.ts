@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { closeBlockers } from '../close/blockers';
+import { closeBlockers, specificationLifecycleActions } from '../close/blockers';
 import type { ExecutionCatalogue } from '../definitions/catalogue';
 import { abandonSpecification } from './abandon';
 import { inspectExecution } from './inspect';
@@ -105,6 +105,19 @@ describe('abandonSpecification', () => {
       startTaskExecution(dependencies, { specId: SPEC, taskId: 'docs', actor: claude }),
       'WORKFLOW_TASK_BLOCKED',
     );
+  });
+
+  it('stays possible when the pinned workflow changed or is gone; Close keeps its rules', async () => {
+    const dependencies = memoryDependencies(catalogue);
+    await specificationWithTasks(dependencies);
+    const changed = { ...dependencies, catalogue: { ...catalogue, workflow: () => undefined } };
+
+    const exit = specificationLifecycleActions(await readSpecificationExitState(changed, SPEC));
+    expect(exit.abandon).toEqual({ kind: 'allowed' });
+    expect(exit.close.kind).toBe('blocked');
+    await expect(abandon(changed)).resolves.toMatchObject({
+      abandonment: { from: { state: 'active' } },
+    });
   });
 
   it('is not a bypass: pending writes and other operations refuse it with the blockers', async () => {

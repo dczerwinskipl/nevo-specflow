@@ -14,8 +14,14 @@ import { resolveExecutionCatalogue } from './definitions/catalogue';
 import { WorkflowError as CoreWorkflowError } from '@nevo/workflow';
 import { WorkflowError } from './errors';
 import type { ExecutionHolds, WorkflowDependencies } from './operations/loaded-execution';
-import { readSpecificationExitState } from './operations/specification-exit';
-import { closeBlockers, type CloseBlocker } from './close/blockers';
+import { exitStateOf, readSpecificationExitState } from './operations/specification-exit';
+import {
+  closeBlockers,
+  specificationLifecycleActions,
+  type CloseBlocker,
+  type SpecificationLifecycleActions,
+} from './close/blockers';
+import type { SpecificationExitPort } from './operations/actions';
 import { assertSharedResourcesAvailable } from '../specs/coordination/resources';
 import { SharedResourceError } from '../specs/durable';
 import type { RememberModelDependencies } from './definitions/remember-model';
@@ -141,7 +147,7 @@ export async function openWorkflow(
     createDefaultDefinitionRegistry(),
   );
 
-  return {
+  const dependencies: Omit<WorkflowDependencies, 'specificationExit'> = {
     catalogue: resolveExecutionCatalogue(loaded),
     store: guardCloseReservations(
       guardTaskDocumentChanges(
@@ -157,6 +163,38 @@ export async function openWorkflow(
     holds: engineHolds(engine),
     now: () => new Date(),
     serialize: (operation) => withProjectControlLock(engine.context, operation),
+  };
+
+  return { ...dependencies, specificationExit: specificationExitPort(dependencies) };
+}
+
+/**
+ * Close and Abandon availability of the action projection (D07), from the snapshot it read. Records
+ * that cannot be interpreted are one blocker for both, as in the Close guard.
+ */
+function specificationExitPort(
+  dependencies: Omit<WorkflowDependencies, 'specificationExit'>,
+): SpecificationExitPort {
+  return {
+    async exitActions(snapshot): Promise<SpecificationLifecycleActions> {
+      try {
+        return specificationLifecycleActions(await exitStateOf(dependencies, snapshot));
+      } catch (error) {
+        if (error instanceof CoreWorkflowError) {
+          const blockers: CloseBlocker[] = [
+            {
+              kind: 'execution-state-unreadable',
+              subjectIds: [snapshot.specId],
+              message: error.message,
+            },
+          ];
+
+          return { close: { kind: 'blocked', blockers }, abandon: { kind: 'blocked', blockers } };
+        }
+
+        throw error;
+      }
+    },
   };
 }
 

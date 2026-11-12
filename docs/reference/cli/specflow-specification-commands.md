@@ -203,6 +203,7 @@ run. Every command accepts `--project-root <path>` and `--json`.
 | `workflow start <spec-id> [--task <task-id> [--expected-workflow-revision <r>]]`                                                                                                               | `startSpecificationExecution` / `startTaskExecution` |
 | `workflow finish <spec-id> [--task <task-id>] --step <id> --attempt <n> [--result <r>] [--feedback <t>] [--artifact <ref>]... [--tasks-file <f>] [--task-decisions-file <f>]`                  | `finishStep`                                         |
 | `workflow return <spec-id> [--task <task-id>] --step <id> [--reason <text>]`                                                                                                                   | `returnToStep`                                       |
+| `specs abandon <spec-id> --reason <text> --yes`                                                                                                                                                | `abandonSpecification`                               |
 
 - **Actor.** The CLI builds the actor itself: the owner `{class: human, actorId: local:<os-user>, trust: local}`,
   used for every write and for `workflow start|finish|return`. No option sets an actor, an executor class or a
@@ -223,10 +224,16 @@ run. Every command accepts `--project-root <path>` and `--json`.
   (a deprecated or superseded one does not).
 - **Task text.** `tasks create` takes the first text of `task.md` from `--content-file` or `--stdin`. Later
   changes and extra Task documents use `specs documents ... --task <task-id>`.
-- **Not here yet.** Closing and abandoning a Specification (`abandon`) are not part of these commands.
+- **Specification exit.** `workflow actions <spec-id>` also prints whether `Close` and `Abandon` are available and,
+  when not, the groups that hold them (`held by <kind> (<ids>): <message>`). `specs abandon` ends the
+  Specification without realizing it: every unfinished Specification and Task run ends as abandoned (actor and
+  reason recorded) and every Task that is not cancelled is cancelled. It is final, needs `--yes` and a reason, and
+  is not a bypass of `specs close`: pending writes, broken Tasks and other operations on the Specification refuse
+  it (`WORKFLOW_EXIT_BLOCKED`, with the blockers listed on stderr and, with `--json`, in `error.blockers`).
+  A retry with the same reason returns the same result. Archive afterwards with `specs close`.
 - **Output and exit codes.** stdout carries the result (human lines, or one JSON document with `--json`);
   stderr carries diagnostics. A workflow refusal is printed as `CODE: message` followed by `Hint: ...` where one
-  helps and, with `--json`, stdout also carries `{ "error": { code, message, hint? } }`. Exit codes: `0` success;
+  helps and, with `--json`, stdout also carries `{ "error": { code, message, blockers?, hint? } }`. Exit codes: `0` success;
   `1` a refusal or another failure; `2` a usage error.
 
 ## Manual commit

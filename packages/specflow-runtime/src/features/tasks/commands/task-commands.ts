@@ -14,7 +14,6 @@ import type {
   TaskStatusResult,
 } from '@nevo/specflow-contracts/tasks';
 
-import type { RequestAuthorization } from '../../auth';
 import type { TaskEngine } from '../engine/sources';
 
 /**
@@ -42,18 +41,6 @@ export interface TaskCommands {
     input: SetTaskStatusInput,
     actor: OwnerActor,
   ): Promise<TaskStatusResult>;
-}
-
-/**
- * The person behind an HTTP request: the authenticated subject (or the trusted local identity), the
- * same identity the Session routes record. The Runtime authenticated it, so `trust` is
- * `authenticated`.
- */
-export function ownerActorOf(authz: RequestAuthorization): OwnerActor {
-  return {
-    class: 'human',
-    details: { actorId: authz.readContext().subject, trust: 'authenticated' },
-  };
 }
 
 /** The production commands: the Engine's Task use cases over freshly opened workflow operations. */

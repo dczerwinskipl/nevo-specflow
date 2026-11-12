@@ -74,6 +74,7 @@ export function createProgram(io: ProgramIO): Command {
       stderr: io.stderr,
       ...(io.readStdin ? { readStdin: io.readStdin } : {}),
       ...(io.documentsApi ? { api: io.documentsApi } : {}),
+      ...(io.osUser ? { osUser: io.osUser } : {}),
     }),
   );
   program.addCommand(

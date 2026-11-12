@@ -7,6 +7,7 @@ import {
 } from '@nevo/specflow-contracts/authorization';
 import { SpecIdSchema } from '@nevo/specflow-contracts/documents';
 import { SpecCapabilities } from '@nevo/specflow-contracts/specs';
+import { WorkflowErrorSchema } from '@nevo/specflow-contracts/workflow';
 import {
   CreateTaskInputSchema,
   EditTaskInputSchema,
@@ -14,7 +15,6 @@ import {
   SetTaskStatusInputSchema,
   SpecificationTaskParamsSchema,
   TaskChangeResultSchema,
-  TaskCommandErrorSchema,
   TaskRemoveResultSchema,
   TaskStatusResultSchema,
 } from '@nevo/specflow-contracts/tasks';
@@ -22,8 +22,13 @@ import {
 import { requireCapability } from '../../auth';
 import { specScope, type ProjectIdSource } from '../../specs';
 import { contractRef } from '../../../server/shared-contracts';
-import { SOURCE_UNAVAILABLE, taskCommandFailure } from './error-status';
-import { ownerActorOf, type TaskCommands } from './task-commands';
+import {
+  ownerActorOf,
+  sendWorkflowFailure,
+  workflowFailure,
+  WorkflowUnavailableError,
+} from '../../workflow';
+import type { TaskCommands } from './task-commands';
 
 /** A create may carry the first text of `task.md`: the document save cap with room for escaping. */
 const CREATE_BODY_LIMIT_BYTES = 2 * 1024 * 1024;
@@ -31,7 +36,7 @@ const CREATE_BODY_LIMIT_BYTES = 2 * 1024 * 1024;
 const SpecParamsSchema = Type.Object({ specId: SpecIdSchema }, { additionalProperties: false });
 
 export interface TaskCommandRoutesOptions {
-  /** Absent (no Engine): every command answers `503 WORKFLOW_SOURCE_UNAVAILABLE`. */
+  /** Absent (no Engine): every command answers `503 WORKFLOW_UNAVAILABLE`. */
   readonly commands?: TaskCommands;
   readonly projectId?: ProjectIdSource;
 }
@@ -39,10 +44,10 @@ export interface TaskCommandRoutesOptions {
 const errors = {
   401: contractRef(AuthenticationRequiredErrorResponseSchema),
   403: contractRef(AuthorizationForbiddenErrorResponseSchema),
-  404: contractRef(TaskCommandErrorSchema),
-  409: contractRef(TaskCommandErrorSchema),
-  422: contractRef(TaskCommandErrorSchema),
-  503: contractRef(TaskCommandErrorSchema),
+  404: contractRef(WorkflowErrorSchema),
+  409: contractRef(WorkflowErrorSchema),
+  422: contractRef(WorkflowErrorSchema),
+  503: contractRef(WorkflowErrorSchema),
 };
 
 /**
@@ -64,25 +69,23 @@ export const taskCommandRoutes: FastifyPluginCallback<TaskCommandRoutesOptions> 
   });
   /**
    * Runs one command, which sends its own success answer; a workflow refusal is answered with its
-   * status and `TaskCommandError`, which every command route declares (`errors`).
+   * status and `WorkflowError` body (`sendWorkflowFailure`), which every command route declares.
    */
   const run = async (reply: FastifyReply, command: (port: TaskCommands) => Promise<void>) => {
     reply.header('Cache-Control', 'no-store');
-    if (!options.commands) {
-      await reply.code(SOURCE_UNAVAILABLE.status).send(SOURCE_UNAVAILABLE.body);
-
-      return;
-    }
-
     try {
+      if (!options.commands) {
+        throw new WorkflowUnavailableError();
+      }
+
       await command(options.commands);
     } catch (error) {
-      const failure = taskCommandFailure(error);
+      const failure = workflowFailure(error);
       if (!failure) {
         throw error;
       }
 
-      await reply.code(failure.status).send(failure.body);
+      await sendWorkflowFailure(reply, failure);
     }
   };
 
@@ -104,7 +107,7 @@ export const taskCommandRoutes: FastifyPluginCallback<TaskCommandRoutesOptions> 
         const result = await port.create(
           request.params.specId,
           request.body,
-          ownerActorOf(request.authz),
+          ownerActorOf(request.authz.readContext().subject),
         );
         await reply.code(201).send(result);
       });
@@ -126,7 +129,12 @@ export const taskCommandRoutes: FastifyPluginCallback<TaskCommandRoutesOptions> 
     async (request, reply) => {
       await run(reply, async (port) => {
         const { specId, taskId } = request.params;
-        const result = await port.edit(specId, taskId, request.body, ownerActorOf(request.authz));
+        const result = await port.edit(
+          specId,
+          taskId,
+          request.body,
+          ownerActorOf(request.authz.readContext().subject),
+        );
         await reply.code(200).send(result);
       });
     },
@@ -151,7 +159,7 @@ export const taskCommandRoutes: FastifyPluginCallback<TaskCommandRoutesOptions> 
           specId,
           taskId,
           request.query.expectedRevision,
-          ownerActorOf(request.authz),
+          ownerActorOf(request.authz.readContext().subject),
         );
         await reply.code(200).send(result);
       });
@@ -177,7 +185,7 @@ export const taskCommandRoutes: FastifyPluginCallback<TaskCommandRoutesOptions> 
           specId,
           taskId,
           request.body,
-          ownerActorOf(request.authz),
+          ownerActorOf(request.authz.readContext().subject),
         );
         await reply.code(200).send(result);
       });

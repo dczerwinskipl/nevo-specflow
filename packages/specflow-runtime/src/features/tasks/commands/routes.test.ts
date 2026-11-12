@@ -1,8 +1,8 @@
 // The Task command routes over HTTP with a fake command port: `spec.manage` before the body, the
 // actor from the authenticated subject (never the body), the request schemas and the status of the
 // workflow refusals. The Engine behind the routes: test/tasks/task-commands.http.test.ts.
-import { WorkflowError, type OwnerActor } from '@nevo/specflow-engine';
-import { TaskCommandErrorSchema } from '@nevo/specflow-contracts/tasks';
+import { ProjectControlLockError, WorkflowError, type OwnerActor } from '@nevo/specflow-engine';
+import { WorkflowErrorSchema } from '@nevo/specflow-contracts/workflow';
 import type { FastifyInstance } from 'fastify';
 import { Value } from 'typebox/value';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -200,26 +200,76 @@ describe('Task command routes', () => {
 
     expect(response.statusCode).toBe(status);
     expect(response.json()).toEqual({ error: code, code, message: `Refused: ${code}.` });
-    expect(Value.Check(TaskCommandErrorSchema, response.json())).toBe(true);
+    expect(Value.Check(WorkflowErrorSchema, response.json())).toBe(true);
   });
 
-  it('answers corrupt state and a Runtime without an Engine with 503 and no message', async () => {
+  it('names the context entries that do not resolve in details.unresolved', async () => {
+    const unresolved = [{ index: 1, key: 'specification-document:ux', reason: 'not-found' }];
+    const { app } = await listen({
+      commands: fakeCommands([], () =>
+        Object.assign(new WorkflowError('WORKFLOW_TASK_CONTEXT_UNRESOLVED', 'Unresolved.'), {
+          unresolved,
+        }),
+      ),
+    });
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/specs/spec-1/tasks',
+      payload: create,
+    });
+
+    expect(response.statusCode).toBe(422);
+    expect(response.json()).toMatchObject({ details: { unresolved } });
+    expect(Value.Check(WorkflowErrorSchema, response.json())).toBe(true);
+  });
+
+  it('answers corrupt state, a busy lock and a Runtime without an Engine with 503', async () => {
     const corrupt = await listen({
       commands: fakeCommands([], () => new WorkflowError('WORKFLOW_STATE_CORRUPT', 'At /x.')),
     });
+    const busy = await listen({
+      commands: fakeCommands(
+        [],
+        () => new ProjectControlLockError('CONTROL_LOCK_BUSY', 'The project is busy.'),
+      ),
+    });
     const none = await listen({ commands: null });
-    for (const [app, code] of [
-      [corrupt.app, 'WORKFLOW_STATE_CORRUPT'],
-      [none.app, 'WORKFLOW_SOURCE_UNAVAILABLE'],
+    for (const [app, code, retry] of [
+      [corrupt.app, 'WORKFLOW_STATE_CORRUPT', undefined],
+      [busy.app, 'CONTROL_LOCK_BUSY', '1'],
+      [none.app, 'WORKFLOW_UNAVAILABLE', undefined],
     ] as const) {
       const response = await app.inject({
         method: 'POST',
         url: '/api/specs/spec-1/tasks',
         payload: create,
       });
-      expect(response.statusCode).toBe(503);
-      expect(response.json()).toEqual({ error: code, code });
+      expect(response.statusCode, code).toBe(503);
+      expect(response.json()).toMatchObject({ error: code, code });
+      // Only a busy lock is worth a retry soon.
+      expect(response.headers['retry-after'], code).toBe(retry);
     }
+  });
+
+  it('records the trusted local identity with trust local', async () => {
+    const calls: Call[] = [];
+    const { localUserId: _unused, ...authentication } = noAuthConfig().authentication;
+    const app = await createRuntimeApp(
+      { ...noAuthConfig(), authentication },
+      { tasks: { commands: fakeCommands(calls) } },
+    );
+    apps.push(app);
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/specs/spec-1/tasks',
+      payload: create,
+    });
+
+    expect(response.statusCode, response.body).toBe(201);
+    expect(calls[0]?.actor).toEqual({
+      class: 'human',
+      details: { actorId: 'runtime:trusted-local', trust: 'local' },
+    });
   });
 
   it('lets any other failure reach the Runtime error handler (500)', async () => {

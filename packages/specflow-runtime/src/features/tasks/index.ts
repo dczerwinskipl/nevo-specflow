@@ -15,7 +15,7 @@ export { createDemoTaskSources, buildDemoTasks } from './demo/sources';
 export { buildDemoTaskContribution } from './demo/contribution';
 export { createEngineTaskSources, type TaskEngine } from './engine/sources';
 export type { TaskCommands } from './commands/task-commands';
-export { statusForWorkflowError, taskCommandFailure } from './commands/error-status';
+
 export {
   createEngineTaskProgress,
   createEngineWorkspaceTasks,

@@ -31,6 +31,8 @@ export const WORKFLOW_ERROR_CODES = [
   'WORKFLOW_TASK_REVISION_CONFLICT',
   /** The Task started, has dependents, a pending document change or files the Engine does not know. */
   'WORKFLOW_TASK_NOT_REMOVABLE',
+  /** A change of one of the Task's documents is pending (D03): its files cannot be written now. */
+  'WORKFLOW_TASK_BUSY',
 ] as const;
 export type WorkflowErrorCode = (typeof WORKFLOW_ERROR_CODES)[number];
 

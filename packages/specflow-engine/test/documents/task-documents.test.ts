@@ -13,7 +13,9 @@ import {
   applyTaskDocumentChange,
   hasPendingTaskDocumentChange,
 } from '../../src/specs/documents/api';
+import { flushDocumentCommits } from '../../src/specs/documents/queue/flush';
 import { readTaskDocuments } from '../../src/specs/documents/task-document-reader';
+import { openWorkflow, setTaskStatus } from '../../src/workflow';
 import {
   initialTaskDocument,
   parseTaskManifest,
@@ -106,6 +108,21 @@ describe('Task documents', () => {
     const context = project.engine.context;
     expect(await hasPendingTaskDocumentChange(context, project.specId, 'brief')).toBe(true);
     expect(await hasPendingTaskDocumentChange(context, project.specId, 'other')).toBe(false);
+    // ... and the store refuses to write the Task's files until they are committed.
+    const hold = async () =>
+      setTaskStatus(await openWorkflow(project.engine), {
+        specId: project.specId,
+        taskId: 'brief',
+        status: 'on-hold',
+        actor: { class: 'human', details: { actorId: 'owner', trust: 'local' } },
+      });
+    expect(await failure(hold())).toMatchObject({ code: 'WORKFLOW_TASK_BUSY' });
+    await flushDocumentCommits(project.engine, {
+      workspaceId: project.workspaceId,
+      root: project.root,
+    });
+    expect(await hasPendingTaskDocumentChange(context, project.specId, 'brief')).toBe(false);
+    await expect(hold()).resolves.toMatchObject({ status: 'on-hold' });
 
     // D03, documents side: a pending execution-store change of the Task (left by a crash) refuses.
     const manifestText = await readFile(join(taskDir, 'task.yaml'), 'utf8');

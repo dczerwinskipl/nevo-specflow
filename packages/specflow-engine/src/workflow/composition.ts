@@ -15,7 +15,12 @@ import { WorkflowError } from './errors';
 import type { WorkflowDependencies } from './operations/loaded-execution';
 import type { RememberModelDependencies } from './definitions/remember-model';
 import type { TaskReferences } from './operations/task-references';
+import { hasPendingTaskDocumentChange } from '../specs/documents/write/pending-task-change';
 import { createFilesystemWorkflowStore } from './state/filesystem-store';
+import {
+  guardTaskDocumentChanges,
+  type PendingTaskDocumentChange,
+} from './state/task-document-guard';
 import { checkoutPathExists } from './checkout-paths';
 
 /**
@@ -60,8 +65,8 @@ export interface OpenWorkflowOptions {
 
 /**
  * The Task lookups of an opened Engine: the archetype and the registered documents from the
- * Specification's manifest, paths in the checkout that owns it. No Task document change is pending
- * yet: Task-scoped Documents (T5) take over that seam.
+ * Specification's manifest, paths in the checkout that owns it, and whether a change of a Task's
+ * documents is pending (Task-scoped Documents, D03).
  */
 function engineReferences(engine: SpecFlowEngine, options: OpenWorkflowOptions): TaskReferences {
   return {
@@ -74,8 +79,13 @@ function engineReferences(engine: SpecFlowEngine, options: OpenWorkflowOptions):
     projectDocument: options.projectDocument ?? (() => Promise.resolve(false)),
     path: async (specId, path) =>
       checkoutPathExists((await availableSpecification(engine, specId)).workspaceRoot, path),
-    pendingDocumentChange: () => Promise.resolve(false),
+    pendingDocumentChange: pendingTaskDocuments(engine),
   };
+}
+
+/** D03: a change of the Task's documents (`specs/documents`) is not final yet. */
+function pendingTaskDocuments(engine: SpecFlowEngine): PendingTaskDocumentChange {
+  return (specId, taskId) => hasPendingTaskDocumentChange(engine.context, specId, taskId);
 }
 
 /**
@@ -93,10 +103,13 @@ export async function openWorkflow(
 
   return {
     catalogue: resolveExecutionCatalogue(loaded),
-    store: createFilesystemWorkflowStore({
-      stateRoot: engine.context.project.stateRoot,
-      specificationDirectory: (specId) => specificationDirectory(engine, specId),
-    }),
+    store: guardTaskDocumentChanges(
+      createFilesystemWorkflowStore({
+        stateRoot: engine.context.project.stateRoot,
+        specificationDirectory: (specId) => specificationDirectory(engine, specId),
+      }),
+      pendingTaskDocuments(engine),
+    ),
     references: engineReferences(engine, options),
     now: () => new Date(),
     serialize: (operation) => withProjectControlLock(engine.context, operation),

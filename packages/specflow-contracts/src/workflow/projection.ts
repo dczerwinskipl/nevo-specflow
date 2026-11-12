@@ -124,6 +124,7 @@ export const GATE_UNSATISFIED_REASONS = [
   'no-document',
   'file-missing',
   'sections-missing',
+  'unreadable',
 ] as const;
 
 /** Where a gate looked: the Specification or one of its Tasks (link to its documents). */

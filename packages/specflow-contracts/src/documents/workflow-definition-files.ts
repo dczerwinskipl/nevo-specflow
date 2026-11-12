@@ -124,7 +124,8 @@ const documentGateFields = () => ({
   /** Default `subject`. */
   scope: Type.Optional(Type.Union(WORKFLOW_GATE_SCOPES.map((scope) => Type.Literal(scope)))),
   requiredSections: Type.Optional(
-    Type.Array(Type.String({ minLength: 1, maxLength: 200 }), {
+    /** Heading texts; each has a non-whitespace character. */
+    Type.Array(Type.String({ minLength: 1, maxLength: 200, pattern: '\\S' }), {
       minItems: 1,
       maxItems: 32,
       uniqueItems: true,

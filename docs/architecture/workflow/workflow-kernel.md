@@ -210,12 +210,19 @@ steps:
 ```
 
 - A `document` gate holds when its scope **registers** a document of `documentType` (the
-  Specification's or the Task's document registry) whose file exists and, with `requiredSections`, has an
-  ATX heading for each text (trimmed, case-insensitive, outside fenced code). One such document is
-  enough. Otherwise its reason is `no-document`, `file-missing` or `sections-missing` (with the closest
-  document and the sections it lacks). Evaluation is `workflow/gates/`: pure over what a read found,
-  and the read goes through the Documents capability (`readRegisteredDocumentsOfType`), never the
-  execution store.
+  Specification's or the Task's document registry) whose file exists and, with `requiredSections`, has a
+  heading for each text. One such document is enough. Otherwise its reason is `no-document`,
+  `file-missing`, `sections-missing` (with the closest document and the sections it lacks) or
+  `unreadable` (the only documents with a file could not be read: not a regular file, redirected, or a
+  failed read; the gate fails closed and the rest of the projection is unaffected). Evaluation is
+  `workflow/gates/`: pure over what a read found, and the read goes through the Documents capability
+  (`readRegisteredDocumentsOfType`), never the execution store.
+- **Section rules.** Only ATX headings count (`#` to `######`, any level, the closing `#` sequence
+  dropped); setext (underlined) headings do not. A section matches a heading by its exact text after
+  trimming, case-insensitive; inline markup is not stripped (`## *Risks*` matches `*Risks*`, not `Risks`).
+  Ignored: a front matter block at the very start (`---` to `---` or `...`), fenced code (CommonMark: a
+  fence closes only with the same character, at least as many, and no info string) and the lines of an
+  HTML comment (`<!--` to `-->`). A required section has a non-whitespace character (schema).
 - **Neutral core.** Gates are SpecFlow annotations of a work step (`SpecFlowAnnotations.work`); the
   `@nevo/workflow` core carries them opaquely and never evaluates them. Annotations are part of the
   compiled definition, so gates are covered by its revision and a run keeps the gates it was pinned with.

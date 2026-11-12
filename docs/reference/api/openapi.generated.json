@@ -4197,6 +4197,12 @@
                                   "enum": [
                                     "sections-missing"
                                   ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "unreadable"
+                                  ]
                                 }
                               ]
                             },
@@ -4500,6 +4506,12 @@
                                   "type": "string",
                                   "enum": [
                                     "sections-missing"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "unreadable"
                                   ]
                                 }
                               ]
@@ -5372,6 +5384,12 @@
                                         "enum": [
                                           "sections-missing"
                                         ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "unreadable"
+                                        ]
                                       }
                                     ]
                                   },
@@ -5693,6 +5711,12 @@
                                   "type": "string",
                                   "enum": [
                                     "sections-missing"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "unreadable"
                                   ]
                                 }
                               ]
@@ -6085,6 +6109,12 @@
                                         "type": "string",
                                         "enum": [
                                           "sections-missing"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "unreadable"
                                         ]
                                       }
                                     ]
@@ -8004,6 +8034,12 @@
                               "type": "string",
                               "enum": [
                                 "sections-missing"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "unreadable"
                               ]
                             }
                           ]

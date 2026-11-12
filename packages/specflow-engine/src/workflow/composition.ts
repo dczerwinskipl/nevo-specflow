@@ -30,6 +30,7 @@ import type { TaskReferences } from './operations/task-references';
 import { hasPendingTaskDocumentChange } from '../specs/documents/write/pending-task-change';
 import { readRegisteredDocumentsOfType } from '../specs/documents/document-reader';
 import { DocumentError } from '../specs/document-rules/errors';
+import { SpecificationError } from '../specs/model';
 import { admitExecutionStateChange } from '../specs/documents/api';
 import { commitExecutionState } from '../specs/documents/execution-state-commit';
 import { ofSubject } from './operations/loaded-execution';
@@ -106,12 +107,15 @@ function engineReferences(engine: SpecFlowEngine, options: OpenWorkflowOptions):
       try {
         return await readRegisteredDocumentsOfType(engine, scope, documentType);
       } catch (error) {
-        if (error instanceof DocumentError) {
-          throw new WorkflowError(
-            error.code === 'DOCUMENT_NOT_FOUND'
-              ? 'WORKFLOW_SUBJECT_NOT_FOUND'
-              : 'WORKFLOW_STATE_CORRUPT',
-            `The documents a gate reads are unavailable (${error.code}).`,
+        if (error instanceof DocumentError && error.code === 'DOCUMENT_NOT_FOUND') {
+          throw new WorkflowError('WORKFLOW_SUBJECT_NOT_FOUND', 'The gate scope does not exist.');
+        }
+
+        // The source cannot be used now: the same unavailable answer as a Specification lookup.
+        if (error instanceof DocumentError && error.code === 'SPEC_SOURCE_UNAVAILABLE') {
+          throw new SpecificationError(
+            'SPEC_SOURCE_INVALID',
+            'The documents a gate reads are unavailable.',
           );
         }
 

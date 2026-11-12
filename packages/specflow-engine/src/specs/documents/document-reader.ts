@@ -57,12 +57,19 @@ export interface TypedDocumentReading {
   readonly present: boolean;
   /** The text of a text file within the JSON read limit; absent otherwise. */
   readonly text?: string;
+  /**
+   * The file exists but could not be read (it is redirected, not a regular file, or the read
+   * failed): a gate never counts it as satisfying, so it fails closed.
+   */
+  readonly unreadable?: true;
 }
 
 /**
  * The documents of a type the Specification or one of its Tasks registers, in registry order, with
  * each file's text (the workflow gates, `workflow/gates`). Read-only, no lock, no Git; a registered
- * document without a file is `present: false`, a binary or oversized one has no `text`.
+ * document without a file is `present: false`, a binary or oversized one has no `text`, and one whose
+ * file cannot be read is `unreadable` (one such document never fails the whole read). Only the
+ * container itself failing to load (unknown, unavailable) is an error.
  */
 export async function readRegisteredDocumentsOfType(
   engine: SpecFlowEngine,
@@ -70,7 +77,8 @@ export async function readRegisteredDocumentsOfType(
   documentType: string,
   options: DocumentReadOptions = {},
 ): Promise<TypedDocumentReading[]> {
-  const loaded = await loadDocumentContainer(engine, ref, resolveReadOptions(options).fs);
+  const { fs } = resolveReadOptions(options);
+  const loaded = await loadDocumentContainer(engine, ref, fs);
   const readings: TypedDocumentReading[] = [];
   for (const entry of loaded.manifest.documents) {
     if (entry.type !== documentType) {
@@ -78,21 +86,25 @@ export async function readRegisteredDocumentsOfType(
     }
 
     try {
-      const document = await readDocumentOfLoaded(loaded, entry.id, options);
-      readings.push({
-        id: entry.id,
-        present: true,
-        ...(document.content !== undefined ? { text: document.content } : {}),
-      });
-    } catch (error) {
-      if (!(error instanceof DocumentError)) {
-        throw error;
-      }
+      const outcome = await withOpenFile(fs, loaded.rootDir, entry.path, async (file) => {
+        const analysis = await analyzeOpenFile(file.handle, file.stat, entry.path);
 
-      if (error.code === 'DOCUMENT_FILE_MISSING') {
+        return analysis.kind === 'text' && analysis.size <= TEXT_CONTENT_MAX_BYTES && analysis.bytes
+          ? decodeText(analysis.bytes)
+          : undefined;
+      });
+      if (outcome.state === 'opened') {
+        const text = outcome.value;
+        readings.push({ id: entry.id, present: true, ...(text !== undefined ? { text } : {}) });
+      } else if (outcome.state === 'not-regular') {
+        readings.push({ id: entry.id, present: true, unreadable: true });
+      } else {
         readings.push({ id: entry.id, present: false });
-      } else if (error.code === 'DOCUMENT_TOO_LARGE') {
-        readings.push({ id: entry.id, present: true });
+      }
+    } catch (error) {
+      // A redirected path or a failed read of this one file: the gate fails closed on it.
+      if (error instanceof DocumentError || isFileSystemError(error)) {
+        readings.push({ id: entry.id, present: true, unreadable: true });
       } else {
         throw error;
       }
@@ -100,6 +112,15 @@ export async function readRegisteredDocumentsOfType(
   }
 
   return readings;
+}
+
+/** A failed file-system call (`EACCES`, `EISDIR`, ...), not a defect of the program. */
+function isFileSystemError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    typeof (error as NodeJS.ErrnoException).code === 'string' &&
+    typeof (error as NodeJS.ErrnoException).syscall === 'string'
+  );
 }
 
 /** One document of an already loaded container. */

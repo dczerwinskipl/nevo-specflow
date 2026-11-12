@@ -71,7 +71,7 @@ dispatched.
 ([workflow kernel](../../architecture/workflow/workflow-kernel.md#gates)) are reported as `GateStatus`
 `{id, type: document, label, documentType, scope, status: satisfied|unsatisfied, documentId?, reason?,
 missingSections?}`; `scope` is the Specification or Task the gate looked in (`{kind, specId, taskId?}`,
-to link its documents) and `reason` is `no-document`, `file-missing` or `sections-missing`. Each
+to link its documents) and `reason` is `no-document`, `file-missing`, `sections-missing` or `unreadable` (fails closed). Each
 `actions.finish.transitions[]` entry lists the exit gates that apply to it in `gates`, and is
 `unavailable: gate-unsatisfied` while one does not hold. A startable step (`next`) lists its
 `entryGates`, and unsatisfied ones block the start (`StartBlocker` `gates-unsatisfied`). A Task's

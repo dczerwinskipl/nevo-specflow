@@ -15,11 +15,11 @@ const gate = (overrides: Partial<DocumentGate> = {}): DocumentGate => ({
 const scope = { kind: 'task', specId: 's', taskId: 't' } as const;
 
 describe('markdownHeadings', () => {
-  it('reads ATX headings, normalized, outside fenced code', () => {
+  it('reads ATX headings of any level, trimmed and lowercased, outside fenced code', () => {
     const headings = markdownHeadings(
       [
         '# Research  ',
-        '##   Open   Questions ##',
+        '##   Open questions ##',
         '```md',
         '## Findings',
         '```',
@@ -28,11 +28,41 @@ describe('markdownHeadings', () => {
         '~~~',
         '# fenced',
         '~~~',
+        '###### *Risks*',
+        'Setext',
+        '======',
         '### Findings',
       ].join('\r\n'),
     );
 
-    expect([...headings]).toEqual(['research', 'open questions', 'findings']);
+    expect([...headings]).toEqual(['research', 'open questions', '*risks*', 'findings']);
+  });
+
+  it('keeps a fence open past a fence line with an info string or another character', () => {
+    const headings = markdownHeadings(
+      ['````', '```js', '~~~~', '## Inside', '````', '## After'].join('\n'),
+    );
+
+    expect([...headings]).toEqual(['after']);
+  });
+
+  it('ignores front matter and HTML comments', () => {
+    const headings = markdownHeadings(
+      [
+        '---',
+        '# not a heading: YAML',
+        '---',
+        '<!--',
+        '## Commented out',
+        '-->',
+        '<!-- one line --> ',
+        '## Kept <!-- inline -->',
+      ].join('\n'),
+    );
+
+    expect([...headings]).toEqual(['kept <!-- inline -->']);
+    // Without a closing line it is not front matter.
+    expect([...markdownHeadings('---\n# Title')]).toEqual(['title']);
   });
 });
 
@@ -66,6 +96,14 @@ describe('evaluateDocumentGate', () => {
         { id: 'c', present: false },
       ],
       { documentId: 'b', missingSections: ['Findings'] },
+    ],
+    [
+      'unreadable',
+      [
+        { id: 'a', present: false },
+        { id: 'b', present: true, unreadable: true, text: '## Findings\n## Open questions' },
+      ],
+      { documentId: 'b' },
     ],
   ] as const)('reports %s', (reason, documents, details) => {
     expect(evaluateDocumentGate(gate(), scope, documents)).toMatchObject({

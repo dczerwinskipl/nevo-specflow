@@ -20,6 +20,8 @@ export interface GateDocument {
   readonly present: boolean;
   /** The file's text, when it is a text file that could be read whole. */
   readonly text?: string;
+  /** The file exists but could not be read: it never satisfies a gate (fail closed). */
+  readonly unreadable?: true;
 }
 
 export const GATE_UNSATISFIED_REASONS = [
@@ -29,6 +31,8 @@ export const GATE_UNSATISFIED_REASONS = [
   'file-missing',
   /** No document of the type has a heading for each required section. */
   'sections-missing',
+  /** The only documents of the type with a file could not be read. */
+  'unreadable',
 ] as const;
 export type GateUnsatisfiedReason = (typeof GATE_UNSATISFIED_REASONS)[number];
 
@@ -41,7 +45,10 @@ export interface GateStatus {
   readonly documentType: string;
   readonly scope: GateScopeRef;
   readonly status: 'satisfied' | 'unsatisfied';
-  /** Satisfied: the document that satisfies it; `sections-missing`: the closest document. */
+  /**
+   * Satisfied: the document that satisfies it; `sections-missing`: the closest document;
+   * `unreadable`: the first document that could not be read.
+   */
   readonly documentId?: string;
   readonly reason?: GateUnsatisfiedReason;
   /** `sections-missing`: the required sections the closest document lacks, in declared order. */
@@ -66,31 +73,70 @@ function labelOf(gate: DocumentGate): string {
   return `A "${gate.documentType}" document${sections}`;
 }
 
-const FENCE = /^\s{0,3}(`{3,}|~{3,})/u;
+/** A code fence line: its marker and what follows it (the info string of an opening fence). */
+const FENCE = /^\s{0,3}(`{3,}|~{3,})(.*)$/u;
 const ATX_HEADING = /^\s{0,3}#{1,6}(?:\s+(.*?))?\s*$/u;
+const FRONT_MATTER_OPEN = /^---\s*$/u;
+const FRONT_MATTER_CLOSE = /^(?:---|\.\.\.)\s*$/u;
 
-const normalized = (text: string) => text.trim().replace(/\s+/gu, ' ').toLowerCase();
+/** How a section is compared: its exact text after trimming, case-insensitive. */
+const normalized = (text: string) => text.trim().toLowerCase();
+
+/** The line after a front matter block at the very start (`---` ... `---`/`...`); 0 without one. */
+function bodyStart(lines: readonly string[]): number {
+  if (!FRONT_MATTER_OPEN.test(lines[0] ?? '')) {
+    return 0;
+  }
+
+  const close = lines.findIndex((line, index) => index > 0 && FRONT_MATTER_CLOSE.test(line));
+
+  return close < 0 ? 0 : close + 1;
+}
 
 /**
- * The texts of the ATX headings (`#` to `######`) of a Markdown text, normalized (trimmed, inner
- * whitespace collapsed, lowercase), without a closing `#` sequence and outside fenced code blocks.
+ * The texts of the ATX headings (`#` to `######`, any level) of a Markdown text, compared as
+ * {@link normalized} text without the closing `#` sequence; inline markup is not stripped. Setext
+ * headings (underlined) do not count. Ignored: a front matter block at the start, fenced code
+ * (CommonMark: a fence closes only with the same character, at least as long, and nothing after it)
+ * and the lines of an HTML comment (`<!--` to `-->`).
  */
 export function markdownHeadings(text: string): ReadonlySet<string> {
   const headings = new Set<string>();
+  const lines = text.split(/\r?\n/u);
   let fence: string | undefined;
-  for (const line of text.split(/\r?\n/u)) {
-    const marker = FENCE.exec(line)?.[1];
-    if (marker !== undefined) {
-      if (fence === undefined) {
-        fence = marker;
-      } else if (marker.startsWith(fence[0] ?? '') && marker.length >= fence.length) {
+  let comment = false;
+  for (const line of lines.slice(bodyStart(lines))) {
+    if (comment) {
+      comment = !line.includes('-->');
+      continue;
+    }
+
+    const opened = FENCE.exec(line);
+    if (fence !== undefined) {
+      const closes =
+        opened?.[1] !== undefined &&
+        opened[1].startsWith(fence.charAt(0)) &&
+        opened[1].length >= fence.length &&
+        (opened[2] ?? '').trim() === '';
+      if (closes) {
         fence = undefined;
       }
 
       continue;
     }
 
-    const content = fence === undefined ? ATX_HEADING.exec(line) : null;
+    if (opened?.[1] !== undefined) {
+      fence = opened[1];
+      continue;
+    }
+
+    const start = line.indexOf('<!--');
+    if (start >= 0 && !line.includes('-->', start + 4)) {
+      comment = true;
+      continue;
+    }
+
+    const content = ATX_HEADING.exec(line);
     if (content) {
       headings.add(normalized((content[1] ?? '').replace(/(?:^|\s+)#+$/u, '')));
     }
@@ -101,9 +147,9 @@ export function markdownHeadings(text: string): ReadonlySet<string> {
 
 /**
  * A `document` gate over the documents of its type the scope registers (registry order): satisfied
- * by the first document with a file that has every required section as a heading. Otherwise the
- * reason is the furthest any document got, and `sections-missing` names the document that lacks the
- * fewest sections (the first of equals).
+ * by the first readable document with a file that has every required section as a heading.
+ * Otherwise the reason is the furthest any document got (`sections-missing` naming the document that
+ * lacks the fewest sections, the first of equals; then `unreadable`; then `file-missing`).
  */
 export function evaluateDocumentGate(
   gate: DocumentGate,
@@ -118,8 +164,14 @@ export function evaluateDocumentGate(
     scope,
   };
   let closest: { readonly id: string; readonly missing: readonly string[] } | undefined;
+  let unreadable: string | undefined;
   for (const document of documents) {
     if (!document.present) {
+      continue;
+    }
+
+    if (document.unreadable) {
+      unreadable ??= document.id;
       continue;
     }
 
@@ -143,6 +195,10 @@ export function evaluateDocumentGate(
       documentId: closest.id,
       missingSections: closest.missing,
     };
+  }
+
+  if (unreadable !== undefined) {
+    return { ...base, status: 'unsatisfied', reason: 'unreadable', documentId: unreadable };
   }
 
   return {

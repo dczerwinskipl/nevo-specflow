@@ -52,6 +52,8 @@ async function startSubject(
   subject: WorkflowSubject,
   options: StartOptions,
   created = false,
+  /** The caller checked the Task's readiness on this snapshot already (a first start). */
+  readinessChecked = false,
 ): Promise<StartResult> {
   const loaded = loadSubject(dependencies.catalogue, snapshot, subject);
   if (loaded.run.position.state === 'terminal') {
@@ -73,7 +75,10 @@ async function startSubject(
   }
 
   if (!intent.resumed && loaded.task) {
-    assertTaskReady(dependencies, snapshot, loaded.task);
+    if (!readinessChecked) {
+      assertTaskReady(dependencies, snapshot, loaded.task);
+    }
+
     // A required context entry that does not resolve blocks every start of a step (not a resume).
     assertContextResolved(
       loaded.task.taskId,
@@ -250,6 +255,7 @@ export function startTaskExecution(
       return startSubject(dependencies, snapshot, subject, input);
     }
 
+    // Readiness first, so a draft is refused as blocked; `startSubject` does not check it again.
     assertTaskReady(dependencies, snapshot, task);
     const { workflow } = resolveTaskType({
       type: task.type,
@@ -268,7 +274,7 @@ export function startTaskExecution(
       runs: [...snapshot.runs, { value: record, revision: '' }],
     };
 
-    return startSubject(dependencies, seeded, subject, input, true);
+    return startSubject(dependencies, seeded, subject, input, true, true);
   });
 }
 

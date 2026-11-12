@@ -41,6 +41,11 @@ export const TASKS_PER_FINISH_MAX = 100;
 export const FEEDBACK_MAX = TASK_STATUS_REASON_MAX_LENGTH;
 export const ARTIFACTS_MAX = 100;
 export const ARTIFACT_MAX = 1000;
+/**
+ * Checkout entries a glob `path` context reference may visit to decide whether it matches: the
+ * check runs under the project control lock.
+ */
+export const CONTEXT_PATH_ENTRIES_MAX = 20_000;
 /** Plain size bounds of a run's history, checked when a record is written. */
 export const ATTEMPTS_MAX = 1000;
 export const RETURNS_MAX = 1000;

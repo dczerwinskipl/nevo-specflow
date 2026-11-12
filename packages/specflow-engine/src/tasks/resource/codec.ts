@@ -113,7 +113,8 @@ export function contextPathProblem(path: string): string | undefined {
   return undefined;
 }
 
-function contextKey(entry: TaskContextEntry): string {
+/** The identity of a context entry: its kind and its reference (or text). */
+export function contextKey(entry: TaskContextEntry): string {
   switch (entry.kind) {
     case 'path':
       return `path:${entry.path}`;

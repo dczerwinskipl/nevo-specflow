@@ -522,6 +522,14 @@ function createStore(
       await apply(specId, change);
     },
 
+    async taskFolderExists(specId, taskId): Promise<boolean> {
+      assertSpecId(specId);
+      const { folders, snapshot } = await load(specId);
+      const names = [...(await listSubfolders(folders.tasks, () => true)), ...snapshot.folders];
+
+      return names.some((name) => foldPathKey(name) === foldPathKey(taskId));
+    },
+
     async taskFiles(specId, taskId): Promise<readonly string[]> {
       assertSpecId(specId);
       if (!isValidTaskId(taskId)) {

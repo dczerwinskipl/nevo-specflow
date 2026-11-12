@@ -100,6 +100,10 @@ export function createMemoryWorkflowStore(): WorkflowStore & {
     document: (specId, taskId, path) =>
       specs.get(specId)?.documents.get(taskId)?.get(foldPathKey(path)),
     read: (specId) => settled(() => snapshotOf(specId, stateOf(specId))),
+    taskFolderExists: (specId, taskId) =>
+      settled(() =>
+        folderIds(stateOf(specId)).some((id) => foldPathKey(id) === foldPathKey(taskId)),
+      ),
     taskFiles: (specId, taskId) =>
       settled(() => {
         const state = stateOf(specId);

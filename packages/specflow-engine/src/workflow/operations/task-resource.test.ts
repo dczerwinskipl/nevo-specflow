@@ -198,6 +198,58 @@ describe('a Task without a Specification run', () => {
   });
 });
 
+describe('after the first start', () => {
+  it('refuses a dependency change', async () => {
+    const dependencies = memoryDependencies(catalogue);
+    await create(dependencies, 'base');
+    await create(dependencies, 'api');
+    await approve(dependencies, 'api');
+    await start(dependencies, 'api');
+
+    await refused(
+      dependencies,
+      editTask(dependencies, {
+        specId: SPEC,
+        taskId: 'api',
+        expectedRevision: await revisionOf(dependencies, 'api'),
+        dependsOn: ['base'],
+        actor: owner,
+      }),
+      'WORKFLOW_INPUT_INVALID',
+    );
+  });
+
+  it('blocks the next step start on a required context entry that went stale', async () => {
+    const dependencies = memoryDependencies(catalogue);
+    await create(dependencies, 'api', {
+      context: [{ kind: 'specification-document', id: 'requirements', required: true }],
+    });
+    await approve(dependencies, 'api');
+    await work(dependencies, task('api'));
+    dependencies.references.specificationDocuments.delete('requirements');
+
+    await refused(dependencies, start(dependencies, 'api'), 'WORKFLOW_TASK_CONTEXT_UNRESOLVED');
+  });
+
+  it('keeps an unchanged context entry written in another key order', async () => {
+    const dependencies = memoryDependencies(catalogue);
+    const created = await create(dependencies, 'api', {
+      context: [{ kind: 'path', path: 'packages/specflow-engine/src', required: false }],
+    });
+    dependencies.references.paths.clear();
+
+    await expect(
+      editTask(dependencies, {
+        specId: SPEC,
+        taskId: 'api',
+        expectedRevision: created.revision,
+        context: [{ required: false, path: 'packages/specflow-engine/src', kind: 'path' }],
+        actor: owner,
+      }),
+    ).resolves.toMatchObject({ task: { taskId: 'api' } });
+  });
+});
+
 describe('creating and editing Tasks', () => {
   it.each<[string, Partial<CreateTaskInput>, string]>([
     ['an invalid id', { taskId: 'Not Valid' }, 'WORKFLOW_INPUT_INVALID'],

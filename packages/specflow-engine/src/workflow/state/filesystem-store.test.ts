@@ -38,6 +38,8 @@ import {
 import { startSpecificationExecution, startTaskExecution } from '../operations/start';
 import { returnToStep } from '../operations/return';
 import { setTaskStatus } from '../operations/task-status';
+import { createTask } from '../operations/task-resource';
+
 import { TASKS_PER_SPECIFICATION_MAX } from '../limits';
 import { serializeTaskIndex, serializeTaskManifest } from '../../tasks/resource/codec';
 import type { TaskManifest } from '../../tasks/resource/model';
@@ -987,6 +989,21 @@ describe('filesystem workflow store: the Task set is the one the index lists', (
 
     await rename(kept, folder);
     expect((await accept()).position).toEqual({ state: 'terminal', outcome: 'completed' });
+  });
+
+  it('refuses to create a Task over a folder of the same name in another case', async () => {
+    const dependencies = await operations();
+    await mkdir(join(resourceDirectory(), 'API'), { recursive: true });
+
+    await expect(
+      createTask(dependencies, {
+        specId: SPEC,
+        taskId: 'api',
+        title: 'API',
+        type: 'implementation',
+        actor: owner,
+      }),
+    ).rejects.toMatchObject({ code: 'WORKFLOW_TASK_EXISTS' });
   });
 
   it('reports a run record and a folder the index does not list, and keeps the other Tasks working', async () => {

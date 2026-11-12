@@ -77,6 +77,11 @@ export interface WorkflowStore {
    * nothing the Task does not register, so removing the Task removes the folder.
    */
   taskFiles(specId: string, taskId: string): Promise<readonly string[]>;
+  /**
+   * Whether `tasks/` holds a folder whose name is the Task id ignoring case (a hand-made `API` is the
+   * folder of `api` on a case-insensitive filesystem), also one the snapshot does not list.
+   */
+  taskFolderExists(specId: string, taskId: string): Promise<boolean>;
 }
 
 /** Enough to name what is in a Task folder besides its registered documents. */

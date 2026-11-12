@@ -3,6 +3,7 @@ import { handoffOf, type Handoff } from '@nevo/workflow';
 import { taskReadiness, type TaskReadiness } from '../tasks/tasks';
 import type { SpecificationExecutionRecord, ExecutionTask, WorkflowRun } from '../state/model';
 import type { TaskResourceIssue } from '../../tasks/resource/validate';
+import { WorkflowError } from '../errors';
 import { deriveAttention } from './attention';
 import {
   executionTasks,
@@ -58,6 +59,16 @@ export function inspectExecution(
     const revisions = new Map(
       snapshot.manifests.map((entry) => [entry.value.id, entry.revision] as const),
     );
+    // Every Task of `tasks` has its manifest; a missing revision is a defect, never a default.
+    const revisionOf = (taskId: string) => {
+      const revision = revisions.get(taskId);
+      if (revision === undefined) {
+        throw new WorkflowError('WORKFLOW_STATE_CORRUPT', `The Task "${taskId}" has no manifest.`);
+      }
+
+      return revision;
+    };
+
     const specification = snapshot.specification?.value;
     const specificationHandoff = specification ? handoffOf(specification.run) : undefined;
     const changed = (run: WorkflowRun) =>
@@ -81,7 +92,7 @@ export function inspectExecution(
 
         return {
           record,
-          revision: revisions.get(record.taskId) ?? '',
+          revision: revisionOf(record.taskId),
           readiness: taskReadiness(record, tasks),
           ...(handoff ? { handoff } : {}),
           ...(record.run ? changed(record.run) : {}),

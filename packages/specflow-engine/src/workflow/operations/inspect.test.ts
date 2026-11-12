@@ -128,6 +128,7 @@ describe('inspection during a mutation', () => {
     const store: WorkflowStore = {
       read: (specId) => dependencies.store.read(specId),
       taskFiles: (specId, taskId) => dependencies.store.taskFiles(specId, taskId),
+      taskFolderExists: (specId, taskId) => dependencies.store.taskFolderExists(specId, taskId),
       apply: async (specId, change) => {
         await gate;
 

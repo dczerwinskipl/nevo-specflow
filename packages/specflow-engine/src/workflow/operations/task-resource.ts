@@ -5,7 +5,7 @@ import {
 import { Value } from 'typebox/value';
 
 import { foldPathKey } from '../../specs/document-rules/document-paths';
-import { initialTaskDocument, taskManifestProblems } from '../../tasks/resource/codec';
+import { contextKey, initialTaskDocument, taskManifestProblems } from '../../tasks/resource/codec';
 import {
   TASK_MAIN_DOCUMENT,
   TASK_MANIFEST_FILE,
@@ -200,7 +200,7 @@ export function createTask(
     const ids = snapshot.index?.value.tasks.map((entry) => entry.id) ?? [];
     if (
       ids.includes(input.taskId) ||
-      snapshot.folders.includes(input.taskId) ||
+      (await dependencies.store.taskFolderExists(input.specId, input.taskId)) ||
       snapshot.runs.some((entry) => entry.value.taskId === input.taskId)
     ) {
       throw new WorkflowError(
@@ -310,14 +310,14 @@ export function editTask(
     };
     assertManifest(manifest);
     assertDependencies(dependencies, snapshot, manifest.id, dependsOn, previous.dependsOn);
-    const before = new Set((previous.context ?? []).map((entry) => JSON.stringify(entry)));
+    const before = new Set((previous.context ?? []).map(keptEntryKey));
     assertContextResolved(
       manifest.id,
       await unresolvedContext(
         dependencies,
         input.specId,
         manifest,
-        (manifest.context ?? []).filter((entry) => !before.has(JSON.stringify(entry))),
+        (manifest.context ?? []).filter((entry) => !before.has(keptEntryKey(entry))),
       ),
       'Replace or remove them.',
     );
@@ -330,6 +330,9 @@ export function editTask(
   });
 }
 
+/** An entry is kept as it was when its reference and its `required` flag are unchanged. */
+const keptEntryKey = (entry: TaskContextEntry) => `${contextKey(entry)}|${String(entry.required)}`;
+
 const sameList = (left: readonly string[], right: readonly string[]) =>
   left.length === right.length && left.every((value, index) => value === right[index]);
 
@@ -341,7 +344,8 @@ const UNKNOWN_FILES_NAMED = 10;
  * one change, so its folder goes with them. Refused (`WORKFLOW_TASK_NOT_REMOVABLE`, nothing written)
  * when the Task has a run record, another Task depends on it, a change of one of its documents is
  * pending, or its folder holds a file it does not register (which removing the Task would leave
- * behind as an unregistered folder). A Task that started is cancelled instead.
+ * behind as an unregistered folder). A Task that started is cancelled instead. A dangling index entry
+ * (its folder or manifest is gone) is broken and not removable here: it is repaired by hand.
  */
 export function removeTask(
   dependencies: WorkflowDependencies,

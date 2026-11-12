@@ -22,7 +22,7 @@ import {
   Typography,
   cn,
 } from '@nevo/ui';
-import type { HistoryEntry, Transition, WorkflowView } from './fixtures.stories-support';
+import type { Gate, HistoryEntry, Transition, WorkflowView } from './fixtures.stories-support';
 
 /*
  * PRESENTATION MOCK ONLY. One generic step panel for a Specification and a Task. It renders the
@@ -48,6 +48,46 @@ export function InlineIcon({ name }: { name: ComponentProps<typeof Icon>['name']
 function Step({ children }: { children: ReactNode }) {
   // Step ids are user-defined identifiers: shown as written, mono, never translated.
   return <span className="font-mono">{children}</span>;
+}
+
+/** Exit gates as a checklist: met ones as satisfied checks, unmet ones with what is missing. */
+export function GateList({ gates, label }: { gates: readonly Gate[]; label: string }) {
+  return (
+    <ul aria-label={label} className="grid gap-1.5">
+      {gates.map((gate) => (
+        // The InlineNote line shape (first-line icon slot), with a success tone for met gates.
+        <li
+          key={gate.id}
+          className="flex min-w-0 items-start gap-2 text-body-sm text-content-secondary"
+        >
+          <span className="flex h-[1lh] shrink-0 items-center">
+            <Icon
+              name={gate.met ? 'circle-check' : 'circle-alert'}
+              size="sm"
+              aria-hidden="true"
+              className={gate.met ? 'text-status-success' : 'text-status-attention'}
+            />
+          </span>
+          <span className="min-w-0">
+            <span className="font-medium text-content-primary">{gate.label}</span>
+            {gate.detail ? <> · {gate.detail}</> : null}
+            <span className="sr-only">{gate.met ? ' (met)' : ' (not met)'}</span>
+            {!gate.met && gate.action ? (
+              <>
+                {' '}
+                <a
+                  href={gate.action.href}
+                  className="ml-1 text-content-link underline-offset-2 hover:underline"
+                >
+                  {gate.action.label}
+                </a>
+              </>
+            ) : null}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 export interface WorkflowPanelProps {
@@ -136,6 +176,12 @@ export function WorkflowPanel({
       break;
   }
 
+  const finishNeeds =
+    position.kind === 'active'
+      ? (view.transitions ?? []).filter((transition) =>
+          (transition.gates ?? []).some((gate) => !gate.met),
+        )
+      : [];
   const latest = view.latest;
   const latestNeedsAttention = latest?.attention === true;
 
@@ -170,6 +216,17 @@ export function WorkflowPanel({
         </div>
         {supporting}
         {blockers}
+        {finishNeeds.map((transition) => (
+          <div key={transition.id} className="grid gap-1.5">
+            <Typography as="p" variant="body-sm" className="text-content-secondary">
+              To finish with <span className="font-medium">{transition.label}</span>:
+            </Typography>
+            <GateList
+              gates={transition.gates!.filter((gate) => !gate.met)}
+              label={`Needed to finish with ${transition.label}`}
+            />
+          </div>
+        ))}
         {latest && position.kind !== 'terminal' ? (
           <div className="grid gap-1 border-l-2 border-border-default pl-3">
             <Typography as="p" variant="body-sm" className="text-content-secondary">
@@ -248,6 +305,8 @@ export function FinishStepDialog({
   const selected = transitions.find((transition) => transition.id === value);
   const required = selected?.feedback === 'required';
   const missing = showMissingFeedback && required && initialFeedback.trim() === '';
+  const gates = selected?.gates ?? [];
+  const gatesUnmet = gates.some((gate) => !gate.met);
 
   return (
     <Dialog open>
@@ -283,6 +342,20 @@ export function FinishStepDialog({
               ))}
             </RadioGroup>
           </div>
+          {gates.length > 0 ? (
+            <div className="grid gap-2" aria-live="polite">
+              <Typography as="p" variant="label-sm">
+                Needed to finish with {selected?.label}
+              </Typography>
+              <GateList gates={gates} label={`Exit gates for ${selected?.label}`} />
+              {gatesUnmet ? (
+                <Typography as="p" variant="body-sm" className="text-content-secondary">
+                  Finish is unavailable for this result until every item is met. Other results stay
+                  available.
+                </Typography>
+              ) : null}
+            </div>
+          ) : null}
           <Field invalid={missing}>
             <Field.Label>{required ? 'Feedback (required)' : 'Feedback (optional)'}</Field.Label>
             <TextArea ref={feedbackRef} rows={4} defaultValue={initialFeedback} />
@@ -325,7 +398,7 @@ export function FinishStepDialog({
         </DialogBody>
         <DialogFooter>
           <Button variant="secondary">Cancel</Button>
-          <Button disabled={!selected || missing}>Finish step</Button>
+          <Button disabled={!selected || missing || gatesUnmet}>Finish step</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

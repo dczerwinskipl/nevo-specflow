@@ -101,7 +101,12 @@ export type TaskScenario =
   | 'author-dependencies'
   | 'author-with-document'
   | 'approve-missing-context'
-  | 'long-title';
+  | 'long-title'
+  | 'context-artifact'
+  | 'context-artifact-add'
+  | 'finish-gate-unmet'
+  | 'finish-gate-met'
+  | 'now-gate';
 
 export interface TaskMockProps {
   width: number;
@@ -134,8 +139,61 @@ const reviewView: WorkflowView = {
   },
 };
 
+/** An active Spike whose `done` result needs a findings document (an exit gate). */
+function spikeWithGate(met: boolean): MockTask {
+  return {
+    ...task('T-01'),
+    id: 'T-09',
+    title: 'Measure refresh strategies',
+    summary: 'Compare sliding and fixed refresh under load and write down the findings.',
+    status: 'ready',
+    started: true,
+    workflow: {
+      definition: taskTypes[0]!.workflow,
+      position: { kind: 'active', step: 'spike', attempt: 1, since: '09:30', actor: 'you' },
+      transitions: [
+        {
+          id: 'done',
+          label: 'Done',
+          to: null,
+          feedback: 'optional',
+          gates: [
+            met
+              ? {
+                  id: 'findings',
+                  label: 'A findings document',
+                  met: true,
+                  detail: 'findings.md registered',
+                }
+              : {
+                  id: 'findings',
+                  label: 'A findings document',
+                  met: false,
+                  detail: 'none registered yet',
+                  action: { label: 'Create findings document', href: '#new-document' },
+                },
+          ],
+        },
+        { id: 'not-worth-it', label: 'Not worth pursuing', to: null, feedback: 'required' },
+      ],
+    },
+  };
+}
+
 function subjectFor(scenario: TaskScenario): MockTask {
-  if (scenario.startsWith('author') || scenario === 'approve-missing-context') {
+  if (
+    scenario === 'finish-gate-unmet' ||
+    scenario === 'finish-gate-met' ||
+    scenario === 'now-gate'
+  ) {
+    return spikeWithGate(scenario === 'finish-gate-met');
+  }
+
+  if (
+    scenario.startsWith('author') ||
+    scenario.startsWith('context-artifact') ||
+    scenario === 'approve-missing-context'
+  ) {
     return task('T-04');
   }
 
@@ -470,7 +528,13 @@ function TaskBody({
   const view = item.workflow;
   const editable = item.status !== 'cancelled' && item.workflow.position.kind !== 'terminal';
   const entries = item.id === 'T-04' ? draftContext : defaultContext;
-  const missing = entries.filter((entry) => entry.problem === 'missing' && entry.required);
+  const missing = entries.filter(
+    (entry) => entry.problem === 'missing' && entry.required && !entry.artifact,
+  );
+  // Awaited process artifacts are not a problem now; they only gate the start.
+  const awaited = entries.filter(
+    (entry) => entry.problem === 'missing' && entry.required && entry.artifact,
+  );
   const primaryAction =
     item.status === 'draft' ? (
       <Button>Approve</Button>
@@ -510,17 +574,27 @@ function TaskBody({
             ) : undefined
           }
           blockers={
-            missing.length > 0 ? (
-              <InlineNote tone="danger">
-                <span className="font-medium text-content-primary">
-                  {missing.length} required context entry is missing:
-                </span>{' '}
-                {missing.map((entry) => entry.name).join(', ')}. The task cannot start until it is
-                replaced or removed.{' '}
-                <a href="#task-context-heading" className="text-content-link hover:underline">
-                  See Context
-                </a>
-              </InlineNote>
+            missing.length > 0 || awaited.length > 0 ? (
+              <>
+                {missing.length > 0 ? (
+                  <InlineNote tone="danger">
+                    <span className="font-medium text-content-primary">
+                      {missing.length} required context entry is missing:
+                    </span>{' '}
+                    {missing.map((entry) => entry.name).join(', ')}. The task cannot start until it
+                    is replaced or removed.{' '}
+                    <a href="#task-context-heading" className="text-content-link hover:underline">
+                      See Context
+                    </a>
+                  </InlineNote>
+                ) : null}
+                {awaited.length > 0 ? (
+                  <InlineNote icon="clock">
+                    {awaited.length} awaited process artifact:{' '}
+                    {awaited.map((entry) => entry.name).join(', ')}. Needed when the task starts.
+                  </InlineNote>
+                ) : null}
+              </>
             ) : undefined
           }
           primaryAction={primaryAction}
@@ -632,6 +706,19 @@ function dialogFor(item: MockTask, scenario: TaskScenario): ReactNode {
       return <AddDependencyDialog item={item} />;
     case 'approve-missing-context':
       return <ApproveDialog item={item} />;
+    case 'context-artifact-add':
+      return <AddContextDialog kind="specification-document" artifact />;
+    case 'finish-gate-unmet':
+    case 'finish-gate-met':
+      return (
+        <FinishStepDialog
+          step="spike"
+          attempt={1}
+          transitions={item.workflow.transitions!}
+          initialTransition="done"
+          initialFeedback="Sliding refresh keeps sessions alive with half the calls."
+        />
+      );
     default:
       return null;
   }

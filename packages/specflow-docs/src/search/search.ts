@@ -142,7 +142,7 @@ export async function searchDocumentation(
   search: DocsSearch,
   request: DocsSearchRequest,
 ): Promise<DocsSearchResult> {
-  const { chunks, documents, searchEngine } = await search.chunks.load();
+  const { chunks, documents, searchEngine, skipped } = await search.chunks.load();
   const vectors = await vectorsFor(
     search.vectors,
     chunks,
@@ -179,11 +179,12 @@ export async function searchDocumentation(
     );
 
   return sections.mode === 'hybrid'
-    ? { mode: 'hybrid', results }
+    ? { mode: 'hybrid', results, skipped }
     : {
         mode: 'lexical',
         reason: await lexicalReason(search.vectors, sections.reason, chunks.length, request),
         results,
+        skipped,
       };
 }
 

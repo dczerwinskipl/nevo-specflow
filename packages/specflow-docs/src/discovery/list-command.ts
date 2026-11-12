@@ -1,7 +1,7 @@
 import type { Command } from 'commander';
 
 import { findDocuments } from './documents';
-import { runDocsAction, type DocsCommandContext } from '../command/context';
+import { runDocsAction, warnSkipped, type DocsCommandContext } from '../command/context';
 import type { OpenCorpus } from '../command/open-project';
 
 export function addListCommand(docs: Command, ctx: DocsCommandContext, open: OpenCorpus): void {
@@ -14,16 +14,17 @@ export function addListCommand(docs: Command, ctx: DocsCommandContext, open: Ope
 
   command.action((opts: { type?: string; status?: string; json: boolean }) =>
     runDocsAction(command, async () => {
-      const found = findDocuments(await open(), {
+      const { documents: found, skipped } = findDocuments(await open(), {
         ...(opts.type === undefined ? {} : { type: opts.type }),
         ...(opts.status === undefined ? {} : { status: opts.status }),
       });
       if (opts.json) {
-        ctx.stdout(JSON.stringify(found, null, 2));
+        ctx.stdout(JSON.stringify({ documents: found, skipped }, null, 2));
 
         return;
       }
 
+      warnSkipped(ctx, skipped);
       if (found.length === 0) {
         ctx.stdout('(no documents match)');
 

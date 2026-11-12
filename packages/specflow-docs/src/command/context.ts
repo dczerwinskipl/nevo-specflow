@@ -64,6 +64,16 @@ export interface DocsCommandContext {
   readonly corpusRules?: DocsCorpusRules;
 }
 
+/** One stderr warning per document a read left out (ADR 0022); `--json` carries `skipped`. */
+export function warnSkipped(
+  ctx: DocsCommandContext,
+  skipped: readonly { path: string; error: string }[],
+): void {
+  for (const { path, error } of skipped) {
+    ctx.stderr(`warning: skipped ${path}: ${error}`);
+  }
+}
+
 /** Usage problems found by the use cases exit like Commander usage errors (exit code 2). */
 export async function runDocsAction(command: Command, action: () => Promise<void>): Promise<void> {
   try {

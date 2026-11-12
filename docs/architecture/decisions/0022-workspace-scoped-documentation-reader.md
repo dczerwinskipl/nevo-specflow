@@ -136,7 +136,8 @@ workspace response carries the bound `workspaceId`.
   duplicate id, is **skipped** with a warning by `list`, `find`, `get`, `context`, `search` and the
   Runtime; an unresolved `related` or `superseded_by` does not skip. The CLI warns on stderr and
   lists skipped documents in `--json`; the Runtime lists them in every response. `docs check`
-  stays strict and fails on them.
+  stays strict and fails on them. Host corpus rules (the repository's own ADR rules, ADR 0020)
+  apply to `docs check` only; they never skip a document on read.
 - **Revision without preconditions.** Every docs response carries the workspace's opaque
   `corpusRevision`: a digest of the effective documentation settings and of the included paths and
   their content hashes. It is not a Git revision and not an index generation. There are no

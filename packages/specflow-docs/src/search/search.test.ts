@@ -178,6 +178,7 @@ describe('searchDocumentation', () => {
           Promise.resolve({
             chunks: many,
             documents,
+            skipped: [],
             reparsed: 0,
             searchEngine: () => createSearchEngine(many),
           }),

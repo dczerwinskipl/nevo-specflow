@@ -3,7 +3,8 @@
 import { splitMarkdownSections, type MarkdownSection } from '@nevo/ai-semantic-search';
 
 import { isNonAuthoritative } from '../config/docs-file';
-import { loadValidatedCorpus, type DocsCorpus } from '../corpus/corpus';
+import type { DocsCorpus } from '../corpus/corpus';
+import { loadReadableDocs, type SkippedDocument } from '../corpus/readable';
 import {
   asString,
   INACTIVE_STATUSES,
@@ -25,8 +26,19 @@ export interface FindOptions {
 }
 
 /** `list` / `find`: every status and every path is visible; filtering is opt-in. */
-export function findDocuments(corpus: DocsCorpus, opts: FindOptions): (DocRecord | ScoredDoc)[] {
-  return searchDocs(loadValidatedCorpus(corpus), opts);
+export function findDocuments(
+  corpus: DocsCorpus,
+  opts: FindOptions,
+): Skipping<DocRecord | ScoredDoc> {
+  const { docs, skipped } = loadReadableDocs(corpus);
+
+  return { documents: searchDocs(docs, opts), skipped };
+}
+
+/** The result of a read over the readable documents, with the documents it left out. */
+export interface Skipping<T> {
+  readonly documents: T[];
+  readonly skipped: SkippedDocument[];
 }
 
 export interface ContextEntry {
@@ -66,23 +78,38 @@ function inactiveDocumentDescription(doc: DocRecord): string {
   return `'${id}' (${status}${replacement})`;
 }
 
-/** Resolve exact stable ids in caller order; fails closed on unknown or inactive documents. */
-export function getDocuments(corpus: DocsCorpus, ids: readonly string[]): ContextEntry[] {
-  const docs = loadValidatedCorpus(corpus);
+/** Resolve exact stable ids in caller order; fails closed on skipped, unknown or inactive documents (one error names all of them). */
+export function getDocuments(corpus: DocsCorpus, ids: readonly string[]): Skipping<ContextEntry> {
+  const { docs, skipped, skippedById } = loadReadableDocs(corpus);
   const byId = new Map(docs.map((doc) => [asString(doc.id), doc]));
-  const missing = ids.filter((id) => !byId.has(id));
-  if (missing.length) {
-    throw new DocsUsageError(`get: unknown document id(s): ${missing.join(', ')}`);
+  const problems: string[] = [];
+  const unreadable = ids.filter((id) => skippedById.has(id));
+  if (unreadable.length) {
+    const reasons = unreadable.flatMap((id) =>
+      skippedById.get(id)!.map(({ path, error }) => `'${id}' skipped in ${path}: ${error}`),
+    );
+    problems.push(`skipped document id(s): ${reasons.join('; ')}`);
   }
 
-  const inactive = ids.map((id) => byId.get(id)!).filter((doc) => isInactiveStatus(doc.status));
+  const missing = ids.filter((id) => !byId.has(id) && !skippedById.has(id));
+  if (missing.length) {
+    problems.push(`unknown document id(s): ${missing.join(', ')}`);
+  }
+
+  const inactive = ids
+    .flatMap((id) => byId.get(id) ?? [])
+    .filter((doc) => isInactiveStatus(doc.status));
   if (inactive.length) {
-    throw new DocsUsageError(
-      `get: inactive document id(s): ${inactive.map(inactiveDocumentDescription).join(', ')}`,
+    problems.push(
+      `inactive document id(s): ${inactive.map(inactiveDocumentDescription).join(', ')}`,
     );
   }
 
-  return ids.map((id) => contextEntry(byId.get(id)!));
+  if (problems.length) {
+    throw new DocsUsageError(`get: ${problems.join('; ')}`);
+  }
+
+  return { documents: ids.map((id) => contextEntry(byId.get(id)!)), skipped };
 }
 
 /** Separates a document id from a section id in a `get --content` reference (`<id>#<sectionId>`). */
@@ -112,7 +139,10 @@ export interface DocumentRead extends ContextEntry {
  * any unknown or inactive document or unknown section fails the whole call with one
  * `DocsUsageError` naming all of them (and the valid section ids of each document concerned).
  */
-export function getDocumentReads(corpus: DocsCorpus, refs: readonly string[]): DocumentRead[] {
+export function getDocumentReads(
+  corpus: DocsCorpus,
+  refs: readonly string[],
+): Skipping<DocumentRead> {
   const parsedRefs = refs.map((ref) => {
     const at = ref.indexOf(SECTION_REFERENCE_SEPARATOR);
 
@@ -121,7 +151,8 @@ export function getDocumentReads(corpus: DocsCorpus, refs: readonly string[]): D
       : { ref, id: ref.slice(0, at), sectionId: ref.slice(at + 1) };
   });
   const ids = [...new Set(parsedRefs.map((ref) => ref.id))];
-  const entries = new Map(getDocuments(corpus, ids).map((entry) => [entry.id, entry]));
+  const found = getDocuments(corpus, ids);
+  const entries = new Map(found.documents.map((entry) => [entry.id, entry]));
 
   const outlines = new Map<string, DocumentOutline>();
   const outline = (id: string) => {
@@ -152,7 +183,7 @@ export function getDocumentReads(corpus: DocsCorpus, refs: readonly string[]): D
     );
   }
 
-  return parsedRefs.map(({ id, sectionId }) => {
+  const documents = parsedRefs.map(({ id, sectionId }): DocumentRead => {
     const entry = entries.get(id)!;
     if (sectionId === undefined) {
       return { ...entry, content: corpus.repo.readMarkdownFile(entry.file) };
@@ -177,6 +208,8 @@ export function getDocumentReads(corpus: DocsCorpus, refs: readonly string[]): D
         .trimEnd(),
     };
   });
+
+  return { documents, skipped: found.skipped };
 }
 
 interface DocumentOutline {
@@ -207,15 +240,14 @@ function readOutline(corpus: DocsCorpus, file: string): DocumentOutline {
 export function getContext(
   corpus: DocsCorpus,
   { query, limit }: { query: string; limit?: number },
-): ContextEntry[] {
-  const contextCorpus = loadValidatedCorpus(corpus).filter(
-    (doc) => !isNonAuthoritative(corpus.settings, doc.file),
-  );
+): Skipping<ContextEntry> {
+  const { docs, skipped } = loadReadableDocs(corpus);
+  const contextCorpus = docs.filter((doc) => !isNonAuthoritative(corpus.settings, doc.file));
   const results = searchDocs(contextCorpus, {
     query,
     ...(limit === undefined ? {} : { limit }),
     excludeStatuses: INACTIVE_STATUSES,
   });
 
-  return results.map(contextEntry);
+  return { documents: results.map(contextEntry), skipped };
 }

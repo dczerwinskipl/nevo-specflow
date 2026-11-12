@@ -56,7 +56,8 @@ Other parameters are rejected. There is no `context` parameter.
 - **Response:** `200` with `DocsSearchResult`, unchanged from the CLI's `--json` output: `mode`
   `hybrid` or `lexical`, the ranked `results` (each document's frontmatter and best sections with
   their `sectionId`, `line` and, unless `snippets=false`, a query-aware `snippet`, ranked as
-  described in [`search`](../cli/nevo-specflow-docs.md#search)) and, when lexical, the `reason`. A
+  described in [`search`](../cli/nevo-specflow-docs.md#search)) and, when lexical, the `reason`, plus `skipped` (`[{ path, error }]`) listing documents left out
+  for invalid frontmatter or a duplicate id; the search answers over the valid documents. A
   section is read with `nevo-specflow docs get --content <id>#<sectionId>`. A lexical answer is a
   normal result, never an error.
 - **Caching and admission:** `Cache-Control: no-store`; the shared default rate limit of the
@@ -105,7 +106,7 @@ carry it
 | Status | Body / code              | Meaning                                                                                                                                |
 | ------ | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
 | `400`  | Fastify validation error | `q` missing, empty or too long; `limit` outside `1..50`; `includeNonAuthoritative` or `snippets` not `true`/`false`; unknown parameter |
-| `503`  | `DOCS_UNAVAILABLE`       | `docs.root` is not a directory, the corpus fails validation, or the Runtime serves demo data                                           |
+| `503`  | `DOCS_UNAVAILABLE`       | `docs.root` is not a directory or the Runtime serves demo data                                                                         |
 
 The `503` body is `{ "error": "Documentation search is unavailable.", "code": "DOCS_UNAVAILABLE" }`:
 `error` is for people, `code` is the stable value to branch on.

@@ -114,7 +114,7 @@ export async function runEval(
     const answerable = question.expected.length > 0;
     const hybrid = await searchIds(search, false, query);
     const ids: Record<EvalVariant, readonly string[]> = {
-      context: getContext(corpus, { query, limit: EVAL_DEPTH }).map((entry) => entry.id),
+      context: getContext(corpus, { query, limit: EVAL_DEPTH }).documents.map((entry) => entry.id),
       lexical: (await searchIds(lexical, false, query)).ids,
       hybrid: hybrid.ids,
     };

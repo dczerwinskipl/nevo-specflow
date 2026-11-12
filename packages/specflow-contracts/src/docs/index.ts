@@ -121,12 +121,31 @@ export type DocsSearchHit = Static<typeof DocsSearchHitSchema>;
 
 const hits = Type.Array(DocsSearchHitSchema);
 
-/** Ranked documents, best first, with the mode that produced them and, when lexical, why. */
+/** A document the search left out: its frontmatter is invalid or its id is duplicated. */
+export const DocsSkippedDocumentSchema = Type.Object(
+  {
+    /** Path relative to the project root, with `/` separators. */
+    path: Type.String(),
+    error: Type.String(),
+  },
+  { additionalProperties: false },
+);
+export type DocsSkippedDocument = Static<typeof DocsSkippedDocumentSchema>;
+
+const skipped = Type.Optional(Type.Array(DocsSkippedDocumentSchema));
+
+/**
+ * Ranked documents, best first, with the mode that produced them and, when lexical, why, and the
+ * documents the search left out (`skipped`).
+ */
 export const DocsSearchResultSchema = Type.Union(
   [
-    Type.Object({ mode: Type.Literal('hybrid'), results: hits }, { additionalProperties: false }),
     Type.Object(
-      { mode: Type.Literal('lexical'), reason: DocsSearchReasonSchema, results: hits },
+      { mode: Type.Literal('hybrid'), results: hits, skipped },
+      { additionalProperties: false },
+    ),
+    Type.Object(
+      { mode: Type.Literal('lexical'), reason: DocsSearchReasonSchema, results: hits, skipped },
       { additionalProperties: false },
     ),
   ],

@@ -9,7 +9,7 @@ import type { DocsSettings } from '../config/docs-settings';
 import { loadDocsFile } from '../config/load-docs-settings';
 import type { DocRecord } from '../frontmatter/contract';
 import { validateCorpus, validateDoc } from '../frontmatter/validate';
-import { DocsConfigError, DocsCorpusInvalidError } from '../errors';
+import { DocsConfigError } from '../errors';
 import { createFileSystemDocRepository, type DocRepository, type ScanResult } from './repository';
 
 /**
@@ -18,8 +18,9 @@ import { createFileSystemDocRepository, type DocRepository, type ScanResult } fr
  */
 export interface DocsCorpusRules {
   /**
-   * Extra problems over the scanned documents; reported like contract problems. `search` validates
-   * frontmatter only: the records it passes here have an empty `body`.
+   * Extra problems over the scanned documents; reported like contract problems by `check` only.
+   * Reads (`list`, `find`, `get`, `context`, `search`) skip documents by the product contract and
+   * never run these rules.
    */
   readonly validate?: (docs: readonly DocRecord[]) => string[];
 }
@@ -74,6 +75,10 @@ export function collectCorpusProblems(
     );
   }
 
+  for (const { error } of scan.invalidFrontmatter) {
+    problems.push(error);
+  }
+
   for (const doc of scan.docs) {
     problems.push(...validateDoc(doc, settings.taxonomy));
   }
@@ -92,14 +97,4 @@ export function inspectCorpus(corpus: DocsCorpus): { docs: DocRecord[]; problems
     docs: scan.docs,
     problems: collectCorpusProblems(scan, corpus.settings, corpus.validate),
   };
-}
-
-/** Scan and fully validate; throws `DocsCorpusInvalidError` on any inconsistency. */
-export function loadValidatedCorpus(corpus: DocsCorpus): DocRecord[] {
-  const { docs, problems } = inspectCorpus(corpus);
-  if (problems.length) {
-    throw new DocsCorpusInvalidError(problems);
-  }
-
-  return docs;
 }

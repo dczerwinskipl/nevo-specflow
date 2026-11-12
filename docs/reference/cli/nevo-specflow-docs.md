@@ -62,7 +62,14 @@ nevo-specflow docs semantic index
   reference without `--content` is a usage error.
 - `context` lists the files to load for a task: like `find`, but inactive documents and documents
   under non-authoritative prefixes are never returned.
-- `check` validates the whole corpus (frontmatter contract, taxonomy, unique ids, resolvable
+- **Skipped documents.** `list`, `find`, `get`, `context` and `search` work on the valid documents
+  instead of refusing the whole corpus. A file is skipped when it has no frontmatter, when its own
+  frontmatter fails the contract or taxonomy, or when its `id` is shared with another file (every
+  file with that id is skipped). An unresolved `related`, `supersedes` or `superseded_by` does not
+  skip a document. Text output prints one `warning: skipped <path>: <error>` line per skipped
+  document on stderr; `--json` output carries `skipped` (see below). `get` on the id of a skipped
+  document fails (exit 2) naming the error. Extra host rules (`corpusRules`) apply to `check` only.
+- `check` stays strict: it validates the whole corpus (frontmatter contract, taxonomy, unique ids, resolvable
   `related` / `supersedes` / `superseded_by`, relative Markdown links and their `#fragment`
   headings) and verifies that `<root>/index.generated.json` and `<root>/index.generated.md` are
   current. `--write` regenerates both when the corpus is valid; broken links are reported but do
@@ -70,7 +77,10 @@ nevo-specflow docs semantic index
   content does not depend on how the command was invoked: it always names
   `nevo-specflow docs check --write`.
 
-With `--json`, stdout holds one JSON document and nothing else. A `list` or `find` result carries
+With `--json`, stdout holds one JSON document and nothing else. For `list`, `find`, `get`
+(also with `--content`) and `context` it is an object `{ "documents": [...], "skipped": [...] }`,
+where each `skipped` entry is `{ "path", "error" }` (`path` relative to the project root); for
+`search` it is the result contract plus `skipped`. A `list` or `find` document carries
 the document's frontmatter, `file` and `body` (and, for `find`, `score`, `matchedTerms` and
 `matchedFields`); a `get` or `context` entry carries `id`, `file`, `title`, `status`, `summary`,
 `read_when`, `scope` (when set), `areas` and `tags`, and with `get --content` also `content`: the
@@ -88,17 +98,17 @@ frontmatter and its best matching sections (heading path, section id, line and a
 what the section says), so a reader (often an AI agent) can choose which documents or sections to
 open with `get`. It is the only model-dependent command.
 
-| Option                        | Meaning                                                                      |
-| ----------------------------- | ---------------------------------------------------------------------------- |
-| `--limit <n>`                 | Maximum documents (default 10); each shows up to 3 matching sections         |
-| `--include-non-authoritative` | Also return documents under the `nonAuthoritative` prefixes of `docs.yaml`   |
-| `--no-refresh`                | Embed no documents; answer lexically unless the index is already complete    |
-| `--no-snippets`               | Show no excerpt under each matching section (they are shown by default)      |
-| `--json`                      | Print the result contract (`DocsSearchResult` in `@nevo/specflow-contracts`) |
+| Option                        | Meaning                                                                                     |
+| ----------------------------- | ------------------------------------------------------------------------------------------- |
+| `--limit <n>`                 | Maximum documents (default 10); each shows up to 3 matching sections                        |
+| `--include-non-authoritative` | Also return documents under the `nonAuthoritative` prefixes of `docs.yaml`                  |
+| `--no-refresh`                | Embed no documents; answer lexically unless the index is already complete                   |
+| `--no-snippets`               | Show no excerpt under each matching section (they are shown by default)                     |
+| `--json`                      | Print the result contract (`DocsSearchResult` in `@nevo/specflow-contracts`) plus `skipped` |
 
 Inactive documents (`deprecated`, `superseded`) are never returned. The corpus frontmatter is
-validated as for `context` (document bodies are not checked; links are `check`'s job); an invalid
-corpus or configuration fails with exit 1.
+validated as for `context` (document bodies are not checked; links are `check`'s job); documents that fail
+it are skipped and reported in `skipped` (and on stderr), an invalid configuration fails with exit 1.
 
 **Ranking.** Documents are ranked by reciprocal rank fusion (equal weight, by rank, so the two
 scores never mix) of two rankings, each limited to three times `--limit` candidates:

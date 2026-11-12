@@ -6,7 +6,12 @@ import { SECTION_REFERENCE_SEPARATOR } from '../discovery/documents';
 import { DocsUsageError } from '../errors';
 import { cutAtWord } from './result';
 import { openDocsSearch, searchDocumentation } from './search';
-import { positiveInteger, runDocsAction, type DocsCommandContext } from '../command/context';
+import {
+  positiveInteger,
+  runDocsAction,
+  warnSkipped,
+  type DocsCommandContext,
+} from '../command/context';
 import type { OpenProject } from '../command/open-project';
 import { createProcessCatchUp } from '../semantic-index/catch-up';
 import { spawnDetachedProcess } from '../semantic-index/detached-process';
@@ -92,6 +97,7 @@ export function addSearchCommand(docs: Command, ctx: DocsCommandContext, open: O
         return;
       }
 
+      warnSkipped(ctx, result.skipped ?? []);
       printResult(ctx, query, result);
     }),
   );

@@ -2,7 +2,12 @@ import type { Command } from 'commander';
 
 import { getContext } from './documents';
 import { DocsUsageError } from '../errors';
-import { positiveInteger, runDocsAction, type DocsCommandContext } from '../command/context';
+import {
+  positiveInteger,
+  runDocsAction,
+  warnSkipped,
+  type DocsCommandContext,
+} from '../command/context';
 import type { OpenCorpus } from '../command/open-project';
 
 export function addContextCommand(docs: Command, ctx: DocsCommandContext, open: OpenCorpus): void {
@@ -22,16 +27,17 @@ export function addContextCommand(docs: Command, ctx: DocsCommandContext, open: 
         throw new DocsUsageError('context: a query is required');
       }
 
-      const entries = getContext(await open(), {
+      const { documents: entries, skipped } = getContext(await open(), {
         query,
         ...(opts.limit === undefined ? {} : { limit: opts.limit }),
       });
       if (opts.json) {
-        ctx.stdout(JSON.stringify(entries, null, 2));
+        ctx.stdout(JSON.stringify({ documents: entries, skipped }, null, 2));
 
         return;
       }
 
+      warnSkipped(ctx, skipped);
       if (entries.length === 0) {
         ctx.stdout(`(no context found for "${query}")`);
 

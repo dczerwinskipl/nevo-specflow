@@ -8,12 +8,13 @@ import {
   type WorkflowPin,
 } from '@nevo/workflow';
 import { isTaskTypeAllowed, taskReadiness, type TaskReadiness } from '../tasks/tasks';
-import type {
-  ExecutionTask,
-  TaskStatus,
-  TaskStatusChange,
-  WorkflowRun,
-  WorkflowSubject,
+import {
+  taskPosition,
+  type ExecutionTask,
+  type TaskStatus,
+  type TaskStatusChange,
+  type WorkflowRun,
+  type WorkflowSubject,
 } from '../state/model';
 
 /**
@@ -183,7 +184,7 @@ export function compileStepContext(input: StepContextInput): StepContext {
             dependsOn: existing.dependsOn,
             status: existing.status,
             ...(existing.statusChange ? { statusChange: existing.statusChange } : {}),
-            state: existing.run.position.state,
+            state: taskPosition(existing).state,
             readiness: taskReadiness(existing, input.tasks).kind,
           })),
           broken: input.broken,

@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 
 import { sha256Hex } from '../../hash';
+import { foldPathKey } from '../../specs/document-rules/document-paths';
 import { TEXT_CONTENT_MAX_BYTES } from '../../specs/documents/limits';
 import { isValidSpecificationId } from '../../specs/model';
 import {
@@ -43,15 +44,22 @@ import {
 import {
   listFolder,
   listSubfolders,
+  listTree,
   readRecordFile,
   readRecordFiles,
-  removeFolderIfEmpty,
+  removeEmptyTree,
   removeRecordFile,
   removeStageFiles,
   writeRecordFile,
   type RecordFolder,
 } from './record-files';
-import type { ExecutionChange, ExecutionSnapshot, Versioned, WorkflowStore } from './store';
+import {
+  TASK_FOLDER_FILES_LISTED,
+  type ExecutionChange,
+  type ExecutionSnapshot,
+  type Versioned,
+  type WorkflowStore,
+} from './store';
 import {
   assertChangeIdentity,
   assertNoNewIssues,
@@ -349,6 +357,7 @@ function createStore(
     }
 
     const snapshot: ExecutionSnapshot = {
+      specId,
       ...(specificationText !== undefined
         ? { specification: versioned(specificationText, parseSpecificationRecord) }
         : {}),
@@ -381,7 +390,7 @@ function createStore(
 
     for (const write of journal.writes) {
       if (write.target === 'task-manifest' && write.text === null) {
-        await removeFolderIfEmpty(taskFolder(folders, write.taskId));
+        await removeEmptyTree(taskFolder(folders, write.taskId));
       }
     }
 
@@ -511,6 +520,35 @@ function createStore(
       assertSpecId(specId);
 
       await apply(specId, change);
+    },
+
+    async taskFiles(specId, taskId): Promise<readonly string[]> {
+      assertSpecId(specId);
+      if (!isValidTaskId(taskId)) {
+        throw new WorkflowError('WORKFLOW_SUBJECT_NOT_FOUND', 'Invalid Task identity.');
+      }
+
+      const { folders, journal } = await load(specId);
+      const files = new Map(
+        (await listTree(taskFolder(folders, taskId), TASK_FOLDER_FILES_LISTED)).map(
+          (path) => [foldPathKey(path), path] as const,
+        ),
+      );
+      for (const write of journal?.writes ?? []) {
+        const path =
+          write.target === 'task-manifest' && write.taskId === taskId
+            ? TASK_MANIFEST_FILE
+            : write.target === 'task-document' && write.taskId === taskId
+              ? write.path
+              : undefined;
+        if (path !== undefined && write.text === null) {
+          files.delete(foldPathKey(path));
+        } else if (path !== undefined) {
+          files.set(foldPathKey(path), path);
+        }
+      }
+
+      return [...files.values()].sort();
     },
   };
 }

@@ -18,6 +18,7 @@ import {
 import type { TaskManifest } from '../../tasks/resource/model';
 import type { TaskRunRecord } from '../state/model';
 import type { ExecutionSnapshot, Versioned, WorkflowStore } from '../state/store';
+import type { TaskReferences } from './task-references';
 
 /**
  * Dependencies of the workflow operations. Every mutation runs inside `serialize` (the project control
@@ -27,6 +28,8 @@ import type { ExecutionSnapshot, Versioned, WorkflowStore } from '../state/store
 export interface WorkflowDependencies {
   readonly store: WorkflowStore;
   readonly catalogue: ExecutionCatalogue;
+  /** Lookups outside the execution store: the archetype's live policy, context references. */
+  readonly references: TaskReferences;
   readonly now: () => Date;
   readonly serialize: <T>(operation: () => Promise<T>) => Promise<T>;
 }
@@ -97,18 +100,15 @@ export interface ExecutionTasks {
 }
 
 /**
- * Join the Task manifests with their run records. A Task is broken when the store reports it so (a
- * run record whose Task is not registered, a run that contradicts the Task's status), when its
+ * Join the Task manifests with their run records. A registered Task without a run record has not
+ * started (its first start creates the record). A Task is broken when the store reports it so (an
+ * index entry without its folder or manifest, a run record whose Task is not registered, a run that
+ * contradicts the Task's status), or when its
  * stored position does not follow from its history under its pinned definition
- * (`isPositionJustified`), or when a registered Task has no run record yet.
- *
- * TODO(T4): a registered Task without a run record is not broken but not started: its first start
- * validates the live Task Type and Workflow and creates the record. Until then every Task gets its
- * record when it is created, so only a Task added by hand has none.
+ * (`isPositionJustified`).
  *
  * A Task whose pinned workflow is missing or changed is not broken (its next operation fails with
- * `WORKFLOW_DEFINITION_CHANGED`). A dangling index entry (no manifest) without a run is no Task at
- * all: it never starts, and its dependents wait for it. A broken Task is left out of `tasks`, so
+ * `WORKFLOW_DEFINITION_CHANGED`). A broken Task is left out of `tasks`, so
  * every decision treats it alike: it never starts, finishes or changes status, is never closed, keeps
  * the Specification's wait open and blocks its dependents.
  */
@@ -118,7 +118,9 @@ export function executionTasks(
 ): ExecutionTasks {
   const runs = new Map(snapshot.runs.map((entry) => [entry.value.taskId, entry.value] as const));
   const reported = new Set(
-    snapshot.issues.filter((issue) => issue.kind === 'broken').map((issue) => issue.taskId),
+    snapshot.issues
+      .filter((issue) => issue.kind === 'broken' || issue.kind === 'dangling')
+      .map((issue) => issue.taskId),
   );
   const justified = (run: WorkflowRun) => {
     const definition = unchangedDefinition(catalogue, run);
@@ -130,10 +132,10 @@ export function executionTasks(
   const broken = new Set(reported);
   for (const { value: manifest } of snapshot.manifests) {
     const record = runs.get(manifest.id);
-    if (!record || reported.has(manifest.id) || !justified(record.run)) {
+    if (reported.has(manifest.id) || (record && !justified(record.run))) {
       broken.add(manifest.id);
     } else {
-      tasks.push(executionTaskOf(record.specId, manifest, record.run));
+      tasks.push(executionTaskOf(snapshot.specId, manifest, record?.run));
     }
   }
 
@@ -154,20 +156,60 @@ export function findTask(
   return { ...(manifest ? { manifest } : {}), ...(run ? { run } : {}) };
 }
 
+/** A registered Task that is not broken, with its run record when it has started. */
+export interface LoadedTask {
+  readonly task: ExecutionTask;
+  readonly manifest: Versioned<TaskManifest>;
+  readonly run?: Versioned<TaskRunRecord>;
+}
+
+/**
+ * A Task of the snapshot; needs no Specification run. Refused when it is broken
+ * (`WORKFLOW_STATE_CORRUPT`) or not registered with a manifest (`WORKFLOW_SUBJECT_NOT_FOUND`).
+ */
+export function loadTask(
+  catalogue: ExecutionCatalogue,
+  snapshot: ExecutionSnapshot,
+  taskId: string,
+): LoadedTask {
+  if (executionTasks(catalogue, snapshot).broken.includes(taskId)) {
+    brokenTask(taskId);
+  }
+
+  const { manifest, run } = findTask(snapshot, taskId);
+  if (!manifest) {
+    throw new WorkflowError(
+      'WORKFLOW_SUBJECT_NOT_FOUND',
+      `Unknown ${subjectKey({ kind: 'task', specId: snapshot.specId, taskId })}.`,
+    );
+  }
+
+  return {
+    task: executionTaskOf(snapshot.specId, manifest.value, run?.value.run),
+    manifest,
+    ...(run ? { run } : {}),
+  };
+}
+
+/**
+ * A subject that has a run: the Specification once it started, a Task once it started (a Task needs
+ * no Specification run). A Task that has not started has nothing to finish or return
+ * (`WORKFLOW_POSITION_INVALID`); its first start is `startTaskExecution`.
+ */
 export function loadSubject(
   catalogue: ExecutionCatalogue,
   snapshot: ExecutionSnapshot,
   subject: WorkflowSubject,
 ): LoadedSubject {
-  const specification = snapshot.specification;
-  if (!specification) {
-    throw new WorkflowError(
-      'WORKFLOW_SPECIFICATION_NOT_STARTED',
-      `The Specification "${subject.specId}" has no execution yet.`,
-    );
-  }
-
   if (subject.kind === 'specification') {
+    const specification = snapshot.specification;
+    if (!specification) {
+      throw new WorkflowError(
+        'WORKFLOW_SPECIFICATION_NOT_STARTED',
+        `The Specification "${subject.specId}" has no execution yet.`,
+      );
+    }
+
     return {
       subject,
       run: specification.value.run,
@@ -176,13 +218,12 @@ export function loadSubject(
     };
   }
 
-  if (executionTasks(catalogue, snapshot).broken.includes(subject.taskId)) {
-    brokenTask(subject.taskId);
-  }
-
-  const { manifest, run } = findTask(snapshot, subject.taskId);
-  if (!manifest || !run) {
-    throw new WorkflowError('WORKFLOW_SUBJECT_NOT_FOUND', `Unknown ${subjectKey(subject)}.`);
+  const { task, run } = loadTask(catalogue, snapshot, subject.taskId);
+  if (!run) {
+    throw new WorkflowError(
+      'WORKFLOW_POSITION_INVALID',
+      `The Task "${subject.taskId}" has not started.`,
+    );
   }
 
   return {
@@ -190,7 +231,7 @@ export function loadSubject(
     run: run.value.run,
     revision: run.revision,
     definition: pinnedDefinition(catalogue, run.value.run),
-    task: executionTaskOf(subject.specId, manifest.value, run.value.run),
+    task,
   };
 }
 

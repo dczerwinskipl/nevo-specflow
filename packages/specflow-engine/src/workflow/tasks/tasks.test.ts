@@ -1,14 +1,18 @@
 import { describe, expect, it } from 'vitest';
 
 import type { TaskType, WorkflowDefinition } from '../definitions/model';
-import type { ExecutionTask } from '../state/model';
+import { newRun } from '@nevo/workflow';
+
+import type { ExecutionTask, WorkflowActor } from '../state/model';
 import {
   LEFT_OUT_OF_BREAKDOWN,
   allTasksClosed,
   applyTaskDecisions,
   applyTaskEffects,
   decideTaskStatus,
+  effectiveTaskTypes,
   materializeTasks,
+  resolveTaskType,
   taskReadiness,
   tasksStuck,
   type MaterializeTasksInput,
@@ -62,7 +66,7 @@ const proposal = (id: string, dependsOn: string[] = []): TaskProposal => ({
 const ready = (task: ExecutionTask): ExecutionTask => ({ ...task, status: 'ready' });
 
 describe('materializeTasks', () => {
-  it('creates draft Tasks pinned to their type workflow', () => {
+  it('creates draft Tasks without a run: their first start pins the workflow', () => {
     const result = materializeTasks(input([proposal('api')]));
 
     expect(result.created).toEqual(['api']);
@@ -72,9 +76,9 @@ describe('materializeTasks', () => {
         type: 'implementation',
         status: 'draft',
         origin: { step: 'breakdown', attempt: 1 },
-        run: { workflow: { id: 'task-standard' }, position: { state: 'not-started' } },
       },
     ]);
+    expect(result.changed[0]?.run).toBeUndefined();
   });
 
   it('takes the list as every draft: revises listed drafts and cancels the others', () => {
@@ -181,6 +185,110 @@ describe('materializeTasks', () => {
   });
 });
 
+describe('the drafts a producing step owns (D06)', () => {
+  const manual = (id: string): ExecutionTask => ({
+    specId: 'spec',
+    taskId: id,
+    title: id.toUpperCase(),
+    type: 'implementation',
+    status: 'draft',
+    dependsOn: [],
+    origin: { kind: 'manual', actorId: 'owner' },
+    documents: [{ id: 'task', path: 'task.md', type: 'task' }],
+  });
+  const manualDrafts = [manual('m1'), manual('m2'), manual('m3')];
+
+  it('keeps every manual draft when a breakdown drafts nothing', () => {
+    expect(materializeTasks(input([], { existing: manualDrafts }))).toEqual({
+      changed: [],
+      created: [],
+    });
+  });
+
+  it('revises and cancels only the drafts of the same step, from any earlier attempt', () => {
+    const own = drafts([proposal('api'), proposal('docs')]);
+    const other = drafts([proposal('spike')], {
+      origin: { kind: 'produced', step: 'research', attempt: 1 },
+    });
+    const result = materializeTasks(
+      input([{ ...proposal('api', ['m1']), title: 'API v2' }], {
+        existing: [...own, ...other, ...manualDrafts],
+        origin: { kind: 'produced', step: 'breakdown', attempt: 3 },
+      }),
+    );
+
+    expect(result.created).toEqual([]);
+    expect(result.changed).toMatchObject([
+      { taskId: 'api', title: 'API v2', dependsOn: ['m1'], origin: { attempt: 3 } },
+      { taskId: 'docs', status: 'cancelled', statusChange: { reason: LEFT_OUT_OF_BREAKDOWN } },
+    ]);
+  });
+
+  it.each([
+    ['a manual draft', manual('m1'), 'created by hand'],
+    [
+      "another step's draft",
+      drafts([proposal('m1')], { origin: { kind: 'produced', step: 'research', attempt: 1 } })[0]!,
+      'drafted by the step "research"',
+    ],
+  ])('refuses to list %s', (_name, existing, message) => {
+    expect(() => materializeTasks(input([proposal('m1')], { existing: [existing] }))).toThrow(
+      expect.objectContaining({
+        code: 'WORKFLOW_INPUT_INVALID',
+        message: expect.stringContaining(message) as unknown,
+      }),
+    );
+  });
+});
+
+describe('the effective Task Type policy (D04)', () => {
+  it.each([
+    [
+      'the run snapshot wins over the live binding',
+      { specification: { taskTypes: ['a'] }, binding: { workflow: 'w', taskTypes: ['b'] } },
+      ['a'],
+    ],
+    [
+      'the run snapshot allowing every type',
+      { specification: { taskTypes: ['*'] }, binding: { workflow: 'w', taskTypes: ['b'] } },
+      ['*'],
+    ],
+    ['no run: the live binding', { binding: { workflow: 'w', taskTypes: ['b'] } }, ['b']],
+    ['no run: a binding without taskTypes', { binding: { workflow: 'w' } }, ['*']],
+    ['no run and no binding', {}, ['*']],
+  ] as const)('%s', (_name, value, expected) => {
+    expect(effectiveTaskTypes(value as Parameters<typeof effectiveTaskTypes>[0])).toEqual(expected);
+  });
+
+  const resolve = (type: string, allowed: readonly string[], workflows = true) =>
+    resolveTaskType({
+      type,
+      allowed: allowed,
+      taskType: (id) => (id === 'implementation' ? implementation : undefined),
+      workflow: (id) => (workflows && id === 'task-standard' ? workflow : undefined),
+    });
+
+  it('resolves an allowed type to its Task workflow', () => {
+    expect(resolve('implementation', ['implementation']).workflow.id).toBe('task-standard');
+  });
+
+  it.each([
+    ['an undefined type', () => resolve('research', ['*']), 'WORKFLOW_DEFINITION_MISSING'],
+    [
+      'a type the policy does not allow',
+      () => resolve('implementation', ['ui']),
+      'WORKFLOW_TASK_TYPE_NOT_ALLOWED',
+    ],
+    [
+      'a type whose workflow is missing',
+      () => resolve('implementation', ['*'], false),
+      'WORKFLOW_DEFINITION_MISSING',
+    ],
+  ])('refuses %s', (_name, run, code) => {
+    expect(run).toThrow(expect.objectContaining({ code }));
+  });
+});
+
 describe('leaving out a draft another Task depends on', () => {
   it('cancels the draft; the dependent Task is then stuck (tasksStuck), not refused', () => {
     const existing = drafts([proposal('api'), proposal('web', ['api'])]).map((task) =>
@@ -205,14 +313,18 @@ describe('Task status, readiness and the wait', () => {
   const started: ExecutionTask = {
     ...api,
     run: {
-      ...api.run,
+      ...newRun<WorkflowActor>(workflow),
       position: { state: 'active', step: 'implement', attempt: 1 },
       attempts: [attempt],
     },
   };
   const ended = (task: ExecutionTask, outcome: 'completed' | 'abandoned'): ExecutionTask => ({
     ...task,
-    run: { ...task.run, position: { state: 'terminal', outcome }, attempts: [attempt] },
+    run: {
+      ...newRun<WorkflowActor>(workflow),
+      position: { state: 'terminal', outcome },
+      attempts: [attempt],
+    },
   });
   const decide = (task: ExecutionTask, status: TaskDecision['status'], reason?: string) =>
     decideTaskStatus(
@@ -328,7 +440,10 @@ describe('Task status, readiness and the wait', () => {
     });
     const done: ExecutionTask = {
       ...api,
-      run: { ...api.run, position: { state: 'terminal', outcome: 'completed' } },
+      run: {
+        ...newRun<WorkflowActor>(workflow),
+        position: { state: 'terminal', outcome: 'completed' },
+      },
     };
     expect(taskReadiness(screen, [done, screen])).toEqual({ kind: 'ready' });
   });

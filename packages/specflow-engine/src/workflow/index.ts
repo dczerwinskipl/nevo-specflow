@@ -1,5 +1,5 @@
 // Deterministic execution of Specifications and Tasks: one workflow core, two entry points.
-export { openArchetypeEditing, openWorkflow } from './composition';
+export { openArchetypeEditing, openWorkflow, type OpenWorkflowOptions } from './composition';
 export {
   createExecutionCatalogue,
   resolveExecutionCatalogue,
@@ -54,6 +54,16 @@ export {
   type StartTaskInput,
 } from './operations/start';
 export type { StepContext } from './operations/step-context';
+export {
+  createTask,
+  editTask,
+  removeTask,
+  type CreateTaskInput,
+  type EditTaskInput,
+  type RemoveTaskInput,
+  type TaskResourceResult,
+} from './operations/task-resource';
+export type { TaskReferences } from './operations/task-references';
 export {
   setTaskStatus,
   type SetTaskStatusInput,

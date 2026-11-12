@@ -98,7 +98,13 @@ export function creating(
   };
 }
 
-export const EMPTY: ExecutionSnapshot = { manifests: [], runs: [], folders: [], issues: [] };
+export const EMPTY: ExecutionSnapshot = {
+  specId: SPEC,
+  manifests: [],
+  runs: [],
+  folders: [],
+  issues: [],
+};
 
 export function describeWorkflowStoreContract(name: string, create: () => WorkflowStore): void {
   describe(`${name}: workflow store contract`, () => {
@@ -128,7 +134,7 @@ export function describeWorkflowStoreContract(name: string, create: () => Workfl
       ]);
       expect(snapshot.folders).toEqual(['api', 'web']);
       expect(snapshot.issues).toEqual([]);
-      expect(await store.read(OTHER_SPEC)).toEqual(EMPTY);
+      expect(await store.read(OTHER_SPEC)).toEqual({ ...EMPTY, specId: OTHER_SPEC });
 
       await store.apply(SPEC, {
         specification: {
@@ -297,6 +303,35 @@ export function describeWorkflowStoreContract(name: string, create: () => Workfl
         code: 'WORKFLOW_STATE_CORRUPT',
       });
       expect(await store.read(SPEC)).toEqual(EMPTY);
+    });
+
+    it('lists the files of a Task folder and removes the whole folder with the Task', async () => {
+      const store = create();
+      const api: TaskManifest = {
+        ...manifest('api'),
+        documents: [{ ...TASK_MAIN_DOCUMENT }, { id: 'notes', path: 'notes/a.md', type: 'note' }],
+      };
+      const created = creating([api], { runs: false });
+      await store.apply(SPEC, {
+        ...created,
+        documents: [...(created.documents ?? []), { taskId: 'api', path: 'notes/a.md', text: 'x' }],
+      });
+
+      expect(await store.taskFiles(SPEC, 'api')).toEqual(['notes/a.md', 'task.md', 'task.yaml']);
+      const snapshot = await store.read(SPEC);
+      await store.apply(SPEC, {
+        index: { expected: snapshot.index?.revision ?? null, next: { tasks: [] } },
+        manifests: [
+          { taskId: 'api', expected: snapshot.manifests[0]?.revision ?? null, next: null },
+        ],
+        documents: [
+          { taskId: 'api', path: 'task.md', text: null },
+          { taskId: 'api', path: 'notes/a.md', text: null },
+        ],
+      });
+
+      expect(await store.taskFiles(SPEC, 'api')).toEqual([]);
+      expect(await store.read(SPEC)).toMatchObject({ manifests: [], folders: [], issues: [] });
     });
 
     it('refuses a record over the byte budget as invalid input and writes nothing', async () => {

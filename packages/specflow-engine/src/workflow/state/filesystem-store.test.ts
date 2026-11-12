@@ -12,6 +12,7 @@ import {
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
+import { newRun } from '@nevo/workflow';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { symlinksAvailable } from '../../../test/support/platform';
@@ -19,6 +20,7 @@ import { symlinksAvailable } from '../../../test/support/platform';
 import { sha256Hex } from '../../hash';
 import { finishStep, type FinishStepInput } from '../operations/finish';
 import { inspectExecution } from '../operations/inspect';
+import type { WorkflowDependencies } from '../operations/loaded-execution';
 import {
   agent,
   claude,
@@ -51,7 +53,7 @@ import {
   EXECUTION_DIRECTORY,
 } from './filesystem-store';
 import type { JournalWrite } from './journal';
-import type { WorkflowRun } from './model';
+import type { TaskRunRecord, WorkflowRun } from './model';
 import type { ExecutionChange } from './store';
 import {
   creating,
@@ -577,12 +579,9 @@ describe('filesystem workflow store: a finish retried after a crash (F16)', () =
     await expect(finishStep(crashing, breakdown)).rejects.toThrow('Crash');
     // Half the change is on disk: the journal is pending, the Specification record is published
     // and the Task files are not.
-    const taskFiles = async () =>
-      (await readdir(tasksDirectory()).catch(() => [] as string[]))
-        .filter((name) => name.endsWith('.yaml'))
-        .sort();
+    const taskFolders = async () => (await readdir(resourceDirectory()).catch(() => [])).sort();
     expect(await readFile(journalPath(), 'utf8')).toContain(SPEC);
-    expect(await taskFiles()).toEqual([]);
+    expect(await taskFolders()).toEqual([]);
     expect(await readFile(specificationPath(), 'utf8')).toContain('state: ready');
 
     // A read sees the whole change, so the retry is the same finish; it publishes the journal.
@@ -594,8 +593,9 @@ describe('filesystem workflow store: a finish retried after a crash (F16)', () =
       createdTasks: ['api', 'screen'],
     });
     await expect(readFile(journalPath(), 'utf8')).rejects.toMatchObject({ code: 'ENOENT' });
-    expect(await taskFiles()).toEqual(['api.yaml', 'screen.yaml']);
-    expect((await readdir(resourceDirectory())).sort()).toEqual(['api', 'index.yaml', 'screen']);
+    // Drafts have no run record: their first start creates it.
+    await expect(readdir(tasksDirectory())).rejects.toMatchObject({ code: 'ENOENT' });
+    expect(await taskFolders()).toEqual(['api', 'index.yaml', 'screen']);
     expect(await readFile(specificationPath(), 'utf8')).toContain('state: ready');
     await expect(
       finishStep(dependencies, { ...breakdown, input: { tasks: [TWO_TASKS[0]] } }),
@@ -729,7 +729,6 @@ describe('filesystem workflow store: the Task set is the one the index lists', (
     expect(inspection.brokenTasks).toEqual(['screen']);
     expect(inspection.issues).toEqual([
       { kind: 'dangling', taskId: 'screen', reason: 'missing-folder' },
-      { kind: 'broken', taskId: 'screen', reason: 'unregistered-run' },
     ]);
     expect(inspection.attention).toMatchObject([
       { subject: { kind: 'specification' }, reason: 'tasks-stuck' },
@@ -785,7 +784,6 @@ describe('filesystem workflow store: the Task set is the one the index lists', (
 
     const dependencies = await operations();
     await specificationWithTasks(dependencies);
-    await rm(join(tasksDirectory(), 'screen.yaml'));
     await work(dependencies, operationTask('api'));
     await work(dependencies, operationTask('api'), { result: 'pass' });
     await writeTaskFile('screen.yaml', serializeTaskRunRecord(restored.value));
@@ -855,18 +853,24 @@ describe('filesystem workflow store: the Task set is the one the index lists', (
     });
   });
 
+  /** A hand-written run record of a Task that ended without any attempt: not justified. */
+  const unjustifiedRun = (dependencies: WorkflowDependencies, taskId: string, workflow: string) =>
+    writeTaskFile(
+      `${taskId}.yaml`,
+      serializeTaskRunRecord({
+        specId: SPEC,
+        taskId,
+        run: {
+          ...newRun(dependencies.catalogue.workflow(workflow)!),
+          position: { state: 'terminal', outcome: 'completed' },
+        },
+      } satisfies TaskRunRecord),
+    );
+
   it('treats a Task whose position its history does not justify as broken', async () => {
     const dependencies = await operations();
     await specificationWithTasks(dependencies);
-    const path = join(tasksDirectory(), 'screen.yaml');
-    const stored = parseTaskRunRecord(await readFile(path, 'utf8'));
-    await writeFile(
-      path,
-      serializeTaskRunRecord({
-        ...stored,
-        run: { ...stored.run, position: { state: 'terminal', outcome: 'completed' } },
-      }),
-    );
+    await unjustifiedRun(dependencies, 'screen', 'task-ui');
 
     await work(dependencies, operationTask('api'));
     const last = await work(dependencies, operationTask('api'), { result: 'pass' });
@@ -909,15 +913,7 @@ describe('filesystem workflow store: the Task set is the one the index lists', (
   it('keeps a broken Task with a record out of every decision on it', async () => {
     const dependencies = await operations();
     await specificationWithTasks(dependencies);
-    const path = join(tasksDirectory(), 'api.yaml');
-    const stored = parseTaskRunRecord(await readFile(path, 'utf8'));
-    await writeFile(
-      path,
-      serializeTaskRunRecord({
-        ...stored,
-        run: { ...stored.run, position: { state: 'terminal', outcome: 'completed' } },
-      }),
-    );
+    await unjustifiedRun(dependencies, 'api', 'task-standard');
 
     const inspection = await inspectExecution(dependencies, SPEC);
     expect(inspection.brokenTasks).toEqual(['api']);

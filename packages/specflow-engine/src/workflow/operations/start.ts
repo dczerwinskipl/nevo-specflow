@@ -3,18 +3,26 @@ import { ANY_TASK_TYPE } from '@nevo/specflow-contracts/documents';
 import { decide, findStep, newRun } from '@nevo/workflow';
 import { resolveSpecificationExecution } from '../definitions/catalogue';
 import { WorkflowError } from '../errors';
-import { isTaskClosed, taskReadiness } from '../tasks/tasks';
-import type { SpecificationExecutionRecord, WorkflowActor, WorkflowSubject } from '../state/model';
+import { isTaskClosed, resolveTaskType, taskReadiness } from '../tasks/tasks';
+import type {
+  ExecutionTask,
+  SpecificationExecutionRecord,
+  TaskRunRecord,
+  WorkflowActor,
+  WorkflowSubject,
+} from '../state/model';
 import { assertSameSession } from './actors';
 import type { ExecutionChange, ExecutionSnapshot } from '../state/store';
 import {
   executionTasks,
   isoNow,
   loadSubject,
+  loadTask,
   type LoadedSubject,
   type WorkflowDependencies,
 } from './loaded-execution';
 import { compileStepContext, type StepContext } from './step-context';
+import { assertContextResolved, effectiveTaskTypesOf, unresolvedContext } from './task-policy';
 
 export type StartResult =
   | {
@@ -35,14 +43,15 @@ export interface StartOptions {
 /**
  * Start (or resume) the next step of a subject. The single start path: a quick start from an
  * attention item, a manual start and an automatic continuation all end here. A started subject is
- * active, so no attention is derived for it any more.
+ * active, so no attention is derived for it any more. `created`: the subject's run record is new
+ * (seeded into `snapshot`), so the change creates it.
  */
 async function startSubject(
   dependencies: WorkflowDependencies,
   snapshot: ExecutionSnapshot,
   subject: WorkflowSubject,
   options: StartOptions,
-  seed?: ExecutionChange['specification'],
+  created = false,
 ): Promise<StartResult> {
   const loaded = loadSubject(dependencies.catalogue, snapshot, subject);
   if (loaded.run.position.state === 'terminal') {
@@ -63,13 +72,24 @@ async function startSubject(
     throw new WorkflowError('WORKFLOW_STATE_CORRUPT', 'A start activated no work step.');
   }
 
-  if (!intent.resumed) {
-    assertTaskReady(dependencies, snapshot, loaded);
+  if (!intent.resumed && loaded.task) {
+    assertTaskReady(dependencies, snapshot, loaded.task);
+    // A required context entry that does not resolve blocks every start of a step (not a resume).
+    assertContextResolved(
+      loaded.task.taskId,
+      (await unresolvedContext(dependencies, subject.specId, loaded.task)).filter(
+        (issue) => issue.entry.required,
+      ),
+      'The next step cannot start until they are replaced or removed.',
+    );
   }
 
   const run = decision.nextRun;
-  if (run !== loaded.run || seed) {
-    await dependencies.store.apply(subject.specId, changeFor(snapshot, loaded, run, seed));
+  if (run !== loaded.run || created) {
+    await dependencies.store.apply(
+      subject.specId,
+      changeFor(snapshot, loaded, run, created ? null : loaded.revision),
+    );
   }
 
   return {
@@ -92,48 +112,39 @@ function changeFor(
   snapshot: ExecutionSnapshot,
   loaded: LoadedSubject,
   run: LoadedSubject['run'],
-  seed: ExecutionChange['specification'] | undefined,
+  expected: string | null,
 ): ExecutionChange {
   if (loaded.subject.kind === 'task' && loaded.task) {
     return {
       runs: [
         {
           taskId: loaded.task.taskId,
-          expected: loaded.revision,
+          expected,
           next: { specId: loaded.task.specId, taskId: loaded.task.taskId, run },
         },
       ],
     };
   }
 
-  const record = seed?.next ?? snapshot.specification?.value;
+  const record = snapshot.specification?.value;
   if (!record) {
     throw new WorkflowError('WORKFLOW_SPECIFICATION_NOT_STARTED', 'No Specification run to start.');
   }
 
-  return {
-    specification: {
-      expected: seed ? seed.expected : loaded.revision,
-      next: { ...record, run },
-    },
-  };
+  return { specification: { expected, next: { ...record, run } } };
 }
 
 function assertTaskReady(
   dependencies: WorkflowDependencies,
   snapshot: ExecutionSnapshot,
-  loaded: LoadedSubject,
+  task: ExecutionTask,
 ): void {
-  if (!loaded.task) {
-    return;
-  }
-
   const { tasks } = executionTasks(dependencies.catalogue, snapshot);
-  const readiness = taskReadiness(loaded.task, tasks);
+  const readiness = taskReadiness(task, tasks);
   if (readiness.kind === 'status') {
     throw new WorkflowError(
       'WORKFLOW_TASK_BLOCKED',
-      `The Task "${loaded.task.taskId}" is ${readiness.status}; only a ready Task can start.`,
+      `The Task "${task.taskId}" is ${readiness.status}; only a ready Task can start.`,
     );
   }
 
@@ -148,8 +159,8 @@ function assertTaskReady(
     throw new WorkflowError(
       'WORKFLOW_DEPENDENCY_UNSATISFIED',
       abandoned.length > 0
-        ? `The Task "${loaded.task.taskId}" depends on ${abandoned.join(', ')}, which can no longer complete.`
-        : `The Task "${loaded.task.taskId}" waits for ${readiness.waitingFor.join(', ')}.`,
+        ? `The Task "${task.taskId}" depends on ${abandoned.join(', ')}, which can no longer complete.`
+        : `The Task "${task.taskId}" waits for ${readiness.waitingFor.join(', ')}.`,
     );
   }
 }
@@ -181,7 +192,7 @@ export function startSpecificationExecution(
       specification: { value: record, revision: '' },
     };
 
-    return startSubject(dependencies, seeded, subject, input, { expected: null, next: record });
+    return startSubject(dependencies, seeded, subject, input, true);
   });
 }
 
@@ -205,21 +216,67 @@ function newSpecificationRecord(
 export interface StartTaskInput extends StartOptions {
   readonly specId: string;
   readonly taskId: string;
+  /**
+   * The workflow revision the caller showed for the start (the pin preview). When the workflow the
+   * start would use is another revision, the start is refused with `WORKFLOW_DEFINITION_CHANGED`.
+   */
+  readonly expectedWorkflowRevision?: string;
 }
 
-/** Entry point "start Task execution": starts the next step of the Task's own workflow. */
+/**
+ * Entry point "start Task execution": starts the next step of the Task's own workflow. A Task needs
+ * no Specification run. Its first start checks, before anything is written, that the Task is ready,
+ * that its live task type exists and the effective policy allows it (`WORKFLOW_DEFINITION_MISSING`,
+ * `WORKFLOW_TASK_TYPE_NOT_ALLOWED`), that its workflow exists, and that the live workflow is the
+ * previewed revision; then it creates the Task's run record pinned to that workflow in the same
+ * change as the step's start. Every start of a step needs the required context entries to resolve
+ * (`WORKFLOW_TASK_CONTEXT_UNRESOLVED`).
+ */
 export function startTaskExecution(
   dependencies: WorkflowDependencies,
   input: StartTaskInput,
 ): Promise<StartResult> {
   return dependencies.serialize(async () => {
     const snapshot = await dependencies.store.read(input.specId);
+    const subject: WorkflowSubject = {
+      kind: 'task',
+      specId: input.specId,
+      taskId: input.taskId,
+    };
+    const { task, run } = loadTask(dependencies.catalogue, snapshot, input.taskId);
+    if (run) {
+      assertExpectedRevision(input, run.value.run.workflow.revision);
 
-    return startSubject(
-      dependencies,
-      snapshot,
-      { kind: 'task', specId: input.specId, taskId: input.taskId },
-      input,
-    );
+      return startSubject(dependencies, snapshot, subject, input);
+    }
+
+    assertTaskReady(dependencies, snapshot, task);
+    const { workflow } = resolveTaskType({
+      type: task.type,
+      allowed: await effectiveTaskTypesOf(dependencies, snapshot),
+      taskType: (id) => dependencies.catalogue.taskType(id),
+      workflow: (id) => dependencies.catalogue.workflow(id),
+    });
+    const record: TaskRunRecord = {
+      specId: input.specId,
+      taskId: input.taskId,
+      run: newRun<WorkflowActor>(workflow),
+    };
+    assertExpectedRevision(input, record.run.workflow.revision);
+    const seeded: ExecutionSnapshot = {
+      ...snapshot,
+      runs: [...snapshot.runs, { value: record, revision: '' }],
+    };
+
+    return startSubject(dependencies, seeded, subject, input, true);
   });
+}
+
+function assertExpectedRevision(input: StartTaskInput, revision: string): void {
+  if (input.expectedWorkflowRevision !== undefined && input.expectedWorkflowRevision !== revision) {
+    throw new WorkflowError(
+      'WORKFLOW_DEFINITION_CHANGED',
+      `The workflow of the Task "${input.taskId}" changed since it was shown; review it and start again.`,
+    );
+  }
 }

@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import type { ExecutionCatalogue } from '../definitions/catalogue';
+import { taskPosition } from '../state/model';
 import { finishStep } from './finish';
 import { inspectExecution } from './inspect';
 import {
@@ -68,15 +69,17 @@ describe('Tasks of a Specification', () => {
     });
     const tasks = (await inspectExecution(dependencies, SPEC)).tasks;
     expect(
-      tasks.map((entry) => [
-        entry.record.taskId,
-        entry.record.status,
-        entry.record.run.workflow.id,
-      ]),
+      tasks.map((entry) => [entry.record.taskId, entry.record.status, entry.record.type]),
     ).toEqual([
-      ['api', 'ready', 'task-standard'],
-      ['screen', 'ready', 'task-ui'],
+      ['api', 'ready', 'implementation'],
+      ['screen', 'ready', 'ui-implementation'],
     ]);
+    // A draft has no run: the first start pins the workflow of the Task's type.
+    expect(tasks.map((entry) => entry.record.run)).toEqual([undefined, undefined]);
+    await startTaskExecution(dependencies, { specId: SPEC, taskId: 'api', actor: claude });
+    expect((await inspectExecution(dependencies, SPEC)).tasks[0]?.record.run?.workflow.id).toBe(
+      'task-standard',
+    );
     expect(tasks.map((entry) => entry.readiness.kind)).toEqual(['ready', 'dependencies']);
   });
 
@@ -227,7 +230,7 @@ describe('ready Tasks', () => {
     const inspection = await inspectExecution(dependencies, SPEC);
     expect(inspection.attention.map((item) => item.subject.kind)).not.toContain('task');
     expect(
-      inspection.tasks.map((entry) => [entry.record.run.position.state, entry.readiness.kind]),
+      inspection.tasks.map((entry) => [taskPosition(entry.record).state, entry.readiness.kind]),
     ).toEqual([
       ['terminal', 'ready'],
       ['not-started', 'ready'],

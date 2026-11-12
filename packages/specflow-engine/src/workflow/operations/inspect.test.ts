@@ -127,6 +127,7 @@ describe('inspection during a mutation', () => {
     const { promise: gate, resolve: release } = Promise.withResolvers<void>();
     const store: WorkflowStore = {
       read: (specId) => dependencies.store.read(specId),
+      taskFiles: (specId, taskId) => dependencies.store.taskFiles(specId, taskId),
       apply: async (specId, change) => {
         await gate;
 

@@ -1,4 +1,8 @@
-import { ANY_TASK_TYPE, type WorkflowEffect } from '@nevo/specflow-contracts/documents';
+import {
+  ANY_TASK_TYPE,
+  type SpecificationExecution,
+  type WorkflowEffect,
+} from '@nevo/specflow-contracts/documents';
 
 import type { TaskType, TaskTypes, WorkflowDefinition } from '../definitions/model';
 import { WorkflowError } from '../errors';
@@ -11,10 +15,14 @@ import {
   TASK_TITLE_MAX,
   isValidTaskId,
 } from '../limits';
-import { newRun } from '@nevo/workflow';
 import { TASK_MAIN_DOCUMENT, type TaskOrigin } from '../../tasks/resource/model';
 import { dependencyCycle } from '../state/dependency-cycle';
-import type { ExecutionTask, TaskStatus, WorkflowActor } from '../state/model';
+import {
+  taskPosition,
+  type ExecutionTask,
+  type SpecificationExecutionRecord,
+  type TaskStatus,
+} from '../state/model';
 
 /**
  * Tasks of a Specification: drafted from the structured finish input of a step that `produces: tasks`
@@ -62,14 +70,65 @@ export function isTaskTypeAllowed(allowed: TaskTypes, type: string): boolean {
 }
 
 /**
- * The draft Tasks after a finish of a step that produces Tasks. The proposals are the complete list
- * of the Specification's draft Tasks:
+ * The task types a Specification allows now (D04): the snapshot its run took when it started, else
+ * the live execution binding of its archetype. An archetype without a binding, or a binding without
+ * `taskTypes`, allows every type.
+ */
+export function effectiveTaskTypes(input: {
+  readonly specification?: Pick<SpecificationExecutionRecord, 'taskTypes'>;
+  readonly binding?: SpecificationExecution;
+}): TaskTypes {
+  return input.specification?.taskTypes ?? input.binding?.taskTypes ?? [ANY_TASK_TYPE];
+}
+
+/**
+ * The live task type of a Task and the workflow it runs, for its creation and its first start:
+ * `WORKFLOW_DEFINITION_MISSING` when the type or its Task workflow is not defined,
+ * `WORKFLOW_TASK_TYPE_NOT_ALLOWED` when the effective policy does not allow the type.
+ */
+export function resolveTaskType(input: {
+  readonly type: string;
+  readonly allowed: TaskTypes;
+  readonly taskType: (id: string) => TaskType | undefined;
+  readonly workflow: (id: string) => WorkflowDefinition | undefined;
+}): { readonly type: TaskType; readonly workflow: WorkflowDefinition } {
+  const type = input.taskType(input.type);
+  if (!type) {
+    throw new WorkflowError(
+      'WORKFLOW_DEFINITION_MISSING',
+      `The task type "${input.type.slice(0, 80)}" is not defined.`,
+    );
+  }
+
+  if (!isTaskTypeAllowed(input.allowed, type.id)) {
+    throw new WorkflowError(
+      'WORKFLOW_TASK_TYPE_NOT_ALLOWED',
+      `The Specification does not allow Tasks of type "${type.id}".`,
+    );
+  }
+
+  const workflow = input.workflow(type.workflow);
+  if (workflow?.annotations.subject !== 'task') {
+    throw new WorkflowError(
+      'WORKFLOW_DEFINITION_MISSING',
+      `The workflow "${type.workflow}" of the task type "${type.id}" is not a defined Task workflow.`,
+    );
+  }
+
+  return { type, workflow };
+}
+
+/**
+ * The draft Tasks after a finish of a step that produces Tasks (D06). The proposals are the complete
+ * list of the drafts this producing step owns: the drafts whose origin is `produced` by the same
+ * step, from any earlier attempt. Drafts created by hand, or by another step, are never touched:
  *
- * - a proposal with a new id creates a `draft`;
- * - a proposal with the id of an existing `draft` replaces its definition (a draft never ran);
- * - a proposal with the id of a Task that is no longer a draft rejects the whole finish (its status
- *   is changed by a decision, never by redefining it);
- * - an existing `draft` that is not listed is `cancelled`.
+ * - a proposal with a new id creates a `draft`, without a run (its first start pins its workflow);
+ * - a proposal with the id of a draft the step owns replaces its definition (a draft never ran);
+ * - a proposal with the id of any other Task rejects the whole finish: a Task that is no longer a
+ *   draft (its status is changed by a decision, never by redefining it), a manual draft or another
+ *   step's draft;
+ * - a draft the step owns that is not listed is `cancelled`.
  *
  * A dependency of a proposal names a Task that is not cancelled. A Task outside the list that depends
  * on a draft the finish cancels is not refused: it can no longer start, which the Specification's
@@ -91,9 +150,19 @@ export function materializeTasks(input: MaterializeTasksInput): MaterializedTask
       invalid(`The Task "${proposal.id}" is listed twice.`);
     }
 
-    const status = existing.get(proposal.id)?.status;
-    if (status !== undefined && status !== 'draft') {
-      invalid(`The Task "${proposal.id}" is ${status}, not a draft; decide its status instead.`);
+    const known = existing.get(proposal.id);
+    if (known !== undefined && known.status !== 'draft') {
+      invalid(
+        `The Task "${proposal.id}" is ${known.status}, not a draft; decide its status instead.`,
+      );
+    }
+
+    if (known !== undefined && !ownsDraft(input.origin, known)) {
+      invalid(
+        known.origin.kind === 'manual'
+          ? `The Task "${proposal.id}" was created by hand; a breakdown cannot revise it.`
+          : `The Task "${proposal.id}" was drafted by the step "${known.origin.step}"; this step cannot revise it.`,
+      );
     }
 
     const title = proposal.title.trim();
@@ -118,7 +187,7 @@ export function materializeTasks(input: MaterializeTasksInput): MaterializedTask
   }
 
   const leftOut = input.existing.filter(
-    (task) => task.status === 'draft' && !listed.has(task.taskId),
+    (task) => ownsDraft(input.origin, task) && !listed.has(task.taskId),
   );
   const cancelled = new Set([
     ...input.existing.filter((task) => task.status === 'cancelled').map((task) => task.taskId),
@@ -143,8 +212,7 @@ export function materializeTasks(input: MaterializeTasksInput): MaterializedTask
     }
 
     const type = input.taskType(proposal.type);
-    const workflow = type ? input.workflow(type.workflow) : undefined;
-    if (!type || workflow?.annotations.subject !== 'task') {
+    if (!type || input.workflow(type.workflow)?.annotations.subject !== 'task') {
       throw new WorkflowError(
         'WORKFLOW_NOT_CONFIGURED',
         `The task type "${proposal.type}" or its workflow is not defined.`,
@@ -173,7 +241,6 @@ export function materializeTasks(input: MaterializeTasksInput): MaterializedTask
       status: 'draft',
       documents: revised?.documents ?? [{ ...TASK_MAIN_DOCUMENT }],
       ...(revised?.context !== undefined ? { context: revised.context } : {}),
-      run: newRun<WorkflowActor>(workflow),
     };
   });
   const cycle = dependencyCycle(graph);
@@ -192,6 +259,13 @@ export function materializeTasks(input: MaterializeTasksInput): MaterializedTask
     ],
     created: created.map((proposal) => proposal.id),
   };
+}
+
+/** A draft the producing step (by its id, any attempt) drafted, so its later finishes revise it. */
+function ownsDraft(origin: MaterializeTasksInput['origin'], task: ExecutionTask): boolean {
+  return (
+    task.status === 'draft' && task.origin.kind === 'produced' && task.origin.step === origin.step
+  );
 }
 
 /** A status a decision may set; `draft` is only ever the status of a new Task. */
@@ -227,7 +301,7 @@ export function decideTaskStatus(
     invalid(`The reason for the Task "${task.taskId}" is longer than ${FEEDBACK_MAX}.`);
   }
 
-  if (task.run.position.state === 'terminal') {
+  if (taskPosition(task).state === 'terminal') {
     invalid(`The Task "${task.taskId}" has ended; its status can no longer change.`);
   }
 
@@ -237,7 +311,7 @@ export function decideTaskStatus(
     );
   }
 
-  if (decision.status === 'cancelled' && task.run.position.state === 'active') {
+  if (decision.status === 'cancelled' && taskPosition(task).state === 'active') {
     invalid(`The Task "${task.taskId}" is running; it cannot be cancelled now.`);
   }
 
@@ -300,7 +374,7 @@ export function isTaskEscalated(task: ExecutionTask): boolean {
 
 /** A closed Task no longer keeps the Specification waiting: its run ended, or it was cancelled. */
 export function isTaskClosed(task: ExecutionTask): boolean {
-  return task.run.position.state === 'terminal' || task.status === 'cancelled';
+  return taskPosition(task).state === 'terminal' || task.status === 'cancelled';
 }
 
 export type TaskReadiness =
@@ -320,7 +394,8 @@ export function taskReadiness(task: ExecutionTask, tasks: readonly ExecutionTask
 
   const byId = new Map(tasks.map((candidate) => [candidate.taskId, candidate] as const));
   const waitingFor = task.dependsOn.filter((id) => {
-    const position = byId.get(id)?.run.position;
+    const dependency = byId.get(id);
+    const position = dependency ? taskPosition(dependency) : undefined;
 
     return position?.state !== 'terminal' || position.outcome !== 'completed';
   });
@@ -352,7 +427,8 @@ export function tasksStuck(tasks: readonly ExecutionTask[], broken: readonly str
   return (
     open.length + broken.length > 0 &&
     open.every(
-      (task) => task.run.position.state !== 'active' && taskReadiness(task, tasks).kind !== 'ready',
+      (task) =>
+        taskPosition(task).state !== 'active' && taskReadiness(task, tasks).kind !== 'ready',
     )
   );
 }

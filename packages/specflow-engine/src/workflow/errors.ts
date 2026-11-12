@@ -17,6 +17,20 @@ export const WORKFLOW_ERROR_CODES = [
   'WORKFLOW_DEPENDENCY_UNSATISFIED',
   /** Stored state does not match the expected revision (a concurrent writer). */
   'WORKFLOW_STATE_CONFLICT',
+  /** A Task with the id exists already, or its folder, index entry or run record is in the way. */
+  'WORKFLOW_TASK_EXISTS',
+  /** The task type is not allowed by the effective policy (the Specification run's snapshot, else the archetype). */
+  'WORKFLOW_TASK_TYPE_NOT_ALLOWED',
+  /** A Task's type is fixed at creation; an edit may not change it. */
+  'WORKFLOW_TASK_TYPE_IMMUTABLE',
+  /** The task type, or the workflow it runs, is not defined (any more). */
+  'WORKFLOW_DEFINITION_MISSING',
+  /** Context references that do not resolve: refused on create/edit, required ones block a start. */
+  'WORKFLOW_TASK_CONTEXT_UNRESOLVED',
+  /** The Task changed since the revision the caller planned its edit or removal against. */
+  'WORKFLOW_TASK_REVISION_CONFLICT',
+  /** The Task started, has dependents, a pending document change or files the Engine does not know. */
+  'WORKFLOW_TASK_NOT_REMOVABLE',
 ] as const;
 export type WorkflowErrorCode = (typeof WORKFLOW_ERROR_CODES)[number];
 

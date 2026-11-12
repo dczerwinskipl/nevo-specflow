@@ -118,7 +118,60 @@ export async function listSubfolders(
     .sort();
 }
 
+/**
+ * Every entry below a folder that is not a plain directory (files, links and anything else), as
+ * POSIX paths relative to it, sorted; stage files of an interrupted write are left out. Links are
+ * listed, never followed. Stops after `limit` entries: a caller only needs to know what is there.
+ */
+export async function listTree(folder: RecordFolder, limit: number): Promise<string[]> {
+  if ((await inspectFolder(folder)) === 'absent') {
+    return [];
+  }
+
+  const found: string[] = [];
+  const walk = async (segments: readonly string[]): Promise<void> => {
+    const entries = await readdir(pathOf({ root: folder.root, segments }), {
+      withFileTypes: true,
+    });
+    for (const entry of entries.sort((left, right) => (left.name < right.name ? -1 : 1))) {
+      if (found.length >= limit) {
+        return;
+      }
+
+      const relative = [...segments.slice(folder.segments.length), entry.name].join('/');
+      if (entry.isDirectory() && !entry.isSymbolicLink()) {
+        await walk([...segments, entry.name]);
+      } else if (!STAGE_FILE.test(entry.name)) {
+        found.push(relative);
+      }
+    }
+  };
+
+  await walk(folder.segments);
+
+  return found.sort();
+}
+
+/**
+ * Remove the folder and the empty plain directories below it, deepest first; a directory that still
+ * holds anything stays, and so do its ancestors.
+ */
+export async function removeEmptyTree(folder: RecordFolder): Promise<void> {
+  if ((await inspectFolder(folder)) === 'absent') {
+    return;
+  }
+
+  for (const entry of await readdir(pathOf(folder), { withFileTypes: true })) {
+    if (entry.isDirectory() && !entry.isSymbolicLink()) {
+      await removeEmptyTree({ root: folder.root, segments: [...folder.segments, entry.name] });
+    }
+  }
+
+  await removeFolderIfEmpty(folder);
+}
+
 /** Remove the folder when it exists and is empty; a folder that still holds anything stays. */
+
 export async function removeFolderIfEmpty(folder: RecordFolder): Promise<void> {
   if ((await inspectFolder(folder)) === 'absent') {
     return;

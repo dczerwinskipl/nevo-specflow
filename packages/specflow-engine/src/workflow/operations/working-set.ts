@@ -19,9 +19,9 @@ import { executionTasks, findTask } from './loaded-execution';
  * The records one operation reads and rewrites, collected into a single {@link ExecutionChange}.
  * Every write is planned against the revision of the snapshot it was read from, and only what
  * changed is written: a Task's manifest when its resource changed, its run record when its run did.
- * A Task created here gets, in the same change, its index entry, its manifest, its initial `task.md`
- * and its run record. A broken Task (`executionTasks`) is left out of `tasks()` and refused before
- * anything is planned on it.
+ * A Task created here gets, in the same change, its index entry, its manifest and its initial
+ * `task.md`; no run record (its first start creates it). A broken Task (`executionTasks`) is left out
+ * of `tasks()` and refused before anything is planned on it.
  */
 export class ExecutionWorkingSet {
   private specificationRecord: SpecificationExecutionRecord | undefined;
@@ -52,6 +52,11 @@ export class ExecutionWorkingSet {
     return this.specificationRecord;
   }
 
+  /** The Specification run record, `undefined` while the Specification has not started. */
+  startedSpecification(): SpecificationExecutionRecord | undefined {
+    return this.specificationRecord;
+  }
+
   tasks(): ExecutionTask[] {
     return [...this.taskRecords.values()];
   }
@@ -75,9 +80,19 @@ export class ExecutionWorkingSet {
   }
 
   run(subject: WorkflowSubject): WorkflowRun {
-    return subject.kind === 'specification'
-      ? this.specification().run
-      : this.task(subject.taskId).run;
+    if (subject.kind === 'specification') {
+      return this.specification().run;
+    }
+
+    const run = this.task(subject.taskId).run;
+    if (!run) {
+      throw new WorkflowError(
+        'WORKFLOW_POSITION_INVALID',
+        `The Task "${subject.taskId}" has not started.`,
+      );
+    }
+
+    return run;
   }
 
   setRun(subject: WorkflowSubject, run: WorkflowRun): void {
@@ -122,7 +137,7 @@ export class ExecutionWorkingSet {
         documents.push({ taskId, path: TASK_MAIN_DOCUMENT.path, text: initialTaskDocument(task) });
       }
 
-      if (!isDeepStrictEqual(stored.run?.value.run, task.run)) {
+      if (task.run && !isDeepStrictEqual(stored.run?.value.run, task.run)) {
         runs.push({
           taskId,
           expected: stored.run?.revision ?? null,

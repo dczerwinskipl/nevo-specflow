@@ -190,17 +190,20 @@ export function waitDecision(
  * when the Specification is not waiting.
  *
  * It runs inside a Task's finish or a Task status change, and when the wait is entered (never
- * with an escalated Task: `advance` refuses that). A Specification that is not active on its wait
- * step (for example one returned to its breakdown) is left alone: it cannot enter the wait step
- * again until the escalation is resolved. So is one whose pinned workflow changed: the Task's
+ * with an escalated Task: `advance` refuses that). A Specification without a run (Tasks run without
+ * one) is left alone, and so is one that is not active on its wait step (for example one returned
+ * to its breakdown): it cannot enter the wait step again until the escalation is resolved. So is one
+ * whose pinned workflow changed: the Task's
  * change succeeds and the next Specification operation fails with `WORKFLOW_DEFINITION_CHANGED`.
  * While Tasks are open, see {@link waitDecision}.
  */
 export function settleWait(context: AdvanceContext): ContinuationDecision | undefined {
-  const subject: WorkflowSubject = {
-    kind: 'specification',
-    specId: context.set.specification().specId,
-  };
+  const specification = context.set.startedSpecification();
+  if (!specification) {
+    return undefined;
+  }
+
+  const subject: WorkflowSubject = { kind: 'specification', specId: specification.specId };
   const run = context.set.run(subject);
   const position = run.position;
   if (position.state !== 'active') {

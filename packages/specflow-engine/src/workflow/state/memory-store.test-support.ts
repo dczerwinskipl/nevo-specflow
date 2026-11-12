@@ -4,7 +4,8 @@ import { sha256Hex } from '../../hash';
 import { foldPathKey } from '../../specs/document-rules/document-paths';
 import { canonicalJson } from '../../specs/definitions/resolved-catalogue';
 import { serializeTaskIndex, serializeTaskManifest } from '../../tasks/resource/codec';
-import type { TaskIndex, TaskManifest } from '../../tasks/resource/model';
+import { TASK_MANIFEST_FILE, type TaskIndex, type TaskManifest } from '../../tasks/resource/model';
+
 import { WorkflowError } from '../errors';
 import { serializeSpecificationRecord, serializeTaskRunRecord } from './codec';
 import type { SpecificationExecutionRecord, TaskRunRecord } from './model';
@@ -76,6 +77,7 @@ export function createMemoryWorkflowStore(): WorkflowStore & {
 
   const snapshotOf = (specId: string, state: SpecState): ExecutionSnapshot => {
     const snapshot: ExecutionSnapshot = structuredClone({
+      specId,
       ...(state.specification ? { specification: state.specification } : {}),
       ...(state.index ? { index: state.index } : {}),
       manifests: (state.index?.value.tasks ?? []).flatMap(({ id }) => {
@@ -98,6 +100,16 @@ export function createMemoryWorkflowStore(): WorkflowStore & {
     document: (specId, taskId, path) =>
       specs.get(specId)?.documents.get(taskId)?.get(foldPathKey(path)),
     read: (specId) => settled(() => snapshotOf(specId, stateOf(specId))),
+    taskFiles: (specId, taskId) =>
+      settled(() => {
+        const state = stateOf(specId);
+
+        // Paths are kept folded (lower case), as the store compares them.
+        return [
+          ...(state.manifests.has(taskId) ? [TASK_MANIFEST_FILE] : []),
+          ...(state.documents.get(taskId)?.keys() ?? []),
+        ].sort();
+      }),
     apply: (specId, change) =>
       settled(() => {
         assertChangeIdentity(change);

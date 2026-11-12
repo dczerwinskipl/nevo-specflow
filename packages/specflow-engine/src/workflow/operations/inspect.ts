@@ -20,6 +20,8 @@ export interface ExecutionInspection {
   };
   readonly tasks: readonly {
     readonly record: ExecutionTask;
+    /** The revision of the Task's manifest, which an edit or a removal names (compare-and-set). */
+    readonly revision: string;
     readonly readiness: TaskReadiness;
     readonly handoff?: Handoff;
     /**
@@ -29,9 +31,10 @@ export interface ExecutionInspection {
     readonly definitionChanged?: true;
   }[];
   /**
-   * The broken Tasks, in id order (`executionTasks`): a run record whose Task is not registered, a
-   * run that contradicts the Task's status or whose position does not follow from its history, or a
-   * registered Task without its run record. Each cannot start, finish or change status, keeps the
+   * The broken Tasks, in id order (`executionTasks`): an index entry without its folder or manifest,
+   * a run record whose Task is not registered, or a run that contradicts the Task's status or whose
+   * position does not follow from its history (a
+   * registered Task without a run record has not started; it is in `tasks`). Each cannot start, finish or change status, keeps the
    * wait open and blocks its dependents until its files are restored; it is not in `tasks`.
    */
   readonly brokenTasks: readonly string[];
@@ -52,6 +55,9 @@ export function inspectExecution(
   return dependencies.serialize(async () => {
     const snapshot = await dependencies.store.read(specId);
     const { tasks, broken } = executionTasks(dependencies.catalogue, snapshot);
+    const revisions = new Map(
+      snapshot.manifests.map((entry) => [entry.value.id, entry.revision] as const),
+    );
     const specification = snapshot.specification?.value;
     const specificationHandoff = specification ? handoffOf(specification.run) : undefined;
     const changed = (run: WorkflowRun) =>
@@ -71,13 +77,14 @@ export function inspectExecution(
           }
         : {}),
       tasks: tasks.map((record) => {
-        const handoff = handoffOf(record.run);
+        const handoff = record.run ? handoffOf(record.run) : undefined;
 
         return {
           record,
+          revision: revisions.get(record.taskId) ?? '',
           readiness: taskReadiness(record, tasks),
           ...(handoff ? { handoff } : {}),
-          ...changed(record.run),
+          ...(record.run ? changed(record.run) : {}),
         };
       }),
       brokenTasks: broken,

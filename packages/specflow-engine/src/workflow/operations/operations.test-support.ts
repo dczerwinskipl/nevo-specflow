@@ -11,6 +11,7 @@ import { finishStep, type FinishStepInput } from './finish';
 import { inspectExecution } from './inspect';
 import type { WorkflowDependencies } from './loaded-execution';
 import { startSpecificationExecution, startTaskExecution } from './start';
+import type { TaskReferences } from './task-references';
 
 /** The execution catalogue of the shipped seed definitions. */
 export async function seedExecutionCatalogue(): Promise<ExecutionCatalogue> {
@@ -35,9 +36,39 @@ export async function seedDefinitionFiles(): Promise<Record<string, string>> {
   return files;
 }
 
+/**
+ * {@link TaskReferences} over sets a test fills: what exists in the Specification, the project
+ * documentation and the checkout. The archetype is `feature` unless a test changes it.
+ */
+export function fakeReferences(): TaskReferences & {
+  archetypeId: string;
+  readonly specificationDocuments: Set<string>;
+  readonly projectDocuments: Set<string>;
+  readonly paths: Set<string>;
+  readonly pendingDocuments: Set<string>;
+} {
+  const references = {
+    archetypeId: 'feature',
+    specificationDocuments: new Set(['overview', 'requirements']),
+    projectDocuments: new Set(['architecture.workflow.workflow-kernel']),
+    paths: new Set(['packages/specflow-engine/src', 'packages/**/*.ts']),
+    pendingDocuments: new Set<string>(),
+    archetype: () => Promise.resolve(references.archetypeId),
+    specificationDocument: (_specId: string, id: string) =>
+      Promise.resolve(references.specificationDocuments.has(id)),
+    projectDocument: (id: string) => Promise.resolve(references.projectDocuments.has(id)),
+    path: (_specId: string, path: string) => Promise.resolve(references.paths.has(path)),
+    pendingDocumentChange: (_specId: string, taskId: string) =>
+      Promise.resolve(references.pendingDocuments.has(taskId)),
+  };
+
+  return references;
+}
+
 /** Dependencies over an in-memory store with a clock that advances one second per reading. */
 export function memoryDependencies(catalogue: ExecutionCatalogue): WorkflowDependencies & {
   readonly store: ReturnType<typeof createMemoryWorkflowStore>;
+  readonly references: ReturnType<typeof fakeReferences>;
 } {
   let tick = Date.parse('2026-11-05T10:00:00.000Z');
   let queue = Promise.resolve();
@@ -45,6 +76,7 @@ export function memoryDependencies(catalogue: ExecutionCatalogue): WorkflowDepen
   return {
     store: createMemoryWorkflowStore(),
     catalogue,
+    references: fakeReferences(),
     now: () => new Date((tick += 1000)),
     serialize: <T>(operation: () => Promise<T>) => {
       const result = queue.then(operation);

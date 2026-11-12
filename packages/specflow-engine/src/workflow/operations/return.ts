@@ -5,7 +5,7 @@ import { assertFeedback } from '../input-schema';
 import type { OwnerActor, WorkflowSubject } from '../state/model';
 import { assertOwner } from './actors';
 import { advance, applyEffects, type AdvanceContext } from './advance';
-import { isoNow, loadSubject, type WorkflowDependencies } from './loaded-execution';
+import { isoNow, loadSubject, loadTask, type WorkflowDependencies } from './loaded-execution';
 import { ExecutionWorkingSet } from './working-set';
 
 export interface ReturnToStepInput {
@@ -45,14 +45,18 @@ export function returnToStep(
     assertOwner(request.actor, 'returns a run to an earlier step');
     const { subject } = request;
     const snapshot = await dependencies.store.read(subject.specId);
-    const loaded = loadSubject(dependencies.catalogue, snapshot, subject);
-    if (loaded.task && loaded.task.status !== 'ready') {
+    const held =
+      subject.kind === 'task'
+        ? loadTask(dependencies.catalogue, snapshot, subject.taskId).task
+        : undefined;
+    if (held && held.status !== 'ready') {
       throw new WorkflowError(
         'WORKFLOW_TASK_BLOCKED',
-        `The Task "${loaded.task.taskId}" is ${loaded.task.status}; only a ready Task can return.`,
+        `The Task "${held.taskId}" is ${held.status}; only a ready Task can return.`,
       );
     }
 
+    const loaded = loadSubject(dependencies.catalogue, snapshot, subject);
     assertFeedback(request.feedback);
     const context: AdvanceContext = {
       set: new ExecutionWorkingSet(snapshot, dependencies.catalogue),

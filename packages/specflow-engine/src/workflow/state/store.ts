@@ -17,6 +17,8 @@ export interface Versioned<T> {
 }
 
 export interface ExecutionSnapshot {
+  /** The Specification the snapshot is of. */
+  readonly specId: string;
   readonly specification?: Versioned<SpecificationExecutionRecord>;
   /** `tasks/index.yaml`; absent when the Specification has no index (no Task yet). */
   readonly index?: Versioned<TaskIndex>;
@@ -68,4 +70,14 @@ export interface WorkflowStore {
    * before anything is written. An empty change only finishes a pending change.
    */
   apply(specId: string, change: ExecutionChange): Promise<void>;
+  /**
+   * The files of one Task folder (its manifest included), as POSIX paths relative to the folder in
+   * name order, with a pending change laid over; stage files of an interrupted write are left out.
+   * Lists at most `TASK_FOLDER_FILES_LISTED` entries. A removal checks with it that the folder holds
+   * nothing the Task does not register, so removing the Task removes the folder.
+   */
+  taskFiles(specId: string, taskId: string): Promise<readonly string[]>;
 }
+
+/** Enough to name what is in a Task folder besides its registered documents. */
+export const TASK_FOLDER_FILES_LISTED = 200;

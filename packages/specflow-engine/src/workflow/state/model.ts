@@ -79,7 +79,9 @@ export interface TaskRunRecord {
 }
 
 /**
- * A Task as the operations see it: its manifest joined with its run record (`executionTasks`).
+ * A Task as the operations see it: its manifest joined with its run record (`executionTasks`). A
+ * Task without a run record has not started: its first start validates the live task type and
+ * workflow and creates the record pinned to that workflow (`startTaskExecution`).
  *
  * The preparation status (`status`, `TASK_STATUSES`) says whether the Task may be worked on,
  * separately from its run position:
@@ -95,7 +97,15 @@ export interface TaskRunRecord {
 export interface ExecutionTask extends Omit<TaskManifest, 'id'> {
   readonly specId: string;
   readonly taskId: string;
-  readonly run: WorkflowRun;
+  /** Absent until the first start of the Task. */
+  readonly run?: WorkflowRun;
+}
+
+const NOT_STARTED: core.RunPosition = { state: 'not-started' };
+
+/** The position of a Task's run; a Task without a run has not started. */
+export function taskPosition(task: Pick<ExecutionTask, 'run'>): core.RunPosition {
+  return task.run?.position ?? NOT_STARTED;
 }
 
 /** The manifest part of a Task, in the field order of `task.yaml`. */
@@ -118,11 +128,11 @@ export function manifestOf(task: ExecutionTask): TaskManifest {
 export function executionTaskOf(
   specId: string,
   manifest: TaskManifest,
-  run: WorkflowRun,
+  run: WorkflowRun | undefined,
 ): ExecutionTask {
   const { id, ...rest } = manifest;
 
-  return { specId, taskId: id, ...rest, run };
+  return { specId, taskId: id, ...rest, ...(run ? { run } : {}) };
 }
 
 /** A broken Task (`executionTasks`) is refused by every operation on it. */

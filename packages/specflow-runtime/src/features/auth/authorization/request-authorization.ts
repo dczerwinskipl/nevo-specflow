@@ -50,6 +50,9 @@ export type WithCapabilities<T, Targets extends AuthorizationTargets> = Contract
   TargetResources<Targets>
 >;
 
+/** The `readContext().subject` of the trusted local identity (no authentication configured). */
+export const TRUSTED_LOCAL_SUBJECT = 'trusted-local';
+
 export interface RequestAuthorization {
   /** Re-resolve trusted access for a long-lived connection instead of retaining request-time grants. */
   refresh(): RequestAuthorization;
@@ -143,7 +146,7 @@ export function createRequestAuthorization(
       requireAccess();
 
       return {
-        subject: access.mode === 'subject' ? JSON.stringify(access.subject) : 'trusted-local',
+        subject: access.mode === 'subject' ? JSON.stringify(access.subject) : TRUSTED_LOCAL_SUBJECT,
         policy: authorization,
       };
     },

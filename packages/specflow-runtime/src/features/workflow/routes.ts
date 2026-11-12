@@ -87,6 +87,10 @@ function refusing<Request, Result>(
       }
 
       // The failure statuses and body are declared by every route (`errors`).
+      if (failure.body.code === 'CONTROL_LOCK_BUSY') {
+        reply.header('Retry-After', '1');
+      }
+
       void reply.code(failure.status).send(failure.body);
 
       return reply as unknown as Result;
@@ -201,7 +205,7 @@ export const workflowEndpoint: FastifyPluginCallback<WorkflowRoutesOptions> = (
         },
       },
       refusing(async (request, reply) => {
-        const { step, attempt, result, feedback, artifacts } = request.body;
+        const { step, attempt, result, feedback, artifacts, tasks } = request.body;
         const finished = await port.finish({
           subject: subjectOf(request),
           step,
@@ -210,6 +214,7 @@ export const workflowEndpoint: FastifyPluginCallback<WorkflowRoutesOptions> = (
             ...(result !== undefined ? { result } : {}),
             ...(feedback !== undefined ? { feedback } : {}),
             ...(artifacts !== undefined ? { artifacts } : {}),
+            ...(tasks !== undefined ? { tasks } : {}),
           },
           actor: actorOf(request),
         });

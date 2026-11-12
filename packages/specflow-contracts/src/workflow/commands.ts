@@ -23,6 +23,9 @@ export const WorkflowTaskParamsSchema = Type.Object(
   { additionalProperties: false },
 );
 
+const literals = <const T extends readonly string[]>(values: T) =>
+  Type.Unsafe<T[number]>(Type.Union(values.map((value) => Type.Literal(value))));
+
 const StepId = Type.String({ minLength: 1, maxLength: 200 });
 
 /** Start (or resume) the next step of the owner. */
@@ -39,6 +42,19 @@ export const StartWorkflowRequestSchema = Type.Object(
 );
 export type StartWorkflowRequest = Static<typeof StartWorkflowRequestSchema>;
 
+/** A draft Task a step that produces Tasks proposes (`TaskProposal` of the Engine). */
+export const TaskProposalSchema = Type.Object(
+  {
+    id: TaskIdSchema,
+    title: Type.String({ minLength: 1, maxLength: 200 }),
+    summary: Type.Optional(Type.String({ maxLength: 2000 })),
+    type: Type.String({ minLength: 1, maxLength: 200 }),
+    dependsOn: Type.Optional(Type.Array(TaskIdSchema, { maxItems: 100 })),
+  },
+  { additionalProperties: false },
+);
+export type TaskProposal = Static<typeof TaskProposalSchema>;
+
 /**
  * Finish the active attempt of the owner. Repeating the same request returns the recorded result
  * with `replayed: true`; another request for that attempt is `WORKFLOW_ATTEMPT_MISMATCH`.
@@ -51,6 +67,13 @@ export const FinishWorkflowRequestSchema = Type.Object(
     result: Type.Optional(Type.String({ maxLength: 200 })),
     feedback: Type.Optional(Type.String({ maxLength: 20_000 })),
     artifacts: Type.Optional(Type.Array(Type.String({ maxLength: 1000 }), { maxItems: 100 })),
+    /**
+     * Required by, and only allowed for, a step that produces Tasks (`produces: tasks` in the
+     * projection): the complete list of the Specification's draft Tasks after the finish, possibly
+     * empty. A listed draft is revised, an unlisted one cancelled. Status decisions are not part of a
+     * finish: the Task lifecycle actions decide them.
+     */
+    tasks: Type.Optional(Type.Array(TaskProposalSchema, { maxItems: 100 })),
   },
   { additionalProperties: false },
 );
@@ -74,6 +97,34 @@ export const AbandonSpecificationRequestSchema = Type.Object(
 );
 export type AbandonSpecificationRequest = Static<typeof AbandonSpecificationRequestSchema>;
 
+const LaunchSchema = Type.Object({
+  archetype: Type.String(),
+  provider: Type.String(),
+  model: Type.String(),
+  effort: Type.Optional(Type.String()),
+  session: Type.Union([
+    Type.Object({ mode: Type.Literal('fresh') }),
+    Type.Object({ mode: Type.Literal('reuse'), sessionId: Type.String() }),
+  ]),
+});
+
+export const ATTENTION_REASONS = [
+  'owner-action',
+  'human-step',
+  'archetype-missing',
+  'provider-not-chosen',
+  'model-missing',
+  'session-unavailable',
+  'tasks-stuck',
+  'task-escalated',
+] as const;
+const LAUNCH_BLOCKERS = [
+  'archetype-missing',
+  'provider-not-chosen',
+  'model-missing',
+  'session-unavailable',
+] as const;
+
 export const WorkflowContinuationSchema = Type.Union([
   Type.Object({
     kind: Type.Literal('none'),
@@ -86,25 +137,17 @@ export const WorkflowContinuationSchema = Type.Union([
   Type.Object({
     kind: Type.Literal('continue'),
     step: StepId,
-    launch: Type.Object({
-      archetype: Type.String(),
-      provider: Type.String(),
-      model: Type.String(),
-      effort: Type.Optional(Type.String()),
-      session: Type.Union([
-        Type.Object({ mode: Type.Literal('fresh') }),
-        Type.Object({ mode: Type.Literal('reuse'), sessionId: Type.String() }),
-      ]),
-    }),
+    launch: LaunchSchema,
   }),
   Type.Object({
     kind: Type.Literal('attention'),
     step: StepId,
-    reason: Type.String(),
+    reason: literals(ATTENTION_REASONS),
     taskIds: Type.Optional(Type.Array(TaskIdSchema)),
     archetype: Type.Optional(Type.String()),
     provider: Type.Optional(Type.String()),
-    blocker: Type.Optional(Type.String()),
+    suggestion: Type.Optional(LaunchSchema),
+    blocker: Type.Optional(literals(LAUNCH_BLOCKERS)),
   }),
 ]);
 
@@ -139,6 +182,7 @@ export type ReturnWorkflowResult = Static<typeof ReturnWorkflowResultSchema>;
 export const AbandonSpecificationResultSchema = Type.Object({
   specId: SpecIdSchema,
   abandonment: Type.Object({
+    sequence: Type.Integer({ minimum: 1 }),
     at: Type.String(),
     reason: Type.String(),
     actor: WorkflowActorSchema,
@@ -152,7 +196,7 @@ export type AbandonSpecificationResult = Static<typeof AbandonSpecificationResul
 
 /**
  * Stable refusal codes. They mirror the Engine's workflow error codes; the contract test of the
- * Runtime keeps the two lists equal. `WORKFLOW_UNAVAILABLE` is the Runtime's own (no Engine).
+ * Runtime keeps the two lists equal. `WORKFLOW_UNAVAILABLE` is the Runtime's own (no Engine); the `CONTROL_LOCK_*` codes are the project lock's.
  */
 export const WORKFLOW_ERROR_CODES = [
   'WORKFLOW_DEFINITION_CHANGED',
@@ -180,6 +224,11 @@ export const WORKFLOW_ERROR_CODES = [
   'WORKFLOW_SPECIFICATION_BUSY',
   'WORKFLOW_EXIT_BLOCKED',
   'WORKFLOW_UNAVAILABLE',
+  /** The project control lock (as in Close): only `CONTROL_LOCK_BUSY` is worth a retry. */
+  'CONTROL_LOCK_BUSY',
+  'CONTROL_LOCK_CORRUPT',
+  'CONTROL_LOCK_OWNERSHIP_LOST',
+  'CONTROL_LOCK_INVALID_HOME',
 ] as const;
 export type WorkflowErrorCode = (typeof WORKFLOW_ERROR_CODES)[number];
 

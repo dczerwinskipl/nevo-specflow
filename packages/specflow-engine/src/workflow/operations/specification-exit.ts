@@ -9,8 +9,8 @@ import {
 
 /**
  * The workflow state of a Specification for Close and Abandon (`../close/blockers`): its execution
- * records joined as every operation joins them, and what holds it. Reads only, takes no lock: Close
- * calls it inside the project control lock, an action projection outside it. A Specification run
+ * records joined as every operation joins them, and what holds it. Reads only, takes no lock itself: Close
+ * and the action projection call it inside the project control lock. A Specification run
  * whose position does not follow from its history fails with `WORKFLOW_STATE_CORRUPT`.
  */
 export async function readSpecificationExitState(

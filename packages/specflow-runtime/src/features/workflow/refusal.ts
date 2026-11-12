@@ -5,6 +5,7 @@ import {
   type WorkflowError as WorkflowErrorContract,
   type WorkflowErrorCode,
 } from '@nevo/specflow-contracts/workflow';
+import { TRUSTED_LOCAL_SUBJECT } from '../auth/authorization/request-authorization';
 import { ProjectControlLockError, type OwnerActor } from '@nevo/specflow-engine';
 
 export type WorkflowFailureStatus = 404 | 409 | 422 | 503;
@@ -25,7 +26,14 @@ const INVALID = new Set<WorkflowErrorCode>([
   'WORKFLOW_TASK_TYPE_IMMUTABLE',
   'WORKFLOW_TASK_CONTEXT_UNRESOLVED',
 ]);
-const UNAVAILABLE = new Set<WorkflowErrorCode>(['WORKFLOW_STATE_CORRUPT', 'WORKFLOW_UNAVAILABLE']);
+const UNAVAILABLE = new Set<WorkflowErrorCode>([
+  'WORKFLOW_STATE_CORRUPT',
+  'WORKFLOW_UNAVAILABLE',
+  'CONTROL_LOCK_BUSY',
+  'CONTROL_LOCK_CORRUPT',
+  'CONTROL_LOCK_OWNERSHIP_LOST',
+  'CONTROL_LOCK_INVALID_HOME',
+]);
 
 /** The Runtime has no workflow backend; recognised as a refusal by name and code. */
 export class WorkflowUnavailableError extends Error {
@@ -63,7 +71,7 @@ function isWorkflowErrorCode(value: unknown): value is WorkflowErrorCode {
  */
 export function workflowFailure(error: unknown): WorkflowFailure | undefined {
   if (error instanceof ProjectControlLockError) {
-    return failure('WORKFLOW_UNAVAILABLE', 'The project is busy; retry shortly.');
+    return failure(error.code, error.message);
   }
 
   if (!(error instanceof Error) || error.name !== 'WorkflowError') {
@@ -102,7 +110,7 @@ function failure(
  * record is stored as its digest.
  */
 export function ownerActorOf(subject: string): OwnerActor {
-  if (subject === 'trusted-local') {
+  if (subject === TRUSTED_LOCAL_SUBJECT) {
     return { class: 'human', details: { actorId: 'runtime:trusted-local', trust: 'local' } };
   }
 

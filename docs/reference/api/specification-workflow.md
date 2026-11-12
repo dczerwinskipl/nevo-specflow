@@ -80,6 +80,10 @@ Close still checks Git and the workspace itself.
 | return  | `{step, reason?}` (`reason` is carried as the step's feedback) | `{subject, position, continuation}`                                      |
 | abandon | `{reason}`                                                     | `{specId, abandonment, cancelledTasks, abandonedTaskRuns}`               |
 
+- A step that produces Tasks (`produces: tasks` in the projection, for example Breakdown) is finished with `tasks`:
+  the complete list of draft Tasks `{id, title, summary?, type, dependsOn?}`, possibly empty; a listed draft is
+  revised, an unlisted one cancelled, and any other step refuses `tasks` (`WORKFLOW_INPUT_INVALID`). Task status
+  decisions are not part of a finish.
 - A Task's first start sends the `expectedWorkflowRevision` the projection showed
   (`actions.start.expectedWorkflowRevision`); another live revision is refused with
   `WORKFLOW_DEFINITION_CHANGED`.
@@ -104,7 +108,7 @@ Specification id for Specification-wide holds), so a client can link them.
 | 404    | `WORKFLOW_SUBJECT_NOT_FOUND`                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | 409    | `WORKFLOW_DEFINITION_CHANGED`, `WORKFLOW_ATTEMPT_MISMATCH`, `WORKFLOW_POSITION_INVALID`, `WORKFLOW_EXECUTOR_NOT_ALLOWED`, `WORKFLOW_TASK_BLOCKED`, `WORKFLOW_DEPENDENCY_UNSATISFIED`, `WORKFLOW_SPECIFICATION_NOT_STARTED`, `WORKFLOW_SPECIFICATION_ENDED`, `WORKFLOW_SPECIFICATION_BUSY`, `WORKFLOW_EXIT_BLOCKED`, `WORKFLOW_TASK_BUSY`, `WORKFLOW_STATE_CONFLICT`, `WORKFLOW_TASK_REVISION_CONFLICT`, `WORKFLOW_TASK_EXISTS`, `WORKFLOW_TASK_NOT_REMOVABLE` |
 | 422    | `WORKFLOW_INPUT_INVALID`, `WORKFLOW_RETURN_NOT_ALLOWED`, `WORKFLOW_NOT_CONFIGURED`, `WORKFLOW_DEFINITION_MISSING`, `WORKFLOW_TASK_TYPE_NOT_ALLOWED`, `WORKFLOW_TASK_TYPE_IMMUTABLE`, `WORKFLOW_TASK_CONTEXT_UNRESOLVED`                                                                                                                                                                                                                                       |
-| 503    | `WORKFLOW_STATE_CORRUPT`, `WORKFLOW_UNAVAILABLE` (the project is busy)                                                                                                                                                                                                                                                                                                                                                                                        |
+| 503    | `WORKFLOW_STATE_CORRUPT`, `WORKFLOW_UNAVAILABLE`, and the project lock's `CONTROL_LOCK_BUSY` (with `Retry-After`; the only retryable one), `CONTROL_LOCK_CORRUPT`, `CONTROL_LOCK_OWNERSHIP_LOST`, `CONTROL_LOCK_INVALID_HOME`                                                                                                                                                                                                                                 |
 
 `401`, `403` and `400` (request validation) are the shared Runtime answers. A Specification Close that
 the workflow refuses is `409 CLOSE_BLOCKED` with the same `blockers` (see

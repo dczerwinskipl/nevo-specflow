@@ -2,6 +2,7 @@ import { createAuthorization } from '@nevo/authorization';
 import { SpecCapabilities } from '@nevo/specflow-contracts/specs';
 import { WORKFLOW_ERROR_CODES } from '@nevo/specflow-contracts/workflow';
 import {
+  ProjectControlLockError,
   SpecificationExitBlockedError,
   WORKFLOW_ERROR_CODES as ENGINE_ERROR_CODES,
   WorkflowError,
@@ -10,6 +11,10 @@ import {
 } from '@nevo/specflow-engine';
 import { describe, expect, it } from 'vitest';
 
+import Fastify from 'fastify';
+
+import { RUNTIME_FASTIFY_OPTIONS } from '../../server/app';
+import { registerSharedContracts } from '../../server/shared-contracts';
 import { routeTestApp } from '../../../test/support/route-app';
 import { createRequestAuthorization } from '../auth/authorization/request-authorization';
 import { registerRuntimeErrorHandler } from '../../server/error-handler';
@@ -101,7 +106,8 @@ function fakePort(overrides: Partial<WorkflowPort> = {}): { port: WorkflowPort; 
 }
 
 function appWith(port: WorkflowPort, user: { kind: 'user'; id: string } = alice) {
-  const app = routeTestApp();
+  const app = Fastify({ ajv: RUNTIME_FASTIFY_OPTIONS.ajv });
+  registerSharedContracts(app);
   registerRuntimeErrorHandler(app);
   app.decorateRequest('authz', {
     getter: () => createRequestAuthorization({ mode: 'subject', subject: user }, policy),
@@ -203,15 +209,8 @@ describe('workflow action routes', () => {
       },
     });
 
-    // The Runtime refuses the unknown field (400); a bare instance drops it. Either way the actor is the caller's.
-    expect([200, 400]).toContain(response.statusCode);
-    if (response.statusCode === 200) {
-      expect(calls.last).toMatchObject({
-        actor: { details: { actorId: JSON.stringify(alice), trust: 'authenticated' } },
-      });
-    }
-
-    expect(calls.last).not.toMatchObject({ actor: { details: { actorId: 'mallory' } } });
+    expect(response.statusCode).toBe(400);
+    expect(calls.names).toEqual([]);
     await app.close();
   });
 
@@ -238,14 +237,26 @@ describe('workflow action routes', () => {
     await app.inject({
       method: 'POST',
       url: `/api/specs/${SPEC}/tasks/t1/workflow/finish`,
-      payload: { step: 'draft', attempt: 2, result: 'done', feedback: 'ok', artifacts: ['a.md'] },
+      payload: {
+        step: 'breakdown',
+        attempt: 2,
+        result: 'done',
+        feedback: 'ok',
+        artifacts: ['a.md'],
+        tasks: [{ id: 'api', title: 'API', type: 'implementation', dependsOn: [] }],
+      },
     });
 
     expect(calls.last).toMatchObject({
       subject: { kind: 'task', specId: SPEC, taskId: 't1' },
-      step: 'draft',
+      step: 'breakdown',
       attempt: 2,
-      input: { result: 'done', feedback: 'ok', artifacts: ['a.md'] },
+      input: {
+        result: 'done',
+        feedback: 'ok',
+        artifacts: ['a.md'],
+        tasks: [{ id: 'api', title: 'API', type: 'implementation', dependsOn: [] }],
+      },
     });
     await app.close();
   });
@@ -348,9 +359,22 @@ describe('workflow refusals', () => {
     expect(status('WORKFLOW_STATE_CORRUPT')).toBe(503);
   });
 
+  it('keeps the code of the project lock', () => {
+    const failure = workflowFailure(new ProjectControlLockError('CONTROL_LOCK_CORRUPT', 'Broken.'));
+
+    expect(failure).toMatchObject({ status: 503, body: { code: 'CONTROL_LOCK_CORRUPT' } });
+  });
+
   it('knows exactly the codes of the Engine, plus its own', () => {
     expect([...WORKFLOW_ERROR_CODES].sort()).toEqual(
-      [...ENGINE_ERROR_CODES, 'WORKFLOW_UNAVAILABLE'].sort(),
+      [
+        ...ENGINE_ERROR_CODES,
+        'WORKFLOW_UNAVAILABLE',
+        'CONTROL_LOCK_BUSY',
+        'CONTROL_LOCK_CORRUPT',
+        'CONTROL_LOCK_OWNERSHIP_LOST',
+        'CONTROL_LOCK_INVALID_HOME',
+      ].sort(),
     );
   });
 });

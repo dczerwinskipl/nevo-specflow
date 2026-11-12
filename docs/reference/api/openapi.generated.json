@@ -6778,6 +6778,30 @@
                 "enum": [
                   "WORKFLOW_UNAVAILABLE"
                 ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "CONTROL_LOCK_BUSY"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "CONTROL_LOCK_CORRUPT"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "CONTROL_LOCK_OWNERSHIP_LOST"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "CONTROL_LOCK_INVALID_HOME"
+                ]
               }
             ]
           },
@@ -6931,6 +6955,30 @@
                 "type": "string",
                 "enum": [
                   "WORKFLOW_UNAVAILABLE"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "CONTROL_LOCK_BUSY"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "CONTROL_LOCK_CORRUPT"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "CONTROL_LOCK_OWNERSHIP_LOST"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "CONTROL_LOCK_INVALID_HOME"
                 ]
               }
             ]
@@ -31484,6 +31532,45 @@
                       "maxLength": 1000
                     },
                     "maxItems": 100
+                  },
+                  "tasks": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "id",
+                        "title",
+                        "type"
+                      ],
+                      "properties": {
+                        "id": {
+                          "$ref": "#/components/schemas/TaskId"
+                        },
+                        "title": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "summary": {
+                          "type": "string",
+                          "maxLength": 2000
+                        },
+                        "type": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "dependsOn": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/TaskId"
+                          },
+                          "maxItems": 100
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "maxItems": 100
                   }
                 },
                 "additionalProperties": false
@@ -31809,7 +31896,56 @@
                               "maxLength": 200
                             },
                             "reason": {
-                              "type": "string"
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "owner-action"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "human-step"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "archetype-missing"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "provider-not-chosen"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "model-missing"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "session-unavailable"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "tasks-stuck"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "task-escalated"
+                                  ]
+                                }
+                              ]
                             },
                             "taskIds": {
                               "type": "array",
@@ -31823,8 +31959,92 @@
                             "provider": {
                               "type": "string"
                             },
+                            "suggestion": {
+                              "type": "object",
+                              "required": [
+                                "archetype",
+                                "provider",
+                                "model",
+                                "session"
+                              ],
+                              "properties": {
+                                "archetype": {
+                                  "type": "string"
+                                },
+                                "provider": {
+                                  "type": "string"
+                                },
+                                "model": {
+                                  "type": "string"
+                                },
+                                "effort": {
+                                  "type": "string"
+                                },
+                                "session": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "required": [
+                                        "mode"
+                                      ],
+                                      "properties": {
+                                        "mode": {
+                                          "type": "string",
+                                          "enum": [
+                                            "fresh"
+                                          ]
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "type": "object",
+                                      "required": [
+                                        "mode",
+                                        "sessionId"
+                                      ],
+                                      "properties": {
+                                        "mode": {
+                                          "type": "string",
+                                          "enum": [
+                                            "reuse"
+                                          ]
+                                        },
+                                        "sessionId": {
+                                          "type": "string"
+                                        }
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            },
                             "blocker": {
-                              "type": "string"
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "archetype-missing"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "provider-not-chosen"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "model-missing"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "session-unavailable"
+                                  ]
+                                }
+                              ]
                             }
                           }
                         }
@@ -31975,7 +32195,56 @@
                               "maxLength": 200
                             },
                             "reason": {
-                              "type": "string"
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "owner-action"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "human-step"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "archetype-missing"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "provider-not-chosen"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "model-missing"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "session-unavailable"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "tasks-stuck"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "task-escalated"
+                                  ]
+                                }
+                              ]
                             },
                             "taskIds": {
                               "type": "array",
@@ -31989,8 +32258,92 @@
                             "provider": {
                               "type": "string"
                             },
+                            "suggestion": {
+                              "type": "object",
+                              "required": [
+                                "archetype",
+                                "provider",
+                                "model",
+                                "session"
+                              ],
+                              "properties": {
+                                "archetype": {
+                                  "type": "string"
+                                },
+                                "provider": {
+                                  "type": "string"
+                                },
+                                "model": {
+                                  "type": "string"
+                                },
+                                "effort": {
+                                  "type": "string"
+                                },
+                                "session": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "required": [
+                                        "mode"
+                                      ],
+                                      "properties": {
+                                        "mode": {
+                                          "type": "string",
+                                          "enum": [
+                                            "fresh"
+                                          ]
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "type": "object",
+                                      "required": [
+                                        "mode",
+                                        "sessionId"
+                                      ],
+                                      "properties": {
+                                        "mode": {
+                                          "type": "string",
+                                          "enum": [
+                                            "reuse"
+                                          ]
+                                        },
+                                        "sessionId": {
+                                          "type": "string"
+                                        }
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            },
                             "blocker": {
-                              "type": "string"
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "archetype-missing"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "provider-not-chosen"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "model-missing"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "session-unavailable"
+                                  ]
+                                }
+                              ]
                             }
                           }
                         }
@@ -32461,7 +32814,56 @@
                               "maxLength": 200
                             },
                             "reason": {
-                              "type": "string"
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "owner-action"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "human-step"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "archetype-missing"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "provider-not-chosen"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "model-missing"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "session-unavailable"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "tasks-stuck"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "task-escalated"
+                                  ]
+                                }
+                              ]
                             },
                             "taskIds": {
                               "type": "array",
@@ -32475,8 +32877,92 @@
                             "provider": {
                               "type": "string"
                             },
+                            "suggestion": {
+                              "type": "object",
+                              "required": [
+                                "archetype",
+                                "provider",
+                                "model",
+                                "session"
+                              ],
+                              "properties": {
+                                "archetype": {
+                                  "type": "string"
+                                },
+                                "provider": {
+                                  "type": "string"
+                                },
+                                "model": {
+                                  "type": "string"
+                                },
+                                "effort": {
+                                  "type": "string"
+                                },
+                                "session": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "required": [
+                                        "mode"
+                                      ],
+                                      "properties": {
+                                        "mode": {
+                                          "type": "string",
+                                          "enum": [
+                                            "fresh"
+                                          ]
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "type": "object",
+                                      "required": [
+                                        "mode",
+                                        "sessionId"
+                                      ],
+                                      "properties": {
+                                        "mode": {
+                                          "type": "string",
+                                          "enum": [
+                                            "reuse"
+                                          ]
+                                        },
+                                        "sessionId": {
+                                          "type": "string"
+                                        }
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            },
                             "blocker": {
-                              "type": "string"
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "archetype-missing"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "provider-not-chosen"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "model-missing"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "session-unavailable"
+                                  ]
+                                }
+                              ]
                             }
                           }
                         }
@@ -33286,12 +33772,17 @@
                     "abandonment": {
                       "type": "object",
                       "required": [
+                        "sequence",
                         "at",
                         "reason",
                         "actor",
                         "from"
                       ],
                       "properties": {
+                        "sequence": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
                         "at": {
                           "type": "string"
                         },
@@ -33786,6 +34277,45 @@
                       "maxLength": 1000
                     },
                     "maxItems": 100
+                  },
+                  "tasks": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "id",
+                        "title",
+                        "type"
+                      ],
+                      "properties": {
+                        "id": {
+                          "$ref": "#/components/schemas/TaskId"
+                        },
+                        "title": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "summary": {
+                          "type": "string",
+                          "maxLength": 2000
+                        },
+                        "type": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "dependsOn": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/TaskId"
+                          },
+                          "maxItems": 100
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "maxItems": 100
                   }
                 },
                 "additionalProperties": false
@@ -34103,7 +34633,56 @@
                               "maxLength": 200
                             },
                             "reason": {
-                              "type": "string"
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "owner-action"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "human-step"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "archetype-missing"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "provider-not-chosen"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "model-missing"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "session-unavailable"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "tasks-stuck"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "task-escalated"
+                                  ]
+                                }
+                              ]
                             },
                             "taskIds": {
                               "type": "array",
@@ -34117,8 +34696,92 @@
                             "provider": {
                               "type": "string"
                             },
+                            "suggestion": {
+                              "type": "object",
+                              "required": [
+                                "archetype",
+                                "provider",
+                                "model",
+                                "session"
+                              ],
+                              "properties": {
+                                "archetype": {
+                                  "type": "string"
+                                },
+                                "provider": {
+                                  "type": "string"
+                                },
+                                "model": {
+                                  "type": "string"
+                                },
+                                "effort": {
+                                  "type": "string"
+                                },
+                                "session": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "required": [
+                                        "mode"
+                                      ],
+                                      "properties": {
+                                        "mode": {
+                                          "type": "string",
+                                          "enum": [
+                                            "fresh"
+                                          ]
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "type": "object",
+                                      "required": [
+                                        "mode",
+                                        "sessionId"
+                                      ],
+                                      "properties": {
+                                        "mode": {
+                                          "type": "string",
+                                          "enum": [
+                                            "reuse"
+                                          ]
+                                        },
+                                        "sessionId": {
+                                          "type": "string"
+                                        }
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            },
                             "blocker": {
-                              "type": "string"
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "archetype-missing"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "provider-not-chosen"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "model-missing"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "session-unavailable"
+                                  ]
+                                }
+                              ]
                             }
                           }
                         }
@@ -34269,7 +34932,56 @@
                               "maxLength": 200
                             },
                             "reason": {
-                              "type": "string"
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "owner-action"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "human-step"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "archetype-missing"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "provider-not-chosen"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "model-missing"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "session-unavailable"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "tasks-stuck"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "task-escalated"
+                                  ]
+                                }
+                              ]
                             },
                             "taskIds": {
                               "type": "array",
@@ -34283,8 +34995,92 @@
                             "provider": {
                               "type": "string"
                             },
+                            "suggestion": {
+                              "type": "object",
+                              "required": [
+                                "archetype",
+                                "provider",
+                                "model",
+                                "session"
+                              ],
+                              "properties": {
+                                "archetype": {
+                                  "type": "string"
+                                },
+                                "provider": {
+                                  "type": "string"
+                                },
+                                "model": {
+                                  "type": "string"
+                                },
+                                "effort": {
+                                  "type": "string"
+                                },
+                                "session": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "required": [
+                                        "mode"
+                                      ],
+                                      "properties": {
+                                        "mode": {
+                                          "type": "string",
+                                          "enum": [
+                                            "fresh"
+                                          ]
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "type": "object",
+                                      "required": [
+                                        "mode",
+                                        "sessionId"
+                                      ],
+                                      "properties": {
+                                        "mode": {
+                                          "type": "string",
+                                          "enum": [
+                                            "reuse"
+                                          ]
+                                        },
+                                        "sessionId": {
+                                          "type": "string"
+                                        }
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            },
                             "blocker": {
-                              "type": "string"
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "archetype-missing"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "provider-not-chosen"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "model-missing"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "session-unavailable"
+                                  ]
+                                }
+                              ]
                             }
                           }
                         }
@@ -34747,7 +35543,56 @@
                               "maxLength": 200
                             },
                             "reason": {
-                              "type": "string"
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "owner-action"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "human-step"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "archetype-missing"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "provider-not-chosen"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "model-missing"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "session-unavailable"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "tasks-stuck"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "task-escalated"
+                                  ]
+                                }
+                              ]
                             },
                             "taskIds": {
                               "type": "array",
@@ -34761,8 +35606,92 @@
                             "provider": {
                               "type": "string"
                             },
+                            "suggestion": {
+                              "type": "object",
+                              "required": [
+                                "archetype",
+                                "provider",
+                                "model",
+                                "session"
+                              ],
+                              "properties": {
+                                "archetype": {
+                                  "type": "string"
+                                },
+                                "provider": {
+                                  "type": "string"
+                                },
+                                "model": {
+                                  "type": "string"
+                                },
+                                "effort": {
+                                  "type": "string"
+                                },
+                                "session": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "required": [
+                                        "mode"
+                                      ],
+                                      "properties": {
+                                        "mode": {
+                                          "type": "string",
+                                          "enum": [
+                                            "fresh"
+                                          ]
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "type": "object",
+                                      "required": [
+                                        "mode",
+                                        "sessionId"
+                                      ],
+                                      "properties": {
+                                        "mode": {
+                                          "type": "string",
+                                          "enum": [
+                                            "reuse"
+                                          ]
+                                        },
+                                        "sessionId": {
+                                          "type": "string"
+                                        }
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            },
                             "blocker": {
-                              "type": "string"
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "archetype-missing"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "provider-not-chosen"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "model-missing"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "session-unavailable"
+                                  ]
+                                }
+                              ]
                             }
                           }
                         }

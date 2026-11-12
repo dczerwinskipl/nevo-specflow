@@ -8,9 +8,10 @@ export type Mutable<T> = T extends (...args: never[]) => unknown
       : T;
 
 /**
- * An Engine result as the contract type. Only the `readonly` markers differ, so the response schema
- * still checks the shape at compile time: a field the contract does not describe, or of another
- * type, is a type error here.
+ * An Engine result as the contract type: only the `readonly` markers are removed, nothing is converted.
+ * The response schema checks the shape at compile time in one direction (the reply type); the
+ * contract test (`contract-types.test.ts`) checks both directions, so a field either side adds or
+ * changes fails there.
  */
 export function toWire<T>(value: T): Mutable<T> {
   return value as Mutable<T>;

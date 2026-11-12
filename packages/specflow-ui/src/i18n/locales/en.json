@@ -1953,5 +1953,21 @@
   "sessionNaming": {
     "pending": "Naming…",
     "provisionalTitle": "New session"
+  },
+  "workspacePicker": {
+    "label": "Workspace",
+    "change": "Change workspace",
+    "list": "Workspaces",
+    "projectFolder": "Project folder",
+    "worktree": "Worktree",
+    "sessionWorkspace": "this Session's workspace",
+    "dirty": "Uncommitted changes are included",
+    "selected": "Selected",
+    "unavailable": {
+      "checkout-unavailable": "Folder unavailable",
+      "checkout-mismatch": "Folder is no longer this workspace",
+      "git-unavailable": "Git unavailable",
+      "git-membership-mismatch": "No longer a Git worktree of this project"
+    }
   }
 }

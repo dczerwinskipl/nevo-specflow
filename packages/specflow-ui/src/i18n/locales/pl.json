@@ -1953,5 +1953,21 @@
   "sessionNaming": {
     "pending": "Nadawanie nazwy…",
     "provisionalTitle": "Nowa sesja"
+  },
+  "workspacePicker": {
+    "label": "Obszar roboczy",
+    "change": "Zmień obszar roboczy",
+    "list": "Obszary robocze",
+    "projectFolder": "Katalog projektu",
+    "worktree": "Worktree",
+    "sessionWorkspace": "obszar roboczy tej sesji",
+    "dirty": "Uwzględnia niezatwierdzone zmiany",
+    "selected": "Wybrany",
+    "unavailable": {
+      "checkout-unavailable": "Katalog niedostępny",
+      "checkout-mismatch": "Katalog nie jest już tym obszarem roboczym",
+      "git-unavailable": "Git niedostępny",
+      "git-membership-mismatch": "To już nie jest worktree Git tego projektu"
+    }
   }
 }

@@ -70,6 +70,11 @@ export interface ContextEntry {
   /** The Task's own task.md: always first, cannot be removed or made optional. */
   readonly locked?: boolean;
   readonly problem?: 'missing' | 'superseded';
+  /**
+   * A process artifact: a document or path produced during the process. Missing is "Awaited"
+   * (neutral, not a problem on Approve); a required one is still needed when the step starts.
+   */
+  readonly artifact?: boolean;
   readonly replacement?: string;
 }
 
@@ -159,6 +164,15 @@ export const draftContext: readonly ContextEntry[] = [
     required: true,
     detail: 'Matches 14 files',
     note: 'Where the previous route is restored',
+  },
+  {
+    key: 'findings',
+    kind: 'specification-document',
+    name: 'Refresh strategy findings',
+    ref: 'notes/refresh-findings.md',
+    required: true,
+    artifact: true,
+    problem: 'missing',
   },
   {
     key: 'old-flow',
@@ -316,6 +330,15 @@ export function TaskDocumentsSection({
 /* ------------------------------------------------------------------------------------------ */
 
 function supportingFor(entry: ContextEntry): SemanticSupporting | undefined {
+  if (entry.problem === 'missing' && entry.artifact) {
+    return {
+      text: `Awaited: ${entry.ref} is created during the process.${
+        entry.required ? ' Needed when the step starts.' : ''
+      }`,
+      icon: 'clock',
+    };
+  }
+
   if (entry.problem === 'missing') {
     return {
       text: `Not found: ${entry.ref} was moved or deleted. Required, so the next step cannot start until you replace or remove it.`,
@@ -408,7 +431,9 @@ export function TaskContextSection({
   rowMenuFor?: string;
   collapsible?: boolean;
 }) {
-  const blocking = entries.filter((entry) => entry.problem === 'missing' && entry.required);
+  const blocking = entries.filter(
+    (entry) => entry.problem === 'missing' && entry.required && !entry.artifact,
+  );
   // Collapsed on Narrow unless it holds a blocker.
   const expanded = blocking.length > 0;
 
@@ -450,10 +475,18 @@ export function TaskContextSection({
               // Opens the referenced target (document preview, matched files, or the entry itself).
               onPrimaryClick={noop}
               factsLayout="inline"
-              compactFacts={[
-                kindLabel[entry.kind],
-                entry.locked ? 'Always first' : entry.required ? 'Required' : 'Optional',
-              ]}
+              compactFacts={
+                entry.artifact
+                  ? [
+                      kindLabel[entry.kind],
+                      entry.required ? 'Required' : 'Optional',
+                      'Process artifact',
+                    ]
+                  : [
+                      kindLabel[entry.kind],
+                      entry.locked ? 'Always first' : entry.required ? 'Required' : 'Optional',
+                    ]
+              }
               supporting={supportingFor(entry)}
               leading={
                 <span className="flex items-center justify-center text-content-muted">
@@ -516,7 +549,24 @@ function NoteField() {
 
 export type AddContextKind = 'specification-document' | 'repository-document' | 'path';
 
-export function AddContextDialog({ kind }: { kind: AddContextKind }) {
+/** The process-artifact option shared by the add dialogs (documents and paths). */
+function ArtifactOption({ checked }: { checked: boolean }) {
+  return (
+    <CheckboxField
+      label="It's a process artifact (created later)"
+      description="It may not exist yet. Until then it shows as awaited, without a warning; if it is required, it must exist when the step starts."
+      defaultChecked={checked}
+    />
+  );
+}
+
+export function AddContextDialog({
+  kind,
+  artifact = false,
+}: {
+  kind: AddContextKind;
+  artifact?: boolean;
+}) {
   const title =
     kind === 'specification-document'
       ? 'Add specification documents'
@@ -526,7 +576,14 @@ export function AddContextDialog({ kind }: { kind: AddContextKind }) {
   let body: ReactNode;
   switch (kind) {
     case 'specification-document':
-      body = (
+      body = artifact ? (
+        // An artifact does not exist yet: name where it will be instead of picking it.
+        <Field>
+          <Field.Label>Document path in Single sign-on</Field.Label>
+          <TextInput className="font-mono" defaultValue="notes/refresh-findings.md" />
+          <Field.Description>Not registered yet; shown as awaited until it is.</Field.Description>
+        </Field>
+      ) : (
         <fieldset className="grid gap-3">
           <legend className="mb-3 text-label-sm text-content-primary">
             Documents of Single sign-on
@@ -601,6 +658,8 @@ export function AddContextDialog({ kind }: { kind: AddContextKind }) {
           </DialogDescription>
         </DialogHeader>
         <DialogBody className="grid gap-6">
+          {/* First: it decides whether the item is picked (exists) or named (created later). */}
+          <ArtifactOption checked={artifact} />
           {body}
           <RequiredChoice />
           <NoteField />

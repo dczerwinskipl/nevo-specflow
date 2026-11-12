@@ -6,8 +6,8 @@ import {
   type WorkflowDefinition,
   type WorkflowStep,
   type WorkflowTransition,
-} from './definition';
-import { WorkflowError } from './errors';
+} from '../definitions/definition';
+import { WorkflowError } from '../errors';
 import {
   historyOf,
   isReturnRecord,

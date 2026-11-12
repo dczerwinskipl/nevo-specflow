@@ -403,33 +403,30 @@ for (const component of components) {
   }
 }
 
-// The neutral workflow core is self-contained: it becomes its own package, so a module below
-// `workflow/core/` (tests included) imports only `node:` builtins and other modules of the core
-// (tests may also import `vitest`), never a package, a SpecFlow module or another workflow folder.
-const SELF_CONTAINED = 'workflow/core/';
-const coreFiles = (directory) =>
-  readdirSync(directory).flatMap((entry) => {
-    const full = path.join(directory, entry);
-
-    return statSync(full).isDirectory() ? coreFiles(full) : /\.ts$/u.test(entry) ? [full] : [];
-  });
-for (const file of coreFiles(path.join(src, ...SELF_CONTAINED.split('/').filter(Boolean)))) {
+// `@nevo/workflow` is its own package (its import boundaries are lint rules, `workflowBoundaries`):
+// its modules must stay acyclic so the definitions/ and execution/ folders keep one direction.
+const kernelSrc = path.join(root, 'packages', 'workflow', 'src');
+const kernelFiles = sourceFiles(kernelSrc);
+const kernelGraph = new Map(kernelFiles.map((file) => [file, []]));
+for (const file of kernelFiles) {
   const info = ts.preProcessFile(readFileSync(file, 'utf8'), true, false);
   for (const { fileName } of info.importedFiles) {
-    const inside = fileName.startsWith('.')
-      ? relative(path.resolve(path.dirname(file), fileName)).startsWith(SELF_CONTAINED)
-      : fileName.startsWith('node:') || (/\.test\.ts$/u.test(file) && fileName === 'vitest');
-    if (!inside) {
-      failed = true;
-      console.error(
-        'Outside import: ' +
-          relative(file) +
-          ' must not import ' +
-          fileName +
-          ' (the workflow core is self-contained).',
-      );
+    if (!fileName.startsWith('.')) {
+      continue;
+    }
+
+    const base = path.resolve(path.dirname(file), fileName);
+    const target = [base + '.ts', path.join(base, 'index.ts')].find((c) => kernelGraph.has(c));
+    if (target && target !== file) {
+      kernelGraph.get(file).push(target);
     }
   }
+}
+
+for (const members of stronglyConnected(kernelGraph)) {
+  failed = true;
+  const names = members.map((member) => path.relative(kernelSrc, member)).sort();
+  console.error('Import cycle in @nevo/workflow:\n  ' + names.join('\n  '));
 }
 
 // Folder-level gate for the workflow capability: its subfolders (`workflow/state`, `workflow/tasks`,

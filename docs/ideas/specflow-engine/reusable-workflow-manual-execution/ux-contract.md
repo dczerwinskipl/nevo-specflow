@@ -144,8 +144,19 @@ cancelled), **Documents**, **Context**, **Depends on**. Task history is the Seco
 Editing a Task is more than `task.md`: its other registered documents, the context a step reads
 (F20 entry kinds) and its dependencies.
 
+- **Row and header actions (decided):** a row click opens the row's object (a document as a
+  Secondary tab, a context reference its preview or target, a dependency that Task); the row `⋯`
+  menu holds everything else (Rename, Remove, Required / Optional, Move up / down, Edit note). No
+  per-row Edit buttons. A section's add action is an icon-only **+** in its header, following the
+  WorkspaceHeader icon action (ghost `sm` `IconButton`, `aria-label` and tooltip with the same
+  label: "New document", "Add dependency"); when the section offers several kinds (Context) the
+  **+** opens a menu and has `aria-label` "Add context" but no tooltip (a tooltip trigger nested
+  around a menu trigger swallows taps on touch). An empty section shows one labelled button as its
+  call to action ("Add dependency"); once rows exist only **+** remains. Primary and consequential
+  actions keep text labels (Approve, Start, Finish step, Return to earlier step, Abandon
+  specification, Close specification).
 - **Placement (decided):** structured facts are edited where they are read, in the Task page
-  sections (header **Add** + row `⋯` menu, no separate edit mode); documents open in the
+  sections (no separate edit mode); documents open in the
   **Secondary** editor (variant A, unchanged), several as tabs on the Documents tab rail. Checked
   at real widths: at 1440 the Task page (about 590 px) and the editor (about 580 px) sit side by side
   and context rows stay one line of facts; at 900 both panes keep working with stacked facts; at 390
@@ -154,13 +165,13 @@ Editing a Task is more than `task.md`: its other registered documents, the conte
   580 px pane is too narrow for the context list) and a separate edit page (a second surface for the
   same object).
 - **Documents** section: `task.md` (Task content) first, then other registered Task documents;
-  **New document**; each row **Edit** opens it in the Secondary.
+  **+** New document; a row click opens it in the Secondary; `⋯` Rename / Delete document (none for `task.md`).
 - **Context** section: the effective list in declared order, with a one-line explanation ("What
   the person or agent doing a step reads, in this order. task.md always comes first."). Row: kind
   icon, name, facts `kind · Required|Optional` (or `Always first` for `task.md`), supporting
   `ref · detail · note`. Kinds: Task document, Specification document, Project document
   (repository document), Code path (file or glob, with the current match count), Instructions,
-  Where to change (path hint: allowed / not allowed). **Add** menu per kind opens a dialog (pick
+  Where to change (path hint: allowed / not allowed). The **+** menu offers one dialog per kind (pick
   Specification documents with already-added and missing ones disabled; search project
   documentation; type a path and see its match count), each with **When the step starts:
   Required / Optional** and an optional "why" note; entries are appended at the end. Row menu:
@@ -172,10 +183,9 @@ Editing a Task is more than `task.md`: its other registered documents, the conte
   so the next step cannot start until you replace or remove it") plus one danger line above the
   list; a superseded or missing optional entry is an attention row ("… Optional, so the next step
   skips it"). Starting the step is refused by the Engine with the same cause.
-- **Depends on** section: rows with the dependency's state; **Add** opens a checklist where
+- **Depends on** section: rows with the dependency's state; **+** (or the empty-state **Add dependency**) opens a checklist where
   existing dependencies are checked and disabled and a cycle is disabled with its reason; row menu
-  **Remove dependency**. After the Task has started, dependencies are fixed (InlineNote, no Add,
-  no row menu).
+  **Remove dependency**. After the Task has started, dependencies are fixed (InlineNote, no add action, no row menu).
 
 - **Lifecycle matrix** (the projection decides; this is the mock's assumption):
 

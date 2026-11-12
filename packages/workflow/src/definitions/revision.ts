@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import { WorkflowError } from './errors';
+import { WorkflowError } from '../errors';
 
 /**
  * Canonical JSON of a value: object keys sorted, `undefined` entries dropped. The revision of a

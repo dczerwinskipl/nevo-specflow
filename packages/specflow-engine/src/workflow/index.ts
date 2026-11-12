@@ -91,4 +91,4 @@ export type {
   TerminalOutcome,
   TransitionTarget,
   WorkflowPin,
-} from './core';
+} from '@nevo/workflow';

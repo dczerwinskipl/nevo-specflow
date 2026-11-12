@@ -11,7 +11,7 @@ import {
   TASK_TITLE_MAX,
   isValidTaskId,
 } from '../limits';
-import { newRun } from '../core';
+import { newRun } from '@nevo/workflow';
 import { TASK_MAIN_DOCUMENT, type TaskOrigin } from '../../tasks/resource/model';
 import { dependencyCycle } from '../state/dependency-cycle';
 import type { ExecutionTask, TaskStatus, WorkflowActor } from '../state/model';

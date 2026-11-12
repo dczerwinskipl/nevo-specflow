@@ -1,5 +1,5 @@
 import type { ContinuationDecision } from '../continuation/resolve';
-import { decide, type RunPosition } from '../core';
+import { decide, type RunPosition } from '@nevo/workflow';
 import { WorkflowError } from '../errors';
 import { assertFeedback } from '../input-schema';
 import type { OwnerActor, WorkflowSubject } from '../state/model';

@@ -6,7 +6,7 @@ import {
   type Handoff,
   type RunPosition,
   type WorkflowPin,
-} from '../core';
+} from '@nevo/workflow';
 import { isTaskTypeAllowed, taskReadiness, type TaskReadiness } from '../tasks/tasks';
 import type {
   ExecutionTask,

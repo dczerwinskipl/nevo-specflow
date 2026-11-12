@@ -1,11 +1,12 @@
-import type * as core from '../core';
+import type * as core from '@nevo/workflow';
+
 import type { TaskManifest } from '../../tasks/resource/model';
 import type { TaskTypes } from '../definitions/model';
 import { WorkflowError } from '../errors';
 
 /**
  * Canonical execution state of one Specification: the run of its own workflow, the Task resources
- * (`tasks/index.yaml`, `tasks/<id>/task.yaml`) and one run record per started Task. Only the position and the history are stored; readiness,
+ * (`tasks/index.yaml`, `tasks/<id>/task.yaml`) and one run record per Task that has a run. Only the position and the history are stored; readiness,
  * lanes and statuses are derived (architecture `architecture.workflow.deterministic-workflow`). The
  * run format is the core's (`../core`); SpecFlow keys each run by its subject.
  */

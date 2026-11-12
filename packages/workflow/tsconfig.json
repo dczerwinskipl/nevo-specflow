@@ -1,0 +1,7 @@
+{
+  "extends": "../../tsconfig.package-node.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./.tsbuild/workflow.tsbuildinfo"
+  },
+  "include": ["src/**/*.ts"]
+}

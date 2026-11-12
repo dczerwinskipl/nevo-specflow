@@ -116,7 +116,7 @@ export function itemTabNaturalWidth(
 ) {
   const text =
     labelWidth !== undefined && labelWidth > 0
-      ? // `offsetWidth` is rounded: one spare pixel keeps a fitting label from a sub-pixel ellipsis.
+      ? // The measured width is fractional: ceil plus one spare pixel keeps a fitting label from an ellipsis.
         Math.ceil(labelWidth) + 1
       : Math.round(label.length * metrics.charWidth);
 

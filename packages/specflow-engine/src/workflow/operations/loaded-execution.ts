@@ -1,4 +1,9 @@
-import { assertPinned, assertPositionJustified, isPinnedTo, isPositionJustified } from '../core';
+import {
+  assertPinned,
+  assertPositionJustified,
+  isPinnedTo,
+  isPositionJustified,
+} from '@nevo/workflow';
 import type { ExecutionCatalogue } from '../definitions/catalogue';
 import type { WorkflowDefinition } from '../definitions/model';
 import { WorkflowError } from '../errors';

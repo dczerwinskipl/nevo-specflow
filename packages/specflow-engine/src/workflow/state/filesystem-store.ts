@@ -29,6 +29,7 @@ import {
   serializeTaskRunRecord,
 } from './codec';
 import {
+  JOURNAL_FOLDER_SEGMENTS,
   holdsPlannedRevision,
   isTaskDocumentPath,
   parseJournal,
@@ -178,7 +179,7 @@ function createStore(
       execution: { root, segments: [EXECUTION_DIRECTORY] },
       runs: { root, segments: [EXECUTION_DIRECTORY, RUNS_DIRECTORY] },
       tasks: { root, segments: [TASKS_FOLDER] },
-      journal: { root: options.stateRoot, segments: ['engine', 'operations', 'workflow'] },
+      journal: { root: options.stateRoot, segments: [...JOURNAL_FOLDER_SEGMENTS] },
     };
   }
 

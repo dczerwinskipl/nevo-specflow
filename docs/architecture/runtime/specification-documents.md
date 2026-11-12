@@ -333,6 +333,34 @@ and `DocumentTree.archetype.defined` is `defined | invalid | absent`.
 - **Display title** is derived, not stored: the first level-1 heading of a markdown text, else the file stem.
   Frontmatter is not consulted.
 
+## Task documents (document containers)
+
+The documents layer serves two kinds of **document container** (`specs/documents/changes/plan/container.ts`): the
+Specification, and each Task of it. A container has its own root folder, registry file and required document; the
+reads, planners, journal, claims, revision checks, commit queue, commit policy and ledger are the same for both (no
+second writer). A Task container's journal and plan carry the `taskId`; its paths are committed with the
+Specification's other documents.
+
+| Container       | Root                    | Registry                  | Required document (not deletable or renamable) |
+| --------------- | ----------------------- | ------------------------- | ---------------------------------------------- |
+| `specification` | `specs/active/<slug>`   | `specification.yaml`      | `overview` (`overview.md`)                     |
+| `task`          | `<spec>/tasks/<taskId>` | `task.yaml` `documents[]` | `task` (`task.md`)                             |
+
+- A Task container has no folders: save, batch save, create (typed documents, directly in the Task folder, never
+  type `task`, no templates), rename and delete of a document. Folder, move and classify are
+  `DOCUMENT_OPERATION_INVALID`. `task.yaml` is reserved. The Task must be listed in `tasks/index.yaml`
+  (`DOCUMENT_NOT_FOUND` otherwise).
+- A registry change rewrites `task.yaml` through the strict Task manifest parser (it is read back before it is
+  stored) and keeps every other field. A document a `task-document` context entry names cannot be deleted.
+  `task.yaml` is compared as a whole file under the control lock (re-plan on change). It is not judged
+  `SPEC_MANIFEST_DIRTY`: the Specification execution store writes it too and leaves its writes uncommitted.
+- Mutual exclusion with the Specification execution store (D03, under the project control lock): a Task
+  document change is refused with `SPEC_BUSY` (`details.cause: task-resource-change`) while that store holds a
+  pending journal that writes the Task's `task.yaml` or documents. The reverse check is
+  `hasPendingTaskDocumentChange(context, specId, taskId)`: true while a document change of the Task is not
+  final (being written, waiting for or in its commit, failed to commit, needing recovery). The store's Task
+  edit, removal and status operations and Close call it.
+
 ## Content kinds
 
 Kind is decided by the Engine from the extension and, for text kinds, a content check (UTF-8, no NUL byte in the

@@ -100,6 +100,10 @@ export {
   readRegisteredDocumentSummaries,
   readSpecificationDocument,
   readSpecificationDocumentTree,
+  readTaskDocument,
+  readTaskDocuments,
+  type TaskDocumentListing,
+  type TaskDocuments,
   readSpecificationUncommitted,
   DOCUMENT_ROW_PENDING_AFTER_MS,
   listDocumentOperationRows,
@@ -110,7 +114,12 @@ export {
   type OpenedDocumentMetadata,
   type RegisteredDocumentSummary,
 } from './specs/documents/reading';
-export { applyDocumentChange, resumeDocumentChange } from './specs/documents/api';
+export {
+  applyDocumentChange,
+  applyTaskDocumentChange,
+  hasPendingTaskDocumentChange,
+  resumeDocumentChange,
+} from './specs/documents/api';
 export { normalizeDocumentOperationInput } from './specs/documents/changes/plan/request';
 export type { DocumentChangeResult, DocumentWriteOptions } from './specs/documents/write';
 export {

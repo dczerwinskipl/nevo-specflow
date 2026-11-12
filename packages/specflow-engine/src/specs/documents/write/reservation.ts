@@ -22,6 +22,8 @@ import { isBarrierStage, isWriterStage } from '../changes/journal/stages';
 import { queueCapacityOf } from '../changes/queue-capacity';
 import { decodePlanWithEvidence, encodePlan } from '../changes/plan/codec';
 import { MANIFEST_MAX_BYTES } from '../limits';
+import { WorkflowError } from '../../../workflow/errors';
+import type { LoadedDocumentContainer } from '../loaded-specification';
 import type { AdmittedDocumentChange } from './admission';
 import { BUSY_RETRY_AFTER_MS, assertNoClaimedBatchOverlap } from './reservation-guard';
 import {
@@ -39,11 +41,17 @@ export type ReservationOutcome =
   | { readonly kind: 'replan' }
   | { readonly kind: 'busy'; readonly error: DocumentError; readonly waitable: boolean };
 
-/** sha256 of the manifest as it is on disk now (the verified, bounded read of the loader). */
-export async function readManifestSha256(rt: WriteRuntime, specDir: string): Promise<string> {
-  const opened = await openVerifiedFile(rt.files.verified, specDir, 'specification.yaml');
+/**
+ * sha256 of the container's registry file (`specification.yaml`, or a Task's `task.yaml`) as it is
+ * on disk now (the verified, bounded read of the loader; both files share the 256 KiB budget).
+ */
+export async function readManifestSha256(
+  rt: WriteRuntime,
+  loaded: Pick<LoadedDocumentContainer, 'rootDir' | 'registryFile'>,
+): Promise<string> {
+  const opened = await openVerifiedFile(rt.files.verified, loaded.rootDir, loaded.registryFile);
   if (opened.state !== 'opened') {
-    throw documentChangeError('source-unavailable', 'The Specification manifest is unavailable.');
+    throw documentChangeError('source-unavailable', 'The registry file is unavailable.');
   }
 
   try {
@@ -83,8 +91,35 @@ export async function reserveOnce(
       keepOperationId: operationId,
     });
 
-    if ((await readManifestSha256(rt, loaded.specDir)) !== admitted.manifestSha256) {
+    if ((await readManifestSha256(rt, loaded)) !== admitted.manifestSha256) {
       return { kind: 'replan' };
+    }
+
+    // D03: a Task's files are written by its documents or by the Specification execution store,
+    // never by both at once. A pending store change of this Task waits for that store to finish it.
+    if (loaded.container.kind === 'task') {
+      let pending: boolean;
+      try {
+        pending = await rt.deps.taskResourceChangePending(
+          rt.context,
+          loaded.specId,
+          loaded.container.taskId,
+        );
+      } catch (error) {
+        if (error instanceof WorkflowError) {
+          throw documentChangeError('journal-corrupt', 'The workflow change journal is corrupt.');
+        }
+
+        throw error;
+      }
+
+      if (pending) {
+        return busy(
+          'busy-task-resource-change',
+          'A change of this Task by its workflow is pending; finish it before changing its documents.',
+          false,
+        );
+      }
     }
 
     try {
@@ -285,7 +320,8 @@ function busy(
     | 'busy-held-limit'
     | 'busy-recovery-required'
     | 'busy-write-in-progress'
-    | 'busy-create-or-close',
+    | 'busy-create-or-close'
+    | 'busy-task-resource-change',
   message: string,
   waitable: boolean,
 ): ReservationOutcome {

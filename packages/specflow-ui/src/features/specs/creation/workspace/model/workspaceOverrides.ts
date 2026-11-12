@@ -1,4 +1,4 @@
-import type { CreateOptions } from '@nevo/specflow-contracts/specs';
+import type { CreateOptionsView } from './createOptionsView';
 import { initialWorkspaceChoice, type WorkspaceChoice } from './workspaceChoice';
 import { defaultBaseValue, defaultTargetWorkspaceId } from './workspaceTiles';
 
@@ -11,16 +11,16 @@ import { defaultBaseValue, defaultTargetWorkspaceId } from './workspaceTiles';
  */
 
 /** No local branch to start from: "Start from" cannot be changed. */
-export const baseUnchangeable = (options: CreateOptions, choice: WorkspaceChoice): boolean =>
+export const baseUnchangeable = (options: CreateOptionsView, choice: WorkspaceChoice): boolean =>
   options.baseRefs.length === 0 && !choice.base.on;
 
 /** No workspace can be a merge target: "Merge into" cannot be changed. */
-export const targetUnchangeable = (options: CreateOptions, choice: WorkspaceChoice): boolean =>
+export const targetUnchangeable = (options: CreateOptionsView, choice: WorkspaceChoice): boolean =>
   options.workspaces.every((w) => w.integrationSelectable !== true) && !choice.target.on;
 
 /** "Start from": on preselects the default base (never an empty picker), off restores it. */
 export function baseOverride(
-  options: CreateOptions,
+  options: CreateOptionsView,
   choice: WorkspaceChoice,
   on: boolean,
 ): Pick<WorkspaceChoice, 'base'> | null {
@@ -33,7 +33,7 @@ export function baseOverride(
 
 /** "Merge into": on preselects the default target workspace, off follows the project again. */
 export function targetOverride(
-  options: CreateOptions,
+  options: CreateOptionsView,
   choice: WorkspaceChoice,
   on: boolean,
 ): Pick<WorkspaceChoice, 'target'> | null {

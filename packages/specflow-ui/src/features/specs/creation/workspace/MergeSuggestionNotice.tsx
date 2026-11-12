@@ -1,6 +1,6 @@
 import { Alert, Button, InlineNote } from '@nevo/ui';
 import { Trans, useTranslation } from 'react-i18next';
-import type { CreateOptions } from '@nevo/specflow-contracts/specs';
+import type { CreateOptionsView } from './model/createOptionsView';
 import { BranchRef } from './BranchRef';
 import { effectiveTargetBranch, mergeSuggestion } from './model/mergeSuggestion';
 import type { SettingsFocusRequest, SettingsUpdate } from './settingsTypes';
@@ -17,7 +17,7 @@ export function MergeSuggestionNotice({
   onAnnounce,
   onRequestFocus,
 }: {
-  options: CreateOptions;
+  options: CreateOptionsView;
   choice: WorkspaceChoice;
   update: SettingsUpdate;
   onAnnounce: (message: string) => void;

@@ -10,7 +10,8 @@ import { Button, Typography, cn } from '@nevo/ui';
 import { createControlWidth } from '../createFormLayout';
 import { Trans, useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
-import { refDisplayName, type CreateOptions } from '@nevo/specflow-contracts/specs';
+import { refDisplayName } from '@nevo/specflow-contracts/specs';
+import type { CreateOptionsView } from './model/createOptionsView';
 import { useMessage, type Message } from '../../../../i18n/message';
 import { BaseRefField } from './BaseRefField';
 import { BranchRef } from './BranchRef';
@@ -66,7 +67,7 @@ const rowNote = (children: ReactNode, tone: 'muted' | 'attention' = 'muted') => 
 
 /** The default merge target, as the row shows it while it is not changed. */
 function mergeDefault(
-  options: CreateOptions,
+  options: CreateOptionsView,
   t: TFunction,
   text: (message: Message) => string,
 ): { value: ReactNode; note?: ReactNode } {
@@ -106,7 +107,7 @@ function mergeDefault(
 }
 
 /** The default base, as the row shows it while it is not changed. */
-function BaseDefault({ options }: { options: CreateOptions }) {
+function BaseDefault({ options }: { options: CreateOptionsView }) {
   const { t } = useTranslation();
   const primary = primaryWorkspace(options);
   if (options.defaultBaseRef === 'HEAD') {
@@ -192,7 +193,7 @@ export function NewWorkspaceSettings({
   controls,
   onRequestFocus,
 }: {
-  options: CreateOptions;
+  options: CreateOptionsView;
   choice: WorkspaceChoice;
   update: Dispatch<SetStateAction<WorkspaceChoice>>;
   errors: WorkspaceErrors;

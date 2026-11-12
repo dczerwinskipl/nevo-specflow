@@ -4,7 +4,7 @@ import {
   localBranchRef,
   specSlugProblem,
 } from '@nevo/specflow-contracts/specs';
-import type { CreateOptions } from '@nevo/specflow-contracts/specs';
+import type { CreateOptionsView } from './createOptionsView';
 import { message, type Message } from '../../../../../i18n/message';
 import type { WorkspaceChoice } from './workspaceChoice';
 import {
@@ -31,7 +31,7 @@ export const staleMessages = {
  * Errors of every remembered value, including the inactive tiles. Values are never removed;
  * the section shows an error only for the tile that is active.
  */
-export function revalidate(choice: WorkspaceChoice, options: CreateOptions): WorkspaceErrors {
+export function revalidate(choice: WorkspaceChoice, options: CreateOptionsView): WorkspaceErrors {
   const errors: WorkspaceErrors = {};
   if (
     choice.existingWorkspaceId &&
@@ -92,7 +92,7 @@ export interface WorkspaceProblem {
  */
 export function workspaceProblems(
   choice: WorkspaceChoice,
-  options: CreateOptions,
+  options: CreateOptionsView,
   title = '',
 ): WorkspaceProblem[] {
   const tile = activeTile(choice, options);
@@ -138,7 +138,11 @@ export function workspaceProblems(
 }
 
 /** The blocking problems of the active tile as messages, in the section's order. */
-export function problems(choice: WorkspaceChoice, options: CreateOptions, title = ''): Message[] {
+export function problems(
+  choice: WorkspaceChoice,
+  options: CreateOptionsView,
+  title = '',
+): Message[] {
   return workspaceProblems(choice, options, title).map((problem) => problem.message);
 }
 
@@ -156,7 +160,7 @@ export const requiredMessages = {
  */
 export function generatedBranchProblem(
   choice: WorkspaceChoice,
-  options: CreateOptions,
+  options: CreateOptionsView,
   title: string,
 ): Message | undefined {
   const slug = effectiveSlug(choice, title);
@@ -190,7 +194,7 @@ export function slugError(value: string): Message | undefined {
 }
 
 /** Git-ref syntax (the contract rule the Engine enforces) plus collision with an existing local branch; the server stays authoritative. */
-export function branchNameError(name: string, options: CreateOptions): Message | undefined {
+export function branchNameError(name: string, options: CreateOptionsView): Message | undefined {
   const branch = name.trim();
   switch (branchNameProblem(branch)) {
     case 'empty':
@@ -232,7 +236,7 @@ export function branchNameError(name: string, options: CreateOptions): Message |
  */
 export function workspaceFieldErrors(
   choice: WorkspaceChoice,
-  options: CreateOptions,
+  options: CreateOptionsView,
   conflicts: WorkspaceConflicts | undefined,
   title: string,
   errors: WorkspaceErrors,

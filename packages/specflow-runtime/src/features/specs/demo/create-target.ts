@@ -4,13 +4,9 @@ import {
   isValidBranchName,
   localBranchRef,
 } from '@nevo/specflow-contracts/specs';
-import type {
-  DemoCreateErrorCode,
-  DemoCreateOptions,
-  DemoCreateTarget,
-} from '@nevo/specflow-contracts/demo';
+import type { DemoCreateErrorCode, DemoCreateTarget } from '@nevo/specflow-contracts/demo';
 
-import type { DemoWorkspace } from './seed';
+import type { DemoRegistry, DemoWorkspace } from './seed';
 
 /**
  * Create target validation of the demo. It uses the SAME slug and branch rules as the real Create
@@ -49,7 +45,7 @@ export interface ResolvedTarget {
 }
 
 /** `baseRefs` hold full refs, workspaces short branch names. */
-const taken = (options: DemoCreateOptions, branch: string) =>
+const taken = (options: DemoRegistry, branch: string) =>
   options.baseRefs.some((b) => b.ref === localBranchRef(branch)) ||
   options.workspaces.some((w) => w.branch === branch);
 
@@ -58,7 +54,7 @@ const taken = (options: DemoCreateOptions, branch: string) =>
  * Throws `DemoTargetError` with the mapped demo error code.
  */
 export function resolveTarget(
-  options: DemoCreateOptions,
+  options: DemoRegistry,
   target: DemoCreateTarget | undefined,
   slug: string,
 ): ResolvedTarget {

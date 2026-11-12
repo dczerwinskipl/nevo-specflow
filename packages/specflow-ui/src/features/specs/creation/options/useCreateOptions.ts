@@ -1,6 +1,9 @@
 import { useQuery, type QueryKey } from '@tanstack/react-query';
 import type { CreateOptions } from '@nevo/specflow-contracts/specs';
+import { isApiError } from '../../../../api';
+import { useWorkspaces } from '../../../workspaces/read-model';
 import { useVisitFreshOptions } from './visitFreshOptions';
+import { joinCreateOptions, type CreateOptionsView } from '../workspace/model/createOptionsView';
 import type { WorkspaceOptionsState } from '../workspace/model/workspaceChoice';
 
 export interface CreateOptionsSource {
@@ -13,23 +16,27 @@ export interface CreateOptionsSource {
   enabled?: boolean;
 }
 
-export type CreateOptionsRefresh = { kind: 'failed' } | { kind: 'fresh'; options: CreateOptions };
+export type CreateOptionsRefresh =
+  { kind: 'failed' } | { kind: 'fresh'; options: CreateOptionsView };
 
 export interface CreateOptionsModel {
   /** Fresh options of this visit; undefined until they arrived (a cached answer is not shown). */
-  options: CreateOptions | undefined;
+  options: CreateOptionsView | undefined;
   state: WorkspaceOptionsState;
   forbidden: boolean;
   fetching: boolean;
-  /** The last refresh failed; `options` are then the previously loaded ones. */
+  /** The last refresh of either read failed; `options` are then the previously loaded ones. */
   refreshFailed: boolean;
   refresh: () => Promise<CreateOptionsRefresh | undefined>;
 }
 
 /**
- * The Create options of the visit: a snapshot of Git state that changes outside the UI. Always
- * refetched on entering (never trusted from the cache), never retried on its own, projected into
- * the loading / error / forbidden / ready state the workspace section draws.
+ * The Create options of the visit: a snapshot of Git state that changes outside the UI, joined
+ * with the shared workspace list (names, paths, Specifications). Both are always refetched on
+ * entering (never trusted from the cache), never retried on their own, projected into the loading /
+ * error / forbidden / ready state the workspace section draws. A workspace list the principal may
+ * not read (no `workspace.view`) is forbidden like the options; any other failed read, or a pair
+ * that does not join, is an error.
  */
 export function useCreateOptions(source: CreateOptionsSource): CreateOptionsModel {
   const query = useQuery({
@@ -41,31 +48,50 @@ export function useCreateOptions(source: CreateOptionsSource): CreateOptionsMode
     refetchOnMount: 'always',
     refetchOnWindowFocus: source.refetchOnWindowFocus,
   });
-  const options = useVisitFreshOptions(query);
-  const forbidden = query.isError && source.isForbidden(query.error);
+  const workspaceList = useWorkspaces({
+    enabled: source.enabled,
+    fresh: true,
+    refetchOnWindowFocus: source.refetchOnWindowFocus,
+  });
+  const freshOptions = useVisitFreshOptions(query);
+  const freshList = useVisitFreshOptions(workspaceList);
+  const options =
+    freshOptions && freshList ? joinCreateOptions(freshOptions, freshList) : undefined;
+  // The list is read through the API transport in both modes: its 403 is an `ApiError`.
+  const forbidden =
+    (query.isError && source.isForbidden(query.error)) ||
+    (workspaceList.isError &&
+      isApiError(workspaceList.error) &&
+      workspaceList.error.kind === 'forbidden');
   const state: WorkspaceOptionsState = options
     ? { status: 'ready', options }
-    : query.isError
+    : query.isError || workspaceList.isError
       ? { status: forbidden ? 'forbidden' : 'error' }
-      : { status: 'loading' };
+      : freshOptions && freshList
+        ? { status: 'error' }
+        : { status: 'loading' };
 
   return {
     options,
     state,
     forbidden,
-    fetching: query.isFetching,
-    refreshFailed: query.isRefetchError,
+    fetching: query.isFetching || workspaceList.isFetching,
+    refreshFailed: query.isRefetchError || workspaceList.isRefetchError,
     async refresh() {
-      if (query.isFetching) {
+      if (query.isFetching || workspaceList.isFetching) {
         return undefined;
       }
 
-      const result = await query.refetch();
+      const [result, listResult] = await Promise.all([query.refetch(), workspaceList.refetch()]);
 
       // A failed refetch still resolves with the previous data: branch on the status, not on data.
-      return result.isError || !result.data
-        ? { kind: 'failed' }
-        : { kind: 'fresh', options: result.data };
+      if (result.isError || !result.data || listResult.isError || !listResult.data) {
+        return { kind: 'failed' };
+      }
+
+      const joined = joinCreateOptions(result.data, listResult.data);
+
+      return joined ? { kind: 'fresh', options: joined } : { kind: 'failed' };
     },
   };
 }

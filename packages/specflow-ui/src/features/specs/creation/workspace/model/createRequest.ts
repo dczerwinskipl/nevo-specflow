@@ -1,5 +1,6 @@
 import { deriveSpecSlug, engineCommitRefusal } from '@nevo/specflow-contracts/specs';
-import type { CreateOptions, CreateSpecRequest } from '@nevo/specflow-contracts/specs';
+import type { CreateSpecRequest } from '@nevo/specflow-contracts/specs';
+import type { CreateOptionsView } from './createOptionsView';
 import type { WorkspaceChoice } from './workspaceChoice';
 import { activeTile, defaultBaseValue, defaultTargetWorkspaceId } from './workspaceTiles';
 
@@ -16,7 +17,7 @@ export function effectiveSlug(choice: WorkspaceChoice, title: string): string {
  * random id (`{shortId}`) as `<id>` and the Specification key (`{key}`, numbered at reservation,
  * for example `nevo-12`) as `<key>`; an unknown slug as `<slug>`.
  */
-export function branchPreview(options: CreateOptions, slug: string): string {
+export function branchPreview(options: CreateOptionsView, slug: string): string {
   return options.branchPattern
     .replaceAll('{slug}', slug || '<slug>')
     .replaceAll('{shortId}', '<id>')
@@ -74,7 +75,7 @@ const unknownParts = /\{(?:shortId|key)\}[-_.]?/gu;
  * the actual slug, checked with the same rule the Engine uses. Absent: nothing to say.
  */
 export function generatedBranchRefusal(
-  options: CreateOptions,
+  options: CreateOptionsView,
   slug: string,
 ): 'branch-protected' | 'branch-not-allowed' | undefined {
   if (!options.commits) {
@@ -103,7 +104,7 @@ export function generatedBranchRefusal(
  * (`feature/{key}-{slug}` gives `feature/<slug>`). Equal to the generated name only when the
  * pattern has neither.
  */
-export function branchPrefill(options: CreateOptions, slug: string): string {
+export function branchPrefill(options: CreateOptionsView, slug: string): string {
   if (!slug) {
     return '';
   }
@@ -117,7 +118,7 @@ export function branchPrefill(options: CreateOptions, slug: string): string {
 /** The branch name the owner sees in the field: their own edit, else the prefilled default. */
 export function branchFieldValue(
   choice: WorkspaceChoice,
-  options: CreateOptions,
+  options: CreateOptionsView,
   title: string,
 ): string {
   return choice.branch.edited
@@ -138,7 +139,7 @@ export interface CreateOverrides {
  */
 export function createOverrides(
   choice: WorkspaceChoice,
-  options: CreateOptions,
+  options: CreateOptionsView,
   title: string,
 ): CreateOverrides {
   const overrides: CreateOverrides = {};
@@ -179,7 +180,7 @@ export interface CreateTargetFields {
 /** The workspace part of the request: only the active tile and only real overrides. */
 export function buildCreateTarget(
   choice: WorkspaceChoice,
-  options: CreateOptions,
+  options: CreateOptionsView,
   title = '',
 ): CreateTarget | undefined {
   const tile = activeTile(choice, options);
@@ -204,7 +205,7 @@ export function buildCreateTarget(
 /** The slug the request carries: only for a new workspace and only a real override. */
 export function buildCreateSlug(
   choice: WorkspaceChoice,
-  options: CreateOptions,
+  options: CreateOptionsView,
   title: string,
 ): string | undefined {
   return activeTile(choice, options) === 'new'
@@ -223,7 +224,7 @@ export function buildCreateSlug(
  */
 export function requestChoiceSnapshot(
   choice: WorkspaceChoice,
-  options: CreateOptions | undefined,
+  options: CreateOptionsView | undefined,
   title: string,
 ) {
   return {

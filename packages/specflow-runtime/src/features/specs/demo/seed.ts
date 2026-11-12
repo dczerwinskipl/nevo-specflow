@@ -6,7 +6,28 @@ import { localBranchRef } from '@nevo/specflow-contracts/specs';
  * Pure data and functions only: scenarios live in `scenarios.ts`, target validation in
  * `create-target.ts`, the in-memory state in `creation-state.ts`.
  */
-export type DemoWorkspace = DemoCreateOptions['workspaces'][number];
+/**
+ * A registry row: the Create facts of the contract row plus the registry facts (`kind`, `name`,
+ * `path`), which `GET /api/workspaces` serves and Create options no longer carry. The demo keeps them on one row and projects the Create part.
+ */
+export type DemoWorkspace = DemoCreateOptions['workspaces'][number] & {
+  kind: 'primary' | 'linked';
+  name: string;
+  path: string;
+};
+
+/** The demo workspace registry together with the project-wide Create settings. */
+export type DemoRegistry = Omit<DemoCreateOptions, 'workspaces'> & { workspaces: DemoWorkspace[] };
+
+/** The wire form of the registry: Create options without the facts of `GET /api/workspaces`. */
+export function toCreateOptions(registry: DemoRegistry): DemoCreateOptions {
+  return {
+    ...registry,
+    workspaces: registry.workspaces.map(
+      ({ kind: _kind, name: _name, path: _path, ...facts }) => facts,
+    ),
+  };
+}
 
 export const uuid = (n: number) => `0b8f1c1e-0a11-4c6e-9a01-${String(n).padStart(12, '0')}`;
 export const demoWorkspaceIds = {
@@ -60,7 +81,7 @@ export const isIntegrationSelectable = (workspace: DemoWorkspace) =>
  * true when {@link isIntegrationSelectable} holds,
  * a pin exists only on linked workspaces and never points at its own workspace.
  */
-export function normalize(options: DemoCreateOptions): DemoCreateOptions {
+export function normalize(options: DemoRegistry): DemoRegistry {
   options.workspaces = options.workspaces.map((workspace) => {
     const next: DemoWorkspace = {
       ...workspace,
@@ -79,7 +100,7 @@ export function normalize(options: DemoCreateOptions): DemoCreateOptions {
 }
 
 /** Default seed: the realistic happy path (IMPLEMENTATION-SPEC section 2). */
-export function seedCreateOptions(): DemoCreateOptions {
+export function seedCreateOptions(): DemoRegistry {
   const ids = demoWorkspaceIds;
 
   return {

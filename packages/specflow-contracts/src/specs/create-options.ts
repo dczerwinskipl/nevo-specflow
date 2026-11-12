@@ -40,19 +40,15 @@ export const CreateOptionsSchema = Type.Object(
     workspaces: Type.Array(
       Type.Object(
         {
-          /** Keys the Create facts below to a row of `GET /api/workspaces` (`WorkspaceList`). */
-          workspaceId: WorkspaceIdSchema,
-          /*
-           * Transitional: `kind`, `name` and `path` are registry facts that `GET /api/workspaces`
-           * serves for every reader, and `specCount` counts every bound Specification, where that
-           * list gives `specifications[]` (readable and viewable ones only, so it can be shorter).
-           * They are removed here once Create Specification reads the list; Create-only facts follow.
+          /**
+           * Keys the Create facts below to a row of `GET /api/workspaces` (`WorkspaceList`), which
+           * serves the registry facts (kind, name, path) and the titles of the viewable Specifications.
            */
-          kind: Type.Union([Type.Literal('primary'), Type.Literal('linked')]),
-          /** Display label: the checkout folder name (the repository folder for the primary one). */
-          name: Type.String({ minLength: 1 }),
-          /** Display path of the registered checkout. */
-          path: Type.String({ minLength: 1 }),
+          workspaceId: WorkspaceIdSchema,
+          /**
+           * Every Specification bound to the workspace (a Create-only fact for the shared-use
+           * warning). Unlike `specifications[]` of the list it is not limited to viewable ones.
+           */
           specCount: Type.Integer({ minimum: 0 }),
           /** Nevo created and manages this linked worktree (always false for the primary one). */
           managed: Type.Boolean(),

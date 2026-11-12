@@ -1,4 +1,3 @@
-import type { DemoCreateOptions } from '@nevo/specflow-contracts/demo';
 import type {
   WorkspaceList,
   WorkspaceListItem,
@@ -7,11 +6,11 @@ import type {
 
 import type { DemoCatalogue } from '../../demo-catalogue';
 import type { DemoState } from '../../../demo/state';
-import { seededSpecWorkspace, type DemoWorkspace } from './seed';
+import { seededSpecWorkspace, type DemoRegistry, type DemoWorkspace } from './seed';
 
 export interface DemoWorkspaceListDeps {
   /** The live demo workspace registry (the Create options without a scenario). */
-  readonly registry: () => DemoCreateOptions;
+  readonly registry: () => DemoRegistry;
   readonly catalogue: DemoCatalogue;
   readonly state: Pick<DemoState, 'specifications'>;
 }

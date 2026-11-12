@@ -4,7 +4,7 @@ import { Trans, useTranslation } from 'react-i18next';
 import { useMessage } from '../../../../i18n/message';
 import { Badge, DescriptionList, Field, Icon, InlineNote, Typography } from '@nevo/ui';
 import { LocalizedOptionPicker } from '../../../../shared/controls/LocalizedOptionPicker';
-import type { CreateOptions } from '@nevo/specflow-contracts/specs';
+import type { CreateOptionsView, CreateWorkspace } from './model/createOptionsView';
 import { BranchRef } from './BranchRef';
 import { NewWorkspaceSettings, type WorkspaceSettingsControls } from './NewWorkspaceSettings';
 import { WorkspaceLabel } from './WorkspaceRef';
@@ -78,7 +78,7 @@ export function NewSummary({
   controls,
   onRequestFocus,
 }: {
-  options: CreateOptions;
+  options: CreateOptionsView;
   choice: WorkspaceChoice;
   update: Dispatch<SetStateAction<WorkspaceChoice>>;
   errors: ReturnType<typeof revalidate>;
@@ -116,7 +116,7 @@ export function NewSummary({
   );
 }
 
-export function MainSummary({ options }: { options: CreateOptions }) {
+export function MainSummary({ options }: { options: CreateOptionsView }) {
   const { t } = useTranslation();
   const text = useMessage();
   const primary = primaryWorkspace(options);
@@ -149,8 +149,8 @@ function InheritedTargetNote({
   options,
   workspace,
 }: {
-  options: CreateOptions;
-  workspace: CreateOptions['workspaces'][number];
+  options: CreateOptionsView;
+  workspace: CreateWorkspace;
 }): ReactNode {
   const { t } = useTranslation();
   const target = inheritedTarget(options, workspace);
@@ -193,7 +193,7 @@ export function ExistingSummary({
   errors,
   controlRef,
 }: {
-  options: CreateOptions;
+  options: CreateOptionsView;
   choice: WorkspaceChoice;
   update: Dispatch<SetStateAction<WorkspaceChoice>>;
   errors: ReturnType<typeof revalidate>;

@@ -87,7 +87,7 @@ export function createDemoRuntime(environment: DemoEnvironment) {
     taskSources,
     // `GET /api/workspaces` over the demo registry, with the Specifications bound to each.
     workspaceList: createDemoWorkspaceList({
-      registry: () => specs.createOptions(),
+      registry: () => specs.registry(),
       catalogue: repositories.catalogue,
       state,
     }),

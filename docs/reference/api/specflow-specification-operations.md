@@ -73,22 +73,27 @@ worktree. Omitted/explicit overrides have distinct durable fingerprints.
 Successful result:
 `{operationId,specId,kind:"specification-create",status:"completed",slug,workspaceId,relativeManifestPath,documentIds}`
 (`documentIds`: the registered documents of the new Specification, in registry order).
-The Create result exposes no absolute checkout paths; create-options do (see `path` and `worktreesRoot` below).
-**Workspace path exposure (decision).** `GET /api/specs/create-options` returns the absolute checkout path of every
-registered workspace and the worktree folder to every principal that holds the `Create` capability (scope `{}`): the
-Create dialog needs them to explain where a spec lands. The Runtime does not hide them behind a separate capability,
-so a Create-capable role can read the workstation directory layout (including user names inside paths); grant `Create`
-only to roles that may see it. Restricting `path`/`worktreesRoot` to an operator capability is a follow-up.
+The Create result exposes no absolute checkout paths; create-options expose the worktree folder (`worktreesRoot` below).
+**Workspace path exposure (decision).** `GET /api/specs/create-options` returns the worktree folder (`worktreesRoot.path`)
+to every principal that holds the `Create` capability (scope `{}`): the Create dialog needs it to explain where a new
+workspace lands. The absolute checkout path of each registered workspace is served by
+[`GET /api/workspaces`](workspaces.md) (`workspace.view`), which Create Specification reads next to the options. The
+Runtime does not hide the folder behind a separate capability, so a Create-capable role can read the workstation
+directory layout (including user names inside paths); grant `Create` only to roles that may see it. Restricting
+`worktreesRoot` to an operator capability is a follow-up.
 
-Create options include `primaryWorkspaceId`, `workspaces[]` (`workspaceId,kind,name,path,managed,specCount,
-state,selectable,integrationSelectable,branch?,reason?,integrationDestination?`),
+Create options include `primaryWorkspaceId`, `workspaces[]` (`workspaceId,managed,specCount,state,selectable,
+integrationSelectable,branch?,reason?,integrationDestination?`),
 `newWorktree` (`status,reason?,branchProtected?`), `defaultBaseRef`, `branchPattern`, `worktreesRoot`, `integrationTargetBranch?`, `commits?`, `baseRefs[]`.
 Each `workspaces[]` entry is keyed by `workspaceId`, the key of the same workspace in
-[`GET /api/workspaces`](workspaces.md). `kind`, `name` and `path` are registry facts that
-the workspace list serves for every reader, and `specCount` counts every Specification bound to the workspace,
-where the list gives `specifications[]` (only readable manifests the caller may view, so it can be shorter).
-They are transitional here and are removed from create-options once Create Specification reads the list. The Create-only facts are `managed`, `state`,
-`selectable`, `integrationSelectable`, `integrationDestination`, `branch` and `reason`.
+[`GET /api/workspaces`](workspaces.md). The registry facts (`kind`, `name`, `path`) are served only by that list; a
+client joins the two by `workspaceId`. `specCount` stays a Create-only fact: it counts **every** Specification bound to
+the workspace (for the shared-use warning), whereas `specifications[]` of the list holds only the readable ones the
+caller may view, and serves titles. **Create Specification therefore needs `workspace.view` as well as `Create`**: without
+it the list answers 403 and the form shows the no-permission alert. A workspace of the options that the list does not
+contain means the registry changed between the two reads; the client treats it as a failed read (error state, Retry
+reads both again). The Create-only facts are `managed`, `specCount`, `state`, `selectable`,
+`integrationSelectable`, `integrationDestination`, `branch` and `reason`.
 `commits` is `{protectedBranches[],allowedBranches?[]}` and is present **exactly when Git is enabled** (the
 Engine then commits the scaffold), even with empty lists; it is absent when Git is disabled, as are the two
 reasons `branch-protected` and `branch-not-allowed` and `newWorktree.branchProtected`. A workspace whose branch
@@ -96,8 +101,7 @@ is protected or not allowed stays listed with `selectable:false` and that `reaso
 `available`/`dirty`, `branch` names the branch); `integrationSelectable` is unaffected. `newWorktree.branchProtected: true`
 means the branch the pattern generates for a representative name is protected: the tile stays selectable, but
 the user has to type another branch name (advisory; the Engine decides on the real name).
-`name` is the display label of a checkout (its folder name; for the primary checkout the repository
-folder) and `path` its registered display path. `branchPattern` is the effective pattern (default
+`branchPattern` is the effective pattern (default
 `feature/{slug}`; `{shortId}` is optional). `worktreesRoot` is `{path,exists}`: the effective folder
 that receives new worktrees, from the machine-local `git.worktreesRoot` or the `<repo>-worktrees`
 default; `exists` tells whether it exists yet (it is created on first use).

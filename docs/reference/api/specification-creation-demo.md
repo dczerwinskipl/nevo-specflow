@@ -303,7 +303,7 @@ Create body requires `operationId` (UUID, idempotency key; the legacy `requestId
 Fields outside the tile semantics (for example `existing` + `baseRef`) fail schema validation with a 400
 `Bad Request` body. Success is the real `CreatedSpec` plus demo `documentIds`: `operationId`, `specId`,
 `kind: 'specification-create'`, `status: 'completed'`, `slug`, `workspaceId`, `relativeManifestPath`,
-with HTTP **201** (also when a completed operation is replayed). Create increments the target workspace `specCount`; a new worktree adds a `linked` workspace and its
+with HTTP **201** (also when a completed operation is replayed). Create adds the Specification to the target workspace in `GET /api/workspaces` (the demo keeps the count internally); a new worktree adds a `linked` workspace and its
 branch to later create-options. Create also fixes the specification location (simulated for linked workspaces).
 
 Errors use `{ error, code }` where, as in the real Engine, `error` repeats the code. Engine codes and
@@ -351,7 +351,9 @@ scenario environments and tests, programmatically only: `createDemoCreationState
 `startRuntime({ demo: true, demoScenarios: true })`. There is no environment variable or CLI switch, and the
 shipped `specflow` launcher never passes the option. The default UI never sends it. When enabled, pass `demoScenario=<name>[,<name>]` as a query
 parameter or the `x-demo-scenario` header on create-options, create and operation status; unknown names
-return 400 `DEMO_INVALID_SCENARIO`. Options scenarios also shape the validation of create: `git-disabled`,
+return 400 `DEMO_INVALID_SCENARIO`. Options scenarios reshape only create-options: they never reshape
+`GET /api/workspaces`, so `many-workspaces` (extra workspaces) is a Create-options-only scenario that the joined Create
+form treats as a failed read. Options scenarios also shape the validation of create: `git-disabled`,
 `git-unavailable`, `membership-mismatch`, `no-linked`, `linked-none-selectable`, `none-available`,
 `no-integration-target`, `target-dirty`, `primary-dirty`, `platform-dirty`, `primary-other-branch`
 (a linked workspace holds the target branch, the primary does not), `pin-drift` (a pin whose target moved

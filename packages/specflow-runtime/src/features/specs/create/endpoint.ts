@@ -139,7 +139,11 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
 
         return reply.code(200).send({
           ...read,
-          workspaces: [...read.workspaces],
+          // The registry facts (kind, name, path) are served by `GET /api/workspaces`; Create
+          // options carry only what Create decides on (and the count of every bound Specification).
+          workspaces: read.workspaces.map(
+            ({ kind: _kind, name: _name, path: _path, ...facts }) => facts,
+          ),
           baseRefs: [...read.baseRefs],
           // Present exactly when Git is enabled (the Engine then commits the scaffold).
           ...(commits

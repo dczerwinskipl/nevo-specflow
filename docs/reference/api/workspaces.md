@@ -132,4 +132,6 @@ the Runtime's own, linked worktrees are `available` unless their Create state is
 `dirty` follows a `dirty` Create state on a branch. Every seeded Specification is bound to one
 demo workspace, and its Specification workspace read reports the same `workspaceId`; a created
 Specification is bound to the workspace it was created in. Authorization is the same, at the demo
-project's scope.
+project's scope. The options scenarios of the demo seam (`demoScenario`, see "Demo scenario seam") reshape
+only `GET /api/demo/specs/create-options`, never this list; `many-workspaces`, for example, adds workspaces to
+Create options only, so a client joining the two sees them as a failed read.

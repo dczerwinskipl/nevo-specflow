@@ -1,6 +1,6 @@
 import { message, type Message } from '../../../../../i18n/message';
 import type { WorkspaceChoice } from './workspaceChoice';
-import type { CreateOptions } from '@nevo/specflow-contracts/specs';
+import type { CreateOptionsView } from './createOptionsView';
 import { createOverrides } from './createRequest';
 
 const knownReasons = new Set([
@@ -72,7 +72,7 @@ export function sharedUseNote(count: number, place: 'workspace' | 'folder'): Mes
 export const defaultSettingsSummary: Message = message('create.workspace.settings.default');
 export function settingsSummary(
   choice: WorkspaceChoice,
-  options: CreateOptions,
+  options: CreateOptionsView,
   title: string,
 ): Message {
   const overrides = createOverrides(choice, options, title);

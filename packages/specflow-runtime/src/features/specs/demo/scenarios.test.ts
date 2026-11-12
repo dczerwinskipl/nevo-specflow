@@ -8,7 +8,7 @@ import { Value } from 'typebox/value';
 import { describe, expect, it } from 'vitest';
 import { DemoTargetError, demoSlugFor, resolveTarget } from './create-target';
 import { applyOptionsScenario, demoOptionsScenarios, parseScenarios } from './scenarios';
-import { demoWorkspaceIds as ids, seedCreateOptions } from './seed';
+import { demoWorkspaceIds as ids, seedCreateOptions, toCreateOptions } from './seed';
 
 const options = seedCreateOptions;
 const code = (fn: () => unknown) => {
@@ -58,7 +58,9 @@ describe('seed registry', () => {
     const seed = options();
     for (const name of [undefined, ...demoOptionsScenarios]) {
       const value = name ? applyOptionsScenario(seed, name) : seed;
-      expect(Value.Check(DemoCreateOptionsSchema, value), name ?? 'seed').toBe(true);
+      expect(Value.Check(DemoCreateOptionsSchema, toCreateOptions(value)), name ?? 'seed').toBe(
+        true,
+      );
       for (const w of value.workspaces) {
         expect(w.branch ?? '').not.toMatch(/^refs\//u);
       }

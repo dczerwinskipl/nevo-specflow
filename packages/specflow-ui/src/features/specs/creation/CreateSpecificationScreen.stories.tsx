@@ -9,7 +9,8 @@ import type { DemoCatalogue, DemoCreateRequest } from '@nevo/specflow-contracts/
 import { catalogue } from './options/creationCatalogue.stories-support';
 import {
   createdSpecFixture,
-  createOptionsFixture,
+  createOptionsWireFixture,
+  workspaceApiFixture,
   workspaceIds,
   type OptionsVariant,
 } from './options/creationOptions.stories-support';
@@ -131,6 +132,7 @@ function Fixture({
     () =>
       createSpecFlowAppServices({
         runtimeInfoApi: { getInfo: () => Promise.resolve({ dataMode: 'demo' }) },
+        workspaceApi: workspaceApiFixture(optionsVariants),
         demoCreationApi: {
           ...createSpecFlowAppServices().demoCreationApi,
           catalogue: () => {
@@ -165,7 +167,7 @@ function Fixture({
             optionReads.current += 1;
             setReads((value) => ({ ...value, options: value.options + 1 }));
 
-            return Promise.resolve(createOptionsFixture(variant));
+            return Promise.resolve(createOptionsWireFixture(variant));
           },
           create: (input) => {
             inputs.current.push(input);

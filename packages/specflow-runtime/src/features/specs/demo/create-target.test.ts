@@ -21,7 +21,7 @@ function setup() {
     ...extra,
   });
   const count = (workspaceId: string) =>
-    env.specs.createOptions().workspaces.find((w) => w.workspaceId === workspaceId)?.specCount;
+    env.specs.registry().workspaces.find((w) => w.workspaceId === workspaceId)?.specCount;
 
   return { env, body, count };
 }
@@ -106,7 +106,7 @@ describe('target-aware demo create', () => {
       }),
     );
     expect(count(result.workspaceId)).toBe(1);
-    const after = env.specs.createOptions();
+    const after = env.specs.registry();
     expect(after.workspaces.at(-1)).toMatchObject({
       workspaceId: result.workspaceId,
       kind: 'linked',

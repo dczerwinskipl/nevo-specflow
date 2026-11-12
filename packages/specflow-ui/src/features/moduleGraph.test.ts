@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { cycles, featureNode, fileCycles, isCompositionNode, nodeGraph } from './importCycles';
 
 const root = fileURLToPath(new URL('.', import.meta.url));
-const features = new Set(['documents', 'git', 'sessions', 'specs', 'tasks']);
+const features = new Set(['documents', 'git', 'sessions', 'specs', 'tasks', 'workspaces']);
 const graph = nodeGraph(root);
 const edges = [...graph].flatMap(([from, targets]) => [...targets].map((to) => ({ from, to })));
 const featureEdges = edges.filter(({ to }) => features.has(to.split('/')[0] ?? ''));

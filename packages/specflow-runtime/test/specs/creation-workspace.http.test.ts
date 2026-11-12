@@ -60,10 +60,11 @@ const options = async (app: FastifyInstance, scenario?: string) =>
   app.inject({
     url: '/api/demo/specs/create-options' + (scenario ? `?demoScenario=${scenario}` : ''),
   });
+const workspaceList = async (app: FastifyInstance) =>
+  (await app.inject('/api/workspaces')).json<WorkspaceList>();
 const specCount = async (app: FastifyInstance, workspaceId: string) =>
-  (await options(app))
-    .json<DemoCreateOptions>()
-    .workspaces.find((w) => w.workspaceId === workspaceId)?.specCount;
+  (await workspaceList(app)).workspaces.find((w) => w.workspaceId === workspaceId)?.specifications
+    .length;
 const codeOf = (response: { json: <T>() => T }) => response.json<{ code?: string }>().code;
 
 describe('create-options endpoint', () => {
@@ -74,7 +75,9 @@ describe('create-options endpoint', () => {
     expect(response.headers['cache-control']).toBe('no-store');
     const data = response.json<DemoCreateOptions>();
     expect(data.primaryWorkspaceId).toBe(ids.main);
-    expect(data.workspaces.map((w) => [w.branch, w.specCount])).toEqual([
+    const list = await workspaceList(app);
+    const counts = new Map(list.workspaces.map((w) => [w.workspaceId, w.specifications.length]));
+    expect(data.workspaces.map((w) => [w.branch, counts.get(w.workspaceId)])).toEqual([
       ['develop', 1],
       ['feature/platform', 2],
       ['feature/payments', 1],
@@ -90,12 +93,11 @@ describe('create-options endpoint', () => {
     });
     expect(data.baseRefs.map((b) => b.ref)).toContain('refs/heads/release/1.4');
 
-    // The workspace list reads the same registry, and its Specifications agree with the counts
-    // and with each Specification's own `workspaceId`.
-    const list = (await app.inject('/api/workspaces')).json<WorkspaceList>();
+    // The workspace list reads the same registry, and its Specifications agree with each
+    // Specification's own `workspaceId`.
     expect(list.projectFolderId).toBe(ids.main);
-    expect(list.workspaces.map((w) => [w.workspaceId, w.specifications.length])).toEqual(
-      data.workspaces.map((w) => [w.workspaceId, w.specCount]),
+    expect(list.workspaces.map((w) => w.workspaceId)).toEqual(
+      data.workspaces.map((w) => w.workspaceId),
     );
     for (const workspace of list.workspaces) {
       for (const { specId } of workspace.specifications) {
@@ -120,7 +122,7 @@ describe('create-options endpoint', () => {
     expect(
       (await options(app, 'linked-none-selectable'))
         .json<DemoCreateOptions>()
-        .workspaces.filter((w) => w.kind === 'linked' && w.selectable),
+        .workspaces.filter((w) => w.workspaceId !== ids.main && w.selectable),
     ).toEqual([]);
     expect(
       (await options(app, 'git-unavailable')).json<DemoCreateOptions>().newWorktree.status,
@@ -226,10 +228,11 @@ describe('create with target', () => {
     const created = after.workspaces.find((w) => w.workspaceId === result.workspaceId);
     expect(created).toMatchObject({
       branch: 'feature/nowa-obsluga-platnosci',
-      specCount: 1,
-      kind: 'linked',
       selectable: true,
     });
+    expect(
+      (await workspaceList(app)).workspaces.find((w) => w.workspaceId === result.workspaceId),
+    ).toMatchObject({ kind: 'linked', specifications: [{ specId: result.specId }] });
     expect(after.workspaces).toHaveLength(7);
     expect(after.baseRefs.map((b) => b.ref)).toContain('refs/heads/feature/nowa-obsluga-platnosci');
   });

@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import type { CreateOptions } from '@nevo/specflow-contracts/specs';
+import type { CreateOptionsView } from '../workspace/model/createOptionsView';
 import { useMessage } from '../../../../i18n/message';
 import { CreateFailureAlert, type CopyKind } from './CreateFailureAlert';
 import type { CreateFailure } from './createFailure';
@@ -26,7 +26,7 @@ export function CreateFailurePanel({
 }: {
   failure: CreateFailure & { snapshot: string };
   state: CreateOperationState;
-  workspaceOptions: CreateOptions | undefined;
+  workspaceOptions: CreateOptionsView | undefined;
   typedTitle: string;
   refreshing: boolean;
   announce: (message: string) => void;

@@ -16,6 +16,7 @@ export type {
 export { PROBE_TEXT } from './embeddings/embedding-provider';
 export type {
   ApplyOutcome,
+  EntriesOutcome,
   IndexIdentity,
   IndexManifest,
   ManifestOutcome,

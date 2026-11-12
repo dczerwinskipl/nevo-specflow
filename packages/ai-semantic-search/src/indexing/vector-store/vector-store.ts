@@ -86,6 +86,19 @@ export type ManifestOutcome =
   | { readonly status: 'missing' }
   | StoreUnreadable;
 
+/**
+ * The whole current generation, from one snapshot: its manifest and one entry per chunk id it lists,
+ * for example to copy an index into another store.
+ */
+export type EntriesOutcome =
+  | {
+      readonly status: 'ok';
+      readonly manifest: IndexManifest;
+      readonly entries: readonly VectorEntry[];
+    }
+  | { readonly status: 'missing' }
+  | StoreUnreadable;
+
 export interface VectorMatch {
   readonly chunkId: string;
   /** Content hash stored with the vector, from the same snapshot as the score. */
@@ -126,6 +139,11 @@ export interface VectorQuery {
  */
 export interface VectorStore {
   readManifest(): Promise<ManifestOutcome>;
+  /**
+   * Every stored entry of the current generation with its manifest. The vectors are copies, so a
+   * whole index is held in memory once more for the caller (for example while it is copied).
+   */
+  readEntries(): Promise<EntriesOutcome>;
   /** Takes the single-writer lock without waiting. */
   openWriter(): Promise<OpenWriterOutcome>;
   /** Nearest neighbours by cosine similarity, ordered by score then chunk id. */

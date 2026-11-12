@@ -11,6 +11,13 @@ import type { GitIgnoreCheck } from '../semantic-index/write-admission';
 export interface DocsProject extends DocsConfigPaths {
   /** Absolute project root. */
   readonly root: string;
+  /**
+   * The Project Home checkout root whose index seeds a missing one (ADR 0022 §3), or `undefined`
+   * when there is none (this checkout is the Project Home, or none is designated). Called only by
+   * `search` and `semantic index`, and only when this checkout's index is missing. The command
+   * still uses only this checkout's configuration; a seed copies only on an identical identity.
+   */
+  readonly seedFrom?: () => Promise<string | undefined>;
 }
 
 /**

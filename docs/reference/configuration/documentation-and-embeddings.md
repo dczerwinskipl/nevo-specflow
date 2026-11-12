@@ -297,3 +297,14 @@ costs only re-embedding. `search` writes nothing there while semantic search is 
 running Runtime shares the same index for
 [`GET /api/docs/search`](../api/docs-search.md), refreshes it in the background on start and
 catches a larger gap up in process.
+
+Each checkout has its own index; linked worktrees never share one. In a linked worktree without an
+index, `search` and `semantic index` first copy the Project Home's index when the identity is the
+same: the index identity (chunker version, protocol, model, embedding space, dimensions), the
+recorded probe vector (reproduced by this checkout's endpoint) and the fingerprint of the effective
+documentation settings (`docs.root`, `docs.yaml`, `docs.search.semantic`). Any difference copies
+nothing and the index is built normally. The copy is written like any other write of the index
+(writer lock, write admission), and the following refresh re-embeds only what differs (see
+[seeding](../cli/nevo-specflow-docs.md#semantic-status-and-semantic-index)). The worktree's own
+`.nevo/local/config.yaml` decides the endpoint; a seed only happens when it matches the Project
+Home's.

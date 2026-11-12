@@ -17,6 +17,7 @@ import { createProcessCatchUp } from '../semantic-index/catch-up';
 import { spawnDetachedProcess } from '../semantic-index/detached-process';
 import { openProjectIndex } from '../semantic-index/index-store';
 import { SEMANTIC_INDEX_COMMAND, SEMANTIC_STATUS_COMMAND } from '../semantic-index/reasons';
+import { seedProjectIndex } from '../semantic-index/seed';
 
 /** Documents returned when `--limit` is omitted. */
 export const DEFAULT_SEARCH_LIMIT = 10;
@@ -60,12 +61,28 @@ export function addSearchCommand(docs: Command, ctx: DocsCommandContext, open: O
 
       const { project, configuration, corpus } = await open();
       const index = await openProjectIndex(project.root, corpus, configuration, ctx.isIgnoredByGit);
+      const env = ctx.env ?? process.env;
+      const createProvider = ctx.createEmbeddingProvider
+        ? { createProvider: ctx.createEmbeddingProvider }
+        : {};
+      // `--no-refresh` embeds nothing, so it does not seed either.
+      if (opts.refresh && project.seedFrom) {
+        await seedProjectIndex(index, {
+          from: project.seedFrom,
+          configuration,
+          corpusSettings: corpus.settings,
+          environment: { env, ...createProvider },
+          // Bounded by the query timeout, so an unreachable endpoint cannot hold the search up.
+          provider: 'query',
+        });
+      }
+
       const search = openDocsSearch({
         corpus,
         configuration,
-        env: ctx.env ?? process.env,
+        env,
         index,
-        ...(ctx.createEmbeddingProvider ? { createProvider: ctx.createEmbeddingProvider } : {}),
+        ...createProvider,
         ...(ctx.backgroundIndex
           ? {
               catchUp: createProcessCatchUp({

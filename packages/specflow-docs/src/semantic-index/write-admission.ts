@@ -101,6 +101,7 @@ export function admittedVectorStore(store: VectorStore, writes: IndexWrites): Ve
 
   return {
     readManifest: () => store.readManifest(),
+    readEntries: () => store.readEntries(),
     query: (query) => store.query(query),
     async openWriter(): Promise<OpenWriterOutcome> {
       const refusal = await writes.check();

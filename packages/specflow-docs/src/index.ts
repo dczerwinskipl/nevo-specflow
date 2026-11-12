@@ -43,6 +43,12 @@ export {
   type SemanticIndexResult,
 } from './semantic-index/build';
 export { type IndexCatchUp } from './semantic-index/catch-up';
+export {
+  seedIndexIfMissing,
+  type ConfiguredSeedIdentity,
+  type SeedOutcome,
+  type SeedSource,
+} from './semantic-index/seed';
 export { readIndexActivity } from './semantic-index/progress';
 export { createReachabilityCache, type ReachabilityCache } from './semantic-index/reachability';
 export { semanticStatus } from './semantic-index/status';

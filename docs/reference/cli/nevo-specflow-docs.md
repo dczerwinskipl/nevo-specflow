@@ -389,6 +389,22 @@ CLI and a running Runtime share it; one process writes at a time, and another on
 meanwhile. Next to it are the progress records of the last full refresh, the catch-up log and the
 marker of the last catch-up start.
 
+**Seeding in a linked worktree.** Every checkout has its own index. When `search` (without
+`--no-refresh`) or `semantic index` runs in a worktree whose index is missing, and that worktree
+is not the designated Project Home, the command first seeds the index with a copy of the Project
+Home's index, and only when both would build the same index: the same chunker version, protocol,
+model, embedding space and dimensions, a recorded probe vector that the configured endpoint
+reproduces (one probe request, within the query timeout for `search`), and the same documentation
+settings (`docs.root`, `docs.yaml` and `docs.search.semantic`). The Project Home index only needs
+to be readable with a recorded probe: one still being built is copied as far as it got. The copy
+takes this index's writer lock without waiting and passes the same write admission as any other
+write; it also copies the chunk cache. A mismatch, no readable Project Home index, a held lock or a
+refused admission copies nothing, and a seed that cannot be attempted never fails the command. Either way the
+command then refreshes as usual, so after a seed it re-embeds only the sections that differ from
+the Project Home. The command still uses only this checkout's configuration; there is no fallback
+to the Project Home's, so a worktree whose local configuration has no `ai.embeddings` searches
+lexically. `semantic status` never seeds.
+
 ## Configuration
 
 The commands work without `.nevo/config.yaml`, without `.nevo/local/config.yaml` and without

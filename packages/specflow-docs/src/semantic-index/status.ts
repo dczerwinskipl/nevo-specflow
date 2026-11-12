@@ -27,7 +27,7 @@ import {
   unreadableIndexReason,
 } from './reasons';
 
-/** The `semantic status` report: the `DocsStatus` contract of `GET /api/docs/status`. */
+/** The `semantic status` report (the `DocsStatus` contract). */
 export type SemanticStatus = DocsStatus;
 
 export interface SemanticStatusOptions {

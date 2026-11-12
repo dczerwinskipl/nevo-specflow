@@ -62,7 +62,10 @@ a refresh, a refresh already running included, the chunk cache, the start of a b
 catch-up). In a Git work tree that does not, nothing is written below `.nevo/local/`: searches
 answer lexically with `index-unavailable` (``Git does not ignore .nevo/local/cache/docs-index/, so
 the index is not written there; add `.nevo/local/` to the project's .gitignore.``), and
-`semantic index` and `semantic status` exit 1 with the same reason. While a check has refused,
+`semantic index` and `semantic status` exit 1 with the same reason. (An index that cannot be read or
+written is reported as `index-unavailable` too, with the operating-system error in the reason; that
+text can name an absolute path, and the Runtime's workspace search returns the reason unchanged, so
+a client that shows it to other users reveals the checkout's location.) While a check has refused,
 each search and status checks again, so search recovers once the path is ignored again. Add the
 entry:
 
@@ -116,9 +119,10 @@ exclude: [templates/] # path prefixes under `docs.root` that are not part of the
 
 An absent or empty file means all defaults. An unknown key at the top level or under `taxonomy` is
 an error naming the file. The file is not part of the corpus: only `*.md` files are scanned,
-validated and indexed. It is read whenever a corpus is opened (every `docs` command, and a running
-Runtime when it first uses the corpus). Document types, required fields and statuses are the
-product frontmatter contract and are not configurable.
+validated and indexed. It is read whenever a corpus is opened: by every `docs` command, and by a
+running Runtime on every documentation request, which re-reads the `docs` settings and `docs.yaml`
+of the requested checkout (a change takes effect on the next request, with no restart). Document
+types, required fields and statuses are the product frontmatter contract and are not configurable.
 
 `context` never returns documents under a non-authoritative prefix; `search` skips them unless
 `--include-non-authoritative` is given; `list`, `find` and `get` return them.
@@ -165,6 +169,17 @@ summary, scope, areas, tags and read_when) to it to embed them, and every search
 Configure in `.nevo/config.yaml` only an endpoint every contributor may send the documentation to; a
 workstation that must not use it sets its own `baseUrl` and `model` in `.nevo/local/config.yaml`
 (`docs.search.semantic` is a project setting and cannot be turned off locally).
+
+The Runtime embeds only through the `ai.embeddings` of its own, trusted configuration (the two files
+of the checkout it runs in, normally Project Home). It never reads `ai.embeddings` from another
+checkout, so a branch's configuration can switch semantic search off for that workspace
+(`docs.search.semantic: false`) but never redirect where document text is sent. The CLI keeps using
+the configuration of the checkout it runs in. Semantic search is therefore on for a workspace only
+when that checkout opts in (`docs.search.semantic: true`) and the Runtime has a trusted
+`ai.embeddings` ([ADR 0022 section 3](../../architecture/decisions/0022-workspace-scoped-documentation-reader.md)).
+If a worktree's own local configuration points the CLI at a different endpoint or model than the
+Runtime's, the two index identities differ and the CLI and the Runtime rebuild each other's shared
+index of that checkout: searches answer lexically with `index-building` until a rebuild finishes.
 
 The two files merge key by key, the local value winning; the example resolves to the remote
 endpoint and model with the project's `queryInstruction`. Either file alone may configure the
@@ -306,5 +321,16 @@ documentation settings (`docs.root`, `docs.yaml`, `docs.search.semantic`). Any d
 nothing and the index is built normally. The copy is written like any other write of the index
 (writer lock, write admission), and the following refresh re-embeds only what differs (see
 [seeding](../cli/nevo-specflow-docs.md#semantic-status-and-semantic-index)). The worktree's own
-`.nevo/local/config.yaml` decides the endpoint; a seed only happens when it matches the Project
-Home's.
+`.nevo/local/config.yaml` decides the endpoint for the CLI; a seed only happens when it matches the
+Project Home's. The Runtime seeds a workspace's missing index from Project Home the same way, with
+these differences: it starts on the first documentation request after a workspace corpus opens; it
+runs once per opened instance, so again after the instance is evicted or the settings change; it
+runs only with semantic search on; and it embeds the probe through the Runtime's trusted endpoint,
+not the worktree's local configuration.
+
+The local configuration is gitignored, so a new linked worktree would have none: when the Engine
+creates a linked worktree it copies Project Home's `.nevo/local/config.yaml` into it when the
+worktree has none. The cache and that copy are disposable: Close deletes `.nevo/local/cache/` and
+`.nevo/local/config.yaml` together with the worktree and neither blocks it. A local configuration
+edited by hand inside a linked worktree is therefore lost on Close; put settings that must outlive
+the worktree into the committed `.nevo/config.yaml` or into Project Home's local configuration.

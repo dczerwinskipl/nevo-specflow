@@ -28,7 +28,7 @@ related:
 # Documentation reader (UI)
 
 `status: draft` — proposed contract, not implemented. The target Runtime behaviour is proposed in
-[Workspace-aware retrieval and Nevo-native documentation reader](../../../ideas/semantic-docs/surfaces-and-setup.md#workspace-aware-retrieval-and-nevo-native-documentation-reader-proposal-2026-11-11);
+[the open items of the documentation reader](../../../ideas/semantic-docs/surfaces-and-setup.md#workspace-aware-retrieval-and-the-documentation-reader-what-is-still-open);
 no exact API contract exists yet. Mock: Storybook `SpecFlow/Screens/Documentation reader (mock)`.
 Owner decisions still open are listed at the end; everything else is the proposed behaviour.
 

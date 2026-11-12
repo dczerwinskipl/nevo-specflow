@@ -36,4 +36,6 @@ there.
   tracking.
 - [Surfaces, corpora and setup](surfaces-and-setup.md): contextual help in the UI and live updates,
   other corpora, assisted enabling in an initialized project, endpoints that need a query string or
-  an `api-key` header, the status probe on client close, package splits.
+  an `api-key` header, package splits, and what the workspace documentation
+  reader ([ADR 0022](../../architecture/decisions/0022-workspace-scoped-documentation-reader.md))
+  left out.

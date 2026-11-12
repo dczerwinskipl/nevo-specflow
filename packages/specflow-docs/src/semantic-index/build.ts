@@ -25,7 +25,9 @@ export type SemanticIndexResult =
  * Bring the index up to date now: embeds new and changed documents, or everything after a mismatch.
  * `onProgress` is called once the plan is made and after every store write (the refresh lands in
  * slices). A refresh that embeds records its progress and outcome in the index directory, where
- * `semantic status` and `GET /api/docs/status` of other processes read it.
+ * `semantic status`, the search catch-up and the Runtime's workspace search (for its "another process
+ * is updating" reason) of other processes read it. The `indexProgress` of the workspace search is
+ * only the Runtime's own background refresh, held in memory.
  */
 export async function buildDocsIndex(
   index: DocsIndex,

@@ -1,6 +1,8 @@
 // The progress of a full index refresh (`semantic index`, a background catch-up, the Runtime
-// refresh) as small files in the index directory, so another process can show it: `semantic status`
-// and `GET /api/docs/status` combine the latest record with the vector store's writer lock.
+// refresh) as small files in the index directory, so another process can show it: `semantic status`,
+// the search catch-up and the Runtime's workspace search (its "another process is updating" reason)
+// combine the latest record with the vector store's writer lock. The `indexProgress` of the
+// workspace search is not read from these files: it is the Runtime's own refresh, held in memory.
 //
 // Every write goes to a new file name (`progress-<started>-<sequence>-<token>.json`, written to a
 // temporary file and renamed to that name, which never exists yet), like the store's generation

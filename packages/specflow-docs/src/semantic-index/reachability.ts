@@ -1,5 +1,5 @@
-// The reachability probe of `semantic status` and `GET /api/docs/status`, shared by the status calls
-// of one process (a CLI run, a Runtime instance) so that repeated status requests during an outage
+// The reachability probe of `semantic status`, shared by the status calls
+// of one process (a CLI run) so that repeated status requests during an outage
 // neither wait for the endpoint again nor send it a probe each.
 
 import type { EmbeddingProvider, ProbeResult } from '@nevo/ai-semantic-search';

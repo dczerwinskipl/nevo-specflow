@@ -94,6 +94,9 @@ it the list answers 403 and the form shows the no-permission alert. A workspace 
 contain means the registry changed between the two reads; the client treats it as a failed read (error state, Retry
 reads both again). The Create-only facts are `managed`, `specCount`, `state`, `selectable`,
 `integrationSelectable`, `integrationDestination`, `branch` and `reason`.
+A checkout that the list reports unavailable as `checkout-mismatch` (the folder no longer is the
+registered checkout: moved, replaced by a link or redirected) is `state:'unavailable'` here with
+`reason:'checkout-unavailable'`; Create has no separate mismatch reason.
 `commits` is `{protectedBranches[],allowedBranches?[]}` and is present **exactly when Git is enabled** (the
 Engine then commits the scaffold), even with empty lists; it is absent when Git is disabled, as are the two
 reasons `branch-protected` and `branch-not-allowed` and `newWorktree.branchProtected`. A workspace whose branch
@@ -196,6 +199,11 @@ Close and integration first flush the document commit queue of the affected chec
 `DOCUMENT_COMMITS_PENDING` (`details.cause` `commit-pending`, `commit-failed` or `commit-uncommitted`) while document
 commits remain; the precedence and the preview behaviour are defined in
 [Specification documents](specification-documents.md).
+Worktree Close treats `.nevo/local/cache/**` (the semantic documentation index) and
+`.nevo/local/config.yaml` (the copy of Project Home's local configuration that the Engine places in a
+new linked worktree) as disposable product-owned files: they do not make the worktree dirty and are
+deleted with it. A local configuration edited by hand inside a linked worktree is lost on Close; keep
+durable settings in the committed `.nevo/config.yaml` or in Project Home's local configuration.
 Error status and exact DTO variants are defined in the schema and Runtime endpoint.
 
 No operation silently completes tasks, invents Session state or retries uncertain Git effects.

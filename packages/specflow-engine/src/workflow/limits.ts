@@ -39,6 +39,8 @@ export const TASKS_PER_FINISH_MAX = 100;
 
 /** An escalation's feedback becomes the Task's status reason, so both share one bound. */
 export const FEEDBACK_MAX = TASK_STATUS_REASON_MAX_LENGTH;
+/** The owner's reason for abandoning a Specification; also the status reason of each Task it cancels. */
+export const ABANDON_REASON_MAX = 2000;
 export const ARTIFACTS_MAX = 100;
 export const ARTIFACT_MAX = 1000;
 /**

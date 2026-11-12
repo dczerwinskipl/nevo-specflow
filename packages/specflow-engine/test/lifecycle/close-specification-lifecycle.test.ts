@@ -5,9 +5,13 @@ import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
+  abandonSpecification,
   archiveSpecificationWithCommit,
   bootstrapProjectHome,
   closeSpecification,
+  createTask,
+  installProjectDefinitions,
+  openWorkflow,
   closeWorktree,
   closeWorkspace,
   previewCloseOperation,
@@ -29,7 +33,7 @@ afterEach(async () => {
   }
 });
 
-async function fixture(linked: boolean) {
+async function fixture(linked: boolean, archetype: 'minimal' | 'feature' = 'minimal') {
   const root = await createGitTestProject(
     'specification-close-t15-Ż ',
     'runtime: {}\ngit:\n  enabled: true\n',
@@ -43,12 +47,17 @@ async function fixture(linked: boolean) {
   git(root, 'add', '.nevo/config.yaml');
   commitStaged(root, 'pin integration target');
   const engine = await bootstrapProjectHome(root);
+  if (archetype === 'feature') {
+    // The workflow binding of `feature` comes from the project's definitions (the install commits them).
+    await installProjectDefinitions(engine);
+  }
+
   const registry = await engine.readRegistry();
   const spec = await createSpecificationForTesting(engine, {
     operationId: randomUUID(),
     title: 'Lifecycle archive test',
     created: '2026-10-18',
-    archetype: { id: 'minimal', version: 1 },
+    archetype: { id: archetype, version: 1 },
     target: linked
       ? { kind: 'new-worktree' as const, baseRef: 'HEAD' }
       : { kind: 'existing' as const, workspaceId: registry.primaryWorkspaceId },
@@ -61,8 +70,9 @@ async function fixture(linked: boolean) {
     spec.workspaceRoot,
     'add',
     '--',
-    spec.relativeManifestPath,
-    'specs/active/' + spec.slug + '/overview.md',
+    ...(archetype === 'feature'
+      ? ['specs/active/' + spec.slug]
+      : [spec.relativeManifestPath, 'specs/active/' + spec.slug + '/overview.md']),
   );
   commitStaged(spec.workspaceRoot, 'commit authored specification');
 
@@ -95,6 +105,40 @@ describe('E2.T15 Specification Close (real Git filesystem)', () => {
         specId: spec.specId,
       }),
     ).rejects.toMatchObject({ code: 'CLOSE_PREFLIGHT' });
+  }, 120000);
+
+  it('refuses a draft Task before any Specification run (D07) until the owner abandons it', async () => {
+    const { root, engine, spec } = await fixture(false, 'feature');
+    const owner = { class: 'human', details: { actorId: 'local:owner', trust: 'local' } } as const;
+    await createTask(await openWorkflow(engine), {
+      specId: spec.specId,
+      taskId: 'docs',
+      title: 'Document it',
+      type: 'implementation',
+      actor: owner,
+    });
+
+    await expect(
+      closeSpecification(engine, { operationId: randomUUID(), specId: spec.specId }),
+    ).rejects.toMatchObject({
+      code: 'CLOSE_BLOCKED',
+      blockers: [{ kind: 'draft-tasks', subjectIds: ['docs'] }],
+    });
+
+    const abandoned = await abandonSpecification(await openWorkflow(engine), {
+      specId: spec.specId,
+      reason: 'Not needed any more.',
+      actor: owner,
+    });
+    expect(abandoned.cancelledTasks).toEqual(['docs']);
+    // The execution store leaves its writes for the owner to commit (D14); Close's Git rules stand.
+    git(root, 'add', '-A', '--', 'specs');
+    commitStaged(root, 'abandon specification');
+
+    await expect(
+      closeSpecification(engine, { operationId: randomUUID(), specId: spec.specId }),
+    ).resolves.toMatchObject({ status: 'completed' });
+    expect((await readWorkspaceSpecification(root, spec.specId)).location).toBe('archive');
   }, 120000);
 
   it('keeps a linked canonical archive and worktree after archive-only close', async () => {

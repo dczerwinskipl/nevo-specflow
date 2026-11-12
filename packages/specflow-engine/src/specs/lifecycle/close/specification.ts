@@ -106,7 +106,7 @@ export async function closeSpecification(
   });
   let journal = admission.journal;
   if (journal.stage === 'reserved') {
-    // TODO(specification-exit): connect real Specification exit gates/actions owned by future workflow slice here.
+    // The Specification exit gate (D07) admitted this Close in its reservation, under the lock.
     journal = await archiveSpecificationWithCommit(engine, request.operationId);
   }
 

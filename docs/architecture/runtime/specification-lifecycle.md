@@ -165,6 +165,30 @@ It records exact IDs, locations, statuses and binding generations in its durable
 Callers cannot name an arbitrary subset or disguise a whole-branch merge as one Spec operation.
 Active Specs remain active after whole-workspace rebind; already archived Specs remain archived.
 
+### Specification exit gate and Abandon (D07)
+
+A Specification Close is refused with `CLOSE_BLOCKED` while its workflow is unfinished. The gate is a port
+(`SpecFlowEngine.specificationExit`, composed in `engine.ts`) so the lifecycle does not import the workflow; the
+workflow's pure `closeBlockers` decides it. Close calls it in its preview, before any Git check, and again inside
+its reservation under the project control lock. The refusal carries grouped blockers (`kind`, `subjectIds`,
+`message`): the Specification run has not ended (`specification-run`); Tasks that are neither cancelled nor
+ended (`draft-tasks`, `on-hold-tasks`, `unfinished-tasks`, never-started ones included); `broken-tasks`; an
+execution-store change that did not finish publishing (`pending-execution-change`); a pending Task document
+change (`pending-task-documents`); execution records that cannot be read (`execution-state-unreadable`). A
+Specification that never started and has no Tasks closes as before, bound to a workflow or not. Worktree and
+workspace Close do not archive and do not consult the gate.
+
+The owner's **Abandon** (`abandonSpecification`, a required reason) is the way to close without realization. In
+one execution-store change it ends the Specification run (pinned first when it never started) and every Task run
+that has not ended as `abandoned` (the core's `abandonment` record holds the actor, time, reason and the
+position it ended from), and cancels every Task that is not cancelled or ended with the status change source
+`abandon`. It is final: the same reason again returns the same result, another reason is
+`WORKFLOW_SPECIFICATION_ENDED`. It is not a bypass: pending writes, broken Tasks and other operations on the
+Specification refuse it with `WORKFLOW_EXIT_BLOCKED` and the same blockers (plus `operation-in-progress`). After
+it the gate reports nothing; the execution store leaves its writes uncommitted (D14), so the owner commits them
+and Close's Git and workspace rules apply unchanged. Workflow mutations after the Close reservation are not yet
+refused (writer admission for workflow steps is not implemented).
+
 Every Close and integration first flushes the document commit queue of the checkouts it touches and is refused
 with `DOCUMENT_COMMITS_PENDING` while document commits are pending, failed or uncommitted; the rule, its precedence and
 the recovery of document operations are owned by the [documents layer](specification-documents.md) and

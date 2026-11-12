@@ -88,7 +88,12 @@ export const TaskOriginSchema = Type.Union([
 export type TaskOrigin = Static<typeof TaskOriginSchema>;
 
 export const TaskStatusChangeSchema = closed({
-  source: Type.Union([Type.Literal('decision'), Type.Literal('escalation')]),
+  /** `abandon`: cancelled because the owner abandoned the Specification. */
+  source: Type.Union([
+    Type.Literal('decision'),
+    Type.Literal('escalation'),
+    Type.Literal('abandon'),
+  ]),
   at: timestamp(),
   reason: Type.Optional(text(TASK_STATUS_REASON_MAX_LENGTH)),
 });

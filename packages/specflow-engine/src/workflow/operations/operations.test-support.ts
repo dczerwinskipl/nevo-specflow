@@ -9,7 +9,7 @@ import { createMemoryWorkflowStore } from '../state/memory-store.test-support';
 import type { OwnerActor, WorkflowActor, WorkflowSubject } from '../state/model';
 import { finishStep, type FinishStepInput } from './finish';
 import { inspectExecution } from './inspect';
-import type { WorkflowDependencies } from './loaded-execution';
+import type { ExecutionHolds, WorkflowDependencies } from './loaded-execution';
 import { startSpecificationExecution, startTaskExecution } from './start';
 import type { TaskReferences } from './task-references';
 
@@ -65,10 +65,26 @@ export function fakeReferences(): TaskReferences & {
   return references;
 }
 
+/** {@link ExecutionHolds} a test sets: none by default. */
+export function fakeHolds(): ExecutionHolds & {
+  pendingChange: boolean;
+  inProgress: boolean;
+} {
+  const holds = {
+    pendingChange: false,
+    inProgress: false,
+    pendingExecutionChange: () => Promise.resolve(holds.pendingChange),
+    operationInProgress: () => Promise.resolve(holds.inProgress),
+  };
+
+  return holds;
+}
+
 /** Dependencies over an in-memory store with a clock that advances one second per reading. */
 export function memoryDependencies(catalogue: ExecutionCatalogue): WorkflowDependencies & {
   readonly store: ReturnType<typeof createMemoryWorkflowStore>;
   readonly references: ReturnType<typeof fakeReferences>;
+  readonly holds: ReturnType<typeof fakeHolds>;
 } {
   let tick = Date.parse('2026-11-05T10:00:00.000Z');
   let queue = Promise.resolve();
@@ -77,6 +93,7 @@ export function memoryDependencies(catalogue: ExecutionCatalogue): WorkflowDepen
     store: createMemoryWorkflowStore(),
     catalogue,
     references: fakeReferences(),
+    holds: fakeHolds(),
     now: () => new Date((tick += 1000)),
     serialize: <T>(operation: () => Promise<T>) => {
       const result = queue.then(operation);

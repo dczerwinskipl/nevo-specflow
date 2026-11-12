@@ -4,7 +4,8 @@ import { join, resolve } from 'node:path';
 
 import { parse as parseYaml } from 'yaml';
 
-import { openSpecFlowEngine, type SpecFlowEngine } from '../application';
+import type { SpecFlowEngine } from '../application';
+import { openSpecFlowEngine } from '../engine';
 import {
   isGitIgnored,
   LOCAL_CONFIG_RELATIVE_PATH,

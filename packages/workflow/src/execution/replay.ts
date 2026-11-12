@@ -67,6 +67,10 @@ function attemptFollows(
  *   step an attempt replayed so far (the returned attempt included) was of, with feedback when the
  *   return requires it.
  *
+ * - an abandonment (`abandonRun`) comes after every other record, from the position they led to,
+ *   which was not terminal, and leads to terminal `abandoned`; an attempt active then ended with the
+ *   outcome `abandoned`, and only such an attempt has it.
+ *
  * Sequences are unique, and so is each (step, attempt). The position the replay ends at must be
  * the stored one. Anything else is a hand-edited or foreign
  * record.
@@ -98,7 +102,13 @@ export function isPositionJustified<A extends HostAnnotations>(
 
   let expected: RunPosition = { state: 'not-started' };
   let entering = false;
+  let abandonedAttempt = false;
   for (const record of records) {
+    if (abandonedAttempt) {
+      // An attempt ended by an abandonment is the last record before it.
+      return false;
+    }
+
     if (isReturnRecord(record)) {
       if (
         entering ||
@@ -134,6 +144,13 @@ export function isPositionJustified<A extends HostAnnotations>(
       continue;
     }
 
+    if (outcome.kind === 'abandoned') {
+      // The run stays where it was until the abandonment record ends it.
+      abandonedAttempt = true;
+      expected = { state: 'active', step: step.id, attempt: record.attempt };
+      continue;
+    }
+
     if (outcome.kind === 'returned') {
       if (!returnAllowed(outcome.to, outcome.feedback)) {
         return false;
@@ -158,6 +175,26 @@ export function isPositionJustified<A extends HostAnnotations>(
       findStep(definition, transition.target.step)?.kind === 'wait';
   }
 
+  const abandonment = run.abandonment;
+  if (abandonedAttempt && !abandonment) {
+    return false;
+  }
+
+  if (abandonment) {
+    // Abandoning ends a run that had not ended, from the position the history led to, last.
+    if (
+      entering ||
+      expected.state === 'terminal' ||
+      !isDeepStrictEqual(abandonment.from, expected) ||
+      records.some((record) => record.sequence >= abandonment.sequence) ||
+      !abandonment.reason.trim()
+    ) {
+      return false;
+    }
+
+    expected = { state: 'terminal', outcome: 'abandoned' };
+  }
+
   return !entering && isDeepStrictEqual(expected, run.position);
 }
 
@@ -178,6 +215,8 @@ export function assertPositionJustified<A extends HostAnnotations>(
 export type RunArrival<A extends HostAnnotations, TActor extends ActorRecord> =
   /** The last attempt is still active. */
   | { readonly kind: 'active' }
+  /** The run was abandoned (`abandonRun`). */
+  | { readonly kind: 'abandoned' }
   /** An owner return, recorded on its own or as the outcome of the attempt it ended. */
   | { readonly kind: 'return'; readonly to: string }
   /** An attempt finished with this transition. */
@@ -193,6 +232,10 @@ export function lastArrival<A extends HostAnnotations, TActor extends ActorRecor
   run: WorkflowRun<TActor>,
   definition: WorkflowDefinition<A>,
 ): RunArrival<A, TActor> | undefined {
+  if (run.abandonment) {
+    return { kind: 'abandoned' };
+  }
+
   const last = historyOf(run).at(-1);
   if (!last) {
     return undefined;
@@ -209,6 +252,11 @@ export function lastArrival<A extends HostAnnotations, TActor extends ActorRecor
 
   if (outcome.kind === 'returned') {
     return { kind: 'return', to: outcome.to };
+  }
+
+  if (outcome.kind === 'abandoned') {
+    // Only an abandoned run has an abandoned attempt, and it returned above.
+    throw new WorkflowError('WORKFLOW_STATE_CORRUPT', 'An attempt was abandoned, but not the run.');
   }
 
   const transition = findStep(definition, last.step)?.transitions.find(
@@ -261,7 +309,8 @@ export function handoffOf(run: WorkflowRun): Handoff | undefined {
   }
 
   const outcome = last.outcome;
-  if (!outcome) {
+  if (!outcome || outcome.kind === 'abandoned') {
+    // An abandoned run hands nothing on.
     return undefined;
   }
 

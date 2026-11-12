@@ -5,6 +5,7 @@ import type {
   WorkflowDefinition,
 } from '../definitions/definition';
 import { pinOf, type WorkflowPin } from '../definitions/revision';
+import { WorkflowError } from '../errors';
 
 /**
  * One run of a definition: its pin, its position and its history. Only these are stored; anything a
@@ -43,7 +44,9 @@ export type AttemptOutcome =
       readonly artifacts: readonly string[];
     }
   /** The owner returned the run to an earlier step while this attempt was active. */
-  | { readonly kind: 'returned'; readonly to: string; readonly feedback?: string };
+  | { readonly kind: 'returned'; readonly to: string; readonly feedback?: string }
+  /** The run was abandoned while this attempt was active (`abandonRun`). */
+  | { readonly kind: 'abandoned' };
 
 export interface AttemptRecord<TActor extends ActorRecord = ActorRecord> {
   readonly step: string;
@@ -75,11 +78,28 @@ export interface ReturnRecord {
   readonly feedback?: string;
 }
 
+/**
+ * The run was ended early, without reaching a terminal step: `abandoned` from whatever position it
+ * had (`from`). It is the last record of a run (its sequence follows every attempt and return); an
+ * attempt that was active then ends with the outcome `abandoned`. Who ended it and why are recorded;
+ * the core does not interpret either beyond requiring a reason.
+ */
+export interface RunAbandonment<TActor extends ActorRecord = ActorRecord> {
+  /** See {@link AttemptRecord.sequence}. */
+  readonly sequence: number;
+  readonly at: string;
+  readonly from: RunPosition;
+  readonly actor: TActor;
+  readonly reason: string;
+}
+
 export interface WorkflowRun<TActor extends ActorRecord = ActorRecord> {
   readonly workflow: WorkflowPin;
   readonly position: RunPosition;
   readonly attempts: readonly AttemptRecord<TActor>[];
   readonly returns: readonly ReturnRecord[];
+  /** Present once the run was abandoned (`abandonRun`); its position is then terminal `abandoned`. */
+  readonly abandonment?: RunAbandonment<TActor>;
 }
 
 /** A run of `definition` that has not started, pinned to it. */
@@ -136,3 +156,42 @@ export function historyOf<TActor extends ActorRecord>(
 export const isReturnRecord = (
   record: AttemptRecord<ActorRecord> | ReturnRecord,
 ): record is ReturnRecord => 'from' in record;
+
+/**
+ * End a run that is not terminal yet as `abandoned`, from any position (also `not-started`), with who
+ * ended it and why. Needs no definition: nothing is chosen, the run only stops. A terminal run cannot
+ * be abandoned (`WORKFLOW_POSITION_INVALID`); an empty reason is `WORKFLOW_INPUT_INVALID`.
+ */
+export function abandonRun<TActor extends ActorRecord>(
+  run: WorkflowRun<TActor>,
+  command: { readonly at: string; readonly actor: TActor; readonly reason: string },
+): WorkflowRun<TActor> {
+  if (run.position.state === 'terminal') {
+    throw new WorkflowError('WORKFLOW_POSITION_INVALID', 'The run has ended already.');
+  }
+
+  if (!command.reason.trim()) {
+    throw new WorkflowError('WORKFLOW_INPUT_INVALID', 'Abandoning a run needs a reason.');
+  }
+
+  const position = run.position;
+
+  return {
+    ...run,
+    attempts: run.attempts.map((record) =>
+      position.state === 'active' &&
+      record.step === position.step &&
+      record.attempt === position.attempt
+        ? { ...record, endedAt: command.at, outcome: { kind: 'abandoned' } }
+        : record,
+    ),
+    position: { state: 'terminal', outcome: 'abandoned' },
+    abandonment: {
+      sequence: nextSequence(run),
+      at: command.at,
+      from: run.position,
+      actor: command.actor,
+      reason: command.reason,
+    },
+  };
+}

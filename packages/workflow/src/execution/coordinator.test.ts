@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { decide, type WorkflowCommand } from './coordinator';
 import { checkDefinition, type WorkflowDefinition } from '../definitions/definition';
 import { handoffOf, isPositionJustified } from './replay';
-import { newRun, type ActorRecord, type WorkflowRun } from './run';
+import { abandonRun, newRun, type ActorRecord, type WorkflowRun } from './run';
 
 /**
  * A host that is not SpecFlow: a draft (agent or person), a human-only review gate, and a wait step
@@ -372,6 +372,44 @@ describe('replay', () => {
     expect(() => decide(DEFINITION, value, start(agent))).toThrow(
       expect.objectContaining({ code: 'WORKFLOW_STATE_CORRUPT' }),
     );
+  });
+});
+
+describe('abandoning a run', () => {
+  const abandon = (value: WorkflowRun) =>
+    abandonRun(value, { at: AT, actor: person, reason: 'Out of scope.' });
+
+  it.each<[string, WorkflowRun]>([
+    ['not started', run()],
+    ['active', run(start(agent))],
+    ['ready', run(...draftedByAgent)],
+    ['waiting', run(...inWait)],
+  ])('ends a %s run as abandoned, justified by its history', (_name, value) => {
+    const abandoned = abandon(value);
+    expect(abandoned.position).toEqual({ state: 'terminal', outcome: 'abandoned' });
+    expect(abandoned.abandonment).toMatchObject({ from: value.position, reason: 'Out of scope.' });
+    expect(isPositionJustified(abandoned, DEFINITION)).toBe(true);
+    expect(decide(DEFINITION, abandoned, start(agent)).intent).toEqual({
+      kind: 'terminal',
+      outcome: 'abandoned',
+    });
+  });
+
+  it('refuses an ended run and an empty reason, and rejects an abandonment before the last record', () => {
+    expect(() => abandon(abandon(run()))).toThrow(
+      expect.objectContaining({ code: 'WORKFLOW_POSITION_INVALID' }),
+    );
+    expect(() => abandonRun(run(), { at: AT, actor: person, reason: ' ' })).toThrow(
+      expect.objectContaining({ code: 'WORKFLOW_INPUT_INVALID' }),
+    );
+    const abandoned = abandon(run(start(agent)));
+    expect(
+      isPositionJustified(
+        { ...abandoned, abandonment: { ...abandoned.abandonment!, sequence: 1 } },
+        DEFINITION,
+      ),
+    ).toBe(false);
+    expect(isPositionJustified({ ...abandoned, abandonment: undefined }, DEFINITION)).toBe(false);
   });
 });
 

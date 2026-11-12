@@ -20,11 +20,20 @@ describe('built-in role capabilities', () => {
       [
         SpecCapabilities.capabilities.View,
         SessionCapabilities.capabilities.View,
-        DocsCapabilities.capabilities.Search,
+        DocsCapabilities.capabilities.View,
       ].sort(),
     );
     expect(roles.developer).toEqual(expect.arrayContaining([...roles.viewer]));
     expect(roles.admin).toEqual(expect.arrayContaining([...roles.developer]));
     expect(roles.developer).not.toContain(SessionCapabilities.capabilities.ViewProviderLimits);
+  });
+
+  it('gives every role docs.view, the only docs capability (no docs.search alias)', () => {
+    const roles = specFlowRoleCapabilities();
+    expect(DocsCapabilities.capabilities).toEqual({ View: 'docs.view' });
+    for (const role of [roles.viewer, roles.developer, roles.admin]) {
+      expect(role).toContain('docs.view');
+      expect(role).not.toContain('docs.search');
+    }
   });
 });

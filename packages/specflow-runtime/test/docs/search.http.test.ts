@@ -15,6 +15,7 @@ import {
   type CreateEmbeddingProvider,
   type DocsConfiguration,
 } from '@nevo/specflow-docs';
+import type { SpecFlowEngine } from '@nevo/specflow-engine';
 import { Value } from 'typebox/value';
 import { afterAll, describe, expect, it, vi } from 'vitest';
 
@@ -65,14 +66,22 @@ const semantic: DocsConfiguration = {
   embeddings: { protocol: 'openai-compatible', baseUrl: 'http://127.0.0.1:1/v1', model: 'm' },
 };
 
+const PROJECT_ID = 'docs-project';
+/** Only the project id is read: the scope of `docs.view`. */
+const engine = { context: { project: { projectId: PROJECT_ID } } } as unknown as SpecFlowEngine;
+
 function docsApp(
   config: RuntimeConfig,
   docs: DocsFeatureDependencies,
-  options: { semantic?: boolean; store?: InMemoryAuthenticationStore } = {},
+  options: { semantic?: boolean; store?: InMemoryAuthenticationStore; engine?: false } = {},
 ) {
   return createRuntimeApp(
     { ...config, ...(options.semantic ? { docs: semantic } : {}) },
-    { docs, ...(options.store ? { auth: { store: options.store } } : {}) },
+    {
+      docs,
+      ...(options.engine === false ? {} : { specs: { engine } }),
+      ...(options.store ? { auth: { store: options.store } } : {}),
+    },
   );
 }
 
@@ -133,47 +142,59 @@ describe('GET /api/docs/search', () => {
     }
   });
 
-  it('needs authentication and docs.search in any scope, and validates the query', async () => {
-    const config = passwordConfig();
+  it('needs authentication and docs.view at the project scope, and validates the query', async () => {
+    const password = passwordConfig();
     const store = new InMemoryAuthenticationStore();
     const cookie = (userId: string) => ({
-      cookie: `${authCookieNames(config.server.port).session}=${store.createSession({
+      cookie: `${authCookieNames(password.server.port).session}=${store.createSession({
         userId,
         authenticatedWith: { kind: 'password' },
       })}`,
     });
-    const app = await docsApp(
-      {
-        ...config,
-        authentication: {
-          ...config.authentication,
-          users: { reader: { name: 'Reader' }, stranger: { name: 'Stranger' } },
-          providers: {
-            ...config.authentication.providers,
-            password: { enabled: true, accounts: {} },
-          },
+    const config: RuntimeConfig = {
+      ...password,
+      authentication: {
+        ...password.authentication,
+        users: {
+          reader: { name: 'Reader' },
+          member: { name: 'Member' },
+          specReader: { name: 'Spec reader' },
+          sessionReader: { name: 'Session reader' },
+          stranger: { name: 'Stranger' },
         },
-        // A Specification-scoped viewer: project documentation has no narrower scope.
-        authorization: {
-          assignments: [{ userId: 'reader', role: 'viewer', scope: { specId: 'S1' } }],
+        providers: {
+          ...password.authentication.providers,
+          password: { enabled: true, accounts: {} },
         },
       },
-      { projectRoot: project() },
-      { store },
-    );
+      // Global and project viewers read the documentation; a grant bounded to a Specification or
+      // a Session admits none of it.
+      authorization: {
+        assignments: [
+          { userId: 'reader', role: 'viewer', scope: {} },
+          { userId: 'member', role: 'viewer', scope: { projectId: PROJECT_ID } },
+          { userId: 'specReader', role: 'viewer', scope: { specId: 'S1' } },
+          { userId: 'sessionReader', role: 'viewer', scope: { sessionId: 'session-1' } },
+        ],
+      },
+    };
+    const app = await docsApp(config, { projectRoot: project() }, { store });
     try {
       const url = '/api/docs/search?q=install';
       expect((await app.inject(url)).statusCode).toBe(401);
-      const forbidden = await app.inject({ url, headers: cookie('stranger') });
-      expect(forbidden.statusCode).toBe(403);
-      expect(forbidden.json()).toEqual({ error: 'forbidden' });
-      // The status endpoint has the same access rule.
+      for (const userId of ['stranger', 'specReader', 'sessionReader']) {
+        const forbidden = await app.inject({ url, headers: cookie(userId) });
+        expect(forbidden.statusCode, userId).toBe(403);
+        expect(forbidden.json()).toEqual({ error: 'forbidden' });
+        // The status endpoint has the same access rule.
+        const status = await app.inject({ url: '/api/docs/status', headers: cookie(userId) });
+        expect(status.statusCode, userId).toBe(403);
+      }
+
       expect((await app.inject('/api/docs/status')).statusCode).toBe(401);
-      expect(
-        (await app.inject({ url: '/api/docs/status', headers: cookie('stranger') })).statusCode,
-      ).toBe(403);
       const reader = cookie('reader');
       expect((await app.inject({ url, headers: reader })).statusCode).toBe(200);
+      expect((await app.inject({ url, headers: cookie('member') })).statusCode).toBe(200);
       const included = `${url}&includeNonAuthoritative=true`;
       expect((await app.inject({ url: included, headers: reader })).statusCode).toBe(200);
       for (const invalid of [
@@ -189,6 +210,22 @@ describe('GET /api/docs/search', () => {
       }
     } finally {
       await app.close();
+    }
+
+    // Without an Engine there is no project to check `docs.view` at: 401 first, then 503.
+    const noEngine = await docsApp(config, { projectRoot: project() }, { store, engine: false });
+    try {
+      for (const path of ['/api/docs/search?q=install', '/api/docs/status']) {
+        expect((await noEngine.inject(path)).statusCode, path).toBe(401);
+        const unavailable = await noEngine.inject({ url: path, headers: cookie('reader') });
+        expect(unavailable.statusCode, path).toBe(503);
+        expect(unavailable.json()).toEqual({
+          error: 'Documentation search is unavailable.',
+          code: 'DOCS_UNAVAILABLE',
+        });
+      }
+    } finally {
+      await noEngine.close();
     }
   });
 });

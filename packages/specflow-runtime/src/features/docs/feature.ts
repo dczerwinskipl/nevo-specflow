@@ -6,6 +6,7 @@ import {
 import { DocsCapabilities } from '@nevo/specflow-contracts/docs';
 
 import type { RuntimeFeature } from '../runtime-feature';
+import type { DocsProjectId } from './access';
 import { createProjectDocs } from './project-docs';
 import { docsSearchEndpoint } from './search-route';
 import { docsStatusEndpoint } from './status-route';
@@ -31,9 +32,11 @@ export interface CreateDocsFeatureOptions {
   /** The loaded `docs` and `ai.embeddings` settings; absent: the defaults (lexical search). */
   readonly configuration?: DocsConfiguration;
   readonly dependencies?: DocsFeatureDependencies;
+  /** The Runtime's project, the scope of `docs.view`; without one every docs route answers `503`. */
+  readonly projectId: DocsProjectId;
 }
 
-export function createDocsFeature(options: CreateDocsFeatureOptions = {}): RuntimeFeature {
+export function createDocsFeature(options: CreateDocsFeatureOptions): RuntimeFeature {
   const configuration = options.configuration ?? {
     docs: DEFAULT_DOCS_SETTINGS,
     embeddings: undefined,
@@ -56,8 +59,9 @@ export function createDocsFeature(options: CreateDocsFeatureOptions = {}): Runti
                 ? { createProvider: dependencies.createProvider }
                 : {}),
             });
-      app.register(docsSearchEndpoint, { docs });
-      app.register(docsStatusEndpoint, { docs });
+      const { projectId } = options;
+      app.register(docsSearchEndpoint, { docs, projectId });
+      app.register(docsStatusEndpoint, { docs, projectId });
       if (docs !== undefined) {
         // Ends a refresh a search started, whether or not the start refresh runs.
         app.addHook('onClose', () => docs.close());

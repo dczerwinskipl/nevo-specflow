@@ -297,6 +297,8 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
       ...(config.docs ? { configuration: config.docs } : {}),
       // Demo data serves no project documentation.
       ...(dependencies.docs && !demo ? { dependencies: dependencies.docs } : {}),
+      // `docs.view` is checked at the Engine's project; without an Engine the docs routes answer 503.
+      projectId: () => engine?.context.project.projectId,
     }),
   ];
 

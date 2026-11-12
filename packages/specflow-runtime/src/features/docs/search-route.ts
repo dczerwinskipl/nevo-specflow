@@ -3,17 +3,20 @@ import {
   AuthenticationRequiredErrorResponseSchema,
   AuthorizationForbiddenErrorResponseSchema,
 } from '@nevo/specflow-contracts/authorization';
-import { DocsCapabilities, DocsSearchResultSchema } from '@nevo/specflow-contracts/docs';
+import { DocsSearchResultSchema } from '@nevo/specflow-contracts/docs';
 import { DocsConfigError, DocsCorpusInvalidError } from '@nevo/specflow-docs';
 import type { FastifyPluginCallback } from 'fastify';
 import { Type } from 'typebox';
 
-import { requireCapabilityInAnyScope } from '../auth';
 import { contractRef } from '../../server/shared-contracts';
+import { requireDocsView, type DocsProjectId } from './access';
 import type { ProjectDocs } from './project-docs';
+import {
+  docsUnavailableBody,
+  DOCS_UNAVAILABLE_MESSAGE,
+  DocsUnavailableErrorSchema,
+} from './unavailable';
 
-export const DOCS_UNAVAILABLE_CODE = 'DOCS_UNAVAILABLE';
-export const DOCS_UNAVAILABLE_MESSAGE = 'Documentation search is unavailable.';
 /** Documents returned without `limit`; the same default as `nevo-specflow docs search`. */
 export const DOCS_SEARCH_DEFAULT_LIMIT = 10;
 export const DOCS_SEARCH_MAX_LIMIT = 50;
@@ -53,12 +56,6 @@ const DocsSearchQuerySchema = Type.Object(
   { additionalProperties: false },
 );
 
-/** `503` of the docs endpoints: the Runtime serves no project documentation, or it is invalid. */
-export const DocsUnavailableErrorSchema = Type.Object(
-  { error: Type.String(), code: Type.Literal(DOCS_UNAVAILABLE_CODE) },
-  { additionalProperties: false },
-);
-
 /**
  * `GET /api/docs/search`: ranked documents of the project's own documentation with their best
  * sections, in the result contract of `nevo-specflow docs search --json`. Every search runs the
@@ -68,15 +65,12 @@ export const DocsUnavailableErrorSchema = Type.Object(
  */
 export const docsSearchEndpoint: FastifyPluginCallback<{
   readonly docs: ProjectDocs | undefined;
-}> = (app, { docs }, done) => {
+  readonly projectId: DocsProjectId;
+}> = (app, { docs, projectId }, done) => {
   app.withTypeProvider<TypeBoxTypeProvider>().get(
     '/api/docs/search',
     {
-      // Project documentation is readable by any principal holding `docs.search` in any scope.
-      preHandler: requireCapabilityInAnyScope({
-        resource: DocsCapabilities,
-        capability: DocsCapabilities.capabilities.Search,
-      }),
+      preHandler: requireDocsView(projectId),
       schema: {
         tags: ['Documentation'],
         summary: "Search the project's documentation",
@@ -91,8 +85,7 @@ export const docsSearchEndpoint: FastifyPluginCallback<{
     },
     async (request, reply) => {
       reply.header('Cache-Control', 'no-store');
-      const unavailable = () =>
-        reply.code(503).send({ error: DOCS_UNAVAILABLE_MESSAGE, code: DOCS_UNAVAILABLE_CODE });
+      const unavailable = () => reply.code(503).send(docsUnavailableBody);
       if (docs === undefined) {
         return unavailable();
       }

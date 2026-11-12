@@ -17,7 +17,7 @@ export function specFlowRoleCapabilities(): Readonly<
   const viewer = [
     SpecCapabilities.capabilities.View,
     SessionCapabilities.capabilities.View,
-    DocsCapabilities.capabilities.Search,
+    DocsCapabilities.capabilities.View,
   ] as const;
 
   const developer = [

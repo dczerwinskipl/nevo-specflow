@@ -3,18 +3,18 @@ import {
   AuthenticationRequiredErrorResponseSchema,
   AuthorizationForbiddenErrorResponseSchema,
 } from '@nevo/specflow-contracts/authorization';
-import { DocsCapabilities, DocsStatusSchema } from '@nevo/specflow-contracts/docs';
+import { DocsStatusSchema } from '@nevo/specflow-contracts/docs';
 import { DocsConfigError, DocsCorpusInvalidError } from '@nevo/specflow-docs';
 import type { FastifyPluginCallback } from 'fastify';
 
-import { requireCapabilityInAnyScope } from '../auth';
 import { contractRef } from '../../server/shared-contracts';
+import { requireDocsView, type DocsProjectId } from './access';
 import type { ProjectDocs } from './project-docs';
 import {
-  DOCS_UNAVAILABLE_CODE,
+  docsUnavailableBody,
   DOCS_UNAVAILABLE_MESSAGE,
   DocsUnavailableErrorSchema,
-} from './search-route';
+} from './unavailable';
 
 /**
  * `GET /api/docs/status`: the semantic search status of the project's documentation, in the contract
@@ -25,15 +25,12 @@ import {
  */
 export const docsStatusEndpoint: FastifyPluginCallback<{
   readonly docs: ProjectDocs | undefined;
-}> = (app, { docs }, done) => {
+  readonly projectId: DocsProjectId;
+}> = (app, { docs, projectId }, done) => {
   app.withTypeProvider<TypeBoxTypeProvider>().get(
     '/api/docs/status',
     {
-      // The same access as the search: any principal holding `docs.search` in any scope.
-      preHandler: requireCapabilityInAnyScope({
-        resource: DocsCapabilities,
-        capability: DocsCapabilities.capabilities.Search,
-      }),
+      preHandler: requireDocsView(projectId),
       schema: {
         tags: ['Documentation'],
         summary: 'Read the semantic search status of the documentation',
@@ -47,8 +44,7 @@ export const docsStatusEndpoint: FastifyPluginCallback<{
     },
     async (request, reply) => {
       reply.header('Cache-Control', 'no-store');
-      const unavailable = () =>
-        reply.code(503).send({ error: DOCS_UNAVAILABLE_MESSAGE, code: DOCS_UNAVAILABLE_CODE });
+      const unavailable = () => reply.code(503).send(docsUnavailableBody);
       if (docs === undefined) {
         return unavailable();
       }

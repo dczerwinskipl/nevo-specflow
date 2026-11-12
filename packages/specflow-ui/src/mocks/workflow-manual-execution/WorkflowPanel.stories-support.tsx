@@ -1,7 +1,6 @@
 import { useRef, useState, type ComponentProps, type ReactNode } from 'react';
 import {
   Alert,
-  Badge,
   Button,
   DescriptionList,
   Dialog,
@@ -13,6 +12,7 @@ import {
   DialogTitle,
   Field,
   Icon,
+  IconButton,
   InlineNote,
   RadioGroup,
   RadioGroupOption,
@@ -39,12 +39,9 @@ const noop = () => undefined;
  */
 export function InlineIcon({ name }: { name: ComponentProps<typeof Icon>['name'] }) {
   return (
-    <Icon
-      name={name}
-      size="sm"
-      aria-hidden="true"
-      className="mr-1 inline-block shrink-0 align-[-0.1875rem]"
-    />
+    <span className="mr-1 inline-flex h-[1lh] items-center align-top">
+      <Icon name={name} size="sm" aria-hidden="true" />
+    </span>
   );
 }
 
@@ -230,13 +227,21 @@ export function FinishStepDialog({
   showMissingFeedback?: boolean;
 }) {
   const [value, setValue] = useState(initialTransition ?? '');
+  const feedbackRef = useRef<HTMLTextAreaElement>(null);
   const selected = transitions.find((transition) => transition.id === value);
   const required = selected?.feedback === 'required';
   const missing = showMissingFeedback && required && initialFeedback.trim() === '';
 
   return (
     <Dialog open>
-      <DialogContent>
+      <DialogContent
+        onOpenAutoFocus={(event) => {
+          if (feedbackRef.current && initialTransition) {
+            event.preventDefault();
+            feedbackRef.current.focus();
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle>
             Finish <Step>{step}</Step>
@@ -246,27 +251,24 @@ export function FinishStepDialog({
           </DialogDescription>
         </DialogHeader>
         <DialogBody className="grid gap-6">
-          <RadioGroup
-            value={value}
-            onValueChange={setValue}
-            aria-label="Result"
-            className="grid gap-4"
-          >
-            <Typography as="p" variant="label-sm">
+          <div className="grid gap-2">
+            <Typography as="p" variant="label-sm" id="radio-result">
               Result
             </Typography>
-            {transitions.map((transition) => (
-              <RadioGroupOption
-                key={transition.id}
-                value={transition.id}
-                label={transition.label}
-                description={transitionDescription(transition)}
-              />
-            ))}
-          </RadioGroup>
+            <RadioGroup value={value} onValueChange={setValue} aria-labelledby="radio-result">
+              {transitions.map((transition) => (
+                <RadioGroupOption
+                  key={transition.id}
+                  value={transition.id}
+                  label={transition.label}
+                  description={transitionDescription(transition)}
+                />
+              ))}
+            </RadioGroup>
+          </div>
           <Field invalid={missing}>
             <Field.Label>{required ? 'Feedback (required)' : 'Feedback (optional)'}</Field.Label>
-            <TextArea rows={4} defaultValue={initialFeedback} />
+            <TextArea ref={feedbackRef} rows={4} defaultValue={initialFeedback} />
             {missing ? (
               <Field.Error role="alert">This result needs feedback for the next step.</Field.Error>
             ) : (
@@ -278,16 +280,27 @@ export function FinishStepDialog({
               Artifacts (optional)
             </Typography>
             {artifacts.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
+              // Attached items only when there are some: one row each, removable.
+              <ul className="grid gap-1" aria-label="Attached artifacts">
                 {artifacts.map((artifact) => (
-                  <Badge key={artifact} tone="neutral">
-                    {artifact}
-                  </Badge>
+                  <li key={artifact} className="flex min-w-0 items-center gap-2 text-body-sm">
+                    <span className="min-w-0 flex-1 truncate">{artifact}</span>
+                    <IconButton
+                      icon="close"
+                      size="sm"
+                      variant="ghost"
+                      aria-label={`Remove ${artifact}`}
+                    />
+                  </li>
                 ))}
-              </div>
-            ) : null}
+              </ul>
+            ) : (
+              <Typography as="p" variant="body-sm" className="text-content-muted">
+                Documents that show the result, such as a review note.
+              </Typography>
+            )}
             <div>
-              <Button variant="ghost" size="sm" leadingIcon="file">
+              <Button variant="secondary" size="sm">
                 Attach document
               </Button>
             </div>
@@ -326,19 +339,16 @@ export function ReturnStepDialog({
           </DialogDescription>
         </DialogHeader>
         <DialogBody className="grid gap-6">
-          <RadioGroup
-            value={value}
-            onValueChange={setValue}
-            aria-label="Step"
-            className="grid gap-4"
-          >
-            <Typography as="p" variant="label-sm">
+          <div className="grid gap-2">
+            <Typography as="p" variant="label-sm" id="radio-step">
               Return to
             </Typography>
-            {steps.map((step) => (
-              <RadioGroupOption key={step} value={step} label={<Step>{step}</Step>} />
-            ))}
-          </RadioGroup>
+            <RadioGroup value={value} onValueChange={setValue} aria-labelledby="radio-step">
+              {steps.map((step) => (
+                <RadioGroupOption key={step} value={step} label={<Step>{step}</Step>} />
+              ))}
+            </RadioGroup>
+          </div>
           <Field>
             <Field.Label>Reason (required)</Field.Label>
             <TextArea

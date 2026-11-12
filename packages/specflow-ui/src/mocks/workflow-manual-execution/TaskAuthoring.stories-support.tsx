@@ -409,26 +409,27 @@ function RequiredChoice() {
   const [value, setValue] = useState('required');
 
   return (
-    <RadioGroup
-      value={value}
-      onValueChange={setValue}
-      aria-label="When the step starts"
-      className="grid gap-3"
-    >
-      <Typography as="p" variant="label-sm">
+    <div className="grid gap-2">
+      <Typography as="p" variant="label-sm" id="radio-when-the-step-starts">
         When the step starts
       </Typography>
-      <RadioGroupOption
-        value="required"
-        label="Required"
-        description="The step does not start while it is missing."
-      />
-      <RadioGroupOption
-        value="optional"
-        label="Optional"
-        description="Skipped and listed as omitted when it is missing."
-      />
-    </RadioGroup>
+      <RadioGroup
+        value={value}
+        onValueChange={setValue}
+        aria-labelledby="radio-when-the-step-starts"
+      >
+        <RadioGroupOption
+          value="required"
+          label="Required"
+          description="The step does not start while it is missing."
+        />
+        <RadioGroupOption
+          value="optional"
+          label="Optional"
+          description="Skipped and listed as omitted when it is missing."
+        />
+      </RadioGroup>
+    </div>
   );
 }
 

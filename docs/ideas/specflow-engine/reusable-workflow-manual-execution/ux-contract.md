@@ -64,8 +64,10 @@ mutation is an explicit action with the actor recorded as the person.
    `Remove task`, `Abandon specification`); hidden actions sit behind the More (`⋯`) icon button;
    only in-progress status text may end with `…`
    ([UI/UX guidelines, Action labels](../../../design-system/principles/ui-ux-guidelines.md#action-labels)).
-7. **Icons sit on the text line.** A standalone status line is the design-system `InlineNote`; an
-   icon inside running text (`Last: review · attempt 1 · ⚠ Changes requested · …`) is an inline
+7. **Icons sit on the first text line.** Every status icon is centred on the first line of its
+   text, also when the text wraps: `InlineNote`, `Alert` and the operational row status use an
+   icon slot one line box tall (`1lh`) aligned to the start. Row-level leading icons stay centred
+   on the row. An icon inside running text (`Last: review · attempt 1 · ⚠ Changes requested · …`) is an inline
    icon on the same line, never a flex box that shifts the chunk off the baseline.
 8. **Reuse.** Shell, Overview sections, Task rows, Full Task, history and the Documents editor are
    the existing ones; new compositions are listed in the component map.
@@ -202,11 +204,14 @@ Editing a Task is more than `task.md`: its other registered documents, the conte
 action once the workflow is terminal (completed or abandoned). It opens the Engine Close
 preflight (D07):
 
-- **Blocked**: the description says what to do once ("Finish, cancel or remove the work below");
-  grouped blockers follow (Specification workflow, Unfinished tasks, Drafts, On hold, and active
-  Runs or pending writers when present), each group with its resolving hint once, each row a real
-  link to the Task. **Dismiss**, and **Abandon instead** (secondary) which opens the Abandon
-  dialog.
+- **Blocked**: the description is one sentence saying why ("Single sign-on cannot close yet: its
+  workflow is waiting for 5 unfinished tasks and one document is still being saved"). Groups follow
+  in a fixed order: **Workflow** → **Unfinished tasks** → **Pending writes**. Each has a heading
+  with its count, one explanation sentence, its items as links (linked id and title, then the
+  state; at most five, then "and N more") and its resolving action where one exists (See workflow,
+  Go to Tasks). No text repeats between the description, explanations and rows. Footer: primary
+  **Dismiss** (initial focus), secondary **Abandon instead**, which opens the Abandon dialog. The
+  Abandon-blocked dialog uses the same layout (Pending writes → Repository).
 - **Ready**: success summary and the cancelled Tasks listed as not delivered; **Close
   specification**; existing Git/workspace checks still run.
 

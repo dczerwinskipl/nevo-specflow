@@ -469,24 +469,21 @@ function CreateTaskDialog({ existing }: { existing: readonly MockTask[] }) {
           </DialogDescription>
         </DialogHeader>
         <DialogBody className="grid gap-6">
-          <RadioGroup
-            value={type}
-            onValueChange={setType}
-            aria-label="Task type"
-            className="grid gap-4"
-          >
-            <Typography as="p" variant="label-sm">
+          <div className="grid gap-2">
+            <Typography as="p" variant="label-sm" id="radio-task-type">
               Task type · allowed by {specification.archetype}
             </Typography>
-            {allowedTypes.map((item) => (
-              <RadioGroupOption
-                key={item.id}
-                value={item.id}
-                label={item.title}
-                description={`${item.useWhen} Workflow: ${item.workflow.title} (${item.steps.join(' → ')}).`}
-              />
-            ))}
-          </RadioGroup>
+            <RadioGroup value={type} onValueChange={setType} aria-labelledby="radio-task-type">
+              {allowedTypes.map((item) => (
+                <RadioGroupOption
+                  key={item.id}
+                  value={item.id}
+                  label={item.title}
+                  description={`${item.useWhen} Workflow: ${item.workflow.title} (${item.steps.join(' → ')}).`}
+                />
+              ))}
+            </RadioGroup>
+          </div>
           <Field>
             <Field.Label>Title</Field.Label>
             <TextInput defaultValue="Rate-limit session refresh" />
@@ -534,12 +531,17 @@ interface BlockerItem {
 
 interface BlockerGroup {
   title: string;
-  /** What resolves the whole group, said once instead of per row. */
-  hint?: string;
+  /** One sentence: why this blocks and how it resolves. */
+  explanation: string;
   items: readonly BlockerItem[];
+  /** When the group is not a list of items (the workflow itself). */
+  count?: number;
+  /** The resolving action for the whole group, when there is one. */
+  action?: { label: string; href: string };
 }
 
 const taskHref = (id: string) => `/specs/${specification.id}/tasks/${id}`;
+const BLOCKER_ITEMS_SHOWN = 5;
 
 function taskItems(members: readonly MockTask[], state?: (item: MockTask) => string) {
   return members.map((item) => ({
@@ -554,40 +556,80 @@ function taskItems(members: readonly MockTask[], state?: (item: MockTask) => str
   }));
 }
 
-/** The grouped-blocker layout shared by Close and Abandon: every row is a real link. */
+/**
+ * The grouped-blocker layout shared by Close and Abandon. Groups come in a fixed order, each with
+ * its count, one explanation, at most five linked items (then "and N more") and its action.
+ */
 function BlockerGroups({ groups }: { groups: readonly BlockerGroup[] }) {
   return (
-    <div className="grid gap-4">
-      {groups
-        .filter((group) => group.items.length > 0)
-        .map((group) => (
-          <section key={group.title} className="grid gap-1.5" aria-label={group.title}>
-            <Typography as="h3" variant="label-sm">
-              {group.title} · {group.items.length}
-              {group.hint ? (
-                <span className="font-normal text-content-secondary"> — {group.hint}</span>
-              ) : null}
-            </Typography>
-            <ul className="grid gap-1.5">
-              {group.items.map((item) => (
-                <li key={item.key} className="grid min-w-0 text-body-sm">
-                  <a
-                    href={item.href}
-                    className="min-w-0 truncate text-content-primary underline-offset-2 hover:text-content-link hover:underline"
-                  >
-                    {item.label}
-                  </a>
-                  <span className="text-content-secondary">{item.state}</span>
-                </li>
-              ))}
-            </ul>
+    <div className="grid gap-5">
+      {groups.map((group) => {
+        const shown = group.items.slice(0, BLOCKER_ITEMS_SHOWN);
+        const more = group.items.length - shown.length;
+
+        return (
+          <section key={group.title} className="grid gap-2" aria-label={group.title}>
+            <div className="grid gap-0.5">
+              <Typography as="h3" variant="label-sm">
+                {group.title} · {group.count ?? group.items.length}
+              </Typography>
+              <Typography as="p" variant="body-sm" className="text-content-secondary">
+                {group.explanation}
+              </Typography>
+            </div>
+            {shown.length > 0 ? (
+              <ul className="grid gap-2">
+                {shown.map((item) => (
+                  // One shape at every width: the linked item, then its state.
+                  <li key={item.key} className="grid min-w-0 text-body-sm">
+                    <a
+                      href={item.href}
+                      className="min-w-0 truncate text-content-primary underline-offset-2 hover:text-content-link hover:underline"
+                    >
+                      {item.label}
+                    </a>
+                    <span className="text-content-muted">{item.state}</span>
+                  </li>
+                ))}
+                {more > 0 ? (
+                  <li className="text-body-sm">
+                    <a href="#tasks-heading" className="text-content-link hover:underline">
+                      and {more} more
+                    </a>
+                  </li>
+                ) : null}
+              </ul>
+            ) : null}
+            {group.action ? (
+              <div>
+                <a
+                  href={group.action.href}
+                  className="text-body-sm text-content-link underline-offset-2 hover:underline"
+                >
+                  {group.action.label}
+                </a>
+              </div>
+            ) : null}
           </section>
-        ))}
+        );
+      })}
     </div>
   );
 }
 
 const abandonReason = 'The provider contract was cancelled; single sign-on moves to next quarter.';
+
+/** The save still running while the owner tries to close or abandon. */
+const pendingWrite: BlockerItem = {
+  key: 'write',
+  href: taskHref('T-02'),
+  label: (
+    <>
+      <span className="font-mono text-content-muted">T-02</span> task.md
+    </>
+  ),
+  state: 'Saving since 16:38',
+};
 
 function CloseDialog({
   mode,
@@ -596,16 +638,14 @@ function CloseDialog({
   mode: 'blocked' | 'ready' | 'after-abandon';
   list: readonly MockTask[];
 }) {
-  const unfinished = list.filter(
-    (item) => item.status === 'ready' && item.workflow.position.kind !== 'terminal',
+  const open = list.filter(
+    (item) => item.status !== 'cancelled' && item.workflow.position.kind !== 'terminal',
   );
-  const drafts = list.filter((item) => item.status === 'draft');
-  const onHold = list.filter((item) => item.status === 'on-hold');
   const cancelled = list.filter((item) => item.status === 'cancelled');
   const done = list.filter((item) => item.workflow.position.kind === 'terminal');
   const description =
     mode === 'blocked'
-      ? 'Not ready to close. Finish, cancel or remove the work below, then close again.'
+      ? `${specification.title} cannot close yet: its workflow is waiting for ${open.length} unfinished tasks and one document is still being saved.`
       : mode === 'after-abandon'
         ? `Abandoned today by Dominik: “${abandonReason}” Closing records it as not delivered and runs the repository checks.`
         : 'Everything required is finished. Closing also runs the repository checks.';
@@ -629,31 +669,29 @@ function CloseDialog({
               mode === 'blocked'
                 ? [
                     {
-                      title: 'Specification workflow',
-                      items: [
-                        {
-                          key: 'spec',
-                          href: '#spec-workflow-heading',
-                          label: <span className="font-mono">wait-for-tasks</span>,
-                          state: 'Still waiting for its tasks',
-                        },
-                      ],
-                    },
-                    { title: 'Unfinished tasks', items: taskItems(unfinished) },
-                    {
-                      title: 'Drafts',
-                      hint: 'approve and finish, or remove',
-                      items: taskItems(drafts, () => 'Draft'),
+                      title: 'Workflow',
+                      count: 1,
+                      explanation:
+                        'The wait-for-tasks step ends by itself once every task is done or cancelled.',
+                      items: [],
+                      action: { label: 'See workflow', href: '#spec-workflow-heading' },
                     },
                     {
-                      title: 'On hold',
-                      hint: 'resume and finish, or cancel',
-                      items: taskItems(onHold, () => 'On hold'),
+                      title: 'Unfinished tasks',
+                      explanation: 'Finish, cancel or remove each one.',
+                      items: taskItems(open),
+                      action: { label: 'Go to Tasks', href: '#tasks-heading' },
+                    },
+                    {
+                      title: 'Pending writes',
+                      explanation: 'A save in progress; it settles by itself in a moment.',
+                      items: [pendingWrite],
                     },
                   ]
                 : [
                     {
                       title: 'Cancelled, not delivered',
+                      explanation: 'Recorded as not delivered when the specification closes.',
                       items: taskItems(cancelled, (item) =>
                         mode === 'after-abandon' && item.id !== 'T-06'
                           ? item.started
@@ -667,12 +705,17 @@ function CloseDialog({
           />
         </DialogBody>
         <DialogFooter>
-          <Button variant="secondary">{mode === 'blocked' ? 'Dismiss' : 'Cancel'}</Button>
           {mode === 'blocked' ? (
-            // Opens the Abandon dialog (final, with its own reason and consequences).
-            <Button variant="secondary">Abandon instead</Button>
+            <>
+              {/* Opens the Abandon dialog (final, with its own reason and consequences). */}
+              <Button variant="secondary">Abandon instead</Button>
+              <Button autoFocus>Dismiss</Button>
+            </>
           ) : (
-            <Button>Close specification</Button>
+            <>
+              <Button variant="secondary">Cancel</Button>
+              <Button>Close specification</Button>
+            </>
           )}
         </DialogFooter>
       </DialogContent>
@@ -693,7 +736,7 @@ function AbandonDialog({ blocked, list }: { blocked: boolean; list: readonly Moc
           <DialogTitle>Abandon {specification.title}</DialogTitle>
           <DialogDescription>
             {blocked
-              ? 'Not possible yet. Resolve the work below, then abandon again.'
+              ? `${specification.title} cannot be abandoned yet: a save is still running and the branch has uncommitted changes.`
               : 'Ends the specification without delivering it. This cannot be undone.'}
           </DialogDescription>
         </DialogHeader>
@@ -703,23 +746,12 @@ function AbandonDialog({ blocked, list }: { blocked: boolean; list: readonly Moc
               groups={[
                 {
                   title: 'Pending writes',
-                  hint: 'wait for them to finish',
-                  items: [
-                    {
-                      key: 'write',
-                      href: taskHref('T-02'),
-                      label: (
-                        <>
-                          <span className="font-mono text-content-muted">T-02</span> task.md
-                        </>
-                      ),
-                      state: 'Save and commit in progress since 16:38',
-                    },
-                  ],
+                  explanation: 'A save in progress; it settles by itself in a moment.',
+                  items: [pendingWrite],
                 },
                 {
                   title: 'Repository',
-                  hint: 'commit or discard first',
+                  explanation: 'Commit or discard the changes on the branch first.',
                   items: [
                     {
                       key: 'git',
@@ -728,6 +760,7 @@ function AbandonDialog({ blocked, list }: { blocked: boolean; list: readonly Moc
                       state: '4 uncommitted files',
                     },
                   ],
+                  action: { label: 'Go to Changes', href: '#changes' },
                 },
               ]}
             />
@@ -764,8 +797,14 @@ function AbandonDialog({ blocked, list }: { blocked: boolean; list: readonly Moc
           )}
         </DialogBody>
         <DialogFooter>
-          <Button variant="secondary">{blocked ? 'Dismiss' : 'Cancel'}</Button>
-          {blocked ? null : <Button variant="destructive">Abandon specification</Button>}
+          {blocked ? (
+            <Button>Dismiss</Button>
+          ) : (
+            <>
+              <Button variant="secondary">Cancel</Button>
+              <Button variant="destructive">Abandon specification</Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

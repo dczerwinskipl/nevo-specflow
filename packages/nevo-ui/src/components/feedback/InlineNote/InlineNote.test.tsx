@@ -35,4 +35,14 @@ describe('InlineNote', () => {
     expect(markup).not.toContain('<svg');
     expect(markup).toContain('col-start-2');
   });
+
+  it('centres the icon on the first text line, also when the note wraps', () => {
+    // A line-box-tall slot (1lh) at the start: one rule for one and several lines.
+    const markup = renderToStaticMarkup(
+      <InlineNote tone="attention">Two lines that wrap</InlineNote>,
+    );
+    expect(markup).toContain('items-start');
+    expect(markup).toContain('flex h-[1lh] shrink-0 items-center');
+    expect(markup).not.toContain('mt-0.5');
+  });
 });

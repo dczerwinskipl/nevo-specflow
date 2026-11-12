@@ -36,6 +36,12 @@ import {
   type WorkspaceApi,
 } from '../features/workspaces/read-model';
 import {
+  createRuntimeDocsApi,
+  docsErrorCodes,
+  docsReadOperation,
+  type DocsApi,
+} from '../features/docs/read-model';
+import {
   createRuntimeDocumentApi,
   type DocumentApi,
   type DocumentsApi,
@@ -56,6 +62,8 @@ export interface SpecFlowAppServices {
   readonly taskApi: TaskApi;
   /** The registered workspaces of the project (`GET /api/workspaces`, project and demo Runtime alike). */
   readonly workspaceApi: WorkspaceApi;
+  /** The documentation of one registered workspace (`/api/workspaces/:workspaceId/docs…`). */
+  readonly docsApi: DocsApi;
   readonly documentApi: DocumentApi;
   /** Document tree, catalogue and writes of the demo Runtime (writes emulated under `/api/demo`). */
   readonly demoDocumentsApi: DocumentsApi;
@@ -84,6 +92,7 @@ export interface SpecFlowServicesOptions {
   readonly specificationApi?: SpecificationApi;
   readonly taskApi?: TaskApi;
   readonly workspaceApi?: WorkspaceApi;
+  readonly docsApi?: DocsApi;
   readonly documentApi?: DocumentApi;
   readonly demoDocumentsApi?: DocumentsApi;
   readonly projectDocumentsApi?: DocumentsApi;
@@ -128,6 +137,11 @@ export function createSpecFlowAppServices(
       options.workspaceApi ??
       createRuntimeWorkspaceApi(
         createApiTransport(runtimeHttp, { operation: workspacesReadOperation }),
+      ),
+    docsApi:
+      options.docsApi ??
+      createRuntimeDocsApi(
+        createApiTransport(runtimeHttp, { operation: docsReadOperation, codes: docsErrorCodes }),
       ),
     documentApi: options.documentApi ?? createRuntimeDocumentApi(runtimeHttp),
     demoDocumentsApi: options.demoDocumentsApi ?? createDemoDocumentsApi(runtimeHttp),

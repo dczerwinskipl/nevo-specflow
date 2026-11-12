@@ -49,6 +49,7 @@ export const docsTreeEndpoint: FastifyPluginCallback<WorkspaceDocsEndpointOption
       return reply.code(200).send({
         workspaceId: read.workspaceId,
         corpusRevision: tree.revision,
+        docsRoot: read.docsRoot,
         ...(tree.rootIndexDocumentId === undefined
           ? {}
           : { rootIndexDocumentId: tree.rootIndexDocumentId }),

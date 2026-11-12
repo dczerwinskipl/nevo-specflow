@@ -412,6 +412,7 @@ describe('workspace documentation over HTTP', () => {
     const tree = treeResponse.json<WorkspaceDocsTree>();
     expect(Value.Check(WorkspaceDocsTreeSchema, tree)).toBe(true);
     expect(tree.workspaceId).toBe(id);
+    expect(tree.docsRoot).toBe('docs');
     expect(tree.rootIndexDocumentId).toBe('home');
     expect(tree.documents.map((d) => [d.documentId, d.path, d.nonAuthoritative])).toEqual(
       expect.arrayContaining([

@@ -78,14 +78,15 @@ on every request; it never accepts a path, Git ref or directory from the caller.
 The tree of the workspace's documentation, from one read of the corpus. `200` with
 `WorkspaceDocsTree`:
 
-| Field                 | Value                                                                                                                         |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `workspaceId`         | the requested workspace                                                                                                       |
-| `corpusRevision`      | see [Common rules](#common-rules)                                                                                             |
-| `rootIndexDocumentId` | the id of `<docs.root>/README.md` when it is an active, readable document; absent otherwise                                   |
-| `documents`           | the active documents: `documentId`, `title`, `type`, `status`, `path`, `summary` (empty when none), `nonAuthoritative`        |
-| `inactive`            | the `deprecated` and `superseded` documents: `documentId`, `path`, `status` and `supersededBy` when the frontmatter names one |
-| `skipped`             | the skipped documents                                                                                                         |
+| Field                 | Value                                                                                                                                                                                |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `workspaceId`         | the requested workspace                                                                                                                                                              |
+| `corpusRevision`      | see [Common rules](#common-rules)                                                                                                                                                    |
+| `docsRoot`            | the configured `docs.root`, relative to the checkout (for example `docs`): the base of every `path`, so a client can name a repository path for a link that leaves the documentation |
+| `rootIndexDocumentId` | the id of `<docs.root>/README.md` when it is an active, readable document; absent otherwise                                                                                          |
+| `documents`           | the active documents: `documentId`, `title`, `type`, `status`, `path`, `summary` (empty when none), `nonAuthoritative`                                                               |
+| `inactive`            | the `deprecated` and `superseded` documents: `documentId`, `path`, `status` and `supersededBy` when the frontmatter names one                                                        |
+| `skipped`             | the skipped documents                                                                                                                                                                |
 
 `nonAuthoritative` is `true` below one of the non-authoritative path prefixes of `docs.yaml`.
 

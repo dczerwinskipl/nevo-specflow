@@ -29663,6 +29663,7 @@
                   "required": [
                     "workspaceId",
                     "corpusRevision",
+                    "docsRoot",
                     "documents",
                     "inactive",
                     "skipped"
@@ -29672,6 +29673,10 @@
                       "$ref": "#/components/schemas/WorkspaceId"
                     },
                     "corpusRevision": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "docsRoot": {
                       "type": "string",
                       "minLength": 1
                     },

@@ -41,6 +41,12 @@ export const WorkspaceDocsTreeSchema = Type.Object(
   {
     workspaceId: WorkspaceIdSchema,
     corpusRevision: CorpusRevisionSchema,
+    /**
+     * The configured `docs.root`, relative to the checkout with `/` separators (for example `docs`):
+     * every `path` below is relative to it, so a client can name a repository path for a link that
+     * leaves the documentation.
+     */
+    docsRoot: Type.String({ minLength: 1 }),
     /** The id of `<docs.root>/README.md`, when it is an active, readable document. */
     rootIndexDocumentId: Type.Optional(Type.String({ minLength: 1 })),
     documents: Type.Array(WorkspaceDocsTreeDocumentSchema),

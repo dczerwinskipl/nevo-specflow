@@ -12,6 +12,12 @@ export interface MarkdownDocumentLinkProps {
   title?: string;
 }
 
+export interface MarkdownDocumentImageProps {
+  alt?: string;
+  src?: string;
+  title?: string;
+}
+
 export interface MarkdownDocumentProps {
   source: string;
   className?: string;
@@ -19,11 +25,19 @@ export interface MarkdownDocumentProps {
   /** Semantic offset when embedded below a view title; visual styles remain unchanged. */
   headingOffset?: 0 | 1 | 2 | 3 | 4 | 5;
   /**
-   * Product-owned link/reference renderer. Return null/undefined to keep the shared default link.
+   * Product-owned link/reference renderer. Return null/undefined to keep the shared default link,
+   * which opens `href` in a new tab: a product that blocks a link MUST return a safe element (for
+   * example inert text), not null.
    * Use it to turn workspace-relative references into contextual navigation without reimplementing
    * Markdown parsing or normal external-link styling.
    */
   renderLink?: (props: MarkdownDocumentLinkProps) => ReactNode;
+  /**
+   * Product-owned image renderer. When provided it fully owns image output: null/undefined renders
+   * nothing (there is no fallback to the default `<img>`), so a product can block or defer an image.
+   * Omit it to render the default `<img>`.
+   */
+  renderImage?: (props: MarkdownDocumentImageProps) => ReactNode;
   /**
    * Opt-in source map: emits `data-source-line="<1-based start line>"` on top-level block elements
    * and on every list item, so a product can keep an edit/preview scroll position by source line
@@ -134,6 +148,7 @@ function markdownComponents(
   labels: MarkdownDocumentLabels,
   renderLink?: (props: MarkdownDocumentLinkProps) => ReactNode,
   headingOffset = 0,
+  renderImage?: (props: MarkdownDocumentImageProps) => ReactNode,
 ): Components {
   const heading = (level: number) =>
     `h${Math.min(6, level + headingOffset)}` as 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
@@ -291,9 +306,12 @@ function markdownComponents(
         type={type}
       />
     ),
-    img: ({ node: _node, alt, src, title }) => (
-      <img alt={alt ?? ''} className="my-3 h-auto max-w-full" src={src} title={title} />
-    ),
+    img: ({ node: _node, alt, src, title }) =>
+      renderImage ? (
+        (renderImage({ alt, src: typeof src === 'string' ? src : undefined, title }) ?? null)
+      ) : (
+        <img alt={alt ?? ''} className="my-3 h-auto max-w-full" src={src} title={title} />
+      ),
     table: ({ children, ...rest }) => (
       // A wide table scrolls in its own keyboard-focusable region and never widens the page.
       <ScrollArea
@@ -335,6 +353,7 @@ function markdownComponents(
 export function MarkdownDocument({
   className,
   labels: labelsProp,
+  renderImage,
   renderLink,
   source,
   sourceLines = false,
@@ -351,8 +370,9 @@ export function MarkdownDocument({
         { completedTask, incompleteTask, table, codeBlock },
         renderLink,
         headingOffset,
+        renderImage,
       ),
-    [completedTask, incompleteTask, table, codeBlock, renderLink, headingOffset],
+    [completedTask, incompleteTask, table, codeBlock, renderLink, headingOffset, renderImage],
   );
 
   return (

@@ -358,8 +358,15 @@ Specification's other documents.
   document change is refused with `SPEC_BUSY` (`details.cause: task-resource-change`) while that store holds a
   pending journal that writes the Task's `task.yaml` or documents. The reverse check is
   `hasPendingTaskDocumentChange(context, specId, taskId)`: true while a document change of the Task is not
-  final (being written, waiting for or in its commit, failed to commit, needing recovery). The store's Task
-  edit, removal and status operations and Close call it.
+  final (being written, waiting for or in its commit, failed to commit, needing recovery). The store applies it
+  to every change that writes a Task's `task.yaml` or documents (Task edit and removal, status decisions,
+  Breakdown revising a draft, finish effects, a first start): `openWorkflow` wraps the store
+  (`workflow/state/task-document-guard.ts`), which refuses such a change with `WORKFLOW_TASK_BUSY`
+  (`task-document-change`) inside `serialize`, before anything is written. Close consults it as a blocker once
+  the Close guard lands (T6); until then Close does not.
+- Accepted consequence of D14 (owner decision): the execution store leaves its writes to `task.yaml` uncommitted,
+  so a Documents commit of a Task registry change commits `task.yaml` whole, including execution-store state
+  not yet committed (for example a status decision).
 
 ## Content kinds
 

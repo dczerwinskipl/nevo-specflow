@@ -6,6 +6,7 @@ import { MemoryDefinitionSource } from '../../specs/definitions/test-support';
 import { resolveExecutionCatalogue, type ExecutionCatalogue } from '../definitions/catalogue';
 import { FEEDBACK_MAX } from '../limits';
 import type { OwnerActor } from '../state/model';
+import { guardTaskDocumentChanges } from '../state/task-document-guard';
 import { finishStep, type FinishStepInput } from './finish';
 import { inspectExecution } from './inspect';
 import {
@@ -86,6 +87,34 @@ describe('setTaskStatus', () => {
         actor: claude as unknown as OwnerActor,
       }),
     ).rejects.toMatchObject({ code: 'WORKFLOW_EXECUTOR_NOT_ALLOWED' });
+  });
+
+  it('is refused while a change of the Task documents is pending, and allowed once it is final (D03)', async () => {
+    const dependencies = memoryDependencies(catalogue);
+    await specificationWithTasks(dependencies);
+    // The production store (`openWorkflow`) is guarded the same way.
+    const guarded = {
+      ...dependencies,
+      store: guardTaskDocumentChanges(dependencies.store, (specId, taskId) =>
+        dependencies.references.pendingDocumentChange(specId, taskId),
+      ),
+    };
+    const hold = (taskId: string) =>
+      setTaskStatus(guarded, { specId: SPEC, taskId, status: 'on-hold', actor: owner });
+    dependencies.references.pendingDocuments.add('api');
+
+    await expect(hold('api')).rejects.toMatchObject({
+      code: 'WORKFLOW_TASK_BUSY',
+      message: expect.stringContaining('task-document-change') as unknown,
+    });
+    expect(
+      (await dependencies.store.read(SPEC)).manifests.find((entry) => entry.value.id === 'api')
+        ?.value.status,
+    ).not.toBe('on-hold');
+    await expect(hold('screen')).resolves.toMatchObject({ status: 'on-hold' });
+
+    dependencies.references.pendingDocuments.delete('api');
+    await expect(hold('api')).resolves.toMatchObject({ status: 'on-hold' });
   });
 
   it('holds a running Task: its step finishes, the next start is refused until it is resumed', async () => {

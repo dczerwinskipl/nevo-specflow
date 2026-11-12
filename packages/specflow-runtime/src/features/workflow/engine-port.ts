@@ -2,7 +2,7 @@ import {
   WorkflowError,
   abandonSpecification,
   finishStep,
-  inspectActions,
+  inspectActionsForRead,
   openWorkflow,
   resolveSpecification,
   returnToStep,
@@ -25,7 +25,7 @@ export function createEngineWorkflowPort(
 ): WorkflowPort {
   return {
     async actions(subject) {
-      return inspectActions(await open(), subject);
+      return inspectActionsForRead(await open(), subject);
     },
 
     async start({ subject, actor, expectedWorkflowRevision }) {

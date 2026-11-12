@@ -22,7 +22,7 @@ import {
   type CloseBlocker,
   type SpecificationLifecycleActions,
 } from './close/blockers';
-import type { SpecificationExitPort } from './operations/actions';
+import { inspectActions, type SpecificationExitPort } from './operations/actions';
 import { assertSharedResourcesAvailable } from '../specs/coordination/resources';
 import { SharedResourceError } from '../specs/durable';
 import type { RememberModelDependencies } from './definitions/remember-model';
@@ -39,11 +39,7 @@ import {
   type PendingTaskDocumentChange,
 } from './state/task-document-guard';
 import { checkoutPathExists } from './checkout-paths';
-import {
-  readExecution,
-  type ExecutionReading,
-  type ReadExecutionOptions,
-} from './operations/execution-read';
+import { readExecution } from './operations/execution-read';
 import { guardCloseReservations } from './state/close-guard';
 import { listCloseJournals } from '../specs/lifecycle';
 
@@ -184,18 +180,22 @@ export async function openWorkflow(
 }
 
 /**
- * {@link readExecution} as an Engine read request: the Project Home and checkout verification (the
- * control lock's included) uses on-disk evidence only and spawns no Git process, like every other
- * read path (`resolveSpecificationForRead`). For presentation reads (Overview progress, Workspace
- * and Task reads); a mutation keeps the full verification of its own operation.
+ * A read-only workflow operation as an Engine read request: the Project Home and checkout
+ * verification (the control lock's included) uses on-disk evidence only and spawns no Git process,
+ * like every other read path (`resolveSpecificationForRead`). For presentation reads only; a mutation
+ * keeps the full verification of its own operation.
  */
-export function readExecutionForRead(
-  workflow: WorkflowDependencies,
-  specId: string,
-  options: ReadExecutionOptions,
-): Promise<ExecutionReading> {
-  return runReadRequest(() => readExecution(workflow, specId, options));
+function asReadRequest<Args extends unknown[], Result>(
+  operation: (...args: Args) => Promise<Result>,
+): (...args: Args) => Promise<Result> {
+  return (...args) => runReadRequest(() => operation(...args));
 }
+
+/** {@link readExecution} without Git (Overview progress, Workspace and Task reads). */
+export const readExecutionForRead = asReadRequest(readExecution);
+
+/** {@link inspectActions} without Git (the workflow `actions` read). */
+export const inspectActionsForRead = asReadRequest(inspectActions);
 
 /**
  * The post actions of an opened Engine (`operations/post-actions.ts`): after a step's finish, commit

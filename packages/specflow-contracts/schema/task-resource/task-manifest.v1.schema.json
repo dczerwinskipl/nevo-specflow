@@ -76,6 +76,10 @@
             {
               "type": "string",
               "const": "escalation"
+            },
+            {
+              "type": "string",
+              "const": "abandon"
             }
           ]
         },

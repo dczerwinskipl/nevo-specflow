@@ -42,9 +42,28 @@ export {
   type LaunchBlocker,
 } from './continuation/resolve';
 export { WORKFLOW_ERROR_CODES, WorkflowError, type WorkflowErrorCode } from './errors';
+export {
+  CLOSE_BLOCKER_KINDS,
+  SpecificationExitBlockedError,
+  abandonBlockers,
+  closeBlockers,
+  specificationLifecycleActions,
+  type AbandonAvailability,
+  type CloseAvailability,
+  type CloseBlocker,
+  type CloseBlockerKind,
+  type SpecificationExitState,
+  type SpecificationLifecycleActions,
+} from './close/blockers';
+export {
+  abandonSpecification,
+  type AbandonSpecificationInput,
+  type AbandonSpecificationResult,
+} from './operations/abandon';
+export { readSpecificationExitState } from './operations/specification-exit';
 export { finishStep, type FinishStepInput, type FinishStepResult } from './operations/finish';
 export { inspectExecution, type ExecutionInspection } from './operations/inspect';
-export type { WorkflowDependencies } from './operations/loaded-execution';
+export type { ExecutionHolds, WorkflowDependencies } from './operations/loaded-execution';
 export { returnToStep, type ReturnToStepInput, type ReturnToStepResult } from './operations/return';
 export {
   startSpecificationExecution,
@@ -70,11 +89,6 @@ export {
   type SetTaskStatusResult,
 } from './operations/task-status';
 export type { FinishInput } from './input-schema';
-export {
-  EXECUTION_DIRECTORY,
-  createFilesystemWorkflowStore,
-  type FilesystemWorkflowStoreOptions,
-} from './state/filesystem-store';
 export { TASK_STATUSES } from './state/model';
 export type {
   AgentActor,
@@ -97,6 +111,7 @@ export type {
   ExecutorClass,
   Handoff,
   ReturnRecord,
+  RunAbandonment,
   RunPosition,
   TerminalOutcome,
   TransitionTarget,

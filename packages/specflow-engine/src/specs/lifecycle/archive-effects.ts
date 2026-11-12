@@ -137,9 +137,11 @@ async function assertArchivedFiles(root: string, archive: CloseArchiveEvidence):
 
   const expected = archive.files.map((file) => ({
     relativePath: destinationPath(archive, file.relativePath),
-    sha256: file.relativePath.endsWith('/specification.yaml')
-      ? archive.archivedManifestSha256
-      : file.sha256,
+    // Only the manifest itself: `.execution/specification.yaml` (the Specification run) moves as is.
+    sha256:
+      file.relativePath === archive.sourcePath + '/specification.yaml'
+        ? archive.archivedManifestSha256
+        : file.sha256,
   }));
   const observed = await physicalInventory(root, archive.destinationPath);
   if (!isDeepStrictEqual(observed, expected)) {

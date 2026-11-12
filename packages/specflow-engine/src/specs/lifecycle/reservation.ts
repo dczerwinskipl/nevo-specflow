@@ -11,7 +11,12 @@ import {
 } from '../documents/queue/flush';
 import { readWorkspaceRegistry } from '../../project/workspace/registry/registry';
 import { readProjectGitPolicy } from '../../version-control/worktrees/config';
-import { CloseOperationError, type CloseJournal, type ClosePlan } from './model';
+import {
+  CloseOperationError,
+  assertSpecificationExit,
+  type CloseJournal,
+  type ClosePlan,
+} from './model';
 import { readCloseJournal, publishCloseJournal } from './journal/store';
 import { assertResourcesAvailable } from './resources';
 import { previewCloseOperation, type CloseRequest } from './preflight';
@@ -94,6 +99,12 @@ export async function reserveCloseOperation(
           'Project integration policy changed after preview.',
         );
       }
+    }
+
+    // D07, judged again under the lock every workflow mutation takes: no Task or run changed
+    // since the preview can slip past the exit gate.
+    if (plan.kind === 'specification-close') {
+      await assertSpecificationExit(engine.specificationExit, plan.specId);
     }
 
     // A manual-mode save writes no claim: one that landed after the flush above is judged here.

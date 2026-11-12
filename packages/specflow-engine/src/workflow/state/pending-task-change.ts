@@ -29,3 +29,20 @@ export async function hasPendingTaskResourceChange(
       write.taskId === taskId,
   );
 }
+
+/**
+ * Whether a change of the Specification execution store did not finish publishing: its local journal
+ * exists. Reads one local file and takes no lock; the next change of the store finishes it.
+ */
+export async function hasPendingExecutionChange(
+  stateRoot: string,
+  specId: string,
+): Promise<boolean> {
+  const text = await readRecordFile(
+    { root: stateRoot, segments: [...JOURNAL_FOLDER_SEGMENTS] },
+    `${specId}.json`,
+    JOURNAL_BYTES_MAX,
+  );
+
+  return text !== undefined;
+}

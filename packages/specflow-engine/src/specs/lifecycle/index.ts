@@ -15,6 +15,7 @@ export {
   type CloseOutcome,
   type CloseKind,
 } from './model';
+export type { SpecificationExitBlocker, SpecificationExitGuard } from './exit-guard';
 export { assertResourcesAvailable, resourcesForCreate } from './resources';
 export { listCloseJournals, closeJournalPath } from './journal/store';
 export { inspectCloseGitIntegration, type GitIntegrationInspection } from './git/integration';

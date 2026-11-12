@@ -31,11 +31,13 @@ export {
   type Handoff,
 } from './execution/replay';
 export {
+  abandonRun,
   activeAttempt,
   newRun,
   type AttemptOutcome,
   type AttemptRecord,
   type ReturnRecord,
+  type RunAbandonment,
   type RunPosition,
   type WorkflowRun,
 } from './execution/run';

@@ -41,7 +41,8 @@ export {
 
 export { ProjectControlLockError, type ProjectControlLockErrorCode } from './project/control-lock';
 
-export { openSpecFlowEngine, readRegistrySnapshot, type SpecFlowEngine } from './application';
+export { readRegistrySnapshot, type SpecFlowEngine } from './application';
+export { openSpecFlowEngine } from './engine';
 export {
   bootstrapProjectHome,
   assertPrimaryGitCheckout,

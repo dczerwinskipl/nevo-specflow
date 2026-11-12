@@ -6,6 +6,7 @@ import { CATALOGUE_ID_PATTERN } from '@nevo/specflow-contracts/documents';
 
 import { WorkflowError } from '../errors';
 import {
+  ABANDON_REASON_MAX,
   ARTIFACTS_MAX,
   ARTIFACT_MAX,
   ATTEMPTS_MAX,
@@ -77,6 +78,7 @@ const OutcomeSchema = Type.Union([
     artifacts: Type.Array(text(ARTIFACT_MAX), { maxItems: ARTIFACTS_MAX }),
   }),
   closed({ kind: Type.Literal('returned'), to: id(), feedback: optional(text(FEEDBACK_MAX)) }),
+  closed({ kind: Type.Literal('abandoned') }),
 ]);
 
 const RunSchema = closed({
@@ -109,6 +111,15 @@ const RunSchema = closed({
       feedback: optional(text(FEEDBACK_MAX)),
     }),
     { maxItems: RETURNS_MAX },
+  ),
+  abandonment: optional(
+    closed({
+      sequence: sequence(),
+      at: timestamp(),
+      from: PositionSchema,
+      actor: ActorSchema,
+      reason: text(ABANDON_REASON_MAX),
+    }),
   ),
 });
 

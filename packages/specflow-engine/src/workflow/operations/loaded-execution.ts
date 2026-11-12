@@ -30,8 +30,24 @@ export interface WorkflowDependencies {
   readonly catalogue: ExecutionCatalogue;
   /** Lookups outside the execution store: the archetype's live policy, context references. */
   readonly references: TaskReferences;
+  /** What holds the Specification outside its execution records (`readSpecificationExitState`). */
+  readonly holds: ExecutionHolds;
   readonly now: () => Date;
   readonly serialize: <T>(operation: () => Promise<T>) => Promise<T>;
+}
+
+/**
+ * Unfinished writes that hold a Specification, read without a lock (the caller holds the project
+ * control lock or accepts a snapshot). The Task document changes are `TaskReferences.pendingDocumentChange`.
+ */
+export interface ExecutionHolds {
+  /** A change of the Specification execution store did not finish publishing (its local journal). */
+  pendingExecutionChange(specId: string): Promise<boolean>;
+  /**
+   * Another durable operation holds the Specification: a Create, Close, document change or manual
+   * commit that claims it, or an unsettled external execution of the project.
+   */
+  operationInProgress(specId: string): Promise<boolean>;
 }
 
 /** One subject of a snapshot with the definition its run is pinned to. */

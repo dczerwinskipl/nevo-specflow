@@ -33,6 +33,10 @@ export const WORKFLOW_ERROR_CODES = [
   'WORKFLOW_TASK_NOT_REMOVABLE',
   /** A change of one of the Task's documents is pending (D03): its files cannot be written now. */
   'WORKFLOW_TASK_BUSY',
+  /** The Specification's workflow ended already: completed, or abandoned (for another reason). */
+  'WORKFLOW_SPECIFICATION_ENDED',
+  /** Unfinished work or pending writes hold the Specification; the error lists them (`blockers`). */
+  'WORKFLOW_EXIT_BLOCKED',
 ] as const;
 export type WorkflowErrorCode = (typeof WORKFLOW_ERROR_CODES)[number];
 

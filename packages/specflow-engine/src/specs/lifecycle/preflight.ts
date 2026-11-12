@@ -14,6 +14,7 @@ import { listWorkspaceSpecifications } from '../repository';
 import { isValidSpecificationId } from '../model';
 import {
   CloseOperationError,
+  assertSpecificationExit,
   fingerprintCloseIntent,
   resourcesForClosePlan,
   type ClosePlan,
@@ -139,7 +140,9 @@ export async function inspectCleanGitWorkspace(workspace: {
 
 /**
  * Pure read admission: no Git mutation, registry changes, inferred default
- * destination, generated archive commits or workflow/worker fake evidence.
+ * destination, generated archive commits or workflow/worker fake evidence. A
+ * Specification Close is refused with `CLOSE_BLOCKED` while the Specification
+ * exit gate (`engine.specificationExit`, D07) reports blockers.
  */
 export async function previewCloseOperation(
   engine: SpecFlowEngine,
@@ -192,6 +195,9 @@ export async function previewCloseOperation(
     if (canonical.specification.location !== 'active') {
       throw invalid('Only an active Specification can be archived.');
     }
+
+    // D07: the workflow decides first, so a refusal lists its blockers before any Git check.
+    await assertSpecificationExit(engine.specificationExit, request.specId);
 
     if (
       request.integrateToTargetBranch !== undefined &&

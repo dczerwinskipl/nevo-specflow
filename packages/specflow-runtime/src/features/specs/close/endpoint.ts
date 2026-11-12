@@ -155,6 +155,7 @@ function statusForCloseError(code: SafeCode): 400 | 404 | 409 | 422 | 503 {
     case 'SPEC_VALIDATION_ERROR':
       return 400;
     case 'CLOSE_CONFLICT':
+    case 'CLOSE_BLOCKED':
     case 'CLOSE_SHARED_WORKTREE':
     case 'REGISTRY_CONFLICT':
     case 'SPEC_CONFLICT':

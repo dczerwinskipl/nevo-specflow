@@ -12,6 +12,7 @@ export { getContext, type ContextEntry, type Skipping } from './discovery/docume
 export { type SkippedDocument } from './corpus/readable';
 export {
   inspectCorpus,
+  openCorpus,
   openFileSystemCorpus,
   type DocsCorpus,
   type DocsCorpusRules,
@@ -41,3 +42,25 @@ export { type IndexCatchUp } from './semantic-index/catch-up';
 export { readIndexActivity } from './semantic-index/progress';
 export { createReachabilityCache, type ReachabilityCache } from './semantic-index/reachability';
 export { semanticStatus } from './semantic-index/status';
+export {
+  readCheckoutDocsSettings,
+  type CheckoutDocsSettings,
+  type ReadCheckoutDocsSettingsOptions,
+} from './reader/settings';
+export {
+  readArticle,
+  type ArticleDocument,
+  type ArticleResult,
+  type ArticleSection,
+  type RelatedDocument,
+  type RelatedState,
+} from './reader/article';
+export {
+  projectDocsTree,
+  type DocsTree,
+  type TreeDocument,
+  type TreeInactiveDocument,
+  type TreeSkippedDocument,
+} from './reader/tree';
+export { type DocsChunks } from './semantic-index/chunk-source';
+export { searchDocumentationWithLeftOut, type DocsSearchWithLeftOut } from './search/search';

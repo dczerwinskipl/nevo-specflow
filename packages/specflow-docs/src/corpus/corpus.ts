@@ -40,17 +40,19 @@ export function openFileSystemCorpus(
   { root }: DocsSettings,
   rules: DocsCorpusRules = {},
 ): DocsCorpus {
-  if (
-    !statSync(join(projectRoot, ...root.split('/')), {
-      throwIfNoEntry: false,
-    })?.isDirectory()
-  ) {
-    throw new DocsConfigError(
-      `documentation root '${root}' does not exist in ${projectRoot}; create it or set docs.root.`,
-    );
-  }
+  return openCorpus(projectRoot, { root, ...loadDocsFile(projectRoot, root) }, rules);
+}
 
-  const settings: CorpusSettings = { root, ...loadDocsFile(projectRoot, root) };
+/**
+ * Open the corpus from settings already read (`readCheckoutDocsSettings`), so `docs.yaml` is read
+ * once for the fingerprint, the link check and the corpus. The root must be an existing directory.
+ */
+export function openCorpus(
+  projectRoot: string,
+  settings: CorpusSettings,
+  rules: DocsCorpusRules = {},
+): DocsCorpus {
+  assertDocsRoot(projectRoot, settings.root);
 
   return {
     repo: createFileSystemDocRepository({
@@ -61,6 +63,18 @@ export function openFileSystemCorpus(
     settings,
     ...(rules.validate ? { validate: rules.validate } : {}),
   };
+}
+
+function assertDocsRoot(projectRoot: string, root: string): void {
+  if (
+    !statSync(join(projectRoot, ...root.split('/')), {
+      throwIfNoEntry: false,
+    })?.isDirectory()
+  ) {
+    throw new DocsConfigError(
+      `documentation root '${root}' does not exist in ${projectRoot}; create it or set docs.root.`,
+    );
+  }
 }
 
 export function collectCorpusProblems(

@@ -19,6 +19,7 @@ import {
 } from '@nevo/ai-semantic-search';
 
 import { isNonAuthoritative } from '../config/docs-file';
+import { corpusSettingsFingerprint } from '../config/settings-fingerprint';
 import type { DocsCorpus } from '../corpus/corpus';
 import { selectReadableDocs, type SkippedDocument } from '../corpus/readable';
 import {
@@ -57,6 +58,18 @@ export interface DocsChunks {
   readonly documents: readonly DocsDocument[];
   /** Documents left out because their frontmatter is invalid or their id is duplicated. */
   readonly skipped: SkippedDocument[];
+  /** The skipped documents that declare an id, by id (to tell a skipped id from an unknown one). */
+  readonly skippedById: ReadonlyMap<string, readonly SkippedDocument[]>;
+  /** Readable documents with an inactive status (`deprecated`, `superseded`), in id order. */
+  readonly inactive: readonly DocRecord[];
+  /**
+   * Opaque, versioned digest of the corpus as read: the settings fingerprint and the sorted
+   * `(path, contentHash)` of every scanned file, frontmatter included. It changes with a dirty
+   * edit or a settings change and does not depend on the vector index.
+   */
+  readonly revision: string;
+  /** SHA-256 (hex) of every scanned file's content by path, as read by this load. */
+  readonly contentHashes: ReadonlyMap<string, string>;
   /** Number of documents that were re-chunked by this load (the rest came from cache). */
   readonly reparsed: number;
   /** The search engine over `chunks`, built on first use and shared until the corpus changes. */
@@ -120,7 +133,11 @@ export function createDocsChunkSource({
     const changed = !sameFiles(previous, next);
     if (changed || version === undefined) {
       cached = next;
-      version = withSearchEngine(validatedChunks(corpus, [...next.values()]));
+      version = withSearchEngine({
+        ...validatedChunks(corpus, [...next.values()]),
+        revision: corpusRevision(corpus, next),
+        contentHashes: new Map([...next].map(([file, entry]) => [file, entry.contentHash])),
+      });
     }
 
     if (changed && cacheFile !== undefined) {
@@ -283,7 +300,7 @@ function oneLine(value: string): string {
 function validatedChunks(
   corpus: DocsCorpus,
   files: readonly CachedFile[],
-): Omit<DocsChunks, 'reparsed' | 'searchEngine'> {
+): Omit<DocsChunks, 'reparsed' | 'searchEngine' | 'revision' | 'contentHashes'> {
   const docs: DocRecord[] = [];
   const missingFrontmatter: string[] = [];
   const invalidFrontmatter: { file: string; error: string }[] = [];
@@ -308,8 +325,10 @@ function validatedChunks(
   const byFile = new Map(files.map((entry) => [entry.file, entry]));
   const chunks: DocsChunk[] = [];
   const documents: DocsDocument[] = [];
+  const inactive: DocRecord[] = [];
   for (const record of readable.docs) {
     if (isInactiveStatus(record.status)) {
+      inactive.push(record);
       continue;
     }
 
@@ -326,7 +345,24 @@ function validatedChunks(
     }
   }
 
-  return { chunks, documents, skipped: readable.skipped };
+  return {
+    chunks,
+    documents,
+    inactive,
+    skipped: readable.skipped,
+    skippedById: readable.skippedById,
+  };
+}
+
+/** `revision` of a load: see `DocsChunks.revision`. */
+function corpusRevision(corpus: DocsCorpus, files: ReadonlyMap<string, CachedFile>): string {
+  const hash = createHash('sha256');
+  hash.update(corpusSettingsFingerprint(corpus.settings));
+  for (const file of [...files.keys()].sort()) {
+    hash.update(JSON.stringify([file, files.get(file)!.contentHash]));
+  }
+
+  return `r1-${hash.digest('hex').slice(0, 32)}`;
 }
 
 function sameFiles(
@@ -346,6 +382,6 @@ function sameFiles(
   return true;
 }
 
-function sha256(content: string): string {
+export function sha256(content: string): string {
   return createHash('sha256').update(content).digest('hex');
 }

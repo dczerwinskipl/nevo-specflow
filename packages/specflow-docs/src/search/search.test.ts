@@ -23,7 +23,12 @@ import { contextualHeader, createDocsChunkSource } from '../semantic-index/chunk
 import { openDocsIndex, openProjectIndex } from '../semantic-index/index-store';
 import { READ_REFRESH_MAX_CHUNKS } from '../semantic-index/refresh-policy';
 import { toHit } from './result';
-import { openDocsSearch, searchDocumentation, type DocsSearch } from './search';
+import {
+  openDocsSearch,
+  searchDocumentation,
+  searchDocumentationWithLeftOut,
+  type DocsSearch,
+} from './search';
 
 const root = mkdtempSync(join(tmpdir(), 'specflow-docs-search-'));
 mkdirSync(join(root, 'docs', 'ideas'), { recursive: true });
@@ -76,6 +81,36 @@ const request = {
   snippets: false,
   refresh: true,
 };
+
+describe('searchDocumentationWithLeftOut', () => {
+  it('counts the non-authoritative documents the same query would add, embedding the query once', async () => {
+    const { provider, search } = semanticSearch();
+    const source = createDocsChunkSource({ corpus });
+    const before = (await source.load()).revision;
+    await searchDocumentation(search, request);
+    const calls = provider.calls.length;
+
+    const result = await searchDocumentationWithLeftOut(search, request);
+    expect(result.results.map((hit) => hit.id)).toEqual(['guide']);
+    expect(result.nonAuthoritativeLeftOut).toBe(1);
+    expect(provider.calls.slice(calls).map((call) => call.purpose)).toEqual(['query']);
+    // Building the vector index does not change the corpus revision.
+    expect((await source.load()).revision).toBe(before);
+
+    expect(
+      await searchDocumentationWithLeftOut(search, { ...request, includeNonAuthoritative: true }),
+    ).toMatchObject({ nonAuthoritativeLeftOut: 0 });
+  });
+
+  it('counts on the lexical path too', async () => {
+    const search: DocsSearch = {
+      chunks: createDocsChunkSource({ corpus }),
+      vectors: { reason: { code: 'semantic-disabled', message: 'off' } },
+    };
+    const result = await searchDocumentationWithLeftOut(search, request);
+    expect(result).toMatchObject({ mode: 'lexical', nonAuthoritativeLeftOut: 1 });
+  });
+});
 
 describe('searchDocumentation', () => {
   it('builds the index on read, answers hybrid and then embeds only the query', async () => {
@@ -167,7 +202,8 @@ describe('searchDocumentation', () => {
 
   it('does not build a large gap on read: lexical index-building until the index is complete', async () => {
     const { provider, store } = semanticSearch();
-    const { chunks: base, documents } = await createDocsChunkSource({ corpus }).load();
+    const loaded = await createDocsChunkSource({ corpus }).load();
+    const { chunks: base } = loaded;
     const many = Array.from({ length: 2 * READ_REFRESH_MAX_CHUNKS + 2 }, (_, index) => ({
       ...base[index % base.length]!,
       id: `${base[index % base.length]!.id}/${String(index)}`,
@@ -176,10 +212,8 @@ describe('searchDocumentation', () => {
       chunks: {
         load: () =>
           Promise.resolve({
+            ...loaded,
             chunks: many,
-            documents,
-            skipped: [],
-            reparsed: 0,
             searchEngine: () => createSearchEngine(many),
           }),
       },

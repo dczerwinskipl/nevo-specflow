@@ -1,5 +1,3 @@
-import { randomUUID } from 'node:crypto';
-
 import type { SpecFlowEngine } from '../../../application';
 import { sha256Hex } from '../../../hash';
 import { holdsProjectControlLock } from '../../../project/control-lock';
@@ -17,6 +15,7 @@ import {
   publishJournal,
   readLedgerRecord,
   recordLedgerEntries,
+  validateJournalOperationId,
   writePayload,
 } from '../../durable';
 import { isExecutionStatePath } from '../../execution-paths';
@@ -25,7 +24,7 @@ import { documentChangeError } from '../changes/errors';
 import { DOCUMENT_CHANGE_JOURNAL_KIND } from '../changes/journal/kind';
 import type { DocumentChangeJournal } from '../changes/journal/model';
 import { DOCUMENT_BATCH_MAX_PATHS } from '../changes/limits';
-import { encodePlan } from '../changes/plan/codec';
+import { WORKFLOW_SUMMARY_MAX_CHARACTERS, encodePlan } from '../changes/plan/codec';
 import { containerDirectory } from '../changes/plan/container';
 import {
   DOCUMENT_CHANGE_PLAN_VERSION,
@@ -34,7 +33,7 @@ import {
 } from '../changes/plan/model';
 import { queueCapacityOf } from '../changes/queue-capacity';
 import { admitGitCommit, type GitAdmission, type GitPreflightOptions } from './git-preflight';
-import { listDocumentChangeJournals } from './journal-store';
+import { findDocumentChangeJournal, listDocumentChangeJournals } from './journal-store';
 import { assertNoClaimedBatchOverlap } from './reservation-guard';
 import { UNCOMMITTED_AUTO_COMMIT_OFF } from './uncommitted-write';
 import type { BatchViewProvider, DocumentWriteDependencies } from './writer-types';
@@ -111,13 +110,15 @@ const NOTHING_TO_RECORD: AdmittedExecutionStateCommit = {
  * the Specification directory). Caller MUST hold the project control lock. Refusals are the document
  * vocabulary: the Git policy and preflight (`admitGitCommit`), a Create or Close holding the checkout,
  * a full queue, a batch being committed that holds a path (`SPEC_BUSY`) and the bounds of a batch or
- * of the ledger.
+ * of the ledger. `operationId` is the id the store fixed in its journal before writing: the record
+ * of a change finished again after a stop uses it, and records nothing when that operation exists.
  */
 export async function admitExecutionStateCommit(
   engine: SpecFlowEngine,
   deps: ExecutionStateCommitDependencies,
   specId: string,
   paths: readonly string[],
+  operationId: string,
   options: ExecutionStateCommitOptions = {},
 ): Promise<AdmittedExecutionStateCommit> {
   const context = engine.context;
@@ -144,7 +145,7 @@ export async function admitExecutionStateCommit(
     return NOTHING_TO_RECORD;
   }
 
-  const operationId = randomUUID();
+  validateJournalOperationId(DOCUMENT_CHANGE_JOURNAL_KIND, operationId);
   try {
     await deps.assertClaims(context, resourcesForDocumentChange({ workspaceId }), {
       kind: 'document-change',
@@ -274,6 +275,12 @@ async function recordWrites(
   }
 
   const context = target.engine.context;
+  // Idempotent: a change the store finishes again after a stop was recorded already (or settled).
+  const existing = await findDocumentChangeJournal(context, target.operationId);
+  if (existing !== undefined) {
+    return existing.stage === 'queued' ? 'queued' : 'nothing';
+  }
+
   const plan: DocumentChangePlan = {
     version: DOCUMENT_CHANGE_PLAN_VERSION,
     action: 'workflow',
@@ -292,7 +299,11 @@ async function recordWrites(
     folders: [],
     allocatedIds: [],
     templates: [],
-    summary,
+    // One line of at most the plan's bound (long step or Task ids are cut, never refused).
+    summary: Array.from(summary.replace(/\s+/gu, ' ').trim())
+      .slice(0, WORKFLOW_SUMMARY_MAX_CHARACTERS)
+      .join('')
+      .trim(),
   };
   const encoded = encodePlan(plan);
   await ensureJournalDirectory(context, DOCUMENT_CHANGE_JOURNAL_KIND);

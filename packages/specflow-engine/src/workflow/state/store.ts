@@ -79,10 +79,16 @@ export interface ExecutionFileWrite {
  * The commit policy of the store's writes (owner decision 2026-11-12: workflow state is committed like
  * the Specification's documents; production: `specs/documents/write/execution-state.ts`). Called under
  * the project control lock: `admit` with the paths before anything is written (it may refuse, and
- * then nothing is written), `record` in the same section with what was published.
+ * then nothing is written), `record` once the files are published and BEFORE the store's journal is
+ * removed. `operationId` is fixed in the store's journal before any file is written, and `record` is
+ * idempotent by it: a change finished after a crash (before or after its record) is recorded once.
  */
 export interface ExecutionStateCommits {
-  admit(specId: string, paths: readonly string[]): Promise<AdmittedExecutionStateChange>;
+  admit(
+    specId: string,
+    paths: readonly string[],
+    operationId: string,
+  ): Promise<AdmittedExecutionStateChange>;
 }
 
 export interface AdmittedExecutionStateChange {

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 
 import { sha256Hex } from '../../hash';
@@ -85,9 +86,11 @@ import {
  *     documents never list it (`specs/document-rules/document-paths.ts`).
  * - Local: the change journal `<stateRoot>/engine/operations/workflow/<specId>.json` (`./journal.ts`).
  * - Committed like the Specification's documents (`options.commits`): a change is admitted by the
- *   commit policy with its paths before its journal is written, and the files it published are
- *   recorded (queued for a commit, or in the uncommitted-changes ledger) right after, in the same
- *   control-lock section. A pending journal finished by a later change is recorded the same way.
+ *   commit policy with its paths before its journal is written (the journal fixes the commit
+ *   operation id, the words and each target's `pre`), and the files it published are recorded
+ *   (queued for a commit, or in the uncommitted-changes ledger) before the journal is removed, in
+ *   the same control-lock section. A pending journal finished by a later change is recorded again
+ *   with the same id; the record is idempotent, so a stop anywhere records the change exactly once.
  *
  * A change is first written whole to the journal, then to its files; then the journal is removed.
  * Reads overlay a pending journal and the next change finishes it, so a crash between the files
@@ -208,14 +211,26 @@ export function createFilesystemWorkflowStore(
 export function createFilesystemWorkflowStoreForTest(
   options: FilesystemWorkflowStoreOptions,
   beforePublishTarget: (write: JournalWrite) => Promise<void>,
+  recordHooks: RecordHooks = {},
 ): WorkflowStore {
-  return createStore(options, beforePublishTarget);
+  return createStore(options, beforePublishTarget, recordHooks);
+}
+
+/** Tests only: points around the commit record of a published change (a test throws to cut there). */
+export interface RecordHooks {
+  /** The files are published, the record not made yet. */
+  readonly beforeRecord?: () => Promise<void>;
+  /** The record is made, the journal not removed yet. */
+  readonly afterRecord?: () => Promise<void>;
 }
 
 function createStore(
   options: FilesystemWorkflowStoreOptions,
   beforePublishTarget: (write: JournalWrite) => Promise<void>,
+  recordHooks: RecordHooks = {},
 ): WorkflowStore {
+  const beforeRecord = recordHooks.beforeRecord ?? (() => Promise.resolve());
+  const afterRecord = recordHooks.afterRecord ?? (() => Promise.resolve());
   /** The local file name of a Specification's journal. */
   const stateFileName = (specId: string) => `${specId}.json`;
   const commits = options.commits ?? NO_EXECUTION_STATE_COMMITS;
@@ -416,8 +431,8 @@ function createStore(
 
   /**
    * Publish the journal's writes, each only while its target still holds the planned revision, and
-   * name the files that changed with their content before and after (a target that already held its
-   * new state, after a crash in the middle, reports that state as both).
+   * name the files that changed with their content before (the journal's `pre`; a journal without
+   * one reports what the target held) and after. The journal stays: its record comes first.
    */
   async function publish(
     specId: string,
@@ -433,7 +448,7 @@ function createStore(
         throw conflictWithJournal(specId, folders);
       }
 
-      const pre = fileStateOf(before);
+      const pre = write.pre !== undefined ? write.pre : fileStateOf(before);
       const post = fileStateOf(write.text);
       if (pre?.sha256 !== post?.sha256 || pre?.bytes !== post?.bytes) {
         published.push({ path: pathOfTarget(write), pre, post });
@@ -452,25 +467,38 @@ function createStore(
       }
     }
 
-    await removeRecordFile(folders.journal, stateFileName(specId));
-
     return published;
   }
 
   /**
-   * Publish a journal under the commit policy: admitted with its paths before `writeFirst` (the
-   * journal file of a new change) and anything else is written, recorded once its files are in place.
+   * Publish a journal under the commit policy: admitted with its paths and commit operation id before
+   * `writeFirst` (the journal file of a new change) and anything else is written; recorded once its
+   * files are in place and BEFORE the journal is removed. A stop anywhere leaves the journal, and the
+   * next change publishes it again and records it with the same id and `pre` (the record is
+   * idempotent), so the change is recorded exactly once. A record that fails leaves the journal too:
+   * the change is visible (reads overlay it) and the next change records it.
    */
   async function publishCommitted(
     specId: string,
     folders: Folders,
     journal: Journal,
-    summary: string,
     writeFirst?: () => Promise<void>,
   ): Promise<void> {
-    const admitted = await commits.admit(specId, journal.writes.map(pathOfTarget));
+    const commit = journal.commit ?? {
+      operationId: randomUUID(),
+      summary: INTERRUPTED_CHANGE_SUMMARY,
+    };
+    const admitted = await commits.admit(
+      specId,
+      journal.writes.map(pathOfTarget),
+      commit.operationId,
+    );
     await writeFirst?.();
-    await admitted.record(summary, await publish(specId, folders, journal));
+    const published = await publish(specId, folders, journal);
+    await beforeRecord();
+    await admitted.record(commit.summary, published);
+    await afterRecord();
+    await removeRecordFile(folders.journal, stateFileName(specId));
   }
 
   /** Remove the stage files of the folders the change touches. */
@@ -496,7 +524,7 @@ function createStore(
     const { folders, texts } = current;
     await removeStaleStageFiles(folders, change);
     if (current.journal) {
-      await publishCommitted(specId, folders, current.journal, INTERRUPTED_CHANGE_SUMMARY);
+      await publishCommitted(specId, folders, current.journal);
     }
 
     // After the pending journal is published, a target's file holds its current state; texts that
@@ -523,7 +551,7 @@ function createStore(
         );
       }
 
-      writes.push({ ...target, text: text(), expected });
+      writes.push({ ...target, text: text(), expected, pre: fileStateOf(before) });
     };
 
     if (change.specification) {
@@ -562,7 +590,12 @@ function createStore(
       }
 
       if (write.text !== null || before !== undefined) {
-        writes.push({ ...target, text: write.text, expected: revisionOf(before) });
+        writes.push({
+          ...target,
+          text: write.text,
+          expected: revisionOf(before),
+          pre: fileStateOf(before),
+        });
       }
     }
 
@@ -580,8 +613,11 @@ function createStore(
       return;
     }
 
-    const journal = pendingJournal(specId, writes);
-    await publishCommitted(specId, folders, journal, change.summary ?? DEFAULT_CHANGE_SUMMARY, () =>
+    const journal = pendingJournal(specId, writes, {
+      operationId: randomUUID(),
+      summary: change.summary ?? DEFAULT_CHANGE_SUMMARY,
+    });
+    await publishCommitted(specId, folders, journal, () =>
       writeRecordFile(folders.journal, stateFileName(specId), serializeJournal(journal)),
     );
   }

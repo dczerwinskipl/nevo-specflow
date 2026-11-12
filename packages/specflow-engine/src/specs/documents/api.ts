@@ -123,6 +123,7 @@ export async function admitExecutionStateChange(
   engine: SpecFlowEngine,
   specId: string,
   paths: readonly string[],
+  operationId: string,
   options?: ExecutionStateCommitOptions,
 ): Promise<{
   record(summary: string, writes: readonly ExecutionStateWrite[]): Promise<void>;
@@ -132,6 +133,7 @@ export async function admitExecutionStateChange(
     { assertClaims: assertSharedResourcesAvailable, batches: documentAndManualCommitViews },
     specId,
     paths,
+    operationId,
     options,
   );
 

@@ -783,8 +783,12 @@ published change is ONE document operation of action `workflow` (contract
   and `tasks/`, closed under shared operation ids, message `spec(workflow): finish step ... in <slug>`.
 - **Close.** A Specification Close does not wait for ledger entries of the execution state of the
   Specification it archives: its archive commit takes them along, and the next prune removes them.
-- A stop between the store's files and the record leaves them dirty without a ledger entry; the
-  Close takes them too.
+- **Crash safety.** The store's journal fixes the operation id, the summary and each target's `pre`
+  before any file is written, and the record is made BEFORE the journal is removed. A stop anywhere
+  leaves the journal; the next change of the store publishes it again and records it with the same
+  id and `pre`, and the record is idempotent by that id (an existing journal, active or settled,
+  records nothing). A record that fails leaves the journal too, so the change is recorded later.
+  The Close tolerance of dirty execution state is the backstop for state written outside the store.
 
 ## Windows-hosted paths
 

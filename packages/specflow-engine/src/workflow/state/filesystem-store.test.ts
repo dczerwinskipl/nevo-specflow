@@ -57,7 +57,7 @@ import {
 } from './filesystem-store';
 import type { JournalWrite } from './journal';
 import type { TaskRunRecord, WorkflowRun } from './model';
-import type { ExecutionChange } from './store';
+import type { ExecutionChange, ExecutionFileWrite, ExecutionStateCommits } from './store';
 import {
   creating,
   EMPTY,
@@ -453,6 +453,71 @@ describe('filesystem workflow store: commits of its writes', () => {
     ]);
     expect((calls[1] as { writes: unknown[] }).writes).toHaveLength(3);
   });
+});
+
+describe('filesystem workflow store: a change interrupted around its commit record', () => {
+  it.each(['beforeRecord', 'afterRecord'] as const)(
+    'records it exactly once with its original pre after a stop %s',
+    async (point) => {
+      // A commit policy that, like the document journal store, records an operation id once.
+      const recorded = new Map<
+        string,
+        { summary: string; writes: readonly ExecutionFileWrite[] }
+      >();
+      let records = 0;
+      const commits: ExecutionStateCommits = {
+        admit: (_specId, _paths, operationId) =>
+          Promise.resolve({
+            record: (summary, writes) => {
+              records += 1;
+              if (!recorded.has(operationId)) {
+                recorded.set(operationId, { summary, writes });
+              }
+
+              return Promise.resolve();
+            },
+          }),
+      };
+      const plain = createFilesystemWorkflowStore({ ...options(), commits });
+      await plain.apply(SPEC, { specification: { expected: null, next: record('requirements') } });
+      const before = await readFile(specificationPath(), 'utf8');
+      recorded.clear();
+      records = 0;
+
+      const cut = createFilesystemWorkflowStoreForTest(
+        { ...options(), commits },
+        () => Promise.resolve(),
+        { [point]: () => Promise.reject(new Error('stopped')) },
+      );
+      await expect(
+        cut.apply(SPEC, {
+          summary: 'finish step requirements (attempt 1)',
+          specification: { expected: sha256Hex(before), next: record('specification') },
+        }),
+      ).rejects.toThrow('stopped');
+      // The files are published and the journal survives the stop.
+      const after = await readFile(specificationPath(), 'utf8');
+      expect(after).not.toBe(before);
+      expect(await exists(journalPath())).toBe(true);
+
+      // The next change finishes it: recorded under the same id, with the content it replaced.
+      await plain.apply(SPEC, {});
+      expect(await exists(journalPath())).toBe(false);
+      expect([...recorded.values()]).toEqual([
+        {
+          summary: 'finish step requirements (attempt 1)',
+          writes: [
+            {
+              path: '.execution/specification.yaml',
+              pre: { sha256: sha256Hex(before), bytes: Buffer.byteLength(before, 'utf8') },
+              post: { sha256: sha256Hex(after), bytes: Buffer.byteLength(after, 'utf8') },
+            },
+          ],
+        },
+      ]);
+      expect(records).toBe(point === 'beforeRecord' ? 1 : 2);
+    },
+  );
 });
 
 describe('filesystem workflow store: identity of the stored records', () => {

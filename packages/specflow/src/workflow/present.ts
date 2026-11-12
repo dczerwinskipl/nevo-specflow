@@ -161,6 +161,12 @@ export function finishLines(result: FinishStepResult): string[] {
     `Next: ${continuationLine(result.continuation)}`,
     ...(result.createdTasks.length > 0 ? [`Drafted Tasks: ${result.createdTasks.join(', ')}`] : []),
     ...(result.specification ? [`Specification: ${continuationLine(result.specification)}`] : []),
+    // The finish is recorded either way; a failed post action (the commit of the state) is shown.
+    ...(result.postActions ?? []).flatMap((post) =>
+      post.status === 'failed'
+        ? [`Post action ${post.action} failed: ${post.code} ${post.message}`]
+        : [],
+    ),
   ];
 }
 

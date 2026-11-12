@@ -153,7 +153,8 @@ export async function openWorkflow(
           stateRoot: engine.context.project.stateRoot,
           specificationDirectory: (specId) => specificationDirectory(engine, specId),
           commits: {
-            admit: (specId, paths) => admitExecutionStateChange(engine, specId, paths),
+            admit: (specId, paths, operationId) =>
+              admitExecutionStateChange(engine, specId, paths, operationId),
           },
         }),
         pendingTaskDocuments(engine),

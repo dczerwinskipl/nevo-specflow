@@ -550,7 +550,10 @@ documents ([documents layer](../runtime/specification-documents.md#commits-of-wo
   (`state/store.ts`; production `specs/documents/write/execution-state.ts`, wired in
   `composition.ts`). Under the control lock it admits the change with its paths before the journal
   is written (a refusal of the commit policy writes nothing), then records the published files in the
-  same lock section as one document operation of action `workflow`. Every operation names its change
+  same lock section, before the journal is removed, as one document operation of action `workflow`.
+  The journal fixes the operation id, summary and each target's `pre` first, and the record is
+  idempotent by that id, so a change finished after a stop is recorded exactly once with its
+  original `pre`. Every operation names its change
   (`ExecutionChange.summary`): `create task <id>`, `edit task <id>`, `remove task <id>`,
   `set task <id> <status>`, `start step <step>[ of task <id>] (attempt <n>)`, `finish step ...`,
   `return to step ...`, `abandon the specification`; a pending journal finished by a later change is
@@ -565,8 +568,8 @@ documents ([documents layer](../runtime/specification-documents.md#commits-of-wo
   repeated finish runs it again. The post-action hook is the seam where E6 adds the push of an agent
   step's work (not implemented).
 - **Close and Abandon.** Abandon is a workflow change like the others. A Specification Close takes
-  whatever execution state of that Specification is still uncommitted (in the ledger, or left dirty by
-  a stop before it was recorded) into its archive commit; anything else that is dirty still refuses
+  whatever execution state of that Specification is still uncommitted (in the ledger, or dirty
+  without a record, for example a hand edit) into its archive commit; anything else that is dirty still refuses
   it, naming the paths ([lifecycle](../runtime/specification-lifecycle.md)).
 
 ## Extension points

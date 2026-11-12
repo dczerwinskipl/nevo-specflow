@@ -1,5 +1,6 @@
 import {
   openWorkflow,
+  type CloseBlocker,
   type SpecFlowEngine,
   type WorkflowDependencies,
 } from '@nevo/specflow-engine';
@@ -34,6 +35,8 @@ export async function openExecution(cwd: string, projectRoot?: string): Promise<
 interface CodedError {
   readonly code: string;
   readonly message: string;
+  /** `WORKFLOW_EXIT_BLOCKED`: what holds the Specification. */
+  readonly blockers?: readonly CloseBlocker[];
 }
 
 /**
@@ -46,7 +49,9 @@ function workflowRefusal(error: unknown): CodedError | undefined {
     error.name === 'WorkflowError' &&
     typeof (error as { code?: unknown }).code === 'string'
   ) {
-    return { code: (error as unknown as CodedError).code, message: error.message };
+    const { code, blockers } = error as unknown as CodedError;
+
+    return { code, message: error.message, ...(Array.isArray(blockers) ? { blockers } : {}) };
   }
 
   return undefined;
@@ -61,6 +66,10 @@ const HINTS: Readonly<Record<string, string>> = {
     'The attempt is not the one you finished. Read the actions again with "nevo-specflow workflow actions".',
   WORKFLOW_TASK_BUSY:
     'A change of the Task documents is pending. Flush it with "nevo-specflow specs documents flush" and repeat.',
+  WORKFLOW_EXIT_BLOCKED:
+    'Pending writes or broken Tasks hold the Specification. Read what holds it with "nevo-specflow workflow actions <spec-id>", resolve it and repeat.',
+  WORKFLOW_SPECIFICATION_ENDED:
+    'The Specification workflow has ended already (a completed one is not abandoned; an abandon is final).',
   WORKFLOW_EXECUTOR_NOT_ALLOWED:
     'The step is not allowed for the owner, or an agent attempt is still active.',
 };
@@ -86,6 +95,12 @@ export async function reportingWorkflowRefusals<T>(
 
     const hint = HINTS[refusal.code];
     output.stderr(`${refusal.code}: ${refusal.message}`);
+    for (const blocker of refusal.blockers ?? []) {
+      output.stderr(
+        `  held by ${blocker.kind} (${blocker.subjectIds.join(', ')}): ${blocker.message}`,
+      );
+    }
+
     if (hint !== undefined) {
       output.stderr(`Hint: ${hint}`);
     }
@@ -93,7 +108,12 @@ export async function reportingWorkflowRefusals<T>(
     if (json) {
       output.stdout(
         JSON.stringify({
-          error: { code: refusal.code, message: refusal.message, ...(hint ? { hint } : {}) },
+          error: {
+            code: refusal.code,
+            message: refusal.message,
+            ...(refusal.blockers ? { blockers: refusal.blockers } : {}),
+            ...(hint ? { hint } : {}),
+          },
         }),
       );
     }

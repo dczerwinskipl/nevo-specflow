@@ -18,6 +18,7 @@ import {
 import type { TaskManifest } from '../../tasks/resource/model';
 import type { TaskRunRecord } from '../state/model';
 import type { ExecutionSnapshot, Versioned, WorkflowStore } from '../state/store';
+import type { SpecificationExitPort } from './actions';
 import type { TaskReferences } from './task-references';
 
 /**
@@ -34,6 +35,8 @@ export interface WorkflowDependencies {
   readonly holds: ExecutionHolds;
   readonly now: () => Date;
   readonly serialize: <T>(operation: () => Promise<T>) => Promise<T>;
+  /** Close/Abandon availability for the action projection; `openWorkflow` provides it. */
+  readonly specificationExit?: SpecificationExitPort;
 }
 
 /**

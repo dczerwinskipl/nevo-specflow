@@ -100,7 +100,8 @@ Current shared contracts: `AuthSessionResponse`, `AuthenticationRequiredErrorRes
 `nevo-specflow docs search --json` and `docs semantic status --json`), `DocumentError`,
 `DocumentOperationResult`, `DocumentOperationStatus`, `OperationListResponse`,
 `RateLimitedErrorResponse`, `RequestErrorResponse`, `SessionCommandResult`, `SessionError`,
-`SpecificationReadError`, `TaskReadError` and `TaskSnapshotExpired`.
+`SpecificationReadError`, `TaskReadError`, `TaskSnapshotExpired`, `WorkflowActionProjection` and
+`WorkflowError`.
 
 A test that registers Runtime routes on a bare Fastify instance (without `createRuntimeApp`) creates
 it with `routeTestApp()` from `test/support/route-app.ts`, which registers the shared contracts that
@@ -177,7 +178,7 @@ schema: {
 
 The groups and their descriptions are `OPENAPI_TAGS` in `src/server/openapi/tags.ts`; the document lists
 them in this order as its top-level `tags`: Authentication, Authorization, Sessions, Session
-Providers, Session Telemetry, Specifications, Documents, Tasks, Operations, Workspaces,
+Providers, Session Telemetry, Specifications, Documents, Tasks, Workflow, Operations, Workspaces,
 Documentation and Runtime. A documented route (under `/api/`, not a demo seam) without exactly one
 known group or without a non-empty `summary` is refused when it is registered, so no operation
 reaches the document without them; the OpenAPI test also checks every operation of the canonical

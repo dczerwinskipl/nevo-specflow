@@ -1,6 +1,7 @@
 import { Type, type Static } from 'typebox';
 
 import { DocumentErrorDetailsSchema } from '../documents/errors';
+import { ExitBlockerSchema } from '../workflow/projection';
 import { WorkspaceIdSchema } from '../identifiers';
 import { OperationIdSchema } from '../operations/progress';
 
@@ -86,6 +87,11 @@ export const CloseErrorSchema = Type.Object(
     remedy: Type.Optional(Type.String()),
     /** Present for `DOCUMENT_COMMITS_PENDING` (`details.cause`: `commit-pending`, `commit-failed`, ...). */
     details: Type.Optional(DocumentErrorDetailsSchema),
+    /**
+     * `CLOSE_BLOCKED` (409): what the Specification workflow still holds, grouped, for a list with
+     * links. `message` of a blocker is display-only.
+     */
+    blockers: Type.Optional(Type.Array(ExitBlockerSchema)),
   },
   { $id: 'CloseError', additionalProperties: false },
 );

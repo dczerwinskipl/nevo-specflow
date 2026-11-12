@@ -5237,6 +5237,37 @@
       ]
     },
     {
+      "id": "reference.api.specification-workflow",
+      "type": "reference",
+      "title": "Specification and Task workflow action HTTP API",
+      "status": "current",
+      "file": "docs/reference/api/specification-workflow.md",
+      "read_when": [
+        "implementing a client of the manual Specification or Task workflow actions",
+        "changing the workflow action projection, a workflow command or its refusal codes",
+        "rendering Close blockers or the Abandon action"
+      ],
+      "summary": "The workflow action projection of a Specification and of a Task, the owner commands start, finish, return and abandon, the stable refusal codes with their HTTP status, and the blockers of a refused exit.",
+      "related": [
+        "reference.api.openapi",
+        "reference.api.specflow-specification-operations",
+        "reference.api.authorization",
+        "reference.cli.specflow-specification-commands"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "server",
+        "workflow",
+        "security"
+      ],
+      "tags": [
+        "workflow",
+        "tasks",
+        "openapi"
+      ]
+    },
+    {
       "id": "reference.api.specification-workspace",
       "type": "reference",
       "title": "Specification Workspace HTTP API",

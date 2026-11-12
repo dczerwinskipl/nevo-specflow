@@ -40,6 +40,10 @@ import {
   RateLimitedErrorResponseSchema,
   RequestErrorResponseSchema,
 } from '@nevo/specflow-contracts/runtime';
+import {
+  WorkflowActionProjectionSchema,
+  WorkflowErrorSchema,
+} from '@nevo/specflow-contracts/workflow';
 import { TaskReadErrorSchema, TaskSnapshotExpiredSchema } from '@nevo/specflow-contracts/tasks';
 
 /**
@@ -74,6 +78,8 @@ const SHARED_CONTRACTS: readonly TSchema[] = [
   SpecificationReadErrorSchema,
   TaskReadErrorSchema,
   TaskSnapshotExpiredSchema,
+  WorkflowActionProjectionSchema,
+  WorkflowErrorSchema,
 ];
 
 const sharedContracts = new Set<TSchema>(SHARED_CONTRACTS);

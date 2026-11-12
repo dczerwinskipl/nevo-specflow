@@ -53,7 +53,7 @@ successful Turn authorizes a new Managed Session. Unattended F01 and F12 batchin
 - The shipped Specification flow uses `session: reuse` from requirements to specification.
   Manual completion yields no prior Session. D10 requires an explicitly recorded fresh override,
   if permitted, or a predictable refusal. Never silently change the definition.
-- A terminal Session Turn, an accepted finish *submission* and a committed Workflow transition
+- A terminal Session Turn, an accepted finish _submission_ and a committed Workflow transition
   are different records, with separate crash windows.
 - Incremental Document writes are **durable when their own Engine mutation commits**. They are
   not delayed until Workflow finish and must not disappear merely because finish is refused.

@@ -106,7 +106,7 @@ Deliver **per use case** through Engine → authenticated HTTP → existing UI, 
 
 **Release gate:** E3 cannot make Task CRUD visible unless E2's minimum Close preflight is active in the same build. An unfinished Task must not be silently closable during the period before E4b. Use existing Documents UI and Design System, not a duplicate Markdown editor. Preserve current Task details/resources/history endpoints and extend their concrete Engine adapter; no parallel `TaskV2` DTO. Reject stale revisions and unauthorized owner actions in Engine and HTTP; UI does not own validation.
 
-**Exit:** browser E2E creates Spec and several different-type Tasks, edits docs, approves drafts and reloads canonical state; relevant CLI operations work offline and reach the *same use cases*. Do not claim a CLI approval proves a trusted human unless the accepted trust model permits it.
+**Exit:** browser E2E creates Spec and several different-type Tasks, edits docs, approves drafts and reloads canonical state; relevant CLI operations work offline and reach the _same use cases_. Do not claim a CLI approval proves a trusted human unless the accepted trust model permits it.
 
 ## E4 — Manual Workflow execution via UI, with no AI session
 

@@ -4,6 +4,7 @@ import { parseSpecificationManifestText } from '../../model';
 import { serializeSpecificationManifest } from '../../manifest-serializer';
 import type { DocumentChangeJournal } from './journal/model';
 import type { DocumentChangeStage } from './journal/stages';
+import { SPECIFICATION_CONTAINER } from './plan/container';
 import type { ObservedFile, PlanningSnapshot } from './plan/snapshot';
 
 export const TEST_SPEC_ID = '0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d';
@@ -31,7 +32,9 @@ export function observed(path: string, content: string): ObservedFile {
 }
 
 /** A Specification with the overview, plus whatever the test adds. Pure; nothing is written. */
-export function buildSnapshot(input: SnapshotInput = {}): PlanningSnapshot {
+export function buildSnapshot(
+  input: SnapshotInput = {},
+): PlanningSnapshot & { readonly manifest: SpecificationManifest } {
   const documents: ManifestDocument[] = [
     { id: 'overview', path: 'overview.md', type: 'overview' },
     ...(input.documents ?? []),
@@ -55,6 +58,7 @@ export function buildSnapshot(input: SnapshotInput = {}): PlanningSnapshot {
   const files = input.files ?? [{ path: 'overview.md', content: '# Overview\n' }];
 
   return {
+    container: SPECIFICATION_CONTAINER,
     manifest: parseSpecificationManifestText(manifestText, TEST_SLUG, location),
     manifestText,
     files: files.map((file) => observed(file.path, file.content)),

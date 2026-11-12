@@ -174,7 +174,7 @@ describe('fingerprint', () => {
   ];
 
   it('is a stable sha256 and differs between actions', () => {
-    const all = requests.map(fingerprintDocumentChange);
+    const all = requests.map((request) => fingerprintDocumentChange(request));
     expect(all.every((value) => /^[0-9a-f]{64}$/u.test(value))).toBe(true);
     expect(new Set(all).size).toBe(requests.length);
     expect(fingerprintDocumentChange(save)).toBe(fingerprintDocumentChange({ ...save }));

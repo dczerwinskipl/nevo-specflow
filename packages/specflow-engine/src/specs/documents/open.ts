@@ -10,7 +10,7 @@ import { RAW_CONTENT_MAX_BYTES } from './limits';
 import {
   loadSpecification,
   locateDocument,
-  type LoadedSpecification,
+  type LoadedDocumentContainer,
 } from './loaded-specification';
 import { resolveReadOptions, type DocumentReadOptions } from './read-options';
 import { withOpenFile } from '../document-rules/verified-file';
@@ -62,13 +62,13 @@ export async function openSpecificationDocument(
 
 /** {@link openSpecificationDocument} for an already loaded Specification. */
 async function openDocumentOfLoaded(
-  loaded: LoadedSpecification,
+  loaded: LoadedDocumentContainer,
   documentId: string,
   options: DocumentReadOptions = {},
 ): Promise<OpenedDocument> {
   const { fs } = resolveReadOptions(options);
   const located = await locateDocument(loaded, documentId);
-  const outcome = await withOpenFile(fs, loaded.specDir, located.path, async (file, adopt) => {
+  const outcome = await withOpenFile(fs, loaded.rootDir, located.path, async (file, adopt) => {
     const { handle, stat } = file;
     if (stat.size > BigInt(RAW_CONTENT_MAX_BYTES)) {
       throw new DocumentError('DOCUMENT_TOO_LARGE', 'The document is larger than the raw limit.');

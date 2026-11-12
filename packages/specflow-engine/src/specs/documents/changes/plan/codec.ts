@@ -5,11 +5,13 @@ import { exactKeys, isRecord } from '../../../durable/guards';
 import { validateDocumentPath, validateFolderPath } from '../../../document-rules';
 import { isExplicitSpecificationSlug } from '../../../model';
 import { documentChangeError } from '../errors';
+import { containerDirectory, isReservedContainerPath, isTaskContainerId } from './container';
 import { DOCUMENT_BATCH_MAX_PATHS, DOCUMENT_PLAN_MAX_BYTES } from '../limits';
 import {
   DOCUMENT_CHANGE_ACTIONS,
   DOCUMENT_CHANGE_PLAN_VERSION,
   PLANNED_PATH_ROLES,
+  containerOfPlan,
   manifestPathOf,
   type DocumentChangeAction,
   type DocumentChangePlan,
@@ -89,6 +91,7 @@ function canonicalPlan(plan: DocumentChangePlan): Record<string, unknown> {
     action: plan.action,
     specId: plan.specId,
     slug: plan.slug,
+    ...(plan.taskId !== undefined ? { taskId: plan.taskId } : {}),
     directory: plan.directory,
     paths: plan.paths.map((path) => ({
       path: path.path,
@@ -143,6 +146,7 @@ const PLAN_KEYS = [
   'action',
   'specId',
   'slug',
+  'taskId',
   'directory',
   'paths',
   'documents',
@@ -155,7 +159,7 @@ const PLAN_KEYS = [
 ] as const;
 
 function validatePlan(value: unknown): DocumentChangePlan {
-  if (!isRecord(value) || !exactKeys(value, PLAN_KEYS, ['registry', 'removedFolder'])) {
+  if (!isRecord(value) || !exactKeys(value, PLAN_KEYS, ['taskId', 'registry', 'removedFolder'])) {
     throw invalid();
   }
 
@@ -165,13 +169,20 @@ function validatePlan(value: unknown): DocumentChangePlan {
     typeof value.specId !== 'string' ||
     !SPEC_ID.test(value.specId) ||
     !isExplicitSpecificationSlug(value.slug) ||
-    value.directory !== 'specs/active/' + value.slug
+    (value.taskId !== undefined &&
+      (typeof value.taskId !== 'string' || !isTaskContainerId(value.taskId)))
   ) {
     throw invalid();
   }
 
+  const taskId = value.taskId;
+  const container = containerOfPlan(taskId === undefined ? {} : { taskId });
+  if (value.directory !== containerDirectory(value.slug, container)) {
+    throw invalid();
+  }
+
   const directory = value.directory;
-  const paths = validatePaths(value.paths, directory);
+  const paths = validatePaths(value.paths, directory, taskId);
   const documents = validateDocuments(value.documents);
   const removed = validateIds(value.removedDocumentIds);
   const allocated = validateIds(value.allocatedIds);
@@ -190,6 +201,7 @@ function validatePlan(value: unknown): DocumentChangePlan {
     action: value.action,
     specId: value.specId,
     slug: value.slug,
+    ...(taskId !== undefined ? { taskId } : {}),
     directory,
     paths,
     documents,
@@ -214,13 +226,18 @@ function isAction(value: unknown): value is DocumentChangeAction {
   );
 }
 
-function validatePaths(value: unknown, directory: string): PlannedPath[] {
+function validatePaths(
+  value: unknown,
+  directory: string,
+  taskId: string | undefined,
+): PlannedPath[] {
   if (!Array.isArray(value) || value.length > DOCUMENT_BATCH_MAX_PATHS) {
     throw invalid();
   }
 
   const seen = new Set<string>();
-  const manifest = manifestPathOf({ directory });
+  const container = containerOfPlan(taskId === undefined ? {} : { taskId });
+  const manifest = manifestPathOf({ directory, ...(taskId === undefined ? {} : { taskId }) });
   const result = (value as unknown[]).map((entry, index): PlannedPath => {
     if (!isRecord(entry) || !exactKeys(entry, ['path', 'role', 'pre', 'post', 'source'])) {
       throw invalid();
@@ -241,7 +258,8 @@ function validatePaths(value: unknown, directory: string): PlannedPath[] {
       }
     } else if (
       !entry.path.startsWith(directory + '/') ||
-      !validateDocumentPath(entry.path.slice(directory.length + 1)).ok
+      !validateDocumentPath(entry.path.slice(directory.length + 1)).ok ||
+      isReservedContainerPath(container, entry.path.slice(directory.length + 1))
     ) {
       throw invalid();
     }

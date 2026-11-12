@@ -20,6 +20,9 @@ import { isValidTaskId, JOURNAL_BYTES_MAX } from '../limits';
 
 const JOURNAL_VERSION = 3;
 
+/** The folder of the journals below the Project Home state root. */
+export const JOURNAL_FOLDER_SEGMENTS = ['engine', 'operations', 'workflow'] as const;
+
 export type JournalTarget =
   | { readonly target: 'specification' }
   | { readonly target: 'task-run'; readonly taskId: string }

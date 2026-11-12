@@ -2,18 +2,22 @@ import { CATALOGUE_ID_PATTERN } from '@nevo/specflow-contracts/documents';
 
 import {
   DocumentIdError,
-  OVERVIEW_DOCUMENT_TYPE,
   allocateDocumentId,
   deriveUnclassifiedDocumentId,
-  isProtectedDocument,
   validateDocumentPath,
   validateFolderPath,
 } from '../../../document-rules';
 import { deriveFolders, foldPathKey, parentFolder } from '../../../document-rules/document-paths';
-import { folderContainsProtectedDocument } from '../../../document-rules/protection';
 import { samePhysicalPath } from '../../../document-rules/verified-file';
 import type { ManifestDocument } from '../../../model';
 import { CASE_ONLY_RENAME_MESSAGE, documentChangeError } from '../errors';
+import {
+  folderHoldsRequiredDocument,
+  isContainerDocumentPath,
+  isRequiredDocument,
+  requiredDocumentMessage,
+  requiredDocumentType,
+} from './container';
 import {
   assertWritable,
   collides,
@@ -104,8 +108,8 @@ function planDocumentOperation(
 ): PlanResult {
   const document = requireDocument(snapshot, documentId);
   const path = pathOf(document);
-  if (document.kind === 'registered' && isProtectedDocument(document.entry)) {
-    throw documentChangeError('protected', 'The overview document cannot be changed this way.');
+  if (document.kind === 'registered' && isRequiredDocument(snapshot.container, document.entry)) {
+    throw documentChangeError('protected', requiredDocumentMessage(snapshot.container));
   }
 
   const draft = newDraft();
@@ -141,7 +145,7 @@ function planDocumentOperation(
   }
 
   assertNotCaseOnlyRename(path, destination);
-  if (!validateDocumentPath(destination).ok) {
+  if (!isContainerDocumentPath(snapshot.container, destination)) {
     throw documentChangeError('path-invalid', 'The target path is not allowed.');
   }
 
@@ -189,7 +193,7 @@ function planClassify(snapshot: PlanningSnapshot, request: ClassifyRequest): Pla
     throw documentChangeError('type-invalid', 'The document type id is not valid.');
   }
 
-  if (request.type === OVERVIEW_DOCUMENT_TYPE) {
+  if (request.type === requiredDocumentType(snapshot.container)) {
     throw documentChangeError('operation-invalid', 'The overview type cannot be assigned.');
   }
 
@@ -259,8 +263,10 @@ function planFolderOperation(
   const prefix = folder + '/';
   const under = (path: string): boolean => path.startsWith(prefix);
   if (
-    snapshot.manifest.documents.some((entry) => under(entry.path) && isProtectedDocument(entry)) ||
-    folderContainsProtectedDocument(folder)
+    snapshot.manifest.documents.some(
+      (entry) => under(entry.path) && isRequiredDocument(snapshot.container, entry),
+    ) ||
+    folderHoldsRequiredDocument(snapshot.container, folder)
   ) {
     throw documentChangeError('protected', 'The folder holds the overview document.');
   }

@@ -60,7 +60,9 @@ const VERB_OF_ACTION: Readonly<Record<string, Verb>> = {
 };
 
 function changesOf(plan: DocumentChangePlan): Change[] {
-  const inside = (path: string): string => path.slice(plan.directory.length + 1);
+  // Relative to the Specification directory, so a Task document reads `tasks/<id>/<path>`.
+  const specificationDirectory = `specs/active/${plan.slug}`;
+  const inside = (path: string): string => path.slice(specificationDirectory.length + 1);
   const documents = plan.paths.filter((path) => path.role === 'document');
   switch (plan.action) {
     case 'save':

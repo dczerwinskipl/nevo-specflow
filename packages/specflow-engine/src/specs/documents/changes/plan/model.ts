@@ -2,6 +2,7 @@ import type { DocumentOperationStatusAction } from '@nevo/specflow-contracts/doc
 import { DOCUMENT_OPERATION_STATUS_ACTIONS } from '@nevo/specflow-contracts/documents';
 
 import type { ManifestDocument } from '../../../model';
+import { SPECIFICATION_CONTAINER, registryFileOf, type DocumentContainer } from './container';
 
 /**
  * The action kinds of a document change. They are the status vocabulary of the contract
@@ -39,7 +40,7 @@ export interface PlannedPath {
   readonly source: PathSource;
 }
 
-/** A document the operation reports as written. `path` is relative to the Specification directory. */
+/** A document the operation reports as written. `path` is relative to the container root. */
 export interface PlannedDocument {
   readonly id: string;
   readonly path: string;
@@ -73,7 +74,15 @@ export interface DocumentChangePlan {
   readonly action: DocumentChangeAction;
   readonly specId: string;
   readonly slug: string;
-  /** Checkout-relative Specification directory, `specs/active/<slug>`. */
+  /**
+   * The Task whose documents the operation changes; absent for the Specification's own documents.
+   * It decides the directory and the registry file (`./container.ts`).
+   */
+  readonly taskId?: string;
+  /**
+   * Checkout-relative container root: `specs/active/<slug>`, or `specs/active/<slug>/tasks/<taskId>`
+   * for a Task.
+   */
   readonly directory: string;
   /** In write order: document paths first, the manifest (when present) last. */
   readonly paths: readonly PlannedPath[];
@@ -95,6 +104,13 @@ export interface PlanPayload {
   readonly content: string;
 }
 
-export function manifestPathOf(plan: Pick<DocumentChangePlan, 'directory'>): string {
-  return plan.directory + '/specification.yaml';
+/** The checkout-relative registry file of the plan's container. */
+export function manifestPathOf(plan: Pick<DocumentChangePlan, 'directory' | 'taskId'>): string {
+  return plan.directory + '/' + registryFileOf(containerOfPlan(plan));
+}
+
+export function containerOfPlan(plan: Pick<DocumentChangePlan, 'taskId'>): DocumentContainer {
+  return plan.taskId === undefined
+    ? SPECIFICATION_CONTAINER
+    : { kind: 'task', taskId: plan.taskId };
 }

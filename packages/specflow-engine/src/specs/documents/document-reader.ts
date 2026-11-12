@@ -7,9 +7,10 @@ import { DocumentError } from '../document-rules/errors';
 import { analyzeOpenFile, decodeText } from './file-analysis';
 import { TEXT_CONTENT_MAX_BYTES } from './limits';
 import {
+  loadDocumentContainer,
   loadSpecification,
   locateDocument,
-  type LoadedSpecification,
+  type LoadedDocumentContainer,
 } from './loaded-specification';
 import { resolveReadOptions, type DocumentReadOptions } from './read-options';
 import { withOpenFile } from '../document-rules/verified-file';
@@ -31,15 +32,32 @@ export async function readSpecificationDocument(
   return readDocumentOfLoaded(loaded, documentId, options);
 }
 
-/** One document of an already loaded Specification. */
+/** One document of a Task of the Specification, as JSON. */
+export async function readTaskDocument(
+  engine: SpecFlowEngine,
+  specId: string,
+  taskId: string,
+  documentId: string,
+  options: ReadDocumentOptions = {},
+): Promise<DocumentContent> {
+  const loaded = await loadDocumentContainer(
+    engine,
+    { kind: 'task', specId, taskId },
+    resolveReadOptions(options).fs,
+  );
+
+  return readDocumentOfLoaded(loaded, documentId, options);
+}
+
+/** One document of an already loaded container. */
 async function readDocumentOfLoaded(
-  loaded: LoadedSpecification,
+  loaded: LoadedDocumentContainer,
   documentId: string,
   options: ReadDocumentOptions = {},
 ): Promise<DocumentContent> {
   const { fs } = resolveReadOptions(options);
   const located = await locateDocument(loaded, documentId);
-  const outcome = await withOpenFile(fs, loaded.specDir, located.path, async (file) => {
+  const outcome = await withOpenFile(fs, loaded.rootDir, located.path, async (file) => {
     const analysis = await analyzeOpenFile(file.handle, file.stat, located.path);
     if (options.revision !== undefined && options.revision !== analysis.revision) {
       throw new DocumentError(

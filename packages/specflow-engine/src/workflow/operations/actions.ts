@@ -18,7 +18,11 @@ import type { WorkflowDefinition, WorkflowStep } from '../definitions/model';
 import { WorkflowError } from '../errors';
 import { TASKS_PER_SPECIFICATION_MAX } from '../limits';
 import type { TaskContextEntry } from '../../tasks/resource/model';
-import type { TaskContextIssue, TaskResourceIssue } from '../../tasks/resource/validate';
+import {
+  unregisteredTaskFiles,
+  type TaskContextIssue,
+  type TaskResourceIssue,
+} from '../../tasks/resource/validate';
 import {
   taskPosition,
   type ExecutionTask,
@@ -56,14 +60,11 @@ import { effectiveTaskTypesOf, unresolvedContext } from './task-policy';
  * may do now. Surfaces (HTTP, CLI, UI) render only what it allows; it never mutates to find out (no
  * store write, no attempt activation). It asks the rules the commands apply (`taskReadiness`,
  * `resolveTaskType`, `taskDecisionRefusal`, the continuation of a ready run), so a projected action
- * is refused only when the state changed in between or by a rule listed under "Known gaps" below.
+ * is refused only when the state changed in between.
  *
  * A pending Task document change (D03) refuses every change that writes the Task's folder: the
  * status decisions, the edits, the removal and an escalating finish. A start writes only the run
  * record, so it is not refused.
- *
- * Known gaps: a removal is still refused when the Task folder holds files it does not register
- * (`removeTask` lists the folder; the projection does not).
  */
 
 /** An action the owner may take now, or why not. */
@@ -74,6 +75,8 @@ export type Availability<Reason extends string> =
       readonly reason: Reason;
       /** For `has-dependents`: the Tasks that depend on this one, in id order. */
       readonly taskIds?: readonly string[];
+      /** For `unregistered-files`: the files of the Task folder it does not register. */
+      readonly files?: readonly string[];
     };
 
 /** The workflow a run is pinned to, or the one a first start would pin. */
@@ -232,6 +235,8 @@ export type TaskActionUnavailableReason =
    * which the store refuses (`WORKFLOW_TASK_BUSY`, reason `task-document-change`).
    */
   | 'task-document-change'
+  /** The Task folder holds files it does not register; move or register them first. */
+  | 'unregistered-files'
   | 'broken';
 
 /** The owner's Task lifecycle actions (`setTaskStatus`, `editTask`, `removeTask`). */
@@ -311,8 +316,8 @@ export function inspectActions(
 const allowed = { kind: 'allowed' } as const;
 const unavailable = <Reason extends string>(
   reason: Reason,
-  taskIds?: readonly string[],
-): Availability<Reason> => ({ kind: 'unavailable', reason, ...(taskIds ? { taskIds } : {}) });
+  details: { readonly taskIds?: readonly string[]; readonly files?: readonly string[] } = {},
+): Availability<Reason> => ({ kind: 'unavailable', reason, ...details });
 
 function summaryOf(definition: WorkflowDefinition): WorkflowSummary {
   // The pin a first start gives its run (a value; nothing is stored).
@@ -420,7 +425,7 @@ interface RunInput {
   readonly catalogue: ExecutionCatalogue;
   /** Why the next step cannot start, asked only when the run is ready. */
   readonly startBlockers: () => Promise<readonly StartBlocker[]>;
-  /** The owner may return the run (a Task returns only while `ready`). */
+  /** The owner may return the run: always a Specification, a Task only while its status is `ready`. */
   readonly returnable: boolean;
   /** A Task with a pending document change (D03): a finish that writes its folder is refused. */
   readonly documentChangePending: boolean;
@@ -643,7 +648,14 @@ async function taskProjection(
     subject.specId,
     subject.taskId,
   );
-  const lifecycle = lifecycleOf(task, manifest.revision, snapshot, pending);
+  // Only a Task that never started can be removed, so only its folder is listed.
+  const unregistered = task.run
+    ? []
+    : unregisteredTaskFiles(
+        manifest.value,
+        await dependencies.store.taskFiles(subject.specId, subject.taskId),
+      );
+  const lifecycle = lifecycleOf(task, manifest.revision, snapshot, pending, unregistered);
   const readinessBlockers = () => taskReadinessBlockers(task, tasks.tasks);
   const contextBlockers = async (): Promise<StartBlocker[]> => {
     const issues = (await unresolvedContext(dependencies, subject.specId, task)).filter(
@@ -754,6 +766,7 @@ function lifecycleOf(
   revision: string,
   snapshot: ExecutionSnapshot,
   pending: boolean,
+  unregistered: readonly string[],
 ): TaskLifecycleActions {
   type Action = Availability<TaskActionUnavailableReason>;
   const state = taskPosition(task).state;
@@ -761,6 +774,10 @@ function lifecycleOf(
     const refusal = taskDecisionRefusal(task, to);
     if (refusal === 'ended') {
       return unavailable('ended');
+    }
+
+    if (to === 'cancelled' && task.status === 'cancelled') {
+      return unavailable('cancelled');
     }
 
     if (refusal === 'status' || (from !== undefined && task.status !== from)) {
@@ -796,10 +813,12 @@ function lifecycleOf(
     remove: task.run
       ? unavailable('started')
       : dependents.length > 0
-        ? unavailable('has-dependents', dependents)
+        ? unavailable('has-dependents', { taskIds: dependents })
         : pending
           ? unavailable('task-document-change')
-          : allowed,
+          : unregistered.length > 0
+            ? unavailable('unregistered-files', { files: unregistered })
+            : allowed,
     editDetails: edit,
     editContext: edit,
     editDependencies: edit.kind === 'allowed' && task.run ? unavailable('started') : edit,

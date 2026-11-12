@@ -271,11 +271,10 @@ changes only by:
   effects, and the owner operation `setTaskStatus(dependencies, {specId, taskId, status, reason?,
 executor})`, which requires a human executor (`WORKFLOW_EXECUTOR_NOT_ALLOWED` otherwise) and runs
   under the same serialization. Allowed: `draft → ready | cancelled`, `ready → on-hold | cancelled`,
-  `on-hold → ready | cancelled`. A Task whose run ended keeps its status, and a running Task may go on
-  hold (its current step finishes normally, the next start is refused) but is not cancelled. The
-  status is preparation and completion is the run: a Task put on hold while running whose run then
-  ends keeps the status `on-hold`.
-  Anything else is `WORKFLOW_INPUT_INVALID`; in a finish, one refused decision rejects the whole
+  `on-hold → ready | cancelled`. A Task whose run ended keeps its status. A Task with an active
+  attempt is neither put on hold nor cancelled (`WORKFLOW_TASK_BLOCKED`, reason `active-attempt`):
+  its current step is finished or returned first. The status is preparation and completion is the
+  run. Anything else is `WORKFLOW_INPUT_INVALID`; in a finish, one refused decision rejects the whole
   finish;
 - the Task's own **escalation** (below).
 

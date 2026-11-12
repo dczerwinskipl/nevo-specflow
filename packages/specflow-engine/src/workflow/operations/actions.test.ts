@@ -284,6 +284,33 @@ describe('Task positions', () => {
     });
   });
 
+  it('a removal is unavailable while the Task folder holds a file it does not register', async () => {
+    const dependencies = memoryDependencies(catalogue);
+    await create(dependencies, 'api');
+    await dependencies.store.apply(SPEC, {
+      documents: [{ taskId: 'api', path: 'notes.txt', text: 'mine' }],
+    });
+
+    expect((await project(dependencies, task('api'))).task?.remove).toEqual({
+      kind: 'unavailable',
+      reason: 'unregistered-files',
+      files: ['notes.txt'],
+    });
+  });
+
+  it('a cancelled Task: cancelling again and editing are unavailable as cancelled', async () => {
+    const dependencies = memoryDependencies(catalogue);
+    await create(dependencies, 'api');
+    await decide(dependencies, 'api', 'cancelled');
+
+    expect((await project(dependencies, task('api'))).task).toMatchObject({
+      approve: no('status'),
+      cancel: no('cancelled'),
+      editDetails: no('cancelled'),
+      remove: ALLOWED,
+    });
+  });
+
   it('during an active attempt: Hold and Cancel are unavailable with a reason, dependencies are fixed', async () => {
     const dependencies = memoryDependencies(catalogue);
     await create(dependencies, 'api');

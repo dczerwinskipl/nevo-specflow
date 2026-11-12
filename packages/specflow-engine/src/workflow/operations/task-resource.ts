@@ -8,10 +8,10 @@ import { foldPathKey } from '../../specs/document-rules/document-paths';
 import { contextKey, initialTaskDocument, taskManifestProblems } from '../../tasks/resource/codec';
 import {
   TASK_MAIN_DOCUMENT,
-  TASK_MANIFEST_FILE,
   type TaskContextEntry,
   type TaskManifest,
 } from '../../tasks/resource/model';
+import { unregisteredTaskFiles } from '../../tasks/resource/validate';
 import { WorkflowError } from '../errors';
 import { isValidTaskId, TASKS_PER_SPECIFICATION_MAX } from '../limits';
 import { dependencyCycle } from '../state/dependency-cycle';
@@ -382,9 +382,7 @@ export function removeTask(
       manifest.value.documents.map((document) => [foldPathKey(document.path), document] as const),
     );
     const files = await dependencies.store.taskFiles(input.specId, input.taskId);
-    const unknown = files.filter(
-      (path) => foldPathKey(path) !== TASK_MANIFEST_FILE && !registered.has(foldPathKey(path)),
-    );
+    const unknown = unregisteredTaskFiles(manifest.value, files);
     if (unknown.length > 0) {
       notRemovable(
         input.taskId,

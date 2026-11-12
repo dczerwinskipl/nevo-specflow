@@ -1,4 +1,5 @@
-import type { TaskContextEntry, TaskManifest } from './model';
+import { foldPathKey } from '../../specs/document-rules/document-paths';
+import { TASK_MANIFEST_FILE, type TaskContextEntry, type TaskManifest } from './model';
 
 /**
  * Consistency of the Task resources of one Specification across files, pure. A store reports these
@@ -201,4 +202,20 @@ export function validateTaskContext(
   }
 
   return issues;
+}
+
+/**
+ * The files of a Task folder (`WorkflowStore.taskFiles`) that are neither its `task.yaml` nor a
+ * document it registers, in the given order. Removing a Task that has any would leave its folder
+ * behind as an unregistered folder, so the removal is refused.
+ */
+export function unregisteredTaskFiles(
+  manifest: Pick<TaskManifest, 'documents'>,
+  files: readonly string[],
+): string[] {
+  const registered = new Set(manifest.documents.map((document) => foldPathKey(document.path)));
+
+  return files.filter(
+    (path) => foldPathKey(path) !== TASK_MANIFEST_FILE && !registered.has(foldPathKey(path)),
+  );
 }

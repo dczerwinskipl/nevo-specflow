@@ -438,6 +438,13 @@ export function taskReadiness(task: ExecutionTask, tasks: readonly ExecutionTask
  * The Specification's wait step is satisfied when every Task is closed (also when there is none). A
  * broken Task (`executionTasks`) is never closed.
  */
+export function allTasksClosed(
+  tasks: readonly ExecutionTask[],
+  broken: readonly string[],
+): boolean {
+  return broken.length === 0 && tasks.every(isTaskClosed);
+}
+
 /**
  * The dependencies of `waitingFor` that can no longer complete: they ended without completing, were
  * cancelled, or are not among `tasks` (broken, `executionTasks`).
@@ -451,13 +458,6 @@ export function unsatisfiableDependencies(
 
     return !dependency || isTaskClosed(dependency);
   });
-}
-
-export function allTasksClosed(
-  tasks: readonly ExecutionTask[],
-  broken: readonly string[],
-): boolean {
-  return broken.length === 0 && tasks.every(isTaskClosed);
 }
 
 /**

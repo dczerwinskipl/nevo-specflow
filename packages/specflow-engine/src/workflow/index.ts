@@ -82,6 +82,13 @@ export {
 } from './operations/abandon';
 export { readSpecificationExitState } from './operations/specification-exit';
 export { finishStep, type FinishStepInput, type FinishStepResult } from './operations/finish';
+export {
+  NO_POST_ACTIONS,
+  type PostActionName,
+  type PostActionResult,
+  type StepFinishedEvent,
+  type WorkflowPostActions,
+} from './operations/post-actions';
 export { inspectExecution, type ExecutionInspection } from './operations/inspect';
 export type { ExecutionHolds, WorkflowDependencies } from './operations/loaded-execution';
 export { returnToStep, type ReturnToStepInput, type ReturnToStepResult } from './operations/return';

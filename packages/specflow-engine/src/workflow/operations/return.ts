@@ -5,7 +5,13 @@ import { assertFeedback } from '../input-schema';
 import type { OwnerActor, WorkflowSubject } from '../state/model';
 import { assertOwner } from './actors';
 import { advance, applyEffects, type AdvanceContext } from './advance';
-import { isoNow, loadSubject, loadTask, type WorkflowDependencies } from './loaded-execution';
+import {
+  isoNow,
+  loadSubject,
+  loadTask,
+  ofSubject,
+  type WorkflowDependencies,
+} from './loaded-execution';
 import { ExecutionWorkingSet } from './working-set';
 
 export interface ReturnToStepInput {
@@ -72,7 +78,10 @@ export function returnToStep(
     context.set.setRun(subject, decision.nextRun);
     applyEffects(context, decision.declaredEffects);
     const continuation = advance(context, subject, loaded.definition, decision.intent);
-    await dependencies.store.apply(subject.specId, context.set.change());
+    await dependencies.store.apply(subject.specId, {
+      ...context.set.change(),
+      summary: `return to step ${request.step}${ofSubject(subject)}`,
+    });
 
     return { subject, position: context.set.run(subject).position, continuation };
   });

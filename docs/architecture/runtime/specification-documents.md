@@ -353,7 +353,8 @@ Specification's other documents.
 - A registry change rewrites `task.yaml` through the strict Task manifest parser (it is read back before it is
   stored) and keeps every other field. A document a `task-document` context entry names cannot be deleted.
   `task.yaml` is compared as a whole file under the control lock (re-plan on change). It is not judged
-  `SPEC_MANIFEST_DIRTY`: the Specification execution store writes it too and leaves its writes uncommitted.
+  `SPEC_MANIFEST_DIRTY`: the Specification execution store writes it too, and its writes may be
+  uncommitted (auto-commit off, see [Commits of workflow state](#commits-of-workflow-state)).
 - Mutual exclusion with the Specification execution store (D03, under the project control lock): a Task
   document change is refused with `SPEC_BUSY` (`details.cause: task-resource-change`) while that store holds a
   pending journal that writes the Task's `task.yaml` or documents. The reverse check is
@@ -364,9 +365,10 @@ Specification's other documents.
   (`workflow/state/task-document-guard.ts`), which refuses such a change with `WORKFLOW_TASK_BUSY`
   (`task-document-change`) inside `serialize`, before anything is written. Close's Specification exit gate and
   Abandon report it as the blocker `pending-task-documents` ([lifecycle](specification-lifecycle.md)).
-- Accepted consequence of D14 (owner decision): the execution store leaves its writes to `task.yaml` uncommitted,
-  so a Documents commit of a Task registry change commits `task.yaml` whole, including execution-store state
-  not yet committed (for example a status decision).
+- The execution store's writes of `task.yaml` are `workflow` operations of the same queue
+  ([Commits of workflow state](#commits-of-workflow-state)). A Task registry change queued after one
+  plans from the file the store wrote; the batch keeps the first `pre` and the last `post` of the path.
+  With auto-commit off both are ledger entries, so a manual commit takes `task.yaml` whole.
 
 ## Content kinds
 
@@ -742,13 +744,47 @@ and HEAD holds it, and never commits twice; a failure that does not prove the co
 `recovery-required`; `recovery-required` to `committing` (resume), `completed` (adopt) or `failed` (abandon).
 
 **Interaction.** Close refuses while the ledger of any checkout of its plan is non-empty after the flush and prune
-(`DOCUMENT_COMMITS_PENDING`, cause `commit-uncommitted`). `SPEC_MANIFEST_DIRTY` is judged against the post-image of the
+(`DOCUMENT_COMMITS_PENDING`, cause `commit-uncommitted`), except for the execution state of the Specification a
+Specification Close archives ([Commits of workflow state](#commits-of-workflow-state)). `SPEC_MANIFEST_DIRTY` is judged against the post-image of the
 latest operation in flight, else the ledger post-image, else `HEAD` (a manifest that equals `HEAD` also passes a ledger
 entry that no prune removed yet); a foreign edit is a hash mismatch. Policy flips: `on -> off` lets queued work drain with its
 pinned mode and makes later writes `uncommitted`; `off -> on` commits nothing, the entries stay until a later `auto` write
 of the path commits it (and prunes) or a manual commit. `init` and `definitions install` register the paths they commit
 in the `definitions` owner before the commit and prune after it, so what an interrupted install leaves is known. With the policy on, a manual commit needs an empty queue for the scope (after a flush);
 with it off it is always available once queued work has drained.
+
+## Commits of workflow state
+
+Owner decision (2026-11-12): the writes of the Specification execution store (`.execution/**` and
+`tasks/**` of a Specification: the Task index and manifests, the initial `task.md`, the run records and
+removals) made by owner, UI or CLI operations are committed like the Specification's documents. Each
+published change is ONE document operation of action `workflow` (contract
+`DOCUMENT_OPERATION_STATUS_ACTIONS`) in the document journal store
+(`specs/documents/write/execution-state.ts`):
+
+- **Admission** (under the project control lock, before the store writes its journal): the same Git
+  policy and preflight as a document write (`admitGitCommit`, pinned `commitMode`), no Create or
+  Close holding the checkout, queue capacity, no claimed batch or manual commit holding a path
+  (`SPEC_BUSY`, `commit-in-progress`), at most 200 paths, and with auto-commit off the ledger bound.
+  A refusal writes nothing; it is a document error.
+- **Record** (same lock section, after the files are published): the plan lists the paths with their
+  `pre`/`post` and `source: written` (the store wrote them) or `none` (removed), plus the `summary`
+  the operation gave (`create task api`). Auto-commit on: the journal is published `queued` (its
+  `checkout-scoped` claim held) and the scheduler is woken; the queue commits it like any member
+  (settle period, batches, verification, `Nevo-Action: workflow`, subject
+  `spec(workflow): <summary> in <slug>`, `spec(documents): change documents and workflow state in
+<slug>` in a mixed batch). Auto-commit off: the ledger entries (owner `specification`, reason
+  `auto-commit-off`) then a settled `completed`/`uncommitted` journal. Git disabled: nothing.
+- **Task documents (D03).** A `workflow` operation names no Task, so it is not a pending Task
+  document change; the store's own D03 guard still refuses while a Task document change is not final,
+  and a Task document change still refuses while the store's local journal is pending.
+- **Auto-commit off, "Next".** A step's finish runs the post action `commit-execution-state`
+  (`commitExecutionState`): a manual commit of the Specification's ledger entries below `.execution/`
+  and `tasks/`, closed under shared operation ids, message `spec(workflow): finish step ... in <slug>`.
+- **Close.** A Specification Close does not wait for ledger entries of the execution state of the
+  Specification it archives: its archive commit takes them along, and the next prune removes them.
+- A stop between the store's files and the record leaves them dirty without a ledger entry; the
+  Close takes them too.
 
 ## Windows-hosted paths
 

@@ -58,7 +58,41 @@ export interface ExecutionChange {
   readonly manifests?: readonly (RecordWrite<TaskManifest | null> & { readonly taskId: string })[];
   readonly runs?: readonly (RecordWrite<TaskRunRecord> & { readonly taskId: string })[];
   readonly documents?: readonly TaskDocumentWrite[];
+  /**
+   * What the change does, in words (`create task api`, `finish step review (attempt 1)`): the
+   * subject of its commit (`ExecutionStateCommits`). Not stored in the records.
+   */
+  readonly summary?: string;
 }
+
+/** The content of a file: its sha256 and size, or `null` when it does not exist. */
+export type ExecutionFileState = { readonly sha256: string; readonly bytes: number } | null;
+
+/** One file a change published, relative to the Specification directory (`tasks/api/task.yaml`). */
+export interface ExecutionFileWrite {
+  readonly path: string;
+  readonly pre: ExecutionFileState;
+  readonly post: ExecutionFileState;
+}
+
+/**
+ * The commit policy of the store's writes (owner decision 2026-11-12: workflow state is committed like
+ * the Specification's documents; production: `specs/documents/write/execution-state.ts`). Called under
+ * the project control lock: `admit` with the paths before anything is written (it may refuse, and
+ * then nothing is written), `record` in the same section with what was published.
+ */
+export interface ExecutionStateCommits {
+  admit(specId: string, paths: readonly string[]): Promise<AdmittedExecutionStateChange>;
+}
+
+export interface AdmittedExecutionStateChange {
+  record(summary: string, writes: readonly ExecutionFileWrite[]): Promise<void>;
+}
+
+/** No commits: a store outside a Project (tests, tools). */
+export const NO_EXECUTION_STATE_COMMITS: ExecutionStateCommits = {
+  admit: () => Promise.resolve({ record: () => Promise.resolve() }),
+};
 
 export interface WorkflowStore {
   read(specId: string): Promise<ExecutionSnapshot>;

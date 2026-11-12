@@ -21,6 +21,10 @@ import { SharedResourceError } from '../specs/durable';
 import type { RememberModelDependencies } from './definitions/remember-model';
 import type { TaskReferences } from './operations/task-references';
 import { hasPendingTaskDocumentChange } from '../specs/documents/write/pending-task-change';
+import { admitExecutionStateChange } from '../specs/documents/api';
+import { commitExecutionState } from '../specs/documents/execution-state-commit';
+import { ofSubject } from './operations/loaded-execution';
+import type { PostActionResult, WorkflowPostActions } from './operations/post-actions';
 import { hasPendingExecutionChange } from './state/pending-task-change';
 import { createFilesystemWorkflowStore } from './state/filesystem-store';
 import {
@@ -148,6 +152,9 @@ export async function openWorkflow(
         createFilesystemWorkflowStore({
           stateRoot: engine.context.project.stateRoot,
           specificationDirectory: (specId) => specificationDirectory(engine, specId),
+          commits: {
+            admit: (specId, paths) => admitExecutionStateChange(engine, specId, paths),
+          },
         }),
         pendingTaskDocuments(engine),
       ),
@@ -157,6 +164,60 @@ export async function openWorkflow(
     holds: engineHolds(engine),
     now: () => new Date(),
     serialize: (operation) => withProjectControlLock(engine.context, operation),
+    postActions: enginePostActions(engine),
+  };
+}
+
+/**
+ * The post actions of an opened Engine (`operations/post-actions.ts`): after a step's finish, commit
+ * the Specification's execution state when auto-commit is off (with it on, the document queue commits
+ * each change by itself). Seam for E6: the push of an agent step joins here.
+ */
+function enginePostActions(engine: SpecFlowEngine): WorkflowPostActions {
+  return {
+    async afterStepFinished(event): Promise<readonly PostActionResult[]> {
+      const action = 'commit-execution-state';
+      try {
+        const outcome = await commitExecutionState(
+          engine,
+          event.subject.specId,
+          `finish step ${event.step}${ofSubject(event.subject)} (attempt ${event.attempt})`,
+        );
+        switch (outcome.kind) {
+          case 'committed':
+            return [
+              {
+                action,
+                status: 'completed',
+                commit: {
+                  ...(outcome.sha !== undefined ? { sha: outcome.sha } : {}),
+                  paths: outcome.paths,
+                },
+              },
+            ];
+          case 'nothing-to-commit':
+            return [{ action, status: 'completed' }];
+          case 'not-applicable':
+            return [{ action, status: 'skipped', reason: outcome.reason }];
+        }
+      } catch (error) {
+        // The finish is recorded; the state stays uncommitted (a Close takes it with its archive commit).
+        const code =
+          error instanceof Error && 'code' in error && typeof error.code === 'string'
+            ? error.code
+            : 'POST_ACTION_FAILED';
+
+        return [
+          {
+            action,
+            status: 'failed',
+            code,
+            message:
+              error instanceof Error ? error.message : 'The commit of the workflow state failed.',
+          },
+        ];
+      }
+    },
   };
 }
 

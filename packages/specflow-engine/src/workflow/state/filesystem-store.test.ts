@@ -1,4 +1,5 @@
 import {
+  access,
   mkdir,
   mkdtemp,
   readdir,
@@ -99,6 +100,12 @@ const tasksDirectory = () => join(executionDirectory(), 'tasks');
 /** The Task resources: `tasks/index.yaml` and one folder per Task. */
 const resourceDirectory = () => join(specificationDirectory, 'tasks');
 const journalPath = () => join(stateRoot, 'engine', 'operations', 'workflow', `${SPEC}.json`);
+
+const exists = (path: string) =>
+  access(path).then(
+    () => true,
+    () => false,
+  );
 
 async function writeJournal(writes: readonly unknown[]): Promise<void> {
   await mkdir(join(stateRoot, 'engine', 'operations', 'workflow'), { recursive: true });
@@ -386,6 +393,67 @@ async function linkDirectory(target: string, link: string): Promise<void> {
   await mkdir(dirname(link), { recursive: true });
   await symlink(target, link, 'junction');
 }
+
+describe('filesystem workflow store: commits of its writes', () => {
+  it('admits a change with its paths before writing, then records what it published', async () => {
+    const calls: unknown[] = [];
+    const committing = (refuse: boolean) =>
+      createFilesystemWorkflowStore({
+        ...options(),
+        commits: {
+          admit: async (specId, paths) => {
+            calls.push({ specId, admit: [...paths], journal: await exists(journalPath()) });
+            if (refuse) {
+              throw new Error('refused by the commit policy');
+            }
+
+            return {
+              record: (summary, writes) => {
+                calls.push({ summary, writes });
+
+                return Promise.resolve();
+              },
+            };
+          },
+        },
+      });
+
+    await expect(
+      committing(true).apply(SPEC, {
+        summary: 'start step requirements (attempt 1)',
+        specification: { expected: null, next: record('requirements') },
+      }),
+    ).rejects.toThrow('refused by the commit policy');
+    // A refused change writes nothing.
+    expect(await exists(specificationPath())).toBe(false);
+    expect(await exists(journalPath())).toBe(false);
+
+    calls.length = 0;
+    await committing(false).apply(SPEC, {
+      summary: 'create task api',
+      ...creating([manifest('api')], { runs: false }),
+    });
+    const text = await readFile(join(resourceDirectory(), 'api', 'task.yaml'), 'utf8');
+    expect(calls).toEqual([
+      {
+        specId: SPEC,
+        admit: ['tasks/index.yaml', 'tasks/api/task.yaml', 'tasks/api/task.md'],
+        journal: false,
+      },
+      {
+        summary: 'create task api',
+        writes: expect.arrayContaining([
+          {
+            path: 'tasks/api/task.yaml',
+            pre: null,
+            post: { sha256: sha256Hex(text), bytes: Buffer.byteLength(text, 'utf8') },
+          },
+        ]) as unknown,
+      },
+    ]);
+    expect((calls[1] as { writes: unknown[] }).writes).toHaveLength(3);
+  });
+});
 
 describe('filesystem workflow store: identity of the stored records', () => {
   it('refuses a Task record whose id is not its file name', async () => {

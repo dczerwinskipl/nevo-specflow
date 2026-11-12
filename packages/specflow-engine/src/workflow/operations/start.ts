@@ -18,6 +18,7 @@ import {
   isoNow,
   loadSubject,
   loadTask,
+  ofSubject,
   type LoadedSubject,
   type WorkflowDependencies,
 } from './loaded-execution';
@@ -91,10 +92,10 @@ async function startSubject(
 
   const run = decision.nextRun;
   if (run !== loaded.run || created) {
-    await dependencies.store.apply(
-      subject.specId,
-      changeFor(snapshot, loaded, run, created ? null : loaded.revision),
-    );
+    await dependencies.store.apply(subject.specId, {
+      ...changeFor(snapshot, loaded, run, created ? null : loaded.revision),
+      summary: `${intent.resumed ? 'resume' : 'start'} step ${step.id}${ofSubject(subject)} (attempt ${intent.attempt})`,
+    });
   }
 
   return {

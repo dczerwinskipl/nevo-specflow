@@ -32,8 +32,12 @@ import type { QueueRuntime } from './runtime';
 import { moveMember, reconcileBatchMembers } from './settlement';
 import type { QueueIdleReason } from './types';
 
-/** Operations that are saves wait for the settle period; every other action is structural. */
-const SETTLING_ACTIONS: readonly string[] = ['save', 'save-all'];
+/**
+ * Operations that are saves wait for the settle period; every other action is structural. A commit
+ * of workflow state settles too, so the steps of a quick sequence (create a Task, then edit it) share
+ * a commit.
+ */
+const SETTLING_ACTIONS: readonly string[] = ['save', 'save-all', 'workflow'];
 
 /** How often a claim re-reads its inputs when they changed between the snapshot and the lock. */
 const MAX_SNAPSHOT_ATTEMPTS = 5;

@@ -27,9 +27,11 @@ import {
 import {
   isoNow,
   loadSubject,
+  ofSubject,
   type LoadedSubject,
   type WorkflowDependencies,
 } from './loaded-execution';
+import { NO_POST_ACTIONS, type PostActionResult } from './post-actions';
 import { ExecutionWorkingSet } from './working-set';
 
 export interface FinishStepInput {
@@ -75,6 +77,8 @@ export interface FinishStepResult {
    * a lost response: nothing changed, and the result is read from the recorded state.
    */
   readonly replayed?: true;
+  /** What the host's post actions did after the finish (absent when it has none). */
+  readonly postActions?: readonly PostActionResult[];
 }
 
 /**
@@ -91,8 +95,28 @@ export interface FinishStepResult {
  *
  * The attempt records the digest of the request: repeating the same finish returns the recorded
  * result without a change, and any other finish of that attempt is `WORKFLOW_ATTEMPT_MISMATCH`.
+ *
+ * Once the change is published (outside the lock) the host's post actions run (`./post-actions.ts`,
+ * for a repeated finish too); their results are `postActions`. A failed post action does not fail
+ * the finish.
  */
-export function finishStep(
+export async function finishStep(
+  dependencies: WorkflowDependencies,
+  request: FinishStepInput,
+): Promise<FinishStepResult> {
+  const result = await recordFinish(dependencies, request);
+  const postActions = await (dependencies.postActions ?? NO_POST_ACTIONS).afterStepFinished({
+    subject: request.subject,
+    step: request.step,
+    attempt: request.attempt,
+    actor: request.actor,
+    replayed: result.replayed === true,
+  });
+
+  return postActions.length > 0 ? { ...result, postActions } : result;
+}
+
+function recordFinish(
   dependencies: WorkflowDependencies,
   request: FinishStepInput,
 ): Promise<FinishStepResult> {
@@ -208,7 +232,10 @@ export function finishStep(
       ? { kind: 'none', reason: 'on-hold' }
       : advance(context, subject, loaded.definition, decision.intent);
     const specification = subject.kind === 'task' ? settleWait(context) : undefined;
-    await dependencies.store.apply(subject.specId, context.set.change());
+    await dependencies.store.apply(subject.specId, {
+      ...context.set.change(),
+      summary: `finish step ${request.step}${ofSubject(subject)} (attempt ${request.attempt})`,
+    });
 
     return {
       subject,

@@ -249,6 +249,7 @@ export function createTask(
     );
 
     await dependencies.store.apply(input.specId, {
+      summary: `create task ${manifest.id}`,
       index: {
         expected: snapshot.index?.revision ?? null,
         next: { tasks: [...ids.map((id) => ({ id })), { id: manifest.id }] },
@@ -335,6 +336,7 @@ export function editTask(
     );
 
     await dependencies.store.apply(input.specId, {
+      summary: `edit task ${manifest.id}`,
       manifests: [{ taskId: manifest.id, expected: stored.revision, next: manifest }],
     });
 
@@ -404,6 +406,7 @@ export function removeTask(
 
     const present = new Set(files.map(foldPathKey));
     const change: ExecutionChange = {
+      summary: `remove task ${input.taskId}`,
       index: {
         expected: snapshot.index?.revision ?? null,
         next: {

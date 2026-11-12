@@ -16,8 +16,9 @@ summary: >
   or its own escalation to the Specification. The Engine decides
   continuations; anything it cannot carry out is attention for the owner, derived from the state on
   every inspection and never stored. Canonical state lives in the Specification's `.execution/`
-  folder, which lists the Task set; only the change journal is local. The kernel writes those files
-  but does not commit them yet (follow-up F04).
+  folder, which lists the Task set; only the change journal is local. Its writes are committed like
+  the Specification's documents (the document commit policy, queue and ledger); with auto-commit off
+  a step's finish commits them, and a Close takes what is left.
 related:
   - architecture.workflow.deterministic-workflow
   - adr.0019-workflow-kernel-and-automatic-continuation
@@ -474,11 +475,11 @@ proceed.
 
 ## State and storage
 
-| What                                   | Where                                                  | Belongs to                   |
-| -------------------------------------- | ------------------------------------------------------ | ---------------------------- |
-| Specification run and Task list        | `<specification>/.execution/specification.yaml`        | Git (not committed yet, F04) |
-| Task records (type, deps, status, run) | `<specification>/.execution/tasks/<taskId>.yaml`       | Git (not committed yet, F04) |
-| Change journal                         | `<stateRoot>/engine/operations/workflow/<specId>.json` | local                        |
+| What                                   | Where                                                  | Belongs to                 |
+| -------------------------------------- | ------------------------------------------------------ | -------------------------- |
+| Specification run and Task list        | `<specification>/.execution/specification.yaml`        | Git (committed, see below) |
+| Task records (type, deps, status, run) | `<specification>/.execution/tasks/<taskId>.yaml`       | Git (committed, see below) |
+| Change journal                         | `<stateRoot>/engine/operations/workflow/<specId>.json` | local                      |
 
 - **Location.** `.execution/` starts with a dot, so the document tree never lists it. It moves with
   the Specification when the Specification is archived.
@@ -538,9 +539,35 @@ proceed.
 - **Per-Task files.** Each Task has its own file, so parallel Task worktrees can later merge without
   conflicts (follow-up F08).
 
-Committing the `.execution/` files is not done by this kernel yet (follow-up
-[F04](../../ideas/specflow-engine/execution-plans/06-workflow-kernel/README.md#f04--commits-of-execution-state-and-finalize-actions)). Until then, they
-are ordinary working-tree changes of the Specification's checkout.
+### Commits of the execution state
+
+Owner decision (2026-11-12, it replaces the earlier "the execution store does not commit" rule): the
+store's writes (`.execution/**` and `tasks/**`: index, manifests, the initial `task.md`, run records,
+removals) made by owner, UI or CLI operations are committed like a change of the Specification's
+documents ([documents layer](../runtime/specification-documents.md#commits-of-workflow-state)).
+
+- **Admission and record.** The filesystem store takes an `ExecutionStateCommits` port
+  (`state/store.ts`; production `specs/documents/write/execution-state.ts`, wired in
+  `composition.ts`). Under the control lock it admits the change with its paths before the journal
+  is written (a refusal of the commit policy writes nothing), then records the published files in the
+  same lock section as one document operation of action `workflow`. Every operation names its change
+  (`ExecutionChange.summary`): `create task <id>`, `edit task <id>`, `remove task <id>`,
+  `set task <id> <status>`, `start step <step>[ of task <id>] (attempt <n>)`, `finish step ...`,
+  `return to step ...`, `abandon the specification`; a pending journal finished by a later change is
+  `finish an interrupted workflow change`.
+- **Auto-commit on.** The operation is queued and committed by the document queue with its batch
+  policy, identity and trailers (`Nevo-Action: workflow`); its subject is
+  `spec(workflow): <summary> in <slug>` (`<n> workflow changes` when a batch holds several).
+- **Auto-commit off.** The paths go to the uncommitted-changes ledger. Finishing a step ("Next")
+  runs the post action `commit-execution-state` (`operations/post-actions.ts`): a manual commit of
+  the Specification's ledger entries below `.execution/` and `tasks/` (closed under shared operation
+  ids), reported in `FinishStepResult.postActions`. A failed post action does not fail the finish; a
+  repeated finish runs it again. The post-action hook is the seam where E6 adds the push of an agent
+  step's work (not implemented).
+- **Close and Abandon.** Abandon is a workflow change like the others. A Specification Close takes
+  whatever execution state of that Specification is still uncommitted (in the ledger, or left dirty by
+  a stop before it was recorded) into its archive commit; anything else that is dirty still refuses
+  it, naming the paths ([lifecycle](../runtime/specification-lifecycle.md)).
 
 ## Extension points
 

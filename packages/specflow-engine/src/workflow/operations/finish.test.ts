@@ -4,6 +4,7 @@ import type { ExecutionCatalogue } from '../definitions/catalogue';
 import type { WorkflowActor } from '../state/model';
 import { finishStep, type FinishStepInput } from './finish';
 import { inspectExecution } from './inspect';
+import type { PostActionResult, StepFinishedEvent } from './post-actions';
 import {
   SPEC,
   agent,
@@ -303,6 +304,33 @@ describe('a repeated finish (F16)', () => {
     const again = await finishRequirements(dependencies, 'Agreed.');
     expect(again).toEqual({ ...first, replayed: true });
     expect(dependencies.store.applied).toHaveLength(applied);
+  });
+
+  it('runs the post actions after the change is published, again for a repeated finish', async () => {
+    const events: StepFinishedEvent[] = [];
+    const result: PostActionResult = { action: 'commit-execution-state', status: 'completed' };
+    const dependencies = {
+      ...memoryDependencies(catalogue),
+      postActions: {
+        afterStepFinished: (event: StepFinishedEvent) => {
+          events.push(event);
+
+          return Promise.resolve([result]);
+        },
+      },
+    };
+    await startSpecification(dependencies);
+    const first = await finishRequirements(dependencies, 'Agreed.');
+    // The change names the step for its commit.
+    expect(dependencies.store.applied.at(-1)?.summary).toBe('finish step requirements (attempt 1)');
+    expect(first.postActions).toEqual([result]);
+
+    const again = await finishRequirements(dependencies, 'Agreed.');
+    expect(again.postActions).toEqual([result]);
+    expect(events.map((event) => [event.step, event.attempt, event.replayed])).toEqual([
+      ['requirements', 1, false],
+      ['requirements', 1, true],
+    ]);
   });
 
   it('refuses another finish of the same attempt', async () => {

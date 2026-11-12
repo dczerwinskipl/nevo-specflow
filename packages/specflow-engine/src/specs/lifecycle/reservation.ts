@@ -20,6 +20,8 @@ import {
 import { readCloseJournal, publishCloseJournal } from './journal/store';
 import { assertResourcesAvailable } from './resources';
 import { previewCloseOperation, type CloseRequest } from './preflight';
+import { resolveSpecification } from '../discovery';
+import type { UncommittedAllowance } from '../uncommitted';
 
 export async function inspectCloseOperation(
   engine: SpecFlowEngine,
@@ -68,10 +70,12 @@ export async function reserveCloseOperation(
   // Document commits of every checkout the Close owns are flushed before the lock is taken (Git runs
   // here, never inside the lock); what is still pending, failed or abandoned refuses the Close.
   // The preview and the preflight stay pure: this is the only effect, and only at admission.
+  const allowance = allowanceOfPlan(plan);
   await flushCheckoutsForClose(
     engine,
     [plan.source, ...(plan.target !== undefined ? [plan.target] : [])],
     options.flush,
+    allowance,
   );
   await options.hooks?.afterFlush?.();
 
@@ -113,6 +117,7 @@ export async function reserveCloseOperation(
       [plan.source, ...(plan.target !== undefined ? [plan.target] : [])].map(
         (checkout) => checkout.workspaceId,
       ),
+      allowance,
     );
     await assertResourcesAvailable(engine.context, plan.resources, {
       kind: 'close',
@@ -194,12 +199,43 @@ export async function previewWithDocumentFlush(
       return await previewCloseOperation(engine, request);
     } catch (second) {
       if (second instanceof CloseOperationError && second.code === 'CLOSE_PREFLIGHT') {
-        await assertNoDocumentCommitsHold(engine, await workspacesNamedBy(engine, request));
+        await assertNoDocumentCommitsHold(
+          engine,
+          await workspacesNamedBy(engine, request),
+          await allowanceOfRequest(engine, request),
+        );
       }
 
       throw second;
     }
   }
+}
+
+/**
+ * What a Specification Close does not wait for in the ledger: the Specification's uncommitted
+ * execution state (`.execution/**`, `tasks/**`), which its archive commit takes along (owner decision
+ * 2026-11-12). Other Close kinds archive nothing and wait for every entry.
+ */
+function allowanceOfPlan(plan: ClosePlan): UncommittedAllowance | undefined {
+  return plan.kind === 'specification-close'
+    ? { specId: plan.specId, directory: 'specs/active/' + plan.slug }
+    : undefined;
+}
+
+/** {@link allowanceOfPlan} before the plan exists (the preview refused). */
+async function allowanceOfRequest(
+  engine: SpecFlowEngine,
+  request: CloseRequest,
+): Promise<UncommittedAllowance | undefined> {
+  if (request.kind !== 'specification-close') {
+    return undefined;
+  }
+
+  const found = await resolveSpecification(engine, request.specId).catch(() => undefined);
+
+  return found?.status === 'available' && found.specification.location === 'active'
+    ? { specId: request.specId, directory: 'specs/active/' + found.specification.slug }
+    : undefined;
 }
 
 /** The checkouts a Close request can touch before its plan exists: the source and the primary. */

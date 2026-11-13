@@ -1,6 +1,6 @@
 import type { TaskContextEntry } from '../../tasks/resource/model';
 import type { TaskContextIssue } from '../../tasks/resource/validate';
-import { dependencyCycle } from '../state/dependency-cycle';
+import { dependencyRefusal, dependencyView } from './task-dependencies';
 import type { ExecutionTask } from '../state/model';
 import type { ExecutionSnapshot } from '../state/store';
 import type { WorkflowDependencies } from './loaded-execution';
@@ -64,8 +64,8 @@ async function contextStates(
 }
 
 /**
- * The other Tasks a dependency could name, with the conditions `editTask` refuses: a broken Task, a
- * cancelled one (it would never complete), and one whose addition closes a dependency cycle.
+ * The other Tasks a dependency could name, each asked of the rule `editTask` applies
+ * (`dependencyRefusal`) as if it were added to the Task's current dependencies.
  */
 export function dependencyCandidatesOf(
   snapshot: ExecutionSnapshot,
@@ -73,10 +73,7 @@ export function dependencyCandidatesOf(
   broken: readonly string[],
   task: ExecutionTask,
 ): DependencyCandidate[] {
-  const graph = new Map(
-    snapshot.manifests.map((entry) => [entry.value.id, entry.value.dependsOn] as const),
-  );
-  const byId = new Map(tasks.map((other) => [other.taskId, other] as const));
+  const view = dependencyView(snapshot, tasks, broken);
   const order = snapshot.index?.value.tasks.map((entry) => entry.id) ?? [];
 
   return order
@@ -86,20 +83,17 @@ export function dependencyCandidatesOf(
         return { taskId: id, unavailable: 'dependency' };
       }
 
-      if (broken.includes(id)) {
-        return { taskId: id, unavailable: 'broken' };
-      }
+      const refusal = dependencyRefusal(
+        view,
+        task.taskId,
+        id,
+        [...task.dependsOn, id],
+        task.dependsOn,
+      );
+      // An index entry without a readable Task is broken (`executionTasks` lists it so).
+      const unavailable = refusal === 'unknown' ? 'broken' : refusal;
 
-      if (byId.get(id)?.status === 'cancelled') {
-        return { taskId: id, unavailable: 'cancelled' };
-      }
-
-      const next = new Map(graph);
-      next.set(task.taskId, [...task.dependsOn, id]);
-
-      return dependencyCycle(next) === undefined
-        ? { taskId: id }
-        : { taskId: id, unavailable: 'would-create-cycle' };
+      return unavailable === undefined ? { taskId: id } : { taskId: id, unavailable };
     });
 }
 

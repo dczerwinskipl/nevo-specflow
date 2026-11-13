@@ -27,7 +27,7 @@ export function ArchivedSessionBar({
   return (
     <div
       data-archived-bar="true"
-      className="workspace-floating-pill rounded-composite border border-solid border-border-default px-4 py-3 shadow-lg"
+      className="rounded-composite border border-solid border-border-default bg-surface-raised px-4 py-3 shadow-lg"
     >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <InlineNote tone="info" className="min-w-0 flex-1">

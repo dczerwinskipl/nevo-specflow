@@ -92,11 +92,21 @@ export function productNavigationItems(
   });
 }
 
+/** The documentation reader's addresses: `/docs` and `/workspaces/:workspaceId/docs…`. */
+export function isDocumentationPath(pathname: string): boolean {
+  return /^\/(?:docs|workspaces\/[^/]+\/docs)(?:\/|$)/.test(pathname);
+}
+
 /**
  * The "select a specification" hint only helps on routes where a specification could have been
  * opened from a list. While creating one (`/specs/new`, including its manual/agent states) there
- * is nothing to select, so the hint would be confusing.
+ * is nothing to select, so the hint would be confusing; the documentation reader is not about a
+ * Specification at all.
  */
 export function showsNoSpecificationHint(pathname: string): boolean {
-  return pathname !== '/specs/new' && !pathname.startsWith('/specs/new/');
+  return (
+    pathname !== '/specs/new' &&
+    !pathname.startsWith('/specs/new/') &&
+    !isDocumentationPath(pathname)
+  );
 }

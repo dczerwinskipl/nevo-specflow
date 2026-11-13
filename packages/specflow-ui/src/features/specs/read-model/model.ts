@@ -163,6 +163,8 @@ export interface SpecificationWorkspaceData {
     Record<SpecificationSectionId, 'not_implemented' | 'source_unavailable'>
   >;
   readonly id: string;
+  /** The registered workspace the Specification is bound to (its documentation is read there). */
+  readonly workspaceId?: string;
   /** Optional human-facing Specification key, e.g. `UI-1234`. */
   readonly key?: string;
   readonly title: string;

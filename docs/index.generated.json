@@ -4531,20 +4531,19 @@
       "id": "product.specflow.ui.documentation-reader",
       "type": "product",
       "title": "Documentation reader (UI)",
-      "status": "draft",
+      "status": "current",
       "file": "docs/product/specflow/ui/documentation-reader.md",
       "read_when": [
         "designing or implementing the read-only reader of the project documentation in the UI",
         "choosing how a workspace is chosen or switched for documentation",
         "presenting documentation search results, non-authoritative documents or blocked links"
       ],
-      "summary": "Draft screen contract for the read-only reader of the project documentation (docs.root) of one registered workspace: entry points, current workspace and picker, tree, search results, the article with contents, links and images, states and recovery, Wide/Compact/Narrow, and the facts the reader needs from the Runtime. Mock: Storybook SpecFlow/Screens/Documentation reader (mock).",
+      "summary": "Screen contract of the read-only reader of the project documentation (docs.root) of one registered workspace: entry points, current workspace and picker, tree, search results, the article with contents, links and images, states and recovery, Wide/Compact/Narrow, and the facts the reader reads from the Runtime. Implemented in features/docs (Storybook SpecFlow/Screens/Documentation reader).",
       "related": [
-        "ideas.semantic-docs.surfaces-and-setup",
+        "reference.api.workspace-docs",
         "product.specflow.ui.interaction-model",
         "product.specflow.ui.documents-editor-mode",
         "product.shared.vocabulary",
-        "reference.api.workspace-docs",
         "design-system.principles.layout-and-containment",
         "design-system.principles.information-hierarchy"
       ],

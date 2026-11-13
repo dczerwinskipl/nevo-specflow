@@ -78,10 +78,12 @@ export function DocumentOutlineSheet({
       >
         <DrawerHeader className="flex items-center justify-between gap-3 pr-3">
           {/* The tab and the header already name the document: the title is enough. */}
-          <DrawerTitle className="min-w-0 truncate">{t('documents.outline.label')}</DrawerTitle>
+          <DrawerTitle className="min-w-0 truncate">
+            {t('documentReading.outline.label')}
+          </DrawerTitle>
           <DrawerClose asChild>
             <IconButton
-              aria-label={t('documents.outline.close')}
+              aria-label={t('documentReading.outline.close')}
               className={cn('shrink-0', hitAreaClassName)}
               icon="close"
               size="sm"
@@ -90,7 +92,7 @@ export function DocumentOutlineSheet({
           </DrawerClose>
         </DrawerHeader>
         <DrawerBody className="px-2 py-2">
-          <nav aria-label={t('documents.outline.label')}>
+          <nav aria-label={t('documentReading.outline.label')}>
             <OutlineEntries
               headings={headings}
               activeLine={activeLine}

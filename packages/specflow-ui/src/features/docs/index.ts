@@ -34,3 +34,4 @@ export {
   type DocsReferenceRenderers,
   type DocsReferenceViews,
 } from './links/useDocsReferenceRenderers';
+export { useSpecificationDocsWorkspace } from './entries/useSpecificationDocsWorkspace';

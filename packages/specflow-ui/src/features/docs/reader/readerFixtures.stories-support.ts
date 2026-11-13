@@ -1,7 +1,8 @@
 /*
- * PRESENTATION MOCK ONLY (design validation for docs/product/specflow/ui/documentation-reader.md).
- * Static fixture data for the workspace documentation reader. Shapes are UX assumptions, not the
- * backend contract: the Runtime API for the reader does not exist yet.
+ * Deterministic fixture corpus of the documentation reader's stories: three workspaces, a realistic
+ * tree (hubs, a non-authoritative ideas/ folder, long titles, a Polish document), links of every
+ * kind, skipped and superseded documents. The stories serve it through the reader's own ports
+ * (`createFixtureDocsApi`, `fixtureWorkspaceList` below), never to production code.
  */
 
 export interface MockWorkspace {

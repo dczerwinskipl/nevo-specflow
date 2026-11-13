@@ -17,9 +17,9 @@ export function OutlineButton() {
   if (toggle) {
     return (
       <IconButton
-        aria-label={t('documents.outline.label')}
+        aria-label={t('documentReading.outline.label')}
         aria-pressed={toggle.pressed}
-        title={t('documents.outline.label')}
+        title={t('documentReading.outline.label')}
         className={cn(
           'shrink-0 aria-pressed:bg-surface-selected aria-pressed:text-content-primary',
           hitAreaClassName,
@@ -38,7 +38,7 @@ export function OutlineButton() {
 
   return (
     <IconButton
-      aria-label={t('documents.outline.open')}
+      aria-label={t('documentReading.outline.open')}
       aria-haspopup="dialog"
       aria-expanded={session.outlineOpen}
       className={cn('shrink-0', hitAreaClassName)}

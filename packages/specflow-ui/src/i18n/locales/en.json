@@ -52,7 +52,8 @@
       "switcher": "{{name}}, {{n}} open tabs",
       "switcherDirty": "{{name}}, unsaved changes, {{n}} open tabs",
       "noItem": "No tab"
-    }
+    },
+    "documentation": "Documentation"
   },
   "account": {
     "localAccess": "Local access",
@@ -469,7 +470,8 @@
     "noSpecificationSelectedDescription": "Open a specification from the list to see its documents and sessions.",
     "activeCount_few": "{{count}} active",
     "activeCount_many": "{{count}} active",
-    "sessionBack": "Back to session"
+    "sessionBack": "Back to session",
+    "sessionBackNamed": "Back to {{title}}"
   },
   "operations": {
     "progress": {
@@ -1086,9 +1088,6 @@
     "editor": {
       "sourceLabel": "Content of {{name}}"
     },
-    "properties": {
-      "label": "Properties"
-    },
     "actions": {
       "wrapLines": "Wrap lines",
       "showPath": "Show path",
@@ -1277,12 +1276,6 @@
       "close": "Close tab",
       "titleNamed": "Document not found: {{name}}"
     },
-    "outline": {
-      "label": "Contents",
-      "open": "Open contents",
-      "close": "Close contents",
-      "columnLabel": "Document contents and properties"
-    },
     "guidance": {
       "label": "Guidance",
       "heading": "How to write: {{type}}",
@@ -1398,6 +1391,163 @@
       "actualSize": "Actual size"
     }
   },
+  "documentReading": {
+    "outline": {
+      "label": "Contents",
+      "open": "Open contents",
+      "close": "Close contents",
+      "columnLabel": "Document contents and properties"
+    },
+    "properties": {
+      "label": "Properties"
+    }
+  },
+  "docs": {
+    "title": "Documentation",
+    "backToDocumentation": "Back to documentation",
+    "closeDocument": "Close document",
+    "notice": {
+      "notRegistered": "The workspace you were reading is no longer registered, so this is the documentation of {{projectFolder}}.",
+      "unavailable": "{{name}} is unavailable right now, so this is the documentation of {{projectFolder}}.",
+      "notInWorkspace": "{{title}} is not in {{workspace}}."
+    },
+    "skipped": {
+      "one": "1 document is skipped: it has errors",
+      "many_one": "{{count}} document is skipped: it has errors",
+      "many_few": "{{count}} documents are skipped: they have errors",
+      "many_many": "{{count}} documents are skipped: they have errors",
+      "many_other": "{{count}} documents are skipped: they have errors"
+    },
+    "tree": {
+      "label": "Documents",
+      "loading": "Loading documents",
+      "nonAuthoritative": "Non-authoritative"
+    },
+    "search": {
+      "label": "Search documentation",
+      "clear": "Clear search",
+      "results": "Search results",
+      "loading": "Searching the documentation",
+      "count_one": "{{count}} document",
+      "count_few": "{{count}} documents",
+      "count_many": "{{count}} documents",
+      "count_other": "{{count}} documents",
+      "indexBuilding": "Word matches only for now: the search index is being built.",
+      "indexBuildingProgress": "Word matches only for now: the search index is being built ({{percent}}%).",
+      "include_one": "Include {{count}} non-authoritative",
+      "include_few": "Include {{count}} non-authoritative",
+      "include_many": "Include {{count}} non-authoritative",
+      "include_other": "Include {{count}} non-authoritative",
+      "leaveOut": "Leave out non-authoritative",
+      "noMatches": "No matching documents",
+      "noMatchesHint": "Try other words, or browse the tree.",
+      "onlyNonAuthoritative_one": "Nothing in the agreed documentation matches. {{count}} non-authoritative document does.",
+      "onlyNonAuthoritative_few": "Nothing in the agreed documentation matches. {{count}} non-authoritative documents do.",
+      "onlyNonAuthoritative_many": "Nothing in the agreed documentation matches. {{count}} non-authoritative documents do.",
+      "onlyNonAuthoritative_other": "Nothing in the agreed documentation matches. {{count}} non-authoritative documents do.",
+      "failed": "Search is unavailable right now.",
+      "includeAny": "Include non-authoritative"
+    },
+    "article": {
+      "fallbackTitle": "Document",
+      "loading": "Loading the document",
+      "copyLink": "Copy link",
+      "copyPath": "Copy path",
+      "linkCopied": "Link copied",
+      "pathCopied": "Path copied",
+      "copyFailed": "Could not copy to the clipboard",
+      "nonAuthoritativeNote": "Non-authoritative: proposals and drafts, not agreed documentation. Default search leaves this document out.",
+      "columnLabel": "Contents and properties",
+      "noIndex": "This is the project documentation of {{workspace}}; open a document in the list or search it.",
+      "properties": {
+        "path": "Path",
+        "type": "Type",
+        "status": "Status",
+        "summary": "Summary",
+        "id": "ID"
+      }
+    },
+    "related": {
+      "heading": "Related",
+      "inactive": "{{title}} (no longer current)",
+      "missing": "{{id}} (not found)",
+      "skipped": "{{id}} (skipped: it has errors)",
+      "skippedUnknown": "The reader skips this document because it has errors."
+    },
+    "reference": {
+      "linkNotOpened": "Link not opened",
+      "superseded": "Superseded document",
+      "imageNotShown": "Image not shown",
+      "image": "Image",
+      "reason": {
+        "superseded": "This document is no longer current, so the reader does not open it.",
+        "outside-docs": "The target is outside the documentation. The reader opens only documents.",
+        "folder": "This is a folder, not a document. Choose a document in the tree.",
+        "not-markdown": "This file is not a Markdown document, so the reader does not open it.",
+        "skipped": "The reader skips this document: {{error}}",
+        "missing": "There is no current document at this path in this workspace.",
+        "unsafe-scheme": "This is an unsafe link, so the reader does not open it.",
+        "image": "The reader does not load images from documents."
+      }
+    },
+    "state": {
+      "tryAgain": "Try again",
+      "openSuccessor": "Open {{title}}",
+      "notFound": {
+        "title": "Document not found",
+        "description": "There is no current document {{id}} in {{workspace}}. It may exist only in another workspace, or it was moved or removed."
+      },
+      "removed": {
+        "title": "This document is no longer in the workspace",
+        "description": "The documentation in {{workspace}} changed while you were reading, and {{id}} is not in it any more. The tree shows the current documents."
+      },
+      "superseded": {
+        "title": "This document was superseded",
+        "description": "{{id}} is no longer current documentation, so it is not shown."
+      },
+      "deprecated": {
+        "title": "This document is deprecated",
+        "description": "{{id}} is no longer current documentation, so it is not shown."
+      },
+      "skipped": {
+        "title": "This document is skipped: it has errors"
+      },
+      "articleFailed": {
+        "title": "The document cannot be shown right now",
+        "description": "Reading it failed. Try again in a moment."
+      },
+      "notConfigured": {
+        "title": "No project documentation",
+        "description": "{{workspace}} has no documentation folder. The reader shows the Markdown documents under the folder set as <code>docs.root</code> in .nevo/config.yaml (docs/ by default).",
+        "descriptionRoot": "{{workspace}} has no documentation folder. The reader shows the Markdown documents under the folder set as <code>docs.root</code> in .nevo/config.yaml, here {{docsRoot}}/."
+      },
+      "empty": {
+        "title": "No documents yet",
+        "description": "The documentation folder of {{workspace}} has no current documents."
+      },
+      "unavailable": {
+        "title": "This workspace is unavailable right now",
+        "description": "The folder {{folder}} cannot be read, for example while its branch is being switched or after the folder was moved. Choose another workspace or try again."
+      },
+      "docsUnavailable": {
+        "title": "The documentation cannot be read right now",
+        "description": "Its settings could not be read, or this Runtime serves no project documentation. Try again in a moment."
+      },
+      "failed": {
+        "title": "The documentation cannot be shown right now",
+        "description": "Reading it failed. Try again in a moment."
+      },
+      "forbidden": {
+        "title": "No access to the project documentation",
+        "description": "Your role in this project does not include reading its documentation. Ask a project administrator for access."
+      }
+    },
+    "entry": {
+      "specification": {
+        "label": "Documentation"
+      }
+    }
+  },
   "sessions": {
     "context": {
       "executor": "Agent",
@@ -1504,6 +1654,10 @@
         "sectionTitle": "Work",
         "currentTurn": "Current Turn",
         "lastTurn": "Last Turn"
+      },
+      "documentation": {
+        "open": "Documentation",
+        "workspace": "This Session's workspace"
       }
     },
     "untitled": "Untitled session",

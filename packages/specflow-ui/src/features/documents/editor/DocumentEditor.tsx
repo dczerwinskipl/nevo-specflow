@@ -618,7 +618,7 @@ function PreviewScroller({
           </div>
           {contents && (
             <aside
-              aria-label={t('documents.outline.columnLabel')}
+              aria-label={t('documentReading.outline.columnLabel')}
               className="sticky top-0 grid shrink-0 grid-cols-1 gap-4"
               style={{ width: outlineColumnWidth(panelWidth) }}
             >

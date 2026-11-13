@@ -2,7 +2,7 @@
 id: product.specflow.ui.documentation-reader
 type: product
 title: Documentation reader (UI)
-status: draft
+status: current
 scope: specflow
 areas: [ui, docs]
 tags: [documentation, reader, workspace, worktree, search]
@@ -11,26 +11,26 @@ read_when:
   - choosing how a workspace is chosen or switched for documentation
   - presenting documentation search results, non-authoritative documents or blocked links
 summary: >
-  Draft screen contract for the read-only reader of the project documentation (docs.root) of one
+  Screen contract of the read-only reader of the project documentation (docs.root) of one
   registered workspace: entry points, current workspace and picker, tree, search results, the
   article with contents, links and images, states and recovery, Wide/Compact/Narrow, and the facts
-  the reader needs from the Runtime. Mock: Storybook SpecFlow/Screens/Documentation reader (mock).
+  the reader reads from the Runtime. Implemented in features/docs (Storybook SpecFlow/Screens/Documentation reader).
 related:
-  - ideas.semantic-docs.surfaces-and-setup
+  - reference.api.workspace-docs
   - product.specflow.ui.interaction-model
   - product.specflow.ui.documents-editor-mode
   - product.shared.vocabulary
-  - reference.api.workspace-docs
   - design-system.principles.layout-and-containment
   - design-system.principles.information-hierarchy
 ---
 
 # Documentation reader (UI)
 
-`status: draft` — proposed contract, not implemented. The target Runtime behaviour is proposed in
-[the open items of the documentation reader](../../../ideas/semantic-docs/surfaces-and-setup.md#workspace-aware-retrieval-and-the-documentation-reader-what-is-still-open);
-no exact API contract exists yet. Mock: Storybook `SpecFlow/Screens/Documentation reader (mock)`.
-Owner decisions still open are listed at the end; everything else is the proposed behaviour.
+Implemented in `packages/specflow-ui/src/features/docs` (routes, tree pane, article, Narrow stack,
+the Specification and Session entries) on the routes of
+[the workspace documentation API](../../../reference/api/workspace-docs.md), which owns the exact
+shapes and refusals. Composed stories: Storybook `SpecFlow/Screens/Documentation reader`. The owner
+decisions are recorded at the end.
 
 ## Purpose and ownership
 
@@ -64,8 +64,10 @@ workspace picker), except No access, which replaces the whole surface. Skipped d
   an optional `#sectionId` (the section ids of
   [`docs search`](../../../reference/cli/nevo-specflow-docs.md)). `documentId` is the document's
   frontmatter `id`, so the same document keeps its id in every workspace. There is no chooser page.
-- **Contextual entries (always):** the Specification's Repository facts (the workspace bound to the
-  Specification), the Session Context, and internal links between documents.
+- **Contextual entries (always):** the Specification Overview's compact **Documentation** row (the
+  workspace bound to the Specification as its second line, after Tasks and Documents, never above
+  Tasks: the Overview has no workspace facts section to join), the Session Context's Documentation row,
+  and internal links between documents.
 - **Global entry:** a permanent **Documentation** row under Specifications in the navigation,
   opening `/docs` (decision D1). It is not a new navigation level and shows no Specification section.
 - **Current workspace (tab context).** One value per browser tab, the default of the reader:
@@ -92,8 +94,10 @@ workspace picker), except No access, which replaces the whole surface. Skipped d
   with its reason. No search field and no "browse all": a project has a handful of workspaces.
 - **Session entry:** a Session's Context entry opens the reader on the Session's workspace, the
   Runtime's own checkout (the project folder) where every Session runs (decision D2), and so sets the
-  tab's current workspace. The tree pane starts with a way back to the Session, and the picker says
-  "this Session's workspace".
+  tab's current workspace. The tree pane starts with a way back that names the Session ("Back to
+  <Session title>"), and the picker says "this Session's workspace". In the Session Context the entry
+  is one row ("Documentation", "This Session's workspace") of the Specification section, under
+  Documents; a Session without a Specification shows it as the first row of Work.
 - **Picking another workspace** navigates to the same `documentId` and keeps the search text; both
   are looked up again in the new workspace. If the document is not there, the pane says
   "<title> is not in <workspace>" and the article area shows that workspace's root index (or the
@@ -105,7 +109,9 @@ workspace picker), except No access, which replaces the whole surface. Skipped d
 - **Back on Narrow:** the article is a pushed Secondary stack screen. Opening from the tree or the
   results starts a new stack. An internal link **pushes another article screen**, so the header Back
   returns to the previous article at its reading position; only the first screen's Back returns to
-  the documentation. Back keeps the route, the search text and results, the tree expansion, the
+  the documentation (it steps back to the tree's entry, or replaces a directly opened address with
+  the tree's). A link hop does not change
+  the address: the address names the first article of the stack (decision D-B). Back keeps the route, the search text and results, the tree expansion, the
   selection and the pane's scroll (the Documents rule). Rationale: on Narrow the article is the
   whole screen, so a link hop must be undoable in place, as on any phone reader; on split layouts
   the browser history already does this and a second Back would duplicate it. The stack exists only
@@ -145,10 +151,10 @@ Wide / Compact                                   Narrow
   says "1 document is skipped: it has errors" with its path and error, or "N documents are skipped"
   as a collapsed disclosure listing each path (full, wrapping) and its error. A link to a skipped
   document is inert and gives the error.
-- **Non-authoritative in search:** left out by default. After the results, "Include N
-  non-authoritative" (and "Leave out non-authoritative" once included); with no other match the empty
-  state says that N non-authoritative documents match and offers to show them. Included rows carry
-  the Non-authoritative label.
+- **Non-authoritative in search:** left out by default. On the count line, one switch "Include N
+  non-authoritative" ("Leave out non-authoritative" once included) that keeps its place and focus
+  while the answer loads; with no other match the empty state says that N non-authoritative documents
+  match (the same switch shows them). Included rows carry the Non-authoritative label.
 - **Article** (the Documents preview): Properties row (path, type, status, summary, id), the
   Markdown body (`MarkdownDocument`, frontmatter never rendered), and **Related** (frontmatter
   `related` as links, at the end). From a 840 px panel the Properties and the **Contents** sit in the
@@ -173,20 +179,24 @@ Wide / Compact                                   Narrow
 
 ## Links and images
 
-| Reference in the Markdown                                          | Shown as                                                                                    |
-| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
-| Current document in this workspace (relative path)                 | link opening it in the reader (with its `#section`)                                         |
-| `#section` in the same document                                    | link scrolling to the section                                                               |
-| `http(s):`, `mailto:`                                              | external link, new tab, `noopener noreferrer`                                               |
-| Superseded/deprecated document                                     | inert text; on demand "Superseded document" and a link to the successor when known          |
-| File or folder outside `docs.root`                                 | inert text; on demand "Link not opened": outside the documentation, and the repository path |
-| Folder inside `docs.root`, non-Markdown file                       | inert text; on demand "Link not opened": a folder / not a Markdown document, and the path   |
-| Skipped document                                                   | inert text; on demand "Link not opened" with the document's error and path                  |
-| Missing document, unsafe scheme (`file:`, `javascript:`, `data:`…) | inert text; on demand "Link not opened" with the reason and the target                      |
-| Image (any source)                                                 | inert alt text with an image glyph; on demand "Image not shown" and the source              |
+| Reference in the Markdown                          | Shown as                                                                                    |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Current document in this workspace (relative path) | link opening it in the reader (with its `#section`)                                         |
+| `#section` in the same document                    | link scrolling to the section                                                               |
+| `http(s):`, `mailto:`                              | external link, new tab, `noopener noreferrer`                                               |
+| Superseded/deprecated document                     | inert text; on demand "Superseded document" and a link to the successor when known          |
+| File or folder outside `docs.root`                 | inert text; on demand "Link not opened": outside the documentation, and the repository path |
+| Folder inside `docs.root`, non-Markdown file       | inert text; on demand "Link not opened": a folder / not a Markdown document, and the path   |
+| Skipped document                                   | inert text; on demand "Link not opened" with the document's error and path                  |
+| Missing document                                   | inert text; on demand "Link not opened" with the reason and the target                      |
+| Unsafe scheme (`file:`, `javascript:`, `data:`…)   | inert text; on demand "Link not opened": an unsafe link, without the target                 |
+| Image (any source)                                 | inert alt text with an image glyph; on demand "Image not shown" and the source              |
 
 Inert references are focusable text with a dotted underline that opens a small popover (keyboard
-and touch), never a dead link and never a silent drop.
+and touch), never a dead link and never a silent drop. An unsafe address is never repeated: the
+Markdown renderer may already have emptied it, and showing it would only invite copying it. A
+`#id` that names no section of the article (a GFM footnote, `user-content-fn-1`) scrolls to the
+element with that id in the article, if there is one.
 
 ## States
 
@@ -225,7 +235,8 @@ three together without a banner; a document gone in the new revision shows "remo
 
 ## Facts the reader needs from the Runtime
 
-Integration readiness: **missing** (no reader API yet; backend planning is separate work).
+Integration readiness: **ready** — the shared workspace list (`GET /api/workspaces`) and the
+[workspace documentation routes](../../../reference/api/workspace-docs.md) (tree, article, search).
 
 - Workspaces (the shared workspace API that also serves Create Specification): id, name, kind,
   display folder, available + reason, whether it is the Runtime's checkout, bound Specification
@@ -243,15 +254,45 @@ Integration readiness: **missing** (no reader API yet; backend planning is separ
 
 ## Design-system dependencies
 
-- `MarkdownDocument` renders every `<img>`: add an image hook (for example `renderImage`) so the
-  reader can render inert alt text. Until then images cannot be blocked.
-- Section jumps use the existing `sourceLines`; no heading ids are needed.
-- `AppWorkspace` names the stacked header Back with `backToPrimary` at every depth, so a linked
-  article's Back is announced "Back to documentation" although it returns to the previous article.
-  The stacked Back should use `backToParent(<previous title>)` below the first screen (a design-system
-  change; the mock shows the behaviour, not the label).
-- The Documents preview's Properties and Contents column/sheet are reused unchanged; promote them
-  from the Documents feature to a shared product component when the reader is implemented.
+- `MarkdownDocument.renderImage` renders every image as inert alt text; `renderLink` decides every
+  link by the reader's link policy.
+- Section jumps use the existing `sourceLines` and the article's section lines; no heading ids are
+  needed.
+- The stacked header Back below the first article is named `backToParent(<previous title>)`
+  ("Back to UI interaction model"); the first screen's Back is "Back to documentation".
+- The Properties row and the Contents column/sheet are the shared `shared/document-reading`
+  components that the Documents preview also uses.
+
+## Implementation notes
+
+- **Entry intent (D-D).** A pick or a Session entry travels as router location state of that one
+  navigation and is consumed once the tab's store holds it (the entry is replaced without it), so a
+  reload or Back to the entry does not replay an explicit pick: a remembered workspace that became
+  unavailable then falls back quietly instead of showing the Alert. The Session's way back stays in
+  the reader's location state while documents are opened.
+- **Document removed while reading (D-E)** is told from **Unknown document** by how it was opened: a
+  document opened from the reader (tree, results, a link, the root index) existed when it was
+  opened, so its later `404` reads "no longer in the workspace"; an address opened directly reads
+  "Document not found". Later work: decide it from the corpus revisions (the document was in the
+  tree of the revision before the refusal's).
+- **Narrow (D-B).** The address names the first article of the stack; a link hop pushes a screen
+  without changing the address, so a reload shows the first article. Widening closes the stack and
+  shows the address's article. The first screen's Back steps back in history when the article was
+  opened from the reader (the entry before it is the tree's), and replaces a directly opened address
+  with the tree's. Rare case: after a resize from Wide, the entry before a stacked article may be the
+  previous article, so that Back shows it.
+- **Leaving the reader.** The reader decides nothing (no redirect, no consumed entry) once the
+  location names another screen, so navigation and browser Back leave it for good.
+- **Specification entry (D-A).** A compact Documentation row with the bound workspace's name, in the
+  Overview's related slot (after Tasks and Documents); entering any Specification route makes its
+  bound workspace the tab's current one, at every width (the sync is mounted with the shell, not
+  with the navigation Drawer).
+- **Session entry (D-C).** One row of the Session Context's Specification section (the first row of
+  Work without a Specification); the Session's title travels with the entry and names the way back.
+- **One label.** The navigation row, the Specification row and the Session Context row all read
+  "Documentation"; the second line names the workspace or says "This Session's workspace".
+- **Fallback.** A redirect to the project folder drops the entry's intent, so the quiet "no longer
+  registered" or "unavailable" line stays.
 
 ## Owner decisions
 
@@ -261,8 +302,8 @@ bound Specification titles; no chooser page: `/docs` opens the current workspace
 project folder, and the workspace picker in the tree pane follows the Specification switcher.
 
 - **D1 — global navigation row (decided, owner 2026-11-12).** A permanent Documentation row under
-  Specifications; the contextual entries (Specification Repository, Session Context, links between
-  documents) stay as well. Rejected: contextual entries only, which left the reader unreachable from
+  Specifications; the contextual entries (the Specification Overview's Documentation row, Session
+  Context, links between documents) stay as well. Rejected: contextual entries only, which left the reader unreachable from
   a fresh start.
 - **D2 — Session entry (decided).** Opens the Session's workspace, the Runtime's own checkout, and
   sets the tab's current workspace; the picker stays available.
@@ -273,3 +314,17 @@ project folder, and the workspace picker in the tree pane follows the Specificat
   row (a permanent truncated technical name, the only workspace fact in the navigation, repeating what
   the Specification section implies), and a full app-wide workspace context (no other screen reads a
   workspace that is not its Specification's).
+
+Proposed, pending owner confirmation (coordinator, 2026-11-13, after the implementation review):
+
+- **D-A — Specification entry.** A compact Documentation row on the Specification Overview after
+  Tasks and Documents (the Overview has no workspace facts section to join), never above Tasks.
+- **D-B — Narrow link hops.** A hop pushes an article screen without changing the address; the
+  address names the first article of the stack.
+- **D-C — Session Context entry.** A row of the Specification section (the first row of Work
+  without one), not a section of its own.
+- **D-D — Entry intent.** A pick or a Session entry is the intent of one navigation and is consumed
+  once read, so a reload or Back never replays an explicit pick (a remembered workspace that became
+  unavailable falls back quietly instead of showing the Alert).
+- **D-E — Removed versus unknown document.** Decided by how the document was opened (from the
+  reader or by an address); deciding it from corpus revisions is later work.

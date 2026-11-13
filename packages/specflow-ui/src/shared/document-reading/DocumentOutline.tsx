@@ -117,7 +117,7 @@ export function DocumentOutline({
   onSelect: (line: number, pointer: boolean) => void;
 }) {
   const { t } = useTranslation();
-  const label = t('documents.outline.label');
+  const label = t('documentReading.outline.label');
 
   return (
     <nav aria-label={label} className="min-w-0">

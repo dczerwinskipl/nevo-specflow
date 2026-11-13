@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect } from 'storybook/test';
+import { expect, within } from 'storybook/test';
 import type { SessionAssociationRead } from '@nevo/specflow-contracts/sessions';
 import { associationContext } from '../../associations/associationContext';
 import {
@@ -74,7 +74,14 @@ const storyWorkStack = defineSecondaryStack<
   screens: { work: { title: 'Work history', component: () => <div className="p-4">Work</div> } },
 });
 
-function ContextHost({ value }: { value: SessionContextViewModel }) {
+function ContextHost({
+  value,
+  withDocumentation = false,
+}: {
+  value: SessionContextViewModel;
+  /** The documentation row (the route wires it; most stories leave it out). */
+  withDocumentation?: boolean;
+}) {
   return (
     <StoryLocalization locale="en">
       <AppWorkspaceProvider>
@@ -102,6 +109,9 @@ function ContextHost({ value }: { value: SessionContextViewModel }) {
                     console.info('Open Specification', specification)
                   }
                   onOpenDocuments={(specification) => console.info('Open Documents', specification)}
+                  onOpenDocumentation={
+                    withDocumentation ? () => console.info('Open documentation') : undefined
+                  }
                   workStack={storyWorkStack}
                 />
               </AppWorkspace.Primary>
@@ -120,7 +130,14 @@ function ContextHost({ value }: { value: SessionContextViewModel }) {
  * can be dragged to check a wider Secondary. Locale is Polish because the Polish copy is the
  * longest of the shipped locales.
  */
-function SecondaryContextHost({ value }: { value: SessionContextViewModel }) {
+function SecondaryContextHost({
+  value,
+  withDocumentation = false,
+}: {
+  value: SessionContextViewModel;
+  /** The documentation row (the route wires it; most stories leave it out). */
+  withDocumentation?: boolean;
+}) {
   return (
     <StoryLocalization locale="pl">
       <AppWorkspaceProvider>
@@ -144,6 +161,9 @@ function SecondaryContextHost({ value }: { value: SessionContextViewModel }) {
                     console.info('Open Specification', specification)
                   }
                   onOpenDocuments={(specification) => console.info('Open Documents', specification)}
+                  onOpenDocumentation={
+                    withDocumentation ? () => console.info('Open documentation') : undefined
+                  }
                   workStack={storyWorkStack}
                 />
               </AppWorkspace.Secondary>
@@ -491,4 +511,26 @@ export const AssociationSpecificationMissingMobile: Story = {
     ).toBeVisible();
     await expect(canvas.queryByText('Related Tasks')).toBeNull();
   },
+};
+
+/** The documentation row folded under Documents, at the ~330 px Secondary width. */
+export const WithDocumentationInSecondary: Story = {
+  tags: ['contract'],
+  args: { value: genericSpecLevelContext(), withDocumentation: true },
+  render: (args) => <SecondaryContextHost {...args} />,
+  play: async () => {
+    await settleViewport(1280, 900);
+    const row = await within(document.body).findByRole('button', {
+      name: /^Dokumentacja/,
+    });
+    // One row of the Specification section, not a section of its own.
+    await expect(row.closest('section')?.textContent).toContain('Dokumenty');
+  },
+};
+
+/** A standalone Session: the documentation row joins the executor section, on a phone. */
+export const StandaloneWithDocumentationMobile: Story = {
+  tags: ['contract'],
+  args: { value: standaloneContext(), withDocumentation: true },
+  globals: mobile,
 };

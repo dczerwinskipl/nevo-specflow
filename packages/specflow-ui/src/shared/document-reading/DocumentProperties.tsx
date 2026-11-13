@@ -29,7 +29,7 @@ export function DocumentProperties({
       <Collapsible>
         <Collapsible.Trigger className={hitAreaBlockClassName}>
           <Typography as="span" variant="label-md">
-            {label ?? t('documents.properties.label')}
+            {label ?? t('documentReading.properties.label')}
           </Typography>
           <Typography as="span" variant="body-sm" className="ml-2 text-content-muted">
             {properties.length}

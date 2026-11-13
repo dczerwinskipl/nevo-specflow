@@ -74,7 +74,7 @@ export function documentHeaderModel(
         ? [
             {
               id: 'document-outline',
-              label: t('documents.outline.label'),
+              label: t('documentReading.outline.label'),
               icon: 'list',
               group: 'display',
               onPress: session.openOutline,
@@ -86,7 +86,7 @@ export function documentHeaderModel(
         ? [
             {
               id: 'document-outline-column',
-              label: t('documents.outline.label'),
+              label: t('documentReading.outline.label'),
               icon: 'list',
               group: 'display',
               checked: session.contentsToggle.pressed,

@@ -1129,6 +1129,7 @@ export function ManagedSession({
   sessionContext = standaloneContext,
   onOpenSpecification,
   onOpenDocuments,
+  onOpenDocumentation,
   onSessionDeleted,
   onSessionChanged,
   onGoToSpecifications,
@@ -1175,6 +1176,11 @@ export function ManagedSession({
    * wires it, like `onOpenSpecification`). Omitted: no Documents row.
    */
   onOpenDocuments?: (specification: ContextSpecification) => void;
+  /**
+   * Opens the documentation of this Session's workspace (the route composition wires it); the
+   * Session's title names the reader's way back.
+   */
+  onOpenDocumentation?: (sessionTitle?: string) => void;
 }) {
   const { t } = useTranslation();
   // The shell hint "a non-stacking Secondary (the pinned Context tab, the side-panel toggle) can be
@@ -1451,6 +1457,12 @@ export function ManagedSession({
     }
   }, [goneByOwnDelete, deletion]);
 
+  const sessionTitle = snapshot?.session.title ?? fallback.title;
+  const openDocumentation = useMemo(
+    () => (onOpenDocumentation ? () => onOpenDocumentation(sessionTitle) : undefined),
+    [onOpenDocumentation, sessionTitle],
+  );
+
   if (state.notFound && !deletion.holds) {
     return <SessionNotFoundView onGoToSpecifications={onGoToSpecifications} />;
   }
@@ -1461,6 +1473,7 @@ export function ManagedSession({
       value={contextValue}
       onOpenSpecification={onOpenSpecification}
       onOpenDocuments={onOpenDocuments}
+      onOpenDocumentation={openDocumentation}
       workStack={workStack}
     >
       <AppWorkspace scroll="workspace" fit="available" split="dynamic" labels={labels}>
@@ -1517,6 +1530,7 @@ export function ManagedSession({
             value={contextValue}
             onOpenSpecification={onOpenSpecification}
             onOpenDocuments={onOpenDocuments}
+            onOpenDocumentation={openDocumentation}
             workStack={workStack}
           />
         </AppWorkspace.Secondary>

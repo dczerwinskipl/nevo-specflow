@@ -1,0 +1,21 @@
+# Abbreviated from dczerwinskipl/nevo at 15296361eab4809d7488e3635c214367e084ba61.
+# Source: .nevo-ai/workflows/standard.yaml, steps.review.
+# This example uses the prototype schema.
+
+steps:
+  review:
+    exitGates:
+      - type: command
+        action: test
+    finalize:
+      - id: commit-and-push
+    transitions:
+      - value: pass
+        to: human-verification
+        continuation: auto
+      - value: fail
+        to: implementation
+        continuation: auto
+        execution:
+          session: fresh
+          role: refiner

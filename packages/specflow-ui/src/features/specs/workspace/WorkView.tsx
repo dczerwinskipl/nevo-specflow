@@ -110,6 +110,8 @@ export function WorkView({ specId, data }: WorkViewProps) {
       <SpecificationAttentionOutlet specId={id} data={data} />
     </div>
   );
+  // T11 slot: with a bound Specification workflow, the Workflow section (the Now block, from the
+  // workflow action projection) takes the preparation block's place, above the Tasks.
   const preparation = preparationShown ? (
     <div
       key="preparation"

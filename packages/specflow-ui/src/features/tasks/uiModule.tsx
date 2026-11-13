@@ -7,10 +7,12 @@ import {
   type SpecificationWorkSectionContext,
 } from '../specs';
 import { FeatureUnavailable } from '../../app/errors/FeatureUnavailable';
-import { TasksSection } from './contributions/specification-work';
+import { useRuntimeMode } from '../../app/useRuntimeMode';
+import { ProjectTasksSection, TasksSection } from './contributions/specification-work';
 
 function TaskGroupsWorkSection({ specId, data, actions }: SpecificationWorkSectionContext) {
   const { t } = useTranslation();
+  const runtimeMode = useRuntimeMode();
   if (
     data.sectionAvailability?.tasks === 'unavailable' &&
     data.sectionUnavailableReason?.tasks === 'not_implemented'
@@ -29,20 +31,25 @@ function TaskGroupsWorkSection({ specId, data, actions }: SpecificationWorkSecti
     );
   }
 
-  return (
-    <TasksSection
-      key={specId}
-      taskGroups={data.taskGroups}
-      isPreparing={data.isPreparing}
-      totalTasksCount={data.totalTasksCount}
-      completedTasksCount={data.completedTasksCount}
-      executionReadiness={data.executionReadiness}
-      onPreviewTask={actions.previewTask}
-      fullTaskHref={actions.fullTaskHref}
-      onExecuteTasks={actions.executeTasks}
-      canExecute={actions.canExecute !== false}
-    />
-  );
+  const sectionProps = {
+    taskGroups: data.taskGroups,
+    isPreparing: data.isPreparing,
+    totalTasksCount: data.totalTasksCount,
+    completedTasksCount: data.completedTasksCount,
+    executionReadiness: data.executionReadiness,
+    onPreviewTask: actions.previewTask,
+    fullTaskHref: actions.fullTaskHref,
+    onExecuteTasks: actions.executeTasks,
+    canExecute: actions.canExecute !== false,
+  };
+  // Task authoring is a project Runtime capability (the demo Runtime serves no workflow routes).
+  if (runtimeMode === 'project') {
+    return (
+      <ProjectTasksSection key={specId} specId={specId} specTitle={data.title} {...sectionProps} />
+    );
+  }
+
+  return <TasksSection key={specId} {...sectionProps} />;
 }
 
 export const tasksUiModule: UiModule = {

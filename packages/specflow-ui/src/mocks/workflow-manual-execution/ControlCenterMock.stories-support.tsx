@@ -65,6 +65,8 @@ export interface ControlCenterMockProps {
   height?: number;
   state: OverviewState;
   page?: 'overview' | 'tasks';
+  /** Tasks page filter from `?blocking=specification` (the Review tasks action). */
+  filter?: 'blocking';
   columns?: OverviewColumns;
 }
 
@@ -167,10 +169,11 @@ const startBlockedT07: AttentionItem = {
 /** `tasks-stuck`: one Specification-level item naming the Tasks; never one item per draft. */
 const tasksStuck: AttentionItem = {
   key: 'tasks-stuck',
-  title: 'Waiting for tasks cannot finish',
+  // The intervention; Now carries the diagnosis and the Task links.
+  title: 'Resolve 2 blocking tasks',
   subject: 'Specification',
   reason: {
-    text: 'No open task can progress without you:',
+    text: 'Approve, resume or cancel them so the specification can finish',
     tone: 'attention',
     icon: 'triangle-alert',
   },
@@ -293,7 +296,14 @@ function dataFor(state: OverviewState): StateData {
     case 'blocked':
       return {
         list: [
-          ...preparing.filter((item) => item.id !== 'T-04'),
+          // T-07 is broken: the projection reports a start blocker.
+          ...preparing
+            .filter((item) => item.id !== 'T-04')
+            .map((item) =>
+              item.id === 'T-07'
+                ? { ...item, workflow: { ...item.workflow, canStart: false } }
+                : item,
+            ),
           {
             ...task('T-04'),
             status: 'ready',
@@ -396,7 +406,9 @@ function dataFor(state: OverviewState): StateData {
                   position: { kind: 'ready' as const, step: 'implement', attempt: 2 },
                 },
               }
-            : item,
+            : item.id === 'T-07'
+              ? { ...item, workflow: { ...item.workflow, canStart: false } }
+              : item,
         ),
         hasTasks: true,
         workflowTitle,
@@ -568,17 +580,6 @@ function Reason({ item }: { item: AttentionItem }) {
   return (
     <span>
       <span className={reasonClass(item.reason.tone)}>{item.reason.text}</span>
-      {item.taskIds ? (
-        <>
-          {' '}
-          {item.taskIds.map((id, index) => (
-            <span key={id}>
-              {index > 0 ? ' · ' : null}
-              <TaskLink id={id} />
-            </span>
-          ))}
-        </>
-      ) : null}
     </span>
   );
 }
@@ -626,8 +627,6 @@ function RequiresAttention({
                     </Button>
                   </span>
                 </span>
-              ) : item.taskIds ? (
-                <Reason item={item} />
               ) : (
                 item.reason
               )
@@ -696,13 +695,13 @@ function TaskGroupsSummary({
       {rows.length > 0 ? (
         <InformationList>
           {rows.map(({ group, members }) => {
-            const named = members.filter((item) => !attentionKeys.has(item.id));
-            const shown = named.slice(0, 2).map((item) => `${item.id} ${item.title}`);
+            // A Task Requires attention already refers to shows by id only (no repeated title).
+            const shown = members
+              .slice(0, 2)
+              .map((item) => (attentionKeys.has(item.id) ? item.id : `${item.id} ${item.title}`));
             const rest = members.length - shown.length;
-            const text =
-              shown.length > 0
-                ? `${shown.join(' · ')}${rest > 0 ? ` · ${rest} more` : ''}`
-                : 'named in Requires attention';
+            const count = `${members.length} ${members.length === 1 ? 'task' : 'tasks'}`;
+            const text = [count, ...shown, ...(rest > 0 ? [`${rest} more`] : [])].join(' · ');
 
             return (
               <OperationalRow
@@ -710,12 +709,7 @@ function TaskGroupsSummary({
                 primary={group.name}
                 onPrimaryClick={noop}
                 primaryAriaLabel={`${group.name}: open on the Tasks page`}
-                supporting={
-                  <span className="block truncate">
-                    <span className="font-medium text-content-primary">{members.length}</span> ·{' '}
-                    {text}
-                  </span>
-                }
+                supporting={<span className="block truncate">{text}</span>}
               />
             );
           })}
@@ -810,7 +804,7 @@ function Overview({
   state,
   width,
   columns,
-}: Required<Omit<ControlCenterMockProps, 'height' | 'page'>>) {
+}: Required<Omit<ControlCenterMockProps, 'height' | 'page' | 'filter'>>) {
   const data = dataFor(state);
   // Tasks named by Requires attention (its own rows and the Tasks a Specification item names).
   const attentionKeys = new Set(
@@ -864,8 +858,12 @@ function Overview({
   );
 }
 
-function TasksPage({ state }: { state: OverviewState }) {
+function TasksPage({ state, filter }: { state: OverviewState; filter?: 'blocking' }) {
   const data = dataFor(state);
+  // `?blocking=specification`: resolved against the current `tasks-stuck` item, never a stored
+  // id list; the normal grouping stays.
+  const blocking = data.attention.find((item) => item.key === 'tasks-stuck')?.taskIds ?? [];
+  const list = filter ? data.list.filter((item) => blocking.includes(item.id)) : data.list;
 
   return (
     <div className="grid gap-4">
@@ -875,9 +873,27 @@ function TasksPage({ state }: { state: OverviewState }) {
           placeholder="Filter by id or title"
           className="max-w-sm"
         />
+        {filter ? (
+          <div
+            role="status"
+            className="flex w-fit max-w-full items-center gap-2 rounded-control border border-border-default bg-surface-subtle py-1 pr-1 pl-3"
+          >
+            <Icon name="filter" size="sm" aria-hidden="true" />
+            <Typography as="span" variant="label-sm" className="min-w-0 truncate">
+              Blocking specification · {list.length} tasks
+            </Typography>
+            <IconButton
+              icon="close"
+              size="xs"
+              variant="ghost"
+              aria-label="Clear filter: blocking specification"
+            />
+          </div>
+        ) : null}
       </div>
       <TasksList
-        list={data.list}
+        list={list}
+        count={filter ? `${list.length} of ${data.list.length} shown` : undefined}
         onCreate={noop}
         selectable={false}
         attention={
@@ -903,7 +919,8 @@ function Workspace({
   width,
   page,
   columns,
-}: Required<Omit<ControlCenterMockProps, 'height'>>) {
+  filter,
+}: Required<Omit<ControlCenterMockProps, 'height' | 'filter'>> & { filter?: 'blocking' }) {
   const narrow = width < 730;
   const actions: WorkspaceHeaderAction[] =
     page === 'overview'
@@ -947,7 +964,7 @@ function Workspace({
               {page === 'overview' ? (
                 <Overview state={state} width={narrow ? 0 : width} columns={columns} />
               ) : (
-                <TasksPage state={state} />
+                <TasksPage state={state} filter={filter} />
               )}
             </AppWorkspaceBody>
           </AppContent>
@@ -963,6 +980,7 @@ export function ControlCenterMock({
   state,
   page = 'overview',
   columns = 'work',
+  filter,
 }: ControlCenterMockProps): ReactNode {
   return (
     <StoryLocalization locale="en">
@@ -978,6 +996,7 @@ export function ControlCenterMock({
             width={width}
             page={page}
             columns={columns}
+            filter={filter}
           />
         </AppShell>
       </div>

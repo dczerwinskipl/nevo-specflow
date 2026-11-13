@@ -144,8 +144,10 @@ in the preparation block's place; one reading column (`content-standard`) at the
   `task-escalated`), broken Tasks, **start blockers that need a person** on approved, not-started
   Tasks (owner decision 2A; classification below), Sessions waiting for input, and **one**
   Specification-level `tasks-stuck` item when no open Task can progress without the owner (owner
-  decision 1A): it names the affected Tasks as links (for example "No open task can progress
-  without you: T-04 · T-05") and offers **Review tasks**; there is never one item per draft. At
+  decision 1A). That item states the intervention, not the diagnosis ("Resolve 2 blocking tasks ·
+  Approve, resume or cancel them so the specification can finish"); Now carries the diagnosis and
+  the Task links. Its action **Review tasks** opens the Tasks page filtered to the blocking Tasks
+  (below). There is never one item per draft. At
   most five, then **Show N more**; the order is the projection's priority (broken first). On Narrow
   the action sits under the title and reason.
 - **Now explains why the Specification cannot progress** (owner decision 3A) in one note under the
@@ -153,14 +155,15 @@ in the preparation block's place; one reading column (`content-standard`) at the
   and no other task is open."). It carries no action and does not repeat the attention entry: Now
   explains state, Requires attention offers the operation.
 - **Tasks** (owner decision 4A, 7A) previews the configured grouping. Groups the configuration
-  marks as summary rows (default: Needs approval, In progress, Ready to start, Waiting, On hold)
-  get one row each when non-empty: name, count, up to two titles, "N more", opening the Tasks page
+  marks as summary rows (default: Needs approval, In progress, Ready to start, Cannot start,
+  Waiting, On hold) get one row each when non-empty: the group name, then "1 task · T-04 Return
+  users to where they were" (count, up to two Tasks, "N more"), opening the Tasks page
   at that group. Groups marked compact (default: Done, Cancelled) share one quiet line of links
   ("Done 4 · Cancelled 1"). **On hold is a summary row**: it is not terminal and keeps the
   Specification from finishing. **All tasks** in the header opens the full page. A Task already
-  named in Requires attention (its own item, or a Task a Specification item names) is counted in its
-  group but not named again ("named in Requires attention"), so no Task appears twice across
-  Overview sections; Now's explanation is the one exception. Omitted when there are no Tasks. Order
+  referred to by Requires attention (its own item, or a Task a Specification item covers) or by
+  Now appears in its group row by id only ("1 task · T-04"), never as a second full row. Omitted
+  when there are no Tasks. Order
   and visibility of groups come from the configuration, so they can become configurable later
   without UI change.
 - **Sessions** replaces Continue session: the recommended Session first, then other working Sessions
@@ -180,7 +183,7 @@ parts omitted: `1 of 6 done · 1 cancelled · 1 on hold`. On hold counts in the 
 ## Tasks page (`/specs/:specId/tasks`)
 
 The full inventory in the configured grouping (default: Needs approval, In progress, Ready to start,
-Waiting, On hold, Done, Cancelled — Cancelled collapsed), the existing row, the row `⋯` lifecycle
+Cannot start, Waiting, On hold, Done, Cancelled — Cancelled collapsed), the existing row, the row `⋯` lifecycle
 menu, **New task** in the section header, the progress text as the section count, and a filter (id
 or title). A Task in the attention projection keeps its group and shows "Requires attention ·
 <reason>" on its row; a Task named by the `tasks-stuck` item shows "Requires attention · the
@@ -188,6 +191,16 @@ specification cannot continue until it moves". A draft row reads "Draft · needs
 neutral tone. **No checkboxes and no bulk actions** (owner decision 6A); "Run selected tasks" (plan
 06 F12) is deferred, and when it returns it starts each Task through the workflow, never bypassing
 a transition. The navigator's **Tasks** item becomes this page.
+
+**Blocking filter (Review tasks).** `/specs/:specId/tasks?blocking=specification` shows only the
+Tasks the current `tasks-stuck` item covers, in their normal groups, with a visible filter bar
+above the list ("Blocking specification · 2 tasks", a clear button) and "2 of 7 shown" as the
+section count. Per the routing contract (route state through the router, validated search, absence
+means the default) the search carries one validated value, never a Task id list: the Tasks are
+resolved from the projection when read, so a stale link cannot show stale Tasks. Opening it from
+Review tasks pushes a history entry; clearing the filter replaces it. When nothing blocks any more,
+the bar says "Nothing blocks the specification now" with the clear button. The id/title filter stays
+local state.
 
 ## Universality
 
@@ -240,12 +253,25 @@ summary, the Tasks page and other clients (CLI, MCP), and project- or user-level
 need Runtime-owned settings; the UI stays render-only. The Engine and kernel keep no presentation
 concepts. The mock's `dashboard-grouping.stories-support.ts` shows the shape.
 
+**Neutral facts stand alone.** The Task facts (and attention) stay part of the Task read model for
+every consumer: CLI, MCP and other clients understand authoritative Task state without dashboard
+groups, and groups are only an optional presentation of those facts.
+
+**"Ready to start" means startable.** The default configuration restricts it to approved,
+not-started Tasks with no start blocker other than dependencies (fact `startBlocked`, from the
+projection's start blockers) and adds **Cannot start** for approved, not-started Tasks the
+projection reports blocked (context, entry gate, definition, broken). Waiting for dependencies stays
+in **Waiting**. Recommended over renaming the group "Not started": the name stays true to what the
+person can do, and the blocked case becomes visible as its own row. Config only; the Engine is
+unchanged.
+
 ### Engine/Runtime changes requiring separate implementation work
 
 1. **Remove lanes from the Engine:** `TaskLane` and `laneOf` in `workflow/operations/execution-read.ts`
    (and their export); the read model exposes neutral facts per Task instead: preparation status,
    position kind with step and attempt, whether a run exists, terminal outcome, broken, dependency
-   state (`waitingFor`, `unsatisfiable`) and start blockers.
+   state (`waitingFor`, `unsatisfiable`) and start blockers (from which `startBlocked` follows).
+   These facts are available to every consumer (CLI, MCP) without any grouping.
 2. **Contracts:** replace `TaskResource.lane` (`TaskLaneSchema`, `tasks/task-resource.ts`) with those
    facts; the Runtime's status line (`taskStatusOf`, `STATUS_OF_LANE` in
    `features/tasks/engine/projection.ts`) derives from facts, not lanes.
@@ -257,7 +283,8 @@ concepts. The mock's `dashboard-grouping.stories-support.ts` shows the shape.
    and label).
 5. **Specification-level `tasks-stuck` item with the affected Task ids** (the `waiting` position's
    `attention.taskIds`, always set for `tasks-stuck`), passed through the Runtime's attention list
-   with the action that opens the Tasks page at those Tasks.
+   with the action that opens `/specs/:specId/tasks?blocking=specification`; the Tasks page route
+   validates that search value and resolves the ids from the projection.
 6. **Readable attention reasons and a per-Task attention flag** on the Task read (today the Runtime
    sends `"<step>: <reason>"`), so the Tasks page can mark rows.
 7. **Now's explanation data:** the Specification read carries the `tasks-stuck` Task ids with each

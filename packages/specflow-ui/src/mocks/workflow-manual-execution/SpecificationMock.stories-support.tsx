@@ -335,6 +335,7 @@ export function TasksList({
   canCreate = true,
   selectable = true,
   attention,
+  count,
 }: {
   list: readonly MockTask[];
   onCreate: () => void;
@@ -343,6 +344,8 @@ export function TasksList({
   selectable?: boolean;
   /** Tasks the attention projection lists: marked on their row, they stay in their group. */
   attention?: ReadonlyMap<string, string>;
+  /** Replaces the progress text as the section count (a filtered list). */
+  count?: string;
 }) {
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(
     new Set(defaultGrouping.filter((group) => group.collapsed).map((group) => group.id)),
@@ -354,7 +357,7 @@ export function TasksList({
         id="tasks-heading"
         title="Tasks"
         icon="list-checks"
-        count={list.length === 0 ? undefined : taskProgress(list).text}
+        count={count ?? (list.length === 0 ? undefined : taskProgress(list).text)}
         actions={
           canCreate ? (
             <Button size="sm" variant="secondary" leadingIcon="plus" onClick={onCreate}>

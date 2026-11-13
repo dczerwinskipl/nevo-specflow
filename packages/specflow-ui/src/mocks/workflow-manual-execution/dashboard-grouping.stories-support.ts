@@ -13,6 +13,11 @@ export interface TaskFacts {
   readonly position: MockTask['workflow']['position']['kind'];
   /** A run exists (the workflow has started at least once). */
   readonly started: boolean;
+  /**
+   * The projection reports a start blocker other than waiting for dependencies (context, gates,
+   * definition, broken): the next step cannot start even though the Task is approved.
+   */
+  readonly startBlocked: boolean;
 }
 
 export function factsOf(item: MockTask): TaskFacts {
@@ -20,6 +25,7 @@ export function factsOf(item: MockTask): TaskFacts {
     preparation: item.status,
     position: item.workflow.position.kind,
     started: item.started,
+    startBlocked: item.workflow.canStart === false,
   };
 }
 
@@ -32,6 +38,7 @@ export interface GroupDefinition {
     readonly preparation?: readonly PreparationStatus[];
     readonly position?: readonly TaskFacts['position'][];
     readonly started?: boolean;
+    readonly startBlocked?: boolean;
   };
   /** Overview summary: its own row, or one compact line with the other compact groups. */
   readonly summary: 'row' | 'compact';
@@ -63,7 +70,15 @@ export const defaultGrouping: readonly GroupDefinition[] = [
     id: 'ready',
     name: 'Ready to start',
     tone: 'neutral',
-    when: { preparation: ['ready'], position: ['not-started'] },
+    when: { preparation: ['ready'], position: ['not-started'], startBlocked: false },
+    summary: 'row',
+  },
+  {
+    // Approved and not started, but the projection reports a start blocker: not "ready".
+    id: 'cannot-start',
+    name: 'Cannot start',
+    tone: 'neutral',
+    when: { preparation: ['ready'], position: ['not-started'], startBlocked: true },
     summary: 'row',
   },
   {
@@ -98,12 +113,13 @@ export const defaultGrouping: readonly GroupDefinition[] = [
 ];
 
 function matches(group: GroupDefinition, facts: TaskFacts): boolean {
-  const { preparation, position, started } = group.when;
+  const { preparation, position, started, startBlocked } = group.when;
 
   return (
     (!preparation || preparation.includes(facts.preparation)) &&
     (!position || position.includes(facts.position)) &&
-    (started === undefined || started === facts.started)
+    (started === undefined || started === facts.started) &&
+    (startBlocked === undefined || startBlocked === facts.startBlocked)
   );
 }
 

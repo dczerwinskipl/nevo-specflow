@@ -77,6 +77,19 @@ export const Ovw2Blocked1920 = capture({ state: 'blocked', width: 1920, height: 
 export const Ovw2Stuck1440 = capture({ state: 'stuck', width: 1440, height: 1000 });
 export const Ovw2StuckNarrow390 = capture({ state: 'stuck', width: 390, height: 1500 });
 export const Ovw2StuckTasksPage1440 = capture({ state: 'stuck', page: 'tasks', height: 1100 });
+export const Ovw2StuckBlockingFilter1440 = capture({
+  state: 'stuck',
+  page: 'tasks',
+  filter: 'blocking',
+  height: 800,
+});
+export const Ovw2StuckBlockingFilterNarrow390 = capture({
+  state: 'stuck',
+  page: 'tasks',
+  filter: 'blocking',
+  width: 390,
+  height: 1000,
+});
 export const Ovw2WaitingNarrow390 = capture({ state: 'waiting', width: 390, height: 1700 });
 export const Ovw2BlockedNarrow390 = capture({ state: 'blocked', width: 390, height: 1600 });
 export const Ovw2TasksPage1440 = capture({ state: 'waiting', page: 'tasks', height: 1200 });

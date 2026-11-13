@@ -365,6 +365,9 @@ importers:
       commander:
         specifier: 15.0.0
         version: 15.0.0
+      fast-json-stringify:
+        specifier: 7.3.1
+        version: 7.3.1
       fastify:
         specifier: 5.12.8
         version: 5.12.8

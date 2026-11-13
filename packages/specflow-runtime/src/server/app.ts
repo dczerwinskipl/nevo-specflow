@@ -63,6 +63,7 @@ import { registerRuntimeErrorHandler } from './error-handler';
 import { registerEndpointPolicy } from './endpoint-policy';
 import { registerOpenApi, registerOpenApiRoute } from './openapi';
 import { registerSharedContracts } from './shared-contracts';
+import { buildReferencedSchemaSerializer } from './serializer';
 import { serializeRuntimeRequest } from './logging';
 import { isRequestAtPublicOrigin } from './origin';
 import { registerRuntimeWebApp, type RuntimeWebApp } from './web-app';
@@ -122,6 +123,8 @@ export const RUNTIME_FASTIFY_OPTIONS = {
       removeAdditional: false,
     },
   },
+  // Each response serializer resolves only the shared contracts it references.
+  schemaController: { compilersFactory: { buildSerializer: buildReferencedSchemaSerializer } },
 } satisfies FastifyServerOptions;
 
 export async function createRuntimeApp(

@@ -71,7 +71,24 @@ a break with the "groups supplied by the backend" rule.
 7. Now explanation data: `tasks-stuck` Task ids with each Task's blocking fact.
 8. Per-Specification Sessions read (this Specification's Sessions; recommended first).
 
-## 6. Still open (small)
+## 6. Review refinements (2026-11-14)
 
-- Target of **Review tasks**: the Tasks page filtered to the named Tasks, or scrolled to the first.
-- Whether Done/Cancelled compact links open the Tasks page expanded at that group (assumed yes).
+- **P1 Ready to start contradicted the facts** (T-07 was there while its context blocker prevents
+  starting). Config-only fix: "Ready to start" requires `startBlocked: false`; a new **Cannot
+  start** group takes approved, not-started Tasks with a start blocker other than dependencies.
+  Chosen over renaming to "Not started" because the label then matches what the person can do.
+- **P2 "named in Requires attention" was false** in the stuck state. Group rows now read
+  "1 task · T-04": Tasks referred to elsewhere appear by id only, others with id and title.
+- **P2 stuck state repeated the diagnosis.** Now keeps the explanation and Task links; the attention
+  item says the intervention: "Resolve 2 blocking tasks · Approve, resume or cancel them so the
+  specification can finish", action **Review tasks**.
+- **Review tasks (decided):** `/specs/:specId/tasks?blocking=specification`: one validated search
+  value (routing contract: router-owned, validated search, absence = default), resolved against the
+  current `tasks-stuck` ids, never an id list in the URL; normal grouping kept; a visible filter bar
+  "Blocking specification · 2 tasks" with a clear button; section count "2 of 7 shown". Push on
+  open, replace on clear.
+- **Neutral facts stand alone:** the Task facts and attention stay in the Task read model for CLI,
+  MCP and other consumers; groups are only an optional presentation.
+
+Still open (small): whether Done/Cancelled compact links open the Tasks page expanded at that group
+(assumed yes).

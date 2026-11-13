@@ -1,3 +1,5 @@
+import type { TaskResourceFacts } from '@nevo/specflow-contracts/tasks';
+
 /** Runtime adapter facts. These are not an Engine API or an authorized HTTP snapshot. */
 export interface TaskIdentity {
   projectId: string;
@@ -11,9 +13,13 @@ export interface AttemptIdentity {
   stepId: string;
   attempt: number;
 }
+export type ExecutorClass = 'agent' | 'human';
 export interface StepFacts {
   id: string;
-  executor: 'agent' | 'human';
+  /** The step's title from its workflow (display); absent in fixtures without one. */
+  title?: string;
+  /** Empty for a wait step. */
+  executors: ExecutorClass[];
   purpose: string | null;
   expectedWork: { summary: string } | null;
   hints: { kind: 'doc' | 'skill' | 'file'; ref: string }[];
@@ -88,7 +94,13 @@ export interface ExecutionFacts {
     };
     position:
       | { state: 'not_started'; next: StepFacts | null }
-      | { state: 'active'; key: AttemptIdentity; step: StepFacts; semanticStatus: string }
+      | {
+          state: 'active';
+          key: AttemptIdentity;
+          step: StepFacts;
+          semanticStatus: string;
+          actor?: { class: ExecutorClass; actorId?: string };
+        }
       | { state: 'checkpoint'; completed: AttemptIdentity; next: StepFacts; nextAttempt: null }
       | {
           state: 'terminal';
@@ -100,7 +112,8 @@ export interface ExecutionFacts {
     blockers: { code: string; message: string; operation: 'start' | 'finish' }[];
     previousFeedback: { key: AttemptIdentity; result: string | null; text: string } | null;
   };
-  requirements: RequirementFacts[];
+  /** Absent: the source has no human-requirement projection (the section stays unavailable). */
+  requirements?: RequirementFacts[];
   pendingCount: number;
   recovery: { id: string; state: string; summary: string; link: ReferenceFacts } | null;
 }
@@ -125,6 +138,8 @@ export interface TaskDefinitionFacts {
   taskType: { id: string; label: string } | null;
   document: Availability<{ id: string; revision: string } | null>;
   dependencies: { taskId: string; title: string; link: ReferenceFacts }[];
+  /** The Task resource (project mode); the demo has none. */
+  resource?: TaskResourceFacts;
 }
 export interface HistoryFacts {
   id: string;
@@ -135,6 +150,7 @@ export interface HistoryFacts {
   result: string | null;
   transitionedTo: TransitionDestination | null;
   feedback: string | null;
+  actor: { class: ExecutorClass; actorId?: string } | null;
   resources: ResourceFacts[];
   provenance: { source: 'workflow_history' | 'operation_record' | 'activity'; sourceId: string }[];
 }
@@ -152,6 +168,19 @@ export interface SourcePage<T> {
   coverage: 'complete' | 'partial';
 }
 export type ReferenceVisibility = (link: ReferenceFacts) => Promise<boolean>;
+/**
+ * One read of a Task for one request: its definition and, from the same source read, its execution
+ * and its whole history (bounded by the run), so no section of a detail or a page reflects another
+ * moment. `execution` and `history` are `null` when the source cannot project them truthfully.
+ */
+export interface TaskReading {
+  definition: TaskDefinitionFacts;
+  execution: ExecutionFacts | null;
+  history: { read: SourceRead; items: HistoryFacts[] } | null;
+}
+export interface TaskReadingSource {
+  read(specId: string, taskId: string): Promise<TaskReading | null>;
+}
 export interface DefinitionSource {
   resolve(specId: string, taskId: string): Promise<TaskDefinitionFacts | null>;
 }

@@ -573,6 +573,30 @@ required closure); `MANUAL_COMMIT_STALE` 409; `MANUAL_COMMIT_MESSAGE_INVALID` 40
 `DOCUMENT_UNCOMMITTED_LIMIT` 409. Reused: `BRANCH_PROTECTED`, `COMMIT_BLOCKED`, `DOCUMENT_OPERATION_CONFLICT`,
 `GIT_POLICY_INVALID`. `DocumentErrorDetails` gains `paths?: string[]` (<= 25).
 
+## Task documents
+
+The documents of a Task (its registry in `tasks/<id>/task.yaml`, the files of its folder) have the
+same routes below the Task, with the same capabilities, bodies, limits, refusals and commit state as
+the Specification routes; the Engine's Task-scoped Documents own every rule (the `task` document
+`task.md` is required: it cannot be deleted or renamed, `DOCUMENT_PROTECTED`; a pending change of the
+Task resource refuses a write). Project mode only (not registered in demo mode); a Task the
+Specification does not list is `DOCUMENT_NOT_FOUND`.
+
+| Method | Path                                                     | Capability | Purpose                                                               |
+| ------ | -------------------------------------------------------- | ---------- | --------------------------------------------------------------------- |
+| GET    | `/api/specs/:specId/tasks/:taskId/document-tree`         | View       | `TaskDocumentTree` (`registryRevision`, `writable`, the documents)    |
+| GET    | `/api/specs/:specId/tasks/:taskId/documents/:documentId` | View       | `DocumentContent`                                                     |
+| PUT    | `/api/specs/:specId/tasks/:taskId/documents/:documentId` | Manage     | Save text                                                             |
+| POST   | `/api/specs/:specId/tasks/:taskId/documents`             | Manage     | Create documents (`DocumentOperationResult`, `revision` the registry) |
+| POST   | `/api/specs/:specId/tasks/:taskId/document-operations`   | Manage     | rename / move / delete                                                |
+
+`TaskDocumentTree` lists each document with `id`, `path` (relative to the Task folder), `type`,
+`classification`, `required` and, when its file is readable, `file` (`kind`, `mediaType`, `size`,
+`revision` for a save, `editable`). Like the Specification tree it answers an `ETag` (over the whole
+listing, so a file change changes it) and `304` to a matching `If-None-Match`. A write's status is
+read at the Specification's `GET /api/specs/:specId/document-operations/:operationId`. The Task's metadata (title, dependencies, context) is not a
+document: it changes through the [Task commands](task-reads.md#task-commands).
+
 ## Errors
 
 `DocumentErrorCode` (the exported `as const` array in the contracts package) holds **every code in the table below**, including codes that Create already emits as free strings. The Create `code` field stays a plain string in this release (it does not narrow to the array).

@@ -1,17 +1,85 @@
 import type { ExecutionCatalogue } from '../definitions/catalogue';
-import type { TaskType, WorkflowStep } from '../definitions/model';
-import { handoffOf, type Handoff } from '../progression/progression';
+import type { TaskType, TaskTypes, WorkflowDefinition, WorkflowStep } from '../definitions/model';
+import {
+  handoffOf,
+  type ExecutorClass,
+  type Handoff,
+  type RunPosition,
+  type TransitionTarget,
+  type WorkflowPin,
+} from '@nevo/workflow';
 import { isTaskTypeAllowed, taskReadiness, type TaskReadiness } from '../tasks/tasks';
-import type {
-  RunPosition,
-  TaskRecord,
-  TaskStatus,
-  TaskStatusChange,
-  TaskTypes,
-  WorkflowPin,
-  WorkflowRun,
-  WorkflowSubject,
+import {
+  taskPosition,
+  type ExecutionTask,
+  type TaskStatus,
+  type TaskStatusChange,
+  type WorkflowRun,
+  type WorkflowSubject,
 } from '../state/model';
+
+/** A step as an executor and the owner see it (the step context, the action projection). */
+export interface StepDescription {
+  readonly id: string;
+  readonly title: string;
+  readonly kind: WorkflowStep['kind'];
+  readonly purpose: string;
+  readonly instructions?: string;
+  /** Who may do the step (a work step); who does an attempt is its recorded actor. */
+  readonly executors?: readonly ExecutorClass[];
+  readonly interaction?: 'interactive' | 'autonomous';
+  readonly produces?: 'tasks';
+}
+
+/** A result a work step may finish with: where it leads and whether it needs feedback. */
+export interface TransitionDescription {
+  readonly id: string;
+  readonly result?: string;
+  readonly label?: string;
+  readonly target: TransitionTarget;
+  /** The title of the target step (a step target only), so surfaces never show a bare id. */
+  readonly targetTitle?: string;
+  readonly feedback: 'required' | 'optional';
+}
+
+export function describeStep(step: WorkflowStep): StepDescription {
+  return {
+    id: step.id,
+    title: step.title,
+    kind: step.kind,
+    purpose: step.purpose,
+    ...(step.instructions !== undefined ? { instructions: step.instructions } : {}),
+    ...(step.kind === 'work'
+      ? {
+          executors: step.executors,
+          interaction: step.annotations.interaction,
+          ...(step.annotations.produces !== undefined
+            ? { produces: step.annotations.produces }
+            : {}),
+        }
+      : {}),
+  };
+}
+
+/** The transitions a finish of the step chooses from, in declared order. */
+export function describeTransitions(
+  definition: Pick<WorkflowDefinition, 'steps'>,
+  step: WorkflowStep,
+): TransitionDescription[] {
+  return step.transitions.map((transition) => {
+    const goal = transition.target.kind === 'step' ? transition.target.step : undefined;
+    const target = definition.steps.find((candidate) => candidate.id === goal);
+
+    return {
+      id: transition.id,
+      ...(transition.result !== undefined ? { result: transition.result } : {}),
+      ...(transition.label !== undefined ? { label: transition.label } : {}),
+      target: transition.target,
+      ...(target ? { targetTitle: target.title } : {}),
+      feedback: transition.feedback,
+    };
+  });
+}
 
 /**
  * What the executor of an active attempt works with: the step contract, the results it may finish
@@ -21,24 +89,10 @@ import type {
 export interface StepContext {
   readonly subject: WorkflowSubject;
   readonly workflow: WorkflowPin;
-  readonly step: {
-    readonly id: string;
-    readonly title: string;
-    readonly kind: WorkflowStep['kind'];
-    readonly purpose: string;
-    readonly instructions?: string;
-    readonly executor?: 'agent' | 'human';
-    readonly interaction?: 'interactive' | 'autonomous';
-    readonly produces?: 'tasks';
-  };
+  readonly step: StepDescription;
   readonly attempt: number;
   readonly finish: {
-    readonly transitions: readonly {
-      readonly id: string;
-      readonly result?: string;
-      readonly label?: string;
-      readonly feedback: 'required' | 'optional';
-    }[];
+    readonly transitions: readonly TransitionDescription[];
   };
   readonly handoff?: Handoff;
   readonly archetype?: {
@@ -83,13 +137,15 @@ export interface StepContext {
 export interface StepContextInput {
   readonly subject: WorkflowSubject;
   readonly run: WorkflowRun;
+  /** The definition the run is pinned to (the titles of the steps the transitions lead to). */
+  readonly definition: WorkflowDefinition;
   readonly step: WorkflowStep;
   readonly attempt: number;
   readonly catalogue: ExecutionCatalogue;
-  readonly task?: TaskRecord;
+  readonly task?: ExecutionTask;
   readonly allowedTaskTypes: TaskTypes;
   /** The Tasks of the Specification that are not broken (`executionTasks`). */
-  readonly tasks: readonly TaskRecord[];
+  readonly tasks: readonly ExecutionTask[];
   /** The broken Tasks, in list order. */
   readonly broken: readonly string[];
 }
@@ -97,8 +153,8 @@ export interface StepContextInput {
 export function compileStepContext(input: StepContextInput): StepContext {
   const { step, catalogue } = input;
   const archetype =
-    step.kind === 'work' && step.archetype !== undefined
-      ? catalogue.archetype(step.archetype)
+    step.kind === 'work' && step.annotations.archetype !== undefined
+      ? catalogue.archetype(step.annotations.archetype)
       : undefined;
   const handoff = handoffOf({
     ...input.run,
@@ -112,29 +168,9 @@ export function compileStepContext(input: StepContextInput): StepContext {
   return {
     subject: input.subject,
     workflow: input.run.workflow,
-    step: {
-      id: step.id,
-      title: step.title,
-      kind: step.kind,
-      purpose: step.purpose,
-      ...(step.instructions !== undefined ? { instructions: step.instructions } : {}),
-      ...(step.kind === 'work'
-        ? {
-            executor: step.executor,
-            interaction: step.interaction,
-            ...(step.produces !== undefined ? { produces: step.produces } : {}),
-          }
-        : {}),
-    },
+    step: describeStep(step),
     attempt: input.attempt,
-    finish: {
-      transitions: step.transitions.map((transition) => ({
-        id: transition.id,
-        ...(transition.result !== undefined ? { result: transition.result } : {}),
-        ...(transition.label !== undefined ? { label: transition.label } : {}),
-        feedback: transition.feedback,
-      })),
-    },
+    finish: { transitions: describeTransitions(input.definition, step) },
     ...(handoff ? { handoff } : {}),
     ...(archetype
       ? {
@@ -159,7 +195,7 @@ export function compileStepContext(input: StepContextInput): StepContext {
           },
         }
       : {}),
-    ...(step.kind === 'work' && step.produces === 'tasks'
+    ...(step.kind === 'work' && step.annotations.produces === 'tasks'
       ? {
           taskTypes: catalogue
             .taskTypes()
@@ -177,7 +213,7 @@ export function compileStepContext(input: StepContextInput): StepContext {
             dependsOn: existing.dependsOn,
             status: existing.status,
             ...(existing.statusChange ? { statusChange: existing.statusChange } : {}),
-            state: existing.run.position.state,
+            state: taskPosition(existing).state,
             readiness: taskReadiness(existing, input.tasks).kind,
           })),
           broken: input.broken,

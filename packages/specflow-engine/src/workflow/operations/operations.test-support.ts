@@ -2,15 +2,17 @@ import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { loadDefinitions } from '../../specs/definitions/loader';
-import { createDefaultDefinitionRegistry } from '../../specs/definitions/kinds';
-import { locateSeedDirectory, openSeedSource } from '../../specs/definitions/seed';
+import { createDefaultDefinitionRegistry } from '../../definitions/shipped-registry';
+import { locateSeedDirectory, openSeedSource } from '../../definitions/seed';
 import { resolveExecutionCatalogue, type ExecutionCatalogue } from '../definitions/catalogue';
 import { createMemoryWorkflowStore } from '../state/memory-store.test-support';
-import type { ExecutorRecord, WorkflowSubject } from '../state/model';
+import type { OwnerActor, WorkflowActor, WorkflowSubject } from '../state/model';
 import { finishStep, type FinishStepInput } from './finish';
 import { inspectExecution } from './inspect';
-import type { WorkflowDependencies } from './loaded-execution';
+import type { ExecutionHolds, WorkflowDependencies } from './loaded-execution';
 import { startSpecificationExecution, startTaskExecution } from './start';
+import type { GateDocument, GateScopeRef } from '../gates/evaluate';
+import type { TaskReferences } from './task-references';
 
 /** The execution catalogue of the shipped seed definitions. */
 export async function seedExecutionCatalogue(): Promise<ExecutionCatalogue> {
@@ -35,9 +37,79 @@ export async function seedDefinitionFiles(): Promise<Record<string, string>> {
   return files;
 }
 
+/** A typed document a gate can find: in the Specification (`taskId` absent) or a Task. */
+export interface FakeGateDocument extends GateDocument {
+  readonly taskId?: string;
+  readonly type: string;
+}
+
+/**
+ * {@link TaskReferences} over sets a test fills: what exists in the Specification, the project
+ * documentation and the checkout. The archetype is `feature` unless a test changes it.
+ */
+export function fakeReferences(): TaskReferences & {
+  archetypeId: string;
+  readonly specificationDocuments: Set<string>;
+  readonly projectDocuments: Set<string>;
+  readonly paths: Set<string>;
+  readonly pendingDocuments: Set<string>;
+  /** The typed documents gates read, in registry order; `gateReads` counts the reads. */
+  readonly gateDocuments: FakeGateDocument[];
+  gateReads: number;
+} {
+  const references = {
+    archetypeId: 'feature',
+    specificationDocuments: new Set(['overview', 'requirements']),
+    projectDocuments: new Set(['architecture.workflow.workflow-kernel']),
+    paths: new Set(['packages/specflow-engine/src', 'packages/**/*.ts']),
+    pendingDocuments: new Set<string>(),
+    gateDocuments: [] as FakeGateDocument[],
+    gateReads: 0,
+    documentsOfType: (scope: GateScopeRef, type: string) => {
+      references.gateReads += 1;
+
+      return Promise.resolve(
+        references.gateDocuments
+          .filter(
+            (document) =>
+              document.type === type &&
+              document.taskId === (scope.kind === 'task' ? scope.taskId : undefined),
+          )
+          .map(({ taskId: _taskId, type: _type, ...document }) => document),
+      );
+    },
+    archetype: () => Promise.resolve(references.archetypeId),
+    specificationDocument: (_specId: string, id: string) =>
+      Promise.resolve(references.specificationDocuments.has(id)),
+    projectDocument: (id: string) => Promise.resolve(references.projectDocuments.has(id)),
+    path: (_specId: string, path: string) => Promise.resolve(references.paths.has(path)),
+    pendingDocumentChange: (_specId: string, taskId: string) =>
+      Promise.resolve(references.pendingDocuments.has(taskId)),
+  };
+
+  return references;
+}
+
+/** {@link ExecutionHolds} a test sets: none by default. */
+export function fakeHolds(): ExecutionHolds & {
+  pendingChange: boolean;
+  inProgress: boolean;
+} {
+  const holds = {
+    pendingChange: false,
+    inProgress: false,
+    pendingExecutionChange: () => Promise.resolve(holds.pendingChange),
+    operationInProgress: () => Promise.resolve(holds.inProgress),
+  };
+
+  return holds;
+}
+
 /** Dependencies over an in-memory store with a clock that advances one second per reading. */
 export function memoryDependencies(catalogue: ExecutionCatalogue): WorkflowDependencies & {
   readonly store: ReturnType<typeof createMemoryWorkflowStore>;
+  readonly references: ReturnType<typeof fakeReferences>;
+  readonly holds: ReturnType<typeof fakeHolds>;
 } {
   let tick = Date.parse('2026-11-05T10:00:00.000Z');
   let queue = Promise.resolve();
@@ -45,6 +117,8 @@ export function memoryDependencies(catalogue: ExecutionCatalogue): WorkflowDepen
   return {
     store: createMemoryWorkflowStore(),
     catalogue,
+    references: fakeReferences(),
+    holds: fakeHolds(),
     now: () => new Date((tick += 1000)),
     serialize: <T>(operation: () => Promise<T>) => {
       const result = queue.then(operation);
@@ -58,14 +132,12 @@ export function memoryDependencies(catalogue: ExecutionCatalogue): WorkflowDepen
   };
 }
 
-export const agent = (provider: string, sessionId: string, model?: string): ExecutorRecord => ({
-  kind: 'agent',
-  provider,
-  sessionId,
-  ...(model !== undefined ? { model } : {}),
+export const agent = (provider: string, sessionId: string, model?: string): WorkflowActor => ({
+  class: 'agent',
+  details: { provider, sessionId, ...(model !== undefined ? { model } : {}) },
 });
 
-export const owner: ExecutorRecord = { kind: 'human', actorId: 'owner' };
+export const owner: OwnerActor = { class: 'human', details: { actorId: 'owner', trust: 'local' } };
 
 /** The agent Session that works on the Specification in most tests. */
 export const claude = agent('claude', 'session-a', 'claude-opus-5-5');
@@ -80,12 +152,12 @@ export type Dependencies = ReturnType<typeof memoryDependencies>;
 /** Start the Specification's next step (creating its run from the `feature` archetype). */
 export function startSpecification(
   dependencies: WorkflowDependencies,
-  executor: ExecutorRecord = claude,
+  actor: WorkflowActor = claude,
 ) {
   return startSpecificationExecution(dependencies, {
     specId: SPEC,
     archetype: 'feature',
-    executor,
+    actor,
   });
 }
 
@@ -104,12 +176,12 @@ export async function work(
   dependencies: WorkflowDependencies,
   subject: WorkflowSubject,
   input: FinishStepInput['input'] = {},
-  executor: ExecutorRecord = claude,
+  actor: WorkflowActor = claude,
 ) {
   const started =
     subject.kind === 'specification'
-      ? await startSpecification(dependencies, executor)
-      : await startTaskExecution(dependencies, { specId: SPEC, taskId: subject.taskId, executor });
+      ? await startSpecification(dependencies, actor)
+      : await startTaskExecution(dependencies, { specId: SPEC, taskId: subject.taskId, actor });
   if (started.kind === 'terminal') {
     throw new Error('Nothing to start.');
   }
@@ -119,7 +191,7 @@ export async function work(
     step: started.context.step.id,
     attempt: started.context.attempt,
     input,
-    executor,
+    actor,
   });
 }
 
@@ -140,7 +212,7 @@ export async function specificationWithTasks(dependencies: WorkflowDependencies)
     step: 'breakdown',
     attempt: 1,
     input: { tasks: TWO_TASKS },
-    executor: claude,
+    actor: claude,
   });
 
   return work(dependencies, specification, { result: 'pass' }, agent('codex', 'session-r', 'x'));

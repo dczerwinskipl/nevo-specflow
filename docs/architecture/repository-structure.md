@@ -42,6 +42,7 @@ nevo-specflow/
     specflow-docs/       @nevo/specflow-docs            — documentation capability: frontmatter contract, discovery, semantic search (.) + CLI adapter (./cli); private, bundled into specflow
     specflow-runtime/    @nevo/specflow-runtime         — Runtime vertical: capability (.) + CLI adapter (./cli); private, bundled into specflow
     specflow-ui/         @nevo/specflow-ui              — product UI capability and React application; private
+    workflow/            @nevo/workflow                 — product-neutral deterministic workflow kernel (definitions, Runs, replay, coordinator); private, bundled into specflow
   tools/                repository-internal tooling — never published, all TypeScript
     agents/             nevo-repo-agents  — agent profile generation and validation
     docs/               nevo-repo-docs    — ADR authoring and repository-only doc checks on top of @nevo/specflow-docs

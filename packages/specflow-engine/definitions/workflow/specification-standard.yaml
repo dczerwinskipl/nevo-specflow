@@ -10,7 +10,7 @@ steps:
   - id: requirements
     kind: work
     title: Gather requirements
-    executor: agent
+    executors: [agent, human]
     archetype: spec-writer
     interaction: interactive
     purpose: Agree on the goal, scope, constraints and acceptance with the owner in conversation.
@@ -23,7 +23,7 @@ steps:
   - id: specification
     kind: work
     title: Write the Specification
-    executor: agent
+    executors: [agent, human]
     archetype: spec-writer
     purpose: Write the Specification documents from the agreed requirements.
     transitions:
@@ -33,7 +33,7 @@ steps:
   - id: solution
     kind: work
     title: Design the solution
-    executor: agent
+    executors: [agent, human]
     archetype: solution-designer
     purpose: Design the solution and record its decisions.
     transitions:
@@ -43,7 +43,7 @@ steps:
   - id: breakdown
     kind: work
     title: Break the solution down
-    executor: agent
+    executors: [agent, human]
     archetype: task-planner
     purpose: Draft the Tasks, each with its task type, dependencies and verification; the finish input lists every draft Task.
     produces: tasks
@@ -54,7 +54,7 @@ steps:
   - id: breakdown-review
     kind: work
     title: Review the breakdown
-    executor: agent
+    executors: [agent, human]
     archetype: reviewer
     purpose: Check that the Specification, the solution and the draft Tasks are complete and consistent.
     transitions:
@@ -69,7 +69,7 @@ steps:
         continuation: auto
   - id: implementation
     kind: wait-for-tasks
-    title: Implementation
+    title: Waiting for Tasks
     purpose: Wait until every Task is finished. A Task that escalates sends the Specification back to the breakdown.
     transitions:
       - id: tasks-finished
@@ -84,7 +84,7 @@ steps:
   - id: acceptance
     kind: work
     title: Acceptance
-    executor: human
+    executors: [human]
     purpose: The owner accepts the implemented Specification.
     transitions:
       - id: accepted

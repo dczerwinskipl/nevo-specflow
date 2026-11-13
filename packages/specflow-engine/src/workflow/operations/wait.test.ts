@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import type { ExecutionCatalogue } from '../definitions/catalogue';
+import { taskPosition } from '../state/model';
 import { finishStep } from './finish';
 import { inspectExecution } from './inspect';
 import {
@@ -37,7 +38,7 @@ describe('Tasks of a Specification', () => {
       step: 'breakdown',
       attempt: 1,
       input: { tasks: TWO_TASKS },
-      executor: claude,
+      actor: claude,
     });
 
     expect(drafted.createdTasks).toEqual(['api', 'screen']);
@@ -47,7 +48,7 @@ describe('Tasks of a Specification', () => {
       ['draft', 'status'],
     ]);
     await expect(
-      startTaskExecution(dependencies, { specId: SPEC, taskId: 'api', executor: claude }),
+      startTaskExecution(dependencies, { specId: SPEC, taskId: 'api', actor: claude }),
     ).rejects.toMatchObject({
       code: 'WORKFLOW_TASK_BLOCKED',
       message: expect.stringContaining('draft') as unknown,
@@ -68,15 +69,17 @@ describe('Tasks of a Specification', () => {
     });
     const tasks = (await inspectExecution(dependencies, SPEC)).tasks;
     expect(
-      tasks.map((entry) => [
-        entry.record.taskId,
-        entry.record.status,
-        entry.record.run.workflow.id,
-      ]),
+      tasks.map((entry) => [entry.record.taskId, entry.record.status, entry.record.type]),
     ).toEqual([
-      ['api', 'ready', 'task-standard'],
-      ['screen', 'ready', 'task-ui'],
+      ['api', 'ready', 'implementation'],
+      ['screen', 'ready', 'ui-implementation'],
     ]);
+    // A draft has no run: the first start pins the workflow of the Task's type.
+    expect(tasks.map((entry) => entry.record.run)).toEqual([undefined, undefined]);
+    await startTaskExecution(dependencies, { specId: SPEC, taskId: 'api', actor: claude });
+    expect((await inspectExecution(dependencies, SPEC)).tasks[0]?.record.run?.workflow.id).toBe(
+      'task-standard',
+    );
     expect(tasks.map((entry) => entry.readiness.kind)).toEqual(['ready', 'dependencies']);
   });
 
@@ -88,7 +91,7 @@ describe('Tasks of a Specification', () => {
       step: 'breakdown',
       attempt: 1,
       input: { tasks: TWO_TASKS },
-      executor: claude,
+      actor: claude,
     });
     await work(dependencies, specification, { result: 'fail', feedback: 'Merge the screen.' });
     const started = await startSpecification(dependencies);
@@ -107,7 +110,7 @@ describe('Tasks of a Specification', () => {
       step: 'breakdown',
       attempt: 2,
       input: { tasks: [{ id: 'api', title: 'API and screen', type: 'implementation' }] },
-      executor: claude,
+      actor: claude,
     });
     expect(revised.createdTasks).toEqual([]);
     await work(dependencies, specification, { result: 'pass' });
@@ -117,10 +120,10 @@ describe('Tasks of a Specification', () => {
       { taskId: 'api', title: 'API and screen', status: 'ready', origin: { attempt: 2 } },
       { taskId: 'screen', status: 'cancelled' },
     ]);
-    // A draft left out of the breakdown is cancelled, never removed from the Task list.
-    expect((await inspectExecution(dependencies, SPEC)).specification?.record.taskIds).toEqual([
-      'api',
-      'screen',
+    // A draft left out of the breakdown is cancelled, never removed from the Task index.
+    expect((await dependencies.store.read(SPEC)).index?.value.tasks).toEqual([
+      { id: 'api' },
+      { id: 'screen' },
     ]);
   });
 
@@ -140,7 +143,7 @@ describe('Tasks of a Specification', () => {
     await specificationWithTasks(dependencies);
 
     await expect(
-      startTaskExecution(dependencies, { specId: SPEC, taskId: 'screen', executor: claude }),
+      startTaskExecution(dependencies, { specId: SPEC, taskId: 'screen', actor: claude }),
     ).rejects.toMatchObject({ code: 'WORKFLOW_DEPENDENCY_UNSATISFIED' });
   });
 
@@ -187,7 +190,7 @@ describe('Tasks of a Specification', () => {
       startSpecificationExecution(dependencies, {
         specId: SPEC,
         archetype: 'architecture',
-        executor: claude,
+        actor: claude,
       });
     for (let index = 0; index < 3; index += 1) {
       const started = await start();
@@ -200,7 +203,7 @@ describe('Tasks of a Specification', () => {
         step: started.context.step.id,
         attempt: started.context.attempt,
         input: {},
-        executor: claude,
+        actor: claude,
       });
     }
 
@@ -211,7 +214,7 @@ describe('Tasks of a Specification', () => {
         step: 'breakdown',
         attempt: 1,
         input: { tasks: [{ id: 'screen', title: 'Screen', type: 'ui-implementation' }] },
-        executor: claude,
+        actor: claude,
       }),
     ).rejects.toMatchObject({ code: 'WORKFLOW_INPUT_INVALID' });
   });
@@ -227,7 +230,7 @@ describe('ready Tasks', () => {
     const inspection = await inspectExecution(dependencies, SPEC);
     expect(inspection.attention.map((item) => item.subject.kind)).not.toContain('task');
     expect(
-      inspection.tasks.map((entry) => [entry.record.run.position.state, entry.readiness.kind]),
+      inspection.tasks.map((entry) => [taskPosition(entry.record).state, entry.readiness.kind]),
     ).toEqual([
       ['terminal', 'ready'],
       ['not-started', 'ready'],
@@ -244,7 +247,7 @@ describe('waiting for Tasks', () => {
       step: 'breakdown',
       attempt: 1,
       input: { tasks: [] },
-      executor: claude,
+      actor: claude,
     });
     const result = await work(dependencies, specification, { result: 'pass' });
 
@@ -282,10 +285,8 @@ describe('waiting for Tasks', () => {
                       result: 'drop',
                       target: { kind: 'terminal', outcome: 'abandoned' },
                       continuation: 'owner-action',
-                      session: 'fresh',
                       feedback: 'optional',
-                      effects: [],
-                      escalate: false,
+                      annotations: { session: 'fresh', effects: [], escalate: false },
                     },
                   ],
                 }
@@ -312,7 +313,7 @@ describe('waiting for Tasks', () => {
     ]);
     expect(inspection.attention).toMatchObject([{ subject: specification, reason: 'tasks-stuck' }]);
     await expect(
-      startTaskExecution(dependencies, { specId: SPEC, taskId: 'screen', executor: claude }),
+      startTaskExecution(dependencies, { specId: SPEC, taskId: 'screen', actor: claude }),
     ).rejects.toMatchObject({
       code: 'WORKFLOW_DEPENDENCY_UNSATISFIED',
       message: expect.stringContaining('can no longer complete') as unknown,
@@ -325,7 +326,7 @@ describe('waiting for Tasks', () => {
     ]);
 
     await returnToStep(dependencies, {
-      executor: owner,
+      actor: owner,
       subject: specification,
       step: 'breakdown',
       feedback: 'Replace the API Task.',
@@ -365,7 +366,7 @@ describe('waiting for Tasks', () => {
     await specificationWithTasks(dependencies);
     await work(dependencies, task('api'));
     await returnToStep(dependencies, {
-      executor: owner,
+      actor: owner,
       subject: specification,
       step: 'breakdown',
       feedback: 'x',
@@ -395,7 +396,7 @@ describe('waiting for Tasks', () => {
     const dependencies = memoryDependencies(catalogue);
     await specificationWithTasks(dependencies);
     await returnToStep(dependencies, {
-      executor: owner,
+      actor: owner,
       subject: specification,
       step: 'breakdown',
       feedback: 'Add an audit Task.',

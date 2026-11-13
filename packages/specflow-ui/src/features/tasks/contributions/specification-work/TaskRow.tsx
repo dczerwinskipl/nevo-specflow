@@ -4,6 +4,7 @@ import { OperationalRow } from '../../../../shared/operational-list';
 import type { TaskItem } from '../../read-model/model';
 import { getTaskStatePresentation } from './presentation';
 import { taskStatusLabel } from '../../status';
+import { taskRowLine } from './taskRowLine';
 
 export interface TaskRowProps {
   readonly task: TaskItem;
@@ -23,7 +24,9 @@ export function TaskRow({
   fullTaskHref,
 }: TaskRowProps) {
   const { t } = useTranslation();
-  const statePresentation = getTaskStatePresentation(task);
+  const projectLine = taskRowLine(task, t);
+  const statePresentation = projectLine?.presentation ?? getTaskStatePresentation(task);
+  const supportingText = projectLine?.text ?? task.additionalInfo;
 
   const leading = (
     <div
@@ -62,11 +65,11 @@ export function TaskRow({
       primary={task.title}
       onPrimaryClick={() => onPreview(task.id)}
       primaryAriaLabel={task.title}
-      compactFacts={[{ text: task.id, mono: true }, taskStatusLabel(task, t)]}
+      compactFacts={[{ text: task.id, mono: true }, task.typeTitle ?? taskStatusLabel(task, t)]}
       supporting={
-        task.additionalInfo
+        supportingText
           ? {
-              text: task.additionalInfo,
+              text: supportingText,
               tone: statePresentation.tone,
               icon: statePresentation.icon,
               iconClassName: statePresentation.iconClassName,

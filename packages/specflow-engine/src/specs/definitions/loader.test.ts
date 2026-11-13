@@ -2,7 +2,7 @@ import type { DefinitionProblem } from '@nevo/specflow-contracts/documents';
 import { describe, expect, it } from 'vitest';
 
 import { loadDefinitions, normalizeLineEndings, type LoadResult } from './loader';
-import { createDefaultDefinitionRegistry } from './kinds';
+import { createDefaultDefinitionRegistry } from '../../definitions/shipped-registry';
 import {
   DEFINITION_DIRECTORY_ENTRIES_MAX,
   DEFINITION_FILE_MAX_BYTES,

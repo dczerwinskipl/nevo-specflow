@@ -65,7 +65,6 @@ title: <string> # existing
 status: draft # existing
 priority: 10 # existing, optional
 created: 2026-10-23 # existing, optional
-tasks: [] # existing
 archetype: # REQUIRED; replaces `type`
   id: feature # catalogue id: ^[a-z][a-z0-9-]{0,31}$
   version: 1 # positive integer
@@ -84,7 +83,8 @@ folders: # OPTIONAL: explicit folders that may hold no file (see below)
 
 Parser rules (strict, `SPEC_SOURCE_INVALID` otherwise; no alias, no default, no legacy fallback):
 
-1. `type` (the old field) is not read. A manifest lacking `archetype` or `documents` is invalid.
+1. `type` and `tasks` (old fields) are not read; Tasks are registered in the reserved `tasks/index.yaml`
+   (draft F20, `ideas.specflow-engine.task-resource-and-context`). A manifest lacking `archetype` or `documents` is invalid.
 2. `archetype` and each `documents[]`/`requirements[]` entry accept only the keys above (unknown keys rejected).
    Unknown **top-level** keys are tolerated and preserved on rewrite.
 3. `documents[].id` matches `^[a-z0-9][a-z0-9-]{0,63}$`, is unique, and MUST NOT start with `u-` (reserved for
@@ -311,7 +311,9 @@ and `DocumentTree.archetype.defined` is `defined | invalid | absent`.
   A hand-dropped root entry whose name equals `specification.yaml` or `change.yaml` ignoring case but is not the
   canonical manifest is not a document problem: the existing Specification listing already fails closed for it
   (`repository.ts` requires exactly one manifest-named entry, spelled `specification.yaml`), so the tree is never
-  reached; this is documented behaviour, not new.
+  reached; this is documented behaviour, not new. The root folder `tasks/` (ignoring case) is reserved for the
+  Specification's Task resources (`tasks/index.yaml`, `tasks/<id>/`): no document or folder path lies in it
+  (`DOCUMENT_PATH_INVALID`) and the tree never lists it.
 - **Symlinks and special files** are never followed and never listed; such an entry is skipped, counted in
   `skippedEntries` and reported as the issue `skipped-entry`. The count is a lower bound once the archive count traversal
   reached its own bound (entries beyond it were not visited; `archive-limit` is reported then). Names with control,
@@ -330,6 +332,43 @@ and `DocumentTree.archetype.defined` is `defined | invalid | absent`.
   folder exists only if it is in `folders[]` (committed with the registry change).
 - **Display title** is derived, not stored: the first level-1 heading of a markdown text, else the file stem.
   Frontmatter is not consulted.
+
+## Task documents (document containers)
+
+The documents layer serves two kinds of **document container** (`specs/documents/changes/plan/container.ts`): the
+Specification, and each Task of it. A container has its own root folder, registry file and required document; the
+reads, planners, journal, claims, revision checks, commit queue, commit policy and ledger are the same for both (no
+second writer). A Task container's journal and plan carry the `taskId`; its paths are committed with the
+Specification's other documents.
+
+| Container       | Root                    | Registry                  | Required document (not deletable or renamable) |
+| --------------- | ----------------------- | ------------------------- | ---------------------------------------------- |
+| `specification` | `specs/active/<slug>`   | `specification.yaml`      | `overview` (`overview.md`)                     |
+| `task`          | `<spec>/tasks/<taskId>` | `task.yaml` `documents[]` | `task` (`task.md`)                             |
+
+- A Task container has no folders: save, batch save, create (typed documents, directly in the Task folder, never
+  type `task`, no templates), rename and delete of a document. Folder, move and classify are
+  `DOCUMENT_OPERATION_INVALID`. `task.yaml` is reserved. The Task must be listed in `tasks/index.yaml`
+  (`DOCUMENT_NOT_FOUND` otherwise).
+- A registry change rewrites `task.yaml` through the strict Task manifest parser (it is read back before it is
+  stored) and keeps every other field. A document a `task-document` context entry names cannot be deleted.
+  `task.yaml` is compared as a whole file under the control lock (re-plan on change). It is not judged
+  `SPEC_MANIFEST_DIRTY`: the Specification execution store writes it too, and its writes may be
+  uncommitted (auto-commit off, see [Commits of workflow state](#commits-of-workflow-state)).
+- Mutual exclusion with the Specification execution store (D03, under the project control lock): a Task
+  document change is refused with `SPEC_BUSY` (`details.cause: task-resource-change`) while that store holds a
+  pending journal that writes the Task's `task.yaml` or documents. The reverse check is
+  `hasPendingTaskDocumentChange(context, specId, taskId)`: true while a document change of the Task is not
+  final (being written, waiting for or in its commit, failed to commit, needing recovery). The store applies it
+  to every change that writes a Task's `task.yaml` or documents (Task edit and removal, status decisions,
+  Breakdown revising a draft, finish effects, a first start): `openWorkflow` wraps the store
+  (`workflow/state/task-document-guard.ts`), which refuses such a change with `WORKFLOW_TASK_BUSY`
+  (`task-document-change`) inside `serialize`, before anything is written. Close's Specification exit gate and
+  Abandon report it as the blocker `pending-task-documents` ([lifecycle](specification-lifecycle.md)).
+- The execution store's writes of `task.yaml` are `workflow` operations of the same queue
+  ([Commits of workflow state](#commits-of-workflow-state)). A Task registry change queued after one
+  plans from the file the store wrote; the batch keeps the first `pre` and the last `post` of the path.
+  With auto-commit off both are ledger entries, so a manual commit takes `task.yaml` whole.
 
 ## Content kinds
 
@@ -705,13 +744,51 @@ and HEAD holds it, and never commits twice; a failure that does not prove the co
 `recovery-required`; `recovery-required` to `committing` (resume), `completed` (adopt) or `failed` (abandon).
 
 **Interaction.** Close refuses while the ledger of any checkout of its plan is non-empty after the flush and prune
-(`DOCUMENT_COMMITS_PENDING`, cause `commit-uncommitted`). `SPEC_MANIFEST_DIRTY` is judged against the post-image of the
+(`DOCUMENT_COMMITS_PENDING`, cause `commit-uncommitted`), except for the execution state of the Specification a
+Specification Close archives ([Commits of workflow state](#commits-of-workflow-state)). `SPEC_MANIFEST_DIRTY` is judged against the post-image of the
 latest operation in flight, else the ledger post-image, else `HEAD` (a manifest that equals `HEAD` also passes a ledger
 entry that no prune removed yet); a foreign edit is a hash mismatch. Policy flips: `on -> off` lets queued work drain with its
 pinned mode and makes later writes `uncommitted`; `off -> on` commits nothing, the entries stay until a later `auto` write
 of the path commits it (and prunes) or a manual commit. `init` and `definitions install` register the paths they commit
 in the `definitions` owner before the commit and prune after it, so what an interrupted install leaves is known. With the policy on, a manual commit needs an empty queue for the scope (after a flush);
 with it off it is always available once queued work has drained.
+
+## Commits of workflow state
+
+Owner decision (2026-11-12): the writes of the Specification execution store (`.execution/**` and
+`tasks/**` of a Specification: the Task index and manifests, the initial `task.md`, the run records and
+removals) made by owner, UI or CLI operations are committed like the Specification's documents. Each
+published change is ONE document operation of action `workflow` (contract
+`DOCUMENT_OPERATION_STATUS_ACTIONS`) in the document journal store
+(`specs/documents/write/execution-state.ts`):
+
+- **Admission** (under the project control lock, before the store writes its journal): the same Git
+  policy and preflight as a document write (`admitGitCommit`, pinned `commitMode`), no Create or
+  Close holding the checkout, queue capacity, no claimed batch or manual commit holding a path
+  (`SPEC_BUSY`, `commit-in-progress`), at most 200 paths, and with auto-commit off the ledger bound.
+  A refusal writes nothing; it is a document error.
+- **Record** (same lock section, after the files are published): the plan lists the paths with their
+  `pre`/`post` and `source: written` (the store wrote them) or `none` (removed), plus the `summary`
+  the operation gave (`create task api`). Auto-commit on: the journal is published `queued` (its
+  `checkout-scoped` claim held) and the scheduler is woken; the queue commits it like any member
+  (settle period, batches, verification, `Nevo-Action: workflow`, subject
+  `spec(workflow): <summary> in <slug>`, `spec(documents): change documents and workflow state in
+<slug>` in a mixed batch). Auto-commit off: the ledger entries (owner `specification`, reason
+  `auto-commit-off`) then a settled `completed`/`uncommitted` journal. Git disabled: nothing.
+- **Task documents (D03).** A `workflow` operation names no Task, so it is not a pending Task
+  document change; the store's own D03 guard still refuses while a Task document change is not final,
+  and a Task document change still refuses while the store's local journal is pending.
+- **Auto-commit off, "Next".** A step's finish runs the post action `commit-execution-state`
+  (`commitExecutionState`): a manual commit of the Specification's ledger entries below `.execution/`
+  and `tasks/`, closed under shared operation ids, message `spec(workflow): finish step ... in <slug>`.
+- **Close.** A Specification Close does not wait for ledger entries of the execution state of the
+  Specification it archives: its archive commit takes them along, and the next prune removes them.
+- **Crash safety.** The store's journal fixes the operation id, the summary and each target's `pre`
+  before any file is written, and the record is made BEFORE the journal is removed. A stop anywhere
+  leaves the journal; the next change of the store publishes it again and records it with the same
+  id and `pre`, and the record is idempotent by that id (an existing journal, active or settled,
+  records nothing). A record that fails leaves the journal too, so the change is recorded later.
+  The Close tolerance of dirty execution state is the backstop for state written outside the store.
 
 ## Windows-hosted paths
 

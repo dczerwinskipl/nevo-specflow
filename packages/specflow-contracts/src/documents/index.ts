@@ -9,6 +9,7 @@ export * from './definition';
 export * from './definition-files';
 export * from './errors';
 export * from './operations';
+export * from './task-resource-files';
 export * from './tree';
 export * from './uncommitted';
 export * from './vocabulary';

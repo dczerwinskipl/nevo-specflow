@@ -44,8 +44,9 @@ export function AttentionSection({ items }: AttentionSectionProps) {
                 className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 @min-[36rem]/attention:flex-row @min-[36rem]/attention:items-center @min-[36rem]/attention:justify-between"
               >
                 <div className="flex items-start gap-2.5 min-w-0">
-                  <span className="flex size-4 shrink-0 items-center justify-center text-content-secondary mt-1">
-                    <Icon name={icon} size="sm" />
+                  {/* The icon slot is one title line tall (title-sm: 20px), so the glyph centres on the first line. */}
+                  <span className="flex h-5 w-4 shrink-0 items-center justify-center text-content-secondary">
+                    <Icon name={icon} size="sm" aria-hidden="true" />
                   </span>
                   <div className="min-w-0 flex-1">
                     <Typography

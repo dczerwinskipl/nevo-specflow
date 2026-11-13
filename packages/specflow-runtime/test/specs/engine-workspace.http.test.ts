@@ -123,7 +123,7 @@ describe('Engine-backed specification workspace read', () => {
         });
         const unavailable = { state: 'unavailable', reason: 'not_implemented' };
         expect(body.sections).toEqual({
-          // Temporary manifest source: no Tasks is a verified, available empty section.
+          // The Engine's Task resources: none yet, a verified empty section.
           tasks: {
             state: 'available',
             data: { groups: [], completed: 0, total: 0, attention: [] },

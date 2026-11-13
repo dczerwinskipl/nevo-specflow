@@ -2,6 +2,7 @@ import type { DocumentOperationStatusAction } from '@nevo/specflow-contracts/doc
 import { DOCUMENT_OPERATION_STATUS_ACTIONS } from '@nevo/specflow-contracts/documents';
 
 import type { ManifestDocument } from '../../../model';
+import { SPECIFICATION_CONTAINER, registryFileOf, type DocumentContainer } from './container';
 
 /**
  * The action kinds of a document change. They are the status vocabulary of the contract
@@ -25,7 +26,12 @@ export type PathSource =
   /** The bytes are those of another path of the same plan, which the operation removes (rename, move). */
   | { readonly kind: 'moved-from'; readonly path: string }
   /** Nothing to write: the path is removed (or unchanged). */
-  | { readonly kind: 'none' };
+  | { readonly kind: 'none' }
+  /**
+   * Already written by another writer (the Specification execution store) before the journal was
+   * published: the operation only commits the path. Only a `workflow` plan has it.
+   */
+  | { readonly kind: 'written' };
 
 export const PLANNED_PATH_ROLES = ['document', 'manifest'] as const;
 export type PlannedPathRole = (typeof PLANNED_PATH_ROLES)[number];
@@ -39,7 +45,7 @@ export interface PlannedPath {
   readonly source: PathSource;
 }
 
-/** A document the operation reports as written. `path` is relative to the Specification directory. */
+/** A document the operation reports as written. `path` is relative to the container root. */
 export interface PlannedDocument {
   readonly id: string;
   readonly path: string;
@@ -73,7 +79,15 @@ export interface DocumentChangePlan {
   readonly action: DocumentChangeAction;
   readonly specId: string;
   readonly slug: string;
-  /** Checkout-relative Specification directory, `specs/active/<slug>`. */
+  /**
+   * The Task whose documents the operation changes; absent for the Specification's own documents.
+   * It decides the directory and the registry file (`./container.ts`).
+   */
+  readonly taskId?: string;
+  /**
+   * Checkout-relative container root: `specs/active/<slug>`, or `specs/active/<slug>/tasks/<taskId>`
+   * for a Task.
+   */
   readonly directory: string;
   /** In write order: document paths first, the manifest (when present) last. */
   readonly paths: readonly PlannedPath[];
@@ -87,6 +101,11 @@ export interface DocumentChangePlan {
   readonly registry?: PlannedRegistry;
   /** A folder delete: the folder it removes (Specification-relative). Absent for every other plan. */
   readonly removedFolder?: string;
+  /**
+   * A `workflow` plan only, and required there: what the execution-store change did, in words
+   * (`create task api`); the commit subject is made of it.
+   */
+  readonly summary?: string;
 }
 
 /** Content the writer must put in the payload store before the journal is published. */
@@ -95,6 +114,13 @@ export interface PlanPayload {
   readonly content: string;
 }
 
-export function manifestPathOf(plan: Pick<DocumentChangePlan, 'directory'>): string {
-  return plan.directory + '/specification.yaml';
+/** The checkout-relative registry file of the plan's container. */
+export function manifestPathOf(plan: Pick<DocumentChangePlan, 'directory' | 'taskId'>): string {
+  return plan.directory + '/' + registryFileOf(containerOfPlan(plan));
+}
+
+export function containerOfPlan(plan: Pick<DocumentChangePlan, 'taskId'>): DocumentContainer {
+  return plan.taskId === undefined
+    ? SPECIFICATION_CONTAINER
+    : { kind: 'task', taskId: plan.taskId };
 }

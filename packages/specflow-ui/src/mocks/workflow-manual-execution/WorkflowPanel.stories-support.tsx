@@ -1,0 +1,657 @@
+import { useRef, useState, type ComponentProps, type ReactNode } from 'react';
+import {
+  AccentBlock,
+  Alert,
+  Button,
+  DescriptionList,
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  Icon,
+  IconButton,
+  InlineNote,
+  RadioGroup,
+  RadioGroupOption,
+  TextArea,
+  Timeline,
+  Typography,
+  cn,
+} from '@nevo/ui';
+import { stepTitle } from './fixtures.stories-support';
+import type { Gate, HistoryEntry, Transition, WorkflowView } from './fixtures.stories-support';
+
+/*
+ * PRESENTATION MOCK ONLY. One generic step panel for a Specification and a Task. It renders the
+ * read-only action projection: position + allowed actions. It never branches on step ids.
+ * The action row is the single slot where a later "Do it myself / Ask agent" choice attaches.
+ */
+
+const noop = () => undefined;
+
+/**
+ * An icon inside running text: it sits on the text line, optically centred on the x-height, with no
+ * flex box around it (a flex box shifts the whole chunk off the line). Standalone status lines use
+ * the design-system InlineNote instead.
+ */
+export function InlineIcon({ name }: { name: ComponentProps<typeof Icon>['name'] }) {
+  return (
+    <span className="mr-1 inline-flex h-[1lh] items-center align-top">
+      <Icon name={name} size="sm" aria-hidden="true" />
+    </span>
+  );
+}
+
+/** A step by its title; the technical id is detail (tooltip), never the primary label. */
+function Step({ children }: { children: string }) {
+  return <span title={`Step id: ${children}`}>{stepTitle(children)}</span>;
+}
+
+/** Exit gates as a checklist: met ones as satisfied checks, unmet ones with what is missing. */
+export function GateList({ gates, label }: { gates: readonly Gate[]; label: string }) {
+  return (
+    <ul aria-label={label} className="grid gap-1.5">
+      {gates.map((gate) => (
+        // The InlineNote line shape (first-line icon slot), with a success tone for met gates.
+        <li
+          key={gate.id}
+          className="flex min-w-0 items-start gap-2 text-body-sm text-content-secondary"
+        >
+          <span className="flex h-[1lh] shrink-0 items-center">
+            <Icon
+              name={gate.met ? 'circle-check' : 'circle-alert'}
+              size="sm"
+              aria-hidden="true"
+              className={gate.met ? 'text-status-success' : 'text-status-attention'}
+            />
+          </span>
+          <span className="min-w-0">
+            <span className="font-medium text-content-primary">{gate.label}</span>
+            {gate.detail ? <> · {gate.detail}</> : null}
+            <span className="sr-only">{gate.met ? ' (met)' : ' (not met)'}</span>
+            {!gate.met && gate.action ? (
+              <>
+                {' '}
+                <a
+                  href={gate.action.href}
+                  className="ml-1 text-content-link underline-offset-2 hover:underline"
+                >
+                  {gate.action.label}
+                </a>
+              </>
+            ) : null}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+export interface WorkflowPanelProps {
+  readonly view: WorkflowView;
+  /** Label of the start action for a not-started workflow (subject-specific wording). */
+  readonly startLabel?: string;
+  readonly onStart?: () => void;
+  readonly onFinish?: () => void;
+  readonly onReturn?: () => void;
+  readonly headingId: string;
+  /** The subject's own status when it changes what can happen now (draft, on hold). */
+  readonly status?: ReactNode;
+  /** Blocking reasons from the projection, each one line with its cause. */
+  readonly blockers?: ReactNode;
+  /**
+   * The one primary action when it is not a workflow action (Approve, Resume, Close). Replaces
+   * the workflow action row: only one primary action is offered now.
+   */
+  readonly primaryAction?: ReactNode;
+  /** A transient note just above the actions (for example a kept finish draft). */
+  readonly note?: ReactNode;
+}
+
+/** The panel: current position first, the latest hand-off second, then the allowed actions. */
+export function WorkflowPanel({
+  view,
+  startLabel,
+  onStart = noop,
+  onFinish = noop,
+  onReturn = noop,
+  headingId,
+  status,
+  blockers,
+  primaryAction,
+  note,
+}: WorkflowPanelProps) {
+  const { position, definition } = view;
+  const canFinish = position.kind === 'active' && (view.transitions?.length ?? 0) > 0;
+  const canReturn = (view.returnSteps?.length ?? 0) > 0;
+  const canStart =
+    view.canStart === true && (position.kind === 'not-started' || position.kind === 'ready');
+  const abandoned = position.kind === 'terminal' && position.outcome === 'abandoned';
+
+  let current: ReactNode;
+  let facts: ReactNode;
+  let supporting: ReactNode;
+
+  switch (position.kind) {
+    case 'not-started':
+      current = 'Not started';
+      facts = (
+        <>
+          First step <Step>{position.firstStep}</Step>
+        </>
+      );
+      // With a primary action (Approve, Resume) the reason would only repeat it.
+      supporting =
+        view.unavailableReason && !primaryAction ? (
+          <InlineNote tone="info">{view.unavailableReason}</InlineNote>
+        ) : undefined;
+      break;
+    case 'ready':
+      current = <Step>{position.step}</Step>;
+      facts = `Ready to start · attempt ${position.attempt}`;
+      break;
+    case 'active':
+      current = <Step>{position.step}</Step>;
+      facts = `Attempt ${position.attempt} · in progress since ${position.since} · started by ${position.actor}`;
+      break;
+    case 'waiting':
+      current = <Step>{position.step}</Step>;
+      facts = position.note;
+      // The blocking work is listed once, in its own section; the panel says how much and links.
+      supporting = (
+        <InlineNote tone="attention" icon="clock">
+          <span className="font-medium text-content-primary">{position.reason}</span>{' '}
+          <a
+            href={position.see.href}
+            className="ml-1 text-content-link underline-offset-2 hover:underline"
+          >
+            {position.see.label}
+          </a>
+        </InlineNote>
+      );
+      break;
+    case 'terminal':
+      current = abandoned ? 'Abandoned' : 'Completed';
+      facts = position.summary;
+      break;
+  }
+
+  const finishNeeds =
+    position.kind === 'active'
+      ? (view.transitions ?? []).filter((transition) =>
+          (transition.gates ?? []).some((gate) => !gate.met),
+        )
+      : [];
+  const latest = view.latest;
+  const latestNeedsAttention = latest?.attention === true;
+
+  return (
+    // The "Now" block: the one prominent region of the page (state, blockers, the one action).
+    <AccentBlock aria-labelledby={headingId} role="region">
+      <div className="grid gap-3">
+        <Typography as="h2" variant="section-label" id={headingId}>
+          Now
+        </Typography>
+        {status}
+        {/* The position is a polite live region: a refresh after an action announces the change. */}
+        <div className="grid gap-0.5" aria-live="polite">
+          <Typography
+            as="p"
+            variant="title-sm"
+            className={cn(position.kind === 'terminal' && !abandoned && 'text-status-success')}
+          >
+            {position.kind === 'terminal' ? (
+              <>
+                <InlineIcon name={abandoned ? 'archive' : 'circle-check'} />
+                {current}
+              </>
+            ) : (
+              current
+            )}
+          </Typography>
+          <Typography as="p" variant="body-sm" className="text-content-muted">
+            {facts ? <>{facts} · </> : null}
+            {'step' in position ? (
+              <>
+                <span className="font-mono">{position.step}</span> ·{' '}
+              </>
+            ) : null}
+            {definition.title} rev {definition.revision}
+          </Typography>
+        </div>
+        {supporting}
+        {blockers}
+        {finishNeeds.map((transition) => (
+          <div key={transition.id} className="grid gap-1.5">
+            <Typography as="p" variant="body-sm" className="text-content-secondary">
+              To finish with <span className="font-medium">{transition.label}</span>:
+            </Typography>
+            <GateList
+              gates={transition.gates!.filter((gate) => !gate.met)}
+              label={`Needed to finish with ${transition.label}`}
+            />
+          </div>
+        ))}
+        {latest && position.kind !== 'terminal' ? (
+          <div className="grid gap-1 border-l-2 border-border-default pl-3">
+            <Typography as="p" variant="body-sm" className="text-content-secondary">
+              {latest.returned ? 'Returned from ' : 'Last: '}
+              <Step>{latest.fromStep}</Step> ·{' '}
+              {latestNeedsAttention ? (
+                <span className="font-medium text-status-attention">
+                  <InlineIcon name="triangle-alert" />
+                  {latest.result}
+                </span>
+              ) : (
+                latest.result
+              )}{' '}
+              · {latest.actor}, {latest.at}
+            </Typography>
+            {latest.feedback ? (
+              <Typography as="p" variant="body-sm" className="text-content-primary">
+                {latest.feedback}
+              </Typography>
+            ) : null}
+          </div>
+        ) : null}
+        {/*
+         * The action row. E6 adds the executor choice to the start action of an eligible step in
+         * this slot (Start step ▸ Do it myself / Ask agent); the primary stays "Start step".
+         */}
+        {note}
+        {primaryAction ? (
+          <div className="flex flex-wrap gap-2" data-slot="workflow-actions">
+            {primaryAction}
+          </div>
+        ) : canStart || canFinish || canReturn ? (
+          <div className="flex flex-wrap gap-2" data-slot="workflow-actions">
+            {canStart ? <Button onClick={onStart}>{startLabel ?? 'Start step'}</Button> : null}
+            {canFinish ? <Button onClick={onFinish}>Finish step</Button> : null}
+            {canReturn ? (
+              <Button variant="secondary" onClick={onReturn}>
+                Return to earlier step
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </AccentBlock>
+  );
+}
+
+/* ------------------------------------------------------------------------------------------ */
+/* Finish                                                                                       */
+/* ------------------------------------------------------------------------------------------ */
+
+function transitionDescription(transition: Transition) {
+  const target =
+    transition.to === null ? 'Ends the workflow' : `Goes to ${stepTitle(transition.to)}`;
+
+  return transition.feedback === 'required' ? `${target} · feedback required` : target;
+}
+
+export function FinishStepDialog({
+  step,
+  attempt,
+  transitions,
+  initialTransition,
+  initialFeedback = '',
+  artifacts = [],
+  showMissingFeedback = false,
+  rechecked = false,
+}: {
+  step: string;
+  attempt: number;
+  transitions: readonly Transition[];
+  initialTransition?: string;
+  initialFeedback?: string;
+  artifacts?: readonly string[];
+  showMissingFeedback?: boolean;
+  /** Reopened after creating a gate's document: the draft is kept and gates are checked again. */
+  rechecked?: boolean;
+}) {
+  const [value, setValue] = useState(initialTransition ?? '');
+  const feedbackRef = useRef<HTMLTextAreaElement>(null);
+  const selected = transitions.find((transition) => transition.id === value);
+  const required = selected?.feedback === 'required';
+  const missing = showMissingFeedback && required && initialFeedback.trim() === '';
+  const gates = selected?.gates ?? [];
+  const gatesUnmet = gates.some((gate) => !gate.met);
+
+  return (
+    <Dialog open>
+      <DialogContent
+        onOpenAutoFocus={(event) => {
+          if (feedbackRef.current && initialTransition) {
+            event.preventDefault();
+            feedbackRef.current.focus();
+          }
+        }}
+      >
+        <DialogHeader>
+          <DialogTitle>
+            Finish <Step>{step}</Step>
+          </DialogTitle>
+          <DialogDescription>
+            Attempt {attempt}. You are recorded as the person who finished it.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogBody className="grid gap-6">
+          <div className="grid gap-2">
+            <Typography as="p" variant="label-sm" id="radio-result">
+              Result
+            </Typography>
+            <RadioGroup value={value} onValueChange={setValue} aria-labelledby="radio-result">
+              {transitions.map((transition) => (
+                <RadioGroupOption
+                  key={transition.id}
+                  value={transition.id}
+                  label={transition.label}
+                  description={transitionDescription(transition)}
+                />
+              ))}
+            </RadioGroup>
+          </div>
+          {gates.length > 0 ? (
+            <div className="grid gap-2" aria-live="polite">
+              <Typography as="p" variant="label-sm">
+                Needed to finish with {selected?.label}
+              </Typography>
+              <GateList gates={gates} label={`Exit gates for ${selected?.label}`} />
+              {rechecked && !gatesUnmet ? (
+                <Typography as="p" variant="body-sm" className="text-content-secondary">
+                  Checked again when you came back; your result and feedback are as you left them.
+                </Typography>
+              ) : null}
+              {gatesUnmet ? (
+                <Typography as="p" variant="body-sm" className="text-content-secondary">
+                  Finish is unavailable for this result until every item is met. Other results stay
+                  available.
+                </Typography>
+              ) : null}
+            </div>
+          ) : null}
+          <Field invalid={missing}>
+            <Field.Label>{required ? 'Feedback (required)' : 'Feedback (optional)'}</Field.Label>
+            <TextArea ref={feedbackRef} rows={4} defaultValue={initialFeedback} />
+            {missing ? (
+              <Field.Error role="alert">This result needs feedback for the next step.</Field.Error>
+            ) : (
+              <Field.Description>Shown to whoever works on the next step.</Field.Description>
+            )}
+          </Field>
+          <div className="grid gap-2">
+            <Typography as="p" variant="label-sm">
+              Artifacts (optional)
+            </Typography>
+            {artifacts.length > 0 ? (
+              // Attached items only when there are some: one row each, removable.
+              <ul className="grid gap-1" aria-label="Attached artifacts">
+                {artifacts.map((artifact) => (
+                  <li key={artifact} className="flex min-w-0 items-center gap-2 text-body-sm">
+                    <span className="min-w-0 flex-1 truncate">{artifact}</span>
+                    <IconButton
+                      icon="close"
+                      size="sm"
+                      variant="ghost"
+                      aria-label={`Remove ${artifact}`}
+                    />
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <Typography as="p" variant="body-sm" className="text-content-muted">
+                Documents that show the result, such as a review note.
+              </Typography>
+            )}
+            <div>
+              <Button variant="secondary" size="sm">
+                Attach document
+              </Button>
+            </div>
+          </div>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="secondary">Cancel</Button>
+          <Button disabled={!selected || missing || gatesUnmet}>Finish step</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/* ------------------------------------------------------------------------------------------ */
+/* Return                                                                                       */
+/* ------------------------------------------------------------------------------------------ */
+
+export function ReturnStepDialog({
+  current,
+  steps,
+}: {
+  current: string;
+  steps: readonly string[];
+}) {
+  const [value, setValue] = useState(steps[steps.length - 1] ?? '');
+
+  return (
+    <Dialog open>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Return to an earlier step</DialogTitle>
+          <DialogDescription>
+            Ends the current attempt of <Step>{current}</Step> without a result. The earlier step
+            starts a new attempt.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogBody className="grid gap-6">
+          <div className="grid gap-2">
+            <Typography as="p" variant="label-sm" id="radio-step">
+              Return to
+            </Typography>
+            <RadioGroup value={value} onValueChange={setValue} aria-labelledby="radio-step">
+              {steps.map((step) => (
+                <RadioGroupOption key={step} value={step} label={<Step>{step}</Step>} />
+              ))}
+            </RadioGroup>
+          </div>
+          <Field>
+            <Field.Label>Reason (required)</Field.Label>
+            <TextArea
+              rows={3}
+              defaultValue="The provider rejects the refresh grant; the design needs to change before implementing further."
+            />
+          </Field>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="secondary">Cancel</Button>
+          <Button>Return to {value}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/* ------------------------------------------------------------------------------------------ */
+/* First start of a Task: binding confirmation and refusals                                     */
+/* ------------------------------------------------------------------------------------------ */
+
+/**
+ * `definition-changed`: the live definition differs from the Task's creation binding.
+ * `changed-since-preview`: the confirm sent the previewed revision and the Engine refused because
+ * the definition changed while the dialog was open; the dialog re-opens on the new revision.
+ * `task-type-not-allowed`: the archetype no longer allows the Task Type (immutable: remove and
+ * recreate).
+ */
+export type StartRefusal = 'definition-changed' | 'changed-since-preview' | 'task-type-not-allowed';
+
+export function StartTaskDialog({
+  taskId,
+  taskType,
+  workflow,
+  revision,
+  firstStep,
+  refusal,
+}: {
+  taskId: string;
+  taskType: string;
+  workflow: string;
+  revision: number;
+  firstStep: string;
+  refusal?: StartRefusal;
+}) {
+  const dismissRef = useRef<HTMLButtonElement>(null);
+  const changed = refusal === 'definition-changed' || refusal === 'changed-since-preview';
+  const shown = changed ? revision + 1 : revision;
+
+  return (
+    <Dialog open>
+      <DialogContent
+        onOpenAutoFocus={(event) => {
+          // A refusal opens on the harmless dismiss, never on a consequential action.
+          if (refusal) {
+            event.preventDefault();
+            dismissRef.current?.focus();
+          }
+        }}
+      >
+        <DialogHeader>
+          <DialogTitle>Start {taskId}</DialogTitle>
+          <DialogDescription>
+            {refusal === 'task-type-not-allowed'
+              ? 'This task cannot start.'
+              : `Starting fixes the workflow this task follows until it ends. You confirm rev ${shown}; if it changes before you confirm, nothing starts and this dialog shows the new revision.`}
+          </DialogDescription>
+        </DialogHeader>
+        <DialogBody className="grid gap-5">
+          {refusal === 'definition-changed' ? (
+            <Alert role="alert" tone="attention" title={`The ${workflow} workflow changed`}>
+              The task was created with rev {revision}; the current revision is rev {revision + 1}.
+              Review the change and start with it, or leave the task unstarted.
+            </Alert>
+          ) : null}
+          {refusal === 'changed-since-preview' ? (
+            <Alert role="alert" tone="attention" title="Not started: the workflow changed just now">
+              You confirmed rev {revision}, but {workflow} is now rev {revision + 1}. Review the
+              change below and confirm again.
+            </Alert>
+          ) : null}
+          {refusal === 'task-type-not-allowed' ? (
+            <Alert role="alert" tone="danger" title={`${taskType} is no longer allowed`}>
+              {taskType} is no longer allowed for Feature specifications. A task keeps its type, so
+              remove this task and create a new one with an allowed type, or cancel it.
+            </Alert>
+          ) : null}
+          <DescriptionList>
+            <DescriptionList.Item>
+              <DescriptionList.Term>Task type</DescriptionList.Term>
+              <DescriptionList.Detail>{taskType}</DescriptionList.Detail>
+            </DescriptionList.Item>
+            <DescriptionList.Item>
+              <DescriptionList.Term>Workflow</DescriptionList.Term>
+              <DescriptionList.Detail>
+                {changed
+                  ? `${workflow} · rev ${revision} → rev ${revision + 1}`
+                  : `${workflow} · rev ${revision}`}
+              </DescriptionList.Detail>
+            </DescriptionList.Item>
+            {changed ? (
+              <DescriptionList.Item>
+                <DescriptionList.Term>Change</DescriptionList.Term>
+                <DescriptionList.Detail>
+                  Adds step <Step>security-review</Step> after <Step>review</Step>
+                </DescriptionList.Detail>
+              </DescriptionList.Item>
+            ) : null}
+            {refusal === 'task-type-not-allowed' ? null : (
+              <DescriptionList.Item>
+                <DescriptionList.Term>First step</DescriptionList.Term>
+                <DescriptionList.Detail>
+                  <Step>{firstStep}</Step>
+                </DescriptionList.Detail>
+              </DescriptionList.Item>
+            )}
+          </DescriptionList>
+        </DialogBody>
+        <DialogFooter>
+          <Button ref={dismissRef} variant="secondary">
+            {refusal === 'task-type-not-allowed' ? 'Not now' : 'Cancel'}
+          </Button>
+          {refusal === 'task-type-not-allowed' ? (
+            <>
+              <Button variant="secondary">Cancel task</Button>
+              <Button variant="destructive">Remove task</Button>
+            </>
+          ) : (
+            <Button>
+              {changed ? `Start with rev ${revision + 1}` : `Start ${stepTitle(firstStep)}`}
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/* ------------------------------------------------------------------------------------------ */
+/* History (Secondary)                                                                          */
+/* ------------------------------------------------------------------------------------------ */
+
+export function WorkflowHistory({
+  entries,
+  label,
+}: {
+  entries: readonly HistoryEntry[];
+  label: string;
+}) {
+  return (
+    <Timeline size="md" aria-label={label}>
+      {entries.map((entry) => (
+        <Timeline.Item
+          key={`${entry.step}-${entry.attempt}`}
+          aria-current={entry.active ? 'step' : undefined}
+        >
+          <Timeline.Marker tone={entry.tone ?? 'neutral'} active={entry.active} />
+          <Timeline.Content
+            meta={`${entry.at} · ${entry.actor} · attempt ${entry.attempt}`}
+            title={
+              <span>
+                <Step>{entry.step}</Step>
+                {entry.toStep !== undefined ? (
+                  <span className="font-normal text-content-secondary">
+                    {' '}
+                    → {entry.toStep ? stepTitle(entry.toStep) : 'end'}
+                  </span>
+                ) : null}
+              </span>
+            }
+            description={
+              <span className="grid gap-1">
+                <span
+                  className={cn(
+                    entry.active && 'text-status-info',
+                    entry.tone === 'attention' && 'font-medium text-status-attention',
+                  )}
+                >
+                  {entry.tone === 'attention' ? <InlineIcon name="triangle-alert" /> : null}
+                  {entry.active ? 'In progress' : entry.result}
+                </span>
+                {entry.feedback ? (
+                  <span className="text-content-primary">{entry.feedback}</span>
+                ) : null}
+                {entry.artifacts?.length ? (
+                  <span className="text-content-muted">
+                    Artifacts: {entry.artifacts.join(', ')}
+                  </span>
+                ) : null}
+              </span>
+            }
+          />
+        </Timeline.Item>
+      ))}
+    </Timeline>
+  );
+}

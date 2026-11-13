@@ -1,13 +1,16 @@
 import type { AttentionItem } from '../attention/model';
-import { handoffOf, type Handoff } from '../progression/progression';
+import { handoffOf, type Handoff } from '@nevo/workflow';
 import { taskReadiness, type TaskReadiness } from '../tasks/tasks';
-import type { SpecificationExecutionRecord, TaskRecord, WorkflowRun } from '../state/model';
+import type { SpecificationExecutionRecord, ExecutionTask, WorkflowRun } from '../state/model';
+import type { TaskResourceIssue } from '../../tasks/resource/validate';
+import { WorkflowError } from '../errors';
 import { deriveAttention } from './attention';
 import {
   executionTasks,
   pinnedDefinitionIfUnchanged,
   type WorkflowDependencies,
 } from './loaded-execution';
+import type { ExecutionSnapshot } from '../state/store';
 
 export interface ExecutionInspection {
   readonly specId: string;
@@ -18,7 +21,9 @@ export interface ExecutionInspection {
     readonly definitionChanged?: true;
   };
   readonly tasks: readonly {
-    readonly record: TaskRecord;
+    readonly record: ExecutionTask;
+    /** The revision of the Task's manifest, which an edit or a removal names (compare-and-set). */
+    readonly revision: string;
     readonly readiness: TaskReadiness;
     readonly handoff?: Handoff;
     /**
@@ -28,12 +33,15 @@ export interface ExecutionInspection {
     readonly definitionChanged?: true;
   }[];
   /**
-   * The broken Tasks, in list order: listed without a record, or with a position that does not follow
-   * from its history (`executionTasks`). Each cannot start, finish or change status, keeps the wait
-   * open and blocks its dependents until its record is restored. A broken Task with a record is
-   * still in `tasks`, but its readiness and position are not meaningful there.
+   * The broken Tasks, in id order (`executionTasks`): an index entry without its folder or manifest,
+   * a run record whose Task is not registered, or a run that contradicts the Task's status or whose
+   * position does not follow from its history (a
+   * registered Task without a run record has not started; it is in `tasks`). Each cannot start, finish or change status, keeps the
+   * wait open and blocks its dependents until its files are restored; it is not in `tasks`.
    */
   readonly brokenTasks: readonly string[];
+  /** The consistency issues of the Task resources (dangling, unregistered, broken, dependencies). */
+  readonly issues: readonly TaskResourceIssue[];
   /** Derived from the state on every inspection (`deriveAttention`). */
   readonly attention: readonly AttentionItem[];
 }
@@ -46,41 +54,63 @@ export function inspectExecution(
   dependencies: Pick<WorkflowDependencies, 'store' | 'serialize' | 'catalogue'>,
   specId: string,
 ): Promise<ExecutionInspection> {
-  return dependencies.serialize(async () => {
-    const snapshot = await dependencies.store.read(specId);
-    const { tasks, broken } = executionTasks(dependencies.catalogue, snapshot);
-    const specification = snapshot.specification?.value;
-    const specificationHandoff = specification ? handoffOf(specification.run) : undefined;
-    const changed = (run: WorkflowRun) =>
-      pinnedDefinitionIfUnchanged(dependencies.catalogue, run)
-        ? {}
-        : { definitionChanged: true as const };
+  return dependencies.serialize(async () =>
+    inspectSnapshot(dependencies.catalogue, await dependencies.store.read(specId)),
+  );
+}
 
-    return {
-      specId,
-      ...(specification
-        ? {
-            specification: {
-              record: specification,
-              ...(specificationHandoff ? { handoff: specificationHandoff } : {}),
-              ...changed(specification.run),
-            },
-          }
-        : {}),
-      tasks: snapshot.tasks.map(({ value: record }) => {
-        const handoff = handoffOf(record.run);
+/** {@link inspectExecution} of a snapshot already read (inside `serialize`). */
+export function inspectSnapshot(
+  catalogue: WorkflowDependencies['catalogue'],
+  snapshot: ExecutionSnapshot,
+): ExecutionInspection {
+  const dependencies = { catalogue };
+  const specId = snapshot.specId;
+  const { tasks, broken } = executionTasks(dependencies.catalogue, snapshot);
+  const revisions = new Map(
+    snapshot.manifests.map((entry) => [entry.value.id, entry.revision] as const),
+  );
+  // Every Task of `tasks` has its manifest; a missing revision is a defect, never a default.
+  const revisionOf = (taskId: string) => {
+    const revision = revisions.get(taskId);
+    if (revision === undefined) {
+      throw new WorkflowError('WORKFLOW_STATE_CORRUPT', `The Task "${taskId}" has no manifest.`);
+    }
 
-        return {
-          record,
-          readiness: taskReadiness(record, tasks),
-          ...(handoff ? { handoff } : {}),
-          // Load-bearing: a broken Task's pinned workflow is unchanged, so `changed` would check its
-          // position and throw `WORKFLOW_STATE_CORRUPT`, failing the whole inspection.
-          ...(broken.includes(record.taskId) ? {} : changed(record.run)),
-        };
-      }),
-      brokenTasks: broken,
-      attention: deriveAttention(dependencies.catalogue, snapshot),
-    };
-  });
+    return revision;
+  };
+
+  const specification = snapshot.specification?.value;
+  const specificationHandoff = specification ? handoffOf(specification.run) : undefined;
+  const changed = (run: WorkflowRun) =>
+    pinnedDefinitionIfUnchanged(dependencies.catalogue, run)
+      ? {}
+      : { definitionChanged: true as const };
+
+  return {
+    specId,
+    ...(specification
+      ? {
+          specification: {
+            record: specification,
+            ...(specificationHandoff ? { handoff: specificationHandoff } : {}),
+            ...changed(specification.run),
+          },
+        }
+      : {}),
+    tasks: tasks.map((record) => {
+      const handoff = record.run ? handoffOf(record.run) : undefined;
+
+      return {
+        record,
+        revision: revisionOf(record.taskId),
+        readiness: taskReadiness(record, tasks),
+        ...(handoff ? { handoff } : {}),
+        ...(record.run ? changed(record.run) : {}),
+      };
+    }),
+    brokenTasks: broken,
+    issues: snapshot.issues,
+    attention: deriveAttention(dependencies.catalogue, snapshot),
+  };
 }

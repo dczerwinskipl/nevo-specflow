@@ -126,24 +126,16 @@ export type SpecificationReadModel = Omit<
    * presented; the contribution decides whether it is a valid calendar date.
    */
   readonly created?: string;
-  /**
-   * The verified manifest `tasks`, an input of the (temporary) `tasks` contribution, so the
-   * manifest is read once per workspace read. Never presented.
-   */
-  readonly manifestTasks?: readonly unknown[];
 };
-/** Facts the Specification source already read, handed to the contributions that need them. */
-export interface WorkspaceSourceFacts {
-  readonly manifestTasks?: readonly unknown[];
-}
 export interface SpecificationWorkspaceRepository {
   readSpecification(specId: string): Promise<SpecificationReadModel | null>;
 }
 export interface WorkspaceContributions {
-  tasks?(
-    specId: string,
-    facts: WorkspaceSourceFacts,
-  ): Promise<WorkspaceReadModel['sections']['tasks']>;
+  /** The Tasks owner's section, and the preparation state the Tasks imply (overrides the source's). */
+  tasks?(specId: string): Promise<{
+    section: WorkspaceReadModel['sections']['tasks'];
+    preparationState?: WorkspaceReadModel['specification']['preparationState'];
+  }>;
   documents?(specId: string): Promise<WorkspaceReadModel['sections']['documents']>;
   /** Composed after the other reads, from the facts they already returned (no foreign read). */
   activity?(

@@ -47,7 +47,6 @@ describe('attention derived from the state', () => {
 
     await dependencies.store.apply(SPEC, {
       specification: { expected: current.revision, next: switched.value },
-      tasks: [],
     });
 
     expect((await inspectExecution(dependencies, SPEC)).attention).toEqual([
@@ -115,7 +114,7 @@ describe('attention derived from the state', () => {
       { subject: task('api'), step: 'review' },
     ]);
 
-    await startTaskExecution(dependencies, { specId: SPEC, taskId: 'api', executor: claude });
+    await startTaskExecution(dependencies, { specId: SPEC, taskId: 'api', actor: claude });
 
     expect((await inspectExecution(dependencies, SPEC)).attention).toEqual([]);
   });
@@ -128,6 +127,8 @@ describe('inspection during a mutation', () => {
     const { promise: gate, resolve: release } = Promise.withResolvers<void>();
     const store: WorkflowStore = {
       read: (specId) => dependencies.store.read(specId),
+      taskFiles: (specId, taskId) => dependencies.store.taskFiles(specId, taskId),
+      taskFolderExists: (specId, taskId) => dependencies.store.taskFolderExists(specId, taskId),
       apply: async (specId, change) => {
         await gate;
 
@@ -141,7 +142,7 @@ describe('inspection during a mutation', () => {
       step: 'requirements',
       attempt: 1,
       input: {},
-      executor: claude,
+      actor: claude,
     });
     const inspecting = inspectExecution(gated, SPEC);
     release();

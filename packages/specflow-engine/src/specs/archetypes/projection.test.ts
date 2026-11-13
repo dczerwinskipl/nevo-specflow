@@ -2,7 +2,7 @@ import { Value } from 'typebox/value';
 import { describe, expect, it } from 'vitest';
 import { ArchetypeCatalogueSchema } from '@nevo/specflow-contracts/documents';
 
-import { seedCatalogueForTesting } from '../definitions/testing-install';
+import { seedCatalogueForTesting } from '../../definitions/testing-install';
 import { toArchetypeCatalogue } from './projection';
 
 const catalogue = await seedCatalogueForTesting();

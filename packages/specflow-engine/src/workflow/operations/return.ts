@@ -1,10 +1,17 @@
 import type { ContinuationDecision } from '../continuation/resolve';
+import { decide, type RunPosition } from '@nevo/workflow';
 import { WorkflowError } from '../errors';
-import { assertOwner } from '../progression/executor';
-import { applyReturn, planReturn } from '../progression/progression';
-import type { ExecutorRecord, RunPosition, WorkflowSubject } from '../state/model';
+import { assertFeedback } from '../input-schema';
+import type { OwnerActor, WorkflowSubject } from '../state/model';
+import { assertOwner } from './actors';
 import { advance, applyEffects, type AdvanceContext } from './advance';
-import { isoNow, loadSubject, type WorkflowDependencies } from './loaded-execution';
+import {
+  isoNow,
+  loadSubject,
+  loadTask,
+  ofSubject,
+  type WorkflowDependencies,
+} from './loaded-execution';
 import { ExecutionWorkingSet } from './working-set';
 
 export interface ReturnToStepInput {
@@ -14,7 +21,7 @@ export interface ReturnToStepInput {
   /** What changed; carried to the step as its handoff. */
   readonly feedback?: string;
   /** The owner, from trusted Runtime/CLI context; a return is an owner action. */
-  readonly executor: ExecutorRecord;
+  readonly actor: OwnerActor;
 }
 
 export interface ReturnToStepResult {
@@ -27,7 +34,7 @@ export interface ReturnToStepResult {
  * "Back to the table": move a run to a declared step it has already reached (earlier work, never a
  * step ahead) from any non-terminal position, also while the Specification waits for its Tasks. The
  * return's declared effects (by default none) apply in the same change; a return never changes a
- * Task's status by itself. A return is an owner action: it names the owner as its executor (anything
+ * Task's status by itself. A return is an owner action: it names the owner as its actor (anything
  * else is refused with `WORKFLOW_EXECUTOR_NOT_ALLOWED`), and what follows always waits for the owner.
  *
  * Only a `ready` Task returns: a Task on hold or cancelled cannot start, so its return would leave it
@@ -41,27 +48,40 @@ export function returnToStep(
   request: ReturnToStepInput,
 ): Promise<ReturnToStepResult> {
   return dependencies.serialize(async () => {
-    assertOwner(request.executor, 'returns a run to an earlier step');
+    assertOwner(request.actor, 'returns a run to an earlier step');
     const { subject } = request;
     const snapshot = await dependencies.store.read(subject.specId);
-    const loaded = loadSubject(dependencies.catalogue, snapshot, subject);
-    if (loaded.task && loaded.task.status !== 'ready') {
+    const held =
+      subject.kind === 'task'
+        ? loadTask(dependencies.catalogue, snapshot, subject.taskId).task
+        : undefined;
+    if (held && held.status !== 'ready') {
       throw new WorkflowError(
         'WORKFLOW_TASK_BLOCKED',
-        `The Task "${loaded.task.taskId}" is ${loaded.task.status}; only a ready Task can return.`,
+        `The Task "${held.taskId}" is ${held.status}; only a ready Task can return.`,
       );
     }
 
-    const entry = planReturn(loaded.run, loaded.definition, request.step, request.feedback);
+    const loaded = loadSubject(dependencies.catalogue, snapshot, subject);
+    assertFeedback(request.feedback);
     const context: AdvanceContext = {
       set: new ExecutionWorkingSet(snapshot, dependencies.catalogue),
       catalogue: dependencies.catalogue,
       at: isoNow(dependencies),
     };
-    context.set.setRun(subject, applyReturn(loaded.run, entry, request.feedback, context.at));
-    applyEffects(context, entry.effects);
-    const continuation = advance(context, subject, loaded.definition);
-    await dependencies.store.apply(subject.specId, context.set.change());
+    const decision = decide(loaded.definition, loaded.run, {
+      kind: 'return',
+      at: context.at,
+      step: request.step,
+      ...(request.feedback !== undefined ? { feedback: request.feedback } : {}),
+    });
+    context.set.setRun(subject, decision.nextRun);
+    applyEffects(context, decision.declaredEffects);
+    const continuation = advance(context, subject, loaded.definition, decision.intent);
+    await dependencies.store.apply(subject.specId, {
+      ...context.set.change(),
+      summary: `return to step ${request.step}${ofSubject(subject)}`,
+    });
 
     return { subject, position: context.set.run(subject).position, continuation };
   });

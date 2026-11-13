@@ -1,6 +1,11 @@
 import type { DocumentChangeResult } from '@nevo/specflow-engine';
 
-import type { DocumentOperationStatus, DocumentTree } from './api';
+import type {
+  DocumentContentResult,
+  DocumentOperationStatus,
+  DocumentTree,
+  TaskDocumentTree,
+} from './api';
 
 type Commit = DocumentChangeResult['commit'];
 
@@ -110,6 +115,28 @@ export function treeLines(tree: DocumentTree): string[] {
   }
 
   return lines;
+}
+
+/** The documents of a Task: registry order first, then the files its registry does not name. */
+export function taskTreeLines(tree: TaskDocumentTree): string[] {
+  return [
+    `Registry revision: ${tree.registryRevision}`,
+    `Writable: ${tree.writable ? 'yes' : 'no'}`,
+    ...tree.documents.map(
+      (document) =>
+        `${document.id}  ${document.path}  ${document.type ?? 'unclassified'}  ${document.file?.revision ?? 'no file'}` +
+        (document.required ? '  [required]' : ''),
+    ),
+  ];
+}
+
+/** The text of a document; a binary document has none to print. */
+export function contentLines(document: DocumentContentResult): string[] {
+  if (!('content' in document) || typeof document.content !== 'string') {
+    throw new Error(`The document "${document.id}" is not text; use --json for its metadata.`);
+  }
+
+  return [document.content];
 }
 
 /** Issues after which Close archive refuses, or whose registration points at nothing. */

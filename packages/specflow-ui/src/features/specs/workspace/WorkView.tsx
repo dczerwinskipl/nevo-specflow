@@ -14,6 +14,7 @@ import type { SpecificationWorkspaceData } from '../read-model/model';
 import { useWorkspaceRuntime } from './WorkspaceContext';
 import { SpecificationSummarySection, PreparationSection } from './sections';
 import { usePreserveFocusAcrossLayout } from './usePreserveFocusAcrossLayout';
+import { SpecificationNow, useSpecificationNowVisible } from '../../tasks';
 
 /** Content width (CSS px) from which the Overview shows two columns. Owner decision, 2026-11-07. */
 export const OVERVIEW_TWO_COLUMN_MIN_WIDTH = 1408;
@@ -84,9 +85,11 @@ export function WorkView({ specId, data }: WorkViewProps) {
   // No Tasks and no Session to continue: the preparation block explains (and, when the start is
   // offered, opens) the way to Tasks. Continue session owns the next step once a Session exists.
   const preparationShown = data.isEmpty === true && !data.resumeSession;
+  const nowShown = useSpecificationNowVisible();
   const hasContextSide = hasVisibleWorkSections(modules, ['resume', 'context', 'related'], context);
   const hasWorkSide =
     preparationShown ||
+    nowShown ||
     hasVisibleWorkSections(modules, ['main'], context) ||
     hasSpecificationAttention(modules, context);
   const twoColumns = wide && hasContextSide && hasWorkSide;
@@ -110,17 +113,28 @@ export function WorkView({ specId, data }: WorkViewProps) {
       <SpecificationAttentionOutlet specId={id} data={data} />
     </div>
   );
-  const preparation = preparationShown ? (
-    <div
-      key="preparation"
-      className={cn(
-        'border-t border-border-default py-4 @min-[40rem]/work:py-5',
-        twoColumns && 'col-start-1 min-w-0 peer-empty:border-t-0 peer-empty:pt-3',
-      )}
-    >
-      <PreparationSection startSession={data.startSession} />
-    </div>
-  ) : null;
+  // With a workflow (project Runtime), the Now block takes the preparation block's place, above
+  // the Tasks; it renders the preparation block itself when the Specification has no workflow.
+  const preparation =
+    nowShown || preparationShown ? (
+      <div
+        key="preparation"
+        className={cn(
+          'border-t border-border-default py-4 empty:hidden @min-[40rem]/work:py-5',
+          twoColumns && 'col-start-1 min-w-0 peer-empty:border-t-0 peer-empty:pt-3',
+        )}
+      >
+        <SpecificationNow
+          documents={data.documents.map((document) => ({
+            value: document.filename ?? document.id,
+            label: document.title,
+          }))}
+          fallback={
+            preparationShown ? <PreparationSection startSession={data.startSession} /> : null
+          }
+        />
+      </div>
+    ) : null;
   const main = (
     <div
       key="main"

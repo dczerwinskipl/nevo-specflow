@@ -6,6 +6,7 @@ import { WorkspaceSection } from '../../../../shared/workspace-section';
 import { getGroupTone } from './presentation';
 import { TaskGroupHeader } from './TaskGroupHeader';
 import { TaskRow } from './TaskRow';
+import { isCancelledTask } from './taskRowLine';
 
 export interface TasksSectionProps {
   readonly taskGroups: readonly TaskGroup[];
@@ -17,6 +18,11 @@ export interface TasksSectionProps {
   readonly fullTaskHref: (taskId: string) => string;
   readonly onExecuteTasks: (taskIds: readonly string[]) => void;
   readonly canExecute: boolean;
+  /**
+   * Project mode, when the projection allows creating a Task: the header's New task. Its presence
+   * also says Tasks are created by hand, which the empty state and the progress reflect.
+   */
+  readonly onNewTask?: () => void;
 }
 
 export function TasksSection({
@@ -29,11 +35,15 @@ export function TasksSection({
   fullTaskHref,
   onExecuteTasks,
   canExecute,
+  onNewTask,
 }: TasksSectionProps) {
   const { t } = useTranslation();
 
   const [selectedTasks, setSelectedTasks] = useState<ReadonlySet<string>>(new Set());
-  const [collapsedGroups, setCollapsedGroups] = useState<ReadonlySet<string>>(new Set());
+  // "On hold or cancelled" (the Engine's `held` group) starts collapsed (UX contract).
+  const [collapsedGroups, setCollapsedGroups] = useState<ReadonlySet<string>>(
+    () => new Set(['held']),
+  );
 
   const handleSelectTask = (taskId: string, selected: boolean) => {
     setSelectedTasks((prev) => {
@@ -82,12 +92,28 @@ export function TasksSection({
   const totalTasks = totalTasksCount ?? tasks.length;
   const noTasks = tasks.length === 0 && totalTasks === 0;
 
-  const countLabel = isPreparing
-    ? t('specification.tasksInPreparation', { count: totalTasks })
-    : t('specification.tasksProgressCount', {
-        completed: completedCount,
-        total: totalTasks,
-      });
+  // Project mode names the cancelled Tasks beside the progress (they are not in its denominator).
+  const projectMode = tasks.some((task) => task.statusId !== undefined);
+  const cancelledCount = tasks.filter(isCancelledTask).length;
+  const countLabel = projectMode
+    ? cancelledCount > 0
+      ? t('taskAuthoring.tasks.progressCancelled', {
+          completed: completedCount,
+          total: totalTasks,
+          cancelled: cancelledCount,
+        })
+      : t('taskAuthoring.tasks.progress', { completed: completedCount, total: totalTasks })
+    : isPreparing
+      ? t('specification.tasksInPreparation', { count: totalTasks })
+      : t('specification.tasksProgressCount', {
+          completed: completedCount,
+          total: totalTasks,
+        });
+  const newTask = onNewTask ? (
+    <Button size="sm" variant="secondary" leadingIcon="plus" onClick={onNewTask}>
+      {t('taskAuthoring.tasks.newTask')}
+    </Button>
+  ) : null;
 
   const isExecutionDisabled = canExecute === false || executionReadiness?.canExecute === false;
 
@@ -115,6 +141,7 @@ export function TasksSection({
         actions={
           effectiveSelectedTasks.length > 0 ? (
             <div className="flex items-center gap-3">
+              {newTask}
               <span className="text-body-sm text-content-muted">
                 {t('specification.selectedTasksCount', { count: effectiveSelectedTasks.length })}
               </span>
@@ -131,7 +158,9 @@ export function TasksSection({
                     })}
               </Button>
             </div>
-          ) : null
+          ) : (
+            newTask
+          )
         }
       />
 
@@ -148,7 +177,11 @@ export function TasksSection({
         <EmptyState
           variant="inline"
           title={t('specification.tasksEmptyTitle')}
-          description={t('specification.tasksEmptyDescription')}
+          description={
+            onNewTask
+              ? t('taskAuthoring.tasks.emptyDescription')
+              : t('specification.tasksEmptyDescription')
+          }
         />
       ) : (
         <div className="grid gap-4">

@@ -15,3 +15,9 @@ export type { TaskEvidenceParams, TaskInspectionAnchor } from './detail/taskInsp
 export { useTaskResources } from './detail/useTaskPages';
 export { TaskPreview } from './inspectors/TaskPreview';
 export { useSpecificationTask } from './useSpecificationTask';
+export {
+  SpecificationWorkflowProvider,
+  useSpecificationExitActions,
+  useSpecificationNowVisible,
+} from './execution/specification/SpecificationWorkflow';
+export { SpecificationNow } from './execution/specification/SpecificationNow';

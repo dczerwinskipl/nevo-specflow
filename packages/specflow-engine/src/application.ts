@@ -1,4 +1,5 @@
 import { runReadRequest } from './project/request-verification-memo';
+import type { SpecificationExitGuard } from './specs/lifecycle/exit-guard';
 import {
   resolveProjectHome,
   type ResolveProjectHomeOptions,
@@ -17,11 +18,25 @@ export interface SpecFlowEngine {
   readonly context: ResolvedProjectHome;
   readonly workspace: WorkspaceRegistration;
   readRegistry(): Promise<WorkspaceRegistry>;
+  /** Close's Specification exit gate (D07), composed from the workflow capability. */
+  readonly specificationExit: SpecificationExitGuard;
 }
 
-/** Read-only admission: never initialize or replace Project Home state implicitly. */
-export async function openSpecFlowEngine(
+/**
+ * The ports one capability supplies to another through the opened Engine, so neither imports the
+ * other; the composition root (`./engine`) supplies them.
+ */
+export interface EnginePorts {
+  readonly specificationExit: (engine: SpecFlowEngine) => SpecificationExitGuard;
+}
+
+/**
+ * Read-only admission: never initialize or replace Project Home state implicitly. Use
+ * `openSpecFlowEngine` (`./engine`), which supplies the ports.
+ */
+export async function openEngineBoundary(
   options: ResolveProjectHomeOptions,
+  ports: EnginePorts,
 ): Promise<SpecFlowEngine> {
   const context = await resolveProjectHome(options);
   const registry = await readWorkspaceRegistry(context);
@@ -36,9 +51,10 @@ export async function openSpecFlowEngine(
   await verifyWorkspaceRoot(context, current.root, current);
   const workspace = Object.freeze({ ...current });
 
-  return {
+  const engine: SpecFlowEngine = {
     context,
     workspace,
+    specificationExit: (specId) => ports.specificationExit(engine)(specId),
     async readRegistry() {
       // Revalidate the physical checkout on each use, including linked
       // incarnation, rather than trusting the original open-time snapshot.
@@ -58,6 +74,8 @@ export async function openSpecFlowEngine(
       return latest;
     },
   };
+
+  return engine;
 }
 
 /**

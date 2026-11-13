@@ -60,8 +60,13 @@ export const Alert = forwardRef<HTMLDivElement, AlertProps>(function Alert(
     >
       <div className="flex items-start gap-3">
         {resolvedIcon ? (
+          // One line box of the first text line (title, else body): centred on that line.
           <span
-            className={cn('mt-0.5 shrink-0', toneIconClasses[tone])}
+            className={cn(
+              'flex h-[1lh] shrink-0 items-center',
+              title ? 'text-label-md' : 'text-body-sm',
+              toneIconClasses[tone],
+            )}
             {...designSlot('Alert', 'icon')}
           >
             <Icon name={resolvedIcon} size="md" />

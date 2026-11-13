@@ -91,7 +91,9 @@ manifest's current free `status` string is replaced by that projection under F14
 
 Task-only fields: `status` (`draft | ready | on-hold | cancelled`, the kernel's "Status"),
 `summary` (one line for UI lists and cards, Q3; the full description is `task.md`), `dependsOn[]`,
-`origin {step, attempt}` (the Specification attempt that created it), `statusChange` (the last
+`origin` (tagged as owner-created or from a producing Specification attempt), creation-time
+`expectedBinding` (Task Type/Workflow revisions and relevant Specification archetype policy),
+`statusChange` (the last
 explicit status change, as in the kernel), and optionally `follows` (the Task a review or rework Task was created for, see
 the kernel's "Escalation").
 
@@ -111,7 +113,15 @@ interface TaskManifest extends WorkflowManagedSubject<'task'> {
   readonly status: TaskStatus; // preparation status, never the workflow position
   readonly summary: string; // one line for UI lists and cards; the description is task.md
   readonly dependsOn: readonly string[];
-  readonly origin: { readonly step: string; readonly attempt: number };
+  readonly origin:
+    | { readonly kind: 'manual'; readonly actorId: string }
+    | { readonly kind: 'produced'; readonly step: string; readonly attempt: number };
+  readonly expectedBinding: {
+    readonly taskTypeFingerprint: string; // canonical hash of relevant Task Type fields
+    readonly workflowId: string;
+    readonly workflowRevision: string;
+    readonly specificationTaskTypePolicyDigest: string;
+  }; // validation evidence at creation, NOT a Task-specific workflow override or Run
   readonly statusChange?: {
     readonly source: 'decision' | 'escalation';
     readonly at: string;
@@ -123,9 +133,14 @@ interface TaskManifest extends WorkflowManagedSubject<'task'> {
 type TaskStatus = 'draft' | 'ready' | 'on-hold' | 'cancelled';
 ```
 
-The workflow is **not** stored in the manifest of either subject: it follows from the type, and the
-run pins the resolved definition. A per-Task workflow override is rejected for now (it would couple a
-Task to a workflow its type does not name, the coupling ADR 0019 rejected for Specifications).
+The selected Workflow still follows from the Task Type, and a per-Task Workflow override remains
+rejected. **Draft F20 addendum (pending ADR):** record the expected Task Type content fingerprint (no TaskType revision field exists today),
+derived Workflow id/revision and the Specification archetype's relevant allow-list fingerprint
+at Task creation, even if no SpecificationRun exists. This is **binding evidence**, not a user
+workflow override and not a started Run. On first start compare live definitions and policy with
+this evidence. Refuse drift until an explicitly authorized, revision-checked
+`rebindUnstartedTask` confirms adoption of current definitions. It cannot rebind a started Task.
+The Run pins the newly confirmed Workflow only when the Task is actually started.
 
 **Recommendation.** Introduce the contract as a shared Engine interface and a shared read shape; keep
 two parsers (the Specification manifest is already strict and versioned). The Engine operations take
@@ -235,7 +250,11 @@ Both subjects are context providers. A step's context has two parts:
 | `instructions`           | `text`                                      | Inline instructions (bounded)                                                                                               |
 | `path-hint`              | `allowed[]`, `forbidden[]` (paths or globs) | A Task only: where the change is expected and where it must not go. Passed to the agent as a hint; nothing enforces it (Q9) |
 
-Every entry has `required` (default `true`) and an optional `note` saying why it is there. A
+Every entry has `required` (default `true`) and an optional `note` saying why it is there. As
+implemented, a reference entry may be a process artifact (`artifact: true`, awaited while missing).
+The context is the Task's inputs; what the Task produces is expressed by exit and entry gates, so a
+required artifact of the Task's own documents is refused (see the
+[workflow kernel](../../architecture/workflow/workflow-kernel.md#readiness-and-the-step-context)). A
 `path-hint` resolves to no files and is never `omitted`; it replaces legacy `allowed_paths` /
 `forbidden_paths` as context only. Enforcement (for example by gates, F03) is not planned.
 
@@ -287,7 +306,8 @@ ran the attempt.
   Specification. Amends ADR 0019 decision 9
   (a Task execution record holds only the run).
 - **Task execution record.** `.execution/tasks/<id>.yaml` keeps only `{specId, taskId, run}`. Title,
-  summary, type, `dependsOn`, origin, status and `statusChange` move to `task.yaml`. The record is created at the Task's first start, so a Task that never started is only its
+  summary, type, `dependsOn`, tagged origin, creation-time `expectedBinding`, status and
+  `statusChange` move to `task.yaml`. The record is created at the Task's first start, so a Task that never started is only its
   folder and index entry and can be deleted by hand without leftovers.
 - **Materialization.** `materializeTasks` writes the Task folders (`task.yaml`, `task.md` from the
   finish input or a task-type template) and the index entries, all as `draft`, in the same change as
@@ -338,11 +358,35 @@ and documented in the kernel.
 - **Q12.** Per attempt, a digest of the resolved context list in Git, the full list locally
   ([section 7](#evidence-per-attempt)).
 
+## Pre-release schema cutover and binding policy
+
+**No backwards-compatibility work.** The provisional `.execution/tasks/<id>.yaml` data
+format is not production state. Replace it with the single strict F20 authority layout.
+Rewrite fixtures, sample projects and current tests to the new model; do not add old Task
+readers, migrations, shims or dual-status writers. Unsupported old-format data is an
+explicit validation failure, never silently auto-converted, per the strict-parser approach
+of [ADR 0015](../../architecture/decisions/0015-specification-manifest-as-document-registry.md).
+
+**First-start drift (R02):** creation-time expected binding uses canonical hashes of execution-
+relevant fields, so changes to unrelated display metadata do not falsely block start. It protects
+the first user
+from Task Type, Workflow and Specification archetype/allow-list changes between authoring and
+execution. Only an explicit authorized rebind of a not-yet-started Task adopts changed
+definitions. No compatibility format is needed to implement this current-user safety rule.
+
+**Minimum Close guard:** the Task Resource slice must install a shared Engine Close preflight
+refusal for uncompleted/broken Tasks and active writer claims **before** UI Task CRUD is enabled.
+The independent Workflow Run start path must install its Close refusal before it becomes
+available, including when an early agent-only E6a is delivered. Full acceptance UX may follow
+later, but no release window permits Technical Close of required unfinished work.
+
 ## Remaining implementation slices
 
 Each slice is reviewable on its own; the order follows the dependencies.
 
-1. **ADR 0020 and the architecture update** (owner decisions above). Documentation only.
+1. **New ADR (number assigned at promotion)** and the architecture update (owner decisions
+   above). ADR 0020 is already Documentation Discovery and ADR 0021 is Semantic Search;
+   neither number may be reused. Documentation only.
 2. **Task resource.** `task.yaml` (with `status`, `statusChange` and `summary`) and
    `tasks/index.yaml` schemas (contracts, JSON Schemas), strict parsers, removal of the
    `specification.yaml` `tasks` field, the reserved `tasks/` folder excluded from Specification

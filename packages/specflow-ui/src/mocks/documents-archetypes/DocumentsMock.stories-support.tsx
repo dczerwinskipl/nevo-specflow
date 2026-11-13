@@ -147,7 +147,7 @@ function RowMenu({ doc, open }: { doc: MockDocument; open?: boolean }) {
           <>
             {doc.state === 'unclassified' && (
               <>
-                <MenuItem onSelect={noop}>Assign type…</MenuItem>
+                <MenuItem onSelect={noop}>Assign type</MenuItem>
                 <MenuSeparator />
               </>
             )}
@@ -705,7 +705,7 @@ function DocumentBody({ scenario }: { scenario: DocumentsScenario }) {
                     Copy my version
                   </Button>
                   <Button size="sm" variant="secondary">
-                    Load the version on disk…
+                    Load the version on disk
                   </Button>
                 </>
               }
@@ -829,7 +829,7 @@ function Workspace({ scenario, narrowPage }: DocumentsMockProps) {
   const rootActions: WorkspaceHeaderAction[] = [
     {
       id: 'new-document',
-      label: 'New document…',
+      label: 'New document',
       icon: 'plus',
       direct: 'wide',
       presentation: 'icon',

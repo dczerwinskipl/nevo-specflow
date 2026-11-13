@@ -6,22 +6,20 @@ import { CATALOGUE_ID_PATTERN } from '@nevo/specflow-contracts/documents';
 
 import { WorkflowError } from '../errors';
 import {
+  ABANDON_REASON_MAX,
   ARTIFACTS_MAX,
   ARTIFACT_MAX,
   ATTEMPTS_MAX,
   FEEDBACK_MAX,
   RECORD_BYTES_MAX,
   RETURNS_MAX,
-  TASK_DEPENDENCIES_MAX,
   TASK_ID_PATTERN_SOURCE,
-  TASK_SUMMARY_MAX,
-  TASK_TITLE_MAX,
-  TASKS_PER_SPECIFICATION_MAX,
 } from '../limits';
-import { TASK_STATUSES, type SpecificationExecutionRecord, type TaskRecord } from './model';
+import type { SpecificationExecutionRecord, TaskRunRecord } from './model';
 
 /**
- * Text format of the stored execution state: YAML records, reviewed and committed with the
+ * Text format of the stored run records (`.execution/specification.yaml`, `.execution/tasks/<id>.yaml`):
+ * YAML records, reviewed and committed with the
  * Specification. Every read validates the full
  * shape, so a hand-edited or truncated file fails closed instead of being interpreted, and every
  * write validates the text it produces the same way, so a record that would not read back is never
@@ -30,7 +28,8 @@ import { TASK_STATUSES, type SpecificationExecutionRecord, type TaskRecord } fro
  * before anything is stored; a stored file over the budget fails a read as corrupt.
  */
 
-export const EXECUTION_STATE_VERSION = 1;
+/** 3: the Task run record holds only the run; the Task itself is its resource (`tasks/resource`). */
+export const EXECUTION_STATE_VERSION = 3;
 
 const id = () => Type.String({ pattern: CATALOGUE_ID_PATTERN });
 const text = (maxLength = 4000) => Type.String({ minLength: 1, maxLength });
@@ -50,15 +49,24 @@ const PositionSchema = Type.Union([
   }),
 ]);
 
-const ExecutorSchema = Type.Union([
+/** An actor: its class and the details SpecFlow records for it (`AgentActor`, `OwnerActor`). */
+export const ActorSchema = Type.Union([
   closed({
-    kind: Type.Literal('agent'),
-    archetype: optional(id()),
-    provider: id(),
-    model: optional(text(200)),
-    sessionId: optional(text(200)),
+    class: Type.Literal('agent'),
+    details: closed({
+      archetype: optional(id()),
+      provider: id(),
+      model: optional(text(200)),
+      sessionId: optional(text(200)),
+    }),
   }),
-  closed({ kind: Type.Literal('human'), actorId: optional(text(200)) }),
+  closed({
+    class: Type.Literal('human'),
+    details: closed({
+      actorId: text(200),
+      trust: Type.Union([Type.Literal('local'), Type.Literal('authenticated')]),
+    }),
+  }),
 ]);
 
 const OutcomeSchema = Type.Union([
@@ -70,6 +78,7 @@ const OutcomeSchema = Type.Union([
     artifacts: Type.Array(text(ARTIFACT_MAX), { maxItems: ARTIFACTS_MAX }),
   }),
   closed({ kind: Type.Literal('returned'), to: id(), feedback: optional(text(FEEDBACK_MAX)) }),
+  closed({ kind: Type.Literal('abandoned') }),
 ]);
 
 const RunSchema = closed({
@@ -85,9 +94,10 @@ const RunSchema = closed({
       attempt: Type.Integer({ minimum: 1 }),
       sequence: sequence(),
       startedAt: timestamp(),
-      executor: optional(ExecutorSchema),
+      actor: optional(ActorSchema),
       endedAt: optional(timestamp()),
-      finishedBy: optional(ExecutorSchema),
+      finishedBy: optional(ActorSchema),
+      requestDigest: optional(Type.String({ pattern: '^[0-9a-f]{64}$' })),
       outcome: optional(OutcomeSchema),
     }),
     { maxItems: ATTEMPTS_MAX },
@@ -102,6 +112,15 @@ const RunSchema = closed({
     }),
     { maxItems: RETURNS_MAX },
   ),
+  abandonment: optional(
+    closed({
+      sequence: sequence(),
+      at: timestamp(),
+      from: PositionSchema,
+      actor: ActorSchema,
+      reason: text(ABANDON_REASON_MAX),
+    }),
+  ),
 });
 
 const TaskIdSchema = Type.String({ pattern: TASK_ID_PATTERN_SOURCE });
@@ -114,27 +133,13 @@ const SpecificationFileSchema = closed({
     Type.Tuple([Type.Literal('*')]),
     Type.Array(id(), { minItems: 1, maxItems: 64 }),
   ]),
-  taskIds: Type.Array(TaskIdSchema, { maxItems: TASKS_PER_SPECIFICATION_MAX, uniqueItems: true }),
   run: RunSchema,
 });
 
-const TaskFileSchema = closed({
+const TaskRunFileSchema = closed({
   version: Type.Literal(EXECUTION_STATE_VERSION),
   specId: text(200),
   taskId: TaskIdSchema,
-  title: text(TASK_TITLE_MAX),
-  summary: optional(text(TASK_SUMMARY_MAX)),
-  type: id(),
-  dependsOn: Type.Array(TaskIdSchema, { maxItems: TASK_DEPENDENCIES_MAX }),
-  origin: closed({ step: id(), attempt: Type.Integer({ minimum: 1 }) }),
-  status: Type.Union(TASK_STATUSES.map((status) => Type.Literal(status))),
-  statusChange: optional(
-    closed({
-      source: Type.Union([Type.Literal('decision'), Type.Literal('escalation')]),
-      at: timestamp(),
-      reason: optional(text(FEEDBACK_MAX)),
-    }),
-  ),
   run: RunSchema,
 });
 
@@ -219,15 +224,15 @@ export function parseSpecificationRecord(source: string): SpecificationExecution
   );
 }
 
-export function serializeTaskRecord(record: TaskRecord): string {
+export function serializeTaskRunRecord(record: TaskRunRecord): string {
   return checkedText(
     yamlOf({ version: EXECUTION_STATE_VERSION, ...record }),
     RECORD_BYTES_MAX,
-    parseTaskRecord,
-    'Task',
+    parseTaskRunRecord,
+    'Task run',
   );
 }
 
-export function parseTaskRecord(source: string): TaskRecord {
-  return withoutVersion(decode(TaskFileSchema, parseYaml(source, 'Task'), 'Task'));
+export function parseTaskRunRecord(source: string): TaskRunRecord {
+  return withoutVersion(decode(TaskRunFileSchema, parseYaml(source, 'Task run'), 'Task run'));
 }

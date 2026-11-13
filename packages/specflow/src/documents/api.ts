@@ -1,10 +1,14 @@
 import {
   abandonDocumentCommit,
   applyDocumentChange,
+  applyTaskDocumentChange,
   flushAllDocumentCommits,
   flushDocumentCommits,
   readDocumentOperationStatus,
+  readSpecificationDocument,
   readSpecificationDocumentTree,
+  readTaskDocument,
+  readTaskDocuments,
   recoverOperation,
   resolveCreateArchetype,
   resolveLedgerOperation,
@@ -24,6 +28,8 @@ import { engineAt } from '../engine-at';
 
 /** The tree and the operation status as the Engine reads them (the HTTP contract shapes). */
 export type DocumentTree = Awaited<ReturnType<typeof readSpecificationDocumentTree>>;
+export type TaskDocumentTree = Awaited<ReturnType<typeof readTaskDocuments>>;
+export type DocumentContentResult = Awaited<ReturnType<typeof readSpecificationDocument>>;
 export type DocumentOperationStatus = Awaited<ReturnType<typeof readDocumentOperationStatus>>;
 
 /** A write the CLI makes: the request of one Engine document change. */
@@ -42,11 +48,22 @@ export interface DocumentCheckout {
 export interface DocumentsEngineApi {
   openEngine(cwd: string, projectRoot?: string): Promise<SpecFlowEngine>;
   readTree(engine: SpecFlowEngine, specId: string): Promise<DocumentTree>;
+  /** The documents of one Task of the Specification (the Task scope of `--task`). */
+  readTaskTree(engine: SpecFlowEngine, specId: string, taskId: string): Promise<TaskDocumentTree>;
+  /** The content of one document of the Specification, or of its Task when `taskId` is given. */
+  readContent(
+    engine: SpecFlowEngine,
+    specId: string,
+    documentId: string,
+    taskId?: string,
+  ): Promise<DocumentContentResult>;
+  /** A change of the Specification's documents, or of its Task's when `taskId` is given. */
   write(
     engine: SpecFlowEngine,
     specId: string,
     operationId: string,
     request: DocumentWriteRequest,
+    taskId?: string,
   ): Promise<DocumentChangeResult>;
   status(engine: SpecFlowEngine, operationId: string): Promise<DocumentOperationStatus>;
   checkoutOf(engine: SpecFlowEngine, specId: string): Promise<DocumentCheckout>;
@@ -75,8 +92,15 @@ export interface DocumentsEngineApi {
 export const engineDocumentsApi: DocumentsEngineApi = {
   openEngine: engineAt,
   readTree: (engine, specId) => readSpecificationDocumentTree(engine, specId),
-  write: (engine, specId, operationId, request) =>
-    applyDocumentChange(engine, specId, operationId, request),
+  readTaskTree: (engine, specId, taskId) => readTaskDocuments(engine, specId, taskId),
+  readContent: (engine, specId, documentId, taskId) =>
+    taskId === undefined
+      ? readSpecificationDocument(engine, specId, documentId)
+      : readTaskDocument(engine, specId, taskId, documentId),
+  write: (engine, specId, operationId, request, taskId) =>
+    taskId === undefined
+      ? applyDocumentChange(engine, specId, operationId, request)
+      : applyTaskDocumentChange(engine, specId, taskId, operationId, request),
   status: (engine, operationId) => readDocumentOperationStatus(engine, operationId),
   async checkoutOf(engine, specId) {
     const found = await resolveSpecificationForRead(engine, specId);

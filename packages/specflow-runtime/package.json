@@ -47,6 +47,7 @@
     "@nevo/specflow-docs": "workspace:*",
     "@nevo/specflow-engine": "workspace:*",
     "commander": "15.0.0",
+    "fast-json-stringify": "7.3.1",
     "fastify": "5.12.8",
     "koffi": "3.3.7",
     "openid-client": "6.8.9",

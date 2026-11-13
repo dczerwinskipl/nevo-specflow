@@ -6,7 +6,9 @@ import { ReportedFailure } from '../exit-code';
 import { engineDocumentsApi, type DocumentsEngineApi, type DocumentWriteRequest } from './api';
 import { readContentInput } from './content-input';
 import {
+  contentLines,
   statusLines,
+  taskTreeLines,
   treeLines,
   validationLines,
   validationOf,
@@ -56,7 +58,12 @@ interface CommonOptions {
   readonly json?: boolean;
 }
 
-interface WriteOptions extends CommonOptions {
+/** `--task <id>`: the command acts on the documents of that Task of the Specification. */
+interface ScopeOptions extends CommonOptions {
+  readonly task?: string;
+}
+
+interface WriteOptions extends ScopeOptions {
   readonly operationId?: string;
   readonly wait?: boolean;
   readonly waitMs?: number;
@@ -100,8 +107,13 @@ export function createDocumentsCommand(context: DocumentsCommandContext): Comman
     command
       .option('--project-root <path>', 'Require this verified Project Home root')
       .option('--json', 'Print the result as JSON');
+  const scoped = (command: Command): Command =>
+    common(command).option(
+      '--task <task-id>',
+      'Act on the documents of this Task of the Specification (its main document is "task")',
+    );
   const writing = (command: Command): Command =>
-    common(command)
+    scoped(command)
       .option('--operation-id <uuid>', 'Stable operation UUID; reuse it to retry safely', parseUuid)
       .option('--wait', 'Drain the commit queue and report the settled commit')
       .option('--wait-ms <ms>', 'Longest wait of --wait (default 30000)', parseMs);
@@ -183,7 +195,7 @@ export function createDocumentsCommand(context: DocumentsCommandContext): Comman
     request: DocumentWriteRequest,
   ): Promise<void> {
     const operationId = options.operationId ?? randomUUID();
-    const result = await api.write(session.engine, specId, operationId, request);
+    const result = await api.write(session.engine, specId, operationId, request, options.task);
     if (result.stage === 'queued') {
       session.enqueued = true;
     }
@@ -206,15 +218,37 @@ export function createDocumentsCommand(context: DocumentsCommandContext): Comman
     }
   }
 
-  common(
+  scoped(
     documents
       .command('list')
-      .description('Show the documents, folders, completeness and commit state of a Specification')
+      .description(
+        'Show the documents, folders, completeness and commit state of a Specification (or of a Task)',
+      )
       .argument('<spec-id>', 'Specification UUID'),
-  ).action(async (specId: string, options: CommonOptions) => {
+  ).action(async (specId: string, options: ScopeOptions) => {
     await run(options, async ({ engine }) => {
+      if (options.task !== undefined) {
+        const tree = await api.readTaskTree(engine, specId, options.task);
+        emit(options, tree, taskTreeLines(tree));
+
+        return;
+      }
+
       const tree = await api.readTree(engine, specId);
       emit(options, { specId, ...tree }, treeLines(tree));
+    });
+  });
+
+  scoped(
+    documents
+      .command('read')
+      .description('Print the text of a document of a Specification (or of a Task)')
+      .argument('<spec-id>', 'Specification UUID')
+      .argument('<document-id>', 'Document id'),
+  ).action(async (specId: string, documentId: string, options: ScopeOptions) => {
+    await run(options, async ({ engine }) => {
+      const document = await api.readContent(engine, specId, documentId, options.task);
+      emit(options, document, contentLines(document));
     });
   });
 
@@ -268,6 +302,10 @@ export function createDocumentsCommand(context: DocumentsCommandContext): Comman
       ).length;
       if (sources !== 1) {
         usage(command, 'Give exactly one of --template, --content-file and --stdin.');
+      }
+
+      if (options.template !== undefined && options.task !== undefined) {
+        usage(command, '--template applies to a Specification, not to a Task (--task).');
       }
 
       if (options.template === undefined && options.path === undefined) {

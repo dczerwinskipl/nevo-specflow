@@ -97,7 +97,7 @@ describe('Reference identity and projection integrity HTTP', () => {
       state: 'available' as const,
       target: { kind: 'session' as const, sessionId: 'protected-session' },
     };
-    f.execution.requirements[0]!.evidence = [{ title: 'Protected session content', link }];
+    f.execution.requirements![0]!.evidence = [{ title: 'Protected session content', link }];
     f.definition.dependencies = [{ taskId: 'secret-task', title: 'Protected dependency', link }];
     f.execution.recovery = {
       id: 'secret-recovery',
@@ -256,7 +256,7 @@ describe('Reference identity and projection integrity HTTP', () => {
         target: { kind: 'document' as const, specId: 'admission', documentId: id, revision: 'v1' },
       },
     });
-    f.execution.requirements[0]!.evidence = [
+    f.execution.requirements![0]!.evidence = [
       {
         title: 'Session',
         link: { state: 'available', target: { kind: 'session', sessionId: 'allowed-session' } },

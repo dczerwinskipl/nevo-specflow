@@ -1,4 +1,6 @@
+import { QueryClientProvider } from '@tanstack/react-query';
 import { AppShell } from '@nevo/ui';
+import { createSpecFlowQueryClient } from '../../../app/queryClient';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { UiModulesProvider } from '../../../app/ui-modules/UiModulesProvider';
@@ -57,16 +59,19 @@ describe('Specification Attention source isolation', () => {
     );
     const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     try {
+      // The Tasks section reads the Runtime mode (a query; no Runtime here, so it never runs).
       const markup = renderToStaticMarkup(
-        <UiModulesProvider modules={registry}>
-          <LocalizationProvider instance={createSpecFlowI18n('en')}>
-            <AppShell navigation={<div>Navigation</div>}>
-              <WorkspaceProvider runtime={createFakeWorkspaceRuntime()}>
-                <WorkView data={data} />
-              </WorkspaceProvider>
-            </AppShell>
-          </LocalizationProvider>
-        </UiModulesProvider>,
+        <QueryClientProvider client={createSpecFlowQueryClient()}>
+          <UiModulesProvider modules={registry}>
+            <LocalizationProvider instance={createSpecFlowI18n('en')}>
+              <AppShell navigation={<div>Navigation</div>}>
+                <WorkspaceProvider runtime={createFakeWorkspaceRuntime()}>
+                  <WorkView data={data} />
+                </WorkspaceProvider>
+              </AppShell>
+            </LocalizationProvider>
+          </UiModulesProvider>
+        </QueryClientProvider>,
       );
       expect(log).toHaveBeenCalledOnce();
       expect(log).toHaveBeenCalledWith(

@@ -68,7 +68,6 @@ export interface SpecificationManifest {
   readonly location: SpecificationLocation;
   readonly priority?: number;
   readonly created?: string;
-  readonly tasks: readonly unknown[];
 }
 
 const SPEC_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
@@ -158,7 +157,8 @@ export function parseSpecificationManifestText(
 
 /**
  * Strict, fail-closed parse of the canonical Specification manifest (architecture "Manifest schema",
- * parser rules 1 to 7). No alias, no default, no legacy fallback: the old `type` field is not read, and a
+ * parser rules 1 to 7). No alias, no default, no legacy fallback: the old `type` and `tasks` fields are
+ * not read (Tasks are registered in `tasks/index.yaml`, `tasks/resource`), and a
  * manifest without `archetype` or `documents` is invalid. Unknown top-level keys are tolerated (and
  * preserved by the serializer); unknown keys inside `archetype`, `documents[]` and `requirements[]` are not.
  */
@@ -186,10 +186,6 @@ export function parseSpecificationManifest(
 
   if (typeof source.status !== 'string' || !source.status.trim()) {
     throw sourceInvalid(slug, 'status', 'must be a non-empty string');
-  }
-
-  if (!Array.isArray(source.tasks)) {
-    throw sourceInvalid(slug, 'tasks', 'must be an array');
   }
 
   if (
@@ -223,7 +219,6 @@ export function parseSpecificationManifest(
     location,
     ...(source.priority !== undefined ? { priority: source.priority } : {}),
     ...(source.created !== undefined ? { created: source.created } : {}),
-    tasks: source.tasks,
   };
 }
 

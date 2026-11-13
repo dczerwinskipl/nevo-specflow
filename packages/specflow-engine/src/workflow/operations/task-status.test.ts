@@ -1,10 +1,12 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { createDefaultDefinitionRegistry } from '../../specs/definitions/kinds';
+import { createDefaultDefinitionRegistry } from '../../definitions/shipped-registry';
 import { loadDefinitions } from '../../specs/definitions/loader';
 import { MemoryDefinitionSource } from '../../specs/definitions/test-support';
 import { resolveExecutionCatalogue, type ExecutionCatalogue } from '../definitions/catalogue';
 import { FEEDBACK_MAX } from '../limits';
+import type { OwnerActor } from '../state/model';
+import { guardTaskDocumentChanges } from '../state/task-document-guard';
 import { finishStep, type FinishStepInput } from './finish';
 import { inspectExecution } from './inspect';
 import {
@@ -62,11 +64,11 @@ const decide = (
     taskId,
     status,
     ...(reason !== undefined ? { reason } : {}),
-    executor: owner,
+    actor: owner,
   });
 
 const startTask = (dependencies: Dependencies, taskId: string) =>
-  startTaskExecution(dependencies, { specId: SPEC, taskId, executor: claude });
+  startTaskExecution(dependencies, { specId: SPEC, taskId, actor: claude });
 
 const statusOf = async (dependencies: Dependencies, taskId: string) =>
   (await inspectExecution(dependencies, SPEC)).tasks.find((entry) => entry.record.taskId === taskId)
@@ -82,12 +84,40 @@ describe('setTaskStatus', () => {
         specId: SPEC,
         taskId: 'api',
         status: 'on-hold',
-        executor: claude,
+        actor: claude as unknown as OwnerActor,
       }),
     ).rejects.toMatchObject({ code: 'WORKFLOW_EXECUTOR_NOT_ALLOWED' });
   });
 
-  it('holds a running Task: its step finishes, the next start is refused until it is resumed', async () => {
+  it('is refused while a change of the Task documents is pending, and allowed once it is final (D03)', async () => {
+    const dependencies = memoryDependencies(catalogue);
+    await specificationWithTasks(dependencies);
+    // The production store (`openWorkflow`) is guarded the same way.
+    const guarded = {
+      ...dependencies,
+      store: guardTaskDocumentChanges(dependencies.store, (specId, taskId) =>
+        dependencies.references.pendingDocumentChange(specId, taskId),
+      ),
+    };
+    const hold = (taskId: string) =>
+      setTaskStatus(guarded, { specId: SPEC, taskId, status: 'on-hold', actor: owner });
+    dependencies.references.pendingDocuments.add('api');
+
+    await expect(hold('api')).rejects.toMatchObject({
+      code: 'WORKFLOW_TASK_BUSY',
+      message: expect.stringContaining('task-document-change') as unknown,
+    });
+    expect(
+      (await dependencies.store.read(SPEC)).manifests.find((entry) => entry.value.id === 'api')
+        ?.value.status,
+    ).not.toBe('on-hold');
+    await expect(hold('screen')).resolves.toMatchObject({ status: 'on-hold' });
+
+    dependencies.references.pendingDocuments.delete('api');
+    await expect(hold('api')).resolves.toMatchObject({ status: 'on-hold' });
+  });
+
+  it('refuses to hold a Task with an active attempt; between steps it holds until it is resumed', async () => {
     const dependencies = memoryDependencies(catalogue);
     await specificationWithTasks(dependencies);
     const started = await startTask(dependencies, 'api');
@@ -95,17 +125,24 @@ describe('setTaskStatus', () => {
       throw new Error('Unexpected end.');
     }
 
-    await decide(dependencies, 'api', 'on-hold', 'The API contract is being revised.');
+    const applied = dependencies.store.applied.length;
+    await expect(
+      decide(dependencies, 'api', 'on-hold', 'The API contract is being revised.'),
+    ).rejects.toMatchObject({
+      code: 'WORKFLOW_TASK_BLOCKED',
+      message: expect.stringContaining('active-attempt') as unknown,
+    });
+    expect(dependencies.store.applied).toHaveLength(applied);
+
     const finished = await finishStep(dependencies, {
       subject: task('api'),
       step: 'implement',
       attempt: started.context.attempt,
       input: {},
-      executor: claude,
+      actor: claude,
     });
-
-    expect(finished.continuation).toEqual({ kind: 'none', reason: 'on-hold' });
     expect(finished.position).toEqual({ state: 'ready', step: 'review' });
+    await decide(dependencies, 'api', 'on-hold', 'The API contract is being revised.');
     await expect(startTask(dependencies, 'api')).rejects.toMatchObject({
       code: 'WORKFLOW_TASK_BLOCKED',
       message: expect.stringContaining('on-hold') as unknown,
@@ -173,7 +210,7 @@ describe('setTaskStatus', () => {
       step: 'breakdown',
       attempt: 1,
       input: { tasks: TWO_TASKS },
-      executor: claude,
+      actor: claude,
     });
     const reviewer = agent('codex', 'session-r', 'x');
     const review = (taskDecisions: FinishStepInput['input']['taskDecisions']) =>
@@ -182,7 +219,7 @@ describe('setTaskStatus', () => {
         step: 'breakdown-review',
         attempt: 1,
         input: { result: 'pass', ...(taskDecisions ? { taskDecisions } : {}) },
-        executor: reviewer,
+        actor: reviewer,
       });
     await startSpecification(dependencies, reviewer);
     const before = await inspectExecution(dependencies, SPEC);
@@ -219,7 +256,7 @@ describe('setTaskStatus', () => {
       step: 'breakdown',
       attempt: 1,
       input: { tasks: TWO_TASKS },
-      executor: claude,
+      actor: claude,
     });
 
     const reviewed = await work(
@@ -255,7 +292,7 @@ describe('setTaskStatus', () => {
       step: 'breakdown',
       attempt: 1,
       input: { tasks: TWO_TASKS },
-      executor: claude,
+      actor: claude,
     });
 
     await expect(
@@ -290,7 +327,9 @@ describe('setTaskStatus', () => {
     await specificationWithTasks(dependencies);
 
     await expect(run(dependencies)).rejects.toMatchObject({
-      code: expect.stringMatching(/^WORKFLOW_(INPUT_INVALID|SUBJECT_NOT_FOUND)$/u) as unknown,
+      code: expect.stringMatching(
+        /^WORKFLOW_(INPUT_INVALID|SUBJECT_NOT_FOUND|TASK_BLOCKED)$/u,
+      ) as unknown,
     });
   });
 
@@ -305,7 +344,7 @@ describe('setTaskStatus', () => {
         step: 'implement',
         attempt: 1,
         input: { taskDecisions: [{ taskId: 'screen', status: 'on-hold' }] },
-        executor: claude,
+        actor: claude,
       }),
     ).rejects.toMatchObject({ code: 'WORKFLOW_INPUT_INVALID' });
   });
@@ -335,7 +374,7 @@ describe('escalation to the Specification', () => {
           { id: 'web', title: 'Web', type: 'implementation' },
         ],
       },
-      executor: claude,
+      actor: claude,
     });
     await work(dependencies, specification, { result: 'pass' }, agent('codex', 'session-r', 'x'));
     await work(dependencies, task('api'));
@@ -430,7 +469,7 @@ describe('escalation to the Specification', () => {
       step: 'breakdown',
       attempt: 1,
       input: { tasks: TWO_TASKS },
-      executor: claude,
+      actor: claude,
     });
     await work(
       dependencies,
@@ -452,7 +491,7 @@ describe('escalation to the Specification', () => {
       step: 'breakdown',
       attempt: 2,
       input: { tasks: [{ id: 'extra', title: 'Extra', type: 'implementation' }] },
-      executor: claude,
+      actor: claude,
     });
     await startSpecification(dependencies);
     const before = await inspectExecution(dependencies, SPEC);
@@ -463,7 +502,7 @@ describe('escalation to the Specification', () => {
         step: 'breakdown-review',
         attempt: 2,
         input: { result: 'pass' },
-        executor: claude,
+        actor: claude,
       }),
     ).rejects.toMatchObject({
       code: 'WORKFLOW_INPUT_INVALID',
@@ -529,7 +568,7 @@ describe('escalation to the Specification', () => {
     await specificationWithTasks(dependencies);
     await work(dependencies, task('api'));
     await returnToStep(dependencies, {
-      executor: owner,
+      actor: owner,
       subject: specification,
       step: 'breakdown',
       feedback: 'x',
@@ -558,7 +597,7 @@ describe('escalation to the Specification', () => {
     await specificationWithTasks(dependencies);
     await work(dependencies, task('api'));
     await returnToStep(dependencies, {
-      executor: owner,
+      actor: owner,
       subject: specification,
       step: 'breakdown',
       feedback: 'x',
@@ -587,7 +626,7 @@ describe('escalation to the Specification', () => {
     await specificationWithTasks(dependencies);
     await work(dependencies, task('api'));
     await returnToStep(dependencies, {
-      executor: owner,
+      actor: owner,
       subject: specification,
       step: 'breakdown',
       feedback: 'x',
@@ -603,7 +642,7 @@ describe('escalation to the Specification', () => {
       step: 'breakdown',
       attempt: 2,
       input: { tasks: [] },
-      executor: claude,
+      actor: claude,
     });
     await expect(work(dependencies, specification, { result: 'pass' })).rejects.toMatchObject({
       code: 'WORKFLOW_INPUT_INVALID',

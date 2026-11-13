@@ -38,6 +38,12 @@ without leaving the Specification. Sections are contributions of their owning fe
 
 ## Sections and order
 
+**Proposed amendment (draft; direction accepted, refinements decided 2026-11-13):**
+[Overview as control center](../../../ideas/specflow-engine/reusable-workflow-manual-execution/ux-contract.md#specification-overview-as-control-center-direction-accepted-refinements-decided-2026-11-13)
+replaces the Tasks section, its multi-selection and its `#tasks-heading` scroll target with a
+grouped Tasks summary and a Tasks page (`/specs/:specId/tasks`); this document stays authoritative
+until that contract is promoted.
+
 The summary (title and description) leads. Below it, by priority: **Requires attention**,
 **Continue session**, other context (for example the repository section), the **preparation**
 block, **Tasks**, **Documents**. Sections render whenever their data exists, independently of

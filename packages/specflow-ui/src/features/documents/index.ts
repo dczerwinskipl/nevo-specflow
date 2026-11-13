@@ -5,3 +5,4 @@
 export { DocumentContent } from './content/DocumentContent';
 export { DocumentDescription, descriptionScrollOwner } from './description/DocumentDescription';
 export { restoreScrollPosition } from './description/restoreScrollPosition';
+export { TaskDocumentEditorHost, taskDocumentStack } from './task/TaskDocumentEditor';

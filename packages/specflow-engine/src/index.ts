@@ -41,7 +41,8 @@ export {
 
 export { ProjectControlLockError, type ProjectControlLockErrorCode } from './project/control-lock';
 
-export { openSpecFlowEngine, readRegistrySnapshot, type SpecFlowEngine } from './application';
+export { readRegistrySnapshot, type SpecFlowEngine } from './application';
+export { openSpecFlowEngine } from './engine';
 export {
   bootstrapProjectHome,
   assertPrimaryGitCheckout,
@@ -100,6 +101,10 @@ export {
   readRegisteredDocumentSummaries,
   readSpecificationDocument,
   readSpecificationDocumentTree,
+  readTaskDocument,
+  readTaskDocuments,
+  type TaskDocumentListing,
+  type TaskDocuments,
   readSpecificationUncommitted,
   DOCUMENT_ROW_PENDING_AFTER_MS,
   listDocumentOperationRows,
@@ -110,7 +115,12 @@ export {
   type OpenedDocumentMetadata,
   type RegisteredDocumentSummary,
 } from './specs/documents/reading';
-export { applyDocumentChange, resumeDocumentChange } from './specs/documents/api';
+export {
+  applyDocumentChange,
+  applyTaskDocumentChange,
+  hasPendingTaskDocumentChange,
+  resumeDocumentChange,
+} from './specs/documents/api';
 export { normalizeDocumentOperationInput } from './specs/documents/changes/plan/request';
 export type { DocumentChangeResult, DocumentWriteOptions } from './specs/documents/write';
 export {
@@ -191,13 +201,13 @@ export {
   type ProjectCatalogue,
   type ProjectCatalogueResult,
   type ResolvedCatalogue,
-} from './specs/definitions';
+} from './definitions';
 
 // Pure document rules (no I/O). The demo Runtime builds its in-memory Specifications with them, so
 // its document answers (catalogue, scaffold, ids, paths, kinds, titles, tree) match the Engine's.
 export { renderTemplate, templateValues } from './specs/archetypes';
 // Builds a catalogue from definitions already in memory (the demo Runtime's copy of the seeds).
-export { resolveCatalogue } from './specs/definitions';
+export { resolveCatalogue } from './definitions';
 export {
   OVERVIEW_DOCUMENT_ID,
   OVERVIEW_DOCUMENT_TYPE,

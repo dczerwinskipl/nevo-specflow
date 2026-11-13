@@ -1,10 +1,14 @@
-import type { TerminalOutcome } from '../definitions/model';
+import type * as core from '@nevo/workflow';
+
+import type { TaskManifest } from '../../tasks/resource/model';
+import type { TaskTypes } from '../definitions/model';
 import { WorkflowError } from '../errors';
 
 /**
- * Canonical execution state of one Specification: the run of its own workflow and one record per Task,
- * each with its own type and workflow run. Only the position and the history are stored; readiness,
- * lanes and statuses are derived (architecture `architecture.workflow.deterministic-workflow`).
+ * Canonical execution state of one Specification: the run of its own workflow, the Task resources
+ * (`tasks/index.yaml`, `tasks/<id>/task.yaml`) and one run record per Task that has a run. Only the position and the history are stored; readiness,
+ * lanes and statuses are derived (architecture `architecture.workflow.deterministic-workflow`). The
+ * run format is the core's (`../core`); SpecFlow keys each run by its subject.
  */
 
 export type WorkflowSubject =
@@ -19,86 +23,38 @@ export function subjectKey(subject: WorkflowSubject): string {
 }
 
 /**
- * - `not-started`: the next start activates the entry step;
- * - `active`: one attempt of one step is in progress;
- * - `ready`: the previous step finished (or the owner returned) and `step` is the next to start;
- *   finish never starts it, so this checkpoint is observable;
- * - `terminal`: the run ended.
+ * An agent working on an attempt, from trusted Runtime context (never from the agent's own input):
+ * the archetype it works as, its provider and model, and the Session it runs in. An active agent
+ * attempt started in a Session is resumed and finished only by that Session.
  */
-export type RunPosition =
-  | { readonly state: 'not-started' }
-  | { readonly state: 'active'; readonly step: string; readonly attempt: number }
-  | { readonly state: 'ready'; readonly step: string }
-  | { readonly state: 'terminal'; readonly outcome: TerminalOutcome };
+export interface AgentActor {
+  readonly class: 'agent';
+  readonly details: {
+    readonly archetype?: string;
+    readonly provider: string;
+    readonly model?: string;
+    readonly sessionId?: string;
+  };
+}
 
 /**
- * The definition an attempt is interpreted with. A changed definition never silently reinterprets a
- * running workflow: the run keeps its pin until it is re-pinned explicitly.
+ * The owner acting in person: built only by the Runtime (from the authenticated subject) or the CLI
+ * (from the local OS user), never from a request payload. `trust` says how the person was
+ * identified; `local` is not proof of a human (an agent running as the same OS user looks alike).
  */
-export interface WorkflowPin {
-  readonly id: string;
-  readonly version: number;
-  /** sha256 of the canonical JSON of the resolved definition. */
-  readonly revision: string;
+export interface OwnerActor {
+  readonly class: 'human';
+  readonly details: {
+    readonly actorId: string;
+    readonly trust: 'local' | 'authenticated';
+  };
 }
 
-/** Who did the work of an attempt. Always taken from trusted Runtime/CLI context, never from an agent. */
-export type ExecutorRecord =
-  | {
-      readonly kind: 'agent';
-      readonly archetype?: string;
-      readonly provider: string;
-      readonly model?: string;
-      readonly sessionId?: string;
-    }
-  | { readonly kind: 'human'; readonly actorId?: string };
+/** Who works on, finishes or decides something in a SpecFlow run. */
+export type WorkflowActor = AgentActor | OwnerActor;
 
-export type AttemptOutcome =
-  | {
-      readonly kind: 'transition';
-      readonly transition: string;
-      readonly result?: string;
-      readonly feedback?: string;
-      readonly artifacts: readonly string[];
-    }
-  /** The owner returned the run to an earlier step while this attempt was active. */
-  | { readonly kind: 'returned'; readonly to: string; readonly feedback?: string };
-
-export interface AttemptRecord {
-  readonly step: string;
-  readonly attempt: number;
-  /**
-   * Order of the record among the run's attempts and returns (1, 2, ...). It decides which event came
-   * last; timestamps do not, because clocks can repeat or go back.
-   */
-  readonly sequence: number;
-  readonly startedAt: string;
-  readonly executor?: ExecutorRecord;
-  /** Absent while the attempt is active. */
-  readonly endedAt?: string;
-  /** Who finished the attempt; the Session a `reuse` continuation continues. */
-  readonly finishedBy?: ExecutorRecord;
-  readonly outcome?: AttemptOutcome;
-}
-
-/** An owner return from a non-active position (no attempt was running). */
-export interface ReturnRecord {
-  /** See {@link AttemptRecord.sequence}. */
-  readonly sequence: number;
-  readonly at: string;
-  readonly from: RunPosition;
-  readonly to: string;
-  readonly feedback?: string;
-}
-
-export interface WorkflowRun {
-  readonly workflow: WorkflowPin;
-  readonly position: RunPosition;
-  readonly attempts: readonly AttemptRecord[];
-  readonly returns: readonly ReturnRecord[];
-}
-
-export type TaskTypes = readonly ['*'] | readonly string[];
+export type WorkflowRun = core.WorkflowRun<WorkflowActor>;
+export type AttemptRecord = core.AttemptRecord<WorkflowActor>;
 
 export interface SpecificationExecutionRecord {
   readonly specId: string;
@@ -106,17 +62,29 @@ export interface SpecificationExecutionRecord {
   readonly archetype: string;
   /** The task types allowed when the run started. */
   readonly taskTypes: TaskTypes;
-  /**
-   * Every Task of the Specification, in creation order: the authoritative Task set. A Task is added
-   * in the same change that creates its record and never removed (a left-out draft is cancelled, not
-   * deleted). A listed Task without a record is broken; a record that is not listed is corrupt state.
-   */
-  readonly taskIds: readonly string[];
+  readonly run: WorkflowRun;
+}
+
+export { TASK_STATUSES, type TaskStatus, type TaskStatusChange } from '../../tasks/resource/model';
+
+/**
+ * The run record of one Task (`.execution/tasks/<id>.yaml`): only its run. What the Task is (title,
+ * type, status, dependencies, origin, documents, context) is its resource, `tasks/<id>/task.yaml`
+ * (`tasks/resource`). A run record whose Task is not registered is broken.
+ */
+export interface TaskRunRecord {
+  readonly specId: string;
+  readonly taskId: string;
   readonly run: WorkflowRun;
 }
 
 /**
- * Preparation status of a Task: whether it may be worked on, separate from its run position.
+ * A Task as the operations see it: its manifest joined with its run record (`executionTasks`). A
+ * Task without a run record has not started: its first start validates the live task type and
+ * workflow and creates the record pinned to that workflow (`startTaskExecution`).
+ *
+ * The preparation status (`status`, `TASK_STATUSES`) says whether the Task may be worked on,
+ * separately from its run position:
  * - `draft`: created by a step that produces Tasks and not approved yet; it never ran;
  * - `ready`: approved; it can start once its dependencies completed;
  * - `on-hold`: kept, but no step of it starts until a decision makes it `ready` again;
@@ -126,69 +94,51 @@ export interface SpecificationExecutionRecord {
  * effect `approve-draft-tasks` and the Task's own escalation change it; a Specification return never
  * does. There is no `completed`: completion is the run reaching `terminal`.
  */
-export const TASK_STATUSES = ['draft', 'ready', 'on-hold', 'cancelled'] as const;
-export type TaskStatus = (typeof TASK_STATUSES)[number];
-
-/** The last explicit status change of a Task: a decision or the Task's own escalation. */
-export interface TaskStatusChange {
-  readonly source: 'decision' | 'escalation';
-  readonly at: string;
-  /** The decision's reason, or the escalation feedback. */
-  readonly reason?: string;
-}
-
-export interface TaskRecord {
+export interface ExecutionTask extends Omit<TaskManifest, 'id'> {
   readonly specId: string;
   readonly taskId: string;
-  readonly title: string;
-  readonly summary?: string;
-  readonly type: string;
-  readonly dependsOn: readonly string[];
-  /** The Specification attempt that created (or last revised) the Task. */
-  readonly origin: { readonly step: string; readonly attempt: number };
-  readonly status: TaskStatus;
-  readonly statusChange?: TaskStatusChange;
-  readonly run: WorkflowRun;
+  /** Absent until the first start of the Task. */
+  readonly run?: WorkflowRun;
 }
 
-export function nextAttemptNumber(run: WorkflowRun, step: string): number {
-  return (
-    run.attempts.reduce(
-      (highest, record) => (record.step === step ? Math.max(highest, record.attempt) : highest),
-      0,
-    ) + 1
-  );
+const NOT_STARTED: core.RunPosition = { state: 'not-started' };
+
+/** The position of a Task's run; a Task without a run has not started. */
+export function taskPosition(task: Pick<ExecutionTask, 'run'>): core.RunPosition {
+  return task.run?.position ?? NOT_STARTED;
 }
 
-/** The sequence of the next attempt or return record of a run. */
-export function nextSequence(run: WorkflowRun): number {
-  return (
-    [...run.attempts, ...run.returns].reduce(
-      (highest, record) => Math.max(highest, record.sequence),
-      0,
-    ) + 1
-  );
+/** The manifest part of a Task, in the field order of `task.yaml`. */
+export function manifestOf(task: ExecutionTask): TaskManifest {
+  return {
+    id: task.taskId,
+    title: task.title,
+    ...(task.summary !== undefined ? { summary: task.summary } : {}),
+    type: task.type,
+    status: task.status,
+    ...(task.statusChange !== undefined ? { statusChange: task.statusChange } : {}),
+    dependsOn: task.dependsOn,
+    origin: task.origin,
+    documents: task.documents,
+    ...(task.context !== undefined ? { context: task.context } : {}),
+  };
 }
 
-export function activeAttempt(run: WorkflowRun): AttemptRecord | undefined {
-  const position = run.position;
-  if (position.state !== 'active') {
-    return undefined;
-  }
+/** The Task of a manifest and its run. */
+export function executionTaskOf(
+  specId: string,
+  manifest: TaskManifest,
+  run: WorkflowRun | undefined,
+): ExecutionTask {
+  const { id, ...rest } = manifest;
 
-  return run.attempts.find(
-    (record) => record.step === position.step && record.attempt === position.attempt,
-  );
-}
-
-export function isTerminal(run: WorkflowRun): boolean {
-  return run.position.state === 'terminal';
+  return { specId, taskId: id, ...rest, ...(run ? { run } : {}) };
 }
 
 /** A broken Task (`executionTasks`) is refused by every operation on it. */
 export function brokenTask(taskId: string): never {
   throw new WorkflowError(
     'WORKFLOW_STATE_CORRUPT',
-    `The Task "${taskId}" is broken: its record is missing or its position does not follow from its history; restore it from Git.`,
+    `The Task "${taskId}" is broken: its resource or its run record is missing, or its run does not follow from its history or its status; restore it from Git.`,
   );
 }

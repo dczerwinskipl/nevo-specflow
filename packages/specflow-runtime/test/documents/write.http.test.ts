@@ -148,7 +148,6 @@ async function handBuilt(root: string, slug: string, location: 'active' | 'archi
       location,
       priority: 10,
       created: '2026-10-27',
-      tasks: [],
     }),
   );
   await writeFile(join(dir, 'overview.md'), '# Hand\n');

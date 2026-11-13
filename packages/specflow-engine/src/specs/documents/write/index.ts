@@ -18,3 +18,4 @@ export * from './executor-identity';
 export * from './file-effects';
 export * from './writer';
 export * from './writer-types';
+export * from './pending-task-change';

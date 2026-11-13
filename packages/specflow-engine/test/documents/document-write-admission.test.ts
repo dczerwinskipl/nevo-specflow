@@ -92,7 +92,7 @@ describe('admitDocumentChange: what an admission is', () => {
     const before = await tree(root);
     const status = git(root, 'status', '--porcelain=v1', '--untracked-files=all');
 
-    const admitted = await admitDocumentChange(engine, specId, save());
+    const admitted = await admitDocumentChange(engine, { kind: 'specification', specId }, save());
 
     expect(admitted.git).toEqual({ enabled: true, mode: 'auto', branch: 'feature/work' });
     expect(admitted.plan.paths.map((path) => path.path)).toEqual(['specs/active/hand/notes.md']);
@@ -109,7 +109,7 @@ describe('admitDocumentChange: what an admission is', () => {
   it('starts no Git process when Git is disabled', async () => {
     const { engine, specId } = await workProject(GIT_OFF);
     const { result, count } = await gitProcessesDuring(() =>
-      admitDocumentChange(engine, specId, save()),
+      admitDocumentChange(engine, { kind: 'specification', specId }, save()),
     );
     expect(result.git).toEqual({ enabled: false });
     expect(count).toBe(0);
@@ -167,12 +167,16 @@ describe('admitDocumentChange: what an admission is', () => {
     await writeFile(join(dir, 'big.bin'), content);
     const documentId = deriveUnclassifiedDocumentId('big.bin');
 
-    const admitted = await admitDocumentChange(engine, specId, {
-      action: 'rename',
-      target: { kind: 'document', documentId },
-      name: 'bigger.bin',
-      expectedRevision: (await bigRevision(engine, specId)) ?? '',
-    });
+    const admitted = await admitDocumentChange(
+      engine,
+      { kind: 'specification', specId },
+      {
+        action: 'rename',
+        target: { kind: 'document', documentId },
+        name: 'bigger.bin',
+        expectedRevision: (await bigRevision(engine, specId)) ?? '',
+      },
+    );
 
     const moved = admitted.plan.paths.find((path) => path.path.endsWith('bigger.bin'));
     expect(moved?.post).toEqual({ sha256: sha256Hex(content), bytes: content.length });
@@ -205,7 +209,12 @@ describe('admitDocumentChange: refusals leave nothing behind', () => {
     const fixture = await documentsProject(GIT_ON);
     const spec = await handBuiltSpecification(fixture, { location: 'archive', slug: 'old' });
     const error = await refused(
-      () => admitDocumentChange(fixture.engine, spec.specId, folder('x')),
+      () =>
+        admitDocumentChange(
+          fixture.engine,
+          { kind: 'specification', specId: spec.specId },
+          folder('x'),
+        ),
       fixture,
     );
     expect(error).toMatchObject({ code: 'SPEC_ARCHIVED' });
@@ -215,10 +224,14 @@ describe('admitDocumentChange: refusals leave nothing behind', () => {
     const fixture = await workProject();
     const error = await refused(
       () =>
-        admitDocumentChange(fixture.engine, fixture.specId, {
-          ...(save() as Extract<DocumentChangeRequest, { action: 'save' }>),
-          expectedRevision: 'f'.repeat(64),
-        }),
+        admitDocumentChange(
+          fixture.engine,
+          { kind: 'specification', specId: fixture.specId },
+          {
+            ...(save() as Extract<DocumentChangeRequest, { action: 'save' }>),
+            expectedRevision: 'f'.repeat(64),
+          },
+        ),
       fixture,
     );
     expect(error).toMatchObject({ code: 'DOCUMENT_REVISION_CONFLICT' });
@@ -229,7 +242,12 @@ describe('admitDocumentChange: refusals leave nothing behind', () => {
       'runtime: {}\ngit:\n  enabled: true\n  commits:\n    protectedBranches: ["feature/**"]\n',
     );
     const error = await refused(
-      () => admitDocumentChange(fixture.engine, fixture.specId, save()),
+      () =>
+        admitDocumentChange(
+          fixture.engine,
+          { kind: 'specification', specId: fixture.specId },
+          save(),
+        ),
       fixture,
     );
     expect(error).toMatchObject({
@@ -242,7 +260,12 @@ describe('admitDocumentChange: refusals leave nothing behind', () => {
     const fixture = await workProject();
     await writeFile(join(fixture.root, '.git', 'index.lock'), '');
     const locked = await refused(
-      () => admitDocumentChange(fixture.engine, fixture.specId, save()),
+      () =>
+        admitDocumentChange(
+          fixture.engine,
+          { kind: 'specification', specId: fixture.specId },
+          save(),
+        ),
       fixture,
     );
     expect(locked).toMatchObject({
@@ -257,7 +280,12 @@ describe('admitDocumentChange: refusals leave nothing behind', () => {
     git(fixture.root, 'rm', '-q', '--cached', 'specs/active/hand/notes.md');
     commitStaged(fixture.root, 'untrack');
     const ignored = await refused(
-      () => admitDocumentChange(fixture.engine, fixture.specId, save()),
+      () =>
+        admitDocumentChange(
+          fixture.engine,
+          { kind: 'specification', specId: fixture.specId },
+          save(),
+        ),
       fixture,
     );
     expect(ignored).toMatchObject({
@@ -267,7 +295,12 @@ describe('admitDocumentChange: refusals leave nothing behind', () => {
 
     git(fixture.root, 'checkout', '-q', '--detach');
     const detached = await refused(
-      () => admitDocumentChange(fixture.engine, fixture.specId, save()),
+      () =>
+        admitDocumentChange(
+          fixture.engine,
+          { kind: 'specification', specId: fixture.specId },
+          save(),
+        ),
       fixture,
     );
     expect(detached).toMatchObject({ code: 'COMMIT_BLOCKED', details: { blockedBy: 'detached' } });
@@ -279,7 +312,7 @@ describe('admitDocumentChange: refusals leave nothing behind', () => {
       failure(
         admitDocumentChange(
           fixture.engine,
-          fixture.specId,
+          { kind: 'specification', specId: fixture.specId },
           {
             action: 'create',
             documents: [{ path: `${'f'.repeat(100)}/${'g'.repeat(100)}.md`, content: 'x\n' }],
@@ -300,24 +333,32 @@ describe('admitDocumentChange: refusals leave nothing behind', () => {
 describe('the Git preflight cache', () => {
   it('costs the port preflight on a miss and no Git process on a hit', async () => {
     const { engine, specId } = await workProject();
-    const first = await gitProcessesDuring(() => admitDocumentChange(engine, specId, save()));
+    const first = await gitProcessesDuring(() =>
+      admitDocumentChange(engine, { kind: 'specification', specId }, save()),
+    );
     expect(first.count).toBeGreaterThanOrEqual(4);
     expect(first.count).toBeLessThanOrEqual(6);
 
-    const second = await gitProcessesDuring(() => admitDocumentChange(engine, specId, save('b\n')));
+    const second = await gitProcessesDuring(() =>
+      admitDocumentChange(engine, { kind: 'specification', specId }, save('b\n')),
+    );
     expect(second.count).toBe(0);
     expect(second.result.git).toEqual({ enabled: true, mode: 'auto', branch: 'feature/work' });
   });
 
   it('is keyed by the path set: another set of paths is a miss', async () => {
     const { engine, specId } = await workProject();
-    await admitDocumentChange(engine, specId, save());
+    await admitDocumentChange(engine, { kind: 'specification', specId }, save());
     const other = await gitProcessesDuring(() =>
-      admitDocumentChange(engine, specId, {
-        action: 'create',
-        documents: [{ path: 'fresh.md', content: 'x\n' }],
-        folders: [],
-      }),
+      admitDocumentChange(
+        engine,
+        { kind: 'specification', specId },
+        {
+          action: 'create',
+          documents: [{ path: 'fresh.md', content: 'x\n' }],
+          folders: [],
+        },
+      ),
     );
     expect(other.count).toBeGreaterThan(0);
   });
@@ -326,12 +367,16 @@ describe('the Git preflight cache', () => {
     const { engine, specId } = await workProject();
     let now = 0;
     const cache = new GitPreflightCache({ now: () => now });
-    await admitDocumentChange(engine, specId, save(), { git: { cache } });
+    await admitDocumentChange(engine, { kind: 'specification', specId }, save(), {
+      git: { cache },
+    });
     now = 1999;
     expect(
       (
         await gitProcessesDuring(() =>
-          admitDocumentChange(engine, specId, save(), { git: { cache } }),
+          admitDocumentChange(engine, { kind: 'specification', specId }, save(), {
+            git: { cache },
+          }),
         )
       ).count,
     ).toBe(0);
@@ -339,7 +384,9 @@ describe('the Git preflight cache', () => {
     expect(
       (
         await gitProcessesDuring(() =>
-          admitDocumentChange(engine, specId, save(), { git: { cache } }),
+          admitDocumentChange(engine, { kind: 'specification', specId }, save(), {
+            git: { cache },
+          }),
         )
       ).count,
     ).toBeGreaterThan(0);
@@ -348,34 +395,44 @@ describe('the Git preflight cache', () => {
   it('is invalidated by a branch change, by the index lock and by the project configuration', async () => {
     const fixture = await workProject();
     const { engine, specId, root } = fixture;
-    await admitDocumentChange(engine, specId, save());
+    await admitDocumentChange(engine, { kind: 'specification', specId }, save());
 
     // the branch moves: HEAD changes, the old verdict says nothing about the new branch
     git(root, 'checkout', '-q', '-b', 'feature/other');
-    const moved = await gitProcessesDuring(() => admitDocumentChange(engine, specId, save()));
+    const moved = await gitProcessesDuring(() =>
+      admitDocumentChange(engine, { kind: 'specification', specId }, save()),
+    );
     expect(moved.count).toBeGreaterThan(0);
     expect(moved.result.git).toEqual({ enabled: true, mode: 'auto', branch: 'feature/other' });
     expect(
-      (await gitProcessesDuring(() => admitDocumentChange(engine, specId, save()))).count,
+      (
+        await gitProcessesDuring(() =>
+          admitDocumentChange(engine, { kind: 'specification', specId }, save()),
+        )
+      ).count,
     ).toBe(0);
 
     // a lock appears: the cached verdict is not served and the port refuses
     await writeFile(join(root, '.git', 'index.lock'), '');
-    expect(await failure(admitDocumentChange(engine, specId, save()))).toMatchObject({
+    expect(
+      await failure(admitDocumentChange(engine, { kind: 'specification', specId }, save())),
+    ).toMatchObject({
       code: 'COMMIT_BLOCKED',
       details: { blockedBy: 'index-locked' },
     });
     await rm(join(root, '.git', 'index.lock'));
 
     // the policy changes after a hit: protection takes effect at once
-    await admitDocumentChange(engine, specId, save());
+    await admitDocumentChange(engine, { kind: 'specification', specId }, save());
     await writeFile(
       join(root, '.nevo', 'config.yaml'),
       'runtime: {}\ngit:\n  enabled: true\n  commits:\n    protectedBranches: ["feature/**"]\n',
     );
     const stamp = new Date(Date.now() + 10_000);
     await utimes(join(root, '.nevo', 'config.yaml'), stamp, stamp);
-    expect(await failure(admitDocumentChange(engine, specId, save()))).toMatchObject({
+    expect(
+      await failure(admitDocumentChange(engine, { kind: 'specification', specId }, save())),
+    ).toMatchObject({
       code: 'BRANCH_PROTECTED',
     });
   });
@@ -390,7 +447,11 @@ describe('SPEC_MANIFEST_DIRTY', () => {
     sequence: number,
     applyManifest: boolean,
   ): Promise<string> {
-    const admitted = await admitDocumentChange(fixture.engine, fixture.specId, request);
+    const admitted = await admitDocumentChange(
+      fixture.engine,
+      { kind: 'specification', specId: fixture.specId },
+      request,
+    );
     const encoded = encodePlan(admitted.plan);
     const operationId = randomUUID();
     const manifest = admitted.payloads.find(
@@ -432,7 +493,11 @@ describe('SPEC_MANIFEST_DIRTY', () => {
 
   it('accepts a registry change on a manifest that is clean in Git', async () => {
     const { engine, specId } = await workProject();
-    const admitted = await admitDocumentChange(engine, specId, folder('plans'));
+    const admitted = await admitDocumentChange(
+      engine,
+      { kind: 'specification', specId },
+      folder('plans'),
+    );
     expect(admitted.plan.paths.map((path) => path.role)).toEqual(['manifest']);
   });
 
@@ -440,32 +505,50 @@ describe('SPEC_MANIFEST_DIRTY', () => {
     const { engine, specId, dir } = await workProject();
     const text = await readFile(join(dir, 'specification.yaml'), 'utf8');
     await writeFile(join(dir, 'specification.yaml'), text + '# edited by hand\n');
-    expect(await failure(admitDocumentChange(engine, specId, folder('plans')))).toMatchObject({
+    expect(
+      await failure(
+        admitDocumentChange(engine, { kind: 'specification', specId }, folder('plans')),
+      ),
+    ).toMatchObject({
       code: 'SPEC_MANIFEST_DIRTY',
     });
     // a change that does not touch the registry is not judged
-    await expect(admitDocumentChange(engine, specId, save())).resolves.toBeDefined();
+    await expect(
+      admitDocumentChange(engine, { kind: 'specification', specId }, save()),
+    ).resolves.toBeDefined();
   });
 
   it('has nothing to compare with when Git is disabled', async () => {
     const { engine, specId, dir } = await workProject(GIT_OFF);
     const text = await readFile(join(dir, 'specification.yaml'), 'utf8');
     await writeFile(join(dir, 'specification.yaml'), text + '# edited by hand\n');
-    await expect(admitDocumentChange(engine, specId, folder('plans'))).resolves.toBeDefined();
+    await expect(
+      admitDocumentChange(engine, { kind: 'specification', specId }, folder('plans')),
+    ).resolves.toBeDefined();
   });
 
   it('judges against the post-image of the latest pending operation, not against HEAD', async () => {
     const fixture = await workProject();
     await pend(fixture, folder('first'), 'queued', 1, true);
     // the disk differs from HEAD but equals the pending operation's post-image: clean
-    const admitted = await admitDocumentChange(fixture.engine, fixture.specId, folder('second'));
+    const admitted = await admitDocumentChange(
+      fixture.engine,
+      { kind: 'specification', specId: fixture.specId },
+      folder('second'),
+    );
     expect(admitted.plan.paths.map((path) => path.role)).toEqual(['manifest']);
 
     // an outside edit on top of the pending change is dirty
     const text = await readFile(join(fixture.dir, 'specification.yaml'), 'utf8');
     await writeFile(join(fixture.dir, 'specification.yaml'), text + '# edited by hand\n');
     expect(
-      await failure(admitDocumentChange(fixture.engine, fixture.specId, folder('third'))),
+      await failure(
+        admitDocumentChange(
+          fixture.engine,
+          { kind: 'specification', specId: fixture.specId },
+          folder('third'),
+        ),
+      ),
     ).toMatchObject({ code: 'SPEC_MANIFEST_DIRTY' });
   });
 
@@ -476,7 +559,13 @@ describe('SPEC_MANIFEST_DIRTY', () => {
     // the second operation's post-image is not on disk: the manifest is behind the latest one
     expect(second).toBeDefined();
     expect(
-      await failure(admitDocumentChange(fixture.engine, fixture.specId, folder('third'))),
+      await failure(
+        admitDocumentChange(
+          fixture.engine,
+          { kind: 'specification', specId: fixture.specId },
+          folder('third'),
+        ),
+      ),
     ).toMatchObject({ code: 'SPEC_MANIFEST_DIRTY' });
   });
 
@@ -484,7 +573,13 @@ describe('SPEC_MANIFEST_DIRTY', () => {
     const fixture = await workProject();
     await pend(fixture, folder('first'), 'files-writing', 1, false);
     expect(
-      await failure(admitDocumentChange(fixture.engine, fixture.specId, folder('second'))),
+      await failure(
+        admitDocumentChange(
+          fixture.engine,
+          { kind: 'specification', specId: fixture.specId },
+          folder('second'),
+        ),
+      ),
     ).toMatchObject({ code: 'SPEC_BUSY', details: { cause: 'manifest-changed' } });
   });
 });
@@ -492,12 +587,16 @@ describe('SPEC_MANIFEST_DIRTY', () => {
 describe.skipIf(!onPosix)('the save budget (Linux)', () => {
   it('admits a save in under 150 ms at p95 on a cache hit, without a Git process', async () => {
     const { engine, specId } = await workProject();
-    await admitDocumentChange(engine, specId, save());
+    await admitDocumentChange(engine, { kind: 'specification', specId }, save());
     const samples: number[] = [];
     const { count } = await gitProcessesDuring(async () => {
       for (let index = 0; index < 100; index += 1) {
         const started = performance.now();
-        await admitDocumentChange(engine, specId, save(`content ${index}\n`));
+        await admitDocumentChange(
+          engine,
+          { kind: 'specification', specId },
+          save(`content ${index}\n`),
+        );
         samples.push(performance.now() - started);
       }
     });

@@ -20,9 +20,19 @@ const AttemptKey = Type.Object({
   stepId: Id,
   attempt: Type.Integer({ minimum: 1 }),
 });
+/** The executor classes of the workflow core: an agent, or a person. */
+export const TaskExecutorClassSchema = Type.Union([Type.Literal('agent'), Type.Literal('human')]);
+/** Who worked on an attempt: its executor class and, for a person, the recorded actor id. */
+const AttemptActor = Type.Object({ class: TaskExecutorClassSchema, actorId: Type.Optional(Text) });
 const Step = Type.Object({
   id: Id,
-  executor: Type.Union([Type.Literal('agent'), Type.Literal('human')]),
+  /** The step's title from its workflow, for display (the id is the stable reference). */
+  title: Type.Optional(Text),
+  /**
+   * Who may work on the step: an agent, a person, or either. Empty for a wait step, which nobody
+   * works on (an event completes it).
+   */
+  executors: Type.Array(TaskExecutorClassSchema, { maxItems: 2, uniqueItems: true }),
   purpose: NullableText,
   expectedWork: Type.Union([Type.Object({ summary: Text }), Type.Null()]),
   hints: Type.Array(
@@ -85,7 +95,14 @@ const Transition = Type.Object({
 });
 const Position = Type.Union([
   Type.Object({ state: Type.Literal('not_started'), next: Type.Union([Step, Type.Null()]) }),
-  Type.Object({ state: Type.Literal('active'), key: AttemptKey, step: Step, semanticStatus: Text }),
+  Type.Object({
+    state: Type.Literal('active'),
+    key: AttemptKey,
+    step: Step,
+    semanticStatus: Text,
+    /** Who works on the attempt (absent where the source records none). */
+    actor: Type.Optional(AttemptActor),
+  }),
   Type.Object({
     state: Type.Literal('checkpoint'),
     completed: AttemptKey,
@@ -173,6 +190,11 @@ export const TaskHistoryEntrySchema = Type.Object({
   result: NullableText,
   transitionedTo: Type.Union([TransitionTarget, Type.Null()]),
   feedback: NullableText,
+  /**
+   * Who worked on the attempt: its executor class and, for a person, the recorded actor id. `null`
+   * for an attempt without an actor (a wait step).
+   */
+  actor: Type.Union([AttemptActor, Type.Null()]),
   resources: Type.Array(TaskResourceSchema),
   provenance: Type.Array(
     Type.Object({

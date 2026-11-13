@@ -90,6 +90,8 @@ describe('message catalogues', () => {
       'sessions.context.sessionDetails.contextWindowScopeModelOnly',
       // "{{provider}}, model {{model}}": the same template in both languages (accepted copy).
       'sessions.list.agent',
+      // "{{title}} · {{count}}": a group heading template, the same in both languages.
+      'workflowExecution.exit.groupHeading',
     ]);
     const identical = plKeys.filter(
       (key) =>

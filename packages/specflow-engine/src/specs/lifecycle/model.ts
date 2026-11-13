@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 
 import { validateOperationId } from '../create/journal';
 import { isValidSpecificationId } from '../model';
+import type { SpecificationExitBlocker, SpecificationExitGuard } from './exit-guard';
 
 export type CloseKind = 'worktree-close' | 'specification-close' | 'workspace-close';
 
@@ -212,16 +213,46 @@ export type CloseOperationErrorCode =
   | 'CLOSE_CONFLICT'
   | 'CLOSE_UNAVAILABLE'
   | 'CLOSE_PREFLIGHT'
+  /** The workflow of the Specification is not finished (D07); `blockers` lists what holds it. */
+  | 'CLOSE_BLOCKED'
   | 'CLOSE_SHARED_WORKTREE'
   | 'CLOSE_RECOVERY_REQUIRED'
   | 'CLOSE_JOURNAL_CORRUPT';
 
 export class CloseOperationError extends Error {
   readonly code: CloseOperationErrorCode;
+  /** `CLOSE_BLOCKED`: the grouped blockers of the Specification exit gate; empty otherwise. */
+  readonly blockers: readonly SpecificationExitBlocker[];
+  /** `CLOSE_PREFLIGHT` of a dirty checkout: the paths that are not clean; empty otherwise. */
+  readonly paths: readonly string[];
 
-  constructor(code: CloseOperationErrorCode, message: string) {
+  constructor(
+    code: CloseOperationErrorCode,
+    message: string,
+    blockers: readonly SpecificationExitBlocker[] = [],
+    paths: readonly string[] = [],
+  ) {
     super(message);
     this.name = 'CloseOperationError';
     this.code = code;
+    this.blockers = blockers;
+    this.paths = paths;
+  }
+}
+
+/** Refuse with `CLOSE_BLOCKED` while the Specification exit gate reports blockers. */
+export async function assertSpecificationExit(
+  guard: SpecificationExitGuard,
+  specId: string,
+): Promise<void> {
+  const blockers = await guard(specId);
+  if (blockers.length > 0) {
+    throw new CloseOperationError(
+      'CLOSE_BLOCKED',
+      'The Specification workflow is not finished: ' +
+        blockers.map((blocker) => blocker.kind).join(', ') +
+        '.',
+      blockers,
+    );
   }
 }

@@ -89,8 +89,10 @@ describe('Session association over the Engine (project mode)', () => {
       });
 
       expect((await create(randomUUID())).json()).toEqual({ error: 'specification_not_found' });
-      // Project mode has no Engine Task source yet: a Task cannot be verified.
-      expect((await create(specId, { taskIds: ['TASK-01'] })).statusCode).toBe(503);
+      // Project mode verifies Tasks through the Engine's Task definitions: an unknown Task is 404.
+      const unknownTask = await create(specId, { taskIds: ['TASK-01'] });
+      expect(unknownTask.statusCode).toBe(404);
+      expect(unknownTask.json()).toEqual({ error: 'specification_task_not_found' });
     },
     timeoutMs,
   );

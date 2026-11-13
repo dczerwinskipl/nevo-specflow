@@ -8,10 +8,10 @@ import {
   type InstallPlan,
   type InstallPlanOutcome,
 } from './install';
-import { createDefaultDefinitionRegistry } from './kinds';
+import { createDefaultDefinitionRegistry } from '../../definitions/shipped-registry';
 import { loadDefinitions } from './loader';
 import { resolveProjectCatalogue } from './project-catalogue';
-import { openSeedSource } from './seed';
+import { openSeedSource } from '../../definitions/seed';
 import type { DefinitionSource } from './source';
 import { documentTypeFile, MemoryDefinitionSource } from './test-support';
 import type { DefinitionWriter } from './writer';

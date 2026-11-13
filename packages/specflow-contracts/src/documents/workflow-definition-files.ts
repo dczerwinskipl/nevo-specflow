@@ -25,7 +25,9 @@ const header = <TKind extends string>(kind: TKind) => ({
   schemaVersion: Type.Literal(WORKFLOW_FILE_SCHEMA_VERSION),
 });
 
-const title = () => Type.String({ minLength: 1, maxLength: 200 });
+/** A short single-line display text (a workflow, step or transition title or label). */
+const title = () =>
+  Type.String({ minLength: 1, maxLength: 200, pattern: '^[^\\r\\n]*\\S[^\\r\\n]*$' });
 
 /** Step, transition and result ids: the catalogue id shape, unique inside one workflow. */
 const localId = () => catalogueId();
@@ -102,13 +104,69 @@ const stepCommon = () => ({
   transitions: Type.Array(WorkflowTransitionFileSchema, { minItems: 1, maxItems: 16 }),
 });
 
-/** Work done by an agent (through an agent archetype) or by a person. */
+/** The gate types a step may declare. Closed today; a new type is a variant here and an Engine evaluator. */
+export const WORKFLOW_GATE_TYPES = ['document'] as const;
+export type WorkflowGateType = (typeof WORKFLOW_GATE_TYPES)[number];
+
+/** Where a `document` gate looks: the run's own subject (default) or the Specification. */
+export const WORKFLOW_GATE_SCOPES = ['subject', 'specification'] as const;
+export type WorkflowGateScope = (typeof WORKFLOW_GATE_SCOPES)[number];
+
+/**
+ * A `document` gate: satisfied when the scope (the Task or the Specification the run drives, or the
+ * Specification of a Task) registers a document of `documentType` whose file exists and, when
+ * `requiredSections` is given, has a Markdown heading with each of these texts (case-insensitive).
+ */
+const documentGateFields = () => ({
+  /** Names the gate in projections and refusals; default `entry-<n>` or `exit-<n>` (from 1). */
+  id: Type.Optional(localId()),
+  label: Type.Optional(title()),
+  type: Type.Literal('document'),
+  documentType: catalogueId(),
+  /** Default `subject`. */
+  scope: Type.Optional(Type.Union(WORKFLOW_GATE_SCOPES.map((scope) => Type.Literal(scope)))),
+  requiredSections: Type.Optional(
+    /** Heading texts; each has a non-whitespace character. */
+    Type.Array(Type.String({ minLength: 1, maxLength: 200, pattern: '\\S' }), {
+      minItems: 1,
+      maxItems: 32,
+      uniqueItems: true,
+    }),
+  ),
+});
+
+/** Checked before the step starts (a resume is not a start). */
+export const WorkflowEntryGateFileSchema = Type.Object(documentGateFields(), {
+  additionalProperties: false,
+});
+export type WorkflowEntryGateFile = Static<typeof WorkflowEntryGateFileSchema>;
+
+/** Checked before a finish is recorded. */
+export const WorkflowExitGateFileSchema = Type.Object(
+  {
+    ...documentGateFields(),
+    /** Only for the transitions of these results (declared on the step, checked by the Engine). */
+    when: Type.Optional(Type.Array(localId(), { minItems: 1, maxItems: 16, uniqueItems: true })),
+  },
+  { additionalProperties: false },
+);
+export type WorkflowExitGateFile = Static<typeof WorkflowExitGateFileSchema>;
+
+/** Work done by an agent (through an agent archetype), by a person, or by either. */
 export const WorkflowWorkStepFileSchema = Type.Object(
   {
     ...stepCommon(),
     kind: Type.Literal('work'),
-    executor: Type.Union([Type.Literal('agent'), Type.Literal('human')]),
-    /** Preferred agent archetype; required for an agent step (checked by the Engine). */
+    /**
+     * Who may do the step: `[agent, human]` lets the owner do an agent step by hand, `[human]` is a
+     * human-only gate (for example acceptance). Each class at most once.
+     */
+    executors: Type.Array(Type.Union([Type.Literal('agent'), Type.Literal('human')]), {
+      minItems: 1,
+      maxItems: 2,
+      uniqueItems: true,
+    }),
+    /** Preferred agent archetype; required exactly when an agent may do the step (checked by the Engine). */
     archetype: Type.Optional(catalogueId()),
     /** `interactive`: the step is a conversation with the owner (for example gathering requirements). */
     interaction: Type.Optional(
@@ -116,6 +174,13 @@ export const WorkflowWorkStepFileSchema = Type.Object(
     ),
     /** `tasks`: finishing the step creates the Specification's Tasks from the finish input. */
     produces: Type.Optional(Type.Literal('tasks')),
+    /** Must hold before the step starts; a refused start writes nothing. */
+    entryGates: Type.Optional(Type.Array(WorkflowEntryGateFileSchema, { maxItems: 16 })),
+    /**
+     * Must hold before the step finishes with a transition they apply to (`when`); a refused finish
+     * writes nothing.
+     */
+    exitGates: Type.Optional(Type.Array(WorkflowExitGateFileSchema, { maxItems: 16 })),
   },
   { additionalProperties: false },
 );

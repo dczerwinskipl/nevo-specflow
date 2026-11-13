@@ -50,7 +50,6 @@ export async function writeSpecificationManifestFixture(
       location,
       priority: 10,
       created: '2026-10-14',
-      tasks: [],
     },
     input.extra,
   );
@@ -72,7 +71,6 @@ export async function writeOldShapeManifestFixture(
     status: 'draft',
     priority: 10,
     created: '2026-10-14',
-    tasks: [],
     spec_id: specId,
   });
 

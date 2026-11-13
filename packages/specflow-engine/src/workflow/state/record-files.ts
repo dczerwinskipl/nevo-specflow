@@ -1,5 +1,5 @@
 import type { BigIntStats } from 'node:fs';
-import { lstat, mkdir, open, readdir, realpath, type FileHandle } from 'node:fs/promises';
+import { lstat, mkdir, open, readdir, realpath, rmdir, type FileHandle } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { writeTextAtomically } from '../../project/fs/atomic-json';
@@ -96,6 +96,93 @@ export async function listFolder(folder: RecordFolder): Promise<string[]> {
   }
 
   return readdir(pathOf(folder));
+}
+
+/**
+ * The names of the plain directories of a folder that `accept` takes; dot-entries, files and links
+ * are not listed (a link is refused when it is read as a record folder).
+ */
+export async function listSubfolders(
+  folder: RecordFolder,
+  accept: (name: string) => boolean,
+): Promise<string[]> {
+  if ((await inspectFolder(folder)) === 'absent') {
+    return [];
+  }
+
+  const entries = await readdir(pathOf(folder), { withFileTypes: true });
+
+  return entries
+    .filter((entry) => entry.isDirectory() && !entry.name.startsWith('.') && accept(entry.name))
+    .map((entry) => entry.name)
+    .sort();
+}
+
+/**
+ * Every entry below a folder that is not a plain directory (files, links and anything else), as
+ * POSIX paths relative to it, sorted; stage files of an interrupted write are left out. Links are
+ * listed, never followed. Stops after `limit` entries: a caller only needs to know what is there.
+ */
+export async function listTree(folder: RecordFolder, limit: number): Promise<string[]> {
+  if ((await inspectFolder(folder)) === 'absent') {
+    return [];
+  }
+
+  const found: string[] = [];
+  const walk = async (segments: readonly string[]): Promise<void> => {
+    const entries = await readdir(pathOf({ root: folder.root, segments }), {
+      withFileTypes: true,
+    });
+    for (const entry of entries.sort((left, right) => (left.name < right.name ? -1 : 1))) {
+      if (found.length >= limit) {
+        return;
+      }
+
+      const relative = [...segments.slice(folder.segments.length), entry.name].join('/');
+      if (entry.isDirectory() && !entry.isSymbolicLink()) {
+        await walk([...segments, entry.name]);
+      } else if (!STAGE_FILE.test(entry.name)) {
+        found.push(relative);
+      }
+    }
+  };
+
+  await walk(folder.segments);
+
+  return found.sort();
+}
+
+/**
+ * Remove the folder and the empty plain directories below it, deepest first; a directory that still
+ * holds anything stays, and so do its ancestors.
+ */
+export async function removeEmptyTree(folder: RecordFolder): Promise<void> {
+  if ((await inspectFolder(folder)) === 'absent') {
+    return;
+  }
+
+  for (const entry of await readdir(pathOf(folder), { withFileTypes: true })) {
+    if (entry.isDirectory() && !entry.isSymbolicLink()) {
+      await removeEmptyTree({ root: folder.root, segments: [...folder.segments, entry.name] });
+    }
+  }
+
+  await removeFolderIfEmpty(folder);
+}
+
+/** Remove the folder when it exists and is empty; a folder that still holds anything stays. */
+
+export async function removeFolderIfEmpty(folder: RecordFolder): Promise<void> {
+  if ((await inspectFolder(folder)) === 'absent') {
+    return;
+  }
+
+  await retryTransientFs(() => rmdir(pathOf(folder))).catch((error: unknown) => {
+    const code = errnoCode(error);
+    if (!isAbsent(error) && code !== 'ENOTEMPTY' && code !== 'EEXIST') {
+      throw error;
+    }
+  });
 }
 
 function sameFile(left: BigIntStats, right: BigIntStats): boolean {

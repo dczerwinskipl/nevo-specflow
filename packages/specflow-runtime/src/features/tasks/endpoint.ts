@@ -1,4 +1,4 @@
-import type { FastifyPluginCallback } from 'fastify';
+import type { FastifyPluginCallback, FastifyReply } from 'fastify';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import {
   SpecificationTaskParamsSchema,
@@ -19,6 +19,32 @@ import { specScope } from '../specs';
 import { readTaskDetail, type TaskReadDependencies } from './detail/read-task-detail';
 import { readTaskPage } from './reads/read-page';
 import { contractRef } from '../../server/shared-contracts';
+import { TaskSourceUnavailableError } from './engine/sources';
+import type { ReadOutcome } from './reads/outcome';
+
+/** A source outage (the Engine could not read the execution) is the read's `unavailable` (503). */
+async function unlessUnavailable<T>(read: () => Promise<ReadOutcome<T>>): Promise<ReadOutcome<T>> {
+  try {
+    return await read();
+  } catch (error) {
+    if (error instanceof TaskSourceUnavailableError) {
+      return { kind: 'unavailable', retryable: error.retryable };
+    }
+
+    throw error;
+  }
+}
+
+/** 503 `specification_source_unavailable`; `Retry-After` only when the lock was busy. */
+function unavailableReply<R extends FastifyReply>(reply: R, retryable: boolean): R {
+  if (retryable) {
+    reply.header('Retry-After', '1');
+  }
+
+  (reply as FastifyReply).code(503).send({ error: 'specification_source_unavailable' });
+
+  return reply;
+}
 
 export const taskReadEndpoint: FastifyPluginCallback<{ dependencies: TaskReadDependencies }> = (
   app,
@@ -51,11 +77,13 @@ export const taskReadEndpoint: FastifyPluginCallback<{ dependencies: TaskReadDep
     },
     async (request, reply) => {
       reply.header('Cache-Control', 'no-store');
-      const result = await readTaskDetail(
-        options.dependencies,
-        request.params.specId,
-        request.params.taskId,
-        request.authz,
+      const result = await unlessUnavailable(() =>
+        readTaskDetail(
+          options.dependencies,
+          request.params.specId,
+          request.params.taskId,
+          request.authz,
+        ),
       );
       if (result.kind === 'ok') {
         return result.value;
@@ -65,7 +93,7 @@ export const taskReadEndpoint: FastifyPluginCallback<{ dependencies: TaskReadDep
         return reply.code(404).send({ error: 'specification_task_not_found' });
       }
 
-      return reply.code(503).send({ error: 'specification_source_unavailable' });
+      return unavailableReply(reply, result.kind === 'unavailable' && result.retryable === true);
     },
   );
   for (const kind of ['resources', 'history'] as const) {
@@ -87,13 +115,15 @@ export const taskReadEndpoint: FastifyPluginCallback<{ dependencies: TaskReadDep
       },
       async (request, reply) => {
         reply.header('Cache-Control', 'no-store');
-        const result = await readTaskPage(
-          options.dependencies,
-          kind,
-          request.params.specId,
-          request.params.taskId,
-          request.query,
-          request.authz,
+        const result = await unlessUnavailable(() =>
+          readTaskPage(
+            options.dependencies,
+            kind,
+            request.params.specId,
+            request.params.taskId,
+            request.query,
+            request.authz,
+          ),
         );
         if (result.kind === 'ok') {
           return result.value;
@@ -107,7 +137,7 @@ export const taskReadEndpoint: FastifyPluginCallback<{ dependencies: TaskReadDep
           return reply.code(404).send({ error: 'specification_task_not_found' });
         }
 
-        return reply.code(503).send({ error: 'specification_source_unavailable' });
+        return unavailableReply(reply, result.kind === 'unavailable' && result.retryable === true);
       },
     );
   }

@@ -16,8 +16,9 @@ summary: >
   or its own escalation to the Specification. The Engine decides
   continuations; anything it cannot carry out is attention for the owner, derived from the state on
   every inspection and never stored. Canonical state lives in the Specification's `.execution/`
-  folder, which lists the Task set; only the change journal is local. The kernel writes those files
-  but does not commit them yet (follow-up F04).
+  folder, which lists the Task set; only the change journal is local. Its writes are committed like
+  the Specification's documents (the document commit policy, queue and ledger); with auto-commit off
+  a step's finish commits them, and a Close takes what is left.
 related:
   - architecture.workflow.deterministic-workflow
   - adr.0019-workflow-kernel-and-automatic-continuation
@@ -60,12 +61,12 @@ Everything else is shared.
 Each kind of definition is a directory under `.nevo/definitions/`. The product ships seeds of each kind
 in `packages/specflow-engine/definitions/`.
 
-| Kind                      | Holds                                                                                                                                                                                                                                                                                                                                                                                                            |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `workflow`                | `subject: specification \| task`, `entryStep`, `steps[]`, `returns[]`. A step is `work` (fields `executor: agent \| human`, `archetype`, `interaction`, optional `produces: tasks`) or `wait-for-tasks`. A transition has `result?`, `to: {step} \| {terminal}`, `continuation: auto \| owner-action`, `session: fresh \| reuse`, `feedback`, `effects`, in a Task workflow `escalate`, and on a wait step `on`. |
-| `agent-archetype`         | Who works on a step: an optional agent `profile`, `instructions`, `preferredProvider`, and `providers[]` with an optional `model` and `effort` each. An entry without a model means "known provider, model not chosen yet".                                                                                                                                                                                      |
-| `task-type`               | What a Task is (`description`, `useWhen`, `instructions`) and the Task `workflow` it runs.                                                                                                                                                                                                                                                                                                                       |
-| `specification-archetype` | Gains an optional `execution: {workflow, taskTypes?}`. `taskTypes` defaults to `['*']`, meaning every task type is allowed. Resolved when execution starts.                                                                                                                                                                                                                                                      |
+| Kind                      | Holds                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `workflow`                | `subject: specification \| task`, `entryStep`, `steps[]`, `returns[]`. A step is `work` (fields `executor: agent \| human`, `archetype`, `interaction`, optional `produces: tasks`, `entryGates`, `exitGates`; see "Gates") or `wait-for-tasks`. A transition has `result?`, `to: {step} \| {terminal}`, `continuation: auto \| owner-action`, `session: fresh \| reuse`, `feedback`, `effects`, in a Task workflow `escalate`, and on a wait step `on`. |
+| `agent-archetype`         | Who works on a step: an optional agent `profile`, `instructions`, `preferredProvider`, and `providers[]` with an optional `model` and `effort` each. An entry without a model means "known provider, model not chosen yet".                                                                                                                                                                                                                              |
+| `task-type`               | What a Task is (`description`, `useWhen`, `instructions`) and the Task `workflow` it runs.                                                                                                                                                                                                                                                                                                                                                               |
+| `specification-archetype` | Gains an optional `execution: {workflow, taskTypes?}`. `taskTypes` defaults to `['*']`, meaning every task type is allowed. Resolved when execution starts.                                                                                                                                                                                                                                                                                              |
 
 A workflow and a Specification archetype are separate definitions. The archetype only refers to a
 workflow.
@@ -102,7 +103,16 @@ never loads:
   transition has a result, reuses the Session (the Engine settles a wait without one) or leads to
   another wait step;
 - the entry step is not a wait step: starting a run enters its entry step;
-- a return never targets a wait step: a return waits for the owner, and nobody can start a wait step.
+- a return never targets a wait step: a return waits for the owner, and nobody can start a wait step;
+- every step has a `title`, a single line with a non-whitespace character (as do workflow titles and
+  transition and return labels); surfaces show it with the id as the stable reference: the projection
+  carries `title` on every step, `firstStepTitle` on the pin preview, `targetTitle` on a transition to a
+  step, `title` on each return target and `stepTitle` on a gate refusal, and the Task reads carry the
+  step `title`;
+- only a work step has gates; gate ids are unique within the step, an exit gate's `when` names results
+  the step's transitions declare (an entry gate has no `when`), only the gate type `document` exists, and
+  its `documentType` is a defined document type (a missing one is `reference-missing`; an invalid
+  document-type file does not take the workflow down).
 
 ## Positions, attempts and the handoff
 
@@ -175,6 +185,64 @@ executor, `assertOwner`); anything else, including no executor, is refused the s
 Breaking a rule fails with `WORKFLOW_EXECUTOR_NOT_ALLOWED` before anything changes. Handing an agent
 step over to the owner (owner takeover) is not supported; it would be an explicit operation of its own
 (plan 06, F17), not a finish.
+
+## Gates
+
+A work step may declare **entry gates** (checked before it starts) and **exit gates** (checked before it
+finishes). They are user-definable conditions of the definition, so a project adds process checks
+without code; nothing about a particular process is built in. The only gate type today is `document`
+(`command` and `human` gates are planned on the same model, F03):
+
+```yaml
+steps:
+  - id: investigate
+    kind: work
+    title: Investigate
+    executors: [agent, human]
+    archetype: implementer
+    purpose: Answer the open questions of the Task.
+    exitGates:
+      - id: findings # optional; default exit-<n> / entry-<n> (from 1)
+        type: document
+        documentType: research # a defined document type
+        scope: subject # default; or specification (the Specification of a Task)
+        requiredSections: [Findings, Open questions] # optional Markdown headings
+        when: [answered] # exit gates only: just for these results; default every one
+        label: Findings are written # optional display text
+    transitions:
+      - { id: answered, result: answered, to: { terminal: completed } }
+      - { id: blocked, result: blocked, to: { step: investigate }, feedback: required }
+```
+
+- A `document` gate holds when its scope **registers** a document of `documentType` (the
+  Specification's or the Task's document registry) whose file exists and, with `requiredSections`, has a
+  heading for each text. One such document is enough. Otherwise its reason is `no-document`,
+  `file-missing`, `sections-missing` (with the closest document and the sections it lacks) or
+  `unreadable` (the only documents with a file could not be read: not a regular file, redirected, or a
+  failed read; the gate fails closed and the rest of the projection is unaffected). Evaluation is
+  `workflow/gates/`: pure over what a read found, and the read goes through the Documents capability
+  (`readRegisteredDocumentsOfType`), never the execution store.
+- **Section rules.** Only ATX headings count (`#` to `######`, any level, the closing `#` sequence
+  dropped); setext (underlined) headings do not. A section matches a heading by its exact text after
+  trimming, case-insensitive; inline markup is not stripped (`## *Risks*` matches `*Risks*`, not `Risks`).
+  Ignored: a front matter block at the very start (`---` to `---` or `...`), fenced code (CommonMark: a
+  fence closes only with the same character, at least as many, and no info string) and the lines of an
+  HTML comment (`<!--` to `-->`). A required section has a non-whitespace character (schema).
+- **Neutral core.** Gates are SpecFlow annotations of a work step (`SpecFlowAnnotations.work`); the
+  `@nevo/workflow` core carries them opaquely and never evaluates them. Annotations are part of the
+  compiled definition, so gates are covered by its revision and a run keeps the gates it was pinned with.
+  A step without gates has no gate fields at all, so adding the feature did not change the revision of
+  existing workflows.
+- **Inspection.** The action projection reports each gate as a `GateStatus` (`satisfied` or
+  `unsatisfied`, with `scope` as link data): every finish transition lists the exit gates that apply to
+  it and is `unavailable: gate-unsatisfied` while one does not hold; a startable step lists its
+  `entryGates`, and unsatisfied ones are the start blocker `gates-unsatisfied`. The inspection writes
+  nothing.
+- **Authoritative check.** `finishStep` evaluates the exit gates of the taken transition inside the
+  lock after every input rule and before anything is planned or written; a start (not a resume)
+  evaluates the step's entry gates after the Task's own readiness and context checks. An unsatisfied
+  gate refuses with `WORKFLOW_GATE_UNSATISFIED` (`GateUnsatisfiedError`: `phase`, `step`, `gates`). A
+  repeated finish (F16 replay) returns the recorded result without evaluating gates again.
 
 ## Tasks
 
@@ -271,11 +339,10 @@ changes only by:
   effects, and the owner operation `setTaskStatus(dependencies, {specId, taskId, status, reason?,
 executor})`, which requires a human executor (`WORKFLOW_EXECUTOR_NOT_ALLOWED` otherwise) and runs
   under the same serialization. Allowed: `draft → ready | cancelled`, `ready → on-hold | cancelled`,
-  `on-hold → ready | cancelled`. A Task whose run ended keeps its status, and a running Task may go on
-  hold (its current step finishes normally, the next start is refused) but is not cancelled. The
-  status is preparation and completion is the run: a Task put on hold while running whose run then
-  ends keeps the status `on-hold`.
-  Anything else is `WORKFLOW_INPUT_INVALID`; in a finish, one refused decision rejects the whole
+  `on-hold → ready | cancelled`. A Task whose run ended keeps its status. A Task with an active
+  attempt is neither put on hold nor cancelled (`WORKFLOW_TASK_BLOCKED`, reason `active-attempt`):
+  its current step is finished or returned first. The status is preparation and completion is the
+  run. Anything else is `WORKFLOW_INPUT_INVALID`; in a finish, one refused decision rejects the whole
   finish;
 - the Task's own **escalation** (below).
 
@@ -291,6 +358,22 @@ Task whose direct dependency ended `abandoned` or was cancelled fails with
 `WORKFLOW_DEPENDENCY_UNSATISFIED` naming that dependency (also a broken one). Only a `ready` Task can
 be returned. A Task that is not `ready` after its own finish gets the continuation `none {on-hold}`
 and no attention.
+
+The entry gate of every Task step is its own context: a required context entry that does not resolve
+refuses the start (`WORKFLOW_TASK_CONTEXT_UNRESOLVED`). A reference entry may be marked as a **process
+artifact** (`artifact: true` in `task.yaml`; not for `instructions`): something another step or Task
+produces. While it is missing it is `awaited`, not stale: create and edit accept it, the projection
+reports it as the blocker `context-awaited` (apart from `context-unresolved`, so a surface shows no
+warning on Approve), and a required one still refuses the start, listed apart in the refusal
+(`awaited`). There is no producer link; the artifact simply has to exist when the step starts.
+
+**Context is input, gates are output.** A Task's context lists what the Task needs before it starts.
+What the Task itself produces is expressed by gates: an exit gate on the step that produces the
+document and an entry gate on the step that consumes it. So a create or an edit refuses a **required**
+`task-document` entry marked `artifact` (one of the Task's own documents, which its own start could
+never find) with `WORKFLOW_INPUT_INVALID` and `details.invalidContext [{index, key, reason:
+required-own-artifact}]` (`TaskContextInvalidError`); an optional own-document artifact stays allowed.
+An edit checks this only when it changes the context.
 
 The step context of a producing step lists the allowed task types, so the planner chooses among
 them. The step context of every Specification work step lists the existing Tasks (`existingTasks`:
@@ -475,11 +558,11 @@ proceed.
 
 ## State and storage
 
-| What                                   | Where                                                  | Belongs to                   |
-| -------------------------------------- | ------------------------------------------------------ | ---------------------------- |
-| Specification run and Task list        | `<specification>/.execution/specification.yaml`        | Git (not committed yet, F04) |
-| Task records (type, deps, status, run) | `<specification>/.execution/tasks/<taskId>.yaml`       | Git (not committed yet, F04) |
-| Change journal                         | `<stateRoot>/engine/operations/workflow/<specId>.json` | local                        |
+| What                                   | Where                                                  | Belongs to                 |
+| -------------------------------------- | ------------------------------------------------------ | -------------------------- |
+| Specification run and Task list        | `<specification>/.execution/specification.yaml`        | Git (committed, see below) |
+| Task records (type, deps, status, run) | `<specification>/.execution/tasks/<taskId>.yaml`       | Git (committed, see below) |
+| Change journal                         | `<stateRoot>/engine/operations/workflow/<specId>.json` | local                      |
 
 - **Location.** `.execution/` starts with a dot, so the document tree never lists it. It moves with
   the Specification when the Specification is archived.
@@ -539,9 +622,38 @@ proceed.
 - **Per-Task files.** Each Task has its own file, so parallel Task worktrees can later merge without
   conflicts (follow-up F08).
 
-Committing the `.execution/` files is not done by this kernel yet (follow-up
-[F04](../../ideas/specflow-engine/execution-plans/06-workflow-kernel/README.md#f04--commits-of-execution-state-and-finalize-actions)). Until then, they
-are ordinary working-tree changes of the Specification's checkout.
+### Commits of the execution state
+
+Owner decision (2026-11-12, it replaces the earlier "the execution store does not commit" rule): the
+store's writes (`.execution/**` and `tasks/**`: index, manifests, the initial `task.md`, run records,
+removals) made by owner, UI or CLI operations are committed like a change of the Specification's
+documents ([documents layer](../runtime/specification-documents.md#commits-of-workflow-state)).
+
+- **Admission and record.** The filesystem store takes an `ExecutionStateCommits` port
+  (`state/store.ts`; production `specs/documents/write/execution-state.ts`, wired in
+  `composition.ts`). Under the control lock it admits the change with its paths before the journal
+  is written (a refusal of the commit policy writes nothing), then records the published files in the
+  same lock section, before the journal is removed, as one document operation of action `workflow`.
+  The journal fixes the operation id, summary and each target's `pre` first, and the record is
+  idempotent by that id, so a change finished after a stop is recorded exactly once with its
+  original `pre`. Every operation names its change
+  (`ExecutionChange.summary`): `create task <id>`, `edit task <id>`, `remove task <id>`,
+  `set task <id> <status>`, `start step <step>[ of task <id>] (attempt <n>)`, `finish step ...`,
+  `return to step ...`, `abandon the specification`; a pending journal finished by a later change is
+  `finish an interrupted workflow change`.
+- **Auto-commit on.** The operation is queued and committed by the document queue with its batch
+  policy, identity and trailers (`Nevo-Action: workflow`); its subject is
+  `spec(workflow): <summary> in <slug>` (`<n> workflow changes` when a batch holds several).
+- **Auto-commit off.** The paths go to the uncommitted-changes ledger. Finishing a step ("Next")
+  runs the post action `commit-execution-state` (`operations/post-actions.ts`): a manual commit of
+  the Specification's ledger entries below `.execution/` and `tasks/` (closed under shared operation
+  ids), reported in `FinishStepResult.postActions`. A failed post action does not fail the finish; a
+  repeated finish runs it again. The post-action hook is the seam where E6 adds the push of an agent
+  step's work (not implemented).
+- **Close and Abandon.** Abandon is a workflow change like the others. A Specification Close takes
+  whatever execution state of that Specification is still uncommitted (in the ledger, or dirty
+  without a record, for example a hand edit) into its archive commit; anything else that is dirty still refuses
+  it, naming the paths ([lifecycle](../runtime/specification-lifecycle.md)).
 
 ## Extension points
 
@@ -551,6 +663,7 @@ are ordinary working-tree changes of the Specification's checkout.
 | A Task status change          | Extend `ALLOWED_DECISIONS` in `tasks/tasks.ts`; the store invariants for statuses live in `state/validate.ts`.                                            |
 | An attention reason           | Add it to `ATTENTION_REASONS` and give `resolveAgentLaunch` / `resolveContinuation` (or `waitDecision`) the rule that produces it.                        |
 | A step kind (e.g. gate)       | Add a union member in the contracts schema and in `definitions/model.ts`, then a rule in `workflow-rules.ts` and handling in `progression` and `advance`. |
-| Gates and finalize actions    | Planned as step fields checked by `planFinish` before the change is built (F03, F04).                                                                     |
+| A gate type (`command`, …)    | Add a variant to the gate schemas (contracts), a type to `DocumentGate`'s union and an evaluator in `workflow/gates/` (F03); the check points stay.       |
+| Finalize actions              | Planned as step fields run after the finish is recorded (F04).                                                                                            |
 | A store                       | Implement the `WorkflowStore` port (`state/store.ts`).                                                                                                    |
 | A surface (Runtime, CLI, MCP) | Call the operations with `openWorkflow(engine)`. Never reimplement progression.                                                                           |

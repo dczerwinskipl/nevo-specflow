@@ -5,14 +5,16 @@ title: Task and document read API
 status: current
 scope: specflow
 areas: [server, runtime, workflow, security]
-tags: [tasks, documents, pagination, compatibility]
+tags: [tasks, documents, pagination, compatibility, commands]
 read_when:
   - implementing the Task read ownership refactor
   - migrating Task schemas out of Specification Workspace
   - implementing scoped Task page tokens and continuation
+  - creating, editing, removing or deciding the status of a Task over HTTP
 summary: >
   Compatible Task and Document HTTP ownership, application outcomes, page lease
-  semantics and migration constraints; production Engine adapters remain dependent.
+  semantics, the Engine-backed project-mode reads and the owner's Task commands (create, edit,
+  remove, status) with their refusal statuses.
 related:
   - architecture.runtime.task-read-composition
   - reference.api.specification-workspace
@@ -24,8 +26,9 @@ related:
 ## Status and compatibility
 
 Runtime Tasks and Documents own these implemented application/HTTP boundaries. Source ports and
-explicit demo adapters are available; production Engine and content adapters remain dependent.
-Schemas live under `packages/specflow-contracts/src/tasks/` and `documents/`, with compatibility
+explicit demo adapters are available; in project mode the Engine is the source of the Task
+definition, execution and history reads ([Project mode](#project-mode-engine-reads)) and of the
+[Task commands](#task-commands). Schemas live under `packages/specflow-contracts/src/tasks/` and `documents/`, with compatibility
 re-exports from `specs/workspace`. This API is independent of the fixture-only revised workspace UI.
 
 The compatibility migration retains these paths and JSON shapes:
@@ -69,9 +72,16 @@ type Detail = {
   purpose?: string;
   acceptanceCriteria: string[];
   workflow?: string;
+  /** The Task resource (`TaskResourceFacts`); project mode only. */
+  resource?: TaskResourceFacts;
   snapshot?: ExistingTaskSnapshot;
 };
 ```
+
+A step of the flow descriptors names who may work on it as `executors` (`['agent']`, `['human']`
+or both; empty for a wait step, which an event completes), and a history entry names who worked on
+the attempt as `actor` (`{ class, actorId? }`, the actor id for a person; `null` without an actor).
+The singular `executor` of earlier versions is gone.
 
 `Existing*` denotes the existing code schema, not a new duplicate TypeScript definition. A missing
 snapshot continues to mean no execution projection. An available section with an empty array is
@@ -177,6 +187,7 @@ Application functions return typed outcomes, never Fastify replies:
 | Task/document absent in a verified, readable source                            | Existing 404 with `specification_task_not_found` / `specification_document_not_found` |
 | Reader missing, source unavailable, unsafe/mismatched read basis               | Existing 503 with `specification_source_unavailable`                                  |
 | Page lease/cursor invalid, expired, wrong scope, or owner read no longer valid | `409 { "error": "task_snapshot_expired" }`                                            |
+| Page of a kind the Runtime has no source for (no detail issued a lease for it) | `409 { "error": "task_snapshot_expired" }`                                            |
 | Valid permitted read                                                           | Existing 200 DTO                                                                      |
 
 Authorize the enclosing resource before looking up page tokens or foreign target details. Readers
@@ -186,6 +197,72 @@ metadata is omitted before response serialization and before any exact count/ran
 
 All detail/page/body responses remain `Cache-Control: no-store`. UI caches remain scoped to
 authenticated identity and their resource-specific keys; server tokens are not UI permissions.
+
+## Project mode: Engine reads
+
+With an Engine (`nevo-specflow start`), a Task detail or history page is ONE Engine read,
+`readExecution`: the inspection of the Specification's execution (the Task resources
+`tasks/index.yaml` and `tasks/<id>/task.yaml`, and the run records), the action projection of the
+Task and its lane, all from one snapshot read under the project control lock, with the definitions
+loaded for that request. Every section of the answer comes from that read, so none reflects
+another moment; only `task.md`'s revision is read separately (the Documents owner's own version).
+
+- `resource` is the Task resource: `revision` (the manifest revision an edit or removal names),
+  `type`, `status`, `statusChange`, `dependsOn`, `origin`, `documents`, `context` (`null`: the
+  default context), `readiness`, the run `position`, `lane` and `definitionChanged`.
+- `resource.lane` is the Engine's `TaskLane`, derived from the status, the run and the action
+  projection: `needs-approval`, `in-progress`, `ready` (can start now), `waiting` (only for
+  dependencies that can all still complete), `blocked` (the type is no longer allowed, the
+  definition is missing or changed, a required context entry does not resolve, or a dependency can
+  never complete), `done`, `ended` (abandoned), `held`, `cancelled`, `broken`. `task.status`
+  presents it (`draft`, `in-progress`, `ready`, `waiting`, `blocked`, `completed`, `abandoned`,
+  `on-hold`, `cancelled`, `broken`).
+- `snapshot.sections.work` projects the run with the definition it is pinned to (before the first
+  start: the task type's workflow, and `definition.revision` is the definition version). An active
+  position names the attempt's `actor`. When the pinned definition changed, `work` and `history`
+  are unavailable; nothing is reinterpreted. Its `blockers` stay empty: what may be done now is
+  the workflow action projection.
+- `history` pages the run's attempts, newest first; a page whose execution changed since the
+  detail answers `409 task_snapshot_expired`.
+- `document` is `task.md` with its revision; `humanRequirements`, `resources` and `recovery` are
+  `unavailable` / `not_implemented` (no Engine projection of them).
+
+An unknown Specification or Task is `404 specification_task_not_found`; an execution the Engine
+cannot read (an unavailable checkout, unreadable records) is `503 specification_source_unavailable`,
+with `Retry-After: 1` when the project control lock was busy (a retry soon can succeed). The demo
+Runtime keeps its own sources; a Runtime without either still answers 503.
+
+## Task commands
+
+The owner creates, edits, removes and decides the status of a Task through the Engine's Task use
+cases, with `spec.manage` at `specScope(projectId, specId)`, checked before the body is read. The
+actor is always the caller, recorded as `{ class: 'human', details: { actorId, trust } }`: the
+authenticated subject with `trust: 'authenticated'`, the trusted local identity (no local user) as
+`runtime:trusted-local` with `trust: 'local'` (the same `ownerActorOf` as the workflow action
+routes). A body that names an actor, an executor or a type change fails validation (`400`). Every
+answer is `Cache-Control: no-store`.
+
+| Operation                                                    | Body / query                                                                                               | Success                  |
+| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- | ------------------------ |
+| `POST /api/specs/:specId/tasks`                              | `taskId`, `title`, `type`, optional `summary`, `dependsOn`, `context`, `document`                          | `201 TaskChangeResult`   |
+| `PATCH /api/specs/:specId/tasks/:taskId`                     | `expectedRevision`, optional `title`, `summary` (`null` removes), `dependsOn`, `context` (`null`: default) | `200 TaskChangeResult`   |
+| `DELETE /api/specs/:specId/tasks/:taskId?expectedRevision=…` | the revision the removal was planned against                                                               | `200 { taskId }`         |
+| `PUT /api/specs/:specId/tasks/:taskId/status`                | `status` (`ready`, `on-hold`, `cancelled`), optional `reason`                                              | `200 { taskId, status }` |
+
+`TaskChangeResult` is `{ taskId, revision }`, the manifest revision for the next edit or removal. A
+refusal is the shared `WorkflowError` body with the statuses of the
+[workflow refusals](specification-workflow.md#refusals): for example `409
+WORKFLOW_TASK_REVISION_CONFLICT` for a stale `expectedRevision`, and `422
+WORKFLOW_TASK_CONTEXT_UNRESOLVED` with `details.unresolved` naming each context entry that does not
+resolve. A reference entry with `artifact: true` is a process artifact: accepted while missing
+(awaited). The context lists the Task's **inputs**; what the Task produces is a gate (an exit gate on
+the producing step, an entry gate on the consuming step), so a required `task-document` artifact is
+refused with `422 WORKFLOW_INPUT_INVALID` and `details.invalidContext [{index, key, reason:
+required-own-artifact}]` (an optional one is allowed). A `project-document` context reference resolves against the project documentation the
+Runtime serves (`/api/docs/`), read once per request. The documents of a Task are the
+[Task document routes](specification-documents.md#task-documents); a Task document save is a
+document operation of its Specification, so its status is read at
+`GET /api/specs/:specId/document-operations/:operationId`.
 
 ## Versioned document read
 

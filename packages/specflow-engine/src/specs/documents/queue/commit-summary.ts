@@ -13,6 +13,8 @@ import { manifestPathOf } from '../changes/plan/model';
  */
 
 export const DOCUMENT_COMMIT_SUBJECT_PREFIX = 'spec(documents): ';
+/** The prefix of a commit of workflow state only (writes of the Specification execution store). */
+export const WORKFLOW_COMMIT_SUBJECT_PREFIX = 'spec(workflow): ';
 export const DOCUMENT_COMMIT_SUBJECT_MAX = 72;
 /** Change lines the body lists before it summarises the rest as `... and N more`. */
 export const DOCUMENT_COMMIT_BODY_LINES_MAX = 20;
@@ -60,7 +62,9 @@ const VERB_OF_ACTION: Readonly<Record<string, Verb>> = {
 };
 
 function changesOf(plan: DocumentChangePlan): Change[] {
-  const inside = (path: string): string => path.slice(plan.directory.length + 1);
+  // Relative to the Specification directory, so a Task document reads `tasks/<id>/<path>`.
+  const specificationDirectory = `specs/active/${plan.slug}`;
+  const inside = (path: string): string => path.slice(specificationDirectory.length + 1);
   const documents = plan.paths.filter((path) => path.role === 'document');
   switch (plan.action) {
     case 'save':
@@ -129,6 +133,9 @@ function changesOf(plan: DocumentChangePlan): Change[] {
         path: document.path,
         ...(document.type !== undefined ? { type: document.type } : {}),
       }));
+    case 'workflow':
+      // Worded from its summary (`workflowCommitMessage`), never as document changes.
+      return [];
     default: {
       const exhaustive: never = plan.action;
 
@@ -296,6 +303,52 @@ function boundedLines(lines: readonly string[]): string[] {
  * is left out, unless that would leave nothing to say.
  */
 export function documentCommitMessage(
+  slug: string,
+  members: readonly SummarizedMember[],
+  effective: readonly string[],
+): DocumentCommitMessage {
+  const workflow = members.filter((member) => member.action === 'workflow');
+  if (workflow.length === 0) {
+    return documentsMessage(slug, members, effective);
+  }
+
+  // A workflow change speaks for itself: its summary (`create task api`), in the order of the batch.
+  const summaries = workflow.map((member) => member.plan?.summary ?? 'change the workflow state');
+  const coalesced = members.length > 1 ? [`${members.length} operations in one commit`] : [];
+  if (workflow.length === members.length) {
+    const phrase: Part[] =
+      summaries.length === 1
+        ? [{ name: summaries[0]! }]
+        : [`${plural(summaries.length, 'workflow change')}`];
+    const subject = fitParts(
+      [WORKFLOW_COMMIT_SUBJECT_PREFIX, ...phrase, ' in ', { name: slug }],
+      DOCUMENT_COMMIT_SUBJECT_MAX,
+    );
+    const lines = summaries.length > 1 ? boundedLines(summaries) : [];
+    const body = [lines.join('\n'), ...coalesced].filter((part) => part.length > 0).join('\n\n');
+
+    return { subject, body };
+  }
+
+  // Documents and workflow state in one batch (a Task document and its task.yaml, for example).
+  const documents = documentsMessage(
+    slug,
+    members.filter((member) => member.action !== 'workflow'),
+    effective,
+  );
+  const subject = fitParts(
+    [DOCUMENT_COMMIT_SUBJECT_PREFIX, 'change documents and workflow state in ', { name: slug }],
+    DOCUMENT_COMMIT_SUBJECT_MAX,
+  );
+  const listed = documents.body.split('\n\n')[0] ?? '';
+  const lines = boundedLines([...(listed.length > 0 ? listed.split('\n') : []), ...summaries]);
+  const body = [lines.join('\n'), ...coalesced].filter((part) => part.length > 0).join('\n\n');
+
+  return { subject, body };
+}
+
+/** The message of a batch of document changes only. */
+function documentsMessage(
   slug: string,
   members: readonly SummarizedMember[],
   effective: readonly string[],

@@ -48,7 +48,7 @@ const twoActions = (
       Copy my version
     </button>
     <button type="button" className="rounded-control border px-2 py-1 text-label-sm">
-      Load the version on disk…
+      Load the version on disk
     </button>
   </>
 );

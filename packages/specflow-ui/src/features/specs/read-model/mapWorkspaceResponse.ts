@@ -49,6 +49,9 @@ export function mapWorkspaceResponse(
       status: task.status.lifecycle,
       statusCode: task.status.lifecycle,
       lifecycle: task.status.lifecycle,
+      statusId: task.status.id,
+      ...(task.type ? { typeTitle: task.type.title } : {}),
+      ...(task.dependsOn ? { dependsOn: task.dependsOn } : {}),
       group: group.id,
     })),
   }));

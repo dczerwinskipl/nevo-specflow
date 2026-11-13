@@ -1,7 +1,7 @@
 import type { AttentionItem } from '../attention/model';
 import type { ContinuationDecision } from '../continuation/resolve';
 import type { ExecutionCatalogue } from '../definitions/catalogue';
-import { findStep } from '../definitions/model';
+import { findStep } from '@nevo/workflow';
 import type { WorkflowSubject } from '../state/model';
 import type { ExecutionSnapshot } from '../state/store';
 import { continuationOf, waitDecision } from './advance';
@@ -27,10 +27,6 @@ export function deriveAttention(
   snapshot: ExecutionSnapshot,
 ): AttentionItem[] {
   const specification = snapshot.specification?.value;
-  if (!specification) {
-    return [];
-  }
-
   const { tasks, broken } = executionTasks(catalogue, snapshot);
   const items: AttentionItem[] = [];
   const add = (subject: WorkflowSubject, decision: ContinuationDecision | undefined) => {
@@ -40,31 +36,36 @@ export function deriveAttention(
     }
   };
 
-  const run = specification.run;
-  const definition = pinnedDefinitionIfUnchanged(catalogue, run);
-  const position = run.position;
-  if (definition && position.state === 'ready') {
-    add(
-      { kind: 'specification', specId: specification.specId },
-      continuationOf(run, definition, catalogue),
-    );
-  } else if (
-    definition &&
-    position.state === 'active' &&
-    findStep(definition, position.step)?.kind === 'wait-for-tasks'
-  ) {
-    add(
-      { kind: 'specification', specId: specification.specId },
-      waitDecision(position.step, tasks, broken),
-    );
+  // Tasks run without a Specification run, so only a started Specification adds its own item.
+  if (specification) {
+    const run = specification.run;
+    const definition = pinnedDefinitionIfUnchanged(catalogue, run);
+    const position = run.position;
+    if (definition && position.state === 'ready') {
+      add(
+        { kind: 'specification', specId: specification.specId },
+        continuationOf(run, definition, catalogue),
+      );
+    } else if (
+      definition &&
+      position.state === 'active' &&
+      findStep(definition, position.step)?.kind === 'wait'
+    ) {
+      add(
+        { kind: 'specification', specId: specification.specId },
+        waitDecision(position.step, tasks, broken),
+      );
+    }
   }
 
   for (const task of tasks) {
-    const taskDefinition = pinnedDefinitionIfUnchanged(catalogue, task.run);
-    if (taskDefinition && task.status === 'ready' && task.run.position.state === 'ready') {
+    // A Task that has not started has no run: what its first start needs is not attention.
+    const run = task.run;
+    const taskDefinition = run && pinnedDefinitionIfUnchanged(catalogue, run);
+    if (run && taskDefinition && task.status === 'ready' && run.position.state === 'ready') {
       add(
         { kind: 'task', specId: task.specId, taskId: task.taskId },
-        continuationOf(task.run, taskDefinition, catalogue),
+        continuationOf(run, taskDefinition, catalogue),
       );
     }
   }

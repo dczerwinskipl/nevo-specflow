@@ -8,6 +8,8 @@ import {
   type AgentArchetypeDefinitionFile,
   type TaskTypeDefinitionFile,
   type WorkflowDefinitionFile,
+  type WorkflowEntryGateFile,
+  type WorkflowExitGateFile,
   type WorkflowTransitionFile,
 } from '@nevo/specflow-contracts/documents';
 
@@ -16,17 +18,21 @@ import {
   type DefinitionCheckContext,
   type DefinitionIssue,
 } from '../../specs/definitions/kind-registry';
+import { DOCUMENT_TYPE_KIND } from '../../specs/definitions/kinds/document-type';
 import {
   AGENT_ARCHETYPE_KIND,
   TASK_TYPE_KIND,
   WORKFLOW_KIND,
   type AgentArchetype,
+  type DocumentGate,
+  type ExitGate,
   type TaskType,
   type WorkflowDefinition,
+  type WorkflowSubjectKind,
   type WorkflowStep,
   type WorkflowTransition,
 } from './model';
-import { checkWorkflow } from './workflow-rules';
+import { checkWorkflow, stepGates } from './workflow-rules';
 
 /** Definitions of one kind that load per project. */
 const WORKFLOWS_MAX = 50;
@@ -64,11 +70,13 @@ function parseTransition(file: WorkflowTransitionFile): WorkflowTransition {
         ? { kind: 'step', step: file.to.step }
         : { kind: 'terminal', outcome: file.to.terminal },
     continuation: file.continuation ?? 'owner-action',
-    session: file.session ?? 'fresh',
     feedback: file.feedback ?? 'optional',
-    effects: file.effects ?? [],
-    escalate: file.escalate ?? false,
     ...(file.on !== undefined ? { on: file.on } : {}),
+    annotations: {
+      session: file.session ?? 'fresh',
+      effects: file.effects ?? [],
+      escalate: file.escalate ?? false,
+    },
   };
 }
 
@@ -84,22 +92,74 @@ function parseStep(file: WorkflowDefinitionFile['steps'][number]): WorkflowStep 
     // A wait-step transition without a trigger is the one taken when the Tasks are finished.
     return {
       ...common,
-      kind: 'wait-for-tasks',
+      kind: 'wait',
       transitions: common.transitions.map((transition) => ({
         ...transition,
         on: transition.on ?? 'tasks-finished',
       })),
+      annotations: {},
     };
   }
+
+  const entryGates = (file.entryGates ?? []).map((gate, index) =>
+    parseGate(gate, `entry-${String(index + 1)}`),
+  );
+  const exitGates = (file.exitGates ?? []).map((gate, index): ExitGate => ({
+    ...parseGate(gate, `exit-${String(index + 1)}`),
+    ...(gate.when !== undefined ? { when: [...gate.when] } : {}),
+  }));
 
   return {
     ...common,
     kind: 'work',
-    executor: file.executor,
-    ...(file.archetype !== undefined ? { archetype: file.archetype } : {}),
-    interaction: file.interaction ?? 'autonomous',
-    ...(file.produces !== undefined ? { produces: file.produces } : {}),
+    executors: [...file.executors],
+    annotations: {
+      ...(file.archetype !== undefined ? { archetype: file.archetype } : {}),
+      interaction: file.interaction ?? 'autonomous',
+      ...(file.produces !== undefined ? { produces: file.produces } : {}),
+      // Omitted when empty: a workflow without gates keeps its revision.
+      ...(entryGates.length > 0 ? { entryGates } : {}),
+      ...(exitGates.length > 0 ? { exitGates } : {}),
+    },
   };
+}
+
+function parseGate(
+  file: WorkflowEntryGateFile | WorkflowExitGateFile,
+  defaultId: string,
+): DocumentGate {
+  return {
+    id: file.id ?? defaultId,
+    type: file.type,
+    ...(file.label !== undefined ? { label: file.label } : {}),
+    documentType: file.documentType,
+    scope: file.scope ?? 'subject',
+    requiredSections: [...(file.requiredSections ?? [])],
+  };
+}
+
+/**
+ * A gate names a document type the project defines. Only a missing one is a problem of the
+ * workflow: an invalid document-type file does not take the workflow down (no cascade); its gates
+ * then never find a document of that type.
+ */
+function gateDocumentTypeIssues(
+  workflow: WorkflowDefinition,
+  context: DefinitionCheckContext,
+): DefinitionIssue[] {
+  return workflow.steps.flatMap((step, index) =>
+    stepGates(step).flatMap(({ gate, location }) =>
+      context.lookup(DOCUMENT_TYPE_KIND, gate.documentType).state === 'missing'
+        ? [
+            {
+              code: 'reference-missing' as const,
+              location: `/steps/${String(index)}${location}/documentType`,
+              message: `The document-type "${gate.documentType}" is not defined.`,
+            },
+          ]
+        : [],
+    ),
+  );
 }
 
 export function parseWorkflowFile(file: WorkflowDefinitionFile): WorkflowDefinition {
@@ -108,15 +168,15 @@ export function parseWorkflowFile(file: WorkflowDefinitionFile): WorkflowDefinit
     version: file.version,
     title: file.title,
     description: file.description,
-    subject: file.subject,
     entryStep: file.entryStep,
     steps: file.steps.map(parseStep),
     returns: (file.returns ?? []).map((entry) => ({
       step: entry.step,
       ...(entry.label !== undefined ? { label: entry.label } : {}),
       feedback: entry.feedback ?? 'required',
-      effects: entry.effects ?? [],
+      annotations: { effects: entry.effects ?? [] },
     })),
+    annotations: { subject: file.subject },
   };
 }
 
@@ -130,24 +190,37 @@ export function parseWorkflowFile(file: WorkflowDefinitionFile): WorkflowDefinit
 export const workflowKind = defineDefinitionKind<WorkflowDefinitionFile, WorkflowDefinition>({
   kind: WORKFLOW_KIND,
   auxiliaryDirectories: [],
-  dependsOn: [],
+  dependsOn: [DOCUMENT_TYPE_KIND],
   schemaVersions: [1],
   maxEntities: WORKFLOWS_MAX,
   schema: () => WorkflowDefinitionFileSchema,
   textLimitViolations: findWorkflowFileLimitViolations,
   auxiliaryFiles: () => [],
   parse: parseWorkflowFile,
-  check: (workflow) => checkWorkflow(workflow),
-  references: (workflow) =>
-    [
+  check: (workflow, context) => [
+    ...checkWorkflow(workflow),
+    ...gateDocumentTypeIssues(workflow, context),
+  ],
+  references: (workflow) => [
+    ...[
       ...new Set(
         workflow.steps.flatMap((step) =>
-          step.kind === 'work' && step.archetype !== undefined ? [step.archetype] : [],
+          step.kind === 'work' && step.annotations.archetype !== undefined
+            ? [step.annotations.archetype]
+            : [],
         ),
       ),
     ]
       .sort()
       .map((id) => ({ kind: AGENT_ARCHETYPE_KIND, id })),
+    ...[
+      ...new Set(
+        workflow.steps.flatMap((step) => stepGates(step).map(({ gate }) => gate.documentType)),
+      ),
+    ]
+      .sort()
+      .map((id) => ({ kind: DOCUMENT_TYPE_KIND, id })),
+  ],
 });
 
 /** The kind `agent-archetype`: who works on a step, with a preferred provider and a model per provider. */
@@ -236,11 +309,14 @@ export const taskTypeKind = defineDefinitionKind<TaskTypeDefinitionFile, TaskTyp
 function subjectIssue(
   context: DefinitionCheckContext,
   workflowId: string,
-  subject: WorkflowDefinition['subject'],
+  subject: WorkflowSubjectKind,
   location: string,
 ): DefinitionIssue[] {
   const found = context.lookup(WORKFLOW_KIND, workflowId);
-  if (found.state !== 'valid' || (found.entity as WorkflowDefinition).subject === subject) {
+  if (
+    found.state !== 'valid' ||
+    (found.entity as WorkflowDefinition).annotations.subject === subject
+  ) {
     return [];
   }
 

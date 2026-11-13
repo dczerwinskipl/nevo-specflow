@@ -18,7 +18,6 @@ function validSource(): Record<string, unknown> {
     status: 'draft',
     priority: 10,
     created: '2026-10-24',
-    tasks: [],
     spec_id: SPEC_ID,
     archetype: {
       id: 'feature',
@@ -81,7 +80,6 @@ describe('parseSpecificationManifest', () => {
       location: 'active',
       priority: 10,
       created: '2026-10-24',
-      tasks: [],
     });
   });
 
@@ -110,7 +108,6 @@ describe('parseSpecificationManifest', () => {
         title: 'My spec',
         type: 'legacy',
         status: 'draft',
-        tasks: [],
         spec_id: SPEC_ID,
       };
       expectInvalid(old, 'archetype');
@@ -133,7 +130,6 @@ describe('parseSpecificationManifest', () => {
       [{ ...validSource(), spec_id: 'nope' }, 'spec_id'],
       [{ ...validSource(), title: ' ' }, 'title'],
       [{ ...validSource(), status: 3 }, 'status'],
-      [{ ...validSource(), tasks: {} }, 'tasks'],
       [{ ...validSource(), priority: 'high' }, 'priority'],
       [{ ...validSource(), created: 20261024 }, 'created'],
     ])('rejects %#', (source, field) => {

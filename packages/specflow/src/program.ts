@@ -21,6 +21,8 @@ import { createProjectInitCommand, type ProjectInitCommandContext } from './init
 import { createProjectInspectCommand } from './project/inspect-command';
 import { resolveProjectLayout } from './project/layout';
 import { createSpecsCommand } from './specs/command';
+import { createTasksCommand } from './tasks/command';
+import { createWorkflowCommand } from './workflow/command';
 import { startProjectRuntime } from './runtime/start-project-runtime';
 import { NEVO_SPECFLOW_VERSION } from './version';
 
@@ -33,6 +35,8 @@ export interface ProgramIO {
   /** Reads all of standard input (a document body given with --stdin). */
   readonly readStdin?: () => Promise<string>;
   readonly cwd?: string;
+  /** The OS user behind the owner actor of `tasks` and `workflow`; the installed user by default. */
+  readonly osUser?: string;
   readonly documentsApi?: DocumentsCommandContext['api'];
   readonly commitApi?: CommitCommandContext['api'];
   readonly initUi?: RuntimeSetupUi;
@@ -70,6 +74,24 @@ export function createProgram(io: ProgramIO): Command {
       stderr: io.stderr,
       ...(io.readStdin ? { readStdin: io.readStdin } : {}),
       ...(io.documentsApi ? { api: io.documentsApi } : {}),
+      ...(io.osUser ? { osUser: io.osUser } : {}),
+    }),
+  );
+  program.addCommand(
+    createTasksCommand({
+      cwd: io.cwd ?? '.',
+      stdout: io.stdout,
+      stderr: io.stderr,
+      ...(io.readStdin ? { readStdin: io.readStdin } : {}),
+      ...(io.osUser ? { osUser: io.osUser } : {}),
+    }),
+  );
+  program.addCommand(
+    createWorkflowCommand({
+      cwd: io.cwd ?? '.',
+      stdout: io.stdout,
+      stderr: io.stderr,
+      ...(io.osUser ? { osUser: io.osUser } : {}),
     }),
   );
   program.addCommand(createDefinitionsCommand({ cwd: io.cwd ?? '.', stdout: io.stdout }));

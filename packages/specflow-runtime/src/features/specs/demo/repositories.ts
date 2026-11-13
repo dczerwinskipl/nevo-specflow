@@ -158,9 +158,11 @@ export function createDemoSpecsRepositories(deps?: DemoSpecsRepositoriesDeps): {
       async tasks(specId) {
         const record = await find(specId);
 
-        return record
-          ? buildDemoTaskContribution(record)
-          : { state: 'unavailable', reason: 'source_unavailable' };
+        return {
+          section: record
+            ? buildDemoTaskContribution(record)
+            : { state: 'unavailable', reason: 'source_unavailable' },
+        };
       },
       async documents(specId) {
         return documents.contribution(specId, find);

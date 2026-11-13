@@ -432,6 +432,43 @@
       ]
     },
     {
+      "id": "ideas.specflow-engine.reusable-workflow",
+      "type": "hub",
+      "title": "Reusable Workflow, Task resources and manual/agent execution",
+      "status": "draft",
+      "file": "docs/ideas/specflow-engine/reusable-workflow-manual-execution/README.md",
+      "read_when": [
+        "planning a reusable Workflow capability independent of Specification and Task",
+        "adding Task authoring and manual Specification or Task execution through the UI",
+        "reviewing the gates and sequencing of the next workflow implementation slices",
+        "adding owner-delegated single-step agent execution to Specification and Task"
+      ],
+      "summary": "Non-authoritative proposal to separate neutral Workflow progression from SpecFlow resource and storage ownership, add standalone Task creation and documents, support fully manual UI execution and optional owner-delegated agent steps, and later render typed transition inputs.",
+      "related": [
+        "ideas.specflow-engine",
+        "ideas.specflow-engine.task-resource-and-context",
+        "ideas.specflow-engine.workflow-api-requirements",
+        "architecture.workflow.workflow-kernel",
+        "adr.0019-workflow-kernel-and-automatic-continuation"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "workflow",
+        "runtime",
+        "ui",
+        "cli",
+        "docs"
+      ],
+      "tags": [
+        "proposal",
+        "workflow",
+        "task-resource",
+        "manual-execution",
+        "agent-execution",
+        "implementation-plan"
+      ]
+    },
+    {
       "id": "ideas.specflow-runtime.ai-adapters",
       "type": "hub",
       "title": "AI adapter hardening ideas",
@@ -1066,7 +1103,7 @@
         "wiring the Runtime, CLI or UI to Specification or Task execution",
         "adding a step kind, an effect, an attention reason or a new subject"
       ],
-      "summary": "One deterministic workflow core drives both a Specification and each of its Tasks. Entry points only select the subject. Workflows, agent archetypes (preferred provider and a model per provider) and task types are project definitions. Each Task has its own type, workflow and preparation status (draft, ready, on-hold, cancelled), changed only by explicit decisions, a declared approval effect or its own escalation to the Specification. The Engine decides continuations; anything it cannot carry out is attention for the owner, derived from the state on every inspection and never stored. Canonical state lives in the Specification's `.execution/` folder, which lists the Task set; only the change journal is local. The kernel writes those files but does not commit them yet (follow-up F04).",
+      "summary": "One deterministic workflow core drives both a Specification and each of its Tasks. Entry points only select the subject. Workflows, agent archetypes (preferred provider and a model per provider) and task types are project definitions. Each Task has its own type, workflow and preparation status (draft, ready, on-hold, cancelled), changed only by explicit decisions, a declared approval effect or its own escalation to the Specification. The Engine decides continuations; anything it cannot carry out is attention for the owner, derived from the state on every inspection and never stored. Canonical state lives in the Specification's `.execution/` folder, which lists the Task set; only the change journal is local. Its writes are committed like the Specification's documents (the document commit policy, queue and ledger); with auto-commit off a step's finish commits them, and a Close takes what is left.",
       "related": [
         "architecture.workflow.deterministic-workflow",
         "adr.0019-workflow-kernel-and-automatic-continuation",
@@ -1523,6 +1560,43 @@
         "idempotency",
         "journal",
         "persistence"
+      ]
+    },
+    {
+      "id": "ideas.specflow-engine.reusable-workflow.boundaries",
+      "type": "architecture",
+      "title": "Reusable Workflow boundaries and unresolved design decisions",
+      "status": "draft",
+      "file": "docs/ideas/specflow-engine/reusable-workflow-manual-execution/boundaries-and-decisions.md",
+      "read_when": [
+        "defining the reusable Workflow package boundary or API",
+        "designing Task CRUD without a running Specification workflow",
+        "deciding human execution, transition inputs, or close eligibility"
+      ],
+      "summary": "Candidate responsibility map and phased design decisions for reusable Workflow, independent Task resources, manual execution and agent delegation.",
+      "related": [
+        "ideas.specflow-engine.reusable-workflow",
+        "ideas.specflow-engine.task-resource-and-context",
+        "ideas.specflow-engine.decisions",
+        "architecture.workflow.workflow-kernel",
+        "adr.0012-product-package-topology-and-dependency-direction"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "workflow",
+        "runtime",
+        "ui",
+        "cli",
+        "testing",
+        "security"
+      ],
+      "tags": [
+        "proposal",
+        "architecture",
+        "ownership",
+        "atomicity",
+        "manual-execution",
+        "decisions"
       ]
     },
     {
@@ -3397,6 +3471,81 @@
       ]
     },
     {
+      "id": "ideas.specflow-engine.reusable-workflow.agent-execution",
+      "type": "engineering",
+      "title": "Agent-assisted deterministic Specification and Task execution",
+      "status": "draft",
+      "file": "docs/ideas/specflow-engine/reusable-workflow-manual-execution/agent-assisted-execution.md",
+      "read_when": [
+        "adding an Ask agent action beside manual Workflow execution",
+        "implementing agent-written Specification documents and Task resources",
+        "integrating Managed Sessions with Workflow start and finish"
+      ],
+      "summary": "Owner-delegated execution of one declared Workflow step by an agent, including Specification authoring, Task descriptions, dependencies and context, with durable Session and attempt correlation and shared Engine validation.",
+      "related": [
+        "ideas.specflow-engine.reusable-workflow",
+        "ideas.specflow-engine.reusable-workflow.delivery",
+        "ideas.specflow-engine.reusable-workflow.boundaries",
+        "ideas.specflow-engine.task-resource-and-context",
+        "ideas.specflow-engine.plan-06",
+        "architecture.workflow.workflow-kernel",
+        "architecture.runtime.workspace-execution-claims",
+        "reference.api.docs-search",
+        "reference.cli.nevo-specflow-docs"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "workflow",
+        "runtime",
+        "ai",
+        "ui",
+        "cli",
+        "security",
+        "testing"
+      ],
+      "tags": [
+        "agent-execution",
+        "task-authoring",
+        "managed-sessions",
+        "deterministic"
+      ]
+    },
+    {
+      "id": "ideas.specflow-engine.reusable-workflow.delivery",
+      "type": "engineering",
+      "title": "Reusable Workflow and manual/agent execution delivery plan",
+      "status": "draft",
+      "file": "docs/ideas/specflow-engine/reusable-workflow-manual-execution/delivery-plan.md",
+      "read_when": [
+        "scoping implementation slices for reusable Workflow and Task resources",
+        "selecting review checkpoints before Task authoring and manual execution",
+        "checking manual end-to-end execution and optional owner-delegated Managed Sessions"
+      ],
+      "summary": "Proposed E0-E6 delivery sequence with isolated reviewable vertical slices, behavioral regression and recovery tests, a complete manual UI proof and single-step agent delegation.",
+      "related": [
+        "ideas.specflow-engine.reusable-workflow",
+        "ideas.specflow-engine.reusable-workflow.boundaries",
+        "ideas.specflow-engine.task-resource-and-context",
+        "ideas.specflow-engine.plan-06",
+        "architecture.workflow.workflow-kernel"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "workflow",
+        "runtime",
+        "ui",
+        "cli",
+        "testing"
+      ],
+      "tags": [
+        "proposal",
+        "delivery-plan",
+        "slices",
+        "task-resource",
+        "manual-ui"
+      ]
+    },
+    {
       "id": "ideas.specflow-engine.task-resource-and-context",
       "type": "engineering",
       "title": "Tasks as workflow-managed resources and context building (draft)",
@@ -3838,6 +3987,41 @@
         "components",
         "testing",
         "agents"
+      ]
+    },
+    {
+      "id": "ideas.specflow-engine.reusable-workflow.ux-contract",
+      "type": "product",
+      "title": "Manual Specification and Task workflow execution — UX contract (mock)",
+      "status": "draft",
+      "file": "docs/ideas/specflow-engine/reusable-workflow-manual-execution/ux-contract.md",
+      "read_when": [
+        "designing or implementing the E3/E4 manual Specification and Task UI",
+        "reviewing the manual workflow execution Storybook mock",
+        "adding Ask agent to a workflow step (E6) without redesigning the step panel"
+      ],
+      "summary": "Draft screen contract, for owner acceptance, of manual Specification and Task workflow execution in the UI: Tasks on the Overview, Task creation and authoring, lifecycle actions, one generic workflow step panel driven by a read-only action projection, first-start binding confirmation and refusals, review-failed rework, wait-for-tasks and Close blockers.",
+      "related": [
+        "ideas.specflow-engine.reusable-workflow",
+        "ideas.specflow-engine.reusable-workflow.delivery",
+        "ideas.specflow-engine.reusable-workflow.boundaries",
+        "ideas.specflow-engine.reusable-workflow.agent-execution",
+        "ideas.specflow-engine.task-resource-and-context",
+        "product.specflow.ui.specification-overview",
+        "product.specflow.ui.interaction-model"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "workflow"
+      ],
+      "tags": [
+        "proposal",
+        "ux-contract",
+        "manual-execution",
+        "task-authoring",
+        "workflow-step-panel",
+        "close"
       ]
     },
     {
@@ -5053,6 +5237,37 @@
       ]
     },
     {
+      "id": "reference.api.specification-workflow",
+      "type": "reference",
+      "title": "Specification and Task workflow action HTTP API",
+      "status": "current",
+      "file": "docs/reference/api/specification-workflow.md",
+      "read_when": [
+        "implementing a client of the manual Specification or Task workflow actions",
+        "changing the workflow action projection, a workflow command or its refusal codes",
+        "rendering Close blockers or the Abandon action"
+      ],
+      "summary": "The workflow action projection of a Specification and of a Task, the owner commands start, finish, return and abandon, the stable refusal codes with their HTTP status, and the blockers of a refused exit.",
+      "related": [
+        "reference.api.openapi",
+        "reference.api.specflow-specification-operations",
+        "reference.api.authorization",
+        "reference.cli.specflow-specification-commands"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "server",
+        "workflow",
+        "security"
+      ],
+      "tags": [
+        "workflow",
+        "tasks",
+        "openapi"
+      ]
+    },
+    {
       "id": "reference.api.specification-workspace",
       "type": "reference",
       "title": "Specification Workspace HTTP API",
@@ -5124,9 +5339,10 @@
       "read_when": [
         "implementing the Task read ownership refactor",
         "migrating Task schemas out of Specification Workspace",
-        "implementing scoped Task page tokens and continuation"
+        "implementing scoped Task page tokens and continuation",
+        "creating, editing, removing or deciding the status of a Task over HTTP"
       ],
-      "summary": "Compatible Task and Document HTTP ownership, application outcomes, page lease semantics and migration constraints; production Engine adapters remain dependent.",
+      "summary": "Compatible Task and Document HTTP ownership, application outcomes, page lease semantics, the Engine-backed project-mode reads and the owner's Task commands (create, edit, remove, status) with their refusal statuses.",
       "related": [
         "architecture.runtime.task-read-composition",
         "reference.api.specification-workspace",
@@ -5143,7 +5359,8 @@
         "tasks",
         "documents",
         "pagination",
-        "compatibility"
+        "compatibility",
+        "commands"
       ]
     },
     {

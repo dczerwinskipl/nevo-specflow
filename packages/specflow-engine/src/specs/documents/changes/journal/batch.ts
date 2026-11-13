@@ -1,5 +1,7 @@
 import { sha256Hex } from '../../../../hash';
 import { validateDocumentPath } from '../../../document-rules';
+import { TASK_MANIFEST_FILE } from '../../../../tasks/resource/model';
+import { isTaskContainerId } from '../plan/container';
 import { isExplicitSpecificationSlug } from '../../../model';
 import { documentChangeError } from '../errors';
 import {
@@ -321,7 +323,10 @@ function canonical(paths: readonly BatchPathExpectation[]): unknown {
   };
 }
 
-/** `specs/active/<slug>/<document path>` or its manifest. */
+/**
+ * `specs/active/<slug>/<document path>` or its manifest, or a path of a Task container:
+ * `specs/active/<slug>/tasks/<taskId>/<document path>` or its `task.yaml`.
+ */
 function isBatchPath(path: string): boolean {
   const match = /^specs\/active\/([^/]+)\/(.+)$/u.exec(path);
   if (!match) {
@@ -329,12 +334,23 @@ function isBatchPath(path: string): boolean {
   }
 
   const [, slug, rest] = match;
+  if (!isExplicitSpecificationSlug(slug) || rest === undefined) {
+    return false;
+  }
 
-  return (
-    isExplicitSpecificationSlug(slug) &&
-    rest !== undefined &&
-    (rest === 'specification.yaml' || validateDocumentPath(rest).ok)
-  );
+  const task = /^tasks\/([^/]+)\/(.+)$/u.exec(rest);
+  if (task) {
+    const [, taskId, inside] = task;
+
+    return (
+      taskId !== undefined &&
+      inside !== undefined &&
+      isTaskContainerId(taskId) &&
+      (inside === TASK_MANIFEST_FILE || validateDocumentPath(inside).ok)
+    );
+  }
+
+  return rest === 'specification.yaml' || validateDocumentPath(rest).ok;
 }
 
 function stateOf(value: unknown, fail: () => Error): FileState {

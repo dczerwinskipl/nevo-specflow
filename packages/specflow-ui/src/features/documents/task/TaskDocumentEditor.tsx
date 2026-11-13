@@ -2,6 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -137,10 +138,26 @@ function useUnsavedGuard(name: string) {
   useLayoutEffect(() => {
     latest.current = session;
   });
+  // The draft a Discard gave up: removed when the screen is really left (it unmounts). A leave that
+  // is refused after the answer keeps the screen, and the next question clears the mark.
+  const discarded = useRef<{ specId: string; documentId: string } | null>(null);
+  useEffect(
+    () => () => {
+      const draft = discarded.current;
+      if (draft) {
+        // After the whole subtree has unmounted: the editor below records its view state into the
+        // draft while it unmounts, which would otherwise bring the discarded draft back.
+        queueMicrotask(() => store.remove(draft.specId, draft.documentId));
+      }
+    },
+    [store],
+  );
   const guard = useCallback(() => {
     if (!dirty) {
       return true;
     }
+
+    discarded.current = null;
 
     return new Promise<boolean>((resolve) => {
       answer.current = resolve;
@@ -164,10 +181,8 @@ function useUnsavedGuard(name: string) {
       onContinue={() => settle(false)}
       onDiscard={() => {
         const open = latest.current;
+        discarded.current = open ? { specId: open.specId, documentId: open.document.id } : null;
         settle(true);
-        if (open) {
-          store.remove(open.specId, open.document.id);
-        }
       }}
       onSave={() => {
         void latest.current?.save().then((saved) => {

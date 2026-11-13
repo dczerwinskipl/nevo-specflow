@@ -14,7 +14,7 @@ import {
 import { unregisteredTaskFiles } from '../../tasks/resource/validate';
 import { WorkflowError } from '../errors';
 import { isValidTaskId, TASKS_PER_SPECIFICATION_MAX } from '../limits';
-import { dependencyCycle } from '../state/dependency-cycle';
+import { dependencyRefusal, dependencyView } from './task-dependencies';
 import {
   taskPosition,
   type ExecutionTask,
@@ -150,29 +150,24 @@ function assertDependencies(
   previous: readonly string[],
 ): void {
   const { tasks, broken } = executionTasks(dependencies.catalogue, snapshot);
-  const byId = new Map(tasks.map((task) => [task.taskId, task] as const));
+  const view = dependencyView(snapshot, tasks, broken);
   for (const dependency of dependsOn) {
-    const task = byId.get(dependency);
-    if (broken.includes(dependency)) {
-      invalid(`The Task "${taskId}" cannot depend on the broken Task "${dependency}".`);
+    switch (dependencyRefusal(view, taskId, dependency, dependsOn, previous)) {
+      case 'broken':
+        invalid(`The Task "${taskId}" cannot depend on the broken Task "${dependency}".`);
+        break;
+      case 'unknown':
+        invalid(`The Task "${taskId}" depends on an unknown Task "${dependency.slice(0, 80)}".`);
+        break;
+      case 'cancelled':
+        invalid(`The Task "${taskId}" cannot depend on the cancelled Task "${dependency}".`);
+        break;
+      case 'would-create-cycle':
+        invalid(`The Task dependencies would form a cycle through "${dependency}".`);
+        break;
+      case undefined:
+        break;
     }
-
-    if (!task || dependency === taskId) {
-      invalid(`The Task "${taskId}" depends on an unknown Task "${dependency.slice(0, 80)}".`);
-    }
-
-    if (task.status === 'cancelled' && !previous.includes(dependency)) {
-      invalid(`The Task "${taskId}" cannot depend on the cancelled Task "${dependency}".`);
-    }
-  }
-
-  const graph = new Map(
-    snapshot.manifests.map((entry) => [entry.value.id, entry.value.dependsOn] as const),
-  );
-  graph.set(taskId, dependsOn);
-  const cycle = dependencyCycle(graph);
-  if (cycle !== undefined) {
-    invalid(`The Task dependencies would form a cycle at "${cycle}".`);
   }
 }
 

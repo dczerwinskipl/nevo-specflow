@@ -85,6 +85,16 @@ describe('Specification positions', () => {
     });
     expect(projection.actions.start).not.toHaveProperty('expectedWorkflowRevision');
     expect(projection.specification).not.toHaveProperty('exit');
+    // The task types a new Task may have, with the work steps of their Task workflow.
+    const implementation = catalogue.taskType('implementation');
+    const option = projection.specification?.taskTypes.find(
+      (candidate) => candidate.id === 'implementation',
+    );
+    expect(option).toMatchObject({
+      title: implementation?.title,
+      workflow: { id: implementation?.workflow },
+    });
+    expect(option?.workflow.steps.length).toBeGreaterThan(0);
   });
 
   it('refuses a first start when the archetype has no usable binding', async () => {

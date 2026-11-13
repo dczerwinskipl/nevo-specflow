@@ -7046,7 +7046,8 @@
           "specification": {
             "type": "object",
             "required": [
-              "createTask"
+              "createTask",
+              "taskTypes"
             ],
             "properties": {
               "createTask": {
@@ -7101,6 +7102,73 @@
                     }
                   }
                 ]
+              },
+              "taskTypes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "title",
+                    "description",
+                    "useWhen",
+                    "workflow"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string",
+                      "maxLength": 20000
+                    },
+                    "useWhen": {
+                      "type": "string",
+                      "maxLength": 20000
+                    },
+                    "workflow": {
+                      "type": "object",
+                      "required": [
+                        "id",
+                        "title",
+                        "steps"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "steps": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "id",
+                              "title"
+                            ],
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "title": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "maxItems": 1000
+                        }
+                      }
+                    }
+                  }
+                },
+                "maxItems": 1000
               },
               "exit": {
                 "type": "object",
@@ -27788,6 +27856,27 @@
                               ]
                             }
                           }
+                        },
+                        "type": {
+                          "type": "object",
+                          "required": [
+                            "id",
+                            "title"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "title": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "dependsOn": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/TaskId"
+                          }
                         }
                       }
                     },
@@ -40581,6 +40670,27 @@
                                                         }
                                                       ]
                                                     }
+                                                  }
+                                                },
+                                                "type": {
+                                                  "type": "object",
+                                                  "required": [
+                                                    "id",
+                                                    "title"
+                                                  ],
+                                                  "properties": {
+                                                    "id": {
+                                                      "type": "string"
+                                                    },
+                                                    "title": {
+                                                      "type": "string"
+                                                    }
+                                                  }
+                                                },
+                                                "dependsOn": {
+                                                  "type": "array",
+                                                  "items": {
+                                                    "$ref": "#/components/schemas/TaskId"
                                                   }
                                                 }
                                               }

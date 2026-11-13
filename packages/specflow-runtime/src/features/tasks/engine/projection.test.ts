@@ -224,7 +224,7 @@ describe('Engine Task projection', () => {
           'gone-1': 'ended',
         },
         { progress: { completed: 1, total: 6 }, preparation: 'preparing' },
-      ).reading,
+      ),
     );
 
     expect(contribution.preparationState).toBe('preparing');
@@ -232,7 +232,17 @@ describe('Engine Task projection', () => {
       state: 'available',
       data: {
         groups: [
-          { id: 'needs-approval', tasks: [{ id: 'draft-1', status: { id: 'draft' } }] },
+          {
+            id: 'needs-approval',
+            tasks: [
+              {
+                id: 'draft-1',
+                status: { id: 'draft' },
+                type: { id: 'implementation', title: 'Implementation' },
+                dependsOn: [],
+              },
+            ],
+          },
           { id: 'in-progress', tasks: [{ id: 'build' }] },
           { id: 'ready', tasks: [{ id: 'ready-1' }] },
           { id: 'waiting', tasks: [{ id: 'waiting-1' }] },

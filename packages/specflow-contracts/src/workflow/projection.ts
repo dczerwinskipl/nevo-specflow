@@ -396,6 +396,23 @@ export const SpecificationExitSchema = Type.Object({
   ]),
 });
 
+/**
+ * A task type the owner may choose for a new Task: its texts (display only) and the work steps of
+ * the Task workflow it runs, in declared order (a workflow may loop or branch; this is no order).
+ */
+export const TaskTypeOptionSchema = Type.Object({
+  id: Type.String(),
+  title: Type.String(),
+  description: text(),
+  useWhen: text(),
+  workflow: Type.Object({
+    id: Type.String(),
+    title: Type.String(),
+    steps: array(Type.Object({ id: StepIdSchema, title: Type.String() })),
+  }),
+});
+export type TaskTypeOption = Static<typeof TaskTypeOptionSchema>;
+
 export const WorkflowActionProjectionSchema = Type.Object(
   {
     subject: WorkflowSubjectSchema,
@@ -409,6 +426,8 @@ export const WorkflowActionProjectionSchema = Type.Object(
     specification: Type.Optional(
       Type.Object({
         createTask: availability(Type.Literal('task-limit')),
+        /** The task types a new Task may have now (the effective policy), in catalogue order. */
+        taskTypes: array(TaskTypeOptionSchema),
         exit: Type.Optional(SpecificationExitSchema),
       }),
     ),

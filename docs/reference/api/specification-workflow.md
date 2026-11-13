@@ -79,6 +79,12 @@ required context entry marked as a process artifact (`artifact: true`) that does
 blocker `context-awaited` (expected, not a warning), apart from the stale references of
 `context-unresolved`.
 
+`specification.taskTypes` lists the task types a new Task may have now (the effective policy: the
+Specification run's snapshot once it started, else its archetype's binding), in catalogue order, each
+`{id, title, description, useWhen, workflow: {id, title, steps: [{id, title}]}}` with the work steps of
+its Task workflow in declared order (display only); a type whose workflow is not a defined Task
+workflow is left out. A client offers exactly these when creating a Task.
+
 `specification.exit` holds `close` (`allowed`, or `blocked` with blockers) and `abandon` (`allowed`,
 `blocked` with blockers, or `unavailable`: `ended` or `not-configured`). It reports the workflow's view;
 Close still checks Git and the workspace itself.

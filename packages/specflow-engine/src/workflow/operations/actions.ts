@@ -15,7 +15,7 @@ import {
 } from '../continuation/resolve';
 import type { SpecificationLifecycleActions } from '../close/blockers';
 import { resolveSpecificationExecution, type ExecutionCatalogue } from '../definitions/catalogue';
-import type { WorkflowDefinition, WorkflowStep } from '../definitions/model';
+import type { TaskTypes, WorkflowDefinition, WorkflowStep } from '../definitions/model';
 import { WorkflowError } from '../errors';
 import { TASKS_PER_SPECIFICATION_MAX } from '../limits';
 import type { TaskContextEntry } from '../../tasks/resource/model';
@@ -35,6 +35,7 @@ import {
 import type { ExecutionSnapshot } from '../state/store';
 import {
   isTaskClosed,
+  isTaskTypeAllowed,
   resolveTaskType,
   taskDecisionRefusal,
   taskReadiness,
@@ -285,8 +286,30 @@ export interface SpecificationExitPort {
   exitActions(snapshot: ExecutionSnapshot): Promise<SpecificationExitActions>;
 }
 
+/**
+ * A task type a Task of the Specification may have now (the effective policy, D04), as the owner
+ * chooses it when creating a Task: its texts and the workflow it runs with its work steps in
+ * declared order (display only; the workflow may loop or branch).
+ */
+export interface TaskTypeOption {
+  readonly id: string;
+  readonly title: string;
+  readonly description: string;
+  readonly useWhen: string;
+  readonly workflow: {
+    readonly id: string;
+    readonly title: string;
+    readonly steps: readonly { readonly id: string; readonly title: string }[];
+  };
+}
+
 export interface SpecificationLevelActions {
   readonly createTask: Availability<'task-limit'>;
+  /**
+   * The task types a new Task may have, in catalogue order; empty when none is allowed or defined.
+   * A type whose workflow is not a defined Task workflow is left out (its creation is refused).
+   */
+  readonly taskTypes: readonly TaskTypeOption[];
   /** Absent when no Close/Abandon port is given (`openWorkflow` wires it). */
   readonly exit?: SpecificationExitActions;
 }
@@ -635,6 +658,32 @@ function returnTargets(definition: WorkflowDefinition, run: WorkflowRun) {
     }));
 }
 
+/** The task types the policy allows whose workflow is a defined Task workflow. */
+function taskTypeOptions(catalogue: ExecutionCatalogue, allowedTypes: TaskTypes): TaskTypeOption[] {
+  return catalogue.taskTypes().flatMap((type) => {
+    const workflow = catalogue.workflow(type.workflow);
+    if (!isTaskTypeAllowed(allowedTypes, type.id) || workflow?.annotations.subject !== 'task') {
+      return [];
+    }
+
+    return [
+      {
+        id: type.id,
+        title: type.title,
+        description: type.description,
+        useWhen: type.useWhen,
+        workflow: {
+          id: workflow.id,
+          title: workflow.title,
+          steps: workflow.steps
+            .filter((step) => step.kind === 'work')
+            .map((step) => ({ id: step.id, title: describeStep(step).title })),
+        },
+      },
+    ];
+  });
+}
+
 async function specificationProjection(
   dependencies: ActionDependencies,
   snapshot: ExecutionSnapshot,
@@ -646,6 +695,7 @@ async function specificationProjection(
       (snapshot.index?.value.tasks.length ?? 0) >= TASKS_PER_SPECIFICATION_MAX
         ? unavailable('task-limit')
         : allowed,
+    taskTypes: taskTypeOptions(catalogue, await effectiveTaskTypesOf(dependencies, snapshot)),
     ...(dependencies.specificationExit
       ? { exit: await dependencies.specificationExit.exitActions(snapshot) }
       : {}),

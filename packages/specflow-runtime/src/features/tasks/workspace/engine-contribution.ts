@@ -1,16 +1,19 @@
-import { readExecutionForRead, type ExecutionReading, type TaskLane } from '@nevo/specflow-engine';
+import { readExecutionForRead, type TaskLane } from '@nevo/specflow-engine';
 
 import {
   inspectSpecification,
   TaskSourceUnavailableError,
   type TaskEngine,
 } from '../engine/sources';
-import { taskStatusOf } from '../engine/projection';
+import { taskStatusOf, type InspectionBasis } from '../engine/projection';
 
 interface WorkspaceTaskRow {
   readonly id: string;
   readonly title: string;
   readonly status: ReturnType<typeof taskStatusOf>;
+  /** The Task Type, with its title from the catalogue (the id when the type is not defined). */
+  readonly type: { id: string; title: string };
+  readonly dependsOn: string[];
 }
 
 interface WorkspaceTaskAttention {
@@ -58,7 +61,10 @@ const GROUPS: readonly { id: string; name: string; lanes: readonly TaskLane[] }[
 ];
 
 /** The workspace `tasks` section and preparation state of one Engine reading (`tasks: 'all'`). Pure. */
-export function workspaceTasksOf(reading: ExecutionReading): WorkspaceTasksContribution {
+export function workspaceTasksOf(
+  basis: Pick<InspectionBasis, 'reading' | 'catalogue'>,
+): WorkspaceTasksContribution {
+  const { reading, catalogue } = basis;
   const { inspection, lanes } = reading;
   const titles = new Map(
     inspection.tasks.map((entry) => [entry.record.taskId, entry.record.title]),
@@ -68,7 +74,18 @@ export function workspaceTasksOf(reading: ExecutionReading): WorkspaceTasksContr
       const lane = lanes.get(entry.record.taskId);
 
       return lane && group.lanes.includes(lane)
-        ? [{ id: entry.record.taskId, title: entry.record.title, status: taskStatusOf(lane) }]
+        ? [
+            {
+              id: entry.record.taskId,
+              title: entry.record.title,
+              status: taskStatusOf(lane),
+              type: {
+                id: entry.record.type,
+                title: catalogue.taskType(entry.record.type)?.title ?? entry.record.type,
+              },
+              dependsOn: [...entry.record.dependsOn],
+            },
+          ]
         : [];
     });
 
@@ -125,7 +142,7 @@ export function createEngineWorkspaceTasks(
     try {
       const basis = await inspectSpecification(source, specId, 'all');
 
-      return basis ? workspaceTasksOf(basis.reading) : unavailable;
+      return basis ? workspaceTasksOf(basis) : unavailable;
     } catch (error) {
       if (error instanceof TaskSourceUnavailableError) {
         return unavailable;

@@ -37,6 +37,10 @@ export const WorkspaceTaskSchema = Type.Object({
   id: IdSchema,
   title: Type.String(),
   status: TaskStatusSchema,
+  /** The Task Type with its catalogue title; project mode (the Engine's Task resource). */
+  type: Type.Optional(Type.Object({ id: Type.String(), title: Type.String() })),
+  /** The Tasks it depends on; project mode. */
+  dependsOn: Type.Optional(Type.Array(TaskIdSchema)),
 });
 export const SpecificationTaskResponseSchema = Type.Object({
   task: WorkspaceTaskSchema,

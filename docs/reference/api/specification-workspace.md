@@ -88,7 +88,8 @@ Availability and action states describe only what actually exists.
   Engine's Task lanes ([Task reads](task-reads.md#project-mode-engine-reads)), in this order, empty
   ones omitted: `needs-approval`, `in-progress`, `ready` (ready to start), `waiting` (dependencies
   that can all still complete), `blocked`, `done`, `held` (on hold, cancelled or abandoned).
-  `completed` and `total` are the Engine's `TaskProgress`: `total` counts the Tasks that are neither
+  Each row carries `type` (`{id, title}`, the title from the catalogue, the id when the type is
+  not defined) and `dependsOn` (Task ids). `completed` and `total` are the Engine's `TaskProgress`: `total` counts the Tasks that are neither
   cancelled nor ended by an abandon (a broken Task included), `completed` those whose run
   completed. `attention` lists each broken Task and the Engine's attention items. An execution the
   Engine cannot read (also a busy project lock) makes only this section `unavailable` /

@@ -64,6 +64,7 @@ export {
   type SpecificationExitActions,
   type SpecificationExitPort,
   type SpecificationLevelActions,
+  type TaskTypeOption,
   type StartBlocker,
   type StartableStep,
   type TaskActionUnavailableReason,

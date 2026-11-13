@@ -66,3 +66,18 @@ export const OvwTasksPageNarrow390 = capture({
   width: 390,
   height: 1900,
 });
+
+/* Round 2: state / grouping / attention separated */
+export const Ovw2Waiting1408 = capture({ state: 'waiting', width: 1408, height: 1100 });
+export const Ovw2Waiting1440 = capture({ state: 'waiting', width: 1440, height: 1100 });
+export const Ovw2Waiting1920 = capture({ state: 'waiting', width: 1920, height: 1000 });
+export const Ovw2Blocked1440 = capture({ state: 'blocked', width: 1440, height: 1100 });
+export const Ovw2WaitingNarrow390 = capture({ state: 'waiting', width: 390, height: 1700 });
+export const Ovw2BlockedNarrow390 = capture({ state: 'blocked', width: 390, height: 1600 });
+export const Ovw2TasksPage1440 = capture({ state: 'waiting', page: 'tasks', height: 1200 });
+export const Ovw2TasksPageNarrow390 = capture({
+  state: 'waiting',
+  page: 'tasks',
+  width: 390,
+  height: 1800,
+});

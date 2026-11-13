@@ -368,10 +368,16 @@ export function TasksList({
   list,
   onCreate,
   canCreate = true,
+  selectable = true,
+  attention,
 }: {
   list: readonly MockTask[];
   onCreate: () => void;
   canCreate?: boolean;
+  /** Selection checkboxes (the planned "Run selected tasks", F12). */
+  selectable?: boolean;
+  /** Tasks the attention projection lists: marked on their row, they stay in their group. */
+  attention?: ReadonlyMap<string, string>;
 }) {
   const [collapsed, setCollapsed] = useState<ReadonlySet<GroupId>>(new Set(['parked']));
 
@@ -428,18 +434,28 @@ export function TasksList({
                   }
                 />
                 {!isCollapsed ? (
-                  <InformationList selectable id={`mock-group-${group.id}`}>
+                  <InformationList selectable={selectable} id={`mock-group-${group.id}`}>
                     {members.map((item) => (
                       <OperationalRow
                         key={item.id}
                         primary={item.title}
                         onPrimaryClick={noop}
                         compactFacts={[{ text: item.id, mono: true }, typeOf(item).title]}
-                        supporting={supportingFor(item)}
+                        supporting={
+                          attention?.has(item.id)
+                            ? {
+                                text: `Requires attention · ${attention.get(item.id)!}`,
+                                tone: 'attention',
+                                icon: 'triangle-alert',
+                              }
+                            : supportingFor(item)
+                        }
                         leading={
-                          <div className="flex items-center justify-center">
-                            <Checkbox aria-label={`Select ${item.id}`} />
-                          </div>
+                          selectable ? (
+                            <div className="flex items-center justify-center">
+                              <Checkbox aria-label={`Select ${item.id}`} />
+                            </div>
+                          ) : undefined
                         }
                         trailing={<TaskRowMenu item={item} />}
                       />

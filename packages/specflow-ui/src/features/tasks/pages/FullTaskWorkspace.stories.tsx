@@ -453,6 +453,14 @@ export const SnapshotExpired: Story = {
   },
 };
 
+/**
+ * Accessible name of the Secondary Back. In a split layout it returns to the Primary ("Back"); on the
+ * stacked (narrow) layout at depth >= 2 it names the screen it pops to ("Back: <parent title>").
+ */
+function stackedBackName(canvasElement: HTMLElement, parentTitle: string) {
+  return canvasElement.querySelector('[data-layout="split"]') ? 'Back' : `Back: ${parentTitle}`;
+}
+
 const previewScrollContract: NonNullable<Story['play']> = async ({
   canvas,
   canvasElement,
@@ -493,7 +501,9 @@ const previewScrollContract: NonNullable<Story['play']> = async ({
   owner.scrollTop = Math.max(0, owner.scrollTop - 100);
   const savedTop = owner.scrollTop;
   await userEvent.click(resource);
-  await userEvent.click(await canvas.findByRole('button', { name: 'Back' }));
+  await userEvent.click(
+    await canvas.findByRole('button', { name: stackedBackName(canvasElement, 'Task preview') }),
+  );
   const restored = await canvas.findByRole('button', {
     name: 'Verification material 2',
   });
@@ -569,7 +579,9 @@ const evidenceContract: NonNullable<Story['play']> = async ({
   evidence.focus();
   await userEvent.keyboard('{Enter}');
   await canvas.findByRole('heading', { name: 'Acceptance criteria' });
-  await userEvent.click(await canvas.findByRole('button', { name: 'Back' }));
+  await userEvent.click(
+    await canvas.findByRole('button', { name: stackedBackName(canvasElement, 'Requirement') }),
+  );
   await waitFor(() => {
     const restored = canvas.getByRole('button', { name: 'Verification instructions' });
     if (canvasElement.ownerDocument.activeElement !== restored) {
@@ -726,7 +738,9 @@ const richContextContract: NonNullable<Story['play']> = async ({
   evidence.focus();
   await userEvent.keyboard('{Enter}');
   await canvas.findByRole('heading', { name: 'Acceptance criteria' });
-  await userEvent.click(await canvas.findByRole('button', { name: 'Back' }));
+  await userEvent.click(
+    await canvas.findByRole('button', { name: stackedBackName(canvasElement, 'Requirement') }),
+  );
   await waitFor(() => {
     if (
       canvasElement.ownerDocument.activeElement !==
@@ -738,7 +752,7 @@ const richContextContract: NonNullable<Story['play']> = async ({
   const close = canvas.queryByRole('button', { name: 'Close secondary content' });
   await userEvent.click(
     args.preview
-      ? canvas.getByRole('button', { name: 'Back' })
+      ? canvas.getByRole('button', { name: stackedBackName(canvasElement, 'Task preview') })
       : (close ?? canvas.getByRole('button', { name: 'Back' })),
   );
   await waitFor(() => {
@@ -821,7 +835,7 @@ const historyContextContract: NonNullable<Story['play']> = async ({
   await userEvent.click(
     canvasElement.querySelector('[data-layout="split"]')
       ? canvas.getByRole('button', { name: 'Close secondary content' })
-      : canvas.getByRole('button', { name: 'Back' }),
+      : canvas.getByRole('button', { name: stackedBackName(canvasElement, 'History') }),
   );
   await waitFor(() => {
     if (

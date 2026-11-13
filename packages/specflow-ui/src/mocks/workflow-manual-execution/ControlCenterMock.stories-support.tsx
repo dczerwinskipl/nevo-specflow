@@ -11,6 +11,7 @@ import {
   IconButton,
   InformationList,
   InlineNote,
+  Link,
   Menu,
   MenuContent,
   MenuItem,
@@ -37,6 +38,7 @@ import {
   type MockTask,
 } from './fixtures.stories-support';
 import { TasksList } from './SpecificationMock.stories-support';
+import { groupTasks } from './dashboard-grouping.stories-support';
 
 /*
  * PRESENTATION MOCK ONLY (docs/ideas/specflow-engine/reusable-workflow-manual-execution/ux-contract.md,
@@ -46,7 +48,14 @@ import { TasksList } from './SpecificationMock.stories-support';
  */
 
 export type OverviewState =
-  'empty' | 'active' | 'waiting' | 'blocked' | 'completed' | 'abandoned' | 'no-task-workflow';
+  | 'empty'
+  | 'active'
+  | 'waiting'
+  | 'stuck'
+  | 'blocked'
+  | 'completed'
+  | 'abandoned'
+  | 'no-task-workflow';
 
 /** A: Now, attention and Active tasks in the work column. B: Active tasks moves beside Sessions. */
 export type OverviewColumns = 'work' | 'split';
@@ -81,6 +90,12 @@ interface NowView {
   readonly technical?: string;
   /** A terminal summary of the Tasks instead of the progress line. */
   readonly summary?: string;
+  /** Why the Specification cannot progress, naming the Tasks (links); no action here. */
+  readonly explain?: {
+    readonly before: string;
+    readonly tasks: readonly { readonly id: string; readonly fact: string }[];
+    readonly after: string;
+  };
 }
 
 interface AttentionItem {
@@ -90,6 +105,10 @@ interface AttentionItem {
   readonly reason: SemanticSupporting;
   /** The action the projection offers for it (never derived from a status name). */
   readonly action: string;
+  /** Who the projection says must act. */
+  readonly actor: string;
+  /** A Specification-level item names the Tasks it is about (links), e.g. `tasks-stuck`. */
+  readonly taskIds?: readonly string[];
   readonly session?: boolean;
 }
 
@@ -127,6 +146,37 @@ const reworkT02: AttentionItem = {
     icon: 'triangle-alert',
   },
   action: 'Start Implementation',
+  actor: 'you',
+};
+/**
+ * An approved, not-started Task whose start needs a person (`context-unresolved`): attention with
+ * the actor and action the projection carries. Waiting for a dependency (T-03) is not attention.
+ */
+const startBlockedT07: AttentionItem = {
+  key: 'T-07',
+  title: 'Rate-limit session refresh',
+  subject: 'T-07 · Backend',
+  reason: {
+    text: 'Cannot start: its context entry requirements.md › Rate limits no longer exists',
+    tone: 'attention',
+    icon: 'triangle-alert',
+  },
+  action: 'Edit context',
+  actor: 'you',
+};
+/** `tasks-stuck`: one Specification-level item naming the Tasks; never one item per draft. */
+const tasksStuck: AttentionItem = {
+  key: 'tasks-stuck',
+  title: 'Waiting for tasks cannot finish',
+  subject: 'Specification',
+  reason: {
+    text: 'No open task can progress without you:',
+    tone: 'attention',
+    icon: 'triangle-alert',
+  },
+  taskIds: ['T-04', 'T-05'],
+  action: 'Review tasks',
+  actor: 'you',
 };
 /** A broken Task (files inconsistent): attention with the restore path. */
 const brokenT07: AttentionItem = {
@@ -139,6 +189,7 @@ const brokenT07: AttentionItem = {
     icon: 'circle-alert',
   },
   action: 'Open task',
+  actor: 'you',
 };
 const sessionQuestion: AttentionItem = {
   key: 'session-review',
@@ -146,6 +197,7 @@ const sessionQuestion: AttentionItem = {
   subject: 'Session · Claude',
   reason: { text: 'Asks: keep the return URL in the state parameter?', icon: 'chat' },
   action: 'Answer',
+  actor: 'you',
   session: true,
 };
 const workingSession: SessionItem = {
@@ -210,6 +262,32 @@ function dataFor(state: OverviewState): StateData {
           operations: [],
         },
         attention: [],
+        sessions: [idleSession],
+      };
+    case 'stuck':
+      return {
+        list: tasks.map((item) =>
+          ['T-01', 'T-02', 'T-03', 'T-07'].includes(item.id) ? finished([item])[0]! : item,
+        ),
+        hasTasks: true,
+        workflowTitle,
+        now: {
+          title: 'Waiting for tasks',
+          kind: 'wait',
+          detail: 'Continues by itself when every task is done or cancelled',
+          technical: `Step wait-for-tasks · ${workflowTitle}`,
+          progress: true,
+          explain: {
+            before: 'It cannot continue now:',
+            tasks: [
+              { id: 'T-04', fact: 'is a draft' },
+              { id: 'T-05', fact: 'is on hold' },
+            ],
+            after: 'and no other task is open.',
+          },
+          operations: ['Return to Breakdown'],
+        },
+        attention: [tasksStuck],
         sessions: [idleSession],
       };
     case 'blocked':
@@ -330,7 +408,7 @@ function dataFor(state: OverviewState): StateData {
           progress: true,
           operations: ['Return to Breakdown'],
         },
-        attention: [reworkT02, sessionQuestion],
+        attention: [reworkT02, startBlockedT07, sessionQuestion],
         sessions: [workingSession, idleSession],
       };
   }
@@ -426,6 +504,18 @@ function Now({ now, list }: { now: NowView; list: readonly MockTask[] }) {
             </Typography>
           </div>
         ) : null}
+        {now.explain ? (
+          <InlineNote tone="attention" icon="circle-alert">
+            {now.explain.before}{' '}
+            {now.explain.tasks.map((item, index) => (
+              <span key={item.id}>
+                {index > 0 ? ', ' : null}
+                <TaskLink id={item.id} /> {item.fact}
+              </span>
+            ))}{' '}
+            {now.explain.after}
+          </InlineNote>
+        ) : null}
         {now.gate ? (
           <div className="grid gap-1.5">
             <Typography as="p" variant="body-sm" className="text-content-secondary">
@@ -458,6 +548,41 @@ function Now({ now, list }: { now: NowView; list: readonly MockTask[] }) {
 
 const ATTENTION_SHOWN = 5;
 
+function TaskLink({ id }: { id: string }) {
+  return (
+    <Link href={`#task-${id}`} className="font-medium">
+      {id}
+    </Link>
+  );
+}
+
+function reasonClass(tone: SemanticSupporting['tone']): string | undefined {
+  return tone === 'danger'
+    ? 'font-medium text-status-danger'
+    : tone === 'attention'
+      ? 'font-medium text-status-attention'
+      : undefined;
+}
+
+function Reason({ item }: { item: AttentionItem }) {
+  return (
+    <span>
+      <span className={reasonClass(item.reason.tone)}>{item.reason.text}</span>
+      {item.taskIds ? (
+        <>
+          {' '}
+          {item.taskIds.map((id, index) => (
+            <span key={id}>
+              {index > 0 ? ' · ' : null}
+              <TaskLink id={id} />
+            </span>
+          ))}
+        </>
+      ) : null}
+    </span>
+  );
+}
+
 function RequiresAttention({
   items,
   narrow,
@@ -486,28 +611,23 @@ function RequiresAttention({
             primary={item.title}
             onPrimaryClick={noop}
             factsLayout="inline"
-            compactFacts={[item.subject]}
+            // The actor shows only when it is not the person viewing (for example "Needs the spec writer").
+            compactFacts={
+              item.actor === 'you' ? [item.subject] : [item.subject, `Needs ${item.actor}`]
+            }
             supporting={
               narrow ? (
                 // Narrow: the title and reason take the full width; the action follows them.
                 <span className="grid gap-2">
-                  <span
-                    className={
-                      item.reason.tone === 'danger'
-                        ? 'font-medium text-status-danger'
-                        : item.reason.tone === 'attention'
-                          ? 'font-medium text-status-attention'
-                          : undefined
-                    }
-                  >
-                    {item.reason.text}
-                  </span>
+                  <Reason item={item} />
                   <span>
                     <Button size="sm" variant="secondary">
                       {item.action}
                     </Button>
                   </span>
                 </span>
+              ) : item.taskIds ? (
+                <Reason item={item} />
               ) : (
                 item.reason
               )
@@ -540,59 +660,11 @@ function RequiresAttention({
   );
 }
 
-type Lane =
-  | 'needs-approval'
-  | 'in-progress'
-  | 'ready'
-  | 'waiting'
-  | 'blocked'
-  | 'done'
-  | 'held'
-  | 'cancelled';
-
-/** The Engine's lane of a Task (`laneOf`): a classification of its state, not a presentation. */
-function laneOf(item: MockTask): Lane {
-  const position = item.workflow.position;
-  if (item.status === 'cancelled') {
-    return 'cancelled';
-  }
-
-  if (position.kind === 'terminal') {
-    return 'done';
-  }
-
-  if (item.status === 'draft') {
-    return 'needs-approval';
-  }
-
-  if (item.status === 'on-hold') {
-    return 'held';
-  }
-
-  if (item.started) {
-    return 'in-progress';
-  }
-
-  return position.kind === 'waiting' ? 'waiting' : 'ready';
-}
-
 /**
- * The default grouping: presentation configuration over lanes (today the Runtime's `GROUPS`).
- * A project may later define its own groups over workflow positions; the UI only renders them.
- */
-const defaultGrouping: readonly { id: string; name: string; lanes: readonly Lane[] }[] = [
-  { id: 'needs-approval', name: 'Needs approval', lanes: ['needs-approval'] },
-  { id: 'in-progress', name: 'In progress', lanes: ['in-progress'] },
-  { id: 'ready', name: 'Ready to start', lanes: ['ready'] },
-  { id: 'waiting', name: 'Waiting', lanes: ['waiting', 'blocked'] },
-  { id: 'done', name: 'Done', lanes: ['done'] },
-  { id: 'held', name: 'On hold or cancelled', lanes: ['held', 'cancelled'] },
-];
-
-/**
- * The Overview's Tasks: one row per non-empty group of the configured grouping (count, a few
- * titles), each opening the Tasks page at that group. A Task in Requires attention is counted but
- * not named here, so no Task is shown twice.
+ * The Overview's Tasks: the configured grouping (dashboard configuration, not Engine). Groups marked
+ * `row` get a row (count, up to two titles), each opening the Tasks page at that group; `compact`
+ * groups (Done, Cancelled) share one quiet line. A Task already named in Requires attention is
+ * counted but not named again.
  */
 function TaskGroupsSummary({
   list,
@@ -601,45 +673,66 @@ function TaskGroupsSummary({
   list: readonly MockTask[];
   attentionKeys: ReadonlySet<string>;
 }) {
-  const rows = defaultGrouping
-    .map((group) => ({ group, members: list.filter((item) => group.lanes.includes(laneOf(item))) }))
-    .filter((row) => row.members.length > 0);
-  if (rows.length === 0) {
+  const groups = groupTasks(list);
+  if (groups.length === 0) {
     return null;
   }
 
+  const rows = groups.filter(({ group }) => group.summary === 'row');
+  const compact = groups.filter(({ group }) => group.summary === 'compact');
+
   return (
     <WorkspaceSection aria-labelledby="ovw-tasks-heading">
-      <WorkspaceSection.Header id="ovw-tasks-heading" title="Tasks" icon="list-checks" />
-      <InformationList>
-        {rows.map(({ group, members }) => {
-          const named = members.filter((item) => !attentionKeys.has(item.id));
-          const shown = named.slice(0, 2).map((item) => `${item.id} ${item.title}`);
-          const rest = members.length - shown.length;
-          const text =
-            shown.length > 0
-              ? `${shown.join(' · ')}${rest > 0 ? ` · ${rest} more` : ''}`
-              : `${rest} in Requires attention`;
+      <WorkspaceSection.Header
+        id="ovw-tasks-heading"
+        title="Tasks"
+        icon="list-checks"
+        actions={
+          <Button variant="ghost" size="sm">
+            All tasks
+          </Button>
+        }
+      />
+      {rows.length > 0 ? (
+        <InformationList>
+          {rows.map(({ group, members }) => {
+            const named = members.filter((item) => !attentionKeys.has(item.id));
+            const shown = named.slice(0, 2).map((item) => `${item.id} ${item.title}`);
+            const rest = members.length - shown.length;
+            const text =
+              shown.length > 0
+                ? `${shown.join(' · ')}${rest > 0 ? ` · ${rest} more` : ''}`
+                : 'named in Requires attention';
 
-          return (
-            <OperationalRow
-              key={group.id}
-              primary={group.name}
-              onPrimaryClick={noop}
-              primaryAriaLabel={`${group.name}: open on the Tasks page`}
-              supporting={
-                <span className="block truncate">
-                  <span className="font-medium text-content-primary">{members.length}</span> ·{' '}
-                  {text}
-                </span>
-              }
-            />
-          );
-        })}
-      </InformationList>
-      <Button variant="ghost" size="sm" className="w-fit">
-        View all tasks
-      </Button>
+            return (
+              <OperationalRow
+                key={group.id}
+                primary={group.name}
+                onPrimaryClick={noop}
+                primaryAriaLabel={`${group.name}: open on the Tasks page`}
+                supporting={
+                  <span className="block truncate">
+                    <span className="font-medium text-content-primary">{members.length}</span> ·{' '}
+                    {text}
+                  </span>
+                }
+              />
+            );
+          })}
+        </InformationList>
+      ) : null}
+      {compact.length > 0 ? (
+        <Typography as="p" variant="body-sm" className="text-content-secondary">
+          {compact.map(({ group, members }, index) => (
+            <span key={group.id}>
+              {index > 0 ? ' · ' : null}
+              <Link href={`#group-${group.id}`}>
+                {group.name} {members.length}
+              </Link>
+            </span>
+          ))}
+        </Typography>
+      ) : null}
     </WorkspaceSection>
   );
 }
@@ -719,7 +812,10 @@ function Overview({
   columns,
 }: Required<Omit<ControlCenterMockProps, 'height' | 'page'>>) {
   const data = dataFor(state);
-  const attentionKeys = new Set(data.attention.map((item) => item.key));
+  // Tasks named by Requires attention (its own rows and the Tasks a Specification item names).
+  const attentionKeys = new Set(
+    data.attention.flatMap((item) => [item.key, ...(item.taskIds ?? [])]),
+  );
   const now = <Now now={data.now} list={data.list} />;
   const attention = <RequiresAttention items={data.attention} narrow={width === 0} />;
   const active = data.hasTasks ? (
@@ -788,7 +884,13 @@ function TasksPage({ state }: { state: OverviewState }) {
           new Map(
             data.attention
               .filter((item) => !item.session)
-              .map((item) => [item.key, item.reason.text] as const),
+              .flatMap((item) =>
+                item.taskIds
+                  ? item.taskIds.map(
+                      (id) => [id, 'the specification cannot continue until it moves'] as const,
+                    )
+                  : [[item.key, item.reason.text] as const],
+              ),
           )
         }
       />

@@ -34,6 +34,7 @@ import { StoryLocalization } from '../../i18n/StoryLocalization';
 import { OperationalRow } from '../../shared/operational-list';
 import type { SemanticSupporting } from '../../shared/operational-list/OperationalRow.types';
 import { WorkspaceSection } from '../../shared/workspace-section';
+import { defaultGrouping, groupTasks } from './dashboard-grouping.stories-support';
 import { TaskGroupHeader } from '../../features/tasks/contributions/specification-work/TaskGroupHeader';
 import { MockNavigation } from '../editor-mode/MockNavigation.stories-support';
 import {
@@ -235,7 +236,7 @@ function rowState(item: MockTask): { state: string; tone: 'attention' | 'info' |
   }
 
   if (item.status === 'draft') {
-    return { state: 'Draft · needs approval', tone: 'attention' };
+    return { state: 'Draft · needs approval', tone: 'neutral' };
   }
 
   if (item.status === 'on-hold') {
@@ -273,7 +274,8 @@ function supportingFor(item: MockTask): SemanticSupporting {
   }
 
   if (item.status === 'draft') {
-    return { text: `Draft · needs approval${after}`, tone: 'attention', icon: 'triangle-alert' };
+    // A draft is not attention (only `tasks-stuck` aggregates drafts that block the Specification).
+    return { text: `Draft · needs approval${after}` };
   }
 
   if (item.status === 'on-hold') {
@@ -298,43 +300,6 @@ function supportingFor(item: MockTask): SemanticSupporting {
       return { text: `${stepTitle(position.step)} · ready to start${after}` };
     default:
       return { text: `Not started · first step ${stepTitle(position.firstStep)}${after}` };
-  }
-}
-
-type GroupId = 'approval' | 'progress' | 'ready' | 'waiting' | 'done' | 'parked';
-
-const groups: readonly {
-  id: GroupId;
-  name: string;
-  tone: 'attention' | 'info' | 'neutral' | 'success';
-}[] = [
-  { id: 'approval', name: 'Needs approval', tone: 'attention' },
-  { id: 'progress', name: 'In progress', tone: 'info' },
-  { id: 'ready', name: 'Ready to start', tone: 'neutral' },
-  { id: 'waiting', name: 'Waiting', tone: 'neutral' },
-  { id: 'done', name: 'Done', tone: 'success' },
-  { id: 'parked', name: 'On hold or cancelled', tone: 'neutral' },
-];
-
-function groupOf(item: MockTask): GroupId {
-  if (item.status === 'draft') {
-    return 'approval';
-  }
-
-  if (item.status === 'on-hold' || item.status === 'cancelled') {
-    return 'parked';
-  }
-
-  switch (item.workflow.position.kind) {
-    case 'active':
-    case 'ready':
-      return 'progress';
-    case 'waiting':
-      return 'waiting';
-    case 'terminal':
-      return 'done';
-    default:
-      return 'ready';
   }
 }
 
@@ -379,7 +344,9 @@ export function TasksList({
   /** Tasks the attention projection lists: marked on their row, they stay in their group. */
   attention?: ReadonlyMap<string, string>;
 }) {
-  const [collapsed, setCollapsed] = useState<ReadonlySet<GroupId>>(new Set(['parked']));
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(
+    new Set(defaultGrouping.filter((group) => group.collapsed).map((group) => group.id)),
+  );
 
   return (
     <WorkspaceSection aria-labelledby="tasks-heading">
@@ -404,12 +371,7 @@ export function TasksList({
         />
       ) : (
         <div className="grid gap-4">
-          {groups.map((group) => {
-            const members = list.filter((item) => groupOf(item) === group.id);
-            if (members.length === 0) {
-              return null;
-            }
-
+          {groupTasks(list).map(({ group, members }) => {
             const isCollapsed = collapsed.has(group.id);
 
             return (

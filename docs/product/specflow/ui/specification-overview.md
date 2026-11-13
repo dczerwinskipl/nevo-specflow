@@ -38,9 +38,9 @@ without leaving the Specification. Sections are contributions of their owning fe
 
 ## Sections and order
 
-**Proposed amendment (draft, awaiting owner approval):**
-[Overview as control center](../../../ideas/specflow-engine/reusable-workflow-manual-execution/ux-contract.md#specification-overview-as-control-center-proposal-awaiting-owner-approval)
-replaces the Tasks section, its multi-selection and its `#tasks-heading` scroll target with an
+**Proposed amendment (draft; direction accepted, refinements decided 2026-11-13):**
+[Overview as control center](../../../ideas/specflow-engine/reusable-workflow-manual-execution/ux-contract.md#specification-overview-as-control-center-direction-accepted-refinements-decided-2026-11-13)
+replaces the Tasks section, its multi-selection and its `#tasks-heading` scroll target with a
 grouped Tasks summary and a Tasks page (`/specs/:specId/tasks`); this document stays authoritative
 until that contract is promoted.
 

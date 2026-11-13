@@ -95,7 +95,7 @@ a bound Specification workflow, the Workflow section takes the preparation block
 - **Activity history** (existing Secondary) carries the Specification step attempts. Its header
   toggle (clock icon) is the history entry at every width; on Narrow it opens a pushed page.
 
-## Specification Overview as control center (proposal, awaiting owner approval)
+## Specification Overview as control center (direction accepted; refinements decided 2026-11-13)
 
 Owner direction (2026-11-13): the Overview is the control center of one Specification; the full Task
 list moves to the Tasks page. Restructuring, not a redesign: it keeps the accepted
@@ -127,25 +127,42 @@ in the preparation block's place; one reading column (`content-standard`) at the
   reason ("Finish step becomes available once this is met"). A `wait` step gets **no** primary
   action; other transitions (Return to an earlier step) and Workflow history sit in the menu.
   Abandoned: one archive icon on the title, the reason under it.
-- **Three concerns, kept apart.** Workflow state (the Engine's runs and action projection) is
-  authoritative. **Grouping** is presentation: the Engine classifies each Task into a lane and a
-  grouping configuration (today the Runtime's default; later per project) turns lanes into named,
-  ordered groups. **Attention** is a separate projection: the Engine's derived attention (ADR 0019,
-  `deriveAttention`), broken Tasks, and Sessions waiting for input. A Task can be in a group and in
-  attention at once; attention is a flag, never a group or a state. The UI never derives behaviour
-  from a group or lane name.
+- **Three concerns, kept apart** (owner decision 5A). **Workflow state** belongs to the Engine:
+  authoritative states, transitions and execution semantics, exposed as neutral facts per Task
+  (preparation status, position, whether a run exists, terminal outcome, broken, dependency state,
+  start blockers). **Attention** belongs to the attention projection: which subjects need a person,
+  with reason, required actor and available action. **Grouping** belongs to the dashboard
+  configuration: groups, labels, order and the mapping from facts to groups, as declarative data.
+  No presentation concept (group, label, order, lane) lives in the Engine or the kernel. A Task is
+  in exactly one group and may independently require attention; attention is never a group, a
+  state, or inferred from a status or group name.
+- **Available actions are not attention.** A ready-to-start Task offers Start, but it needs no
+  attention; a draft offers Approve, but it is not attention by itself.
 - **Requires attention** shows the attention projection only, each item with the one action the
-  projection offers for it (for example **Start Implementation** for a Task whose review asked for
-  changes, **Open task** for a broken Task, **Answer** for a Session). Per the accepted kernel rule
-  a Task never gets attention just because it is ready, and drafts and start blockers of
-  not-started Tasks are not attention (open decision). At most five, then **Show N more**; the
-  order is the projection's priority (broken first). On Narrow the action sits under the title and
-  reason.
-- **Tasks** (replaces the earlier "Active tasks" preview) is a summary of the configured grouping:
-  one row per non-empty group (name, count, up to two titles, "N more"), each opening the Tasks
-  page at that group, then **View all tasks**. A Task in Requires attention is counted in its group
-  but not named again, so no Task appears twice on the Overview. The section is omitted when there
-  are no Tasks.
+  projection carries and, when it is not the person viewing, the required actor ("Needs the spec
+  writer"). Items: the Engine's derived attention (`owner-action`, `human-step`, launch problems,
+  `task-escalated`), broken Tasks, **start blockers that need a person** on approved, not-started
+  Tasks (owner decision 2A; classification below), Sessions waiting for input, and **one**
+  Specification-level `tasks-stuck` item when no open Task can progress without the owner (owner
+  decision 1A): it names the affected Tasks as links (for example "No open task can progress
+  without you: T-04 · T-05") and offers **Review tasks**; there is never one item per draft. At
+  most five, then **Show N more**; the order is the projection's priority (broken first). On Narrow
+  the action sits under the title and reason.
+- **Now explains why the Specification cannot progress** (owner decision 3A) in one note under the
+  progress, naming the Tasks as links ("It cannot continue now: T-04 is a draft, T-05 is on hold
+  and no other task is open."). It carries no action and does not repeat the attention entry: Now
+  explains state, Requires attention offers the operation.
+- **Tasks** (owner decision 4A, 7A) previews the configured grouping. Groups the configuration
+  marks as summary rows (default: Needs approval, In progress, Ready to start, Waiting, On hold)
+  get one row each when non-empty: name, count, up to two titles, "N more", opening the Tasks page
+  at that group. Groups marked compact (default: Done, Cancelled) share one quiet line of links
+  ("Done 4 · Cancelled 1"). **On hold is a summary row**: it is not terminal and keeps the
+  Specification from finishing. **All tasks** in the header opens the full page. A Task already
+  named in Requires attention (its own item, or a Task a Specification item names) is counted in its
+  group but not named again ("named in Requires attention"), so no Task appears twice across
+  Overview sections; Now's explanation is the one exception. Omitted when there are no Tasks. Order
+  and visibility of groups come from the configuration, so they can become configurable later
+  without UI change.
 - **Sessions** replaces Continue session: the recommended Session first, then other working Sessions
   of this Specification (at most three), same row as the Sessions list, **All sessions** in the
   header. A Session waiting for input is in Requires attention instead.
@@ -162,13 +179,15 @@ parts omitted: `1 of 6 done · 1 cancelled · 1 on hold`. On hold counts in the 
 
 ## Tasks page (`/specs/:specId/tasks`)
 
-The complete list in the configured grouping (default: Needs approval, In progress, Ready to start,
-Waiting, Done, On hold or cancelled — the last collapsed), the existing row, the row `⋯` lifecycle
+The full inventory in the configured grouping (default: Needs approval, In progress, Ready to start,
+Waiting, On hold, Done, Cancelled — Cancelled collapsed), the existing row, the row `⋯` lifecycle
 menu, **New task** in the section header, the progress text as the section count, and a filter (id
 or title). A Task in the attention projection keeps its group and shows "Requires attention ·
-<reason>" on its row. **No selection checkboxes** until "Run selected tasks" (plan 06 F12) defines
-the action; when it returns, it starts each selected Task through the workflow (never bypassing a
-transition). The navigator's **Tasks** item becomes this page.
+<reason>" on its row; a Task named by the `tasks-stuck` item shows "Requires attention · the
+specification cannot continue until it moves". A draft row reads "Draft · needs approval" in the
+neutral tone. **No checkboxes and no bulk actions** (owner decision 6A); "Run selected tasks" (plan
+06 F12) is deferred, and when it returns it starts each Task through the workflow, never bypassing
+a transition. The navigator's **Tasks** item becomes this page.
 
 ## Universality
 
@@ -178,7 +197,7 @@ The sections take their content from the projection, so other definitions read t
   Review with no step that produces Tasks): Now carries its work steps with Finish step; the Tasks
   summary is omitted; Requires attention holds what the attention projection derives (Sessions,
   Specification items).
-- **A single-step Task type** (Spike): the Task sits in the group its lane maps to; an unmet exit
+- **A single-step Task type** (Spike): the Task sits in the group the dashboard configuration maps its facts to; an unmet exit
   gate shows on the Task (and in Now for the Specification's own step), not as attention, because
   an active subject gets no derived attention.
 - **A review-loop Task type** (Implementation ⇄ Review): when the review finishes with "changes
@@ -190,6 +209,61 @@ The sections take their content from the projection, so other definitions read t
 - **Step names never matter:** rows say the step title; nothing tests for `wait-for-tasks`,
   `review` or a status string; a `wait` kind and `produces: tasks` are the only workflow facts the
   Overview reads.
+
+## Start blockers: attention or not (owner decision 2A)
+
+The attention projection classifies each start blocker (`StartBlocker`) of an approved (`ready`),
+not-started Task. It never infers attention from a status name; the item carries reason, required
+actor and action.
+
+| Blocker                                                            | Attention?                                                                                       | Actor            | Action                                 |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ | ---------------- | -------------------------------------- |
+| `dependencies`, every dependency can still complete                | No: normal waiting, shown on the row ("Waiting for T-02")                                        | —                | —                                      |
+| `dependencies` with `unsatisfiable` (cancelled, abandoned, broken) | Yes                                                                                              | owner            | Edit dependencies (or Cancel task)     |
+| `context-unresolved`                                               | Yes                                                                                              | owner            | Edit context                           |
+| `context-awaited` (an earlier step will produce it)                | No: expected                                                                                     | —                | —                                      |
+| `gates-unsatisfied` (entry gate)                                   | Yes, when a person satisfies it                                                                  | the gate's actor | the gate's action                      |
+| `definition-changed`                                               | Yes                                                                                              | owner            | Review the new workflow revision       |
+| `type-not-allowed`, `definition-missing`                           | Yes                                                                                              | owner            | Open project settings (or Cancel task) |
+| `broken`                                                           | Yes (already)                                                                                    | owner            | Open task (restore from Git)           |
+| `status` (draft, on hold)                                          | No per Task; the Specification-level `tasks-stuck` item covers it when nothing else can progress | —                | —                                      |
+
+## Grouping ownership and the default configuration (owner decision 5A)
+
+The default grouping is a declarative data module in the **Runtime presentation layer**
+(`specflow-runtime/src/features/tasks/workspace/`), replacing the hard-coded `GROUPS`. Each group:
+id, label, order, a predicate over the Engine's neutral Task facts, its summary prominence (row or
+compact) and whether the Tasks page collapses it; the first matching group wins and a Task matching
+none falls into "Other". Recommended there rather than in the UI because the accepted contract
+already has the backend supply groups as data in display order, one evaluation serves the Overview
+summary, the Tasks page and other clients (CLI, MCP), and project- or user-level overrides later
+need Runtime-owned settings; the UI stays render-only. The Engine and kernel keep no presentation
+concepts. The mock's `dashboard-grouping.stories-support.ts` shows the shape.
+
+### Engine/Runtime changes requiring separate implementation work
+
+1. **Remove lanes from the Engine:** `TaskLane` and `laneOf` in `workflow/operations/execution-read.ts`
+   (and their export); the read model exposes neutral facts per Task instead: preparation status,
+   position kind with step and attempt, whether a run exists, terminal outcome, broken, dependency
+   state (`waitingFor`, `unsatisfiable`) and start blockers.
+2. **Contracts:** replace `TaskResource.lane` (`TaskLaneSchema`, `tasks/task-resource.ts`) with those
+   facts; the Runtime's status line (`taskStatusOf`, `STATUS_OF_LANE` in
+   `features/tasks/engine/projection.ts`) derives from facts, not lanes.
+3. **Dashboard default grouping module** in the Runtime presentation layer (above), validated at
+   load, replacing `GROUPS` in `features/tasks/workspace/engine-contribution.ts`; groups are sent as
+   data with their summary prominence.
+4. **Attention projection extension for start blockers** of approved, not-started Tasks, per the
+   table above, each item with reason (code and human text), required actor and action (command
+   and label).
+5. **Specification-level `tasks-stuck` item with the affected Task ids** (the `waiting` position's
+   `attention.taskIds`, always set for `tasks-stuck`), passed through the Runtime's attention list
+   with the action that opens the Tasks page at those Tasks.
+6. **Readable attention reasons and a per-Task attention flag** on the Task read (today the Runtime
+   sends `"<step>: <reason>"`), so the Tasks page can mark rows.
+7. **Now's explanation data:** the Specification read carries the `tasks-stuck` Task ids with each
+   Task's blocking fact (draft, on hold, depends on a cancelled Task).
+8. **Per-Specification Sessions read** for the Sessions section (this Specification's Sessions,
+   recommended first; one waiting for input moves to Requires attention).
 
 ## Now block (Specification and Task)
 
@@ -424,6 +498,11 @@ the mock fixtures name the scenarios implementation fixtures must cover.
 - Task Type: **immutable** after creation.
 - Abandon: **final**, also reachable from Close-blocked as **Abandon instead**.
 - Task authoring placement: sections in the Primary, documents in the Secondary.
+- Overview grouping and attention (owner, 2026-11-13): 1A one Specification-level `tasks-stuck`
+  item with Task links, no per-draft attention; 2A start blockers that need a person become
+  attention with reason, actor and action; 3A Now explains why the Specification cannot progress;
+  4A compact Tasks summary, On hold stays a row; 5A grouping is dashboard configuration, not Engine;
+  6A no checkboxes or bulk actions, F12 deferred; 7A section title "Tasks".
 
 ## Open questions
 

@@ -46,7 +46,7 @@ export {
   type WorkspaceGitFacts,
   type WorkspaceReadInspection,
   type WorkspaceUnavailableReason,
-} from './project/workspace/inspection/inspection';
+} from './specs/workspaces/inspection';
 
 export { ProjectControlLockError, type ProjectControlLockErrorCode } from './project/control-lock';
 

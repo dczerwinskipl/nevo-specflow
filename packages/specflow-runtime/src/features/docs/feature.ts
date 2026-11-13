@@ -77,7 +77,8 @@ export function createDocsFeature(options: CreateDocsFeatureOptions): DocsFeatur
           ? undefined
           : createWorkspaceCorpora({
               resolve: engineWorkspaceResolver(engine),
-              projectHome: engine.context.project.homeRoot,
+              // Read at seed time: registration does not touch the Engine.
+              projectHome: () => engine.context.project.homeRoot,
               trustedEmbeddings,
               env,
               log: app.log,
@@ -115,9 +116,8 @@ export function createDocsFeature(options: CreateDocsFeatureOptions): DocsFeatur
         return;
       }
 
-      const ownWorkspace = engine.workspace.workspaceId;
       app.addHook('onReady', (done) => {
-        void workspaces.startRefresh(ownWorkspace).catch((error: unknown) => {
+        void workspaces.startRefresh(engine.workspace.workspaceId).catch((error: unknown) => {
           app.log.warn({ err: error }, 'The documentation index was not refreshed.');
         });
         done();

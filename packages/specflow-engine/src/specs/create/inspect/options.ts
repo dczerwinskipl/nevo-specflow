@@ -4,7 +4,7 @@ import { basename, dirname, join } from 'node:path';
 import type { SpecFlowEngine } from '../../../application';
 import { GitCapabilityError } from '../../../git/errors';
 import { WorkspaceRegistryError } from '../../../project/workspace/registry/registry';
-import { inspectRegistryWorkspaces } from '../../../project/workspace/inspection/inspection';
+import { inspectRegistryWorkspaces } from '../../workspaces/inspection';
 import { createLocalGitClient } from '../../../version-control/git/client';
 import { validateBaseRef } from '../../../version-control/git/refs';
 import { engineCommitRefusal } from '../../../version-control/commits/branch-patterns';

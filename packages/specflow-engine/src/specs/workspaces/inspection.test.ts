@@ -5,7 +5,7 @@ import { basename, join } from 'node:path';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { createGitTestProject, git } from '../../../../test/support/git-project';
+import { createGitTestProject, git } from '../../../test/support/git-project';
 import {
   addWorkspace,
   bindSpecToWorkspace,
@@ -15,9 +15,9 @@ import {
   seedCatalogueForTesting,
   updateWorkspaceRegistry,
   type SpecFlowEngine,
-} from '../../../testing';
-import { WORKSPACE_IDENTITY_RELATIVE_PATH } from '../identity';
-import { GitCapabilityError } from '../../../git/errors';
+} from '../../testing';
+import { WORKSPACE_IDENTITY_RELATIVE_PATH } from '../../project/workspace/identity';
+import { GitCapabilityError } from '../../git/errors';
 import {
   inspectRegistryWorkspaces,
   inspectWorkspaceForRead,
@@ -25,8 +25,8 @@ import {
 } from './inspection';
 
 const outage = vi.hoisted(() => ({ on: false }));
-vi.mock('../../../version-control/git/client', async (importOriginal) => {
-  const original = await importOriginal<typeof import('../../../version-control/git/client')>();
+vi.mock('../../version-control/git/client', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../../version-control/git/client')>();
 
   return {
     ...original,

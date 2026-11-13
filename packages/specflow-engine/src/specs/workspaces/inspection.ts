@@ -1,19 +1,19 @@
 import { basename, resolve } from 'node:path';
 
-import type { SpecFlowEngine } from '../../../application';
-import { READ_GIT_CONCURRENCY, mapBounded } from '../../../concurrency';
-import { GitCapabilityError } from '../../../git/errors';
-import { executeGit } from '../../../git/process';
-import { discoverSpecifications } from '../../../specs/discovery';
-import { createLocalGitClient } from '../../../version-control/git/client';
-import { readProjectGitPolicy } from '../../../version-control/worktrees/config';
-import { runReadRequest } from '../../request-verification-memo';
+import type { SpecFlowEngine } from '../../application';
+import { READ_GIT_CONCURRENCY, mapBounded } from '../../concurrency';
+import { GitCapabilityError } from '../../git/errors';
+import { executeGit } from '../../git/process';
+import { discoverSpecifications } from '../discovery';
+import { createLocalGitClient } from '../../version-control/git/client';
+import { readProjectGitPolicy } from '../../version-control/worktrees/config';
+import { runReadRequest } from '../../project/request-verification-memo';
 import {
   inspectRegisteredWorkspace,
   WorkspaceRegistryError,
   type RegisteredWorkspaceInspection,
   type WorkspaceRegistry,
-} from '../registry/registry';
+} from '../../project/workspace/registry/registry';
 
 export type WorkspaceUnavailableReason =
   /** The registered root failed verification, on disk or by `git status`. */

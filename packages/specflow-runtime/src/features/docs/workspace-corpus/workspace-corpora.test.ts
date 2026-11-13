@@ -94,7 +94,7 @@ function harness(workspaces: Map<string, WorkspaceResolution>, home: string) {
 
       return Promise.resolve(workspaces.get(id) ?? { status: 'not-registered' });
     },
-    projectHome: home,
+    projectHome: () => home,
     trustedEmbeddings: { protocol: 'openai-compatible', baseUrl: TRUSTED, model: 'm' },
     env: {},
     createProvider,

@@ -56,8 +56,8 @@ export interface WorkspaceDocsRelease {
 
 export interface WorkspaceCorporaOptions {
   readonly resolve: ResolveWorkspace;
-  /** Project Home's checkout root, the seed source of every other checkout. */
-  readonly projectHome: string;
+  /** Project Home's checkout root, the seed source of every other checkout (read when seeding). */
+  readonly projectHome: () => string;
   /** The Runtime's own `ai.embeddings` (C10); a checkout's are never read. */
   readonly trustedEmbeddings: DocsConfiguration['embeddings'];
   readonly env: Readonly<Record<string, string | undefined>>;
@@ -174,7 +174,7 @@ export function createWorkspaceCorpora(options: WorkspaceCorporaOptions): Worksp
         slot: options.slot,
         ...(projectHome
           ? {}
-          : { seed: { from: options.projectHome, settingsFingerprint: fingerprint } }),
+          : { seed: { from: options.projectHome(), settingsFingerprint: fingerprint } }),
         ...(options.createProvider ? { createProvider: options.createProvider } : {}),
       }),
     );

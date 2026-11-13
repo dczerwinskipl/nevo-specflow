@@ -26,6 +26,7 @@ import { resolveTaskType } from '../tasks/tasks';
 import { assertOwner } from './actors';
 import { executionTasks, loadTask, type WorkflowDependencies } from './loaded-execution';
 import {
+  assertContextInputs,
   assertContextResolved,
   effectiveTaskTypesOf,
   staleReferences,
@@ -247,6 +248,7 @@ export function createTask(
       ...(input.context !== undefined ? { context: input.context } : {}),
     };
     assertManifest(manifest);
+    assertContextInputs(manifest.id, manifest.context);
     assertDependencies(dependencies, snapshot, manifest.id, manifest.dependsOn, []);
     assertContextResolved(
       manifest.id,
@@ -328,6 +330,11 @@ export function editTask(
       ...(context !== undefined ? { context } : {}),
     };
     assertManifest(manifest);
+    // Only a changed context is checked: a stored list stays editable in its other fields.
+    if (input.context) {
+      assertContextInputs(manifest.id, manifest.context);
+    }
+
     assertDependencies(dependencies, snapshot, manifest.id, dependsOn, previous.dependsOn);
     const before = new Set((previous.context ?? []).map(keptEntryKey));
     assertContextResolved(

@@ -95,13 +95,7 @@ async function startSubject(
 
   // The declared entry gates of the step, after the Task's own checks (a resume is not a start).
   if (!intent.resumed) {
-    await assertGatesSatisfied(
-      dependencies.references,
-      subject,
-      'entry',
-      step.id,
-      entryGatesOf(step),
-    );
+    await assertGatesSatisfied(dependencies.references, subject, 'entry', step, entryGatesOf(step));
   }
 
   const run = decision.nextRun;
@@ -118,6 +112,7 @@ async function startSubject(
     context: compileStepContext({
       subject,
       run,
+      definition: loaded.definition,
       step,
       attempt: intent.attempt,
       catalogue: dependencies.catalogue,

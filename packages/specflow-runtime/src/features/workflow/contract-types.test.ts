@@ -20,6 +20,7 @@ import type {
   TaskProposal,
   TaskReadiness,
   UnresolvedContextEntry,
+  InvalidContextEntry,
 } from '@nevo/specflow-engine';
 import { describe, expect, it } from 'vitest';
 
@@ -43,6 +44,7 @@ type Details = NonNullable<WorkflowError['details']>;
 type Unresolved = NonNullable<Details['unresolved']>[number];
 type AwaitedEntry = NonNullable<Details['awaited']>[number];
 type GateRefusal = NonNullable<Details['gate']>;
+type InvalidEntry = NonNullable<Details['invalidContext']>[number];
 
 describe('workflow contract types', () => {
   it('match the Engine both ways', () => {
@@ -53,7 +55,8 @@ describe('workflow contract types', () => {
     same<TaskProposal, TaskProposalContract>(true);
     same<UnresolvedContextEntry, Unresolved>(true);
     same<AwaitedContextEntry, AwaitedEntry>(true);
-    same<Pick<GateUnsatisfiedError, 'phase' | 'step' | 'gates'>, GateRefusal>(true);
+    same<InvalidContextEntry, InvalidEntry>(true);
+    same<Pick<GateUnsatisfiedError, 'phase' | 'step' | 'stepTitle' | 'gates'>, GateRefusal>(true);
     // The Task resource facts of a detail are Engine facts, passed on unchanged.
     same<TaskReadiness, TaskResourceFacts['readiness']>(true);
     same<RunPosition, TaskResourceFacts['position']>(true);

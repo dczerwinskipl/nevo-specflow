@@ -16,6 +16,8 @@ export interface AttemptIdentity {
 export type ExecutorClass = 'agent' | 'human';
 export interface StepFacts {
   id: string;
+  /** The step's title from its workflow (display); absent in fixtures without one. */
+  title?: string;
   /** Empty for a wait step. */
   executors: ExecutorClass[];
   purpose: string | null;

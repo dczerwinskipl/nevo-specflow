@@ -15,7 +15,7 @@ import {
   type Dependencies,
 } from './operations.test-support';
 import { startTaskExecution } from './start';
-import { createTask } from './task-resource';
+import { createTask, editTask } from './task-resource';
 import { setTaskStatus } from './task-status';
 
 /**
@@ -225,6 +225,81 @@ describe('entry gates', () => {
       next: { entryGates: [{ status: 'satisfied', documentId: 'decision' }] },
     });
     await expect(start()).resolves.toMatchObject({ kind: 'started' });
+  });
+});
+
+describe('own documents as context artifacts', () => {
+  it('refuses a required one on create and edit (a gate expresses it); an optional one is allowed', async () => {
+    const dependencies = memoryDependencies(catalogue);
+    const own = { kind: 'task-document' as const, id: 'findings', artifact: true };
+    const create = (required: boolean) =>
+      createTask(dependencies, {
+        specId: SPEC,
+        taskId: 'api',
+        title: 'API',
+        type: 'implementation',
+        actor: owner,
+        context: [
+          { kind: 'path', path: 'packages/specflow-engine/src', required: true },
+          { ...own, required },
+        ],
+      });
+
+    const applied = dependencies.store.applied.length;
+    const refusal = create(true);
+    await expect(refusal).rejects.toMatchObject({
+      code: 'WORKFLOW_INPUT_INVALID',
+      invalidContext: [
+        { index: 1, key: 'task-document:findings', reason: 'required-own-artifact' },
+      ],
+    });
+    await expect(refusal).rejects.toThrow(/exit gate on the producing step/u);
+    expect(dependencies.store.applied).toHaveLength(applied);
+
+    const created = await create(false);
+    await expect(
+      editTask(dependencies, {
+        specId: SPEC,
+        taskId: 'api',
+        expectedRevision: created.revision,
+        actor: owner,
+        context: [{ ...own, required: true }],
+      }),
+    ).rejects.toMatchObject({ code: 'WORKFLOW_INPUT_INVALID', invalidContext: [{ index: 0 }] });
+  });
+});
+
+describe('step titles in the projection', () => {
+  it('name the first step of the pin preview, the transition targets and the return targets', async () => {
+    const dependencies = memoryDependencies(catalogue);
+    await createTask(dependencies, {
+      specId: SPEC,
+      taskId: 'api',
+      title: 'API',
+      type: 'implementation',
+      actor: owner,
+    });
+    await setTaskStatus(dependencies, {
+      specId: SPEC,
+      taskId: 'api',
+      status: 'ready',
+      actor: owner,
+    });
+    expect((await inspectActions(dependencies, task('api'))).position).toMatchObject({
+      preview: { firstStep: 'implement', firstStepTitle: 'Implement' },
+    });
+
+    await startTaskExecution(dependencies, { specId: SPEC, taskId: 'api', actor: owner });
+    const { actions } = await inspectActions(dependencies, task('api'));
+    expect(actions.finish?.transitions[0]).toMatchObject({ targetTitle: 'Review' });
+    expect(actions.return?.targets).toEqual([
+      {
+        step: 'implement',
+        title: 'Implement',
+        label: 'Back to implementation',
+        feedback: 'required',
+      },
+    ]);
   });
 });
 

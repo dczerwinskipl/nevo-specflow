@@ -1,10 +1,12 @@
 import {
   GateUnsatisfiedError,
+  TaskContextInvalidError,
   TaskContextUnresolvedError,
   openWorkflow,
   type AwaitedContextEntry,
   type CloseBlocker,
   type GateStatus,
+  type InvalidContextEntry,
   type SpecFlowEngine,
   type UnresolvedContextEntry,
   type WorkflowDependencies,
@@ -47,11 +49,14 @@ interface CodedError {
   readonly gate?: {
     readonly phase: 'entry' | 'exit';
     readonly step: string;
+    readonly stepTitle: string;
     readonly gates: readonly GateStatus[];
   };
   /** `WORKFLOW_TASK_CONTEXT_UNRESOLVED`: stale references and, apart, awaited process artifacts. */
   readonly unresolved?: readonly UnresolvedContextEntry[];
   readonly awaited?: readonly AwaitedContextEntry[];
+  /** `WORKFLOW_INPUT_INVALID` of a Task create/edit: context entries that can never hold. */
+  readonly invalidContext?: readonly InvalidContextEntry[];
 }
 
 /**
@@ -71,11 +76,19 @@ function workflowRefusal(error: unknown): CodedError | undefined {
       message: error.message,
       ...(Array.isArray(blockers) ? { blockers } : {}),
       ...(error instanceof GateUnsatisfiedError
-        ? { gate: { phase: error.phase, step: error.step, gates: error.gates } }
+        ? {
+            gate: {
+              phase: error.phase,
+              step: error.step,
+              stepTitle: error.stepTitle,
+              gates: error.gates,
+            },
+          }
         : {}),
       ...(error instanceof TaskContextUnresolvedError
         ? { unresolved: error.unresolved, awaited: error.awaited }
         : {}),
+      ...(error instanceof TaskContextInvalidError ? { invalidContext: error.invalidContext } : {}),
     };
   }
 
@@ -140,8 +153,17 @@ export async function reportingWorkflowRefusals<T>(
       output.stderr(`  awaited artifact ${String(entry.index)}: ${entry.key}`);
     }
 
-    if (hint !== undefined) {
-      output.stderr(`Hint: ${hint}`);
+    for (const entry of refusal.invalidContext ?? []) {
+      output.stderr(`  invalid context ${String(entry.index)}: ${entry.key} (${entry.reason})`);
+    }
+
+    // A refused own-document artifact names the gate alternative (the message carries it too).
+    const effectiveHint =
+      refusal.invalidContext !== undefined
+        ? 'Context lists the inputs a Task needs before it starts. For a document the Task produces, use an exit gate on the producing step and an entry gate on the consuming step.'
+        : hint;
+    if (effectiveHint !== undefined) {
+      output.stderr(`Hint: ${effectiveHint}`);
     }
 
     if (json) {
@@ -154,7 +176,8 @@ export async function reportingWorkflowRefusals<T>(
             ...(refusal.gate ? { gate: refusal.gate } : {}),
             ...(refusal.unresolved ? { unresolved: refusal.unresolved } : {}),
             ...(refusal.awaited && refusal.awaited.length > 0 ? { awaited: refusal.awaited } : {}),
-            ...(hint ? { hint } : {}),
+            ...(refusal.invalidContext ? { invalidContext: refusal.invalidContext } : {}),
+            ...(effectiveHint ? { hint: effectiveHint } : {}),
           },
         }),
       );

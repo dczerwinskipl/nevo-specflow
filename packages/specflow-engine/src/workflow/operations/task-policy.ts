@@ -68,6 +68,56 @@ export function staleReferences(issues: readonly TaskContextIssue[]): TaskContex
   return issues.filter((issue) => !isAwaited(issue));
 }
 
+/** A context entry a create or an edit refuses, by its position (from 0) and key. */
+export interface InvalidContextEntry {
+  readonly index: number;
+  readonly key: string;
+  /**
+   * `required-own-artifact`: a required `task-document` artifact would be produced by the Task
+   * itself, so its own start could never find it.
+   */
+  readonly reason: 'required-own-artifact';
+}
+
+/**
+ * `WORKFLOW_INPUT_INVALID` for context entries that can never hold (`invalidContext`). The context
+ * is what a Task needs before it starts (its inputs); what the Task produces is a gate: an exit gate
+ * on the producing step and an entry gate on the step that consumes it.
+ */
+export class TaskContextInvalidError extends WorkflowError {
+  readonly invalidContext: readonly InvalidContextEntry[];
+
+  constructor(taskId: string, entries: readonly InvalidContextEntry[]) {
+    super(
+      'WORKFLOW_INPUT_INVALID',
+      `The context of the Task "${taskId}" requires its own documents as artifacts: ${entries
+        .map((entry) => `${String(entry.index + 1)} (${entry.key})`)
+        .join(
+          ', ',
+        )}. The context lists what the Task needs before it starts; for what it produces, use an exit gate on the producing step and an entry gate on the consuming step, or mark the entry optional.`,
+    );
+    this.invalidContext = entries;
+  }
+}
+
+/**
+ * Refuse a context list that can never be satisfied: a required process artifact of the Task's own
+ * documents (`task-document`, `artifact: true`). An optional one stays allowed.
+ */
+export function assertContextInputs(
+  taskId: string,
+  entries: readonly TaskContextEntry[] | undefined,
+): void {
+  const invalid = (entries ?? []).flatMap((entry, index): InvalidContextEntry[] =>
+    entry.kind === 'task-document' && entry.required && entry.artifact === true
+      ? [{ index, key: contextKey(entry), reason: 'required-own-artifact' }]
+      : [],
+  );
+  if (invalid.length > 0) {
+    throw new TaskContextInvalidError(taskId, invalid);
+  }
+}
+
 /** One context entry that does not resolve, as a refusal names it. */
 export interface UnresolvedContextEntry {
   /** Position in the context list, from 0. */

@@ -38,7 +38,8 @@
     "title": {
       "type": "string",
       "minLength": 1,
-      "maxLength": 200
+      "maxLength": 200,
+      "pattern": "^[^\\r\\n]*\\S[^\\r\\n]*$"
     },
     "description": {
       "type": "string",
@@ -84,7 +85,8 @@
               "title": {
                 "type": "string",
                 "minLength": 1,
-                "maxLength": 200
+                "maxLength": 200,
+                "pattern": "^[^\\r\\n]*\\S[^\\r\\n]*$"
               },
               "purpose": {
                 "type": "string",
@@ -118,7 +120,8 @@
                     "label": {
                       "type": "string",
                       "minLength": 1,
-                      "maxLength": 200
+                      "maxLength": 200,
+                      "pattern": "^[^\\r\\n]*\\S[^\\r\\n]*$"
                     },
                     "to": {
                       "anyOf": [
@@ -286,7 +289,8 @@
                     "label": {
                       "type": "string",
                       "minLength": 1,
-                      "maxLength": 200
+                      "maxLength": 200,
+                      "pattern": "^[^\\r\\n]*\\S[^\\r\\n]*$"
                     },
                     "type": {
                       "type": "string",
@@ -341,7 +345,8 @@
                     "label": {
                       "type": "string",
                       "minLength": 1,
-                      "maxLength": 200
+                      "maxLength": 200,
+                      "pattern": "^[^\\r\\n]*\\S[^\\r\\n]*$"
                     },
                     "type": {
                       "type": "string",
@@ -410,7 +415,8 @@
               "title": {
                 "type": "string",
                 "minLength": 1,
-                "maxLength": 200
+                "maxLength": 200,
+                "pattern": "^[^\\r\\n]*\\S[^\\r\\n]*$"
               },
               "purpose": {
                 "type": "string",
@@ -444,7 +450,8 @@
                     "label": {
                       "type": "string",
                       "minLength": 1,
-                      "maxLength": 200
+                      "maxLength": 200,
+                      "pattern": "^[^\\r\\n]*\\S[^\\r\\n]*$"
                     },
                     "to": {
                       "anyOf": [
@@ -581,7 +588,8 @@
           "label": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 200
+            "maxLength": 200,
+            "pattern": "^[^\\r\\n]*\\S[^\\r\\n]*$"
           },
           "feedback": {
             "anyOf": [

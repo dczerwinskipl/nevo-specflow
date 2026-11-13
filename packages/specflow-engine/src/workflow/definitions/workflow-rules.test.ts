@@ -445,6 +445,8 @@ describe('step gates', () => {
     ['a `when` on an entry gate', { entryGates: [{ ...documentGate, when: ['pass'] }] }],
     ['an unknown scope', { exitGates: [{ ...documentGate, scope: 'project' }] }],
     ['a blank required section', { exitGates: [{ ...documentGate, requiredSections: ['  '] }] }],
+    ['a multi-line step title', { title: 'Two\nlines' }],
+    ['a blank step title', { title: '   ' }],
   ])('the file schema rejects %s', (_name, gates) => {
     expect(Value.Check(WorkflowDefinitionFileSchema, gated(gates))).toBe(false);
     // The same file without the gates is valid, so the gates are what the schema refuses.

@@ -93,6 +93,7 @@ export interface WorkflowSummary {
 /** What a first start would pin, from the live definitions (D04): confirm it, then start. */
 export interface PinPreview extends WorkflowSummary {
   readonly firstStep: string;
+  readonly firstStepTitle: string;
 }
 
 export const AGENT_UNAVAILABLE_REASONS = [
@@ -233,6 +234,8 @@ export interface WorkflowActions {
   readonly return?: {
     readonly targets: readonly {
       readonly step: string;
+      /** The title of the step returned to. */
+      readonly title: string;
       readonly label?: string;
       /** Whether the return needs a reason (its feedback). */
       readonly feedback: 'required' | 'optional';
@@ -350,7 +353,11 @@ function summaryOf(definition: WorkflowDefinition): WorkflowSummary {
 }
 
 function previewOf(definition: WorkflowDefinition): PinPreview {
-  return { ...summaryOf(definition), firstStep: definition.entryStep };
+  return {
+    ...summaryOf(definition),
+    firstStep: definition.entryStep,
+    firstStepTitle: stepOf(definition, definition.entryStep).title,
+  };
 }
 
 function stepOf(definition: WorkflowDefinition, id: string): WorkflowStep {
@@ -506,7 +513,7 @@ async function finishTransitions(
     ).map((status) => [status.id, status] as const),
   );
 
-  return describeTransitions(step).map((transition, index) => {
+  return describeTransitions(input.definition, step).map((transition, index) => {
     const declared = step.transitions[index];
     const gates = exitGatesFor(step, transition.result).flatMap(
       (gate) => statuses.get(gate.id) ?? [],
@@ -630,6 +637,7 @@ function returnTargets(definition: WorkflowDefinition, run: WorkflowRun) {
     .filter((entry) => run.attempts.some((record) => record.step === entry.step))
     .map((entry) => ({
       step: entry.step,
+      title: stepOf(definition, entry.step).title,
       ...(entry.label !== undefined ? { label: entry.label } : {}),
       feedback: entry.feedback,
     }));

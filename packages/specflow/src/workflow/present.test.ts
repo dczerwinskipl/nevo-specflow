@@ -64,6 +64,35 @@ describe('actionLines', () => {
     );
   });
 
+  it('names steps by title and id, and where a transition and a return lead', () => {
+    const projection = {
+      subject,
+      position: {
+        kind: 'active',
+        step: { id: 'implement', title: 'Implement' },
+        attempt: { number: 1, startedAt: 'now', actor: { class: 'human', details: {} } },
+      },
+      actions: {
+        finish: {
+          step: 'implement',
+          attempt: 1,
+          transitions: [{ id: 'implemented', targetTitle: 'Review', feedback: 'optional' }],
+        },
+        return: {
+          targets: [{ step: 'implement', title: 'Implement', feedback: 'required' }],
+        },
+      },
+    } as unknown as ActionProjection;
+
+    expect(actionLines(projection)).toEqual([
+      'Task build',
+      'State: active on Implement (implement) (attempt 1)',
+      'Worked by: human',
+      'Action: finish "implement" attempt 1 (implemented, to Review)',
+      'Action: return to Implement (implement) (reason required)',
+    ]);
+  });
+
   it('lists the gates of a finish transition under it', () => {
     const projection = {
       subject,

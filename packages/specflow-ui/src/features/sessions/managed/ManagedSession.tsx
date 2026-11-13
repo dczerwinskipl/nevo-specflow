@@ -670,9 +670,14 @@ function ManagedSessionConversation({
                 <div
                   ref={setEntriesNode}
                   className={cn(
-                    'mx-auto grid w-full max-w-content-standard gap-4 px-5 py-5',
-                    // Empty: the ready empty state centres in the free height above the Composer.
-                    !snapshot.entries.length && 'flex-1 grid-rows-[1fr]',
+                    // `flex-1` always fills the free height above the Composer, so a short
+                    // conversation keeps the split layout's `sticky` Composer at the bottom
+                    // instead of right after the last message (sticky only pins once content
+                    // overflows; stacked/mobile's `fixed` Composer is pinned regardless).
+                    'mx-auto grid w-full max-w-content-standard flex-1 gap-4 px-5 py-5',
+                    // Empty: the ready empty state centres in that height; otherwise messages
+                    // stack from the top instead of stretching their rows across it.
+                    snapshot.entries.length ? 'content-start' : 'grid-rows-[1fr]',
                   )}
                 >
                   {/* Auto-loads on scroll near the top instead of a manual button

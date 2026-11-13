@@ -2,8 +2,11 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { settleViewport } from '../../../test-support/viewportSettle.stories-support';
 import { ManagedSession } from './ManagedSession';
-import { fixtureSessionId } from './managedSession.stories-support';
-import { richDefaultApi } from './managedSession.fullSession.stories-support';
+import { fixtureApi, fixtureSessionId } from './managedSession.stories-support';
+import {
+  genericSpecLevelSnapshot,
+  richDefaultApi,
+} from './managedSession.fullSession.stories-support';
 import { genericSpecLevelContext } from './context/sessionContextFixtures';
 import { Environment } from './managedSession.storyHelpers.stories-support';
 
@@ -203,6 +206,35 @@ export const SplitAt780WithWorkOpen: Story = {
     await openLastWork(canvasElement);
     await settleViewport(780, 844);
     await verifySplitConversation(canvasElement);
+  },
+};
+
+/** A conversation shorter than the viewport keeps the split layout's composer at the bottom. */
+export const SplitShortConversationComposerAtBottom: Story = {
+  tags: ['contract'],
+  args: { api: fixtureApi(genericSpecLevelSnapshot()) },
+  play: async ({ canvasElement }) => {
+    await settleViewport(1280, 655);
+    await waitFor(async () => {
+      await expect(layoutOf()).toBe('split');
+      await expect(canvasElement.querySelector('[data-composer-overlay]')).not.toBeNull();
+    });
+    await nextFrames();
+    const scroller = scrollerOf(canvasElement);
+    await expect(scroller.scrollHeight, 'the conversation does not overflow').toBeLessThanOrEqual(
+      scroller.clientHeight,
+    );
+    // Docked where a long conversation pins it: its own sticky `bottom` offset above the edge.
+    const overlay = canvasElement.querySelector<HTMLElement>('[data-composer-overlay]')!;
+    const stickyOffset = parseFloat(getComputedStyle(overlay).bottom);
+    await expect(
+      Math.abs(
+        scroller.getBoundingClientRect().bottom -
+          stickyOffset -
+          overlay.getBoundingClientRect().bottom,
+      ),
+      'composer docked to the bottom of the conversation',
+    ).toBeLessThanOrEqual(1);
   },
 };
 

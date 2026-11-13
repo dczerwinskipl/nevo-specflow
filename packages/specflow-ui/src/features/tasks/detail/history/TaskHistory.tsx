@@ -97,9 +97,12 @@ export function TaskHistory({
               title={
                 <span role="heading" aria-level={3}>
                   {titleOf(entry.step)}
+                  {/* The separating space stays outside the nested span, or the accessible name
+                      loses it ("implementation→ Verify"). */}
+                  {entry.transitionedTo ? ' ' : null}
                   {entry.transitionedTo ? (
                     <span className="font-normal text-content-secondary">
-                      {' → '}
+                      {'→ '}
                       {entry.transitionedTo.kind === 'step'
                         ? titleOf(entry.transitionedTo.step)
                         : t(`taskDetails.outcome.${entry.transitionedTo.outcome}`)}

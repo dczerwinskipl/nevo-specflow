@@ -114,31 +114,43 @@ in the preparation block's place; one reading column (`content-standard`) at the
 **Order:** summary → **Now** → **Requires attention** → **Active tasks** (work column) and
 **Sessions** → **Documents** (context column). In one column the same order.
 
-- **Now** shows the current Specification workflow state from the projection: step title, the quiet
-  line (attempt, since, by whom, step id, workflow revision), unmet exit gates under "To finish",
-  and for a `wait` step the progress (segmented bar + the progress text, link to Active tasks). It
-  offers the projection's **main** action only: Start workflow, Finish step (a `work` step), Close
-  specification (terminal). A `wait` step gets **no** primary action; other transitions (Return to
-  an earlier step) and Workflow history sit in the Now block's operations menu (`⋯`).
+- **Now** shows the current Specification workflow state from the projection: the step title and
+  one human line (attempt, since, by whom; or what the step does: "Continues by itself when every
+  task is done or cancelled"). The step id and workflow revision appear only in the Now operations
+  menu (`⋯`), as a note under Workflow history. Unmet exit gates show under "To finish". The
+  Specification-level progress (segmented bar over the counted total, the progress text, and a line
+  that cancelled tasks are not counted) appears **only here**, for a `wait` step; a terminal
+  position shows a summary instead ("All 6 tasks done · 1 cancelled", "6 tasks cancelled · 1
+  done"). Now offers the projection's **main** action only: Start workflow, Finish step (a `work`
+  step), Close specification (terminal). When every result of the active step needs an unmet gate,
+  the gate's action is the main action and Finish step waits in the menu, unavailable with its
+  reason ("Finish step becomes available once this is met"). A `wait` step gets **no** primary
+  action; other transitions (Return to an earlier step) and Workflow history sit in the menu.
+  Abandoned: one archive icon on the title, the reason under it.
 - **Requires attention** lists only items that need the person now, each with the one action the
   projection offers for it (never derived from a status name): a draft Task (**Approve**), a Task
   whose next step is startable (**Start Design**), a Task that cannot start because of a fixable
   blocker (**Fix context**), an active step of the person's own with an unmet gate (the gate's
   action), a Session waiting for input (**Answer**). At most five, then **Show N more**. An item in
-  Requires attention is not repeated in Active tasks or Sessions.
+  Requires attention is not repeated in Active tasks or Sessions. **Order:** blocking interventions
+  first (approve a draft, fix a start blocker, answer a Session, act on an unmet gate), then Tasks
+  ready to start (nothing starts by itself, so they stay, but they block nothing yet).
 - **Active tasks** is a concise preview, not a second Task screen: Tasks in progress, then Tasks
-  waiting on them, at most five, no checkboxes and no row menus; the header carries the progress
-  text and **View all tasks**. Empty: one sentence ("No tasks yet. Create them on the Tasks page,
-  before or during the workflow."); nothing in progress: "No task is in progress or waiting." The
-  section is omitted when the Specification workflow never produces Tasks and none exist.
+  waiting on them, at most five, no checkboxes and no row menus. The header count is the number of
+  rows shown (the Specification progress is in Now only); **View all tasks** closes the list (also
+  on Narrow, where a header action would wrap). The section is **omitted** when nothing is in
+  progress or waiting (no Tasks, all done, or all in Requires attention).
 - **Sessions** replaces Continue session: the recommended Session first, then other working Sessions
   of this Specification (at most three), same row as the Sessions list, **All sessions** in the
   header. A Session waiting for input is in Requires attention instead.
 - **Documents** unchanged.
 - **Narrow:** the same order in one column; nothing is collapsed on the Overview (it is short by
-  construction); row actions stay on the row.
+  construction); row actions stay on the row. Status icons sit on the first line of their text; a
+  row's leading mark stays centred on the row (the operational row's documented rule).
+- **Columns (decided):** A, Now, Requires attention and Active tasks in the work column; Sessions
+  and Documents in the context column. The 1408 px threshold stays.
 
-**Progress, one definition** (Now, Active tasks header, Tasks page): done = Tasks whose workflow
+**Progress, one definition** (Now and the Tasks page): done = Tasks whose workflow
 completed; total = all Tasks except cancelled ones; cancelled and on hold are named separately, zero
 parts omitted: `1 of 6 done · 1 cancelled · 1 on hold`. On hold counts in the total (unfinished).
 

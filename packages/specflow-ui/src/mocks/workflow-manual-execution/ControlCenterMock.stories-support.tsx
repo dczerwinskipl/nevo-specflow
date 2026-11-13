@@ -14,6 +14,7 @@ import {
   Menu,
   MenuContent,
   MenuItem,
+  MenuNote,
   MenuSeparator,
   MenuTrigger,
   Progress,
@@ -78,6 +79,10 @@ interface NowView {
   /** Workflow operations offered by the projection that are not the main action. */
   readonly operations: readonly string[];
   readonly progress?: boolean;
+  /** Technical detail for the ⋯ menu: step id and workflow revision. */
+  readonly technical?: string;
+  /** A terminal summary of the Tasks instead of the progress line. */
+  readonly summary?: string;
 }
 
 interface AttentionItem {
@@ -171,7 +176,8 @@ function dataFor(state: OverviewState): StateData {
         now: {
           title: 'Not started',
           kind: 'not-started',
-          detail: `First step Requirements · ${workflowTitle}`,
+          detail: 'First step Requirements',
+          technical: workflowTitle,
           primary: 'Start workflow',
           operations: [],
         },
@@ -186,7 +192,8 @@ function dataFor(state: OverviewState): StateData {
         now: {
           title: 'Requirements',
           kind: 'work',
-          detail: `Attempt 1 · in progress since 09:05 · started by you · requirements · ${workflowTitle}`,
+          detail: 'Attempt 1 · in progress since 09:05 · started by you',
+          technical: `Step requirements · ${workflowTitle}`,
           primary: 'Finish step',
           operations: [],
         },
@@ -208,14 +215,20 @@ function dataFor(state: OverviewState): StateData {
         now: {
           title: 'Specification',
           kind: 'work',
-          detail: `Attempt 2 · in progress since 10:20 · started by you · specification · ${workflowTitle}`,
+          detail: 'Attempt 2 · in progress since 10:20 · started by you',
+          technical: `Step specification · ${workflowTitle}`,
           gate: {
             label: 'An Acceptance section in specification.md',
             detail: 'missing',
             action: 'Open specification.md',
           },
-          primary: 'Finish step',
-          operations: ['Return to Requirements'],
+          // Every result of this step needs the gate: the gate's action is the main action and
+          // Finish step waits in the menu, unavailable with its reason.
+          primary: 'Open specification.md',
+          operations: [
+            'Finish step · unavailable until the Acceptance section exists',
+            'Return to Requirements',
+          ],
         },
         attention: [
           {
@@ -241,10 +254,11 @@ function dataFor(state: OverviewState): StateData {
         now: {
           title: 'Completed',
           kind: 'completed',
-          detail: `Waiting for tasks ended today 16:40 · ${workflowTitle}`,
+          detail: 'Waiting for tasks ended today 16:40',
+          technical: workflowTitle,
+          summary: 'All 6 tasks done · 1 cancelled',
           primary: 'Close specification',
           operations: [],
-          progress: true,
         },
         attention: [],
         sessions: [],
@@ -261,14 +275,15 @@ function dataFor(state: OverviewState): StateData {
         now: {
           title: 'Abandoned',
           kind: 'abandoned',
-          detail: `Abandoned while waiting for tasks · today 16:40 by Dominik · ${workflowTitle}`,
+          detail: 'Abandoned while waiting for tasks · today 16:40 by Dominik',
+          technical: workflowTitle,
+          // The reason under the title; one archive icon (on the title).
           status: (
-            <InlineNote role="status" icon="archive">
-              <span className="font-medium text-content-primary">
-                The provider contract was cancelled; single sign-on moves to next quarter.
-              </span>
-            </InlineNote>
+            <Typography as="p" variant="body-sm" className="text-content-primary">
+              The provider contract was cancelled; single sign-on moves to next quarter.
+            </Typography>
           ),
+          summary: '6 tasks cancelled · 1 done',
           primary: 'Close specification',
           operations: [],
         },
@@ -285,8 +300,8 @@ function dataFor(state: OverviewState): StateData {
         now: {
           title: 'Review',
           kind: 'work',
-          detail:
-            'Attempt 1 · in progress since 14:10 · started by Dominik · review · Small change rev 1',
+          detail: 'Attempt 1 · in progress since 14:10 · started by Dominik',
+          technical: 'Step review · Small change rev 1',
           primary: 'Finish step',
           operations: ['Return to Implementation'],
         },
@@ -301,11 +316,12 @@ function dataFor(state: OverviewState): StateData {
         now: {
           title: 'Waiting for tasks',
           kind: 'wait',
-          detail: `Continues by itself when every task is done or cancelled · wait-for-tasks · ${workflowTitle}`,
+          detail: 'Continues by itself when every task is done or cancelled',
+          technical: `Step wait-for-tasks · ${workflowTitle}`,
           progress: true,
           operations: ['Return to Breakdown'],
         },
-        attention: [approveT04, startT07, sessionQuestion],
+        attention: [approveT04, sessionQuestion, startT07],
         sessions: [workingSession, idleSession],
       };
   }
@@ -327,7 +343,7 @@ function Now({ now, list }: { now: NowView; list: readonly MockTask[] }) {
           <Typography as="h2" variant="section-label" id="ovw-now-heading">
             Now
           </Typography>
-          {now.operations.length > 0 ? (
+          {now.operations.length > 0 || now.technical ? (
             // Workflow operations that are not the main action (Return, …): one quiet menu.
             <Menu modal={false}>
               <MenuTrigger asChild>
@@ -339,18 +355,24 @@ function Now({ now, list }: { now: NowView; list: readonly MockTask[] }) {
                 />
               </MenuTrigger>
               <MenuContent align="end">
-                {now.operations.map((operation) => (
-                  <MenuItem key={operation} onSelect={noop}>
-                    {operation}
-                  </MenuItem>
-                ))}
-                <MenuSeparator />
+                {now.operations.map((operation) =>
+                  operation.includes('unavailable') ? (
+                    <MenuItem key={operation} disabled onSelect={noop}>
+                      {operation}
+                    </MenuItem>
+                  ) : (
+                    <MenuItem key={operation} onSelect={noop}>
+                      {operation}
+                    </MenuItem>
+                  ),
+                )}
+                {now.operations.length > 0 ? <MenuSeparator /> : null}
                 <MenuItem onSelect={noop}>Workflow history</MenuItem>
+                {now.technical ? <MenuNote id="ovw-now-technical">{now.technical}</MenuNote> : null}
               </MenuContent>
             </Menu>
           ) : null}
         </div>
-        {now.status}
         <div className="grid gap-0.5" aria-live="polite">
           <Typography
             as="p"
@@ -364,10 +386,16 @@ function Now({ now, list }: { now: NowView; list: readonly MockTask[] }) {
             ) : null}
             {now.title}
           </Typography>
+          {now.status}
           <Typography as="p" variant="body-sm" className="text-content-muted">
             {now.detail}
           </Typography>
         </div>
+        {now.summary ? (
+          <Typography as="p" variant="body-sm" className="text-content-secondary">
+            {now.summary}
+          </Typography>
+        ) : null}
         {now.progress && progress.total > 0 ? (
           <div className="grid max-w-md gap-1.5">
             <Progress
@@ -383,14 +411,9 @@ function Now({ now, list }: { now: NowView; list: readonly MockTask[] }) {
               className="text-content-secondary"
             >
               Tasks {progress.text}
-              {now.kind === 'wait' ? (
-                <>
-                  {' '}
-                  <a href="#ovw-tasks-heading" className="ml-1 text-content-link hover:underline">
-                    See active tasks
-                  </a>
-                </>
-              ) : null}
+              <span className="block text-content-muted">
+                The bar counts every task except cancelled ones.
+              </span>
             </Typography>
           </div>
         ) : null}
@@ -401,16 +424,18 @@ function Now({ now, list }: { now: NowView; list: readonly MockTask[] }) {
             </Typography>
             <InlineNote tone="attention" icon="circle-alert">
               <span className="font-medium text-content-primary">{now.gate.label}</span> ·{' '}
-              {now.gate.detail}{' '}
-              <a href="#" className="ml-1 text-content-link hover:underline">
-                {now.gate.action}
-              </a>
+              {now.gate.detail}
             </InlineNote>
           </div>
         ) : null}
         {now.primary ? (
           <div className="flex flex-wrap gap-2" data-slot="workflow-actions">
             <Button>{now.primary}</Button>
+            {now.gate ? (
+              <Typography as="p" variant="body-sm" className="self-center text-content-secondary">
+                Finish step becomes available once this is met.
+              </Typography>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -484,7 +509,6 @@ function ActiveTasks({
   list: readonly MockTask[];
   attentionKeys: ReadonlySet<string>;
 }) {
-  const progress = taskProgress(list);
   const inProgress = list.filter(
     (item) =>
       !attentionKeys.has(item.id) &&
@@ -499,58 +523,51 @@ function ActiveTasks({
   );
   const preview = [...inProgress, ...waiting].slice(0, ACTIVE_SHOWN);
 
+  if (preview.length === 0) {
+    // Nothing in progress or waiting (no Tasks, all done, all needing attention): no section.
+    return null;
+  }
+
   return (
     <WorkspaceSection aria-labelledby="ovw-tasks-heading">
       <WorkspaceSection.Header
         id="ovw-tasks-heading"
         title="Active tasks"
         icon="list-checks"
-        count={list.length > 0 ? progress.text : undefined}
-        actions={
-          <Button variant="ghost" size="sm">
-            View all tasks
-          </Button>
-        }
+        count={preview.length}
       />
-      {list.length === 0 ? (
-        <Typography as="p" variant="body-sm" className="text-content-secondary">
-          No tasks yet. Create them on the Tasks page, before or during the workflow.
-        </Typography>
-      ) : preview.length === 0 ? (
-        <Typography as="p" variant="body-sm" className="text-content-secondary">
-          No task is in progress or waiting.
-        </Typography>
-      ) : (
-        <InformationList>
-          {preview.map((item) => {
-            const position = item.workflow.position;
-            const supporting: SemanticSupporting =
-              position.kind === 'active'
+      <InformationList>
+        {preview.map((item) => {
+          const position = item.workflow.position;
+          const supporting: SemanticSupporting =
+            position.kind === 'active'
+              ? {
+                  text: `${stepTitle(position.step)} · in progress · ${position.actor}`,
+                  tone: 'info',
+                  icon: 'workflow',
+                }
+              : position.kind === 'waiting'
                 ? {
-                    text: `${stepTitle(position.step)} · in progress · ${position.actor}`,
-                    tone: 'info',
-                    icon: 'workflow',
+                    text: `Waiting for ${position.blockers.map((blocker) => blocker.id).join(', ')}`,
+                    icon: 'clock',
                   }
-                : position.kind === 'waiting'
-                  ? {
-                      text: `Waiting for ${position.blockers.map((blocker) => blocker.id).join(', ')}`,
-                      icon: 'clock',
-                    }
-                  : { text: '' };
+                : { text: '' };
 
-            return (
-              <OperationalRow
-                key={item.id}
-                primary={item.title}
-                onPrimaryClick={noop}
-                factsLayout="inline"
-                compactFacts={[{ text: item.id, mono: true }, typeOf(item).title]}
-                supporting={supporting}
-              />
-            );
-          })}
-        </InformationList>
-      )}
+          return (
+            <OperationalRow
+              key={item.id}
+              primary={item.title}
+              onPrimaryClick={noop}
+              factsLayout="inline"
+              compactFacts={[{ text: item.id, mono: true }, typeOf(item).title]}
+              supporting={supporting}
+            />
+          );
+        })}
+      </InformationList>
+      <Button variant="ghost" size="sm" className="w-fit">
+        View all tasks
+      </Button>
     </WorkspaceSection>
   );
 }

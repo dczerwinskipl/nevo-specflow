@@ -8,6 +8,7 @@ import {
   Button,
   defineSecondaryStack,
   useSecondaryNavigation,
+  WorkspaceHeaderIdentity,
   type SecondaryData,
   type WorkspaceHeaderAction,
 } from '@nevo/ui';
@@ -79,6 +80,7 @@ export function TaskDocumentEditorHost({
 }
 
 interface ScreenData {
+  readonly name: string;
   readonly actions: readonly WorkspaceHeaderAction[];
 }
 
@@ -88,7 +90,7 @@ function useTaskDocumentScreen(params: TaskDocumentParams): SecondaryData<Screen
   const record = useContext(RecordContext);
   const navigation = useSecondaryNavigation();
   if (record?.documentId === params.documentId && record.query.isError) {
-    return { status: 'ready', data: { actions: [] } };
+    return { status: 'ready', data: { name: params.name, actions: [] } };
   }
 
   if (session?.document.id !== params.documentId) {
@@ -99,7 +101,7 @@ function useTaskDocumentScreen(params: TaskDocumentParams): SecondaryData<Screen
     onCloseTab: () => void navigation.closeTab(`${TAB_PREFIX}${params.documentId}`),
   });
 
-  return { status: 'ready', data: { actions } };
+  return { status: 'ready', data: { name: params.name, actions } };
 }
 
 function TaskDocumentScreen() {
@@ -152,6 +154,8 @@ export const taskDocumentStack = defineSecondaryStack<
       get title() {
         return translateNow('specification.documentPreviewTitle');
       },
+      // The document's file name, as its tab is named (the Documents tab rail names files the same).
+      header: ({ data }) => <WorkspaceHeaderIdentity as="h2" headingLevel={2} title={data.name} />,
       actions: ({ data }) => data.actions,
       get actionLabels() {
         return {

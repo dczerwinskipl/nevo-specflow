@@ -291,6 +291,8 @@ export const HandoffSchema = Type.Union([
       actor: Type.Optional(WorkflowActorSchema),
     }),
     transition: Type.String(),
+    /** The display label of the transition taken, when the definition gives one. */
+    label: Type.Optional(Type.String()),
     result: Type.Optional(Type.String()),
     feedback: Type.Optional(text()),
     artifacts: array(Type.String()),

@@ -223,6 +223,8 @@ export type ActionPosition =
  */
 export type PresentedHandoff =
   | (Extract<Handoff, { kind: 'transition' }> & {
+      /** The display label of the transition taken, when the definition gives one. */
+      readonly label?: string;
       readonly from: {
         readonly step: string;
         readonly attempt: number;
@@ -424,12 +426,18 @@ function presentHandoff(
     (attempt) => attempt.step === handoff.from.step && attempt.attempt === handoff.from.attempt,
   );
   const by = record?.finishedBy ?? record?.actor;
+  const step = findStep(definition, handoff.from.step);
+  const label =
+    step?.kind === 'work'
+      ? step.transitions.find((transition) => transition.id === handoff.transition)?.label
+      : undefined;
 
   return {
     ...handoff,
+    ...(label !== undefined ? { label } : {}),
     from: {
       ...handoff.from,
-      title: findStep(definition, handoff.from.step)?.title ?? handoff.from.step,
+      title: step?.title ?? handoff.from.step,
       ...(record?.endedAt ? { at: record.endedAt } : {}),
       ...(by ? { actor: by } : {}),
     },

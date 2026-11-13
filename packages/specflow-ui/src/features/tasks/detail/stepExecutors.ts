@@ -34,3 +34,24 @@ export function isHumanAttempt(position: {
 }): boolean {
   return position.actor ? position.actor.class === 'human' : isHumanStep(position.step);
 }
+
+/**
+ * An attempt's facts line: its step id, then who actually worked on it (a person by the recorded
+ * id, else the executor class). An attempt without an actor (a wait step) shows only the step id.
+ */
+export function attemptLine(
+  t: TFunction,
+  attempt: {
+    readonly step: { readonly id: string };
+    readonly actor: { readonly class: Executor; readonly actorId?: string } | null;
+  },
+) {
+  const actor = attempt.actor;
+  const who = actor
+    ? actor.class === 'human' && actor.actorId
+      ? actor.actorId.replace(/^local:/, '')
+      : t(`taskDetails.executor.${actor.class}`)
+    : undefined;
+
+  return [attempt.step.id, who].filter(Boolean).join(' · ');
+}

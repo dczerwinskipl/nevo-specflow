@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next';
 import type { TaskSnapshot } from '@nevo/specflow-contracts/specs/workspace';
 import { TaskSourceState } from '../TaskDetails';
 import { useTaskHistory } from '../useTaskPages';
-import { stepLine } from '../stepExecutors';
+import { attemptLine } from '../stepExecutors';
 
 export function TaskHistory({
   specId,
@@ -88,8 +88,7 @@ export function TaskHistory({
             >
               <div className="grid min-w-0 gap-1 [overflow-wrap:anywhere]">
                 <Typography as="p" variant="body-sm" className="text-content-muted">
-                  {stepLine(t, entry.step)} ·{' '}
-                  {t('taskDetails.attempt', { count: entry.key.attempt })}
+                  {attemptLine(t, entry)} · {t('taskDetails.attempt', { count: entry.key.attempt })}
                   {entry.result ? ` · ${entry.result}` : ''}
                 </Typography>
                 {(['startedAt', 'completedAt'] as const).map((field) =>

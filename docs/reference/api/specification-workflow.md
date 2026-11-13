@@ -58,7 +58,7 @@ Every route is an **owner** action: an agent attempt is never started or finishe
 `GET .../workflow/actions` answers `WorkflowActionProjection`: `subject`, `workflow` (the pinned
 workflow, or the one a first start would pin), `position` (`not-started`, `ready`, `active`, `waiting`,
 `blocked` with `StartBlocker`s, `terminal`, with `abandonment` `{at, reason, actor}` once abandoned), the
-last `handoff` (a finished attempt names its step `title` and, where recorded, `at` and the `actor` who
+last `handoff` (a finished attempt names the transition `label`, its step `title` and, where recorded, `at` and the `actor` who
 finished it), `actions` (`start`, `finish` with its
 transitions, `return` with its targets) and, per subject, `task` (the Task lifecycle actions, each
 `allowed` or `unavailable` with a stable reason) or `specification` (`createTask`, and `exit`).

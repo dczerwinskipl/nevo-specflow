@@ -36,6 +36,11 @@ import {
   type TaskAuthoringApi,
 } from '../features/tasks/authoring/api';
 import {
+  closeErrorCodes,
+  createRuntimeWorkflowExecutionApi,
+  type WorkflowExecutionApi,
+} from '../features/tasks/execution/api';
+import {
   createRuntimeDocumentApi,
   type DocumentApi,
   type DocumentsApi,
@@ -56,6 +61,8 @@ export interface SpecFlowAppServices {
   readonly taskApi: TaskApi;
   /** Task authoring of a project Runtime: projections, Task commands, Task documents. */
   readonly taskAuthoringApi: TaskAuthoringApi;
+  /** Manual workflow execution of a project Runtime: start, finish, return, abandon, Close. */
+  readonly workflowExecutionApi: WorkflowExecutionApi;
   readonly documentApi: DocumentApi;
   /** Document tree, catalogue and writes of the demo Runtime (writes emulated under `/api/demo`). */
   readonly demoDocumentsApi: DocumentsApi;
@@ -84,6 +91,7 @@ export interface SpecFlowServicesOptions {
   readonly specificationApi?: SpecificationApi;
   readonly taskApi?: TaskApi;
   readonly taskAuthoringApi?: TaskAuthoringApi;
+  readonly workflowExecutionApi?: WorkflowExecutionApi;
   readonly documentApi?: DocumentApi;
   readonly demoDocumentsApi?: DocumentsApi;
   readonly projectDocumentsApi?: DocumentsApi;
@@ -128,6 +136,14 @@ export function createSpecFlowAppServices(
       options.taskAuthoringApi ??
       createRuntimeTaskAuthoringApi(
         createApiTransport(runtimeHttp, { operation: 'tasks', codes: workflowErrorCodes }),
+      ),
+    workflowExecutionApi:
+      options.workflowExecutionApi ??
+      createRuntimeWorkflowExecutionApi(
+        createApiTransport(runtimeHttp, {
+          operation: 'workflow',
+          codes: { ...workflowErrorCodes, ...closeErrorCodes },
+        }),
       ),
     documentApi: options.documentApi ?? createRuntimeDocumentApi(runtimeHttp),
     demoDocumentsApi: options.demoDocumentsApi ?? createDemoDocumentsApi(runtimeHttp),

@@ -63,7 +63,7 @@ export const WorkspaceDocsArticleSchema = Type.Object(
         path: Type.String({ minLength: 1 }),
         /** Empty when there is none. */
         summary: Type.String(),
-        nonAuthoritative: Type.Boolean(),
+        proposal: Type.Boolean(),
         scope: Type.Optional(Type.String()),
         areas: strings,
         tags: strings,

@@ -13,9 +13,7 @@ import type { OpenCorpus } from '../command/open-project';
 export function addContextCommand(docs: Command, ctx: DocsCommandContext, open: OpenCorpus): void {
   const command = docs
     .command('context')
-    .description(
-      'Print the files to load for a task (inactive and non-authoritative documents excluded)',
-    )
+    .description('Print the files to load for a task (inactive documents and proposals excluded)')
     .argument('<query...>', 'task description terms')
     .option('--limit <n>', 'maximum files; omitted means all matches', positiveInteger)
     .option('--json', 'emit JSON on stdout', false);

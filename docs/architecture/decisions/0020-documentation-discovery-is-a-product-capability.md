@@ -37,6 +37,11 @@ every checkout has its own index, and the Runtime embeds only through its own `a
 invalid documents are skipped everywhere except `check`; the Runtime keeps a bounded number of
 workspace corpora. Where this ADR says otherwise, ADR 0022 wins.
 
+**Renamed by ADR 0022 section 5 (2026-11-13).** What this ADR calls non-authoritative documents are
+now **proposals**: the `docs.yaml` key `nonAuthoritative` is `proposals`, the `search` switch is
+`--include-proposals` (CLI) and `includeProposals` (HTTP). The text below keeps the original names
+as the record of the decision.
+
 ## Context
 
 - **Discovery already works, but only as repository tooling.** `tools/docs` (`nevo-repo-docs`)

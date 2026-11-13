@@ -199,11 +199,17 @@ Close and integration first flush the document commit queue of the affected chec
 `DOCUMENT_COMMITS_PENDING` (`details.cause` `commit-pending`, `commit-failed` or `commit-uncommitted`) while document
 commits remain; the precedence and the preview behaviour are defined in
 [Specification documents](specification-documents.md).
-Worktree Close treats `.nevo/local/cache/**` (the semantic documentation index) and
-`.nevo/local/config.yaml` (the copy of Project Home's local configuration that the Engine places in a
-new linked worktree) as disposable product-owned files: they do not make the worktree dirty and are
-deleted with it. A local configuration edited by hand inside a linked worktree is lost on Close; keep
-durable settings in the committed `.nevo/config.yaml` or in Project Home's local configuration.
+Worktree Close treats `.nevo/local/cache/**` (the semantic documentation index) as disposable
+product-owned files: they do not make the worktree dirty and are deleted with it. When Create
+copies Project Home's `.nevo/local/config.yaml` into a new linked worktree, the Engine records the
+SHA-256 of the copied bytes in `.nevo/local/state/local-config-copy.json` of that worktree, and Close
+deletes the configuration with the worktree only while its bytes still match the record. A
+configuration that was edited, that the Engine did not copy, or that cannot be read makes Close
+refuse with 409 `CLOSE_LOCAL_CONFIG_MODIFIED` before anything is removed (the Close stays at
+`binding-rebound`). The body carries `localConfig` (`changed`, `unrecorded` or `unreadable`) and a
+`remedy`: the configuration is not the unchanged copy Create made (changed, added by hand, or
+unreadable) and must be moved or deleted manually.
+Retrying the same Close operation afterwards completes the disposal.
 Error status and exact DTO variants are defined in the schema and Runtime endpoint.
 
 No operation silently completes tasks, invents Session state or retries uncertain Git effects.

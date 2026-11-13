@@ -16,13 +16,13 @@ export function indexBuildingPercent(search: WorkspaceDocsSearch): number | unde
 /**
  * The rows of a search, replacing the tree while the field has text: one row per document (title,
  * the best section's heading path, its excerpt). The count, the index line and the
- * non-authoritative switch are the search's status row above (`DocsSearchPanel`).
+ * proposals checkbox are the search's status row above (`DocsSearchPanel`).
  */
 export function DocsSearchResults({
   search,
   pending,
   failed,
-  nonAuthoritative,
+  proposals,
   activeDocumentId,
   onClear,
   onRetry,
@@ -31,8 +31,8 @@ export function DocsSearchResults({
   search?: WorkspaceDocsSearch;
   pending: boolean;
   failed: boolean;
-  /** Ids of the tree's non-authoritative documents (the hits carry no flag of their own). */
-  nonAuthoritative: ReadonlySet<string>;
+  /** Ids of the tree's proposals (the hits carry no flag of their own). */
+  proposals: ReadonlySet<string>;
   activeDocumentId?: string;
   onClear: () => void;
   onRetry: () => void;
@@ -62,8 +62,8 @@ export function DocsSearchResults({
           icon="search"
           title={t('docs.search.noMatches')}
           description={
-            search.nonAuthoritativeLeftOut > 0
-              ? t('docs.search.onlyNonAuthoritative', { count: search.nonAuthoritativeLeftOut })
+            search.proposalsLeftOut > 0
+              ? t('docs.search.onlyProposals', { count: search.proposalsLeftOut })
               : t('docs.search.noMatchesHint')
           }
           actions={
@@ -98,10 +98,8 @@ export function DocsSearchResults({
                   <span className="line-clamp-2 min-w-0 flex-1 text-title-sm text-content-primary">
                     {hit.title}
                   </span>
-                  {nonAuthoritative.has(hit.id) && (
-                    <span className={treeStateLabelClassName}>
-                      {t('docs.tree.nonAuthoritative')}
-                    </span>
+                  {proposals.has(hit.id) && (
+                    <span className={treeStateLabelClassName}>{t('docs.search.proposal')}</span>
                   )}
                 </span>
                 {section && section.headingPath.length > 0 && (

@@ -37,9 +37,10 @@ describe('reader location', () => {
   });
 
   it('keeps the way back to a Session and drops the one-time intent', () => {
-    const entry = { source: 'pick' as const, sessionId: 's', sessionTitle: 'T', fromReader: true };
+    const openedFrom = { entry: 'k1', link: true };
+    const entry = { source: 'pick' as const, sessionId: 's', sessionTitle: 'T', openedFrom };
     expect(sessionOf(entry)).toEqual({ sessionId: 's', sessionTitle: 'T' });
     expect(sessionOf(undefined)).toEqual({});
-    expect(withoutSource(entry)).toEqual({ sessionId: 's', sessionTitle: 'T', fromReader: true });
+    expect(withoutSource(entry)).toEqual({ sessionId: 's', sessionTitle: 'T', openedFrom });
   });
 });

@@ -10,7 +10,7 @@ import type { DocsApi, DocsArticleResult } from '../read-model';
 import {
   docsFor,
   inactiveDocs,
-  isNonAuthoritative,
+  isProposal,
   search,
   sectionsOf,
   skippedDocsFor,
@@ -112,7 +112,7 @@ export function fixtureTree(
       status: doc.status,
       path: doc.path,
       summary: doc.summary,
-      nonAuthoritative: isNonAuthoritative(doc.path),
+      proposal: isProposal(doc.path),
     })),
     inactive: Object.entries(inactiveDocs).map(([path, inactive]) => ({
       documentId: inactive.id,
@@ -166,7 +166,7 @@ function fixtureArticle(
       status: doc.status,
       path: doc.path,
       summary: doc.summary,
-      nonAuthoritative: isNonAuthoritative(doc.path),
+      proposal: isProposal(doc.path),
       areas: doc.areas ?? [],
       tags: [],
       related: (doc.related ?? []).map((id) => {
@@ -195,13 +195,13 @@ function fixtureArticle(
 function fixtureSearch(
   workspaceId: string,
   q: string,
-  includeNonAuthoritative: boolean,
+  includeProposals: boolean,
   scenario: ReaderFixtureScenario,
 ): WorkspaceDocsSearch {
-  const { results, hiddenNonAuthoritative } = search(
+  const { results, hiddenProposals } = search(
     documentsOf(workspaceId, scenario),
     q,
-    includeNonAuthoritative,
+    includeProposals,
   );
   const envelope = {
     workspaceId,
@@ -225,7 +225,7 @@ function fixtureSearch(
           ]
         : [],
     })),
-    nonAuthoritativeLeftOut: hiddenNonAuthoritative,
+    proposalsLeftOut: hiddenProposals,
     skipped: skippedDocsFor(scenario),
   };
 
@@ -315,7 +315,7 @@ export function createFixtureDocsApi(
     },
     search: (workspaceId, query) =>
       Promise.resolve(
-        fixtureSearch(workspaceId, query.q, query.includeNonAuthoritative ?? false, scenario),
+        fixtureSearch(workspaceId, query.q, query.includeProposals ?? false, scenario),
       ),
   };
 }

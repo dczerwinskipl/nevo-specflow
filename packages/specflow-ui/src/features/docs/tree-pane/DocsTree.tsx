@@ -107,8 +107,8 @@ export function DocsTree({
                 </span>
                 <Icon name="folder" />
                 <span className={treeItemLabelTruncateClassName}>{child.name}</span>
-                {child.ownsNonAuthoritative && (
-                  <span className={treeStateLabelClassName}>{t('docs.tree.nonAuthoritative')}</span>
+                {child.ownsProposals && (
+                  <span className={treeStateLabelClassName}>{t('docs.tree.proposals')}</span>
                 )}
               </button>
             </div>

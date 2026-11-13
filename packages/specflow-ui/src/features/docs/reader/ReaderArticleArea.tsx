@@ -1,10 +1,9 @@
-import { useMemo, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppWorkspace, WorkspaceHeader } from '@nevo/ui';
 import type { WorkspaceDocsTree } from '@nevo/specflow-contracts/docs';
 import { LoadingPresentation } from '../../../app/loading/LoadingPresentation';
 import { ArticleBody } from '../article/ArticleBody';
-import { ArticleNavigationContext } from '../article/articleContext';
 import { articleActions } from '../article/articleActions';
 import { ArticleTitle } from '../article/ArticleTitle';
 import { useArticleSummary } from '../article/useArticleSummary';
@@ -49,37 +48,6 @@ function ArticleHeader({
   );
 }
 
-function ArticleContent({
-  workspaceId,
-  workspaceName,
-  documentId,
-  sectionId,
-  tree,
-  fromReader,
-  openDocument,
-}: ArticleTarget & {
-  workspaceName: string;
-  sectionId?: string;
-  fromReader: boolean;
-  openDocument: (documentId: string, sectionId?: string) => void;
-}) {
-  const navigation = useMemo(() => ({ workspaceId, openDocument }), [workspaceId, openDocument]);
-
-  return (
-    <ArticleNavigationContext.Provider value={navigation}>
-      <ArticleBody
-        chromeKey={splitChromeKey}
-        workspaceId={workspaceId}
-        workspaceName={workspaceName}
-        documentId={documentId}
-        sectionId={sectionId}
-        tree={tree}
-        fromReader={fromReader}
-      />
-    </ArticleNavigationContext.Provider>
-  );
-}
-
 export interface ReaderArticleAreaProps {
   readonly workspaceId: string | undefined;
   readonly workspaceName: string;
@@ -91,9 +59,9 @@ export interface ReaderArticleAreaProps {
   readonly tree?: WorkspaceDocsTree;
   readonly treeLoading: boolean;
   readonly problem?: ReactNode;
-  readonly fromReader: boolean;
+  /** The history entry of the address: it keys the article's reading position. */
+  readonly historyEntry: string;
   readonly notify: (message: string) => void;
-  readonly openDocument: (documentId: string, sectionId?: string) => void;
   /** Localised texts of the plain states. */
   readonly labels: { readonly fallbackTitle: string; readonly loading: string };
 }
@@ -144,14 +112,14 @@ export function readerArticleArea(props: ReaderArticleAreaProps): ReactNode {
         />
       }
     >
-      <ArticleContent
+      {/* Its links open through the reader's article navigation. */}
+      <ArticleBody
+        chromeKey={splitChromeKey}
         workspaceId={workspaceId}
-        workspaceName={props.workspaceName}
         documentId={documentId}
         sectionId={props.sectionId}
         tree={tree}
-        fromReader={props.fromReader}
-        openDocument={props.openDocument}
+        entry={props.historyEntry}
       />
     </AppWorkspace.Secondary>
   );

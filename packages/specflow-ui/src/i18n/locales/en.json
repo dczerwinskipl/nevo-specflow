@@ -1421,7 +1421,7 @@
     "tree": {
       "label": "Documents",
       "loading": "Loading documents",
-      "nonAuthoritative": "Non-authoritative"
+      "proposals": "Proposals"
     },
     "search": {
       "label": "Search documentation",
@@ -1434,19 +1434,21 @@
       "count_other": "{{count}} documents",
       "indexBuilding": "Word matches only for now: the search index is being built.",
       "indexBuildingProgress": "Word matches only for now: the search index is being built ({{percent}}%).",
-      "include_one": "Include {{count}} non-authoritative",
-      "include_few": "Include {{count}} non-authoritative",
-      "include_many": "Include {{count}} non-authoritative",
-      "include_other": "Include {{count}} non-authoritative",
-      "leaveOut": "Leave out non-authoritative",
+      "includeProposals_one": "Include proposals ({{count}})",
+      "includeProposals_few": "Include proposals ({{count}})",
+      "includeProposals_many": "Include proposals ({{count}})",
+      "includeProposals_other": "Include proposals ({{count}})",
+      "includeProposalsAny": "Include proposals",
+      "proposalsHintLabel": "What are proposals?",
+      "proposalsHint": "Proposals are ideas and plans in folders marked as proposals; they are not current rules.",
+      "proposal": "Proposal",
       "noMatches": "No matching documents",
       "noMatchesHint": "Try other words, or browse the tree.",
-      "onlyNonAuthoritative_one": "Nothing in the agreed documentation matches. {{count}} non-authoritative document does.",
-      "onlyNonAuthoritative_few": "Nothing in the agreed documentation matches. {{count}} non-authoritative documents do.",
-      "onlyNonAuthoritative_many": "Nothing in the agreed documentation matches. {{count}} non-authoritative documents do.",
-      "onlyNonAuthoritative_other": "Nothing in the agreed documentation matches. {{count}} non-authoritative documents do.",
-      "failed": "Search is unavailable right now.",
-      "includeAny": "Include non-authoritative"
+      "onlyProposals_one": "Nothing in the current documentation matches. {{count}} proposal does.",
+      "onlyProposals_few": "Nothing in the current documentation matches. {{count}} proposals do.",
+      "onlyProposals_many": "Nothing in the current documentation matches. {{count}} proposals do.",
+      "onlyProposals_other": "Nothing in the current documentation matches. {{count}} proposals do.",
+      "failed": "Search is unavailable right now."
     },
     "article": {
       "fallbackTitle": "Document",
@@ -1456,7 +1458,7 @@
       "linkCopied": "Link copied",
       "pathCopied": "Path copied",
       "copyFailed": "Could not copy to the clipboard",
-      "nonAuthoritativeNote": "Non-authoritative: proposals and drafts, not agreed documentation. Default search leaves this document out.",
+      "proposalNote": "This is a proposal, not a current rule. Search leaves proposals out unless you include them.",
       "columnLabel": "Contents and properties",
       "noIndex": "This is the project documentation of {{workspace}}; open a document in the list or search it.",
       "properties": {
@@ -1493,14 +1495,7 @@
     "state": {
       "tryAgain": "Try again",
       "openSuccessor": "Open {{title}}",
-      "notFound": {
-        "title": "Document not found",
-        "description": "There is no current document {{id}} in {{workspace}}. It may exist only in another workspace, or it was moved or removed."
-      },
-      "removed": {
-        "title": "This document is no longer in the workspace",
-        "description": "The documentation in {{workspace}} changed while you were reading, and {{id}} is not in it any more. The tree shows the current documents."
-      },
+      "notAvailable": "This document is no longer available in this workspace",
       "superseded": {
         "title": "This document was superseded",
         "description": "{{id}} is no longer current documentation, so it is not shown."

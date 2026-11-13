@@ -1421,7 +1421,7 @@
     "tree": {
       "label": "Dokumenty",
       "loading": "Wczytywanie dokumentów",
-      "nonAuthoritative": "Nieobowiązujący"
+      "proposals": "Propozycje"
     },
     "search": {
       "label": "Szukaj w dokumentacji",
@@ -1434,19 +1434,21 @@
       "count_other": "{{count}} dokumentu",
       "indexBuilding": "Na razie tylko dopasowania słów: indeks wyszukiwania jest budowany.",
       "indexBuildingProgress": "Na razie tylko dopasowania słów: indeks wyszukiwania jest budowany ({{percent}}%).",
-      "include_one": "Uwzględnij {{count}} nieobowiązujący",
-      "include_few": "Uwzględnij {{count}} nieobowiązujące",
-      "include_many": "Uwzględnij {{count}} nieobowiązujących",
-      "include_other": "Uwzględnij {{count}} nieobowiązującego",
-      "leaveOut": "Pomiń nieobowiązujące",
+      "includeProposals_one": "Uwzględnij propozycje ({{count}})",
+      "includeProposals_few": "Uwzględnij propozycje ({{count}})",
+      "includeProposals_many": "Uwzględnij propozycje ({{count}})",
+      "includeProposals_other": "Uwzględnij propozycje ({{count}})",
+      "includeProposalsAny": "Uwzględnij propozycje",
+      "proposalsHintLabel": "Czym są propozycje?",
+      "proposalsHint": "Propozycje to pomysły i plany z folderów oznaczonych jako propozycje; nie są obowiązującymi zasadami.",
+      "proposal": "Propozycja",
       "noMatches": "Brak pasujących dokumentów",
       "noMatchesHint": "Spróbuj innych słów albo przejrzyj drzewo.",
-      "onlyNonAuthoritative_one": "Nic w uzgodnionej dokumentacji nie pasuje. Pasuje {{count}} nieobowiązujący dokument.",
-      "onlyNonAuthoritative_few": "Nic w uzgodnionej dokumentacji nie pasuje. Pasują {{count}} nieobowiązujące dokumenty.",
-      "onlyNonAuthoritative_many": "Nic w uzgodnionej dokumentacji nie pasuje. Pasuje {{count}} nieobowiązujących dokumentów.",
-      "onlyNonAuthoritative_other": "Nic w uzgodnionej dokumentacji nie pasuje. Pasuje {{count}} nieobowiązującego dokumentu.",
-      "failed": "Wyszukiwanie jest teraz niedostępne.",
-      "includeAny": "Uwzględnij nieobowiązujące"
+      "onlyProposals_one": "Nic w obowiązującej dokumentacji nie pasuje. Pasuje {{count}} propozycja.",
+      "onlyProposals_few": "Nic w obowiązującej dokumentacji nie pasuje. Pasują {{count}} propozycje.",
+      "onlyProposals_many": "Nic w obowiązującej dokumentacji nie pasuje. Pasuje {{count}} propozycji.",
+      "onlyProposals_other": "Nic w obowiązującej dokumentacji nie pasuje. Pasuje {{count}} propozycji.",
+      "failed": "Wyszukiwanie jest teraz niedostępne."
     },
     "article": {
       "fallbackTitle": "Dokument",
@@ -1456,7 +1458,7 @@
       "linkCopied": "Skopiowano link",
       "pathCopied": "Skopiowano ścieżkę",
       "copyFailed": "Nie udało się skopiować do schowka",
-      "nonAuthoritativeNote": "Nieobowiązujący: propozycje i szkice, nie uzgodniona dokumentacja. Domyślne wyszukiwanie pomija ten dokument.",
+      "proposalNote": "To propozycja, a nie obowiązująca zasada. Wyszukiwanie pomija propozycje, chyba że je uwzględnisz.",
       "columnLabel": "Spis treści i właściwości",
       "noIndex": "To jest dokumentacja projektu w {{workspace}}; otwórz dokument z listy albo go wyszukaj.",
       "properties": {
@@ -1493,14 +1495,7 @@
     "state": {
       "tryAgain": "Spróbuj ponownie",
       "openSuccessor": "Otwórz {{title}}",
-      "notFound": {
-        "title": "Nie znaleziono dokumentu",
-        "description": "W {{workspace}} nie ma aktualnego dokumentu {{id}}. Może istnieć tylko w innym obszarze roboczym albo został przeniesiony lub usunięty."
-      },
-      "removed": {
-        "title": "Tego dokumentu nie ma już w obszarze roboczym",
-        "description": "Dokumentacja w {{workspace}} zmieniła się podczas czytania i nie ma już w niej {{id}}. Drzewo pokazuje aktualne dokumenty."
-      },
+      "notAvailable": "Ten dokument nie jest już dostępny w tym obszarze roboczym",
       "superseded": {
         "title": "Ten dokument został zastąpiony",
         "description": "{{id}} nie jest już aktualną dokumentacją, więc nie jest wyświetlany."

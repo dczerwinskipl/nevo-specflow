@@ -18,7 +18,7 @@ export function corpusSettingsFingerprint(
     semantic ?? null,
     settings.taxonomy.scopes ?? null,
     settings.taxonomy.areas ?? null,
-    settings.nonAuthoritative,
+    settings.proposals,
     settings.exclude,
   ]);
 

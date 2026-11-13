@@ -15,6 +15,7 @@ import { QUERY_TIMEOUT_MS } from '../embeddings/embedding-providers';
 import { readCheckoutDocsSettings } from '../reader/settings';
 import { buildDocsIndex } from './build';
 import { openDocsIndex } from './index-store';
+import { cacheNotIgnoredReason } from './reasons';
 import { seedIndexIfMissing, seedProjectIndex, type ProjectSeed } from './seed';
 
 const base = mkdtempSync(join(tmpdir(), 'specflow-docs-seed-'));
@@ -44,7 +45,9 @@ function checkout(name: string): string {
 function open(root: string, admit = true) {
   const corpus = openFileSystemCorpus(root, configuration.docs);
 
-  return openDocsIndex(root, corpus, { writable: true }, () => Promise.resolve(admit));
+  const refusal = admit ? undefined : cacheNotIgnoredReason('.nevo/local/cache/docs-index');
+
+  return openDocsIndex(root, corpus, { writable: true }, () => Promise.resolve(refusal));
 }
 
 const environment = (provider: FakeEmbeddingProvider) => ({

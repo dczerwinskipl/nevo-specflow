@@ -1,72 +1,97 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
+import { useRouter } from '@tanstack/react-router';
 import { useSecondaryNavigation, useWorkspaceCapabilities } from '@nevo/ui';
-import { docsArticleStack, type ArticleStackRoot } from '../article/articleStack';
+import {
+  ArticleStackControl,
+  docsArticleStack,
+  type ArticleStackRoot,
+} from '../article/articleStack';
+import type { DocsReaderOpener } from './readerLocation';
 
-const keyOf = (root: ArticleStackRoot) =>
-  `${root.workspaceId}\n${root.documentId}\n${root.sectionId ?? ''}`;
+/** The article the address names, with how its history entry was opened. */
+export interface NarrowArticle {
+  readonly root: ArticleStackRoot;
+  readonly openedFrom?: DocsReaderOpener;
+}
 
 /**
- * Keeps the Narrow article stack in step with the address. The stack exists only while the
- * workspace is stacked: a document in the address opens it (a new stack for every document the
- * address names), no document or a split layout closes it. When the user closes it with the
- * first screen's Back, `onClosedByUser` leaves the document's address.
+ * Keeps the Narrow article stack a projection of the address. The stack exists only while the
+ * workspace is stacked and the address names a document. When the address moves:
  *
- * The ledger (which address the stack was opened for, whether it has been shown) is bookkeeping
- * of this one owner, read only in the effect: the stack's own `isOpen` is the visible state.
+ * - to the entry below the top (browser Back, or the header Back turned into it), the top is popped;
+ * - to an entry a link opened from the top (the link itself, or browser Forward), it is pushed;
+ * - anywhere else (a document from the tree or the results, a reload, a resize from a split
+ *   layout), a new stack opens with that article alone over the tree.
+ *
+ * The header Back never moves the stack itself (see `ArticleStackControl`): below the first screen
+ * it is browser Back, whose entry is the previous article's; on the first screen `onLeave` leaves
+ * the document's address.
  */
 export function useNarrowArticleStack({
-  root,
-  onOpen,
-  onClosedByUser,
+  article,
+  onLeave,
 }: {
   /** The article the address names, once the tree is known; `undefined` for none. */
-  root: ArticleStackRoot | undefined;
-  /** A new stack starts: its reading positions start empty. */
-  onOpen: () => void;
-  onClosedByUser: () => void;
-}) {
+  article: NarrowArticle | undefined;
+  onLeave: () => void;
+}): ArticleStackControl {
+  const router = useRouter();
   const { supportsSplit, measured } = useWorkspaceCapabilities();
-  const navigation = useSecondaryNavigation();
-  const ledger = useRef<{ key?: string; shown: boolean }>({ shown: false });
-  const stacked = measured && !supportsSplit;
-  const wanted = stacked && root ? root : undefined;
-  const key = wanted ? keyOf(wanted) : undefined;
-  const { isOpen, open, close } = navigation;
+  const { isOpen, open, close } = useSecondaryNavigation();
+  const [control] = useState(() => new ArticleStackControl());
+  const wanted = measured && !supportsSplit ? article : undefined;
+  const entry = wanted?.root.entry;
+
+  // The header Back's way out reads the latest address when it is pressed.
+  useEffect(() => {
+    control.onUserBack = (root) => (root ? onLeave() : router.history.back());
+  });
 
   useEffect(() => {
     if (!measured) {
       return;
     }
 
-    const state = ledger.current;
-    if (key === undefined || !wanted) {
-      state.key = undefined;
-      state.shown = false;
+    if (!wanted) {
+      control.chain = [];
       if (isOpen) {
-        void close();
+        control.move(close);
       }
 
       return;
     }
 
-    if (state.key !== key) {
-      state.key = key;
-      state.shown = false;
-      onOpen();
-      void open(docsArticleStack, wanted);
+    const { root, openedFrom } = wanted;
+    const chain = control.chain;
+    const top = chain.at(-1);
+    if (top === root.entry && isOpen) {
+      return;
+    }
+
+    const shown = isOpen && top !== undefined ? control.screens.get(top) : undefined;
+    if (shown && chain.at(-2) === root.entry) {
+      control.chain = chain.slice(0, -1);
+      control.move(() => shown.back());
 
       return;
     }
 
-    if (isOpen) {
-      state.shown = true;
-    } else if (state.shown) {
-      // Opened for this address, shown, and now closed: the first screen's Back.
-      state.key = undefined;
-      state.shown = false;
-      onClosedByUser();
+    if (shown && openedFrom?.link && openedFrom.entry === top) {
+      control.chain = [...chain, root.entry];
+      const { documentId, sectionId, title } = root;
+      control.move(() =>
+        shown.navTo('linked', { documentId, sectionId, title, entry: root.entry }),
+      );
+
+      return;
     }
-    // `wanted` is described by `key`; the callbacks run only on a transition.
+
+    control.chain = [root.entry];
+    control.move(() => open(docsArticleStack, root));
+    // `wanted` is described by its entry (one history entry names one document); the stack is
+    // moved only when the address or the stack's visibility changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [measured, key, isOpen]);
+  }, [measured, entry, isOpen]);
+
+  return control;
 }

@@ -14,7 +14,7 @@ const vectors = (activity: DocsIndexActivity): IndexVectors => {
 
   return {
     store: createInMemoryVectorStore(),
-    writes: createIndexWrites(() => Promise.resolve(true), cacheNotIgnoredReason('x')),
+    writes: createIndexWrites(() => Promise.resolve(undefined)),
     providers: { query: provider, documents: provider },
     activity: () => Promise.resolve(activity),
   };
@@ -60,7 +60,7 @@ describe('catch-up start', () => {
     const reason = await identityChangedForRead(
       {
         ...vectors({ state: 'idle' }),
-        writes: createIndexWrites(() => Promise.resolve(false), refusal),
+        writes: createIndexWrites(() => Promise.resolve(refusal)),
         catchUp: {
           running: () => Promise.resolve(undefined),
           start: () => {

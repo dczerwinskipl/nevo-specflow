@@ -2,7 +2,7 @@
 
 import { splitMarkdownSections, type MarkdownSection } from '@nevo/ai-semantic-search';
 
-import { isNonAuthoritative } from '../config/docs-file';
+import { isProposal } from '../config/docs-file';
 import type { DocsCorpus } from '../corpus/corpus';
 import { loadReadableDocs, type SkippedDocument } from '../corpus/readable';
 import {
@@ -234,7 +234,7 @@ function readOutline(corpus: DocsCorpus, file: string): DocumentOutline {
 
 /**
  * `context`: the authoritative, current working context to load for a task. Inactive documents and
- * documents under the project's non-authoritative prefixes are never recommended; they stay
+ * documents under the project's proposal prefixes are never recommended; they stay
  * reachable through explicit `find` / `get`.
  */
 export function getContext(
@@ -242,7 +242,7 @@ export function getContext(
   { query, limit }: { query: string; limit?: number },
 ): Skipping<ContextEntry> {
   const { docs, skipped } = loadReadableDocs(corpus);
-  const contextCorpus = docs.filter((doc) => !isNonAuthoritative(corpus.settings, doc.file));
+  const contextCorpus = docs.filter((doc) => !isProposal(corpus.settings, doc.file));
   const results = searchDocs(contextCorpus, {
     query,
     ...(limit === undefined ? {} : { limit }),

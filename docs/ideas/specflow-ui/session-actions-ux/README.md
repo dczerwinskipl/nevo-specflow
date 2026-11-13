@@ -10,7 +10,7 @@ read_when:
   - asking why the provider-limits refresh, the unknown-Turn notice or the Session actions look the way they do
   - reconsidering an alternative rejected for these decisions
 summary: >
-  Non-authoritative decision record of the provider-limits refresh, the unknown-Turn reconcile
+  Decision record (a proposal, not a current rule) of the provider-limits refresh, the unknown-Turn reconcile
   notice and the Session actions (rename, archive/restore, delete), accepted by the owner on
   2026-11-08 and implemented. Keeps the rationale and the rejected alternatives that still hold;
   the behaviour is owned by the Full Session product contract.
@@ -23,7 +23,7 @@ related:
 
 # Session refresh, reconcile and Session actions — decision record
 
-**Non-authoritative.** The behaviour is owned by the
+**A proposal, not a current rule.** The behaviour is owned by the
 [Full Session contract](../../../product/specflow/ui/full-session.md): Context (Session details:
 provider-limits refresh), Unknown Turn outcome, Session actions and Work block (no live line for
 `unknown`). This file keeps only why; on any difference Full Session wins.

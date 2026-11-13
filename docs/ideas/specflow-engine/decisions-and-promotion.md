@@ -10,7 +10,7 @@ read_when:
   - deciding external writer claims, local actor trust or lock ordering for workflow steps
   - preparing an ADR for offline workflow coordination
 summary: >
-  Non-authoritative backlog of the still open Engine decisions (external claims, offline actor
+  Proposal backlog of the still open Engine decisions (external claims, offline actor
   attribution, filesystem scope, lock ordering, read-only enforcement, human approval trust,
   dirty-baseline admission) with the evidence each needs before promotion.
 related:

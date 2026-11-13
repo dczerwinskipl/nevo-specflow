@@ -24,7 +24,7 @@ const tree = {
       status: 'current',
       path: 'a.md',
       summary: '',
-      nonAuthoritative: false,
+      proposal: false,
     },
   ],
   inactive: [],

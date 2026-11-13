@@ -9,22 +9,18 @@ import type { DocsSearchReason } from '@nevo/specflow-contracts/docs';
 import type { DocsConfiguration } from '../config/docs-configuration';
 import type { DocsCorpus } from '../corpus/corpus';
 import { createDocsChunkSource, type DocsChunkSource } from './chunk-source';
-import { cacheNotIgnoredReason } from './reasons';
 import {
   admittedVectorStore,
   createIndexWrites,
   gitIgnoreAdmission,
   gitIgnores,
-  type AdmitWrite,
   type GitIgnoreCheck,
   type IndexWrites,
+  type WriteAdmission,
 } from './write-admission';
 
 /** The index directory below the project root. */
 export const DOCS_INDEX_DIRECTORY = '.nevo/local/cache/docs-index';
-
-/** The path `git check-ignore` is asked about. */
-const INDEX_DIRECTORY_PATH = `${DOCS_INDEX_DIRECTORY}/`;
 
 export interface DocsIndex {
   readonly chunks: DocsChunkSource;
@@ -51,16 +47,16 @@ export type IndexAccess =
 /**
  * The check when an index is opened (`openProjectIndex`), so `semantic status` reports an index that
  * must not be written: the index is local cache and MUST NOT be committed, so in a Git work tree
- * that does not ignore it (for example a documentation-only setup without the `.nevo/local/` entry)
- * nothing is written there. Every write checks again (`DocsIndex.writes`).
+ * that does not ignore it (for example a documentation-only setup without the `.nevo/local/` entry),
+ * or where Git cannot tell, nothing is written there. Every write checks again (`DocsIndex.writes`).
  */
 export async function checkIndexAccess(
   projectRoot: string,
   isIgnored: GitIgnoreCheck = gitIgnores,
 ): Promise<IndexAccess> {
-  return (await gitIgnoreAdmission(projectRoot, INDEX_DIRECTORY_PATH, isIgnored)())
-    ? { writable: true }
-    : { writable: false, reason: cacheNotIgnoredReason(DOCS_INDEX_DIRECTORY) };
+  const reason = await gitIgnoreAdmission(projectRoot, DOCS_INDEX_DIRECTORY, isIgnored)();
+
+  return reason === undefined ? { writable: true } : { writable: false, reason };
 }
 
 /** The vector store directory (with its writer lock files) inside an index directory. */
@@ -73,21 +69,17 @@ export function vectorsDirectory(directory: string): string {
  * instance per project and process: the store decodes a generation's vectors file once and the
  * chunk source keeps the parsed corpus between reads. An instance does not notice corruption of a
  * generation it already decoded; the cache is disposable. Opening writes nothing; the directory is
- * created by the first write, and `admitWrite` (default: `git check-ignore` of the index directory,
- * uncached) is asked immediately before every write.
+ * created by the first write, and `admission` (default: `git check-ignore` of the index directory,
+ * uncached, failing closed) is asked immediately before every write.
  */
 export function openDocsIndex(
   projectRoot: string,
   corpus: DocsCorpus,
   access: IndexAccess,
-  admitWrite: AdmitWrite = gitIgnoreAdmission(projectRoot, INDEX_DIRECTORY_PATH),
+  admission: WriteAdmission = gitIgnoreAdmission(projectRoot, DOCS_INDEX_DIRECTORY),
 ): DocsIndex & { readonly directory: string } {
   const directory = join(projectRoot, ...DOCS_INDEX_DIRECTORY.split('/'));
-  const writes = createIndexWrites(
-    admitWrite,
-    cacheNotIgnoredReason(DOCS_INDEX_DIRECTORY),
-    access.writable ? undefined : access.reason,
-  );
+  const writes = createIndexWrites(admission, access.writable ? undefined : access.reason);
 
   return {
     chunks: createDocsChunkSource({
@@ -125,6 +117,6 @@ export async function openProjectIndex(
     projectRoot,
     corpus,
     access,
-    gitIgnoreAdmission(projectRoot, INDEX_DIRECTORY_PATH, isIgnored),
+    gitIgnoreAdmission(projectRoot, DOCS_INDEX_DIRECTORY, isIgnored),
   );
 }

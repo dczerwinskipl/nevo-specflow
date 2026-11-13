@@ -169,7 +169,7 @@ async function createFixture(): Promise<Fixture> {
     'bad.md': hub('bad', '# Bad', { type: 'nonsense' }),
     'twin-a.md': hub('twin', '# Twin A'),
     'twin-b.md': hub('twin', '# Twin B'),
-    'docs.yaml': 'nonAuthoritative: [ideas/]\n',
+    'docs.yaml': 'proposals: [ideas/]\n',
   });
   // The same document ids with other text, and an endpoint of its own that must never be used.
   await writeFile(
@@ -379,7 +379,7 @@ describe('workspace documentation over HTTP', () => {
       search(primaryId, 'q=install&limit=0'),
       search(primaryId, 'q=install&limit=51'),
       search(primaryId, 'q=install&snippets=1'),
-      search(primaryId, 'q=install&includeNonAuthoritative=yes'),
+      search(primaryId, 'q=install&includeProposals=yes'),
       search(primaryId, 'q=install&context=help'),
     ]) {
       expect((await get(app, url, 'reader')).statusCode, url).toBe(400);
@@ -414,7 +414,7 @@ describe('workspace documentation over HTTP', () => {
     expect(tree.workspaceId).toBe(id);
     expect(tree.docsRoot).toBe('docs');
     expect(tree.rootIndexDocumentId).toBe('home');
-    expect(tree.documents.map((d) => [d.documentId, d.path, d.nonAuthoritative])).toEqual(
+    expect(tree.documents.map((d) => [d.documentId, d.path, d.proposal])).toEqual(
       expect.arrayContaining([
         ['guide', 'guide.md', false],
         ['idea', 'ideas/draft.md', true],
@@ -438,16 +438,16 @@ describe('workspace documentation over HTTP', () => {
     expect(found.skipped).toEqual(tree.skipped);
     expect(read.sections.map((s) => s.headingPath)).toContainEqual(['Guide', 'Install']);
 
-    // Hybrid, relative hits, and the non-authoritative document counted but left out.
+    // Hybrid, relative hits, and the proposal counted but left out.
     expect(found.mode).toBe('hybrid');
     expect(found.results.map((r) => r.file)).toContain('guide.md');
     expect(found.results.map((r) => r.id)).not.toContain('idea');
-    expect(found.nonAuthoritativeLeftOut).toBe(1);
+    expect(found.proposalsLeftOut).toBe(1);
     const included = (
-      await get(app, search(id, 'q=install&includeNonAuthoritative=true'), 'reader')
+      await get(app, search(id, 'q=install&includeProposals=true'), 'reader')
     ).json<WorkspaceDocsSearch>();
     expect(included.results.map((r) => r.file)).toContain('ideas/draft.md');
-    expect(included.nonAuthoritativeLeftOut).toBe(0);
+    expect(included.proposalsLeftOut).toBe(0);
     expect(included.corpusRevision).toBe(tree.corpusRevision);
   });
 

@@ -36,10 +36,9 @@ const DocsSearchQuerySchema = Type.Object(
         description: `Maximum documents, 1 to ${String(DOCS_SEARCH_MAX_LIMIT)} (default ${String(DOCS_SEARCH_DEFAULT_LIMIT)}).`,
       }),
     ),
-    includeNonAuthoritative: Type.Optional(
+    includeProposals: Type.Optional(
       Type.Union([Type.Literal('true'), Type.Literal('false')], {
-        description:
-          'Also return documents under the non-authoritative path prefixes (default false).',
+        description: 'Also return documents under the proposal path prefixes (default false).',
       }),
     ),
     snippets: Type.Optional(
@@ -55,7 +54,7 @@ const DocsSearchQuerySchema = Type.Object(
 /**
  * `GET /api/workspaces/:workspaceId/docs/search` (ADR 0022 §1): ranked documents of the workspace's
  * documentation with their best sections, in the result of `nevo-specflow docs search --json`,
- * plus how many non-authoritative documents the same query left out and the progress of the
+ * plus how many proposals the same query left out and the progress of the
  * Runtime's background refresh of this index. Every search runs the bounded read-time refresh; a
  * larger gap answers lexically at once and starts the background catch-up.
  */
@@ -82,11 +81,11 @@ export const docsSearchEndpoint: FastifyPluginCallback<WorkspaceDocsEndpointOpti
         return replyWithDocsError(reply, 'DOCS_UNAVAILABLE');
       }
 
-      const { q, limit, includeNonAuthoritative, snippets } = request.query;
+      const { q, limit, includeProposals, snippets } = request.query;
       const read = await operations.search(request.params.workspaceId, {
         query: q.trim(),
         limit: limit === undefined ? DOCS_SEARCH_DEFAULT_LIMIT : Number(limit),
-        includeNonAuthoritative: includeNonAuthoritative === 'true',
+        includeProposals: includeProposals === 'true',
         snippets: snippets !== 'false',
       });
       if (read.kind !== 'ok') {

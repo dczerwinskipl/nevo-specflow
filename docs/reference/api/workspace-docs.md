@@ -16,7 +16,7 @@ summary: >
   /api/workspaces/:workspaceId/docs lists its documents (active, inactive, skipped),
   .../docs/documents/:documentId reads one article (body without frontmatter, sections, related
   states; 410 for an inactive one) and .../docs/search ranks documents in the result of
-  nevo-specflow docs search --json, with the non-authoritative documents left out and the index
+  nevo-specflow docs search --json, with the proposals left out and the index
   progress. Every answer carries a corpusRevision; docs.view at the project scope, errors, the
   read-time refresh, the background catch-up and the start refresh.
 related:
@@ -46,7 +46,7 @@ that checkout. The contracts are in `packages/specflow-contracts/src/docs/worksp
 ```http
 GET /api/workspaces/:workspaceId/docs
 GET /api/workspaces/:workspaceId/docs/documents/:documentId
-GET /api/workspaces/:workspaceId/docs/search?q&limit&snippets&includeNonAuthoritative
+GET /api/workspaces/:workspaceId/docs/search?q&limit&snippets&includeProposals
 ```
 
 `workspaceId` is the registry UUID. The Runtime resolves it through the Engine's verified read path
@@ -84,11 +84,12 @@ The tree of the workspace's documentation, from one read of the corpus. `200` wi
 | `corpusRevision`      | see [Common rules](#common-rules)                                                                                                                                                    |
 | `docsRoot`            | the configured `docs.root`, relative to the checkout (for example `docs`): the base of every `path`, so a client can name a repository path for a link that leaves the documentation |
 | `rootIndexDocumentId` | the id of `<docs.root>/README.md` when it is an active, readable document; absent otherwise                                                                                          |
-| `documents`           | the active documents: `documentId`, `title`, `type`, `status`, `path`, `summary` (empty when none), `nonAuthoritative`                                                               |
+| `documents`           | the active documents: `documentId`, `title`, `type`, `status`, `path`, `summary` (empty when none), `proposal`                                                                       |
 | `inactive`            | the `deprecated` and `superseded` documents: `documentId`, `path`, `status` and `supersededBy` when the frontmatter names one                                                        |
 | `skipped`             | the skipped documents                                                                                                                                                                |
 
-`nonAuthoritative` is `true` below one of the non-authoritative path prefixes of `docs.yaml`.
+`proposal` is `true` below one of the `proposals` path prefixes of `docs.yaml`: the document is a
+proposal (an idea or plan, not a current rule).
 
 ## GET /api/workspaces/:workspaceId/docs/documents/:documentId
 
@@ -99,7 +100,7 @@ One article. The metadata and the body come from one read of the file. `200` wit
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `workspaceId`    | the requested workspace                                                                                                                                                |
 | `corpusRevision` | the revision of the corpus the id was looked up in                                                                                                                     |
-| `document`       | `documentId`, `title`, `type`, `status`, `path`, `summary`, `nonAuthoritative`, `scope` (when set), `areas`, `tags` and `related`                                      |
+| `document`       | `documentId`, `title`, `type`, `status`, `path`, `summary`, `proposal`, `scope` (when set), `areas`, `tags` and `related`                                              |
 | `related`        | the frontmatter `related`, in order: `{ documentId, title?, state }`, `state` one of `active`, `inactive` (both with `title`), `skipped`, `missing`                    |
 | `body`           | the Markdown after the frontmatter                                                                                                                                     |
 | `sections`       | the headings of `body` in order: `sectionId` (the id search reports, `_top` before the first heading), `headingPath`, `line` (1-based line in `body`, not in the file) |
@@ -120,12 +121,12 @@ A document may exist only in another workspace; a `404` names nothing about the 
 
 ## GET /api/workspaces/:workspaceId/docs/search
 
-| Parameter                 | Required | Value                                                                       |
-| ------------------------- | -------- | --------------------------------------------------------------------------- |
-| `q`                       | yes      | the question, 1 to 500 characters with at least one non-space character     |
-| `limit`                   | no       | maximum documents, `1` to `50`; default `10` (the CLI default)              |
-| `includeNonAuthoritative` | no       | `true` also returns documents under the non-authoritative prefixes; `false` |
-| `snippets`                | no       | `false` leaves out each section's excerpt (the CLI's `--no-snippets`)       |
+| Parameter          | Required | Value                                                                             |
+| ------------------ | -------- | --------------------------------------------------------------------------------- |
+| `q`                | yes      | the question, 1 to 500 characters with at least one non-space character           |
+| `limit`            | no       | maximum documents, `1` to `50`; default `10` (the CLI default)                    |
+| `includeProposals` | no       | `true` also returns proposals (documents under the `proposals` prefixes); `false` |
+| `snippets`         | no       | `false` leaves out each section's excerpt (the CLI's `--no-snippets`)             |
 
 Other parameters are rejected. `200` with `WorkspaceDocsSearch`: the fields of the CLI's `--json`
 result (`DocsSearchResult`: `mode` `hybrid` or `lexical`, the `reason` when lexical, the ranked
@@ -135,13 +136,13 @@ result (`DocsSearchResult`: `mode` `hybrid` or `lexical`, the `reason` when lexi
 the fields below. A hit names its document `id`, as in the CLI's result, where the tree and the
 article say `documentId`.
 
-| Field                     | Value                                                                                                                                                              |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `workspaceId`             | the requested workspace                                                                                                                                            |
-| `corpusRevision`          | the revision of the corpus the search ranked                                                                                                                       |
-| `nonAuthoritativeLeftOut` | the non-authoritative documents the same query returns with `includeNonAuthoritative=true` and the same `limit` (one query embedding); `0` when they were included |
-| `indexProgress`           | `{ embedded, total }` while the Runtime's background refresh of this workspace's index embeds; absent otherwise                                                    |
-| `skipped`                 | the skipped documents                                                                                                                                              |
+| Field              | Value                                                                                                                                     |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `workspaceId`      | the requested workspace                                                                                                                   |
+| `corpusRevision`   | the revision of the corpus the search ranked                                                                                              |
+| `proposalsLeftOut` | the proposals the same query returns with `includeProposals=true` and the same `limit` (one query embedding); `0` when they were included |
+| `indexProgress`    | `{ embedded, total }` while the Runtime's background refresh of this workspace's index embeds; absent otherwise                           |
+| `skipped`          | the skipped documents                                                                                                                     |
 
 A lexical answer is a normal result, never an error. There is no status endpoint; the index state
 travels with the search (`reason` and `indexProgress`). `nevo-specflow docs semantic status` reports

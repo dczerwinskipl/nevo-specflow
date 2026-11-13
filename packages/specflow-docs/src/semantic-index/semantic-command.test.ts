@@ -218,20 +218,31 @@ describe('semantic status during an endpoint outage', () => {
   it('answers unreachable within the query timeout through the real endpoint adapter', async () => {
     await using endpoint = await hangingEndpoint(true);
     // The real adapter, with every timeout cut to 50 ms so the test does not wait the real 3 s;
-    // the timeout each provider was given is recorded.
+    // the timeout each provider was given and every request it sends are recorded. The requests are
+    // counted where the adapter sends them: the server, in this process, may not see a request the
+    // 50 ms timeout has already aborted on a loaded machine.
     const timeouts: number[] = [];
+    const sent: string[] = [];
     const createEmbeddingProvider: CreateEmbeddingProvider = (settings) => {
       timeouts.push(settings.timeoutMs ?? Number.NaN);
 
-      return createOpenAiCompatibleEmbeddingProvider({
-        ...settings,
-        timeoutMs: Math.min(settings.timeoutMs ?? Number.POSITIVE_INFINITY, 50),
-      });
+      return createOpenAiCompatibleEmbeddingProvider(
+        { ...settings, timeoutMs: Math.min(settings.timeoutMs ?? Number.POSITIVE_INFINITY, 50) },
+        {
+          fetch: (input, init) => {
+            sent.push(input instanceof Request ? input.url : input.toString());
+
+            return fetch(input, init);
+          },
+        },
+      );
     };
 
     const started = performance.now();
     const run = await runDocs(endpoint.project, ['semantic', 'status', '--json'], undefined, {
       createEmbeddingProvider,
+      // Not the host's Git: the status must not depend on where the temporary directory is.
+      isIgnoredByGit: () => Promise.resolve({ status: 'ignored' }),
     });
     const elapsed = performance.now() - started;
 
@@ -239,7 +250,8 @@ describe('semantic status during an endpoint outage', () => {
     // within the cut query timeout, so it was the query provider's.
     expect(timeouts).toEqual([QUERY_TIMEOUT_MS, DEFAULT_EMBEDDING_TIMEOUT_MS]);
     expect(elapsed).toBeLessThan(1000);
-    expect(endpoint.requests).toHaveLength(1);
+    expect(sent).toEqual([expect.stringMatching(/\/v1\/embeddings$/)]);
+    expect(endpoint.requests.length).toBeLessThanOrEqual(1);
     expect(run.exitCode).toBe(1);
     expect(JSON.parse(run.stdout.join('\n'))).toMatchObject({
       mode: 'lexical',

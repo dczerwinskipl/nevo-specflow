@@ -1,6 +1,6 @@
 /*
  * Deterministic fixture corpus of the documentation reader's stories: three workspaces, a realistic
- * tree (hubs, a non-authoritative ideas/ folder, long titles, a Polish document), links of every
+ * tree (hubs, an ideas/ folder of proposals, long titles, a Polish document), links of every
  * kind, skipped and superseded documents. The stories serve it through the reader's own ports
  * (`createFixtureDocsApi`, `fixtureWorkspaceList` below), never to production code.
  */
@@ -74,10 +74,10 @@ export interface MockDoc {
   body: string;
 }
 
-/** docs.yaml `nonAuthoritative` prefixes. */
-export const nonAuthoritativePrefixes = ['ideas/'];
-export const isNonAuthoritative = (path: string) =>
-  nonAuthoritativePrefixes.some((prefix) => path.startsWith(prefix));
+/** docs.yaml `proposals` prefixes. */
+export const proposalPrefixes = ['ideas/'];
+export const isProposal = (path: string) =>
+  proposalPrefixes.some((prefix) => path.startsWith(prefix));
 
 function body(title: string, sections: [string, string][]): string {
   return [`# ${title}`, '', ...sections.flatMap(([h, text]) => [`## ${h}`, '', text, ''])].join(
@@ -455,7 +455,7 @@ export const mainDocs: MockDoc[] = [
     'reference.configuration.documentation-and-embeddings',
     'reference/configuration/documentation-and-embeddings.md',
     'Documentation and embeddings configuration',
-    'docs.root, docs.yaml (taxonomy, nonAuthoritative, exclude) and the ai.embeddings endpoint.',
+    'docs.root, docs.yaml (taxonomy, proposals, exclude) and the ai.embeddings endpoint.',
     { type: 'reference' },
   ),
   doc(
@@ -581,13 +581,13 @@ export interface MockResult {
 export function search(
   docs: MockDoc[],
   query: string,
-  includeNonAuthoritative: boolean,
-): { results: MockResult[]; hiddenNonAuthoritative: number } {
+  includeProposals: boolean,
+): { results: MockResult[]; hiddenProposals: number } {
   const words = query
     .toLowerCase()
     .split(/\s+/)
     .filter((w) => w.length > 1);
-  const scored: { result: MockResult; score: number; na: boolean }[] = [];
+  const scored: { result: MockResult; score: number; proposal: boolean }[] = [];
   for (const d of docs) {
     let best: { section?: MockSection; score: number } = { score: 0 };
     const titleHits = words.filter((w) => d.title.toLowerCase().includes(w)).length;
@@ -618,7 +618,7 @@ export function search(
         snippet,
       },
       score,
-      na: isNonAuthoritative(d.path),
+      proposal: isProposal(d.path),
     });
   }
 
@@ -626,10 +626,10 @@ export function search(
 
   return {
     results: scored
-      .filter((s) => includeNonAuthoritative || !s.na)
+      .filter((s) => includeProposals || !s.proposal)
       .map((s) => s.result)
       .slice(0, 10),
-    hiddenNonAuthoritative: includeNonAuthoritative ? 0 : scored.filter((s) => s.na).length,
+    hiddenProposals: includeProposals ? 0 : scored.filter((s) => s.proposal).length,
   };
 }
 

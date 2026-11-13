@@ -10,7 +10,7 @@ read_when:
   - planning work on docs search, the semantic index or @nevo/ai-semantic-search beyond what is implemented
   - looking for the open items left by the semantic documentation search PR (#138)
 summary: >
-  Non-authoritative backlog of what the semantic documentation search (PR #138) deliberately left
+  Proposal backlog of what the semantic documentation search (PR #138) deliberately left
   open: search quality and scale, other corpora and UI surfaces, setup and endpoint gaps, package
   splits and eval tracking. Each item names the current authoritative document and what is missing.
 related:

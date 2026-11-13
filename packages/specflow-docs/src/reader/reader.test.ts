@@ -28,7 +28,7 @@ write(
 );
 write('ideas/idea.md', doc('idea'));
 write('bad.md', doc('bad', 'scope: nope\n'));
-const SETTINGS = 'nonAuthoritative: [ideas]\ntaxonomy:\n  scopes: [repo]\n';
+const SETTINGS = 'proposals: [ideas]\ntaxonomy:\n  scopes: [repo]\n';
 write('docs.yaml', SETTINGS);
 
 const corpus = () => openFileSystemCorpus(root, parseDocsConfig({ root: 'docs' }));
@@ -38,7 +38,7 @@ describe('projectDocsTree', () => {
   it('lists active, inactive and skipped documents relative to docs.root', async () => {
     const tree = projectDocsTree(await load(), 'docs');
     expect(tree.rootIndexDocumentId).toBe('readme');
-    expect(tree.documents.map((d) => [d.documentId, d.path, d.nonAuthoritative])).toEqual([
+    expect(tree.documents.map((d) => [d.documentId, d.path, d.proposal])).toEqual([
       ['guide', 'guide.md', false],
       ['idea', 'ideas/idea.md', true],
       ['readme', 'README.md', false],
@@ -115,7 +115,7 @@ describe('DocsChunks.revision', () => {
     expect(edited).not.toBe(first);
 
     // The same files under other settings.
-    write('docs.yaml', 'nonAuthoritative: [ideas, guide.md]\ntaxonomy:\n  scopes: [repo]\n');
+    write('docs.yaml', 'proposals: [ideas, guide.md]\ntaxonomy:\n  scopes: [repo]\n');
     const settingsOnly = (await createDocsChunkSource({ corpus: corpus() }).load()).revision;
     expect(settingsOnly).not.toBe(edited);
     write('docs.yaml', SETTINGS);

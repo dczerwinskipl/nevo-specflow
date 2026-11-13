@@ -53,7 +53,7 @@ export type WithCapabilities<T, Targets extends AuthorizationTargets> = Contract
 export interface RequestAuthorization {
   /** Re-resolve trusted access for a long-lived connection instead of retaining request-time grants. */
   refresh(): RequestAuthorization;
-  /** Trusted identity and immutable policy instance for disposable, non-authoritative reads. */
+  /** Trusted identity and immutable policy instance for disposable, advisory reads. */
   readContext(): { readonly subject: string; readonly policy: object };
   requireAccess(): void;
 

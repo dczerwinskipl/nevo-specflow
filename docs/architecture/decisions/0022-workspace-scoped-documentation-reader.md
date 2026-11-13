@@ -8,7 +8,8 @@ summary: >
   Amends ADR 0020 sections 3, 5 and 6: the Runtime serves each registered workspace's documentation
   under /api/workspaces/:workspaceId/docs with docs.view at project scope, replacing /api/docs/*;
   every checkout has its own index, embedded only through the Runtime's trusted ai.embeddings; and
-  invalid documents are skipped everywhere except docs check.
+  invalid documents are skipped everywhere except docs check. The documents ADR 0020's docs.yaml
+  path prefixes set apart are called proposals (docs.yaml key proposals).
 related:
   - adr.0020-documentation-discovery-is-a-product-capability
   - adr.0021-product-neutral-ai-semantic-search-engine
@@ -26,9 +27,11 @@ related:
 
 ## Status
 
-Current. The decisions below were taken by the product owner on 2026-11-11 and 2026-11-12. This ADR
-**amends** [ADR 0020](0020-documentation-discovery-is-a-product-capability.md) sections 3 (command
-surface), 5 (index freshness) and 6 (Runtime endpoint); where they differ, this ADR wins. ADR 0020's
+Current. The decisions below were taken by the product owner on 2026-11-11 and 2026-11-12, and the
+naming of proposals (section 5) on 2026-11-13. This ADR **amends**
+[ADR 0020](0020-documentation-discovery-is-a-product-capability.md) sections 2 (taxonomy, the
+naming only), 3 (command surface), 5 (index freshness) and 6 (Runtime endpoint); where they differ,
+this ADR wins. ADR 0020's
 other sections and [ADR 0021](0021-product-neutral-ai-semantic-search-engine.md) are unchanged.
 Language follows [normative language](../principles/normative-language.md). The API, CLI,
 configuration and authorization references are brought in line with this ADR by the change that
@@ -65,19 +68,19 @@ linked worktree), identified by its registry `workspaceId`:
 ```http
 GET /api/workspaces/:workspaceId/docs
 GET /api/workspaces/:workspaceId/docs/documents/:documentId
-GET /api/workspaces/:workspaceId/docs/search?q&limit&snippets&includeNonAuthoritative
+GET /api/workspaces/:workspaceId/docs/search?q&limit&snippets&includeProposals
 ```
 
 - The **tree** lists the active documents (id, title, type, status, path under `docs.root`, summary,
-  non-authoritative flag), the root index document when there is one, the inactive documents with
+  proposal flag), the root index document when there is one, the inactive documents with
   their status and successor, and the paths of skipped documents.
 - The **article** returns the document's metadata with its `related` documents resolved to a state
   (active, inactive, skipped, missing), the Markdown body without frontmatter and its sections
   (section id, heading path, body-relative line). Metadata and body MUST come from one read of the
   file. An inactive document answers `410 DOCS_DOCUMENT_INACTIVE` with its status and, when known,
   its successor.
-- **Search** returns ADR 0020's result contract plus the number of non-authoritative documents left
-  out (counted by the same query with the include switch, the same limit and the same query vector)
+- **Search** returns ADR 0020's result contract plus the number of proposals left out (counted by
+  the same query with the include switch, the same limit and the same query vector)
   and, while an index is being built, its progress. Search result lines stay file-relative.
 - There is no HTTP status endpoint; index progress travels with the search answer.
   `nevo-specflow docs semantic status` is unchanged.
@@ -129,9 +132,17 @@ workspace response carries the bound `workspaceId`.
 - **New worktrees.** When the Engine creates a linked worktree, it copies Project Home's
   `.nevo/local/config.yaml` into the new worktree if the worktree has none, so the CLI there has
   the workstation endpoint.
-- **Worktree disposal.** Worktree disposal treats `.nevo/local/cache/` and the local configuration
-  (`.nevo/local/config.yaml`) as disposable, so a read index or a copied configuration does not
-  block Close from removing the worktree.
+- **Worktree disposal.** Worktree disposal treats `.nevo/local/cache/` as disposable, so a read
+  index does not block Close from removing the worktree. When Create copies the local
+  configuration, it first records the SHA-256 of the copied bytes in the worktree's Engine state
+  (`.nevo/local/state/local-config-copy.json`). Close deletes `.nevo/local/config.yaml` only while
+  its bytes still match that record. A configuration that was edited, that the Engine never copied,
+  or that cannot be read makes Close refuse with `CLOSE_LOCAL_CONFIG_MODIFIED` before it removes
+  anything; the user moves or deletes the file and resumes the same Close operation. The check is
+  the last step before Close records its durable disposal intent, which `git worktree remove`
+  follows; an edit made in that short residual window (the intent write and, for a divergent
+  integration, the scratch removal) is not detected, because a refusal after the intent could not
+  be resumed and the scratch belongs to that intent.
 
 ### 4. Corpus behaviour (amends sections 3, 5 and 6)
 
@@ -154,6 +165,19 @@ workspace response carries the bound `workspaceId`.
   Runtime stops all of them. Closing a workspace or Specification MUST release that workspace's
   instance before its worktree is deleted. ADR 0020's start refresh applies to the Runtime's own
   checkout; other workspaces refresh on read, under the same one-refresh rule.
+
+### 5. Proposals (amends the naming of section 2)
+
+- The documents below the path prefixes that ADR 0020 section 2 sets apart in `docs.yaml` are
+  **proposals**: ideas and plans, not current rules. The product, its configuration, CLI, API and
+  UI MUST use this one name (user-facing "proposal", Polish "propozycja").
+- The `docs.yaml` key is `proposals`; the `search` include switch is `--include-proposals` in the
+  CLI and `includeProposals` over HTTP; tree and article documents carry the boolean `proposal`;
+  the search answer counts `proposalsLeftOut`.
+- The behaviour of ADR 0020 is unchanged: `context` never returns proposals, `search` leaves them
+  out unless included, `list`, `find` and `get` return them.
+- Pre-production: the previous names have no alias. A `docs.yaml` with the previous key is
+  rejected as an unknown key.
 
 ## Consequences
 

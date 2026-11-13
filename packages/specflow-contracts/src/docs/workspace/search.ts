@@ -29,10 +29,10 @@ const envelope = {
   corpusRevision: CorpusRevisionSchema,
   results: Type.Array(WorkspaceDocsSearchHitSchema),
   /**
-   * Non-authoritative documents the same query would have returned with
-   * `includeNonAuthoritative=true` and the same `limit`; `0` when they were included.
+   * Proposals the same query would have returned with
+   * `includeProposals=true` and the same `limit`; `0` when they were included.
    */
-  nonAuthoritativeLeftOut: Type.Integer({ minimum: 0 }),
+  proposalsLeftOut: Type.Integer({ minimum: 0 }),
   indexProgress: Type.Optional(WorkspaceDocsIndexProgressSchema),
   skipped: WorkspaceDocsSkippedSchema,
 };

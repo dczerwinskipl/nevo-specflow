@@ -12,7 +12,7 @@ export interface TreeDocument {
   /** Relative to `docs.root`. */
   readonly path: string;
   readonly summary: string;
-  readonly nonAuthoritative: boolean;
+  readonly proposal: boolean;
 }
 
 export interface TreeInactiveDocument {
@@ -38,7 +38,7 @@ export interface DocsTree {
 
 export function projectDocsTree(snapshot: DocsChunks, root: string): DocsTree {
   const rootIndexFile = `${root}/README.md`;
-  const documents = snapshot.documents.map(({ record, nonAuthoritative }): TreeDocument => {
+  const documents = snapshot.documents.map(({ record, proposal }): TreeDocument => {
     const summary = typeof record.summary === 'string' ? record.summary.trim() : '';
 
     return {
@@ -48,7 +48,7 @@ export function projectDocsTree(snapshot: DocsChunks, root: string): DocsTree {
       status: asString(record.status),
       path: underDocsRoot(root, record.file),
       summary,
-      nonAuthoritative,
+      proposal,
     };
   });
   const rootIndex = snapshot.documents.find(({ record }) => record.file === rootIndexFile);

@@ -54,7 +54,7 @@ export interface CorpusReads {
   readonly configuration: DocsConfiguration;
   /** The corpus as chunks now; load it once per request and hand the snapshot on. */
   load(): Promise<DocsChunks>;
-  /** A search over `snapshot`, counting the non-authoritative documents it left out. */
+  /** A search over `snapshot`, counting the proposals it left out. */
   searchWithLeftOut(
     snapshot: DocsChunks,
     request: DocsSearchRequest,

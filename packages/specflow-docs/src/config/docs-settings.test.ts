@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { DocsConfigError } from '../errors';
-import { DEFAULT_DOCS_FILE_SETTINGS, isNonAuthoritative, parseDocsFile } from './docs-file';
+import { DEFAULT_DOCS_FILE_SETTINGS, isProposal, parseDocsFile } from './docs-file';
 import { DEFAULT_DOCS_SETTINGS, parseDocsConfig } from './docs-settings';
 import { loadDocsFile, loadDocsSettings } from './load-docs-settings';
 
@@ -40,12 +40,12 @@ describe('parseDocsFile', () => {
     expect(
       parseDocsFile({
         taxonomy: { areas: ['cli'] },
-        nonAuthoritative: ['ideas/', 'drafts'],
+        proposals: ['ideas/', 'drafts'],
         exclude: ['templates/'],
       }),
     ).toEqual({
       taxonomy: { areas: ['cli'] },
-      nonAuthoritative: ['ideas', 'drafts'],
+      proposals: ['ideas', 'drafts'],
       exclude: ['templates'],
     });
   });
@@ -55,18 +55,19 @@ describe('parseDocsFile', () => {
     [{ taxonomy: { tags: ['x'] } }, "Unknown configuration key 'taxonomy.tags'."],
     [{ taxonomy: { scopes: [] } }, 'taxonomy.scopes must be a non-empty list of strings.'],
     [{ taxonomy: { areas: ['cli', 'cli'] } }, "taxonomy.areas lists 'cli' more than once."],
-    [{ nonAuthoritative: 'ideas' }, 'nonAuthoritative must be a list of path prefixes.'],
-    [{ nonAuthoritative: ['a\\b'] }, 'nonAuthoritative[0] must be a relative directory path'],
+    [{ nonAuthoritative: ['ideas/'] }, "Unknown configuration key 'nonAuthoritative'."],
+    [{ proposals: 'ideas' }, 'proposals must be a list of path prefixes.'],
+    [{ proposals: ['a\\b'] }, 'proposals[0] must be a relative directory path'],
     [{ exclude: ['../x'] }, 'exclude[0] must be a relative directory path'],
   ])('rejects %j', (value, message) => {
     expect(() => parseDocsFile(value)).toThrow(message);
   });
 
-  it('matches non-authoritative prefixes as directories under the root', () => {
-    const settings = { root: 'docs', ...parseDocsFile({ nonAuthoritative: ['ideas'] }) };
-    expect(isNonAuthoritative(settings, 'docs/ideas/x.md')).toBe(true);
-    expect(isNonAuthoritative(settings, 'docs/ideas-x.md')).toBe(false);
-    expect(isNonAuthoritative(settings, 'ideas/x.md')).toBe(false);
+  it('matches proposal prefixes as directories under the root', () => {
+    const settings = { root: 'docs', ...parseDocsFile({ proposals: ['ideas'] }) };
+    expect(isProposal(settings, 'docs/ideas/x.md')).toBe(true);
+    expect(isProposal(settings, 'docs/ideas-x.md')).toBe(false);
+    expect(isProposal(settings, 'ideas/x.md')).toBe(false);
   });
 });
 

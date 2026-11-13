@@ -167,7 +167,7 @@ describe('workspace documentation instances', () => {
       const search = await h.docs.search('home', {
         query: 'widget',
         limit: 5,
-        includeNonAuthoritative: false,
+        includeProposals: false,
         snippets: false,
       });
       expect(search).toMatchObject({
@@ -208,7 +208,7 @@ describe('workspace documentation instances', () => {
       ['b', linked(b)],
     ]);
     const h = harness(workspaces, home);
-    const request = { query: 'widget', limit: 5, includeNonAuthoritative: false, snippets: false };
+    const request = { query: 'widget', limit: 5, includeProposals: false, snippets: false };
     try {
       // A's gap is larger than a search embeds: its catch-up takes the slot and blocks.
       expect(await h.docs.search('a', request)).toMatchObject({
@@ -272,7 +272,7 @@ describe('workspace documentation instances', () => {
     }
 
     const h = harness(workspaces, home);
-    const request = { query: 'widget', limit: 5, includeNonAuthoritative: false, snippets: false };
+    const request = { query: 'widget', limit: 5, includeProposals: false, snippets: false };
     try {
       await h.docs.search('w0', request);
       await h.embedding();

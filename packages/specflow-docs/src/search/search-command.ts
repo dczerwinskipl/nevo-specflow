@@ -26,7 +26,7 @@ export const SUMMARY_TEXT_MAX_CHARS = 200;
 
 interface SearchCliOptions {
   readonly limit: number;
-  readonly includeNonAuthoritative: boolean;
+  readonly includeProposals: boolean;
   readonly refresh: boolean;
   readonly snippets: boolean;
   readonly json: boolean;
@@ -40,11 +40,7 @@ export function addSearchCommand(docs: Command, ctx: DocsCommandContext, open: O
     )
     .argument('<question...>', 'the question, in your own words')
     .option('--limit <n>', 'maximum documents', positiveInteger, DEFAULT_SEARCH_LIMIT)
-    .option(
-      '--include-non-authoritative',
-      'also return documents under the non-authoritative prefixes',
-      false,
-    )
+    .option('--include-proposals', 'also return documents under the proposal prefixes', false)
     .option(
       '--no-refresh',
       'embed no documents; answer lexically unless the index is already complete',
@@ -100,7 +96,7 @@ export function addSearchCommand(docs: Command, ctx: DocsCommandContext, open: O
       const result = await searchDocumentation(search, {
         query,
         limit: opts.limit,
-        includeNonAuthoritative: opts.includeNonAuthoritative,
+        includeProposals: opts.includeProposals,
         snippets: opts.snippets,
         refresh: opts.refresh,
         ...(ctx.semanticIndexCommand === undefined

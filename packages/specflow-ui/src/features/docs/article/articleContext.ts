@@ -1,8 +1,8 @@
 import { createContext, useContext } from 'react';
 
 /**
- * How the host of an article opens another document of the same workspace (a link, Related, a
- * successor): a route push on split layouts, another stacked article screen on Narrow.
+ * How the reader opens another document of the same workspace from an article (a link, Related, a
+ * successor): a route push on every layout; on Narrow the article stack follows the address.
  */
 export interface ArticleNavigation {
   readonly workspaceId: string;

@@ -35,16 +35,16 @@ describe('readCheckoutDocsSettings', () => {
     // The `ai` block would be invalid for the embeddings parser; the reader never reads it.
     const root = checkout(
       'docs:\n  root: docs\nai:\n  embeddings: not-a-mapping\nelsewhere: 1\n',
-      'nonAuthoritative: [ideas]\n',
+      'proposals: [ideas]\n',
     );
     const read = readCheckoutDocsSettings(root, { rejectLinks: true });
     expect(read).toMatchObject({
       status: 'configured',
       docs: { root: 'docs' },
-      corpus: { root: 'docs', nonAuthoritative: ['ideas'] },
+      corpus: { root: 'docs', proposals: ['ideas'] },
     });
 
-    writeFileSync(join(root, 'docs', 'docs.yaml'), 'nonAuthoritative: [drafts]\n');
+    writeFileSync(join(root, 'docs', 'docs.yaml'), 'proposals: [drafts]\n');
     const changed = readCheckoutDocsSettings(root, { rejectLinks: false });
     expect(changed.status === 'configured' && changed.fingerprint).not.toBe(
       read.status === 'configured' && read.fingerprint,

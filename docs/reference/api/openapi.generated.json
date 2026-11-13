@@ -388,6 +388,28 @@
               }
             },
             "additionalProperties": false
+          },
+          "localConfig": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "changed"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "unrecorded"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "unreadable"
+                ]
+              }
+            ]
           }
         },
         "additionalProperties": false
@@ -29695,7 +29717,7 @@
                           "status",
                           "path",
                           "summary",
-                          "nonAuthoritative"
+                          "proposal"
                         ],
                         "properties": {
                           "documentId": {
@@ -29718,7 +29740,7 @@
                           "summary": {
                             "type": "string"
                           },
-                          "nonAuthoritative": {
+                          "proposal": {
                             "type": "boolean"
                           }
                         },
@@ -29943,7 +29965,7 @@
                         "status",
                         "path",
                         "summary",
-                        "nonAuthoritative",
+                        "proposal",
                         "areas",
                         "tags",
                         "related"
@@ -29969,7 +29991,7 @@
                         "summary": {
                           "type": "string"
                         },
-                        "nonAuthoritative": {
+                        "proposal": {
                           "type": "boolean"
                         },
                         "scope": {
@@ -30380,9 +30402,9 @@
               ]
             },
             "in": "query",
-            "name": "includeNonAuthoritative",
+            "name": "includeProposals",
             "required": false,
-            "description": "Also return documents under the non-authoritative path prefixes (default false)."
+            "description": "Also return documents under the proposal path prefixes (default false)."
           },
           {
             "schema": {
@@ -30434,7 +30456,7 @@
                         "workspaceId",
                         "corpusRevision",
                         "results",
-                        "nonAuthoritativeLeftOut",
+                        "proposalsLeftOut",
                         "skipped"
                       ],
                       "properties": {
@@ -30551,7 +30573,7 @@
                             "additionalProperties": false
                           }
                         },
-                        "nonAuthoritativeLeftOut": {
+                        "proposalsLeftOut": {
                           "type": "integer",
                           "minimum": 0
                         },
@@ -30604,7 +30626,7 @@
                         "workspaceId",
                         "corpusRevision",
                         "results",
-                        "nonAuthoritativeLeftOut",
+                        "proposalsLeftOut",
                         "skipped"
                       ],
                       "properties": {
@@ -30768,7 +30790,7 @@
                             "additionalProperties": false
                           }
                         },
-                        "nonAuthoritativeLeftOut": {
+                        "proposalsLeftOut": {
                           "type": "integer",
                           "minimum": 0
                         },

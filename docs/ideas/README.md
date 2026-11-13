@@ -10,7 +10,7 @@ read_when:
   - collecting implementation ideas before they become approved architecture or specifications
   - looking for hardening follow-ups to apply while migrating legacy capabilities
 summary: >
-  Non-authoritative implementation backlog for ideas worth evaluating during migration.
+  Proposals: an implementation backlog of ideas worth evaluating during migration.
   Items here are deliberately separated from current architecture and become normative only
   after they are promoted into the appropriate architecture, engineering, product, or
   specification documents.
@@ -54,7 +54,7 @@ of an idea is removed, give each part exactly one disposition:
 
 A current product, architecture or reference document describes only what is implemented; planned
 behaviour next to it is marked as such and linked to its open idea. Decision records kept here
-(rationale, rejected alternatives, follow-ups) stay `status: draft` and non-authoritative; a
+(rationale, rejected alternatives, follow-ups) stay `status: draft` and are proposals; a
 rationale whose premise no longer holds is marked superseded or removed.
 
 ## Current packages
@@ -70,6 +70,6 @@ rationale whose premise no longer holds is marked superseded or removed.
 - [SpecFlow UI / open screen and component ideas](specflow-ui/README.md)
 - [Semantic documentation search follow-ups](semantic-docs/README.md)
 
-Non-authoritative decision records with open follow-ups:
+Decision records (proposals) with open follow-ups:
 [Session association registry](specflow-runtime/session-association/README.md),
 [Project-mode Specification Overview](specflow-runtime/project-mode-spec-overview/README.md).

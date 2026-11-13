@@ -22,6 +22,7 @@ import {
 import type { DocsIndexActivity } from '@nevo/specflow-contracts/docs';
 
 import { vectorsDirectory } from './index-store';
+import type { AdmitWrite } from './write-admission';
 
 /** Bump when the record shape changes; another version is ignored. */
 export const PROGRESS_SCHEMA_VERSION = 1;
@@ -73,13 +74,14 @@ export interface ProgressRecorderDependencies {
  * The writer side, for one refresh. `update` is called synchronously from the refresh's progress
  * callback; the writes run one after another in the background and `finish` waits for them. A
  * refresh that never reported progress (nothing to embed, or it failed before embedding) records
- * nothing, so the previous refresh stays the last one. `admitted` is asked when `update` or
- * `finish` is called: when it is `false`, that record is not written.
+ * nothing, so the previous refresh stays the last one. Each record is its own write batch:
+ * `admitWrite` (the index's write admission) is asked in the write queue immediately before that
+ * record is written, and a refused record is not written.
  */
 export function createProgressRecorder(
   directory: string,
   dependencies: ProgressRecorderDependencies,
-  admitted: () => boolean = () => true,
+  admitWrite: AdmitWrite = () => Promise.resolve(true),
 ): ProgressRecorder {
   const token = randomBytes(6).toString('hex');
   let started: number | undefined;
@@ -102,24 +104,24 @@ export function createProgressRecorder(
     } as ProgressRecord;
     sequence += 1;
     const name = `progress-${String(startedAt).padStart(13, '0')}-${String(sequence).padStart(6, '0')}-${token}.json`;
-    writes = writes.then(() => writeRecord(directory, name, record));
+    writes = writes.then(async () => {
+      if (await admitWrite()) {
+        await writeRecord(directory, name, record);
+      }
+    });
 
     return writes;
   };
 
   return {
     update(progress) {
-      if (!admitted()) {
-        return writes;
-      }
-
       started ??= dependencies.now();
       latest = progress;
 
       return write({ state: 'running' });
     },
     async finish(end) {
-      if (started !== undefined && admitted()) {
+      if (started !== undefined) {
         await write({ state: 'finished', ...end });
       }
 

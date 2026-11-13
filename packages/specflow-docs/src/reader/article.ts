@@ -34,7 +34,7 @@ export interface ArticleDocument {
   /** Relative to `docs.root`. */
   readonly path: string;
   readonly summary: string;
-  readonly nonAuthoritative: boolean;
+  readonly proposal: boolean;
   readonly scope?: string;
   readonly areas: readonly string[];
   readonly tags: readonly string[];
@@ -119,7 +119,7 @@ export async function readArticle(
       status: asString(frontmatter.status),
       path: underDocsRoot(corpus.settings.root, active.record.file),
       summary: typeof frontmatter.summary === 'string' ? frontmatter.summary.trim() : '',
-      nonAuthoritative: active.nonAuthoritative,
+      proposal: active.proposal,
       ...(typeof frontmatter.scope === 'string' ? { scope: frontmatter.scope } : {}),
       areas: strings(frontmatter.areas),
       tags: strings(frontmatter.tags),

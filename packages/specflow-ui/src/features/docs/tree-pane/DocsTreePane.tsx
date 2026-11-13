@@ -44,11 +44,9 @@ export function DocsTreePane({
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set());
   const root = useMemo(() => (tree ? buildDocsTree(tree.documents) : undefined), [tree]);
-  const nonAuthoritative = useMemo(
+  const proposals = useMemo(
     () =>
-      new Set(
-        (tree?.documents ?? []).filter((doc) => doc.nonAuthoritative).map((doc) => doc.documentId),
-      ),
+      new Set((tree?.documents ?? []).filter((doc) => doc.proposal).map((doc) => doc.documentId)),
     [tree],
   );
   const activePath = tree?.documents.find((doc) => doc.documentId === activeDocumentId)?.path;
@@ -112,7 +110,7 @@ export function DocsTreePane({
         <DocsSearchPanel
           hidden={problem !== undefined}
           workspaceId={workspaceId}
-          nonAuthoritative={nonAuthoritative}
+          proposals={proposals}
           activeDocumentId={activeDocumentId}
           onOpen={onOpen}
         >

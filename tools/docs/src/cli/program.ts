@@ -115,7 +115,7 @@ function addEvalCommand(program: Command, ctx: LauncherContext): void {
   program
     .command('eval')
     .description(
-      'Score context, lexical and hybrid search against the repository question set: Recall@5, Recall@10 and MRR per language, vector similarity diagnostics and non-authoritative hits (manual, uses the local index; embeds no documents)',
+      'Score context, lexical and hybrid search against the repository question set: Recall@5, Recall@10 and MRR per language, vector similarity diagnostics and proposal hits (manual, uses the local index; embeds no documents)',
     )
     .option('--questions <file>', 'question set (YAML)', EVAL_QUESTIONS_FILE)
     .option('--json', 'emit JSON on stdout', false)
@@ -190,7 +190,7 @@ function printReport(ctx: LauncherContext, report: EvalReport): void {
   ctx.stdout(`best vector similarity, answerable: ${range(similarities(answerable))}`);
   ctx.stdout(`best vector similarity, no answer:  ${range(similarities(unanswerable))}`);
   ctx.stdout(
-    `non-authoritative in the hybrid top 10: ${report.nonAuthoritativeHits} (filter check); ranked above the first expected when included: ${report.nonAuthoritativeAboveExpected}`,
+    `proposals in the hybrid top 10: ${report.proposalHits} (filter check); ranked above the first expected when included: ${report.proposalsAboveExpected}`,
   );
   const lexical = report.results.filter((result) => result.hybridMode !== 'hybrid').length;
   if (lexical > 0) {

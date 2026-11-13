@@ -7,7 +7,7 @@ date: 2026-09-28
 summary: >
   Defines a documentation architecture that separates product behavior, durable system
   architecture, engineering guidance, reusable design-system knowledge, exact reference
-  contracts, operational instructions, and a non-authoritative idea backlog, while using
+  contracts, operational instructions, and an idea backlog of proposals, while using
   searchable scope, area, and tag metadata so discovery does not depend on folder paths alone.
 related:
   - adr.0020-documentation-discovery-is-a-product-capability
@@ -34,7 +34,7 @@ different reasons to be read:
   Nevo UI;
 - exact contracts such as APIs, events, configuration, and protocol shapes;
 - task-oriented instructions for humans and agents;
-- non-authoritative migration/design ideas that need to preserve evidence before an authoritative decision exists.
+- migration/design ideas (proposals, not current rules) that need to preserve evidence before an authoritative decision exists.
 
 These concerns must not become one undifferentiated development-document hierarchy. They also
 cannot rely only on directory location for discovery: the same document can concern AI, runtime,
@@ -108,8 +108,8 @@ The physical path is not the semantic identity of a document.
 - **product** — user-visible behavior, terminology, interaction models, and product contracts.
 - **reference** — exact APIs, schemas, configuration keys, protocol/event shapes, and lookup material.
 - **instructions** — task-oriented guidance that routes to authoritative documents.
-- **ideas** — non-authoritative backlog for evidence, candidate contracts, migration hardening, and design directions that are not yet approved as architecture, engineering policy, product behavior, or exact reference contracts.
-- **templates** — non-authoritative starting material for authoring documents.
+- **ideas** — proposals: a backlog for evidence, candidate contracts, migration hardening, and design directions that are not yet approved as architecture, engineering policy, product behavior, or exact reference contracts.
+- **templates** — starting material for authoring documents; not documentation in force.
 
 A document that contains multiple independent responsibilities should be split instead of becoming
 a mixed source of truth.

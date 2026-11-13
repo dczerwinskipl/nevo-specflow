@@ -32,9 +32,10 @@ export {
   type IndexAccess,
 } from './semantic-index/index-store';
 export {
-  type AdmitWrite,
+  type GitIgnoreAnswer,
   type GitIgnoreCheck,
   type IndexWrites,
+  type WriteAdmission,
 } from './semantic-index/write-admission';
 export { type CreateEmbeddingProvider } from './embeddings/embedding-providers';
 export {

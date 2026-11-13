@@ -9,7 +9,7 @@ const doc = (documentId: string, path: string, title = documentId) => ({
   status: 'current',
   path,
   summary: '',
-  nonAuthoritative: false,
+  proposal: false,
 });
 
 const index = createDocsLinkIndex({

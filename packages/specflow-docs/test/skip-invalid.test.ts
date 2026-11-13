@@ -76,7 +76,7 @@ describe('reads skip invalid documents', () => {
       {
         query: 'widget',
         limit: 5,
-        includeNonAuthoritative: false,
+        includeProposals: false,
         snippets: false,
         refresh: false,
       },

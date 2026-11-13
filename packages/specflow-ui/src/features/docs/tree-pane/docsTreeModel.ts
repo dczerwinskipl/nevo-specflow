@@ -7,10 +7,10 @@ export interface DocsFolderNode {
   readonly folders: readonly DocsFolderNode[];
   readonly documents: readonly WorkspaceDocsTreeDocument[];
   /**
-   * Every document below this folder is non-authoritative and its parent's are not all: the folder
-   * that owns the non-authoritative prefix, labelled once.
+   * Every document below this folder is a proposal and its parent's are not all: the folder
+   * that owns the proposal prefix, labelled once.
    */
-  readonly ownsNonAuthoritative: boolean;
+  readonly ownsProposals: boolean;
 }
 
 /** One visible row of the tree, in reading order (the keyboard moves along these). */
@@ -62,17 +62,17 @@ export function buildDocsTree(documents: readonly WorkspaceDocsTreeDocument[]): 
     folder.documents.push(document);
   }
 
-  const allNonAuthoritative = (folder: MutableFolder): boolean =>
-    folder.documents.every((document) => document.nonAuthoritative) &&
-    [...folder.folders.values()].every(allNonAuthoritative);
+  const allProposals = (folder: MutableFolder): boolean =>
+    folder.documents.every((document) => document.proposal) &&
+    [...folder.folders.values()].every(allProposals);
 
   const freeze = (folder: MutableFolder, parentMarked: boolean): DocsFolderNode => {
-    const marked = folder.path !== '' && allNonAuthoritative(folder);
+    const marked = folder.path !== '' && allProposals(folder);
 
     return {
       name: folder.name,
       path: folder.path,
-      ownsNonAuthoritative: marked && !parentMarked,
+      ownsProposals: marked && !parentMarked,
       folders: [...folder.folders.values()]
         .sort((a, b) => collator.compare(a.name, b.name))
         .map((child) => freeze(child, marked)),

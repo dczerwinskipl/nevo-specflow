@@ -20,7 +20,7 @@ export const docsKeys = {
       {
         q: query.q,
         limit: docsSearchLimit(query) ?? null,
-        includeNonAuthoritative: query.includeNonAuthoritative ?? false,
+        includeProposals: query.includeProposals ?? false,
         snippets: query.snippets ?? true,
       },
     ] as const,

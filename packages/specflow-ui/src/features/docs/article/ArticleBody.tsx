@@ -5,20 +5,19 @@ import { LoadingPresentation } from '../../../app/loading/LoadingPresentation';
 import type { DocsArticleResult } from '../read-model';
 import { useDocsArticle } from '../read-model';
 import { useArticleNavigation } from './articleContext';
-import { DocsArticleView, type ArticleScrollMemory } from './DocsArticleView';
+import { DocsArticleView } from './DocsArticleView';
+import { useReadingPosition } from './readingPositions';
 
-/** Why a requested document has no article (the refusals and a document gone while reading). */
+/**
+ * Why a requested document has no article. A document that is not there (removed while reading,
+ * or an address to an unknown id) has one neutral message, whatever the cause.
+ */
 function ArticleRefusal({
   result,
   documentId,
-  workspaceName,
-  removed,
 }: {
   result: Exclude<DocsArticleResult, { kind: 'article' }>;
   documentId: string;
-  workspaceName: string;
-  /** The document was in the tree when it was opened: it went away while reading. */
-  removed: boolean;
 }) {
   const { t } = useTranslation();
   const navigation = useArticleNavigation();
@@ -81,13 +80,12 @@ function ArticleRefusal({
     <EmptyState
       variant="pane"
       icon="file-search"
-      title={t(removed ? 'docs.state.removed.title' : 'docs.state.notFound.title')}
-      description={describe(
-        t(removed ? 'docs.state.removed.description' : 'docs.state.notFound.description', {
-          id: documentId,
-          workspace: workspaceName,
-        }),
-      )}
+      title={t('docs.state.notAvailable')}
+      description={
+        <Typography as="code" variant="code-md" className="break-all">
+          {documentId}
+        </Typography>
+      }
     />
   );
 }
@@ -99,24 +97,22 @@ function ArticleRefusal({
 export function ArticleBody({
   chromeKey,
   workspaceId,
-  workspaceName,
   documentId,
   sectionId,
   tree,
-  fromReader,
-  scrollMemory,
+  entry,
 }: {
   chromeKey: string;
   workspaceId: string;
-  workspaceName: string;
   documentId: string;
   sectionId?: string;
   tree: WorkspaceDocsTree;
-  fromReader: boolean;
-  scrollMemory?: ArticleScrollMemory;
+  /** The history entry the article is shown for: it keys the reading position. */
+  entry: string;
 }) {
   const { t } = useTranslation();
   const result = useDocsArticle(workspaceId, documentId);
+  const position = useReadingPosition(entry);
   if (result.isError) {
     return (
       <EmptyState
@@ -142,24 +138,18 @@ export function ArticleBody({
   }
 
   if (result.data.kind !== 'article') {
-    return (
-      <ArticleRefusal
-        result={result.data}
-        documentId={documentId}
-        workspaceName={workspaceName}
-        removed={fromReader}
-      />
-    );
+    return <ArticleRefusal result={result.data} documentId={documentId} />;
   }
 
   return (
     <DocsArticleView
-      key={`${workspaceId}:${documentId}`}
+      // Every history entry is its own visit: Back and Forward return to its reading position.
+      key={`${workspaceId}:${documentId}:${entry}`}
       chromeKey={chromeKey}
       article={result.data.article}
       tree={tree}
       sectionId={sectionId}
-      scrollMemory={scrollMemory}
+      scrollMemory={position}
     />
   );
 }

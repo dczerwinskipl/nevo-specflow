@@ -21,7 +21,6 @@ import { DEFAULT_DOCS_SETTINGS, parseDocsConfig } from '../config/docs-settings'
 import { openFileSystemCorpus } from '../corpus/corpus';
 import { contextualHeader, createDocsChunkSource } from '../semantic-index/chunk-source';
 import { openDocsIndex, openProjectIndex } from '../semantic-index/index-store';
-import { cacheNotIgnoredReason } from '../semantic-index/reasons';
 import { READ_REFRESH_MAX_CHUNKS } from '../semantic-index/refresh-policy';
 import { createIndexWrites } from '../semantic-index/write-admission';
 import { toHit } from './result';
@@ -58,14 +57,14 @@ writeFileSync(
   '---\nid: engine\ntype: hub\ntitle: Engine\nstatus: current\nsummary: Tasks are handled by the engine.\nread_when: [changing work items]\n---\n\n# Engine\n\nWork items move through states.\n',
 );
 
-writeFileSync(join(root, 'docs', 'docs.yaml'), 'nonAuthoritative: [ideas]\n');
+writeFileSync(join(root, 'docs', 'docs.yaml'), 'proposals: [ideas]\n');
 
 afterAll(() => rmSync(root, { recursive: true, force: true }));
 
 const settings = parseDocsConfig({ search: { semantic: true } });
 const corpus = openFileSystemCorpus(root, settings);
 // An index held in memory: every write is admitted.
-const admitted = () => createIndexWrites(() => Promise.resolve(true), cacheNotIgnoredReason('x'));
+const admitted = () => createIndexWrites(() => Promise.resolve(undefined));
 const cachedSource = (file: string) =>
   createDocsChunkSource({ corpus, cache: { file, admitWrite: () => Promise.resolve(true) } });
 
@@ -83,13 +82,13 @@ function semanticSearch() {
 const request = {
   query: 'install widget',
   limit: 5,
-  includeNonAuthoritative: false,
+  includeProposals: false,
   snippets: false,
   refresh: true,
 };
 
 describe('searchDocumentationWithLeftOut', () => {
-  it('counts the non-authoritative documents the same query would add, embedding the query once', async () => {
+  it('counts the proposals the same query would add, embedding the query once', async () => {
     const { provider, search } = semanticSearch();
     const source = createDocsChunkSource({ corpus });
     const before = (await source.load()).revision;
@@ -98,14 +97,14 @@ describe('searchDocumentationWithLeftOut', () => {
 
     const result = await searchDocumentationWithLeftOut(search, request);
     expect(result.results.map((hit) => hit.id)).toEqual(['guide']);
-    expect(result.nonAuthoritativeLeftOut).toBe(1);
+    expect(result.proposalsLeftOut).toBe(1);
     expect(provider.calls.slice(calls).map((call) => call.purpose)).toEqual(['query']);
     // Building the vector index does not change the corpus revision.
     expect((await source.load()).revision).toBe(before);
 
     expect(
-      await searchDocumentationWithLeftOut(search, { ...request, includeNonAuthoritative: true }),
-    ).toMatchObject({ nonAuthoritativeLeftOut: 0 });
+      await searchDocumentationWithLeftOut(search, { ...request, includeProposals: true }),
+    ).toMatchObject({ proposalsLeftOut: 0 });
   });
 
   it('counts on the lexical path too', async () => {
@@ -114,7 +113,7 @@ describe('searchDocumentationWithLeftOut', () => {
       vectors: { reason: { code: 'semantic-disabled', message: 'off' } },
     };
     const result = await searchDocumentationWithLeftOut(search, request);
-    expect(result).toMatchObject({ mode: 'lexical', nonAuthoritativeLeftOut: 1 });
+    expect(result).toMatchObject({ mode: 'lexical', proposalsLeftOut: 1 });
   });
 });
 
@@ -173,9 +172,9 @@ describe('searchDocumentation', () => {
     }
   });
 
-  it('includes non-authoritative documents only with the switch; inactive ones never', async () => {
+  it('includes proposals only with the switch; inactive ones never', async () => {
     const { search } = semanticSearch();
-    const result = await searchDocumentation(search, { ...request, includeNonAuthoritative: true });
+    const result = await searchDocumentation(search, { ...request, includeProposals: true });
     expect(result.results.map((hit) => hit.id).sort()).toEqual(['draft', 'guide']);
   });
 
@@ -322,7 +321,7 @@ describe('openDocsSearch', () => {
       root,
       corpus,
       { docs: settings, embeddings: endpoint },
-      () => Promise.resolve(false),
+      () => Promise.resolve({ status: 'not-ignored' }),
     );
     const search = openDocsSearch({
       corpus,

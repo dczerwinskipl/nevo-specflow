@@ -1,5 +1,5 @@
 import { channel } from 'node:diagnostics_channel';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
@@ -150,6 +150,12 @@ describe('Create commits the scaffold when Git is enabled', () => {
     expect(await readFile(join(created.workspaceRoot, '.nevo/local/config.yaml'), 'utf8')).toBe(
       'ai: {}\n',
     );
+    // Create records the hash of the copied bytes, so Close can tell its copy from a user edit.
+    const record = join(created.workspaceRoot, '.nevo/local/state/local-config-copy.json');
+    expect(JSON.parse(await readFile(record, 'utf8'))).toEqual({
+      version: 1,
+      sha256: createHash('sha256').update('ai: {}\n').digest('hex'),
+    });
 
     // The default pattern feature/{key}-{slug} carries the Specification key.
     expect(git(created.workspaceRoot, 'rev-parse', '--abbrev-ref', 'HEAD')).toBe(

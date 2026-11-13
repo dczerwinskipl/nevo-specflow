@@ -214,14 +214,34 @@ export type CloseOperationErrorCode =
   | 'CLOSE_PREFLIGHT'
   | 'CLOSE_SHARED_WORKTREE'
   | 'CLOSE_RECOVERY_REQUIRED'
+  /**
+   * Resumable stop before disposal: the worktree's `.nevo/local/config.yaml` is not the unchanged
+   * copy Create made. The user moves or deletes it, then resumes the same Close.
+   */
+  | 'CLOSE_LOCAL_CONFIG_MODIFIED'
   | 'CLOSE_JOURNAL_CORRUPT';
+
+/**
+ * Why `CLOSE_LOCAL_CONFIG_MODIFIED` refused: the copy was edited, the Engine never copied the
+ * file, or the file or its copy record cannot be read. Carries no path or content.
+ */
+export type CloseLocalConfigRefusal = 'changed' | 'unrecorded' | 'unreadable';
 
 export class CloseOperationError extends Error {
   readonly code: CloseOperationErrorCode;
+  /** Present only for `CLOSE_LOCAL_CONFIG_MODIFIED`. */
+  readonly localConfig?: CloseLocalConfigRefusal;
 
-  constructor(code: CloseOperationErrorCode, message: string) {
+  constructor(
+    code: CloseOperationErrorCode,
+    message: string,
+    details: { readonly localConfig?: CloseLocalConfigRefusal } = {},
+  ) {
     super(message);
     this.name = 'CloseOperationError';
     this.code = code;
+    if (details.localConfig) {
+      this.localConfig = details.localConfig;
+    }
   }
 }

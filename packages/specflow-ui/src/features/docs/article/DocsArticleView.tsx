@@ -30,7 +30,7 @@ export interface ArticleScrollMemory {
 }
 
 /**
- * One article (the Documents preview's anatomy): a quiet note for a non-authoritative document,
+ * One article (the Documents preview's anatomy): a quiet note for a proposal,
  * Properties, the Markdown body with its links and images decided by the reader's policies, and
  * Related. From an 840 px panel the Properties and the Contents sit in a sticky column beside the
  * text; narrower panels show Properties above the text and the Contents as a sheet the header
@@ -160,9 +160,9 @@ export function DocsArticleView({
     { key: t('docs.article.properties.summary'), value: doc.summary },
     { key: t('docs.article.properties.id'), value: doc.documentId },
   ];
-  const lead = doc.nonAuthoritative ? (
+  const lead = doc.proposal ? (
     <div className="mb-4">
-      <InlineNote>{t('docs.article.nonAuthoritativeNote')}</InlineNote>
+      <InlineNote>{t('docs.article.proposalNote')}</InlineNote>
     </div>
   ) : null;
   const text = (

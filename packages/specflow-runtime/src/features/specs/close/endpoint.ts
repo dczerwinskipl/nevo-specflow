@@ -152,6 +152,34 @@ function safeCode(error: unknown): SafeCode | undefined {
   return undefined;
 }
 
+const SHARED_WORKTREE_REMEDY =
+  'Archive just this Specification with integrateToTargetBranch=false, or use an explicit workspace-level Close.';
+const LOCAL_CONFIG_REMEDY =
+  'The worktree local configuration .nevo/local/config.yaml is not the unchanged copy Create made (changed, added by hand, or unreadable): move or delete it, then resume the same Close operation.';
+
+/** Non-sensitive remedy fields of a mutating Close refusal; never the Engine message. */
+function closeRefusalDetails(error: unknown): {
+  remedy?: string;
+  localConfig?: CloseOperationError['localConfig'];
+} {
+  if (!(error instanceof CloseOperationError)) {
+    return {};
+  }
+
+  if (error.code === 'CLOSE_SHARED_WORKTREE') {
+    return { remedy: SHARED_WORKTREE_REMEDY };
+  }
+
+  if (error.code === 'CLOSE_LOCAL_CONFIG_MODIFIED') {
+    return {
+      remedy: LOCAL_CONFIG_REMEDY,
+      ...(error.localConfig ? { localConfig: error.localConfig } : {}),
+    };
+  }
+
+  return {};
+}
+
 function statusForCloseError(code: SafeCode): 400 | 404 | 409 | 422 | 503 {
   switch (code) {
     case 'CLOSE_INVALID':
@@ -160,6 +188,7 @@ function statusForCloseError(code: SafeCode): 400 | 404 | 409 | 422 | 503 {
       return 400;
     case 'CLOSE_CONFLICT':
     case 'CLOSE_SHARED_WORKTREE':
+    case 'CLOSE_LOCAL_CONFIG_MODIFIED':
     case 'REGISTRY_CONFLICT':
     case 'SPEC_CONFLICT':
     case 'BRANCH_ALREADY_EXISTS':
@@ -312,12 +341,7 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
           return reply.code(statusForCloseError(code)).send({
             code,
             error: code,
-            ...(code === 'CLOSE_SHARED_WORKTREE'
-              ? {
-                  remedy:
-                    'Archive just this Specification with integrateToTargetBranch=false, or use an explicit workspace-level Close.',
-                }
-              : {}),
+            ...closeRefusalDetails(error),
           });
         }
       },
@@ -366,12 +390,7 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
           return reply.code(statusForCloseError(code)).send({
             code,
             error: code,
-            ...(code === 'CLOSE_SHARED_WORKTREE'
-              ? {
-                  remedy:
-                    'Archive just this Specification with integrateToTargetBranch=false, or use an explicit workspace-level Close.',
-                }
-              : {}),
+            ...closeRefusalDetails(error),
           });
         }
       },
@@ -589,12 +608,7 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
         return reply.code(statusForCloseError(code)).send({
           code,
           error: code,
-          ...(code === 'CLOSE_SHARED_WORKTREE'
-            ? {
-                remedy:
-                  'Archive just this Specification with integrateToTargetBranch=false, or use an explicit workspace-level Close.',
-              }
-            : {}),
+          ...closeRefusalDetails(error),
         });
       }
     },

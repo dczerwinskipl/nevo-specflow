@@ -1,33 +1,40 @@
-import { createContext, useContext, useMemo } from 'react';
+import { createContext, useCallback, useContext, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
-import { defineSecondaryStack, useSecondaryStack } from '@nevo/ui';
+import {
+  defineSecondaryStack,
+  useSecondaryLeaveGuard,
+  useSecondaryStack,
+  type SecondaryStackActions,
+} from '@nevo/ui';
 import type { WorkspaceDocsTree } from '@nevo/specflow-contracts/docs';
 import { translateNow } from '../../../i18n/message';
 import { useNotify } from '../../../shared/notifications/notifications';
 import { useDocsTree } from '../read-model';
 import { ArticleBody } from './ArticleBody';
-import { ArticleNavigationContext, type ArticleNavigation } from './articleContext';
 import { articleActions } from './articleActions';
-import type { ArticleScrollMemory } from './DocsArticleView';
 import { ArticleTitle } from './ArticleTitle';
 import { useArticleSummary } from './useArticleSummary';
 
-/** The article the Narrow stack starts with (opened from the tree, a result or the address). */
-export interface ArticleStackRoot {
-  readonly workspaceId: string;
-  readonly workspaceName: string;
+/** An article screen of the Narrow stack: the document of one history entry of the reader. */
+export interface ArticleStackEntry {
   readonly documentId: string;
   readonly sectionId?: string;
   /** The document's title: the stack names its screens with it (Back "Back to <title>"). */
   readonly title: string;
-  readonly fromReader: boolean;
+  /** The history entry whose address names the document; it keys the reading position. */
+  readonly entry: string;
 }
 
-interface ArticlePages {
+/** The article the Narrow stack starts with (the address's document, opened over the tree). */
+export interface ArticleStackRoot extends ArticleStackEntry {
+  readonly workspaceId: string;
+}
+
+export interface ArticlePages {
   article: Record<string, never>;
-  /** A document reached by a link from the article below it; `entry` keys its reading position. */
-  linked: { documentId: string; sectionId?: string; title: string; entry: string };
+  /** A document reached by a link from the article below it (the previous history entry). */
+  linked: ArticleStackEntry;
 }
 
 interface ArticleStackData {
@@ -38,69 +45,79 @@ interface ArticleStackData {
 }
 
 /**
- * Reading positions of the stacked article screens, by entry: the stack remounts a screen on Back
- * and does not restore stacked scroll itself. Owned by the reader, emptied when a new stack opens.
+ * The reader's hold on the Narrow stack, which follows the address: only the reader moves it
+ * (opens, pushes, pops, closes), when the address changes. Any other leave of a screen is the
+ * user's header Back: it is refused and becomes a move of the address instead (`onUserBack`),
+ * which then moves the stack. Owned by the reader's `useNarrowArticleStack`; every mounted screen
+ * registers its stack so the reader can push and pop through the top one.
  */
-export const ArticleStackMemoryContext = createContext<Map<string, number> | null>(null);
+export class ArticleStackControl {
+  /** The entries the stack shows, root first (the reader's record of what it opened and pushed). */
+  chain: readonly string[] = [];
+  /** The reader's own moves still running: while any is, screens may leave. */
+  private moving = 0;
+  /** The mounted screens' stacks, by entry: the reader pushes and pops through the top one's. */
+  readonly screens = new Map<string, SecondaryStackActions<ArticlePages>>();
+  /** The header Back of the screen the address names: move the address (the root leaves it). */
+  onUserBack: (root: boolean) => void = () => undefined;
 
-function useEntryMemory(entry: string): ArticleScrollMemory | undefined {
-  const memory = useContext(ArticleStackMemoryContext);
+  register(entry: string, stack: SecondaryStackActions<ArticlePages>) {
+    this.screens.set(entry, stack);
 
-  return useMemo(
-    () =>
-      memory
-        ? { get: () => memory.get(entry), set: (top: number) => void memory.set(entry, top) }
-        : undefined,
-    [memory, entry],
-  );
+    return () => {
+      if (this.screens.get(entry) === stack) {
+        this.screens.delete(entry);
+      }
+    };
+  }
+
+  /** Runs one of the reader's own moves of the stack (its leave guards let it through). */
+  move(command: () => Promise<boolean>) {
+    this.moving += 1;
+    void command().finally(() => {
+      this.moving -= 1;
+    });
+  }
+
+  /** The leave guard of a screen: the reader's moves pass, the user's Back moves the address. */
+  mayLeave(root: boolean): boolean {
+    if (this.moving > 0) {
+      return true;
+    }
+
+    this.onUserBack(root);
+
+    return false;
+  }
 }
+
+export const ArticleStackControlContext = createContext<ArticleStackControl | null>(null);
 
 function StackArticle({
   data,
-  documentId,
-  sectionId,
-  entry,
+  page,
+  root,
 }: {
   data: ArticleStackData;
-  documentId: string;
-  sectionId?: string;
-  entry: string;
+  page: ArticleStackEntry;
+  root: boolean;
 }) {
   const stack = useSecondaryStack<ArticlePages>();
-  const memories = useContext(ArticleStackMemoryContext);
-  const memory = useEntryMemory(entry);
-  const { root, tree, t } = data;
-  const navigation = useMemo<ArticleNavigation>(
-    () => ({
-      workspaceId: root.workspaceId,
-      // A link pushes another article screen: Back returns to this one at its reading position.
-      openDocument: (target, section) => {
-        const title =
-          tree.documents.find((doc) => doc.documentId === target)?.title ??
-          t('docs.article.fallbackTitle');
-        const next = `${entry}/${target}`;
-        // A new hop starts at its own top or section, not at a position of an earlier visit.
-        memories?.delete(next);
-        void stack.navTo('linked', { documentId: target, sectionId: section, title, entry: next });
-      },
-    }),
-    [root.workspaceId, tree, t, stack, entry, memories],
-  );
+  const control = useContext(ArticleStackControlContext);
+  const { entry } = page;
+  useEffect(() => control?.register(entry, stack), [control, entry, stack]);
+  const guard = useCallback(() => (control ? control.mayLeave(root) : true), [control, root]);
+  useSecondaryLeaveGuard(guard);
 
   return (
-    <ArticleNavigationContext.Provider value={navigation}>
-      <ArticleBody
-        chromeKey={`stack:${entry}`}
-        workspaceId={root.workspaceId}
-        workspaceName={root.workspaceName}
-        documentId={documentId}
-        sectionId={sectionId}
-        tree={tree}
-        // Every stacked article was listed when it was opened.
-        fromReader={root.fromReader || entry !== rootEntry}
-        scrollMemory={memory}
-      />
-    </ArticleNavigationContext.Provider>
+    <ArticleBody
+      chromeKey={`stack:${entry}`}
+      workspaceId={data.root.workspaceId}
+      documentId={page.documentId}
+      sectionId={page.sectionId}
+      tree={data.tree}
+      entry={entry}
+    />
   );
 }
 
@@ -120,8 +137,6 @@ function StackTitle({
   );
 }
 
-const rootEntry = 'root';
-
 /** The overflow actions of a stacked article, once the document is known. */
 function stackActions(data: ArticleStackData, documentId: string) {
   const listed = data.tree.documents.find((doc) => doc.documentId === documentId);
@@ -138,9 +153,10 @@ function stackActions(data: ArticleStackData, documentId: string) {
 }
 
 /**
- * Narrow: the article is pushed over the tree as a Secondary stack screen. An internal link pushes
- * another article screen, so the header Back returns to the previous article; only the first
- * screen's Back returns to the documentation. Each header names its own document.
+ * Narrow: the article is pushed over the tree as a Secondary stack screen. A link of an article
+ * changes the address and pushes another article screen, so the header Back (like browser Back)
+ * returns to the previous article; only the first screen's Back returns to the documentation.
+ * Each header names its own document. Links open through the reader's `ArticleNavigationContext`.
  */
 export const docsArticleStack = defineSecondaryStack<
   ArticleStackRoot,
@@ -168,17 +184,10 @@ export const docsArticleStack = defineSecondaryStack<
         return translateNow('docs.article.fallbackTitle');
       },
       header: ({ data }) => (
-        <StackTitle data={data} documentId={data.root.documentId} entry={rootEntry} />
+        <StackTitle data={data} documentId={data.root.documentId} entry={data.root.entry} />
       ),
       actions: ({ data }) => stackActions(data, data.root.documentId),
-      component: ({ data }) => (
-        <StackArticle
-          data={data}
-          documentId={data.root.documentId}
-          sectionId={data.root.sectionId}
-          entry={rootEntry}
-        />
-      ),
+      component: ({ data }) => <StackArticle data={data} page={data.root} root />,
     },
     linked: {
       get title() {
@@ -189,14 +198,7 @@ export const docsArticleStack = defineSecondaryStack<
         <StackTitle data={data} documentId={params.documentId} entry={params.entry} />
       ),
       actions: ({ data, params }) => stackActions(data, params.documentId),
-      component: ({ data, params }) => (
-        <StackArticle
-          data={data}
-          documentId={params.documentId}
-          sectionId={params.sectionId}
-          entry={params.entry}
-        />
-      ),
+      component: ({ data, params }) => <StackArticle data={data} page={params} root={false} />,
     },
   },
 });

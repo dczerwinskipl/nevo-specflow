@@ -38,7 +38,7 @@ nevo-specflow docs get <id...> [--json]
 nevo-specflow docs get --content <id | id#sectionId...> [--json]
 nevo-specflow docs context <query...> [--limit <n>] [--json]
 nevo-specflow docs check [--write]
-nevo-specflow docs search <question...> [--limit <n>] [--include-non-authoritative] [--no-refresh] [--no-snippets] [--json]
+nevo-specflow docs search <question...> [--limit <n>] [--include-proposals] [--no-refresh] [--no-snippets] [--json]
 nevo-specflow docs semantic status [--json]
 nevo-specflow docs semantic index
 ```
@@ -61,7 +61,7 @@ nevo-specflow docs semantic index
   lists the document's section ids) fails the whole call with exit 2 and an empty stdout. A section
   reference without `--content` is a usage error.
 - `context` lists the files to load for a task: like `find`, but inactive documents and documents
-  under non-authoritative prefixes are never returned.
+  under the `proposals` prefixes of `docs.yaml` (proposals) are never returned.
 - **Skipped documents.** `list`, `find`, `get`, `context` and `search` work on the valid documents
   instead of refusing the whole corpus. A file is skipped when it has no frontmatter, when its own
   frontmatter fails the contract or taxonomy, or when its `id` is shared with another file (every
@@ -98,13 +98,13 @@ frontmatter and its best matching sections (heading path, section id, line and a
 what the section says), so a reader (often an AI agent) can choose which documents or sections to
 open with `get`. It is the only model-dependent command.
 
-| Option                        | Meaning                                                                                     |
-| ----------------------------- | ------------------------------------------------------------------------------------------- |
-| `--limit <n>`                 | Maximum documents (default 10); each shows up to 3 matching sections                        |
-| `--include-non-authoritative` | Also return documents under the `nonAuthoritative` prefixes of `docs.yaml`                  |
-| `--no-refresh`                | Embed no documents; answer lexically unless the index is already complete                   |
-| `--no-snippets`               | Show no excerpt under each matching section (they are shown by default)                     |
-| `--json`                      | Print the result contract (`DocsSearchResult` in `@nevo/specflow-contracts`) plus `skipped` |
+| Option                | Meaning                                                                                     |
+| --------------------- | ------------------------------------------------------------------------------------------- |
+| `--limit <n>`         | Maximum documents (default 10); each shows up to 3 matching sections                        |
+| `--include-proposals` | Also return proposals: documents under the `proposals` prefixes of `docs.yaml`              |
+| `--no-refresh`        | Embed no documents; answer lexically unless the index is already complete                   |
+| `--no-snippets`       | Show no excerpt under each matching section (they are shown by default)                     |
+| `--json`              | Print the result contract (`DocsSearchResult` in `@nevo/specflow-contracts`) plus `skipped` |
 
 Inactive documents (`deprecated`, `superseded`) are never returned. The corpus frontmatter is
 validated as for `context` (document bodies are not checked; links are `check`'s job); documents that fail

@@ -25,10 +25,10 @@ const refusal = (status: number, data: unknown) =>
 
 describe('workspace documentation port', () => {
   it('sends search values as the route strings: limit 1..50, switches true/false', async () => {
-    expect(docsSearchParams({ q: 'auth', limit: 120, includeNonAuthoritative: true })).toEqual({
+    expect(docsSearchParams({ q: 'auth', limit: 120, includeProposals: true })).toEqual({
       q: 'auth',
       limit: '50',
-      includeNonAuthoritative: 'true',
+      includeProposals: 'true',
     });
     expect(docsSearchParams({ q: 'auth', limit: 0, snippets: false })).toEqual({
       q: 'auth',
@@ -43,7 +43,7 @@ describe('workspace documentation port', () => {
 
     const get = vi
       .fn()
-      .mockResolvedValue({ ...envelope, mode: 'hybrid', results: [], nonAuthoritativeLeftOut: 0 });
+      .mockResolvedValue({ ...envelope, mode: 'hybrid', results: [], proposalsLeftOut: 0 });
     await build(get).search(ws, { q: 'auth', limit: 5 });
     expect(get).toHaveBeenCalledWith(`/api/workspaces/${ws}/docs/search`, {
       signal: undefined,

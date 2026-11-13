@@ -13,10 +13,20 @@ export interface DocsReaderLocationState {
   readonly sessionId?: string;
   /** That Session's title, which names the way back. */
   readonly sessionTitle?: string;
-  /** The document was opened from the reader itself (tree, results, a link): it existed then. */
-  readonly fromReader?: boolean;
+  /**
+   * The reader entry this document was opened from (a push inside the reader): its history entry,
+   * whether that entry named a document (without one it is the tree's), and whether the document
+   * was reached by a link of an article (a hop) rather than the tree or the results.
+   */
+  readonly openedFrom?: DocsReaderOpener;
   /** After a pick: the title of the document the new workspace does not have. */
   readonly notInWorkspace?: string;
+}
+
+export interface DocsReaderOpener {
+  readonly entry: string;
+  readonly documentId?: string;
+  readonly link: boolean;
 }
 
 declare module '@tanstack/react-router' {
@@ -52,6 +62,10 @@ export function readerAddress(
 
   return match ? { workspaceId: segment(match[1]), documentId: segment(match[2]) } : undefined;
 }
+
+/** The identity of a history entry: kept by Back, Forward and a reload, new for every push. */
+export const historyEntryOf = (state: { readonly __TSR_key?: string; readonly key?: string }) =>
+  state.__TSR_key ?? state.key ?? '';
 
 /** The location's hash without `#`; `undefined` when empty. */
 export const stripHash = (hash: string) =>

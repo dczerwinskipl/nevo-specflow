@@ -8,7 +8,8 @@ import { ApplicationSessionBack } from '../../../app/navigation/ApplicationLocat
 import { useWorkspaceLabels } from '../../../app/navigation/useWorkspaceLabels';
 import { useNotify } from '../../../shared/notifications/notifications';
 import { ArticleChromeContext, createArticleChromeStore } from '../article/articleChrome';
-import { ArticleStackMemoryContext } from '../article/articleStack';
+import { ArticleNavigationContext, type ArticleNavigation } from '../article/articleContext';
+import { ArticleStackControlContext } from '../article/articleStack';
 import { currentDocsWorkspace } from '../current-workspace/currentWorkspaceStore';
 import type { CurrentDocsWorkspace } from '../current-workspace/useCurrentDocsWorkspace';
 import { docsFailure } from '../read-model';
@@ -19,6 +20,8 @@ import { readerArticleArea } from './ReaderArticleArea';
 import { CorpusProblemView, DocsForbidden, type CorpusProblem } from './ReaderStates';
 import {
   hashOfSection,
+  historyEntryOf,
+  readerAddress,
   sectionFromHash,
   sessionOf,
   type DocsReaderLocationState,
@@ -28,7 +31,8 @@ import { useNarrowArticleStack } from './useNarrowArticleStack';
 /**
  * The documentation reader of one workspace: the tree pane as Primary (capped at 360 px) and the
  * read-only article as Secondary on split layouts; on Narrow the tree is the first screen and the
- * article is pushed over it. Every opened document is a route push.
+ * article is pushed over it. Every opened document is a route push, at every width: the address
+ * always names the document being read.
  */
 export function DocsReader({
   current,
@@ -36,6 +40,7 @@ export function DocsReader({
   documentId,
   hash,
   entry,
+  historyEntry,
   tree,
 }: {
   current: CurrentDocsWorkspace;
@@ -44,6 +49,8 @@ export function DocsReader({
   documentId: string | undefined;
   hash: string | undefined;
   entry: DocsReaderLocationState | undefined;
+  /** The history entry of the address (it keys reading positions and the Narrow stack). */
+  historyEntry: string;
   tree: UseQueryResult<WorkspaceDocsTree>;
 }) {
   const { t } = useTranslation();
@@ -53,7 +60,6 @@ export function DocsReader({
   const workspaceLabels = useWorkspaceLabels();
   const { supportsSplit, measured } = useWorkspaceCapabilities();
   const [chrome] = useState(createArticleChromeStore);
-  const [stackMemory] = useState(() => new Map<string, number>());
   const list = current.workspaces.data;
   const workspace = current.workspace;
   const projectFolder = list?.workspaces.find((item) => item.workspaceId === list.projectFolderId);
@@ -66,12 +72,22 @@ export function DocsReader({
     [entry?.sessionId, entry?.sessionTitle],
   );
   const sessionId = session.sessionId;
-  const fromReader = entry?.fromReader === true;
+  const openedFrom = entry?.openedFrom;
 
-  // Stable while the workspace and the way back are: it is a dependency of the article's links.
+  // Split layouts show the root index for the workspace's own address: it is the current document.
+  const rootIndexShown = supportsSplit ? tree.data?.rootIndexDocumentId : undefined;
+  // Stable while the workspace, the way back and the layout are: it is a dependency of the
+  // article's links. The entry it is opened from is read when it is opened.
   const openDocument = useCallback(
-    (target: string, section?: string) => {
+    (target: string, section: string | undefined, link: boolean) => {
       if (!workspaceId) {
+        return;
+      }
+
+      const from = router.state.location;
+      const shown = readerAddress(from.pathname)?.documentId ?? rootIndexShown;
+      // The document and section already shown: nothing to open, no second history entry.
+      if (target === shown && section === sectionFromHash(from.hash)) {
         return;
       }
 
@@ -79,10 +95,34 @@ export function DocsReader({
         to: '/workspaces/$workspaceId/docs/$documentId',
         params: { workspaceId, documentId: target },
         hash: hashOfSection(section),
-        state: { docsReader: { ...session, fromReader: true } },
+        state: {
+          docsReader: {
+            ...session,
+            openedFrom: {
+              entry: historyEntryOf(from.state),
+              documentId: readerAddress(from.pathname)?.documentId,
+              link,
+            },
+          },
+        },
       });
     },
-    [navigate, workspaceId, session],
+    [navigate, router, workspaceId, session, rootIndexShown],
+  );
+  const openFromList = useCallback(
+    (target: string, section?: string) => openDocument(target, section, false),
+    [openDocument],
+  );
+  // Links, Related and a successor of an article, on every layout.
+  const articleNavigation = useMemo<ArticleNavigation | null>(
+    () =>
+      workspaceId
+        ? {
+            workspaceId,
+            openDocument: (target, section) => openDocument(target, section, true),
+          }
+        : null,
+    [workspaceId, openDocument],
   );
 
   const pick = (next: string) => {
@@ -115,10 +155,10 @@ export function DocsReader({
       return;
     }
 
-    // Opened from the reader: the entry before it is the tree's (or the previous article's, after a
-    // resize from Wide), so Back steps there instead of adding a second tree entry. An address
-    // opened directly is replaced by the tree's.
-    if (fromReader) {
+    // Opened from the tree's entry: Back steps there instead of adding a second tree entry. An
+    // address opened directly, or from another article (after a reload or a resize), is replaced
+    // by the tree's.
+    if (openedFrom && openedFrom.documentId === undefined) {
       router.history.back();
 
       return;
@@ -147,26 +187,27 @@ export function DocsReader({
     void tree.refetch();
   };
 
-  const stackRoot = useMemo(() => {
+  const narrowArticle = useMemo(() => {
     if (!workspaceId || !documentId || !tree.data) {
       return undefined;
     }
 
     return {
-      workspaceId,
-      workspaceName,
-      documentId,
-      sectionId,
-      title:
-        tree.data.documents.find((doc) => doc.documentId === documentId)?.title ??
-        t('docs.article.fallbackTitle'),
-      fromReader,
+      root: {
+        workspaceId,
+        documentId,
+        sectionId,
+        title:
+          tree.data.documents.find((doc) => doc.documentId === documentId)?.title ??
+          t('docs.article.fallbackTitle'),
+        entry: historyEntry,
+      },
+      openedFrom,
     };
-  }, [workspaceId, workspaceName, documentId, sectionId, tree.data, fromReader, t]);
-  useNarrowArticleStack({
-    root: problem ? undefined : stackRoot,
-    onOpen: () => stackMemory.clear(),
-    onClosedByUser: leaveDocument,
+  }, [workspaceId, documentId, sectionId, tree.data, historyEntry, openedFrom, t]);
+  const stackControl = useNarrowArticleStack({
+    article: problem ? undefined : narrowArticle,
+    onLeave: leaveDocument,
   });
 
   if (failure?.kind === 'forbidden' || listFailure?.kind === 'forbidden') {
@@ -213,63 +254,64 @@ export function DocsReader({
 
   return (
     <ArticleChromeContext.Provider value={chrome}>
-      <ArticleStackMemoryContext.Provider value={stackMemory}>
-        <AppWorkspace
-          scroll="content"
-          fit="available"
-          // Back already leaves the stacked article; a Close would repeat it.
-          stackedSecondaryClose="hide"
-          primaryMaxPx={360}
-          split="secondary"
-          labels={{
-            ...workspaceLabels,
-            backToPrimary: t('docs.backToDocumentation'),
-            closeSecondary: t('docs.closeDocument'),
-          }}
-        >
-          <AppWorkspace.Primary header={<WorkspaceHeader title={t('docs.title')} />}>
-            <DocsTreePane
-              workspaceId={workspaceId}
-              sessionBack={
-                sessionId ? (
-                  <ApplicationSessionBack
-                    sessionId={sessionId}
-                    sessionTitle={session.sessionTitle}
-                    collection="current"
-                  />
-                ) : undefined
-              }
-              picker={picker}
-              notices={notices}
-              tree={problem ? undefined : tree.data}
-              treeLoading={workspaceId === undefined || tree.isPending}
-              // Split layouts say the problem where the article would be.
-              problem={!supportsSplit ? problemView : problem ? null : undefined}
-              activeDocumentId={shownDocumentId}
-              onOpen={openDocument}
-            />
-          </AppWorkspace.Primary>
-          {measured && supportsSplit
-            ? readerArticleArea({
-                workspaceId,
-                workspaceName,
-                documentId: shownDocumentId,
-                requested: documentId !== undefined,
-                sectionId,
-                tree: tree.data,
-                treeLoading: tree.isPending,
-                problem: problemView,
-                fromReader: fromReader || documentId === undefined,
-                notify,
-                openDocument,
-                labels: {
-                  fallbackTitle: t('docs.article.fallbackTitle'),
-                  loading: t('docs.article.loading'),
-                },
-              })
-            : null}
-        </AppWorkspace>
-      </ArticleStackMemoryContext.Provider>
+      <ArticleNavigationContext.Provider value={articleNavigation}>
+        <ArticleStackControlContext.Provider value={stackControl}>
+          <AppWorkspace
+            scroll="content"
+            fit="available"
+            // Back already leaves the stacked article; a Close would repeat it.
+            stackedSecondaryClose="hide"
+            primaryMaxPx={360}
+            split="secondary"
+            labels={{
+              ...workspaceLabels,
+              backToPrimary: t('docs.backToDocumentation'),
+              closeSecondary: t('docs.closeDocument'),
+            }}
+          >
+            <AppWorkspace.Primary header={<WorkspaceHeader title={t('docs.title')} />}>
+              <DocsTreePane
+                workspaceId={workspaceId}
+                sessionBack={
+                  sessionId ? (
+                    <ApplicationSessionBack
+                      sessionId={sessionId}
+                      sessionTitle={session.sessionTitle}
+                      collection="current"
+                    />
+                  ) : undefined
+                }
+                picker={picker}
+                notices={notices}
+                tree={problem ? undefined : tree.data}
+                treeLoading={workspaceId === undefined || tree.isPending}
+                // Split layouts say the problem where the article would be.
+                problem={!supportsSplit ? problemView : problem ? null : undefined}
+                activeDocumentId={shownDocumentId}
+                onOpen={openFromList}
+              />
+            </AppWorkspace.Primary>
+            {measured && supportsSplit
+              ? readerArticleArea({
+                  workspaceId,
+                  workspaceName,
+                  documentId: shownDocumentId,
+                  requested: documentId !== undefined,
+                  sectionId,
+                  tree: tree.data,
+                  treeLoading: tree.isPending,
+                  problem: problemView,
+                  historyEntry,
+                  notify,
+                  labels: {
+                    fallbackTitle: t('docs.article.fallbackTitle'),
+                    loading: t('docs.article.loading'),
+                  },
+                })
+              : null}
+          </AppWorkspace>
+        </ArticleStackControlContext.Provider>
+      </ArticleNavigationContext.Provider>
     </ArticleChromeContext.Provider>
   );
 }

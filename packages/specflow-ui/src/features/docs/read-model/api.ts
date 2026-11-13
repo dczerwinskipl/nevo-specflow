@@ -42,7 +42,7 @@ export interface DocsSearchQuery {
   readonly q: string;
   /** Maximum documents; clamped to the route's `1..50`. The Runtime's default is 10. */
   readonly limit?: number;
-  readonly includeNonAuthoritative?: boolean;
+  readonly includeProposals?: boolean;
   /** `false` leaves out each section's excerpt. */
   readonly snippets?: boolean;
 }
@@ -92,9 +92,9 @@ export function docsSearchParams(query: DocsSearchQuery): Record<string, string>
   return {
     q: query.q,
     ...(limit === undefined ? {} : { limit: String(limit) }),
-    ...(query.includeNonAuthoritative === undefined
+    ...(query.includeProposals === undefined
       ? {}
-      : { includeNonAuthoritative: String(query.includeNonAuthoritative) }),
+      : { includeProposals: String(query.includeProposals) }),
     ...(query.snippets === undefined ? {} : { snippets: String(query.snippets) }),
   };
 }
@@ -183,7 +183,7 @@ export function createRuntimeDocsApi(api: ApiTransport): DocsApi {
         isValid: (data) =>
           isEnvelopeOf(workspaceId, data) &&
           Array.isArray(data.results) &&
-          typeof data.nonAuthoritativeLeftOut === 'number',
+          typeof data.proposalsLeftOut === 'number',
       }),
   };
 }

@@ -58,15 +58,16 @@ export async function buildDocsIndex(
     return { status: 'not-attempted', reason: refused };
   }
 
-  // A record reports the store write just admitted, so it follows that write's check: nothing is
-  // recorded once a check has refused.
+  // Every record runs its own check immediately before it is written; once the index's latest
+  // check refused, no further record is attempted.
   const progress =
     index.directory === undefined
       ? undefined
       : createProgressRecorder(
           index.directory,
           recorder,
-          () => index.writes.refusal() === undefined,
+          async () =>
+            index.writes.refusal() === undefined && (await index.writes.check()) === undefined,
         );
   const outcome = await refreshIndex({
     chunks,

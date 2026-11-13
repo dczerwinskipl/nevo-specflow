@@ -1,5 +1,4 @@
-import { constants } from 'node:fs';
-import { copyFile, lstat, readFile } from 'node:fs/promises';
+import { lstat, readFile } from 'node:fs/promises';
 import { basename, isAbsolute, join, resolve } from 'node:path';
 
 import type { SpecFlowEngine } from '../../../application';
@@ -20,7 +19,7 @@ import {
 } from '../../../project/workspace/identity';
 import { CreateOperationError, type CreateJournal } from '../journal';
 import { registrationOf } from '../binding/registration';
-import { LOCAL_CONFIG_RELATIVE_PATH } from '../../../project/git-checkout';
+import { copyLocalConfigIntoWorktree } from '../../../project/workspace/local-config-copy';
 import { requireCommitLineage } from './commit';
 
 /**
@@ -196,30 +195,10 @@ export async function ensureLinkedIdentity(
   }
 
   await verifyLinkedWorkspaceIdentity(engine.context, registration);
-  await copyLocalConfigIfAbsent(engine.context.project.homeRoot, record.target.workspaceRoot);
+  // Runs after identity verification: the state directory exists and is verified.
+  await copyLocalConfigIntoWorktree(engine.context.project.homeRoot, record.target.workspaceRoot);
 
   return record;
-}
-
-/**
- * `.nevo/local/` is Git-ignored, so a new worktree would otherwise lack the workstation-local
- * configuration (for example `ai.embeddings`). Runs after identity verification (the folder exists
- * and is verified), creates nothing else, never overwrites, and is idempotent for recovery.
- */
-async function copyLocalConfigIfAbsent(home: string, worktree: string): Promise<void> {
-  try {
-    await copyFile(
-      join(home, LOCAL_CONFIG_RELATIVE_PATH),
-      join(worktree, LOCAL_CONFIG_RELATIVE_PATH),
-      constants.COPYFILE_EXCL,
-    );
-  } catch (error) {
-    // No source file, or the worktree already has its own: nothing to copy.
-    const code = (error as { code?: unknown }).code;
-    if (code !== 'ENOENT' && code !== 'EEXIST') {
-      throw error;
-    }
-  }
 }
 
 export async function requireRegisteredTarget(

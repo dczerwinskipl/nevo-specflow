@@ -5,6 +5,7 @@ import { useCurrentDocsWorkspace } from '../current-workspace/useCurrentDocsWork
 import { useDocsTree } from '../read-model';
 import { DocsReader } from './DocsReader';
 import {
+  historyEntryOf,
   readerAddress,
   stripHash,
   sessionOf,
@@ -122,6 +123,7 @@ export function DocsReaderLayout() {
         documentId={settled !== undefined && !pickedMissing ? documentId : undefined}
         hash={hash}
         entry={entry}
+        historyEntry={historyEntryOf(location.state)}
         tree={tree}
       />
     </AppWorkspaceProvider>

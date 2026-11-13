@@ -18,7 +18,7 @@ import {
   type SearchEngine,
 } from '@nevo/ai-semantic-search';
 
-import { isNonAuthoritative } from '../config/docs-file';
+import { isProposal } from '../config/docs-file';
 import { corpusSettingsFingerprint } from '../config/settings-fingerprint';
 import type { DocsCorpus } from '../corpus/corpus';
 import { selectReadableDocs, type SkippedDocument } from '../corpus/readable';
@@ -38,7 +38,7 @@ export interface DocsChunkMetadata {
   readonly file: string;
   readonly title: string;
   readonly status: string;
-  readonly nonAuthoritative: boolean;
+  readonly proposal: boolean;
 }
 
 /** A chunk of a document; its `startLine` is the line in the file, frontmatter included. */
@@ -49,7 +49,7 @@ export interface DocsChunk extends Chunk {
 /** An active document's frontmatter (with `file` and an empty `body`), for frontmatter ranking. */
 export interface DocsDocument {
   readonly record: DocRecord;
-  readonly nonAuthoritative: boolean;
+  readonly proposal: boolean;
 }
 
 /** The readable corpus as chunks: active documents only (inactive ones are never searched). */
@@ -333,13 +333,13 @@ function validatedChunks(
       continue;
     }
 
-    const nonAuthoritative = isNonAuthoritative(corpus.settings, record.file);
-    documents.push({ record, nonAuthoritative });
+    const proposal = isProposal(corpus.settings, record.file);
+    documents.push({ record, proposal });
     const metadata: DocsChunkMetadata = {
       file: record.file,
       title: asString(record.title),
       status: asString(record.status),
-      nonAuthoritative,
+      proposal,
     };
     for (const chunk of byFile.get(record.file)!.chunks) {
       chunks.push({ ...chunk, unitId: asString(record.id), metadata });

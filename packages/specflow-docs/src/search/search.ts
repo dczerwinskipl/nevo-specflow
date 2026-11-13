@@ -115,8 +115,8 @@ export interface DocsSearchRequest {
   readonly query: string;
   /** Maximum number of documents. */
   readonly limit: number;
-  /** Include documents under the project's non-authoritative prefixes. */
-  readonly includeNonAuthoritative: boolean;
+  /** Include documents under the project's proposal prefixes. */
+  readonly includeProposals: boolean;
   /** Add each section's query-aware excerpt (`snippet`) to the result. */
   readonly snippets: boolean;
   /**
@@ -158,18 +158,18 @@ export async function searchDocumentation(
   return rank(search, request, loaded, vectors);
 }
 
-/** A search result plus how many non-authoritative documents the same search would have added. */
+/** A search result plus how many proposals the same search would have added. */
 export type DocsSearchWithLeftOut = DocsSearchResult & {
   /**
-   * Non-authoritative documents among the results of the same query run with
-   * `includeNonAuthoritative` and the same `limit`; `0` when the request already includes them.
+   * Proposals among the results of the same query run with
+   * `includeProposals` and the same `limit`; `0` when the request already includes them.
    * The query is embedded once for both runs.
    */
-  readonly nonAuthoritativeLeftOut: number;
+  readonly proposalsLeftOut: number;
 };
 
 /**
- * `searchDocumentation` that also counts the non-authoritative documents it left out, for a reader
+ * `searchDocumentation` that also counts the proposals it left out, for a reader
  * that offers to include them. The second ranking reuses the first one's query vector and the
  * loaded corpus; only the ranking runs twice.
  */
@@ -186,25 +186,25 @@ export async function searchDocumentationWithLeftOut(
   );
   const vectors = 'reason' in prepared ? prepared : withQueryEmbeddedOnce(prepared);
   const result = await rank(search, request, loaded, vectors);
-  if (request.includeNonAuthoritative) {
-    return { ...result, nonAuthoritativeLeftOut: 0 };
+  if (request.includeProposals) {
+    return { ...result, proposalsLeftOut: 0 };
   }
 
   const including = await rank(
     search,
-    { ...request, includeNonAuthoritative: true, refresh: false },
+    { ...request, includeProposals: true, refresh: false },
     loaded,
     vectors,
   );
-  const nonAuthoritative = new Set(
+  const proposals = new Set(
     loaded.documents
-      .filter((document) => document.nonAuthoritative)
+      .filter((document) => document.proposal)
       .map((document) => asString(document.record.id)),
   );
 
   return {
     ...result,
-    nonAuthoritativeLeftOut: including.results.filter((hit) => nonAuthoritative.has(hit.id)).length,
+    proposalsLeftOut: including.results.filter((hit) => proposals.has(hit.id)).length,
   };
 }
 
@@ -246,11 +246,10 @@ async function rank(
     query: request.query,
     limit: candidates,
     vectors,
-    filter: (chunk) =>
-      request.includeNonAuthoritative || !(chunk as DocsChunk).metadata.nonAuthoritative,
+    filter: (chunk) => request.includeProposals || !(chunk as DocsChunk).metadata.proposal,
   });
   const searched = documents
-    .filter((document) => request.includeNonAuthoritative || !document.nonAuthoritative)
+    .filter((document) => request.includeProposals || !document.proposal)
     .map((document) => document.record);
   const byFrontmatter = rankByContent(searched, request.query, candidates);
 

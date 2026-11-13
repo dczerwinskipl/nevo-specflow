@@ -15,6 +15,7 @@ import { createSpecFlowAppServices } from '../../../services';
 import { settleViewport } from '../../../test-support/viewportSettle.stories-support';
 import type { CurrentWorkspaceState } from '../current-workspace/currentWorkspace';
 import { currentDocsWorkspace } from '../current-workspace/currentWorkspaceStore';
+import type { DocsReaderOpener } from './readerLocation';
 import {
   createFixtureDocsApi,
   fixtureWorkspaceList,
@@ -39,8 +40,8 @@ interface ReaderStoryArgs {
   fromSession?: boolean;
   /** Workspaces listed as available whose checkout answers `409`. */
   unavailable?: string[];
-  /** The address was opened from the reader itself (the document existed then). */
-  fromReader?: boolean;
+  /** How the address's history entry was opened (it survives a reload). */
+  openedFrom?: DocsReaderOpener;
   /** This document goes away the moment it is read. */
   removeOnRead?: string;
 }
@@ -79,7 +80,7 @@ function ReaderScreen({
   remembered,
   fromSession,
   unavailable,
-  fromReader,
+  openedFrom,
   removeOnRead,
 }: ReaderStoryArgs) {
   const setup = useMemo(() => {
@@ -114,14 +115,14 @@ function ReaderScreen({
       });
     }
 
-    if (fromReader) {
-      history.replace(path, { docsReader: { fromReader: true } });
+    if (openedFrom) {
+      history.replace(path, { docsReader: { openedFrom } });
     }
 
     storyRouter = createSpecFlowRouter(history, services);
 
     return { query, router: storyRouter };
-  }, [path, scenario, single, remembered, fromSession, unavailable, fromReader, removeOnRead]);
+  }, [path, scenario, single, remembered, fromSession, unavailable, openedFrom, removeOnRead]);
 
   return (
     <QueryClientProvider client={setup.query}>
@@ -195,7 +196,7 @@ export const SectionDeepLinkFocus: Story = {
 export const LongTitle: Story = {
   args: { path: `${main}/architecture.runtime.workspace-registry` },
 };
-export const NonAuthoritativeDocument: Story = {
+export const ProposalDocument: Story = {
   args: { path: `${main}/ideas.semantic-docs.surfaces-and-setup` },
 };
 export const FeatureWorktree: Story = {
@@ -280,7 +281,27 @@ export const PickerReloadsTree: Story = {
   },
 };
 
-/** Narrow: a link pushes another article; Back returns to the first at its reading position. */
+const interactionModel = `${main}/product.specflow.ui.interaction-model`;
+const aiSessionUx = `${main}/product.specflow.ui.ai-session-ux`;
+const path = () => router().state.location.pathname;
+
+/** Scrolls the article to a reading position and waits until it is there. */
+async function readTo(heading: HTMLElement, top: number) {
+  const scroller = scrollerOf(heading);
+  scroller.scrollTo({ top });
+  await waitFor(() => expect(scroller.scrollTop).toBeGreaterThan(top - 100));
+}
+
+/** The article is shown again at a remembered reading position (more than `top`). */
+async function readingAt(name: string, top: number) {
+  const heading = await screen().findByRole('heading', { level: 1, name });
+  await waitFor(() => expect(scrollerOf(heading).scrollTop).toBeGreaterThan(top));
+}
+
+/**
+ * Narrow: a link changes the address and pushes another article; browser Back and Forward and the
+ * header Back follow the history, each article at its reading position, without adding entries.
+ */
 export const NarrowHopAndBack: Story = {
   args: { path: main },
   globals: { viewport: { value: 'mobile1', isRotated: false } },
@@ -291,23 +312,73 @@ export const NarrowHopAndBack: Story = {
     await userEvent.click(await body.findByRole('button', { name: 'specflow' }));
     await userEvent.click(await body.findByRole('button', { name: 'ui' }));
     await userEvent.click(await body.findByRole('button', { name: /UI interaction model/ }));
-    const first = await body.findByRole('heading', { level: 1, name: 'UI interaction model' });
-    const scroller = scrollerOf(first);
-    scroller.scrollTo({ top: 400 });
-    await waitFor(() => expect(scroller.scrollTop).toBeGreaterThan(300));
+    await readTo(await body.findByRole('heading', { level: 1, name: 'UI interaction model' }), 400);
+    await expect(path()).toBe(interactionModel);
+    const entries = router().history.length;
     // The first of the two links (the text's; Related repeats it).
     await userEvent.click(body.getAllByRole('link', { name: 'AI-session UX' })[0]!);
     await body.findByRole('heading', { level: 1, name: 'AI-session UX' });
-    await userEvent.click(body.getByRole('button', { name: 'Back to UI interaction model' }));
-    // Back to the first article at its reading position.
-    const back = await body.findByRole('heading', { level: 1, name: 'UI interaction model' });
-    await waitFor(() => expect(scrollerOf(back).scrollTop).toBeGreaterThan(300));
+    await expect(path()).toBe(aiSessionUx);
+    await expect(router().history.length).toBe(entries + 1);
+    // Browser Back: the previous article at its reading position; Forward: the hop again.
+    router().history.back();
+    await readingAt('UI interaction model', 300);
+    await expect(path()).toBe(interactionModel);
+    router().history.forward();
+    await body.findByRole('heading', { level: 1, name: 'AI-session UX' });
+    await expect(path()).toBe(aiSessionUx);
+    // The header Back is the same step back, named for the previous article.
+    await userEvent.click(
+      await body.findByRole('button', { name: 'Back to UI interaction model' }),
+    );
+    await readingAt('UI interaction model', 300);
+    await expect(path()).toBe(interactionModel);
     await userEvent.click(body.getByRole('button', { name: 'Back to documentation' }));
     await body.findByRole('navigation', { name: 'Documents' });
+    await waitFor(() => expect(path()).toBe(main));
+    // Every step moved through the same entries: none was added.
+    await expect(router().history.length).toBe(entries + 1);
   },
 };
 
-/** The tree is one Tab stop; arrows, Home and End move, Right and Left expand and collapse. */
+/**
+ * A reload of a hop (remounted at its address; the entry still says a link opened it): the
+ * address's article alone over the tree, whose Back replaces the address with the tree's; widening
+ * shows the same article beside the tree.
+ */
+export const NarrowReloadAfterHop: Story = {
+  args: {
+    path: aiSessionUx,
+    openedFrom: {
+      entry: 'before-reload',
+      documentId: 'product.specflow.ui.interaction-model',
+      link: true,
+    },
+  },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ userEvent }) => {
+    await settleViewport(375, 812);
+    const body = screen();
+    await body.findByRole('heading', { level: 1, name: 'AI-session UX' });
+    await settleViewport(1440, 900);
+    await body.findByRole('heading', { level: 1, name: 'AI-session UX' });
+    const tree = body.getByRole('navigation', { name: 'Documents' });
+    await expect(
+      within(tree)
+        .getByRole('button', { name: /AI-session UX/ })
+        .getAttribute('aria-current'),
+    ).toBe('page');
+    await settleViewport(375, 812);
+    await userEvent.click(await body.findByRole('button', { name: 'Back to documentation' }));
+    await waitFor(() => expect(path()).toBe(main));
+    await expect(router().history.length).toBe(1);
+  },
+};
+
+/**
+ * The tree is one Tab stop; arrows, Home and End move, Right and Left expand and collapse. Choosing
+ * the document already shown (the root index too) adds no history entry.
+ */
 export const TreeKeyboard: Story = {
   args: { path: main },
   play: async ({ userEvent }) => {
@@ -317,6 +388,9 @@ export const TreeKeyboard: Story = {
     const current = within(tree).getByRole('button', { name: /Nevo SpecFlow documentation/ });
     await expect(current.getAttribute('aria-current')).toBe('page');
     await expect(current.tabIndex).toBe(0);
+    const entries = router().history.length;
+    await userEvent.click(current);
+    await expect(path()).toBe(main);
     await expect(
       within(tree)
         .getAllByRole('button')
@@ -338,6 +412,9 @@ export const TreeKeyboard: Story = {
     await expect(document.activeElement?.textContent).toContain('Słownik pojęć');
     await userEvent.keyboard('{Enter}');
     await body.findByRole('heading', { level: 1, name: 'Słownik pojęć' });
+    await expect(router().history.length).toBe(entries + 1);
+    await userEvent.keyboard('{Enter}');
+    await expect(router().history.length).toBe(entries + 1);
   },
 };
 
@@ -376,8 +453,8 @@ export const LeaveAndComeBack: Story = {
 
 /**
  * The search: results once typing pauses (a live status with the count), a result opens its
- * section with focus on the heading, the non-authoritative switch keeps focus, Escape returns to
- * the tree with the field focused.
+ * section with focus on the heading, the proposals checkbox keeps focus and its hint opens by
+ * keyboard, Escape returns to the tree with the field focused.
  */
 export const SearchFlow: Story = {
   args: { path: main },
@@ -393,14 +470,26 @@ export const SearchFlow: Story = {
 
     await userEvent.clear(field);
     await userEvent.type(field, 'workspace-aware reader');
-    const include = await body.findByRole('button', { name: /^Include \d+ non-authoritative$/ });
+    const include = await body.findByRole('checkbox', { name: /^Include proposals \(\d+\)$/ });
     await waitFor(() => expect(body.getAllByText('No matching documents')).toHaveLength(2));
+    await expect(include.getAttribute('aria-checked')).toBe('false');
     include.focus();
-    await userEvent.keyboard('{Enter}');
+    await userEvent.keyboard(' ');
+    await waitFor(() => expect(include.getAttribute('aria-checked')).toBe('true'));
+    await expect(document.activeElement).toBe(include);
     await waitFor(() =>
-      expect(body.getByRole('button', { name: 'Leave out non-authoritative' })).toBe(include),
+      expect(body.getByRole('checkbox', { name: /^Include proposals \(\d+\)$/ })).toBe(include),
     );
     await expect(document.activeElement).toBe(include);
+
+    // The hint says what a proposal is, by keyboard; Escape returns to its button.
+    await userEvent.tab();
+    const hint = body.getByRole('button', { name: 'What are proposals?' });
+    await expect(document.activeElement).toBe(hint);
+    await userEvent.keyboard('{Enter}');
+    await body.findByText(/^Proposals are ideas and plans/);
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(document.activeElement).toBe(hint));
     await body.findByRole('button', { name: /^Semantic docs search — human reader/ });
 
     field.focus();
@@ -431,12 +520,15 @@ export const PickToMissingDocument: Story = {
   },
 };
 
-/** A document opened from the reader that is gone in the next corpus: "no longer in the workspace". */
+/** A document gone in the next corpus: the one neutral message (as for an unknown address). */
 export const DocumentRemovedWhileReading: Story = {
   args: {
     path: `${main}/ideas.semantic-docs.search-quality`,
-    fromReader: true,
     removeOnRead: 'ideas.semantic-docs.search-quality',
+  },
+  play: async () => {
+    await settleViewport(1440, 900);
+    await screen().findByText('This document is no longer available in this workspace');
   },
 };
 

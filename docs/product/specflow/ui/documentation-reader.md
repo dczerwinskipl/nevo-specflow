@@ -9,7 +9,7 @@ tags: [documentation, reader, workspace, worktree, search]
 read_when:
   - designing or implementing the read-only reader of the project documentation in the UI
   - choosing how a workspace is chosen or switched for documentation
-  - presenting documentation search results, non-authoritative documents or blocked links
+  - presenting documentation search results, proposals or blocked links
 summary: >
   Screen contract of the read-only reader of the project documentation (docs.root) of one
   registered workspace: entry points, current workspace and picker, tree, search results, the
@@ -48,8 +48,8 @@ Documents screen: those are Specification documents, a different corpus with its
    changes are included" when it is dirty.
 2. **Where is the document I need?** — the tree of current documents, or search (primary).
 3. **What does it say?** — the article (primary once open).
-4. **Can I rely on it?** — a quiet Non-authoritative note for documents under a non-authoritative
-   prefix; status and type stay in Properties.
+4. **Can I rely on it?** — a quiet note on a **proposal** (a document under a `proposals` prefix of
+   `docs.yaml`: an idea or plan, not a current rule); status and type stay in Properties.
 5. **Where next?** — internal links, the contents, and Related at the end of the article.
 
 Exceptional conditions replace the article area only (the tree pane keeps its geometry and the
@@ -103,21 +103,30 @@ workspace picker), except No access, which replaces the whole surface. Skipped d
   "<title> is not in <workspace>" and the article area shows that workspace's root index (or the
   no-index sentence). Nothing from the previous workspace is shown under the
   new one.
-- **Back on Wide and Compact:** every opened document (tree, result or link) is a route push, so
-  browser Back returns to the previous document; there is no in-reader Back control, because the
-  tree and the results stay visible beside the article.
-- **Back on Narrow:** the article is a pushed Secondary stack screen. Opening from the tree or the
-  results starts a new stack. An internal link **pushes another article screen**, so the header Back
-  returns to the previous article at its reading position; only the first screen's Back returns to
-  the documentation (it steps back to the tree's entry, or replaces a directly opened address with
-  the tree's). A link hop does not change
-  the address: the address names the first article of the stack (decision D-B). Back keeps the route, the search text and results, the tree expansion, the
-  selection and the pane's scroll (the Documents rule). Rationale: on Narrow the article is the
-  whole screen, so a link hop must be undoable in place, as on any phone reader; on split layouts
-  the browser history already does this and a second Back would duplicate it. The stack exists only
-  while the layout is stacked: it closes when the workspace becomes wide enough to split, and it
-  closes when the reader is left or the workspace is switched (the same document reopens in the new
-  workspace when it exists). Each stacked header names its own document.
+- **The address always names the document being read (decision D-B).** Every opened document
+  (tree, result, link, Related, a successor), at every width, is a route push, so the same link
+  behaves the same on Wide and Narrow, browser Back and Forward follow the history, a reload or a
+  resize opens the document the address names, and Copy link copies it. Choosing the document and
+  section already shown (on split layouts the root index of the workspace's own address too) opens
+  nothing and adds no history entry. Back and Forward return to each article at its reading
+  position, kept in memory per history entry for the browser tab, also after leaving the reader and
+  coming back.
+- **Back on Wide and Compact:** browser Back returns to the previous document; there is no
+  in-reader Back control, because the tree and the results stay visible beside the article.
+- **Back on Narrow:** the article is a pushed Secondary stack screen over the tree. Opening from
+  the tree or the results starts a new stack. A link of an article changes the address and
+  **pushes another article screen**; its header Back is browser Back, named for the previous
+  article ("Back to <title>"), and returns to it at its reading position. The first screen's Back
+  returns to the documentation: it steps back to the tree's entry when that is the previous entry,
+  and otherwise (an address opened directly, a reload or a resize after a hop) replaces the address
+  with the tree's, so it never adds a history entry; after a reload on a hop, browser Back from the
+  documentation then reaches the previous article. Browser Back and Forward move the stack the
+  same way. After a reload or a resize the stack is rebuilt minimally: the tree, then the
+  address's article. Back keeps the route, the search text and results, the tree expansion, the
+  selection and the pane's scroll (the Documents rule). The stack exists only while the layout is
+  stacked: it closes when the workspace becomes wide enough to split, and it closes when the reader
+  is left or the workspace is switched (the same document reopens in the new workspace when it
+  exists). Each stacked header names its own document.
 
 ## Composition
 
@@ -137,8 +146,8 @@ Wide / Compact                                   Narrow
   results. Folders first, then documents; a folder's hub (README) leads its documents, the rest by
   title. A document row shows its **title** (wrapping, not truncated; full path in the tooltip and in
   Properties); folders show their folder name. The opened document is `aria-current`; its ancestors
-  open on entry. A non-authoritative prefix is labelled once, on the folder that owns it
-  (`Non-authoritative`, tree state label), not on every row. Draft status is not shown in the tree.
+  open on entry. A proposals prefix is labelled once, on the folder that owns it
+  ("Proposals", tree state label), not on every row. Draft status is not shown in the tree.
 - **Search results** replace the tree while the field has text (debounced as you type; Escape or
   the clear button returns to the tree with its selection). Each row: title (two lines at most),
   the best section's heading path, and its excerpt (two lines, muted). A count line leads the list.
@@ -151,18 +160,21 @@ Wide / Compact                                   Narrow
   says "1 document is skipped: it has errors" with its path and error, or "N documents are skipped"
   as a collapsed disclosure listing each path (full, wrapping) and its error. A link to a skipped
   document is inert and gives the error.
-- **Non-authoritative in search:** left out by default. On the count line, one switch "Include N
-  non-authoritative" ("Leave out non-authoritative" once included) that keeps its place and focus
-  while the answer loads; with no other match the empty state says that N non-authoritative documents
-  match (the same switch shows them). Included rows carry the Non-authoritative label.
+- **Proposals in search:** left out by default. On the count line, one checkbox "Include proposals
+  (N)" (N: the proposals the answer left out, or those it included once checked; no number while the
+  answer loads) that keeps its place and focus while the answer loads, shown while proposals are
+  included or some are left out. Beside it an info button ("What are proposals?", reachable by
+  keyboard and touch) opens a popover: "Proposals are ideas and plans in folders marked as
+  proposals; they are not current rules." With no other match the empty state says that N proposals
+  match (the same checkbox includes them). Included rows carry the "Proposal" label.
 - **Article** (the Documents preview): Properties row (path, type, status, summary, id), the
   Markdown body (`MarkdownDocument`, frontmatter never rendered), and **Related** (frontmatter
   `related` as links, at the end). From a 840 px panel the Properties and the **Contents** sit in the
   sticky column beside the text; narrower panels show Properties above the text and a Contents icon
   in the header that opens the Contents sheet. Header: the document title; overflow **Copy link**
-  (workstation-local, it contains the workspace id) and **Copy path** (portable). A non-authoritative
-  document starts with a quiet note: proposals and drafts, not agreed documentation, left out of
-  default search.
+  (workstation-local, it contains the workspace id) and **Copy path** (portable). A proposal starts
+  with a quiet note: "This is a proposal, not a current rule. Search leaves proposals out unless
+  you include them."
 - **First article (split layouts).** When the route names no document, the article area shows the
   documentation's **root index** (`<docs.root>/README.md`) as an ordinary article, and the tree marks
   it current. The route stays `/workspaces/:workspaceId/docs`: the address means "this workspace's
@@ -200,22 +212,24 @@ element with that id in the article, if there is one.
 
 ## States
 
-| State                                 | Tree pane                                                     | Article area                                                                        |
-| ------------------------------------- | ------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| Loading                               | workspace row, field, skeleton rows                           | document skeleton when a document is requested                                      |
-| Documentation not configured          | workspace picker only                                         | "No project documentation": where documents are read from (`docs.root`)             |
-| No documents                          | workspace picker only                                         | "No documents yet"                                                                  |
-| Linked or remembered workspace gone   | quiet fallback line under the picker                          | normal (the project folder's documentation)                                         |
-| Workspace unavailable (explicit pick) | workspace picker only                                         | attention Alert with the folder: choose another workspace or Try again              |
-| Unknown document                      | normal                                                        | "Document not found" in <workspace>; may exist only in another workspace            |
-| Document removed while reading        | refreshed tree                                                | "This document is no longer in the workspace"; the tree shows the current documents |
-| Superseded document link              | normal                                                        | "This document was superseded" and Open <successor> when known                      |
-| Some documents skipped                | the skipped line under the workspace row, then field and tree | normal                                                                              |
-| No access (`docs.view` missing)       | whole surface                                                 | "No access to the project documentation"; ask a project administrator               |
+| State                                 | Tree pane                                                     | Article area                                                                 |
+| ------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Loading                               | workspace row, field, skeleton rows                           | document skeleton when a document is requested                               |
+| Documentation not configured          | workspace picker only                                         | "No project documentation": where documents are read from (`docs.root`)      |
+| No documents                          | workspace picker only                                         | "No documents yet"                                                           |
+| Linked or remembered workspace gone   | quiet fallback line under the picker                          | normal (the project folder's documentation)                                  |
+| Workspace unavailable (explicit pick) | workspace picker only                                         | attention Alert with the folder: choose another workspace or Try again       |
+| Document not available                | normal (refreshed when the corpus changed)                    | "This document is no longer available in this workspace" and the document id |
+| Superseded document link              | normal                                                        | "This document was superseded" and Open <successor> when known               |
+| Some documents skipped                | the skipped line under the workspace row, then field and tree | normal                                                                       |
+| No access (`docs.view` missing)       | whole surface                                                 | "No access to the project documentation"; ask a project administrator        |
 
 On Narrow the tree-pane-only states show their message under the workspace picker. Freshness: the
 reader compares the corpus revision of the tree, article and search; on a difference it refreshes all
-three together without a banner; a document gone in the new revision shows "removed".
+three together without a banner; a document gone in the new revision shows "Document not
+available". One neutral message serves every missing document (removed while reading, or an
+address to an unknown id, which may exist only in another workspace): the reader does not guess
+the cause (decision D-E).
 
 ## Keyboard and accessibility
 
@@ -243,14 +257,14 @@ Integration readiness: **ready** — the shared workspace list (`GET /api/worksp
   titles, dirty flag (informative). No Git branch is required. The project folder is identified
   (the default and the fallback). The tab's current workspace is UI state, not a Runtime fact.
 - Tree entry: document id, title, type, status (current documents only), path under `docs.root`,
-  summary, non-authoritative flag. One corpus revision for the whole tree. The skipped documents:
+  summary, proposal flag. One corpus revision for the whole tree. The skipped documents:
   path and error each.
 - Article: the entry plus `related` (resolved to titles, inactive ones flagged), the body without
   frontmatter, and the sections (section id, heading path, body line) so section jumps use the
   rendered source lines. Inactive ids answer "superseded" with the successor id when known.
 - Search: mode and the `index-building` reason with progress, results
   with frontmatter and sections (id, heading path, line, excerpt), and the number of matching
-  non-authoritative documents left out.
+  proposals left out.
 
 ## Design-system dependencies
 
@@ -270,17 +284,20 @@ Integration readiness: **ready** — the shared workspace list (`GET /api/worksp
   reload or Back to the entry does not replay an explicit pick: a remembered workspace that became
   unavailable then falls back quietly instead of showing the Alert. The Session's way back stays in
   the reader's location state while documents are opened.
-- **Document removed while reading (D-E)** is told from **Unknown document** by how it was opened: a
-  document opened from the reader (tree, results, a link, the root index) existed when it was
-  opened, so its later `404` reads "no longer in the workspace"; an address opened directly reads
-  "Document not found". Later work: decide it from the corpus revisions (the document was in the
-  tree of the revision before the refusal's).
-- **Narrow (D-B).** The address names the first article of the stack; a link hop pushes a screen
-  without changing the address, so a reload shows the first article. Widening closes the stack and
-  shows the address's article. The first screen's Back steps back in history when the article was
-  opened from the reader (the entry before it is the tree's), and replaces a directly opened address
-  with the tree's. Rare case: after a resize from Wide, the entry before a stacked article may be the
-  previous article, so that Back shows it.
+- **Document not available (D-E).** One state for every `404` of an article (removed while
+  reading or an unknown address): "This document is no longer available in this workspace" with
+  the document id. There is no "opened from the reader" heuristic.
+- **Always URL (D-B).** Every opened document is a route push whose location state says how it was
+  opened (`openedFrom`: the history entry it was opened from, whether that entry named a document,
+  and whether a link of an article opened it). Reading positions are kept in memory by history
+  entry for the tab (the latest 200 entries), on every layout. Opening the document and section
+  the address already shows (or the root index on a split layout's workspace address) does nothing. On Narrow the stack is a projection of the address
+  (`useNarrowArticleStack`): an address one entry below the top pops it, an entry a link opened
+  from the top is pushed (the link, or Forward), anything else opens a new stack with that article
+  alone (the tree, the results, a reload, a resize from a split layout). Only the reader moves the
+  stack: a stacked screen's leave guard turns the header Back into browser Back below the first
+  screen and, on the first screen, into a step back to the tree's entry when that is the previous
+  entry, else a replace with the tree's address.
 - **Leaving the reader.** The reader decides nothing (no redirect, no consumed entry) once the
   location names another screen, so navigation and browser Back leave it for good.
 - **Specification entry (D-A).** A compact Documentation row with the bound workspace's name, in the
@@ -314,17 +331,24 @@ project folder, and the workspace picker in the tree pane follows the Specificat
   row (a permanent truncated technical name, the only workspace fact in the navigation, repeating what
   the Specification section implies), and a full app-wide workspace context (no other screen reads a
   workspace that is not its Specification's).
-
-Proposed, pending owner confirmation (coordinator, 2026-11-13, after the implementation review):
-
-- **D-A — Specification entry.** A compact Documentation row on the Specification Overview after
-  Tasks and Documents (the Overview has no workspace facts section to join), never above Tasks.
-- **D-B — Narrow link hops.** A hop pushes an article screen without changing the address; the
-  address names the first article of the stack.
-- **D-C — Session Context entry.** A row of the Specification section (the first row of Work
-  without one), not a section of its own.
-- **D-D — Entry intent.** A pick or a Session entry is the intent of one navigation and is consumed
-  once read, so a reload or Back never replays an explicit pick (a remembered workspace that became
-  unavailable falls back quietly instead of showing the Alert).
-- **D-E — Removed versus unknown document.** Decided by how the document was opened (from the
-  reader or by an address); deciding it from corpus revisions is later work.
+- **D-A — Specification entry (decided, owner 2026-11-13).** A compact Documentation row on the
+  Specification Overview after Tasks and Documents (the Overview has no workspace facts section to
+  join), never above Tasks.
+- **D-B — the address always names the document (decided, owner 2026-11-13).** Every navigation to
+  another document, at every width, changes the address and pushes a history entry; on Narrow a
+  link also pushes an article screen, whose Back is browser Back. It replaces the proposal that a
+  Narrow link hop keeps the address of the stack's first article, rejected because the address
+  named one article while the user read another and a reload brought back the first.
+- **D-C — Session Context entry (decided, owner 2026-11-13).** A row of the Specification section
+  (the first row of Work without one), not a section of its own.
+- **D-D — Entry intent (decided, owner 2026-11-13).** A pick or a Session entry is the intent of one
+  navigation and is consumed once read, so a reload or Back never replays an explicit pick (a
+  remembered workspace that became unavailable falls back quietly instead of showing the Alert).
+- **D-E — a missing document (decided, owner 2026-11-13).** One neutral message, "This document is
+  no longer available in this workspace" (Polish "Ten dokument nie jest już dostępny w tym obszarze
+  roboczym"), whatever the cause; the reader does not tell "removed while reading" from "not
+  found".
+- **Proposals (decided, owner 2026-11-13).** "Proposal" is the one name, in every surface, for a
+  document under a `proposals` prefix; the search control is a checkbox with a hint that says what
+  a proposal is (Polish "Propozycje", "Uwzględnij propozycje (N)"; the article note "To propozycja,
+  a nie obowiązująca zasada.").

@@ -9,7 +9,7 @@ const doc = (path: string, title: string, extra: Partial<WorkspaceDocsTreeDocume
   status: 'current',
   path,
   summary: '',
-  nonAuthoritative: false,
+  proposal: false,
   ...extra,
 });
 
@@ -19,20 +19,20 @@ const documents = [
   doc('guide/z.md', 'Zulu'),
   doc('Guide2/a.md', 'Alpha'),
   doc('guide/README.md', 'Guide hub'),
-  doc('ideas/x/one.md', 'One', { nonAuthoritative: true }),
-  doc('ideas/two.md', 'Two', { nonAuthoritative: true }),
+  doc('ideas/x/one.md', 'One', { proposal: true }),
+  doc('ideas/two.md', 'Two', { proposal: true }),
 ];
 
 describe('documentation tree model', () => {
-  it('orders folders first, the hub first, then titles; labels the owning non-authoritative folder once', () => {
+  it('orders folders first, the hub first, then titles; labels the folder that owns the proposals once', () => {
     const root = buildDocsTree(documents);
     expect(root.folders.map((folder) => folder.name)).toEqual(['guide', 'Guide2', 'ideas']);
     expect(root.documents.map((item) => item.title)).toEqual(['Zeta index', 'Beta']);
     expect(root.folders[0]!.documents.map((item) => item.title)).toEqual(['Guide hub', 'Zulu']);
     const ideas = root.folders[2]!;
-    expect(ideas.ownsNonAuthoritative).toBe(true);
-    expect(ideas.folders[0]!.ownsNonAuthoritative).toBe(false);
-    expect(root.folders[0]!.ownsNonAuthoritative).toBe(false);
+    expect(ideas.ownsProposals).toBe(true);
+    expect(ideas.folders[0]!.ownsProposals).toBe(false);
+    expect(root.folders[0]!.ownsProposals).toBe(false);
   });
 
   it('moves along the visible rows: arrows, Home/End, Right into a folder, Left to its parent', () => {

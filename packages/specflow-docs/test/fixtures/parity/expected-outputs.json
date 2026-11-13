@@ -103,7 +103,7 @@
     "args": ["get", "ideas.widget-search", "--json"],
     "exitCode": 0,
     "stdout": [
-      "{\n  \"documents\": [\n    {\n      \"id\": \"ideas.widget-search\",\n      \"file\": \"docs/ideas/widget-search.md\",\n      \"title\": \"Widget search idea\",\n      \"status\": \"draft\",\n      \"summary\": \"A non-authoritative widget idea.\",\n      \"read_when\": [\n        \"exploring widget search\"\n      ],\n      \"areas\": [\n        \"docs\"\n      ],\n      \"tags\": []\n    }\n  ],\n  \"skipped\": []\n}"
+      "{\n  \"documents\": [\n    {\n      \"id\": \"ideas.widget-search\",\n      \"file\": \"docs/ideas/widget-search.md\",\n      \"title\": \"Widget search idea\",\n      \"status\": \"draft\",\n      \"summary\": \"A widget idea, a proposal.\",\n      \"read_when\": [\n        \"exploring widget search\"\n      ],\n      \"areas\": [\n        \"docs\"\n      ],\n      \"tags\": []\n    }\n  ],\n  \"skipped\": []\n}"
     ],
     "stderr": []
   },

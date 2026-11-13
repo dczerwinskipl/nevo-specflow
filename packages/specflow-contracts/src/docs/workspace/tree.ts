@@ -16,8 +16,8 @@ export const WorkspaceDocsTreeDocumentSchema = Type.Object(
     path: Type.String({ minLength: 1 }),
     /** The frontmatter `summary`; empty when there is none. */
     summary: Type.String(),
-    /** Below one of the non-authoritative path prefixes of `docs.yaml`. */
-    nonAuthoritative: Type.Boolean(),
+    /** Below one of the proposal path prefixes of `docs.yaml`. */
+    proposal: Type.Boolean(),
   },
   { additionalProperties: false },
 );

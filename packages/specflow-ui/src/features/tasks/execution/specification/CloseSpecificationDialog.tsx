@@ -16,6 +16,7 @@ import type { ExitBlocker, WorkflowActionProjection } from '@nevo/specflow-contr
 import { useAppServices } from '../../../../app/useAppServices';
 import { InlineAction } from '../InlineAction';
 import { workflowRefusalOf } from '../refusal';
+import { focusInitial } from './focusInitial';
 import { BlockerGroups, type BlockerTask } from './BlockerGroups';
 
 type Position = WorkflowActionProjection['position'];
@@ -46,7 +47,7 @@ export function CloseSpecificationDialog(props: CloseSpecificationDialogProps) {
 
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
-      <DialogContent closeLabel={t('common.close')}>
+      <DialogContent closeLabel={t('common.close')} onOpenAutoFocus={focusInitial}>
         {props.open ? <CloseBody {...props} /> : null}
       </DialogContent>
     </Dialog>
@@ -127,7 +128,7 @@ function CloseBody({
           ) : null}
         </DialogBody>
         <DialogFooter>
-          <Button autoFocus onClick={dismiss}>
+          <Button data-initial-focus="" onClick={dismiss}>
             {t('workflowExecution.exit.dismiss')}
           </Button>
         </DialogFooter>

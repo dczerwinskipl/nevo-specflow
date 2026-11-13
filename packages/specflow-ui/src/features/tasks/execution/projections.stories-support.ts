@@ -23,15 +23,15 @@ export const dominik: WorkflowActor = {
   details: { actorId: 'local:dominik', trust: 'local' },
 };
 
-const step = (id: string, title: string, produces?: 'tasks') =>
-  ({
-    id,
-    title,
-    kind: 'work' as const,
-    purpose: `${title} of the change.`,
-    executors: ['agent' as const, 'human' as const],
-    ...(produces ? { produces } : {}),
-  }) as const;
+type Step = Extract<WorkflowActionProjection['position'], { kind: 'active' }>['step'];
+
+const step = (id: string, title: string): Step => ({
+  id,
+  title,
+  kind: 'work',
+  purpose: `${title} of the change.`,
+  executors: ['agent', 'human'],
+});
 
 export const buildWorkflow = {
   workflowId: 'build',

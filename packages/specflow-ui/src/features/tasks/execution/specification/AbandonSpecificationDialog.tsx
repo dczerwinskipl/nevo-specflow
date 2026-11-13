@@ -19,6 +19,7 @@ import { useAppServices } from '../../../../app/useAppServices';
 import { invalidateAfterTaskChange } from '../../authoring/queries';
 import { workflowRefusalOf } from '../refusal';
 import { WorkflowRefusalAlert } from '../WorkflowRefusalAlert';
+import { focusInitial } from './focusInitial';
 import { BlockerGroups, type BlockerTask } from './BlockerGroups';
 
 export interface AbandonSpecificationDialogProps {
@@ -45,7 +46,7 @@ export function AbandonSpecificationDialog(props: AbandonSpecificationDialogProp
 
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
-      <DialogContent closeLabel={t('common.close')}>
+      <DialogContent closeLabel={t('common.close')} onOpenAutoFocus={focusInitial}>
         {props.open ? <AbandonBody {...props} /> : null}
       </DialogContent>
     </Dialog>
@@ -103,7 +104,7 @@ function AbandonBody({
           />
         </DialogBody>
         <DialogFooter>
-          <Button autoFocus onClick={dismiss}>
+          <Button data-initial-focus="" onClick={dismiss}>
             {t('workflowExecution.exit.dismiss')}
           </Button>
         </DialogFooter>

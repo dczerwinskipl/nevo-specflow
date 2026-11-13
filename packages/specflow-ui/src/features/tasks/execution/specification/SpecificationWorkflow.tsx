@@ -55,6 +55,7 @@ function ProjectSpecificationWorkflow({
   readonly specId: string;
   readonly children: ReactNode;
 }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const collection = useApplicationCollection();
   const projection = useSpecificationActions(specId).data;
@@ -64,7 +65,9 @@ function ProjectSpecificationWorkflow({
   const asBlocker = (task: (typeof all)[number]): BlockerTask => ({
     id: task.id,
     title: task.title,
-    state: task.status,
+    state: task.statusId
+      ? t(`taskAuthoring.status.${task.statusId}`, { defaultValue: task.status })
+      : task.status,
   });
   const tasks = new Map(all.map((task) => [task.id, asBlocker(task)]));
   const openTask = (taskId: string) =>

@@ -11,7 +11,7 @@ import { fixtureApi, fixtureSessionId, sessionFixture } from './managedSession.s
 /**
  * Component-level stories for `ReadableText` (`MessageText.tsx`): the one owner of a message's
  * fully resolved text (initial preview plus every auto-stitched page) and of the imperative Copy
- * handle `ManagedSession.tsx`'s `EntryRow`/`MessageCopyAction` act on. Mounts `ReadableText`
+ * handle `ManagedSession.tsx`'s `EntryRow`/`conversation/MessageActions` act on. Mounts `ReadableText`
  * directly — no `AppShell`/`AppWorkspace`/`ManagedSession` screen around it — with a minimal mock
  * `api` (only its `content()` method is ever called) and a plain `TextPreview` value, matching
  * what the component itself actually needs.
@@ -25,7 +25,7 @@ import { fixtureApi, fixtureSessionId, sessionFixture } from './managedSession.s
 
 /**
  * The thinnest possible harness around `ReadableText`'s own imperative Copy handle: a ref plus a
- * Copy button, exactly the shape `EntryRow`/`MessageCopyAction` wire up in `ManagedSession.tsx`
+ * Copy button, exactly the shape `EntryRow`/`conversation/MessageActions` wire up in `ManagedSession.tsx`
  * (`textRef` + `handleCopy`), without that component's hover-reveal chrome or icon swap — those
  * are `ManagedSession`-specific presentation, not part of `ReadableText`'s own contract.
  */

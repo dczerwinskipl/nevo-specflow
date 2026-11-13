@@ -238,6 +238,38 @@ export const SplitShortConversationComposerAtBottom: Story = {
   },
 };
 
+/**
+ * With a fine pointer: an answer's actions are always visible in a row under it; the user's bubble
+ * reserves no row, and its actions appear in the corner toolbar only on hover or focus.
+ */
+export const MessageActionsWithFinePointer: Story = {
+  tags: ['contract'],
+  play: async ({ canvasElement }) => {
+    await settleViewport(1280, 800);
+    await waitForConversation(canvasElement);
+    const primary = canvasElement.querySelector<HTMLElement>('[data-workspace-surface="primary"]')!;
+    const answer = [...primary.querySelectorAll<HTMLElement>('article:not(.justify-end)')].find(
+      (article) => article.querySelector(':scope > [data-message-actions]'),
+    )!;
+    await expect(
+      getComputedStyle(answer.querySelector('[data-message-actions]')!).opacity,
+      'answer actions always visible',
+    ).toBe('1');
+
+    const request = primary.querySelector<HTMLElement>('article.justify-end')!;
+    const bubble = request.querySelector<HTMLElement>('.rounded-composite')!;
+    await expect(
+      Math.round(request.getBoundingClientRect().height),
+      'the user bubble reserves no actions row',
+    ).toBe(Math.round(bubble.getBoundingClientRect().height));
+    const toolbar = request.querySelector<HTMLElement>('[data-message-actions]')!;
+    await expect(getComputedStyle(toolbar).opacity, 'hidden until hover or focus').toBe('0');
+    // CSS `:hover` needs a real pointer; focus reveals it through the same group rule.
+    toolbar.querySelector('button')!.focus();
+    await waitFor(async () => expect(getComputedStyle(toolbar).opacity).toBe('1'));
+  },
+};
+
 export const SplitAt780WithRuntimeContext: Story = {
   tags: ['contract'],
   play: async ({ canvasElement }) => {

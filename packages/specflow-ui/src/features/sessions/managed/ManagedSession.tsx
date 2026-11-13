@@ -9,7 +9,7 @@ import {
 } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Check, Copy, Plus, Send, Square, X } from 'lucide-react';
+import { Plus, Send, Square, X } from 'lucide-react';
 import {
   Alert,
   InlineNote,
@@ -41,6 +41,7 @@ import {
 import type { ConversationEntry, ProviderDescriptor } from '@nevo/specflow-contracts/sessions';
 import { createSessionFeed, type SessionFeed } from './feed';
 import { ReadableText, type ReadableTextHandle } from './MessageText';
+import { AnswerMessageActions, RequestMessageActions } from './conversation/MessageActions';
 import { ModelEffortPicker } from './ModelEffortPicker';
 import {
   createConversationScrollPosition,
@@ -89,66 +90,6 @@ function browserStorage() {
 }
 
 /**
- * Copy action for a specific authored message (full-session.md "Conversation": Copy
- * belongs to its authored message). Desktop reveals it only on hover/focus of the
- * message (the `group/message` on its `EntryRow` article below); coarse pointers always show it,
- * since hover does not exist on touch — the same `pointer-fine:opacity-0` /
- * `pointer-fine:group-hover/<name>:opacity-100` convention `treeRowActionClassName` already
- * establishes for a trailing row action in this Design System (`treeRecipes.ts`).
- *
- * Quote (quoting a message into the composer draft) is deferred (session-chat-v10-design.md §2):
- * V10 only says Copy and Quote "belong to" the message, without deciding whether Quote replaces or
- * appends to an existing draft, its exact quoted format, or focus handling afterward — material
- * product decisions, not implementation detail, so they are left to a follow-up rather than guessed
- * here.
- */
-function MessageCopyAction({ onCopy }: { onCopy: () => Promise<boolean> }) {
-  const { t } = useTranslation();
-  const [status, setStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
-  const resetTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  useEffect(() => () => clearTimeout(resetTimer.current), []);
-
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <TooltipProvider delayDuration={400}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <IconButton
-              aria-label={t('managedSession.copy.action')}
-              className={cn(
-                'shrink-0',
-                'pointer-fine:opacity-0',
-                'pointer-fine:group-hover/message:opacity-100',
-                'pointer-fine:group-focus-within/message:opacity-100',
-                'pointer-fine:focus-visible:opacity-100',
-              )}
-              icon={status === 'copied' ? Check : Copy}
-              size="xs"
-              variant="ghost"
-              onClick={() => {
-                clearTimeout(resetTimer.current);
-                void onCopy().then((ok) => {
-                  setStatus(ok ? 'copied' : 'failed');
-                  resetTimer.current = setTimeout(() => setStatus('idle'), 2000);
-                });
-              }}
-            />
-          </TooltipTrigger>
-          <TooltipContent>{t('managedSession.copy.action')}</TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-      <span role="status" aria-live="polite" className="sr-only">
-        {status === 'copied'
-          ? t('managedSession.copy.copied')
-          : status === 'failed'
-            ? t('managedSession.copy.failed')
-            : ''}
-      </span>
-    </span>
-  );
-}
-
-/**
  * One conversation entry, rendered per its semantic role (full-session.md "Conversation").
  * V10 rule: do not prefix every entry with a repeated "Ty"/"Asystent" speaker label — the kind
  * stays available to assistive tech (`sr-only`) but visual role comes from alignment/surface/
@@ -177,36 +118,33 @@ function EntryRow({
 
   if (entry.kind === 'request') {
     return (
-      <article data-entry-id={entry.id} className="group/message grid justify-end gap-1">
+      <article data-entry-id={entry.id} className="group/message relative grid justify-end">
         {srLabel}
         {/* `bg-surface-primary` — a brand-derived token (`brandEnvironment.ts`'s own
             `surfacePrimary`, mixed 55% toward black) rather than the brand's full-saturation
             `--color-action-primary`, which reads as a loud button fill rather than a quiet "this
             one is mine" message surface. A neutral `bg-surface-subtle` would give the user's own
             messages no visual identity distinct from the rest of the conversation. */}
-        <div className="max-w-content-standard rounded-composite bg-surface-primary px-4 py-3">
-          <ReadableText
-            ref={textRef}
-            api={api}
-            sessionId={sessionId}
-            value={entry.text}
-            onGrow={onGrow}
-          />
-        </div>
-        {/* In normal flow, directly under the bubble. An `absolute` copy row reserved no space,
-            so on touch screens (where it is always visible) it sat inside the list gap and touched
-            the next message. The list gap is kept small instead (`gap-4`), so the copy row plus
-            that gap reads as one clear break between messages. */}
-        <div className="flex justify-end">
-          <MessageCopyAction onCopy={handleCopy} />
-        </div>
+        {/* No row of its own under the bubble: its actions are a hover toolbar or a long-press
+            menu (`RequestMessageActions`). */}
+        <RequestMessageActions onCopy={handleCopy}>
+          <div className="max-w-content-standard rounded-composite bg-surface-primary px-4 py-3">
+            <ReadableText
+              ref={textRef}
+              api={api}
+              sessionId={sessionId}
+              value={entry.text}
+              onGrow={onGrow}
+            />
+          </div>
+        </RequestMessageActions>
       </article>
     );
   }
 
   if (entry.kind === 'answer') {
     return (
-      <article data-entry-id={entry.id} className="group/message grid min-w-0 gap-1">
+      <article data-entry-id={entry.id} className="grid min-w-0 gap-1">
         {srLabel}
         <ReadableText
           ref={textRef}
@@ -216,10 +154,8 @@ function EntryRow({
           markdown
           onGrow={onGrow}
         />
-        {/* In flow, same as the request bubble above. */}
-        <div className="flex">
-          <MessageCopyAction onCopy={handleCopy} />
-        </div>
+        {/* Always visible, in flow: the answer is the one message followed by its actions. */}
+        <AnswerMessageActions onCopy={handleCopy} />
       </article>
     );
   }

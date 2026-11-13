@@ -1702,6 +1702,7 @@
     "older": "Wczytaj starsze wiadomości",
     "loadingOlder": "Wczytywanie starszych wiadomości…",
     "latest": "Wróć do najnowszych wiadomości",
+    "messageActions": "Akcje wiadomości",
     "copy": {
       "action": "Kopiuj wiadomość",
       "copied": "Skopiowano",

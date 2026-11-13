@@ -1978,7 +1978,8 @@
       "progressCancelled": "Ukończono {{completed}} z {{total}} · anulowane: {{cancelled}}",
       "emptyDescription": "Utwórz zadania teraz albo po kroku podziału. Zadania można tworzyć, zanim workflow wystartuje.",
       "draftLine": "Szkic · wymaga zatwierdzenia",
-      "after": "po {{ids}}"
+      "after": "po {{ids}}",
+      "actionsFailed": "Nie udało się wczytać, czy można tworzyć zadania."
     },
     "newTask": {
       "title": "Nowe zadanie",
@@ -2129,7 +2130,8 @@
       "unresolvedEntry": "{{ref}} nie rozwiązuje się.",
       "awaitedEntry": "{{ref}} jeszcze nie istnieje.",
       "ownArtifactTitle": "Nie dodano: to własny dokument zadania",
-      "ownArtifactBody": "Kontekst wymienia to, czego zadanie potrzebuje przed startem. {{ref}} powstaje w tym zadaniu, więc należy do warunku wyjścia kroku, który go tworzy, na przykład „istnieje dokument z wnioskami” przed zakończeniem."
+      "ownArtifactBody": "Kontekst wymienia to, czego zadanie potrzebuje przed startem. {{ref}} powstaje w tym zadaniu, więc należy do warunku wyjścia kroku, który go tworzy, na przykład „istnieje dokument z wnioskami” przed zakończeniem.",
+      "notFoundOptional": "Nie znaleziono: {{ref}} przeniesiono lub usunięto. Opcjonalny, więc następny krok go pominie."
     },
     "dependencies": {
       "none": "Brak zależności: zadanie może wystartować zaraz po zatwierdzeniu.",
@@ -2140,11 +2142,15 @@
       "dialogTitle": "Dodaj zależności do {{id}}",
       "dialogDescription": "{{id}} będzie gotowe dopiero, gdy te zadania zostaną ukończone.",
       "existing": "Już jest zależnością",
-      "cycle": "{{other}} już zależy od {{id}}; dodanie utworzyłoby cykl",
       "confirm": "Dodaj zależności",
       "legend": "Zadania",
       "noCandidates": "W tej specyfikacji nie ma innych zadań.",
-      "missingTask": "{{id}} nie jest już zadaniem tej specyfikacji."
+      "missingTask": "{{id}} nie jest już zadaniem tej specyfikacji.",
+      "unavailable": {
+        "would-create-cycle": "{{other}} już zależy od {{id}}; dodanie utworzyłoby cykl",
+        "cancelled": "Anulowane; nigdy nie zostanie ukończone",
+        "broken": "Uszkodzone; najpierw przywróć jego pliki"
+      }
     },
     "refusal": {
       "generic": "Zmiana nie została zapisana. Spróbuj ponownie.",

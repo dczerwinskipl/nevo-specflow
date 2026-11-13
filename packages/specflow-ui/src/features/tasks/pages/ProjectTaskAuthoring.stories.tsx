@@ -1,23 +1,22 @@
 import { useMemo } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { AppShell } from '@nevo/ui';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { TestServicesRouterContext } from '../../../../test-support/app/TestServicesRouterContext';
+import { RouterProvider, createMemoryHistory } from '@tanstack/react-router';
+import { createFixtureSpecsOverviewApi } from '../../../../test-support/specs/overview/api';
+import { createAuthStore } from '../../../auth/store';
+import { createSpecFlowQueryClient } from '../../../app/queryClient';
+import { createSpecFlowRouter } from '../../../app/router';
+import { builtInUiModuleRegistry } from '../../../app/ui-modules/builtInUiModules';
+import { UiModulesProvider } from '../../../app/ui-modules/UiModulesProvider';
 import { StoryLocalization } from '../../../i18n/StoryLocalization';
 import { createSpecFlowAppServices } from '../../../services';
-import { createSpecFlowQueryClient } from '../../../app/queryClient';
-import { VisitStateProvider } from '../../../app/VisitStateProvider';
-import { specificationKeys } from '../../specs/read-model';
-import { ProjectTasksSection } from '../contributions/specification-work';
-import { useSpecificationTask } from '../useSpecificationTask';
-import { SpecificationTaskPage } from './SpecificationTaskPage';
 import {
   SPEC,
   TASK,
   authoringApi,
   taskDocumentApi,
   taskResponse,
-  workspaceData,
+  workspaceResponse,
   type AuthoringScenario,
 } from './ProjectTaskAuthoring.stories-support';
 
@@ -27,70 +26,42 @@ interface FixtureProps {
 }
 
 /**
- * Task authoring of a project Runtime through the production page and hooks; only the Runtime
- * ports are fakes (the Task, its projection, its documents and the Specification workspace).
+ * Task authoring of a project Runtime in the routed application (shell, navigation, Specification
+ * Overview and Full Task routes); only the Runtime ports are fakes.
  */
 export function TaskAuthoringFixture({ screen, scenario }: FixtureProps) {
   const setup = useMemo(() => {
     const query = createSpecFlowQueryClient();
-    const workspace = workspaceData(scenario);
-    query.setQueryDefaults(specificationKeys.detail(SPEC), { staleTime: Infinity });
-    query.setQueryData(specificationKeys.detail(SPEC), workspace);
-    const response = taskResponse(scenario);
+    query.setDefaultOptions({ queries: { retry: false }, mutations: { retry: false } });
+    const defaults = createSpecFlowAppServices();
     const services = createSpecFlowAppServices({
-      taskApi: { getTask: () => Promise.resolve(response) },
+      authStore: createAuthStore(defaults.authApi, {
+        authenticationRequired: false,
+        authenticated: false,
+        user: { id: 'story', name: 'Demo' },
+        loginMethods: { password: { enabled: false }, oidc: [] },
+      }),
+      runtimeInfoApi: { getInfo: () => Promise.resolve({ dataMode: 'project' }) },
+      specsOverviewApi: createFixtureSpecsOverviewApi(),
+      specificationApi: { getSpecificationWorkspace: () => workspaceResponse(scenario) },
+      taskApi: { getTask: () => Promise.resolve(taskResponse(scenario)) },
       taskAuthoringApi: authoringApi(scenario),
       documentApi: taskDocumentApi,
     });
+    const path = screen === 'task' ? `/specs/${SPEC}/tasks/${TASK}` : `/specs/${SPEC}`;
+    const router = createSpecFlowRouter(createMemoryHistory({ initialEntries: [path] }), services);
 
-    return { query, services, workspace };
-  }, [scenario]);
-
-  return (
-    <StoryLocalization>
-      <QueryClientProvider client={setup.query}>
-        <TestServicesRouterContext services={setup.services}>
-          <VisitStateProvider>
-            <div style={{ height: '100dvh' }}>
-              <AppShell navigation={<div className="p-4">Navigation</div>}>
-                {screen === 'task' ? (
-                  <ConnectedTask />
-                ) : (
-                  // The section alone, at the width of the Overview's work column.
-                  <div className="@container/work w-content-standard max-w-full p-6">
-                    <ProjectTasksSection
-                      specId={SPEC}
-                      specTitle={setup.workspace.title}
-                      taskGroups={setup.workspace.taskGroups}
-                      totalTasksCount={setup.workspace.totalTasksCount}
-                      completedTasksCount={setup.workspace.completedTasksCount}
-                      onPreviewTask={() => undefined}
-                      fullTaskHref={(id) => `/specs/${SPEC}/tasks/${id}`}
-                      onExecuteTasks={() => undefined}
-                      canExecute={false}
-                    />
-                  </div>
-                )}
-              </AppShell>
-            </div>
-          </VisitStateProvider>
-        </TestServicesRouterContext>
-      </QueryClientProvider>
-    </StoryLocalization>
-  );
-}
-
-function ConnectedTask() {
-  const taskState = useSpecificationTask(SPEC, TASK);
+    return { query, router };
+  }, [screen, scenario]);
 
   return (
-    <SpecificationTaskPage
-      specId={SPEC}
-      taskId={TASK}
-      collection="current"
-      taskState={taskState}
-      onBack={() => undefined}
-    />
+    <QueryClientProvider client={setup.query}>
+      <UiModulesProvider modules={builtInUiModuleRegistry}>
+        <StoryLocalization locale="en">
+          <RouterProvider router={setup.router} />
+        </StoryLocalization>
+      </UiModulesProvider>
+    </QueryClientProvider>
   );
 }
 
@@ -117,8 +88,4 @@ export const OverviewTasks: Story = { tags: ['capture'], args: { screen: 'overvi
 export const OverviewEmpty: Story = {
   tags: ['capture'],
   args: { screen: 'overview', scenario: 'empty-specification' },
-};
-export const NarrowTask: Story = {
-  tags: ['capture'],
-  globals: { viewport: { value: 'mobile1' } },
 };

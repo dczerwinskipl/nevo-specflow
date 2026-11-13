@@ -60,6 +60,14 @@ export function entrySupporting(
     return { text: t('taskAuthoring.context.awaited', { ref }), icon: 'clock' };
   }
 
+  if (problem?.kind === 'unresolved' && !entry.required) {
+    return {
+      text: t('taskAuthoring.context.notFoundOptional', { ref }),
+      tone: 'attention',
+      icon: 'triangle-alert',
+    };
+  }
+
   if (problem?.kind === 'unresolved') {
     return {
       text:

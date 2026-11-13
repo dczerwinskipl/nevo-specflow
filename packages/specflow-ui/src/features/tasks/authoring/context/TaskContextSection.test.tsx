@@ -9,8 +9,8 @@ import {
   refusal,
   renderWithAuthoring,
   resourceFixture,
-  taskProjection,
 } from '../authoring.test-support';
+import type { TaskAuthoring } from '@nevo/specflow-contracts/workflow';
 import type { TaskAuthoringApi } from '../api';
 import { contextView } from './contextModel';
 import { TaskContextSection } from './TaskContextSection';
@@ -29,10 +29,26 @@ const names = {
   ]),
 };
 
+type EntryState = TaskAuthoring['context']['entries'][number];
+const resolved = (entry: EntryState['entry']): EntryState => ({ entry, state: 'resolved' });
+
+/** The Engine's default context of the fixture Task (no explicit list). */
+const defaultAuthoring: TaskAuthoring = {
+  context: {
+    isDefault: true,
+    entries: [
+      resolved({ kind: 'task-document', id: 'task', required: true }),
+      resolved({ kind: 'task-document', id: 'screens', required: true }),
+      resolved({ kind: 'specification-document', id: 'overview', required: true }),
+    ],
+  },
+  dependencyCandidates: [],
+};
+
 function renderSection(
   api: TaskAuthoringApi,
   resource: TaskResourceFacts = resourceFixture(),
-  projection = taskProjection(),
+  authoring: TaskAuthoring = defaultAuthoring,
 ) {
   renderWithAuthoring(
     <TaskContextSection
@@ -40,7 +56,7 @@ function renderSection(
       specTitle="Single sign-on"
       taskId={TASK}
       revision={resource.revision}
-      view={contextView(resource, projection, 'overview')}
+      view={contextView(resource, authoring)}
       names={names}
       specificationDocuments={[
         { id: 'overview', title: 'Overview', filename: 'overview.md' },
@@ -130,17 +146,19 @@ describe('TaskContextSection', () => {
         { kind: 'specification-document', id: 'old-flow', required: true },
       ],
     });
-    renderSection(
-      fakeTaskAuthoringApi(),
-      resource,
-      taskProjection([
-        {
-          kind: 'context-unresolved',
-          entries: [{ index: 3, kind: 'specification-document', reason: 'not-found' }],
-        },
-        { kind: 'context-awaited', entries: [{ index: 2, kind: 'specification-document' }] },
-      ]),
-    );
+    const [main, ux, findings, oldFlow] = resource.context!;
+    renderSection(fakeTaskAuthoringApi(), resource, {
+      context: {
+        isDefault: false,
+        entries: [
+          resolved(main!),
+          resolved(ux!),
+          { entry: findings!, state: 'awaited' },
+          { entry: oldFlow!, state: 'unresolved', reason: 'not-found' },
+        ],
+      },
+      dependencyCandidates: [],
+    });
 
     const headings = () => screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent);
     expect(headings()).toEqual(['findings', 'Old login flow']);

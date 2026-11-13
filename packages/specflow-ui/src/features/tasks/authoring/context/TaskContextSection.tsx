@@ -128,7 +128,7 @@ export function TaskContextSection(props: TaskContextSectionProps) {
         </InformationList>
         {view.attention.length > 0 ? (
           <div>
-            <Button variant="ghost" size="sm" onClick={() => setShowAll(!all)}>
+            <Button variant="secondary" size="sm" onClick={() => setShowAll(!all)}>
               {all
                 ? t('taskAuthoring.context.showProblems')
                 : t('taskAuthoring.context.showAll', { count: view.rows.length })}

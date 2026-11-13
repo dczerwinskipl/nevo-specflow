@@ -5,6 +5,7 @@ import type {
   SetTaskStatusInput,
 } from '@nevo/specflow-contracts/tasks';
 import { useAppServices } from '../../../app/useAppServices';
+import { taskKeys } from '../queries';
 import { invalidateAfterTaskChange, taskAuthoringKeys } from './queries';
 
 /** What the owner may do with the Specification now (`createTask`, the allowed task types). */
@@ -51,10 +52,24 @@ export function useCreateTask(specId: string) {
  * The Task commands of one Task. Each carries the identity it was started for (`specId`, `taskId`
  * captured here, the revision in the variables), so a late answer refreshes that Task only.
  */
-export function useTaskCommands(specId: string, taskId: string) {
+export function useTaskCommands(
+  specId: string,
+  taskId: string,
+  options: {
+    /** After a removal: leave the Task's page before its caches go (no refetch of a gone Task). */
+    readonly onRemoved?: () => void;
+  } = {},
+) {
   const { taskAuthoringApi } = useAppServices();
   const queryClient = useQueryClient();
   const refresh = () => invalidateAfterTaskChange(queryClient, specId);
+  const removed = async () => {
+    options.onRemoved?.();
+    queryClient.removeQueries({ queryKey: taskKeys.detail(specId, taskId), exact: true });
+    queryClient.removeQueries({ queryKey: taskAuthoringKeys.taskActions(specId, taskId) });
+    queryClient.removeQueries({ queryKey: taskAuthoringKeys.documents(specId, taskId) });
+    await refresh();
+  };
 
   const edit = useMutation({
     mutationFn: (input: EditTaskInput) => taskAuthoringApi.editTask(specId, taskId, input),
@@ -67,7 +82,7 @@ export function useTaskCommands(specId: string, taskId: string) {
   const remove = useMutation({
     mutationFn: (expectedRevision: string) =>
       taskAuthoringApi.removeTask(specId, taskId, expectedRevision),
-    onSuccess: refresh,
+    onSuccess: removed,
   });
 
   return { edit, setStatus, remove, refresh };

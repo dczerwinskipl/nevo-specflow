@@ -64,7 +64,7 @@ export function TaskAuthoringView({
         ? t(`taskAuthoring.status.${other.statusId}`, { defaultValue: other.statusId })
         : other.status,
       ...(other.typeTitle ? { typeTitle: other.typeTitle } : {}),
-      ...(other.dependsOn ? { dependsOn: other.dependsOn } : {}),
+      ...(other.statusId ? { statusId: other.statusId } : {}),
     })),
   );
   const openTarget = (entry: TaskContextEntry) => {
@@ -178,6 +178,7 @@ export function TaskAuthoringView({
         revision={resource.revision}
         dependsOn={resource.dependsOn}
         tasks={otherTasks}
+        candidates={projection?.taskAuthoring?.dependencyCandidates ?? []}
         editable={lifecycle?.editDependencies.kind === 'allowed'}
         started={resource.position.state !== 'not-started'}
         collapsible={!supportsSplit}

@@ -115,10 +115,13 @@ export function useDocumentSave({
   specId,
   document,
   draft,
+  onSaved,
 }: {
   specId: string;
   document?: DocumentContent;
   draft?: DocumentDraft;
+  /** Called after each successful save with the saved document's id. */
+  onSaved?: (documentId: string) => void;
 }): DocumentSaveOwner {
   const { api: documentsApi } = useDocumentsApi();
   const cache = useQueryClient();
@@ -200,6 +203,7 @@ export function useDocumentSave({
         queryKey: specificationKeys.detail(variables.specId),
         exact: true,
       });
+      onSaved?.(variables.documentId);
     },
     // The tree changes with a save (revision, completeness) and with a refusal (read-only, missing).
     onSettled: (_result, _error, variables) =>

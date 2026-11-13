@@ -9,7 +9,6 @@ import {
   Button,
   WorkspaceHeader,
   useSecondaryNavigation,
-  useWorkspaceCapabilities,
   type WorkspaceHeaderAction,
 } from '@nevo/ui';
 import type { TaskResourceFacts } from '@nevo/specflow-contracts/tasks';
@@ -20,7 +19,8 @@ import {
 import { TaskDocumentEditorHost, taskDocumentStack } from '../../documents';
 import { useSpecificationWorkspace } from '../../specs/read-model';
 import type { FullTaskData } from '../read-model/model';
-import { TaskHistory } from '../detail/history/TaskHistory';
+import { useQueryClient } from '@tanstack/react-query';
+import { taskAuthoringKeys } from '../authoring/queries';
 import { contextView as viewOf } from '../authoring/context/contextModel';
 import { entryName, type ContextNames } from '../authoring/context/contextPresentation';
 import { EditTaskDetailsDialog, type TaskDetailsVersion } from '../authoring/EditTaskDetailsDialog';
@@ -55,9 +55,21 @@ function versionOf(task: FullTaskData | undefined): TaskDetailsVersion | undefin
  */
 export function ProjectTaskWorkspace(props: ProjectTaskWorkspaceProps) {
   const writable = useTaskDocumentTree(props.specId, props.task.id).data?.writable !== false;
+  const queryClient = useQueryClient();
 
   return (
-    <TaskDocumentEditorHost specId={props.specId} taskId={props.task.id} writable={writable}>
+    <TaskDocumentEditorHost
+      specId={props.specId}
+      taskId={props.task.id}
+      writable={writable}
+      // Exit gates and process artifacts read the Task's documents: a save can change what the
+      // projection allows, and the document tree (revisions).
+      onSaved={() =>
+        void queryClient.invalidateQueries({
+          queryKey: taskAuthoringKeys.all(props.specId),
+        })
+      }
+    >
       <Workspace {...props} />
     </TaskDocumentEditorHost>
   );
@@ -75,7 +87,6 @@ function Workspace({
   onOpenHistory,
 }: ProjectTaskWorkspaceProps) {
   const { t } = useTranslation();
-  const { supportsSplit } = useWorkspaceCapabilities();
   const navigation = useSecondaryNavigation();
   const projection = useTaskActions(specId, task.id);
   const workspace = useSpecificationWorkspace(specId);
@@ -87,7 +98,7 @@ function Workspace({
       (workspace.data?.documents ?? []).map((document) => [document.id, document.title]),
     ),
   };
-  const view = viewOf(resource, projection.data, workspace.data?.overviewDocumentId);
+  const view = viewOf(resource, projection.data?.taskAuthoring);
   const openDocument = (documentId: string) => {
     const path = resource.documents.find((document) => document.id === documentId)?.path;
     void navigation.openTab(taskDocumentStack, {
@@ -105,16 +116,17 @@ function Workspace({
     onEditDetails: () => setEditing(true),
     onRemoved: onBack,
   });
-  const historyAction: WorkspaceHeaderAction[] = supportsSplit
-    ? []
-    : [
-        {
-          id: 'history',
-          label: t('specification.taskFullHistoryHeading'),
-          icon: 'clock',
-          onPress: onOpenHistory,
-        },
-      ];
+  // The history is closed by default; the header's clock opens it at every width (UX contract).
+  const historyAction: WorkspaceHeaderAction[] = [
+    {
+      id: 'history',
+      label: t('specification.taskFullHistoryHeading'),
+      icon: 'clock',
+      presentation: 'icon',
+      direct: 'always',
+      onPress: onOpenHistory,
+    },
+  ];
   const current = versionOf(task);
 
   return (
@@ -178,21 +190,6 @@ function Workspace({
             </AppWorkspaceBody>
           </AppContent>
         </AppWorkspace.Primary>
-        <AppWorkspace.Secondary
-          header={
-            <WorkspaceHeader
-              headingLevel={2}
-              title={t('specification.taskFullHistoryHeading')}
-              icon="clock"
-            />
-          }
-        >
-          <AppContent className="w-content-standard max-w-full">
-            <AppWorkspaceBody padding="none" scroll="area">
-              <TaskHistory specId={specId} taskId={task.id} snapshot={task.snapshot} />
-            </AppWorkspaceBody>
-          </AppContent>
-        </AppWorkspace.Secondary>
       </AppWorkspace>
       {lifecycle.dialogs}
       {current ? (

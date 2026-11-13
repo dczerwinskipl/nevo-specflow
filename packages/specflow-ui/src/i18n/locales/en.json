@@ -1978,7 +1978,8 @@
       "progressCancelled": "{{completed}} of {{total}} done · {{cancelled}} cancelled",
       "emptyDescription": "Create tasks now or after the breakdown step. Tasks can be created before the workflow starts.",
       "draftLine": "Draft · needs approval",
-      "after": "after {{ids}}"
+      "after": "after {{ids}}",
+      "actionsFailed": "Whether tasks can be created could not be loaded."
     },
     "newTask": {
       "title": "New task",
@@ -2129,7 +2130,8 @@
       "unresolvedEntry": "{{ref}} does not resolve.",
       "awaitedEntry": "{{ref}} does not exist yet.",
       "ownArtifactTitle": "Not added: this is the task's own document",
-      "ownArtifactBody": "Context lists what the task needs before it starts. {{ref}} is produced by this task, so it belongs to an exit gate of the step that produces it, for example “a findings document exists” before finishing."
+      "ownArtifactBody": "Context lists what the task needs before it starts. {{ref}} is produced by this task, so it belongs to an exit gate of the step that produces it, for example “a findings document exists” before finishing.",
+      "notFoundOptional": "Not found: {{ref}} was moved or deleted. Optional, so the next step skips it."
     },
     "dependencies": {
       "none": "No dependencies: the task can start as soon as it is approved.",
@@ -2140,11 +2142,15 @@
       "dialogTitle": "Add dependencies to {{id}}",
       "dialogDescription": "{{id}} becomes ready only when these tasks are done.",
       "existing": "Already a dependency",
-      "cycle": "{{other}} already depends on {{id}}; adding it would create a cycle",
       "confirm": "Add dependencies",
       "legend": "Tasks",
       "noCandidates": "There are no other tasks in this specification.",
-      "missingTask": "{{id}} is not a task of this specification any more."
+      "missingTask": "{{id}} is not a task of this specification any more.",
+      "unavailable": {
+        "would-create-cycle": "{{other}} already depends on {{id}}; adding it would create a cycle",
+        "cancelled": "Cancelled; it would never be done",
+        "broken": "Broken; restore its files first"
+      }
     },
     "refusal": {
       "generic": "The change was not saved. Try again.",

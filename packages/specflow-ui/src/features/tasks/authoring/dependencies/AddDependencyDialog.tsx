@@ -75,17 +75,19 @@ function Checklist({
                 key={candidate.task.id}
                 label={`${candidate.task.id} · ${candidate.task.title}`}
                 description={
-                  candidate.state === 'existing'
-                    ? t('taskAuthoring.dependencies.existing')
-                    : candidate.state === 'cycle'
-                      ? t('taskAuthoring.dependencies.cycle', {
+                  candidate.unavailable === undefined
+                    ? candidate.task.statusLabel
+                    : candidate.unavailable === 'dependency'
+                      ? t('taskAuthoring.dependencies.existing')
+                      : t(`taskAuthoring.dependencies.unavailable.${candidate.unavailable}`, {
                           other: candidate.task.id,
                           id: taskId,
                         })
-                      : candidate.task.statusLabel
                 }
-                checked={candidate.state === 'existing' || chosen.includes(candidate.task.id)}
-                disabled={candidate.state !== 'available'}
+                checked={
+                  candidate.unavailable === 'dependency' || chosen.includes(candidate.task.id)
+                }
+                disabled={candidate.unavailable !== undefined}
                 onCheckedChange={(checked) =>
                   setChosen((current) =>
                     checked === true

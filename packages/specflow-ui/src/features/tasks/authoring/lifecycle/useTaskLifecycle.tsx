@@ -33,7 +33,7 @@ export function useTaskLifecycle(input: UseTaskLifecycleInput): {
   readonly directError: unknown;
 } {
   const { t } = useTranslation();
-  const commands = useTaskCommands(input.specId, input.taskId);
+  const commands = useTaskCommands(input.specId, input.taskId, { onRemoved: input.onRemoved });
   const [decision, setDecision] = useState<LifecycleDecision>();
   const [directError, setDirectError] = useState<unknown>();
   const lifecycle = input.lifecycle;
@@ -126,7 +126,7 @@ export function useTaskLifecycle(input: UseTaskLifecycleInput): {
         commands.setStatus.mutate({ status: 'cancelled', ...(reason ? { reason } : {}) }, options);
         break;
       case 'remove':
-        commands.remove.mutate(input.revision, { onSuccess: input.onRemoved });
+        commands.remove.mutate(input.revision);
         break;
     }
   };

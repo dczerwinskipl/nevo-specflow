@@ -1,11 +1,7 @@
 import type { TaskResourceFacts } from '@nevo/specflow-contracts/tasks';
-import type { WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
+import type { TaskAuthoring } from '@nevo/specflow-contracts/workflow';
 
 export type TaskContextEntry = NonNullable<TaskResourceFacts['context']>[number];
-type Blocker = Extract<
-  WorkflowActionProjection['position'],
-  { kind: 'blocked' }
->['blockers'][number];
 
 /** The main document of every Task (`TASK_MAIN_DOCUMENT`): always first, never optional. */
 export const MAIN_DOCUMENT_ID = 'task';
@@ -16,13 +12,14 @@ export interface ContextRow {
   readonly entry: TaskContextEntry;
   /** `task.md`: always first, cannot be removed, moved or made optional. */
   readonly locked: boolean;
-  /** As the action projection reports it (required entries only). */
+  /** As the Engine reads it now. */
   readonly problem?:
-    { readonly kind: 'unresolved'; readonly reason: string } | { readonly kind: 'awaited' };
+    | { readonly kind: 'unresolved'; readonly reason: 'not-found' | 'not-registered' }
+    | { readonly kind: 'awaited' };
 }
 
 export interface ContextView {
-  /** False: the Task has no explicit list and shows the default context. */
+  /** False: the Task has no explicit list; the Engine's default context is shown. */
   readonly explicit: boolean;
   readonly rows: readonly ContextRow[];
   /** The rows that need attention, in declared order (missing, and awaited required artifacts). */
@@ -32,78 +29,41 @@ export interface ContextView {
 }
 
 /**
- * The default context of a Task without an explicit list (`TaskManifestFile.context` absent):
- * `task.md`, the Task's other documents and the Specification overview, as explicit entries so the
- * first edit writes them out and nothing drops silently.
+ * The Context section's view of the Engine's effective context (`taskAuthoring.context`): the UI
+ * neither computes the default list nor resolves references. Before the projection is read, an
+ * explicit list is shown without states; a default one is not known yet.
  */
-export function defaultContext(
-  documents: TaskResourceFacts['documents'],
-  overviewDocumentId: string | undefined,
-): TaskContextEntry[] {
-  const ordered = [
-    ...documents.filter((document) => document.id === MAIN_DOCUMENT_ID),
-    ...documents.filter((document) => document.id !== MAIN_DOCUMENT_ID),
-  ];
-
-  return [
-    ...ordered.map((document): TaskContextEntry => ({
-      kind: 'task-document',
-      id: document.id,
-      required: true,
-    })),
-    ...(overviewDocumentId
-      ? [
-          {
-            kind: 'specification-document',
-            id: overviewDocumentId,
-            required: true,
-          } satisfies TaskContextEntry,
-        ]
-      : []),
-  ];
-}
-
-function blockersOf(projection: WorkflowActionProjection | undefined): readonly Blocker[] {
-  return projection?.position.kind === 'blocked' ? projection.position.blockers : [];
-}
-
 export function contextView(
-  resource: Pick<TaskResourceFacts, 'context' | 'documents'>,
-  projection: WorkflowActionProjection | undefined,
-  overviewDocumentId: string | undefined,
+  resource: Pick<TaskResourceFacts, 'context'>,
+  authoring: TaskAuthoring | undefined,
 ): ContextView {
-  const explicit = resource.context !== null;
-  const entries = resource.context ?? defaultContext(resource.documents, overviewDocumentId);
-  const unresolved = new Map<number, string>();
-  const awaited = new Set<number>();
-  for (const blocker of blockersOf(projection)) {
-    if (blocker.kind === 'context-unresolved') {
-      blocker.entries.forEach((entry) => unresolved.set(entry.index, entry.reason));
-    } else if (blocker.kind === 'context-awaited') {
-      blocker.entries.forEach((entry) => awaited.add(entry.index));
-    }
-  }
-
-  const rows = entries.map((entry, index): ContextRow => {
-    const reason = unresolved.get(index);
+  const states =
+    authoring?.context.entries ??
+    (resource.context ?? []).map((entry) => ({ entry, state: 'resolved' as const }));
+  const rows = states.map((state, index): ContextRow => {
+    const { entry } = state;
 
     return {
       index,
       entry,
       locked: index === 0 && entry.kind === 'task-document' && entry.id === MAIN_DOCUMENT_ID,
-      ...(reason !== undefined
-        ? { problem: { kind: 'unresolved', reason } }
-        : awaited.has(index)
+      ...(state.state === 'unresolved'
+        ? { problem: { kind: 'unresolved', reason: state.reason } }
+        : state.state === 'awaited'
           ? { problem: { kind: 'awaited' } }
           : {}),
     };
   });
 
   return {
-    explicit,
+    explicit: authoring ? !authoring.context.isDefault : resource.context !== null,
     rows,
-    attention: rows.filter((row) => row.problem !== undefined),
-    blocking: rows.filter((row) => row.problem?.kind === 'unresolved'),
+    attention: rows.filter(
+      (row) =>
+        row.problem?.kind === 'unresolved' ||
+        (row.problem?.kind === 'awaited' && row.entry.required),
+    ),
+    blocking: rows.filter((row) => row.problem?.kind === 'unresolved' && row.entry.required),
   };
 }
 

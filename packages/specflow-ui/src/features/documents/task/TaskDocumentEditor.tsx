@@ -1,4 +1,12 @@
-import { createContext, useContext, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { DocumentContent } from '@nevo/specflow-contracts/documents';
@@ -7,6 +15,7 @@ import {
   AppContent,
   Button,
   defineSecondaryStack,
+  useSecondaryLeaveGuard,
   useSecondaryNavigation,
   WorkspaceHeaderIdentity,
   type SecondaryData,
@@ -18,6 +27,8 @@ import { taskDocumentScope } from '../api';
 import { DocumentEditor } from '../editor/DocumentEditor';
 import { DocumentEditorProvider, useDocumentEditor } from '../editor/DocumentEditorProvider';
 import { documentHeaderModel } from '../editor/documentHeaderModel';
+import { useDocumentDraftStore } from '../editor/DocumentDraftProvider';
+import { UnsavedChangesDialog } from '../editor/UnsavedChangesDialog';
 import { documentKeys } from '../read-model/queries';
 
 const STACK_ID = 'task-document';
@@ -46,12 +57,15 @@ export function TaskDocumentEditorHost({
   specId,
   taskId,
   writable,
+  onSaved,
   children,
 }: {
   readonly specId: string;
   readonly taskId: string;
   /** False when the Specification is archived (the Task document tree's `writable`). */
   readonly writable: boolean;
+  /** After a Task document save: what reads it (gates, process artifacts) is refreshed. */
+  readonly onSaved?: () => void;
   readonly children: ReactNode;
 }) {
   const navigation = useSecondaryNavigation();
@@ -72,6 +86,7 @@ export function TaskDocumentEditorHost({
         specId={scope}
         document={document}
         readOnlyReason={writable ? undefined : 'archived'}
+        onSaved={onSaved}
       >
         {children}
       </DocumentEditorProvider>
@@ -81,6 +96,7 @@ export function TaskDocumentEditorHost({
 
 interface ScreenData {
   readonly name: string;
+  readonly dirty: boolean;
   readonly actions: readonly WorkspaceHeaderAction[];
 }
 
@@ -90,23 +106,104 @@ function useTaskDocumentScreen(params: TaskDocumentParams): SecondaryData<Screen
   const record = useContext(RecordContext);
   const navigation = useSecondaryNavigation();
   if (record?.documentId === params.documentId && record.query.isError) {
-    return { status: 'ready', data: { name: params.name, actions: [] } };
+    return { status: 'ready', data: { name: params.name, dirty: false, actions: [] } };
   }
 
   if (session?.document.id !== params.documentId) {
     return { status: 'loading' };
   }
 
-  const { actions } = documentHeaderModel(session, t, {
+  // Closing the tab goes through the screen's leave guard, which asks about unsaved changes.
+  const { actions, dirty } = documentHeaderModel(session, t, {
     onCloseTab: () => void navigation.closeTab(`${TAB_PREFIX}${params.documentId}`),
   });
 
-  return { status: 'ready', data: { name: params.name, actions } };
+  return { status: 'ready', data: { name: params.name, dirty, actions } };
 }
 
-function TaskDocumentScreen() {
+/**
+ * Leaving the document with unsaved edits (closing its tab, switching tabs, closing the Secondary,
+ * a route change) asks first, as the Documents tabs do: save, discard or keep editing. A discard
+ * removes the draft only once the document has really been left.
+ */
+function useUnsavedGuard(name: string) {
+  const { t } = useTranslation();
+  const session = useDocumentEditor();
+  const store = useDocumentDraftStore();
+  const [asking, setAsking] = useState<{ saveFailed: boolean } | null>(null);
+  const answer = useRef<((decision: boolean) => void) | null>(null);
+  const dirty = session?.dirty === true;
+  const latest = useRef(session);
+  useLayoutEffect(() => {
+    latest.current = session;
+  });
+  const guard = useCallback(() => {
+    if (!dirty) {
+      return true;
+    }
+
+    return new Promise<boolean>((resolve) => {
+      answer.current = resolve;
+      setAsking({ saveFailed: false });
+    });
+  }, [dirty]);
+  useSecondaryLeaveGuard(guard);
+  const settle = (decision: boolean) => {
+    setAsking(null);
+    answer.current?.(decision);
+    answer.current = null;
+  };
+
+  return (
+    <UnsavedChangesDialog
+      open={asking !== null}
+      description={t('documents.dialogs.unsaved.closeDescription', { name })}
+      saveLabel={t('documents.dialogs.unsaved.save')}
+      pending={session?.saving === true}
+      saveFailed={asking?.saveFailed ?? false}
+      onContinue={() => settle(false)}
+      onDiscard={() => {
+        const open = latest.current;
+        settle(true);
+        if (open) {
+          store.remove(open.specId, open.document.id);
+        }
+      }}
+      onSave={() => {
+        void latest.current?.save().then((saved) => {
+          if (saved) {
+            settle(true);
+          } else {
+            setAsking({ saveFailed: true });
+          }
+        });
+      }}
+    />
+  );
+}
+
+/** The document's file name, as its tab is named, and whether it has unsaved changes. */
+function TaskDocumentHeader({ data }: { data: ScreenData }) {
+  const { t } = useTranslation();
+
+  return (
+    <WorkspaceHeaderIdentity
+      as="h2"
+      headingLevel={2}
+      title={data.name}
+      status={
+        data.dirty ? (
+          <span className="text-body-sm text-content-muted">{t('documents.tabs.statusDirty')}</span>
+        ) : undefined
+      }
+    />
+  );
+}
+
+function TaskDocumentScreen({ data }: { data: ScreenData }) {
   const { t } = useTranslation();
   const record = useContext(RecordContext);
+  const unsaved = useUnsavedGuard(data.name);
   if (record?.query.isError) {
     return (
       <div className="p-4">
@@ -129,6 +226,7 @@ function TaskDocumentScreen() {
       <div className="flex h-full min-h-0 flex-col">
         <DocumentEditor />
       </div>
+      {unsaved}
     </AppContent>
   );
 }
@@ -155,7 +253,7 @@ export const taskDocumentStack = defineSecondaryStack<
         return translateNow('specification.documentPreviewTitle');
       },
       // The document's file name, as its tab is named (the Documents tab rail names files the same).
-      header: ({ data }) => <WorkspaceHeaderIdentity as="h2" headingLevel={2} title={data.name} />,
+      header: TaskDocumentHeader,
       actions: ({ data }) => data.actions,
       get actionLabels() {
         return {

@@ -1,11 +1,18 @@
-import type { FastifyServerOptions } from 'fastify';
-import fastJsonStringify, { type Schema } from 'fast-json-stringify';
+import fastJsonStringify, { type Options, type Schema } from 'fast-json-stringify';
 
-type SerializerFactory = NonNullable<
-  NonNullable<
-    NonNullable<FastifyServerOptions['schemaController']>['compilersFactory']
-  >['buildSerializer']
->;
+/** The route Fastify compiles a response serializer for (`schemaController` serializer factory). */
+interface SerializerRoute {
+  readonly method: string;
+  readonly url: string;
+  readonly httpStatus: string;
+  readonly schema?: unknown;
+}
+
+/** Fastify's `compilersFactory.buildSerializer` shape, declared here from its direct dependency. */
+export type SerializerFactory = (
+  externalSchemas?: unknown,
+  options?: Options,
+) => (route: SerializerRoute) => (data: unknown) => string;
 
 /** The `$id`s a schema references (`{ $ref: 'Id' }` or `'Id#/pointer'`); local `#...` refs excluded. */
 function referencedIds(schema: unknown, into: Set<string>): void {

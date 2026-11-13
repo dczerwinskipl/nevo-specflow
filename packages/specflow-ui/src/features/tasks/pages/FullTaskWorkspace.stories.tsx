@@ -455,10 +455,10 @@ export const SnapshotExpired: Story = {
 
 /**
  * Accessible name of the Secondary Back. In a split layout it returns to the Primary ("Back"); on the
- * stacked (narrow) layout at depth >= 2 it names the screen it pops to ("Back: <parent title>").
+ * stacked (narrow) layout at depth >= 2 it names the screen it pops to ("Back to <parent title>").
  */
 function stackedBackName(canvasElement: HTMLElement, parentTitle: string) {
-  return canvasElement.querySelector('[data-layout="split"]') ? 'Back' : `Back: ${parentTitle}`;
+  return canvasElement.querySelector('[data-layout="split"]') ? 'Back' : `Back to ${parentTitle}`;
 }
 
 const previewScrollContract: NonNullable<Story['play']> = async ({

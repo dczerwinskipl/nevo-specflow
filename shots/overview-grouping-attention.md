@@ -1,54 +1,77 @@
 # Overview: workflow state, grouping and attention
 
-Analysis for the control-center Overview after merging the feature head 84c78b36 (production T11).
-Mock: `SpecFlow/Screens/Specification control center (mock)`, screenshots `ovw2-*.png`.
+Analysis for the control-center Overview, updated with the owner decisions of 2026-11-13 (1A–7A),
+on feature head 13afabe3. Mock: `SpecFlow/Screens/Specification control center (mock)`; screenshots
+`ovw2-*.png`. Contract: `docs/ideas/specflow-engine/reusable-workflow-manual-execution/ux-contract.md`.
 
-## 1. What the code and accepted contracts already decide
+## 1. Ownership (decided, 5A)
 
-| Concern | Where it lives today | Accepted rule |
+| Concern | Owner | Holds |
 | --- | --- | --- |
-| **Workflow state** (authoritative) | Engine runs + action projection (`inspectActions`, `WorkflowRunPosition`, `StartBlocker`, gates) | The UI never derives behaviour from labels; actions come from the projection. |
-| **Attention** (human intervention) | Engine `deriveAttention` (`workflow/attention/model.ts`, `operations/attention.ts`), reasons `owner-action`, `human-step`, `model-missing`, `provider-not-chosen`, `session-unavailable`, `archetype-missing`, `tasks-stuck`, `task-escalated`; plus broken Tasks and Session attention, merged in the Runtime (`features/tasks/workspace/engine-contribution.ts`) into the Overview's **Requires attention** | ADR 0019 + kernel: attention is **derived, never stored**, at most one item per subject, none for a subject that is active, not started or terminal, **none for a Task that is not `ready`**, and **a Task never gets attention just because it is ready** (owner starts Tasks; F12 "Run selected Tasks"). Overview order: Requires attention first ([Specification Overview](../../../product/specflow/ui/specification-overview.md)). |
-| **Grouping** (presentation) | Engine `laneOf` → `TaskLane` (`needs-approval`, `in-progress`, `ready`, `waiting`, `blocked`, `done`, `ended`, `held`, `cancelled`, `broken`); Runtime `GROUPS` constant maps lanes to the Overview's groups (Needs approval … On hold or cancelled) sent as data | "Task groups are configured by the project and supplied by the backend in display order"; "do not apply the Specifications list's Requires attention / Active / Ready / Draft taxonomy to Tasks" (Specification screen open items). |
+| **Workflow state** | Engine (kernel) | Authoritative states, transitions, execution semantics. Exposes **neutral facts** per Task: preparation status, position (kind, step, attempt), run exists, terminal outcome, broken, dependency state, start blockers. |
+| **Attention** | Attention projection (ADR 0019 + extension) | Which subjects need a person: reason, required actor, available action. Never inferred from a status or group name. |
+| **Grouping** | Dashboard configuration (data) | Groups, labels, order, facts→group mapping, summary prominence, default collapse. Default is internal data; per project or per user later. |
 
-## 2. Contradictions in my previous mocks (actual)
+Rules: a Task is in exactly one group and may independently require attention. Available actions
+are not attention (ready-to-start offers Start, a draft offers Approve; neither is attention by
+itself). No Task appears twice across Overview sections (Now's explanation excepted); the full
+inventory lives on the Tasks page.
 
-1. **Ready-to-start Tasks as attention** (`Start Design` row): contradicts ADR 0019 / kernel ("no attention just because ready"). Removed.
-2. **Draft approval as attention** (`Approve` row): not an Engine attention reason; drafts are not `ready`. Removed from Requires attention; drafts stay visible in their group (Needs approval). Whether approval *should* become attention is an open product decision (below).
-3. **"Cannot start: context missing" on a not-started Task as attention**: a start blocker of a not-started Task is not Engine attention (nothing is derived for not-started subjects). Removed; the Task page/row shows the blocker.
-4. **"Active tasks" built from hard-coded state filters** (`status === 'ready' && kind === 'active'`): bypassed the configured grouping. Replaced by a summary of the configured groups.
+## 2. What contradicted this before
 
-## 3. Presentation-only issues (fixed in the mock)
+1. Ready-to-start and draft approval shown as attention (ADR 0019 / kernel: no attention just for
+   being ready; drafts are not `ready`). Removed; draft rows are neutral.
+2. "Active tasks" built from hard-coded state filters. Replaced by the configured grouping.
+3. **T8a put presentation into the Engine:** `TaskLane` / `laneOf` (`workflow/operations/execution-read.ts`)
+   mixes preparation status, position and a presentation classification; `TaskResource.lane` carries
+   it into the contract and the Runtime derives the status line from it (`STATUS_OF_LANE`). The
+   Runtime's `GROUPS` constant maps lanes to groups in code.
+4. The Runtime sends raw reason codes (`"<step>: <reason>"`) in Requires attention.
 
-- Long titles vs action buttons on Narrow: the action moves under the title and reason.
-- Group count orphaned on Narrow: folded into the row text.
-- Tasks page checkboxes implied a working bulk action: removed until F12 defines "Run selected tasks" (today Execute opens a "not implemented" dialog). Selection never bypasses workflow transitions when it returns: it starts each Task through `startTaskExecution`.
-- Attention on the Tasks page: the row keeps its group and shows "Requires attention · <reason>" (attention is a flag, not a state).
+## 3. Decisions applied in the mock
 
-## 4. The model the mock now follows
+- **1A** `tasks-stuck` (Engine: no open Task can progress without the owner) → one
+  Specification-level item, Task links, action **Review tasks**; no per-draft item. Mock state `stuck`.
+- **2A** Start blockers of approved, not-started Tasks: classified (table in the contract). Mock:
+  T-07 `context-unresolved` → attention with **Edit context**; T-03 waiting for T-02 → not attention,
+  Waiting group, "Waiting for T-02" on the row. The actor is carried; shown only when it is not the
+  viewer ("Needs the spec writer").
+- **3A** Now: "It cannot continue now: T-04 is a draft, T-05 is on hold and no other task is open."
+  with links; no action, no repeated attention entry.
+- **4A/7A** "Tasks" summary: rows for Needs approval, In progress, Ready to start, Waiting,
+  **On hold** (own row, not folded with terminal groups); Done and Cancelled as one compact link
+  line; Tasks named in Requires attention are counted, not named.
+- **5A** `dashboard-grouping.stories-support.ts`: neutral facts + declarative default config,
+  first match wins, "Other" fallback; both the Overview summary and the Tasks page use it.
+- **6A** No checkboxes or bulk actions; F12 deferred.
 
-```text
-Workflow state (Engine, authoritative) ──► lanes (Engine classification of state)
-                                         ──► grouping config (presentation: groups over lanes) ──► Tasks page groups, Overview group summary
-                                         ──► attention projection (Engine-derived items + broken + Sessions) ──► Requires attention, row flag
-```
+## 4. Where the default configuration lives (recommendation)
 
-- Overview: **Requires attention** (attention projection, actions from the projection) → **Tasks** (one row per non-empty group of the configured grouping: count + a few titles; a Task already in Requires attention is counted, not named) → Sessions, Documents.
-- Tasks page: groups from the same grouping config; attention as a row marker.
-- Now: Specification-level state and progress.
+**Runtime presentation layer** (`specflow-runtime/src/features/tasks/workspace/`), not the UI:
+the accepted contract already has the backend supply groups as data in display order; one
+evaluation serves the Overview summary, the Tasks page and other clients (CLI, MCP); later project
+or user overrides need Runtime-owned settings; the UI stays render-only. Not the Engine/kernel
+(no presentation concepts there). Cost of the alternative (UI): duplicated mapping per client and
+a break with the "groups supplied by the backend" rule.
 
-## 5. Backend changes this implies (propose; not implemented)
+## 5. Engine/Runtime changes requiring separate implementation work
 
-1. **Grouping as data.** Move the Runtime `GROUPS` constant into a default grouping configuration (project-level, overridable), mapping lanes — later workflow positions (step ids/kinds per Task Type) — to named, ordered groups. The Runtime keeps delivering groups as data; the UI renders them.
-2. **Lanes stay a state classification**, without attention meaning. `needs-approval` is preparation status, not attention; keep the name or rename to `draft` to avoid the overlap.
-3. **Attention per Task as a flag on the Task read** (from the existing `deriveAttention` + broken), so the Tasks page can mark rows; the Overview list stays the aggregated items.
-4. **Human-readable attention reasons** (today the Runtime sends `"<step>: <reason code>"`): a step title and a localized reason, plus the projection's action for the item (e.g. start the next step).
+1. Remove `TaskLane` / `laneOf` from the Engine (`execution-read.ts`, export in `workflow/index.ts`);
+   expose neutral Task facts in the read model.
+2. Contracts: replace `TaskResource.lane` / `TaskLaneSchema` with facts; Runtime `taskStatusOf` /
+   `STATUS_OF_LANE` derive the status line from facts.
+3. Dashboard default grouping config module in the Runtime presentation layer (validated at load),
+   replacing `GROUPS` in `engine-contribution.ts`; groups sent as data with summary prominence.
+4. Attention projection extension: start blockers of approved, not-started Tasks that need a person
+   → items with reason (code + human text), required actor, action (command + label); dependency
+   waiting and `context-awaited` stay non-attention.
+5. Specification-level `tasks-stuck` item with affected Task ids (`attention.taskIds`, always set)
+   through the Runtime attention list, action opening the Tasks page at those Tasks.
+6. Human-readable attention reasons and a per-Task attention flag on the Task read.
+7. Now explanation data: `tasks-stuck` Task ids with each Task's blocking fact.
+8. Per-Specification Sessions read (this Specification's Sessions; recommended first).
 
-## 6. Unresolved product decisions (not invented in the mock)
+## 6. Still open (small)
 
-1. Is **draft approval** attention (owner action that blocks the Specification), or only the Needs approval group? Today: group only.
-2. Is a **start blocker** of an approved, not-started Task (missing context, definition changed) attention? Today: not (kernel rule); shown on the row.
-3. Should **`tasks-stuck`** name the Tasks that keep the Specification from progressing (drafts, on hold) in Now?
-4. Which groups the Overview's Tasks summary shows (all non-empty groups, or only non-terminal ones with Done / On hold folded into one line).
-5. Whether "Run selected tasks" (F12) returns to the Tasks page, and its parallelism (open in plan 06).
-6. Configurable grouping scope: per project, per Specification archetype, or per Task Type.
+- Target of **Review tasks**: the Tasks page filtered to the named Tasks, or scrolled to the first.
+- Whether Done/Cancelled compact links open the Tasks page expanded at that group (assumed yes).

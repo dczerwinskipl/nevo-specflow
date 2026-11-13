@@ -2,6 +2,7 @@ import { useId, useRef, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Button,
+  CheckboxField,
   Dialog,
   DialogBody,
   DialogContent,
@@ -34,6 +35,8 @@ export interface FinishDraft {
   readonly transitionId?: string;
   readonly feedback: string;
   readonly artifacts: readonly string[];
+  /** Drafts this step produced earlier that the owner unticked: the finish cancels them. */
+  readonly droppedDrafts: readonly string[];
 }
 
 export interface ArtifactOption {
@@ -59,7 +62,8 @@ export interface FinishStepDialogProps {
   readonly rechecked: boolean;
   readonly artifactOptions: readonly ArtifactOption[];
   readonly gateActionFor?: (gate: GateStatus) => GateAction | undefined;
-  /** The step produces Tasks: a manual finish keeps every Task the owner created. */
+  readonly gateDocument?: (gate: GateStatus) => string | undefined;
+  /** The step produces Tasks: its own earlier drafts are listed; Tasks made by hand stay. */
   readonly producesTasks: boolean;
   readonly pending: boolean;
   readonly error: unknown;
@@ -83,6 +87,7 @@ export function FinishStepDialog({
   rechecked,
   artifactOptions,
   gateActionFor,
+  gateDocument,
   producesTasks,
   pending,
   error,
@@ -97,8 +102,10 @@ export function FinishStepDialog({
   const feedbackMissing = feedbackRequired && draft.feedback.trim() === '';
   const gates = selected?.gates ?? [];
   const gatesUnmet = gates.some((gate) => gate.status === 'unsatisfied');
-  const unavailable = selected?.unavailable === 'task-document-change';
-  const blocked = !selected || feedbackMissing || gatesUnmet || unavailable;
+  // The Engine says whether the result can be taken now; the gates are shown, not re-evaluated.
+  const unavailable = selected?.unavailable;
+  const blocked = !selected || feedbackMissing || unavailable !== undefined;
+  const drafts = finish.drafts ?? [];
   const remaining = artifactOptions.filter((option) => !draft.artifacts.includes(option.value));
   const labelOf = (value: string) =>
     artifactOptions.find((option) => option.value === value)?.label ?? value;
@@ -176,6 +183,7 @@ export function FinishStepDialog({
                     result: transitionResult(selected),
                   })}
                   actionFor={gateActionFor}
+                  {...(gateDocument ? { documentFor: gateDocument } : {})}
                 />
                 {gatesUnmet ? (
                   <Typography as="p" variant="body-sm" className="text-content-secondary">
@@ -188,7 +196,7 @@ export function FinishStepDialog({
                 ) : null}
               </div>
             ) : null}
-            {unavailable ? (
+            {unavailable === 'task-document-change' ? (
               <Typography as="p" variant="body-sm" className="text-content-secondary">
                 {t('workflowExecution.finish.documentChangePending')}
               </Typography>
@@ -273,7 +281,32 @@ export function FinishStepDialog({
                 </div>
               ) : null}
             </div>
-            {producesTasks ? (
+            {producesTasks && drafts.length > 0 ? (
+              <fieldset className="grid gap-2">
+                <legend className="text-label-sm font-medium text-content-primary">
+                  {t('workflowExecution.finish.drafts')}
+                </legend>
+                <Typography as="p" variant="body-sm" className="text-content-secondary">
+                  {t('workflowExecution.finish.draftsHint')}
+                </Typography>
+                {drafts.map((proposal) => (
+                  <CheckboxField
+                    key={proposal.id}
+                    label={`${proposal.id} · ${proposal.title}`}
+                    checked={!draft.droppedDrafts.includes(proposal.id)}
+                    onCheckedChange={(checked) =>
+                      onDraftChange({
+                        ...draft,
+                        droppedDrafts:
+                          checked === true
+                            ? draft.droppedDrafts.filter((id) => id !== proposal.id)
+                            : [...draft.droppedDrafts, proposal.id],
+                      })
+                    }
+                  />
+                ))}
+              </fieldset>
+            ) : producesTasks ? (
               <Typography as="p" variant="body-sm" className="text-content-secondary">
                 {t('workflowExecution.finish.keepsTasks')}
               </Typography>

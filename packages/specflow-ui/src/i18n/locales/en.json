@@ -370,7 +370,6 @@
     "currentPosition": "Current position",
     "nextPosition": "Next step",
     "completedPosition": "Last completed step",
-    "transitionTo": "To: {{target}}",
     "evidence": "Evidence",
     "waitingHuman": "Waiting for human action",
     "attempt": "Attempt {{count}}",
@@ -437,7 +436,9 @@
     "readerUnavailable": "No reader is available for this material.",
     "materialForbidden": "Access restricted",
     "restrictedMaterial": "Restricted material",
-    "historyTitle": "History"
+    "historyTitle": "History",
+    "historyInProgress": "In progress",
+    "transitionTo": "To: {{target}}"
   },
   "applicationNavigation": {
     "location": "Application location",
@@ -2174,7 +2175,7 @@
   "workflowExecution": {
     "now": {
       "heading": "Now",
-      "workflow": "{{title}} rev {{version}}",
+      "workflow": "{{title}} · rev {{version}}",
       "notStarted": "Not started",
       "firstStep": "First step {{title}}",
       "ready": "Ready to start",
@@ -2197,13 +2198,14 @@
       },
       "abandonedBy": "{{at}} by {{actor}}",
       "toFinishWith": "To finish with {{result}}:",
-      "last": "Last: {{step}} · {{result}}",
       "returned": "Returned to this step",
       "start": "Start {{step}}",
       "finish": "Finish step",
       "return": "Return to earlier step",
       "finishKept": "Your finish is kept: result, feedback and artifacts stay as you left them. Finish step continues it.",
-      "postActionFailed": "Finished. Committing the workflow state failed ({{code}}); the changes stay uncommitted and Close includes them."
+      "postActionFailed": "Finished. Committing the workflow state failed ({{code}}); the changes stay uncommitted and Close includes them.",
+      "lastPrefix": "Last: {{step}} · ",
+      "alreadyFinished": "This step was already finished. What you can do now is shown below."
     },
     "blocker": {
       "dependencies_one": "Waiting for {{count}} dependency",
@@ -2261,9 +2263,11 @@
       "attached": "Attached artifacts",
       "removeArtifact": "Remove {{name}}",
       "attach": "Attach document",
-      "keepsTasks": "Tasks you created stay as they are; approve each one before it can start.",
+      "keepsTasks": "This step has no drafts of its own; tasks created by hand stay as they are.",
       "submit": "Finish step",
-      "finishing": "Finishing…"
+      "finishing": "Finishing…",
+      "drafts": "Drafts this step proposed earlier",
+      "draftsHint": "Ticked drafts stay drafts after this finish; unticked ones are cancelled. Tasks created by hand are not affected."
     },
     "return": {
       "title": "Return to an earlier step",
@@ -2289,7 +2293,8 @@
       "firstStep": "First step",
       "notNow": "Not now",
       "confirm": "Start {{step}}",
-      "startWithVersion": "Start with rev {{version}}"
+      "startWithVersion": "Start with rev {{version}}",
+      "change": "Change"
     },
     "exit": {
       "group": {
@@ -2313,12 +2318,13 @@
       "more_other": "and {{count}} more",
       "seeWorkflow": "See workflow",
       "goToTasks": "Go to Tasks",
-      "dismiss": "Dismiss"
+      "dismiss": "Dismiss",
+      "saving": "A task document is still being saved"
     },
     "close": {
       "action": "Close specification",
       "title": "Close {{title}}",
-      "blocked": "{{title}} cannot close yet: the items below still hold it.",
+      "blocked": "{{title}} cannot close yet: {{reasons}}.",
       "abandonPrompt": "Not going to finish this work?",
       "abandonInstead": "Abandon instead",
       "ready": "Everything required is finished. Closing also runs the repository checks.",
@@ -2335,7 +2341,28 @@
         "in-progress": "Close is still running.",
         "recovery-required": "Close stopped part way and needs recovery."
       },
-      "submit": "Close specification"
+      "submit": "Close specification",
+      "reason": {
+        "waiting_one": "its workflow is waiting for {{count}} unfinished task",
+        "waiting_few": "its workflow is waiting for {{count}} unfinished tasks",
+        "waiting_many": "its workflow is waiting for {{count}} unfinished tasks",
+        "waiting_other": "its workflow is waiting for {{count}} unfinished tasks",
+        "workflow": "its workflow has not ended",
+        "unfinished_one": "{{count}} task is unfinished",
+        "unfinished_few": "{{count}} tasks are unfinished",
+        "unfinished_many": "{{count}} tasks are unfinished",
+        "unfinished_other": "{{count}} tasks are unfinished",
+        "broken_one": "{{count}} task is broken",
+        "broken_few": "{{count}} tasks are broken",
+        "broken_many": "{{count}} tasks are broken",
+        "broken_other": "{{count}} tasks are broken",
+        "saving_one": "{{count}} task document is still being saved",
+        "saving_few": "{{count}} task documents are still being saved",
+        "saving_many": "{{count}} task documents are still being saved",
+        "saving_other": "{{count}} task documents are still being saved",
+        "change": "a change is still being saved",
+        "state": "its workflow state cannot be read"
+      }
     },
     "abandon": {
       "action": "Abandon specification",
@@ -2344,7 +2371,7 @@
       "blocked": "{{title}} cannot be abandoned yet: the items below are still running.",
       "whatHappens": "What happens",
       "endsWorkflow": "The {{workflow}} workflow ends as abandoned.",
-      "endsAttempts": "Work in progress ends as abandoned; its work is kept:",
+      "endsAttempts": "Active attempts end as abandoned; their work is kept:",
       "cancelsTasks_one": "{{count}} unfinished task is cancelled, also when it has started: {{ids}}.",
       "cancelsTasks_few": "{{count}} unfinished tasks are cancelled, including started ones: {{ids}}.",
       "cancelsTasks_many": "{{count}} unfinished tasks are cancelled, including started ones: {{ids}}.",
@@ -2352,7 +2379,8 @@
       "nothingDelivered": "Nothing is marked delivered. Documents, tasks and history stay readable.",
       "reason": "Reason (required)",
       "reasonHint": "Shown on the specification and in its history.",
-      "submit": "Abandon specification"
+      "submit": "Abandon specification",
+      "endsWorkflowAt": "The {{workflow}} workflow ends as abandoned at {{step}}."
     },
     "refusal": {
       "generic": "The workflow did not change. Try again.",
@@ -2370,6 +2398,17 @@
       "specificationEnded": "The specification has ended.",
       "exitBlocked": "Something still holds the specification.",
       "busy": "The specification is busy with another change. Try again in a moment."
+    },
+    "time": {
+      "today": "Today {{time}}",
+      "yesterday": "Yesterday {{time}}"
+    },
+    "change": {
+      "added": "Adds step {{step}}",
+      "addedAfter": "Adds step {{step}} after {{after}}",
+      "removed": "Removes step {{step}}",
+      "renamed": "Renames step {{from}} to {{to}}",
+      "transitions": "Changes where {{step}} leads"
     }
   }
 }

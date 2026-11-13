@@ -9,12 +9,14 @@ import { LocalizationProvider, createSpecFlowI18n } from '../../../i18n';
 import { createSpecFlowAppServices } from '../../../services';
 import { TestServicesRouterContext } from '../../../../test-support/app/TestServicesRouterContext';
 import { stubLayoutApis } from '../../../../test-support/app/stubLayoutApis';
+import { ApiError } from '../../../api';
 import { fakeTaskAuthoringApi, refusal } from '../authoring/authoring.test-support';
 import { useTaskActions } from '../authoring/useTaskAuthoring';
 import type { WorkflowExecutionApi } from './api';
 import {
   SPEC,
   TASK,
+  closeBlockers,
   specificationWorkflowProjection,
   taskWorkflowProjection,
 } from './projections.stories-support';
@@ -222,5 +224,114 @@ describe('manual workflow execution', () => {
     fireEvent.change(screen.getByRole('textbox'), { target: { value: '  Contract cancelled. ' } });
     fireEvent.click(submit);
     await waitFor(() => expect(abandon).toHaveBeenCalledWith(SPEC, 'Contract cancelled.'));
+  });
+  it('closes the Finish dialog when a lost finish turns out recorded, instead of offering a retry', async () => {
+    let finished = false;
+    const finish = vi.fn(() => {
+      finished = true;
+
+      return Promise.reject(
+        new ApiError({
+          kind: 'network',
+          operation: 'workflow',
+          outcome: 'unknown',
+          retryable: false,
+        }),
+      );
+    });
+    renderWith(<TaskNowHarness />, {
+      execution: fakeExecutionApi({ finish }),
+      taskActions: () => Promise.resolve(taskWorkflowProjection(finished ? 'rework' : 'review')),
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Finish step' }));
+    fireEvent.click(screen.getByRole('radio', { name: /^Approved/ }));
+    fireEvent.click(finishButton());
+
+    // The refreshed projection is the next attempt: the dialog of the finished one is gone.
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(screen.getByRole('status').textContent).toBe(
+      'This step was already finished. What you can do now is shown below.',
+    );
+    expect(finish).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the drafts a producing step made earlier unless the owner unticks them', async () => {
+    const finish = vi.fn(() => never());
+    const review = taskWorkflowProjection('review');
+    const producing: WorkflowActionProjection = {
+      ...review,
+      position:
+        review.position.kind === 'active'
+          ? { ...review.position, step: { ...review.position.step, produces: 'tasks' } }
+          : review.position,
+      actions: {
+        finish: {
+          ...review.actions.finish!,
+          drafts: [
+            { id: 't-08', title: 'Audit log', type: 'backend' },
+            { id: 't-09', title: 'Sign-out', type: 'ui', dependsOn: ['t-08'] },
+          ],
+        },
+      },
+    };
+    renderWith(<TaskNowHarness />, {
+      execution: fakeExecutionApi({ finish }),
+      taskActions: () => Promise.resolve(producing),
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Finish step' }));
+    fireEvent.click(screen.getByRole('radio', { name: /^Approved/ }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 't-08 · Audit log' }));
+    fireEvent.click(finishButton());
+
+    await waitFor(() =>
+      expect(finish).toHaveBeenCalledWith(
+        { specId: SPEC, taskId: TASK },
+        {
+          step: 'review',
+          attempt: 1,
+          result: 'approved',
+          tasks: [{ id: 't-09', title: 'Sign-out', type: 'ui', dependsOn: ['t-08'] }],
+        },
+      ),
+    );
+  });
+
+  it('shows what still holds the Specification when the Close itself is refused', async () => {
+    // `CLOSE_BLOCKED` carries its blockers at the top of the body (not in `details`).
+    const blocked = refusal('CLOSE_BLOCKED', 409);
+    (blocked.cause as { data: Record<string, unknown> }).data.blockers = closeBlockers;
+    const close = vi.fn(() => Promise.reject(blocked));
+    renderWith(
+      <CloseSpecificationDialog
+        open
+        onOpenChange={vi.fn()}
+        specId={SPEC}
+        specTitle="Single sign-on"
+        projection={specificationWorkflowProjection('abandoned')}
+        tasks={new Map([['t-02', { id: 't-02', title: 'Token exchange', state: 'Draft' }]])}
+        cancelledTasks={[]}
+        onSeeWorkflow={vi.fn()}
+        onSeeTasks={vi.fn()}
+        onOpenTask={vi.fn()}
+        onClosed={vi.fn()}
+      />,
+      {
+        execution: fakeExecutionApi({
+          closePreview: vi.fn(() => Promise.resolve({ operationId: 'op-1' })),
+          close,
+        }),
+      },
+    );
+    const submit = await screen.findByRole<HTMLButtonElement>('button', {
+      name: 'Close specification',
+    });
+    await waitFor(() => expect(submit.disabled).toBe(false));
+    fireEvent.click(submit);
+
+    await waitFor(() => expect(close).toHaveBeenCalledWith(SPEC, 'op-1'));
+    expect((await screen.findByText(/cannot close yet/)).textContent).toBe(
+      'Single sign-on cannot close yet: its workflow is waiting for 1 unfinished task and 1 task document is still being saved.',
+    );
+    expect(screen.getByRole('heading', { name: 'Pending writes · 1' })).toBeTruthy();
   });
 });

@@ -16,6 +16,7 @@ import {
   Typography,
 } from '@nevo/ui';
 import type { WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
+import { focusInitial } from './focusInitial';
 import { WorkflowRefusalAlert } from './WorkflowRefusalAlert';
 
 type Target = NonNullable<WorkflowActionProjection['actions']['return']>['targets'][number];
@@ -37,7 +38,7 @@ export function ReturnStepDialog(props: ReturnStepDialogProps) {
 
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
-      <DialogContent closeLabel={t('common.close')}>
+      <DialogContent closeLabel={t('common.close')} onOpenAutoFocus={focusInitial}>
         {/* Mounted only while open: every opening starts from the latest target. */}
         {props.open ? <ReturnForm {...props} /> : null}
       </DialogContent>
@@ -115,7 +116,7 @@ function ReturnForm({
         </form>
       </DialogBody>
       <DialogFooter>
-        <Button variant="secondary" onClick={() => onOpenChange(false)}>
+        <Button data-initial-focus="" variant="secondary" onClick={() => onOpenChange(false)}>
           {t('common.cancel')}
         </Button>
         <Button type="submit" form={formId} disabled={blocked || pending}>

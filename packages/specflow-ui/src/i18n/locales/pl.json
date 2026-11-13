@@ -370,7 +370,6 @@
     "currentPosition": "Bieżąca pozycja",
     "nextPosition": "Następny krok",
     "completedPosition": "Ostatni zakończony krok",
-    "transitionTo": "Do: {{target}}",
     "evidence": "Dowód",
     "waitingHuman": "Czeka na człowieka",
     "attempt": "Próba {{count}}",
@@ -437,7 +436,9 @@
     "readerUnavailable": "Brak czytnika tego materiału.",
     "materialForbidden": "Dostęp ograniczony",
     "restrictedMaterial": "Materiał chroniony",
-    "historyTitle": "Historia"
+    "historyTitle": "Historia",
+    "historyInProgress": "W toku",
+    "transitionTo": "Do: {{target}}"
   },
   "applicationNavigation": {
     "location": "Lokalizacja w aplikacji",
@@ -2174,7 +2175,7 @@
   "workflowExecution": {
     "now": {
       "heading": "Teraz",
-      "workflow": "{{title}} wersja {{version}}",
+      "workflow": "{{title}} · wersja {{version}}",
       "notStarted": "Nie rozpoczęto",
       "firstStep": "Pierwszy krok: {{title}}",
       "ready": "Gotowe do rozpoczęcia",
@@ -2197,13 +2198,14 @@
       },
       "abandonedBy": "{{at}}, porzucił(a) {{actor}}",
       "toFinishWith": "Aby zakończyć z wynikiem {{result}}:",
-      "last": "Ostatnio: {{step}} · {{result}}",
       "returned": "Zawrócono do tego kroku",
       "start": "Rozpocznij: {{step}}",
       "finish": "Zakończ krok",
       "return": "Wróć do wcześniejszego kroku",
       "finishKept": "Twoje zakończenie jest zachowane: wynik, uwagi i artefakty zostają bez zmian. Zakończ krok wraca do niego.",
-      "postActionFailed": "Zakończono. Zatwierdzenie stanu przepływu nie powiodło się ({{code}}); zmiany pozostają niezatwierdzone, a Zamknięcie je obejmie."
+      "postActionFailed": "Zakończono. Zatwierdzenie stanu przepływu nie powiodło się ({{code}}); zmiany pozostają niezatwierdzone, a Zamknięcie je obejmie.",
+      "lastPrefix": "Ostatnio: {{step}} · ",
+      "alreadyFinished": "Ten krok został już zakończony. Poniżej widać, co można zrobić teraz."
     },
     "blocker": {
       "dependencies_one": "Czeka na {{count}} zależność",
@@ -2261,9 +2263,11 @@
       "attached": "Dołączone artefakty",
       "removeArtifact": "Usuń {{name}}",
       "attach": "Dołącz dokument",
-      "keepsTasks": "Utworzone przez Ciebie zadania pozostają bez zmian; każde trzeba zatwierdzić przed rozpoczęciem.",
+      "keepsTasks": "Ten krok nie ma własnych szkiców; zadania utworzone ręcznie pozostają bez zmian.",
       "submit": "Zakończ krok",
-      "finishing": "Kończenie…"
+      "finishing": "Kończenie…",
+      "drafts": "Szkice zaproponowane wcześniej przez ten krok",
+      "draftsHint": "Zaznaczone szkice pozostają szkicami po tym zakończeniu; odznaczone zostaną anulowane. Zadania utworzone ręcznie się nie zmieniają."
     },
     "return": {
       "title": "Wróć do wcześniejszego kroku",
@@ -2289,7 +2293,8 @@
       "firstStep": "Pierwszy krok",
       "notNow": "Nie teraz",
       "confirm": "Rozpocznij: {{step}}",
-      "startWithVersion": "Rozpocznij z wersją {{version}}"
+      "startWithVersion": "Rozpocznij z wersją {{version}}",
+      "change": "Zmiana"
     },
     "exit": {
       "group": {
@@ -2313,12 +2318,13 @@
       "more_other": "i {{count}} więcej",
       "seeWorkflow": "Zobacz przepływ",
       "goToTasks": "Przejdź do Zadań",
-      "dismiss": "Zamknij okno"
+      "dismiss": "Zamknij okno",
+      "saving": "Dokument zadania jest jeszcze zapisywany"
     },
     "close": {
       "action": "Zamknij specyfikację",
       "title": "Zamknij {{title}}",
-      "blocked": "Nie można jeszcze zamknąć {{title}}: blokują to poniższe elementy.",
+      "blocked": "Nie można jeszcze zamknąć {{title}}: {{reasons}}.",
       "abandonPrompt": "Nie zamierzasz kończyć tej pracy?",
       "abandonInstead": "Porzuć zamiast tego",
       "ready": "Wszystko, co wymagane, jest ukończone. Zamknięcie uruchamia też kontrole repozytorium.",
@@ -2335,7 +2341,28 @@
         "in-progress": "Zamknięcie wciąż trwa.",
         "recovery-required": "Zamknięcie zatrzymało się w połowie i wymaga odzyskania."
       },
-      "submit": "Zamknij specyfikację"
+      "submit": "Zamknij specyfikację",
+      "reason": {
+        "waiting_one": "jej przepływ czeka na {{count}} nieukończone zadanie",
+        "waiting_few": "jej przepływ czeka na {{count}} nieukończone zadania",
+        "waiting_many": "jej przepływ czeka na {{count}} nieukończonych zadań",
+        "waiting_other": "jej przepływ czeka na {{count}} nieukończonych zadań",
+        "workflow": "jej przepływ się nie zakończył",
+        "unfinished_one": "{{count}} zadanie jest nieukończone",
+        "unfinished_few": "{{count}} zadania są nieukończone",
+        "unfinished_many": "{{count}} zadań jest nieukończonych",
+        "unfinished_other": "{{count}} zadań jest nieukończonych",
+        "broken_one": "{{count}} zadanie jest uszkodzone",
+        "broken_few": "{{count}} zadania są uszkodzone",
+        "broken_many": "{{count}} zadań jest uszkodzonych",
+        "broken_other": "{{count}} zadań jest uszkodzonych",
+        "saving_one": "{{count}} dokument zadania jest jeszcze zapisywany",
+        "saving_few": "{{count}} dokumenty zadań są jeszcze zapisywane",
+        "saving_many": "{{count}} dokumentów zadań jest jeszcze zapisywanych",
+        "saving_other": "{{count}} dokumentów zadań jest jeszcze zapisywanych",
+        "change": "zmiana jest jeszcze zapisywana",
+        "state": "nie można odczytać stanu jej przepływu"
+      }
     },
     "abandon": {
       "action": "Porzuć specyfikację",
@@ -2344,7 +2371,7 @@
       "blocked": "Nie można jeszcze porzucić {{title}}: poniższe elementy wciąż trwają.",
       "whatHappens": "Co się stanie",
       "endsWorkflow": "Przepływ {{workflow}} kończy się jako porzucony.",
-      "endsAttempts": "Praca w toku kończy się jako porzucona; jej wynik zostaje zachowany:",
+      "endsAttempts": "Aktywne próby kończą się jako porzucone; ich wynik zostaje zachowany:",
       "cancelsTasks_one": "{{count}} nieukończone zadanie zostanie anulowane, także jeśli się rozpoczęło: {{ids}}.",
       "cancelsTasks_few": "{{count}} nieukończone zadania zostaną anulowane, także rozpoczęte: {{ids}}.",
       "cancelsTasks_many": "{{count}} nieukończonych zadań zostanie anulowanych, także rozpoczęte: {{ids}}.",
@@ -2352,7 +2379,8 @@
       "nothingDelivered": "Nic nie zostanie oznaczone jako dostarczone. Dokumenty, zadania i historia pozostają dostępne.",
       "reason": "Powód (wymagany)",
       "reasonHint": "Widoczny w specyfikacji i w jej historii.",
-      "submit": "Porzuć specyfikację"
+      "submit": "Porzuć specyfikację",
+      "endsWorkflowAt": "Przepływ {{workflow}} kończy się jako porzucony na kroku {{step}}."
     },
     "refusal": {
       "generic": "Przepływ się nie zmienił. Spróbuj ponownie.",
@@ -2370,6 +2398,17 @@
       "specificationEnded": "Specyfikacja się zakończyła.",
       "exitBlocked": "Coś wciąż blokuje specyfikację.",
       "busy": "Specyfikacja jest zajęta inną zmianą. Spróbuj za chwilę."
+    },
+    "time": {
+      "today": "Dziś {{time}}",
+      "yesterday": "Wczoraj {{time}}"
+    },
+    "change": {
+      "added": "Dodaje krok {{step}}",
+      "addedAfter": "Dodaje krok {{step}} po kroku {{after}}",
+      "removed": "Usuwa krok {{step}}",
+      "renamed": "Zmienia nazwę kroku {{from}} na {{to}}",
+      "transitions": "Zmienia, dokąd prowadzi krok {{step}}"
     }
   }
 }

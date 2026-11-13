@@ -18,10 +18,13 @@ export function GateList({
   gates,
   label,
   actionFor,
+  documentFor,
 }: {
   readonly gates: readonly GateStatus[];
   readonly label: string;
   readonly actionFor?: (gate: GateStatus) => GateAction | undefined;
+  /** Names the document that meets a satisfied gate (`findings.md`). */
+  readonly documentFor?: (gate: GateStatus) => string | undefined;
 }) {
   const { t } = useTranslation();
 
@@ -29,7 +32,7 @@ export function GateList({
     <ul aria-label={label} className="grid gap-1.5">
       {gates.map((gate) => {
         const met = gate.status === 'satisfied';
-        const detail = gateDetail(t, gate);
+        const detail = met ? documentFor?.(gate) : gateDetail(t, gate);
         const action = met ? undefined : actionFor?.(gate);
 
         return (

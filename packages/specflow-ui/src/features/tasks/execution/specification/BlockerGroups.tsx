@@ -1,9 +1,10 @@
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { Typography } from '@nevo/ui';
 import type { ExitBlocker } from '@nevo/specflow-contracts/workflow';
 import { InlineAction } from '../InlineAction';
 
-const ITEMS_SHOWN = 5;
+export const ITEMS_SHOWN = 5;
 
 type Group = 'workflow' | 'tasks' | 'broken' | 'writes' | 'state';
 
@@ -23,6 +24,66 @@ const GROUP_OF: Record<ExitBlocker['kind'], Group> = {
 /** Close: Workflow → Unfinished tasks → Pending writes; Abandon starts with Pending writes. */
 const CLOSE_ORDER: readonly Group[] = ['workflow', 'tasks', 'broken', 'writes', 'state'];
 const ABANDON_ORDER: readonly Group[] = ['writes', 'state', 'workflow', 'tasks', 'broken'];
+
+const taskIdsOf = (
+  blockers: readonly ExitBlocker[],
+  group: Group,
+  tasks: ReadonlyMap<string, BlockerTask>,
+) => [
+  ...new Set(
+    blockers
+      .filter((blocker) => GROUP_OF[blocker.kind] === group)
+      .flatMap((blocker) => blocker.subjectIds)
+      .filter((id) => tasks.has(id)),
+  ),
+];
+
+/**
+ * Why a Specification cannot close, as one list of clauses with counts ("its workflow is waiting
+ * for 4 unfinished tasks and 1 task document is still being saved").
+ */
+export function closeReasons(
+  t: TFunction,
+  locale: string,
+  blockers: readonly ExitBlocker[],
+  tasks: ReadonlyMap<string, BlockerTask>,
+): string {
+  const has = (group: Group) => blockers.some((blocker) => GROUP_OF[blocker.kind] === group);
+  const unfinished = taskIdsOf(blockers, 'tasks', tasks).length;
+  const reasons: string[] = [];
+  if (has('workflow')) {
+    reasons.push(
+      unfinished > 0
+        ? t('workflowExecution.close.reason.waiting', { count: unfinished })
+        : t('workflowExecution.close.reason.workflow'),
+    );
+  } else if (unfinished > 0) {
+    reasons.push(t('workflowExecution.close.reason.unfinished', { count: unfinished }));
+  }
+
+  if (has('broken')) {
+    reasons.push(
+      t('workflowExecution.close.reason.broken', {
+        count: taskIdsOf(blockers, 'broken', tasks).length,
+      }),
+    );
+  }
+
+  if (has('writes')) {
+    const saving = taskIdsOf(blockers, 'writes', tasks).length;
+    reasons.push(
+      saving > 0
+        ? t('workflowExecution.close.reason.saving', { count: saving })
+        : t('workflowExecution.close.reason.change'),
+    );
+  }
+
+  if (has('state')) {
+    reasons.push(t('workflowExecution.close.reason.state'));
+  }
+
+  return new Intl.ListFormat(locale, { type: 'conjunction' }).format(reasons);
+}
 
 export interface BlockerTask {
   readonly id: string;
@@ -59,9 +120,7 @@ export function BlockerGroups({
       return [];
     }
 
-    const taskIds = [...new Set(members.flatMap((blocker) => blocker.subjectIds))].filter((id) =>
-      tasks.has(id),
-    );
+    const taskIds = taskIdsOf(blockers, group, tasks);
 
     return [{ group, members, taskIds }];
   });
@@ -104,9 +163,10 @@ export function BlockerGroups({
                         <span className="font-mono text-content-muted">{id}</span>{' '}
                         {task?.title ?? id}
                       </InlineAction>
-                      {task?.state ? (
-                        <span className="text-content-muted">{task.state}</span>
-                      ) : null}
+                      {/* A pending write names what is being saved, not the status of the Task. */}
+                      <span className="text-content-muted">
+                        {group === 'writes' ? t('workflowExecution.exit.saving') : task?.state}
+                      </span>
                     </li>
                   );
                 })}

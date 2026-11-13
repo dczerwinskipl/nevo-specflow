@@ -44,12 +44,15 @@ export interface WorkflowNowProps {
   readonly artifactOptions: readonly ArtifactOption[];
   /** What resolves an unmet gate here (Create findings document). */
   readonly gateAction?: (gate: GateStatus) => GateAction | undefined;
+  /** Names the document that meets a gate (`findings.md`). */
+  readonly gateDocument?: (gate: GateStatus) => string | undefined;
 }
 
 const emptyDraft = (attemptKey: string): FinishDraft => ({
   attemptKey,
   feedback: '',
   artifacts: [],
+  droppedDrafts: [],
 });
 
 function previewOf(position: WorkflowActionProjection['position']): PinPreview | undefined {
@@ -73,6 +76,7 @@ export function WorkflowNow({
   firstStart,
   artifactOptions,
   gateAction,
+  gateDocument,
 }: WorkflowNowProps) {
   const { t } = useTranslation();
   const commands = useWorkflowCommands(subject);
@@ -80,6 +84,12 @@ export function WorkflowNow({
   const finish = actions.finish;
   const attemptKey = finish ? attemptKeyOf(finish) : '';
   const [dialog, setDialog] = useState<'start' | 'finish' | 'return'>();
+  // The attempt the Finish dialog was opened for. When the projection moves on (the finish was
+  // recorded although its answer was lost, or someone else finished it), the dialog closes and
+  // never offers a retry for an attempt nobody worked on.
+  const [finishFor, setFinishFor] = useState<string>();
+  const finishOpen = dialog === 'finish' && finishFor === attemptKey;
+  const finishMovedOn = dialog === 'finish' && finishFor !== attemptKey;
   const [storedDraft, setDraft] = useState<FinishDraft>();
   // A draft of another attempt (the run moved on) is not this attempt's draft.
   const draft = storedDraft?.attemptKey === attemptKey ? storedDraft : emptyDraft(attemptKey);
@@ -120,12 +130,13 @@ export function WorkflowNow({
 
   const openFinish = () => {
     commands.finish.reset();
+    setFinishFor(attemptKey);
     setDialog('finish');
   };
 
   const submitFinish = () => {
     const selected = finish?.transitions.find((transition) => transition.id === draft.transitionId);
-    if (!finish || !selected) {
+    if (!finish || !selected || finishFor !== attemptKey) {
       return;
     }
 
@@ -137,9 +148,18 @@ export function WorkflowNow({
         ...(selected.result !== undefined ? { result: selected.result } : {}),
         ...(feedback ? { feedback } : {}),
         ...(draft.artifacts.length > 0 ? { artifacts: [...draft.artifacts] } : {}),
-        // A manual finish of a step that produces Tasks proposes none: the Tasks the owner created
-        // stay as they are.
-        ...(step?.produces === 'tasks' ? { tasks: [] } : {}),
+        // A step that produces Tasks keeps the drafts it produced earlier unless the owner unticked
+        // them (D06); Tasks created by hand are never part of the list and stay as they are.
+        ...(step?.produces === 'tasks'
+          ? {
+              tasks: (finish.drafts ?? [])
+                .filter((proposal) => !draft.droppedDrafts.includes(proposal.id))
+                .map((proposal) => ({
+                  ...proposal,
+                  ...(proposal.dependsOn ? { dependsOn: [...proposal.dependsOn] } : {}),
+                })),
+            }
+          : {}),
       },
       {
         onSuccess: (result) => {
@@ -203,6 +223,11 @@ export function WorkflowNow({
 
   const note = (
     <>
+      {finishMovedOn ? (
+        <InlineNote tone="info" role="status">
+          {t('workflowExecution.now.alreadyFinished')}
+        </InlineNote>
+      ) : null}
       {kept && finish && draft.transitionId ? (
         <InlineNote tone="info">{t('workflowExecution.now.finishKept')}</InlineNote>
       ) : null}
@@ -225,6 +250,7 @@ export function WorkflowNow({
         status={status}
         links={links}
         gateActionFor={gateAction ? finishGateAction : undefined}
+        {...(gateDocument ? { gateDocument } : {})}
         note={note}
         actions={workflowActions}
       />
@@ -259,7 +285,7 @@ export function WorkflowNow({
       ) : null}
       {finish && step ? (
         <FinishStepDialog
-          open={dialog === 'finish'}
+          open={finishOpen}
           onOpenChange={(open) => {
             if (!open) {
               setDialog(undefined);
@@ -272,6 +298,7 @@ export function WorkflowNow({
           rechecked={kept}
           artifactOptions={artifactOptions}
           gateActionFor={gateAction ? finishGateAction : undefined}
+          {...(gateDocument ? { gateDocument } : {})}
           producesTasks={step.produces === 'tasks'}
           pending={commands.finish.isPending}
           error={commands.finish.error}

@@ -19,7 +19,7 @@ import { useAppServices } from '../../../../app/useAppServices';
 import { invalidateAfterTaskChange } from '../../authoring/queries';
 import { workflowRefusalOf } from '../refusal';
 import { WorkflowRefusalAlert } from '../WorkflowRefusalAlert';
-import { focusInitial } from './focusInitial';
+import { focusInitial } from '../focusInitial';
 import { BlockerGroups, type BlockerTask } from './BlockerGroups';
 
 export interface AbandonSpecificationDialogProps {
@@ -123,6 +123,13 @@ function AbandonBody({
   };
 
   const workflowTitle = projection.workflow?.title ?? '';
+  const position = projection.position;
+  const stepTitle =
+    position.kind === 'active' || position.kind === 'waiting'
+      ? position.step.title
+      : position.kind === 'ready'
+        ? position.next.step.title
+        : undefined;
 
   return (
     <>
@@ -138,7 +145,14 @@ function AbandonBody({
               {t('workflowExecution.abandon.whatHappens')}
             </Typography>
             <ul className="grid list-disc gap-1 pl-5 text-body-sm text-content-secondary">
-              <li>{t('workflowExecution.abandon.endsWorkflow', { workflow: workflowTitle })}</li>
+              <li>
+                {stepTitle
+                  ? t('workflowExecution.abandon.endsWorkflowAt', {
+                      workflow: workflowTitle,
+                      step: stepTitle,
+                    })
+                  : t('workflowExecution.abandon.endsWorkflow', { workflow: workflowTitle })}
+              </li>
               {activeTasks.length > 0 ? (
                 <li>
                   {t('workflowExecution.abandon.endsAttempts')}

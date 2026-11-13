@@ -5,12 +5,12 @@ import { useTaskViewState } from '../TaskViewState';
 import { descriptionScrollOwner, restoreScrollPosition } from '../../../documents';
 
 import type { TaskHistoryResourceParams } from './TaskHistoryResourceInspection';
-import { Button, Timeline, Typography } from '@nevo/ui';
+import { Button, Icon, Timeline, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import type { TaskSnapshot } from '@nevo/specflow-contracts/specs/workspace';
 import { TaskSourceState } from '../TaskDetails';
 import { useTaskHistory } from '../useTaskPages';
-import { attemptLine } from '../stepExecutors';
+import { formatWhen } from '../../execution/presentation';
 
 export function TaskHistory({
   specId,
@@ -23,7 +23,21 @@ export function TaskHistory({
   readonly snapshot?: TaskSnapshot;
   readonly onOpenResource?: (params: TaskHistoryResourceParams) => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  // Who actually worked on an attempt: a person by the recorded id (its identity-source prefix
+  // dropped), an agent by its class; a wait step has no actor.
+  const actorOf = (
+    actor: { readonly class: 'agent' | 'human'; readonly actorId?: string } | null,
+  ) =>
+    actor
+      ? actor.class === 'human' && actor.actorId
+        ? actor.actorId.replace(/^(local|user):/, '')
+        : t(`taskDetails.executor.${actor.class}`)
+      : undefined;
+  const titleOf = (step: {
+    readonly id: string;
+    readonly expectedWork?: { readonly summary?: string } | null;
+  }) => step.expectedWork?.summary ?? step.id;
   const root = useRef<HTMLDivElement>(null);
   const id = useId();
   const { state, update, saveHistoryScroll } = useTaskViewState(taskId);
@@ -82,43 +96,50 @@ export function TaskHistory({
             <Timeline.Content
               title={
                 <span role="heading" aria-level={3}>
-                  {entry.step.expectedWork?.summary ?? entry.step.id}
+                  {titleOf(entry.step)}
+                  {entry.transitionedTo ? (
+                    <span className="font-normal text-content-secondary">
+                      {' → '}
+                      {entry.transitionedTo.kind === 'step'
+                        ? titleOf(entry.transitionedTo.step)
+                        : t(`taskDetails.outcome.${entry.transitionedTo.outcome}`)}
+                    </span>
+                  ) : null}
                 </span>
               }
             >
               <div className="grid min-w-0 gap-1 [overflow-wrap:anywhere]">
-                <Typography as="p" variant="body-sm" className="text-content-muted">
-                  {attemptLine(t, entry)} · {t('taskDetails.attempt', { count: entry.key.attempt })}
-                  {entry.result ? ` · ${entry.result}` : ''}
+                {/* The result with a neutral icon: results carry no tone of their own. */}
+                <Typography as="p" variant="body-sm" className="text-content-primary">
+                  {entry.completedAt ? (
+                    entry.result ? (
+                      <>
+                        <span className="mr-1 inline-flex h-[1lh] items-center align-top">
+                          <Icon name="arrow-right" size="sm" aria-hidden="true" />
+                        </span>
+                        {entry.result}
+                      </>
+                    ) : null
+                  ) : (
+                    <span className="text-status-info">{t('taskDetails.historyInProgress')}</span>
+                  )}
                 </Typography>
-                {(['startedAt', 'completedAt'] as const).map((field) =>
-                  entry[field] ? (
-                    <Typography key={field} as="p" variant="body-sm" className="text-content-muted">
-                      {t(`taskDetails.${field}`)}:{' '}
-                      <time dateTime={entry[field]}>{entry[field]}</time>
-                    </Typography>
-                  ) : null,
-                )}
-                {entry.step.purpose ? (
-                  <Typography as="p" variant="body-sm">
-                    {entry.step.purpose}
-                  </Typography>
-                ) : null}
-                {entry.transitionedTo ? (
-                  <Typography as="p" variant="body-sm">
-                    {t('taskDetails.transitionTo', {
-                      target:
-                        entry.transitionedTo.kind === 'step'
-                          ? `${entry.transitionedTo.step.expectedWork?.summary ?? entry.transitionedTo.step.id} · ${entry.transitionedTo.step.id}`
-                          : `${entry.transitionedTo.status} · ${t(`taskDetails.outcome.${entry.transitionedTo.outcome}`)}`,
-                    })}
-                  </Typography>
-                ) : null}
                 {entry.feedback ? (
-                  <Typography as="p" variant="body-sm">
+                  <Typography as="p" variant="body-sm" className="whitespace-pre-line">
                     {entry.feedback}
                   </Typography>
                 ) : null}
+                <Typography as="p" variant="body-sm" className="text-content-muted">
+                  {[
+                    (entry.completedAt ?? entry.startedAt)
+                      ? formatWhen(t, entry.completedAt ?? entry.startedAt ?? '', i18n.language)
+                      : undefined,
+                    actorOf(entry.actor),
+                    t('taskDetails.attempt', { count: entry.key.attempt }),
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </Typography>
                 <Button
                   variant="ghost"
                   size="sm"

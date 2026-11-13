@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Alert,
   Button,
@@ -15,9 +15,11 @@ import {
 import type { ExitBlocker, WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
 import { useAppServices } from '../../../../app/useAppServices';
 import { InlineAction } from '../InlineAction';
-import { workflowRefusalOf } from '../refusal';
-import { focusInitial } from './focusInitial';
-import { BlockerGroups, type BlockerTask } from './BlockerGroups';
+import { specsOverviewKeys } from '../../../specs/read-model';
+import { invalidateAfterTaskChange } from '../../authoring/queries';
+import { workflowRefusalKey, workflowRefusalOf } from '../refusal';
+import { focusInitial } from '../focusInitial';
+import { BlockerGroups, ITEMS_SHOWN, closeReasons, type BlockerTask } from './BlockerGroups';
 
 type Position = WorkflowActionProjection['position'];
 
@@ -67,20 +69,31 @@ function CloseBody({
   onOpenTask,
   onClosed,
 }: CloseSpecificationDialogProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { workflowExecutionApi } = useAppServices();
   const exit = projection.specification?.exit?.close;
   const workflowBlockers = exit?.kind === 'blocked' ? exit.blockers : undefined;
+  const queryClient = useQueryClient();
+  // The preview plans the Close: its operation id must stay the one the Close sends, so it is
+  // read once per opening, outside the Specification caches that a Close refreshes.
   const preview = useQuery({
-    queryKey: ['specifications', specId, 'close-preview'],
+    queryKey: ['close-preview', specId],
     queryFn: ({ signal }) => workflowExecutionApi.closePreview(specId, signal),
     enabled: workflowBlockers === undefined,
     retry: false,
     gcTime: 0,
-    staleTime: 0,
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
   const close = useMutation({
     mutationFn: (operationId: string) => workflowExecutionApi.close(specId, operationId),
+    // Whatever the answer, the Specification may have changed (closed, archived, partly done).
+    onSettled: () =>
+      Promise.all([
+        invalidateAfterTaskChange(queryClient, specId),
+        queryClient.invalidateQueries({ queryKey: specsOverviewKeys.all }),
+      ]),
     onSuccess: (result) => {
       if (result.status === 'completed') {
         onClosed();
@@ -88,9 +101,11 @@ function CloseBody({
     },
   });
   const previewRefusal = preview.isError ? workflowRefusalOf(preview.error) : undefined;
-  const blockers: readonly ExitBlocker[] | undefined =
-    workflowBlockers ??
-    (previewRefusal?.code === 'CLOSE_BLOCKED' ? previewRefusal.blockers : undefined);
+  const closeRefusal = close.isError ? workflowRefusalOf(close.error) : undefined;
+  const refusedBlockers = [previewRefusal, closeRefusal].find(
+    (refusal) => refusal?.code === 'CLOSE_BLOCKED',
+  )?.blockers;
+  const blockers: readonly ExitBlocker[] | undefined = workflowBlockers ?? refusedBlockers;
   const position: Position = projection.position;
   const abandonment =
     position.kind === 'terminal' && position.abandonment ? position.abandonment : undefined;
@@ -106,7 +121,10 @@ function CloseBody({
         <DialogHeader>
           <DialogTitle>{t('workflowExecution.close.title', { title: specTitle })}</DialogTitle>
           <DialogDescription>
-            {t('workflowExecution.close.blocked', { title: specTitle })}
+            {t('workflowExecution.close.blocked', {
+              title: specTitle,
+              reasons: closeReasons(t, i18n.language, blockers, tasks),
+            })}
           </DialogDescription>
         </DialogHeader>
         <DialogBody className="grid gap-5">
@@ -149,14 +167,14 @@ function CloseBody({
         </DialogDescription>
       </DialogHeader>
       <DialogBody className="grid gap-5">
-        {preview.isError ? (
+        {previewRefusal ? (
           <Alert role="alert" tone="danger" title={t('workflowExecution.close.previewFailed')}>
-            {previewRefusal?.code ?? t('workflowExecution.refusal.generic')}
+            {t(workflowRefusalKey(previewRefusal))}
           </Alert>
         ) : null}
-        {close.isError ? (
+        {closeRefusal ? (
           <Alert role="alert" tone="danger" title={t('workflowExecution.close.failed')}>
-            {workflowRefusalOf(close.error).code ?? t('workflowExecution.refusal.generic')}
+            {t(workflowRefusalKey(closeRefusal))}
           </Alert>
         ) : null}
         {closed && closed.status !== 'completed' ? (
@@ -183,17 +201,26 @@ function CloseBody({
               </Typography>
             </div>
             <ul className="grid gap-1 text-body-sm">
-              {cancelledTasks.map((task) => (
+              {cancelledTasks.slice(0, ITEMS_SHOWN).map((task) => (
                 <li key={task.id} className="min-w-0 [overflow-wrap:anywhere]">
                   <span className="font-mono text-content-muted">{task.id}</span> {task.title}
                 </li>
               ))}
+              {cancelledTasks.length > ITEMS_SHOWN ? (
+                <li>
+                  <InlineAction onClick={go(onSeeTasks)}>
+                    {t('workflowExecution.exit.more', {
+                      count: cancelledTasks.length - ITEMS_SHOWN,
+                    })}
+                  </InlineAction>
+                </li>
+              ) : null}
             </ul>
           </section>
         ) : null}
       </DialogBody>
       <DialogFooter>
-        <Button variant="secondary" onClick={dismiss}>
+        <Button data-initial-focus="" variant="secondary" onClick={dismiss}>
           {t('common.cancel')}
         </Button>
         <Button

@@ -109,6 +109,11 @@ export function TaskNow({
           label: document.path,
         }))}
         gateAction={gateAction}
+        gateDocument={(gate) =>
+          gate.scope.kind === 'task' && gate.scope.taskId === taskId && gate.documentId
+            ? resource.documents.find((document) => document.id === gate.documentId)?.path
+            : undefined
+        }
       />
       {documents.create.isError ? <RefusalAlert error={documents.create.error} /> : null}
     </div>

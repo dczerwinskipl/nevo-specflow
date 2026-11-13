@@ -13,6 +13,8 @@ import {
   DialogTitle,
 } from '@nevo/ui';
 import type { WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
+import { focusInitial } from './focusInitial';
+import { workflowChanges } from './presentation';
 import { workflowRefusalOf } from './refusal';
 import { WorkflowRefusalAlert } from './WorkflowRefusalAlert';
 
@@ -60,6 +62,7 @@ export function StartTaskDialog({
   const code = error ? workflowRefusalOf(error).code : undefined;
   const changed = code === 'WORKFLOW_DEFINITION_CHANGED' && confirmed !== undefined;
   const typeNotAllowed = code === 'WORKFLOW_TASK_TYPE_NOT_ALLOWED';
+  const changes = changed ? workflowChanges(t, confirmed.steps, preview.steps) : [];
 
   // A refusal moves focus to the harmless dismiss, never to a consequential action.
   useEffect(() => {
@@ -70,7 +73,7 @@ export function StartTaskDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent closeLabel={t('common.close')}>
+      <DialogContent closeLabel={t('common.close')} onOpenAutoFocus={focusInitial}>
         <DialogHeader>
           <DialogTitle>{t('workflowExecution.start.title', { id: taskId })}</DialogTitle>
           <DialogDescription>
@@ -119,6 +122,18 @@ export function StartTaskDialog({
                     })}
               </DescriptionList.Detail>
             </DescriptionList.Item>
+            {changes.length > 0 ? (
+              <DescriptionList.Item>
+                <DescriptionList.Term>{t('workflowExecution.start.change')}</DescriptionList.Term>
+                <DescriptionList.Detail>
+                  <ul className="grid gap-0.5">
+                    {changes.map((change) => (
+                      <li key={change}>{change}</li>
+                    ))}
+                  </ul>
+                </DescriptionList.Detail>
+              </DescriptionList.Item>
+            ) : null}
             {typeNotAllowed ? null : (
               <DescriptionList.Item>
                 <DescriptionList.Term>
@@ -132,7 +147,12 @@ export function StartTaskDialog({
           </DescriptionList>
         </DialogBody>
         <DialogFooter>
-          <Button ref={dismissRef} variant="secondary" onClick={() => onOpenChange(false)}>
+          <Button
+            ref={dismissRef}
+            data-initial-focus=""
+            variant="secondary"
+            onClick={() => onOpenChange(false)}
+          >
             {typeNotAllowed ? t('workflowExecution.start.notNow') : t('common.cancel')}
           </Button>
           {typeNotAllowed ? (

@@ -95,6 +95,19 @@ export function taskWorkflowProjection(
       revision: `rev-build-${version}`,
       firstStep: 'design',
       firstStepTitle: 'Design',
+      // Rev 5 adds a security review after the review.
+      steps: [
+        { id: 'design', title: 'Design', next: ['implement'] },
+        { id: 'implement', title: 'Implementation', next: ['review'] },
+        {
+          id: 'review',
+          title: 'Review',
+          next: version > 4 ? ['security-review', 'implement'] : ['end', 'implement'],
+        },
+        ...(version > 4
+          ? [{ id: 'security-review', title: 'Security review', next: ['end'] }]
+          : []),
+      ],
     };
 
     return {

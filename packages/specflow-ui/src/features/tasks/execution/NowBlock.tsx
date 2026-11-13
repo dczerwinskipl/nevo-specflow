@@ -28,6 +28,8 @@ export interface NowBlockProps {
   readonly status?: ReactNode;
   readonly links: NowLinks;
   readonly gateActionFor?: (gate: GateStatus) => GateAction | undefined;
+  /** Names the document that meets a gate (`findings.md`), when the page knows it. */
+  readonly gateDocument?: (gate: GateStatus) => string | undefined;
   /** A transient line just above the actions (a kept finish draft, a post-action notice). */
   readonly note?: ReactNode;
   /**
@@ -48,12 +50,13 @@ export function NowBlock({
   status,
   links,
   gateActionFor,
+  gateDocument,
   note,
   actions,
 }: NowBlockProps) {
   const { t, i18n } = useTranslation();
   const { position, workflow, handoff } = projection;
-  const when = (at: string) => formatWhen(at, i18n.language);
+  const when = (at: string) => formatWhen(t, at, i18n.language);
   const workflowLine = workflow
     ? t('workflowExecution.now.workflow', { title: workflow.title, version: workflow.version })
     : undefined;
@@ -76,7 +79,7 @@ export function NowBlock({
       current = <StepTitle step={position.step} />;
       facts = t('workflowExecution.now.active', {
         attempt: position.attempt.number,
-        since: when(position.attempt.startedAt),
+        since: formatWhen(t, position.attempt.startedAt, i18n.language, { timeOnlyToday: true }),
         actor: actorLabel(position.attempt.actor),
       });
       stepId = position.step.id;
@@ -206,6 +209,7 @@ export function NowBlock({
                 gates={gates}
                 label={t('workflowExecution.finish.gatesFor', { result })}
                 actionFor={gateActionFor}
+                {...(gateDocument ? { documentFor: gateDocument } : {})}
               />
             </div>
           );
@@ -213,20 +217,26 @@ export function NowBlock({
         {handoff && position.kind !== 'terminal' ? (
           <div className="grid gap-1 border-l-2 border-border-default pl-3">
             <Typography as="p" variant="body-sm" className="text-content-secondary">
-              {handoff.kind === 'transition'
-                ? t('workflowExecution.now.last', {
-                    step: handoff.from.title,
-                    result: handoff.label ?? handoff.result ?? handoff.transition,
-                  })
-                : t('workflowExecution.now.returned')}
-              {handoff.kind === 'transition' && handoff.from.actor
-                ? ` · ${actorLabel(handoff.from.actor)}`
-                : null}
-              {handoff.kind === 'transition' && handoff.from.at
-                ? `, ${when(handoff.from.at)}`
-                : handoff.kind === 'return'
-                  ? ` · ${when(handoff.at)}`
-                  : null}
+              {/* A neutral icon with the result: the projection gives no tone for results. */}
+              {handoff.kind === 'transition' ? (
+                <>
+                  {t('workflowExecution.now.lastPrefix', { step: handoff.from.title })}
+                  <span className="font-medium text-content-primary">
+                    <InlineIcon name="arrow-right" />
+                    {handoff.label ?? handoff.result ?? handoff.transition}
+                  </span>
+                  {handoff.from.actor ? ` · ${actorLabel(handoff.from.actor)}` : null}
+                  {handoff.from.at ? `, ${when(handoff.from.at)}` : null}
+                </>
+              ) : (
+                <>
+                  <span className="font-medium text-content-primary">
+                    <InlineIcon name="undo" />
+                    {t('workflowExecution.now.returned')}
+                  </span>
+                  {` · ${when(handoff.at)}`}
+                </>
+              )}
             </Typography>
             {handoff.feedback ? (
               <Typography

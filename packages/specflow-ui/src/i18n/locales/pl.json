@@ -2267,7 +2267,8 @@
       "submit": "Zakończ krok",
       "finishing": "Kończenie…",
       "drafts": "Szkice zaproponowane wcześniej przez ten krok",
-      "draftsHint": "Zaznaczone szkice pozostają szkicami po tym zakończeniu; odznaczone zostaną anulowane. Zadania utworzone ręcznie się nie zmieniają."
+      "draftsHint": "Zaznaczone szkice pozostają szkicami po tym zakończeniu; odznaczone zostaną anulowane. Zadania utworzone ręcznie się nie zmieniają.",
+      "draftNeeded": "{{kept}} nadal zależy od {{draft}}: zachowaj {{draft}} albo odznacz też {{kept}}."
     },
     "return": {
       "title": "Wróć do wcześniejszego kroku",
@@ -2397,7 +2398,8 @@
       "returnNotAllowed": "Przepływ nie może wrócić do tego kroku.",
       "specificationEnded": "Specyfikacja się zakończyła.",
       "exitBlocked": "Coś wciąż blokuje specyfikację.",
-      "busy": "Specyfikacja jest zajęta inną zmianą. Spróbuj za chwilę."
+      "busy": "Specyfikacja jest zajęta inną zmianą. Spróbuj za chwilę.",
+      "draftConflict": "Zachowany szkic zależy od szkicu, który odznaczono. Zachowaj oba albo odznacz oba."
     },
     "time": {
       "today": "Dziś {{time}}",

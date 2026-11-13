@@ -2267,7 +2267,8 @@
       "submit": "Finish step",
       "finishing": "Finishing…",
       "drafts": "Drafts this step proposed earlier",
-      "draftsHint": "Ticked drafts stay drafts after this finish; unticked ones are cancelled. Tasks created by hand are not affected."
+      "draftsHint": "Ticked drafts stay drafts after this finish; unticked ones are cancelled. Tasks created by hand are not affected.",
+      "draftNeeded": "{{kept}} still depends on {{draft}}: keep {{draft}}, or untick {{kept}} too."
     },
     "return": {
       "title": "Return to an earlier step",
@@ -2397,7 +2398,8 @@
       "returnNotAllowed": "The workflow cannot return to that step.",
       "specificationEnded": "The specification has ended.",
       "exitBlocked": "Something still holds the specification.",
-      "busy": "The specification is busy with another change. Try again in a moment."
+      "busy": "The specification is busy with another change. Try again in a moment.",
+      "draftConflict": "A draft you keep depends on a draft you unticked. Keep both, or untick both."
     },
     "time": {
       "today": "Today {{time}}",

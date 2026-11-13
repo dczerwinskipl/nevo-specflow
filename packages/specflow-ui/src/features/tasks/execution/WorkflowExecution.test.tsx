@@ -80,6 +80,28 @@ function TaskNowHarness() {
   ) : null;
 }
 
+/** A review that produces Tasks and owns two earlier drafts (t-09 depends on t-08). */
+function producingProjection(): WorkflowActionProjection {
+  const review = taskWorkflowProjection('review');
+
+  return {
+    ...review,
+    position:
+      review.position.kind === 'active'
+        ? { ...review.position, step: { ...review.position.step, produces: 'tasks' } }
+        : review.position,
+    actions: {
+      finish: {
+        ...review.actions.finish!,
+        drafts: [
+          { id: 't-08', title: 'Audit log', type: 'backend' },
+          { id: 't-09', title: 'Sign-out', type: 'ui', dependsOn: ['t-08'] },
+        ],
+      },
+    },
+  };
+}
+
 const finishButton = () =>
   within(screen.getByRole('dialog')).getByRole<HTMLButtonElement>('button', {
     name: 'Finish step',
@@ -257,23 +279,7 @@ describe('manual workflow execution', () => {
 
   it('keeps the drafts a producing step made earlier unless the owner unticks them', async () => {
     const finish = vi.fn(() => never());
-    const review = taskWorkflowProjection('review');
-    const producing: WorkflowActionProjection = {
-      ...review,
-      position:
-        review.position.kind === 'active'
-          ? { ...review.position, step: { ...review.position.step, produces: 'tasks' } }
-          : review.position,
-      actions: {
-        finish: {
-          ...review.actions.finish!,
-          drafts: [
-            { id: 't-08', title: 'Audit log', type: 'backend' },
-            { id: 't-09', title: 'Sign-out', type: 'ui', dependsOn: ['t-08'] },
-          ],
-        },
-      },
-    };
+    const producing = producingProjection();
     renderWith(<TaskNowHarness />, {
       execution: fakeExecutionApi({ finish }),
       taskActions: () => Promise.resolve(producing),
@@ -333,5 +339,54 @@ describe('manual workflow execution', () => {
       'Single sign-on cannot close yet: its workflow is waiting for 1 unfinished task and 1 task document is still being saved.',
     );
     expect(screen.getByRole('heading', { name: 'Pending writes · 1' })).toBeTruthy();
+  });
+  it('names the kept draft that still needs an unticked one when the Engine refuses the finish', async () => {
+    const finish = vi.fn(() =>
+      Promise.reject(
+        refusal('WORKFLOW_INPUT_INVALID', 422, {
+          draftConflicts: [{ kept: 't-09', dependsOnCancelled: 't-08' }],
+        }),
+      ),
+    );
+    renderWith(<TaskNowHarness />, {
+      execution: fakeExecutionApi({ finish }),
+      taskActions: () => Promise.resolve(producingProjection()),
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Finish step' }));
+    fireEvent.click(screen.getByRole('radio', { name: /^Approved/ }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 't-08 · Audit log' }));
+    fireEvent.click(finishButton());
+
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      'A draft you keep depends on a draft you unticked. Keep both, or untick both.',
+    );
+    expect(
+      screen.getByText('t-09 still depends on t-08: keep t-08, or untick t-09 too.'),
+    ).toBeTruthy();
+  });
+
+  it('closes after its own finish without saying the step was already finished', async () => {
+    let finished = false;
+    const finish = vi.fn(() => {
+      finished = true;
+
+      return Promise.resolve({
+        subject: { kind: 'task' as const, specId: SPEC, taskId: TASK },
+        transition: 'approved',
+        position: { state: 'terminal' as const, outcome: 'completed' as const },
+        continuation: { kind: 'none' as const, reason: 'terminal' as const },
+        createdTasks: [],
+      });
+    });
+    renderWith(<TaskNowHarness />, {
+      execution: fakeExecutionApi({ finish }),
+      taskActions: () => Promise.resolve(taskWorkflowProjection(finished ? 'rework' : 'review')),
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Finish step' }));
+    fireEvent.click(screen.getByRole('radio', { name: /^Approved/ }));
+    fireEvent.click(finishButton());
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(screen.queryByText(/already finished/)).toBeNull();
   });
 });

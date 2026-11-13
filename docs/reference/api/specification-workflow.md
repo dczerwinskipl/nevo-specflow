@@ -114,7 +114,9 @@ Close still checks Git and the workspace itself.
   revised, an unlisted one cancelled, and any other step refuses `tasks` (`WORKFLOW_INPUT_INVALID`). Task status
   decisions are not part of a finish. The list covers only the drafts the step owns (produced by this step in any
   attempt); `actions.finish.drafts` lists them as unchanged proposals, so a person finishing the step keeps them by
-  sending them back. Drafts created by hand or by another step are never affected.
+  sending them back. Drafts created by hand or by another step are never affected. Keeping a draft
+  that depends on one the same finish leaves out is refused (`WORKFLOW_INPUT_INVALID` with
+  `details.draftConflicts` `[{kept, dependsOnCancelled}]`): keep both, or leave out both.
 - A pin preview (`preview` of `not-started`) lists the `steps` it would pin, in declared order, each with `next`
   (the steps its transitions lead to, `end` for a terminal target): a client that confirmed an earlier preview
   names what changed when the start is refused with `WORKFLOW_DEFINITION_CHANGED`.

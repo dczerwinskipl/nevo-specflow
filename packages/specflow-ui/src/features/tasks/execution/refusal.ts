@@ -15,6 +15,8 @@ export interface WorkflowRefusal {
   readonly gates: readonly GateStatus[];
   /** `WORKFLOW_EXIT_BLOCKED` (`details.blockers`) or `CLOSE_BLOCKED` (`blockers`). */
   readonly blockers: readonly ExitBlocker[];
+  /** A producing finish kept drafts that depend on drafts it cancels (`details.draftConflicts`). */
+  readonly draftConflicts: NonNullable<Details['draftConflicts']>;
   /** The answer was lost: the request may have been applied. */
   readonly outcomeUnknown: boolean;
 }
@@ -39,6 +41,7 @@ export function workflowRefusalOf(error: unknown): WorkflowRefusal {
     code: apiErrorCode(error),
     gates: details?.gate?.gates ?? [],
     blockers: details?.blockers ?? closeBlockers ?? [],
+    draftConflicts: details?.draftConflicts ?? [],
     outcomeUnknown: isApiError(error) && error.outcome === 'unknown',
   };
 }
@@ -49,6 +52,10 @@ export function workflowRefusalOf(error: unknown): WorkflowRefusal {
 export function workflowRefusalKey(refusal: WorkflowRefusal) {
   if (refusal.outcomeUnknown) {
     return 'workflowExecution.refusal.outcomeUnknown';
+  }
+
+  if (refusal.draftConflicts.length > 0) {
+    return 'workflowExecution.refusal.draftConflict';
   }
 
   switch (refusal.code) {

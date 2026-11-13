@@ -309,6 +309,13 @@ export const WorkflowErrorSchema = Type.Object(
             }),
           ),
         ),
+        /**
+         * `WORKFLOW_INPUT_INVALID` of a producing finish: kept drafts that depend on drafts the
+         * same finish cancels (left out of `tasks`). Keep both, or cancel both.
+         */
+        draftConflicts: Type.Optional(
+          Type.Array(Type.Object({ kept: Type.String(), dependsOnCancelled: Type.String() })),
+        ),
         awaited: Type.Optional(
           Type.Array(Type.Object({ index: Type.Integer({ minimum: 0 }), key: Type.String() })),
         ),

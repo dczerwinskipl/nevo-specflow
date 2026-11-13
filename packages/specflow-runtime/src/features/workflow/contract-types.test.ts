@@ -12,6 +12,7 @@ import type {
   AbandonSpecificationResult,
   ActionProjection,
   AwaitedContextEntry,
+  DraftConflict,
   FinishStepResult,
   GateUnsatisfiedError,
   ReturnToStepResult,
@@ -45,6 +46,7 @@ type Unresolved = NonNullable<Details['unresolved']>[number];
 type AwaitedEntry = NonNullable<Details['awaited']>[number];
 type GateRefusal = NonNullable<Details['gate']>;
 type InvalidEntry = NonNullable<Details['invalidContext']>[number];
+type DraftConflictEntry = NonNullable<Details['draftConflicts']>[number];
 
 describe('workflow contract types', () => {
   it('match the Engine both ways', () => {
@@ -56,6 +58,7 @@ describe('workflow contract types', () => {
     same<UnresolvedContextEntry, Unresolved>(true);
     same<AwaitedContextEntry, AwaitedEntry>(true);
     same<InvalidContextEntry, InvalidEntry>(true);
+    same<DraftConflict, DraftConflictEntry>(true);
     same<Pick<GateUnsatisfiedError, 'phase' | 'step' | 'stepTitle' | 'gates'>, GateRefusal>(true);
     // The Task resource facts of a detail are Engine facts, passed on unchanged.
     same<TaskReadiness, TaskResourceFacts['readiness']>(true);

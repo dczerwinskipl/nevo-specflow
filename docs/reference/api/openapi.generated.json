@@ -8895,6 +8895,24 @@
                   }
                 }
               },
+              "draftConflicts": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "kept",
+                    "dependsOnCancelled"
+                  ],
+                  "properties": {
+                    "kept": {
+                      "type": "string"
+                    },
+                    "dependsOnCancelled": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
               "awaited": {
                 "type": "array",
                 "items": {

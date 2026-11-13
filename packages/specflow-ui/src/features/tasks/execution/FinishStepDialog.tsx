@@ -12,6 +12,7 @@ import {
   DialogTitle,
   Field,
   IconButton,
+  InlineNote,
   Menu,
   MenuContent,
   MenuItem,
@@ -23,6 +24,7 @@ import {
 } from '@nevo/ui';
 import type { GateStatus, WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
 import { GateList, type GateAction } from './GateList';
+import { workflowRefusalOf } from './refusal';
 import { WorkflowRefusalAlert } from './WorkflowRefusalAlert';
 
 type Finish = NonNullable<WorkflowActionProjection['actions']['finish']>;
@@ -106,6 +108,12 @@ export function FinishStepDialog({
   const unavailable = selected?.unavailable;
   const blocked = !selected || feedbackMissing || unavailable !== undefined;
   const drafts = finish.drafts ?? [];
+  // The Engine names each kept draft that depends on an unticked one; shown while it still holds.
+  const conflicts = workflowRefusalOf(error).draftConflicts.filter(
+    (conflict) =>
+      draft.droppedDrafts.includes(conflict.dependsOnCancelled) &&
+      !draft.droppedDrafts.includes(conflict.kept),
+  );
   const remaining = artifactOptions.filter((option) => !draft.artifacts.includes(option.value));
   const labelOf = (value: string) =>
     artifactOptions.find((option) => option.value === value)?.label ?? value;
@@ -289,22 +297,37 @@ export function FinishStepDialog({
                 <Typography as="p" variant="body-sm" className="text-content-secondary">
                   {t('workflowExecution.finish.draftsHint')}
                 </Typography>
-                {drafts.map((proposal) => (
-                  <CheckboxField
-                    key={proposal.id}
-                    label={`${proposal.id} · ${proposal.title}`}
-                    checked={!draft.droppedDrafts.includes(proposal.id)}
-                    onCheckedChange={(checked) =>
-                      onDraftChange({
-                        ...draft,
-                        droppedDrafts:
-                          checked === true
-                            ? draft.droppedDrafts.filter((id) => id !== proposal.id)
-                            : [...draft.droppedDrafts, proposal.id],
-                      })
-                    }
-                  />
-                ))}
+                {drafts.map((proposal) => {
+                  const neededBy = conflicts
+                    .filter((conflict) => conflict.dependsOnCancelled === proposal.id)
+                    .map((conflict) => conflict.kept);
+
+                  return (
+                    <div key={proposal.id} className="grid gap-1">
+                      <CheckboxField
+                        label={`${proposal.id} · ${proposal.title}`}
+                        checked={!draft.droppedDrafts.includes(proposal.id)}
+                        onCheckedChange={(checked) =>
+                          onDraftChange({
+                            ...draft,
+                            droppedDrafts:
+                              checked === true
+                                ? draft.droppedDrafts.filter((id) => id !== proposal.id)
+                                : [...draft.droppedDrafts, proposal.id],
+                          })
+                        }
+                      />
+                      {neededBy.length > 0 ? (
+                        <InlineNote tone="danger">
+                          {t('workflowExecution.finish.draftNeeded', {
+                            draft: proposal.id,
+                            kept: neededBy.join(', '),
+                          })}
+                        </InlineNote>
+                      ) : null}
+                    </div>
+                  );
+                })}
               </fieldset>
             ) : producesTasks ? (
               <Typography as="p" variant="body-sm" className="text-content-secondary">

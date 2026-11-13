@@ -61,6 +61,30 @@ export interface MaterializedTasks {
 /** The reason recorded on a draft that a later finish of a producing step no longer lists. */
 export const LEFT_OUT_OF_BREAKDOWN = 'Left out of the breakdown.';
 
+/** A kept draft that depends on a draft the same finish cancels. */
+export interface DraftConflict {
+  readonly kept: string;
+  readonly dependsOnCancelled: string;
+}
+
+/**
+ * `WORKFLOW_INPUT_INVALID` of a producing finish that keeps a draft but leaves out (cancels) a draft
+ * it depends on (`draftConflicts`): keep both, or cancel both.
+ */
+export class DraftConflictError extends WorkflowError {
+  readonly draftConflicts: readonly DraftConflict[];
+
+  constructor(conflicts: readonly DraftConflict[]) {
+    super(
+      'WORKFLOW_INPUT_INVALID',
+      `Kept drafts depend on drafts this finish cancels: ${conflicts
+        .map((conflict) => `${conflict.kept} on ${conflict.dependsOnCancelled}`)
+        .join(', ')}.`,
+    );
+    this.draftConflicts = conflicts;
+  }
+}
+
 function invalid(message: string): never {
   throw new WorkflowError('WORKFLOW_INPUT_INVALID', message);
 }
@@ -204,6 +228,16 @@ export function materializeTasks(input: MaterializeTasksInput): MaterializedTask
 
   for (const proposal of input.proposals) {
     graph.set(proposal.id, proposal.dependsOn ?? []);
+  }
+
+  const leftOutIds = new Set(leftOut.map((task) => task.taskId));
+  const conflicts = input.proposals.flatMap((proposal) =>
+    (proposal.dependsOn ?? [])
+      .filter((dependency) => leftOutIds.has(dependency))
+      .map((dependency) => ({ kept: proposal.id, dependsOnCancelled: dependency })),
+  );
+  if (conflicts.length > 0) {
+    throw new DraftConflictError(conflicts);
   }
 
   const drafts = input.proposals.map((proposal): ExecutionTask => {

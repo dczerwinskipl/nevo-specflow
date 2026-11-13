@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 
 import { closeBlockers, specificationLifecycleActions } from '../close/blockers';
 import type { ExecutionCatalogue } from '../definitions/catalogue';
+import { inspectActions } from './actions';
 import { abandonSpecification } from './abandon';
 import { inspectExecution } from './inspect';
 import {
@@ -77,6 +78,14 @@ describe('abandonSpecification', () => {
     }
 
     expect(closeBlockers(await readSpecificationExitState(dependencies, SPEC))).toEqual([]);
+    // The Overview reads who abandoned it, when and why from the projection.
+    expect(
+      (await inspectActions(dependencies, { kind: 'specification', specId: SPEC })).position,
+    ).toEqual({
+      kind: 'terminal',
+      outcome: 'abandoned',
+      abandonment: { at: result.abandonment.at, reason: REASON, actor: owner },
+    });
   });
 
   it('is final: the same reason returns the same result, another one is refused', async () => {

@@ -13,6 +13,7 @@ import { TaskDependenciesSection } from './dependencies/TaskDependenciesSection'
 import type { DependencyTask } from './dependencies/dependencyModel';
 import { TaskDocumentsSection } from './documents/TaskDocumentsSection';
 import { RefusalAlert } from './RefusalAlert';
+import { TaskNow, type LifecyclePrimary } from '../execution/TaskNow';
 
 export interface TaskAuthoringViewProps {
   readonly specId: string;
@@ -27,6 +28,10 @@ export interface TaskAuthoringViewProps {
   readonly contextNames: ContextNames;
   /** A lifecycle action that acted directly (Approve, Resume) and was refused. */
   readonly lifecycleError: unknown;
+  /** Approve or Resume: the Now block's one primary action. */
+  readonly lifecyclePrimary?: LifecyclePrimary;
+  readonly onCancelTask?: () => void;
+  readonly onRemoveTask?: () => void;
   readonly onOpenDocument: (documentId: string) => void;
   readonly onReload: () => void;
 }
@@ -48,6 +53,9 @@ export function TaskAuthoringView({
   contextView,
   contextNames,
   lifecycleError,
+  lifecyclePrimary,
+  onCancelTask,
+  onRemoveTask,
   onOpenDocument,
   onReload,
 }: TaskAuthoringViewProps) {
@@ -145,10 +153,20 @@ export function TaskAuthoringView({
           />
         ) : null}
       </div>
-      {/*
-        T11 slot: the Now block (workflow position, blocking reasons, latest hand-off and the one
-        primary action, from the workflow projection) is rendered here, directly under the summary.
-      */}
+      {/* The Now block, directly under the summary; a cancelled Task has no workflow section. */}
+      {projection && resource.status !== 'cancelled' ? (
+        <TaskNow
+          specId={specId}
+          taskId={task.id}
+          typeTitle={typeTitle}
+          resource={resource}
+          projection={projection}
+          {...(lifecyclePrimary ? { primary: lifecyclePrimary } : {})}
+          {...(onCancelTask ? { onCancelTask } : {})}
+          {...(onRemoveTask ? { onRemoveTask } : {})}
+          onOpenDocument={onOpenDocument}
+        />
+      ) : null}
       <TaskDocumentsSection
         specId={specId}
         taskId={task.id}

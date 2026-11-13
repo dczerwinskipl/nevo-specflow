@@ -17,6 +17,7 @@ import type { SpecificationLifecycleActions } from '../close/blockers';
 import { resolveSpecificationExecution, type ExecutionCatalogue } from '../definitions/catalogue';
 import type { TaskTypes, WorkflowDefinition, WorkflowStep } from '../definitions/model';
 import { WorkflowError } from '../errors';
+import type { TaskProposal } from '../tasks/tasks';
 import { TASKS_PER_SPECIFICATION_MAX } from '../limits';
 import type { TaskContextEntry } from '../../tasks/resource/model';
 import {
@@ -96,6 +97,17 @@ export interface WorkflowSummary {
 export interface PinPreview extends WorkflowSummary {
   readonly firstStep: string;
   readonly firstStepTitle: string;
+  /**
+   * The steps a start would pin, in declared order, each with where its transitions lead (step ids;
+   * `end` for a terminal target). A client that confirmed an earlier preview names what changed.
+   */
+  readonly steps: readonly PreviewStep[];
+}
+
+export interface PreviewStep {
+  readonly id: string;
+  readonly title: string;
+  readonly next: readonly string[];
 }
 
 export const AGENT_UNAVAILABLE_REASONS = [
@@ -206,7 +218,34 @@ export type ActionPosition =
       /** The step a start would activate once unblocked, when known. */
       readonly next?: StartableStep;
     }
-  | { readonly kind: 'terminal'; readonly outcome: TerminalOutcome };
+  | {
+      readonly kind: 'terminal';
+      readonly outcome: TerminalOutcome;
+      /** An abandoned run: who ended it, when and why. */
+      readonly abandonment?: {
+        readonly at: string;
+        readonly reason: string;
+        readonly actor: WorkflowActor;
+      };
+    };
+
+/**
+ * The hand-off as the owner reads it: the core hand-off plus, for a finished attempt, the title of
+ * its step, who finished it and when.
+ */
+export type PresentedHandoff =
+  | (Extract<Handoff, { kind: 'transition' }> & {
+      /** The display label of the transition taken, when the definition gives one. */
+      readonly label?: string;
+      readonly from: {
+        readonly step: string;
+        readonly attempt: number;
+        readonly title: string;
+        readonly at?: string;
+        readonly actor?: WorkflowActor;
+      };
+    })
+  | Extract<Handoff, { kind: 'return' }>;
 
 /** The workflow actions the owner may take now; an absent action is not allowed. */
 export interface WorkflowActions {
@@ -231,6 +270,11 @@ export interface WorkflowActions {
       /** The exit gates that apply to it (`when`), with their status now; absent when none do. */
       readonly gates?: readonly GateStatus[];
     })[];
+    /**
+     * A step that produces Tasks: the drafts it owns (produced by this step in any attempt, D06) as
+     * unchanged proposals. A finish lists those to keep; an owned draft it leaves out is cancelled.
+     */
+    readonly drafts?: readonly TaskProposal[];
   };
   /** Declared returns to steps the run reached. */
   readonly return?: {
@@ -324,7 +368,7 @@ export interface ActionProjection {
   readonly workflow?: WorkflowSummary;
   readonly position: ActionPosition;
   /** What the last finished attempt or return handed over. */
-  readonly handoff?: Handoff;
+  readonly handoff?: PresentedHandoff;
   readonly actions: WorkflowActions;
   /** For a Task subject. */
   readonly task?: TaskLifecycleActions;
@@ -383,6 +427,60 @@ function previewOf(definition: WorkflowDefinition): PinPreview {
     ...summaryOf(definition),
     firstStep: definition.entryStep,
     firstStepTitle: stepOf(definition, definition.entryStep).title,
+    steps: definition.steps.map((step) => ({
+      id: step.id,
+      title: step.title,
+      next: step.transitions.map((transition) =>
+        transition.target.kind === 'step' ? transition.target.step : 'end',
+      ),
+    })),
+  };
+}
+
+/** The drafts a producing step owns (D06), as the proposals that keep them unchanged. */
+function ownedDrafts(tasks: ExecutionTasks, stepId: string): TaskProposal[] {
+  return tasks.tasks
+    .filter(
+      (task) =>
+        task.status === 'draft' && task.origin.kind === 'produced' && task.origin.step === stepId,
+    )
+    .map((task) => ({
+      id: task.taskId,
+      title: task.title,
+      ...(task.summary !== undefined ? { summary: task.summary } : {}),
+      type: task.type,
+      ...(task.dependsOn.length > 0 ? { dependsOn: task.dependsOn } : {}),
+    }));
+}
+
+function presentHandoff(
+  definition: WorkflowDefinition,
+  run: WorkflowRun,
+  handoff: Handoff | undefined,
+): PresentedHandoff | undefined {
+  if (handoff?.kind !== 'transition') {
+    return handoff;
+  }
+
+  const record = run.attempts.find(
+    (attempt) => attempt.step === handoff.from.step && attempt.attempt === handoff.from.attempt,
+  );
+  const by = record?.finishedBy ?? record?.actor;
+  const step = findStep(definition, handoff.from.step);
+  const label =
+    step?.kind === 'work'
+      ? step.transitions.find((transition) => transition.id === handoff.transition)?.label
+      : undefined;
+
+  return {
+    ...handoff,
+    ...(label !== undefined ? { label } : {}),
+    from: {
+      ...handoff.from,
+      title: step?.title ?? handoff.from.step,
+      ...(record?.endedAt ? { at: record.endedAt } : {}),
+      ...(by ? { actor: by } : {}),
+    },
   };
 }
 
@@ -564,11 +662,29 @@ async function runProjection(
   input: RunInput,
 ): Promise<Pick<ActionProjection, 'workflow' | 'position' | 'actions' | 'handoff'>> {
   const { definition, run } = input;
-  const handoff = handoffOf(run);
+  const handoff = presentHandoff(definition, run, handoffOf(run));
   const common = { workflow: summaryOf(definition), ...(handoff ? { handoff } : {}) };
   const position = run.position;
   if (position.state === 'terminal') {
-    return { ...common, position: { kind: 'terminal', outcome: position.outcome }, actions: {} };
+    const abandonment = run.abandonment;
+
+    return {
+      ...common,
+      position: {
+        kind: 'terminal',
+        outcome: position.outcome,
+        ...(abandonment
+          ? {
+              abandonment: {
+                at: abandonment.at,
+                reason: abandonment.reason,
+                actor: abandonment.actor,
+              },
+            }
+          : {}),
+      },
+      actions: {},
+    };
   }
 
   const returns = input.returnable ? returnTargets(definition, run) : [];
@@ -649,6 +765,9 @@ async function runProjection(
               step: step.id,
               attempt: attempt.attempt,
               transitions: await finishTransitions(input, step),
+              ...(describeStep(step).produces === 'tasks'
+                ? { drafts: ownedDrafts(input.tasks, step.id) }
+                : {}),
             },
           }
         : {}),

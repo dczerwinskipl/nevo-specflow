@@ -7,7 +7,9 @@ import {
   claude,
   memoryDependencies,
   owner,
+  runToBreakdown,
   seedExecutionCatalogue,
+  TWO_TASKS,
   specification,
   specificationWithTasks,
   startSpecification,
@@ -120,7 +122,17 @@ describe('Specification positions', () => {
         step: { id: 'specification' },
         attempt: { number: 1, actor: owner },
       },
-      handoff: { kind: 'transition', from: { step: 'requirements' }, transition: 'agreed' },
+      handoff: {
+        kind: 'transition',
+        // Who finished it and when, for the owner's "Last:" line.
+        from: {
+          step: 'requirements',
+          title: expect.any(String) as string,
+          actor: owner,
+          at: expect.any(String) as string,
+        },
+        transition: 'agreed',
+      },
       actions: {
         finish: {
           step: 'specification',
@@ -168,6 +180,29 @@ describe('Specification positions', () => {
     expect((await project(byAgent, specification)).position).toMatchObject({
       kind: 'ready',
       next: { agent: { kind: 'available' } },
+    });
+  });
+
+  it('active producing step: lists the drafts it produced earlier, so a person can keep them (D06)', async () => {
+    const dependencies = memoryDependencies(catalogue);
+    await runToBreakdown(dependencies);
+    await finishStep(dependencies, {
+      subject: specification,
+      step: 'breakdown',
+      attempt: 1,
+      input: { tasks: TWO_TASKS },
+      actor: claude,
+    });
+    await work(dependencies, specification, { result: 'fail', feedback: 'Split it.' });
+    await startSpecification(dependencies, owner);
+
+    expect((await project(dependencies, specification)).actions.finish).toMatchObject({
+      step: 'breakdown',
+      attempt: 2,
+      drafts: [
+        { id: 'api', title: 'API', type: 'implementation' },
+        { id: 'screen', title: 'Screen', type: 'ui-implementation', dependsOn: ['api'] },
+      ],
     });
   });
 

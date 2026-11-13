@@ -20,14 +20,21 @@ export interface UseTaskLifecycleInput {
 }
 
 /**
- * The Task's lifecycle actions as header actions, each offered only when the projection allows
- * it (Put on hold during an active attempt stays, disabled). Approve confirms only when a required
- * context entry is missing; Resume acts directly; Hold, Cancel and Remove confirm.
- *
- * Approve and Resume are the subject's primary actions and move to the Now block with T11.
+ * The Task's lifecycle actions, each offered only when the projection allows it (Put on hold during
+ * an active attempt stays, disabled). Approve and Resume are the subject's one primary action, shown
+ * in the Now block; the others are header actions. Approve confirms only when a required context
+ * entry is missing; Resume acts directly; Hold, Cancel and Remove confirm.
  */
 export function useTaskLifecycle(input: UseTaskLifecycleInput): {
   readonly actions: WorkspaceHeaderAction[];
+  /** Approve or Resume, when allowed: the Now block's primary action. */
+  readonly primary?: {
+    readonly label: string;
+    readonly busy: boolean;
+    readonly onPress: () => void;
+  };
+  /** Opens the confirmation of Cancel or Remove (the first start offers them for a disallowed type). */
+  readonly request: (decision: 'cancel' | 'remove') => void;
   readonly dialogs: ReactNode;
   /** A refusal of an action that did not open a dialog (Approve without warning, Resume). */
   readonly directError: unknown;
@@ -47,23 +54,15 @@ export function useTaskLifecycle(input: UseTaskLifecycleInput): {
   };
 
   const actions: WorkspaceHeaderAction[] = [];
-  if (allowed('approve')) {
-    actions.push({
-      id: 'approve',
-      label: t('taskAuthoring.lifecycle.approve'),
-      busy,
-      onPress: () => (input.missingContext.length > 0 ? setDecision('approve') : setReady()),
-    });
-  }
-
-  if (allowed('resume')) {
-    actions.push({
-      id: 'resume',
-      label: t('taskAuthoring.lifecycle.resume'),
-      busy,
-      onPress: setReady,
-    });
-  }
+  const primary = allowed('approve')
+    ? {
+        label: t('taskAuthoring.lifecycle.approve'),
+        busy,
+        onPress: () => (input.missingContext.length > 0 ? setDecision('approve') : setReady()),
+      }
+    : allowed('resume')
+      ? { label: t('taskAuthoring.lifecycle.resume'), busy, onPress: setReady }
+      : undefined;
 
   if (allowed('editDetails')) {
     actions.push({
@@ -133,6 +132,8 @@ export function useTaskLifecycle(input: UseTaskLifecycleInput): {
 
   return {
     actions,
+    ...(primary ? { primary } : {}),
+    request: setDecision,
     directError,
     dialogs: (
       <LifecycleDialog

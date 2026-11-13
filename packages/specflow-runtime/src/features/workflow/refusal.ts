@@ -7,6 +7,7 @@ import {
 } from '@nevo/specflow-contracts/workflow';
 import { TRUSTED_LOCAL_SUBJECT } from '../auth/authorization/request-authorization';
 import {
+  DraftConflictError,
   GateUnsatisfiedError,
   GitCapabilityError,
   ProjectControlLockError,
@@ -116,6 +117,10 @@ export function workflowFailure(error: unknown): WorkflowFailure | undefined {
       unresolved: [...error.unresolved],
       ...(error.awaited.length > 0 ? { awaited: [...error.awaited] } : {}),
     });
+  }
+
+  if (error instanceof DraftConflictError) {
+    return failure(error.code, error.message, { draftConflicts: toWire(error.draftConflicts) });
   }
 
   if (error instanceof TaskContextInvalidError) {

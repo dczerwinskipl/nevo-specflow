@@ -106,6 +106,11 @@ export const PinPreviewSchema = Type.Object({
   ...WorkflowSummaryFields,
   firstStep: StepIdSchema,
   firstStepTitle: Type.String(),
+  /**
+   * The steps a start would pin, in declared order, with where their transitions lead (step ids;
+   * `end` for a terminal target): a client that confirmed an earlier preview can name the change.
+   */
+  steps: array(Type.Object({ id: StepIdSchema, title: Type.String(), next: array(Type.String()) })),
 });
 
 export const AGENT_UNAVAILABLE_REASONS = [
@@ -268,14 +273,31 @@ export const WorkflowPositionSchema = Type.Union([
     preview: Type.Optional(PinPreviewSchema),
     next: Type.Optional(StartableStepSchema),
   }),
-  Type.Object({ kind: Type.Literal('terminal'), outcome: TerminalOutcomeSchema }),
+  Type.Object({
+    kind: Type.Literal('terminal'),
+    outcome: TerminalOutcomeSchema,
+    /** An abandoned run: who ended it, when and why (the reason is the owner's text). */
+    abandonment: Type.Optional(
+      Type.Object({ at: Type.String(), reason: text(2000), actor: WorkflowActorSchema }),
+    ),
+  }),
 ]);
 
 export const HandoffSchema = Type.Union([
   Type.Object({
     kind: Type.Literal('transition'),
-    from: Type.Object({ step: StepIdSchema, attempt: Type.Integer({ minimum: 1 }) }),
+    from: Type.Object({
+      step: StepIdSchema,
+      attempt: Type.Integer({ minimum: 1 }),
+      /** The step's title (display text). */
+      title: Type.String(),
+      /** When the attempt ended and who finished it, where recorded. */
+      at: Type.Optional(Type.String()),
+      actor: Type.Optional(WorkflowActorSchema),
+    }),
     transition: Type.String(),
+    /** The display label of the transition taken, when the definition gives one. */
+    label: Type.Optional(Type.String()),
     result: Type.Optional(Type.String()),
     feedback: Type.Optional(text()),
     artifacts: array(Type.String()),
@@ -307,6 +329,22 @@ export const WorkflowActionsSchema = Type.Object({
             gates: Type.Optional(array(GateStatusSchema)),
           }),
         ]),
+      ),
+      /**
+       * A step that produces Tasks: the drafts it owns (any earlier attempt of this step) as
+       * unchanged proposals. A finish lists the ones to keep; an owned draft left out is cancelled.
+       * Drafts created by hand or by another step are never affected.
+       */
+      drafts: Type.Optional(
+        array(
+          Type.Object({
+            id: TaskIdSchema,
+            title: Type.String(),
+            summary: Type.Optional(Type.String()),
+            type: Type.String(),
+            dependsOn: Type.Optional(array(TaskIdSchema)),
+          }),
+        ),
       ),
     }),
   ),

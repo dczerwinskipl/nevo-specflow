@@ -21,7 +21,7 @@ function Harness({
   lifecycle: WorkflowActionProjection['task'];
   missingContext: readonly string[];
 }) {
-  const { actions, dialogs } = useTaskLifecycle({
+  const { actions, primary, dialogs } = useTaskLifecycle({
     specId: SPEC,
     taskId: TASK,
     revision: 'rev-1',
@@ -33,6 +33,11 @@ function Harness({
 
   return (
     <>
+      {primary ? (
+        <button type="button" disabled={primary.busy} onClick={primary.onPress}>
+          {primary.label}
+        </button>
+      ) : null}
       {actions.map((action) => (
         <button key={action.id} type="button" disabled={action.disabled} onClick={action.onPress}>
           {action.label}

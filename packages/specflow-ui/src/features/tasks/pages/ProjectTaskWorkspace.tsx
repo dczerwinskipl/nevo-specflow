@@ -182,6 +182,13 @@ function Workspace({
                     contextView={view}
                     contextNames={names}
                     lifecycleError={lifecycle.directError}
+                    {...(lifecycle.primary ? { lifecyclePrimary: lifecycle.primary } : {})}
+                    {...(projection.data?.task?.cancel.kind === 'allowed'
+                      ? { onCancelTask: () => lifecycle.request('cancel') }
+                      : {})}
+                    {...(projection.data?.task?.remove.kind === 'allowed'
+                      ? { onRemoveTask: () => lifecycle.request('remove') }
+                      : {})}
                     onOpenDocument={openDocument}
                     onReload={() => void reload()}
                   />

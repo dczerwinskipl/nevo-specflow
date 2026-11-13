@@ -34,7 +34,11 @@ import {
 import { useSpecificationDialogs } from './useSpecificationDialogs';
 import { useActivityHistoryPanel } from './useActivityHistoryPanel';
 import { EnsureSpecificationState } from '../SpecificationStateProvider';
-import { TaskViewStateProvider } from '../../tasks';
+import {
+  SpecificationWorkflowProvider,
+  TaskViewStateProvider,
+  useSpecificationExitActions,
+} from '../../tasks';
 
 function fullTaskHref(specId: string, taskId: string, collection: 'current' | 'archive'): string {
   const search = collection === 'archive' ? '?collection=archive' : '';
@@ -70,7 +74,9 @@ export function SpecificationWorkspace(props: SpecificationWorkspaceProps) {
       <AppWorkspaceProvider scopeKey={props.specId}>
         <WorkspaceRouteLeaveGuard />
         <TaskViewStateProvider key={props.specId}>
-          <SpecificationWorkspaceInner {...props} />
+          <SpecificationWorkflowProvider key={props.specId} specId={props.specId}>
+            <SpecificationWorkspaceInner {...props} />
+          </SpecificationWorkflowProvider>
         </TaskViewStateProvider>
       </AppWorkspaceProvider>
     </EnsureSpecificationState>
@@ -100,6 +106,8 @@ function SpecificationWorkspaceInner({
   const { t } = useTranslation();
   const secondaryNavigation = useSecondaryNavigation();
   const { supportsSplit } = useWorkspaceCapabilities();
+  // Close and Abandon (project Runtime): overflow actions after the Overview's own.
+  const exitActions = useSpecificationExitActions();
   // The created event alone is no reason to open the history: only a Session (later Task or
   // document) event is.
   const historyPanel = useActivityHistoryPanel(
@@ -288,6 +296,7 @@ function SpecificationWorkspaceInner({
                         },
                       ]
                     : []),
+                  ...exitActions,
                 ]}
               />
             }

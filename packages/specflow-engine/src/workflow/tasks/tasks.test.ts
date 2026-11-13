@@ -290,6 +290,17 @@ describe('the effective Task Type policy (D04)', () => {
 });
 
 describe('leaving out a draft another Task depends on', () => {
+  it('refuses keeping a draft whose dependency the same finish cancels, naming each pair', () => {
+    const existing = drafts([proposal('api'), proposal('web', ['api'])]);
+
+    expect(() => materializeTasks(input([proposal('web', ['api'])], { existing }))).toThrow(
+      expect.objectContaining({
+        code: 'WORKFLOW_INPUT_INVALID',
+        draftConflicts: [{ kept: 'web', dependsOnCancelled: 'api' }],
+      }),
+    );
+  });
+
   it('cancels the draft; the dependent Task is then stuck (tasksStuck), not refused', () => {
     const existing = drafts([proposal('api'), proposal('web', ['api'])]).map((task) =>
       task.taskId === 'web' ? ready(task) : task,

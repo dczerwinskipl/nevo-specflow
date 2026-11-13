@@ -345,6 +345,7 @@ export function authoringApi(scenario: AuthoringScenario): TaskAuthoringApi {
             title: 'Feature specification',
             firstStep: 'requirements',
             firstStepTitle: 'Requirements',
+            steps: [{ id: 'requirements', title: 'Requirements', next: ['end'] }],
           },
           next: {
             step: {

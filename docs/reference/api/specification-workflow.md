@@ -57,7 +57,9 @@ Every route is an **owner** action: an agent attempt is never started or finishe
 
 `GET .../workflow/actions` answers `WorkflowActionProjection`: `subject`, `workflow` (the pinned
 workflow, or the one a first start would pin), `position` (`not-started`, `ready`, `active`, `waiting`,
-`blocked` with `StartBlocker`s, `terminal`), the last `handoff`, `actions` (`start`, `finish` with its
+`blocked` with `StartBlocker`s, `terminal`, with `abandonment` `{at, reason, actor}` once abandoned), the
+last `handoff` (a finished attempt names the transition `label`, its step `title` and, where recorded, `at` and the `actor` who
+finished it), `actions` (`start`, `finish` with its
 transitions, `return` with its targets) and, per subject, `task` (the Task lifecycle actions, each
 `allowed` or `unavailable` with a stable reason) or `specification` (`createTask`, and `exit`).
 
@@ -100,23 +102,32 @@ Close still checks Git and the workspace itself.
 
 ## Commands
 
-| Command | Body                                                           | Result                                                                   |
-| ------- | -------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| start   | `{expectedWorkflowRevision?}`                                  | `{kind: started\|resumed\|terminal, subject, step?, attempt?}`           |
-| finish  | `{step, attempt, result?, feedback?, artifacts?}`              | `{subject, transition, position, continuation, createdTasks, replayed?}` |
-| return  | `{step, reason?}` (`reason` is carried as the step's feedback) | `{subject, position, continuation}`                                      |
-| abandon | `{reason}`                                                     | `{specId, abandonment, cancelledTasks, abandonedTaskRuns}`               |
+| Command | Body                                                           | Result                                                                                 |
+| ------- | -------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| start   | `{expectedWorkflowRevision?}`                                  | `{kind: started\|resumed\|terminal, subject, step?, attempt?}`                         |
+| finish  | `{step, attempt, result?, feedback?, artifacts?}`              | `{subject, transition, position, continuation, createdTasks, replayed?, postActions?}` |
+| return  | `{step, reason?}` (`reason` is carried as the step's feedback) | `{subject, position, continuation}`                                                    |
+| abandon | `{reason}`                                                     | `{specId, abandonment, cancelledTasks, abandonedTaskRuns}`                             |
 
 - A step that produces Tasks (`produces: tasks` in the projection, for example Breakdown) is finished with `tasks`:
   the complete list of draft Tasks `{id, title, summary?, type, dependsOn?}`, possibly empty; a listed draft is
   revised, an unlisted one cancelled, and any other step refuses `tasks` (`WORKFLOW_INPUT_INVALID`). Task status
-  decisions are not part of a finish.
+  decisions are not part of a finish. The list covers only the drafts the step owns (produced by this step in any
+  attempt); `actions.finish.drafts` lists them as unchanged proposals, so a person finishing the step keeps them by
+  sending them back. Drafts created by hand or by another step are never affected. Keeping a draft
+  that depends on one the same finish leaves out is refused (`WORKFLOW_INPUT_INVALID` with
+  `details.draftConflicts` `[{kept, dependsOnCancelled}]`): keep both, or leave out both.
+- A pin preview (`preview` of `not-started`) lists the `steps` it would pin, in declared order, each with `next`
+  (the steps its transitions lead to, `end` for a terminal target): a client that confirmed an earlier preview
+  names what changed when the start is refused with `WORKFLOW_DEFINITION_CHANGED`.
 - A Task's first start sends the `expectedWorkflowRevision` the projection showed
   (`actions.start.expectedWorkflowRevision`); another live revision is refused with
   `WORKFLOW_DEFINITION_CHANGED`.
 - `finish` names the `step` and `attempt` the owner worked on, so a stale caller never finishes a newer
   attempt (`WORKFLOW_ATTEMPT_MISMATCH`). **Repeating the same finish** returns `200` with the recorded
-  result and `replayed: true`; no state changes. A different finish of that attempt is
+  result and `replayed: true`; no state changes. `postActions` reports what ran after the finish
+  (`commit-execution-state`: `completed`, `skipped` with a reason, or `failed` with a code); a failed
+  post action does not fail the finish and runs again on a repeated finish. A different finish of that attempt is
   `WORKFLOW_ATTEMPT_MISMATCH` (409).
 - `abandon` is final. A retry with the same reason returns the same result; it is not a bypass of Close:
   pending writes, broken Tasks and other operations refuse it.

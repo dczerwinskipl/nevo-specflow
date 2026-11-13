@@ -104,6 +104,11 @@ never loads:
   another wait step;
 - the entry step is not a wait step: starting a run enters its entry step;
 - a return never targets a wait step: a return waits for the owner, and nobody can start a wait step;
+- every step has a `title`, a single line with a non-whitespace character (as do workflow titles and
+  transition and return labels); surfaces show it with the id as the stable reference: the projection
+  carries `title` on every step, `firstStepTitle` on the pin preview, `targetTitle` on a transition to a
+  step, `title` on each return target and `stepTitle` on a gate refusal, and the Task reads carry the
+  step `title`;
 - only a work step has gates; gate ids are unique within the step, an exit gate's `when` names results
   the step's transitions declare (an entry gate has no `when`), only the gate type `document` exists, and
   its `documentType` is a defined document type (a missing one is `reference-missing`; an invalid
@@ -361,6 +366,14 @@ produces. While it is missing it is `awaited`, not stale: create and edit accept
 reports it as the blocker `context-awaited` (apart from `context-unresolved`, so a surface shows no
 warning on Approve), and a required one still refuses the start, listed apart in the refusal
 (`awaited`). There is no producer link; the artifact simply has to exist when the step starts.
+
+**Context is input, gates are output.** A Task's context lists what the Task needs before it starts.
+What the Task itself produces is expressed by gates: an exit gate on the step that produces the
+document and an entry gate on the step that consumes it. So a create or an edit refuses a **required**
+`task-document` entry marked `artifact` (one of the Task's own documents, which its own start could
+never find) with `WORKFLOW_INPUT_INVALID` and `details.invalidContext [{index, key, reason:
+required-own-artifact}]` (`TaskContextInvalidError`); an optional own-document artifact stays allowed.
+An edit checks this only when it changes the context.
 
 The step context of a producing step lists the allowed task types, so the planner chooses among
 them. The step context of every Specification work step lists the existing Tasks (`existingTasks`:

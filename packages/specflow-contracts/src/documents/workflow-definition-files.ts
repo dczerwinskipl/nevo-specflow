@@ -25,7 +25,9 @@ const header = <TKind extends string>(kind: TKind) => ({
   schemaVersion: Type.Literal(WORKFLOW_FILE_SCHEMA_VERSION),
 });
 
-const title = () => Type.String({ minLength: 1, maxLength: 200 });
+/** A short single-line display text (a workflow, step or transition title or label). */
+const title = () =>
+  Type.String({ minLength: 1, maxLength: 200, pattern: '^[^\\r\\n]*\\S[^\\r\\n]*$' });
 
 /** Step, transition and result ids: the catalogue id shape, unique inside one workflow. */
 const localId = () => catalogueId();

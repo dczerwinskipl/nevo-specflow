@@ -132,7 +132,9 @@ export {
   type TaskResourceResult,
 } from './operations/task-resource';
 export {
+  TaskContextInvalidError,
   TaskContextUnresolvedError,
+  type InvalidContextEntry,
   type AwaitedContextEntry,
   type UnresolvedContextEntry,
 } from './operations/task-policy';

@@ -84,6 +84,8 @@ export const WorkflowTransitionSchema = Type.Object({
   result: Type.Optional(Type.String()),
   label: Type.Optional(Type.String()),
   target: TransitionTargetSchema,
+  /** The title of the target step (a step target only). */
+  targetTitle: Type.Optional(Type.String()),
   feedback: Type.Union([Type.Literal('required'), Type.Literal('optional')]),
 });
 
@@ -103,6 +105,7 @@ export const WorkflowSummarySchema = Type.Object(WorkflowSummaryFields);
 export const PinPreviewSchema = Type.Object({
   ...WorkflowSummaryFields,
   firstStep: StepIdSchema,
+  firstStepTitle: Type.String(),
 });
 
 export const AGENT_UNAVAILABLE_REASONS = [
@@ -312,6 +315,7 @@ export const WorkflowActionsSchema = Type.Object({
       targets: array(
         Type.Object({
           step: StepIdSchema,
+          title: Type.String(),
           label: Type.Optional(Type.String()),
           feedback: Type.Union([Type.Literal('required'), Type.Literal('optional')]),
         }),

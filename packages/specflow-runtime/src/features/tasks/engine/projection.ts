@@ -173,6 +173,7 @@ export function definitionFactsOf(
 function stepFacts(step: WorkflowStep): StepFacts {
   return {
     id: step.id,
+    title: step.title,
     executors: step.kind === 'work' ? [...step.executors] : [],
     purpose: step.purpose || null,
     expectedWork: null,

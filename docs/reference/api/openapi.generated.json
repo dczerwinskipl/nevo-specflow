@@ -3902,7 +3902,8 @@
                       "version",
                       "revision",
                       "title",
-                      "firstStep"
+                      "firstStep",
+                      "firstStepTitle"
                     ],
                     "properties": {
                       "workflowId": {
@@ -3921,6 +3922,9 @@
                         "type": "string",
                         "minLength": 1,
                         "maxLength": 200
+                      },
+                      "firstStepTitle": {
+                        "type": "string"
                       }
                     }
                   },
@@ -5417,7 +5421,8 @@
                       "version",
                       "revision",
                       "title",
-                      "firstStep"
+                      "firstStep",
+                      "firstStepTitle"
                     ],
                     "properties": {
                       "workflowId": {
@@ -5436,6 +5441,9 @@
                         "type": "string",
                         "minLength": 1,
                         "maxLength": 200
+                      },
+                      "firstStepTitle": {
+                        "type": "string"
                       }
                     }
                   },
@@ -5963,6 +5971,9 @@
                                 }
                               ]
                             },
+                            "targetTitle": {
+                              "type": "string"
+                            },
                             "feedback": {
                               "anyOf": [
                                 {
@@ -6150,6 +6161,7 @@
                       "type": "object",
                       "required": [
                         "step",
+                        "title",
                         "feedback"
                       ],
                       "properties": {
@@ -6157,6 +6169,9 @@
                           "type": "string",
                           "minLength": 1,
                           "maxLength": 200
+                        },
+                        "title": {
+                          "type": "string"
                         },
                         "label": {
                           "type": "string"
@@ -7947,6 +7962,32 @@
                   }
                 }
               },
+              "invalidContext": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "index",
+                    "key",
+                    "reason"
+                  ],
+                  "properties": {
+                    "index": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "key": {
+                      "type": "string"
+                    },
+                    "reason": {
+                      "type": "string",
+                      "enum": [
+                        "required-own-artifact"
+                      ]
+                    }
+                  }
+                }
+              },
               "awaited": {
                 "type": "array",
                 "items": {
@@ -7971,6 +8012,7 @@
                 "required": [
                   "phase",
                   "step",
+                  "stepTitle",
                   "gates"
                 ],
                 "properties": {
@@ -7991,6 +8033,9 @@
                     ]
                   },
                   "step": {
+                    "type": "string"
+                  },
+                  "stepTitle": {
                     "type": "string"
                   },
                   "gates": {
@@ -28664,6 +28709,9 @@
                                                         "maxLength": 200,
                                                         "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*$"
                                                       },
+                                                      "title": {
+                                                        "type": "string"
+                                                      },
                                                       "executors": {
                                                         "type": "array",
                                                         "items": {
@@ -28807,6 +28855,9 @@
                                                                       "minLength": 1,
                                                                       "maxLength": 200,
                                                                       "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*$"
+                                                                    },
+                                                                    "title": {
+                                                                      "type": "string"
                                                                     },
                                                                     "executors": {
                                                                       "type": "array",
@@ -28976,6 +29027,9 @@
                                                           "maxLength": 200,
                                                           "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*$"
                                                         },
+                                                        "title": {
+                                                          "type": "string"
+                                                        },
                                                         "executors": {
                                                           "type": "array",
                                                           "items": {
@@ -29128,6 +29182,9 @@
                                                       "minLength": 1,
                                                       "maxLength": 200,
                                                       "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*$"
+                                                    },
+                                                    "title": {
+                                                      "type": "string"
                                                     },
                                                     "executors": {
                                                       "type": "array",
@@ -29306,6 +29363,9 @@
                                                       "minLength": 1,
                                                       "maxLength": 200,
                                                       "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*$"
+                                                    },
+                                                    "title": {
+                                                      "type": "string"
                                                     },
                                                     "executors": {
                                                       "type": "array",
@@ -29520,6 +29580,9 @@
                                                             "minLength": 1,
                                                             "maxLength": 200,
                                                             "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*$"
+                                                          },
+                                                          "title": {
+                                                            "type": "string"
                                                           },
                                                           "executors": {
                                                             "type": "array",
@@ -33851,6 +33914,9 @@
                                 "maxLength": 200,
                                 "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*$"
                               },
+                              "title": {
+                                "type": "string"
+                              },
                               "executors": {
                                 "type": "array",
                                 "items": {
@@ -34001,6 +34067,9 @@
                                             "minLength": 1,
                                             "maxLength": 200,
                                             "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*$"
+                                          },
+                                          "title": {
+                                            "type": "string"
                                           },
                                           "executors": {
                                             "type": "array",

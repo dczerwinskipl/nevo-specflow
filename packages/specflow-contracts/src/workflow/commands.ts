@@ -268,6 +268,20 @@ export const WorkflowErrorSchema = Type.Object(
          * `WORKFLOW_TASK_CONTEXT_UNRESOLVED`: the required process artifacts (`artifact: true`) that
          * do not exist yet, apart from the stale references.
          */
+        /**
+         * `WORKFLOW_INPUT_INVALID` of a Task create or edit: context entries that can never hold.
+         * `required-own-artifact`: a required artifact of the Task's own documents; what a Task
+         * produces is an exit gate on the producing step and an entry gate on the consuming step.
+         */
+        invalidContext: Type.Optional(
+          Type.Array(
+            Type.Object({
+              index: Type.Integer({ minimum: 0 }),
+              key: Type.String(),
+              reason: Type.Literal('required-own-artifact'),
+            }),
+          ),
+        ),
         awaited: Type.Optional(
           Type.Array(Type.Object({ index: Type.Integer({ minimum: 0 }), key: Type.String() })),
         ),
@@ -279,6 +293,7 @@ export const WorkflowErrorSchema = Type.Object(
           Type.Object({
             phase: Type.Union([Type.Literal('entry'), Type.Literal('exit')]),
             step: Type.String(),
+            stepTitle: Type.String(),
             gates: Type.Array(GateStatusSchema),
           }),
         ),

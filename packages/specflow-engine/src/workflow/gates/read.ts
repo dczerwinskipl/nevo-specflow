@@ -39,21 +39,30 @@ export async function evaluateGates(
 export class GateUnsatisfiedError extends WorkflowError {
   /** Whether the step's entry gates refused a start or its exit gates a finish. */
   readonly phase: 'entry' | 'exit';
+  /** The step's id and, for display, its title. */
   readonly step: string;
+  readonly stepTitle: string;
   /** Every unsatisfied gate, in declared order. */
   readonly gates: readonly GateStatus[];
 
-  constructor(phase: 'entry' | 'exit', step: string, gates: readonly GateStatus[]) {
+  constructor(phase: 'entry' | 'exit', step: GateStep, gates: readonly GateStatus[]) {
     super(
       'WORKFLOW_GATE_UNSATISFIED',
-      `The step "${step}" cannot ${phase === 'entry' ? 'start' : 'finish'} yet: ${gates
+      `The step "${step.title}" cannot ${phase === 'entry' ? 'start' : 'finish'} yet: ${gates
         .map((gate) => `${gate.label} (${gate.reason ?? 'unsatisfied'})`)
         .join('; ')}.`,
     );
     this.phase = phase;
-    this.step = step;
+    this.step = step.id;
+    this.stepTitle = step.title;
     this.gates = gates;
   }
+}
+
+/** The step whose gates are checked. */
+export interface GateStep {
+  readonly id: string;
+  readonly title: string;
 }
 
 /** Refuse with {@link GateUnsatisfiedError} when a gate is unsatisfied. */
@@ -61,7 +70,7 @@ export async function assertGatesSatisfied(
   documents: GateDocuments,
   subject: WorkflowSubject,
   phase: 'entry' | 'exit',
-  step: string,
+  step: GateStep,
   gates: readonly DocumentGate[],
 ): Promise<void> {
   if (gates.length === 0) {

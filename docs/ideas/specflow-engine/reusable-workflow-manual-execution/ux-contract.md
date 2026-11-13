@@ -111,7 +111,7 @@ split (context column `22rem`–`30rem`); Continue session's row shape (the Sess
 Activity history in the Secondary, closed by default here, the header toggle opens it; the Now block
 in the preparation block's place; one reading column (`content-standard`) at the workspace inset.
 
-**Order:** summary → **Now** → **Requires attention** → **Active tasks** (work column) and
+**Order:** summary → **Now** → **Requires attention** → **Tasks** (work column) and
 **Sessions** → **Documents** (context column). In one column the same order.
 
 - **Now** shows the current Specification workflow state from the projection: the step title and
@@ -127,19 +127,25 @@ in the preparation block's place; one reading column (`content-standard`) at the
   reason ("Finish step becomes available once this is met"). A `wait` step gets **no** primary
   action; other transitions (Return to an earlier step) and Workflow history sit in the menu.
   Abandoned: one archive icon on the title, the reason under it.
-- **Requires attention** lists only items that need the person now, each with the one action the
-  projection offers for it (never derived from a status name): a draft Task (**Approve**), a Task
-  whose next step is startable (**Start Design**), a Task that cannot start because of a fixable
-  blocker (**Fix context**), an active step of the person's own with an unmet gate (the gate's
-  action), a Session waiting for input (**Answer**). At most five, then **Show N more**. An item in
-  Requires attention is not repeated in Active tasks or Sessions. **Order:** blocking interventions
-  first (approve a draft, fix a start blocker, answer a Session, act on an unmet gate), then Tasks
-  ready to start (nothing starts by itself, so they stay, but they block nothing yet).
-- **Active tasks** is a concise preview, not a second Task screen: Tasks in progress, then Tasks
-  waiting on them, at most five, no checkboxes and no row menus. The header count is the number of
-  rows shown (the Specification progress is in Now only); **View all tasks** closes the list (also
-  on Narrow, where a header action would wrap). The section is **omitted** when nothing is in
-  progress or waiting (no Tasks, all done, or all in Requires attention).
+- **Three concerns, kept apart.** Workflow state (the Engine's runs and action projection) is
+  authoritative. **Grouping** is presentation: the Engine classifies each Task into a lane and a
+  grouping configuration (today the Runtime's default; later per project) turns lanes into named,
+  ordered groups. **Attention** is a separate projection: the Engine's derived attention (ADR 0019,
+  `deriveAttention`), broken Tasks, and Sessions waiting for input. A Task can be in a group and in
+  attention at once; attention is a flag, never a group or a state. The UI never derives behaviour
+  from a group or lane name.
+- **Requires attention** shows the attention projection only, each item with the one action the
+  projection offers for it (for example **Start Implementation** for a Task whose review asked for
+  changes, **Open task** for a broken Task, **Answer** for a Session). Per the accepted kernel rule
+  a Task never gets attention just because it is ready, and drafts and start blockers of
+  not-started Tasks are not attention (open decision). At most five, then **Show N more**; the
+  order is the projection's priority (broken first). On Narrow the action sits under the title and
+  reason.
+- **Tasks** (replaces the earlier "Active tasks" preview) is a summary of the configured grouping:
+  one row per non-empty group (name, count, up to two titles, "N more"), each opening the Tasks
+  page at that group, then **View all tasks**. A Task in Requires attention is counted in its group
+  but not named again, so no Task appears twice on the Overview. The section is omitted when there
+  are no Tasks.
 - **Sessions** replaces Continue session: the recommended Session first, then other working Sessions
   of this Specification (at most three), same row as the Sessions list, **All sessions** in the
   header. A Session waiting for input is in Requires attention instead.
@@ -147,7 +153,7 @@ in the preparation block's place; one reading column (`content-standard`) at the
 - **Narrow:** the same order in one column; nothing is collapsed on the Overview (it is short by
   construction); row actions stay on the row. Status icons sit on the first line of their text; a
   row's leading mark stays centred on the row (the operational row's documented rule).
-- **Columns (decided):** A, Now, Requires attention and Active tasks in the work column; Sessions
+- **Columns (decided):** A, Now, Requires attention and Tasks in the work column; Sessions
   and Documents in the context column. The 1408 px threshold stays.
 
 **Progress, one definition** (Now and the Tasks page): done = Tasks whose workflow
@@ -156,25 +162,31 @@ parts omitted: `1 of 6 done · 1 cancelled · 1 on hold`. On hold counts in the 
 
 ## Tasks page (`/specs/:specId/tasks`)
 
-The complete grouped Task list moves here unchanged: the same groups (Needs approval, In progress,
-Ready to start, Waiting, Done, On hold or cancelled — the last collapsed), the same row, selection
-checkboxes and batch Execute, row `⋯` lifecycle menu, **New task** in the section header, the
-progress text as the section count. Above it a filter (id or title), the open item 3 of the
-Specification screen. The navigator's **Tasks** item becomes this page instead of an anchor on the
-Overview (closes that shell-geometry finding). Narrow: the same list; rows wrap as today.
+The complete list in the configured grouping (default: Needs approval, In progress, Ready to start,
+Waiting, Done, On hold or cancelled — the last collapsed), the existing row, the row `⋯` lifecycle
+menu, **New task** in the section header, the progress text as the section count, and a filter (id
+or title). A Task in the attention projection keeps its group and shows "Requires attention ·
+<reason>" on its row. **No selection checkboxes** until "Run selected tasks" (plan 06 F12) defines
+the action; when it returns, it starts each selected Task through the workflow (never bypassing a
+transition). The navigator's **Tasks** item becomes this page.
 
 ## Universality
 
 The sections take their content from the projection, so other definitions read the same way:
 
 - **A Specification workflow without a waiting step** (for example _Small change_: Implementation →
-  Review with no step that produces Tasks): Now carries its work steps with Finish step; Active tasks
-  is omitted; Requires attention holds only Sessions and gates.
-- **A single-step Task type** (Spike): Active tasks shows "Spike · in progress"; when its step has an
-  exit gate, the person's own active Task appears in Requires attention with the gate's action.
-- **A review-loop Task type** (Implementation ⇄ Review): rework is an attempt of the same step in
-  Active tasks ("Implementation · in progress"); a review waiting for the person is a Requires
-  attention row with the projection's action.
+  Review with no step that produces Tasks): Now carries its work steps with Finish step; the Tasks
+  summary is omitted; Requires attention holds what the attention projection derives (Sessions,
+  Specification items).
+- **A single-step Task type** (Spike): the Task sits in the group its lane maps to; an unmet exit
+  gate shows on the Task (and in Now for the Specification's own step), not as attention, because
+  an active subject gets no derived attention.
+- **A review-loop Task type** (Implementation ⇄ Review): when the review finishes with "changes
+  requested" and the next attempt waits for the owner, the attention projection gives an
+  `owner-action` item with the projection's action (**Start Implementation**); the Task stays in
+  its group.
+- **Custom grouping:** a project that groups as Ready / Design / Implementation / Review / Waiting /
+  Completed gets those rows on the Overview summary and the Tasks page with no UI change.
 - **Step names never matter:** rows say the step title; nothing tests for `wait-for-tasks`,
   `review` or a status string; a `wait` kind and `produces: tasks` are the only workflow facts the
   Overview reads.

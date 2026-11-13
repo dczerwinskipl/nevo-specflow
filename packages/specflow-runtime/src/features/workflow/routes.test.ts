@@ -215,8 +215,14 @@ describe('workflow action routes', () => {
     await app.close();
   });
 
-  it('finishes with the result, feedback and artifacts and passes a replay through', async () => {
-    const replay = { ...finished, replayed: true as const };
+  it('finishes with the result, feedback and artifacts and passes a replay and its post actions through', async () => {
+    const failedCommit = {
+      action: 'commit-execution-state' as const,
+      status: 'failed' as const,
+      code: 'COMMIT_FAILED',
+      message: 'Commit failed.',
+    };
+    const replay = { ...finished, replayed: true as const, postActions: [failedCommit] };
     const { port } = fakePort({ finish: () => Promise.resolve(replay) });
     const app = appWith(port);
 
@@ -227,7 +233,11 @@ describe('workflow action routes', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toMatchObject({ transition: 'to-review', replayed: true });
+    expect(response.json()).toMatchObject({
+      transition: 'to-review',
+      replayed: true,
+      postActions: [failedCommit],
+    });
     await app.close();
   });
 

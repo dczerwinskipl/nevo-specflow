@@ -5772,6 +5772,105 @@
                         ]
                       }
                     ]
+                  },
+                  "abandonment": {
+                    "type": "object",
+                    "required": [
+                      "at",
+                      "reason",
+                      "actor"
+                    ],
+                    "properties": {
+                      "at": {
+                        "type": "string"
+                      },
+                      "reason": {
+                        "type": "string",
+                        "maxLength": 2000
+                      },
+                      "actor": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "required": [
+                              "class",
+                              "details"
+                            ],
+                            "properties": {
+                              "class": {
+                                "type": "string",
+                                "enum": [
+                                  "human"
+                                ]
+                              },
+                              "details": {
+                                "type": "object",
+                                "required": [
+                                  "actorId",
+                                  "trust"
+                                ],
+                                "properties": {
+                                  "actorId": {
+                                    "type": "string"
+                                  },
+                                  "trust": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "local"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "authenticated"
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "required": [
+                              "class",
+                              "details"
+                            ],
+                            "properties": {
+                              "class": {
+                                "type": "string",
+                                "enum": [
+                                  "agent"
+                                ]
+                              },
+                              "details": {
+                                "type": "object",
+                                "required": [
+                                  "provider"
+                                ],
+                                "properties": {
+                                  "archetype": {
+                                    "type": "string"
+                                  },
+                                  "provider": {
+                                    "type": "string"
+                                  },
+                                  "model": {
+                                    "type": "string"
+                                  },
+                                  "sessionId": {
+                                    "type": "string"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
                   }
                 }
               }
@@ -5798,7 +5897,8 @@
                     "type": "object",
                     "required": [
                       "step",
-                      "attempt"
+                      "attempt",
+                      "title"
                     ],
                     "properties": {
                       "step": {
@@ -5809,6 +5909,94 @@
                       "attempt": {
                         "type": "integer",
                         "minimum": 1
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "at": {
+                        "type": "string"
+                      },
+                      "actor": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "required": [
+                              "class",
+                              "details"
+                            ],
+                            "properties": {
+                              "class": {
+                                "type": "string",
+                                "enum": [
+                                  "human"
+                                ]
+                              },
+                              "details": {
+                                "type": "object",
+                                "required": [
+                                  "actorId",
+                                  "trust"
+                                ],
+                                "properties": {
+                                  "actorId": {
+                                    "type": "string"
+                                  },
+                                  "trust": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "local"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "authenticated"
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "required": [
+                              "class",
+                              "details"
+                            ],
+                            "properties": {
+                              "class": {
+                                "type": "string",
+                                "enum": [
+                                  "agent"
+                                ]
+                              },
+                              "details": {
+                                "type": "object",
+                                "required": [
+                                  "provider"
+                                ],
+                                "properties": {
+                                  "archetype": {
+                                    "type": "string"
+                                  },
+                                  "provider": {
+                                    "type": "string"
+                                  },
+                                  "model": {
+                                    "type": "string"
+                                  },
+                                  "sessionId": {
+                                    "type": "string"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        ]
                       }
                     }
                   },
@@ -37296,6 +37484,105 @@
                       "enum": [
                         true
                       ]
+                    },
+                    "postActions": {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "required": [
+                              "action",
+                              "status"
+                            ],
+                            "properties": {
+                              "action": {
+                                "type": "string",
+                                "enum": [
+                                  "commit-execution-state"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "completed"
+                                ]
+                              },
+                              "commit": {
+                                "type": "object",
+                                "required": [
+                                  "paths"
+                                ],
+                                "properties": {
+                                  "sha": {
+                                    "type": "string"
+                                  },
+                                  "paths": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "required": [
+                              "action",
+                              "status",
+                              "reason"
+                            ],
+                            "properties": {
+                              "action": {
+                                "type": "string",
+                                "enum": [
+                                  "commit-execution-state"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "skipped"
+                                ]
+                              },
+                              "reason": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "required": [
+                              "action",
+                              "status",
+                              "code",
+                              "message"
+                            ],
+                            "properties": {
+                              "action": {
+                                "type": "string",
+                                "enum": [
+                                  "commit-execution-state"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "failed"
+                                ]
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        ]
+                      }
                     }
                   }
                 }
@@ -40033,6 +40320,105 @@
                       "enum": [
                         true
                       ]
+                    },
+                    "postActions": {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "required": [
+                              "action",
+                              "status"
+                            ],
+                            "properties": {
+                              "action": {
+                                "type": "string",
+                                "enum": [
+                                  "commit-execution-state"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "completed"
+                                ]
+                              },
+                              "commit": {
+                                "type": "object",
+                                "required": [
+                                  "paths"
+                                ],
+                                "properties": {
+                                  "sha": {
+                                    "type": "string"
+                                  },
+                                  "paths": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "required": [
+                              "action",
+                              "status",
+                              "reason"
+                            ],
+                            "properties": {
+                              "action": {
+                                "type": "string",
+                                "enum": [
+                                  "commit-execution-state"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "skipped"
+                                ]
+                              },
+                              "reason": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "required": [
+                              "action",
+                              "status",
+                              "code",
+                              "message"
+                            ],
+                            "properties": {
+                              "action": {
+                                "type": "string",
+                                "enum": [
+                                  "commit-execution-state"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "failed"
+                                ]
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        ]
+                      }
                     }
                   }
                 }

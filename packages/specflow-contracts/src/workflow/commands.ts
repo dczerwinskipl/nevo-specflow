@@ -161,6 +161,31 @@ export const StartWorkflowResultSchema = Type.Object({
 });
 export type StartWorkflowResult = Static<typeof StartWorkflowResultSchema>;
 
+/**
+ * What the host did once the finish was recorded (`commit-execution-state`: commit the
+ * Specification's execution state when auto-commit is off). A failed post action does not fail the
+ * finish; its `message` is display-only.
+ */
+const PostActionName = Type.Literal('commit-execution-state');
+
+export const PostActionResultSchema = Type.Union([
+  Type.Object({
+    action: PostActionName,
+    status: Type.Literal('completed'),
+    commit: Type.Optional(
+      Type.Object({ sha: Type.Optional(Type.String()), paths: Type.Array(Type.String()) }),
+    ),
+  }),
+  Type.Object({ action: PostActionName, status: Type.Literal('skipped'), reason: Type.String() }),
+  Type.Object({
+    action: PostActionName,
+    status: Type.Literal('failed'),
+    code: Type.String(),
+    message: Type.String(),
+  }),
+]);
+export type PostActionResult = Static<typeof PostActionResultSchema>;
+
 export const FinishWorkflowResultSchema = Type.Object({
   subject: WorkflowSubjectSchema,
   transition: Type.String(),
@@ -170,6 +195,8 @@ export const FinishWorkflowResultSchema = Type.Object({
   specification: Type.Optional(WorkflowContinuationSchema),
   /** The request repeated the last finish: nothing changed, the result is the recorded one. */
   replayed: Type.Optional(Type.Literal(true)),
+  /** The post actions that ran after the finish; absent when none ran. */
+  postActions: Type.Optional(Type.Array(PostActionResultSchema)),
 });
 export type FinishWorkflowResult = Static<typeof FinishWorkflowResultSchema>;
 

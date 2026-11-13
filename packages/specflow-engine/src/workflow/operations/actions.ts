@@ -206,7 +206,32 @@ export type ActionPosition =
       /** The step a start would activate once unblocked, when known. */
       readonly next?: StartableStep;
     }
-  | { readonly kind: 'terminal'; readonly outcome: TerminalOutcome };
+  | {
+      readonly kind: 'terminal';
+      readonly outcome: TerminalOutcome;
+      /** An abandoned run: who ended it, when and why. */
+      readonly abandonment?: {
+        readonly at: string;
+        readonly reason: string;
+        readonly actor: WorkflowActor;
+      };
+    };
+
+/**
+ * The hand-off as the owner reads it: the core hand-off plus, for a finished attempt, the title of
+ * its step, who finished it and when.
+ */
+export type PresentedHandoff =
+  | (Extract<Handoff, { kind: 'transition' }> & {
+      readonly from: {
+        readonly step: string;
+        readonly attempt: number;
+        readonly title: string;
+        readonly at?: string;
+        readonly actor?: WorkflowActor;
+      };
+    })
+  | Extract<Handoff, { kind: 'return' }>;
 
 /** The workflow actions the owner may take now; an absent action is not allowed. */
 export interface WorkflowActions {
@@ -324,7 +349,7 @@ export interface ActionProjection {
   readonly workflow?: WorkflowSummary;
   readonly position: ActionPosition;
   /** What the last finished attempt or return handed over. */
-  readonly handoff?: Handoff;
+  readonly handoff?: PresentedHandoff;
   readonly actions: WorkflowActions;
   /** For a Task subject. */
   readonly task?: TaskLifecycleActions;
@@ -383,6 +408,31 @@ function previewOf(definition: WorkflowDefinition): PinPreview {
     ...summaryOf(definition),
     firstStep: definition.entryStep,
     firstStepTitle: stepOf(definition, definition.entryStep).title,
+  };
+}
+
+function presentHandoff(
+  definition: WorkflowDefinition,
+  run: WorkflowRun,
+  handoff: Handoff | undefined,
+): PresentedHandoff | undefined {
+  if (handoff?.kind !== 'transition') {
+    return handoff;
+  }
+
+  const record = run.attempts.find(
+    (attempt) => attempt.step === handoff.from.step && attempt.attempt === handoff.from.attempt,
+  );
+  const by = record?.finishedBy ?? record?.actor;
+
+  return {
+    ...handoff,
+    from: {
+      ...handoff.from,
+      title: findStep(definition, handoff.from.step)?.title ?? handoff.from.step,
+      ...(record?.endedAt ? { at: record.endedAt } : {}),
+      ...(by ? { actor: by } : {}),
+    },
   };
 }
 
@@ -564,11 +614,29 @@ async function runProjection(
   input: RunInput,
 ): Promise<Pick<ActionProjection, 'workflow' | 'position' | 'actions' | 'handoff'>> {
   const { definition, run } = input;
-  const handoff = handoffOf(run);
+  const handoff = presentHandoff(definition, run, handoffOf(run));
   const common = { workflow: summaryOf(definition), ...(handoff ? { handoff } : {}) };
   const position = run.position;
   if (position.state === 'terminal') {
-    return { ...common, position: { kind: 'terminal', outcome: position.outcome }, actions: {} };
+    const abandonment = run.abandonment;
+
+    return {
+      ...common,
+      position: {
+        kind: 'terminal',
+        outcome: position.outcome,
+        ...(abandonment
+          ? {
+              abandonment: {
+                at: abandonment.at,
+                reason: abandonment.reason,
+                actor: abandonment.actor,
+              },
+            }
+          : {}),
+      },
+      actions: {},
+    };
   }
 
   const returns = input.returnable ? returnTargets(definition, run) : [];

@@ -120,7 +120,17 @@ describe('Specification positions', () => {
         step: { id: 'specification' },
         attempt: { number: 1, actor: owner },
       },
-      handoff: { kind: 'transition', from: { step: 'requirements' }, transition: 'agreed' },
+      handoff: {
+        kind: 'transition',
+        // Who finished it and when, for the owner's "Last:" line.
+        from: {
+          step: 'requirements',
+          title: expect.any(String) as string,
+          actor: owner,
+          at: expect.any(String) as string,
+        },
+        transition: 'agreed',
+      },
       actions: {
         finish: {
           step: 'specification',

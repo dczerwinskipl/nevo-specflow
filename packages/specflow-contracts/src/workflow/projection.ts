@@ -268,13 +268,28 @@ export const WorkflowPositionSchema = Type.Union([
     preview: Type.Optional(PinPreviewSchema),
     next: Type.Optional(StartableStepSchema),
   }),
-  Type.Object({ kind: Type.Literal('terminal'), outcome: TerminalOutcomeSchema }),
+  Type.Object({
+    kind: Type.Literal('terminal'),
+    outcome: TerminalOutcomeSchema,
+    /** An abandoned run: who ended it, when and why (the reason is the owner's text). */
+    abandonment: Type.Optional(
+      Type.Object({ at: Type.String(), reason: text(2000), actor: WorkflowActorSchema }),
+    ),
+  }),
 ]);
 
 export const HandoffSchema = Type.Union([
   Type.Object({
     kind: Type.Literal('transition'),
-    from: Type.Object({ step: StepIdSchema, attempt: Type.Integer({ minimum: 1 }) }),
+    from: Type.Object({
+      step: StepIdSchema,
+      attempt: Type.Integer({ minimum: 1 }),
+      /** The step's title (display text). */
+      title: Type.String(),
+      /** When the attempt ended and who finished it, where recorded. */
+      at: Type.Optional(Type.String()),
+      actor: Type.Optional(WorkflowActorSchema),
+    }),
     transition: Type.String(),
     result: Type.Optional(Type.String()),
     feedback: Type.Optional(text()),

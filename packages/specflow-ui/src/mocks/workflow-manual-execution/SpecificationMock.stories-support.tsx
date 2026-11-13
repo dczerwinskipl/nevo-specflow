@@ -45,6 +45,7 @@ import {
   typeOf,
   type MockTask,
   type WorkflowView,
+  stepTitle,
 } from './fixtures.stories-support';
 import { FinishStepDialog, WorkflowHistory, WorkflowPanel } from './WorkflowPanel.stories-support';
 
@@ -118,7 +119,7 @@ function specWorkflow(scenario: SpecificationScenario, list: readonly MockTask[]
         position: {
           kind: 'terminal',
           outcome: 'abandoned',
-          summary: 'Abandoned at wait-for-tasks · today 16:40 by Dominik',
+          summary: 'Abandoned while waiting for tasks · today 16:40 by Dominik',
           at: 'Today 16:40',
         },
       };
@@ -127,7 +128,7 @@ function specWorkflow(scenario: SpecificationScenario, list: readonly MockTask[]
         definition: specDefinition,
         position: {
           kind: 'terminal',
-          summary: 'All tasks finished · wait-for-tasks ended today 16:40',
+          summary: 'All tasks finished · Waiting for tasks ended today 16:40',
           at: 'Today 16:40',
         },
       };
@@ -211,7 +212,7 @@ function tasksFor(scenario: SpecificationScenario): readonly MockTask[] {
                   ...item.workflow,
                   position: {
                     kind: 'terminal' as const,
-                    summary: `Finished ${typeOf(item).steps.at(-1)}: Approved`,
+                    summary: `Finished ${stepTitle(typeOf(item).steps.at(-1)!)}: Approved`,
                     at: 'Today',
                   },
                 },
@@ -243,11 +244,11 @@ function rowState(item: MockTask): { state: string; tone: 'attention' | 'info' |
   switch (position.kind) {
     case 'active':
       return {
-        state: `${position.step} · attempt ${position.attempt} · in progress`,
+        state: `${stepTitle(position.step)} · in progress`,
         tone: 'info',
       };
     case 'ready':
-      return { state: `${position.step} · ready to start`, tone: 'neutral' };
+      return { state: `${stepTitle(position.step)} · ready to start`, tone: 'neutral' };
     case 'waiting':
       return {
         state: `Waiting for ${position.blockers.map((blocker) => blocker.id).join(', ')}`,
@@ -256,7 +257,10 @@ function rowState(item: MockTask): { state: string; tone: 'attention' | 'info' |
     case 'terminal':
       return { state: 'Completed', tone: 'neutral' };
     default:
-      return { state: `Not started · first step ${position.firstStep}`, tone: 'neutral' };
+      return {
+        state: `Not started · first step ${stepTitle(position.firstStep)}`,
+        tone: 'neutral',
+      };
   }
 }
 
@@ -278,7 +282,7 @@ function supportingFor(item: MockTask): SemanticSupporting {
   switch (position.kind) {
     case 'active':
       return {
-        text: `${position.step} · attempt ${position.attempt} · in progress`,
+        text: `${stepTitle(position.step)} · in progress`,
         tone: 'info',
         icon: 'workflow',
       };
@@ -290,9 +294,9 @@ function supportingFor(item: MockTask): SemanticSupporting {
     case 'terminal':
       return { text: position.summary, tone: 'success', icon: 'circle-check' };
     case 'ready':
-      return { text: `${position.step} · ready to start${after}` };
+      return { text: `${stepTitle(position.step)} · ready to start${after}` };
     default:
-      return { text: `Not started · first step ${position.firstStep}${after}` };
+      return { text: `Not started · first step ${stepTitle(position.firstStep)}${after}` };
   }
 }
 
@@ -487,7 +491,7 @@ function CreateTaskDialog({ existing }: { existing: readonly MockTask[] }) {
                   key={item.id}
                   value={item.id}
                   label={item.title}
-                  description={`${item.useWhen} Workflow: ${item.workflow.title} (${item.steps.join(' → ')}).`}
+                  description={`${item.useWhen} Workflow: ${item.workflow.title} (${item.steps.map(stepTitle).join(' → ')}).`}
                 />
               ))}
             </RadioGroup>
@@ -680,7 +684,7 @@ function CloseDialog({
                       title: 'Workflow',
                       count: 1,
                       explanation:
-                        'The wait-for-tasks step ends by itself once every task is done or cancelled.',
+                        'Waiting for tasks ends by itself once every task is done or cancelled.',
                       items: [],
                       action: { label: 'See workflow', href: '#spec-workflow-heading' },
                     },
@@ -797,8 +801,8 @@ function AbandonDialog({ blocked, list }: { blocked: boolean; list: readonly Moc
                 </Typography>
                 <ul className="grid list-disc gap-1 pl-5 text-body-sm text-content-secondary">
                   <li>
-                    The {specification.workflow.title} workflow ends as abandoned at{' '}
-                    <span className="font-mono">wait-for-tasks</span>.
+                    The {specification.workflow.title} workflow ends as abandoned at Waiting for
+                    tasks.
                   </li>
                   <li>
                     Active attempts end as abandoned, their work is kept:
@@ -807,9 +811,8 @@ function AbandonDialog({ blocked, list }: { blocked: boolean; list: readonly Moc
                         item.workflow.position.kind === 'active' ? (
                           <li key={item.id}>
                             <span className="font-mono">{item.id}</span> ·{' '}
-                            <span className="font-mono">{item.workflow.position.step}</span> ·
-                            attempt {item.workflow.position.attempt} · by{' '}
-                            {item.workflow.position.actor}
+                            {stepTitle(item.workflow.position.step)} · attempt{' '}
+                            {item.workflow.position.attempt} · by {item.workflow.position.actor}
                           </li>
                         ) : null,
                       )}

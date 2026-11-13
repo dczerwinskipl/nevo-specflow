@@ -51,6 +51,7 @@ import {
   typeOf,
   type MockTask,
   type WorkflowView,
+  stepTitle,
 } from './fixtures.stories-support';
 import {
   AddContextDialog,
@@ -106,7 +107,11 @@ export type TaskScenario =
   | 'context-artifact-add'
   | 'finish-gate-unmet'
   | 'finish-gate-met'
-  | 'now-gate';
+  | 'now-gate'
+  | 'finish-gate-editing'
+  | 'finish-gate-returned'
+  | 'context-show-all'
+  | 'context-artifact-refused';
 
 export interface TaskMockProps {
   width: number;
@@ -140,7 +145,7 @@ const reviewView: WorkflowView = {
 };
 
 /** An active Spike whose `done` result needs a findings document (an exit gate). */
-function spikeWithGate(met: boolean): MockTask {
+function spikeWithGate(met: boolean, metDetail = 'findings.md registered'): MockTask {
   return {
     ...task('T-01'),
     id: 'T-09',
@@ -163,7 +168,7 @@ function spikeWithGate(met: boolean): MockTask {
                   id: 'findings',
                   label: 'A findings document',
                   met: true,
-                  detail: 'findings.md registered',
+                  detail: metDetail,
                 }
               : {
                   id: 'findings',
@@ -184,14 +189,21 @@ function subjectFor(scenario: TaskScenario): MockTask {
   if (
     scenario === 'finish-gate-unmet' ||
     scenario === 'finish-gate-met' ||
-    scenario === 'now-gate'
+    scenario === 'now-gate' ||
+    scenario === 'finish-gate-editing' ||
+    scenario === 'finish-gate-returned'
   ) {
-    return spikeWithGate(scenario === 'finish-gate-met');
+    return spikeWithGate(
+      scenario === 'finish-gate-met' ||
+        scenario === 'finish-gate-editing' ||
+        scenario === 'finish-gate-returned',
+      scenario === 'finish-gate-met' ? 'findings.md registered' : 'findings.md · created just now',
+    );
   }
 
   if (
     scenario.startsWith('author') ||
-    scenario.startsWith('context-artifact') ||
+    scenario.startsWith('context-') ||
     scenario === 'approve-missing-context'
   ) {
     return task('T-04');
@@ -381,7 +393,24 @@ After a successful sign-in, restore the project, document and scroll position th
 - A deep link opened while signed out lands on that link after sign-in.
 `;
 
-function recordFor(id: string) {
+const findingsDocument = `# Findings
+
+## Sliding against fixed refresh
+
+`;
+
+function recordFor(id: string, name: 'task' | 'findings' = 'task') {
+  if (name === 'findings') {
+    return documentContentFixture({
+      id: `tasks/${id}/findings`,
+      title: 'findings',
+      path: `tasks/${id}/findings.md`,
+      content: findingsDocument,
+      revision: '1',
+      type: undefined,
+    });
+  }
+
   return documentContentFixture({
     id: `tasks/${id}/task`,
     title: id,
@@ -393,8 +422,16 @@ function recordFor(id: string) {
   });
 }
 
-function DocumentServices({ taskId, children }: { taskId: string; children: ReactNode }) {
-  const taskDocumentRecord = useMemo(() => recordFor(taskId), [taskId]);
+function DocumentServices({
+  taskId,
+  name = 'task',
+  children,
+}: {
+  taskId: string;
+  name?: 'task' | 'findings';
+  children: ReactNode;
+}) {
+  const taskDocumentRecord = useMemo(() => recordFor(taskId, name), [taskId, name]);
   const client = useMemo(() => new QueryClient(), []);
   const services = useMemo(() => {
     const base = createSpecFlowAppServices();
@@ -426,11 +463,14 @@ function TaskDocumentHeader({
   back,
   taskId,
   more,
+  name = 'task',
 }: {
   back?: boolean;
   taskId: string;
   more?: boolean;
+  name?: 'task' | 'findings';
 }) {
+  const file = `${name}.md`;
   const { actions, dirty } = documentHeaderModel(useDocumentEditor(), useTranslation().t);
   if (!back) {
     // A: the same editor-tab rail as the Documents page (one tab, its actions continue the rail).
@@ -438,7 +478,7 @@ function TaskDocumentHeader({
       <WorkspaceHeader
         tabRail
         headingLevel={2}
-        title="task.md"
+        title={file}
         actions={actions}
         menu="complete"
         labels={{ moreActions: 'More actions', menuActions: 'Actions', menuDisplay: 'Display' }}
@@ -449,9 +489,9 @@ function TaskDocumentHeader({
               <ItemTabs
                 items={[
                   {
-                    id: `tasks/${taskId}/task`,
-                    label: 'task.md',
-                    description: `tasks/${taskId}/task.md`,
+                    id: `tasks/${taskId}/${name}`,
+                    label: file,
+                    description: `tasks/${taskId}/${file}`,
                     ...(dirty ? { dirty: true } : {}),
                   },
                   ...(more
@@ -464,7 +504,7 @@ function TaskDocumentHeader({
                       ]
                     : []),
                 ]}
-                activeId={`tasks/${taskId}/task`}
+                activeId={`tasks/${taskId}/${name}`}
                 onActivate={noop}
                 onClose={noop}
                 scope="workflow-manual-task-doc"
@@ -598,9 +638,17 @@ function TaskBody({
             ) : undefined
           }
           primaryAction={primaryAction}
+          note={
+            scenario === 'finish-gate-editing' ? (
+              <InlineNote role="status">
+                Your finish is kept: Done, with your feedback. Finish step reopens it and checks the
+                requirement again.
+              </InlineNote>
+            ) : undefined
+          }
           startLabel={
             item.workflow.position.kind === 'not-started'
-              ? `Start ${item.workflow.position.firstStep}`
+              ? `Start ${stepTitle(item.workflow.position.firstStep)}`
               : undefined
           }
         />
@@ -611,6 +659,7 @@ function TaskBody({
         editable={editable}
         menuOpen={scenario === 'author-add-menu'}
         rowMenuFor={scenario === 'author-row-menu' ? 'interaction' : undefined}
+        showAll={scenario === 'context-show-all' || scenario.startsWith('author-add')}
         collapsible={narrow}
       />
       <TaskDependenciesSection item={item} editable={editable} collapsible={narrow} />
@@ -708,6 +757,19 @@ function dialogFor(item: MockTask, scenario: TaskScenario): ReactNode {
       return <ApproveDialog item={item} />;
     case 'context-artifact-add':
       return <AddContextDialog kind="specification-document" artifact />;
+    case 'context-artifact-refused':
+      return <AddContextDialog kind="specification-document" artifact refused />;
+    case 'finish-gate-returned':
+      return (
+        <FinishStepDialog
+          step="spike"
+          attempt={1}
+          transitions={item.workflow.transitions!}
+          initialTransition="done"
+          initialFeedback="Sliding refresh keeps sessions alive with half the calls. Details in findings.md."
+          rechecked
+        />
+      );
     case 'finish-gate-unmet':
     case 'finish-gate-met':
       return (
@@ -733,8 +795,10 @@ function Workspace({
   const item = subjectFor(scenario);
   const narrow = width < 730;
   const authoringWithDocument = scenario === 'author-with-document';
+  const findings = scenario === 'finish-gate-editing';
+  const documentName = findings ? 'findings' : 'task';
   // Narrow shows one surface: while authoring, the Task page (the document is a pushed page).
-  const editing = scenario === 'edit-document' || (authoringWithDocument && !narrow);
+  const editing = scenario === 'edit-document' || ((authoringWithDocument || findings) && !narrow);
   const hasHistory = item.started && !editing;
   const showHistory = hasHistory && historyOpen;
   const header = (
@@ -803,7 +867,13 @@ function Workspace({
             open
             onOpenChange={noop}
             headerVariant="tab-rail"
-            header={<TaskDocumentHeader taskId={item.id} more={authoringWithDocument} />}
+            header={
+              <TaskDocumentHeader
+                taskId={item.id}
+                more={authoringWithDocument}
+                name={documentName}
+              />
+            }
           >
             <AppContent className="h-full w-full">
               <DocumentEditor />
@@ -845,7 +915,13 @@ function Workspace({
     </AppWorkspaceProvider>
   );
 
-  return editing ? <DocumentServices taskId={item.id}>{workspace}</DocumentServices> : workspace;
+  return editing ? (
+    <DocumentServices taskId={item.id} name={documentName}>
+      {workspace}
+    </DocumentServices>
+  ) : (
+    workspace
+  );
 }
 
 export function TaskMock(props: TaskMockProps): ReactNode {

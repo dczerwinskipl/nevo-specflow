@@ -46,8 +46,11 @@ mutation is an explicit action with the actor recorded as the person.
 1. **Generic, projection-driven.** The UI renders the read-only Engine action projection (E4a): a
    position (`not-started`, `ready`, `active`, `waiting`, `terminal`) and the actions allowed now.
    It never branches on step ids, never invents results, and never mutates to discover actions.
-   Step ids are shown verbatim in mono (`requirements`, `wait-for-tasks`, `spike`, `review` are
-   fixture values, not product vocabulary).
+   **Steps are shown by their title** (the optional human `title` of a workflow step, for example
+   "Waiting for tasks", "Implementation", "Review") everywhere: Now block, Tasks rows, history,
+   dialogs. The technical id appears only as detail (the muted line of the Now block and a
+   tooltip); attempt numbers and revisions are muted detail (history meta, Now block line), not
+   part of labels. A step without a title shows its id.
 2. **Only allowed actions are shown.** A disallowed lifecycle or workflow action is omitted, not
    disabled. When nothing is allowed and the reason is not evident from the position, one
    sentence says why (for example "Approve the task to make it ready to start."). One exception:
@@ -67,7 +70,7 @@ mutation is an explicit action with the actor recorded as the person.
 7. **Icons sit on the first text line.** Every status icon is centred on the first line of its
    text, also when the text wraps: `InlineNote`, `Alert` and the operational row status use an
    icon slot one line box tall (`1lh`) aligned to the start. Row-level leading icons stay centred
-   on the row. An icon inside running text (`Last: review · attempt 1 · ⚠ Changes requested · …`) is an inline
+   on the row. An icon inside running text (`Last: Review · ⚠ Changes requested · …`) is an inline
    icon on the same line, never a flex box that shifts the chunk off the baseline.
 8. **Reuse.** Shell, Overview sections, Task rows, Full Task, history and the Documents editor are
    the existing ones; new compositions are listed in the component map.
@@ -101,13 +104,13 @@ from the projection. Reading order:
 
 1. **Subject status** when it changes what can happen (draft "needs approval before it can start",
    on hold with its reason; for an abandoned Specification its reason).
-2. **Position**: the step id (primary) or Not started / Completed / Abandoned, then one quiet line
+2. **Position**: the step title (primary) or Not started / Completed / Abandoned, then one quiet line
    (attempt, since, by whom; or first step; or how it continues) ending with the workflow and
    revision.
 3. **Blocking reasons**, one line each with a link to where it is fixed: waiting (`Waiting for 5 of
 6 tasks · See Tasks`, `Waiting for 1 dependency · See Depends on`, never repeating the list);
    missing required context (`1 required context entry is missing: Old login flow … See Context`).
-4. **Latest hand-off**: `Last: review · attempt 1 · Changes requested · Dominik, 11:40` plus its
+4. **Latest hand-off**: `Last: Review · Changes requested · Dominik, 11:40` plus its
    feedback (how review-failed → rework reads on the new attempt).
 5. **The one primary action**: Approve (draft), Resume (on hold), Start `<first step>`, Finish step,
    or Close specification (terminal); Return to earlier step is its secondary. A lifecycle primary
@@ -145,6 +148,11 @@ Full attempt history stays in the existing Secondary (Task history / Activity hi
   an action such as **Create findings document**); while one is unmet, Finish is disabled for that
   result and other results stay available. In the Now block an active step lists its unmet gates
   under "To finish with <result>:".
+- **Gate action round trip:** a gate action such as **Create findings document** closes the Finish
+  dialog but keeps its draft (selected result, typed feedback, attached artifacts) and opens the new
+  document in the Secondary editor; the Now block says the finish is kept. **Finish step** reopens
+  the dialog with the draft and evaluates the gates again; a now-met gate shows as satisfied with a
+  line that the result and feedback are as the person left them.
 - **wait-for-tasks** has no Finish; it settles by itself. Only Return is offered when allowed.
 
 ## Full Task (`/specs/:specId/tasks/:taskId`)
@@ -202,13 +210,21 @@ Editing a Task is more than `task.md`: its other registered documents, the conte
 - **Defaults:** with no explicit list the effective context is `task.md`, the Task's documents and
   the Specification overview; the section shows them, and the first edit writes them out as
   explicit entries so nothing drops silently (an explicit list replaces the default).
-- **Process artifacts:** an entry (Specification, Task or project document, or a path) can be marked
-  as a process artifact, a document produced during the process. The add dialogs start with "It's
-  a process artifact (created later)"; when checked, the item is named (path or id) instead of
-  picked. A missing artifact is **Awaited**: neutral row ("Awaited: … is created during the
-  process. Needed when the step starts."), fact `Process artifact`, no warning and no blocker on
-  Approve; the Now block lists it as one neutral line. A required artifact is still part of the
-  entry gate: the step does not start while it is missing. Who produces it is not shown.
+- **What context is:** the inputs this Task needs before it starts. A **process artifact** entry is
+  an input produced **earlier** in the process (for example by another Task); it is still required
+  at start (entry gate). What this Task itself produces is **not** context: it is an **exit gate**
+  of the step that produces it (and, if needed later, an entry gate of a later step). The add
+  dialogs start with "Created earlier in the process (for example by another task)" ("Needed before
+  this task starts…"); when checked, the item is named (path or id) instead of picked. A missing
+  artifact is **Awaited**: neutral row ("Awaited: … is created earlier in the process. Needed when
+  the step starts."), fact `Process artifact`, no warning and no blocker on Approve; the Now block
+  lists it as one neutral line. Who produces it is not shown. Marking the Task's own document as a
+  required artifact is refused by the Engine and shown in the dialog ("Not added: this is the
+  task's own document … belongs to an exit gate").
+- **Problems first, at every width:** the Context section lists the entries that need attention
+  first (missing or broken, and awaited ones that are required), then **Show all N entries in
+  order**, which shows every entry in its declared order (with **Show only entries that need
+  attention** to go back). No separate Narrow layout; with no problems the full list shows.
 - **Broken and stale references:** a missing required entry is a danger row ("Not found: … Required,
   so the next step cannot start until you replace or remove it") plus one danger line above the
   list; a superseded or missing optional entry is an attention row ("… Optional, so the next step

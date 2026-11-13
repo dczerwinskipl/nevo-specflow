@@ -1,5 +1,6 @@
 import { useState, type ComponentProps, type ReactNode } from 'react';
 import {
+  Alert,
   Button,
   Collapsible,
   CheckboxField,
@@ -35,7 +36,7 @@ import {
 import { OperationalRow } from '../../shared/operational-list';
 import type { SemanticSupporting } from '../../shared/operational-list/OperationalRow.types';
 import { WorkspaceSection } from '../../shared/workspace-section';
-import { tasks, typeOf, type MockTask } from './fixtures.stories-support';
+import { tasks, typeOf, type MockTask, stepTitle } from './fixtures.stories-support';
 
 /*
  * PRESENTATION MOCK ONLY. Task authoring beyond task.md: the Task's own documents, its context list
@@ -332,7 +333,7 @@ export function TaskDocumentsSection({
 function supportingFor(entry: ContextEntry): SemanticSupporting | undefined {
   if (entry.problem === 'missing' && entry.artifact) {
     return {
-      text: `Awaited: ${entry.ref} is created during the process.${
+      text: `Awaited: ${entry.ref} is created earlier in the process.${
         entry.required ? ' Needed when the step starts.' : ''
       }`,
       icon: 'clock',
@@ -424,13 +425,23 @@ export function TaskContextSection({
   menuOpen,
   rowMenuFor,
   collapsible = false,
+  showAll: showAllInitially = false,
 }: {
   entries: readonly ContextEntry[];
   editable: boolean;
   menuOpen?: boolean;
   rowMenuFor?: string;
   collapsible?: boolean;
+  /** Story control: start with every entry shown. */
+  showAll?: boolean;
 }) {
+  // Entries that need attention lead (missing, broken, awaited but required); the rest wait
+  // behind "Show all", which shows every entry in its declared order. Same at every width.
+  const needsAttention = entries.filter(
+    (entry) => entry.problem === 'missing' && (entry.required || !entry.artifact),
+  );
+  const [showAll, setShowAll] = useState(showAllInitially || needsAttention.length === 0);
+  const visible = showAll ? entries : needsAttention;
   const blocking = entries.filter(
     (entry) => entry.problem === 'missing' && entry.required && !entry.artifact,
   );
@@ -449,7 +460,8 @@ export function TaskContextSection({
     >
       <div className="grid gap-3">
         <Typography as="p" variant="body-sm" className="text-content-secondary">
-          What the person or agent doing a step reads, in this order. task.md always comes first.
+          Inputs this task needs before it starts, in the order they are read. task.md always comes
+          first.
         </Typography>
         {blocking.length > 0 ? (
           <InlineNote tone="danger" role="alert">
@@ -460,7 +472,7 @@ export function TaskContextSection({
           </InlineNote>
         ) : null}
         <InformationList>
-          {entries.map((entry) => (
+          {visible.map((entry) => (
             <OperationalRow
               key={entry.key}
               primary={
@@ -501,6 +513,20 @@ export function TaskContextSection({
             />
           ))}
         </InformationList>
+        {showAll && needsAttention.length > 0 ? (
+          <div>
+            <Button variant="ghost" size="sm" onClick={() => setShowAll(false)}>
+              Show only entries that need attention
+            </Button>
+          </div>
+        ) : null}
+        {!showAll ? (
+          <div>
+            <Button variant="ghost" size="sm" onClick={() => setShowAll(true)}>
+              Show all {entries.length} entries in order
+            </Button>
+          </div>
+        ) : null}
       </div>
     </SupportSection>
   );
@@ -553,8 +579,8 @@ export type AddContextKind = 'specification-document' | 'repository-document' | 
 function ArtifactOption({ checked }: { checked: boolean }) {
   return (
     <CheckboxField
-      label="It's a process artifact (created later)"
-      description="It may not exist yet. Until then it shows as awaited, without a warning; if it is required, it must exist when the step starts."
+      label="Created earlier in the process (for example by another task)"
+      description="Needed before this task starts. It may not exist yet; until then it shows as awaited, without a warning. What this task produces is not context: it is an exit gate of the step that produces it."
       defaultChecked={checked}
     />
   );
@@ -563,9 +589,12 @@ function ArtifactOption({ checked }: { checked: boolean }) {
 export function AddContextDialog({
   kind,
   artifact = false,
+  refused = false,
 }: {
   kind: AddContextKind;
   artifact?: boolean;
+  /** The Engine refused: the entry is this task's own document. */
+  refused?: boolean;
 }) {
   const title =
     kind === 'specification-document'
@@ -580,7 +609,10 @@ export function AddContextDialog({
         // An artifact does not exist yet: name where it will be instead of picking it.
         <Field>
           <Field.Label>Document path in Single sign-on</Field.Label>
-          <TextInput className="font-mono" defaultValue="notes/refresh-findings.md" />
+          <TextInput
+            className="font-mono"
+            defaultValue={refused ? 'tasks/T-04/findings.md' : 'notes/refresh-findings.md'}
+          />
           <Field.Description>Not registered yet; shown as awaited until it is.</Field.Description>
         </Field>
       ) : (
@@ -658,6 +690,13 @@ export function AddContextDialog({
           </DialogDescription>
         </DialogHeader>
         <DialogBody className="grid gap-6">
+          {refused ? (
+            <Alert role="alert" tone="danger" title="Not added: this is the task's own document">
+              Context lists what T-04 needs before it starts. A document T-04 produces belongs to an
+              exit gate of the step that produces it, for example “a findings document exists”
+              before finishing.
+            </Alert>
+          ) : null}
           {/* First: it decides whether the item is picked (exists) or named (created later). */}
           <ArtifactOption checked={artifact} />
           {body}
@@ -688,7 +727,7 @@ function dependencySupporting(other: MockTask): SemanticSupporting {
 
   if (other.workflow.position.kind === 'active') {
     return {
-      text: `${other.workflow.position.step} · attempt ${other.workflow.position.attempt} · in progress`,
+      text: `${stepTitle(other.workflow.position.step)} · in progress`,
       tone: 'info',
       icon: 'workflow',
     };

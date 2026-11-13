@@ -22,6 +22,7 @@ import {
   Typography,
   cn,
 } from '@nevo/ui';
+import { stepTitle } from './fixtures.stories-support';
 import type { Gate, HistoryEntry, Transition, WorkflowView } from './fixtures.stories-support';
 
 /*
@@ -45,9 +46,9 @@ export function InlineIcon({ name }: { name: ComponentProps<typeof Icon>['name']
   );
 }
 
-function Step({ children }: { children: ReactNode }) {
-  // Step ids are user-defined identifiers: shown as written, mono, never translated.
-  return <span className="font-mono">{children}</span>;
+/** A step by its title; the technical id is detail (tooltip), never the primary label. */
+function Step({ children }: { children: string }) {
+  return <span title={`Step id: ${children}`}>{stepTitle(children)}</span>;
 }
 
 /** Exit gates as a checklist: met ones as satisfied checks, unmet ones with what is missing. */
@@ -107,6 +108,8 @@ export interface WorkflowPanelProps {
    * the workflow action row: only one primary action is offered now.
    */
   readonly primaryAction?: ReactNode;
+  /** A transient note just above the actions (for example a kept finish draft). */
+  readonly note?: ReactNode;
 }
 
 /** The panel: current position first, the latest hand-off second, then the allowed actions. */
@@ -120,6 +123,7 @@ export function WorkflowPanel({
   status,
   blockers,
   primaryAction,
+  note,
 }: WorkflowPanelProps) {
   const { position, definition } = view;
   const canFinish = position.kind === 'active' && (view.transitions?.length ?? 0) > 0;
@@ -211,6 +215,11 @@ export function WorkflowPanel({
           </Typography>
           <Typography as="p" variant="body-sm" className="text-content-muted">
             {facts ? <>{facts} · </> : null}
+            {'step' in position ? (
+              <>
+                <span className="font-mono">{position.step}</span> ·{' '}
+              </>
+            ) : null}
             {definition.title} rev {definition.revision}
           </Typography>
         </div>
@@ -231,7 +240,7 @@ export function WorkflowPanel({
           <div className="grid gap-1 border-l-2 border-border-default pl-3">
             <Typography as="p" variant="body-sm" className="text-content-secondary">
               {latest.returned ? 'Returned from ' : 'Last: '}
-              <Step>{latest.fromStep}</Step> · attempt {latest.attempt} ·{' '}
+              <Step>{latest.fromStep}</Step> ·{' '}
               {latestNeedsAttention ? (
                 <span className="font-medium text-status-attention">
                   <InlineIcon name="triangle-alert" />
@@ -253,6 +262,7 @@ export function WorkflowPanel({
          * The action row. E6 adds the executor choice to the start action of an eligible step in
          * this slot (Start step ▸ Do it myself / Ask agent); the primary stays "Start step".
          */}
+        {note}
         {primaryAction ? (
           <div className="flex flex-wrap gap-2" data-slot="workflow-actions">
             {primaryAction}
@@ -278,7 +288,8 @@ export function WorkflowPanel({
 /* ------------------------------------------------------------------------------------------ */
 
 function transitionDescription(transition: Transition) {
-  const target = transition.to === null ? 'Ends the workflow' : `Goes to ${transition.to}`;
+  const target =
+    transition.to === null ? 'Ends the workflow' : `Goes to ${stepTitle(transition.to)}`;
 
   return transition.feedback === 'required' ? `${target} · feedback required` : target;
 }
@@ -291,6 +302,7 @@ export function FinishStepDialog({
   initialFeedback = '',
   artifacts = [],
   showMissingFeedback = false,
+  rechecked = false,
 }: {
   step: string;
   attempt: number;
@@ -299,6 +311,8 @@ export function FinishStepDialog({
   initialFeedback?: string;
   artifacts?: readonly string[];
   showMissingFeedback?: boolean;
+  /** Reopened after creating a gate's document: the draft is kept and gates are checked again. */
+  rechecked?: boolean;
 }) {
   const [value, setValue] = useState(initialTransition ?? '');
   const feedbackRef = useRef<HTMLTextAreaElement>(null);
@@ -348,6 +362,11 @@ export function FinishStepDialog({
                 Needed to finish with {selected?.label}
               </Typography>
               <GateList gates={gates} label={`Exit gates for ${selected?.label}`} />
+              {rechecked && !gatesUnmet ? (
+                <Typography as="p" variant="body-sm" className="text-content-secondary">
+                  Checked again when you came back; your result and feedback are as you left them.
+                </Typography>
+              ) : null}
               {gatesUnmet ? (
                 <Typography as="p" variant="body-sm" className="text-content-secondary">
                   Finish is unavailable for this result until every item is met. Other results stay
@@ -567,7 +586,9 @@ export function StartTaskDialog({
               <Button variant="destructive">Remove task</Button>
             </>
           ) : (
-            <Button>{changed ? `Start with rev ${revision + 1}` : `Start ${firstStep}`}</Button>
+            <Button>
+              {changed ? `Start with rev ${revision + 1}` : `Start ${stepTitle(firstStep)}`}
+            </Button>
           )}
         </DialogFooter>
       </DialogContent>
@@ -595,14 +616,14 @@ export function WorkflowHistory({
         >
           <Timeline.Marker tone={entry.tone ?? 'neutral'} active={entry.active} />
           <Timeline.Content
-            meta={`${entry.at} · ${entry.actor}`}
+            meta={`${entry.at} · ${entry.actor} · attempt ${entry.attempt}`}
             title={
               <span>
-                <Step>{entry.step}</Step> · attempt {entry.attempt}
+                <Step>{entry.step}</Step>
                 {entry.toStep !== undefined ? (
                   <span className="font-normal text-content-secondary">
                     {' '}
-                    → {entry.toStep ?? 'end'}
+                    → {entry.toStep ? stepTitle(entry.toStep) : 'end'}
                   </span>
                 ) : null}
               </span>

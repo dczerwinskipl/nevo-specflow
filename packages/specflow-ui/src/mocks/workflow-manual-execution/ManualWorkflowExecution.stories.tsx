@@ -110,6 +110,10 @@ export const Default: Story = {
         'finish-gate-unmet',
         'finish-gate-met',
         'now-gate',
+        'finish-gate-editing',
+        'finish-gate-returned',
+        'context-show-all',
+        'context-artifact-refused',
       ],
     },
     documentPlacement: { control: 'inline-radio', options: ['secondary', 'primary'] },
@@ -208,3 +212,15 @@ export const TaskContextArtifactAddWide = taskStory('context-artifact-add', { he
 export const TaskFinishGateUnmetWide = taskStory('finish-gate-unmet', { height: 1000 });
 export const TaskFinishGateMetWide = taskStory('finish-gate-met', { height: 1000 });
 export const TaskNowGateNarrow390 = taskStory('now-gate', { width: 390, height: 760 });
+
+/* 7. Second external review */
+/** Gate action: the finish draft is kept while the new document is written in the Secondary. */
+export const TaskFinishGateEditingWide = taskStory('finish-gate-editing');
+/** Back in Finish: the gate is checked again and is met; result and feedback kept. */
+export const TaskFinishGateReturnedWide = taskStory('finish-gate-returned', { height: 1000 });
+/** Context with problems first; "Show all" lists every entry in declared order. */
+export const TaskContextShowAllWide = taskStory('context-show-all', { height: 1800 });
+/** The Engine refuses the Task's own document as a required artifact: use an exit gate. */
+export const TaskContextArtifactRefusedWide = taskStory('context-artifact-refused', {
+  height: 1000,
+});

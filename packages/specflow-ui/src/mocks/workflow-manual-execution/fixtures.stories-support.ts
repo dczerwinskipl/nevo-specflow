@@ -7,6 +7,27 @@
  * the UI never branches on them; only the projection's `kind`s and allowed actions matter.
  */
 
+/**
+ * Step titles from the projection (the optional human `title` of a workflow step). The UI shows
+ * the title; the id stays as detail. Falls back to the id when a step has no title.
+ */
+export const stepTitles: Readonly<Record<string, string>> = {
+  requirements: 'Requirements',
+  specification: 'Specification',
+  breakdown: 'Breakdown',
+  'wait-for-tasks': 'Waiting for tasks',
+  spike: 'Spike',
+  design: 'Design',
+  implement: 'Implementation',
+  review: 'Review',
+  'ux-acceptance': 'UX acceptance',
+  'security-review': 'Security review',
+};
+
+export function stepTitle(id: string): string {
+  return stepTitles[id] ?? id;
+}
+
 export type PreparationStatus = 'draft' | 'ready' | 'on-hold' | 'cancelled';
 
 export interface WorkflowDefinitionRef {
@@ -182,7 +203,7 @@ export const tasks: readonly MockTask[] = [
       definition: spike,
       position: {
         kind: 'terminal',
-        summary: 'Finished spike: Recommendation written',
+        summary: 'Finished Spike: Recommendation written',
         at: 'Yesterday',
       },
       latest: {
@@ -234,7 +255,7 @@ export const tasks: readonly MockTask[] = [
           {
             id: 'T-02',
             title: 'Token exchange endpoint and session cookie',
-            state: 'implement · attempt 2 · active',
+            state: 'Implementation · in progress',
             tone: 'info',
           },
         ],

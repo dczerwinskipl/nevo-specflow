@@ -16,6 +16,11 @@ export interface TaskRefusal {
   readonly unresolved: NonNullable<Details['unresolved']>;
   /** `WORKFLOW_TASK_CONTEXT_UNRESOLVED`: required process artifacts that do not exist yet. */
   readonly awaited: NonNullable<Details['awaited']>;
+  /**
+   * `WORKFLOW_INPUT_INVALID`: entries that can never hold (`required-own-artifact`: the Task's own
+   * document as a required artifact; what a Task produces is an exit gate, not context).
+   */
+  readonly invalidContext: NonNullable<Details['invalidContext']>;
   /** The request may have been applied (the answer was lost): reload before deciding again. */
   readonly outcomeUnknown: boolean;
 }
@@ -38,6 +43,7 @@ export function taskRefusalOf(error: unknown): TaskRefusal {
     code: apiErrorCode(error),
     unresolved: details?.unresolved ?? [],
     awaited: details?.awaited ?? [],
+    invalidContext: details?.invalidContext ?? [],
     outcomeUnknown: isApiError(error) && error.outcome === 'unknown',
   };
 }

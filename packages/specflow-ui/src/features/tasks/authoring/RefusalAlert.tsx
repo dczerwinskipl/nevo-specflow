@@ -17,6 +17,19 @@ export function RefusalAlert({ error, title, entryName }: RefusalAlertProps) {
   const { t } = useTranslation();
   const refusal = taskRefusalOf(error);
   const name = (index: number, key: string) => entryName?.(index) ?? key;
+  const ownArtifact = refusal.invalidContext.find(
+    (entry) => entry.reason === 'required-own-artifact',
+  );
+  if (ownArtifact) {
+    // What a Task produces is an exit gate of the producing step, not its context (UX contract).
+    return (
+      <Alert role="alert" tone="danger" title={t('taskAuthoring.context.ownArtifactTitle')}>
+        {t('taskAuthoring.context.ownArtifactBody', {
+          ref: name(ownArtifact.index, ownArtifact.key),
+        })}
+      </Alert>
+    );
+  }
 
   return (
     <Alert role="alert" tone="danger" title={title}>

@@ -2127,7 +2127,9 @@
       "nothingChosen": "Wybierz co najmniej jeden dokument.",
       "valueRequired": "Wpisz wartość.",
       "unresolvedEntry": "{{ref}} nie rozwiązuje się.",
-      "awaitedEntry": "{{ref}} jeszcze nie istnieje."
+      "awaitedEntry": "{{ref}} jeszcze nie istnieje.",
+      "ownArtifactTitle": "Nie dodano: to własny dokument zadania",
+      "ownArtifactBody": "Kontekst wymienia to, czego zadanie potrzebuje przed startem. {{ref}} powstaje w tym zadaniu, więc należy do warunku wyjścia kroku, który go tworzy, na przykład „istnieje dokument z wnioskami” przed zakończeniem."
     },
     "dependencies": {
       "none": "Brak zależności: zadanie może wystartować zaraz po zatwierdzeniu.",

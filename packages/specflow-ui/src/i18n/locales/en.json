@@ -2127,7 +2127,9 @@
       "nothingChosen": "Choose at least one document.",
       "valueRequired": "Enter a value.",
       "unresolvedEntry": "{{ref}} does not resolve.",
-      "awaitedEntry": "{{ref}} does not exist yet."
+      "awaitedEntry": "{{ref}} does not exist yet.",
+      "ownArtifactTitle": "Not added: this is the task's own document",
+      "ownArtifactBody": "Context lists what the task needs before it starts. {{ref}} is produced by this task, so it belongs to an exit gate of the step that produces it, for example “a findings document exists” before finishing."
     },
     "dependencies": {
       "none": "No dependencies: the task can start as soon as it is approved.",

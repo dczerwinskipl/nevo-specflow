@@ -112,7 +112,12 @@ Close still checks Git and the workspace itself.
 - A step that produces Tasks (`produces: tasks` in the projection, for example Breakdown) is finished with `tasks`:
   the complete list of draft Tasks `{id, title, summary?, type, dependsOn?}`, possibly empty; a listed draft is
   revised, an unlisted one cancelled, and any other step refuses `tasks` (`WORKFLOW_INPUT_INVALID`). Task status
-  decisions are not part of a finish.
+  decisions are not part of a finish. The list covers only the drafts the step owns (produced by this step in any
+  attempt); `actions.finish.drafts` lists them as unchanged proposals, so a person finishing the step keeps them by
+  sending them back. Drafts created by hand or by another step are never affected.
+- A pin preview (`preview` of `not-started`) lists the `steps` it would pin, in declared order, each with `next`
+  (the steps its transitions lead to, `end` for a terminal target): a client that confirmed an earlier preview
+  names what changed when the start is refused with `WORKFLOW_DEFINITION_CHANGED`.
 - A Task's first start sends the `expectedWorkflowRevision` the projection showed
   (`actions.start.expectedWorkflowRevision`); another live revision is refused with
   `WORKFLOW_DEFINITION_CHANGED`.

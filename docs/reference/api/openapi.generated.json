@@ -3903,7 +3903,8 @@
                       "revision",
                       "title",
                       "firstStep",
-                      "firstStepTitle"
+                      "firstStepTitle",
+                      "steps"
                     ],
                     "properties": {
                       "workflowId": {
@@ -3925,6 +3926,35 @@
                       },
                       "firstStepTitle": {
                         "type": "string"
+                      },
+                      "steps": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "required": [
+                            "id",
+                            "title",
+                            "next"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "title": {
+                              "type": "string"
+                            },
+                            "next": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              },
+                              "maxItems": 1000
+                            }
+                          }
+                        },
+                        "maxItems": 1000
                       }
                     }
                   },
@@ -5422,7 +5452,8 @@
                       "revision",
                       "title",
                       "firstStep",
-                      "firstStepTitle"
+                      "firstStepTitle",
+                      "steps"
                     ],
                     "properties": {
                       "workflowId": {
@@ -5444,6 +5475,35 @@
                       },
                       "firstStepTitle": {
                         "type": "string"
+                      },
+                      "steps": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "required": [
+                            "id",
+                            "title",
+                            "next"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "title": {
+                              "type": "string"
+                            },
+                            "next": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              },
+                              "maxItems": 1000
+                            }
+                          }
+                        },
+                        "maxItems": 1000
                       }
                     }
                   },
@@ -6003,6 +6063,9 @@
                   "transition": {
                     "type": "string"
                   },
+                  "label": {
+                    "type": "string"
+                  },
                   "result": {
                     "type": "string"
                   },
@@ -6332,6 +6395,39 @@
                           }
                         }
                       ]
+                    },
+                    "maxItems": 1000
+                  },
+                  "drafts": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "id",
+                        "title",
+                        "type"
+                      ],
+                      "properties": {
+                        "id": {
+                          "$ref": "#/components/schemas/TaskId"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "summary": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "type": "string"
+                        },
+                        "dependsOn": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/TaskId"
+                          },
+                          "maxItems": 1000
+                        }
+                      }
                     },
                     "maxItems": 1000
                   }

@@ -17,6 +17,7 @@ import type { SpecificationLifecycleActions } from '../close/blockers';
 import { resolveSpecificationExecution, type ExecutionCatalogue } from '../definitions/catalogue';
 import type { TaskTypes, WorkflowDefinition, WorkflowStep } from '../definitions/model';
 import { WorkflowError } from '../errors';
+import type { TaskProposal } from '../tasks/tasks';
 import { TASKS_PER_SPECIFICATION_MAX } from '../limits';
 import type { TaskContextEntry } from '../../tasks/resource/model';
 import {
@@ -96,6 +97,17 @@ export interface WorkflowSummary {
 export interface PinPreview extends WorkflowSummary {
   readonly firstStep: string;
   readonly firstStepTitle: string;
+  /**
+   * The steps a start would pin, in declared order, each with where its transitions lead (step ids;
+   * `end` for a terminal target). A client that confirmed an earlier preview names what changed.
+   */
+  readonly steps: readonly PreviewStep[];
+}
+
+export interface PreviewStep {
+  readonly id: string;
+  readonly title: string;
+  readonly next: readonly string[];
 }
 
 export const AGENT_UNAVAILABLE_REASONS = [
@@ -258,6 +270,11 @@ export interface WorkflowActions {
       /** The exit gates that apply to it (`when`), with their status now; absent when none do. */
       readonly gates?: readonly GateStatus[];
     })[];
+    /**
+     * A step that produces Tasks: the drafts it owns (produced by this step in any attempt, D06) as
+     * unchanged proposals. A finish lists those to keep; an owned draft it leaves out is cancelled.
+     */
+    readonly drafts?: readonly TaskProposal[];
   };
   /** Declared returns to steps the run reached. */
   readonly return?: {
@@ -410,7 +427,30 @@ function previewOf(definition: WorkflowDefinition): PinPreview {
     ...summaryOf(definition),
     firstStep: definition.entryStep,
     firstStepTitle: stepOf(definition, definition.entryStep).title,
+    steps: definition.steps.map((step) => ({
+      id: step.id,
+      title: step.title,
+      next: step.transitions.map((transition) =>
+        transition.target.kind === 'step' ? transition.target.step : 'end',
+      ),
+    })),
   };
+}
+
+/** The drafts a producing step owns (D06), as the proposals that keep them unchanged. */
+function ownedDrafts(tasks: ExecutionTasks, stepId: string): TaskProposal[] {
+  return tasks.tasks
+    .filter(
+      (task) =>
+        task.status === 'draft' && task.origin.kind === 'produced' && task.origin.step === stepId,
+    )
+    .map((task) => ({
+      id: task.taskId,
+      title: task.title,
+      ...(task.summary !== undefined ? { summary: task.summary } : {}),
+      type: task.type,
+      ...(task.dependsOn.length > 0 ? { dependsOn: task.dependsOn } : {}),
+    }));
 }
 
 function presentHandoff(
@@ -725,6 +765,9 @@ async function runProjection(
               step: step.id,
               attempt: attempt.attempt,
               transitions: await finishTransitions(input, step),
+              ...(describeStep(step).produces === 'tasks'
+                ? { drafts: ownedDrafts(input.tasks, step.id) }
+                : {}),
             },
           }
         : {}),

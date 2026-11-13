@@ -141,6 +141,18 @@
   backdrop-filter: blur(var(--blur-sm));
 }
 
+/*
+ * A bar docked to the bottom of a split-layout Primary (the Session Composer) that content scrolls
+ * underneath: opaque, painted with the same flat material the workspace surface shows there
+ * (`bg-workspace-material` over the canvas), so the bar reads as part of the surface and nothing
+ * scrolled behind it shows through.
+ */
+.workspace-docked-bar {
+  background:
+    linear-gradient(var(--color-workspace-material), var(--color-workspace-material)),
+    var(--color-canvas);
+}
+
 [data-header-covered='true'] > .mobile-floating-navigation {
   opacity: 1;
   transform: translateY(0);

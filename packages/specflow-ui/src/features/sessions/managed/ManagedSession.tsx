@@ -747,11 +747,7 @@ function ManagedSessionConversation({
                         ? 'sticky self-center'
                         : 'fixed inset-x-0 flex justify-center px-4',
                     )}
-                    style={{
-                      bottom: localScroll
-                        ? `calc(var(--workspace-overlay-bottom, 0.75rem) + ${composerHeight}px + 0.5rem)`
-                        : `calc(${composerHeight}px + 0.5rem)`,
-                    }}
+                    style={{ bottom: `calc(${composerHeight}px + 0.5rem)` }}
                   >
                     {/* `variant="secondary"`'s own background token (`--color-action-secondary`)
                         is deliberately translucent — it is meant for a control sitting on an
@@ -808,20 +804,22 @@ function ManagedSessionConversation({
                   // to the true bottom, so the Composer sits transparently on top of that single
                   // real surface rather than painting a second, copied one of its own — the two
                   // would otherwise be color-matched separately (an illusion that a structural DOM
-                  // check reveals as two boxes), so there genuinely is only one. Split/desktop keeps the
-                  // unchanged floating-above-the-edge treatment: it is a `sticky` child of its own
-                  // local scroll container, which already shares that container's opaque
-                  // background, so there is no transparent zone for content to show through
-                  // underneath it either way.
+                  // check reveals as two boxes), so there genuinely is only one. Split/desktop pins
+                  // the same way (`bottom: 0`, the edge clearance moved into its padding), but its
+                  // conversation scrolls underneath the bar inside the same surface, so the bar
+                  // paints that surface's own material (`workspace-docked-bar`): nothing scrolled
+                  // behind it shows through the space around the Composer.
                   className={cn(
                     'z-10 flex flex-col items-center gap-2 px-4 pt-3 sm:px-5',
                     localScroll
-                      ? 'sticky pb-4 sm:pb-5'
+                      ? 'workspace-docked-bar sticky bottom-0'
                       : 'scrollbar-subtle fixed inset-x-0 bottom-0 z-20 overflow-y-auto',
                   )}
                   style={
                     localScroll
-                      ? { bottom: 'var(--workspace-overlay-bottom, 0.75rem)' }
+                      ? {
+                          paddingBottom: 'calc(1.25rem + var(--workspace-overlay-bottom, 0.75rem))',
+                        }
                       : {
                           // The same breathing room `pb-4` gave before, now stacked on top of the
                           // safe-area clearance instead of replacing it — see the className comment
@@ -939,15 +937,10 @@ function ManagedSessionConversation({
                             // floating-navigation row's shadow (`AppWorkspace.css`), so all three read as
                             // one coherent elevation rather than three different weights.
                             //
-                            // `workspace-floating-pill` (`AppWorkspace.css`), not the DS `standalone`
-                            // variant's own default `bg-surface-raised` (a flat, solid `#121212`): this is
-                            // the same lighter, translucent "floating surface" material the jump-to-latest pill
-                            // and the mobile floating-navigation row already use, declared un-layered so
-                            // it reliably wins over the component's own `@layer`-declared utility
-                            // regardless of Tailwind's internal ordering (see that class's own doc
-                            // comment). Keeps this bar visually consistent with this screen's other
-                            // floating surfaces instead of reading as a separate, darker material.
-                            className="shadow-lg workspace-floating-pill"
+                            // The DS `standalone` surface (`bg-surface-raised`) is opaque on purpose:
+                            // the conversation scrolls underneath the docked Composer and must never
+                            // show through it (not the translucent `workspace-floating-pill`).
+                            className="shadow-lg"
                             // Platform-specific Enter handling. Desktop
                             // keeps the DS default (`'submit'`): a physical keyboard reliably reports
                             // `shiftKey`, so Shift+Enter already inserts a newline there
@@ -1082,12 +1075,20 @@ function ManagedSessionConversation({
                                         icon={canCancel ? Square : Send}
                                         size="sm"
                                         type={canCancel ? 'button' : 'submit'}
-                                        // Bold `primary` only while Send is actually actionable: the
-                                        // disabled `opacity-50` treatment alone reads too close to
-                                        // "primary" at full saturation (the composer's disabled textarea
-                                        // visibly mutes, so the Send icon button must too), so the disabled Send case falls back to the same muted
-                                        // `secondary` treatment Stop/Cancel already uses.
-                                        variant={canCancel || !canSend ? 'secondary' : 'primary'}
+                                        // Stop interrupts the agent's work: the semantic `destructive`
+                                        // action with a filled stop glyph (an outline square read as
+                                        // an icon that failed to load). Bold `primary` only while Send
+                                        // is actually actionable: the disabled `opacity-50` treatment
+                                        // alone reads too close to "primary" at full saturation, so a
+                                        // disabled Send falls back to the muted `secondary`.
+                                        className={canCancel ? '[&_svg]:fill-current' : undefined}
+                                        variant={
+                                          canCancel
+                                            ? 'destructive'
+                                            : canSend
+                                              ? 'primary'
+                                              : 'secondary'
+                                        }
                                         onClick={canCancel ? () => void feed.cancel() : undefined}
                                       />
                                     </TooltipTrigger>

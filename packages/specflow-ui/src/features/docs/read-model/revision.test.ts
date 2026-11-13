@@ -1,5 +1,5 @@
-import { QueryClient } from '@tanstack/react-query';
-import { describe, expect, it } from 'vitest';
+import { QueryClient, QueryObserver } from '@tanstack/react-query';
+import { describe, expect, it, vi } from 'vitest';
 import type { DocsApi } from './api';
 import { docsKeys } from './queries';
 import { leaveDocsWorkspace, outdatedByRevision, reconcileDocsRevision } from './revision';
@@ -73,7 +73,7 @@ describe('corpus revision coherence', () => {
     expect(isStale(docsKeys.document('a', 'd'))).toBe(true);
   });
 
-  it('a refetch answering the revision the key already held reconciles nothing', async () => {
+  it('a refetch answering the revision the key already held still refreshes another corpus', async () => {
     const { client, isStale } = cache();
     client.setQueryData(docsKeys.tree('a'), tree('r2'));
     client.setQueryData(docsKeys.document('a', 'd'), article('r1'));
@@ -81,7 +81,46 @@ describe('corpus revision coherence', () => {
 
     await client.fetchQuery({ ...docsQueries.tree(api, client, 'a'), staleTime: 0 });
 
-    expect(isStale(docsKeys.document('a', 'd'))).toBe(false);
+    expect(isStale(docsKeys.document('a', 'd'))).toBe(true);
+  });
+
+  it('a late answer of an older corpus ends with every answer on the newer one', async () => {
+    const client = new QueryClient();
+    let corpus = 'A';
+    let answerFirstArticle: (value: unknown) => void = () => undefined;
+    let articleReads = 0;
+    // Answers come over the network: never within the microtasks that store another answer.
+    const answer = <T>(value: T) =>
+      new Promise<T>((resolve) => setTimeout(() => resolve(value), 0));
+    const api = {
+      tree: () => answer(tree(corpus)),
+      article: () => {
+        articleReads += 1;
+
+        return articleReads === 1
+          ? new Promise((resolve) => {
+              answerFirstArticle = resolve;
+            })
+          : answer(article(corpus));
+      },
+    } as unknown as DocsApi;
+    const treeObserver = new QueryObserver(client, docsQueries.tree(api, client, 'a'));
+    const articleObserver = new QueryObserver(client, docsQueries.document(api, client, 'a', 'd'));
+    const stop = [treeObserver.subscribe(() => undefined)];
+    await vi.waitFor(() => expect(client.getQueryData(docsKeys.tree('a'))).toEqual(tree('A')));
+    // The article's first read is in flight on A; the corpus changes and the tree refetches to B.
+    stop.push(articleObserver.subscribe(() => undefined));
+    corpus = 'B';
+    await treeObserver.refetch();
+    // The article answers late, from A.
+    answerFirstArticle(article('A'));
+
+    await vi.waitFor(() => {
+      expect(client.isFetching()).toBe(0);
+      expect(client.getQueryData(docsKeys.tree('a'))).toEqual(tree('B'));
+      expect(client.getQueryData(docsKeys.document('a', 'd'))).toEqual(article('B'));
+    });
+    stop.forEach((unsubscribe) => unsubscribe());
   });
 
   it('touches only the workspace the answer was requested for', () => {

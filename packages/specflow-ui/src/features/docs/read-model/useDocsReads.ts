@@ -12,11 +12,12 @@ import { docsKeys } from './queries';
 import { reconcileDocsRevision, revisionOf } from './revision';
 
 /**
- * Reads one answer and, when it is the key's first answer or describes another corpus than the
- * key held, reconciles its workspace's other answers with its revision. A refetch that answers the
- * same revision reconciles nothing, so two answers can never keep invalidating each other. The
- * workspace and key are the ones the read was started for (captured here), never a "current"
- * workspace read when the answer arrives.
+ * Reads one answer and reconciles its workspace's other answers with its revision, every time:
+ * also a refetch answering the revision its key already held, since another answer may have
+ * arrived late from an older (or a reverted) corpus meanwhile. Reconciling does nothing when every
+ * cached answer agrees, and it cannot loop: the Runtime answers each response from one snapshot, so
+ * the answers of a stable corpus agree within two rounds. The workspace and key are the ones the
+ * read was started for (captured here), never a "current" workspace read when the answer arrives.
  */
 async function readCoherent<T>(
   queryClient: QueryClient,
@@ -26,8 +27,7 @@ async function readCoherent<T>(
 ): Promise<T> {
   const data = await read();
   const revision = revisionOf(data);
-  const held = queryClient.getQueryData(key);
-  if (revision !== undefined && (held === undefined || revisionOf(held) !== revision)) {
+  if (revision !== undefined) {
     reconcileDocsRevision(queryClient, workspaceId, key, revision);
   }
 
@@ -95,6 +95,23 @@ export function useDocsArticle(
     ...docsQueries.document(docsApi, queryClient, workspaceId ?? '', documentId ?? ''),
     enabled: workspaceId !== undefined && documentId !== undefined,
   });
+}
+
+/**
+ * The answer held for one article, without reading it: for a screen that compares it with another
+ * answer while the article's own view reads it.
+ */
+export function useHeldDocsArticle(
+  workspaceId: string | undefined,
+  documentId: string | undefined,
+): DocsArticleResult | undefined {
+  const { docsApi } = useAppServices();
+  const queryClient = useQueryClient();
+
+  return useQuery({
+    ...docsQueries.document(docsApi, queryClient, workspaceId ?? '', documentId ?? ''),
+    enabled: false,
+  }).data;
 }
 
 /**

@@ -3,7 +3,7 @@ import { Button, EmptyState, Typography } from '@nevo/ui';
 import type { WorkspaceDocsTree } from '@nevo/specflow-contracts/docs';
 import { LoadingPresentation } from '../../../app/loading/LoadingPresentation';
 import type { DocsArticleResult } from '../read-model';
-import { useDocsArticle } from '../read-model';
+import { revisionOf, useDocsArticle } from '../read-model';
 import { useArticleNavigation } from './articleContext';
 import { DocsArticleView } from './DocsArticleView';
 import { useReadingPosition } from './readingPositions';
@@ -91,8 +91,9 @@ function ArticleRefusal({
 }
 
 /**
- * The article area of one requested document: a skeleton while it loads, the article, or why it
- * cannot be shown. Shared by the split Secondary and the stacked article screens.
+ * The article area of one requested document: a skeleton while it loads (also while the article
+ * and the tree describe different corpus revisions), the article, or why it cannot be shown.
+ * Shared by the split Secondary and the stacked article screens.
  */
 export function ArticleBody({
   chromeKey,
@@ -129,7 +130,9 @@ export function ArticleBody({
     );
   }
 
-  if (!result.data) {
+  // The article and the tree its links are resolved by must describe one corpus: while the
+  // revisions are being reconciled (the older answer is refetched), the article area loads.
+  if (!result.data || revisionOf(result.data) !== tree.corpusRevision) {
     return (
       <div className="p-6">
         <LoadingPresentation shape="document" label={t('docs.article.loading')} />

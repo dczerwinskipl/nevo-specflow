@@ -12,7 +12,7 @@ import { ArticleNavigationContext, type ArticleNavigation } from '../article/art
 import { ArticleStackControlContext } from '../article/articleStack';
 import { currentDocsWorkspace } from '../current-workspace/currentWorkspaceStore';
 import type { CurrentDocsWorkspace } from '../current-workspace/useCurrentDocsWorkspace';
-import { docsFailure } from '../read-model';
+import { docsFailure, revisionOf, useHeldDocsArticle } from '../read-model';
 import { DocsTreePane } from '../tree-pane/DocsTreePane';
 import { displayPath } from '../workspace-picker/workspacePickerModel';
 import { WorkspacePicker } from '../workspace-picker/WorkspacePicker';
@@ -178,7 +178,9 @@ export function DocsReader({
     failure && failure.kind !== 'forbidden'
       ? failure
       : tree.data?.documents.length === 0
-        ? { kind: 'empty' }
+        ? tree.data.skipped.length > 0
+          ? { kind: 'all-skipped', skipped: tree.data.skipped, docsRoot: tree.data.docsRoot }
+          : { kind: 'empty' }
         : listFailure && listFailure.kind !== 'forbidden'
           ? listFailure
           : undefined;
@@ -205,6 +207,16 @@ export function DocsReader({
       openedFrom,
     };
   }, [workspaceId, documentId, sectionId, tree.data, historyEntry, openedFrom, t]);
+  const shownDocumentId =
+    documentId ?? (supportsSplit ? tree.data?.rootIndexDocumentId : undefined);
+  // The tree is refetched because the shown article answered another corpus: until it describes
+  // the article's corpus, the pane loads instead of listing the older corpus beside it.
+  const shownArticle = useHeldDocsArticle(workspaceId, problem ? undefined : shownDocumentId);
+  const treeReconciling =
+    tree.isFetching &&
+    tree.data !== undefined &&
+    shownArticle !== undefined &&
+    revisionOf(shownArticle) !== tree.data.corpusRevision;
   const stackControl = useNarrowArticleStack({
     article: problem ? undefined : narrowArticle,
     onLeave: leaveDocument,
@@ -239,8 +251,6 @@ export function DocsReader({
     />
   ) : undefined;
   const runtimeWorkspace = list?.workspaces.find((item) => item.isRuntimeWorkspace);
-  const shownDocumentId =
-    documentId ?? (supportsSplit ? tree.data?.rootIndexDocumentId : undefined);
 
   const picker: ReactNode =
     list && workspaceId ? (
@@ -283,8 +293,8 @@ export function DocsReader({
                 }
                 picker={picker}
                 notices={notices}
-                tree={problem ? undefined : tree.data}
-                treeLoading={workspaceId === undefined || tree.isPending}
+                tree={problem || treeReconciling ? undefined : tree.data}
+                treeLoading={workspaceId === undefined || tree.isPending || treeReconciling}
                 // Split layouts say the problem where the article would be.
                 problem={!supportsSplit ? problemView : problem ? null : undefined}
                 activeDocumentId={shownDocumentId}

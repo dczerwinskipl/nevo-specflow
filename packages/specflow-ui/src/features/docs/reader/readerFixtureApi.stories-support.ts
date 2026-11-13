@@ -27,6 +27,8 @@ export type ReaderFixtureScenario =
   | 'empty-corpus'
   | 'skipped-one'
   | 'skipped-many'
+  /** Documentation files exist, but every one has errors. */
+  | 'all-skipped'
   | 'forbidden'
   | 'docs-unavailable'
   | 'index-building';
@@ -96,7 +98,10 @@ export function fixtureTree(
   workspaceId: string,
   scenario: ReaderFixtureScenario,
 ): WorkspaceDocsTree {
-  const documents = scenario === 'empty-corpus' ? [] : documentsOf(workspaceId, scenario);
+  const documents =
+    scenario === 'empty-corpus' || scenario === 'all-skipped'
+      ? []
+      : documentsOf(workspaceId, scenario);
 
   return {
     workspaceId,
@@ -240,6 +245,13 @@ function fixtureSearch(
 }
 
 /**
+ * The corpus change of the `newerArticle` option: answers of the newer tree wait until a play
+ * function releases them, so it can look at the screen while the revisions differ.
+ */
+let releaseTree: () => void = () => undefined;
+export const releaseNewerTree = () => releaseTree();
+
+/**
  * The reader's port over the fixture corpus. `unavailable` lists the workspaces whose checkout
  * cannot be read now (`409`) although the list says they are available.
  */
@@ -249,8 +261,22 @@ export function createFixtureDocsApi(
     unavailable?: readonly string[];
     /** This document goes away in the next corpus the moment its article is read. */
     removeOnRead?: string;
+    /**
+     * The corpus changes between the tree and this document's article: the article answers the
+     * newer revision once the first tree (the older one) has answered, and every later tree answers
+     * the newer revision when `releaseNewerTree` is called.
+     */
+    newerArticle?: string;
   } = {},
 ): DocsApi {
+  let treeAnswered: () => void = () => undefined;
+  const firstTree = new Promise<void>((resolve) => {
+    treeAnswered = resolve;
+  });
+  const newerTree = new Promise<void>((resolve) => {
+    releaseTree = resolve;
+  });
+  let changed = false;
   const refuse = (workspaceId: string): ApiError | undefined => {
     if (options.unavailable?.includes(workspaceId)) {
       return docsError('DOCS_WORKSPACE_UNAVAILABLE', 409);
@@ -285,9 +311,20 @@ export function createFixtureDocsApi(
         return Promise.reject(refusal);
       }
 
-      return scenario === 'loading'
-        ? pending()
-        : Promise.resolve(afterRemoval(fixtureTree(workspaceId, scenario)));
+      if (scenario === 'loading') {
+        return pending();
+      }
+
+      if (changed) {
+        return newerTree.then(() => ({
+          ...fixtureTree(workspaceId, scenario),
+          corpusRevision: `${revision(workspaceId)}-2`,
+        }));
+      }
+
+      treeAnswered();
+
+      return Promise.resolve(afterRemoval(fixtureTree(workspaceId, scenario)));
     },
     article: (workspaceId, documentId) => {
       const refusal = refuse(workspaceId);
@@ -306,6 +343,20 @@ export function createFixtureDocsApi(
             workspaceId,
             corpusRevision: `${revision(workspaceId)}-2`,
           },
+        });
+      }
+
+      if (documentId === options.newerArticle) {
+        return firstTree.then(() => {
+          changed = true;
+          const result = fixtureArticle(workspaceId, documentId, scenario);
+
+          return result.kind === 'article'
+            ? {
+                ...result,
+                article: { ...result.article, corpusRevision: `${revision(workspaceId)}-2` },
+              }
+            : result;
         });
       }
 

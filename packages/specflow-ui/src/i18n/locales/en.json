@@ -1520,6 +1520,10 @@
         "title": "No documents yet",
         "description": "The documentation folder of {{workspace}} has no current documents."
       },
+      "allSkipped": {
+        "title": "Documentation files exist, but none passed validation",
+        "description": "The reader skips every document in {{workspace}} because each has errors. Fix them in the files below."
+      },
       "unavailable": {
         "title": "This workspace is unavailable right now",
         "description": "The folder {{folder}} cannot be read, for example while its branch is being switched or after the folder was moved. Choose another workspace or try again."

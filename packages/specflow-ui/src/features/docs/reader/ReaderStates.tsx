@@ -9,7 +9,9 @@ import {
   Typography,
   WorkspaceHeader,
 } from '@nevo/ui';
+import type { WorkspaceDocsSkippedDocument } from '@nevo/specflow-contracts/docs';
 import type { DocsFailure } from '../read-model';
+import { SkippedDocuments } from '../tree-pane/SkippedDocuments';
 
 /** No `docs.view`: the whole surface says so (no tree, no picker). */
 export function DocsForbidden() {
@@ -32,7 +34,15 @@ export function DocsForbidden() {
 }
 
 /** Why a workspace's documentation as a whole is not shown; it replaces the article area only. */
-export type CorpusProblem = Exclude<DocsFailure, { kind: 'forbidden' }> | { kind: 'empty' };
+export type CorpusProblem =
+  | Exclude<DocsFailure, { kind: 'forbidden' }>
+  | { kind: 'empty' }
+  /** Documentation files exist, but every one was skipped: not an empty project. */
+  | {
+      kind: 'all-skipped';
+      skipped: readonly WorkspaceDocsSkippedDocument[];
+      docsRoot: string;
+    };
 
 /**
  * A problem of the whole documentation of a workspace, said where the article would be (Narrow:
@@ -87,6 +97,21 @@ export function CorpusProblemView({
           title={t('docs.state.empty.title')}
           description={t('docs.state.empty.description', { workspace: workspaceName })}
         />
+      );
+    case 'all-skipped':
+      return (
+        <div className="grid gap-3">
+          <Alert tone="attention" title={t('docs.state.allSkipped.title')}>
+            <p className="wrap-anywhere">
+              {t('docs.state.allSkipped.description', { workspace: workspaceName })}
+            </p>
+          </Alert>
+          <SkippedDocuments
+            skipped={problem.skipped}
+            docsRoot={problem.docsRoot}
+            placement="alert"
+          />
+        </div>
       );
     case 'workspace-unavailable':
     case 'workspace-not-found':

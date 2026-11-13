@@ -680,7 +680,7 @@ const skippedMany: MockSkipped[] = [
 export function skippedDocsFor(scenario: string): MockSkipped[] {
   return scenario === 'skipped-one'
     ? skippedMany.slice(0, 1)
-    : scenario === 'skipped-many'
+    : scenario === 'skipped-many' || scenario === 'all-skipped'
       ? skippedMany
       : [];
 }

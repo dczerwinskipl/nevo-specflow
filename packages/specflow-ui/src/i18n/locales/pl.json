@@ -1520,6 +1520,10 @@
         "title": "Nie ma jeszcze dokumentów",
         "description": "Katalog dokumentacji {{workspace}} nie zawiera aktualnych dokumentów."
       },
+      "allSkipped": {
+        "title": "Pliki dokumentacji istnieją, ale żaden nie przeszedł walidacji",
+        "description": "Czytnik pomija wszystkie dokumenty w {{workspace}}, bo każdy zawiera błędy. Popraw je w plikach poniżej."
+      },
       "unavailable": {
         "title": "Ten obszar roboczy jest teraz niedostępny",
         "description": "Nie można odczytać katalogu {{folder}}, na przykład w trakcie przełączania gałęzi albo po przeniesieniu katalogu. Wybierz inny obszar roboczy albo spróbuj ponownie."

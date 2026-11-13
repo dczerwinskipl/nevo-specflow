@@ -18,6 +18,7 @@ import { currentDocsWorkspace } from '../current-workspace/currentWorkspaceStore
 import type { DocsReaderOpener } from './readerLocation';
 import {
   createFixtureDocsApi,
+  releaseNewerTree,
   fixtureWorkspaceList,
   type ReaderFixtureScenario,
 } from './readerFixtureApi.stories-support';
@@ -44,6 +45,8 @@ interface ReaderStoryArgs {
   openedFrom?: DocsReaderOpener;
   /** This document goes away the moment it is read. */
   removeOnRead?: string;
+  /** This document's article answers a newer corpus than the first tree (see the fixture). */
+  newerArticle?: string;
 }
 
 /** The router of the story on screen, so a play function can step browser history. */
@@ -82,6 +85,7 @@ function ReaderScreen({
   unavailable,
   openedFrom,
   removeOnRead,
+  newerArticle,
 }: ReaderStoryArgs) {
   const setup = useMemo(() => {
     const query = createSpecFlowQueryClient();
@@ -99,7 +103,7 @@ function ReaderScreen({
       runtimeInfoApi: { getInfo: () => Promise.resolve({ dataMode: 'project' }) },
       workspaceApi: { list: () => Promise.resolve(fixtureWorkspaceList({ single })) },
       specificationApi,
-      docsApi: createFixtureDocsApi(scenario, { unavailable, removeOnRead }),
+      docsApi: createFixtureDocsApi(scenario, { unavailable, removeOnRead, newerArticle }),
     });
     // The tab's store is per browser tab: each story starts from its own value.
     currentDocsWorkspace.replace(remembered ?? { source: 'project-folder' });
@@ -122,7 +126,17 @@ function ReaderScreen({
     storyRouter = createSpecFlowRouter(history, services);
 
     return { query, router: storyRouter };
-  }, [path, scenario, single, remembered, fromSession, unavailable, openedFrom, removeOnRead]);
+  }, [
+    path,
+    scenario,
+    single,
+    remembered,
+    fromSession,
+    unavailable,
+    openedFrom,
+    removeOnRead,
+    newerArticle,
+  ]);
 
   return (
     <QueryClientProvider client={setup.query}>
@@ -215,6 +229,32 @@ export const NotConfigured: Story = {
 };
 export const EmptyCorpus: Story = {
   args: { scenario: 'empty-corpus', path: '/workspaces/ws-reader/docs' },
+  play: async () => {
+    await settleViewport(1440, 900);
+    await screen().findByText('No documents yet');
+    await expect(screen().queryByText(/none passed validation/)).toBeNull();
+    // Narrow: the same message under the picker.
+    await settleViewport(375, 812);
+    await screen().findByText('No documents yet');
+    await expect(screen().queryByRole('navigation', { name: 'Documents' })).toBeNull();
+  },
+};
+/** Documentation files exist, but every one has errors: a warning and the skipped files. */
+export const AllDocumentsSkipped: Story = {
+  args: { scenario: 'all-skipped', path: '/workspaces/ws-reader/docs' },
+  play: async ({ userEvent }) => {
+    await settleViewport(1440, 900);
+    const body = screen();
+    await body.findByText('Documentation files exist, but none passed validation');
+    await expect(body.queryByText('No documents yet')).toBeNull();
+    await userEvent.click(body.getByRole('button', { name: /documents are skipped/ }));
+    await waitFor(() => expect(body.getAllByText(/^docs\//).length).toBeGreaterThan(1));
+    // Narrow: the same warning and files under the picker, not an empty project.
+    await settleViewport(375, 812);
+    await body.findByText('Documentation files exist, but none passed validation');
+    await expect(body.queryByText('No documents yet')).toBeNull();
+    await expect(body.getByRole('button', { name: /documents are skipped/ })).toBeTruthy();
+  },
 };
 export const DocsUnavailable: Story = { args: { scenario: 'docs-unavailable' } };
 export const Forbidden: Story = { args: { scenario: 'forbidden' } };
@@ -372,6 +412,87 @@ export const NarrowReloadAfterHop: Story = {
     await userEvent.click(await body.findByRole('button', { name: 'Back to documentation' }));
     await waitFor(() => expect(path()).toBe(main));
     await expect(router().history.length).toBe(1);
+  },
+};
+
+/**
+ * The corpus changes between the tree and the article (tree A, article B, then tree B): until the
+ * tree describes B, neither the article nor the older tree is shown, only loading states.
+ */
+export const RevisionsReconcile: Story = {
+  args: { path: interactionModel, newerArticle: 'product.specflow.ui.interaction-model' },
+  play: async () => {
+    await settleViewport(1440, 900);
+    const body = screen();
+    await body.findByRole('status', { name: 'Loading documents' });
+    // Held a while: the article of B never renders beside the tree of A.
+    await expect(
+      waitFor(
+        () =>
+          expect(
+            body.getByRole('heading', { level: 1, name: 'UI interaction model' }),
+          ).toBeTruthy(),
+        {
+          timeout: 400,
+        },
+      ),
+    ).rejects.toThrow();
+    await expect(body.queryByRole('navigation', { name: 'Documents' })).toBeNull();
+    releaseNewerTree();
+    await body.findByRole('heading', { level: 1, name: 'UI interaction model' });
+    await body.findByRole('navigation', { name: 'Documents' });
+  },
+};
+
+/**
+ * Narrow: Back and Forward pressed in quick succession land on a consistent stack, and widening
+ * and narrowing with an article open keeps showing the address's article.
+ */
+export const NarrowFastHistoryAndResize: Story = {
+  args: { path: main },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ userEvent }) => {
+    await settleViewport(375, 812);
+    const body = screen();
+    await userEvent.click(await body.findByRole('button', { name: 'product' }));
+    await userEvent.click(await body.findByRole('button', { name: 'specflow' }));
+    await userEvent.click(await body.findByRole('button', { name: 'ui' }));
+    await userEvent.click(await body.findByRole('button', { name: /UI interaction model/ }));
+    await body.findByRole('heading', { level: 1, name: 'UI interaction model' });
+    await userEvent.click(body.getAllByRole('link', { name: 'AI-session UX' })[0]!);
+    await body.findByRole('heading', { level: 1, name: 'AI-session UX' });
+    const entries = router().history.length;
+    for (const step of ['back', 'forward', 'back', 'forward'] as const) {
+      router().history[step]();
+    }
+
+    await waitFor(() => expect(path()).toBe(aiSessionUx));
+    await body.findByRole('heading', { level: 1, name: 'AI-session UX' });
+    // Still the hop over the first article: its Back names it and returns to it.
+    await userEvent.click(
+      await body.findByRole('button', { name: 'Back to UI interaction model' }),
+    );
+    await body.findByRole('heading', { level: 1, name: 'UI interaction model' });
+    await waitFor(() => expect(path()).toBe(interactionModel));
+    router().history.back();
+    router().history.forward();
+    router().history.back();
+    await waitFor(() => expect(path()).toBe(main));
+    await body.findByRole('navigation', { name: 'Documents' });
+    await waitFor(() =>
+      expect(body.queryByRole('heading', { level: 1, name: 'UI interaction model' })).toBeNull(),
+    );
+    await expect(router().history.length).toBe(entries);
+    // An article open while the width changes: Wide shows it beside the tree, Narrow stacks it.
+    router().history.forward();
+    await body.findByRole('heading', { level: 1, name: 'UI interaction model' });
+    await settleViewport(1440, 900);
+    await body.findByRole('heading', { level: 1, name: 'UI interaction model' });
+    await body.findByRole('navigation', { name: 'Documents' });
+    await settleViewport(375, 812);
+    await body.findByRole('heading', { level: 1, name: 'UI interaction model' });
+    await expect(body.getByRole('button', { name: 'Back to documentation' })).toBeTruthy();
+    await expect(path()).toBe(interactionModel);
   },
 };
 

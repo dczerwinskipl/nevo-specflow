@@ -16,4 +16,10 @@ export {
 export { docsFailure, type DocsFailure } from './failure';
 export { docsKeys } from './queries';
 export { leaveDocsWorkspace, reconcileDocsRevision, revisionOf } from './revision';
-export { docsQueries, useDocsArticle, useDocsSearch, useDocsTree } from './useDocsReads';
+export {
+  docsQueries,
+  useDocsArticle,
+  useDocsSearch,
+  useDocsTree,
+  useHeldDocsArticle,
+} from './useDocsReads';

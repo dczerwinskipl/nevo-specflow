@@ -1,5 +1,5 @@
 import type { ExecutionCatalogue } from '../definitions/catalogue';
-import type { TaskType, TaskTypes, WorkflowStep } from '../definitions/model';
+import type { TaskType, TaskTypes, WorkflowDefinition, WorkflowStep } from '../definitions/model';
 import {
   handoffOf,
   type ExecutorClass,
@@ -37,6 +37,8 @@ export interface TransitionDescription {
   readonly result?: string;
   readonly label?: string;
   readonly target: TransitionTarget;
+  /** The title of the target step (a step target only), so surfaces never show a bare id. */
+  readonly targetTitle?: string;
   readonly feedback: 'required' | 'optional';
 }
 
@@ -60,14 +62,23 @@ export function describeStep(step: WorkflowStep): StepDescription {
 }
 
 /** The transitions a finish of the step chooses from, in declared order. */
-export function describeTransitions(step: WorkflowStep): TransitionDescription[] {
-  return step.transitions.map((transition) => ({
-    id: transition.id,
-    ...(transition.result !== undefined ? { result: transition.result } : {}),
-    ...(transition.label !== undefined ? { label: transition.label } : {}),
-    target: transition.target,
-    feedback: transition.feedback,
-  }));
+export function describeTransitions(
+  definition: Pick<WorkflowDefinition, 'steps'>,
+  step: WorkflowStep,
+): TransitionDescription[] {
+  return step.transitions.map((transition) => {
+    const goal = transition.target.kind === 'step' ? transition.target.step : undefined;
+    const target = definition.steps.find((candidate) => candidate.id === goal);
+
+    return {
+      id: transition.id,
+      ...(transition.result !== undefined ? { result: transition.result } : {}),
+      ...(transition.label !== undefined ? { label: transition.label } : {}),
+      target: transition.target,
+      ...(target ? { targetTitle: target.title } : {}),
+      feedback: transition.feedback,
+    };
+  });
 }
 
 /**
@@ -126,6 +137,8 @@ export interface StepContext {
 export interface StepContextInput {
   readonly subject: WorkflowSubject;
   readonly run: WorkflowRun;
+  /** The definition the run is pinned to (the titles of the steps the transitions lead to). */
+  readonly definition: WorkflowDefinition;
   readonly step: WorkflowStep;
   readonly attempt: number;
   readonly catalogue: ExecutionCatalogue;
@@ -157,7 +170,7 @@ export function compileStepContext(input: StepContextInput): StepContext {
     workflow: input.run.workflow,
     step: describeStep(step),
     attempt: input.attempt,
-    finish: { transitions: describeTransitions(step) },
+    finish: { transitions: describeTransitions(input.definition, step) },
     ...(handoff ? { handoff } : {}),
     ...(archetype
       ? {

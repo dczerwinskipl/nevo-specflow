@@ -26,6 +26,8 @@ export const TaskExecutorClassSchema = Type.Union([Type.Literal('agent'), Type.L
 const AttemptActor = Type.Object({ class: TaskExecutorClassSchema, actorId: Type.Optional(Text) });
 const Step = Type.Object({
   id: Id,
+  /** The step's title from its workflow, for display (the id is the stable reference). */
+  title: Type.Optional(Text),
   /**
    * Who may work on the step: an agent, a person, or either. Empty for a wait step, which nobody
    * works on (an event completes it).

@@ -212,7 +212,7 @@ function recordFinish(
       dependencies.references,
       subject,
       'exit',
-      step.id,
+      step,
       exitGatesFor(step, transition.result),
     );
 

@@ -69,7 +69,7 @@ steps:
         continuation: auto
   - id: implementation
     kind: wait-for-tasks
-    title: Implementation
+    title: Waiting for Tasks
     purpose: Wait until every Task is finished. A Task that escalates sends the Specification back to the breakdown.
     transitions:
       - id: tasks-finished

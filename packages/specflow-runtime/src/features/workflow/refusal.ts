@@ -13,6 +13,7 @@ import {
   ProjectHomeError,
   SpecificationError,
   SpecificationExitBlockedError,
+  TaskContextInvalidError,
   TaskContextUnresolvedError,
   WorkspaceRegistryError,
   type OwnerActor,
@@ -117,10 +118,19 @@ export function workflowFailure(error: unknown): WorkflowFailure | undefined {
     });
   }
 
+  if (error instanceof TaskContextInvalidError) {
+    return failure(error.code, error.message, { invalidContext: toWire(error.invalidContext) });
+  }
+
   // 409: the documents the gate needs are not there yet; the same request can succeed later.
   if (error instanceof GateUnsatisfiedError) {
     return failure(error.code, error.message, {
-      gate: { phase: error.phase, step: error.step, gates: toWire(error.gates) },
+      gate: {
+        phase: error.phase,
+        step: error.step,
+        stepTitle: error.stepTitle,
+        gates: toWire(error.gates),
+      },
     });
   }
 

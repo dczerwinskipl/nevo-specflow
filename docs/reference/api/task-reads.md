@@ -254,7 +254,11 @@ refusal is the shared `WorkflowError` body with the statuses of the
 [workflow refusals](specification-workflow.md#refusals): for example `409
 WORKFLOW_TASK_REVISION_CONFLICT` for a stale `expectedRevision`, and `422
 WORKFLOW_TASK_CONTEXT_UNRESOLVED` with `details.unresolved` naming each context entry that does not
-resolve. A `project-document` context reference resolves against the project documentation the
+resolve. A reference entry with `artifact: true` is a process artifact: accepted while missing
+(awaited). The context lists the Task's **inputs**; what the Task produces is a gate (an exit gate on
+the producing step, an entry gate on the consuming step), so a required `task-document` artifact is
+refused with `422 WORKFLOW_INPUT_INVALID` and `details.invalidContext [{index, key, reason:
+required-own-artifact}]` (an optional one is allowed). A `project-document` context reference resolves against the project documentation the
 Runtime serves (`/api/docs/`), read once per request. The documents of a Task are the
 [Task document routes](specification-documents.md#task-documents); a Task document save is a
 document operation of its Specification, so its status is read at

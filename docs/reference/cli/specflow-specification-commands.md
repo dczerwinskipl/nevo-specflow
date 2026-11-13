@@ -224,7 +224,11 @@ run. Every command accepts `--project-root <path>` and `--json`.
   (a deprecated or superseded one does not). The prefix `artifact:` marks a reference as a **process artifact**
   that another step or Task produces (`--context artifact:task-doc:findings`, `artifact: true` in a context
   file; not for `instructions`): it is accepted while missing and shown as awaited, and a required one still
-  refuses a start until it exists (the refusal lists it as `awaited artifact`).
+  refuses a start until it exists (the refusal lists it as `awaited artifact`). Context is what the Task needs
+  before it starts: a required `artifact:task-doc:` entry (the Task's own output) is refused (`invalid context
+... (required-own-artifact)`, with a hint to use an exit gate on the producing step and an entry gate on the
+  consuming step); mark it optional or use gates.
+- **Step names.** Steps are printed as `Title (id)`; the id is what `--step` takes.
 - **Gates.** `workflow actions` prints the gates of each finish transition and the entry gates of the next step
   as `[x]`/`[ ] gate <id>: <label>, <document type> in <Task|Specification> (<why>)`. A start or finish that a
   gate refuses (`WORKFLOW_GATE_UNSATISFIED`) prints the unsatisfied gates the same way; `--json` adds

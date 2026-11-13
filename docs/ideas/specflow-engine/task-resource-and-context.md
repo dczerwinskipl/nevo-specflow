@@ -250,7 +250,11 @@ Both subjects are context providers. A step's context has two parts:
 | `instructions`           | `text`                                      | Inline instructions (bounded)                                                                                               |
 | `path-hint`              | `allowed[]`, `forbidden[]` (paths or globs) | A Task only: where the change is expected and where it must not go. Passed to the agent as a hint; nothing enforces it (Q9) |
 
-Every entry has `required` (default `true`) and an optional `note` saying why it is there. A
+Every entry has `required` (default `true`) and an optional `note` saying why it is there. As
+implemented, a reference entry may be a process artifact (`artifact: true`, awaited while missing).
+The context is the Task's inputs; what the Task produces is expressed by exit and entry gates, so a
+required artifact of the Task's own documents is refused (see the
+[workflow kernel](../../architecture/workflow/workflow-kernel.md#readiness-and-the-step-context)). A
 `path-hint` resolves to no files and is never `omitted`; it replaces legacy `allowed_paths` /
 `forbidden_paths` as context only. Enforcement (for example by gates, F03) is not planned.
 

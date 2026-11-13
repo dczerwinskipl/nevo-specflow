@@ -311,13 +311,17 @@ describe('workflow action routes', () => {
       status: 'unsatisfied' as const,
       reason: 'no-document' as const,
     };
-    const failure = workflowFailure(new GateUnsatisfiedError('exit', 'implement', [gate]));
+    const failure = workflowFailure(
+      new GateUnsatisfiedError('exit', { id: 'implement', title: 'Implement' }, [gate]),
+    );
 
     expect(failure).toMatchObject({
       status: 409,
       body: {
         code: 'WORKFLOW_GATE_UNSATISFIED',
-        details: { gate: { phase: 'exit', step: 'implement', gates: [gate] } },
+        details: {
+          gate: { phase: 'exit', step: 'implement', stepTitle: 'Implement', gates: [gate] },
+        },
       },
     });
   });

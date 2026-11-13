@@ -15,6 +15,11 @@ import type {
   WorkflowSubject,
 } from '@nevo/specflow-engine';
 
+/** A step as a person reads it: `Title (id)`, or the id alone when there is no title. */
+export function named(step: { readonly id: string; readonly title?: string }): string {
+  return step.title !== undefined && step.title !== '' ? `${step.title} (${step.id})` : step.id;
+}
+
 /** `Task <id>` or `Specification`: the subject as a person reads it. */
 export function subjectLabel(subject: WorkflowSubject): string {
   return subject.kind === 'task' ? `Task ${subject.taskId}` : 'Specification';
@@ -93,30 +98,30 @@ function positionLines(position: ActionPosition): string[] {
     case 'not-started':
       return [
         `State: not started; a first start pins ${position.preview.workflowId} (revision ${position.preview.revision})`,
-        `Next step: ${position.next.step.id}`,
+        `Next step: ${named(position.next.step)}`,
         ...entryGateLines(position.next),
       ];
     case 'ready':
       return [
         `State: ready`,
-        `Next step: ${position.next.step.id}`,
+        `Next step: ${named(position.next.step)}`,
         ...entryGateLines(position.next),
       ];
     case 'active':
       return [
-        `State: active on "${position.step.id}" (attempt ${position.attempt.number})`,
+        `State: active on ${named(position.step)} (attempt ${position.attempt.number})`,
         `Worked by: ${position.attempt.actor.class}`,
       ];
     case 'waiting':
       return [
-        `State: waiting on "${position.step.id}" for ${position.blockingTasks.count} of ${position.totalTasks} Tasks`,
+        `State: waiting on ${named(position.step)} for ${position.blockingTasks.count} of ${position.totalTasks} Tasks`,
         ...(position.attention ? [`Attention: ${position.attention.reason}`] : []),
       ];
     case 'blocked':
       return [
         'State: blocked',
         ...position.blockers.map((blocker) => `Blocked: ${blockerLine(blocker)}`),
-        ...(position.next ? [`Next step: ${position.next.step.id}`] : []),
+        ...(position.next ? [`Next step: ${named(position.next.step)}`] : []),
         ...entryGateLines(position.next),
       ];
     case 'terminal':
@@ -149,7 +154,8 @@ export function actionLines(projection: ActionProjection): string[] {
       lines.push(
         `Action: finish "${finish.step}" attempt ${finish.attempt}` +
           (transition.result !== undefined ? ` --result ${transition.result}` : '') +
-          ` (${transition.id}${transition.feedback === 'required' ? ', feedback required' : ''}` +
+          ` (${transition.id}${transition.targetTitle !== undefined ? `, to ${transition.targetTitle}` : ''}` +
+          `${transition.feedback === 'required' ? ', feedback required' : ''}` +
           `${transition.unavailable ? `, unavailable: ${transition.unavailable}` : ''})`,
       );
       lines.push(...(transition.gates ?? []).map((gate) => `  ${gateLine(gate)}`));
@@ -158,7 +164,7 @@ export function actionLines(projection: ActionProjection): string[] {
 
   for (const target of back?.targets ?? []) {
     lines.push(
-      `Action: return to "${target.step}"${target.feedback === 'required' ? ' (reason required)' : ''}`,
+      `Action: return to ${named({ id: target.step, title: target.title })}${target.feedback === 'required' ? ' (reason required)' : ''}`,
     );
   }
 
@@ -219,13 +225,14 @@ export function startLines(result: StartResult): string[] {
 
   const { context } = result;
   const lines = [
-    `${result.kind === 'resumed' ? 'Resumed' : 'Started'}: ${subjectLabel(result.subject)}, step "${context.step.id}" (attempt ${context.attempt})`,
+    `${result.kind === 'resumed' ? 'Resumed' : 'Started'}: ${subjectLabel(result.subject)}, step ${named(context.step)} (attempt ${context.attempt})`,
     `Purpose: ${context.step.purpose}`,
   ];
   for (const transition of context.finish.transitions) {
     lines.push(
       `Finish with: ${transition.result !== undefined ? `--result ${transition.result}` : '(no result)'}` +
-        ` -> ${transition.id}${transition.feedback === 'required' ? ' (feedback required)' : ''}`,
+        ` -> ${transition.id}${transition.targetTitle !== undefined ? ` (to ${transition.targetTitle})` : ''}` +
+        `${transition.feedback === 'required' ? ' (feedback required)' : ''}`,
     );
   }
 

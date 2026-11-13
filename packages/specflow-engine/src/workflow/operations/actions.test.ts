@@ -242,7 +242,41 @@ describe('Task positions', () => {
         editContext: ALLOWED,
         editDependencies: ALLOWED,
       },
+      // The default context (no explicit list): task.md and the Specification overview, required.
+      taskAuthoring: {
+        context: {
+          isDefault: true,
+          entries: [
+            { entry: { kind: 'task-document', id: 'task', required: true }, state: 'resolved' },
+            {
+              entry: { kind: 'specification-document', id: 'overview', required: true },
+              state: 'resolved',
+            },
+          ],
+        },
+        dependencyCandidates: [],
+      },
     });
+  });
+
+  it('lists dependency candidates with the reason one cannot be added', async () => {
+    const dependencies = memoryDependencies(catalogue);
+    await create(dependencies, 'api');
+    await create(dependencies, 'ui', { dependsOn: ['api'] });
+    await create(dependencies, 'docs');
+    await create(dependencies, 'old');
+    await decide(dependencies, 'old', 'cancelled');
+
+    expect((await project(dependencies, task('api'))).taskAuthoring?.dependencyCandidates).toEqual([
+      { taskId: 'ui', unavailable: 'would-create-cycle' },
+      { taskId: 'docs' },
+      { taskId: 'old', unavailable: 'cancelled' },
+    ]);
+    expect((await project(dependencies, task('ui'))).taskAuthoring?.dependencyCandidates).toEqual([
+      { taskId: 'api', unavailable: 'dependency' },
+      { taskId: 'docs' },
+      { taskId: 'old', unavailable: 'cancelled' },
+    ]);
   });
 
   it('a ready Task offers its first start with the previewed revision, which the start accepts', async () => {

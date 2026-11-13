@@ -30,6 +30,7 @@ import {
   assertContextResolved,
   effectiveTaskTypesOf,
   staleReferences,
+  effectiveContextOf,
   unresolvedContext,
 } from './task-policy';
 
@@ -336,7 +337,11 @@ export function editTask(
     }
 
     assertDependencies(dependencies, snapshot, manifest.id, dependsOn, previous.dependsOn);
-    const before = new Set((previous.context ?? []).map(keptEntryKey));
+    // The entries already in the effective list (the default written out included) are kept as
+    // they are; only the changed ones must resolve now.
+    const before = new Set(
+      (await effectiveContextOf(dependencies, input.specId, previous)).entries.map(keptEntryKey),
+    );
     assertContextResolved(
       manifest.id,
       staleReferences(

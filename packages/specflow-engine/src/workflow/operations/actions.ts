@@ -56,6 +56,7 @@ import {
   type TransitionDescription,
 } from './step-context';
 import { effectiveTaskTypesOf, isAwaited, unresolvedContext } from './task-policy';
+import { taskAuthoringOf, type TaskAuthoringFacts } from './task-authoring';
 import { entryGatesOf, exitGatesFor, type GateStatus } from '../gates/evaluate';
 import { evaluateGates, type GateDocuments } from '../gates/read';
 
@@ -329,6 +330,8 @@ export interface ActionProjection {
   readonly task?: TaskLifecycleActions;
   /** For a Specification subject. */
   readonly specification?: SpecificationLevelActions;
+  /** For a Task subject that is not broken: its effective context and dependency candidates. */
+  readonly taskAuthoring?: TaskAuthoringFacts;
 }
 
 export type ActionDependencies = Pick<
@@ -813,6 +816,13 @@ export async function taskProjection(
         await dependencies.store.taskFiles(subject.specId, subject.taskId),
       );
   const lifecycle = lifecycleOf(task, manifest.revision, snapshot, pending, unregistered);
+  const taskAuthoring = await taskAuthoringOf(
+    dependencies,
+    snapshot,
+    tasks,
+    task,
+    lifecycle.editDependencies.kind === 'allowed',
+  );
   const readinessBlockers = () => taskReadinessBlockers(task, tasks.tasks);
   const contextBlockers = async (): Promise<StartBlocker[]> => {
     const issues = (await unresolvedContext(dependencies, subject.specId, task)).filter(
@@ -860,19 +870,26 @@ export async function taskProjection(
 
     const blockers = [...readinessBlockers(), ...typeBlockers, ...(await contextBlockers())];
     if (!workflow) {
-      return { subject, position: { kind: 'blocked', blockers }, actions: {}, task: lifecycle };
+      return {
+        subject,
+        position: { kind: 'blocked', blockers },
+        actions: {},
+        task: lifecycle,
+        taskAuthoring,
+      };
     }
 
     return {
       subject,
       ...(await firstStart(workflow, catalogue, gates, blockers, true)),
       task: lifecycle,
+      taskAuthoring,
     };
   }
 
   const definition = pinnedDefinitionIfUnchanged(catalogue, run);
   if (!definition) {
-    return { subject, ...definitionChanged(run), task: lifecycle };
+    return { subject, ...definitionChanged(run), task: lifecycle, taskAuthoring };
   }
 
   return {
@@ -888,6 +905,7 @@ export async function taskProjection(
       gates,
     })),
     task: lifecycle,
+    taskAuthoring,
   };
 }
 

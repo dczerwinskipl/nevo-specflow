@@ -7058,6 +7058,629 @@
               }
             }
           },
+          "taskAuthoring": {
+            "type": "object",
+            "required": [
+              "context",
+              "dependencyCandidates"
+            ],
+            "properties": {
+              "context": {
+                "type": "object",
+                "required": [
+                  "isDefault",
+                  "entries"
+                ],
+                "properties": {
+                  "isDefault": {
+                    "type": "boolean"
+                  },
+                  "entries": {
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "entry",
+                            "state"
+                          ],
+                          "properties": {
+                            "entry": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "kind",
+                                    "id",
+                                    "required"
+                                  ],
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "task-document"
+                                      ]
+                                    },
+                                    "id": {
+                                      "type": "string",
+                                      "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+                                    },
+                                    "required": {
+                                      "type": "boolean"
+                                    },
+                                    "note": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    },
+                                    "artifact": {
+                                      "type": "boolean"
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "kind",
+                                    "id",
+                                    "required"
+                                  ],
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "specification-document"
+                                      ]
+                                    },
+                                    "id": {
+                                      "type": "string",
+                                      "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+                                    },
+                                    "required": {
+                                      "type": "boolean"
+                                    },
+                                    "note": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    },
+                                    "artifact": {
+                                      "type": "boolean"
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "kind",
+                                    "id",
+                                    "required"
+                                  ],
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "project-document"
+                                      ]
+                                    },
+                                    "id": {
+                                      "type": "string",
+                                      "pattern": "^[a-z0-9][a-z0-9._-]{0,199}$"
+                                    },
+                                    "required": {
+                                      "type": "boolean"
+                                    },
+                                    "note": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    },
+                                    "artifact": {
+                                      "type": "boolean"
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "kind",
+                                    "path",
+                                    "required"
+                                  ],
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "path"
+                                      ]
+                                    },
+                                    "path": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    },
+                                    "required": {
+                                      "type": "boolean"
+                                    },
+                                    "note": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    },
+                                    "artifact": {
+                                      "type": "boolean"
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "kind",
+                                    "text",
+                                    "required"
+                                  ],
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "instructions"
+                                      ]
+                                    },
+                                    "text": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 8000
+                                    },
+                                    "required": {
+                                      "type": "boolean"
+                                    },
+                                    "note": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "resolved"
+                              ]
+                            }
+                          }
+                        },
+                        {
+                          "type": "object",
+                          "required": [
+                            "entry",
+                            "state",
+                            "reason"
+                          ],
+                          "properties": {
+                            "entry": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "kind",
+                                    "id",
+                                    "required"
+                                  ],
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "task-document"
+                                      ]
+                                    },
+                                    "id": {
+                                      "type": "string",
+                                      "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+                                    },
+                                    "required": {
+                                      "type": "boolean"
+                                    },
+                                    "note": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    },
+                                    "artifact": {
+                                      "type": "boolean"
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "kind",
+                                    "id",
+                                    "required"
+                                  ],
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "specification-document"
+                                      ]
+                                    },
+                                    "id": {
+                                      "type": "string",
+                                      "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+                                    },
+                                    "required": {
+                                      "type": "boolean"
+                                    },
+                                    "note": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    },
+                                    "artifact": {
+                                      "type": "boolean"
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "kind",
+                                    "id",
+                                    "required"
+                                  ],
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "project-document"
+                                      ]
+                                    },
+                                    "id": {
+                                      "type": "string",
+                                      "pattern": "^[a-z0-9][a-z0-9._-]{0,199}$"
+                                    },
+                                    "required": {
+                                      "type": "boolean"
+                                    },
+                                    "note": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    },
+                                    "artifact": {
+                                      "type": "boolean"
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "kind",
+                                    "path",
+                                    "required"
+                                  ],
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "path"
+                                      ]
+                                    },
+                                    "path": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    },
+                                    "required": {
+                                      "type": "boolean"
+                                    },
+                                    "note": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    },
+                                    "artifact": {
+                                      "type": "boolean"
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "kind",
+                                    "text",
+                                    "required"
+                                  ],
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "instructions"
+                                      ]
+                                    },
+                                    "text": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 8000
+                                    },
+                                    "required": {
+                                      "type": "boolean"
+                                    },
+                                    "note": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "unresolved"
+                              ]
+                            },
+                            "reason": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "not-registered"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "not-found"
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        },
+                        {
+                          "type": "object",
+                          "required": [
+                            "entry",
+                            "state"
+                          ],
+                          "properties": {
+                            "entry": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "kind",
+                                    "id",
+                                    "required"
+                                  ],
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "task-document"
+                                      ]
+                                    },
+                                    "id": {
+                                      "type": "string",
+                                      "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+                                    },
+                                    "required": {
+                                      "type": "boolean"
+                                    },
+                                    "note": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    },
+                                    "artifact": {
+                                      "type": "boolean"
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "kind",
+                                    "id",
+                                    "required"
+                                  ],
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "specification-document"
+                                      ]
+                                    },
+                                    "id": {
+                                      "type": "string",
+                                      "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+                                    },
+                                    "required": {
+                                      "type": "boolean"
+                                    },
+                                    "note": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    },
+                                    "artifact": {
+                                      "type": "boolean"
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "kind",
+                                    "id",
+                                    "required"
+                                  ],
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "project-document"
+                                      ]
+                                    },
+                                    "id": {
+                                      "type": "string",
+                                      "pattern": "^[a-z0-9][a-z0-9._-]{0,199}$"
+                                    },
+                                    "required": {
+                                      "type": "boolean"
+                                    },
+                                    "note": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    },
+                                    "artifact": {
+                                      "type": "boolean"
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "kind",
+                                    "path",
+                                    "required"
+                                  ],
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "path"
+                                      ]
+                                    },
+                                    "path": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    },
+                                    "required": {
+                                      "type": "boolean"
+                                    },
+                                    "note": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    },
+                                    "artifact": {
+                                      "type": "boolean"
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "kind",
+                                    "text",
+                                    "required"
+                                  ],
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "instructions"
+                                      ]
+                                    },
+                                    "text": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 8000
+                                    },
+                                    "required": {
+                                      "type": "boolean"
+                                    },
+                                    "note": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "awaited"
+                              ]
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    "maxItems": 1000
+                  }
+                }
+              },
+              "dependencyCandidates": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "taskId"
+                  ],
+                  "properties": {
+                    "taskId": {
+                      "$ref": "#/components/schemas/TaskId"
+                    },
+                    "unavailable": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "dependency"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "would-create-cycle"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "cancelled"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "broken"
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                },
+                "maxItems": 1000
+              }
+            }
+          },
           "specification": {
             "type": "object",
             "required": [

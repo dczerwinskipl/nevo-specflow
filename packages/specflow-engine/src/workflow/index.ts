@@ -65,6 +65,14 @@ export {
   type SpecificationExitPort,
   type SpecificationLevelActions,
   type TaskTypeOption,
+} from './operations/actions';
+export type {
+  DependencyCandidate,
+  DependencyIneligibility,
+  TaskAuthoringFacts,
+  TaskContextEntryState,
+} from './operations/task-authoring';
+export {
   type StartBlocker,
   type StartableStep,
   type TaskActionUnavailableReason,

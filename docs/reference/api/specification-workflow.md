@@ -85,6 +85,15 @@ Specification run's snapshot once it started, else its archetype's binding), in 
 its Task workflow in declared order (display only); a type whose workflow is not a defined Task
 workflow is left out. A client offers exactly these when creating a Task.
 
+`taskAuthoring` (a Task that is not broken) is what the owner edits, as the Engine reads it:
+`context` is the **effective** context, `{isDefault, entries: [{entry, state: resolved|unresolved|awaited,
+reason?}]}`. Without an explicit list it is the Engine's single default rule (`task.md`, the Task's
+other documents, then the Specification overview when registered, each required); every start, entry
+check and blocker index uses the same list, and a client's first edit sends these entries as the
+explicit list. `dependencyCandidates` lists the other Tasks in list order, each with `unavailable`
+(`dependency`, `would-create-cycle`, `cancelled`, `broken`) when the edit would refuse it; it is empty
+once the dependencies cannot change.
+
 `specification.exit` holds `close` (`allowed`, or `blocked` with blockers) and `abandon` (`allowed`,
 `blocked` with blockers, or `unavailable`: `ended` or `not-configured`). It reports the workflow's view;
 Close still checks Git and the workspace itself.

@@ -1,7 +1,7 @@
 import { Type, type Static, type TSchema } from 'typebox';
 
 import { SpecIdSchema, TaskIdSchema } from '../identifiers';
-import { TASK_CONTEXT_KINDS, type TaskStatus } from '../documents';
+import { TASK_CONTEXT_KINDS, TaskContextEntrySchema, type TaskStatus } from '../documents';
 
 /**
  * The workflow action projection (`GET .../workflow/actions`): where a Specification or a Task
@@ -417,6 +417,45 @@ export const TaskTypeOptionSchema = Type.Object({
 });
 export type TaskTypeOption = Static<typeof TaskTypeOptionSchema>;
 
+export const DEPENDENCY_INELIGIBILITIES = [
+  'dependency',
+  'would-create-cycle',
+  'cancelled',
+  'broken',
+] as const;
+
+/**
+ * What the owner edits on a Task, as the Engine reads it: the effective context (the explicit list,
+ * or the Engine's default one) with each entry's state, and the other Tasks a dependency may name.
+ */
+export const TaskAuthoringSchema = Type.Object({
+  context: Type.Object({
+    /** No explicit list: the default context; an edit sends these entries as the explicit list. */
+    isDefault: Type.Boolean(),
+    entries: array(
+      Type.Union([
+        Type.Object({ entry: TaskContextEntrySchema, state: Type.Literal('resolved') }),
+        Type.Object({
+          entry: TaskContextEntrySchema,
+          state: Type.Literal('unresolved'),
+          reason: literals(CONTEXT_ISSUE_REASONS),
+        }),
+        /** A missing process artifact: expected, not stale. */
+        Type.Object({ entry: TaskContextEntrySchema, state: Type.Literal('awaited') }),
+      ]),
+    ),
+  }),
+  /** The other Tasks in list order; empty once the dependencies cannot change. */
+  dependencyCandidates: array(
+    Type.Object({
+      taskId: TaskIdSchema,
+      /** Absent: it may be added. */
+      unavailable: Type.Optional(literals(DEPENDENCY_INELIGIBILITIES)),
+    }),
+  ),
+});
+export type TaskAuthoring = Static<typeof TaskAuthoringSchema>;
+
 export const WorkflowActionProjectionSchema = Type.Object(
   {
     subject: WorkflowSubjectSchema,
@@ -426,6 +465,8 @@ export const WorkflowActionProjectionSchema = Type.Object(
     actions: WorkflowActionsSchema,
     /** For a Task subject. */
     task: Type.Optional(TaskLifecycleActionsSchema),
+    /** For a Task subject that is not broken. */
+    taskAuthoring: Type.Optional(TaskAuthoringSchema),
     /** For a Specification subject. */
     specification: Type.Optional(
       Type.Object({

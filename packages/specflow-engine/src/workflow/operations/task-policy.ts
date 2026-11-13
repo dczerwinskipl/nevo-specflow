@@ -1,3 +1,5 @@
+import { TASK_MAIN_DOCUMENT } from '@nevo/specflow-contracts/documents';
+import { OVERVIEW_DOCUMENT_ID } from '../../specs/document-rules/protection';
 import { contextKey } from '../../tasks/resource/codec';
 import type { TaskContextEntry, TaskManifest } from '../../tasks/resource/model';
 import { validateTaskContext, type TaskContextIssue } from '../../tasks/resource/validate';
@@ -28,17 +30,75 @@ export async function effectiveTaskTypesOf(
   return effectiveTaskTypes(binding ? { binding } : {});
 }
 
-/** The context entries of a manifest whose reference does not resolve now, in list order. */
+/** The context a Task's steps read: its explicit list, or the default one. */
+export interface EffectiveContext {
+  readonly entries: readonly TaskContextEntry[];
+  /** No explicit list: the default context (an edit writes it out). */
+  readonly isDefault: boolean;
+}
+
+/**
+ * The effective context of a Task, the single rule of the default: without an explicit list it is
+ * `task.md`, the Task's other registered documents and the Specification overview (when the
+ * Specification registers it), each required. Every start, gate and projection reads this list.
+ */
+export async function effectiveContextOf(
+  dependencies: Pick<WorkflowDependencies, 'references'>,
+  specId: string,
+  manifest: Pick<TaskManifest, 'documents' | 'context'>,
+): Promise<EffectiveContext> {
+  if (manifest.context) {
+    return { entries: manifest.context, isDefault: false };
+  }
+
+  const documents = [
+    ...manifest.documents.filter((document) => document.id === TASK_MAIN_DOCUMENT.id),
+    ...manifest.documents.filter((document) => document.id !== TASK_MAIN_DOCUMENT.id),
+  ];
+  const overview = await dependencies.references.specificationDocument(
+    specId,
+    OVERVIEW_DOCUMENT_ID,
+  );
+
+  return {
+    isDefault: true,
+    entries: [
+      ...documents.map((document): TaskContextEntry => ({
+        kind: 'task-document',
+        id: document.id,
+        required: true,
+      })),
+      ...(overview
+        ? [
+            {
+              kind: 'specification-document',
+              id: OVERVIEW_DOCUMENT_ID,
+              required: true,
+            } satisfies TaskContextEntry,
+          ]
+        : []),
+    ],
+  };
+}
+
+/**
+ * The entries of a Task's effective context whose reference does not resolve now, in list order
+ * (indexes into the effective list); `entries` narrows the check to some of them.
+ */
 export async function unresolvedContext(
   dependencies: Pick<WorkflowDependencies, 'references'>,
   specId: string,
   manifest: Pick<TaskManifest, 'documents' | 'context'>,
-  entries: readonly TaskContextEntry[] = manifest.context ?? [],
+  entries?: readonly TaskContextEntry[],
 ): Promise<TaskContextIssue[]> {
-  const lookup = await contextLookupFor(dependencies.references, specId, entries);
-  const checked = new Set(entries);
+  const list = (await effectiveContextOf(dependencies, specId, manifest)).entries;
+  const checkedEntries = entries ?? list;
+  const lookup = await contextLookupFor(dependencies.references, specId, checkedEntries);
+  const checked = new Set(checkedEntries);
 
-  return validateTaskContext(manifest, lookup).filter((issue) => checked.has(issue.entry));
+  return validateTaskContext({ documents: manifest.documents, context: list }, lookup).filter(
+    (issue) => checked.has(issue.entry),
+  );
 }
 
 function describeEntry(issue: TaskContextIssue): string {

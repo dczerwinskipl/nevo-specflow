@@ -426,3 +426,24 @@ Exchange the provider authorization code for a SpecFlow session and keep it aliv
 
 See \`notes/token-exchange.md\` for the provider quirks found in the spike.
 `;
+
+/**
+ * The one progress definition used by Now, the Overview summary and the Tasks page: done = Tasks
+ * whose workflow completed; total = all Tasks except cancelled ones; cancelled and on hold are named
+ * separately (on hold counts in the total, it is unfinished work). Zero parts are omitted.
+ */
+export function taskProgress(list: readonly MockTask[]) {
+  const cancelled = list.filter((item) => item.status === 'cancelled').length;
+  const total = list.length - cancelled;
+  const done = list.filter(
+    (item) => item.status !== 'cancelled' && item.workflow.position.kind === 'terminal',
+  ).length;
+  const onHold = list.filter((item) => item.status === 'on-hold').length;
+  const text = [
+    `${done} of ${total} done`,
+    ...(cancelled ? [`${cancelled} cancelled`] : []),
+    ...(onHold ? [`${onHold} on hold`] : []),
+  ].join(' · ');
+
+  return { done, total, cancelled, onHold, text };
+}

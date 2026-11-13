@@ -46,6 +46,7 @@ import {
   type MockTask,
   type WorkflowView,
   stepTitle,
+  taskProgress,
 } from './fixtures.stories-support';
 import { FinishStepDialog, WorkflowHistory, WorkflowPanel } from './WorkflowPanel.stories-support';
 
@@ -363,7 +364,7 @@ function TaskRowMenu({ item }: { item: MockTask }) {
   );
 }
 
-function TasksList({
+export function TasksList({
   list,
   onCreate,
   canCreate = true,
@@ -373,8 +374,6 @@ function TasksList({
   canCreate?: boolean;
 }) {
   const [collapsed, setCollapsed] = useState<ReadonlySet<GroupId>>(new Set(['parked']));
-  const done = list.filter((item) => item.workflow.position.kind === 'terminal').length;
-  const counted = list.filter((item) => item.status !== 'cancelled').length;
 
   return (
     <WorkspaceSection aria-labelledby="tasks-heading">
@@ -382,13 +381,7 @@ function TasksList({
         id="tasks-heading"
         title="Tasks"
         icon="list-checks"
-        count={
-          list.length === 0
-            ? undefined
-            : `${done} of ${counted} done${
-                list.length > counted ? ` · ${list.length - counted} cancelled` : ''
-              }`
-        }
+        count={list.length === 0 ? undefined : taskProgress(list).text}
         actions={
           canCreate ? (
             <Button size="sm" variant="secondary" leadingIcon="plus" onClick={onCreate}>

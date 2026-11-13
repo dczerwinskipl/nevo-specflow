@@ -81,8 +81,8 @@ Order (extends [Specification Overview](../../../product/specflow/ui/specificati
 summary → Requires attention → Continue session → **Workflow** → Tasks → context sections. With
 a bound Specification workflow, the Workflow section takes the preparation block's place.
 
-- **Tasks section.** The progress count reconciles with the groups: `1 of 6 done · 1 cancelled`
-  (cancelled Tasks are not in the denominator but are named). Header keeps the progress count and adds **New task** (secondary, always
+- **Tasks section** (moves to the Tasks page in the control-center proposal below). The progress
+  count uses the one progress definition below. Header keeps the progress count and adds **New task** (secondary, always
   when creation is allowed). The empty state is unchanged (inline, no action) with copy saying
   Tasks can be created before the workflow starts. Groups follow what the owner must do: **Needs
   approval** (drafts), **In progress**, **Ready to start**, **Waiting** (dependencies), **Done**,
@@ -94,6 +94,78 @@ a bound Specification workflow, the Workflow section takes the preparation block
   steps), Title, Summary, Depends on (checkbox list). Creates a draft.
 - **Activity history** (existing Secondary) carries the Specification step attempts. Its header
   toggle (clock icon) is the history entry at every width; on Narrow it opens a pushed page.
+
+## Specification Overview as control center (proposal, awaiting owner approval)
+
+Owner direction (2026-11-13): the Overview is the control center of one Specification; the full Task
+list moves to the Tasks page. Restructuring, not a redesign: it keeps the accepted
+[Specification Overview](../../../product/specflow/ui/specification-overview.md) and
+[App Shell geometry](../../../product/specflow/ui/shell-geometry.md) decisions listed below. Mock:
+Storybook `SpecFlow/Screens/Specification control center (mock)`.
+
+**Kept from the accepted contracts:** the summary (title, description) leads; Requires attention keeps
+its name and its place first among the work sections; the two-column switch from 1408 px of Overview
+**content** width with 16 px hysteresis, measured on the container, one column below it or when one
+side is empty, no empty bands, keyboard order = visible order; the work column / context column
+split (context column `22rem`–`30rem`); Continue session's row shape (the Sessions list row);
+Activity history in the Secondary, closed by default here, the header toggle opens it; the Now block
+in the preparation block's place; one reading column (`content-standard`) at the workspace inset.
+
+**Order:** summary → **Now** → **Requires attention** → **Active tasks** (work column) and
+**Sessions** → **Documents** (context column). In one column the same order.
+
+- **Now** shows the current Specification workflow state from the projection: step title, the quiet
+  line (attempt, since, by whom, step id, workflow revision), unmet exit gates under "To finish",
+  and for a `wait` step the progress (segmented bar + the progress text, link to Active tasks). It
+  offers the projection's **main** action only: Start workflow, Finish step (a `work` step), Close
+  specification (terminal). A `wait` step gets **no** primary action; other transitions (Return to
+  an earlier step) and Workflow history sit in the Now block's operations menu (`⋯`).
+- **Requires attention** lists only items that need the person now, each with the one action the
+  projection offers for it (never derived from a status name): a draft Task (**Approve**), a Task
+  whose next step is startable (**Start Design**), a Task that cannot start because of a fixable
+  blocker (**Fix context**), an active step of the person's own with an unmet gate (the gate's
+  action), a Session waiting for input (**Answer**). At most five, then **Show N more**. An item in
+  Requires attention is not repeated in Active tasks or Sessions.
+- **Active tasks** is a concise preview, not a second Task screen: Tasks in progress, then Tasks
+  waiting on them, at most five, no checkboxes and no row menus; the header carries the progress
+  text and **View all tasks**. Empty: one sentence ("No tasks yet. Create them on the Tasks page,
+  before or during the workflow."); nothing in progress: "No task is in progress or waiting." The
+  section is omitted when the Specification workflow never produces Tasks and none exist.
+- **Sessions** replaces Continue session: the recommended Session first, then other working Sessions
+  of this Specification (at most three), same row as the Sessions list, **All sessions** in the
+  header. A Session waiting for input is in Requires attention instead.
+- **Documents** unchanged.
+- **Narrow:** the same order in one column; nothing is collapsed on the Overview (it is short by
+  construction); row actions stay on the row.
+
+**Progress, one definition** (Now, Active tasks header, Tasks page): done = Tasks whose workflow
+completed; total = all Tasks except cancelled ones; cancelled and on hold are named separately, zero
+parts omitted: `1 of 6 done · 1 cancelled · 1 on hold`. On hold counts in the total (unfinished).
+
+## Tasks page (`/specs/:specId/tasks`)
+
+The complete grouped Task list moves here unchanged: the same groups (Needs approval, In progress,
+Ready to start, Waiting, Done, On hold or cancelled — the last collapsed), the same row, selection
+checkboxes and batch Execute, row `⋯` lifecycle menu, **New task** in the section header, the
+progress text as the section count. Above it a filter (id or title), the open item 3 of the
+Specification screen. The navigator's **Tasks** item becomes this page instead of an anchor on the
+Overview (closes that shell-geometry finding). Narrow: the same list; rows wrap as today.
+
+## Universality
+
+The sections take their content from the projection, so other definitions read the same way:
+
+- **A Specification workflow without a waiting step** (for example _Small change_: Implementation →
+  Review with no step that produces Tasks): Now carries its work steps with Finish step; Active tasks
+  is omitted; Requires attention holds only Sessions and gates.
+- **A single-step Task type** (Spike): Active tasks shows "Spike · in progress"; when its step has an
+  exit gate, the person's own active Task appears in Requires attention with the gate's action.
+- **A review-loop Task type** (Implementation ⇄ Review): rework is an attempt of the same step in
+  Active tasks ("Implementation · in progress"); a review waiting for the person is a Requires
+  attention row with the projection's action.
+- **Step names never matter:** rows say the step title; nothing tests for `wait-for-tasks`,
+  `review` or a status string; a `wait` kind and `produces: tasks` are the only workflow facts the
+  Overview reads.
 
 ## Now block (Specification and Task)
 

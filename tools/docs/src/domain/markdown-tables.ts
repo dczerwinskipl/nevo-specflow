@@ -87,6 +87,7 @@ export function validateRoadmapTables(docs: readonly DocRecord[]): string[] {
         } else if (marker.startsWith(fence.char) && marker.length >= fence.min) {
           fence = undefined;
         }
+
         i++;
         continue;
       }

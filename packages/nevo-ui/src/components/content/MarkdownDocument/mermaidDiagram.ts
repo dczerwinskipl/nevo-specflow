@@ -141,9 +141,15 @@ async function renderDiagram(source: string): Promise<string> {
 }
 
 export type DiagramState =
-  { status: 'loading' } | { status: 'ready'; svg: string } | { status: 'failed' };
+  /** `previous`: the last drawing made for an earlier source, if it succeeded. */
+  | { status: 'loading'; previous?: string }
+  | { status: 'ready'; svg: string }
+  | { status: 'failed' };
 
-/** The drawing of `source`; a result that arrives for an older source is never shown. */
+/**
+ * The drawing of `source`; a result that arrives for an older source is never shown as this
+ * source's drawing, but while the new one is drawn the last good one is offered as `previous`.
+ */
 export function useDiagram(source: string): DiagramState {
   const [result, setResult] = useState<{ source: string; svg: string | null }>();
 
@@ -160,7 +166,7 @@ export function useDiagram(source: string): DiagramState {
   }, [source]);
 
   if (result?.source !== source) {
-    return { status: 'loading' };
+    return result?.svg ? { status: 'loading', previous: result.svg } : { status: 'loading' };
   }
 
   return result.svg === null ? { status: 'failed' } : { status: 'ready', svg: result.svg };

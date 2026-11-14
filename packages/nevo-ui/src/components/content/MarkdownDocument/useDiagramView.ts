@@ -121,6 +121,8 @@ export function useDiagramView(content: Size, mode: 'inline' | 'window') {
       update((current, g) => zoomAt(current, Math.exp(-event.deltaY * 0.0015), point, g));
     };
 
+    // `targetTouches`: only fingers that started on the drawing count, so a finger resting on a
+    // control does not turn a one-finger pan into a pinch.
     let pinch: { distance: number; middle: Point } | undefined;
     /** Full screen only: the last point of a one-finger pan. */
     let finger: Point | undefined;
@@ -138,28 +140,28 @@ export function useDiagramView(content: Size, mode: 'inline' | 'window') {
     };
 
     const onTouchStart = (event: TouchEvent) => {
-      pinch = event.touches.length === 2 ? twoFingers(event.touches) : undefined;
-      finger = oneFinger(event.touches);
+      pinch = event.targetTouches.length === 2 ? twoFingers(event.targetTouches) : undefined;
+      finger = oneFinger(event.targetTouches);
     };
 
     const onTouchMove = (event: TouchEvent) => {
       const from = finger;
-      if (from && event.touches.length === 1) {
+      if (from && event.targetTouches.length === 1) {
         event.preventDefault();
-        const to = oneFinger(event.touches)!;
+        const to = oneFinger(event.targetTouches)!;
         finger = to;
         update((current, g) => panBy(current, to.x - from.x, to.y - from.y, g));
 
         return;
       }
 
-      if (event.touches.length !== 2 || !pinch) {
+      if (event.targetTouches.length !== 2 || !pinch) {
         return;
       }
 
       event.preventDefault();
       const start = pinch;
-      const now = twoFingers(event.touches);
+      const now = twoFingers(event.targetTouches);
       pinch = now;
       // Zoom about where the fingers were, then follow them: the content under them stays put.
       update((current, g) =>
@@ -174,8 +176,8 @@ export function useDiagramView(content: Size, mode: 'inline' | 'window') {
 
     // Lifting one of two fingers continues as a one-finger pan from where that finger is.
     const onTouchEnd = (event: TouchEvent) => {
-      pinch = event.touches.length === 2 ? twoFingers(event.touches) : undefined;
-      finger = oneFinger(event.touches);
+      pinch = event.targetTouches.length === 2 ? twoFingers(event.targetTouches) : undefined;
+      finger = oneFinger(event.targetTouches);
     };
 
     viewport.addEventListener('wheel', onWheel, { passive: false });

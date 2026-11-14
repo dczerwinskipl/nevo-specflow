@@ -594,7 +594,8 @@ shadows (Mermaid's drop-shadow filters are removed with CSS).
 Size: a diagram opens readable first: fitted to the column but never below 10 px text (scale `10/14`, the
 labels being 14 px); a diagram that fits keeps its natural size and is never enlarged. What does not fit
 pans inside the block, which never widens the page; a tall diagram that fits the column is as tall as it
-is, and the page scrolls through it. Fit returns to this opening view (there is no separate overview). Zoom and pan are always available: the block's viewport is one keyboard
+is, and the page scrolls through it. Fit returns to this opening view (there is no separate overview).
+Zoom and pan are always available: the block's viewport is one keyboard
 stop (`role="group"` named by `labels.diagram`; the picture inside is `role="img"` with the same name) where
 `+`/`-` zoom, the arrows pan (an arrow that cannot move the drawing scrolls the page) and `0` returns to
 the opening view; Ctrl/Cmd + wheel and pinch zoom about the pointer; a mouse or pen drag and two fingers
@@ -614,9 +615,11 @@ While a diagram is drawn the ordinary code block shows; when the source cannot b
 with a quiet `labels.diagramFailed` note beneath it, never Mermaid's error graphic. Products pass localized
 `diagram`, `diagramFailed`, `diagramZoomIn`, `diagramZoomOut`, `diagramReset`, `diagramFullScreen` and
 `diagramClose` labels; `data-source-line` sits on the block. A changed source (the Documents live preview
-while typing) is drawn only after it has been still for 500 ms; meanwhile its code shows without the
-failure note, so typing neither redraws on every keystroke nor flashes the note. Leave `diagrams` off
-for streamed text (an agent message). The Documents preview and the documentation reader turn it on.
+while typing) is drawn only after it has been still for 500 ms; meanwhile the last good drawing stays,
+with its zoom, pan and an open full screen, so typing neither redraws on every keystroke nor flashes the
+failure note. Only a new source that cannot be drawn replaces it with the code and the note. Leave
+`diagrams` off for streamed text (an agent message). The Documents preview and the documentation reader
+turn it on.
 
 ## Scrolling regions
 

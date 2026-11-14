@@ -48,11 +48,19 @@ export function MarkdownDiagram({
 }) {
   const settled = useSettledSource(source);
   const diagram = useDiagram(settled);
-  // While the source changes, its code shows as it is, without a verdict on a half-written fence.
+  // While the source changes, a half-written fence gets no verdict: the last good drawing stays
+  // (with its zoom, pan and an open full screen) until the new one is drawn; it is replaced by the
+  // code and the note only if the new source cannot be drawn.
   const changing = settled !== source;
+  const shown =
+    diagram.status === 'ready'
+      ? diagram.svg
+      : diagram.status === 'loading'
+        ? diagram.previous
+        : undefined;
 
-  if (diagram.status === 'ready' && !changing) {
-    return <DiagramViewer labels={labels} sourceLine={sourceLine} svg={diagram.svg} />;
+  if (shown !== undefined) {
+    return <DiagramViewer labels={labels} sourceLine={sourceLine} svg={shown} />;
   }
 
   return (

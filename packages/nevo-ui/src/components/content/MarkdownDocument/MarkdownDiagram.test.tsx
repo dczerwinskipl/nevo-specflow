@@ -153,33 +153,44 @@ describe('MarkdownDocument diagrams', () => {
     expect(copy).toContain('id="nevo-markdown-diagram-12"');
   });
 
-  it('draws a changed source only after it has been still for 500 ms, without flashing the note', async () => {
+  it('keeps the last drawing while the source changes, draws the latest once it is still for 500 ms', async () => {
     vi.useFakeTimers();
-    const flush = () => act(async () => Promise.resolve());
+    const flush = async () => {
+      await act(async () => Promise.resolve());
+      await act(async () => Promise.resolve());
+    };
+
     const typed = (body: string) => (
       <MarkdownDocument diagrams source={fence(`flowchart LR\n  ${body}`)} />
     );
     const { rerender } = render(typed('a --> b'));
     await flush();
-    await flush();
-    expect(screen.getByRole('img', { name: 'Diagram' })).toBeTruthy();
+    const region = () => screen.getByRole('group', { name: 'Diagram' });
+    fireEvent.keyDown(region(), { key: '+' });
+    expect(region().getAttribute('data-diagram-scale')).toBe('1.250');
 
-    // Typing: a half-written fence shows as code, with no failure note and no new drawing yet.
+    // Typing: the last drawing stays, zoom kept; no failure note and no new drawing yet.
     rerender(typed('a -->'));
     rerender(typed('a --> c'));
-    expect(screen.queryByRole('img')).toBeNull();
-    expect(screen.getByRole('group', { name: 'Code block' }).textContent).toContain('a --> c');
+    expect(region().getAttribute('data-diagram-scale')).toBe('1.250');
     expect(screen.queryByText('Diagram could not be rendered')).toBeNull();
     await act(async () => vi.advanceTimersByTime(499));
     expect(mermaid.render).toHaveBeenCalledTimes(1);
 
-    // Still for 500 ms: only the latest source is drawn, once.
+    // Still for 500 ms: only the latest source is drawn, once, into the same viewer.
     await act(async () => vi.advanceTimersByTime(1));
-    await flush();
     await flush();
     expect(mermaid.render).toHaveBeenCalledTimes(2);
     expect(mermaid.render).toHaveBeenLastCalledWith(expect.any(String), 'flowchart LR\n  a --> c');
-    expect(screen.getByRole('img', { name: 'Diagram' })).toBeTruthy();
+    expect(region().getAttribute('data-diagram-scale')).toBe('1.250');
+
+    // A source that cannot be drawn replaces the drawing with its code and the note.
+    mermaid.render.mockRejectedValueOnce(new Error('Parse error'));
+    rerender(typed('a -->'));
+    await act(async () => vi.advanceTimersByTime(500));
+    await flush();
+    expect(screen.queryByRole('img')).toBeNull();
+    expect(screen.getByText('Diagram could not be rendered')).toBeTruthy();
     vi.useRealTimers();
   });
 });

@@ -50,9 +50,10 @@ export interface MarkdownDocumentProps {
    * Opt-in: a fenced block whose language is `mermaid` is drawn as a diagram. Mermaid loads on the
    * first diagram only; while it draws, and when the source cannot be drawn, the ordinary code
    * block shows (with `labels.diagramFailed` beneath it on failure). A changed source (a live
-   * preview while typing) is drawn only once it has been still for 500 ms; meanwhile its code
-   * shows without the failure note. Leave it off for streamed text (an agent message), whose
-   * fences are not edits a person pauses on.
+   * preview while typing) is drawn only once it has been still for 500 ms; meanwhile the last good
+   * drawing stays (zoom, pan and an open full screen kept), and only a new source that cannot be
+   * drawn replaces it with the code and the note. Leave it off for streamed text (an agent
+   * message), whose fences are not edits a person pauses on.
    */
   diagrams?: boolean;
 }

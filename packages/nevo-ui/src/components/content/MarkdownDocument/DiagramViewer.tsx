@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { IconButton } from '../../actions/IconButton';
 import {
   Dialog,
@@ -127,14 +127,13 @@ function DiagramViewport({
   );
 }
 
-/** Full screen: a second drawing (its own SVG ids), fitted to the window, same zoom and pan. */
 /**
  * Full screen: a copy of the drawing under fresh SVG ids (no id is on the page twice, and nothing
  * is drawn again), opening readable (text never below 10 px), with the same zoom and pan.
  */
 function FullScreenDiagram({ svg, labels }: { svg: string; labels: DiagramViewerLabels }) {
-  // One copy per opening: the dialog mounts this when it opens.
-  const [copy] = useState(() => withFreshIds(svg));
+  // A copy per drawing: an edit redrawn while full screen is open shows there too.
+  const copy = useMemo(() => withFreshIds(svg), [svg]);
   const zoom = useDiagramView(naturalSize(copy), 'window');
 
   return (

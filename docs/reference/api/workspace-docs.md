@@ -194,17 +194,31 @@ run in that checkout.
   The HTTP search always refreshes (the CLI's `--no-refresh` has no HTTP counterpart).
 - **Catch-up:** a larger gap answers `lexical` with `index-building` at once and, after a
   successful endpoint probe, starts the Runtime's background refresh of the whole index unless it
-  already runs (`the Runtime started updating it in the background`, later `the Runtime is
-updating it in the background (<n>/<total> chunks)`, and `indexProgress`). Another process
+  already runs (`the Runtime started updating it in the background`). Another process
   holding the index (a CLI `semantic index`) is reported, not raced. After a refresh that failed
   (for example an index that cannot be written), the next one starts no sooner than 60 s later;
   until then the reason says `the Runtime's last background update failed; it retries within a
 minute`.
-- **One refresh at a time:** the Runtime runs at most one background refresh across all
-  workspaces; while another workspace's runs, the reason says so and a later search starts this
-  one. It keeps at most four workspace corpora open (the least recently used one is stopped and
-  closed), and closing a workspace or Specification releases its workspace's corpus before its
-  worktree is deleted.
+- **While a refresh runs:** while any background job of the Runtime runs (a refresh or seed of
+  any workspace's index; they all use the Runtime's one endpoint), a search embeds nothing, neither
+  changed sections nor the query, so it does not wait behind the job's requests to the endpoint.
+  It answers `lexical` at once with `index-building`:
+  - in a linked worktree whose seed has not run yet (also while no job runs): `The
+documentation index is being prepared from Project Home; searches are lexical until then.`;
+  - while this workspace's job runs: `The Runtime is updating the documentation index in the
+background (<n>/<total> chunks); searches are lexical until it has finished.` (the count, and
+    `indexProgress`, once it embeds);
+  - while another workspace's job runs: `The Runtime is updating another checkout's documentation
+index; searches are lexical until it has finished.`
+
+  Once the job has ended, searches are hybrid again. A job that starts while a search is already
+  embedding its query can still delay that one query, up to the query timeout.
+
+- **One refresh at a time:** the Runtime runs at most one background job across all workspaces;
+  searches meanwhile answer as above and start nothing, and a search after it has ended starts this
+  workspace's catch-up when its gap needs one. It keeps at most four workspace corpora open (the
+  least recently used one is stopped and closed), and closing a workspace or Specification releases
+  its workspace's corpus before its worktree is deleted.
 - **Seeding:** a linked worktree without an index is first seeded with a copy of Project Home's
   index when their identity matches (embedding model, dimensions, probe and documentation
   settings); searches meanwhile answer `lexical` with `index-building`. Then the normal refresh
@@ -215,8 +229,9 @@ minute`.
 - **Start refresh:** when the Runtime's own checkout has semantic search on and the Runtime has an
   embedding endpoint, the Runtime starts the same background refresh of that checkout's index once
   it is ready. Start and readiness do not wait for it; searches meanwhile answer `lexical` with
-  `index-building`. While any process updates the index, an endpoint that times out or refuses the
-  connection is reported as `index-building`, not as `endpoint-unreachable`. Other workspaces
+  `index-building`. While another process (a CLI `semantic index`) updates the index, an endpoint
+  that times out or refuses the connection is reported as `index-building`, not as
+  `endpoint-unreachable`. Other workspaces
   refresh on search only.
 - Closing the Runtime stops every running refresh and waits for it to release its index; sections
   embedded so far stay stored. A refresh that cannot run is logged as a warning; one that finds

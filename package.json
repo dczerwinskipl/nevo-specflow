@@ -39,6 +39,8 @@
     "api:openapi": "turbo run build --filter=@nevo/specflow-runtime && node packages/specflow-runtime/scripts/openapi-document.mjs",
     "docs:eval": "turbo run build --filter=nevo-repo-docs --output-logs=errors-only 1>&2 && node tools/docs/dist/bin.js eval",
     "docs:adr": "turbo run build --filter=nevo-repo-docs --output-logs=errors-only 1>&2 && node tools/docs/dist/bin.js adr",
+    "docs:embeddings:up": "node tools/docs-embeddings/embeddings.mjs up",
+    "docs:embeddings:down": "node tools/docs-embeddings/embeddings.mjs down",
     "storybook": "pnpm --filter nevo-repo-storybook dev",
     "storybook:browsers:install": "pnpm --filter nevo-repo-storybook exec playwright install chromium",
     "storybook:build": "pnpm --filter nevo-repo-storybook build",

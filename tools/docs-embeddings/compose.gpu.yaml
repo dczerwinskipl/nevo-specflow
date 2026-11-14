@@ -1,0 +1,14 @@
+# GPU override for compose.yaml: reserves the NVIDIA GPUs for the embedding model. It needs an
+# NVIDIA GPU and Docker GPU support (Docker Desktop with WSL 2 on Windows, the NVIDIA Container
+# Toolkit on Linux). Not for a Mac: Docker there cannot use the Apple GPU.
+# Started with `pnpm docs:embeddings:up --gpu`.
+
+services:
+  ollama:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

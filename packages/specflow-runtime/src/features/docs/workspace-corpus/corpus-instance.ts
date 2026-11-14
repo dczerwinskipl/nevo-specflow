@@ -16,6 +16,7 @@ import {
   type IndexCatchUp,
   type IndexProgress,
 } from '@nevo/specflow-docs';
+import type { DocsSearchReason } from '@nevo/specflow-contracts/docs';
 import type { FastifyBaseLogger } from 'fastify';
 
 import {
@@ -84,6 +85,35 @@ const SEEDING = {
   message:
     'The documentation index is being prepared from Project Home; searches are lexical until then.',
 } as const;
+
+/**
+ * While a background job holds the Runtime-wide slot (this index's, or `'other'`: another
+ * checkout's), a search embeds nothing (neither the read-time refresh nor the query): the shared
+ * endpoint is busy with the job's batches, so a query would wait behind them up to the query
+ * timeout and then report the endpoint as failed. The search answers lexically at once.
+ */
+function refreshingReason(
+  running: { readonly progress: IndexProgress | undefined } | 'other',
+): DocsSearchReason {
+  if (running === 'other') {
+    return {
+      code: 'index-building',
+      message:
+        "The Runtime is updating another checkout's documentation index; searches are lexical until it has finished.",
+    };
+  }
+
+  const { progress } = running;
+
+  return {
+    code: 'index-building',
+    message: `The Runtime is updating the documentation index in the background${
+      progress === undefined
+        ? ''
+        : ` (${String(progress.embedded)}/${String(progress.total)} chunks)`
+    }; searches are lexical until it has finished.`,
+  };
+}
 
 /** Opens the index (the uncached write admission, its Git check once now) and the search. */
 export async function openCorpusInstance(options: CorpusInstanceOptions): Promise<CorpusInstance> {
@@ -205,10 +235,17 @@ export async function openCorpusInstance(options: CorpusInstanceOptions): Promis
         refreshRequested = true;
       }
 
+      // The endpoint is the Runtime's, so another checkout's job keeps it busy too.
+      const running = refresh.current() ?? (options.slot.held() ? 'other' : undefined);
+
       return searchDocumentationWithLeftOut(
         {
           chunks: { load: () => Promise.resolve(snapshot) },
-          vectors: seeded ? search.vectors : { reason: SEEDING },
+          vectors: !seeded
+            ? { reason: SEEDING }
+            : running !== undefined
+              ? { reason: refreshingReason(running) }
+              : search.vectors,
         },
         request,
       );

@@ -1,0 +1,47 @@
+# ONLY the optional embedding model for semantic documentation search (`pnpm docs:search`).
+# Nevo SpecFlow itself does not run in Docker, and nothing in the repository needs this: without
+# an endpoint, documentation search answers lexically.
+#
+#   pnpm docs:embeddings:up          # CPU (works everywhere); pulls the model once
+#   pnpm docs:embeddings:up --gpu    # NVIDIA GPU (adds compose.gpu.yaml)
+#   pnpm docs:embeddings:down        # stops it and keeps the model volume
+#
+# On a Mac, Docker cannot use the Apple GPU: the native Ollama app (Metal) is the fast option and
+# this container is the CPU fallback. Setup: docs/engineering/repository/local-setup.md
+# ("Semantic documentation search").
+
+name: nevo-specflow-docs-embeddings
+
+services:
+  ollama:
+    image: ollama/ollama:0.40.15
+    ports:
+      - 127.0.0.1:11434:11434
+    # No OLLAMA_NUM_PARALLEL: this Ollama loads embedding models with one slot whatever it says
+    # (`n_seq_max = 1` in the log), so a query waits behind an index batch. The Runtime answers a
+    # search lexically while it refreshes the index instead.
+    volumes:
+      - models:/root/.ollama
+    healthcheck:
+      test: [CMD, ollama, list]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  # One-shot: pulls the model into the volume and exits; a repeated pull is a no-op.
+  ollama-pull:
+    image: ollama/ollama:0.40.15
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: [ollama, pull, "qwen3-embedding:0.6b"]
+    restart: "no"
+
+volumes:
+  # The explicit name keeps the volume of the former root compose project, so a model pulled there
+  # is not downloaded again.
+  models:
+    name: nevo-specflow_ollama

@@ -61,14 +61,13 @@ export function validateRoadmapTables(docs: readonly DocRecord[]): string[] {
     const lines = doc.body.split(/\r?\n/);
     let fence: { char: string; min: number } | undefined;
 
-    for (let i = 0; i < lines.length; ) {
+    for (let i = 0; i < lines.length;) {
       const line = (lines[i] ?? '').trim();
       const code = /^(\x60{3,}|~{3,})/.exec(line);
       if (code?.[1]) {
         const marker = code[1];
         if (!fence) fence = { char: marker.charAt(0), min: marker.length };
-        else if (marker.charAt(0) === fence.char && marker.length >= fence.min)
-          fence = undefined;
+        else if (marker.charAt(0) === fence.char && marker.length >= fence.min) fence = undefined;
         i++;
         continue;
       }

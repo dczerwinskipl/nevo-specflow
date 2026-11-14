@@ -16,7 +16,7 @@
     "lint:root": "eslint -c eslint.config.mjs . && node tools/eslint/check-coverage.mjs",
     "typecheck": "turbo run typecheck",
     "format": "prettier --write .",
-    "format:check": "prettier --write docs/ideas/roadmap.md docs/ideas/roadmap-delivered.md && git diff -- docs/ideas/roadmap.md docs/ideas/roadmap-delivered.md && prettier --check .",
+    "format:check": "prettier --check .",
     "format:staged": "node tools/git/format-staged.mjs",
     "prepare": "node -e \"try { require('child_process').execSync('git config core.hooksPath .githooks', { stdio: 'ignore' }); } catch {}\"",
     "quality:build-prerequisites": "turbo run build --filter=nevo-repo-agents --filter=nevo-repo-docs --filter=nevo-repo-release",

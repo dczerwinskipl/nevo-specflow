@@ -445,10 +445,16 @@ serves stale vectors.
       disable continuation…").
   - It never glues together unrelated cells, list items or paragraphs. With no matched word, it is
     the section's longest prose fragment.
+  - **Prose first:** when a prose fragment and a code fragment (a code span, a path or an
+    identifier, such as "Code: features/sessions/providers/claude/.") both contain a match, the
+    prose fragment wins ("Claude runs through the shared Session coordinator…"). A code fragment is
+    used only when no prose fragment matches.
   - Plain text: no Markdown syntax.
   - The window starts at most 40 characters before the first match, so the match is on the first
-    line at 390 px.
-  - A sentence end needs no ellipsis; an ellipsis marks only text cut inside a sentence.
+    line at 390 px. A sentence start inside those 40 characters is used instead of a cut.
+  - **Ellipses:** an excerpt that starts at a sentence start has no leading ellipsis. A cut start
+    is "… " (an ellipsis and a space) followed by a whole word, never a glued "…Engine". A sentence
+    end needs no trailing ellipsis; a trailing "…" marks only text cut inside a sentence.
   - **Marks:** the first occurrence of each query term, at most three marks per excerpt, in
     `content-primary` at medium weight, with no background and no accent colour. Titles and paths
     are never marked.
@@ -467,7 +473,36 @@ The count line counts the rows in the list: **"10 results" ("10 wyników")**, wi
 true whether or not the limit capped the list, so the API needs no "truncated" flag for it.
 
 - No results: no count is shown, and the live region says "No matching documents".
-- While the answer loads: no count is shown, and the live region says "Searching the documentation".
+- While the answer loads: no count is shown (see "Waiting for an answer").
+
+### Waiting for an answer
+
+A search can block for a long time when hybrid search first embeds the sections that lack a vector
+(verified in `semantic-index/refresh-policy.ts` and `embeddings/embedding-providers.ts`):
+
+- an endpoint probe of up to 3 s;
+- then up to 16 sections embedded in one request, bounded only by the document-embedding timeout,
+  60 s by default (about 10 s on a local CPU model by the code's own estimate; about 16 s observed
+  live);
+- then the query embedding, up to 3 s.
+
+The reader's search request uses the shared HTTP client's **default 10 s timeout** (no
+`timeoutMs` is set for `docs.search`). A first search after edits can therefore fail as "Search is
+unavailable right now" while the server is still embedding. This change MUST settle it: the
+search request gets an explicit timeout above the server's bound, or (preferred) the server bounds
+its inline embedding to a budget below the client timeout and answers word-only (`index-building`)
+while the background refresh finishes (API need 5 below).
+
+| Elapsed since the request | Status row and results                                                                                                                                                                                                                                                                           |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 0–400 ms                  | Nothing changes: no spinner, no skeleton, so fast answers never flash. The previous count and rows stay.                                                                                                                                                                                         |
+| 400 ms – 2 s              | The count disappears; the checkbox keeps its place without a number. A changed query keeps the previous rows in place, **dimmed (50%) and inert** (`aria-busy`), so the list does not jump; a first search (no rows yet) shows the existing skeleton rows.                                       |
+| over 2 s                  | One quiet line under the status row: "Preparing search by meaning…" ("Przygotowuję wyszukiwanie znaczeniowe…"). It is honest for both slow causes (the probe and the embedding), which are the preparation of search by meaning. No spinner and no percentage (the request reports no progress). |
+| answer                    | The new count, lines and rows replace everything at once.                                                                                                                                                                                                                                        |
+| failure or timeout        | The existing "Search is unavailable right now." with Retry; the dimmed rows are removed.                                                                                                                                                                                                         |
+
+Live region: nothing for the first 2 s; once at 2 s, "Preparing search by meaning"; then once for
+the settled answer. Typing more cancels the pending request and restarts the timeline.
 
 ### Proposals filter wording
 
@@ -493,8 +528,9 @@ frontmatter, where a hit has no sections):
 
 - only in `hybrid` mode, and only when **no result has `wordMatch`** (the document was in neither
   the word (BM25) section ranking nor the frontmatter ranking), one quiet line under the status row
-  says "No result contains the words you searched for; these documents are related by meaning."
-  ("Żaden wynik nie zawiera szukanych słów; to dokumenty o podobnym znaczeniu.");
+  says "No word matches. Below are results of search by meaning." ("Nie znaleziono dopasowań słów.
+  Poniżej wyniki wyszukiwania znaczeniowego."). The line states only where the results come from;
+  it does not claim they are similar in meaning, because their relevance is unconfirmed;
 - in word-only (`lexical`) mode every result matched words, so the line never shows;
 - the rows stay; an excerpt may have no marks while its document still matched words elsewhere.
 
@@ -521,7 +557,16 @@ geometry, but each passes only the facts of its own kind:
 | Status (trailing on the name line) | local changes, or unavailable                                  | none                   |
 | Detail line (one line)             | kind · bound Specification titles · "this Session's workspace" | key                    |
 
-**Name:** one line with an ellipsis. The full name is reachable:
+**Name:** one line.
+
+- **Identifier-like names** (no spaces: workspace and branch names) truncate **in the middle** and
+  keep their distinguishing end: the last segment after a separator (`-`, `_`, `/`, `.`), with the
+  one before it when the last is shorter than 6 characters, at most 16 characters. Worktrees often
+  differ only at the end (`…-review-mobile` and `…-review-desktop`, `…-docs` and `…-docs-v2`), and
+  an end ellipsis would make them look the same.
+- **Prose names** (with spaces: a Specification title) truncate at the end.
+
+The full name is reachable:
 
 - in a tooltip on hover and keyboard focus, **only when the name is truncated**;
 - in full, wrapping, in the popover's options, which is the touch path;
@@ -558,10 +603,13 @@ key) and 56 px without one. Today the picker is 88 px for the project folder wit
 
 - the name wraps in full;
 - the detail line wraps;
-- the same status slot as the trigger, on its own line: local changes show the amber dot with the
-  verified behaviour, "Local changes: reading and search include uncommitted changes, new files too"
-  ("Zmiany lokalne: czytanie i wyszukiwanie uwzględniają niezatwierdzone zmiany, także nowe
-  pliki"), because a tooltip does not exist on touch;
+- the same status slot as the trigger, on its own line, with the **short** status only: the amber
+  dot and "Local changes" ("Zmiany lokalne");
+- the verified behaviour is said **once**, as a muted footer under the list, shown when a listed
+  workspace has local changes: "Local changes: reading and search include uncommitted changes, new
+  files too" ("Zmiany lokalne: czytanie i wyszukiwanie uwzględniają niezatwierdzone zmiany, także
+  nowe pliki"). A tooltip does not exist on touch, and repeating the sentence on every option made
+  the list long;
 - unavailable shows the `danger` dot and its reason, as in the trigger;
 - the folder is in the tooltip;
 - Selected with a check, as today.
@@ -609,8 +657,8 @@ Remaining space for results at 390x844 (app header 57 px; sticky field 53 px):
   7. the results.
 - **Live region:** one `role="status"` announces once per settled answer, debounced like the
   search: the count (or "No matching documents") **together with** the reason line and the "no word
-  match" line, in one message. It never announces per keystroke or while the answer loads (the
-  loading text is set once when a search starts).
+  match" line, in one message. It never announces per keystroke; while the answer loads it follows
+  "Waiting for an answer" (one message after 2 s, none before).
 
 ### Navigation, Back and the address (decided, owner 2026-11-14)
 
@@ -640,6 +688,8 @@ Approximations in the mock:
 - the compact trigger is a mock-local component;
 - excerpts and marks are precomputed from the shipped snippets;
 - the keyboard is a grey block;
+- the middle truncation keeps the end in its own span, so a small gap can show before it; the
+  implementation measures and cuts the middle exactly;
 - the scroll position is set after the first layout.
 
 ### Data the UI needs
@@ -661,7 +711,9 @@ belongs to the [workspace documentation search](../../../reference/api/workspace
 1. **Plain-text excerpt:** one contiguous fragment as above (a sentence run of one paragraph, one
    list item, or one table row in readable form, with header names when they are known), with no
    Markdown syntax. **Behaviour change:** with no matched word, the excerpt is the section's longest
-   prose fragment; today it is the first pieces after the heading.
+   prose fragment; today it is the first pieces after the heading. A prose fragment wins over a
+   code fragment (code span, path, identifier) that also matches, and the start follows the
+   ellipsis rules above ("… " and a whole word, or a sentence start).
 2. **Match ranges:** character ranges in the plain excerpt for the first occurrence of each query
    term (at most three), using the **excerpt's own matching** (the shared `tokenize` plus the
    four-letter prefix rule of the excerpt), not the ranking's: BM25 matches exact tokens only, with
@@ -672,28 +724,36 @@ belongs to the [workspace documentation search](../../../reference/api/workspace
 4. **`wordMatch` per result:** `true` when the document was in the word (BM25) section ranking or the
    frontmatter ranking (a word can match in a heading or the frontmatter, which the excerpt does not
    show). It drives the "no word match" line in hybrid mode.
+5. **A bounded wait:** the search answers within a budget below the reader's request timeout. When
+   the inline embedding of missing sections would exceed it, the search answers word-only
+   (`index-building`) and the background refresh finishes the embedding. If the server keeps
+   blocking instead, the reader's `docs.search` request MUST get an explicit timeout above the
+   server's worst case (probe, one embedding batch, query).
 
-**Separate decision (proposed, not part of this change):** a relevance cutoff (a minimum vector
+**Separate decision, outside #155 (tracked in issue #156):** a relevance cutoff (a minimum vector
 similarity for hybrid results, also applied to `proposalsLeftOut`), or any ranking change, needs its
 own product rationale, calibration and tests. This proposal works without it: the "no word match"
 line covers the nonsense-query case. Tuning risk: a cutoff calibrated on this corpus may hide valid
 matches by meaning in other corpora or models.
 
-Integration readiness: **dependent** on items 1–4 for the excerpts, the marks and the "no word match"
-line. Everything else can ship on today's API.
+Integration readiness: **dependent** on items 1–5 for the excerpts, the marks, the "no word match"
+line and a first search that does not time out. Everything else can ship on today's API.
 
-### Recommendations awaiting the owner (from the independent review)
+### Owner decisions on this proposal (decided, owner 2026-11-14)
 
-1. **Count:** keep "10 results" ("10 wyników"): it fits beside the checkbox at 390 px and claims no
+1. **Count:** "10 results" ("10 wyników"): it fits beside the checkbox at 390 px and claims no
    total.
-2. **Reason lines:** ship the `endpoint-unreachable` and `index-unavailable` lines in this feature
-   (table above), not as a separate change.
-3. **Sticky surface:** add no new token now. The sticky field uses the existing `surface-raised`; add
-   a design-system token only if the real pane shows a seam during implementation.
+2. **Reason lines:** the `endpoint-unreachable` and `index-unavailable` lines (table above) ship in
+   this feature.
+3. **Sticky surface:** no new token. The sticky field uses the existing `surface-raised` if it looks
+   right in the real component; a design-system token is added only if the real pane shows a seam.
+4. **Search in the address:** decided (section above).
+5. **Relevance cutoff:** stays out of #155, tracked in issue #156.
 
 ### Open (noted, no work in this proposal)
 
-- **F8, real-device keyboard:** check on iOS Safari and Android Chrome at implementation, using
+- **Real-phone check (required before the implementation is accepted):** the sticky search MUST be
+  verified on a real phone (iOS Safari and Android Chrome) with the keyboard open, using
   `interactive-widget=resizes-content` in the viewport meta and `dvh` units, so that the sticky
   field stays above the keyboard.
 - **Light theme:** the palette is dark only; the amber status dot and the marks need checking once a

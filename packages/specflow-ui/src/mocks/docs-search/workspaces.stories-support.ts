@@ -62,6 +62,17 @@ export const unavailableWorkspace: WorkspaceListItem = {
   dirty: false,
 };
 
+const siblingName = longName.replace(/mobile$/u, 'desktop');
+
+/** A sibling worktree whose name differs from the long one only at the end. */
+export const longWorktreeSibling: WorkspaceListItem = {
+  ...longWorktreeWorkspace,
+  workspaceId: '9b3e6c21-4f7a-4d0e-8c55-1a2b3c4d5e6f',
+  name: siblingName,
+  path: `${root}\\repo-worktrees\\${siblingName}`,
+  dirty: false,
+};
+
 export const workspaceList = (
   extra: readonly WorkspaceListItem[] = [],
   repo: WorkspaceListItem = repoWorkspace,

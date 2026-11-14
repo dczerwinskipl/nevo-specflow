@@ -9,6 +9,7 @@ import {
   worktreeAiOff,
 } from './searchAnswers.stories-support';
 import {
+  longWorktreeSibling,
   longWorktreeWorkspace,
   repoWorkspace,
   unavailableWorkspace,
@@ -86,6 +87,13 @@ export const AfterEndpointUnreachable390: Story = {
   tags: ['capture'],
   args: { answer: repoErrorsOff, reason: 'endpoint-unreachable' },
 };
+
+/* 4b. A slow answer (the first search after edits embeds missing sections), over 2 s */
+export const AfterSlowRefine390: Story = {
+  tags: ['capture'],
+  args: { query: 'Ai session provider limits', loading: 'refine' },
+};
+export const AfterSlowFirst390: Story = { tags: ['capture'], args: { loading: 'first' } };
 export const AfterOnlyProposals390: Story = {
   tags: ['capture'],
   args: { empty: 'only-proposals' },
@@ -93,7 +101,7 @@ export const AfterOnlyProposals390: Story = {
 
 /* 5. Stress: a 98-character worktree name, long titles, the popover */
 const long = {
-  workspaces: workspaceList([longWorktreeWorkspace, unavailableWorkspace]),
+  workspaces: workspaceList([longWorktreeWorkspace, longWorktreeSibling, unavailableWorkspace]),
   selectedWorkspaceId: longWorktreeWorkspace.workspaceId,
   answer: repoErrorsOn,
 };

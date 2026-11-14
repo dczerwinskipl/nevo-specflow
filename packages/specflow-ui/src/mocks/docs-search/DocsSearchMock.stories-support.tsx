@@ -40,6 +40,7 @@ import { displayPath } from '../../features/docs/workspace-picker/workspacePicke
 import { workspaceUnavailableMessage } from '../../features/workspaces/read-model';
 import { DocsProposalsFilter } from '../../features/docs/tree-pane/DocsProposalsFilter';
 import { DocsSearchResults } from '../../features/docs/tree-pane/DocsSearchResults';
+import { TreeSkeleton } from '../../features/docs/tree-pane/TreeSkeleton';
 import { searchStatus } from '../../features/docs/tree-pane/DocsSearchPanel';
 import type { MockAnswer, MockHit } from './searchAnswers.stories-support';
 
@@ -75,7 +76,8 @@ const copy = {
     proposalsHint:
       'Propozycje to pomysły i plany z folderów oznaczonych jako propozycje, a nie obowiązujące zasady. Liczba mówi, ile propozycji jest wśród najlepszych wyników.',
     proposal: 'Propozycja',
-    meaningOnly: 'Żaden wynik nie zawiera szukanych słów; to dokumenty o podobnym znaczeniu.',
+    meaningOnly: 'Nie znaleziono dopasowań słów. Poniżej wyniki wyszukiwania znaczeniowego.',
+    slow: 'Przygotowuję wyszukiwanie znaczeniowe…',
     noMatches: 'Brak pasujących dokumentów.',
   },
   en: {
@@ -108,6 +110,8 @@ export interface DocsSearchMockProps {
   reason?: MockReason;
   /** The field text when it differs from the answer's query (a no-match search). */
   query?: string;
+  /** The answer has been pending for over 2 s: the first search (no rows yet) or a changed query. */
+  loading?: 'first' | 'refine';
 }
 
 /* ------------------------------------------------------------------ the proposed trigger */
@@ -121,6 +125,28 @@ export interface TriggerStatus {
   readonly text: string;
   /** `attention`: informational amber (local changes); `danger`: it cannot be read now. */
   readonly tone: 'attention' | 'danger';
+}
+
+/**
+ * The end kept whole when an identifier-like name (no spaces: a workspace, a branch) is truncated
+ * in the middle: its last segment after a separator (- _ / .), with the one before it when the last
+ * is shorter than 6 characters, at most 16 characters; the last 8 characters without a separator.
+ * Prose names (with spaces, such as a Specification title) truncate at the end: undefined.
+ */
+export function distinguishingTail(name: string): string | undefined {
+  if (/\s/.test(name) || name.length <= 16) {
+    return undefined;
+  }
+
+  const cuts = [...name.matchAll(/[-_/.]/g)].map((match) => match.index);
+  const last = cuts.at(-1);
+  if (last === undefined) {
+    return name.slice(-8);
+  }
+
+  const start = name.length - last < 6 && cuts.length > 1 ? cuts.at(-2)! : last;
+
+  return name.length - start <= 16 ? name.slice(start) : name.slice(-16);
 }
 
 /**
@@ -144,6 +170,7 @@ export function CompactSwitcherTrigger({
 } & Omit<React.ComponentPropsWithRef<'button'>, 'children' | 'name' | 'className'>) {
   const nameRef = useRef<HTMLSpanElement>(null);
   const [truncated, setTruncated] = useState(false);
+  const tail = distinguishingTail(name);
   useLayoutEffect(() => {
     const el = nameRef.current;
     setTruncated(el !== null && el.scrollWidth > el.clientWidth);
@@ -164,12 +191,22 @@ export function CompactSwitcherTrigger({
           </Typography>
           <span className="flex min-w-0 items-baseline gap-2">
             <Typography
-              ref={nameRef}
               as="span"
               variant="title-sm"
-              className="min-w-0 flex-1 truncate text-content-primary"
+              className="flex min-w-0 flex-1 text-content-primary"
             >
-              {name}
+              {tail === undefined ? (
+                <span ref={nameRef} className="min-w-0 truncate">
+                  {name}
+                </span>
+              ) : (
+                <>
+                  <span ref={nameRef} className="min-w-0 truncate">
+                    {name.slice(0, name.length - tail.length)}
+                  </span>
+                  <span className="shrink-0 whitespace-pre">{tail}</span>
+                </>
+              )}
             </Typography>
             {status && (
               <span
@@ -231,8 +268,8 @@ function useWorkspaceFacts(locale: AppLocale = 'pl') {
 
 /**
  * Proposed ContextSwitcherOption with the same status slot as the trigger (approximation of a
- * shared change): the name wrapping in full with the status dot and text, the detail line, an
- * optional muted explanation, and Selected with a check. Unavailable keeps the danger dot here too,
+ * shared change): the name wrapping in full, the detail line, the short status (the local-changes
+ * explanation is said once, under the list), and Selected with a check. Unavailable keeps the danger dot here too,
  * so amber means only local changes.
  */
 function MockOption({
@@ -242,7 +279,6 @@ function MockOption({
   unavailable,
   status,
   detail,
-  explanation,
 }: {
   name: string;
   title: string;
@@ -250,7 +286,6 @@ function MockOption({
   unavailable: boolean;
   status?: TriggerStatus;
   detail: string;
-  explanation?: string;
 }) {
   return (
     <button
@@ -281,7 +316,7 @@ function MockOption({
         {status && (
           <span className="flex items-start gap-1.5 text-body-sm text-content-secondary">
             <StatusIndicator tone={status.tone} className="mt-1.5 shrink-0" />
-            {explanation ?? status.text}
+            {status.text}
           </span>
         )}
         {selected && (
@@ -344,11 +379,20 @@ export function ProposedWorkspacePicker({
                   unavailable={!workspace.available}
                   status={status}
                   detail={segments.map((segment) => segment.text).join(' · ')}
-                  explanation={status?.tone === 'attention' ? copy.pl.dirtyExplained : undefined}
                 />
               );
             })}
           </div>
+          {/* The local-changes explanation, said once for the whole list (touch has no tooltip). */}
+          {list.some((workspace) => workspace.available && workspace.dirty) && (
+            <Typography
+              as="p"
+              variant="body-sm"
+              className="mt-2 border-t border-divider px-2 pt-2 text-content-muted"
+            >
+              {copy.pl.dirtyExplained}
+            </Typography>
+          )}
         </PopoverContent>
       </Popover>
     </div>
@@ -477,15 +521,16 @@ function ProposedStatusRow({
 }: {
   count: string | undefined;
   lines: readonly string[];
-  proposals: number;
+  /** `undefined` while the answer loads: the label has no number and keeps its place. */
+  proposals: number | undefined;
   includeProposals: boolean;
 }) {
-  const shown = includeProposals || proposals > 0;
+  const shown = includeProposals || proposals === undefined || proposals > 0;
 
   return (
     <>
       <span role="status" className="sr-only">
-        {[count ?? copy.pl.noMatches, ...lines].join(' ')}
+        {[count ?? (proposals === undefined ? '' : copy.pl.noMatches), ...lines].join(' ').trim()}
       </span>
       {/* The row is at least one target tall, so the 44 px touch targets never reach the field. */}
       {(count !== undefined || shown) && (
@@ -538,10 +583,11 @@ function reasonLine(reason: MockReason | undefined): string | undefined {
 
 function ProposedPane(props: DocsSearchMockProps) {
   const { t } = useTranslation();
-  const { answer, empty = 'none', reason } = props;
+  const { answer, empty = 'none', reason, loading } = props;
   const results = empty === 'none' ? answer.results : [];
-  const proposals =
-    empty === 'only-proposals'
+  const proposals = loading
+    ? undefined
+    : empty === 'only-proposals'
       ? 2
       : empty === 'no-match'
         ? 0
@@ -550,13 +596,15 @@ function ProposedPane(props: DocsSearchMockProps) {
           : answer.proposalsLeftOut;
   const mode = reason ? 'lexical' : answer.mode;
   // The count of the list, never a total: the search has no total (the limit caps the list).
-  const count = results.length === 0 ? undefined : copy.pl.count(results.length);
+  const count = results.length === 0 || loading ? undefined : copy.pl.count(results.length);
   // A server fact (`wordMatch`), only in hybrid mode: in word-only mode every result matched words.
   const meaningOnly =
-    mode === 'hybrid' && results.length > 0 && results.every((hit) => !hit.wordMatch);
-  const lines = [reasonLine(reason), meaningOnly ? copy.pl.meaningOnly : undefined].filter(
-    (line): line is string => line !== undefined,
-  );
+    !loading && mode === 'hybrid' && results.length > 0 && results.every((hit) => !hit.wordMatch);
+  const lines = loading
+    ? [copy.pl.slow]
+    : [reasonLine(reason), meaningOnly ? copy.pl.meaningOnly : undefined].filter(
+        (line): line is string => line !== undefined,
+      );
 
   return (
     <PaneScroller scrolled={props.scrolled}>
@@ -599,7 +647,15 @@ function ProposedPane(props: DocsSearchMockProps) {
           </Typography>
         ))}
       </div>
-      {results.length > 0 ? (
+      {loading === 'first' ? (
+        // The first search of the field: skeleton rows (shown only after 400 ms).
+        <TreeSkeleton />
+      ) : loading === 'refine' ? (
+        // A changed query: the previous rows stay in place, dimmed and inert, until the answer.
+        <div aria-busy="true" inert className="opacity-50" data-mock-stale>
+          <ProposedResults results={results} activeId={props.activeId} />
+        </div>
+      ) : results.length > 0 ? (
         <ProposedResults results={results} activeId={props.activeId} />
       ) : (
         <div className="px-2">

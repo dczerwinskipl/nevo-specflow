@@ -21,29 +21,41 @@ function cells(line: string): string[] {
       cell += ch + value[++i];
       continue;
     }
+
     if (ch === '`') {
       let count = 1;
-      while (value[i + count] === '`') count++;
-      if (inlineTicks === 0) inlineTicks = count;
-      else if (count === inlineTicks) inlineTicks = 0;
+      while (value[i + count] === '`') {
+        count++;
+      }
+
+      if (inlineTicks === 0) {
+        inlineTicks = count;
+      } else if (count === inlineTicks) {
+        inlineTicks = 0;
+      }
+
       cell += '`'.repeat(count);
       i += count - 1;
       continue;
     }
+
     if (ch === '|' && inlineTicks === 0) {
       result.push(cell.trim());
       cell = '';
       continue;
     }
+
     cell += ch;
   }
 
   result.push(cell.trim());
+
   return result;
 }
 
 function isTableLine(line: string): boolean {
   const s = line.trim();
+
   return s.startsWith('|') && s.endsWith('|');
 }
 
@@ -57,7 +69,10 @@ export function validateRoadmapTables(docs: readonly DocRecord[]): string[] {
   const issues: string[] = [];
 
   for (const doc of docs) {
-    if (!ROADMAP_DOCS.has(String(doc.id))) continue;
+    if (!ROADMAP_DOCS.has(String(doc.id))) {
+      continue;
+    }
+
     const lines = doc.body.split(/\r?\n/);
     let fence: { char: string; min: number } | undefined;
 
@@ -66,20 +81,30 @@ export function validateRoadmapTables(docs: readonly DocRecord[]): string[] {
       const code = /^(\x60{3,}|~{3,})/.exec(line);
       if (code?.[1]) {
         const marker = code[1];
-        if (!fence) fence = { char: marker.charAt(0), min: marker.length };
-        else if (marker.charAt(0) === fence.char && marker.length >= fence.min) fence = undefined;
+
+        if (!fence) {
+          fence = { char: marker.charAt(0), min: marker.length };
+        } else if (marker.startsWith(fence.char) && marker.length >= fence.min) {
+          fence = undefined;
+        }
         i++;
         continue;
       }
+
       if (fence || !isTableLine(lines[i] ?? '')) {
         i++;
         continue;
       }
 
       const start = i;
-      while (i < lines.length && isTableLine(lines[i] ?? '')) i++;
+      while (i < lines.length && isTableLine(lines[i] ?? '')) {
+        i++;
+      }
+
       const rows = lines.slice(start, i).map(cells);
-      if (rows.length < 2 || !rows[1]?.every(isRule)) continue;
+      if (rows.length < 2 || !rows[1]?.every(isRule)) {
+        continue;
+      }
 
       const width = rows[0]?.length ?? 0;
       for (let j = 1; j < rows.length; j++) {

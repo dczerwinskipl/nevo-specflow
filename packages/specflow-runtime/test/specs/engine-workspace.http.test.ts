@@ -126,7 +126,15 @@ describe('Engine-backed specification workspace read', () => {
           // The Engine's Task resources: none yet, a verified empty section.
           tasks: {
             state: 'available',
-            data: { groups: [], completed: 0, total: 0, attention: [] },
+            data: {
+              groups: [],
+              completed: 0,
+              total: 0,
+              cancelled: 0,
+              onHold: 0,
+              attention: [],
+              overview: { rows: [], compact: [] },
+            },
           },
           documents: body.sections.documents,
           // Managed Sessions are disabled in this Runtime: the registry is unreadable.

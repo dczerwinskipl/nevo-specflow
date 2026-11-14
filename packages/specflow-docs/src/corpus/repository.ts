@@ -12,11 +12,14 @@ import { lstat, readdir, readFile } from 'node:fs/promises';
 import { extname, join, relative, sep } from 'node:path';
 
 import { parseFrontmatter, type DocRecord } from '../frontmatter/contract';
+import { DocsError } from '../errors';
 
 export interface ScanResult {
   readonly docs: DocRecord[];
   /** Project-root-relative paths of markdown files that have no frontmatter. */
   readonly missingFrontmatter: string[];
+  /** Files whose frontmatter block is not valid YAML, with the parser's message. */
+  readonly invalidFrontmatter: { readonly file: string; readonly error: string }[];
 }
 
 /** Everything the discovery use cases touch on disk. */
@@ -165,10 +168,22 @@ export function createFileSystemDocRepository({
     scan(): ScanResult {
       const docs: DocRecord[] = [];
       const missingFrontmatter: string[] = [];
+      const invalidFrontmatter: { file: string; error: string }[] = [];
 
       for (const abs of walkMarkdown(docsDir, '', excluded)) {
         const file = toPosix(relative(projectRoot, abs));
-        const parsed = parseFrontmatter(readFileSync(abs, 'utf8'), file);
+        let parsed: ReturnType<typeof parseFrontmatter>;
+        try {
+          parsed = parseFrontmatter(readFileSync(abs, 'utf8'), file);
+        } catch (error) {
+          if (!(error instanceof DocsError)) {
+            throw error;
+          }
+
+          invalidFrontmatter.push({ file, error: error.message });
+          continue;
+        }
+
         if (parsed === null) {
           missingFrontmatter.push(file);
           continue;
@@ -179,8 +194,9 @@ export function createFileSystemDocRepository({
 
       docs.sort((a, b) => String(a.id).localeCompare(String(b.id)));
       missingFrontmatter.sort();
+      invalidFrontmatter.sort((a, b) => a.file.localeCompare(b.file));
 
-      return { docs, missingFrontmatter };
+      return { docs, missingFrontmatter, invalidFrontmatter };
     },
 
     async listMarkdownFiles(): Promise<string[]> {

@@ -86,6 +86,14 @@ export const CloseErrorSchema = Type.Object(
     remedy: Type.Optional(Type.String()),
     /** Present for `DOCUMENT_COMMITS_PENDING` (`details.cause`: `commit-pending`, `commit-failed`, ...). */
     details: Type.Optional(DocumentErrorDetailsSchema),
+    /**
+     * Present for `CLOSE_LOCAL_CONFIG_MODIFIED`: the worktree's `.nevo/local/config.yaml` was
+     * edited (`changed`), was not copied by Create (`unrecorded`), or cannot be read
+     * (`unreadable`). Move or delete it, then resume the same Close operation.
+     */
+    localConfig: Type.Optional(
+      Type.Union([Type.Literal('changed'), Type.Literal('unrecorded'), Type.Literal('unreadable')]),
+    ),
   },
   { $id: 'CloseError', additionalProperties: false },
 );

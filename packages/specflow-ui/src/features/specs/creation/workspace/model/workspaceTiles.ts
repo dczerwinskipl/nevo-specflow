@@ -1,16 +1,13 @@
-import {
-  designatedBaseRef,
-  localBranchRef,
-  type CreateOptions,
-} from '@nevo/specflow-contracts/specs';
+import { designatedBaseRef, localBranchRef } from '@nevo/specflow-contracts/specs';
+import type { CreateOptionsView, CreateWorkspace } from './createOptionsView';
 import { message, type Message } from '../../../../../i18n/message';
 import type { Tile, WorkspaceChoice } from './workspaceChoice';
 
-type Workspace = CreateOptions['workspaces'][number];
+type Workspace = CreateWorkspace;
 
-export const primaryWorkspace = (options: CreateOptions) =>
+export const primaryWorkspace = (options: CreateOptionsView) =>
   options.workspaces.find((w) => w.workspaceId === options.primaryWorkspaceId);
-const linkedWorkspaces = (options: CreateOptions) =>
+const linkedWorkspaces = (options: CreateOptionsView) =>
   options.workspaces.filter((w) => w.kind === 'linked');
 
 /** The Engine does not commit on this workspace's branch (project configuration, Git enabled). */
@@ -27,7 +24,7 @@ export interface TileAvailability {
   count?: number;
 }
 
-export function tileAvailability(options: CreateOptions): Record<Tile, TileAvailability> {
+export function tileAvailability(options: CreateOptionsView): Record<Tile, TileAvailability> {
   const created = options.newWorktree;
   const primary = primaryWorkspace(options);
   const linked = linkedWorkspaces(options);
@@ -92,13 +89,13 @@ export function tileAvailability(options: CreateOptions): Record<Tile, TileAvail
 }
 
 /** Initial tile only; after the user picks one it never jumps silently. */
-export function defaultTile(options: CreateOptions): Tile | null {
+export function defaultTile(options: CreateOptionsView): Tile | null {
   const availability = tileAvailability(options);
 
   return (['new', 'main', 'existing'] as const).find((tile) => availability[tile].ok) ?? null;
 }
 
-export const activeTile = (choice: WorkspaceChoice, options: CreateOptions): Tile | null =>
+export const activeTile = (choice: WorkspaceChoice, options: CreateOptionsView): Tile | null =>
   choice.tile ?? defaultTile(options);
 
 export type TargetStatus =
@@ -116,7 +113,7 @@ export type TargetStatus =
  * that happens to sit on that branch does not count. The result only decides a quiet note:
  * Create never validates the target and is never blocked by it.
  */
-export function targetStatus(options: CreateOptions): TargetStatus {
+export function targetStatus(options: CreateOptionsView): TargetStatus {
   const branch = options.integrationTargetBranch;
   if (!branch) {
     return { kind: 'none' };
@@ -143,7 +140,7 @@ export type InheritedTarget =
  * Integration target an EXISTING workspace brings along. Only the workspace's own pin counts;
  * the pinned branch is a creation-time value, not the live branch of the target.
  */
-export function inheritedTarget(options: CreateOptions, workspace: Workspace): InheritedTarget {
+export function inheritedTarget(options: CreateOptionsView, workspace: Workspace): InheritedTarget {
   const pin = workspace.integrationDestination;
   if (pin) {
     const target = options.workspaces.find((w) => w.workspaceId === pin.workspaceId);
@@ -169,7 +166,7 @@ export function inheritedTarget(options: CreateOptions, workspace: Workspace): I
  * of that name, for a full ref itself. When that ref is not listed (a commit, a tag, a detached
  * primary workspace) there is nothing honest to preselect.
  */
-export function defaultBaseValue(options: CreateOptions): string {
+export function defaultBaseValue(options: CreateOptionsView): string {
   const primaryBranch = primaryWorkspace(options)?.branch;
   const ref =
     options.defaultBaseRef === 'HEAD'
@@ -185,7 +182,7 @@ export function defaultBaseValue(options: CreateOptions): string {
  * switch starts with it. An untouched default is never sent: an explicit selector creates an
  * immutable PIN, while omission keeps following the project (see {@link buildCreateTarget}).
  */
-export function defaultTargetWorkspaceId(options: CreateOptions): string {
+export function defaultTargetWorkspaceId(options: CreateOptionsView): string {
   const status = targetStatus(options);
 
   return status.kind === 'ok' ? status.workspace.workspaceId : '';

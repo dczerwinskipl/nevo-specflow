@@ -6,6 +6,7 @@ import type {
   DemoCreatedSpec,
   DemoOperationStatus,
 } from '@nevo/specflow-contracts/demo';
+import type { WorkspaceList } from '@nevo/specflow-contracts/workspaces';
 import type { FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createDemoEnvironment } from '../../src/demo';
@@ -59,10 +60,11 @@ const options = async (app: FastifyInstance, scenario?: string) =>
   app.inject({
     url: '/api/demo/specs/create-options' + (scenario ? `?demoScenario=${scenario}` : ''),
   });
+const workspaceList = async (app: FastifyInstance) =>
+  (await app.inject('/api/workspaces')).json<WorkspaceList>();
 const specCount = async (app: FastifyInstance, workspaceId: string) =>
-  (await options(app))
-    .json<DemoCreateOptions>()
-    .workspaces.find((w) => w.workspaceId === workspaceId)?.specCount;
+  (await workspaceList(app)).workspaces.find((w) => w.workspaceId === workspaceId)?.specifications
+    .length;
 const codeOf = (response: { json: <T>() => T }) => response.json<{ code?: string }>().code;
 
 describe('create-options endpoint', () => {
@@ -73,13 +75,15 @@ describe('create-options endpoint', () => {
     expect(response.headers['cache-control']).toBe('no-store');
     const data = response.json<DemoCreateOptions>();
     expect(data.primaryWorkspaceId).toBe(ids.main);
-    expect(data.workspaces.map((w) => [w.branch, w.specCount])).toEqual([
-      ['develop', 0],
+    const list = await workspaceList(app);
+    const counts = new Map(list.workspaces.map((w) => [w.workspaceId, w.specifications.length]));
+    expect(data.workspaces.map((w) => [w.branch, counts.get(w.workspaceId)])).toEqual([
+      ['develop', 1],
       ['feature/platform', 2],
       ['feature/payments', 1],
       ['spec/architecture', 3],
       [undefined, 0],
-      [undefined, 1],
+      [undefined, 0],
     ]);
     expect(data).toMatchObject({
       newWorktree: { status: 'available' },
@@ -88,6 +92,21 @@ describe('create-options endpoint', () => {
       integrationTargetBranch: 'develop',
     });
     expect(data.baseRefs.map((b) => b.ref)).toContain('refs/heads/release/1.4');
+
+    // The workspace list reads the same registry, and its Specifications agree with each
+    // Specification's own `workspaceId`.
+    expect(list.projectFolderId).toBe(ids.main);
+    expect(list.workspaces.map((w) => w.workspaceId)).toEqual(
+      data.workspaces.map((w) => w.workspaceId),
+    );
+    for (const workspace of list.workspaces) {
+      for (const { specId } of workspace.specifications) {
+        const read = await app.inject(`/api/specs/${specId}/workspace`);
+        expect(read.json<{ workspaceId: string }>().workspaceId, specId).toBe(
+          workspace.workspaceId,
+        );
+      }
+    }
   });
   it('reaches state variants through the demoScenario query and the x-demo-scenario header', async () => {
     const app = await runtime();
@@ -103,7 +122,7 @@ describe('create-options endpoint', () => {
     expect(
       (await options(app, 'linked-none-selectable'))
         .json<DemoCreateOptions>()
-        .workspaces.filter((w) => w.kind === 'linked' && w.selectable),
+        .workspaces.filter((w) => w.workspaceId !== ids.main && w.selectable),
     ).toEqual([]);
     expect(
       (await options(app, 'git-unavailable')).json<DemoCreateOptions>().newWorktree.status,
@@ -183,7 +202,7 @@ describe('create with target', () => {
       slug: 'nowa-obsluga-platnosci',
       relativeManifestPath: 'specs/nowa-obsluga-platnosci/manifest.json',
     });
-    expect(await specCount(app, ids.main)).toBe(1);
+    expect(await specCount(app, ids.main)).toBe(2);
   });
   it('existing tile attaches to the selected workspace', async () => {
     const app = await runtime();
@@ -192,7 +211,7 @@ describe('create with target', () => {
       await body(app, 1, { target: { kind: 'existing', workspaceId: ids.platform } }),
     );
     expect(response.json<DemoCreatedSpec>().workspaceId).toBe(ids.platform);
-    expect([await specCount(app, ids.platform), await specCount(app, ids.main)]).toEqual([3, 0]);
+    expect([await specCount(app, ids.platform), await specCount(app, ids.main)]).toEqual([3, 1]);
     const dirty = await post(
       app,
       await body(app, 2, { target: { kind: 'existing', workspaceId: ids.payments } }),
@@ -209,10 +228,11 @@ describe('create with target', () => {
     const created = after.workspaces.find((w) => w.workspaceId === result.workspaceId);
     expect(created).toMatchObject({
       branch: 'feature/nowa-obsluga-platnosci',
-      specCount: 1,
-      kind: 'linked',
       selectable: true,
     });
+    expect(
+      (await workspaceList(app)).workspaces.find((w) => w.workspaceId === result.workspaceId),
+    ).toMatchObject({ kind: 'linked', specifications: [{ specId: result.specId }] });
     expect(after.workspaces).toHaveLength(7);
     expect(after.baseRefs.map((b) => b.ref)).toContain('refs/heads/feature/nowa-obsluga-platnosci');
   });
@@ -315,7 +335,7 @@ describe('create error codes', () => {
       400,
       'CREATE_OPERATION_INVALID',
     );
-    expect(await specCount(app, ids.main)).toBe(0);
+    expect(await specCount(app, ids.main)).toBe(1);
   });
   it('validates against the scenario-shaped options (stale options)', async () => {
     const app = await runtime();
@@ -387,18 +407,18 @@ describe('idempotency, uncertain and recovery results', () => {
       () => undefined,
     );
     expect(dropped?.statusCode !== 201).toBe(true);
-    expect(await specCount(app, ids.main)).toBe(1);
+    expect(await specCount(app, ids.main)).toBe(2);
     const replay = await post(app, input);
     expect(replay.statusCode).toBe(201);
     expect(replay.json<DemoCreatedSpec>().workspaceId).toBe(ids.main);
-    expect(await specCount(app, ids.main)).toBe(1);
+    expect(await specCount(app, ids.main)).toBe(2);
   });
   it('recovery-required blocks until the status read resolves it', async () => {
     const app = await runtime();
     const input = await body(app, 1, { target: { kind: 'new-worktree', branch: 'feature/rec' } });
     const held = await post(app, input, 'recovery-required');
     expect([held.statusCode, codeOf(held)]).toEqual([503, 'CREATE_RECOVERY_REQUIRED']);
-    expect(await specCount(app, ids.main)).toBe(0);
+    expect(await specCount(app, ids.main)).toBe(1);
     expect((await post(app, input)).statusCode).toBe(503);
     const url = `/api/demo/specifications/operations/${op(1)}`;
     const still = (await app.inject(url)).json<DemoOperationStatus>();

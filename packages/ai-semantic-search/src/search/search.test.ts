@@ -197,6 +197,7 @@ describe('createSearchEngine', () => {
   it('degrades to lexical when the store cannot be read', async () => {
     const unreadable: VectorStore = {
       readManifest: () => Promise.resolve({ status: 'unreadable', message: 'EBUSY' }),
+      readEntries: () => Promise.resolve({ status: 'unreadable', message: 'EBUSY' }),
       openWriter: () => Promise.reject(new Error('read-only')),
       query: () => Promise.resolve({ status: 'unreadable', message: 'EBUSY' }),
     };

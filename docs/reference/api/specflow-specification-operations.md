@@ -73,16 +73,30 @@ worktree. Omitted/explicit overrides have distinct durable fingerprints.
 Successful result:
 `{operationId,specId,kind:"specification-create",status:"completed",slug,workspaceId,relativeManifestPath,documentIds}`
 (`documentIds`: the registered documents of the new Specification, in registry order).
-The Create result exposes no absolute checkout paths; create-options do (see `path` and `worktreesRoot` below).
-**Workspace path exposure (decision).** `GET /api/specs/create-options` returns the absolute checkout path of every
-registered workspace and the worktree folder to every principal that holds the `Create` capability (scope `{}`): the
-Create dialog needs them to explain where a spec lands. The Runtime does not hide them behind a separate capability,
-so a Create-capable role can read the workstation directory layout (including user names inside paths); grant `Create`
-only to roles that may see it. Restricting `path`/`worktreesRoot` to an operator capability is a follow-up.
+The Create result exposes no absolute checkout paths; create-options expose the worktree folder (`worktreesRoot` below).
+**Workspace path exposure (decision).** `GET /api/specs/create-options` returns the worktree folder (`worktreesRoot.path`)
+to every principal that holds the `Create` capability (scope `{}`): the Create dialog needs it to explain where a new
+workspace lands. The absolute checkout path of each registered workspace is served by
+[`GET /api/workspaces`](workspaces.md) (`workspace.view`), which Create Specification reads next to the options. The
+Runtime does not hide the folder behind a separate capability, so a Create-capable role can read the workstation
+directory layout (including user names inside paths); grant `Create` only to roles that may see it. Restricting
+`worktreesRoot` to an operator capability is a follow-up.
 
-Create options include `primaryWorkspaceId`, `workspaces[]` (`workspaceId,kind,name,path,managed,specCount,
-state,selectable,integrationSelectable,branch?,reason?,integrationDestination?`),
+Create options include `primaryWorkspaceId`, `workspaces[]` (`workspaceId,managed,specCount,state,selectable,
+integrationSelectable,branch?,reason?,integrationDestination?`),
 `newWorktree` (`status,reason?,branchProtected?`), `defaultBaseRef`, `branchPattern`, `worktreesRoot`, `integrationTargetBranch?`, `commits?`, `baseRefs[]`.
+Each `workspaces[]` entry is keyed by `workspaceId`, the key of the same workspace in
+[`GET /api/workspaces`](workspaces.md). The registry facts (`kind`, `name`, `path`) are served only by that list; a
+client joins the two by `workspaceId`. `specCount` stays a Create-only fact: it counts **every** Specification bound to
+the workspace (for the shared-use warning), whereas `specifications[]` of the list holds only the readable ones the
+caller may view, and serves titles. **Create Specification therefore needs `workspace.view` as well as `Create`**: without
+it the list answers 403 and the form shows the no-permission alert. A workspace of the options that the list does not
+contain means the registry changed between the two reads; the client treats it as a failed read (error state, Retry
+reads both again). The Create-only facts are `managed`, `specCount`, `state`, `selectable`,
+`integrationSelectable`, `integrationDestination`, `branch` and `reason`.
+A checkout that the list reports unavailable as `checkout-mismatch` (the folder no longer is the
+registered checkout: moved, replaced by a link or redirected) is `state:'unavailable'` here with
+`reason:'checkout-unavailable'`; Create has no separate mismatch reason.
 `commits` is `{protectedBranches[],allowedBranches?[]}` and is present **exactly when Git is enabled** (the
 Engine then commits the scaffold), even with empty lists; it is absent when Git is disabled, as are the two
 reasons `branch-protected` and `branch-not-allowed` and `newWorktree.branchProtected`. A workspace whose branch
@@ -90,8 +104,7 @@ is protected or not allowed stays listed with `selectable:false` and that `reaso
 `available`/`dirty`, `branch` names the branch); `integrationSelectable` is unaffected. `newWorktree.branchProtected: true`
 means the branch the pattern generates for a representative name is protected: the tile stays selectable, but
 the user has to type another branch name (advisory; the Engine decides on the real name).
-`name` is the display label of a checkout (its folder name; for the primary checkout the repository
-folder) and `path` its registered display path. `branchPattern` is the effective pattern (default
+`branchPattern` is the effective pattern (default
 `feature/{slug}`; `{shortId}` is optional). `worktreesRoot` is `{path,exists}`: the effective folder
 that receives new worktrees, from the machine-local `git.worktreesRoot` or the `<repo>-worktrees`
 default; `exists` tells whether it exists yet (it is created on first use).
@@ -186,6 +199,17 @@ Close and integration first flush the document commit queue of the affected chec
 `DOCUMENT_COMMITS_PENDING` (`details.cause` `commit-pending`, `commit-failed` or `commit-uncommitted`) while document
 commits remain; the precedence and the preview behaviour are defined in
 [Specification documents](specification-documents.md).
+Worktree Close treats `.nevo/local/cache/**` (the semantic documentation index) as disposable
+product-owned files: they do not make the worktree dirty and are deleted with it. When Create
+copies Project Home's `.nevo/local/config.yaml` into a new linked worktree, the Engine records the
+SHA-256 of the copied bytes in `.nevo/local/state/local-config-copy.json` of that worktree, and Close
+deletes the configuration with the worktree only while its bytes still match the record. A
+configuration that was edited, that the Engine did not copy, or that cannot be read makes Close
+refuse with 409 `CLOSE_LOCAL_CONFIG_MODIFIED` before anything is removed (the Close stays at
+`binding-rebound`). The body carries `localConfig` (`changed`, `unrecorded` or `unreadable`) and a
+`remedy`: the configuration is not the unchanged copy Create made (changed, added by hand, or
+unreadable) and must be moved or deleted manually.
+Retrying the same Close operation afterwards completes the disposal.
 Error status and exact DTO variants are defined in the schema and Runtime endpoint.
 
 No operation silently completes tasks, invents Session state or retries uncertain Git effects.

@@ -811,7 +811,7 @@ export const NavigationSwitcherInteractions: Story = {
       throw new Error('Current choice must not reset the detail route');
     }
 
-    const icon = trigger.querySelector('[data-specification-switcher-icon]');
+    const icon = trigger.querySelector('[data-context-switcher-icon]');
     if (!icon) {
       throw new Error('Switcher glyph missing');
     }

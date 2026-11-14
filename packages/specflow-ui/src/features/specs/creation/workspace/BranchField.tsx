@@ -1,7 +1,8 @@
 import type { MutableRefObject } from 'react';
 import { Field, TextInput } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import { BRANCH_NAME_MAX_LENGTH, type CreateOptions } from '@nevo/specflow-contracts/specs';
+import { BRANCH_NAME_MAX_LENGTH } from '@nevo/specflow-contracts/specs';
+import type { CreateOptionsView } from './model/createOptionsView';
 import { useMessage, type Message } from '../../../../i18n/message';
 import { createControlWidth } from '../createFormLayout';
 import { branchFieldValue } from './model/createRequest';
@@ -20,7 +21,7 @@ export function BranchField({
   update,
   inputRef,
 }: {
-  options: CreateOptions;
+  options: CreateOptionsView;
   choice: WorkspaceChoice;
   title: string;
   error: Message | undefined;

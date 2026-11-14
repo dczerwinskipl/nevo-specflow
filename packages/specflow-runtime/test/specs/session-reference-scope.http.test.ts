@@ -7,6 +7,7 @@ import { registerRuntimeErrorHandler } from '../../src/server/error-handler';
 import { specFlowRoleCapabilities } from '../../src/server/roles';
 import { DocsCapabilities } from '../../src/features/docs';
 import { SettingsCapabilities } from '../../src/features/settings';
+import { WorkspaceCapabilities } from '../../src/features/workspaces';
 import { taskReadEndpoint } from '../../src/features/tasks/endpoint';
 import { specificationWorkspaceEndpoint } from '../../src/features/specs/workspace/endpoint';
 import { PageLeases } from '../../src/features/tasks/reads/page-leases';
@@ -103,6 +104,7 @@ async function fixture(role: Role, grant: Scope | undefined) {
       SettingsCapabilities,
       ProjectGitCapabilities,
       DocsCapabilities,
+      WorkspaceCapabilities,
     ],
     roles: specFlowRoleCapabilities(),
     assignments: grant ? [{ subject, role, scope: grant }] : [],

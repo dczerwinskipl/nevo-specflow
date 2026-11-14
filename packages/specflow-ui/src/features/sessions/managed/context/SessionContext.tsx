@@ -12,6 +12,7 @@ import { ContextExecutorSection } from './ContextExecutorSection';
 import { ContextPlannedAreasSection } from './ContextPlannedAreasSection';
 import { ContextNote } from './ContextSectionFrame';
 import { ContextSpecificationSection } from './ContextSpecificationSection';
+import { isSectionPresent } from './sessionContextAvailability';
 import {
   ContextAttentionSection,
   ContextExecutionSection,
@@ -60,6 +61,7 @@ export function SessionContext({
   openStack,
   onOpenSpecification,
   onOpenDocuments,
+  onOpenDocumentation,
   workStack,
 }: {
   sessionId: string;
@@ -85,6 +87,11 @@ export function SessionContext({
    * the way back. Same router-agnostic contract as `onOpenSpecification`. Omitted: no Documents row.
    */
   onOpenDocuments?: (specification: ContextSpecification) => void;
+  /**
+   * Opens the project documentation of this Session's workspace, with this Session as the way
+   * back. Same router-agnostic contract as `onOpenSpecification`. Omitted: no Documentation row.
+   */
+  onOpenDocumentation?: () => void;
   /**
    * The Work history stack `ManagedSession` also uses for its Conversation Work blocks
    * (`createWorkInspector`), passed in so both entry points share its per-Turn tab identity
@@ -170,6 +177,7 @@ export function SessionContext({
             value={value}
             onOpenSpecification={onOpenSpecification}
             onOpenDocuments={onOpenDocuments}
+            onOpenDocumentation={onOpenDocumentation}
           />
           <ContextExecutionSection value={value} onOpenTask={openTask} />
           <ContextAttentionSection value={value} onOpenTask={openTask} />
@@ -178,6 +186,10 @@ export function SessionContext({
             workHistory={value.workHistory}
             runningTurnId={value.runningTurnId}
             onOpen={workStack ? openWorkHistory : undefined}
+            // Without a Specification section, the documentation is the first row of Work.
+            onOpenDocumentation={
+              isSectionPresent('specification', scope) ? undefined : onOpenDocumentation
+            }
           />
           <ContextPlannedAreasSection onOpen={openPlaceholderTab} />
           <SessionTelemetrySection
@@ -239,6 +251,7 @@ function ContextScreen({ source }: { source: SessionContextSource }) {
       openStack={openStack}
       onOpenSpecification={source.onOpenSpecification}
       onOpenDocuments={source.onOpenDocuments}
+      onOpenDocumentation={source.onOpenDocumentation}
       workStack={source.workStack}
     />
   );

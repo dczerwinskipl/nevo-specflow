@@ -1,4 +1,4 @@
-import type { CreateOptions } from '@nevo/specflow-contracts/specs';
+import type { CreateOptionsView } from './createOptionsView';
 
 /**
  * Pure policy of the Workspace section: which tiles are available, what the
@@ -11,7 +11,7 @@ export type WorkspaceOptionsState =
   | { status: 'loading' }
   | { status: 'error' }
   | { status: 'forbidden' }
-  | { status: 'ready'; options: CreateOptions };
+  | { status: 'ready'; options: CreateOptionsView };
 
 export type Tile = 'new' | 'main' | 'existing';
 

@@ -1,14 +1,8 @@
 import type { ArchetypeCatalogue } from '@nevo/specflow-contracts/documents';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  treeBranchClassName,
-  treeHintClassName,
-  treeNodeClassName,
-  treeRootClassName,
-  treeRowClassName,
-} from '@nevo/ui';
-import { DocumentNode, FolderNode } from './DocumentNode';
+import { treeHintClassName, treeNodeClassName, treeRowClassName } from '@nevo/ui';
+import { TreeDocumentRow, TreeFolderRow, TreeLevel } from '../../../../shared/document-tree';
 import {
   declaredTypeIcon,
   documentRowGlyph,
@@ -16,6 +10,8 @@ import {
 } from '../../catalogue/documentTypePolicy';
 import type { DocumentTreeIndex, TreeRows } from './documentTreePolicy';
 import type { InlineEntry } from '../inline-entry/inlineEntry';
+
+const lastSegment = (path: string) => path.split('/').at(-1) ?? path;
 
 /** Everything a level (and the levels below it) needs to draw rows; no state of its own. */
 export interface DocumentTreeLevelContext {
@@ -78,29 +74,43 @@ export function DocumentTreeLevel({
   // The specification's main file (the protected overview) leads its level, before the folders.
   const main = documents.filter((doc) => !doc.dangling && doc.protected);
   const rest = main.length ? documents.filter((doc) => !main.includes(doc)) : documents;
-  const documentRow = (doc: (typeof documents)[number]) => (
-    <DocumentNode
-      key={doc.id}
-      path={doc.path}
-      flat={flat}
-      glyph={
-        doc.dangling
-          ? undefined
-          : documentRowGlyph(doc, declaredTypeIcon(context.catalogue, doc.type))
-      }
-      main={!doc.dangling && doc.protected}
-      label={doc.dangling ? { kind: 'missing' } : documentTrailingLabel(doc, context.catalogue)}
-      selected={context.active !== undefined && context.active === doc.id}
-      disabled={context.locked}
-      buttonRef={context.register('doc:' + doc.id)}
-      editor={entry?.rename?.id === doc.id ? context.renderEntry(entry, flat) : undefined}
-      menu={context.renderMenu('document', doc.path, doc.id)}
-      onOpen={() => context.onOpen(doc.id)}
-    />
-  );
+  const documentRow = (doc: (typeof documents)[number]) => {
+    const label = doc.dangling ? undefined : documentTrailingLabel(doc, context.catalogue);
+    const type = label?.kind === 'type' ? label.text : undefined;
+    const lead = !doc.dangling && doc.protected;
+
+    return (
+      <TreeDocumentRow
+        key={doc.id}
+        name={lastSegment(doc.path)}
+        glyph={
+          doc.dangling
+            ? undefined
+            : documentRowGlyph(doc, declaredTypeIcon(context.catalogue, doc.type))
+        }
+        lead={lead}
+        // A dangling entry (the registry lists a file that is not on disk) keeps its place.
+        state={
+          doc.dangling ? { text: t('documents.tree.fileMissing'), attention: true } : undefined
+        }
+        // The type is in the tooltip ("Type: UX", as the row menu says it) and read with the name.
+        details={[
+          ...(type ? [t('documents.tree.typeOf', { type })] : []),
+          ...(lead ? [t('documents.tree.mainNote')] : []),
+        ]}
+        spokenDetail={type}
+        current={context.active !== undefined && context.active === doc.id}
+        disabled={context.locked}
+        buttonRef={context.register('doc:' + doc.id)}
+        editor={entry?.rename?.id === doc.id ? context.renderEntry(entry, flat) : undefined}
+        menu={context.renderMenu('document', doc.path, doc.id)}
+        onOpen={() => context.onOpen(doc.id)}
+      />
+    );
+  };
 
   return (
-    <ul className={top ? treeRootClassName : treeBranchClassName} aria-labelledby={labelledBy}>
+    <TreeLevel top={top} flat={flat} labelledBy={labelledBy}>
       {main.map(documentRow)}
       {showEntry && entry && (
         <li key={entry.key} className={treeNodeClassName}>
@@ -117,9 +127,9 @@ export function DocumentTreeLevel({
         const renaming = entry?.kind === 'folder' && entry.rename?.path === folder.path;
 
         return (
-          <FolderNode
+          <TreeFolderRow
             key={folder.path}
-            path={folder.path}
+            name={lastSegment(folder.path)}
             expanded={expanded}
             describedBy={empty && expanded ? context.hintId(folder.path) : undefined}
             buttonRef={context.register('folder:' + folder.path)}
@@ -135,10 +145,10 @@ export function DocumentTreeLevel({
                 {t('documents.tree.emptyFolder')}
               </p>
             )}
-          </FolderNode>
+          </TreeFolderRow>
         );
       })}
       {rest.map(documentRow)}
-    </ul>
+    </TreeLevel>
   );
 }

@@ -34,7 +34,7 @@ Close, documents and Engine-owned commits, managed Sessions with
 [durable recovery](../../engineering/shared/specflow-git-recovery.md). The kernel is not yet wired to
 the Runtime, CLI or UI.
 
-Open proposals (draft, non-authoritative; current documentation and code win):
+Open proposals (drafts, not current rules; current documentation and code win):
 
 | Document                                                                                              | Open subject                                                                                         |
 | ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |

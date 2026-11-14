@@ -1,9 +1,12 @@
 import { defineResource } from '@nevo/authorization';
 
-/** The documentation search resource (ADR 0020 §6): capability `docs.search`. */
+/**
+ * The documentation resource (ADR 0022 §2): capability `docs.view` (list, read and search the
+ * documentation of the project's workspaces), checked at the Runtime's project scope `{ projectId }`.
+ */
 export const DocsCapabilities = defineResource({
   name: 'docs',
   actions: {
-    Search: 'search',
+    View: 'view',
   },
 });

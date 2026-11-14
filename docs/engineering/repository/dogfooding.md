@@ -81,7 +81,7 @@ It commits two files:
   so `nevo-specflow start` and `nevo-specflow project bootstrap` refuse and name
   `nevo-specflow init`.
 - `docs/docs.yaml`, the documentation settings: the `scope` and `areas` vocabulary, `ideas/` as
-  non-authoritative and `templates/` excluded from the corpus.
+  proposals and `templates/` excluded from the corpus.
 
 An embedding endpoint is a workstation choice and belongs in the git-ignored
 `.nevo/local/config.yaml` ([local setup](local-setup.md)).

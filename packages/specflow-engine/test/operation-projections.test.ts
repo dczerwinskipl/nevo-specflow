@@ -121,6 +121,7 @@ describe('Q05 transport-neutral operation projections', () => {
       kind: 'specification-close',
       location: 'active',
       integrationRequired: true,
+      sourceWorkspace: { workspaceId: completed.plan.source.workspaceId, kind: 'primary' },
     });
   });
 });

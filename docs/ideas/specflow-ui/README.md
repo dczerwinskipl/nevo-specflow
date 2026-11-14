@@ -17,7 +17,7 @@ read_when:
   - deciding which deterministic workflow facts should be visible to a human
   - mapping specifications, tasks, sessions, artifacts, and human actions into UI surfaces
 summary: >
-  Non-authoritative UI/product inventory for turning deterministic SpecFlow state into a
+  Proposal: UI/product inventory for turning deterministic SpecFlow state into a
   human steering surface without exposing legacy concepts or backend structure as navigation.
 related:
   - ideas.readme
@@ -83,9 +83,9 @@ still open:
 - [Session Composer — open capability design](components/session-composer-design.md)
 - [Accepted Session Chat V10 mock — desktop](examples/session-chat-v10/desktop.html)
 - [Accepted Session Chat V10 mock — mobile](examples/session-chat-v10/mobile.html)
-- [Session actions decision record](session-actions-ux/README.md) (non-authoritative rationale)
-- [Session association UX decision record](session-association-ux/README.md) (non-authoritative
-  rationale and open follow-ups)
+- [Session actions decision record](session-actions-ux/README.md) (rationale; a proposal)
+- [Session association UX decision record](session-association-ux/README.md) (rationale and open
+  follow-ups; a proposal)
 - [Storybook rework — open follow-ups](storybook-rework.md)
 - [Data loading, refresh, batching, and eventing](data-loading-refresh-and-eventing.md)
 - [Screen specifications index](screens/README.md)

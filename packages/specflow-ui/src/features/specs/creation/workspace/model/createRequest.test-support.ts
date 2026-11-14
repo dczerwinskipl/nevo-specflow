@@ -1,11 +1,11 @@
-import type { CreateOptions } from '@nevo/specflow-contracts/specs';
+import type { CreateOptionsView } from './createOptionsView';
 import { buildCreateSlug, buildCreateTarget, type CreateTargetFields } from './createRequest';
 import type { WorkspaceChoice } from './workspaceChoice';
 
 /** The whole request a form with this choice would hand over (tests compose it from the two builders). */
 export function buildCreateRequest(
   choice: WorkspaceChoice,
-  options: CreateOptions,
+  options: CreateOptionsView,
   title: string,
   operationId: string,
 ): CreateTargetFields & { operationId: string } {

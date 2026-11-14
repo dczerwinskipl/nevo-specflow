@@ -231,7 +231,7 @@
       "status": "current",
       "file": "docs/README.md",
       "read_when": [],
-      "summary": "Top-level map of architecture, engineering, design-system, product, reference, instruction, and non-authoritative idea backlog documentation.",
+      "summary": "Top-level map of architecture, engineering, design-system, product, reference, instruction, and idea backlog (proposals) documentation.",
       "related": []
     },
     {
@@ -293,7 +293,7 @@
         "collecting implementation ideas before they become approved architecture or specifications",
         "looking for hardening follow-ups to apply while migrating legacy capabilities"
       ],
-      "summary": "Non-authoritative implementation backlog for ideas worth evaluating during migration. Items here are deliberately separated from current architecture and become normative only after they are promoted into the appropriate architecture, engineering, product, or specification documents.",
+      "summary": "Proposals: an implementation backlog of ideas worth evaluating during migration. Items here are deliberately separated from current architecture and become normative only after they are promoted into the appropriate architecture, engineering, product, or specification documents.",
       "related": [
         "adr.0007-documentation-architecture-and-taxonomy",
         "architecture.ai.provider-boundary",
@@ -314,7 +314,7 @@
         "planning work on docs search, the semantic index or @nevo/ai-semantic-search beyond what is implemented",
         "looking for the open items left by the semantic documentation search PR (#138)"
       ],
-      "summary": "Non-authoritative backlog of what the semantic documentation search (PR #138) deliberately left open: search quality and scale, other corpora and UI surfaces, setup and endpoint gaps, package splits and eval tracking. Each item names the current authoritative document and what is missing.",
+      "summary": "Proposal backlog of what the semantic documentation search (PR #138) deliberately left open: search quality and scale, other corpora and UI surfaces, setup and endpoint gaps, package splits and eval tracking. Each item names the current authoritative document and what is missing.",
       "related": [
         "adr.0020-documentation-discovery-is-a-product-capability",
         "adr.0021-product-neutral-ai-semantic-search-engine",
@@ -470,7 +470,7 @@
         "deciding which deterministic workflow facts should be visible to a human",
         "mapping specifications, tasks, sessions, artifacts, and human actions into UI surfaces"
       ],
-      "summary": "Non-authoritative UI/product inventory for turning deterministic SpecFlow state into a human steering surface without exposing legacy concepts or backend structure as navigation.",
+      "summary": "Proposal: UI/product inventory for turning deterministic SpecFlow state into a human steering surface without exposing legacy concepts or backend structure as navigation.",
       "related": [
         "ideas.readme",
         "product.specflow.ui.interaction-model",
@@ -1181,7 +1181,7 @@
         "planning Docker hosting, repository registration, or installed development tools",
         "evaluating a logical workspace spanning multiple independent Git repositories"
       ],
-      "summary": "Non-authoritative product direction: one SpecFlow Runtime can eventually host multiple registered Git projects, with global app concerns separated from project-owned Engine state, and room for explicitly authorized cross-project agents and an optional logical Workbench without implementing them now.",
+      "summary": "Proposed product direction: one SpecFlow Runtime can eventually host multiple registered Git projects, with global app concerns separated from project-owned Engine state, and room for explicitly authorized cross-project agents and an optional logical Workbench without implementing them now.",
       "related": [
         "ideas.readme",
         "architecture.runtime.ownership-and-lifecycle",
@@ -1221,7 +1221,7 @@
         "deciding external writer claims, local actor trust or lock ordering for workflow steps",
         "preparing an ADR for offline workflow coordination"
       ],
-      "summary": "Non-authoritative backlog of the still open Engine decisions (external claims, offline actor attribution, filesystem scope, lock ordering, read-only enforcement, human approval trust, dirty-baseline admission) with the evidence each needs before promotion.",
+      "summary": "Proposal backlog of the still open Engine decisions (external claims, offline actor attribution, filesystem scope, lock ordering, read-only enforcement, human approval trust, dirty-baseline admission) with the evidence each needs before promotion.",
       "related": [
         "ideas.specflow-engine",
         "ideas.specflow-engine.ownership",
@@ -1570,7 +1570,7 @@
         "replacing the manifest Tasks source with the workflow kernel's Task source",
         "adding Task, document or commit events to the project-mode Activity history"
       ],
-      "summary": "Non-authoritative decision record of making the Specification Overview work on a project Runtime (owner decisions 2026-11-08, delivered in PR #126): Overview sections independent of Tasks, the temporary manifest Tasks source, the partial Activity history, the overview-derived description and the preparation block. Keeps the decisions, the rejected alternatives and the open follow-ups; the behaviour is owned by the Specification Overview and the Specification Workspace API.",
+      "summary": "Decision record (a proposal, not a current rule) of making the Specification Overview work on a project Runtime (owner decisions 2026-11-08, delivered in PR #126): Overview sections independent of Tasks, the temporary manifest Tasks source, the partial Activity history, the overview-derived description and the preparation block. Keeps the decisions, the rejected alternatives and the open follow-ups; the behaviour is owned by the Specification Overview and the Specification Workspace API.",
       "related": [
         "product.specflow.ui.specification-overview",
         "reference.api.specification-workspace",
@@ -1606,7 +1606,7 @@
         "changing the association storage, the composed create, the Session scope or spec.start-session",
         "picking up a stage 3 follow-up (execute-write with specId, Task identity, Engine Task source)"
       ],
-      "summary": "Non-authoritative decision record of stage 3 (owner decisions 2026-11-08, delivered in PR #126): a separate durable Session association registry in the Session SQLite, the composed create from a Specification, one Spec-bearing Session scope with the execute-write exception. Keeps the decisions, the options considered, the fit with the workflow engine and the open follow-ups (D8 execute-write with specId, D13 Task identity, the project-mode Engine Task source); the contracts live in the Sessions API, storage, authorization and workspace documents.",
+      "summary": "Decision record (a proposal, not a current rule) of stage 3 (owner decisions 2026-11-08, delivered in PR #126): a separate durable Session association registry in the Session SQLite, the composed create from a Specification, one Spec-bearing Session scope with the execute-write exception. Keeps the decisions, the options considered, the fit with the workflow engine and the open follow-ups (D8 execute-write with specId, D13 Task identity, the project-mode Engine Task source); the contracts live in the Sessions API, storage, authorization and workspace documents.",
       "related": [
         "ideas.specflow-ui.session-association-ux",
         "reference.api.sessions",
@@ -1786,7 +1786,7 @@
       "status": "current",
       "file": "docs/architecture/decisions/0007-documentation-architecture-and-taxonomy.md",
       "read_when": [],
-      "summary": "Defines a documentation architecture that separates product behavior, durable system architecture, engineering guidance, reusable design-system knowledge, exact reference contracts, operational instructions, and a non-authoritative idea backlog, while using searchable scope, area, and tag metadata so discovery does not depend on folder paths alone.",
+      "summary": "Defines a documentation architecture that separates product behavior, durable system architecture, engineering guidance, reusable design-system knowledge, exact reference contracts, operational instructions, and an idea backlog of proposals, while using searchable scope, area, and tag metadata so discovery does not depend on folder paths alone.",
       "related": [
         "adr.0020-documentation-discovery-is-a-product-capability",
         "docs.readme",
@@ -1998,12 +1998,13 @@
       "status": "current",
       "file": "docs/architecture/decisions/0020-documentation-discovery-is-a-product-capability.md",
       "read_when": [],
-      "summary": "Documentation discovery is deliberately promoted into the product as `@nevo/specflow-docs`: it owns the frontmatter contract, deterministic discovery and optional semantic search, takes its taxonomy from a settings file next to the documentation, works without an initialized project, is exposed as the ordinary CLI command `nevo-specflow docs` and as the Runtime endpoint `GET /api/docs/search`, and keeps its index fresh on Runtime start and on read without a file watcher.",
+      "summary": "Amended by ADR 0022 (workspace-scoped documentation reader). Documentation discovery is deliberately promoted into the product as `@nevo/specflow-docs`: it owns the frontmatter contract, deterministic discovery and optional semantic search, takes its taxonomy from a settings file next to the documentation, works without an initialized project, is exposed as the ordinary CLI command `nevo-specflow docs` and as the Runtime endpoint `GET /api/docs/search`, and keeps its index fresh on Runtime start and on read without a file watcher.",
       "related": [
         "adr.0005-repository-tooling-is-separate-from-the-product-api",
         "adr.0007-documentation-architecture-and-taxonomy",
         "adr.0012-product-package-topology-and-dependency-direction",
         "adr.0021-product-neutral-ai-semantic-search-engine",
+        "adr.0022-workspace-scoped-documentation-reader",
         "architecture.runtime.configuration",
         "architecture.runtime.authorization",
         "architecture.repository-structure"
@@ -2023,6 +2024,27 @@
         "adr.0012-product-package-topology-and-dependency-direction",
         "architecture.runtime.configuration",
         "architecture.repository-structure"
+      ]
+    },
+    {
+      "id": "adr.0022-workspace-scoped-documentation-reader",
+      "type": "adr",
+      "title": "Workspace-scoped documentation reader",
+      "status": "current",
+      "file": "docs/architecture/decisions/0022-workspace-scoped-documentation-reader.md",
+      "read_when": [],
+      "summary": "Amends ADR 0020 sections 3, 5 and 6: the Runtime serves each registered workspace's documentation under /api/workspaces/:workspaceId/docs with docs.view at project scope, replacing /api/docs/*; every checkout has its own index, embedded only through the Runtime's trusted ai.embeddings; and invalid documents are skipped everywhere except docs check. The documents ADR 0020's docs.yaml path prefixes set apart are called proposals (docs.yaml key proposals).",
+      "related": [
+        "adr.0020-documentation-discovery-is-a-product-capability",
+        "adr.0021-product-neutral-ai-semantic-search-engine",
+        "architecture.runtime.authorization",
+        "architecture.runtime.configuration",
+        "architecture.runtime.specflow-project-home",
+        "reference.api.workspace-docs",
+        "reference.configuration.documentation-and-embeddings",
+        "reference.configuration.specflow-git-worktrees",
+        "reference.cli.nevo-specflow-docs",
+        "product.specflow.ui.documentation-reader"
       ]
     },
     {
@@ -2671,17 +2693,19 @@
       "status": "draft",
       "file": "docs/ideas/semantic-docs/surfaces-and-setup.md",
       "read_when": [
-        "planning a contextual help or related-documents surface in the UI",
+        "planning contextual help or related-document suggestions in the UI, or live updates for the documentation reader",
+        "looking for what the workspace documentation reader deliberately left out",
         "indexing another corpus (Specification documents, code) with @nevo/ai-semantic-search",
         "enabling semantic search in an initialized project, or supporting another embedding endpoint",
         "splitting model adapters or agent drivers into separate packages"
       ],
-      "summary": "Proposals beyond PR #138: contextual help and live updates in the UI, other corpora through the chunk-source port, assisted enabling of semantic search in an initialized project, endpoints that need a query string or an api-key header, the status probe on client close, and the @nevo/ai-models and @nevo/ai-agents splits.",
+      "summary": "Open items beyond the semantic search and the workspace documentation reader: contextual help, other corpora, semantic setup, endpoint gaps, future AI package splits and what the reader left out (related suggestions, live events, shared embedding cache, status endpoint, local images, ETag, branch label).",
       "related": [
         "ideas.semantic-docs",
         "adr.0020-documentation-discovery-is-a-product-capability",
         "adr.0021-product-neutral-ai-semantic-search-engine",
-        "reference.api.docs-search",
+        "adr.0022-workspace-scoped-documentation-reader",
+        "reference.api.workspace-docs",
         "reference.configuration.documentation-and-embeddings"
       ],
       "scope": "specflow",
@@ -2696,7 +2720,10 @@
         "semantic-search",
         "help",
         "corpora",
-        "embeddings"
+        "embeddings",
+        "worktree",
+        "workspace",
+        "reader"
       ]
     },
     {
@@ -4018,7 +4045,7 @@
         "evaluating prefetch, batching-window, polling, cache-tuning, or observability ideas",
         "preserving migration evidence for advanced data-delivery behavior not yet promoted"
       ],
-      "summary": "Non-authoritative exploration of advanced SpecFlow UI eventing, prefetch, batching-window, polling, cache-tuning, observability, and migration ideas beyond the canonical data/loading rules.",
+      "summary": "Proposal: exploration of advanced SpecFlow UI eventing, prefetch, batching-window, polling, cache-tuning, observability, and migration ideas beyond the canonical data/loading rules.",
       "related": [
         "ideas.specflow-ui.screens",
         "architecture.runtime.ownership-and-lifecycle",
@@ -4269,7 +4296,7 @@
         "asking why the provider-limits refresh, the unknown-Turn notice or the Session actions look the way they do",
         "reconsidering an alternative rejected for these decisions"
       ],
-      "summary": "Non-authoritative decision record of the provider-limits refresh, the unknown-Turn reconcile notice and the Session actions (rename, archive/restore, delete), accepted by the owner on 2026-11-08 and implemented. Keeps the rationale and the rejected alternatives that still hold; the behaviour is owned by the Full Session product contract.",
+      "summary": "Decision record (a proposal, not a current rule) of the provider-limits refresh, the unknown-Turn reconcile notice and the Session actions (rename, archive/restore, delete), accepted by the owner on 2026-11-08 and implemented. Keeps the rationale and the rejected alternatives that still hold; the behaviour is owned by the Full Session product contract.",
       "related": [
         "product.specflow.ui.full-session",
         "ideas.specflow-ui.session-association-ux",
@@ -4305,7 +4332,7 @@
         "asking why a Session row looks the way it does, or why Session status never takes Engine attempt facts",
         "picking up an open follow-up of the Session association UX"
       ],
-      "summary": "Non-authoritative decision record of the Session association UX (owner decisions 2026-11-08, delivered in PR #126): standalone Sessions out of the UI, the post-delete destination, the Specification Sessions list and its row, Context from the association and Session-owned status. Keeps the decisions, the rejected alternatives that still hold and the open follow-ups; the behaviour is owned by the current product and reference documents it links.",
+      "summary": "Decision record (a proposal, not a current rule) of the Session association UX (owner decisions 2026-11-08, delivered in PR #126): standalone Sessions out of the UI, the post-delete destination, the Specification Sessions list and its row, Context from the association and Session-owned status. Keeps the decisions, the rejected alternatives that still hold and the open follow-ups; the behaviour is owned by the current product and reference documents it links.",
       "related": [
         "product.specflow.ui.specification-sessions",
         "product.specflow.ui.full-session",
@@ -4498,6 +4525,39 @@
         "product.shared.vocabulary",
         "design-system.principles.ui-ux-guidelines",
         "architecture.ai.canonical-session-turn-work"
+      ]
+    },
+    {
+      "id": "product.specflow.ui.documentation-reader",
+      "type": "product",
+      "title": "Documentation reader (UI)",
+      "status": "current",
+      "file": "docs/product/specflow/ui/documentation-reader.md",
+      "read_when": [
+        "designing or implementing the read-only reader of the project documentation in the UI",
+        "choosing how a workspace is chosen or switched for documentation",
+        "presenting documentation search results, proposals or blocked links"
+      ],
+      "summary": "Screen contract of the read-only reader of the project documentation (docs.root) of one registered workspace: entry points, current workspace and picker, tree, search results, the article with contents, links and images, states and recovery, Wide/Compact/Narrow, and the facts the reader reads from the Runtime. Implemented in features/docs (Storybook SpecFlow/Screens/Documentation reader).",
+      "related": [
+        "reference.api.workspace-docs",
+        "product.specflow.ui.interaction-model",
+        "product.specflow.ui.documents-editor-mode",
+        "product.shared.vocabulary",
+        "design-system.principles.layout-and-containment",
+        "design-system.principles.information-hierarchy"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "docs"
+      ],
+      "tags": [
+        "documentation",
+        "reader",
+        "workspace",
+        "worktree",
+        "search"
       ]
     },
     {
@@ -4811,38 +4871,6 @@
       ]
     },
     {
-      "id": "reference.api.docs-search",
-      "type": "reference",
-      "title": "Documentation search and status HTTP API",
-      "status": "current",
-      "file": "docs/reference/api/docs-search.md",
-      "read_when": [
-        "calling the Runtime documentation search endpoint",
-        "changing GET /api/docs/search, its query or the Runtime start refresh of the docs index",
-        "calling or changing GET /api/docs/status",
-        "diagnosing why a Runtime documentation search answers lexically or 503"
-      ],
-      "summary": "GET /api/docs/search answers ranked documents of the project's own documentation, with their frontmatter and best sections, in the result contract of nevo-specflow docs search --json: query parameters (including snippets), the docs.search capability, errors, the read-time refresh, the in-process catch-up of a larger gap and the refresh on Runtime start. GET /api/docs/status reports the semantic search status and refresh progress in the contract of docs semantic status --json.",
-      "related": [
-        "adr.0020-documentation-discovery-is-a-product-capability",
-        "reference.cli.nevo-specflow-docs",
-        "reference.configuration.documentation-and-embeddings",
-        "architecture.runtime.authorization",
-        "reference.api.openapi"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "runtime",
-        "server",
-        "docs",
-        "security"
-      ],
-      "tags": [
-        "semantic-search",
-        "authorization"
-      ]
-    },
-    {
       "id": "reference.api.openapi",
       "type": "reference",
       "title": "Runtime OpenAPI document",
@@ -5147,6 +5175,75 @@
       ]
     },
     {
+      "id": "reference.api.workspace-docs",
+      "type": "reference",
+      "title": "Workspace documentation HTTP API",
+      "status": "current",
+      "file": "docs/reference/api/workspace-docs.md",
+      "read_when": [
+        "calling or changing GET /api/workspaces/:workspaceId/docs, its documents or its search",
+        "building a client of the documentation reader (tree, article, search, corpus revision)",
+        "changing the docs.view capability or the Runtime start refresh of the docs index",
+        "diagnosing why a Runtime documentation search answers lexically, 404, 409, 410 or 503"
+      ],
+      "summary": "The Runtime serves the documentation of each registered workspace: GET /api/workspaces/:workspaceId/docs lists its documents (active, inactive, skipped), .../docs/documents/:documentId reads one article (body without frontmatter, sections, related states; 410 for an inactive one) and .../docs/search ranks documents in the result of nevo-specflow docs search --json, with the proposals left out and the index progress. Every answer carries a corpusRevision; docs.view at the project scope, errors, the read-time refresh, the background catch-up and the start refresh.",
+      "related": [
+        "adr.0022-workspace-scoped-documentation-reader",
+        "adr.0020-documentation-discovery-is-a-product-capability",
+        "reference.api.workspaces",
+        "reference.cli.nevo-specflow-docs",
+        "reference.configuration.documentation-and-embeddings",
+        "architecture.runtime.authorization",
+        "product.specflow.ui.documentation-reader",
+        "reference.api.openapi"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "server",
+        "docs",
+        "security"
+      ],
+      "tags": [
+        "semantic-search",
+        "authorization",
+        "workspace"
+      ]
+    },
+    {
+      "id": "reference.api.workspaces",
+      "type": "reference",
+      "title": "Workspaces HTTP API",
+      "status": "current",
+      "file": "docs/reference/api/workspaces.md",
+      "read_when": [
+        "calling or changing GET /api/workspaces",
+        "listing the registered workspaces of a project in a client (documentation reader, Create Specification)",
+        "changing the workspace.view capability or the workspace list of the demo Runtime"
+      ],
+      "summary": "GET /api/workspaces lists the project's registered workspaces (primary checkout and linked worktrees): id, kind, name, absolute folder, availability with a closed reason, whether it is the Runtime's own checkout, the bound Specifications the caller may view and, with Git enabled, uncommitted changes. Admitted by workspace.view at the project scope.",
+      "related": [
+        "adr.0022-workspace-scoped-documentation-reader",
+        "architecture.runtime.authorization",
+        "reference.configuration.authorization",
+        "reference.api.specflow-specification-operations",
+        "reference.api.specification-workspace",
+        "product.specflow.ui.documentation-reader",
+        "reference.api.openapi"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "server",
+        "security"
+      ],
+      "tags": [
+        "workspace",
+        "worktree",
+        "authorization"
+      ]
+    },
+    {
       "id": "reference.cli.nevo-specflow-contract",
       "type": "reference",
       "title": "nevo-specflow public CLI contract",
@@ -5243,14 +5340,14 @@
       "status": "current",
       "file": "docs/reference/configuration/documentation-and-embeddings.md",
       "read_when": [
-        "configuring the documentation root, taxonomy, non-authoritative or excluded paths of a project",
+        "configuring the documentation root, taxonomy, proposal or excluded paths of a project",
         "writing or validating a docs/docs.yaml documentation settings file",
         "using the docs commands in a project that is not initialized (documentation-only configuration)",
         "enabling semantic documentation search or configuring an embedding endpoint",
         "changing the semantic search step of nevo-specflow init",
         "diagnosing a docs or ai.embeddings configuration error"
       ],
-      "summary": "The docs namespace (root, search.semantic), the documentation settings file <docs.root>/docs.yaml (taxonomy, nonAuthoritative, exclude) and the ai.embeddings endpoint (baseUrl, model, optional protocol, spaceId, dimensions, apiKeyEnv, queryInstruction, batchSize, timeoutMs): which file holds them, how they merge, their validation and defaults, and documentation-only configuration.",
+      "summary": "The docs namespace (root, search.semantic), the documentation settings file <docs.root>/docs.yaml (taxonomy, proposals, exclude) and the ai.embeddings endpoint (baseUrl, model, optional protocol, spaceId, dimensions, apiKeyEnv, queryInstruction, batchSize, timeoutMs): which file holds them, how they merge, their validation and defaults, and documentation-only configuration.",
       "related": [
         "adr.0020-documentation-discovery-is-a-product-capability",
         "adr.0021-product-neutral-ai-semantic-search-engine",

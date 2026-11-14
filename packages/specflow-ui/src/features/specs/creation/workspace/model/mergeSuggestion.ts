@@ -1,4 +1,4 @@
-import type { CreateOptions } from '@nevo/specflow-contracts/specs';
+import type { CreateOptionsView } from './createOptionsView';
 import type { WorkspaceChoice } from './workspaceChoice';
 
 export type MergeSuggestion =
@@ -8,7 +8,7 @@ export type MergeSuggestion =
 /** Contextual merge-back offer after the base is a registered workspace branch (never automatic). */
 export function mergeSuggestion(
   choice: WorkspaceChoice,
-  options: CreateOptions,
+  options: CreateOptionsView,
 ): MergeSuggestion | undefined {
   if (!choice.base.on || !choice.base.ref) {
     return undefined;
@@ -42,7 +42,7 @@ export function mergeSuggestion(
  */
 export function effectiveTargetBranch(
   choice: WorkspaceChoice,
-  options: CreateOptions,
+  options: CreateOptionsView,
 ): string | undefined {
   if (choice.target.on) {
     return choice.target.workspaceId

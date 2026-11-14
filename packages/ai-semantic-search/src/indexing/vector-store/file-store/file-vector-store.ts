@@ -3,6 +3,7 @@ import { mkdir } from 'node:fs/promises';
 import { nearestNeighbours } from '../vector-math';
 import {
   sameIdentity,
+  type EntriesOutcome,
   type ManifestOutcome,
   type OpenWriterOutcome,
   type VectorQuery,
@@ -87,6 +88,25 @@ function openFileVectorStore(
       return outcome.status === 'ok'
         ? { status: 'ok', manifest: outcome.snapshot.manifest }
         : outcome;
+    },
+
+    async readEntries(): Promise<EntriesOutcome> {
+      const outcome = await readSnapshot(directory, cache);
+      if (outcome.status !== 'ok') {
+        return outcome;
+      }
+
+      const { manifest, candidates } = outcome.snapshot;
+
+      return {
+        status: 'ok',
+        manifest,
+        entries: candidates.map(({ chunkId, contentHash, vector }) => ({
+          chunkId,
+          contentHash,
+          vector: Float32Array.from(vector),
+        })),
+      };
     },
 
     async openWriter(): Promise<OpenWriterOutcome> {

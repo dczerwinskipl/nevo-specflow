@@ -77,6 +77,7 @@ export function SpecsOverview({
     <AppWorkspace
       labels={{
         backToPrimary: t('navigation.back'),
+        backToParent: (name: string) => t('navigation.backTo', { name }),
         closeSecondary: t('navigation.closeSecondary'),
         openNavigation: t('navigation.open'),
       }}

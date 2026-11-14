@@ -11,7 +11,7 @@ read_when:
   - replacing the manifest Tasks source with the workflow kernel's Task source
   - adding Task, document or commit events to the project-mode Activity history
 summary: >
-  Non-authoritative decision record of making the Specification Overview work on a project Runtime
+  Decision record (a proposal, not a current rule) of making the Specification Overview work on a project Runtime
   (owner decisions 2026-11-08, delivered in PR #126): Overview sections independent of Tasks, the
   temporary manifest Tasks source, the partial Activity history, the overview-derived description
   and the preparation block. Keeps the decisions, the rejected alternatives and the open follow-ups;
@@ -26,7 +26,7 @@ related:
 
 # Project-mode Specification Overview — decision record
 
-**Non-authoritative.** The behaviour is owned by the
+**A proposal, not a current rule.** The behaviour is owned by the
 [Specification Overview](../../../product/specflow/ui/specification-overview.md) (sections, the
 preparation block, empty Tasks, Activity history, what project mode shows today) and the
 [Specification Workspace API](../../../reference/api/specification-workspace.md#project-summary-tasks-and-activity)

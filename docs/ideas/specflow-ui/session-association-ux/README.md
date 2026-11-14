@@ -12,7 +12,7 @@ read_when:
   - asking why a Session row looks the way it does, or why Session status never takes Engine attempt facts
   - picking up an open follow-up of the Session association UX
 summary: >
-  Non-authoritative decision record of the Session association UX (owner decisions 2026-11-08,
+  Decision record (a proposal, not a current rule) of the Session association UX (owner decisions 2026-11-08,
   delivered in PR #126): standalone Sessions out of the UI, the post-delete destination, the
   Specification Sessions list and its row, Context from the association and Session-owned status.
   Keeps the decisions, the rejected alternatives that still hold and the open follow-ups; the
@@ -31,7 +31,7 @@ related:
 
 # Session association UX — decision record
 
-**Non-authoritative.** This is a decision record of delivered work (PR #126). It explains why; it
+**A proposal, not a current rule.** This is a decision record of delivered work (PR #126). It explains why; it
 does not define behaviour. On any difference the current documents win:
 
 | Decision                                                            | Owning document                                                                                                                                                                              |

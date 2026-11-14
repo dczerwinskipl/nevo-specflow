@@ -3,7 +3,12 @@ import type { Command } from 'commander';
 import { findDocuments } from './documents';
 import type { ScoredDoc } from '../frontmatter/frontmatter-search';
 import { DocsUsageError } from '../errors';
-import { positiveInteger, runDocsAction, type DocsCommandContext } from '../command/context';
+import {
+  positiveInteger,
+  runDocsAction,
+  warnSkipped,
+  type DocsCommandContext,
+} from '../command/context';
 import type { OpenCorpus } from '../command/open-project';
 
 interface FindCliOptions {
@@ -37,13 +42,14 @@ export function addFindCommand(docs: Command, ctx: DocsCommandContext, open: Ope
       }
 
       const { json, ...filters } = opts;
-      const results = findDocuments(await open(), { query, ...filters });
+      const { documents: results, skipped } = findDocuments(await open(), { query, ...filters });
       if (json) {
-        ctx.stdout(JSON.stringify(results, null, 2));
+        ctx.stdout(JSON.stringify({ documents: results, skipped }, null, 2));
 
         return;
       }
 
+      warnSkipped(ctx, skipped);
       if (results.length === 0) {
         ctx.stdout(`(no documents match "${query}")`);
 

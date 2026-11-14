@@ -5,38 +5,40 @@ title: Semantic docs search — surfaces, corpora and setup follow-ups
 status: draft
 scope: specflow
 areas: [docs, ai, ui, runtime, configuration]
-tags: [semantic-search, help, corpora, embeddings]
+tags: [semantic-search, help, corpora, embeddings, worktree, workspace, reader]
 read_when:
-  - planning a contextual help or related-documents surface in the UI
+  - planning contextual help or related-document suggestions in the UI, or live updates for the documentation reader
+  - looking for what the workspace documentation reader deliberately left out
   - indexing another corpus (Specification documents, code) with @nevo/ai-semantic-search
   - enabling semantic search in an initialized project, or supporting another embedding endpoint
   - splitting model adapters or agent drivers into separate packages
 summary: >
-  Proposals beyond PR #138: contextual help and live updates in the UI, other corpora through the
-  chunk-source port, assisted enabling of semantic search in an initialized project, endpoints that
-  need a query string or an api-key header, the status probe on client close, and the
-  @nevo/ai-models and @nevo/ai-agents splits.
+  Open items beyond the semantic search and the workspace documentation reader: contextual help,
+  other corpora, semantic setup, endpoint gaps, future AI package splits and what the reader left
+  out (related suggestions, live events, shared embedding cache, status endpoint, local images,
+  ETag, branch label).
 related:
   - ideas.semantic-docs
   - adr.0020-documentation-discovery-is-a-product-capability
   - adr.0021-product-neutral-ai-semantic-search-engine
-  - reference.api.docs-search
+  - adr.0022-workspace-scoped-documentation-reader
+  - reference.api.workspace-docs
   - reference.configuration.documentation-and-embeddings
 ---
 
 # Semantic docs search — surfaces, corpora and setup follow-ups
 
-Proposal language throughout; each item names the current document.
+Proposal language throughout; each item names the current document. The workspace-scoped reader itself is implemented ([ADR 0022](../../architecture/decisions/0022-workspace-scoped-documentation-reader.md)).
 
 ## Contextual help and related documents in the UI
 
 **Now:** documentation search is available to agents and scripts through
 [`nevo-specflow docs search`](../../reference/cli/nevo-specflow-docs.md#search) and
-[`GET /api/docs/search`](../../reference/api/docs-search.md); the UI has no documentation surface.
+the [workspace documentation HTTP API](../../reference/api/workspace-docs.md); the UI reads the same endpoints in the [documentation reader](../../product/specflow/ui/documentation-reader.md), which has no contextual help or related documents.
 
 **Missing:** a UX contract first (where help appears, what "related documents" means for a screen or
 an open document, how results and sections are shown and opened), then a UI port on the existing
-endpoint. Live updates belong with it: the Runtime notices document changes on the next search
+endpoint. Live updates belong with it: the Runtime notices document changes on the next request
 (read-time refresh) and refreshes on start, but pushes nothing; a help surface that should update
 while the user edits needs a file watcher or an event on the existing Runtime event channels.
 
@@ -73,14 +75,6 @@ supported; the configuration reference says so.
 `apiKeyHeader` key), with the same secret rules (the key value still only from an environment
 variable) and the embedding-space fingerprint covering what changes the model served.
 
-## Status probe on client close
-
-**Now:** `GET /api/docs/status` probes the endpoint (bounded by the query timeout, at most 3000 ms,
-and shared between requests for a few seconds); the probe does not observe the request's close.
-
-**Missing:** passing the request's close signal to the probe, so a client that disconnects does not
-keep a probe running for it. Low priority while the probe is bounded and shared.
-
 ## Package splits
 
 **Now:** ADR 0021 keeps the OpenAI-compatible embeddings adapter inside `@nevo/ai-semantic-search`
@@ -92,3 +86,45 @@ endpoints. The AI agent session drivers (Claude, Codex, Antigravity) live in `@n
 **Missing:** when a second consumer appears, `@nevo/ai-models` for model endpoint adapters, and,
 as a separate decision, a product-neutral `@nevo/ai-agents` package for the session drivers if a
 consumer outside the Runtime needs them. Neither has a consumer today.
+
+## Workspace-aware retrieval and the documentation reader: what is still open
+
+The workspace-scoped documentation reader is implemented: per-workspace tree, article and search
+under `/api/workspaces/{workspaceId}/docs`, project-scoped `docs.view`, trusted embedding egress,
+per-checkout indexes with seeding and write admission, corpus revisions and the reader screens. It
+is decided in [ADR 0022](../../architecture/decisions/0022-workspace-scoped-documentation-reader.md)
+and described in the [workspace documentation API](../../reference/api/workspace-docs.md), the
+[workspaces API](../../reference/api/workspaces.md), the
+[documentation and embeddings configuration](../../reference/configuration/documentation-and-embeddings.md),
+the [authorization reference](../../reference/configuration/authorization.md) and the
+[reader screen contract](../../product/specflow/ui/documentation-reader.md). Those documents win;
+only the items deliberately left out remain here. None has a consumer yet.
+
+- **Related-document suggestions.** Contextual "related documents" for a screen or an open
+  document, beyond explicit search (see also
+  [Contextual help](#contextual-help-and-related-documents-in-the-ui)).
+- **Live filesystem events.** The reader sees a change on its next request; nothing is pushed. A
+  watcher or an event on the Runtime event channels would update an open reader while a document is
+  edited.
+- **Specification and code corpora.** See [Other corpora](#other-corpora).
+- **Shared embedding cache.** Each checkout has its own index; identical sections of different
+  checkouts are embedded once per checkout, and only a seed from Project Home avoids that.
+  Deduplicating embeddings across checkouts needs a content-addressed cache with its own identity
+  and invalidation rules.
+- **HTTP status endpoint and detailed status.** Index progress travels with the workspace search
+  answer (`indexProgress`); there is no `GET` status route and no per-document or per-section
+  detail. `nevo-specflow docs semantic status` is the detailed view (it probes the endpoint, bounded
+  by the query timeout, at most 3000 ms). An HTTP status route would also have to pass the request's
+  close signal to that probe, so a disconnected client does not keep a probe running.
+- **Local images.** The reader does not render images stored in the workspace; adding them needs a
+  workspace-scoped, path-safe file route and its own authorization and caching rules.
+- **`ETag` / `304` for search.** Search answers are `no-store` and carry a `corpusRevision` for
+  coherence; conditional requests would save transfer only.
+- **Branch label in the picker.** The picker names workspaces by folder; showing the checked-out
+  branch needs a Git read for every listed workspace.
+- **One heading model for Contents and search sections.** The reader's Contents
+  (`markdownOutline` in `specflow-ui`) lists h1-h4 in ATX and setext form; the semantic chunker
+  (`splitMarkdownSections` in `ai-semantic-search`) splits on ATX h1-h6 only. A setext heading is
+  therefore in Contents but is not a search section, and h5-h6 split search sections without a
+  Contents entry. Decide which headings search should index, record it, and pin it with a
+  conformance test over shared fixtures; a chunker change bumps `CHUNKER_VERSION` and reindexes.

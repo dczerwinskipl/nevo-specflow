@@ -1,7 +1,7 @@
 import type { Command } from 'commander';
 
 import { getDocumentReads, getDocuments, SECTION_REFERENCE_SEPARATOR } from './documents';
-import { runDocsAction, type DocsCommandContext } from '../command/context';
+import { runDocsAction, warnSkipped, type DocsCommandContext } from '../command/context';
 import type { OpenCorpus } from '../command/open-project';
 import { DocsUsageError } from '../errors';
 
@@ -29,13 +29,14 @@ export function addGetCommand(docs: Command, ctx: DocsCommandContext, open: Open
     runDocsAction(command, async () => {
       const corpus = await open();
       if (opts.content) {
-        const reads = getDocumentReads(corpus, refs);
+        const { documents: reads, skipped } = getDocumentReads(corpus, refs);
         if (opts.json) {
-          ctx.stdout(JSON.stringify(reads, null, 2));
+          ctx.stdout(JSON.stringify({ documents: reads, skipped }, null, 2));
 
           return;
         }
 
+        warnSkipped(ctx, skipped);
         // One delimiter line per reference, then its Markdown; a blank line between references.
         reads.forEach((read, index) => {
           if (index > 0) {
@@ -61,13 +62,14 @@ export function addGetCommand(docs: Command, ctx: DocsCommandContext, open: Open
         );
       }
 
-      const entries = getDocuments(corpus, refs);
+      const { documents: entries, skipped } = getDocuments(corpus, refs);
       if (opts.json) {
-        ctx.stdout(JSON.stringify(entries, null, 2));
+        ctx.stdout(JSON.stringify({ documents: entries, skipped }, null, 2));
 
         return;
       }
 
+      warnSkipped(ctx, skipped);
       for (const entry of entries) {
         ctx.stdout(`${entry.id} — "${entry.title}" [${entry.status}]  ${entry.file}`);
         if (entry.summary) {

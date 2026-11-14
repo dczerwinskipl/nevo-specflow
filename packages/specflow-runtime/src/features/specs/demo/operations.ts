@@ -16,7 +16,7 @@ import {
   type DemoOptionsScenario,
   type DemoScenario,
 } from './scenarios';
-import { seedCreateOptions } from './seed';
+import { seedCreateOptions, toCreateOptions, type DemoRegistry } from './seed';
 import type { DemoOperationRecord } from './operation-list';
 
 interface CreateOperation {
@@ -38,12 +38,12 @@ interface CreateOperation {
  */
 export function createDemoSpecs(state: DemoState, documents: Pick<DemoDocuments, 'scaffold'>) {
   const { catalogue, specifications, locations } = state;
-  const liveOptions: DemoCreateOptions = seedCreateOptions();
+  const liveOptions: DemoRegistry = seedCreateOptions();
   const operations = new Map<string, CreateOperation>();
   const fail = state.fail;
   const id = state.id;
   const uuid = state.uuid;
-  const optionsFor = (scenarios: readonly DemoScenario[]): DemoCreateOptions => {
+  const optionsFor = (scenarios: readonly DemoScenario[]): DemoRegistry => {
     const scenario = scenarios.find((name): name is DemoOptionsScenario =>
       (demoOptionsScenarios as readonly string[]).includes(name),
     );
@@ -325,8 +325,12 @@ export function createDemoSpecs(state: DemoState, documents: Pick<DemoDocuments,
     },
     createWithOutcome,
     /** Registry snapshot, optionally reshaped by an options scenario. */
-    createOptions(scenarios: readonly DemoScenario[] = []): DemoCreateOptions {
+    registry(scenarios: readonly DemoScenario[] = []): DemoRegistry {
       return optionsFor(scenarios);
+    },
+    /** The wire Create options of {@link registry}: without the facts of `GET /api/workspaces`. */
+    createOptions(scenarios: readonly DemoScenario[] = []): DemoCreateOptions {
+      return toCreateOptions(optionsFor(scenarios));
     },
     /** The calling subject's Create operations as list records (see `operation-list.ts`). */
     operationRecords(subject: string): DemoOperationRecord[] {

@@ -12,6 +12,11 @@ import {
   type WorkspaceRegistry,
 } from '../../project/workspace/registry/registry';
 import { WORKSPACE_IDENTITY_RELATIVE_PATH } from '../../project/workspace/identity';
+import { LOCAL_CONFIG_RELATIVE_PATH } from '../../project/git-checkout';
+import {
+  LOCAL_CONFIG_COPY_RECORD_RELATIVE_PATH,
+  inspectLocalConfigCopy,
+} from '../../project/workspace/local-config-copy';
 import {
   rebindLifecycleSpec,
   retireLifecycleWorkspace,
@@ -223,10 +228,51 @@ export async function rebindVerifiedClose(
   });
 }
 
-async function sourceInventorySafe(root: string): Promise<void> {
+/**
+ * Product-owned disposable data a worktree may hold besides its tracked files (ADR 0022 §3): the
+ * local cache directory (for example the documentation index) and the Engine's own state records.
+ * The per-checkout local configuration is disposable only while it is byte-for-byte the copy
+ * Create recorded. Nothing else that Git does not track is ever deleted with a worktree.
+ */
+const DISPOSABLE_CACHE_DIRECTORY = '.nevo/local/cache';
+const DISPOSABLE_FILES: ReadonlySet<string> = new Set([
+  WORKSPACE_IDENTITY_RELATIVE_PATH,
+  LOCAL_CONFIG_COPY_RECORD_RELATIVE_PATH,
+]);
+
+const LOCAL_CONFIG_REFUSALS = {
+  changed: 'changed',
+  unrecorded: 'added by hand',
+  unreadable: 'unreadable',
+} as const;
+
+/**
+ * Last check before the disposal intent. Refusing here leaves the Close at binding-rebound, so the
+ * same operation resumes once the user has moved or deleted the file.
+ */
+async function requireUnchangedLocalConfigCopy(root: string): Promise<void> {
+  const state = await inspectLocalConfigCopy(root);
+  if (state === 'absent' || state === 'unchanged') {
+    return;
+  }
+
+  throw new CloseOperationError(
+    'CLOSE_LOCAL_CONFIG_MODIFIED',
+    'The worktree local configuration ' +
+      LOCAL_CONFIG_RELATIVE_PATH +
+      ' is not the unchanged copy Create made (' +
+      LOCAL_CONFIG_REFUSALS[state] +
+      '): move or delete it, then resume the same Close operation.',
+    { localConfig: state },
+  );
+}
+
+/** Returns whether Git tracks the local configuration (then it is not Create's copy to check). */
+async function sourceInventorySafe(root: string): Promise<boolean> {
   // A physically clean Git status does NOT reveal ignored user data. Every
-  // physical file is checked against the index, except Git's own .git pointer
-  // and the ONE independently verified Engine incarnation marker.
+  // physical file is checked against the index, except Git's own .git pointer,
+  // the ONE independently verified Engine incarnation marker and the
+  // product-owned disposable paths above.
   const tracked = await executeGit(root, ['ls-files', '-z', '--cached', '--full-name']);
   if (tracked.exitCode !== 0) {
     throw recovery('Cannot inspect exact source Git index.');
@@ -250,14 +296,22 @@ async function sourceInventorySafe(root: string): Promise<void> {
       }
 
       if (e.isDirectory()) {
-        await visit(path);
-      } else if (path !== WORKSPACE_IDENTITY_RELATIVE_PATH && !names.has(path)) {
+        if (path !== DISPOSABLE_CACHE_DIRECTORY) {
+          await visit(path);
+        }
+      } else if (
+        !DISPOSABLE_FILES.has(path) &&
+        path !== LOCAL_CONFIG_RELATIVE_PATH &&
+        !names.has(path)
+      ) {
         throw recovery('Unknown ignored or untracked source file blocks disposal: ' + path);
       }
     }
   }
 
   await visit('');
+
+  return names.has(LOCAL_CONFIG_RELATIVE_PATH);
 }
 
 async function sourceMissing(root: string): Promise<boolean> {
@@ -354,7 +408,14 @@ export async function disposeReboundWorktree(
     throw recovery('Source Git branch/head changed since verified integration.');
   }
 
-  await sourceInventorySafe(registration.root);
+  const localConfigTracked = await sourceInventorySafe(registration.root);
+  // Checked last, right before the durable intent, to keep the window to `git worktree remove`
+  // small. It cannot move later: a refusal after the intent would not be resumable, and the
+  // scratch worktree is owned by that intent, so it cannot be removed earlier either.
+  if (!localConfigTracked) {
+    await requireUnchangedLocalConfigCopy(registration.root);
+  }
+
   // TODO(workspace-execution): connect real active writer/session/claim quiescence admission here when implemented.
   const intent = await stage(engine, current, { ...current, stage: 'disposal-initiated' });
   await afterDisposalIntent?.();

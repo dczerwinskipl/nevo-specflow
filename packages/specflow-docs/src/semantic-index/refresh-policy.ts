@@ -18,6 +18,7 @@ import {
   refreshSkippedReason,
   unreadableIndexReason,
 } from './reasons';
+import type { IndexWrites } from './write-admission';
 
 /**
  * Most chunks a search embeds before answering (the read-time refresh). It is one request at the
@@ -29,7 +30,10 @@ export const READ_REFRESH_MAX_CHUNKS = 16;
 
 /** The index a search ranks with, and the providers that embed the query and refresh it. */
 export interface IndexVectors {
+  /** Takes its writer and applies each change only once `writes` admits it (`DocsIndex.store`). */
   readonly store: VectorStore;
+  /** The index's write admission, asked before a catch-up is started too. */
+  readonly writes: IndexWrites;
   readonly providers: EmbeddingProviders;
   /**
    * Runs a full refresh in the background for a gap above `READ_REFRESH_MAX_CHUNKS`. Absent: the
@@ -115,6 +119,9 @@ export async function refreshForRead(
     store,
     maxEmbed: READ_REFRESH_MAX_CHUNKS,
   });
+  if (outcome.status === 'write-failed') {
+    return vectors.writes.refusal() ?? refreshReason(outcome);
+  }
 
   return outcome.status === 'over-limit'
     ? largeGapReason(vectors, outcome.pending, indexCommand)
@@ -131,7 +138,7 @@ export async function refreshForRead(
  * probes the endpoint and rebuilds.
  */
 export async function identityChangedForRead(
-  { catchUp }: IndexVectors,
+  { catchUp, writes }: IndexVectors,
   mismatch: string,
   total: number,
   refresh: boolean,
@@ -141,16 +148,17 @@ export async function identityChangedForRead(
     return identityChangedReason(mismatch, total, `run \`${indexCommand}\``);
   }
 
-  return identityChangedReason(
-    mismatch,
-    total,
-    (await catchUp.running()) ?? (await catchUp.start()),
-  );
+  const running = await catchUp.running();
+  if (running !== undefined) {
+    return identityChangedReason(mismatch, total, running);
+  }
+
+  return (await writes.check()) ?? identityChangedReason(mismatch, total, await catchUp.start());
 }
 
 /** A gap the search does not embed: caught up in the background, or left to `semantic index`. */
 async function largeGapReason(
-  { providers, catchUp }: IndexVectors,
+  { providers, catchUp, writes }: IndexVectors,
   missing: number,
   indexCommand: string,
 ): Promise<DocsSearchReason> {
@@ -167,6 +175,12 @@ async function largeGapReason(
   const probe = await providers.query.probe();
   if (!probe.ok) {
     return embeddingFailureReason(probe.failure);
+  }
+
+  // Starting it writes the index directory (the CLI's marker and log).
+  const refusal = await writes.check();
+  if (refusal !== undefined) {
+    return refusal;
   }
 
   return catchUpReason(missing, READ_REFRESH_MAX_CHUNKS, await catchUp.start());

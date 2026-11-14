@@ -23,6 +23,7 @@ export interface SessionContextSource {
   value: SessionContextViewModel;
   onOpenSpecification?: (specification: ContextSpecification) => void;
   onOpenDocuments?: (specification: ContextSpecification) => void;
+  onOpenDocumentation?: () => void;
   workStack?: WorkHistoryStack;
 }
 
@@ -39,12 +40,20 @@ export function SessionContextSourceProvider({
   value,
   onOpenSpecification,
   onOpenDocuments,
+  onOpenDocumentation,
   workStack,
   children,
 }: SessionContextSource & { children: ReactNode }) {
   const source = useMemo<SessionContextSource>(
-    () => ({ sessionId, value, onOpenSpecification, onOpenDocuments, workStack }),
-    [sessionId, value, onOpenSpecification, onOpenDocuments, workStack],
+    () => ({
+      sessionId,
+      value,
+      onOpenSpecification,
+      onOpenDocuments,
+      onOpenDocumentation,
+      workStack,
+    }),
+    [sessionId, value, onOpenSpecification, onOpenDocuments, onOpenDocumentation, workStack],
   );
 
   return (

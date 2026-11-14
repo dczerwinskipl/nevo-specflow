@@ -1,15 +1,11 @@
 import { stat } from 'node:fs/promises';
-import { basename, dirname, join, resolve } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 
 import type { SpecFlowEngine } from '../../../application';
 import { GitCapabilityError } from '../../../git/errors';
-import { executeGit } from '../../../git/process';
-import {
-  WorkspaceRegistryError,
-  inspectRegisteredWorkspace,
-} from '../../../project/workspace/registry/registry';
-import { READ_GIT_CONCURRENCY, mapBounded } from '../../../concurrency';
-import { createLocalGitClient, type LocalWorktreeFacts } from '../../../version-control/git/client';
+import { WorkspaceRegistryError } from '../../../project/workspace/registry/registry';
+import { inspectRegistryWorkspaces } from '../../workspaces/inspection';
+import { createLocalGitClient } from '../../../version-control/git/client';
 import { validateBaseRef } from '../../../version-control/git/refs';
 import { engineCommitRefusal } from '../../../version-control/commits/branch-patterns';
 import {
@@ -23,7 +19,6 @@ import {
   type GitWorktreePolicy,
 } from '../../../version-control/worktrees/policy';
 import { runReadRequest } from '../../../project/request-verification-memo';
-import { discoverSpecifications } from '../../discovery';
 
 export type CreateWorkspaceState = 'available' | 'unavailable' | 'detached' | 'dirty';
 export type CreateOptionsReason =
@@ -160,113 +155,64 @@ async function inspectCreateOptionsInRequest(
   // `status` for the workspaces that need it.
   const gitEnabled = policy.enabled;
   const git = createLocalGitClient(engine.context.project.homeRoot);
-  const [worktreesResult, branchesResult, discoveredResult] = await Promise.allSettled([
-    gitEnabled ? git.listWorktrees() : Promise.resolve([] as readonly LocalWorktreeFacts[]),
+  const [branchesResult, inspectedResult] = await Promise.allSettled([
     gitEnabled ? git.listLocalRefs() : Promise.resolve([] as readonly string[]),
-    discoverSpecifications(engine),
+    inspectRegistryWorkspaces(engine, registry, gitEnabled),
   ]);
-  let gitReachable = gitEnabled;
-  if (gitEnabled && worktreesResult.status === 'rejected') {
-    if (!isGitUnavailable(worktreesResult.reason)) {
-      throw worktreesResult.reason;
+  const { workspaces: inspected, gitReachable } = settledValue(inspectedResult);
+  const branches = gitReachable ? settledValue(branchesResult) : [];
+
+  const workspaces = inspected.map((item): CreateWorkspaceOption => {
+    const common = {
+      workspaceId: item.workspaceId,
+      kind: item.kind,
+      name: item.name,
+      path: item.root,
+      managed: item.managed,
+      specCount: item.specCount,
+    };
+    if (item.available && policyInvalid) {
+      return { ...common, state: 'unavailable', selectable: false, reason: 'git-policy-invalid' };
     }
 
-    gitReachable = false;
-  }
-
-  const worktrees = gitReachable ? settledValue(worktreesResult) : [];
-  const branches = gitReachable ? settledValue(branchesResult) : [];
-  const discovered = settledValue(discoveredResult);
-  const counts = new Map<string, number>();
-  for (const spec of discovered) {
-    counts.set(spec.workspaceId, (counts.get(spec.workspaceId) ?? 0) + 1);
-  }
-
-  const workspaces = await mapBounded(
-    registry.workspaces,
-    READ_GIT_CONCURRENCY,
-    async (workspace): Promise<CreateWorkspaceOption> => {
-      const common = {
-        workspaceId: workspace.workspaceId,
-        kind: workspace.kind,
-        name: basename(workspace.root),
-        path: workspace.root,
-        managed: workspace.managed,
-        specCount: counts.get(workspace.workspaceId) ?? 0,
+    if (!item.available) {
+      return {
+        ...common,
+        state: 'unavailable',
+        selectable: false,
+        reason:
+          item.unavailableReason === undefined || item.unavailableReason === 'checkout-mismatch'
+            ? 'checkout-unavailable'
+            : item.unavailableReason,
       };
-      const checked = await inspectRegisteredWorkspace(
-        engine.context,
-        registry,
-        workspace.workspaceId,
-      );
-      if (checked.status !== 'unavailable' && policyInvalid) {
-        return { ...common, state: 'unavailable', selectable: false, reason: 'git-policy-invalid' };
-      }
+    }
 
-      if (checked.status === 'unavailable' || (gitEnabled && !gitReachable)) {
-        return {
-          ...common,
-          state: 'unavailable',
-          selectable: false,
-          reason: checked.status === 'unavailable' ? 'checkout-unavailable' : 'git-unavailable',
-        };
-      }
+    // Git disabled: the filesystem verification is the whole answer.
+    if (!item.git) {
+      return { ...common, state: 'available', selectable: true };
+    }
 
-      // Git disabled: the filesystem verification above is the whole answer.
-      if (!gitEnabled) {
-        return { ...common, state: 'available', selectable: true };
-      }
+    if (item.git.detached) {
+      return { ...common, state: 'detached', selectable: false, reason: 'detached' };
+    }
 
-      const gitWorktree = worktrees.find((item) => samePath(item.root, checked.root));
-      if (!gitWorktree || gitWorktree.prunable) {
-        return {
-          ...common,
-          state: 'unavailable',
-          selectable: false,
-          reason: 'git-membership-mismatch',
-        };
-      }
+    const branch = item.git.branch!;
+    const refusal = engineCommitRefusal(policy.commits, branch);
+    // The Engine would not commit the scaffold here: the checkout stays visible but not selectable.
+    if (refusal) {
+      return {
+        ...common,
+        state: item.git.dirty ? 'dirty' : 'available',
+        selectable: false,
+        branch,
+        reason: refusal,
+      };
+    }
 
-      if (!gitWorktree.branch?.startsWith('refs/heads/')) {
-        return { ...common, state: 'detached', selectable: false, reason: 'detached' };
-      }
-
-      const branch = gitWorktree.branch.slice('refs/heads/'.length);
-      const refusal = engineCommitRefusal(policy.commits, branch);
-      const status = await executeGit(checked.root, [
-        '-c',
-        'core.optionalLocks=false',
-        'status',
-        '--porcelain=v1',
-        '--untracked-files=all',
-      ]);
-      if (status.exitCode !== 0) {
-        return {
-          ...common,
-          state: 'unavailable',
-          selectable: false,
-          reason: 'checkout-unavailable',
-        };
-      }
-
-      // The Engine would not commit the scaffold here: the checkout stays visible but not selectable.
-      if (refusal) {
-        return {
-          ...common,
-          state: status.stdout.length !== 0 ? 'dirty' : 'available',
-          selectable: false,
-          branch,
-          reason: refusal,
-        };
-      }
-
-      if (status.stdout.length !== 0) {
-        return { ...common, state: 'dirty', selectable: true, branch, reason: 'dirty' };
-      }
-
-      return { ...common, state: 'available', selectable: true, branch };
-    },
-  );
+    return item.git.dirty
+      ? { ...common, state: 'dirty', selectable: true, branch, reason: 'dirty' }
+      : { ...common, state: 'available', selectable: true, branch };
+  });
   // A concurrent rebind/registration invalidates the whole snapshot.
   if ((await engine.readRegistry()).revision !== registry.revision) {
     throw new WorkspaceRegistryError(
@@ -406,22 +352,6 @@ async function describeWorktreesRoot(
   const found = await stat(path).catch(() => undefined);
 
   return { value: { path, exists: found?.isDirectory() === true }, invalid: false };
-}
-
-function samePath(left: string, right: string): boolean {
-  const a = resolve(left);
-  const b = resolve(right);
-
-  return process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b;
-}
-
-function isGitUnavailable(error: unknown): boolean {
-  return (
-    error instanceof GitCapabilityError &&
-    (error.code === 'GIT_UNAVAILABLE' ||
-      error.code === 'NOT_GIT_REPOSITORY' ||
-      error.code === 'GIT_OPERATION_FAILED')
-  );
 }
 
 function settledValue<T>(result: PromiseSettledResult<T>): T {

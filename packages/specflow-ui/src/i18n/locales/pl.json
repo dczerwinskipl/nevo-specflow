@@ -5,6 +5,7 @@
     "english": "English",
     "polish": "Polski",
     "retry": "Spróbuj ponownie",
+    "selected": "Wybrano",
     "moreActions": "Więcej akcji",
     "notification": "Powiadomienie",
     "notificationsRegion": "Powiadomienia ({{hotkey}})",
@@ -12,6 +13,7 @@
     "retrying": "Ponawianie…",
     "cancel": "Anuluj",
     "close": "Zamknij",
+    "clearSearch": "Wyczyść wyszukiwanie",
     "loading": "Ładowanie…",
     "notImplemented": "Niezaimplementowane",
     "unknown": "Nieznane",
@@ -52,7 +54,8 @@
       "switcher": "{{name}}, otwarte karty: {{n}}",
       "switcherDirty": "{{name}}, niezapisane zmiany, otwarte karty: {{n}}",
       "noItem": "Brak karty"
-    }
+    },
+    "documentation": "Dokumentacja"
   },
   "account": {
     "localAccess": "Dostęp lokalny",
@@ -235,7 +238,6 @@
     "refreshing": "Odświeżanie…",
     "moreActions": "Akcje specyfikacji",
     "search": "Szukaj specyfikacji",
-    "clearSearch": "Wyczyść wyszukiwanie",
     "loading": "Ładowanie specyfikacji",
     "unavailable": "Specyfikacje są niedostępne",
     "unavailableDescription": "Przegląd specyfikacji nie jest jeszcze dostępny w tym Runtime.",
@@ -451,7 +453,6 @@
     "noMatches": "Brak pasujących specyfikacji",
     "navigationFailed": "Nie można otworzyć specyfikacji. Spróbuj ponownie.",
     "browseSpecifications": "Przeglądaj wszystkie specyfikacje",
-    "selected": "Wybrana",
     "active": "Aktywna",
     "activeCount_one": "1 aktywna",
     "activeCount_few": "{{count}} aktywne",
@@ -469,7 +470,8 @@
     "contextUnavailable": "Nie udało się wczytać informacji o specyfikacji.",
     "noSpecificationSelectedTitle": "Wybierz specyfikację",
     "noSpecificationSelectedDescription": "Otwórz specyfikację z listy, aby zobaczyć jej dokumenty i sesje.",
-    "sessionBack": "Wróć do sesji"
+    "sessionBack": "Wróć do sesji",
+    "sessionBackNamed": "Wróć do: {{title}}"
   },
   "operations": {
     "progress": {
@@ -1086,9 +1088,6 @@
     "editor": {
       "sourceLabel": "Treść {{name}}"
     },
-    "properties": {
-      "label": "Właściwości"
-    },
     "actions": {
       "wrapLines": "Zawijaj wiersze",
       "showPath": "Pokaż ścieżkę",
@@ -1220,7 +1219,6 @@
       "typeOf": "Typ: {{type}}",
       "filter": {
         "search": "Szukaj plików",
-        "clearSearch": "Wyczyść wyszukiwanie",
         "types": "Filtruj według typu",
         "typesActive_one": "Filtruj według typu: wybrano {{count}}",
         "typesActive_few": "Filtruj według typu: wybrano {{count}}",
@@ -1276,12 +1274,6 @@
       "title": "Nie znaleziono dokumentu",
       "close": "Zamknij kartę",
       "titleNamed": "Nie znaleziono dokumentu: {{name}}"
-    },
-    "outline": {
-      "label": "Spis treści",
-      "open": "Otwórz spis treści",
-      "close": "Zamknij spis treści",
-      "columnLabel": "Spis treści i właściwości dokumentu"
     },
     "guidance": {
       "label": "Wskazówki",
@@ -1398,6 +1390,159 @@
       "actualSize": "Rzeczywisty rozmiar"
     }
   },
+  "documentReading": {
+    "outline": {
+      "label": "Spis treści",
+      "open": "Otwórz spis treści",
+      "close": "Zamknij spis treści",
+      "columnLabel": "Spis treści i właściwości dokumentu"
+    },
+    "properties": {
+      "label": "Właściwości"
+    }
+  },
+  "docs": {
+    "title": "Dokumentacja",
+    "backToDocumentation": "Wróć do dokumentacji",
+    "closeDocument": "Zamknij dokument",
+    "notice": {
+      "notRegistered": "Obszar roboczy, który czytałeś, nie jest już zarejestrowany, więc to jest dokumentacja {{projectFolder}}.",
+      "unavailable": "{{name}} jest teraz niedostępny, więc to jest dokumentacja {{projectFolder}}.",
+      "notInWorkspace": "Dokumentu {{title}} nie ma w {{workspace}}."
+    },
+    "skipped": {
+      "one": "1 dokument jest pominięty: zawiera błędy",
+      "many_one": "{{count}} dokument jest pominięty: zawiera błędy",
+      "many_few": "{{count}} dokumenty są pominięte: zawierają błędy",
+      "many_many": "{{count}} dokumentów jest pominiętych: zawierają błędy",
+      "many_other": "{{count}} dokumentu jest pominięte: zawierają błędy"
+    },
+    "tree": {
+      "label": "Dokumenty",
+      "loading": "Wczytywanie dokumentów",
+      "proposals": "Propozycje"
+    },
+    "search": {
+      "label": "Szukaj w dokumentacji",
+      "results": "Wyniki wyszukiwania",
+      "loading": "Przeszukiwanie dokumentacji",
+      "count_one": "{{count}} dokument",
+      "count_few": "{{count}} dokumenty",
+      "count_many": "{{count}} dokumentów",
+      "count_other": "{{count}} dokumentu",
+      "indexBuilding": "Na razie tylko dopasowania słów: indeks wyszukiwania jest budowany.",
+      "indexBuildingProgress": "Na razie tylko dopasowania słów: indeks wyszukiwania jest budowany ({{percent}}%).",
+      "includeProposals_one": "Uwzględnij propozycje ({{count}})",
+      "includeProposals_few": "Uwzględnij propozycje ({{count}})",
+      "includeProposals_many": "Uwzględnij propozycje ({{count}})",
+      "includeProposals_other": "Uwzględnij propozycje ({{count}})",
+      "includeProposalsAny": "Uwzględnij propozycje",
+      "proposalsHintLabel": "Czym są propozycje?",
+      "proposalsHint": "Propozycje to pomysły i plany z folderów oznaczonych jako propozycje; nie są obowiązującymi zasadami.",
+      "proposal": "Propozycja",
+      "noMatches": "Brak pasujących dokumentów",
+      "noMatchesHint": "Spróbuj innych słów albo przejrzyj drzewo.",
+      "onlyProposals_one": "Nic w obowiązującej dokumentacji nie pasuje. Pasuje {{count}} propozycja.",
+      "onlyProposals_few": "Nic w obowiązującej dokumentacji nie pasuje. Pasują {{count}} propozycje.",
+      "onlyProposals_many": "Nic w obowiązującej dokumentacji nie pasuje. Pasuje {{count}} propozycji.",
+      "onlyProposals_other": "Nic w obowiązującej dokumentacji nie pasuje. Pasuje {{count}} propozycji.",
+      "failed": "Wyszukiwanie jest teraz niedostępne."
+    },
+    "article": {
+      "fallbackTitle": "Dokument",
+      "loading": "Wczytywanie dokumentu",
+      "copyLink": "Kopiuj link",
+      "copyPath": "Kopiuj ścieżkę",
+      "linkCopied": "Skopiowano link",
+      "pathCopied": "Skopiowano ścieżkę",
+      "copyFailed": "Nie udało się skopiować do schowka",
+      "proposalNote": "To propozycja, a nie obowiązująca zasada. Wyszukiwanie pomija propozycje, chyba że je uwzględnisz.",
+      "noIndex": "To jest dokumentacja projektu w {{workspace}}; otwórz dokument z listy albo go wyszukaj.",
+      "properties": {
+        "path": "Ścieżka",
+        "type": "Typ",
+        "status": "Status dokumentu",
+        "summary": "Podsumowanie",
+        "id": "Identyfikator"
+      }
+    },
+    "related": {
+      "heading": "Powiązane",
+      "inactive": "{{title}} (już nieaktualny)",
+      "missing": "{{id}} (nie znaleziono)",
+      "skipped": "{{id}} (pominięty: zawiera błędy)",
+      "skippedUnknown": "Czytnik pomija ten dokument, bo zawiera błędy."
+    },
+    "reference": {
+      "linkNotOpened": "Link nie został otwarty",
+      "superseded": "Zastąpiony dokument",
+      "imageNotShown": "Obraz nie jest wyświetlany",
+      "image": "Obraz",
+      "reason": {
+        "superseded": "Ten dokument nie jest już aktualny, więc czytnik go nie otwiera.",
+        "outside-docs": "Cel leży poza dokumentacją. Czytnik otwiera tylko dokumenty.",
+        "folder": "To jest katalog, nie dokument. Wybierz dokument w drzewie.",
+        "not-markdown": "Ten plik nie jest dokumentem Markdown, więc czytnik go nie otwiera.",
+        "skipped": "Czytnik pomija ten dokument: {{error}}",
+        "missing": "W tym obszarze roboczym nie ma aktualnego dokumentu pod tą ścieżką.",
+        "unsafe-scheme": "To niebezpieczny link, więc czytnik go nie otwiera.",
+        "image": "Czytnik nie wczytuje obrazów z dokumentów."
+      }
+    },
+    "state": {
+      "openSuccessor": "Otwórz {{title}}",
+      "notAvailable": "Ten dokument nie jest już dostępny w tym obszarze roboczym",
+      "superseded": {
+        "title": "Ten dokument został zastąpiony",
+        "description": "{{id}} nie jest już aktualną dokumentacją, więc nie jest wyświetlany."
+      },
+      "deprecated": {
+        "title": "Ten dokument jest wycofany",
+        "description": "{{id}} nie jest już aktualną dokumentacją, więc nie jest wyświetlany."
+      },
+      "skipped": {
+        "title": "Ten dokument jest pominięty: zawiera błędy"
+      },
+      "articleFailed": {
+        "title": "Nie można teraz wyświetlić dokumentu",
+        "description": "Odczyt się nie powiódł. Spróbuj ponownie za chwilę."
+      },
+      "notConfigured": {
+        "title": "Brak dokumentacji projektu",
+        "description": "{{workspace}} nie ma katalogu dokumentacji. Czytnik pokazuje dokumenty Markdown z katalogu ustawionego jako <code>docs.root</code> w .nevo/config.yaml (domyślnie docs/).",
+        "descriptionRoot": "{{workspace}} nie ma katalogu dokumentacji. Czytnik pokazuje dokumenty Markdown z katalogu ustawionego jako <code>docs.root</code> w .nevo/config.yaml, tutaj {{docsRoot}}/."
+      },
+      "empty": {
+        "title": "Nie ma jeszcze dokumentów",
+        "description": "Katalog dokumentacji {{workspace}} nie zawiera aktualnych dokumentów."
+      },
+      "allSkipped": {
+        "title": "Pliki dokumentacji istnieją, ale żaden nie przeszedł walidacji",
+        "description": "Czytnik pomija wszystkie dokumenty w {{workspace}}, bo każdy zawiera błędy. Popraw je w plikach poniżej."
+      },
+      "unavailable": {
+        "title": "Ten obszar roboczy jest teraz niedostępny",
+        "description": "Nie można odczytać katalogu {{folder}}, na przykład w trakcie przełączania gałęzi albo po przeniesieniu katalogu. Wybierz inny obszar roboczy albo spróbuj ponownie."
+      },
+      "docsUnavailable": {
+        "title": "Nie można teraz odczytać dokumentacji",
+        "description": "Nie udało się odczytać jej ustawień albo ten Runtime nie udostępnia dokumentacji projektu. Spróbuj ponownie za chwilę."
+      },
+      "failed": {
+        "title": "Nie można teraz wyświetlić dokumentacji",
+        "description": "Odczyt się nie powiódł. Spróbuj ponownie za chwilę."
+      },
+      "forbidden": {
+        "title": "Brak dostępu do dokumentacji projektu",
+        "description": "Twoja rola w tym projekcie nie obejmuje czytania dokumentacji. Poproś administratora projektu o dostęp."
+      }
+    },
+    "entry": {
+      "specification": {
+        "label": "Dokumentacja"
+      }
+    }
+  },
   "sessions": {
     "context": {
       "executor": "Wykonawca",
@@ -1504,6 +1649,10 @@
         "sectionTitle": "Praca",
         "currentTurn": "Bieżąca tura",
         "lastTurn": "Ostatnia tura"
+      },
+      "documentation": {
+        "open": "Dokumentacja",
+        "workspace": "Obszar roboczy tej sesji"
       }
     },
     "untitled": "Sesja bez nazwy",
@@ -1768,7 +1917,6 @@
       "filterActive": "Filtruj pracę według typu (aktywny filtr: {{kind}})",
       "filterAll": "Wszystkie",
       "search": "Szukaj w historii pracy",
-      "clearSearch": "Wyczyść wyszukiwanie",
       "showMore": "Pokaż więcej",
       "showLess": "Pokaż mniej",
       "thinking": "Myślenie",
@@ -1954,5 +2102,22 @@
   "sessionNaming": {
     "pending": "Nadawanie nazwy…",
     "provisionalTitle": "Nowa sesja"
+  },
+  "workspacePicker": {
+    "label": "Obszar roboczy",
+    "change": "Zmień obszar roboczy",
+    "list": "Obszary robocze",
+    "projectFolder": "Katalog projektu",
+    "worktree": "Worktree",
+    "sessionWorkspace": "obszar roboczy tej sesji",
+    "dirty": "Uwzględnia niezatwierdzone zmiany"
+  },
+  "workspaces": {
+    "unavailable": {
+      "checkout-unavailable": "Katalog niedostępny",
+      "checkout-mismatch": "Katalog nie jest już tym obszarem roboczym",
+      "git-unavailable": "Git niedostępny",
+      "git-membership-mismatch": "To już nie jest worktree Git tego projektu"
+    }
   }
 }

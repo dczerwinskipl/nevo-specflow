@@ -1,12 +1,22 @@
 import type { DemoCreateOptions, DemoCreatedSpec } from '@nevo/specflow-contracts/demo';
 import { localBranchRef } from '@nevo/specflow-contracts/specs';
+import type { WorkspaceList, WorkspaceListItem } from '@nevo/specflow-contracts/workspaces';
+import type { WorkspaceApi } from '../../../workspaces/read-model';
+import { joinCreateOptions, type CreateOptionsView } from '../workspace/model/createOptionsView';
 
 /**
  * Deterministic `create-options` fixtures for stories and unit tests. They mirror the shapes of
  * the demo contract (PR #53 mirror); the live demo Runtime serves the same seed, but stories never
- * reach the network: they provide these through the `demoCreationApi.createOptions` seam.
+ * reach the network: they provide these through the `demoCreationApi.createOptions` and
+ * `workspaceApi.list` seams ({@link createOptionsWireFixture}, {@link workspaceListFixture}), or
+ * joined as the Create section reads them ({@link createOptionsFixture}).
  */
-type Workspace = DemoCreateOptions['workspaces'][number];
+type Workspace = DemoCreateOptions['workspaces'][number] & {
+  kind: 'primary' | 'linked';
+  name: string;
+  path: string;
+};
+type Registry = Omit<DemoCreateOptions, 'workspaces'> & { workspaces: Workspace[] };
 const uuid = (n: number) => `0b8f1c1e-0a11-4c6e-9a01-${String(n).padStart(12, '0')}`;
 export const workspaceIds = {
   main: uuid(1),
@@ -52,7 +62,7 @@ export type OptionsVariant =
   /** Git enabled, but the project's Git configuration is invalid. */
   | 'git-policy-invalid';
 
-export function seedOptions(): DemoCreateOptions {
+function seedRegistry(): Registry {
   const ids = workspaceIds;
 
   return {
@@ -179,8 +189,8 @@ const blocked = (workspace: Workspace): Workspace =>
     reason: 'checkout-unavailable',
   });
 
-export function createOptionsFixture(variant: OptionsVariant = 'default'): DemoCreateOptions {
-  const next = seedOptions();
+function registryFixture(variant: OptionsVariant): Registry {
+  const next = seedRegistry();
   const primary = () => next.workspaces.find((w) => w.kind === 'primary')!;
   const mapWorkspaces = (fn: (w: Workspace) => Workspace, only: (w: Workspace) => boolean) => {
     next.workspaces = next.workspaces.map((w) => (only(w) ? fn(w) : w));
@@ -372,6 +382,82 @@ export function createOptionsFixture(variant: OptionsVariant = 'default'): DemoC
   }
 
   return next;
+}
+
+/** The Create options as the Runtime serves them: without the facts of `GET /api/workspaces`. */
+export function createOptionsWireFixture(variant: OptionsVariant = 'default'): DemoCreateOptions {
+  const registry = registryFixture(variant);
+
+  return {
+    ...registry,
+    workspaces: registry.workspaces.map(
+      ({ kind: _kind, name: _name, path: _path, ...facts }) => facts,
+    ),
+  };
+}
+
+const listItem = (workspace: Workspace, primaryWorkspaceId: string): WorkspaceListItem => {
+  const available = workspace.state !== 'unavailable';
+
+  return {
+    workspaceId: workspace.workspaceId,
+    kind: workspace.kind,
+    name: workspace.name,
+    path: workspace.path,
+    available,
+    ...(available ? {} : { unavailableReason: 'checkout-unavailable' as const }),
+    isRuntimeWorkspace: workspace.workspaceId === primaryWorkspaceId,
+    // Like the Engine: an unavailable checkout lists no Specification.
+    specifications: available
+      ? Array.from({ length: workspace.specCount }, (_, index) => ({
+          specId: `${workspace.name}-spec-${index + 1}`,
+          title: `Specification ${index + 1} of ${workspace.name}`,
+        }))
+      : [],
+  };
+};
+
+/** `GET /api/workspaces` for the same registry as {@link createOptionsWireFixture}. */
+export function workspaceListFixture(variant: OptionsVariant = 'default'): WorkspaceList {
+  const registry = registryFixture(variant);
+
+  return {
+    projectFolderId: registry.primaryWorkspaceId,
+    workspaces: registry.workspaces.map((workspace) =>
+      listItem(workspace, registry.primaryWorkspaceId),
+    ),
+  };
+}
+
+/**
+ * The `workspaceApi` seam serving {@link workspaceListFixture}. With several variants (a story
+ * whose options change between reads) it serves the union, first row of a workspace wins: the
+ * join ignores list rows that the options do not mention.
+ */
+export const workspaceApiFixture = (
+  variants: OptionsVariant | readonly OptionsVariant[] = 'default',
+): WorkspaceApi => ({
+  list: () => {
+    const lists = (Array.isArray(variants) ? variants : [variants]).map((variant) =>
+      workspaceListFixture(variant as OptionsVariant),
+    );
+    const rows = new Map(
+      lists
+        .flatMap((list) => list.workspaces)
+        .reverse()
+        .map((row) => [row.workspaceId, row]),
+    );
+
+    return Promise.resolve({
+      projectFolderId: lists[0]!.projectFolderId,
+      workspaces: [...rows.values()],
+    });
+  },
+});
+
+/** The Create options joined with the workspace list, as the Create section reads them. */
+export function createOptionsFixture(variant: OptionsVariant = 'default'): CreateOptionsView {
+  return joinCreateOptions(createOptionsWireFixture(variant), workspaceListFixture(variant))!;
 }
 
 /** A completed create response as the demo Runtime returns it. */

@@ -3,15 +3,13 @@ import { useTranslation } from 'react-i18next';
 import {
   Button,
   CheckboxField,
-  Icon,
   IconButton,
-  InputGroup,
   Popover,
   PopoverContent,
   PopoverTrigger,
   Separator,
-  TextInput,
 } from '@nevo/ui';
+import { TreeSearchField } from '../../../../shared/document-tree';
 
 /** A choice row: at least 40 px high where the pointer is coarse (touch). */
 const choiceRow = 'pointer-coarse:min-h-10 pointer-coarse:items-center';
@@ -52,36 +50,13 @@ export function TreeFilterBar({
   return (
     <div className="grid gap-1 px-1">
       <div className="flex min-w-0 items-center gap-1">
-        <InputGroup className="min-w-0 flex-1">
-          <InputGroup.Addon>
-            <Icon name="search" size="sm" />
-          </InputGroup.Addon>
-          <TextInput
-            type="search"
-            // The field has its own clear action; the browser's would be a second one.
-            className="[&::-webkit-search-cancel-button]:appearance-none"
-            aria-label={t('documents.tree.filter.search')}
-            placeholder={t('documents.tree.filter.search')}
-            value={filter.term}
-            onChange={(event) => onChange({ ...filter, term: event.target.value })}
-            onKeyDown={(event) => {
-              if (event.key === 'Escape' && filter.term) {
-                event.preventDefault();
-                onChange({ ...filter, term: '' });
-              }
-            }}
-          />
-          {filter.term && (
-            <InputGroup.Action>
-              <IconButton
-                aria-label={t('documents.tree.filter.clearSearch')}
-                icon="close"
-                size="xs"
-                onClick={() => onChange({ ...filter, term: '' })}
-              />
-            </InputGroup.Action>
-          )}
-        </InputGroup>
+        <TreeSearchField
+          className="flex-1"
+          label={t('documents.tree.filter.search')}
+          value={filter.term}
+          onChange={(term) => onChange({ ...filter, term })}
+          onClear={() => onChange({ ...filter, term: '' })}
+        />
         {types.length > 1 && (
           <Popover>
             <PopoverTrigger asChild>

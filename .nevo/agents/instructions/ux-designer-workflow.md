@@ -44,7 +44,7 @@ Inspect available evidence before asking questions:
 - existing rendered product and approved patterns;
 - current screen/product specification;
 - repository implementation when it reveals established behavior;
-- draft/ideas material as non-authoritative evidence;
+- draft/ideas material (proposals) as evidence, not current rules;
 - explicit owner decisions supplied in the task or conversation.
 
 Distinguish what is already decided from what is merely implemented today.

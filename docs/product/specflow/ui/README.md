@@ -30,3 +30,4 @@ these files.
 | [Documents editor mode](documents-editor-mode.md)                  | Documents with several open tabs, read-only tabs in a Session, tablet threshold.                                              |
 | [Documents and Create with archetypes](documents-archetypes-ui.md) | Document types, unclassified/missing files, expected documents, Create archetype, tab states.                                 |
 | [App Shell geometry decisions](shell-geometry.md)                  | Focused frame and Workspace modes, two-column Create and Overview, rejected alternatives, open UX findings.                   |
+| [Documentation reader](documentation-reader.md) (draft)            | Read-only reader of the project documentation per workspace: picker, tree, search, article, links, states.                    |

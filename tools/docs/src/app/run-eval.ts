@@ -45,13 +45,13 @@ export interface EvalQuestionResult {
   >;
   /** The hybrid variant's mode: `hybrid`, or `lexical (<reason code>)` without usable vectors. */
   readonly hybridMode: string;
-  /** Non-authoritative documents in the hybrid top 10 (a check of the default filter: 0). */
-  readonly nonAuthoritative: number;
+  /** Proposals in the hybrid top 10 (a check of the default filter: 0). */
+  readonly proposals: number;
   /**
-   * With non-authoritative documents included in the hybrid search, how many rank above the first
+   * With proposals included in the hybrid search, how many rank above the first
    * expected document (above all of them for a question without an answer).
    */
-  readonly nonAuthoritativeAboveExpected: number;
+  readonly proposalsAboveExpected: number;
   /** Cosine similarity of the best stored chunk to the query; absent without usable vectors. */
   readonly bestSimilarity?: number;
 }
@@ -61,8 +61,8 @@ export interface EvalReport {
   readonly summaries: Readonly<
     Record<EvalVariant, Readonly<Record<'all' | EvalLanguage, EvalSummary>>>
   >;
-  readonly nonAuthoritativeHits: number;
-  readonly nonAuthoritativeAboveExpected: number;
+  readonly proposalHits: number;
+  readonly proposalsAboveExpected: number;
   readonly results: readonly EvalQuestionResult[];
 }
 
@@ -82,23 +82,23 @@ export async function runEval(
   };
 
   const { documents } = await search.chunks.load();
-  const nonAuthoritative = new Map(
-    documents.map((document) => [asString(document.record.id), document.nonAuthoritative]),
+  const isProposal = new Map(
+    documents.map((document) => [asString(document.record.id), document.proposal]),
   );
   const invalid = questions.flatMap((question) =>
-    question.expected.filter((id) => nonAuthoritative.get(id) !== false),
+    question.expected.filter((id) => isProposal.get(id) !== false),
   );
   if (invalid.length > 0) {
     throw new Error(
-      `eval: expected ids are not active, authoritative documents: ${invalid.join(', ')}`,
+      `eval: expected ids are not active documents outside the proposals: ${invalid.join(', ')}`,
     );
   }
 
-  const searchIds = async (on: DocsSearch, includeNonAuthoritative: boolean, query: string) => {
+  const searchIds = async (on: DocsSearch, includeProposals: boolean, query: string) => {
     const result = await searchDocumentation(on, {
       query,
       limit: EVAL_DEPTH,
-      includeNonAuthoritative,
+      includeProposals,
       snippets: false,
       refresh: false,
     });
@@ -114,7 +114,7 @@ export async function runEval(
     const answerable = question.expected.length > 0;
     const hybrid = await searchIds(search, false, query);
     const ids: Record<EvalVariant, readonly string[]> = {
-      context: getContext(corpus, { query, limit: EVAL_DEPTH }).map((entry) => entry.id),
+      context: getContext(corpus, { query, limit: EVAL_DEPTH }).documents.map((entry) => entry.id),
       lexical: (await searchIds(lexical, false, query)).ids,
       hybrid: hybrid.ids,
     };
@@ -135,11 +135,11 @@ export async function runEval(
       ) as EvalQuestionResult['variants'],
       hybridMode:
         hybrid.result.mode === 'hybrid' ? 'hybrid' : `lexical (${hybrid.result.reason.code})`,
-      nonAuthoritative: hybrid.ids.filter((id) => nonAuthoritative.get(id) === true).length,
-      nonAuthoritativeAboveExpected: flaggedBeforeExpected(
+      proposals: hybrid.ids.filter((id) => isProposal.get(id) === true).length,
+      proposalsAboveExpected: flaggedBeforeExpected(
         included,
         question.expected,
-        (id) => nonAuthoritative.get(id) === true,
+        (id) => isProposal.get(id) === true,
       ),
       ...(best === undefined ? {} : { bestSimilarity: best }),
     });
@@ -159,11 +159,8 @@ export async function runEval(
         { all: scored(variant), en: scored(variant, 'en'), pl: scored(variant, 'pl') },
       ]),
     ) as EvalReport['summaries'],
-    nonAuthoritativeHits: results.reduce((sum, result) => sum + result.nonAuthoritative, 0),
-    nonAuthoritativeAboveExpected: results.reduce(
-      (sum, result) => sum + result.nonAuthoritativeAboveExpected,
-      0,
-    ),
+    proposalHits: results.reduce((sum, result) => sum + result.proposals, 0),
+    proposalsAboveExpected: results.reduce((sum, result) => sum + result.proposalsAboveExpected, 0),
     results,
   };
 }

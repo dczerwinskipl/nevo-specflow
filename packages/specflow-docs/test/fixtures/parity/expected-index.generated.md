@@ -28,5 +28,5 @@ Regenerate with `nevo-specflow docs check --write`. Human-authored navigation li
 |---|---|---|---|
 | `engineering.old-widgets` | [Old widget testing](engineering/old-widgets.md) | deprecated | Former widget test guidance. |
 | `engineering.widgets` | [Testing widgets](engineering/widgets.md) | current | How widget tests are structured. |
-| `ideas.widget-search` | [Widget search idea](ideas/widget-search.md) | draft | A non-authoritative widget idea. |
+| `ideas.widget-search` | [Widget search idea](ideas/widget-search.md) | draft | A widget idea, a proposal. |
 

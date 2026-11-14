@@ -9,6 +9,7 @@ import { historyEntry } from './pagedHistoryAnchor';
 import { ToolActionHeader } from './ToolActionHeader';
 import { ToolDetailCode } from './ToolDetailCode';
 import { workStateTone } from './workStatus';
+import { copyText } from '../../../shared/clipboard/copyText';
 
 interface ContentSource {
   api: ManagedSessionsApi;
@@ -75,14 +76,13 @@ function CopyTextButton({ text, label }: { text: string; label: string }) {
         size="sm"
         variant="ghost"
         onClick={() => {
-          void navigator.clipboard.writeText(text).then(
-            () => {
-              clearTimeout(timer.current);
-              setCopied(true);
+          void copyText(text).then((done) => {
+            clearTimeout(timer.current);
+            setCopied(done);
+            if (done) {
               timer.current = setTimeout(() => setCopied(false), 2000);
-            },
-            () => setCopied(false),
-          );
+            }
+          });
         }}
       >
         {copied ? t('managedSession.copy.copied') : t('managedSession.workInspector.copy')}

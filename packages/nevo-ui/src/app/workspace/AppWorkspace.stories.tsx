@@ -431,6 +431,88 @@ const defaultDetailStack = defineSecondaryStack<
   },
 });
 
+interface StackedBackPages {
+  list: Record<never, never>;
+  detail: Record<never, never>;
+}
+
+function StackedBackLevel({ next, title }: { next?: () => void; title: string }) {
+  return (
+    <div className="grid gap-3 p-4">
+      <Typography variant="body-sm">{title}</Typography>
+      {next ? (
+        <Button variant="secondary" onClick={next}>
+          Open detail
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
+const stackedBackStack = defineSecondaryStack<Record<never, never>, string, StackedBackPages>({
+  id: 'stacked-two-level-back',
+  initial: 'list',
+  useData: () => ({ status: 'ready', data: 'stacked' }),
+  screens: {
+    list: {
+      title: 'Task list',
+      component: function List() {
+        const stack = useSecondaryStack<StackedBackPages>();
+
+        return <StackedBackLevel title="Task list" next={() => void stack.navTo('detail')} />;
+      },
+    },
+    detail: { title: 'Task detail', component: () => <StackedBackLevel title="Task detail" /> },
+  },
+});
+
+function StackedTwoLevelBackContent() {
+  const navigation = useSecondaryNavigation();
+
+  return (
+    <AppShell
+      data-stacked-back-shell="true"
+      navigation={<Region label="Navigation" />}
+      style={{ height: 600, width: 500 }}
+    >
+      <AppWorkspace split="primary">
+        <AppWorkspace.Primary header="Conversation">
+          <div className="p-4">
+            <Button onClick={() => void navigation.open(stackedBackStack, {})}>Open tasks</Button>
+          </div>
+        </AppWorkspace.Primary>
+        <AppWorkspace.Secondary header="Context">
+          <Region label="Context" />
+        </AppWorkspace.Secondary>
+      </AppWorkspace>
+    </AppShell>
+  );
+}
+
+export const StackedTwoLevelBackContract: Story = {
+  render: () => (
+    <AppWorkspaceProvider>
+      <StackedTwoLevelBackContent />
+    </AppWorkspaceProvider>
+  ),
+  tags: ['contract', '!autodocs'],
+  parameters: {
+    a11y: { test: 'off' },
+  },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(await canvas.findByRole('button', { name: 'Open tasks' }));
+    await waitFor(
+      () => canvas.queryByRole('button', { name: 'Back' }),
+      'At stack depth 1 the header Back returns to Primary.',
+    );
+    await userEvent.click(await canvas.findByRole('button', { name: 'Open detail' }));
+    await waitFor(
+      () => canvas.queryByRole('button', { name: 'Back: Task list' }),
+      'At stack depth 2 the header Back names the previous screen.',
+    );
+  },
+};
+
 function DismissibleDefaultSecondaryContent() {
   const navigation = useSecondaryNavigation();
   const [contextOpen, setContextOpen] = useState(true);

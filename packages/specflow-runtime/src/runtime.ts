@@ -43,10 +43,7 @@ export async function startRuntime(options: RuntimeStartOptions): Promise<Runtim
     ...options.dependencies,
     ...(options.demo
       ? { dataMode: 'demo' as const, ...(options.demoScenarios ? { demoScenarios: true } : {}) }
-      : {
-          // The project's own documentation is the search corpus (ADR 0020 §6).
-          docs: { projectRoot: options.projectRoot, ...options.dependencies?.docs },
-        }),
+      : {}),
   });
 
   // Project mode only: the demo Runtime has no Engine and nothing to commit.

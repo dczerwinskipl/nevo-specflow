@@ -10,7 +10,7 @@ export function ContextDocumentationRow({ onOpen }: { onOpen: () => void }) {
 
   return (
     <ContextNavigationRow
-      icon="file-search"
+      icon="book-open"
       label={t('sessions.context.documentation.open')}
       secondary={t('sessions.context.documentation.workspace')}
       onClick={onOpen}

@@ -122,3 +122,9 @@ only the items deliberately left out remain here. None has a consumer yet.
   coherence; conditional requests would save transfer only.
 - **Branch label in the picker.** The picker names workspaces by folder; showing the checked-out
   branch needs a Git read for every listed workspace.
+- **One heading model for Contents and search sections.** The reader's Contents
+  (`markdownOutline` in `specflow-ui`) lists h1-h4 in ATX and setext form; the semantic chunker
+  (`splitMarkdownSections` in `ai-semantic-search`) splits on ATX h1-h6 only. A setext heading is
+  therefore in Contents but is not a search section, and h5-h6 split search sections without a
+  Contents entry. Decide which headings search should index, record it, and pin it with a
+  conformance test over shared fixtures; a chunker change bumps `CHUNKER_VERSION` and reindexes.

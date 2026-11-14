@@ -346,38 +346,6 @@
       ]
     },
     {
-      "id": "ideas.roadmap-coverage",
-      "type": "engineering",
-      "title": "Roadmap source coverage and unscheduled capabilities",
-      "status": "draft",
-      "file": "docs/ideas/roadmap-coverage.md",
-      "read_when": [
-        "verifying that workflow and provider follow-ups are accounted for in product planning",
-        "classifying previously unscheduled Ideas before the next release"
-      ],
-      "summary": "Source-level mapping of numbered Workflow and provider follow-ups to stable product roadmap outcomes, plus unscheduled product candidates. Release scope and status remain owned by ideas.roadmap.",
-      "related": [
-        "ideas.roadmap",
-        "ideas.specflow-engine.plan-06",
-        "ideas.specflow-runtime.provider-migration-plan"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "workflow",
-        "ai",
-        "runtime",
-        "ui",
-        "docs",
-        "release"
-      ],
-      "tags": [
-        "roadmap",
-        "planning",
-        "coverage",
-        "follow-ups"
-      ]
-    },
-    {
       "id": "ideas.semantic-docs",
       "type": "hub",
       "title": "Semantic documentation search follow-ups",
@@ -2728,6 +2696,38 @@
         "server",
         "ui",
         "security"
+      ]
+    },
+    {
+      "id": "ideas.roadmap-coverage",
+      "type": "engineering",
+      "title": "Roadmap source coverage and unscheduled capabilities",
+      "status": "draft",
+      "file": "docs/ideas/roadmap-coverage.md",
+      "read_when": [
+        "verifying that workflow and provider follow-ups are accounted for in product planning",
+        "classifying previously unscheduled Ideas before the next release"
+      ],
+      "summary": "Source-level mapping of numbered Workflow and provider follow-ups to stable product roadmap outcomes, plus unscheduled product candidates. Release scope and status remain owned by ideas.roadmap.",
+      "related": [
+        "ideas.roadmap",
+        "ideas.specflow-engine.plan-06",
+        "ideas.specflow-runtime.provider-migration-plan"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "workflow",
+        "ai",
+        "runtime",
+        "ui",
+        "docs",
+        "release"
+      ],
+      "tags": [
+        "roadmap",
+        "planning",
+        "coverage",
+        "follow-ups"
       ]
     },
     {

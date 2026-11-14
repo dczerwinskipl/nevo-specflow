@@ -191,6 +191,13 @@ export const Default: Story = {
   },
 };
 export const Article: Story = { args: { path: `${main}/product.specflow.ui.interaction-model` } };
+/** A Mermaid fence is drawn as a diagram, the same as in the Documents preview. */
+export const Diagram: Story = {
+  args: { path: `${main}/architecture.readme` },
+  play: async () => {
+    await within(document.body).findByRole('img', { name: 'Diagram' }, { timeout: 10000 });
+  },
+};
 /** An address with a section opens the article at that section, focus on its heading. */
 const sectionLink = `${main}/product.specflow.ui.interaction-model#${encodeURIComponent('ui-interaction-model/back-and-close')}`;
 export const SectionDeepLink: Story = {
@@ -344,6 +351,28 @@ async function readingAt(name: string, top: number) {
   const heading = await screen().findByRole('heading', { level: 1, name });
   await waitFor(() => expect(scrollerOf(heading).scrollTop).toBeGreaterThan(top));
 }
+
+/**
+ * Without the contents column the Contents button sits at the right of the header, just before the
+ * `...` menu (as in the Documents preview), and opens the sheet with focus back on it.
+ */
+export const ContentsBesideActions: Story = {
+  args: { path: interactionModel },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ userEvent }) => {
+    await settleViewport(375, 812);
+    const body = screen();
+    const contents = await body.findByRole('button', { name: 'Open contents' });
+    const more = body.getByRole('button', { name: 'More actions' });
+    const gap = more.getBoundingClientRect().left - contents.getBoundingClientRect().right;
+    // The Documents preview's spacing between its Contents button and its header actions.
+    await expect(Math.round(gap)).toBe(8);
+    await userEvent.click(contents);
+    await body.findByRole('dialog');
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(document.activeElement).toBe(contents));
+  },
+};
 
 /**
  * Narrow: a link changes the address and pushes another article; browser Back and Forward and the

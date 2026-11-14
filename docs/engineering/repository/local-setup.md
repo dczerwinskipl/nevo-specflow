@@ -71,12 +71,27 @@ The `pnpm docs:*` scripts run the product `nevo-specflow docs` command over this
 documentation-only `.nevo/config.yaml` and `docs/docs.yaml`). `pnpm docs:search` always works:
 without an embedding endpoint it answers lexically and says so (`mode: lexical`, reason
 `no-endpoint`). The committed configuration opts the project in (`docs.search.semantic: true`);
-the endpoint is a workstation choice. To get hybrid results, run the embedding model from the root `compose.yaml` (Ollama on `127.0.0.1:11434`, a
-persistent `ollama` volume and a one-shot pull of `qwen3-embedding:0.6b`; it runs on CPU):
+the endpoint is a workstation choice.
+
+To get hybrid results, run an embedding model. `tools/docs-embeddings/compose.yaml` runs only that
+model (Ollama on `127.0.0.1:11434` with a one-shot pull of `qwen3-embedding:0.6b` into the
+`nevo-specflow_ollama` volume); Nevo SpecFlow itself does not run in Docker:
 
 ```bash
-docker compose up -d   # the first run downloads the image and the model
+pnpm docs:embeddings:up         # CPU, works everywhere; the first run downloads the image and model
+pnpm docs:embeddings:up --gpu   # NVIDIA GPU (Windows or Linux)
+pnpm docs:embeddings:down       # stops the model and keeps the volume
 ```
+
+- CPU works on every machine with Docker; indexing this repository takes a while (below).
+- `--gpu` reserves the NVIDIA GPUs (`compose.gpu.yaml`). It needs an NVIDIA GPU and Docker GPU
+  support: Docker Desktop with the WSL 2 backend on Windows, the NVIDIA Container Toolkit on Linux.
+  `up` with or without `--gpu` recreates the container in that mode; the model stays in the volume.
+  `docker exec nevo-specflow-docs-embeddings-ollama-1 ollama ps` shows `100% GPU` after the first
+  request.
+- On a Mac, Docker cannot use the Apple GPU. The fast option is the native Ollama app (Metal):
+  install it, run `ollama pull qwen3-embedding:0.6b` and use the same `baseUrl` and `model` below;
+  the container is the CPU fallback. Run only one of the two, both listen on port 11434.
 
 Then add the endpoint to the git-ignored `.nevo/local/config.yaml` (create the file if needed):
 
@@ -112,9 +127,7 @@ an interrupted run resumes where it stopped; a search after that starts it again
 up to 16 changed sections themselves; after a larger edit they answer lexically and catch the index
 up in the background the same way, and they are hybrid again once it is current. Run
 `pnpm docs:semantic index` yourself only to build in the foreground (progress on stderr; it exits 1
-when the index is not up to date afterwards, for example while the endpoint is down).
-`docker compose down` stops the model and keeps the
-volume. Keys and their validation:
+when the index is not up to date afterwards, for example while the endpoint is down). Keys and their validation:
 [documentation and embeddings configuration](../../reference/configuration/documentation-and-embeddings.md).
 
 To measure search quality after changing chunking, ranking or the documents, run

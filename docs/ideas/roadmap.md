@@ -41,7 +41,7 @@ related:
 
 **Workflow belongs to the user's repository.** Users define Task Types, steps, transitions and agent archetypes in versioned files. SpecFlow interprets the definitions and tracks execution. Richer gates, post-actions and unattended execution arrive incrementally.
 
-**Progress rule:** Show `completed / approved release acceptance criteria` only after the release scope is explicitly approved. This is *completion coverage*, not estimated engineering effort. Do not calculate it from PR counts. No percentages for exploratory 1.1 or 2.0 scope.
+**Progress rule:** Show `completed / approved release acceptance criteria` only after the release scope is explicitly approved. This is _completion coverage_, not estimated engineering effort. Do not calculate it from PR counts. No percentages for exploratory 1.1 or 2.0 scope.
 
 ## 1.0.0 · First usable release
 
@@ -112,7 +112,7 @@ One installation managing several repositories is an architectural change, not j
 
 ## Completed
 
-These are **completed scopes available in `main`**, not the full end-to-end 1.0 experience and not proof of a published release. PR links are *selected evidence*, not a manual duplicate of GitHub history. A capability stays here with its Specification/PR links after completion.
+These are **completed scopes available in `main`**, not the full end-to-end 1.0 experience and not proof of a published release. PR links are _selected evidence_, not a manual duplicate of GitHub history. A capability stays here with its Specification/PR links after completion.
 
 | Product capability or foundation                       | State   | Merged PR evidence                                                                                                                                                                                                                                                                                                              |
 | ------------------------------------------------------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

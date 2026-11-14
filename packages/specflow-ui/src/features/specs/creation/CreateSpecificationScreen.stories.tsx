@@ -1492,7 +1492,9 @@ export const BaseConfigMissingNamesTheStartFieldAndKeepsTheForm: Story = {
     await openManualForm(canvas, userEvent);
     await userEvent.click(submit(canvas));
     const alert = await canvas.findByRole('alert');
-    await expect(alert).toHaveTextContent('Gałąź początkowa nie ma konfiguracji SpecFlow');
+    await expect(alert).toHaveTextContent(
+      'Gałąź początkowa nie ma wymaganej konfiguracji SpecFlow',
+    );
     await expect(alert).toHaveTextContent('Zacznij od');
     await expect(alert).not.toHaveTextContent('Stan środowiska pracy zmienił się');
     await expect(canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' })).toHaveValue(

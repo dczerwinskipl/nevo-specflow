@@ -35,11 +35,11 @@ describe('CreateFailureAlert copy', () => {
   it('explains a start commit without committed configuration, not a stale option', () => {
     const failure: CreateFailure = { kind: 'base-config-missing' };
     const pl = render(failure, 'pl');
-    expect(pl).toContain('Gałąź początkowa nie ma konfiguracji SpecFlow');
+    expect(pl).toContain('Gałąź początkowa nie ma wymaganej konfiguracji SpecFlow');
     expect(pl).toContain('Zacznij od');
     expect(pl).not.toContain('Stan środowiska pracy zmienił się');
     const en = render(failure, 'en');
-    expect(en).toContain('The start branch has no SpecFlow configuration');
+    expect(en).toContain('The start branch has no usable SpecFlow configuration');
     expect(en).toContain('Start from');
     expect(en).not.toContain('changed since the form was opened');
   });

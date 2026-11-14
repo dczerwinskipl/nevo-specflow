@@ -688,7 +688,7 @@
         "BASE_REF_NOT_FOUND": "The selected starting branch is no longer available."
       },
       "baseConfigMissing": {
-        "title": "The start branch has no SpecFlow configuration",
+        "title": "The start branch has no usable SpecFlow configuration",
         "body": "The specification was not created. The commit chosen in \"Start from\" has no committed, valid SpecFlow configuration (.nevo/config.yaml with a runtime section). The new workspace starts from that commit, so uncommitted changes do not count. Choose another start branch, or commit the configuration on this branch first. The name and choices are kept."
       },
       "conflict": {

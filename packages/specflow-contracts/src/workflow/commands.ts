@@ -2,7 +2,11 @@ import { Type, type Static } from 'typebox';
 
 import { SpecIdSchema, TaskIdSchema } from '../identifiers';
 import {
+  ATTENTION_REASONS,
+  BlockingTaskSchema,
   ExitBlockerSchema,
+  LAUNCH_BLOCKERS,
+  LaunchSchema,
   GateStatusSchema,
   WorkflowActorSchema,
   WorkflowRunPositionSchema,
@@ -98,34 +102,6 @@ export const AbandonSpecificationRequestSchema = Type.Object(
 );
 export type AbandonSpecificationRequest = Static<typeof AbandonSpecificationRequestSchema>;
 
-const LaunchSchema = Type.Object({
-  archetype: Type.String(),
-  provider: Type.String(),
-  model: Type.String(),
-  effort: Type.Optional(Type.String()),
-  session: Type.Union([
-    Type.Object({ mode: Type.Literal('fresh') }),
-    Type.Object({ mode: Type.Literal('reuse'), sessionId: Type.String() }),
-  ]),
-});
-
-export const ATTENTION_REASONS = [
-  'owner-action',
-  'human-step',
-  'archetype-missing',
-  'provider-not-chosen',
-  'model-missing',
-  'session-unavailable',
-  'tasks-stuck',
-  'task-escalated',
-] as const;
-const LAUNCH_BLOCKERS = [
-  'archetype-missing',
-  'provider-not-chosen',
-  'model-missing',
-  'session-unavailable',
-] as const;
-
 export const WorkflowContinuationSchema = Type.Union([
   Type.Object({
     kind: Type.Literal('none'),
@@ -145,6 +121,8 @@ export const WorkflowContinuationSchema = Type.Union([
     step: StepId,
     reason: literals(ATTENTION_REASONS),
     taskIds: Type.Optional(Type.Array(TaskIdSchema)),
+    /** For `tasks-stuck`: each Task of `taskIds` with why it blocks. */
+    blocking: Type.Optional(Type.Array(BlockingTaskSchema)),
     archetype: Type.Optional(Type.String()),
     provider: Type.Optional(Type.String()),
     suggestion: Type.Optional(LaunchSchema),

@@ -494,6 +494,59 @@ export function unsatisfiableDependencies(
   });
 }
 
+/** Why an open Task keeps a stuck Specification from finishing (`tasks-stuck`). */
+export const BLOCKING_TASK_CAUSES = [
+  'draft',
+  'on-hold',
+  'broken',
+  /** A direct dependency was cancelled or ended without completing. */
+  'dependency-unsatisfiable',
+] as const;
+export type BlockingTaskCause = (typeof BLOCKING_TASK_CAUSES)[number];
+
+export interface BlockingTask {
+  readonly taskId: string;
+  readonly cause: BlockingTaskCause;
+}
+
+/**
+ * The Tasks a person resolves so a stuck wait can progress, in id order: each draft, each Task on
+ * hold, each broken Task, and each `ready` Task with a direct dependency that was cancelled or ended
+ * without completing. A Task that only waits for other open Tasks is not listed (resolving those
+ * moves it), nor is one whose only unsatisfiable dependencies are broken (the broken Task is listed).
+ */
+export function blockingTasks(
+  tasks: readonly ExecutionTask[],
+  broken: readonly string[],
+): BlockingTask[] {
+  const found: BlockingTask[] = broken.map((taskId) => ({ taskId, cause: 'broken' as const }));
+  for (const task of tasks) {
+    if (isTaskClosed(task)) {
+      continue;
+    }
+
+    if (task.status === 'draft' || task.status === 'on-hold') {
+      found.push({ taskId: task.taskId, cause: task.status });
+      continue;
+    }
+
+    const readiness = taskReadiness(task, tasks);
+    const closed =
+      readiness.kind === 'dependencies'
+        ? unsatisfiableDependencies(readiness.waitingFor, tasks).filter(
+            (id) => !broken.includes(id),
+          )
+        : [];
+    if (closed.length > 0) {
+      found.push({ taskId: task.taskId, cause: 'dependency-unsatisfiable' });
+    }
+  }
+
+  return found.sort((left, right) =>
+    left.taskId < right.taskId ? -1 : left.taskId > right.taskId ? 1 : 0,
+  );
+}
+
 /**
  * True when Tasks are still open but none of them can progress: none is running and none can start
  * (`ready` with its dependencies completed), so the Specification's wait step would wait forever

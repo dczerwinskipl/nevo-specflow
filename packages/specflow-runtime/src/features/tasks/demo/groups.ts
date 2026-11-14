@@ -8,9 +8,9 @@ type DemoTask = TaskDefinitionFacts['task'];
  * live demo and stories show the same grouping.
  */
 const demoTaskGroups = [
-  { id: 'implementation', name: 'Implementacja' },
-  { id: 'verification', name: 'Weryfikacja i domknięcie' },
-  { id: 'done', name: 'Ukończone' },
+  { id: 'implementation', name: 'Implementacja', summary: 'row', collapsed: false },
+  { id: 'verification', name: 'Weryfikacja i domknięcie', summary: 'row', collapsed: false },
+  { id: 'done', name: 'Ukończone', summary: 'compact', collapsed: false },
 ] as const;
 
 export type DemoTaskGroup = (typeof demoTaskGroups)[number];
@@ -33,6 +33,6 @@ export function groupDemoTasks(tasks: readonly DemoTask[]) {
   return demoTaskGroups.flatMap((group) => {
     const members = tasks.filter((task) => demoTaskGroupFor(task).id === group.id);
 
-    return members.length ? [{ id: group.id, name: group.name, tasks: members }] : [];
+    return members.length ? [{ ...group, tasks: members }] : [];
   });
 }

@@ -237,6 +237,98 @@ export const StartBlockerSchema = Type.Union([
   Type.Object({ kind: Type.Literal('gates-unsatisfied'), gates: array(GateStatusSchema) }),
 ]);
 
+export const LaunchSchema = Type.Object({
+  archetype: Type.String(),
+  provider: Type.String(),
+  model: Type.String(),
+  effort: Type.Optional(Type.String()),
+  session: Type.Union([
+    Type.Object({ mode: Type.Literal('fresh') }),
+    Type.Object({ mode: Type.Literal('reuse'), sessionId: Type.String() }),
+  ]),
+});
+
+export const ATTENTION_REASONS = [
+  'owner-action',
+  'human-step',
+  'archetype-missing',
+  'provider-not-chosen',
+  'model-missing',
+  'session-unavailable',
+  'tasks-stuck',
+  'task-escalated',
+] as const;
+export const LAUNCH_BLOCKERS = [
+  'archetype-missing',
+  'provider-not-chosen',
+  'model-missing',
+  'session-unavailable',
+] as const;
+
+/** Why an open Task keeps a stuck Specification from finishing (`tasks-stuck`). */
+export const BLOCKING_TASK_CAUSES = [
+  'draft',
+  'on-hold',
+  'broken',
+  'dependency-unsatisfiable',
+] as const;
+export const BlockingTaskSchema = Type.Object({
+  taskId: TaskIdSchema,
+  cause: literals(BLOCKING_TASK_CAUSES),
+});
+
+/**
+ * Why a subject needs a person: the continuation reasons, then `task-broken`,
+ * `definition-changed` and the start blockers of an approved Task that has not started that a
+ * person fixes. Never inferred from a status name.
+ */
+export const ATTENTION_ITEM_REASONS = [
+  ...ATTENTION_REASONS,
+  'task-broken',
+  'definition-changed',
+  'context-unresolved',
+  'dependency-unsatisfiable',
+  'type-not-allowed',
+  'definition-missing',
+  'entry-gate-unsatisfied',
+] as const;
+/** The one action an item offers; a client maps it to its command or page. */
+export const ATTENTION_ACTIONS = [
+  'start-step',
+  'configure-archetype',
+  'review-tasks',
+  'restore-task',
+  'confirm-definition',
+  'edit-context',
+  'edit-dependencies',
+  'remove-or-cancel',
+  'satisfy-gate',
+] as const;
+
+/**
+ * A subject a person has to act on, derived on every read and never stored: the reason (a stable
+ * code), who has to act, the one action it offers and a display-only English `message`.
+ */
+export const WorkflowAttentionItemSchema = Type.Object({
+  subject: WorkflowSubjectSchema,
+  /** Absent when no step resolves (a broken Task, an unknown task type). */
+  step: Type.Optional(StepIdSchema),
+  stepTitle: Type.Optional(Type.String()),
+  reason: literals(ATTENTION_ITEM_REASONS),
+  actor: literals(['owner', 'agent'] as const),
+  action: literals(ATTENTION_ACTIONS),
+  message: text(4000),
+  /** `task-escalated`, `tasks-stuck` (the Tasks to resolve), `dependency-unsatisfiable`. */
+  taskIds: Type.Optional(array(TaskIdSchema)),
+  /** `tasks-stuck`: why each Task of `taskIds` blocks. */
+  blocking: Type.Optional(array(BlockingTaskSchema)),
+  archetype: Type.Optional(Type.String()),
+  provider: Type.Optional(Type.String()),
+  blocker: Type.Optional(literals(LAUNCH_BLOCKERS)),
+  suggestion: Type.Optional(LaunchSchema),
+});
+export type WorkflowAttentionItem = Static<typeof WorkflowAttentionItemSchema>;
+
 export const WORKFLOW_ATTENTION_REASONS = ['tasks-stuck', 'task-escalated'] as const;
 
 export const WorkflowPositionSchema = Type.Union([
@@ -264,6 +356,8 @@ export const WorkflowPositionSchema = Type.Union([
       Type.Object({
         reason: literals(WORKFLOW_ATTENTION_REASONS),
         taskIds: Type.Optional(array(TaskIdSchema)),
+        /** `tasks-stuck`: why each Task of `taskIds` blocks (Now's explanation). */
+        blocking: Type.Optional(array(BlockingTaskSchema)),
       }),
     ),
   }),
@@ -505,6 +599,8 @@ export const WorkflowActionProjectionSchema = Type.Object(
     task: Type.Optional(TaskLifecycleActionsSchema),
     /** For a Task subject that is not broken. */
     taskAuthoring: Type.Optional(TaskAuthoringSchema),
+    /** What a person has to do about the subject now, if anything. */
+    attention: Type.Optional(WorkflowAttentionItemSchema),
     /** For a Specification subject. */
     specification: Type.Optional(
       Type.Object({

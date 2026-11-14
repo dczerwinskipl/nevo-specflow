@@ -18,6 +18,7 @@ import {
   ContentKindSchema,
 } from '../documents/vocabulary';
 import { TaskIdSchema } from '../identifiers';
+import { StartBlockerSchema, WorkflowAttentionItemSchema } from '../workflow/projection';
 
 /**
  * The Task as a resource of its Specification (`tasks/<id>/task.yaml`) on the wire: what the owner
@@ -40,20 +41,6 @@ export const TaskPreparationStatusSchema = Type.Union([
   Type.Literal('ready'),
   Type.Literal('on-hold'),
   Type.Literal('cancelled'),
-]);
-
-/** Where a Task stands for the owner (the Engine's `TaskLane`); the workspace groups follow it. */
-export const TaskLaneSchema = Type.Union([
-  Type.Literal('needs-approval'),
-  Type.Literal('in-progress'),
-  Type.Literal('ready'),
-  Type.Literal('waiting'),
-  Type.Literal('blocked'),
-  Type.Literal('done'),
-  Type.Literal('ended'),
-  Type.Literal('held'),
-  Type.Literal('cancelled'),
-  Type.Literal('broken'),
 ]);
 
 /** Whether the Task may start now (`ready`), or what keeps it: its status or unfinished dependencies. */
@@ -81,6 +68,31 @@ export const TaskRunPositionSchema = Type.Union([
   }),
 ]);
 
+/**
+ * The neutral facts of a Task (the Engine's `TaskFacts`): authoritative state for every client
+ * (CLI, MCP, UI) without any grouping. A dashboard group is a presentation of these facts.
+ */
+export const TaskFactsSchema = Type.Object({
+  preparation: TaskPreparationStatusSchema,
+  /** On hold by its own escalation. */
+  escalated: Type.Boolean(),
+  position: TaskRunPositionSchema,
+  /** Its next step can start now (no start blocker). */
+  startable: Type.Boolean(),
+  startBlockers: Type.Array(StartBlockerSchema),
+  /** It waits for these direct dependencies (`unsatisfiable`: those that can never complete). */
+  dependencyWait: Type.Optional(
+    Type.Object({
+      waitingFor: Type.Array(TaskIdSchema),
+      unsatisfiable: Type.Array(TaskIdSchema),
+    }),
+  ),
+  definitionChanged: Type.Boolean(),
+  /** What a person has to do about it now; absent when nothing. */
+  attention: Type.Optional(WorkflowAttentionItemSchema),
+});
+export type TaskFacts = Static<typeof TaskFactsSchema>;
+
 /** The resource facts of one Task, read from one Engine inspection of its Specification. */
 export const TaskResourceFactsSchema = Type.Object({
   /** The manifest revision an edit or a removal names as `expectedRevision`. */
@@ -95,8 +107,8 @@ export const TaskResourceFactsSchema = Type.Object({
   /** The explicit context list; `null`: the default context. */
   context: Type.Union([Type.Array(TaskContextEntrySchema), Type.Null()]),
   readiness: TaskReadinessSchema,
-  /** Where the Task stands for the owner, as the Engine derives it (`TaskLane`). */
-  lane: TaskLaneSchema,
+  /** The Engine's neutral facts of the Task, from the same read. */
+  facts: TaskFactsSchema,
   position: TaskRunPositionSchema,
   /** The workflow the run is pinned to changed: its next operation is refused. */
   definitionChanged: Type.Boolean(),

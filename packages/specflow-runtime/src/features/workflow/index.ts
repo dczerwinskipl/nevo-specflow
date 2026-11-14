@@ -7,3 +7,4 @@ export {
   WorkflowUnavailableError,
   type WorkflowFailure,
 } from './refusal';
+export { toWire, type Mutable } from './wire';

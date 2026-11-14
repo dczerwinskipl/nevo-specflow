@@ -1,3 +1,4 @@
+import type { BlockingTask } from '../tasks/tasks';
 import {
   providerOf,
   type AgentArchetype,
@@ -140,8 +141,13 @@ export type ContinuationDecision =
       readonly kind: 'attention';
       readonly step: string;
       readonly reason: AttentionReason;
-      /** For `task-escalated`: every escalated Task, in id order. */
+      /**
+       * For `task-escalated`: every escalated Task; for `tasks-stuck`: the Tasks to resolve
+       * (`blocking`). In id order.
+       */
       readonly taskIds?: readonly string[];
+      /** For `tasks-stuck`: each Task of `taskIds` with why it blocks (always set, possibly empty). */
+      readonly blocking?: readonly BlockingTask[];
       readonly archetype?: string;
       readonly provider?: string;
       /** What an owner start would launch, to prefill a quick start; absent when unresolved. */

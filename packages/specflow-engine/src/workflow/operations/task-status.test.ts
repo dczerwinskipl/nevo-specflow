@@ -194,6 +194,9 @@ describe('setTaskStatus', () => {
       kind: 'attention',
       step: 'implementation',
       reason: 'tasks-stuck',
+      // The Task to resolve: its dependency can no longer complete.
+      taskIds: ['screen'],
+      blocking: [{ taskId: 'screen', cause: 'dependency-unsatisfiable' }],
     });
     expect((await inspectExecution(dependencies, SPEC)).attention).toMatchObject([
       { subject: specification, reason: 'tasks-stuck' },

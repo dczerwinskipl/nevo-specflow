@@ -1,6 +1,11 @@
-import type { ExecutionInspection, TaskResourceResult } from '@nevo/specflow-engine';
+import type {
+  ExecutionInspection,
+  ExecutionReading,
+  TaskFacts,
+  TaskResourceResult,
+} from '@nevo/specflow-engine';
 
-import { positionLine } from '../workflow/present';
+import { attentionLine, positionLine, subjectLabel } from '../workflow/present';
 
 type InspectedTask = ExecutionInspection['tasks'][number];
 
@@ -15,17 +20,45 @@ function stateOf(task: InspectedTask): string {
     : 'ready';
 }
 
-/** One line per Task, in index order, then the Tasks whose files are broken. */
-export function listLines(inspection: ExecutionInspection): string[] {
+/** Whether the next step can start, or what keeps it: the neutral facts, never a group. */
+function startLine(facts: TaskFacts | undefined): string {
+  if (!facts || facts.position.state === 'active' || facts.position.state === 'terminal') {
+    return '';
+  }
+
+  if (facts.startable) {
+    return '  can start';
+  }
+
+  const kinds = facts.startBlockers.map((blocker) =>
+    blocker.kind === 'dependencies' ? `waits for ${blocker.waitingFor.join(', ')}` : blocker.kind,
+  );
+
+  return `  cannot start: ${kinds.join('; ')}`;
+}
+
+/**
+ * One line per Task, in index order, with its status, position and whether it can start, then the
+ * Tasks whose files are broken, then every attention item.
+ */
+export function listLines(reading: ExecutionReading): string[] {
+  const { inspection } = reading;
   const lines = inspection.tasks.map(
     (task) =>
-      `${task.record.taskId}  ${task.record.status}  ${positionLine(task.record.run?.position ?? { state: 'not-started' })}  ${task.record.title}`,
+      `${task.record.taskId}  ${task.record.status}  ${positionLine(task.record.run?.position ?? { state: 'not-started' })}${startLine(reading.facts.get(task.record.taskId))}  ${task.record.title}`,
   );
   for (const taskId of inspection.brokenTasks) {
     lines.push(`${taskId}  broken (restore its files from Git)`);
   }
 
-  return lines.length > 0 ? lines : ['No Tasks.'];
+  if (lines.length === 0) {
+    return ['No Tasks.'];
+  }
+
+  return [
+    ...lines,
+    ...reading.attention.map((item) => `${subjectLabel(item.subject)}: ${attentionLine(item)}`),
+  ];
 }
 
 export function taskDetailLines(task: InspectedTask): string[] {

@@ -203,20 +203,23 @@ authenticated identity and their resource-specific keys; server tokens are not U
 With an Engine (`nevo-specflow start`), a Task detail or history page is ONE Engine read,
 `readExecution`: the inspection of the Specification's execution (the Task resources
 `tasks/index.yaml` and `tasks/<id>/task.yaml`, and the run records), the action projection of the
-Task and its lane, all from one snapshot read under the project control lock, with the definitions
-loaded for that request. Every section of the answer comes from that read, so none reflects
-another moment; only `task.md`'s revision is read separately (the Documents owner's own version).
+Task and its neutral facts, all from one snapshot read under the project control lock, with the
+definitions loaded for that request. Every section of the answer comes from that read, so none
+reflects another moment; only `task.md`'s revision is read separately (the Documents owner's own
+version).
 
 - `resource` is the Task resource: `revision` (the manifest revision an edit or removal names),
   `type`, `status`, `statusChange`, `dependsOn`, `origin`, `documents`, `context` (`null`: the
-  default context), `readiness`, the run `position`, `lane` and `definitionChanged`.
-- `resource.lane` is the Engine's `TaskLane`, derived from the status, the run and the action
-  projection: `needs-approval`, `in-progress`, `ready` (can start now), `waiting` (only for
-  dependencies that can all still complete), `blocked` (the type is no longer allowed, the
-  definition is missing or changed, a required context entry does not resolve, or a dependency can
-  never complete), `done`, `ended` (abandoned), `held`, `cancelled`, `broken`. `task.status`
-  presents it (`draft`, `in-progress`, `ready`, `waiting`, `blocked`, `completed`, `abandoned`,
-  `on-hold`, `cancelled`, `broken`).
+  default context), `readiness`, the run `position`, `facts` and `definitionChanged`.
+- `resource.facts` are the Engine's neutral `TaskFacts` (no group, label or order):
+  `preparation` (the status), `escalated` (on hold by its own escalation), the run `position`
+  (a terminal one with its `outcome`), `startable` (the start-blocker rule of the action projection
+  finds none), `startBlockers` (the projection's typed blockers), `dependencyWait` (`waitingFor`,
+  and `unsatisfiable`: the dependencies that can never complete), `definitionChanged` and
+  `attention`, the attention item of the Task when a person has to act
+  ([Attention](#attention-items)). `task.status` is a status line derived from the facts (`draft`,
+  `in-progress`, `ready`, `waiting`, `blocked` labelled "Cannot start", `completed`, `abandoned`,
+  `on-hold`, `cancelled`).
 - `snapshot.sections.work` projects the run with the definition it is pinned to (before the first
   start: the task type's workflow, and `definition.revision` is the definition version). An active
   position names the attempt's `actor`. When the pinned definition changed, `work` and `history`
@@ -231,6 +234,57 @@ An unknown Specification or Task is `404 specification_task_not_found`; an execu
 cannot read (an unavailable checkout, unreadable records) is `503 specification_source_unavailable`,
 with `Retry-After: 1` when the project control lock was busy (a retry soon can succeed). The demo
 Runtime keeps its own sources; a Runtime without either still answers 503.
+
+## Tasks page
+
+`GET /api/specs/:specId/tasks` (`spec.view` at `specScope(projectId, specId)`, `no-store`) is the
+Specification's Task inventory from one Engine read (`readExecution`, every Task):
+
+- `groups`: the non-empty groups of the Runtime's dashboard grouping, in configured order, each
+  with `id`, `name`, `summary` (`row` or `compact`: how the Overview summarizes it), `collapsed`
+  (the Tasks page collapses it by default) and its rows. A row is `id`, `title`, `type`
+  (`{id, title}`), `dependsOn`, `status` (the status line), `facts` (the neutral facts above) and
+  `blocksSpecification: {cause}` when the Specification's current `tasks-stuck` names it. A broken
+  Task has no row; it is an attention item.
+- `progress`: `completed`, `total` (every Task except cancelled ones and those ended by an
+  abandon; on hold counts), `cancelled` and `onHold`.
+- `attention`: every attention item of the read, broken Tasks first, then the Specification, then
+  Tasks in id order.
+- `?blocking=specification` (the only search value; anything else is `400`) keeps only the Tasks
+  the current `tasks-stuck` item names, in their normal groups, and adds `filter: {blocking,
+matched, total}`. The Tasks are resolved from the read, never from ids in the URL, so a stale
+  link never shows stale Tasks: when nothing blocks any more, `groups` is empty and `matched` 0.
+
+An unknown Specification is `404 specification_not_found`; an execution the Engine cannot read is
+`503 specification_source_unavailable` (`Retry-After: 1` when the lock was busy). The demo Runtime
+has no Tasks page (503).
+
+### Dashboard grouping
+
+The grouping is declarative presentation data of the Runtime
+(`features/tasks/presentation/default-grouping.ts`), validated at load against its schema; no
+group, label or order lives in the Engine. Each group has a predicate over facts derived from the
+neutral facts: `preparation`, `position`, `outcome`, `startable`, `startBlocked` (a start blocker
+other than the status and an expected wait) and `waiting` (it waits only for dependencies that can
+all still complete or for an awaited process artifact). Every listed fact must match; the first
+matching group wins and a Task matching none falls into `other`. Attention is not a grouping fact.
+The default, in order: Needs approval (`draft`), In progress (`ready`, run active or between
+steps), Ready to start (`ready`, not started, `startable`), Cannot start (`ready`, not started,
+`startBlocked`), Waiting (`ready`, not started, `waiting`), On hold, Done (completed; compact),
+Cancelled (compact, collapsed), Ended (abandoned by its own workflow; compact, collapsed). A
+per-project or per-user grouping can replace it later as a value of the same schema.
+
+### Attention items
+
+An attention item (`WorkflowAttentionItem`) is derived on every read and never stored: `subject`,
+`step` and `stepTitle` (absent when no step resolves), `reason` (a stable code), `actor` (`owner`;
+`agent` is reserved), `action` (the one action it offers: `start-step`, `configure-archetype`,
+`review-tasks`, `restore-task`, `confirm-definition`, `edit-context`, `edit-dependencies`,
+`remove-or-cancel`, `satisfy-gate`), a display-only English `message`, and for `task-escalated`,
+`tasks-stuck` and `dependency-unsatisfiable` the Tasks it names (`taskIds`; `tasks-stuck` also
+`blocking: [{taskId, cause}]` with `cause` `draft`, `on-hold`, `broken` or
+`dependency-unsatisfiable`). The rules are the
+[workflow kernel's](../../architecture/workflow/workflow-kernel.md#continuation-and-attention).
 
 ## Task commands
 

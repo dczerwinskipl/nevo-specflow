@@ -23,6 +23,8 @@ export function createWorkspaceIntegrationApi(): SpecificationApi {
             {
               id: 'implementation',
               name: 'Integration tasks',
+              summary: 'row',
+              collapsed: false,
               tasks: [
                 {
                   id: 'TASK-01',
@@ -35,6 +37,7 @@ export function createWorkspaceIntegrationApi(): SpecificationApi {
           total: 1,
           completed: 0,
           attention: [],
+          overview: { rows: [], compact: [] },
         },
       },
       documents: {

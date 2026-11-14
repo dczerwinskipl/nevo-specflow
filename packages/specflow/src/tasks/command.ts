@@ -2,6 +2,7 @@ import {
   createTask,
   editTask,
   inspectActions,
+  readExecution,
   inspectExecution,
   removeTask,
   setTaskStatus,
@@ -114,8 +115,17 @@ export function createTasksCommand(context: TasksCommandContext): Command {
       .argument('<spec-id>', 'Specification UUID'),
   ).action(async (specId: string, options: CommonOptions) => {
     await run(options, async ({ workflow }) => {
-      const inspection = await inspectExecution(workflow, specId);
-      emit(options, inspection, listLines(inspection));
+      const reading = await readExecution(workflow, specId, { tasks: 'all' });
+      // The inspection with every attention item (start blockers included) and the neutral facts.
+      emit(
+        options,
+        {
+          ...reading.inspection,
+          attention: reading.attention,
+          facts: Object.fromEntries(reading.facts),
+        },
+        listLines(reading),
+      );
     });
   });
 

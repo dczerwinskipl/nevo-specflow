@@ -39,7 +39,17 @@ export {
   type ArchetypeModelChoice,
   type RememberModelDependencies,
 } from './definitions/remember-model';
-export type { AttentionItem } from './attention/model';
+export {
+  ATTENTION_ACTIONS,
+  ATTENTION_ITEM_REASONS,
+  BLOCKING_TASK_CAUSES,
+  type AttentionAction,
+  type AttentionActor,
+  type AttentionItem,
+  type AttentionItemReason,
+  type BlockingTask,
+  type BlockingTaskCause,
+} from './attention/model';
 export {
   ATTENTION_REASONS,
   resolveAgentLaunch,
@@ -112,7 +122,8 @@ export {
   readExecution,
   type ExecutionReading,
   type ReadExecutionOptions,
-  type TaskLane,
+  taskFactsOf,
+  type TaskFacts,
   type TaskPreparation,
   type TaskProgress,
 } from './operations/execution-read';

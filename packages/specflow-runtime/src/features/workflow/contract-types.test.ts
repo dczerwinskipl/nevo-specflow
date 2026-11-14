@@ -4,20 +4,23 @@ import type {
   ReturnWorkflowResult,
   TaskProposal as TaskProposalContract,
   WorkflowActionProjection,
+  WorkflowAttentionItem,
   WorkflowError,
 } from '@nevo/specflow-contracts/workflow';
 import type { TaskContextEntry } from '@nevo/specflow-contracts/documents';
-import type { TaskResourceFacts } from '@nevo/specflow-contracts/tasks';
+import type { TaskListResponse, TaskResourceFacts } from '@nevo/specflow-contracts/tasks';
 import type {
   AbandonSpecificationResult,
   ActionProjection,
+  AttentionItem,
   AwaitedContextEntry,
   DraftConflict,
   FinishStepResult,
   GateUnsatisfiedError,
   ReturnToStepResult,
   RunPosition,
-  TaskLane,
+  TaskFacts,
+  TaskProgress,
   TaskProposal,
   TaskReadiness,
   UnresolvedContextEntry,
@@ -64,7 +67,10 @@ describe('workflow contract types', () => {
     same<TaskReadiness, TaskResourceFacts['readiness']>(true);
     same<RunPosition, TaskResourceFacts['position']>(true);
     same<TaskContextEntry, NonNullable<TaskResourceFacts['context']>[number]>(true);
-    same<TaskLane, TaskResourceFacts['lane']>(true);
+    // The neutral Task facts and the attention items are Engine values on the wire.
+    same<TaskFacts, TaskResourceFacts['facts']>(true);
+    same<AttentionItem, WorkflowAttentionItem>(true);
+    same<TaskProgress, TaskListResponse['progress']>(true);
     expect(true).toBe(true);
   });
 });

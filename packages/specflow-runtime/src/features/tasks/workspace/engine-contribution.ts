@@ -1,39 +1,35 @@
-import { readExecutionForRead, type TaskLane } from '@nevo/specflow-engine';
+import { readExecutionForRead, type AttentionItem } from '@nevo/specflow-engine';
+import type { TaskOverview } from '@nevo/specflow-contracts/tasks';
+import type {
+  WorkspaceAttention,
+  WorkspaceTaskGroup,
+} from '@nevo/specflow-contracts/specs/workspace';
 
 import {
   inspectSpecification,
   TaskSourceUnavailableError,
   type TaskEngine,
 } from '../engine/sources';
-import { taskStatusOf, type InspectionBasis } from '../engine/projection';
-
-interface WorkspaceTaskRow {
-  readonly id: string;
-  readonly title: string;
-  readonly status: ReturnType<typeof taskStatusOf>;
-  /** The Task Type, with its title from the catalogue (the id when the type is not defined). */
-  readonly type: { id: string; title: string };
-  readonly dependsOn: string[];
-}
-
-interface WorkspaceTaskAttention {
-  readonly id: string;
-  readonly kind: 'task' | 'specification';
-  readonly title: string;
-  readonly reason: string;
-  readonly targetId?: string;
-  readonly priority?: 'critical' | 'high' | 'normal';
-}
+import type { InspectionBasis } from '../engine/projection';
+import { namedTaskIds, taskBoardOf } from '../presentation/board';
+import {
+  DEFAULT_DASHBOARD_GROUPING,
+  type DashboardGrouping,
+} from '../presentation/default-grouping';
+import { overviewSummary } from '../presentation/group-tasks';
 
 /** The shape of the Specification workspace `tasks` section (the Specs feature consumes it). */
 export type WorkspaceTasksSection =
   | {
       readonly state: 'available';
       readonly data: {
-        readonly groups: { id: string; name: string; tasks: WorkspaceTaskRow[] }[];
+        readonly groups: WorkspaceTaskGroup[];
         readonly completed: number;
         readonly total: number;
-        readonly attention: WorkspaceTaskAttention[];
+        readonly cancelled: number;
+        readonly onHold: number;
+        readonly attention: WorkspaceAttention[];
+        readonly overview: TaskOverview;
       };
     }
   | { readonly state: 'unavailable'; readonly reason: 'not_implemented' | 'source_unavailable' };
@@ -46,84 +42,89 @@ export interface WorkspaceTasksContribution {
 }
 
 /**
- * The groups follow what the owner has to do (UX contract "Specification Overview"), in this order;
- * an empty group is omitted. Each is a presentation of the Engine's lanes (`TaskLane`); a broken
- * Task has no readable row and is attention instead.
+ * One item of the Engine's attention projection as a workspace attention record: its message is
+ * the display reason, its code, actor, action and Tasks are passed on for clients with their own
+ * copy. A broken Task comes first (`high`), as the projection orders it.
  */
-const GROUPS: readonly { id: string; name: string; lanes: readonly TaskLane[] }[] = [
-  { id: 'needs-approval', name: 'Needs approval', lanes: ['needs-approval'] },
-  { id: 'in-progress', name: 'In progress', lanes: ['in-progress'] },
-  { id: 'ready', name: 'Ready to start', lanes: ['ready'] },
-  { id: 'waiting', name: 'Waiting', lanes: ['waiting'] },
-  { id: 'blocked', name: 'Blocked', lanes: ['blocked'] },
-  { id: 'done', name: 'Done', lanes: ['done'] },
-  { id: 'held', name: 'On hold or cancelled', lanes: ['held', 'cancelled', 'ended'] },
-];
+export function workspaceAttentionOf(
+  item: AttentionItem,
+  titles: ReadonlyMap<string, string>,
+): WorkspaceAttention {
+  const common = {
+    reason: item.message,
+    code: item.reason,
+    actor: item.actor,
+    action: item.action,
+    ...(item.taskIds ? { taskIds: [...item.taskIds] } : {}),
+    ...(item.blocking ? { blocking: item.blocking.map((task) => ({ ...task })) } : {}),
+  };
+  if (item.subject.kind === 'task') {
+    const { taskId } = item.subject;
 
-/** The workspace `tasks` section and preparation state of one Engine reading (`tasks: 'all'`). Pure. */
-export function workspaceTasksOf(
-  basis: Pick<InspectionBasis, 'reading' | 'catalogue'>,
-): WorkspaceTasksContribution {
-  const { reading, catalogue } = basis;
-  const { inspection, lanes } = reading;
-  const titles = new Map(
-    inspection.tasks.map((entry) => [entry.record.taskId, entry.record.title]),
-  );
-  const groups = GROUPS.flatMap((group) => {
-    const tasks = inspection.tasks.flatMap((entry) => {
-      const lane = lanes.get(entry.record.taskId);
-
-      return lane && group.lanes.includes(lane)
-        ? [
-            {
-              id: entry.record.taskId,
-              title: entry.record.title,
-              status: taskStatusOf(lane),
-              type: {
-                id: entry.record.type,
-                title: catalogue.taskType(entry.record.type)?.title ?? entry.record.type,
-              },
-              dependsOn: [...entry.record.dependsOn],
-            },
-          ]
-        : [];
-    });
-
-    return tasks.length ? [{ id: group.id, name: group.name, tasks }] : [];
-  });
-  const attention: WorkspaceTaskAttention[] = [
-    ...inspection.brokenTasks.map((taskId) => ({
-      id: `task-broken.${taskId}`,
-      kind: 'task' as const,
-      title: taskId,
-      reason: 'The Task is broken: restore its files from Git.',
+    return {
+      id: `${item.reason === 'task-broken' ? 'task-broken' : 'task-attention'}.${taskId}`,
+      kind: 'task',
+      // A broken Task has no readable title; its id stands in.
+      title: titles.get(taskId) ?? taskId,
       targetId: taskId,
-      priority: 'high' as const,
-    })),
-    ...inspection.attention.map((item) =>
-      item.subject.kind === 'task'
-        ? {
-            id: `task-attention.${item.subject.taskId}`,
-            kind: 'task' as const,
-            title: titles.get(item.subject.taskId) ?? item.subject.taskId,
-            reason: `${item.step}: ${item.reason}`,
-            targetId: item.subject.taskId,
-            priority: 'normal' as const,
-          }
-        : {
-            id: 'specification-attention',
-            kind: 'specification' as const,
-            title: item.step,
-            reason: item.reason,
-            priority: 'normal' as const,
-          },
-    ),
-  ];
-  const progress = reading.progress;
+      priority: item.reason === 'task-broken' ? 'high' : 'normal',
+      ...common,
+    };
+  }
 
   return {
-    section: { state: 'available', data: { groups, ...progress, attention } },
-    preparationState: reading.preparation,
+    id: 'specification-attention',
+    kind: 'specification',
+    title: item.stepTitle ?? item.step ?? 'Specification',
+    priority: 'normal',
+    ...common,
+  };
+}
+
+/**
+ * The workspace `tasks` section (the Overview's Tasks) of one Engine reading (`tasks: 'all'`): the
+ * configured grouping with a per-row attention mark, the progress with cancelled and on hold apart,
+ * the attention projection, and the Overview summary (a Task named by an attention item or by Now
+ * appears there by id only) with Now's explanation when the Specification is stuck. Pure.
+ */
+export function workspaceTasksOf(
+  basis: Pick<InspectionBasis, 'reading' | 'catalogue'>,
+  grouping: DashboardGrouping = DEFAULT_DASHBOARD_GROUPING,
+): WorkspaceTasksContribution {
+  const board = taskBoardOf(basis, grouping);
+  const titles = new Map(board.rows.map((row) => [row.id, row.title] as const));
+  const named = namedTaskIds(board.attention);
+  const groups: WorkspaceTaskGroup[] = board.groups.map((group) => ({
+    id: group.id,
+    name: group.name,
+    summary: group.summary,
+    collapsed: group.collapsed,
+    tasks: group.tasks.map((row) => ({
+      id: row.id,
+      title: row.title,
+      status: row.status,
+      type: row.type,
+      dependsOn: row.dependsOn,
+      ...(named.has(row.id) ? { attention: true } : {}),
+    })),
+  }));
+  const stuck = board.stuck?.map((task) => {
+    const title = titles.get(task.taskId);
+
+    return { ...task, ...(title !== undefined ? { title } : {}) };
+  });
+
+  return {
+    section: {
+      state: 'available',
+      data: {
+        groups,
+        ...board.progress,
+        attention: board.attention.map((item) => workspaceAttentionOf(item, titles)),
+        overview: { ...overviewSummary(board.groups, named), ...(stuck ? { stuck } : {}) },
+      },
+    },
+    preparationState: basis.reading.preparation,
   };
 }
 
@@ -178,10 +179,9 @@ export function createEngineTaskProgress(source: TaskEngine): TaskProgressSource
 
     for (const specId of specIds) {
       try {
-        progress.set(
-          specId,
-          (await readExecutionForRead(workflow, specId, { tasks: [] })).progress,
-        );
+        const { completed, total } = (await readExecutionForRead(workflow, specId, { tasks: [] }))
+          .progress;
+        progress.set(specId, { completed, total });
       } catch {
         progress.set(specId, null);
       }

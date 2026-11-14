@@ -80,7 +80,16 @@ export function taskResource(scenario: AuthoringScenario): TaskResourceFacts {
     ],
     context: [...context],
     readiness: started ? { kind: 'ready' } : { kind: 'status', status: 'draft' },
-    lane: started ? 'in-progress' : 'needs-approval',
+    facts: {
+      preparation: started ? 'ready' : 'draft',
+      escalated: false,
+      position: started
+        ? { state: 'active', step: 'implement', attempt: 1 }
+        : { state: 'not-started' },
+      startable: false,
+      startBlockers: started ? [] : [{ kind: 'status', status: 'draft' }],
+      definitionChanged: false,
+    },
     position: started
       ? { state: 'active', step: 'implement', attempt: 1 }
       : { state: 'not-started' },
@@ -266,12 +275,15 @@ export async function workspaceResponse(
           completed: empty ? 0 : 1,
           total: empty ? 0 : 5,
           attention: [],
+          overview: { rows: [], compact: [] },
           groups: empty
             ? []
             : [
                 {
                   id: 'needs-approval',
                   name: 'Needs approval',
+                  summary: 'row',
+                  collapsed: false,
                   tasks: [
                     row('t-02', 'Token exchange endpoint and session cookie', draft, 'Backend', [
                       't-01',
@@ -282,6 +294,8 @@ export async function workspaceResponse(
                 {
                   id: 'ready',
                   name: 'Ready to start',
+                  summary: 'row',
+                  collapsed: false,
                   tasks: [
                     row(
                       't-07',
@@ -295,6 +309,8 @@ export async function workspaceResponse(
                 {
                   id: 'done',
                   name: 'Done',
+                  summary: 'compact',
+                  collapsed: false,
                   tasks: [
                     row(
                       't-01',
@@ -307,6 +323,8 @@ export async function workspaceResponse(
                 {
                   id: 'held',
                   name: 'On hold or cancelled',
+                  summary: 'compact',
+                  collapsed: true,
                   tasks: [
                     row(
                       't-03',

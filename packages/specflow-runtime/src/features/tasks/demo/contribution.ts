@@ -1,4 +1,5 @@
 import type { DemoSpecification } from '../../demo-catalogue';
+import { overviewSummary } from '../presentation/group-tasks';
 import { groupDemoTasks } from './groups';
 import { buildDemoTasks } from './sources';
 export function buildDemoTaskContribution(record: DemoSpecification) {
@@ -18,13 +19,17 @@ export function buildDemoTaskContribution(record: DemoSpecification) {
       : [],
   );
 
+  const groups = groupDemoTasks(tasks);
+  const named = new Set(attention.map((item) => item.targetId));
+
   return {
     state: 'available' as const,
     data: {
-      groups: groupDemoTasks(tasks),
+      groups,
       completed: record.progress.completed,
       total: record.progress.total,
       attention,
+      overview: overviewSummary(groups, named),
     },
   };
 }

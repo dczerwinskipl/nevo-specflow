@@ -5,7 +5,6 @@ import {
   newRun,
   type Handoff,
   type TerminalOutcome,
-  type WorkflowPin,
 } from '@nevo/workflow';
 import {
   resolveContinuation,
@@ -19,12 +18,7 @@ import type { TaskTypes, WorkflowDefinition, WorkflowStep } from '../definitions
 import { WorkflowError } from '../errors';
 import type { TaskProposal } from '../tasks/tasks';
 import { TASKS_PER_SPECIFICATION_MAX } from '../limits';
-import type { TaskContextEntry } from '../../tasks/resource/model';
-import {
-  unregisteredTaskFiles,
-  type TaskContextIssue,
-  type TaskResourceIssue,
-} from '../../tasks/resource/validate';
+import { unregisteredTaskFiles, type TaskResourceIssue } from '../../tasks/resource/validate';
 import {
   taskPosition,
   type ExecutionTask,
@@ -43,6 +37,9 @@ import {
   unsatisfiableDependencies,
 } from '../tasks/tasks';
 import { continuationOf, waitDecision } from './advance';
+import { deriveAttention, startBlockerAttention } from './attention';
+import type { AttentionItem } from '../attention/model';
+import type { BlockingTask } from '../tasks/tasks';
 import {
   executionTasks,
   loadTask,
@@ -60,6 +57,9 @@ import { effectiveTaskTypesOf, isAwaited, unresolvedContext } from './task-polic
 import { taskAuthoringOf, type TaskAuthoringFacts } from './task-authoring';
 import { entryGatesOf, exitGatesFor, type GateStatus } from '../gates/evaluate';
 import { evaluateGates, type GateDocuments } from '../gates/read';
+import type { StartBlocker } from './start-blockers';
+
+export type { StartBlocker } from './start-blockers';
 
 /**
  * The read-only action projection (E4a): where a Specification or a Task stands and what the owner
@@ -136,54 +136,6 @@ export interface StartableStep {
   readonly entryGates?: readonly GateStatus[];
 }
 
-/** Why the next step of a subject cannot start. */
-export type StartBlocker =
-  | { readonly kind: 'status'; readonly status: Exclude<TaskStatus, 'ready'> }
-  | {
-      readonly kind: 'dependencies';
-      /** Every dependency that has not completed, in declared order. */
-      readonly waitingFor: readonly string[];
-      /** Those that can no longer complete (ended otherwise, cancelled or broken). */
-      readonly unsatisfiable: readonly string[];
-    }
-  /** The Task's files are inconsistent (`ExecutionInspection.brokenTasks`); restore them from Git. */
-  | {
-      readonly kind: 'broken';
-      readonly reason:
-        Extract<TaskResourceIssue, { kind: 'broken' | 'dangling' }>['reason'] | 'position';
-    }
-  /** The workflow the run is pinned to is missing or changed (`WORKFLOW_DEFINITION_CHANGED`). */
-  | { readonly kind: 'definition-changed'; readonly pinned: WorkflowPin }
-  /** First start: the task type is not allowed by the effective policy any more. */
-  | { readonly kind: 'type-not-allowed'; readonly message: string }
-  /** First start: the task type or its workflow is not defined. */
-  | { readonly kind: 'definition-missing'; readonly message: string }
-  /** First start of a Specification: its archetype has no usable execution binding. */
-  | { readonly kind: 'not-configured'; readonly message: string }
-  /** A required context entry does not resolve (`WORKFLOW_TASK_CONTEXT_UNRESOLVED`). */
-  | {
-      readonly kind: 'context-unresolved';
-      readonly entries: readonly {
-        /** Position in the context list, from 0. */
-        readonly index: number;
-        readonly kind: TaskContextEntry['kind'];
-        readonly reason: TaskContextIssue['reason'];
-      }[];
-    }
-  /**
-   * A required process artifact (`artifact: true`) does not exist yet: expected, not stale. The start
-   * is refused like an unresolved entry (`WORKFLOW_TASK_CONTEXT_UNRESOLVED`, `awaited`).
-   */
-  | {
-      readonly kind: 'context-awaited';
-      readonly entries: readonly {
-        readonly index: number;
-        readonly kind: Exclude<TaskContextEntry['kind'], 'instructions'>;
-      }[];
-    }
-  /** An entry gate of the step does not hold (`WORKFLOW_GATE_UNSATISFIED`); the unsatisfied ones. */
-  | { readonly kind: 'gates-unsatisfied'; readonly gates: readonly GateStatus[] };
-
 export type ActionPosition =
   | { readonly kind: 'not-started'; readonly preview: PinPreview; readonly next: StartableStep }
   | { readonly kind: 'ready'; readonly next: StartableStep }
@@ -207,6 +159,8 @@ export type ActionPosition =
       readonly attention?: {
         readonly reason: Extract<AttentionReason, 'tasks-stuck' | 'task-escalated'>;
         readonly taskIds?: readonly string[];
+        /** For `tasks-stuck`: why each Task of `taskIds` blocks. */
+        readonly blocking?: readonly BlockingTask[];
       };
     }
   /** The subject has not started or is ready, but its next step cannot start. */
@@ -376,6 +330,12 @@ export interface ActionProjection {
   readonly specification?: SpecificationLevelActions;
   /** For a Task subject that is not broken: its effective context and dependency candidates. */
   readonly taskAuthoring?: TaskAuthoringFacts;
+  /**
+   * What a person has to do about the subject now, if anything: the item `deriveAttention` derives
+   * for it, or for a Task that has not started, its start blockers that need a person
+   * (`startBlockerAttention`).
+   */
+  readonly attention?: AttentionItem;
 }
 
 export type ActionDependencies = Pick<
@@ -397,10 +357,11 @@ export function inspectActions(
 ): Promise<ActionProjection> {
   return dependencies.serialize(async () => {
     const snapshot = await dependencies.store.read(subject.specId);
+    const derived = deriveAttention(dependencies.catalogue, snapshot);
 
     return subject.kind === 'specification'
-      ? specificationProjection(dependencies, snapshot, subject)
-      : taskProjection(dependencies, snapshot, subject);
+      ? specificationProjection(dependencies, snapshot, subject, derived)
+      : taskProjection(dependencies, snapshot, subject, derived);
   });
 }
 
@@ -737,6 +698,7 @@ async function runProjection(
               attention: {
                 reason: decision.reason,
                 ...(decision.taskIds ? { taskIds: decision.taskIds } : {}),
+                ...(decision.blocking ? { blocking: decision.blocking } : {}),
               },
             }
           : {}),
@@ -814,7 +776,33 @@ function taskTypeOptions(catalogue: ExecutionCatalogue, allowedTypes: TaskTypes)
   });
 }
 
+/** The item `deriveAttention` derived for the subject, as the projection carries it. */
+function ownAttention(
+  derived: readonly AttentionItem[],
+  subject: WorkflowSubject,
+): Pick<ActionProjection, 'attention'> {
+  const own = derived.find((item) =>
+    subject.kind === 'specification'
+      ? item.subject.kind === 'specification'
+      : item.subject.kind === 'task' && item.subject.taskId === subject.taskId,
+  );
+
+  return own ? { attention: own } : {};
+}
+
 async function specificationProjection(
+  dependencies: ActionDependencies,
+  snapshot: ExecutionSnapshot,
+  subject: Extract<WorkflowSubject, { kind: 'specification' }>,
+  derived: readonly AttentionItem[],
+): Promise<ActionProjection> {
+  return {
+    ...(await specificationPosition(dependencies, snapshot, subject)),
+    ...ownAttention(derived, subject),
+  };
+}
+
+async function specificationPosition(
   dependencies: ActionDependencies,
   snapshot: ExecutionSnapshot,
   subject: Extract<WorkflowSubject, { kind: 'specification' }>,
@@ -891,6 +879,7 @@ export async function taskProjection(
   dependencies: ActionDependencies,
   snapshot: ExecutionSnapshot,
   subject: Extract<WorkflowSubject, { kind: 'task' }>,
+  derived: readonly AttentionItem[],
 ): Promise<ActionProjection> {
   const { catalogue } = dependencies;
   const tasks = executionTasks(catalogue, snapshot);
@@ -919,6 +908,7 @@ export async function taskProjection(
         editContext: reason,
         editDependencies: reason,
       },
+      ...ownAttention(derived, subject),
     };
   }
 
@@ -989,26 +979,42 @@ export async function taskProjection(
 
     const blockers = [...readinessBlockers(), ...typeBlockers, ...(await contextBlockers())];
     if (!workflow) {
+      const attention = startBlockerAttention(subject, blockers);
+
       return {
         subject,
         position: { kind: 'blocked', blockers },
         actions: {},
         task: lifecycle,
         taskAuthoring,
+        ...(attention ? { attention } : {}),
       };
     }
 
+    const first = await firstStart(workflow, catalogue, gates, blockers, true);
+    const attention =
+      first.position.kind === 'blocked'
+        ? startBlockerAttention(subject, first.position.blockers, first.position.next)
+        : undefined;
+
     return {
       subject,
-      ...(await firstStart(workflow, catalogue, gates, blockers, true)),
+      ...first,
       task: lifecycle,
       taskAuthoring,
+      ...(attention ? { attention } : {}),
     };
   }
 
   const definition = pinnedDefinitionIfUnchanged(catalogue, run);
   if (!definition) {
-    return { subject, ...definitionChanged(run), task: lifecycle, taskAuthoring };
+    return {
+      subject,
+      ...definitionChanged(run),
+      task: lifecycle,
+      taskAuthoring,
+      ...ownAttention(derived, subject),
+    };
   }
 
   return {
@@ -1025,6 +1031,7 @@ export async function taskProjection(
     })),
     task: lifecycle,
     taskAuthoring,
+    ...ownAttention(derived, subject),
   };
 }
 

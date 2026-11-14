@@ -124,7 +124,7 @@ of:
 - `ready {step}`: a checkpoint after a finish or a return; the next start activates `step`;
 - `terminal {outcome}`.
 
-Readiness, lanes and statuses are derived from these, never stored.
+Readiness, Task facts and statuses are derived from these, never stored.
 
 - **Attempts.** Every activation of a step creates the next attempt number for that step. Finish must
   name the exact active attempt (`WORKFLOW_ATTEMPT_MISMATCH` otherwise).
@@ -514,23 +514,69 @@ The reasons are:
 | `tasks-stuck`         | The Specification waits, but no open Task can progress without the owner.     |
 | `task-escalated`      | Tasks escalated, no declared transition (`taskIds`). Wins over `tasks-stuck`. |
 
+`tasks-stuck` always names the Tasks to resolve (`taskIds`, with `blocking: [{taskId, cause}]`,
+`blockingTasks` in `tasks/tasks.ts`): each draft, each Task on hold, each broken Task, and each
+`ready` Task with a direct dependency that was cancelled or ended without completing. A Task that
+only waits for other open Tasks is not named, nor one whose only unsatisfiable dependencies are
+broken (the broken Task is named). The list is resolved from the current state on every read and
+is empty when every Task is closed but the wait is still active.
+
 Attention is never a question to the agent. The agent's finish succeeds, and the finish (or return)
 returns its `ContinuationDecision`.
+
+**Attention items.** Besides the continuation reasons, an attention item (`AttentionItem`,
+`attention/model.ts`) can come from the state of a subject:
+
+| Reason                     | When                                                                      |
+| -------------------------- | ------------------------------------------------------------------------- |
+| `task-broken`              | A broken Task (see "The Task set").                                       |
+| `definition-changed`       | A run that has not ended is pinned to a missing or changed workflow.      |
+| `context-unresolved`       | An approved Task that has not started has a required entry that is stale. |
+| `dependency-unsatisfiable` | It depends on a Task that was cancelled, ended otherwise or is broken.    |
+| `type-not-allowed`         | Its task type is not allowed by the effective policy any more.            |
+| `definition-missing`       | Its task type or that type's workflow is not defined.                     |
+| `entry-gate-unsatisfied`   | An entry gate of its first step does not hold.                            |
+
+Every item carries the required `actor` (`owner`; every item the Engine derives today waits for
+the owner, `agent` is reserved), the one `action` it offers (`start-step`, `configure-archetype`,
+`review-tasks`, `restore-task`, `confirm-definition`, `edit-context`, `edit-dependencies`,
+`remove-or-cancel`, `satisfy-gate`), the step and its title where one resolves, and a display-only
+English `message`. The start blockers that are **not** attention (owner decision 2A): a draft or a
+Task on hold (`status`; the Specification's `tasks-stuck` covers them when nothing else can
+progress), dependencies that can all still complete, an awaited process artifact
+(`context-awaited`), and a Task that can start. Attention is never inferred from a status name.
 
 **Attention is derived, never stored.** `inspectExecution` computes the attention items
 (`deriveAttention` in `operations/attention.ts`) from the canonical runs, the pinned definitions and
 the current archetypes, with the same functions the operations use for their results
 (`continuationOf`, `waitDecision` in `operations/advance.ts`):
 
+- a broken Task gets `task-broken` (broken Tasks come first, then the Specification, then its
+  Tasks in id order);
 - a subject `ready` on a step gets what its latest event decides: after a finished attempt, the
   recorded transition (from that attempt's step) with the executor that finished it (`finishedBy`,
   the Session a `reuse` continues); after an owner return, an owner action;
 - a Specification active on its wait step gets `task-escalated` or `tasks-stuck` (also when every
   Task is closed but the wait is still active, which only a Task file changed outside the Engine
   causes);
-- nothing is derived for a subject that is active (being worked on), not started or terminal, for a
-  Task that is not `ready`, or for a run whose pinned workflow is missing or changed (its inspection
-  entry carries `definitionChanged: true`).
+- a run that has not ended whose pinned workflow is missing or changed gets `definition-changed`
+  (its inspection entry carries `definitionChanged: true`; re-pinning is F07);
+- nothing is derived for a subject that is active (being worked on), not started or terminal, or
+  for a Task that is not `ready`.
+
+The start blockers of a Task that has not started are read with the documents (context, gates), so
+the action projection classifies them (`startBlockerAttention`): `inspectActions` carries the
+subject's item as `attention`, and `readExecution` returns every item (the derived ones and the
+start-blocker items of the Tasks it projects) as `attention`, complete for `tasks: 'all'`.
+
+**Neutral Task facts.** `readExecution` also returns the `TaskFacts` of each projected Task:
+`preparation`, `escalated`, the run `position`, `startable` (the projection finds no start
+blocker), `startBlockers`, `dependencyWait` (`waitingFor`, `unsatisfiable`), `definitionChanged`
+and `attention`. They hold no presentation concept (no group, label, order or lane): a dashboard
+grouping is a presentation of these facts owned by a surface (the Runtime's is described in
+[Task reads](../../reference/api/task-reads.md#dashboard-grouping)), and the CLI and MCP read them
+without any grouping. `TaskProgress` counts `completed` of `total` (cancelled Tasks and those ended
+by an abandon left out, on hold counted) and names `cancelled` and `onHold` apart.
 
 So there is at most one item per subject, and **any start removes it** by construction, whether the
 start comes from a quick screen, a manual start or an automatic continuation. Whatever changes the
@@ -550,8 +596,9 @@ job (plan 06, F01).
 ### Tasks are started by the owner
 
 A Task has no previous step, so no transition decides how it continues. A Task never starts and never
-gets attention just because it is ready: attention is derived for a Task only once one of its own
-steps finished or returned. The owner starts Tasks. The intended model (plan 06,
+gets attention just because it is ready: a continuation is derived for a Task only once one of its
+own steps finished or returned, and before its first start only a start blocker a person has to fix
+is attention (above). The owner starts Tasks. The intended model (plan 06,
 "Run selected Tasks") is that the owner selects Tasks and presses "run", and the Runtime orchestrator
 runs that selection with agents in dependency order, recording attention only when the run cannot
 proceed.
@@ -657,13 +704,13 @@ documents ([documents layer](../runtime/specification-documents.md#commits-of-wo
 
 ## Extension points
 
-| To add                        | Change                                                                                                                                                    |
-| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A Task effect                 | Add a value to `WORKFLOW_EFFECTS` (contracts) and a case to `applyTaskEffects`.                                                                           |
-| A Task status change          | Extend `ALLOWED_DECISIONS` in `tasks/tasks.ts`; the store invariants for statuses live in `state/validate.ts`.                                            |
-| An attention reason           | Add it to `ATTENTION_REASONS` and give `resolveAgentLaunch` / `resolveContinuation` (or `waitDecision`) the rule that produces it.                        |
-| A step kind (e.g. gate)       | Add a union member in the contracts schema and in `definitions/model.ts`, then a rule in `workflow-rules.ts` and handling in `progression` and `advance`. |
-| A gate type (`command`, …)    | Add a variant to the gate schemas (contracts), a type to `DocumentGate`'s union and an evaluator in `workflow/gates/` (F03); the check points stay.       |
-| Finalize actions              | Planned as step fields run after the finish is recorded (F04).                                                                                            |
-| A store                       | Implement the `WorkflowStore` port (`state/store.ts`).                                                                                                    |
-| A surface (Runtime, CLI, MCP) | Call the operations with `openWorkflow(engine)`. Never reimplement progression.                                                                           |
+| To add                        | Change                                                                                                                                                                                                                                                                                       |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A Task effect                 | Add a value to `WORKFLOW_EFFECTS` (contracts) and a case to `applyTaskEffects`.                                                                                                                                                                                                              |
+| A Task status change          | Extend `ALLOWED_DECISIONS` in `tasks/tasks.ts`; the store invariants for statuses live in `state/validate.ts`.                                                                                                                                                                               |
+| An attention reason           | A continuation reason: add it to `ATTENTION_REASONS` and give `resolveAgentLaunch` / `resolveContinuation` (or `waitDecision`) the rule that produces it. A state reason: add it to `ATTENTION_ITEM_REASONS` with its action, and derive it in `deriveAttention` or `startBlockerAttention`. |
+| A step kind (e.g. gate)       | Add a union member in the contracts schema and in `definitions/model.ts`, then a rule in `workflow-rules.ts` and handling in `progression` and `advance`.                                                                                                                                    |
+| A gate type (`command`, …)    | Add a variant to the gate schemas (contracts), a type to `DocumentGate`'s union and an evaluator in `workflow/gates/` (F03); the check points stay.                                                                                                                                          |
+| Finalize actions              | Planned as step fields run after the finish is recorded (F04).                                                                                                                                                                                                                               |
+| A store                       | Implement the `WorkflowStore` port (`state/store.ts`).                                                                                                                                                                                                                                       |
+| A surface (Runtime, CLI, MCP) | Call the operations with `openWorkflow(engine)`. Never reimplement progression.                                                                                                                                                                                                              |

@@ -305,6 +305,9 @@ describe('waiting for Tasks', () => {
       kind: 'attention',
       step: 'implementation',
       reason: 'tasks-stuck',
+      // The Task to resolve: its dependency can no longer complete.
+      taskIds: ['screen'],
+      blocking: [{ taskId: 'screen', cause: 'dependency-unsatisfiable' }],
     });
     const inspection = await inspectExecution(dependencies, SPEC);
     expect(inspection.tasks.map((entry) => entry.readiness)).toEqual([

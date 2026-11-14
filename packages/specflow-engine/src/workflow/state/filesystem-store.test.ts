@@ -855,6 +855,8 @@ describe('filesystem workflow store: the Task set is the one the index lists', (
       kind: 'attention',
       step: 'implementation',
       reason: 'tasks-stuck',
+      taskIds: ['screen'],
+      blocking: [{ taskId: 'screen', cause: 'broken' }],
     });
     const inspection = await inspectExecution(dependencies, SPEC);
     expect(inspection.specification?.record.run.position).toMatchObject({
@@ -866,6 +868,11 @@ describe('filesystem workflow store: the Task set is the one the index lists', (
       { kind: 'dangling', taskId: 'screen', reason: 'missing-folder' },
     ]);
     expect(inspection.attention).toMatchObject([
+      {
+        subject: { kind: 'task', taskId: 'screen' },
+        reason: 'task-broken',
+        action: 'restore-task',
+      },
       { subject: { kind: 'specification' }, reason: 'tasks-stuck' },
     ]);
     const broken = {
@@ -895,7 +902,11 @@ describe('filesystem workflow store: the Task set is the one the index lists', (
     expect(inspection.tasks.map((entry) => entry.readiness)).toEqual([
       { kind: 'dependencies', waitingFor: ['api'] },
     ]);
-    expect(inspection.attention).toMatchObject([{ reason: 'tasks-stuck' }]);
+    expect(inspection.attention).toMatchObject([
+      { reason: 'task-broken' },
+      // The broken Task is the one to resolve; its dependent only waits for it.
+      { reason: 'tasks-stuck', taskIds: ['api'] },
+    ]);
     await expect(
       startTaskExecution(dependencies, { specId: SPEC, taskId: 'screen', actor: claude }),
     ).rejects.toMatchObject({ code: 'WORKFLOW_DEPENDENCY_UNSATISFIED' });
@@ -1014,6 +1025,8 @@ describe('filesystem workflow store: the Task set is the one the index lists', (
       kind: 'attention',
       step: 'implementation',
       reason: 'tasks-stuck',
+      taskIds: ['screen'],
+      blocking: [{ taskId: 'screen', cause: 'broken' }],
     });
     const inspection = await inspectExecution(dependencies, SPEC);
     expect(inspection.specification?.record.run.position).toMatchObject({
@@ -1022,6 +1035,11 @@ describe('filesystem workflow store: the Task set is the one the index lists', (
     });
     expect(inspection.brokenTasks).toEqual(['screen']);
     expect(inspection.attention).toMatchObject([
+      {
+        subject: { kind: 'task', taskId: 'screen' },
+        reason: 'task-broken',
+        action: 'restore-task',
+      },
       { subject: { kind: 'specification' }, reason: 'tasks-stuck' },
     ]);
     const broken = {

@@ -271,6 +271,13 @@ export function taskWorkflowProjection(
 export function taskResourceFor(scenario: TaskWorkflowScenario): TaskResourceFacts {
   const started = scenario !== 'first-start';
   const spike = scenario === 'spike-gate' || scenario === 'spike-gate-met';
+  const position: TaskResourceFacts['position'] = started
+    ? {
+        state: 'active',
+        step: spike ? 'spike' : scenario === 'rework' ? 'implement' : 'review',
+        attempt: scenario === 'rework' ? 2 : 1,
+      }
+    : { state: 'not-started' };
 
   return {
     revision: 'rev-9',
@@ -287,14 +294,15 @@ export function taskResourceFor(scenario: TaskWorkflowScenario): TaskResourceFac
     ],
     context: null,
     readiness: { kind: 'ready' },
-    lane: started ? 'in-progress' : 'ready',
-    position: started
-      ? {
-          state: 'active',
-          step: spike ? 'spike' : scenario === 'rework' ? 'implement' : 'review',
-          attempt: scenario === 'rework' ? 2 : 1,
-        }
-      : { state: 'not-started' },
+    facts: {
+      preparation: 'ready',
+      escalated: false,
+      position,
+      startable: !started,
+      startBlockers: [],
+      definitionChanged: false,
+    },
+    position,
     definitionChanged: false,
   };
 }

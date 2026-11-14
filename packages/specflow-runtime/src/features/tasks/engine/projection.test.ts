@@ -2,13 +2,11 @@ import type {
   ExecutionCatalogue,
   ExecutionInspection,
   ExecutionReading,
-  TaskLane,
   WorkflowDefinition,
 } from '@nevo/specflow-engine';
 import { describe, expect, it } from 'vitest';
 
-import { workspaceTasksOf } from '../workspace/engine-contribution';
-import { executionFactsOf, historyFactsOf, taskStatusOf, type InspectionBasis } from './projection';
+import { executionFactsOf, historyFactsOf, type InspectionBasis } from './projection';
 
 const transition = (
   id: string,
@@ -107,11 +105,7 @@ const active = task('build', {
   },
 });
 
-function basis(
-  tasks: unknown[],
-  lanes: Record<string, TaskLane> = {},
-  extra: Partial<ExecutionReading> = {},
-): InspectionBasis {
+function basis(tasks: unknown[]): InspectionBasis {
   const inspection = {
     specId: 'spec',
     tasks,
@@ -122,10 +116,10 @@ function basis(
   const reading: ExecutionReading = {
     inspection,
     actions: new Map(),
-    lanes: new Map(Object.entries(lanes)),
-    progress: { completed: 0, total: tasks.length },
+    facts: new Map(),
+    attention: [],
+    progress: { completed: 0, total: tasks.length, cancelled: 0, onHold: 0 },
     preparation: 'prepared',
-    ...extra,
   };
 
   return {
@@ -180,11 +174,6 @@ describe('Engine Task projection', () => {
     expect(facts.workflow.position).toMatchObject({
       actor: { class: 'human', actorId: 'user:ann' },
     });
-    expect(taskStatusOf('in-progress')).toEqual({
-      id: 'in-progress',
-      label: 'In progress',
-      lifecycle: 'in_progress',
-    });
   });
 
   it('lists the attempts newest first with who worked on them', () => {
@@ -205,54 +194,5 @@ describe('Engine Task projection', () => {
 
     expect(executionFactsOf(basis([changed]), changed as never)).toBeUndefined();
     expect(historyFactsOf(basis([changed]), changed as never)).toBeUndefined();
-  });
-
-  it('groups the workspace Tasks by their Engine lanes and passes progress and preparation on', () => {
-    const tasks = ['draft-1', 'build', 'ready-1', 'waiting-1', 'blocked-1', 'done-1', 'gone-1'].map(
-      (taskId) => task(taskId),
-    );
-    const contribution = workspaceTasksOf(
-      basis(
-        tasks,
-        {
-          'draft-1': 'needs-approval',
-          build: 'in-progress',
-          'ready-1': 'ready',
-          'waiting-1': 'waiting',
-          'blocked-1': 'blocked',
-          'done-1': 'done',
-          'gone-1': 'ended',
-        },
-        { progress: { completed: 1, total: 6 }, preparation: 'preparing' },
-      ),
-    );
-
-    expect(contribution.preparationState).toBe('preparing');
-    expect(contribution.section).toMatchObject({
-      state: 'available',
-      data: {
-        groups: [
-          {
-            id: 'needs-approval',
-            tasks: [
-              {
-                id: 'draft-1',
-                status: { id: 'draft' },
-                type: { id: 'implementation', title: 'Implementation' },
-                dependsOn: [],
-              },
-            ],
-          },
-          { id: 'in-progress', tasks: [{ id: 'build' }] },
-          { id: 'ready', tasks: [{ id: 'ready-1' }] },
-          { id: 'waiting', tasks: [{ id: 'waiting-1' }] },
-          { id: 'blocked', tasks: [{ id: 'blocked-1', status: { id: 'blocked' } }] },
-          { id: 'done', tasks: [{ id: 'done-1' }] },
-          { id: 'held', tasks: [{ id: 'gone-1', status: { id: 'abandoned' } }] },
-        ],
-        completed: 1,
-        total: 6,
-      },
-    });
   });
 });

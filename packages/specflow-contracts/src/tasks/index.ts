@@ -2,6 +2,8 @@ import { Type, type Static } from 'typebox';
 import { SpecIdSchema, TaskIdSchema } from '../identifiers';
 import { TaskSnapshotSchema } from './task-read';
 import { TaskResourceFactsSchema } from './task-resource';
+import { TaskStatusLineSchema } from './task-list';
+export * from './task-list';
 export * from './task-read';
 export * from './task-resource';
 export const TaskReadErrorSchema = Type.Object(
@@ -23,24 +25,16 @@ export const SpecificationTaskParamsSchema = Type.Object(
   { additionalProperties: false },
 );
 
-const TaskStatusSchema = Type.Object({
-  id: Type.String(),
-  label: Type.String(),
-  lifecycle: Type.Union([
-    Type.Literal('pending'),
-    Type.Literal('in_progress'),
-    Type.Literal('completed'),
-    Type.Literal('blocked'),
-  ]),
-});
 export const WorkspaceTaskSchema = Type.Object({
   id: IdSchema,
   title: Type.String(),
-  status: TaskStatusSchema,
+  status: TaskStatusLineSchema,
   /** The Task Type with its catalogue title; project mode (the Engine's Task resource). */
   type: Type.Optional(Type.Object({ id: Type.String(), title: Type.String() })),
   /** The Tasks it depends on; project mode. */
   dependsOn: Type.Optional(Type.Array(TaskIdSchema)),
+  /** The attention projection has an item for the Task (or the Specification's names it). */
+  attention: Type.Optional(Type.Boolean()),
 });
 export const SpecificationTaskResponseSchema = Type.Object({
   task: WorkspaceTaskSchema,

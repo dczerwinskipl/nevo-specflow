@@ -5,7 +5,7 @@ import type {
   ExecutionCatalogue,
   ExecutionInspection,
   ExecutionReading,
-  TaskLane,
+  TaskFacts,
   WorkflowDefinition,
   WorkflowRun,
   WorkflowStep,
@@ -24,6 +24,8 @@ import type {
   TransitionDestination,
   TransitionFacts,
 } from '../reads/facts';
+import { toWire } from '../../workflow';
+import { taskStatusOf } from '../presentation/status-line';
 
 /**
  * Pure projection of one Engine inspection (`inspectExecution`) into the Task read facts. Every
@@ -61,32 +63,14 @@ export function identityOf(basis: InspectionBasis, taskId: string): TaskIdentity
   };
 }
 
-const STATUS_OF_LANE: Readonly<Record<TaskLane, TaskDefinitionFacts['task']['status']>> = {
-  'needs-approval': { id: 'draft', label: 'Draft', lifecycle: 'pending' },
-  'in-progress': { id: 'in-progress', label: 'In progress', lifecycle: 'in_progress' },
-  ready: { id: 'ready', label: 'Ready', lifecycle: 'pending' },
-  waiting: { id: 'waiting', label: 'Waiting', lifecycle: 'pending' },
-  blocked: { id: 'blocked', label: 'Blocked', lifecycle: 'blocked' },
-  done: { id: 'completed', label: 'Completed', lifecycle: 'completed' },
-  ended: { id: 'abandoned', label: 'Abandoned', lifecycle: 'blocked' },
-  held: { id: 'on-hold', label: 'On hold', lifecycle: 'blocked' },
-  cancelled: { id: 'cancelled', label: 'Cancelled', lifecycle: 'blocked' },
-  broken: { id: 'broken', label: 'Broken', lifecycle: 'blocked' },
-};
-
-/** The status line of a Task: the presentation of its Engine lane (`readExecution`). */
-export function taskStatusOf(lane: TaskLane): TaskDefinitionFacts['task']['status'] {
-  return { ...STATUS_OF_LANE[lane] };
-}
-
-/** The Engine lane of a Task the reading covers. */
-export function laneOf(basis: InspectionBasis, taskId: string): TaskLane {
-  const lane = basis.reading.lanes.get(taskId);
-  if (!lane) {
-    throw new Error(`The reading has no lane for the Task "${taskId}".`);
+/** The Engine's neutral facts of a Task the reading covers. */
+export function factsOf(basis: InspectionBasis, taskId: string): TaskFacts {
+  const facts = basis.reading.facts.get(taskId);
+  if (!facts) {
+    throw new Error(`The reading has no facts for the Task "${taskId}".`);
   }
 
-  return lane;
+  return facts;
 }
 
 /** The workflow a Task runs: the pinned one once it started, else its task type's. */
@@ -109,7 +93,7 @@ export function workflowOf(
   return type ? catalogue.workflow(type.workflow) : undefined;
 }
 
-export function resourceFactsOf(entry: InspectedTask, lane: TaskLane): TaskResourceFacts {
+export function resourceFactsOf(entry: InspectedTask, facts: TaskFacts): TaskResourceFacts {
   const { record } = entry;
 
   return {
@@ -127,7 +111,7 @@ export function resourceFactsOf(entry: InspectedTask, lane: TaskLane): TaskResou
         : entry.readiness.kind === 'status'
           ? { kind: 'status', status: entry.readiness.status }
           : { kind: 'ready' },
-    lane,
+    facts: structuredClone(toWire(facts)),
     position: structuredClone(record.run?.position ?? { state: 'not-started' }),
     definitionChanged: entry.definitionChanged === true,
   };
@@ -144,13 +128,13 @@ export function definitionFactsOf(
   );
   const taskType = basis.catalogue.taskType(record.type);
   const workflow = record.run?.workflow.id ?? taskType?.workflow;
-  const lane = laneOf(basis, record.taskId);
+  const facts = factsOf(basis, record.taskId);
 
   return {
     identity: identityOf(basis, record.taskId),
     version: entry.revision,
     specificationTitle: basis.specificationTitle,
-    task: { id: record.taskId, title: record.title, status: taskStatusOf(lane) },
+    task: { id: record.taskId, title: record.title, status: taskStatusOf(facts) },
     acceptanceCriteria: [],
     ...(workflow !== undefined ? { workflow } : {}),
     summary: record.summary ?? null,
@@ -166,7 +150,7 @@ export function definitionFactsOf(
         target: { kind: 'task', specId: basis.inspection.specId, taskId },
       },
     })),
-    resource: resourceFactsOf(entry, lane),
+    resource: resourceFactsOf(entry, facts),
   };
 }
 

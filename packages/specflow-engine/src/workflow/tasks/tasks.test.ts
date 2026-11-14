@@ -9,6 +9,7 @@ import {
   allTasksClosed,
   applyTaskDecisions,
   applyTaskEffects,
+  blockingTasks,
   decideTaskStatus,
   effectiveTaskTypes,
   materializeTasks,
@@ -435,6 +436,29 @@ describe('Task status, readiness and the wait', () => {
     expect(tasksStuck([ended(api, 'abandoned')], [])).toBe(false);
     // A broken Task (listed without a record) never progresses.
     expect(tasksStuck([ended(api, 'completed')], ['screen'])).toBe(true);
+  });
+
+  it('names the Tasks to resolve when stuck, with why each blocks, never a Task that only waits', () => {
+    const third = ready(drafts([proposal('docs', ['screen'])], { existing: [api, screen] })[0]!);
+    // `screen` waits for the draft; `docs` waits for `screen`: only the draft is to resolve.
+    expect(blockingTasks([draftApi, screen, third], [])).toEqual([
+      { taskId: 'api', cause: 'draft' },
+    ]);
+    expect(blockingTasks([{ ...api, status: 'on-hold' }, screen], [])).toEqual([
+      { taskId: 'api', cause: 'on-hold' },
+    ]);
+    // A cancelled or abandoned dependency: the dependent itself is to resolve.
+    expect(blockingTasks([{ ...api, status: 'cancelled' }, screen], [])).toEqual([
+      { taskId: 'screen', cause: 'dependency-unsatisfiable' },
+    ]);
+    expect(blockingTasks([ended(api, 'abandoned'), screen, third], [])).toEqual([
+      { taskId: 'screen', cause: 'dependency-unsatisfiable' },
+    ]);
+    // A broken dependency: the broken Task is listed, not its dependent.
+    expect(blockingTasks([screen], ['api'])).toEqual([{ taskId: 'api', cause: 'broken' }]);
+    expect(
+      blockingTasks([ended(api, 'completed'), { ...screen, status: 'cancelled' }], []),
+    ).toEqual([]);
   });
 
   it('closes the wait when every Task ended or was cancelled', () => {

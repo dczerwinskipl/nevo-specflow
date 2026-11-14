@@ -241,7 +241,16 @@ async function specificationWorkspace(
           ...base.sections.tasks.data,
           completed: 1,
           total: 1,
-          groups: [...done, { id: 'held', name: 'On hold or cancelled', tasks: cancelled }],
+          groups: [
+            ...done,
+            {
+              id: 'held',
+              name: 'On hold or cancelled',
+              summary: 'compact' as const,
+              collapsed: true,
+              tasks: cancelled,
+            },
+          ],
         },
       },
     },

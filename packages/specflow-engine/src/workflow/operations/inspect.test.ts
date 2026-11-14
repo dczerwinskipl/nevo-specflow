@@ -53,7 +53,11 @@ describe('attention derived from the state', () => {
       {
         subject: specification,
         step: 'breakdown-review',
+        stepTitle: 'Review the breakdown',
         reason: 'model-missing',
+        actor: 'owner',
+        action: 'configure-archetype',
+        message: '"Review the breakdown" cannot continue: choose a model of codex for "reviewer".',
         archetype: 'reviewer',
         provider: 'codex',
       },
@@ -83,7 +87,7 @@ describe('attention derived from the state', () => {
     expect((await inspectExecution(withModel, SPEC)).attention).toEqual([]);
   });
 
-  it('derives nothing for a run whose pinned workflow changed, and says so', async () => {
+  it('asks the owner to review a run whose pinned workflow changed, and says so', async () => {
     const dependencies = memoryDependencies(catalogue);
     await work(dependencies, specification, {}, agent('antigravity', 'session-g'));
     const edited = memoryDependencies({
@@ -99,7 +103,14 @@ describe('attention derived from the state', () => {
     Object.assign(edited, { store: dependencies.store });
 
     const inspection = await inspectExecution(edited, SPEC);
-    expect(inspection.attention).toEqual([]);
+    expect(inspection.attention).toMatchObject([
+      {
+        subject: specification,
+        reason: 'definition-changed',
+        actor: 'owner',
+        action: 'confirm-definition',
+      },
+    ]);
     expect(inspection.specification?.definitionChanged).toBe(true);
     expect((await inspectExecution(dependencies, SPEC)).specification).not.toHaveProperty(
       'definitionChanged',

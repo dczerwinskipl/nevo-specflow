@@ -1,3 +1,5 @@
+import type { WorkspaceAttention } from '@nevo/specflow-contracts/specs/workspace';
+import type { TaskOverview } from '@nevo/specflow-contracts/tasks';
 import type { RequestAuthorization } from '../../auth';
 import type { SessionScopeIdentity } from '../../sessions';
 import type { WorkspaceActivityInput, WorkspaceSessionStart } from './activity';
@@ -18,6 +20,8 @@ export interface WorkspaceTaskRecord {
     readonly label: string;
     readonly lifecycle: 'pending' | 'in_progress' | 'completed' | 'blocked';
   };
+  /** An attention item names the Task (its own, or the Specification's). */
+  readonly attention?: boolean;
 }
 export interface WorkspaceSessionRecord {
   readonly id: string;
@@ -38,6 +42,12 @@ export interface WorkspaceAttentionRecord {
   readonly reason: string;
   readonly targetId?: string;
   readonly priority?: 'critical' | 'high' | 'normal';
+  /** Workflow items: the reason code, who acts, the action and the Tasks named (see the contract). */
+  readonly code?: string;
+  readonly actor?: 'owner' | 'agent';
+  readonly action?: WorkspaceAttention['action'];
+  readonly taskIds?: string[];
+  readonly blocking?: WorkspaceAttention['blocking'];
 }
 export interface WorkspaceActivityRecord {
   readonly id: string;
@@ -70,11 +80,16 @@ export interface WorkspaceReadModel {
       readonly groups: {
         readonly id: string;
         readonly name: string;
+        readonly summary: 'row' | 'compact';
+        readonly collapsed: boolean;
         readonly tasks: WorkspaceTaskRecord[];
       }[];
       readonly completed: number;
       readonly total: number;
+      readonly cancelled?: number;
+      readonly onHold?: number;
       readonly attention: WorkspaceAttentionRecord[];
+      readonly overview: TaskOverview;
     }>;
     readonly documents: SourceSection<{
       readonly items: {

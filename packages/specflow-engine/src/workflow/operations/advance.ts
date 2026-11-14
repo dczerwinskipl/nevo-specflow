@@ -10,7 +10,13 @@ import type { ExecutionCatalogue } from '../definitions/catalogue';
 import type { SpecFlowAnnotations, WorkflowDefinition } from '../definitions/model';
 import { resolveContinuation, type ContinuationDecision } from '../continuation/resolve';
 import { WorkflowError } from '../errors';
-import { allTasksClosed, applyTaskEffects, isTaskEscalated, tasksStuck } from '../tasks/tasks';
+import {
+  allTasksClosed,
+  applyTaskEffects,
+  blockingTasks,
+  isTaskEscalated,
+  tasksStuck,
+} from '../tasks/tasks';
 import type { ExecutionTask, WorkflowActor, WorkflowRun, WorkflowSubject } from '../state/model';
 import { finishingSession } from './actors';
 import { pinnedDefinitionIfUnchanged } from './loaded-execution';
@@ -177,9 +183,19 @@ export function waitDecision(
 
   // Every Task closed while the wait is still active only happens when a Task file changed outside
   // the Engine (for example a restored record): no Task event will complete the wait any more.
-  return tasksStuck(tasks, broken) || allTasksClosed(tasks, broken)
-    ? { kind: 'attention', step, reason: 'tasks-stuck' }
-    : { kind: 'none', reason: 'waiting-for-tasks' };
+  if (!tasksStuck(tasks, broken) && !allTasksClosed(tasks, broken)) {
+    return { kind: 'none', reason: 'waiting-for-tasks' };
+  }
+
+  const blocking = blockingTasks(tasks, broken);
+
+  return {
+    kind: 'attention',
+    step,
+    reason: 'tasks-stuck',
+    taskIds: blocking.map((task) => task.taskId),
+    blocking,
+  };
 }
 
 /**

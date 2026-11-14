@@ -1,6 +1,7 @@
 import type {
   AbandonSpecificationResult,
   ActionPosition,
+  AttentionItem,
   ActionProjection,
   CloseBlocker,
   ContinuationDecision,
@@ -129,6 +130,11 @@ function positionLines(position: ActionPosition): string[] {
   }
 }
 
+/** One attention item: who acts, the action it offers and its message. */
+export function attentionLine(item: AttentionItem): string {
+  return `Attention (${item.reason}; ${item.actor}: ${item.action}): ${item.message}`;
+}
+
 /** The action projection as the owner reads it; only what is allowed is listed as an action. */
 export function actionLines(projection: ActionProjection): string[] {
   const lines = [`${subjectLabel(projection.subject)}`];
@@ -139,6 +145,10 @@ export function actionLines(projection: ActionProjection): string[] {
   }
 
   lines.push(...positionLines(projection.position));
+  if (projection.attention) {
+    lines.push(attentionLine(projection.attention));
+  }
+
   const { start, finish, return: back } = projection.actions;
   if (start) {
     lines.push(

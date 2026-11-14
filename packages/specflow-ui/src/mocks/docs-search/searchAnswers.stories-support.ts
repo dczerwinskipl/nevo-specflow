@@ -1,6 +1,8 @@
 // GENERATED from live answers of the dogfooding Runtime (2026-11-14) by the design review script.
-// `snippet` is the shipped excerpt (raw Markdown); `text` and `matches` approximate the proposed
-// API (plain text, match ranges, a window that starts near the first match).
+// `snippet` is the shipped excerpt (raw Markdown). `text` and `matches` APPROXIMATE the proposed
+// API from that snippet: one fragment around the best match (a sentence run, one list item or one
+// table row with its cells separated by an em dash), plain text, the window at most 40 characters
+// before the first match, the first occurrence of each term marked, at most 3 marks.
 
 export interface MockHit {
   readonly id: string;
@@ -33,15 +35,10 @@ export const repoAiOff: MockAnswer = {
       headingPath: ['AI provider boundary', 'Session identity'],
       snippet:
         'Provider session identity is opaque. Application code MUST NOT derive semantics from its string format. A provider-backed session MUST be addressed by the composite `ProviderSessionRef = (provider, providerSessionId)`.…',
-      text: 'Provider session identity is opaque. Application code MUST NOT derive semantics from its string format. A provider-backed session MUST be addressed by the composite ProviderSessionRef = (provider, providerSessionId).…',
+      text: 'Provider session identity is opaque. Application code MUST NOT derive semantics from its string format.',
       matches: [
         [0, 8],
         [9, 16],
-        [106, 114],
-        [122, 129],
-        [165, 183],
-        [187, 195],
-        [197, 214],
       ],
     },
     {
@@ -52,11 +49,10 @@ export const repoAiOff: MockAnswer = {
       headingPath: ['Canonical AI Session, Turn, and Work model', 'Hierarchy', 'Session'],
       snippet:
         'A Session represents a provider-backed conversation/execution context. Session is an independent abstraction. Its identity, lifecycle, persistence, history and Turn/Work operations MUST NOT require a Specification, Task or workflow attempt.…',
-      text: 'A Session represents a provider-backed conversation/execution context. Session is an independent abstraction. Its identity, lifecycle, persistence, history and Turn/Work operations MUST NOT require a Specification, Task or workflow attempt.…',
+      text: 'A Session represents a provider-backed conversation/execution context. Session is an independent abstraction.',
       matches: [
         [2, 9],
         [23, 31],
-        [71, 78],
       ],
     },
     {
@@ -67,12 +63,10 @@ export const repoAiOff: MockAnswer = {
       headingPath: ['AI architecture'],
       snippet:
         '…- [Managed Session persistence and lifecycle](session-storage-and-lifecycle.md) - [Provider process ownership and limits](provider-process-ownership.md) Product presentation belongs under [AI session UX](../../product/specflow/ui/ai-session-ux.md).',
-      text: '…Managed Session persistence and lifecycle · Provider process ownership and limits Product presentation belongs under AI session UX.',
+      text: 'Product presentation belongs under AI session UX.',
       matches: [
-        [9, 16],
-        [45, 53],
-        [118, 120],
-        [121, 128],
+        [35, 37],
+        [38, 45],
       ],
     },
     {
@@ -83,12 +77,10 @@ export const repoAiOff: MockAnswer = {
       headingPath: ['Claude Session provider'],
       snippet:
         'Code: `features/sessions/providers/claude/`. Claude runs through the shared Session coordinator, SQLite Worker, authorization and HTTP/SSE/history APIs. There is no provider transcript endpoint, legacy-history import or resume-to-new fallback.',
-      text: 'Code: features/sessions/providers/claude/. Claude runs through the shared Session coordinator, SQLite Worker, authorization and HTTP/SSE/history APIs. There is no provider transcript endpoint, legacy-history import or resume-to-new fallback.',
+      text: 'Code: features/sessions/providers/claude/. Claude runs through the shared Session coordinator, SQLite Worker, authorization and HTTP/SSE/history APIs.',
       matches: [
         [15, 23],
         [24, 33],
-        [74, 81],
-        [163, 171],
       ],
     },
     {
@@ -103,10 +95,10 @@ export const repoAiOff: MockAnswer = {
       ],
       snippet:
         '…`activeTurn.state` adds no row state and Engine attempt facts never colour a row ([AI session UX](ai-session-ux.md#session-status-ownership-accepted-2026-11-08)). | `readiness` | Status | Tone and icon | | `ready` | none | none |…',
-      text: '…state and Engine attempt facts never colour a row (AI session UX). · readiness · Status · Tone and icon · ready · none · none…',
+      text: '…Engine attempt facts never colour a row (AI session UX).',
       matches: [
-        [52, 54],
-        [55, 62],
+        [42, 44],
+        [45, 52],
       ],
     },
     {
@@ -121,14 +113,10 @@ export const repoAiOff: MockAnswer = {
       ],
       snippet:
         "Muted because the condition is provider-wide and resolved in the provider's CLI, not in the Session; the copy names the provider so it does not read as the Session needing a login. The navigator preview is unchanged and never lists such a Session.…",
-      text: "Muted because the condition is provider-wide and resolved in the provider's CLI, not in the Session; the copy names the provider so it does not read as the Session needing a login. The navigator preview is unchanged and never lists such a Session.…",
+      text: "Muted because the condition is provider-wide and resolved in the provider's CLI, not in the Session; the copy names the provider so it does not read as the Session needing a login.",
       matches: [
         [31, 39],
-        [65, 73],
         [92, 99],
-        [120, 128],
-        [156, 163],
-        [239, 246],
       ],
     },
     {
@@ -139,11 +127,10 @@ export const repoAiOff: MockAnswer = {
       headingPath: ['Antigravity Session provider'],
       snippet:
         'Code: `features/sessions/providers/antigravity/` plus the shared question transport in `features/sessions/interactions/mcp/`. The adapter uses the existing driver, Engine execution admission and settlement, SQLite lifecycle and HTTP/SSE contracts.…',
-      text: 'Code: features/sessions/providers/antigravity/ plus the shared question transport in features/sessions/interactions/mcp/. The adapter uses the existing driver, Engine execution admission and settlement, SQLite lifecycle and HTTP/SSE contracts.…',
+      text: 'Code: features/sessions/providers/antigravity/ plus the shared question transport in features/sessions/interactions/mcp/.',
       matches: [
         [15, 23],
         [24, 33],
-        [94, 102],
       ],
     },
     {
@@ -154,7 +141,7 @@ export const repoAiOff: MockAnswer = {
       headingPath: ['Session provider driver'],
       snippet:
         "Internal Runtime Sessions port, implemented by the mock, Claude, Codex and Antigravity adapters. Availability remains subject to each adapter's native profile and platform checks ([provider reference](../providers/README.md)). This is not a UI SDK.…",
-      text: "Internal Runtime Sessions port, implemented by the mock, Claude, Codex and Antigravity adapters. Availability remains subject to each adapter's native profile and platform checks (provider reference). This is not a UI SDK.…",
+      text: "Internal Runtime Sessions port, implemented by the mock, Claude, Codex and Antigravity adapters. Availability remains subject to each adapter's native profile and platform checks (provider reference).",
       matches: [
         [17, 25],
         [180, 188],
@@ -168,8 +155,8 @@ export const repoAiOff: MockAnswer = {
       headingPath: ['Codex Session provider', 'Telemetry'],
       snippet:
         'Cumulative tokens, latest native context occupancy/capacity and read-only account-limit refresh (no thread or Turn start or resume); see [Session telemetry](../api/session-telemetry.md).',
-      text: '…refresh (no thread or Turn start or resume); see Session telemetry.',
-      matches: [[50, 57]],
+      text: '…(no thread or Turn start or resume); see Session telemetry.',
+      matches: [[42, 49]],
     },
     {
       id: 'reference.api.session-telemetry',
@@ -179,7 +166,7 @@ export const repoAiOff: MockAnswer = {
       headingPath: ['Session telemetry API', 'Provider coverage'],
       snippet:
         '…No test uses real subscriptions, credentials or paid inference. Opening a store created before telemetry adds the telemetry tables atomically with the rest of the [schema migration](../../architecture/ai/session-storage-and-lifecycle.md#schema-migration).…',
-      text: '…No test uses real subscriptions, credentials or paid inference. Opening a store created before telemetry adds the telemetry tables atomically with the rest of the schema migration.…',
+      text: '…Opening a store created before telemetry adds the telemetry tables atomically with the rest of the schema migration.',
       matches: [],
     },
   ],
@@ -202,10 +189,10 @@ export const repoAiOn: MockAnswer = {
       ],
       snippet:
         '…`activeTurn.state` adds no row state and Engine attempt facts never colour a row ([AI session UX](ai-session-ux.md#session-status-ownership-accepted-2026-11-08)). | `readiness` | Status | Tone and icon | | `ready` | none | none |…',
-      text: '…state and Engine attempt facts never colour a row (AI session UX). · readiness · Status · Tone and icon · ready · none · none…',
+      text: '…Engine attempt facts never colour a row (AI session UX).',
       matches: [
-        [52, 54],
-        [55, 62],
+        [42, 44],
+        [45, 52],
       ],
     },
     {
@@ -216,12 +203,10 @@ export const repoAiOn: MockAnswer = {
       headingPath: ['Claude Session provider'],
       snippet:
         'Code: `features/sessions/providers/claude/`. Claude runs through the shared Session coordinator, SQLite Worker, authorization and HTTP/SSE/history APIs. There is no provider transcript endpoint, legacy-history import or resume-to-new fallback.',
-      text: 'Code: features/sessions/providers/claude/. Claude runs through the shared Session coordinator, SQLite Worker, authorization and HTTP/SSE/history APIs. There is no provider transcript endpoint, legacy-history import or resume-to-new fallback.',
+      text: 'Code: features/sessions/providers/claude/. Claude runs through the shared Session coordinator, SQLite Worker, authorization and HTTP/SSE/history APIs.',
       matches: [
         [15, 23],
         [24, 33],
-        [74, 81],
-        [163, 171],
       ],
     },
     {
@@ -232,8 +217,8 @@ export const repoAiOn: MockAnswer = {
       headingPath: ['Codex Session provider', 'Telemetry'],
       snippet:
         'Cumulative tokens, latest native context occupancy/capacity and read-only account-limit refresh (no thread or Turn start or resume); see [Session telemetry](../api/session-telemetry.md).',
-      text: '…refresh (no thread or Turn start or resume); see Session telemetry.',
-      matches: [[50, 57]],
+      text: '…(no thread or Turn start or resume); see Session telemetry.',
+      matches: [[42, 49]],
     },
     {
       id: 'docs.reference-providers-readme',
@@ -243,11 +228,10 @@ export const repoAiOn: MockAnswer = {
       headingPath: ['Session provider reference'],
       snippet:
         'All adapters implement the [Session provider driver](../protocols/session-provider-driver.md) and run under [provider process ownership](../../architecture/ai/provider-process-ownership.md).…',
-      text: 'All adapters implement the Session provider driver and run under provider process ownership.…',
+      text: 'All adapters implement the Session provider driver and run under provider process ownership.',
       matches: [
         [27, 34],
         [35, 43],
-        [65, 73],
       ],
     },
     {
@@ -269,15 +253,10 @@ export const repoAiOn: MockAnswer = {
       headingPath: ['AI provider boundary', 'Session identity'],
       snippet:
         'Provider session identity is opaque. Application code MUST NOT derive semantics from its string format. A provider-backed session MUST be addressed by the composite `ProviderSessionRef = (provider, providerSessionId)`.…',
-      text: 'Provider session identity is opaque. Application code MUST NOT derive semantics from its string format. A provider-backed session MUST be addressed by the composite ProviderSessionRef = (provider, providerSessionId).…',
+      text: 'Provider session identity is opaque. Application code MUST NOT derive semantics from its string format.',
       matches: [
         [0, 8],
         [9, 16],
-        [106, 114],
-        [122, 129],
-        [165, 183],
-        [187, 195],
-        [197, 214],
       ],
     },
     {
@@ -288,8 +267,8 @@ export const repoAiOn: MockAnswer = {
       headingPath: ['Antigravity Session provider', 'Questions'],
       snippet:
         'The invocation-private Streamable HTTP MCP server (`ask_user`) binds to loopback on an OS-assigned port with a random bearer credential, bounded requests and waiters and one initialized MCP session per invocation. Runtime and CLI must share the network namespace.…',
-      text: '…bounded requests and waiters and one initialized MCP session per invocation. Runtime and CLI must share the network namespace.…',
-      matches: [[54, 61]],
+      text: '…requests and waiters and one initialized MCP session per invocation.',
+      matches: [[46, 53]],
     },
     {
       id: 'architecture.ai.canonical-session-turn-work',
@@ -299,11 +278,10 @@ export const repoAiOn: MockAnswer = {
       headingPath: ['Canonical AI Session, Turn, and Work model', 'Hierarchy', 'Session'],
       snippet:
         'A Session represents a provider-backed conversation/execution context. Session is an independent abstraction. Its identity, lifecycle, persistence, history and Turn/Work operations MUST NOT require a Specification, Task or workflow attempt.…',
-      text: 'A Session represents a provider-backed conversation/execution context. Session is an independent abstraction. Its identity, lifecycle, persistence, history and Turn/Work operations MUST NOT require a Specification, Task or workflow attempt.…',
+      text: 'A Session represents a provider-backed conversation/execution context. Session is an independent abstraction.',
       matches: [
         [2, 9],
         [23, 31],
-        [71, 78],
       ],
     },
     {
@@ -314,12 +292,10 @@ export const repoAiOn: MockAnswer = {
       headingPath: ['AI architecture'],
       snippet:
         '…- [Managed Session persistence and lifecycle](session-storage-and-lifecycle.md) - [Provider process ownership and limits](provider-process-ownership.md) Product presentation belongs under [AI session UX](../../product/specflow/ui/ai-session-ux.md).',
-      text: '…Managed Session persistence and lifecycle · Provider process ownership and limits Product presentation belongs under AI session UX.',
+      text: 'Product presentation belongs under AI session UX.',
       matches: [
-        [9, 16],
-        [45, 53],
-        [118, 120],
-        [121, 128],
+        [35, 37],
+        [38, 45],
       ],
     },
     {
@@ -330,7 +306,7 @@ export const repoAiOn: MockAnswer = {
       headingPath: ['Session telemetry API', 'Provider coverage'],
       snippet:
         '…No test uses real subscriptions, credentials or paid inference. Opening a store created before telemetry adds the telemetry tables atomically with the rest of the [schema migration](../../architecture/ai/session-storage-and-lifecycle.md#schema-migration).…',
-      text: '…No test uses real subscriptions, credentials or paid inference. Opening a store created before telemetry adds the telemetry tables atomically with the rest of the schema migration.…',
+      text: '…Opening a store created before telemetry adds the telemetry tables atomically with the rest of the schema migration.',
       matches: [],
     },
   ],
@@ -349,11 +325,10 @@ export const repoErrorsOn: MockAnswer = {
       headingPath: ['Claude-family errors', 'Captured: seven-day rate-limit rejection'],
       snippet:
         '…A long-window limit such as `seven_day` should be considered separately from a burst TPM/RPM throttle. The final canonical distinction between quota and rate-limit should use provider semantics rather than status 429 alone.',
-      text: '…A long-window limit such as seven_day should be considered separately from a burst TPM/RPM throttle. The final canonical distinction between quota and rate-limit should use provider semantics rather than status 429 alone.',
+      text: '…canonical distinction between quota and rate-limit should use provider semantics rather than status 429 alone.',
       matches: [
-        [15, 20],
-        [157, 162],
-        [174, 182],
+        [46, 51],
+        [63, 71],
       ],
     },
     {
@@ -364,13 +339,10 @@ export const repoErrorsOn: MockAnswer = {
       headingPath: ['Quota versus transient rate-limit classification'],
       snippet:
         'Implemented today: adapters map structured native errors (for example Claude `api_error`, including HTTP 429) to the canonical Turn error vocabulary (`PROVIDER_FAILED`, `PROVIDER_AUTH_REQUIRED`, ...) and exclude native prose ([driver…',
-      text: 'Implemented today: adapters map structured native errors (for example Claude api_error, including HTTP 429) to the canonical Turn error vocabulary (PROVIDER_FAILED, PROVIDER_AUTH_REQUIRED, ...) and exclude native prose driver…',
+      text: '…Implemented today: adapters map structured native errors (for example Claude api_error, including HTTP 429) to the canonical Turn error vocabulary (PROVIDER_FAILED, PROVIDER_AUTH_REQUIRED, ...) and exclude native prose driver…',
       matches: [
-        [50, 56],
-        [81, 86],
-        [130, 135],
-        [148, 156],
-        [165, 173],
+        [51, 57],
+        [149, 157],
       ],
     },
     {
@@ -381,13 +353,10 @@ export const repoErrorsOn: MockAnswer = {
       headingPath: ['Provider capacity and admission'],
       snippet:
         'Implemented today: provider limit windows are observed as Session telemetry (`limits` group, native push for Claude, read-only refresh for Codex), gated by `session.view-provider-limits` ([telemetry API](../../../reference/api/session-telemetry.md)).…',
-      text: 'Implemented today: provider limit windows are observed as Session telemetry (limits group, native push for Claude, read-only refresh for Codex), gated by session.view-provider-limits (telemetry API).…',
+      text: 'Implemented today: provider limit windows are observed as Session telemetry (limits group, native push for Claude, read-only refresh for Codex), gated by session.view-provider-limits (telemetry API).',
       matches: [
         [19, 27],
         [28, 33],
-        [77, 83],
-        [167, 175],
-        [176, 182],
       ],
     },
     {
@@ -398,11 +367,10 @@ export const repoErrorsOn: MockAnswer = {
       headingPath: ['Antigravity Session provider', 'Stop continuation and settlement'],
       snippet:
         '…| Cancellation, error, step limit, unknown reason or nonempty `error` | allow termination; disable continuation; never accept idle with work | | Native result already observed | continuation disabled; idle and process settlement still required |…',
-      text: '…Cancellation, error, step limit, unknown reason or nonempty error · allow termination; disable continuation; never accept idle with work · Native result already observed · continuation disabled; idle and process settlement still required…',
+      text: '…Cancellation, error, step limit, unknown reason or nonempty error — allow termination; disable continuation; never accept idle with work',
       matches: [
         [15, 20],
         [27, 32],
-        [61, 66],
       ],
     },
     {
@@ -413,8 +381,8 @@ export const repoErrorsOn: MockAnswer = {
       headingPath: ['Codex Session provider', 'Telemetry'],
       snippet:
         'Cumulative tokens, latest native context occupancy/capacity and read-only account-limit refresh (no thread or Turn start or resume); see [Session telemetry](../api/session-telemetry.md).',
-      text: '…context occupancy/capacity and read-only account-limit refresh (no thread or Turn start or resume); see Session telemetry.',
-      matches: [[50, 55]],
+      text: '…occupancy/capacity and read-only account-limit refresh (no thread or Turn start or resume); see Session telemetry.',
+      matches: [[42, 47]],
     },
     {
       id: 'architecture.ai.provider-boundary',
@@ -424,10 +392,10 @@ export const repoErrorsOn: MockAnswer = {
       headingPath: ['AI provider boundary', 'Error normalization'],
       snippet:
         '…- unsupported capability; - rejected or invalid request; - process or transport failure; - timeout, cancellation, or interruption; - provider-reported execution failure. UI/workflow code MUST NOT parse human error strings to decide lifecycle semantics.',
-      text: '…failure; · timeout, cancellation, or interruption; · provider-reported execution failure. UI/workflow code MUST NOT parse human error strings to decide lifecycle semantics.',
+      text: 'provider-reported execution failure. UI/workflow code MUST NOT parse human error strings to decide lifecycle semantics.',
       matches: [
-        [54, 62],
-        [129, 134],
+        [0, 8],
+        [75, 80],
       ],
     },
     {
@@ -438,11 +406,8 @@ export const repoErrorsOn: MockAnswer = {
       headingPath: ['Claude Session provider', 'Settlement and errors'],
       snippet:
         '…A writer outcome is published only after Engine settles the receipt. Native `api_error` results (including HTTP 429) become safe structured failures; native error prose is excluded. Loss without an authoritative outcome stays unknown.…',
-      text: '…only after Engine settles the receipt. Native api_error results (including HTTP 429) become safe structured failures; native error prose is excluded. Loss without an authoritative outcome stays unknown.…',
-      matches: [
-        [51, 56],
-        [126, 131],
-      ],
+      text: '…Native api_error results (including HTTP 429) become safe structured failures; native error prose is excluded. Loss without an authoritative outcome stays unknown.',
+      matches: [[12, 17]],
     },
     {
       id: 'reference.api.session-telemetry',
@@ -452,7 +417,7 @@ export const repoErrorsOn: MockAnswer = {
       headingPath: ['Session telemetry API', 'Provider coverage'],
       snippet:
         '…Built-in admin holds `session.view-provider-limits`; developer and viewer do not acquire it implicitly. Trusted local mode retains its existing all-capabilities behavior. | Source | Implemented observations | Explicit refresh |…',
-      text: '…Built-in admin holds session.view-provider-limits; developer and viewer do not acquire it implicitly. Trusted local mode retains its existing all-capabilities behavior. · Source · Implemented observations · Explicit refresh…',
+      text: '…Built-in admin holds session.view-provider-limits; developer and viewer do not acquire it implicitly. Trusted local mode retains its existing all-capabilities behavior.',
       matches: [
         [35, 43],
         [44, 50],
@@ -466,11 +431,11 @@ export const repoErrorsOn: MockAnswer = {
       headingPath: ['AI adapter hardening ideas'],
       snippet:
         '…reset, context rotation, positive reconciliation. - [Diagnose API and protocol replay](diagnostics-and-replay.md) — `diagnose()` and the capture-to-replay fixture harness. - [Provider error and limit evidence](provider-error-examples.md) — evidence pack for the items above.…',
-      text: '…diagnose() and the capture-to-replay fixture harness. · Provider error and limit evidence — evidence pack for the items above.…',
+      text: 'Provider error and limit evidence — evidence pack for the items above.',
       matches: [
-        [57, 65],
-        [66, 71],
-        [76, 81],
+        [0, 8],
+        [9, 14],
+        [19, 24],
       ],
     },
     {
@@ -485,8 +450,8 @@ export const repoErrorsOn: MockAnswer = {
       ],
       snippet:
         '…Unqualified Antigravity cost, missing context breakdowns and unproven limit-bucket meanings remain unavailable; API-equivalent cost is not subscription billing. **Impact/direction:** Some UI gauges cannot be populated.…',
-      text: '…Antigravity cost, missing context breakdowns and unproven limit-bucket meanings remain unavailable; API-equivalent cost is not subscription billing. Impact/direction: Some UI gauges cannot be populated.…',
-      matches: [[59, 64]],
+      text: '…missing context breakdowns and unproven limit-bucket meanings remain unavailable; API-equivalent cost is not subscription billing.',
+      matches: [[41, 46]],
     },
   ],
 };
@@ -504,11 +469,10 @@ export const repoErrorsOff: MockAnswer = {
       headingPath: ['Antigravity Session provider', 'Stop continuation and settlement'],
       snippet:
         '…| Cancellation, error, step limit, unknown reason or nonempty `error` | allow termination; disable continuation; never accept idle with work | | Native result already observed | continuation disabled; idle and process settlement still required |…',
-      text: '…Cancellation, error, step limit, unknown reason or nonempty error · allow termination; disable continuation; never accept idle with work · Native result already observed · continuation disabled; idle and process settlement still required…',
+      text: '…Cancellation, error, step limit, unknown reason or nonempty error — allow termination; disable continuation; never accept idle with work',
       matches: [
         [15, 20],
         [27, 32],
-        [61, 66],
       ],
     },
     {
@@ -519,8 +483,8 @@ export const repoErrorsOff: MockAnswer = {
       headingPath: ['Codex Session provider', 'Telemetry'],
       snippet:
         'Cumulative tokens, latest native context occupancy/capacity and read-only account-limit refresh (no thread or Turn start or resume); see [Session telemetry](../api/session-telemetry.md).',
-      text: '…context occupancy/capacity and read-only account-limit refresh (no thread or Turn start or resume); see Session telemetry.',
-      matches: [[50, 55]],
+      text: '…occupancy/capacity and read-only account-limit refresh (no thread or Turn start or resume); see Session telemetry.',
+      matches: [[42, 47]],
     },
     {
       id: 'reference.providers.claude',
@@ -530,11 +494,8 @@ export const repoErrorsOff: MockAnswer = {
       headingPath: ['Claude Session provider', 'Settlement and errors'],
       snippet:
         '…A writer outcome is published only after Engine settles the receipt. Native `api_error` results (including HTTP 429) become safe structured failures; native error prose is excluded. Loss without an authoritative outcome stays unknown.…',
-      text: '…only after Engine settles the receipt. Native api_error results (including HTTP 429) become safe structured failures; native error prose is excluded. Loss without an authoritative outcome stays unknown.…',
-      matches: [
-        [51, 56],
-        [126, 131],
-      ],
+      text: '…Native api_error results (including HTTP 429) become safe structured failures; native error prose is excluded. Loss without an authoritative outcome stays unknown.',
+      matches: [[12, 17]],
     },
     {
       id: 'architecture.ai.provider-boundary',
@@ -544,10 +505,10 @@ export const repoErrorsOff: MockAnswer = {
       headingPath: ['AI provider boundary', 'Error normalization'],
       snippet:
         '…- unsupported capability; - rejected or invalid request; - process or transport failure; - timeout, cancellation, or interruption; - provider-reported execution failure. UI/workflow code MUST NOT parse human error strings to decide lifecycle semantics.',
-      text: '…failure; · timeout, cancellation, or interruption; · provider-reported execution failure. UI/workflow code MUST NOT parse human error strings to decide lifecycle semantics.',
+      text: 'provider-reported execution failure. UI/workflow code MUST NOT parse human error strings to decide lifecycle semantics.',
       matches: [
-        [54, 62],
-        [129, 134],
+        [0, 8],
+        [75, 80],
       ],
     },
     {
@@ -558,7 +519,7 @@ export const repoErrorsOff: MockAnswer = {
       headingPath: ['Session telemetry API', 'Provider coverage'],
       snippet:
         '…Built-in admin holds `session.view-provider-limits`; developer and viewer do not acquire it implicitly. Trusted local mode retains its existing all-capabilities behavior. | Source | Implemented observations | Explicit refresh |…',
-      text: '…Built-in admin holds session.view-provider-limits; developer and viewer do not acquire it implicitly. Trusted local mode retains its existing all-capabilities behavior. · Source · Implemented observations · Explicit refresh…',
+      text: '…Built-in admin holds session.view-provider-limits; developer and viewer do not acquire it implicitly. Trusted local mode retains its existing all-capabilities behavior.',
       matches: [
         [35, 43],
         [44, 50],
@@ -572,8 +533,8 @@ export const repoErrorsOff: MockAnswer = {
       headingPath: ['Provider process ownership and limits', 'Streams and framing'],
       snippet:
         '…- The frame limit defaults to 1 MiB and is configurable up to 8 MiB at the adapter boundary. There is no transcript-sized residual buffer or queue of asynchronous per-line handlers. Protocol bytes are never dropped because diagnostic retention is full.…',
-      text: '…The frame limit defaults to 1 MiB and is configurable up to 8 MiB at the adapter boundary. There is no transcript-sized residual buffer or queue of asynchronous per-line handlers. Protocol bytes are never dropped because diagnostic retention is full.…',
-      matches: [[11, 16]],
+      text: 'The frame limit defaults to 1 MiB and is configurable up to 8 MiB at the adapter boundary. There is no transcript-sized residual buffer or queue of asynchronous per-line handlers.',
+      matches: [[10, 15]],
     },
     {
       id: 'architecture.runtime.endpoint-policy',
@@ -583,11 +544,10 @@ export const repoErrorsOff: MockAnswer = {
       headingPath: ['Runtime endpoint policy', 'Admission and response'],
       snippet:
         '…Excess requests return **429** with `error: rate_limited`, `Retry-After`, rate-limit headers and `Cache-Control: no-store`. A fresh configured window restores the budget. Counters are bounded in-memory state (5,000 source keys per store) for one Runtime process.…',
-      text: '…Excess requests return 429 with error: rate_limited, Retry-After, rate-limit headers and Cache-Control: no-store. A fresh configured window restores the budget. Counters are bounded in-memory state (5,000 source keys per store) for one Runtime process.…',
+      text: '…Excess requests return 429 with error: rate_limited, Retry-After, rate-limit headers and Cache-Control: no-store. A fresh configured window restores the budget.',
       matches: [
         [33, 38],
         [45, 52],
-        [72, 77],
       ],
     },
     {
@@ -598,12 +558,10 @@ export const repoErrorsOff: MockAnswer = {
       headingPath: ['Session provider driver', 'Failure and settlement'],
       snippet:
         '…Canonical stored Turn error is {code, message}, message <=2 KiB, with code one of PROVIDER_UNAVAILABLE, PROVIDER_AUTH_REQUIRED, REQUEST_INVALID, CAPABILITY_UNSUPPORTED, TRANSPORT_FAILED, PROCESS_FAILED, PROVIDER_FAILED, TIMEOUT, INTERRUPTED, OPERATION_UNKNOWN.…',
-      text: '…Canonical stored Turn error is {code, message}, message <=2 KiB, with code one of PROVIDER_UNAVAILABLE, PROVIDER_AUTH_REQUIRED, REQUEST_INVALID, CAPABILITY_UNSUPPORTED, TRANSPORT_FAILED, PROCESS_FAILED, PROVIDER_FAILED, TIMEOUT, INTERRUPTED, OPERATION_UNKNOWN.…',
+      text: '…Canonical stored Turn error is {code, message}, message <=2 KiB, with code one of PROVIDER_UNAVAILABLE, PROVIDER_AUTH_REQUIRED, REQUEST_INVALID, CAPABILITY_UNSUPPORTED, TRANSPORT_FAILED, PROCESS_FAILED, PROVIDER_FAILED, TIMEOUT, INTERRUPTED, OPERATION_UNKNOWN.',
       matches: [
         [23, 28],
         [83, 91],
-        [105, 113],
-        [204, 212],
       ],
     },
     {
@@ -614,8 +572,8 @@ export const repoErrorsOff: MockAnswer = {
       headingPath: ['Specification documents HTTP contract', 'Errors'],
       snippet:
         '| `DOCUMENT_UNCOMMITTED_LIMIT` | 409 | Writing would add more than 200 distinct uncommitted paths; commit the pending changes first |',
-      text: 'DOCUMENT_UNCOMMITTED_LIMIT · 409 · Writing would add more than 200 distinct uncommitted paths; commit the pending changes first',
-      matches: [[21, 26]],
+      text: '…DOCUMENT_UNCOMMITTED_LIMIT — 409 — Writing would add more than 200 distinct uncommitted paths; commit the pending changes first',
+      matches: [[22, 27]],
     },
     {
       id: 'docs.reference-providers-readme',
@@ -625,11 +583,8 @@ export const repoErrorsOff: MockAnswer = {
       headingPath: ['Session provider reference'],
       snippet:
         'All adapters implement the [Session provider driver](../protocols/session-provider-driver.md) and run under [provider process ownership](../../architecture/ai/provider-process-ownership.md).…',
-      text: 'All adapters implement the Session provider driver and run under provider process ownership.…',
-      matches: [
-        [35, 43],
-        [65, 73],
-      ],
+      text: 'All adapters implement the Session provider driver and run under provider process ownership.',
+      matches: [[35, 43]],
     },
   ],
 };
@@ -647,15 +602,10 @@ export const worktreeAiOff: MockAnswer = {
       headingPath: ['AI provider boundary', 'Session identity'],
       snippet:
         'Provider session identity is opaque. Application code MUST NOT derive semantics from its string format. A provider-backed session MUST be addressed by the composite `ProviderSessionRef = (provider, providerSessionId)`.…',
-      text: 'Provider session identity is opaque. Application code MUST NOT derive semantics from its string format. A provider-backed session MUST be addressed by the composite ProviderSessionRef = (provider, providerSessionId).…',
+      text: 'Provider session identity is opaque. Application code MUST NOT derive semantics from its string format.',
       matches: [
         [0, 8],
         [9, 16],
-        [106, 114],
-        [122, 129],
-        [165, 183],
-        [187, 195],
-        [197, 214],
       ],
     },
     {
@@ -666,11 +616,10 @@ export const worktreeAiOff: MockAnswer = {
       headingPath: ['Canonical AI Session, Turn, and Work model', 'Hierarchy', 'Session'],
       snippet:
         'A Session represents a provider-backed conversation/execution context. Session is an independent abstraction. Its identity, lifecycle, persistence, history and Turn/Work operations MUST NOT require a Specification, Task or workflow attempt.…',
-      text: 'A Session represents a provider-backed conversation/execution context. Session is an independent abstraction. Its identity, lifecycle, persistence, history and Turn/Work operations MUST NOT require a Specification, Task or workflow attempt.…',
+      text: 'A Session represents a provider-backed conversation/execution context. Session is an independent abstraction.',
       matches: [
         [2, 9],
         [23, 31],
-        [71, 78],
       ],
     },
     {
@@ -681,12 +630,10 @@ export const worktreeAiOff: MockAnswer = {
       headingPath: ['AI architecture'],
       snippet:
         '…- [Managed Session persistence and lifecycle](session-storage-and-lifecycle.md) - [Provider process ownership and limits](provider-process-ownership.md) Product presentation belongs under [AI session UX](../../product/specflow/ui/ai-session-ux.md).',
-      text: '…Managed Session persistence and lifecycle · Provider process ownership and limits Product presentation belongs under AI session UX.',
+      text: 'Product presentation belongs under AI session UX.',
       matches: [
-        [9, 16],
-        [45, 53],
-        [118, 120],
-        [121, 128],
+        [35, 37],
+        [38, 45],
       ],
     },
     {
@@ -697,12 +644,10 @@ export const worktreeAiOff: MockAnswer = {
       headingPath: ['Claude Session provider'],
       snippet:
         'Code: `features/sessions/providers/claude/`. Claude runs through the shared Session coordinator, SQLite Worker, authorization and HTTP/SSE/history APIs. There is no provider transcript endpoint, legacy-history import or resume-to-new fallback.',
-      text: 'Code: features/sessions/providers/claude/. Claude runs through the shared Session coordinator, SQLite Worker, authorization and HTTP/SSE/history APIs. There is no provider transcript endpoint, legacy-history import or resume-to-new fallback.',
+      text: 'Code: features/sessions/providers/claude/. Claude runs through the shared Session coordinator, SQLite Worker, authorization and HTTP/SSE/history APIs.',
       matches: [
         [15, 23],
         [24, 33],
-        [74, 81],
-        [163, 171],
       ],
     },
     {
@@ -717,10 +662,10 @@ export const worktreeAiOff: MockAnswer = {
       ],
       snippet:
         '…`activeTurn.state` adds no row state and Engine attempt facts never colour a row ([AI session UX](ai-session-ux.md#session-status-ownership-accepted-2026-11-08)). | `readiness` | Status | Tone and icon | | `ready` | none | none |…',
-      text: '…state and Engine attempt facts never colour a row (AI session UX). · readiness · Status · Tone and icon · ready · none · none…',
+      text: '…Engine attempt facts never colour a row (AI session UX).',
       matches: [
-        [52, 54],
-        [55, 62],
+        [42, 44],
+        [45, 52],
       ],
     },
     {
@@ -735,14 +680,10 @@ export const worktreeAiOff: MockAnswer = {
       ],
       snippet:
         "Muted because the condition is provider-wide and resolved in the provider's CLI, not in the Session; the copy names the provider so it does not read as the Session needing a login. The navigator preview is unchanged and never lists such a Session.…",
-      text: "Muted because the condition is provider-wide and resolved in the provider's CLI, not in the Session; the copy names the provider so it does not read as the Session needing a login. The navigator preview is unchanged and never lists such a Session.…",
+      text: "Muted because the condition is provider-wide and resolved in the provider's CLI, not in the Session; the copy names the provider so it does not read as the Session needing a login.",
       matches: [
         [31, 39],
-        [65, 73],
         [92, 99],
-        [120, 128],
-        [156, 163],
-        [239, 246],
       ],
     },
     {
@@ -753,11 +694,10 @@ export const worktreeAiOff: MockAnswer = {
       headingPath: ['Antigravity Session provider'],
       snippet:
         'Code: `features/sessions/providers/antigravity/` plus the shared question transport in `features/sessions/interactions/mcp/`. The adapter uses the existing driver, Engine execution admission and settlement, SQLite lifecycle and HTTP/SSE contracts.…',
-      text: 'Code: features/sessions/providers/antigravity/ plus the shared question transport in features/sessions/interactions/mcp/. The adapter uses the existing driver, Engine execution admission and settlement, SQLite lifecycle and HTTP/SSE contracts.…',
+      text: 'Code: features/sessions/providers/antigravity/ plus the shared question transport in features/sessions/interactions/mcp/.',
       matches: [
         [15, 23],
         [24, 33],
-        [94, 102],
       ],
     },
     {
@@ -768,7 +708,7 @@ export const worktreeAiOff: MockAnswer = {
       headingPath: ['Session provider driver'],
       snippet:
         "Internal Runtime Sessions port, implemented by the mock, Claude, Codex and Antigravity adapters. Availability remains subject to each adapter's native profile and platform checks ([provider reference](../providers/README.md)). This is not a UI SDK.…",
-      text: "Internal Runtime Sessions port, implemented by the mock, Claude, Codex and Antigravity adapters. Availability remains subject to each adapter's native profile and platform checks (provider reference). This is not a UI SDK.…",
+      text: "Internal Runtime Sessions port, implemented by the mock, Claude, Codex and Antigravity adapters. Availability remains subject to each adapter's native profile and platform checks (provider reference).",
       matches: [
         [17, 25],
         [180, 188],
@@ -782,8 +722,8 @@ export const worktreeAiOff: MockAnswer = {
       headingPath: ['Codex Session provider', 'Telemetry'],
       snippet:
         'Cumulative tokens, latest native context occupancy/capacity and read-only account-limit refresh (no thread or Turn start or resume); see [Session telemetry](../api/session-telemetry.md).',
-      text: '…refresh (no thread or Turn start or resume); see Session telemetry.',
-      matches: [[50, 57]],
+      text: '…(no thread or Turn start or resume); see Session telemetry.',
+      matches: [[42, 49]],
     },
     {
       id: 'reference.api.session-telemetry',
@@ -793,7 +733,132 @@ export const worktreeAiOff: MockAnswer = {
       headingPath: ['Session telemetry API', 'Provider coverage'],
       snippet:
         '…No test uses real subscriptions, credentials or paid inference. Opening a store created before telemetry adds the telemetry tables atomically with the rest of the [schema migration](../../architecture/ai/session-storage-and-lifecycle.md#schema-migration).…',
-      text: '…No test uses real subscriptions, credentials or paid inference. Opening a store created before telemetry adds the telemetry tables atomically with the rest of the schema migration.…',
+      text: '…Opening a store created before telemetry adds the telemetry tables atomically with the rest of the schema migration.',
+      matches: [],
+    },
+  ],
+};
+
+export const repoNonsense: MockAnswer = {
+  query: 'zzzqqq',
+  includeProposals: false,
+  proposalsLeftOut: 1,
+  results: [
+    {
+      id: 'reference.providers.antigravity',
+      title: 'Antigravity Session provider',
+      file: 'reference/providers/antigravity-provider.md',
+      proposal: false,
+      headingPath: ['Antigravity Session provider', 'Questions'],
+      snippet:
+        'The invocation-private Streamable HTTP MCP server (`ask_user`) binds to loopback on an OS-assigned port with a random bearer credential, bounded requests and waiters and one initialized MCP session per invocation. Runtime and CLI must share the network namespace.…',
+      text: 'The invocation-private Streamable HTTP MCP server (ask_user) binds to loopback on an OS-assigned port with a random bearer credential, bounded requests and waiters and one initialized MCP session per invocation.',
+      matches: [],
+    },
+    {
+      id: 'reference.api.specs-overview',
+      title: 'Specs Overview HTTP API',
+      file: 'reference/api/specs-overview.md',
+      proposal: false,
+      headingPath: ['Specs Overview HTTP API', 'Project mode: what a row is made of'],
+      snippet:
+        'Requires attention, Active and Ready are therefore not reachable in project mode until such sources exist.',
+      text: 'Requires attention, Active and Ready are therefore not reachable in project mode until such sources exist.',
+      matches: [],
+    },
+    {
+      id: 'reference.api.sessions',
+      title: 'Managed Sessions HTTP and read-model contract',
+      file: 'reference/api/sessions.md',
+      proposal: false,
+      headingPath: ['Managed Sessions API', 'Routes and commands'],
+      snippet:
+        'Respond answer text <=16 KiB, option IDs must be declared, duplicate option IDs invalid; text only when allowText; an optional maxSelections (1 to 20) limits selected option IDs (absent means 1, single-select) and is checked before durable response admission.…',
+      text: 'Respond answer text <=16 KiB, option IDs must be declared, duplicate option IDs invalid; text only when allowText; an optional maxSelections (1 to 20) limits selected option IDs (absent means 1, single-select) and is checked before durable response admission.',
+      matches: [],
+    },
+    {
+      id: 'reference.api.specs-operations-list',
+      title: 'Specifications operation list HTTP API',
+      file: 'reference/api/specs-operations-list.md',
+      proposal: false,
+      headingPath: ['Specifications operation list HTTP API', 'Status derivation'],
+      snippet:
+        '| Journal | Registry (this process) | Row | | `completed` | any | `completed`, `finishedAt` = registry or file time; listed for 10 min, at most 5 rows | | `recovery-required` | any | `recovery-required` |…',
+      text: '…completed — any — completed, finishedAt = registry or file time; listed for 10 min, at most 5 rows',
+      matches: [],
+    },
+    {
+      id: 'reference.providers.claude',
+      title: 'Claude Session provider',
+      file: 'reference/providers/claude-provider.md',
+      proposal: false,
+      headingPath: ['Claude Session provider', 'Settlement and errors'],
+      snippet:
+        'Terminal facts are held until the process owner has stopped the tree; a protocol outcome with unverified settlement stays unknown. Abort with positive settlement becomes cancelled or interrupted.…',
+      text: 'Terminal facts are held until the process owner has stopped the tree; a protocol outcome with unverified settlement stays unknown. Abort with positive settlement becomes cancelled or interrupted.',
+      matches: [],
+    },
+    {
+      id: 'product.specflow.ui.ai-session-ux',
+      title: 'AI session UX',
+      file: 'product/specflow/ui/ai-session-ux.md',
+      proposal: false,
+      headingPath: ['AI session UX'],
+      snippet:
+        '`status: draft` — working guidance, expanded as the code it governs lands. The concrete, implemented Session screen rules are the [Full Session](full-session.md) contract.',
+      text: '…The concrete, implemented Session screen rules are the Full Session contract.',
+      matches: [],
+    },
+    {
+      id: 'reference.cli.nevo-specflow-docs',
+      title: 'nevo-specflow docs commands',
+      file: 'reference/cli/nevo-specflow-docs.md',
+      proposal: false,
+      headingPath: ['`nevo-specflow docs` commands', '`search`'],
+      snippet:
+        '| `reason.code` | When | | `semantic-disabled` | `docs.search.semantic` is absent or `false` | | `no-endpoint` | semantic search is enabled but `ai.embeddings` is not configured |…',
+      text: '…no-endpoint — semantic search is enabled but ai.embeddings is not configured',
+      matches: [],
+    },
+    {
+      id: 'reference.api.workspace-docs',
+      title: 'Workspace documentation HTTP API',
+      file: 'reference/api/workspace-docs.md',
+      proposal: false,
+      headingPath: [
+        'Workspace documentation HTTP API',
+        'GET /api/workspaces/:workspaceId/docs/documents/:documentId',
+      ],
+      snippet:
+        'A section is opened by its `sectionId`. Search `line`s count in the file (frontmatter included); article `sections[].line` counts in `body`. The document refusals: | Status | Code | When |…',
+      text: '…Search lines count in the file (frontmatter included); article sections[].line counts in body. The document refusals:',
+      matches: [],
+    },
+    {
+      id: 'adr.0021-product-neutral-ai-semantic-search-engine',
+      title: 'Product-neutral AI semantic search engine',
+      file: 'architecture/decisions/0021-product-neutral-ai-semantic-search-engine.md',
+      proposal: false,
+      headingPath: [
+        '0021 — Product-neutral AI semantic search engine',
+        'Decision',
+        '6. Local index',
+      ],
+      snippet:
+        '- Content freshness and the embedding identity are checked separately. The freshness check compares chunk ids and content hashes with the manifest and calls no endpoint; without configured dimensions it takes the stored dimension as given.…',
+      text: '…The freshness check compares chunk ids and content hashes with the manifest and calls no endpoint; without configured dimensions it takes the stored dimension as given.',
+      matches: [],
+    },
+    {
+      id: 'reference.providers.codex',
+      title: 'Codex Session provider',
+      file: 'reference/providers/codex-provider.md',
+      proposal: false,
+      headingPath: ['Codex Session provider', 'Authentication'],
+      snippet:
+        "- Supported login: the installed CLI's ChatGPT file login. API-key and machine-managed authentication are unavailable. - **Only the original CLI owns refresh authority.** The private home receives current access/ID…",
+      text: 'Only the original CLI owns refresh authority. The private home receives current access/ID…',
       matches: [],
     },
   ],

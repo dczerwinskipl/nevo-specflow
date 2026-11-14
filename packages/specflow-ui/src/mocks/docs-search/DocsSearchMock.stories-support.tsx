@@ -17,6 +17,7 @@ import {
   PopoverTrigger,
   ScrollArea,
   SideNavigation,
+  StatusIndicator,
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -29,6 +30,7 @@ import {
 import { BookOpen, ChevronsUpDown, FileText } from 'lucide-react';
 import type { WorkspaceDocsSearch } from '@nevo/specflow-contracts/docs';
 import type { WorkspaceList, WorkspaceListItem } from '@nevo/specflow-contracts/workspaces';
+import type { AppLocale } from '../../i18n/i18n';
 import { StoryLocalization } from '../../i18n/StoryLocalization';
 import { useMessage } from '../../i18n/message';
 import { ContextSwitcherOption, ContextSwitcherTrigger } from '../../shared/context-switcher';
@@ -46,28 +48,39 @@ import type { MockAnswer, MockHit } from './searchAnswers.stories-support';
  * docs/product/specflow/ui/documentation-reader.md). Static data from live answers, no routing,
  * no backend. `before` renders the shipped components (WorkspacePicker, DocsSearchResults,
  * DocsProposalsFilter, TreeSearchField); `after` hand-composes the proposal from the same nevo-ui
- * parts and the shared context switcher. Every story pins one frame width.
+ * parts and the shared context switcher.
+ *
+ * Approximations (labelled; the contract owns the real behaviour):
+ * - `CompactSwitcherTrigger` stands in for the proposed shared `ContextSwitcherTrigger` change;
+ * - excerpts and match ranges are precomputed from the shipped snippets (see the fixture header);
+ * - the on-screen keyboard is a grey block that shortens the frame;
+ * - `scrolled` sets the pane's scroll position after the first layout.
  */
 
-/** The search's default limit (`limit` of the workspace search route). */
-const SEARCH_LIMIT = 10;
-
 /* Proposed copy (PL is the reviewed locale; EN is in the contract). Mock-local on purpose: the
- * i18n catalogues are not changed by a mock. */
+ * i18n catalogues are not changed by a mock; the implementation uses plural keys. */
 const copy = {
-  dirty: 'Zmiany lokalne',
-  countTop: (n: number) => `${n} najlepszych dokumentów`,
-  countSome: (n: number) =>
-    n === 1
-      ? '1 pasujący dokument'
-      : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14)
-        ? `${n} pasujące dokumenty`
-        : `${n} pasujących dokumentów`,
-  proposals: (n: number | undefined) => (n === undefined ? 'Propozycje' : `Propozycje (${n})`),
-  proposalsName: (n: number) => `Uwzględnij propozycje, pasujących: ${n}`,
-  proposalsHint:
-    'Zaznacz, aby uwzględnić propozycje: pomysły i plany z folderów oznaczonych jako propozycje, a nie obowiązujące zasady. Liczba mówi, ile propozycji pasuje do wyszukiwania.',
-  proposal: 'Propozycja',
+  pl: {
+    dirty: 'Zmiany lokalne',
+    dirtyExplained: 'Zmiany lokalne: czytanie i wyszukiwanie uwzględniają niezatwierdzone pliki',
+    count: (n: number) =>
+      n === 1
+        ? '1 wynik'
+        : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14)
+          ? `${n} wyniki`
+          : `${n} wyników`,
+    proposals: (n: number | undefined) =>
+      n === undefined ? 'Uwzględnij propozycje' : `Uwzględnij propozycje (${n})`,
+    proposalsHint:
+      'Propozycje to pomysły i plany z folderów oznaczonych jako propozycje, a nie obowiązujące zasady. Liczba mówi, ile propozycji jest wśród najlepszych wyników.',
+    proposal: 'Propozycja',
+    meaningOnly: 'Żaden wynik nie zawiera szukanych słów; to dokumenty o podobnym znaczeniu.',
+    noMatches: 'Brak pasujących dokumentów',
+  },
+  en: {
+    dirty: 'Local changes',
+    dirtyExplained: 'Local changes: reading and search include uncommitted files',
+  },
 };
 
 export type MockVariant = 'before' | 'after';
@@ -95,25 +108,32 @@ export interface DocsSearchMockProps {
 
 export interface TriggerSegment {
   readonly text: string;
-  readonly tone?: 'secondary' | 'attention';
+}
+
+/** A state of the current choice the reader must always see (its own slot, not a description). */
+export interface TriggerStatus {
+  readonly text: string;
+  /** `attention`: informational amber (local changes); `danger`: it cannot be read now. */
+  readonly tone: 'attention' | 'danger';
 }
 
 /**
- * Proposed shared `ContextSwitcherTrigger`: the quiet label, the name on ONE line (ellipsis; the
- * full name in a tooltip on hover and keyboard focus, and in full in the popover), and ONE detail
- * line whose segments are joined by " · " and which ends in an ellipsis. Same paddings, glyph and
- * focus ring as today, so the Specification switcher with a key and the workspace picker are both
- * 72 px, and the Specification switcher without a key stays 56 px.
+ * Proposed shared `ContextSwitcherTrigger` (approximation): the quiet label; the name on ONE line
+ * (ellipsis; the full name in a tooltip on hover and keyboard focus, and in full in the popover)
+ * with an optional trailing STATUS that never truncates; ONE detail line of kind-specific segments
+ * joined by " · ". The Specification switcher passes its key as the detail and no status.
  */
 export function CompactSwitcherTrigger({
   label,
   name,
   segments,
+  status,
   ...button
 }: {
   label: string;
   name: string;
   segments: readonly TriggerSegment[];
+  status?: TriggerStatus;
 } & Omit<React.ComponentPropsWithRef<'button'>, 'children' | 'name' | 'className'>) {
   return (
     <Tooltip>
@@ -127,20 +147,32 @@ export function CompactSwitcherTrigger({
           <Typography as="span" variant="body-sm" className="mb-1 block pr-5 text-content-muted">
             {label}
           </Typography>
-          <Typography as="span" variant="title-sm" className="block truncate text-content-primary">
-            {name}
-          </Typography>
+          <span className="flex min-w-0 items-baseline gap-2">
+            <Typography
+              as="span"
+              variant="title-sm"
+              className="min-w-0 flex-1 truncate text-content-primary"
+            >
+              {name}
+            </Typography>
+            {status && (
+              <span
+                className="flex shrink-0 items-center gap-1.5 self-center text-body-sm text-content-secondary"
+                data-mock-status
+              >
+                <StatusIndicator tone={status.tone} />
+                {status.text}
+              </span>
+            )}
+          </span>
           {segments.length > 0 && (
-            <Typography as="span" variant="body-sm" className="block truncate">
+            <Typography
+              as="span"
+              variant="body-sm"
+              className="block truncate text-content-secondary"
+            >
               {segments.map((segment, index) => (
-                <span
-                  key={segment.text}
-                  className={
-                    segment.tone === 'attention'
-                      ? 'text-status-attention'
-                      : 'text-content-secondary'
-                  }
-                >
+                <span key={segment.text}>
                   {index > 0 && <span className="text-content-muted"> · </span>}
                   {segment.text}
                 </span>
@@ -157,27 +189,27 @@ export function CompactSwitcherTrigger({
   );
 }
 
-function useWorkspaceSegments() {
+function useWorkspaceFacts(locale: AppLocale = 'pl') {
   const { t } = useTranslation();
   const text = useMessage();
 
-  return (workspace: WorkspaceListItem): TriggerSegment[] => {
+  return (workspace: WorkspaceListItem) => {
     const kind =
       workspace.kind === 'primary'
         ? t('workspacePicker.projectFolder')
         : t('workspacePicker.worktree');
-    if (!workspace.available && workspace.unavailableReason) {
-      return [
-        { text: kind },
-        { text: text(workspaceUnavailableMessage(workspace.unavailableReason)), tone: 'attention' },
-      ];
-    }
-
-    return [
+    const segments: TriggerSegment[] = [
       { text: kind },
-      ...(workspace.dirty ? [{ text: copy.dirty }] : []),
       ...workspace.specifications.map((spec) => ({ text: spec.title })),
     ];
+    const status: TriggerStatus | undefined =
+      !workspace.available && workspace.unavailableReason
+        ? { text: text(workspaceUnavailableMessage(workspace.unavailableReason)), tone: 'danger' }
+        : workspace.dirty
+          ? { text: copy[locale].dirty, tone: 'attention' }
+          : undefined;
+
+    return { segments, status };
   };
 }
 
@@ -192,10 +224,11 @@ export function ProposedWorkspacePicker({
   open?: boolean;
 }) {
   const { t } = useTranslation();
-  const segmentsOf = useWorkspaceSegments();
+  const factsOf = useWorkspaceFacts();
   const list = workspaces.workspaces;
   const current = list.find((w) => w.workspaceId === selectedWorkspaceId) ?? list[0]!;
   const projectFolderPath = list.find((w) => w.workspaceId === workspaces.projectFolderId)?.path;
+  const facts = factsOf(current);
 
   return (
     <div className="min-w-0 rounded-control bg-surface-subtle" data-mock-picker>
@@ -205,7 +238,8 @@ export function ProposedWorkspacePicker({
             aria-description={t('workspacePicker.change')}
             label={t('workspacePicker.label')}
             name={current.name}
-            segments={segmentsOf(current)}
+            segments={facts.segments}
+            status={facts.status}
           />
         </PopoverTrigger>
         <PopoverContent
@@ -217,8 +251,7 @@ export function ProposedWorkspacePicker({
         >
           <div role="listbox" aria-label={t('workspacePicker.list')} className="grid gap-1">
             {list.map((workspace) => {
-              const segments = segmentsOf(workspace);
-              const reasons = segments.filter((segment) => segment.tone === 'attention');
+              const { segments, status } = factsOf(workspace);
 
               return (
                 <ContextSwitcherOption
@@ -228,13 +261,12 @@ export function ProposedWorkspacePicker({
                   selected={workspace.workspaceId === current.workspaceId}
                   unavailable={!workspace.available}
                   details={[
-                    {
-                      text: segments
-                        .filter((segment) => segment.tone !== 'attention')
-                        .map((segment) => segment.text)
-                        .join(' · '),
-                    },
-                    ...reasons.map((reason) => ({ text: reason.text, tone: 'attention' as const })),
+                    { text: segments.map((segment) => segment.text).join(' · ') },
+                    ...(status?.tone === 'danger'
+                      ? [{ text: status.text, tone: 'attention' as const }]
+                      : status
+                        ? [{ text: copy.pl.dirtyExplained, tone: 'muted' as const }]
+                        : []),
                   ]}
                 />
               );
@@ -277,22 +309,30 @@ function Highlighted({ text, matches }: Pick<MockHit, 'text' | 'matches'>) {
   return <>{parts}</>;
 }
 
-/** Ancestors truncate first; the deepest section keeps its room. */
+/**
+ * At most `parent › leaf`. One line of clamped height that wraps: the leaf comes first in the
+ * reversed row, so a parent that does not fit whole wraps onto the hidden second line instead of
+ * shrinking; only the leaf ellipsizes. The full path is the title.
+ */
 function SectionPath({ path }: { path: readonly string[] }) {
   const leaf = path.at(-1)!;
-  const ancestors = path.slice(0, -1);
+  const parent = path.at(-2);
 
   return (
-    <span className="flex min-w-0 text-body-sm text-content-muted" data-mock-section-path>
-      {ancestors.length > 0 && (
-        <>
-          <span className="min-w-8 shrink-[1000] truncate">{ancestors.join(' › ')}</span>
-          <span className="mx-1 shrink-0" aria-hidden>
+    <span
+      title={path.join(' › ')}
+      className="flex h-4 min-w-0 flex-row-reverse flex-wrap justify-end overflow-hidden text-body-sm text-content-muted"
+      data-mock-section-path
+    >
+      <span className="min-w-0 max-w-full truncate">{leaf}</span>
+      {parent !== undefined && (
+        <span className="shrink-0 whitespace-nowrap">
+          {parent}
+          <span aria-hidden className="mx-1">
             ›
           </span>
-        </>
+        </span>
       )}
-      <span className="min-w-0 truncate">{leaf}</span>
     </span>
   );
 }
@@ -328,7 +368,7 @@ export function ProposedResults({
                   </span>
                   {hit.proposal && (
                     <Badge size="compact" className="mt-0.5 shrink-0">
-                      {copy.proposal}
+                      {copy.pl.proposal}
                     </Badge>
                   )}
                 </span>
@@ -359,7 +399,8 @@ function ProposedStatusRow({
   const shown = includeProposals || proposals > 0;
 
   return (
-    <div className="flex min-h-6 min-w-0 flex-wrap items-center justify-between gap-x-2 gap-y-1 px-2">
+    // The row is at least one target tall, so the 44 px touch targets never reach the field.
+    <div className="flex min-h-(--target-size) min-w-0 flex-wrap items-center justify-between gap-x-2 gap-y-1 px-2">
       {/* The live region stays mounted; without a count it is read out, not shown. */}
       <Typography
         as="p"
@@ -367,22 +408,18 @@ function ProposedStatusRow({
         role="status"
         className={count ? 'text-content-muted' : 'sr-only'}
       >
-        {count ?? 'Brak pasujących dokumentów'}
+        {count ?? copy.pl.noMatches}
       </Typography>
       {shown && (
         <div className="flex min-w-0 items-center gap-1">
-          <CheckboxField
-            checked={includeProposals}
-            label={copy.proposals(proposals)}
-            aria-label={copy.proposalsName(proposals)}
-          />
+          <CheckboxField checked={includeProposals} label={copy.pl.proposals(proposals)} />
           <Popover>
             <PopoverTrigger asChild>
               <IconButton icon="info" size="xs" variant="ghost" aria-label="Czym są propozycje?" />
             </PopoverTrigger>
             <PopoverContent align="end" className="w-72 p-3">
               <Typography as="p" variant="body-sm" className="text-content-secondary">
-                {copy.proposalsHint}
+                {copy.pl.proposalsHint}
               </Typography>
             </PopoverContent>
           </Popover>
@@ -402,12 +439,9 @@ function ProposedPane(props: DocsSearchMockProps) {
       : answer.includeProposals
         ? answer.results.filter((hit) => hit.proposal).length
         : answer.proposalsLeftOut;
-  const count =
-    results.length === 0
-      ? undefined
-      : results.length >= SEARCH_LIMIT
-        ? copy.countTop(results.length)
-        : copy.countSome(results.length);
+  // The count of the list, never a total: the search has no total (the limit caps the list).
+  const count = results.length === 0 ? undefined : copy.pl.count(results.length);
+  const meaningOnly = results.length > 0 && results.every((hit) => hit.matches.length === 0);
 
   return (
     <PaneScroller scrolled={props.scrolled}>
@@ -416,25 +450,36 @@ function ProposedPane(props: DocsSearchMockProps) {
         selectedWorkspaceId={props.selectedWorkspaceId}
         open={props.pickerOpen}
       />
-      {/* The search block sticks to the top of the pane's scroller; the picker scrolls away. */}
+      {/* Only the field sticks (the minimum sticky set); a plain divider under it. */}
       <div
-        className="sticky top-0 z-10 -mx-2 -mt-2 grid gap-2 px-2 pb-1 pt-2 data-[stuck=true]:bg-surface-raised data-[stuck=true]:shadow-[0_1px_0_var(--color-divider)]"
-        data-stuck={props.scrolled ? 'true' : undefined}
+        role="search"
+        className="sticky top-0 z-10 -mx-2 -my-2 border-b border-divider bg-surface-raised px-3 py-2"
         data-mock-sticky
       >
-        <div role="search" className="px-1">
-          <TreeSearchField
-            label={t('docs.search.label')}
-            value={answer.query}
-            onChange={() => undefined}
-            onClear={() => undefined}
-          />
-        </div>
+        <TreeSearchField
+          label={t('docs.search.label')}
+          value={answer.query}
+          onChange={() => undefined}
+          onClear={() => undefined}
+        />
+      </div>
+      {/* The status row is one touch target tall; its own slack replaces the gap below it. */}
+      <div className="-mb-2 grid gap-1">
         <ProposedStatusRow
           count={count}
           proposals={proposals}
           includeProposals={answer.includeProposals && empty !== 'only-proposals'}
         />
+        {meaningOnly && (
+          <Typography
+            as="p"
+            variant="body-sm"
+            className="px-2 text-content-secondary"
+            data-mock-meaning-only
+          >
+            {copy.pl.meaningOnly}
+          </Typography>
+        )}
       </div>
       {results.length > 0 ? (
         <ProposedResults results={results} activeId={props.activeId} />
@@ -442,7 +487,6 @@ function ProposedPane(props: DocsSearchMockProps) {
         <div className="px-2">
           <EmptyState
             variant="inline"
-            icon="search"
             title={t('docs.search.noMatches')}
             description={
               empty === 'only-proposals'
@@ -705,15 +749,22 @@ export interface TriggerCase {
   readonly name: string;
   readonly before: readonly { text: string; tone?: 'secondary' | 'muted' | 'attention' }[];
   readonly after: readonly TriggerSegment[];
+  readonly status?: TriggerStatus;
 }
 
 /**
  * The shipped and the proposed trigger for each case, one row per case, at the tree pane's and
  * the drawer's width (320 px).
  */
-export function TriggerBoard({ cases }: { cases: readonly TriggerCase[] }) {
+export function TriggerBoard({
+  cases,
+  locale = 'pl',
+}: {
+  cases: readonly TriggerCase[];
+  locale?: AppLocale;
+}) {
   return (
-    <StoryLocalization locale="pl">
+    <StoryLocalization locale={locale}>
       <TooltipProvider>
         <div className="grid gap-4 bg-canvas p-4" style={{ width: 720 }} data-mock-board>
           <div className="grid grid-cols-[320px_320px] gap-6">
@@ -737,11 +788,12 @@ export function TriggerBoard({ cases }: { cases: readonly TriggerCase[] }) {
                     details={item.before}
                   />
                 </div>
-                <div className="rounded-control bg-surface-subtle" data-mock-case="after">
+                <div className="min-w-0 rounded-control bg-surface-subtle" data-mock-case="after">
                   <CompactSwitcherTrigger
                     label={item.label}
                     name={item.name}
                     segments={item.after}
+                    status={item.status}
                   />
                 </div>
               </div>

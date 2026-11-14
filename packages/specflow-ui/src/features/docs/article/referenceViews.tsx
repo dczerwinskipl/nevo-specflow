@@ -7,8 +7,11 @@ import type { DocsReferenceViews } from '../links/useDocsReferenceRenderers';
 import { docsHref } from '../reader/readerLocation';
 import { ArticleSectionsContext, useArticleNavigation } from './articleContext';
 
-/** A link to another current document: its reader address, opened by the article's host. */
-function DocumentLink({
+/**
+ * A link to another current document: its reader address, opened by the article's host (a modified
+ * or middle click keeps the browser's own behaviour).
+ */
+export function DocumentLink({
   documentId,
   sectionId,
   title,
@@ -69,18 +72,24 @@ function SectionLink({
   );
 }
 
-function ReferencePopover({
+/**
+ * A reference the reader does not open: focusable dotted text whose popover says so (`title`), with
+ * the reason, what the reader knows about it (`children`), the target it points at and an action.
+ */
+export function ReferencePopover({
   trigger,
   title,
   reason,
   target,
   action,
+  children,
 }: {
   trigger: ReactNode;
   title: string;
-  reason: string;
+  reason?: string;
   target?: string;
   action?: ReactNode;
+  children?: ReactNode;
 }) {
   return (
     <Popover>
@@ -93,13 +102,16 @@ function ReferencePopover({
           <span className="sr-only"> ({title})</span>
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="grid w-[min(20rem,calc(100vw-2rem))] gap-2 p-3">
+      <PopoverContent align="start" className="grid w-80 gap-2 p-3">
         <Typography as="p" variant="label-md">
           {title}
         </Typography>
-        <Typography as="p" variant="body-sm" className="text-content-secondary">
-          {reason}
-        </Typography>
+        {reason ? (
+          <Typography as="p" variant="body-sm" className="text-content-secondary">
+            {reason}
+          </Typography>
+        ) : null}
+        {children}
         {target ? (
           <Typography
             as="code"

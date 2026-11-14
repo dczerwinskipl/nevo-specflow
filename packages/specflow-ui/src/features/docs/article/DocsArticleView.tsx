@@ -1,21 +1,18 @@
 import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  AppContent,
-  InlineNote,
-  MarkdownDocument,
-  ScrollArea,
-  useContainerMinWidth,
-} from '@nevo/ui';
+import { AppContent, InlineNote, MarkdownDocument, ScrollArea } from '@nevo/ui';
 import type { WorkspaceDocsArticle, WorkspaceDocsTree } from '@nevo/specflow-contracts/docs';
 import { useMarkdownLabels } from '../../../i18n/useMarkdownLabels';
 import { DocumentOutline } from '../../../shared/document-reading/DocumentOutline';
 import { DocumentOutlineSheet } from '../../../shared/document-reading/DocumentOutlineSheet';
 import { DocumentProperties } from '../../../shared/document-reading/DocumentProperties';
+import { DocumentReadingColumns } from '../../../shared/document-reading/DocumentReadingColumns';
 import {
   markdownOutline,
   outlineColumnMinWidth,
 } from '../../../shared/document-reading/markdownOutline';
+import { useHeadingNavigation } from '../../../shared/document-reading/useHeadingNavigation';
+import { usePanelSize } from '../../../shared/document-reading/usePanelSize';
 import { topSectionId } from '../links/linkPolicy';
 import { useDocsReferenceRenderers } from '../links/useDocsReferenceRenderers';
 import { ArticleSectionsContext, type ArticleSections } from './articleContext';
@@ -55,15 +52,18 @@ export function DocsArticleView({
   const markdownLabels = useMarkdownLabels();
   const { document: doc, body, sections, workspaceId } = article;
   const [panel, setPanel] = useState<HTMLElement | null>(null);
-  const [activeLine, setActiveLine] = useState<number>();
   const { store, sheetOpen } = useArticleChromeOf(chromeKey);
-  const width = useContainerMinWidth(outlineColumnMinWidth, { hysteresis: 16 });
+  const { width: panelWidth, measured } = usePanelSize(panel);
   const headings = useMemo(() => {
     const found = markdownOutline(body);
 
     return found.length > 1 ? found : [];
   }, [body]);
-  const column = width.measured && width.matches && headings.length > 0;
+  const column = panelWidth >= outlineColumnMinWidth && headings.length > 0;
+  // The column keeps the current section marked while reading; the sheet measures it when it opens.
+  const { activeLine, goTo } = useHeadingNavigation(panel, headings, {
+    live: column || sheetOpen,
+  });
   const renderers = useDocsReferenceRenderers(
     { workspaceId, tree, documentId: doc.documentId, documentPath: doc.path },
     docsReferenceViews,
@@ -76,25 +76,19 @@ export function DocsArticleView({
     return () => store.setColumn(chromeKey, false);
   }, [store, chromeKey, column]);
 
-  const focusTarget = (target: HTMLElement | null | undefined, pointer = false) => {
+  // An element of the rendered body that is not a heading (a GFM footnote).
+  const focusTarget = (target: HTMLElement | null | undefined) => {
     if (!target) {
-      return false;
+      return;
     }
 
     target.setAttribute('tabindex', '-1');
     target.scrollIntoView({ block: 'start' });
-    target.focus({ preventScroll: true, focusVisible: !pointer });
-
-    return true;
+    target.focus({ preventScroll: true });
   };
 
-  const goToLine = (line: number, pointer = false) => {
-    if (focusTarget(panel?.querySelector<HTMLElement>(`[data-source-line="${line}"]`), pointer)) {
-      setActiveLine(line);
-    }
-  };
-
-  const goToSection = (id: string) => {
+  /** Opens a section; entering the article at one jumps there without the smooth scroll. */
+  const goToSection = (id: string, instant = false) => {
     if (id === topSectionId) {
       panel?.scrollTo({ top: 0 });
 
@@ -102,9 +96,7 @@ export function DocsArticleView({
     }
 
     const line = sections.find((section) => section.sectionId === id)?.line;
-    if (line !== undefined) {
-      goToLine(line);
-
+    if (line !== undefined && goTo(line, { instant })) {
       return;
     }
 
@@ -115,14 +107,15 @@ export function DocsArticleView({
     );
   };
 
-  const sectionsContext: ArticleSections = { goToSection };
+  const sectionsContext: ArticleSections = { goToSection: (id) => goToSection(id) };
+  const goToLine = (line: number, pointer: boolean) => void goTo(line, { pointer });
 
   // Entering the article: the remembered reading position (Back on Narrow), else the section the
   // address names, else the top.
   // Only once the panel's width is known: the column arrangement re-parents the text, and a
   // heading focused before that would lose focus.
   useLayoutEffect(() => {
-    if (!panel || !width.measured) {
+    if (!panel || !measured) {
       return;
     }
 
@@ -134,13 +127,13 @@ export function DocsArticleView({
     }
 
     if (sectionId !== undefined) {
-      goToSection(sectionId);
+      goToSection(sectionId, true);
     } else {
       panel.scrollTo({ top: 0 });
     }
     // Only a new article or section moves the reader; the callbacks are recreated every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [panel, width.measured, doc.documentId, sectionId]);
+  }, [panel, measured, doc.documentId, sectionId]);
 
   useEffect(() => {
     if (!panel || !scrollMemory) {
@@ -160,11 +153,7 @@ export function DocsArticleView({
     { key: t('docs.article.properties.summary'), value: doc.summary },
     { key: t('docs.article.properties.id'), value: doc.documentId },
   ];
-  const lead = doc.proposal ? (
-    <div className="mb-4">
-      <InlineNote>{t('docs.article.proposalNote')}</InlineNote>
-    </div>
-  ) : null;
+  const lead = doc.proposal ? <InlineNote>{t('docs.article.proposalNote')}</InlineNote> : null;
   const text = (
     <>
       <MarkdownDocument
@@ -174,46 +163,45 @@ export function DocsArticleView({
         renderLink={renderers.renderLink}
         renderImage={renderers.renderImage}
       />
-      <RelatedDocuments related={doc.related} />
+      <RelatedDocuments related={doc.related} docsRoot={tree.docsRoot} />
     </>
   );
 
   return (
     <ArticleSectionsContext.Provider value={sectionsContext}>
       <AppContent className="h-full w-full">
-        {/* Measures the panel's width (a zero-height sentinel, not the content it rearranges). */}
-        <div ref={width.setElement} aria-hidden className="h-0 w-full shrink-0" />
         <ScrollArea
           direction="both"
           className="min-h-0 flex-1"
           contentClassName="p-6"
           viewportRef={setPanel}
         >
-          {column ? (
-            <div
-              className="mx-auto flex items-start gap-8"
-              style={{ maxWidth: 'calc(var(--spacing-content-narrow) + 352px)' }}
-            >
-              <div className="min-w-0 max-w-content-narrow flex-1">
-                {lead}
-                {text}
-              </div>
-              <aside
-                aria-label={t('docs.article.columnLabel')}
-                className="sticky top-0 grid shrink-0 grid-cols-1 gap-4"
-                style={{ width: 'clamp(232px, 27%, 320px)' }}
-              >
-                <DocumentProperties properties={properties} anchored={false} />
-                <DocumentOutline headings={headings} activeLine={activeLine} onSelect={goToLine} />
-              </aside>
-            </div>
-          ) : (
-            <div className="mx-auto max-w-content-narrow">
-              {lead}
-              <DocumentProperties properties={properties} />
-              {text}
-            </div>
-          )}
+          <DocumentReadingColumns
+            panelWidth={panelWidth}
+            lead={lead}
+            text={
+              column ? (
+                text
+              ) : (
+                <>
+                  <DocumentProperties properties={properties} />
+                  {text}
+                </>
+              )
+            }
+            aside={
+              column ? (
+                <>
+                  <DocumentProperties properties={properties} anchored={false} />
+                  <DocumentOutline
+                    headings={headings}
+                    activeLine={activeLine}
+                    onSelect={goToLine}
+                  />
+                </>
+              ) : undefined
+            }
+          />
         </ScrollArea>
       </AppContent>
       <DocumentOutlineSheet

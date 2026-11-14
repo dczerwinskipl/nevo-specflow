@@ -1,5 +1,4 @@
-import { useTranslation } from 'react-i18next';
-import { IconButton, cn, hitAreaClassName } from '@nevo/ui';
+import { ContentsButton } from '../../../shared/document-reading/ContentsButton';
 import { useDocumentEditor } from '../editor/DocumentEditorProvider';
 
 /**
@@ -11,25 +10,10 @@ import { useDocumentEditor } from '../editor/DocumentEditorProvider';
  * - With room for both columns it does not exist: the contents are always a column.
  */
 export function OutlineButton() {
-  const { t } = useTranslation();
   const session = useDocumentEditor();
   const toggle = session?.contentsToggle;
   if (toggle) {
-    return (
-      <IconButton
-        aria-label={t('documentReading.outline.label')}
-        aria-pressed={toggle.pressed}
-        title={t('documentReading.outline.label')}
-        className={cn(
-          'shrink-0 aria-pressed:bg-surface-selected aria-pressed:text-content-primary',
-          hitAreaClassName,
-        )}
-        icon="list"
-        size="sm"
-        variant="ghost"
-        onClick={toggle.toggle}
-      />
-    );
+    return <ContentsButton mode="toggle" pressed={toggle.pressed} onToggle={toggle.toggle} />;
   }
 
   if (!session?.outlineAvailable) {
@@ -37,15 +21,6 @@ export function OutlineButton() {
   }
 
   return (
-    <IconButton
-      aria-label={t('documentReading.outline.open')}
-      aria-haspopup="dialog"
-      aria-expanded={session.outlineOpen}
-      className={cn('shrink-0', hitAreaClassName)}
-      icon="list"
-      size="sm"
-      variant="ghost"
-      onClick={session.openOutline}
-    />
+    <ContentsButton mode="sheet" expanded={session.outlineOpen} onOpen={session.openOutline} />
   );
 }

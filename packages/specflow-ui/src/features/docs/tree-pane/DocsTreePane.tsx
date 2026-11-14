@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AppContent, ScrollArea, Typography } from '@nevo/ui';
+import { AppContent, ScrollArea, TooltipProvider, Typography } from '@nevo/ui';
 import type { WorkspaceDocsTree } from '@nevo/specflow-contracts/docs';
 import { DocsSearchPanel } from './DocsSearchPanel';
 import { DocsTree } from './DocsTree';
@@ -64,7 +64,6 @@ export function DocsTreePane({
         root={root}
         docsRoot={tree.docsRoot}
         activeDocumentId={activeDocumentId}
-        activePath={activePath}
         expanded={expanded}
         onToggle={(path) =>
           setExpanded((current) => {
@@ -83,40 +82,43 @@ export function DocsTreePane({
     ) : null;
 
   return (
-    <AppContent className="h-full w-full">
-      {/* The pane's rows are focusable themselves: the scroller adds no Tab stop of its own. */}
-      <ScrollArea
-        direction="vertical"
-        className="min-h-0 flex-1"
-        contentClassName="grid content-start gap-3 p-2"
-        tabIndex={-1}
-      >
-        {sessionBack && <div className="px-2">{sessionBack}</div>}
-        {picker}
-        {notices.map((notice) => (
-          <Typography
-            key={notice}
-            as="p"
-            variant="body-sm"
-            role="status"
-            className="px-2 text-content-secondary wrap-anywhere"
-          >
-            {notice}
-          </Typography>
-        ))}
-        {problem !== undefined
-          ? problem && <div className="px-2">{problem}</div>
-          : tree && <SkippedDocuments skipped={tree.skipped} docsRoot={tree.docsRoot} />}
-        <DocsSearchPanel
-          hidden={problem !== undefined}
-          workspaceId={workspaceId}
-          proposals={proposals}
-          activeDocumentId={activeDocumentId}
-          onOpen={onOpen}
+    // The pane's tooltips (the tree rows' paths) share one provider, as in the Documents explorer.
+    <TooltipProvider delayDuration={300}>
+      <AppContent className="h-full w-full">
+        {/* The pane's rows are focusable themselves: the scroller adds no Tab stop of its own. */}
+        <ScrollArea
+          direction="vertical"
+          className="min-h-0 flex-1"
+          contentClassName="grid content-start gap-3 p-2"
+          tabIndex={-1}
         >
-          {treeView}
-        </DocsSearchPanel>
-      </ScrollArea>
-    </AppContent>
+          {sessionBack && <div className="px-2">{sessionBack}</div>}
+          {picker}
+          {notices.map((notice) => (
+            <Typography
+              key={notice}
+              as="p"
+              variant="body-sm"
+              role="status"
+              className="px-2 text-content-secondary wrap-anywhere"
+            >
+              {notice}
+            </Typography>
+          ))}
+          {problem !== undefined
+            ? problem && <div className="px-2">{problem}</div>
+            : tree && <SkippedDocuments skipped={tree.skipped} docsRoot={tree.docsRoot} />}
+          <DocsSearchPanel
+            hidden={problem !== undefined}
+            workspaceId={workspaceId}
+            proposals={proposals}
+            activeDocumentId={activeDocumentId}
+            onOpen={onOpen}
+          >
+            {treeView}
+          </DocsSearchPanel>
+        </ScrollArea>
+      </AppContent>
+    </TooltipProvider>
   );
 }

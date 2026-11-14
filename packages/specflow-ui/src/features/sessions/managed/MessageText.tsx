@@ -11,6 +11,7 @@ import { Button, MarkdownDocument, Spinner } from '@nevo/ui';
 import { utf8Bytes, type ContentRef, type TextPreview } from '@nevo/specflow-contracts/sessions';
 import { useMarkdownLabels } from '../../../i18n/useMarkdownLabels';
 import type { ManagedSessionsApi } from './api';
+import { copyText } from '../../../shared/clipboard/copyText';
 
 /** Imperative handle exposed by {@link ReadableText}: the one owner of the message's fully
  * resolved text (initial preview plus every auto-stitched page), for actions that need the whole
@@ -175,26 +176,7 @@ const RevisionText = forwardRef<
   useImperativeHandle(
     ref,
     () => ({
-      copy: async () => {
-        try {
-          // `navigator.clipboard` is missing outside secure contexts and may be refused: say so
-          // instead of reporting a copy that did not happen (same convention as
-          // `CreateFailurePanel`/`TaskDetailDisclosure`'s own copy actions).
-          if (!complete) {
-            return false;
-          }
-
-          if (!navigator.clipboard?.writeText) {
-            throw new Error('Clipboard is unavailable');
-          }
-
-          await navigator.clipboard.writeText(text);
-
-          return true;
-        } catch {
-          return false;
-        }
-      },
+      copy: async () => complete && copyText(text),
     }),
     [text, complete],
   );

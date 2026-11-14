@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
-import { Collapsible, Icon, Typography } from '@nevo/ui';
+import { Collapsible, Icon } from '@nevo/ui';
 import type { WorkspaceDocsSkippedDocument } from '@nevo/specflow-contracts/docs';
+import { SkippedDocumentList } from '../skipped/SkippedDocumentList';
 
 /**
  * The documents the reader skips (invalid frontmatter, a duplicated id), said once and quietly
@@ -23,20 +24,7 @@ export function SkippedDocuments({
     return null;
   }
 
-  const list = (
-    <ul className="m-0 grid list-none gap-1.5 p-0">
-      {skipped.map((item) => (
-        <li key={item.path} className="grid gap-0.5">
-          <Typography as="code" variant="code-md" className="wrap-anywhere text-content-secondary">
-            {`${docsRoot}/${item.path}`}
-          </Typography>
-          <Typography as="span" variant="body-sm" className="wrap-anywhere text-content-muted">
-            {item.error}
-          </Typography>
-        </li>
-      ))}
-    </ul>
-  );
+  const list = <SkippedDocumentList skipped={skipped} docsRoot={docsRoot} />;
   const title =
     skipped.length === 1
       ? t('docs.skipped.one')

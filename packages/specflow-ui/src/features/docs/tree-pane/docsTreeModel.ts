@@ -1,4 +1,5 @@
 import type { WorkspaceDocsTreeDocument } from '@nevo/specflow-contracts/docs';
+import type { TreeKeyRow } from '../../../shared/document-tree';
 
 export interface DocsFolderNode {
   readonly name: string;
@@ -11,16 +12,6 @@ export interface DocsFolderNode {
    * that owns the proposal prefix, labelled once.
    */
   readonly ownsProposals: boolean;
-}
-
-/** One visible row of the tree, in reading order (the keyboard moves along these). */
-export interface DocsTreeRow {
-  readonly key: string;
-  /** The folder row's own path, or the document's id. */
-  readonly kind: 'folder' | 'document';
-  readonly id: string;
-  /** The key of the folder holding the row; `undefined` at the root level. */
-  readonly parentKey?: string;
 }
 
 export const folderKey = (path: string) => `folder:${path}`;
@@ -93,8 +84,8 @@ export function ancestorFolders(path: string): string[] {
 }
 
 /** The visible rows in reading order, given the expanded folders. */
-export function visibleRows(root: DocsFolderNode, expanded: ReadonlySet<string>): DocsTreeRow[] {
-  const rows: DocsTreeRow[] = [];
+export function visibleRows(root: DocsFolderNode, expanded: ReadonlySet<string>): TreeKeyRow[] {
+  const rows: TreeKeyRow[] = [];
   const walk = (folder: DocsFolderNode, parentKey: string | undefined) => {
     for (const child of folder.folders) {
       const key = folderKey(child.path);
@@ -117,51 +108,4 @@ export function visibleRows(root: DocsFolderNode, expanded: ReadonlySet<string>)
   walk(root, undefined);
 
   return rows;
-}
-
-/**
- * Where a tree key goes (roving tabindex): Up/Down to the neighbouring visible row, Home/End to
- * the first/last, Right into an expanded folder's first child, Left to the parent folder. Expanding
- * or collapsing (Right on a collapsed folder, Left on an expanded one) is the caller's: it keeps
- * focus on the row. `undefined` when the key moves nothing.
- */
-export function treeKeyTarget(
-  rows: readonly DocsTreeRow[],
-  currentKey: string,
-  key: string,
-  expanded: ReadonlySet<string>,
-): { readonly focus?: string; readonly toggle?: string } | undefined {
-  const index = rows.findIndex((row) => row.key === currentKey);
-  const row = rows[index];
-  if (!row) {
-    return undefined;
-  }
-
-  const focus = (target: DocsTreeRow | undefined) => (target ? { focus: target.key } : undefined);
-  switch (key) {
-    case 'ArrowDown':
-      return focus(rows[index + 1]);
-    case 'ArrowUp':
-      return focus(rows[index - 1]);
-    case 'Home':
-      return focus(rows[0]);
-    case 'End':
-      return focus(rows.at(-1));
-    case 'ArrowRight':
-      if (row.kind !== 'folder') {
-        return undefined;
-      }
-
-      return expanded.has(row.id)
-        ? focus(rows[index + 1]?.parentKey === row.key ? rows[index + 1] : undefined)
-        : { toggle: row.id };
-    case 'ArrowLeft':
-      if (row.kind === 'folder' && expanded.has(row.id)) {
-        return { toggle: row.id };
-      }
-
-      return focus(rows.find((candidate) => candidate.key === row.parentKey));
-    default:
-      return undefined;
-  }
 }

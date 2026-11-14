@@ -5,6 +5,7 @@ import { LoadingPresentation } from '../../../app/loading/LoadingPresentation';
 import type { DocsArticleResult } from '../read-model';
 import { revisionOf, useDocsArticle } from '../read-model';
 import { useArticleNavigation } from './articleContext';
+import { SkippedDocumentList } from '../skipped/SkippedDocumentList';
 import { DocsArticleView } from './DocsArticleView';
 import { useReadingPosition } from './readingPositions';
 
@@ -15,9 +16,11 @@ import { useReadingPosition } from './readingPositions';
 function ArticleRefusal({
   result,
   documentId,
+  docsRoot,
 }: {
   result: Exclude<DocsArticleResult, { kind: 'article' }>;
   documentId: string;
+  docsRoot: string;
 }) {
   const { t } = useTranslation();
   const navigation = useArticleNavigation();
@@ -60,18 +63,7 @@ function ArticleRefusal({
         variant="pane"
         icon="triangle-alert"
         title={t('docs.state.skipped.title')}
-        description={
-          <span className="grid gap-2">
-            {result.refusal.skipped.map((item) => (
-              <span key={item.path} className="grid gap-0.5">
-                <Typography as="code" variant="code-md" className="break-all">
-                  {item.path}
-                </Typography>
-                <span className="wrap-anywhere">{item.error}</span>
-              </span>
-            ))}
-          </span>
-        }
+        description={<SkippedDocumentList skipped={result.refusal.skipped} docsRoot={docsRoot} />}
       />
     );
   }
@@ -141,7 +133,7 @@ export function ArticleBody({
   }
 
   if (result.data.kind !== 'article') {
-    return <ArticleRefusal result={result.data} documentId={documentId} />;
+    return <ArticleRefusal result={result.data} documentId={documentId} docsRoot={tree.docsRoot} />;
   }
 
   return (

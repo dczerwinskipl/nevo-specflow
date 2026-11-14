@@ -6,3 +6,4 @@
 export { createRuntimeWorkspaceApi, workspacesReadOperation, type WorkspaceApi } from './api';
 export { workspaceKeys } from './queries';
 export { useWorkspaces, type UseWorkspacesOptions } from './useWorkspaces';
+export { workspaceUnavailableMessage } from './unavailableReason';

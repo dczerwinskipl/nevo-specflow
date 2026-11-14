@@ -1,16 +1,16 @@
 import { useRef, useState } from 'react';
-import { ChevronsUpDown } from 'lucide-react';
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-  Icon,
-  Typography,
-  ScrollArea,
-  cn,
-} from '@nevo/ui';
+import { Popover, PopoverTrigger, PopoverContent, ScrollArea } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import type { WorkspaceList, WorkspaceListItem } from '@nevo/specflow-contracts/workspaces';
+import { useMessage } from '../../../i18n/message';
+import {
+  ContextSwitcherOption,
+  ContextSwitcherTrigger,
+  contextSwitcherPopoverClassName,
+  useListboxKeys,
+  type ContextSwitcherDetail,
+} from '../../../shared/context-switcher';
+import { workspaceUnavailableMessage } from '../../workspaces/read-model';
 import { displayPath, kindLine } from './workspacePickerModel';
 
 export interface WorkspacePickerProps {
@@ -23,10 +23,11 @@ export interface WorkspacePickerProps {
 }
 
 /**
- * Picks one of the project's registered workspaces, in the Specification switcher's anatomy: a
- * subtle trigger (quiet label, wrapping name, kind line) opening a listbox of every workspace.
- * Presentational: the list comes from the shared workspaces read model. Renders nothing with a
- * single workspace (there is nothing to tell apart).
+ * Picks one of the project's registered workspaces, in the Specification switcher's anatomy (the
+ * shared context switcher): a subtle trigger (quiet label, wrapping name, kind line) opening a
+ * listbox of every workspace, focus on the selected one; an unavailable workspace is listed with
+ * its reason and cannot be chosen. Presentational: the list comes from the shared workspaces read
+ * model. Renders nothing with a single workspace (there is nothing to tell apart).
  */
 export function WorkspacePicker({
   workspaces,
@@ -35,9 +36,11 @@ export function WorkspacePicker({
   sessionWorkspaceId,
 }: WorkspacePickerProps) {
   const { t } = useTranslation();
+  const text = useMessage();
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
+  const { options, onOptionKeyDown } = useListboxKeys(panel);
   const list = workspaces.workspaces;
   if (list.length < 2) {
     return null;
@@ -51,7 +54,6 @@ export function WorkspacePicker({
   }
 
   const projectFolderPath = list.find((w) => w.workspaceId === workspaces.projectFolderId)?.path;
-  const options = () => panel.current?.querySelectorAll<HTMLButtonElement>('[role="option"]') ?? [];
 
   const describe = (workspace: WorkspaceListItem, withSession: boolean) => {
     const { kind, specifications } = kindLine(workspace);
@@ -68,46 +70,40 @@ export function WorkspacePicker({
       : base;
   };
 
+  const optionDetail = (workspace: WorkspaceListItem): ContextSwitcherDetail =>
+    workspace.available || !workspace.unavailableReason
+      ? { text: describe(workspace, false) }
+      : { text: text(workspaceUnavailableMessage(workspace.unavailableReason)), tone: 'attention' };
+
   return (
     <div className="rounded-control bg-surface-subtle">
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <button
+          <ContextSwitcherTrigger
             ref={trigger}
-            type="button"
             aria-description={t('workspacePicker.change')}
             title={displayPath(current.path, projectFolderPath)}
-            className="relative block min-h-11 w-full rounded-control px-3 py-2 text-left outline-none hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-focus-ring"
-          >
-            <Typography as="span" variant="body-sm" className="mb-1 block pr-5 text-content-muted">
-              {t('workspacePicker.label')}
-            </Typography>
-            <Typography
-              as="span"
-              variant="title-sm"
-              className="block pr-5 text-content-primary [overflow-wrap:anywhere]"
-            >
-              {current.name}
-            </Typography>
-            <Typography as="span" variant="body-sm" className="block text-content-secondary">
-              {describe(current, true)}
-            </Typography>
-            {current.dirty ? (
-              <Typography as="span" variant="body-sm" className="block text-content-muted">
-                {t('workspacePicker.dirty')}
-              </Typography>
-            ) : null}
-            <Icon name={ChevronsUpDown} size="sm" className="absolute right-3 top-2" />
-          </button>
+            label={t('workspacePicker.label')}
+            name={current.name}
+            details={[
+              { text: describe(current, true) },
+              ...(current.dirty
+                ? [{ text: t('workspacePicker.dirty'), tone: 'muted' } as const]
+                : []),
+            ]}
+          />
         </PopoverTrigger>
         <PopoverContent
+          inert={!open}
+          aria-hidden={!open}
           ref={panel}
+          motion="navigation"
           align="start"
           aria-label={t('workspacePicker.change')}
-          className="w-80 max-w-[calc(100vw-2rem)] p-2"
+          className={contextSwitcherPopoverClassName}
           onOpenAutoFocus={(event) => {
             event.preventDefault();
-            const all = [...options()];
+            const all = options();
             (all.find((o) => o.getAttribute('aria-selected') === 'true') ?? all[0])?.focus({
               preventScroll: true,
             });
@@ -123,82 +119,26 @@ export function WorkspacePicker({
             contentClassName="grid gap-1"
           >
             <div role="listbox" aria-label={t('workspacePicker.list')} className="grid gap-1">
-              {list.map((workspace, index) => {
+              {list.map((workspace) => {
                 const selected = workspace.workspaceId === current.workspaceId;
-                const available = workspace.available;
 
                 return (
-                  <button
+                  <ContextSwitcherOption
                     key={workspace.workspaceId}
-                    type="button"
-                    role="option"
-                    aria-selected={selected}
-                    aria-disabled={!available || undefined}
+                    name={workspace.name}
+                    details={[optionDetail(workspace)]}
+                    selected={selected}
+                    unavailable={!workspace.available}
                     title={displayPath(workspace.path, projectFolderPath)}
                     tabIndex={selected ? 0 : -1}
-                    className={cn(
-                      'flex min-h-11 items-start gap-2 rounded-control px-2 py-2 text-left outline-none focus-visible:outline-2 focus-visible:outline-focus-ring aria-selected:bg-surface-selected',
-                      available ? 'hover:bg-surface-hover' : 'cursor-not-allowed',
-                    )}
                     onClick={() => {
-                      if (available) {
+                      if (workspace.available) {
                         onSelect(workspace.workspaceId);
                         setOpen(false);
                       }
                     }}
-                    onKeyDown={(event) => {
-                      const all = options();
-                      const next =
-                        event.key === 'ArrowDown'
-                          ? (index + 1) % all.length
-                          : event.key === 'ArrowUp'
-                            ? (index - 1 + all.length) % all.length
-                            : event.key === 'Home'
-                              ? 0
-                              : event.key === 'End'
-                                ? all.length - 1
-                                : undefined;
-                      if (next !== undefined) {
-                        event.preventDefault();
-                        all[next]?.focus();
-                      }
-                    }}
-                  >
-                    <span className="min-w-0 flex-1">
-                      <Typography
-                        as="span"
-                        variant="title-sm"
-                        className={cn(
-                          'block [overflow-wrap:anywhere]',
-                          available ? 'text-content-primary' : 'text-content-muted',
-                        )}
-                      >
-                        {workspace.name}
-                      </Typography>
-                      <Typography
-                        as="span"
-                        variant="body-sm"
-                        className={cn(
-                          'block',
-                          available ? 'text-content-secondary' : 'text-status-attention',
-                        )}
-                      >
-                        {available || !workspace.unavailableReason
-                          ? describe(workspace, false)
-                          : t(`workspacePicker.unavailable.${workspace.unavailableReason}`)}
-                      </Typography>
-                      {selected ? (
-                        <Typography
-                          as="span"
-                          variant="body-sm"
-                          className="block text-content-secondary"
-                        >
-                          {t('workspacePicker.selected')}
-                        </Typography>
-                      ) : null}
-                    </span>
-                    {selected ? <Icon name="check" size="sm" /> : null}
-                  </button>
+                    onKeyDown={onOptionKeyDown}
+                  />
                 );
               })}
             </div>

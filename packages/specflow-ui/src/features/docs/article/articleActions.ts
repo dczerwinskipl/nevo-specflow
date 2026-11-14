@@ -1,18 +1,10 @@
 import type { WorkspaceHeaderAction } from '@nevo/ui';
 import type { TFunction } from 'i18next';
 import { docsHref } from '../reader/readerLocation';
+import { copyText } from '../../../shared/clipboard/copyText';
 
 async function copy(text: string, done: string, failed: string, notify: (message: string) => void) {
-  try {
-    if (!navigator.clipboard) {
-      throw new Error('Clipboard is unavailable');
-    }
-
-    await navigator.clipboard.writeText(text);
-    notify(done);
-  } catch {
-    notify(failed);
-  }
+  notify((await copyText(text)) ? done : failed);
 }
 
 /**

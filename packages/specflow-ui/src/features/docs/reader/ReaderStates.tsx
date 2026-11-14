@@ -63,7 +63,7 @@ export function CorpusProblemView({
   const { t } = useTranslation();
   const retry = (
     <Button size="sm" variant="secondary" onClick={onRetry}>
-      {t('docs.state.tryAgain')}
+      {t('common.retry')}
     </Button>
   );
   switch (problem.kind) {

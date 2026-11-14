@@ -196,15 +196,22 @@ const sectionLink = `${main}/product.specflow.ui.interaction-model#${encodeURICo
 export const SectionDeepLink: Story = {
   args: { path: sectionLink },
 };
-/** Opening an address with a section (at a settled width) focuses that section's heading. */
+/**
+ * Opening an address with a section (at a settled width) focuses that section's heading; choosing
+ * a Contents entry marks it as the current section.
+ */
 export const SectionDeepLinkFocus: Story = {
   args: { path: main },
-  play: async () => {
+  play: async ({ userEvent }) => {
     await settleViewport(1440, 900);
     await screen().findByRole('heading', { level: 1, name: 'Nevo SpecFlow documentation' });
     router().history.push(sectionLink);
     await waitFor(() => expect(document.activeElement?.textContent).toBe('Back and Close'));
     await expect(document.activeElement?.tagName).toBe('H2');
+    const contents = within(screen().getByRole('complementary', { name: /contents/i }));
+    const entry = contents.getByRole('link', { name: 'Responsive shell' });
+    await userEvent.click(entry);
+    await waitFor(() => expect(entry.getAttribute('aria-current')).toBe('location'));
   },
 };
 export const LongTitle: Story = {
@@ -407,7 +414,7 @@ export const NarrowReloadAfterHop: Story = {
       within(tree)
         .getByRole('button', { name: /AI-session UX/ })
         .getAttribute('aria-current'),
-    ).toBe('page');
+    ).toBe('true');
     await settleViewport(375, 812);
     await userEvent.click(await body.findByRole('button', { name: 'Back to documentation' }));
     await waitFor(() => expect(path()).toBe(main));
@@ -507,7 +514,7 @@ export const TreeKeyboard: Story = {
     const body = screen();
     const tree = await body.findByRole('navigation', { name: 'Documents' });
     const current = within(tree).getByRole('button', { name: /Nevo SpecFlow documentation/ });
-    await expect(current.getAttribute('aria-current')).toBe('page');
+    await expect(current.getAttribute('aria-current')).toBe('true');
     await expect(current.tabIndex).toBe(0);
     const entries = router().history.length;
     await userEvent.click(current);
@@ -622,7 +629,7 @@ export const SearchFlow: Story = {
       within(tree)
         .getByRole('button', { name: /UI interaction model/ })
         .getAttribute('aria-current'),
-    ).toBe('page');
+    ).toBe('true');
   },
 };
 

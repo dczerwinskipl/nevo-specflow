@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { WorkspaceDocsTreeDocument } from '@nevo/specflow-contracts/docs';
-import { buildDocsTree, treeKeyTarget, visibleRows } from './docsTreeModel';
+import { buildDocsTree, visibleRows } from './docsTreeModel';
 
 const doc = (path: string, title: string, extra: Partial<WorkspaceDocsTreeDocument> = {}) => ({
   documentId: path,
@@ -35,7 +35,7 @@ describe('documentation tree model', () => {
     expect(root.folders[0]!.ownsProposals).toBe(false);
   });
 
-  it('moves along the visible rows: arrows, Home/End, Right into a folder, Left to its parent', () => {
+  it('lists the visible rows in reading order with their parent folders', () => {
     const root = buildDocsTree(documents);
     const expanded = new Set(['guide']);
     const rows = visibleRows(root, expanded);
@@ -48,22 +48,11 @@ describe('documentation tree model', () => {
       'document:README.md',
       'document:b.md',
     ]);
-    expect(treeKeyTarget(rows, 'folder:guide', 'ArrowRight', expanded)).toEqual({
-      focus: 'document:guide/README.md',
+    expect(rows[2]).toEqual({
+      key: 'document:guide/z.md',
+      kind: 'document',
+      id: 'guide/z.md',
+      parentKey: 'folder:guide',
     });
-    expect(treeKeyTarget(rows, 'folder:Guide2', 'ArrowRight', expanded)).toEqual({
-      toggle: 'Guide2',
-    });
-    expect(treeKeyTarget(rows, 'document:guide/z.md', 'ArrowLeft', expanded)).toEqual({
-      focus: 'folder:guide',
-    });
-    expect(treeKeyTarget(rows, 'folder:guide', 'ArrowLeft', expanded)).toEqual({ toggle: 'guide' });
-    expect(treeKeyTarget(rows, 'folder:guide', 'End', expanded)).toEqual({
-      focus: 'document:b.md',
-    });
-    expect(treeKeyTarget(rows, 'document:b.md', 'Home', expanded)).toEqual({
-      focus: 'folder:guide',
-    });
-    expect(treeKeyTarget(rows, 'document:b.md', 'ArrowDown', expanded)).toBeUndefined();
   });
 });

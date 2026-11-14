@@ -5,6 +5,7 @@
     "english": "English",
     "polish": "Polski",
     "retry": "Spróbuj ponownie",
+    "selected": "Wybrano",
     "moreActions": "Więcej akcji",
     "notification": "Powiadomienie",
     "notificationsRegion": "Powiadomienia ({{hotkey}})",
@@ -12,6 +13,7 @@
     "retrying": "Ponawianie…",
     "cancel": "Anuluj",
     "close": "Zamknij",
+    "clearSearch": "Wyczyść wyszukiwanie",
     "loading": "Ładowanie…",
     "notImplemented": "Niezaimplementowane",
     "unknown": "Nieznane",
@@ -236,7 +238,6 @@
     "refreshing": "Odświeżanie…",
     "moreActions": "Akcje specyfikacji",
     "search": "Szukaj specyfikacji",
-    "clearSearch": "Wyczyść wyszukiwanie",
     "loading": "Ładowanie specyfikacji",
     "unavailable": "Specyfikacje są niedostępne",
     "unavailableDescription": "Przegląd specyfikacji nie jest jeszcze dostępny w tym Runtime.",
@@ -452,7 +453,6 @@
     "noMatches": "Brak pasujących specyfikacji",
     "navigationFailed": "Nie można otworzyć specyfikacji. Spróbuj ponownie.",
     "browseSpecifications": "Przeglądaj wszystkie specyfikacje",
-    "selected": "Wybrana",
     "active": "Aktywna",
     "activeCount_one": "1 aktywna",
     "activeCount_few": "{{count}} aktywne",
@@ -1219,7 +1219,6 @@
       "typeOf": "Typ: {{type}}",
       "filter": {
         "search": "Szukaj plików",
-        "clearSearch": "Wyczyść wyszukiwanie",
         "types": "Filtruj według typu",
         "typesActive_one": "Filtruj według typu: wybrano {{count}}",
         "typesActive_few": "Filtruj według typu: wybrano {{count}}",
@@ -1425,7 +1424,6 @@
     },
     "search": {
       "label": "Szukaj w dokumentacji",
-      "clear": "Wyczyść wyszukiwanie",
       "results": "Wyniki wyszukiwania",
       "loading": "Przeszukiwanie dokumentacji",
       "count_one": "{{count}} dokument",
@@ -1459,7 +1457,6 @@
       "pathCopied": "Skopiowano ścieżkę",
       "copyFailed": "Nie udało się skopiować do schowka",
       "proposalNote": "To propozycja, a nie obowiązująca zasada. Wyszukiwanie pomija propozycje, chyba że je uwzględnisz.",
-      "columnLabel": "Spis treści i właściwości",
       "noIndex": "To jest dokumentacja projektu w {{workspace}}; otwórz dokument z listy albo go wyszukaj.",
       "properties": {
         "path": "Ścieżka",
@@ -1493,7 +1490,6 @@
       }
     },
     "state": {
-      "tryAgain": "Spróbuj ponownie",
       "openSuccessor": "Otwórz {{title}}",
       "notAvailable": "Ten dokument nie jest już dostępny w tym obszarze roboczym",
       "superseded": {
@@ -1920,7 +1916,6 @@
       "filterActive": "Filtruj pracę według typu (aktywny filtr: {{kind}})",
       "filterAll": "Wszystkie",
       "search": "Szukaj w historii pracy",
-      "clearSearch": "Wyczyść wyszukiwanie",
       "showMore": "Pokaż więcej",
       "showLess": "Pokaż mniej",
       "thinking": "Myślenie",
@@ -2114,8 +2109,9 @@
     "projectFolder": "Katalog projektu",
     "worktree": "Worktree",
     "sessionWorkspace": "obszar roboczy tej sesji",
-    "dirty": "Uwzględnia niezatwierdzone zmiany",
-    "selected": "Wybrany",
+    "dirty": "Uwzględnia niezatwierdzone zmiany"
+  },
+  "workspaces": {
     "unavailable": {
       "checkout-unavailable": "Katalog niedostępny",
       "checkout-mismatch": "Katalog nie jest już tym obszarem roboczym",

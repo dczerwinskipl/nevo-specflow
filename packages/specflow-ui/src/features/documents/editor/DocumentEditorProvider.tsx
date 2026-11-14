@@ -50,6 +50,7 @@ import {
   wrapLinesFor,
   type PaneClass,
 } from './wrapLinesPreference';
+import { copyText } from '../../../shared/clipboard/copyText';
 
 /**
  * One owner of the open document's edit session (draft, save, discard guard). The workspace
@@ -395,13 +396,7 @@ export function DocumentEditorProvider({
   const copyMine = useCallback(() => {
     const content = shown.current.draft?.content ?? '';
     void (async () => {
-      try {
-        if (!navigator.clipboard) {
-          throw new Error('Clipboard is unavailable');
-        }
-
-        await navigator.clipboard.writeText(content);
-      } catch {
+      if (!(await copyText(content))) {
         announce(t('documents.conflict.copyFailed'));
 
         return;

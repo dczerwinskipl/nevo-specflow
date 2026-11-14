@@ -56,13 +56,15 @@ export const treeRowClassName =
 
 /**
  * Interactive tree row (disclosure button or document button): one compact control height, glyph/icon/name
- * gap from `--spacing-tree-gap`, hit area expanded on the block axis only. Selection is `aria-current`
+ * gap from `--spacing-tree-gap`, hit area expanded on the block axis only. Glyph, icon and name sit on
+ * the first line (`--spacing-tree-line-inset` centres that line in the row), so a wrapping name
+ * (`treeItemLabelClassName`) keeps its icon level with its first line. Selection is `aria-current`
  * (a clear tint and an accent file icon); keyboard focus uses the global focus ring; disabled follows
  * the DS action treatment. Do not add local opacity, outline or selected classes.
  */
 export const treeItemClassName = [
   hitAreaBlockClassName,
-  'flex min-h-tree-row-height min-w-0 flex-1 items-center gap-tree-gap rounded-control border border-solid border-transparent px-control-padding-inline text-left text-body-md',
+  'flex min-h-tree-row-height min-w-0 flex-1 items-start gap-tree-gap rounded-control border border-solid border-transparent px-control-padding-inline py-tree-line-inset text-left text-body-md',
   'bg-transparent text-content-secondary',
   'hover:bg-surface-hover hover:text-content-primary',
   '[&[aria-current]:not([aria-current=false])]:bg-surface-selected [&[aria-current]:not([aria-current=false])]:text-content-primary [&[aria-current]:not([aria-current=false])]:*:first:text-content-link',
@@ -133,25 +135,27 @@ export const treeRowActionClassName = [
  * It never reorders the tree and never selects the row.
  */
 export const treeRequiredLabelClassName =
-  'shrink-0 self-center whitespace-nowrap text-body-sm text-content-muted @max-3xs/tree-row:sr-only';
+  'flex h-icon-md shrink-0 items-center self-start whitespace-nowrap text-body-sm text-content-muted @max-3xs/tree-row:sr-only';
 
 /** Compact decorative icon form of the required marker; pair it with the label. See the label recipe. */
 export const treeRequiredMarkerClassName =
-  'inline-flex shrink-0 self-center text-content-muted @3xs/tree-row:hidden';
+  'inline-flex h-icon-md shrink-0 items-center self-start text-content-muted @3xs/tree-row:hidden';
 
 /**
  * Trailing label of a row STATE the reader must always see (for example "Read-only"): it never
- * hides, the name truncates instead. Quiet muted text, no pill.
+ * hides, the name truncates instead. Quiet muted text, no pill. Like the icon, it sits on the
+ * item's first line (one `icon-md` line box), so a wrapping name does not move it; the required
+ * label and marker do the same.
  */
 export const treeStateLabelClassName =
-  'shrink-0 self-center whitespace-nowrap text-body-sm text-content-muted';
+  'flex h-icon-md shrink-0 items-center self-start whitespace-nowrap text-body-sm text-content-muted';
 
 /**
  * Attention form of the state label (for example "File missing"); pair the row's icon with the same
  * tone (`treeAttentionGlyphClassName`) and keep the text, never colour alone.
  */
 export const treeAttentionStateLabelClassName =
-  'shrink-0 self-center whitespace-nowrap text-body-sm text-status-attention';
+  'flex h-icon-md shrink-0 items-center self-start whitespace-nowrap text-body-sm text-status-attention';
 
 /**
  * Attention tone of a row item's leading icon (for example a warning glyph of a missing file). It

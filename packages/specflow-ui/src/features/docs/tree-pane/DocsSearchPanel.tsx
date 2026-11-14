@@ -4,11 +4,13 @@ import type { TFunction } from 'i18next';
 import { Typography } from '@nevo/ui';
 import type { WorkspaceDocsSearch } from '@nevo/specflow-contracts/docs';
 import { useDocsSearch } from '../read-model';
+import { TreeSearchField } from '../../../shared/document-tree';
 import { DocsProposalsFilter } from './DocsProposalsFilter';
-import { DocsSearchField } from './DocsSearchField';
 import { DocsSearchResults, indexBuildingPercent } from './DocsSearchResults';
 
 const searchDelayMs = 250;
+/** The route's limit of a search text; longer text is not typed in at all. */
+const searchMaxLength = 500;
 
 /**
  * What the search's status row says: the count, or that nothing matches, or that it is
@@ -113,7 +115,17 @@ export function DocsSearchPanel({
 
   return (
     <>
-      <DocsSearchField ref={field} value={text} onChange={setText} onClear={clear} />
+      {/* Escape or the clear button empties the field and keeps focus there: the tree returns. */}
+      <div role="search" className="px-1">
+        <TreeSearchField
+          inputRef={field}
+          label={t('docs.search.label')}
+          maxLength={searchMaxLength}
+          value={text}
+          onChange={setText}
+          onClear={clear}
+        />
+      </div>
       {searching ? (
         <>
           <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-2 gap-y-1 px-2">

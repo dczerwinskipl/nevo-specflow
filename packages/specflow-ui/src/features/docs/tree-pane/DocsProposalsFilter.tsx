@@ -52,7 +52,7 @@ export function DocsProposalsFilter({
             aria-label={t('docs.search.proposalsHintLabel')}
           />
         </PopoverTrigger>
-        <PopoverContent align="end" className="w-[min(18rem,calc(100vw-2rem))] p-3">
+        <PopoverContent align="end" className="w-72 p-3">
           <Typography as="p" variant="body-sm" className="text-content-secondary">
             {t('docs.search.proposalsHint')}
           </Typography>

@@ -1,5 +1,5 @@
-import { useTranslation } from 'react-i18next';
-import { IconButton, Typography, cn, hitAreaClassName } from '@nevo/ui';
+import { Typography } from '@nevo/ui';
+import { ContentsButton } from '../../../shared/document-reading/ContentsButton';
 import { markdownOutline } from '../../../shared/document-reading/markdownOutline';
 import { useArticleChromeOf } from './articleChrome';
 
@@ -22,7 +22,6 @@ export function ArticleTitle({
   /** The article's body has a Contents list (see `hasContents`). */
   contents: boolean;
 }) {
-  const { t } = useTranslation();
   const { store, column, sheetOpen } = useArticleChromeOf(chromeKey);
 
   return (
@@ -31,16 +30,10 @@ export function ArticleTitle({
         {title}
       </Typography>
       {contents && !column && (
-        <IconButton
-          icon="list"
-          size="sm"
-          variant="ghost"
-          aria-label={t('documentReading.outline.open')}
-          aria-haspopup="dialog"
-          aria-expanded={sheetOpen}
-          title={t('documentReading.outline.label')}
-          className={cn('shrink-0', hitAreaClassName)}
-          onClick={(event) => store.openSheet(chromeKey, event.currentTarget)}
+        <ContentsButton
+          mode="sheet"
+          expanded={sheetOpen}
+          onOpen={(event) => store.openSheet(chromeKey, event.currentTarget)}
         />
       )}
     </span>

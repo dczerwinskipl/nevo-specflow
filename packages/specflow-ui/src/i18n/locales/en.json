@@ -5,6 +5,7 @@
     "english": "English",
     "polish": "Polski",
     "retry": "Retry",
+    "selected": "Selected",
     "moreActions": "More actions",
     "notification": "Notification",
     "notificationsRegion": "Notifications ({{hotkey}})",
@@ -12,6 +13,7 @@
     "retrying": "Retrying…",
     "cancel": "Cancel",
     "close": "Close",
+    "clearSearch": "Clear search",
     "loading": "Loading…",
     "notImplemented": "Not implemented",
     "unknown": "Unknown",
@@ -236,7 +238,6 @@
     "refreshing": "Refreshing…",
     "moreActions": "Specification actions",
     "search": "Search specifications",
-    "clearSearch": "Clear search",
     "loading": "Loading specifications",
     "unavailable": "Specifications are unavailable",
     "unavailableDescription": "The specification overview is not available from this Runtime yet.",
@@ -452,7 +453,6 @@
     "noMatches": "No matching specifications",
     "navigationFailed": "Unable to open specification. Please try again.",
     "browseSpecifications": "Browse all specifications",
-    "selected": "Selected",
     "active": "Active",
     "activeCount_one": "1 active",
     "activeCount_other": "{{count}} active",
@@ -1219,7 +1219,6 @@
       "typeOf": "Type: {{type}}",
       "filter": {
         "search": "Search files",
-        "clearSearch": "Clear search",
         "types": "Filter by type",
         "typesActive_one": "Filter by type: {{count}} chosen",
         "typesActive_few": "Filter by type: {{count}} chosen",
@@ -1425,7 +1424,6 @@
     },
     "search": {
       "label": "Search documentation",
-      "clear": "Clear search",
       "results": "Search results",
       "loading": "Searching the documentation",
       "count_one": "{{count}} document",
@@ -1459,7 +1457,6 @@
       "pathCopied": "Path copied",
       "copyFailed": "Could not copy to the clipboard",
       "proposalNote": "This is a proposal, not a current rule. Search leaves proposals out unless you include them.",
-      "columnLabel": "Contents and properties",
       "noIndex": "This is the project documentation of {{workspace}}; open a document in the list or search it.",
       "properties": {
         "path": "Path",
@@ -1493,7 +1490,6 @@
       }
     },
     "state": {
-      "tryAgain": "Try again",
       "openSuccessor": "Open {{title}}",
       "notAvailable": "This document is no longer available in this workspace",
       "superseded": {
@@ -1920,7 +1916,6 @@
       "filterActive": "Filter Work by type (active filter: {{kind}})",
       "filterAll": "All",
       "search": "Search Work",
-      "clearSearch": "Clear search",
       "showMore": "Show more",
       "showLess": "Show less",
       "thinking": "Thinking",
@@ -2114,8 +2109,9 @@
     "projectFolder": "Project folder",
     "worktree": "Worktree",
     "sessionWorkspace": "this Session's workspace",
-    "dirty": "Uncommitted changes are included",
-    "selected": "Selected",
+    "dirty": "Uncommitted changes are included"
+  },
+  "workspaces": {
     "unavailable": {
       "checkout-unavailable": "Folder unavailable",
       "checkout-mismatch": "Folder is no longer this workspace",

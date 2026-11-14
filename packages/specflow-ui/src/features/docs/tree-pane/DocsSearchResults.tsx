@@ -68,7 +68,7 @@ export function DocsSearchResults({
           }
           actions={
             <Button variant="secondary" size="sm" onClick={onClear}>
-              {t('docs.search.clear')}
+              {t('common.clearSearch')}
             </Button>
           }
         />
@@ -86,12 +86,12 @@ export function DocsSearchResults({
             <li key={hit.id}>
               <button
                 type="button"
-                aria-current={hit.id === activeDocumentId ? 'page' : undefined}
+                aria-current={hit.id === activeDocumentId ? 'true' : undefined}
                 onClick={() => onOpen(hit.id, section?.sectionId)}
                 className={cn(
                   'grid w-full min-w-0 gap-0.5 rounded-control px-2 py-2 text-left outline-none',
                   'hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-focus-ring',
-                  'aria-[current=page]:bg-surface-selected',
+                  'aria-[current=true]:bg-surface-selected',
                 )}
               >
                 <span className="flex min-w-0 items-baseline gap-2">

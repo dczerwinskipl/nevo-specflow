@@ -2110,7 +2110,8 @@
     "projectFolder": "Project folder",
     "worktree": "Worktree",
     "sessionWorkspace": "this Session's workspace",
-    "dirty": "Uncommitted changes are included"
+    "localChanges": "Local changes",
+    "localChangesExplained": "Local changes: reading and search include uncommitted changes, new files too"
   },
   "workspaces": {
     "unavailable": {

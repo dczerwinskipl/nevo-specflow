@@ -775,6 +775,21 @@ export const NavigationUnavailable: Story = {
 export const NavigationLongNames: Story = {
   args: { path: '/specs/admission?collection=current', navigationScenario: 'long' },
   tags: ['integration'],
+  play: async ({ canvas }) => {
+    // A long Specification title stays on one line, cut at the end, and is announced in full.
+    const trigger = await canvas.findByRole('button', {
+      name: /Current specification Very long specification identity/,
+    });
+    const name = trigger.querySelector<HTMLElement>('[data-context-switcher-name="end"]');
+    await waitFor(
+      () => (name && name.scrollWidth > name.clientWidth ? name : null),
+      'Long title must be cut on one line',
+    );
+    const height = trigger.getBoundingClientRect().height;
+    if (height !== 56 && height !== 72) {
+      throw new Error(`Switcher must be 56 or 72 px high, got ${height}`);
+    }
+  },
 };
 export const NavigationIdentity: Story = {
   args: { path: '/specs/admission?collection=current', navigationScenario: 'identity' },

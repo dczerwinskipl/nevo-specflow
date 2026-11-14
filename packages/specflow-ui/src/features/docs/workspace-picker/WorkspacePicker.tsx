@@ -1,17 +1,17 @@
 import { useRef, useState } from 'react';
-import { Popover, PopoverTrigger, PopoverContent, ScrollArea } from '@nevo/ui';
+import { Popover, PopoverTrigger, PopoverContent, ScrollArea, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import type { WorkspaceList, WorkspaceListItem } from '@nevo/specflow-contracts/workspaces';
+import type { WorkspaceList } from '@nevo/specflow-contracts/workspaces';
 import { useMessage } from '../../../i18n/message';
 import {
   ContextSwitcherOption,
   ContextSwitcherTrigger,
   contextSwitcherPopoverClassName,
   useListboxKeys,
-  type ContextSwitcherDetail,
+  type ContextSwitcherStatusValue,
 } from '../../../shared/context-switcher';
 import { workspaceUnavailableMessage } from '../../workspaces/read-model';
-import { displayPath, kindLine } from './workspacePickerModel';
+import { displayPath, workspaceFacts, type WorkspaceFacts } from './workspacePickerModel';
 
 export interface WorkspacePickerProps {
   readonly workspaces: WorkspaceList;
@@ -24,9 +24,10 @@ export interface WorkspacePickerProps {
 
 /**
  * Picks one of the project's registered workspaces, in the Specification switcher's anatomy (the
- * shared context switcher): a subtle trigger (quiet label, wrapping name, kind line) opening a
- * listbox of every workspace, focus on the selected one; an unavailable workspace is listed with
- * its reason and cannot be chosen. Presentational: the list comes from the shared workspaces read
+ * shared context switcher): a subtle trigger (quiet label, one-line name, local changes or
+ * unavailability in the status slot, kind line) opening a listbox of every workspace, focus on the
+ * selected one; an unavailable workspace is listed with its reason and cannot be chosen. What local
+ * changes mean is said once, under the list. Presentational: the list comes from the shared workspaces read
  * model. Renders nothing with a single workspace (there is nothing to tell apart).
  */
 export function WorkspacePicker({
@@ -55,25 +56,26 @@ export function WorkspacePicker({
 
   const projectFolderPath = list.find((w) => w.workspaceId === workspaces.projectFolderId)?.path;
 
-  const describe = (workspace: WorkspaceListItem, withSession: boolean) => {
-    const { kind, specifications } = kindLine(workspace);
-    const base =
-      kind === 'projectFolder'
-        ? t('workspacePicker.projectFolder')
-        : [
-            t('workspacePicker.worktree'),
-            ...(specifications.length ? [specifications.join(', ')] : []),
-          ].join(' · ');
+  const segments = (facts: WorkspaceFacts, withSession: boolean) => [
+    facts.kind === 'projectFolder'
+      ? t('workspacePicker.projectFolder')
+      : t('workspacePicker.worktree'),
+    ...(facts.specifications.length ? [facts.specifications.join(', ')] : []),
+    ...(withSession && facts.sessionWorkspace ? [t('workspacePicker.sessionWorkspace')] : []),
+  ];
 
-    return withSession && workspace.workspaceId === sessionWorkspaceId
-      ? `${base} · ${t('workspacePicker.sessionWorkspace')}`
-      : base;
-  };
+  const status = ({ status }: WorkspaceFacts): ContextSwitcherStatusValue | undefined =>
+    status?.kind === 'unavailable'
+      ? { tone: 'danger', text: text(workspaceUnavailableMessage(status.reason)) }
+      : status?.kind === 'localChanges'
+        ? { tone: 'attention', text: t('workspacePicker.localChanges') }
+        : undefined;
 
-  const optionDetail = (workspace: WorkspaceListItem): ContextSwitcherDetail =>
-    workspace.available || !workspace.unavailableReason
-      ? { text: describe(workspace, false) }
-      : { text: text(workspaceUnavailableMessage(workspace.unavailableReason)), tone: 'attention' };
+  const currentFacts = workspaceFacts(current, sessionWorkspaceId);
+  const listed = list.map((workspace) => ({
+    workspace,
+    facts: workspaceFacts(workspace, sessionWorkspaceId),
+  }));
 
   return (
     <div className="rounded-control bg-surface-subtle">
@@ -82,15 +84,11 @@ export function WorkspacePicker({
           <ContextSwitcherTrigger
             ref={trigger}
             aria-description={t('workspacePicker.change')}
-            title={displayPath(current.path, projectFolderPath)}
+            note={displayPath(current.path, projectFolderPath)}
             label={t('workspacePicker.label')}
             name={current.name}
-            details={[
-              { text: describe(current, true) },
-              ...(current.dirty
-                ? [{ text: t('workspacePicker.dirty'), tone: 'muted' } as const]
-                : []),
-            ]}
+            segments={segments(currentFacts, true)}
+            status={status(currentFacts)}
           />
         </PopoverTrigger>
         <PopoverContent
@@ -119,14 +117,15 @@ export function WorkspacePicker({
             contentClassName="grid gap-1"
           >
             <div role="listbox" aria-label={t('workspacePicker.list')} className="grid gap-1">
-              {list.map((workspace) => {
+              {listed.map(({ workspace, facts }) => {
                 const selected = workspace.workspaceId === current.workspaceId;
 
                 return (
                   <ContextSwitcherOption
                     key={workspace.workspaceId}
                     name={workspace.name}
-                    details={[optionDetail(workspace)]}
+                    segments={segments(facts, false)}
+                    status={status(facts)}
                     selected={selected}
                     unavailable={!workspace.available}
                     title={displayPath(workspace.path, projectFolderPath)}
@@ -143,6 +142,15 @@ export function WorkspacePicker({
               })}
             </div>
           </ScrollArea>
+          {listed.some(({ facts }) => facts.status?.kind === 'localChanges') ? (
+            <Typography
+              as="p"
+              variant="body-sm"
+              className="mt-2 border-t border-divider px-2 pt-2 text-content-muted"
+            >
+              {t('workspacePicker.localChangesExplained')}
+            </Typography>
+          ) : null}
         </PopoverContent>
       </Popover>
     </div>

@@ -362,3 +362,192 @@ project folder, and the workspace picker in the tree pane follows the Specificat
   document under a `proposals` prefix; the search control is a checkbox with a hint that says what
   a proposal is (Polish "Propozycje", "Uwzględnij propozycje (N)"; the article note "To propozycja,
   a nie obowiązująca zasada.").
+
+## Search results refinement (proposal, awaiting owner acceptance)
+
+**Status: proposal (2026-11-14), not accepted and not implemented.** Until the owner accepts it, the
+sections above stay in force. It refines the search after the owner's review of the mobile search in
+the real app (the project folder `repo` with local changes and the worktree
+`test-dogfooding-docs`). It is not a redesign: routes, ranking, the tree and the article are
+unchanged. Mock: Storybook `SpecFlow/Screens/Documentation search results (mock)`, built from live
+answers of this repository's documentation. Each story shows the shipped components ("Before")
+beside the proposal ("After"), and the trigger board shows the Specification switcher beside the
+workspace picker.
+
+### First scan of a result
+
+1. **Which document?** The title.
+2. **Which part of it?** The section path, only when it adds something to the title.
+3. **Why does it match?** A plain-text excerpt with the matched words marked.
+4. **Can I rely on it?** The Proposal badge.
+
+### Result anatomy
+
+- **One row per document** (unchanged). The row is a button that opens the document at its best
+  section.
+- **Title:** primary information (`title-sm`), at most two lines.
+- **Proposal badge:** a neutral compact `Badge` reading "Proposal" ("Propozycja"), on the title's
+  first line at the end. It replaces the muted state label. It is text, never colour alone.
+- **Section path:** the hit's heading path joined by " › ", in secondary information (`body-sm`,
+  muted), on one line.
+  - A leading heading equal to the title (compared without case or extra spaces) is dropped. Only
+    that duplicate is dropped: a proposal titled "Provider error and limit evidence" keeps
+    "Claude-family errors › Captured: seven-day rate-limit rejection".
+  - When nothing is left, the row has no path line.
+  - When the path is too long, the ancestors truncate first, so the deepest heading stays readable.
+- **Excerpt:** supporting text (`body-sm`, muted), at most two lines, as plain text with no Markdown
+  syntax.
+  - The window starts near the first match, so the match is on the first line (see the data the UI
+    needs below).
+  - Matched words use `content-primary` at medium weight: no background and no accent colour.
+  - Only the excerpt is marked, never the title or the path.
+  - An excerpt with no matched word (a match by meaning only) has no marks.
+- **Containment:** rows are separated by a `divider` line. There is no card and no permanent radius
+  or background. Hover, focus and the open document (`aria-current`, `surface-selected`) keep the
+  row's interaction background.
+  - No row has an icon.
+  - Accent colour is used only for the focus ring and the checked checkbox.
+- **Rhythm (measured at 390 px):** a row is 66 px without a path line and 84 px with one, against
+  88 px today. Seven results are fully visible above the fold instead of six.
+
+### Count wording
+
+The count line counts the documents in the list, proposals included when they are included. There
+is no total: hybrid search has no meaningful total, and the route has no paging.
+
+| Answer                                 | EN                                                           | PL                                                                       |
+| -------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| Fewer results than the requested limit | "1 matching document", "4 matching documents"                | "1 pasujący dokument", "4 pasujące dokumenty", "5 pasujących dokumentów" |
+| Exactly the requested limit (capped)   | "Top 10 documents"                                           | "10 najlepszych dokumentów"                                              |
+| No results                             | no count shown; the live region says "No matching documents" | the same, "Brak pasujących dokumentów"                                   |
+
+In the tree pane on split layouts (capped at 360 px), the proposals checkbox may wrap under the
+count. At 390 px Narrow both fit on one line.
+
+### Proposals filter wording
+
+- **Label:** "Proposals (N)" ("Propozycje (N)"); "Proposals" ("Propozycje") without a number while
+  the answer loads.
+- **N** always means how many proposals match this search within the same limit: the proposals the
+  answer left out while the checkbox is off, and the proposals among the results while it is on.
+- **Accessible name:** "Include proposals, N match" ("Uwzględnij propozycje, pasujących: N").
+- **Hint** (the existing info button and popover):
+  - EN: "Check to include proposals: ideas and plans in folders marked as proposals, not current
+    rules. The number says how many proposals match the search."
+  - PL: "Zaznacz, aby uwzględnić propozycje: pomysły i plany z folderów oznaczonych jako propozycje,
+    a nie obowiązujące zasady. Liczba mówi, ile propozycji pasuje do wyszukiwania."
+- Everything else stays as it is: the place, the focus while the answer loads, and when the filter
+  is shown.
+
+### Workspace picker trigger (shared context switcher)
+
+The trigger becomes compact **in the shared context switcher**, so the Specification switcher and
+the workspace picker stay one component:
+
+- **Label:** the quiet label (`body-sm`, muted).
+- **Name:** one line with an ellipsis. The full name is in a tooltip on hover and keyboard focus,
+  and in full (wrapping) in the popover. A Specification's full title is also its page title.
+- **Detail line:** one line whose segments are joined by " · ", ending in an ellipsis.
+
+Heights: 72 px with a detail line (the workspace picker, and the Specification switcher with a key)
+and 56 px without one. Today the picker is 88 px for the project folder with local changes and
+144 px for a 98-character worktree name.
+
+| Workspace                              | Detail line (EN)                                          | Detail line (PL)                                             |
+| -------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------ |
+| Project folder, clean                  | Project folder                                            | Katalog projektu                                             |
+| Project folder, local changes          | Project folder · Local changes                            | Katalog projektu · Zmiany lokalne                            |
+| Project folder, entered from a Session | Project folder · this Session's workspace · Local changes | Katalog projektu · obszar roboczy tej sesji · Zmiany lokalne |
+| Worktree                               | Worktree · bound Specification titles                     | Worktree · tytuły specyfikacji                               |
+| Worktree with local changes            | Worktree · Local changes · bound Specification titles     | Worktree · Zmiany lokalne · tytuły specyfikacji              |
+| Unavailable (an explicit pick)         | Worktree · Folder unavailable (attention tone)            | Worktree · Katalog niedostępny (attention tone)              |
+
+- "Local changes" ("Zmiany lokalne") replaces "Uncommitted changes are included" in the trigger and
+  in the options. It is still informative only.
+- Popover options:
+  - the name wraps in full;
+  - one detail line with the same segments (wrapping);
+  - the unavailable reason on its own attention line;
+  - the folder in the tooltip, as today;
+  - Selected with a check, as today.
+- **Design-system decision:** this changes the shared trigger's contract (one-line name, one
+  segmented detail line), not a local fork. It does not block other work.
+
+### Mobile sticky and keyboard behaviour
+
+- On Narrow, the pane stays one scroller. The picker and the quiet lines (fallback, skipped) scroll
+  away.
+- The search field and its status row stick to the top of the pane. While stuck, they sit on an
+  opaque pane surface with a divider under them; before they stick, there is no band.
+- Focusing the field on Narrow scrolls the pane so that the field is at the top.
+- With the on-screen keyboard open, the field and the status row stay visible above the results,
+  inside the visual viewport, and the results scroll under them.
+- The keyboard closes without clearing the search when the user:
+  - presses Enter (Search);
+  - starts scrolling the results;
+  - taps a result.
+- Wide and Compact use the same sticky search in the tree pane.
+
+### Navigation and Back
+
+What exists today stays:
+
+- a result opens at its section;
+- Back keeps the query, the checkbox and the pane's scroll (in memory).
+
+**Recommended (owner decision):** the reader's address also holds the search, as
+`?q=<text>&proposals=1`:
+
+- written with replace, debounced like the search, so typing adds no history entries;
+- a reload, Copy link or a resize keeps the search;
+- picking another workspace keeps it, as it keeps the text today;
+- the scroll position stays in memory.
+
+### Empty state
+
+This state depends on a relevance cutoff: without one, hybrid search always returns the limit.
+
+- **No match:** "No matching documents", the hint "Try other words, or browse the tree.", and Clear
+  search. The status row shows no count.
+- **Only proposals match:** "Nothing in the current documentation matches. N proposals do." The
+  "Proposals (N)" checkbox stays on the status row, aligned to the start of the row.
+
+### Data the UI needs
+
+**Presentation only (no API change):**
+
+- dropping the duplicated leading heading;
+- the count wording (from the result count and the requested limit);
+- the Proposal badge (from the tree's proposal flags, as today);
+- the compact trigger;
+- the sticky search;
+- the search in the address.
+
+**Contract changes** to the [workspace documentation search](../../../reference/api/workspace-docs.md)
+and the shared excerpt. The exact shape belongs to that reference once planned:
+
+1. **Plain-text excerpt:** the section excerpt without Markdown syntax:
+   - a link becomes its label;
+   - a code span becomes its text;
+   - emphasis markers are removed;
+   - list items and table cells are joined by " · ";
+   - an image becomes its alt text;
+   - HTML is removed.
+2. **Match ranges:** character ranges in the plain excerpt of the words that matched the query,
+   using the ranking's own normalisation (prefix matches included), and empty for a match by
+   meaning only. The UI does not tokenise the query itself.
+3. **Window near the match:** the excerpt starts at most about 50 characters before its first
+   match, so the match is on the first of two lines at about 55 characters per line. The 280
+   character maximum stays.
+4. **Relevance cutoff:** a minimum vector similarity for hybrid results, so that a query that
+   matches nothing (`zzzqqq` today returns 10 documents) returns none. `proposalsLeftOut` follows
+   the same cutoff.
+
+Integration readiness: **dependent**. Items 1–4 do not exist yet, and the highlighting and the
+empty state wait for them. The rest can ship on the current API.
+
+Rejected while designing:
+
+- a tinted background on matches: too loud when common words such as "session" match many times;
+- marking matches in titles: every row would be emphasised;
+- a breadcrumb that repeats the title.

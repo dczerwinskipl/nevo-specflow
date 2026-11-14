@@ -131,6 +131,7 @@ describe('Engine-backed specification workspace read', () => {
               completed: 0,
               total: 0,
               cancelled: 0,
+              ended: 0,
               onHold: 0,
               attention: [],
               overview: { rows: [], compact: [] },

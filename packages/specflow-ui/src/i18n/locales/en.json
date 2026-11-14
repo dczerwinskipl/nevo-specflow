@@ -687,6 +687,10 @@
         "DEMO_WORKSPACE_UNAVAILABLE": "The selected workspace is no longer available.",
         "BASE_REF_NOT_FOUND": "The selected starting branch is no longer available."
       },
+      "baseConfigMissing": {
+        "title": "The start branch has no SpecFlow configuration",
+        "body": "The specification was not created. The commit chosen in \"Start from\" has no committed SpecFlow configuration (.nevo/config.yaml with a runtime section). Choose another start branch, or commit the configuration first. The name and choices are kept."
+      },
       "conflict": {
         "title": "This operation was already used with a different request",
         "body": "The specification was not created. The next attempt will use a new operation identifier."

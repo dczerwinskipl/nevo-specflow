@@ -44,6 +44,13 @@ describe('classifyDemoCreateFailure', () => {
       classifyDemoCreateFailure(http(503, { error: 'demo_specification_creation_failed' })),
     ).toEqual({ kind: 'failed' }); // a code-like value is never shown as a message
   });
+  it('a start commit without committed configuration is its own refusal, not a stale option', () => {
+    expect(
+      classifyDemoCreateFailure(
+        http(422, { error: 'GIT_BASE_CONFIG_MISSING', code: 'GIT_BASE_CONFIG_MISSING' }),
+      ),
+    ).toEqual({ kind: 'base-config-missing' });
+  });
   it('maps the commit codes: nothing created (422, 409) or created but not committed (503)', () => {
     expect(
       classifyDemoCreateFailure(

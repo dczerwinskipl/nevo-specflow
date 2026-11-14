@@ -35,13 +35,13 @@ the pinned definitions and the current archetypes on every inspection and is nev
 local attention file exists. The reasons were extended (the full list is in
 `architecture.workflow.workflow-kernel`). Decisions 8 and 9 below are written in their amended form.
 
-**Amended by [ADR 0023](0023-tasks-are-resources.md) and [ADR 0022](0022-neutral-workflow-coordinator-and-manual-execution.md)
-(2026-11-14).** The one core is the neutral `@nevo/workflow` coordinator with a SpecFlow adapter in the
-Engine; a step declares the executor classes it allows and every attempt records its actor; attention
-items carry an actor and actions and also cover broken Tasks and start blockers; grouping is the
-Runtime's presentation (ADR 0022). A Task is a resource under `tasks/`, its run record is created at
-its first start, and the execution state is committed (ADR 0023). Decision 9 below is written in its
-amended form.
+**Amended by [ADR 0022](0022-neutral-workflow-coordinator-and-manual-execution.md) and
+[ADR 0023](0023-tasks-are-resources.md) (2026-11-14).** ADR 0022 amends decision 1 (the one core is the
+neutral `@nevo/workflow` coordinator with a SpecFlow adapter; a step declares the executor classes it
+allows and every attempt records its actor) and decision 8 (attention items carry an actor and actions
+and also cover broken Tasks and start blockers; grouping is the Runtime's presentation). ADR 0023
+amends decision 9 (a Task is a resource under `tasks/`, its run record is created at its first start,
+and the execution state is committed); decision 9 below is written in its amended form.
 
 ## Context
 

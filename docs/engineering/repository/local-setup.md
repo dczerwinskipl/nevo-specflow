@@ -93,6 +93,10 @@ pnpm docs:embeddings:status     # the containers and the models pulled into the 
 - On a Mac, Docker cannot use the Apple GPU. The fast option is the native Ollama app (Metal):
   install it, run `ollama pull qwen3-embedding:0.6b` and use the same `baseUrl` and `model` below;
   the container is the CPU fallback. Run only one of the two, both listen on port 11434.
+- The container sets `OLLAMA_KEEP_ALIVE=-1`, so the model stays loaded: reloading it can take
+  longer than a search's 3 s query timeout, and the aborted request cancels the load. Set the same
+  for the native Ollama app (on a Mac: `launchctl setenv OLLAMA_KEEP_ALIVE -1`, then restart the
+  app).
 - If the former root compose project (`nevo-specflow`) still runs, stop it first, because it holds
   port 11434:
   `docker compose -p nevo-specflow -f tools/docs-embeddings/compose.yaml down` (the old project

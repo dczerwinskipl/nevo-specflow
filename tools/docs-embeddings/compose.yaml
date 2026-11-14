@@ -18,6 +18,9 @@ services:
     image: ollama/ollama:0.40.15
     ports:
       - 127.0.0.1:11434:11434
+    environment:
+      # Keep the model loaded: a reload can exceed the 3 s query timeout, and an aborted request cancels the load.
+      OLLAMA_KEEP_ALIVE: "-1"
     # No OLLAMA_NUM_PARALLEL: this Ollama loads embedding models with one slot whatever it says
     # (`n_seq_max = 1` in the log), so a query waits behind an index batch. The Runtime answers a
     # search lexically while it refreshes the index instead.

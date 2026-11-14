@@ -4,7 +4,7 @@ type: engineering
 title: Roadmap source coverage and unscheduled capabilities
 status: draft
 scope: specflow
-areas: [workflow, ai, runtime, ui, docs, planning]
+areas: [workflow, ai, runtime, ui, docs, release]
 tags: [roadmap, planning, coverage, follow-ups]
 read_when:
   - verifying that workflow and provider follow-ups are accounted for in product planning

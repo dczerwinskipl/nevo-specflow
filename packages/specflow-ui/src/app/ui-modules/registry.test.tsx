@@ -43,7 +43,7 @@ describe('typed UI extension registry', () => {
     expect(builtInUiModuleRegistry.get(specificationWorkSections).map((x) => x.id)).toEqual([
       'specflow.git.repository',
       'specflow.sessions.resume',
-      'specflow.tasks.task-groups',
+      'specflow.tasks.summary',
       'specflow.documents.summary',
     ]);
   });

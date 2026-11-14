@@ -181,6 +181,9 @@ describe('Specification control center', () => {
       return Promise.resolve({}) as never;
     });
     await renderAt(`/specs/${SPEC}`, 'waiting', workspace, start);
+    // The Overview flows mount once the Runtime mode is known (project): Now shows it. A click
+    // before that opens the Task instead (the fallback), which is not this test's subject.
+    await screen.findByRole('region', { name: 'Now' });
 
     fireEvent.click(await screen.findByRole('button', { name: 'Start Implementation' }));
     await waitFor(() => expect(start).toHaveBeenCalledWith({ specId: SPEC, taskId: 'T-02' }, {}));

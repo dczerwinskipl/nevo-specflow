@@ -98,7 +98,8 @@ export function TasksSummarySection({ specId, data, actions }: SpecificationWork
                 onClick={openGroup(group.groupId)}
                 data-summary-group={group.groupId}
               >
-                {t('taskOverview.summary.compact', { group: group.name, count: group.count })}
+                {/* The Runtime's group name and its count: no copy of the UI's own. */}
+                {`${group.name} ${group.count}`}
               </Link>
             </span>
           ))}

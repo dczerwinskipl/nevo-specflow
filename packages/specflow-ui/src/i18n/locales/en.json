@@ -104,16 +104,12 @@
     "unavailableDescription": "The specification workspace is not supported by Runtime yet or could not be loaded.",
     "notFoundTitle": "Specification not found",
     "notFoundDescription": "Specification {{id}} could not be found.",
-    "executeGenericBlockedNotice": "Selected tasks cannot be executed at this time.",
     "noChangesNotice": "No changed files recorded for this view.",
     "viewOverview": "Overview",
     "viewDocuments": "Documents",
     "viewSessions": "Sessions",
     "viewChanges": "View changes",
     "viewRepository": "Repository",
-    "selectTask": "Select {{id}}",
-    "openTaskNewWindow": "Open in new window",
-    "taskActionsNamed": "Actions for {{id}}",
     "historyAriaLabel": "Activity history",
     "activityHistory": "Activity history",
     "activityHistoryEmptyTitle": "No history for this specification",
@@ -155,7 +151,6 @@
     "prReviewLink": "Review PR",
     "gitRefreshFailed": "Failed to refresh repository status",
     "gitStaleData": "Stale data · last checked 30 min ago",
-    "continueSessionHeading": "Continue session",
     "sessionActions": "Session actions",
     "openSessionAction": "Open session",
     "allSessionsLink": "All sessions",
@@ -169,11 +164,6 @@
     "tasksHeading": "Tasks",
     "tasksEmptyTitle": "No tasks yet",
     "tasksEmptyDescription": "Tasks appear here once the specification is prepared for work.",
-    "tasksInPreparation": "{{count}} in preparation",
-    "tasksProgressCount": "{{completed}} / {{total}} completed",
-    "executeSingleTask": "Execute 1 task",
-    "executeMultipleTasks": "Execute {{count}} tasks",
-    "tasksPreparingNotice": "Tasks are still being prepared. Open them to inspect scope; execution requires review completion.",
     "documentsHeading": "Documents",
     "allDocumentsLink": "All documents",
     "openFullDocument": "Open full document",
@@ -219,7 +209,9 @@
     "attentionSession": "Session",
     "answerSessionAction": "Answer",
     "sessionsHeading": "Sessions",
-    "requiresAttentionHeading": "Requires attention"
+    "requiresAttentionHeading": "Requires attention",
+    "attentionShowMore_few": "Show {{count}} more",
+    "attentionShowMore_many": "Show {{count}} more"
   },
   "playground": {
     "title": "UI Playground",
@@ -1979,8 +1971,6 @@
     },
     "tasks": {
       "newTask": "New task",
-      "progress": "{{completed}} of {{total}} done",
-      "progressCancelled": "{{completed}} of {{total}} done · {{cancelled}} cancelled",
       "emptyDescription": "Create tasks now or after the breakdown step. Tasks can be created before the workflow starts.",
       "draftLine": "Draft · needs approval",
       "after": "after {{ids}}",
@@ -2443,7 +2433,9 @@
       "stuckTitle_other": "Resolve {{count}} blocking tasks",
       "stuckReason": "Approve, resume or cancel them so the specification can finish",
       "startFailed": "The step could not be started. Open the task to see what you can do now.",
-      "startNamed": "Start {{step}}"
+      "startNamed": "Start {{step}}",
+      "stuckTitle_few": "Resolve {{count}} blocking tasks",
+      "stuckTitle_many": "Resolve {{count}} blocking tasks"
     },
     "summary": {
       "allTasks": "All tasks",
@@ -2452,7 +2444,10 @@
       "more_one": "{{count}} more",
       "more_other": "{{count}} more",
       "openGroup": "{{group}}: open on the Tasks page",
-      "compact": "{{group}} {{count}}"
+      "count_few": "{{count}} tasks",
+      "count_many": "{{count}} tasks",
+      "more_few": "{{count}} more",
+      "more_many": "{{count}} more"
     },
     "progress": {
       "label": "Tasks {{progress}}",
@@ -2464,7 +2459,13 @@
       "onHold_one": "{{count}} on hold",
       "onHold_other": "{{count}} on hold",
       "barNote": "The bar counts every task except cancelled ones.",
-      "barNoteEnded": "The bar counts every task except cancelled and ended ones."
+      "barNoteEnded": "The bar counts every task except cancelled and ended ones.",
+      "cancelled_few": "{{count}} cancelled",
+      "cancelled_many": "{{count}} cancelled",
+      "ended_few": "{{count}} ended",
+      "ended_many": "{{count}} ended",
+      "onHold_few": "{{count}} on hold",
+      "onHold_many": "{{count}} on hold"
     },
     "terminal": {
       "allDone_one": "The task is done",
@@ -2472,7 +2473,13 @@
       "cancelled_one": "{{count}} task cancelled",
       "cancelled_other": "{{count}} tasks cancelled",
       "done_one": "{{count}} done",
-      "done_other": "{{count}} done"
+      "done_other": "{{count}} done",
+      "allDone_few": "All {{count}} tasks done",
+      "allDone_many": "All {{count}} tasks done",
+      "cancelled_few": "{{count}} tasks cancelled",
+      "cancelled_many": "{{count}} tasks cancelled",
+      "done_few": "{{count}} done",
+      "done_many": "{{count}} done"
     },
     "stuck": {
       "before": "It cannot continue now:",
@@ -2500,7 +2507,9 @@
       "nothingBlocks": "Nothing blocks the specification now",
       "clearBlocking": "Clear filter: blocking specification",
       "shown": "{{matched}} of {{total}} shown",
-      "noMatch": "No task matches the filter."
+      "noMatch": "No task matches the filter.",
+      "blocking_few": "Blocking specification · {{count}} tasks",
+      "blocking_many": "Blocking specification · {{count}} tasks"
     }
   }
 }

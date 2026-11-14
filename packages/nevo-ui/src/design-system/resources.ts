@@ -62,6 +62,11 @@ export const iconNames = [
   'panel-right',
   // A tab or item that stays put and cannot be closed.
   'pin',
+  // Zoom of a drawing (a Markdown diagram): in, out, back to the fitted view, full screen.
+  'zoom-in',
+  'zoom-out',
+  'zoom-fit',
+  'fullscreen',
 ] as const;
 
 /** `lg` and `xl` are illustration sizes (empty screens), drawn with a lighter stroke. */

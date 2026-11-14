@@ -62,10 +62,17 @@ export interface MarkdownDocumentLabels {
   table: string;
   /** Accessible name of a horizontally scrollable code block region. */
   codeBlock: string;
-  /** Accessible name of a drawn diagram (and of its horizontally scrollable region). */
+  /** Accessible name of a drawn diagram (its zoomable region and its picture); full-screen title. */
   diagram: string;
   /** Quiet note under a diagram's code when the diagram cannot be drawn. */
   diagramFailed: string;
+  diagramZoomIn: string;
+  diagramZoomOut: string;
+  /** Returns the diagram to its opening (fitted) view. */
+  diagramReset: string;
+  diagramFullScreen: string;
+  /** Closes the full-screen diagram. */
+  diagramClose: string;
 }
 
 const defaultMarkdownDocumentLabels: MarkdownDocumentLabels = {
@@ -75,6 +82,11 @@ const defaultMarkdownDocumentLabels: MarkdownDocumentLabels = {
   codeBlock: 'Code block',
   diagram: 'Diagram',
   diagramFailed: 'Diagram could not be rendered',
+  diagramZoomIn: 'Zoom in',
+  diagramZoomOut: 'Zoom out',
+  diagramReset: 'Fit diagram',
+  diagramFullScreen: 'Open diagram full screen',
+  diagramClose: 'Close diagram',
 };
 
 function DefaultMarkdownLink({ children, href, title }: MarkdownDocumentLinkProps) {
@@ -425,7 +437,19 @@ export function MarkdownDocument({
   headingOffset = 0,
   diagrams = false,
 }: MarkdownDocumentProps) {
-  const { completedTask, incompleteTask, table, codeBlock, diagram, diagramFailed } = {
+  const {
+    completedTask,
+    incompleteTask,
+    table,
+    codeBlock,
+    diagram,
+    diagramFailed,
+    diagramZoomIn,
+    diagramZoomOut,
+    diagramReset,
+    diagramFullScreen,
+    diagramClose,
+  } = {
     ...defaultMarkdownDocumentLabels,
     ...labelsProp,
   };
@@ -433,7 +457,19 @@ export function MarkdownDocument({
   const components = useMemo(
     () =>
       markdownComponents(
-        { completedTask, incompleteTask, table, codeBlock, diagram, diagramFailed },
+        {
+          completedTask,
+          incompleteTask,
+          table,
+          codeBlock,
+          diagram,
+          diagramFailed,
+          diagramZoomIn,
+          diagramZoomOut,
+          diagramReset,
+          diagramFullScreen,
+          diagramClose,
+        },
         renderLink,
         headingOffset,
         renderImage,
@@ -446,6 +482,11 @@ export function MarkdownDocument({
       codeBlock,
       diagram,
       diagramFailed,
+      diagramZoomIn,
+      diagramZoomOut,
+      diagramReset,
+      diagramFullScreen,
+      diagramClose,
       renderLink,
       headingOffset,
       renderImage,

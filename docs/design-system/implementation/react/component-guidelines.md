@@ -589,12 +589,27 @@ diagram. Mermaid is loaded with a dynamic `import()` on the first diagram, so a 
 downloads it. It runs with `securityLevel: 'strict'`, no HTML labels, `startOnLoad: false` and suppressed
 error rendering, and each drawing gets a fresh id. The `base` theme takes its colours and font from the
 design-system tokens read when the diagram is drawn (`color-scheme` decides dark mode); shapes have no
-shadows. The diagram keeps its natural size and scrolls horizontally in its own `ScrollArea` (named by
-`labels.diagram`, `labelRole="group"`, `data-source-line` on that wrapper); the SVG is `role="img"` with the
-same name. While it is drawn the ordinary code block shows; when the source cannot be drawn the code block
-stays with a quiet `labels.diagramFailed` note beneath it, never Mermaid's error graphic. Leave `diagrams`
-off for text that is still being written (a streamed message), where a half-written diagram would flash
-the failure note. The Documents preview and the documentation reader turn it on.
+shadows (Mermaid's drop-shadow filters are removed with CSS).
+
+Size: a diagram opens fitted to the column but never below 10 px text (scale `10/14`, the labels being
+14 px); a diagram that fits keeps its natural size and is never enlarged. What does not fit pans inside the
+block, which never widens the page. Zoom and pan are always available: the block's viewport is one keyboard
+stop (`role="group"` named by `labels.diagram`; the picture inside is `role="img"` with the same name) where
+`+`/`-` zoom, the arrows pan and `0` returns to the fitted view; Ctrl/Cmd + wheel and pinch zoom about the
+pointer; a mouse or pen drag and two fingers pan. Plain wheel and one-finger touch scroll the page. The zoom
+runs from the fitted scale to 4x the natural size and the drawing never leaves its pan bounds. A quiet
+control strip above the drawing (so it never covers it) holds Zoom out, Zoom in, Fit and Full screen
+(32 px `IconButton`s with the 44 px touch target; icons `zoom-out`, `zoom-in`, `zoom-fit`, `fullscreen`).
+Full screen opens the DS `Dialog` with a second drawing (its own SVG ids), fitted to the window and never
+enlarged, with the same controls and gestures; Escape closes it and focus returns to the button. The pure
+geometry (fit, clamp, zoom about a point, keys) lives in `diagramView.ts`.
+
+While a diagram is drawn the ordinary code block shows; when the source cannot be drawn the code block stays
+with a quiet `labels.diagramFailed` note beneath it, never Mermaid's error graphic. Products pass localized
+`diagram`, `diagramFailed`, `diagramZoomIn`, `diagramZoomOut`, `diagramReset`, `diagramFullScreen` and
+`diagramClose` labels; `data-source-line` sits on the block. Leave `diagrams` off for text that is still
+being written (a streamed message), where a half-written diagram would flash the failure note. The
+Documents preview and the documentation reader turn it on.
 
 ## Scrolling regions
 

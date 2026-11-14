@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MarkdownDocument } from './MarkdownDocument';
 
 const mermaid = vi.hoisted(() => ({
   initialize: vi.fn(),
   render: vi.fn(async (id: string, source: string) => ({
-    svg: `<svg id="${id}"><text>${source.length}</text></svg>`,
+    svg: `<svg id="${id}" viewBox="0 0 400 200"><text>${source.length}</text></svg>`,
     diagramType: 'flowchart',
   })),
 }));
@@ -93,5 +93,36 @@ describe('MarkdownDocument diagrams', () => {
     );
     expect(screen.queryByRole('img')).toBeNull();
     expect(document.body.textContent).not.toContain('Parse error');
+  });
+
+  it('zooms with the keyboard and the controls, resets, and opens a second drawing full screen', async () => {
+    render(<MarkdownDocument diagrams source={fence('flowchart LR\n  a --> b')} />);
+    await screen.findByRole('img', { name: 'Diagram' });
+    const region = screen.getByRole('group', { name: 'Diagram' });
+    const scale = () => Number(region.getAttribute('data-diagram-scale'));
+    const reset = screen.getByRole('button', { name: 'Fit diagram' });
+
+    // A small diagram opens at its natural size; it cannot be zoomed out further.
+    expect(scale()).toBe(1);
+    expect(reset).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: 'Zoom out' })).toHaveProperty('disabled', true);
+    fireEvent.keyDown(region, { key: '+' });
+    expect(scale()).toBe(1.25);
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
+    expect(scale()).toBeCloseTo(1.5625);
+    expect(reset).toHaveProperty('disabled', false);
+    fireEvent.keyDown(region, { key: '0' });
+    expect(scale()).toBe(1);
+    // Ctrl+key and plain letters are left to the browser.
+    fireEvent.keyDown(region, { key: '+', ctrlKey: true });
+    expect(scale()).toBe(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open diagram full screen' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Diagram' });
+    await within(dialog).findByRole('img', { name: 'Diagram' });
+    const ids = mermaid.render.mock.calls.map(([id]) => id);
+    // Full screen draws its own copy, so no SVG id is on the page twice.
+    expect(new Set(ids).size).toBe(2);
+    expect(document.querySelectorAll(`[id="${ids[0]}"]`)).toHaveLength(1);
   });
 });

@@ -174,8 +174,9 @@ Wide / Compact                                   Narrow
   `related` as links, at the end). From a 840 px panel the Properties and the **Contents** sit in the
   sticky column beside the text; narrower panels show Properties above the text and a Contents icon
   at the right of the header, just before the `···` menu (as in the Documents preview), that opens
-  the Contents sheet. Fenced `mermaid` blocks are drawn as diagrams, as in the Documents preview
-  (see the design-system note "MarkdownDocument diagrams"). Header: the document title; overflow **Copy link**
+  the Contents sheet. Fenced `mermaid` blocks are drawn as diagrams, as in the Documents preview:
+  fitted to the column down to 10 px text (a small one at its natural size), with zoom, pan and full
+  screen (see the design-system note "MarkdownDocument diagrams"). Header: the document title; overflow **Copy link**
   (workstation-local, it contains the workspace id) and **Copy path** (portable). A proposal starts
   with a quiet note: "This is a proposal, not a current rule. Search leaves proposals out unless
   you include them."

@@ -14,6 +14,11 @@ export function useMarkdownLabels(): MarkdownDocumentLabels {
       incompleteTask: t('specification.markdownTaskOpen'),
       diagram: t('specification.markdownDiagram'),
       diagramFailed: t('specification.markdownDiagramFailed'),
+      diagramZoomIn: t('specification.markdownDiagramZoomIn'),
+      diagramZoomOut: t('specification.markdownDiagramZoomOut'),
+      diagramReset: t('specification.markdownDiagramReset'),
+      diagramFullScreen: t('specification.markdownDiagramFullScreen'),
+      diagramClose: t('common.close'),
     }),
     [t],
   );

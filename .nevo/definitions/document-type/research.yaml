@@ -1,0 +1,9 @@
+kind: document-type
+schemaVersion: 1
+id: research
+title: Research
+icon: file-search
+description: "Findings and evidence gathered before or during the work: questions, sources, results."
+useWhen: Facts must be established before a decision or implementation.
+instructions: Record the questions asked, the sources consulted (with locations) and the findings, separating fact from interpretation. State what remains unknown.
+defaultFilename: research.md

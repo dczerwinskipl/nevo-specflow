@@ -2414,7 +2414,7 @@
         "checking that a packaging change did not break the installed CLI",
         "changing this repository's own .nevo/config.yaml, docs/docs.yaml or the pnpm docs scripts"
       ],
-      "summary": "`pnpm dogfood:install` builds the real distributable, packs it, installs THAT tarball globally with pnpm, and smokes the installed `nevo-specflow`. It deliberately uses a tarball — not a workspace link — so it catches packaging problems a linked install would hide. This repository's `pnpm docs:*` scripts run the product documentation command over a documentation-only configuration; the repository is not an initialized SpecFlow project.",
+      "summary": "`pnpm dogfood:install` builds the real distributable, packs it, installs THAT tarball globally with pnpm, and smokes the installed `nevo-specflow`. It deliberately uses a tarball — not a workspace link — so it catches packaging problems a linked install would hide. The repository is itself an initialized SpecFlow project (no sign-in, one local admin, managed worktrees into main), so its own build can run on it; its `pnpm docs:*` scripts run the product documentation command over the same configuration.",
       "related": [
         "adr.0020-documentation-discovery-is-a-product-capability",
         "engineering.repository.product-packaging",

@@ -68,7 +68,7 @@ repeated run replays unchanged packages. No run needs a raised Node heap; do not
 ## Semantic documentation search
 
 The `pnpm docs:*` scripts run the product `nevo-specflow docs` command over this repository (its
-documentation-only `.nevo/config.yaml` and `docs/docs.yaml`). `pnpm docs:search` always works:
+`.nevo/config.yaml` and `docs/docs.yaml`). `pnpm docs:search` always works:
 without an embedding endpoint it answers lexically and says so (`mode: lexical`, reason
 `no-endpoint`). The committed configuration opts the project in (`docs.search.semantic: true`);
 the endpoint is a workstation choice. To get hybrid results, run the embedding model from the root `compose.yaml` (Ollama on `127.0.0.1:11434`, a

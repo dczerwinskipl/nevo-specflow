@@ -37,12 +37,24 @@ When an idea uses words such as "must", "should", "expected", or "target", read 
 language unless the sentence explicitly cites an existing authoritative rule. Current architecture,
 product, engineering, and reference documents always win on conflict.
 
+An **exploration document** and a **roadmap record** have different lifecycles. An exploration
+document proposes a design or preserves evidence; it may become obsolete when the design is
+approved. A roadmap record tracks the product outcome, its target release and its relationship to
+Specifications and PRs, even after delivery. Retiring the former never removes the latter.
+
 When an idea is accepted for implementation:
 
-1. reconcile it with current code and current provider versions;
-2. promote durable rules into their authoritative architecture/engineering/reference home;
-3. create an implementation-ready specification or task plan as appropriate;
-4. remove or mark the idea as superseded rather than leaving competing active guidance.
+1. reconcile it with current code and provider versions;
+2. promote accepted technical rules into their authoritative product/architecture/reference home;
+3. link the approved Specification or task plan to the stable roadmap ID when one exists;
+4. mark obsolete exploration text as implemented or superseded, or retire it after its useful
+   evidence and links have been preserved;
+5. keep the roadmap record and link its Specifications, PRs and current contracts through delivery
+   and release, with implementation and release statuses recorded separately.
+
+During **Specification planning**, intentionally retrieve [the product roadmap](roadmap.md) and only
+the relevant idea documents. Ordinary implementation context still excludes `docs/ideas/**`,
+so a speculative idea cannot override an approved contract.
 
 A merged implementation PR does not by itself prove that a whole idea is delivered. Before any part
 of an idea is removed, give each part exactly one disposition:
@@ -59,7 +71,7 @@ rationale whose premise no longer holds is marked superseded or removed.
 
 ## Current packages
 
-**Product planning:** [Roadmap for 1.0, 1.1 and 2.0](roadmap.md) tracks future work and ✅ delivered capabilities. The [complete PR evidence register](roadmap-delivered.md) links all 120 merged PRs and separates open and closed-without-merge work. Its release targets are not implementation contracts. An idea stays on the roadmap after Specification creation, and shipped items retain links to their delivery evidence.
+**Product planning:** [Roadmap for 1.0, 1.1 and 2.0](roadmap.md) tracks future work and ✅ delivered capabilities. The [complete PR evidence register](roadmap-delivered.md) links all 121 merged PRs and separates open and closed-without-merge work. Its release targets are not implementation contracts. An idea stays on the roadmap after Specification creation, and completed items retain links to their implementation and release evidence.
 
 - [Offline Engine, CLI/Runtime boundaries, and Git worktrees](specflow-engine/README.md)
 - [Multi-project hosting, Docker, and future cross-project work](multi-project-hosting.md)

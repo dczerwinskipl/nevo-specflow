@@ -20,3 +20,5 @@ pnpm-lock.yaml
 
 # Default definitions shipped as seeds: template bytes are golden-tested, so the files are not reformatted
 packages/specflow-engine/definitions/
+# The same seeds as installed into this repository by `nevo-specflow init`
+.nevo/definitions/

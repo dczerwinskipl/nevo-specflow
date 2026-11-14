@@ -1,6 +1,7 @@
 // One search hit as the `docs search` contract shows it: the document described by its frontmatter,
-// so a reader can decide whether to open it, and its best sections with their ids, lines and a
-// query-aware excerpt (`excerpt.ts`, unless snippets are turned off).
+// so a reader can decide whether to open it, whether the query's words matched it, and its best
+// sections with their ids, lines and a query-aware excerpt with its matched words (`excerpt.ts`,
+// unless snippets are turned off).
 
 import type { ChunkHit, UnitHit } from '@nevo/ai-semantic-search';
 import type { DocsSearchHit, DocsSearchSection } from '@nevo/specflow-contracts/docs';
@@ -16,12 +17,15 @@ export const SECTIONS_PER_RESULT = 3;
  * @param sections the document's matching sections from the section ranking; `undefined` when only
  *   its frontmatter matched.
  * @param score the document's fused rank score.
+ * @param wordMatch whether the document was in the word (BM25) section ranking or the frontmatter
+ *   ranking.
  * @param query the question the excerpts are chosen for; `undefined` shows no excerpts.
  */
 export function toHit(
   record: DocRecord,
   sections: UnitHit | undefined,
   score: number,
+  wordMatch: boolean,
   query: string | undefined,
 ): DocsSearchHit {
   const summary = typeof record.summary === 'string' ? oneLine(record.summary) : '';
@@ -42,16 +46,26 @@ export function toHit(
     ...(readWhen.length > 0 ? { readWhen } : {}),
     file: record.file,
     score,
+    wordMatch,
     sections: bestSections(sections?.chunks ?? []).map(
       ({ chunk, score: sectionScore }): DocsSearchSection => ({
         headingPath: [...chunk.headingPath],
         sectionId: chunk.sectionId,
         line: (chunk as DocsChunk).startLine,
         score: sectionScore,
-        ...(query === undefined ? {} : { snippet: excerpt(chunk.text, query) }),
+        ...(query === undefined ? {} : snippet(chunk.text, query)),
       }),
     ),
   };
+}
+
+function snippet(
+  section: string,
+  query: string,
+): Pick<DocsSearchSection, 'snippet' | 'snippetMatches'> {
+  const { text, matches } = excerpt(section, query);
+
+  return { snippet: text, snippetMatches: matches };
 }
 
 /**

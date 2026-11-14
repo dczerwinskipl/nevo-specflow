@@ -44,6 +44,19 @@ export const DocsSearchReasonSchema = Type.Object(
 );
 export type DocsSearchReason = Static<typeof DocsSearchReasonSchema>;
 
+/**
+ * A range of characters in a text: UTF-16 offsets, `start` included and `end` excluded, as
+ * `text.slice(start, end)` takes them.
+ */
+export const DocsSearchTextRangeSchema = Type.Object(
+  {
+    start: Type.Integer({ minimum: 0 }),
+    end: Type.Integer({ minimum: 1 }),
+  },
+  { additionalProperties: false },
+);
+export type DocsSearchTextRange = Static<typeof DocsSearchTextRangeSchema>;
+
 /** One of the best matching sections of a document. */
 export const DocsSearchSectionSchema = Type.Object(
   {
@@ -67,12 +80,26 @@ export const DocsSearchSectionSchema = Type.Object(
      */
     score: Type.Number(),
     /**
-     * A short excerpt of the section on one line (at most about 280 characters): the sentences or
-     * lines around the best match of the query's words or, when no word matches (a semantic-only
-     * match), the first sentences after the heading. Present by default; absent when snippets are
-     * turned off.
+     * A plain-text excerpt of the section on one line, at most 280 characters, ellipses included:
+     * one contiguous fragment of the section's own text, without Markdown syntax (links show their
+     * text, code spans their content, images their alt text; emphasis, list, quote and table markers
+     * and HTML are removed). The fragment is a run of sentences of one paragraph, one list item or
+     * one table row read as `first cell — cell; cell` (the header row is dropped).
+     *
+     * It shows the best match of the query's words, preferring prose over code (a fenced line, or
+     * a sentence that is mainly code spans, paths or identifiers), and starts at most 40 characters
+     * before the first match: at a sentence start, or cut as `"… "` followed by a whole word. A
+     * trailing `"…"` marks text cut inside a sentence. With no matching word (a match by meaning, a
+     * heading or the frontmatter only), it is the section's longest prose fragment from its start.
+     * Present by default; absent when snippets are turned off.
      */
     snippet: Type.Optional(Type.String()),
+    /**
+     * The words of `snippet` that match the query: the first occurrence of each query word, at most
+     * three, in order and not overlapping. Present exactly when `snippet` is; empty when no word of
+     * the excerpt matches.
+     */
+    snippetMatches: Type.Optional(Type.Array(DocsSearchTextRangeSchema, { maxItems: 3 })),
   },
   { additionalProperties: false },
 );
@@ -106,6 +133,13 @@ export const DocsSearchHitSchema = Type.Object(
      * is relevant.
      */
     score: Type.Number(),
+    /**
+     * Whether the query's words matched the document: one of its sections was in the word (BM25)
+     * ranking, by its heading path or text, or its frontmatter was in the frontmatter ranking.
+     * `false` for a document found only by meaning (hybrid mode). Always `true` in lexical mode. A
+     * match may be in a heading or the frontmatter, which `snippet` does not show.
+     */
+    wordMatch: Type.Boolean(),
     /**
      * Up to three best matching sections, best first, one per section. Empty when none of the
      * document's sections is among the section ranking's top candidates (for example a document

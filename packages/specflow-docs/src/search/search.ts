@@ -141,7 +141,9 @@ export interface DocsSearchRequest {
  *   folding over title, id, scope, areas, tags, read_when and summary, ignoring query terms common
  *   to many documents), which finds a document by what it says it is about even when no section
  *   repeats the words.
- * A document with no section among the section ranking's candidates has no sections.
+ * A document with no section among the section ranking's candidates has no sections. A document
+ * has `wordMatch` when its words matched: the frontmatter ranking holds it, or a section of it was in
+ * the section ranking's word (BM25) ranking (`UnitHit.lexical`).
  */
 export async function searchDocumentation(
   search: DocsSearch,
@@ -255,19 +257,21 @@ async function rank(
 
   const records = new Map(searched.map((record) => [asString(record.id), record]));
   const sectionsById = new Map<string, UnitHit>(sections.hits.map((hit) => [hit.unitId, hit]));
-  const results = reciprocalRankFusion([
-    sections.hits.map((hit) => hit.unitId),
-    byFrontmatter.map((record) => asString(record.id)),
-  ])
+  const frontmatterIds = byFrontmatter.map((record) => asString(record.id));
+  const byWords = new Set(frontmatterIds);
+  const results = reciprocalRankFusion([sections.hits.map((hit) => hit.unitId), frontmatterIds])
     .slice(0, request.limit)
-    .map(({ id, score }) =>
-      toHit(
+    .map(({ id, score }) => {
+      const documentSections = sectionsById.get(id);
+
+      return toHit(
         records.get(id)!,
-        sectionsById.get(id),
+        documentSections,
         score,
+        byWords.has(id) || documentSections?.lexical === true,
         request.snippets ? request.query : undefined,
-      ),
-    );
+      );
+    });
 
   return sections.mode === 'hybrid'
     ? { mode: 'hybrid', results, skipped }

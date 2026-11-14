@@ -211,13 +211,15 @@ function fixtureSearch(
   const envelope = {
     workspaceId,
     corpusRevision: revision(workspaceId),
-    results: results.map(({ doc, section, snippet }, index) => ({
+    results: results.map(({ doc, section, snippet, snippetMatches }, index) => ({
       id: doc.id,
       title: doc.title,
       type: doc.type,
       status: doc.status,
       file: doc.path,
       score: 1 / (index + 1),
+      // Every fixture result matched a query word in its title, a section or its summary.
+      wordMatch: true,
       sections: section
         ? [
             {
@@ -226,6 +228,7 @@ function fixtureSearch(
               line: section.line,
               score: 1,
               snippet,
+              snippetMatches,
             },
           ]
         : [],

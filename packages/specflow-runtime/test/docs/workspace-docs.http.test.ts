@@ -324,6 +324,13 @@ describe('workspace documentation over HTTP', () => {
       const body = response.json<WorkspaceDocsSearch>();
       expect(Value.Check(WorkspaceDocsSearchSchema, body)).toBe(true);
       expect(body.workspaceId).toBe(id);
+      // The plain excerpt's matched words and the word match cross the wire.
+      const [hit] = body.results;
+      const [section] = hit!.sections;
+      expect(hit!.wordMatch).toBe(true);
+      expect(
+        section!.snippetMatches!.map(({ start, end }) => section!.snippet!.slice(start, end)),
+      ).toContainEqual(expect.stringMatching(/^install/iu));
 
       return response.body;
     };

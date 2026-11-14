@@ -15,6 +15,7 @@ const hit = {
   readWhen: ['installing'],
   file: 'docs/guide.md',
   score: 0.5,
+  wordMatch: true,
   sections: [{ headingPath: ['Guide'], sectionId: 'guide', line: 7, score: 0.5 }],
 };
 
@@ -36,5 +37,21 @@ describe('DocsSearchResultSchema', () => {
     expect(Value.Check(DocsSearchResultSchema, { mode: 'hybrid', reason, results: [] })).toBe(
       false,
     );
+  });
+
+  it('carries the excerpt with its match ranges and whether the words matched', () => {
+    const section = {
+      ...hit.sections[0]!,
+      snippet: 'Install the widget.',
+      snippetMatches: [{ start: 0, end: 7 }],
+    };
+    const result = (changes: object) => ({ mode: 'hybrid', results: [{ ...hit, ...changes }] });
+
+    expect(Value.Check(DocsSearchResultSchema, result({ sections: [section] }))).toBe(true);
+    expect(Value.Check(DocsSearchResultSchema, result({ wordMatch: undefined }))).toBe(false);
+    const extra = { ...section, snippetMatches: [{ start: 0, end: 7, term: 'install' }] };
+    expect(Value.Check(DocsSearchResultSchema, result({ sections: [extra] }))).toBe(false);
+    const four = { ...section, snippetMatches: Array(4).fill({ start: 0, end: 1 }) as unknown[] };
+    expect(Value.Check(DocsSearchResultSchema, result({ sections: [four] }))).toBe(false);
   });
 });

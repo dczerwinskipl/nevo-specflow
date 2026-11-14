@@ -23,8 +23,8 @@ related:
   - product.specflow.ui.shell-geometry
   - reference.api.specification-workflow
   - reference.api.task-reads
-  - adr.0022-tasks-are-resources
-  - adr.0023-neutral-workflow-coordinator-and-manual-execution
+  - adr.0023-tasks-are-resources
+  - adr.0022-neutral-workflow-coordinator-and-manual-execution
 ---
 
 # Manual workflow execution and Task authoring

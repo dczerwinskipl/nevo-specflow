@@ -14,7 +14,7 @@ related:
   - architecture.repository-structure
   - adr.0020-documentation-discovery-is-a-product-capability
   - adr.0021-product-neutral-ai-semantic-search-engine
-  - adr.0023-neutral-workflow-coordinator-and-manual-execution
+  - adr.0022-neutral-workflow-coordinator-and-manual-execution
   - adr.0005-repository-tooling-is-separate-from-the-product-api
   - adr.0011-product-artifact-packaging-and-pnpm-compatibility
   - design-system.principles.system-boundary
@@ -28,7 +28,7 @@ Current. Amended: Runtime depends on the Engine (`@nevo/specflow-runtime -> @nev
 because its HTTP features and managed Sessions call Engine operations instead of owning mutation
 logic (`architecture.runtime.specflow-engine`). The diagram and rules below include that edge.
 
-Amended 2026-11-14 ([ADR 0023](0023-neutral-workflow-coordinator-and-manual-execution.md)): the
+Amended 2026-11-14 ([ADR 0022](0022-neutral-workflow-coordinator-and-manual-execution.md)): the
 Engine depends on the internal, product-neutral workflow kernel `@nevo/workflow`
 (`@nevo/specflow-engine -> @nevo/workflow`); its rules are under "Dependency direction".
 

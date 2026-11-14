@@ -1,5 +1,5 @@
 ---
-id: adr.0022-tasks-are-resources
+id: adr.0023-tasks-are-resources
 type: adr
 title: Tasks are resources of their Specification, with their own manifest, documents and context
 status: current
@@ -16,14 +16,14 @@ related:
   - adr.0015-specification-manifest-as-document-registry
   - adr.0018-engine-commit-policy-and-manual-commit
   - adr.0019-workflow-kernel-and-automatic-continuation
-  - adr.0023-neutral-workflow-coordinator-and-manual-execution
+  - adr.0022-neutral-workflow-coordinator-and-manual-execution
   - architecture.workflow.workflow-kernel
   - architecture.runtime.specification-documents
   - architecture.runtime.specflow-lifecycle
   - reference.api.task-reads
 ---
 
-# 0022 — Tasks are resources
+# 0023 — Tasks are resources
 
 ## Status
 
@@ -76,7 +76,9 @@ committed). The behaviour is described in
    while that run is active. A manual Task records the owner as its origin.
 7. **Breakdown scope (D06).** A producing step's finish lists the complete set of the drafts **that step
    owns** (origin `produced` by the same step, any attempt): it creates, replaces or cancels only those.
-   Drafts made by hand or by another step are never touched; listing one refuses the finish. The finish
+   Drafts made by hand or by another step are never touched; listing one refuses the finish. That a
+   re-run of the step may revise or cancel its own drafts from earlier attempts, and never manual
+   ones, is an owner decision (round 2, D06). The finish
    action projection offers the step's own drafts as unchanged proposals, so a person finishing the
    step keeps them by sending them back. A kept draft that depends on a draft the same finish cancels
    refuses the finish (`draftConflicts`).

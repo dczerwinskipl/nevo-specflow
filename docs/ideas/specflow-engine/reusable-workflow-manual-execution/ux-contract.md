@@ -25,9 +25,14 @@ Accepted and implemented. The authoritative contracts are:
   exit gates, Task authoring, lifecycle actions, Close and Abandon;
 - [Specification Overview](../../../product/specflow/ui/specification-overview.md): the control center
   and the Tasks page;
-- [ADR 0023](../../../architecture/decisions/0023-neutral-workflow-coordinator-and-manual-execution.md):
+- [ADR 0022](../../../architecture/decisions/0022-neutral-workflow-coordinator-and-manual-execution.md):
   workflow state, attention and grouping kept apart;
 - [Task reads](../../../reference/api/task-reads.md#dashboard-grouping): the default dashboard grouping.
+
+The presentation mock was removed; the production Storybook stories are `SpecFlow/Screens/Manual
+workflow execution` (`packages/specflow-ui/src/features/tasks/execution/ProjectWorkflowExecution.stories.tsx`)
+and `SpecFlow/Screens/Specification control center`
+(`packages/specflow-ui/src/features/tasks/overview/SpecificationControlCenter.stories.tsx`).
 
 The Ask agent attachment point remains an open idea
 ([agent-assisted execution](agent-assisted-execution.md)).

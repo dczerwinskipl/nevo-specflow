@@ -84,7 +84,7 @@ folders: # OPTIONAL: explicit folders that may hold no file (see below)
 Parser rules (strict, `SPEC_SOURCE_INVALID` otherwise; no alias, no default, no legacy fallback):
 
 1. `type` and `tasks` (old fields) are not read; Tasks are registered in the reserved `tasks/index.yaml`
-   ([ADR 0022](../decisions/0022-tasks-are-resources.md)). A manifest lacking `archetype` or `documents` is invalid.
+   ([ADR 0023](../decisions/0023-tasks-are-resources.md)). A manifest lacking `archetype` or `documents` is invalid.
 2. `archetype` and each `documents[]`/`requirements[]` entry accept only the keys above (unknown keys rejected).
    Unknown **top-level** keys are tolerated and preserved on rewrite.
 3. `documents[].id` matches `^[a-z0-9][a-z0-9-]{0,63}$`, is unique, and MUST NOT start with `u-` (reserved for

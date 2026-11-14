@@ -24,8 +24,8 @@ summary: >
 related:
   - architecture.workflow.deterministic-workflow
   - adr.0019-workflow-kernel-and-automatic-continuation
-  - adr.0022-tasks-are-resources
-  - adr.0023-neutral-workflow-coordinator-and-manual-execution
+  - adr.0023-tasks-are-resources
+  - adr.0022-neutral-workflow-coordinator-and-manual-execution
   - reference.api.specification-workflow
   - adr.0017-definitions-as-project-data
   - architecture.runtime.specflow-engine
@@ -37,8 +37,8 @@ related:
 This document describes how the rules of
 [deterministic workflow](deterministic-workflow.md) are implemented. The owner decisions behind it are
 recorded in [ADR 0019](../decisions/0019-workflow-kernel-and-automatic-continuation.md),
-[ADR 0022](../decisions/0022-tasks-are-resources.md) (Tasks are resources) and
-[ADR 0023](../decisions/0023-neutral-workflow-coordinator-and-manual-execution.md) (neutral
+[ADR 0023](../decisions/0023-tasks-are-resources.md) (Tasks are resources) and
+[ADR 0022](../decisions/0022-neutral-workflow-coordinator-and-manual-execution.md) (neutral
 coordinator, executors and actors). The code lives in two places:
 
 - `packages/workflow/src/` (`@nevo/workflow`): the product-neutral core. Compiled definitions
@@ -302,7 +302,7 @@ steps:
 
 ## Tasks
 
-A Task is a resource of its Specification ([ADR 0022](../decisions/0022-tasks-are-resources.md)):
+A Task is a resource of its Specification ([ADR 0023](../decisions/0023-tasks-are-resources.md)):
 what it is lives in its folder, how far it got in its run record.
 
 | File                                 | Holds                                                                                                                             |

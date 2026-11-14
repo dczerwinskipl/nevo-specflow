@@ -1,5 +1,5 @@
 ---
-id: adr.0023-neutral-workflow-coordinator-and-manual-execution
+id: adr.0022-neutral-workflow-coordinator-and-manual-execution
 type: adr
 title: Neutral workflow coordinator, SpecFlow adapter and manual execution by a person
 status: current
@@ -14,7 +14,7 @@ summary: >
 related:
   - adr.0019-workflow-kernel-and-automatic-continuation
   - adr.0012-product-package-topology-and-dependency-direction
-  - adr.0022-tasks-are-resources
+  - adr.0023-tasks-are-resources
   - architecture.workflow.workflow-kernel
   - reference.api.specification-workflow
   - reference.api.task-reads
@@ -22,7 +22,7 @@ related:
   - product.specflow.ui.specification-overview
 ---
 
-# 0023 — Neutral workflow coordinator and manual execution
+# 0022 — Neutral workflow coordinator and manual execution
 
 ## Status
 

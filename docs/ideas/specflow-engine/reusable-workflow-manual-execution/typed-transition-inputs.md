@@ -15,7 +15,7 @@ summary: >
   bounded run history and hands to the next step, and a generic UI form renders them. Requires F19
   (bounded run history) first.
 related:
-  - adr.0023-neutral-workflow-coordinator-and-manual-execution
+  - adr.0022-neutral-workflow-coordinator-and-manual-execution
   - architecture.workflow.workflow-kernel
   - ideas.specflow-engine.plan-06
   - product.specflow.ui.workflow-execution

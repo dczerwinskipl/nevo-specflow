@@ -10,18 +10,21 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { createSearchEngine, refreshIndex } from '@nevo/ai-semantic-search';
+import { createSearchEngine, refreshIndex, type EmbeddingProvider } from '@nevo/ai-semantic-search';
 import {
   createFakeEmbeddingProvider,
   createInMemoryVectorStore,
 } from '@nevo/ai-semantic-search/testing';
-import { afterAll, describe, expect, it } from 'vitest';
+import { DOCS_SEARCH_ANSWER_BUDGET_MS } from '@nevo/specflow-contracts/docs';
+import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 
 import { DEFAULT_DOCS_SETTINGS, parseDocsConfig } from '../config/docs-settings';
+import { QUERY_TIMEOUT_MS } from '../embeddings/embedding-providers';
 import { openFileSystemCorpus } from '../corpus/corpus';
 import { contextualHeader, createDocsChunkSource } from '../semantic-index/chunk-source';
 import { openDocsIndex, openProjectIndex } from '../semantic-index/index-store';
 import { READ_REFRESH_MAX_CHUNKS } from '../semantic-index/refresh-policy';
+import { cacheNotIgnoredReason } from '../semantic-index/reasons';
 import { createIndexWrites } from '../semantic-index/write-admission';
 import { toHit } from './result';
 import {
@@ -73,7 +76,12 @@ function semanticSearch() {
   const store = createInMemoryVectorStore();
   const search: DocsSearch = {
     chunks: createDocsChunkSource({ corpus }),
-    vectors: { store, writes: admitted(), providers: { query: provider, documents: provider } },
+    vectors: {
+      store,
+      writes: admitted(),
+      providers: { query: provider, documents: provider },
+      documentsAbortedBy: () => provider,
+    },
   };
 
   return { provider, store, search };
@@ -222,7 +230,12 @@ describe('searchDocumentation', () => {
             searchEngine: () => createSearchEngine(many),
           }),
       },
-      vectors: { store, writes: admitted(), providers: { query: provider, documents: provider } },
+      vectors: {
+        store,
+        writes: admitted(),
+        providers: { query: provider, documents: provider },
+        documentsAbortedBy: () => provider,
+      },
     };
 
     const empty = await searchDocumentation(search, request);
@@ -255,6 +268,7 @@ describe('searchDocumentation', () => {
         store,
         writes: admitted(),
         providers: { query: after, documents: after },
+        documentsAbortedBy: () => after,
         catchUp: {
           running: () => Promise.resolve(undefined),
           start: () => {
@@ -488,5 +502,107 @@ describe('docs chunk source', () => {
     mkdirSync(join(root, 'cache'), { recursive: true });
     writeFileSync(cacheFile, 'null');
     expect((await cachedSource(cacheFile).load()).reparsed).toBe(4);
+  });
+});
+
+describe('answer budget', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  /** Document embeddings that answer only once their signal aborts (a slow endpoint). */
+  function slowSearch() {
+    const provider = createFakeEmbeddingProvider();
+    let reached!: () => void;
+    const embedding = new Promise<void>((resolve) => (reached = resolve));
+    const documentsAbortedBy = (signal: AbortSignal): EmbeddingProvider => ({
+      ...provider,
+      probe: () => provider.probe(),
+      embed: () => {
+        reached();
+
+        return new Promise((resolve) =>
+          signal.addEventListener(
+            'abort',
+            () => resolve({ ok: false, failure: { code: 'timeout', message: 'aborted' } }),
+            { once: true },
+          ),
+        );
+      },
+    });
+    let starts = 0;
+    const search: DocsSearch = {
+      chunks: createDocsChunkSource({ corpus }),
+      vectors: {
+        store: createInMemoryVectorStore(),
+        writes: admitted(),
+        providers: { query: provider, documents: provider },
+        documentsAbortedBy,
+        catchUp: {
+          running: () => Promise.resolve(undefined),
+          start: () => {
+            starts += 1;
+
+            return Promise.resolve('the Runtime started updating it in the background');
+          },
+        },
+      },
+    };
+
+    return { provider, search, embedding, starts: () => starts };
+  }
+
+  it('answers lexically with index-building at the refresh deadline and leaves the gap to the catch-up', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const { provider, search, embedding, starts } = slowSearch();
+    let settled = false;
+    const pending = searchDocumentation(search, {
+      ...request,
+      answerBudgetMs: DOCS_SEARCH_ANSWER_BUDGET_MS,
+    }).finally(() => (settled = true));
+
+    await embedding;
+    // The query embedding keeps its own time inside the budget.
+    await vi.advanceTimersByTimeAsync(DOCS_SEARCH_ANSWER_BUDGET_MS - QUERY_TIMEOUT_MS - 1);
+    expect(settled).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+
+    const result = await pending;
+    expect(result).toMatchObject({ mode: 'lexical', reason: { code: 'index-building' } });
+    expect(result.mode === 'lexical' && result.reason.message).toMatch(/time budget/);
+    expect(result.results.map((hit) => hit.id)).toEqual(['guide']);
+    expect(starts()).toBe(1);
+    // One probe, no query embedding: the answer is lexical.
+    expect(provider.calls).toHaveLength(1);
+  });
+
+  it('answers hybrid when the inline embedding finishes within the budget', async () => {
+    const { search } = semanticSearch();
+    const result = await searchDocumentation(search, {
+      ...request,
+      answerBudgetMs: DOCS_SEARCH_ANSWER_BUDGET_MS,
+    });
+
+    expect(result.mode).toBe('hybrid');
+  });
+
+  it('keeps the refused write admission first, also with a budget', async () => {
+    const { provider, search } = slowSearch();
+    const refusal = cacheNotIgnoredReason('.nevo/local/cache/docs-index');
+    const writes = createIndexWrites(() => Promise.resolve(refusal), refusal);
+    const result = await searchDocumentation(
+      { ...search, vectors: { ...search.vectors, writes } },
+      { ...request, answerBudgetMs: DOCS_SEARCH_ANSWER_BUDGET_MS },
+    );
+
+    expect(result).toMatchObject({ mode: 'lexical', reason: refusal });
+    expect(provider.calls).toEqual([]);
+  });
+
+  it('refuses a budget that leaves no time for the query embedding', async () => {
+    const { search } = semanticSearch();
+    await expect(
+      searchDocumentation(search, { ...request, answerBudgetMs: QUERY_TIMEOUT_MS }),
+    ).rejects.toThrow(RangeError);
   });
 });

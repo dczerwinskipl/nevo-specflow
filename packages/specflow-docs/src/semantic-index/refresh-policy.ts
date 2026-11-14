@@ -1,7 +1,12 @@
 // The read-time refresh (ADR 0020): how much of the index a search brings up to date before it
 // answers. `semantic status` reports `index-building` with the same bound.
 
-import { refreshIndex, type EmbeddingFailure, type VectorStore } from '@nevo/ai-semantic-search';
+import {
+  refreshIndex,
+  type EmbeddingFailure,
+  type EmbeddingProvider,
+  type VectorStore,
+} from '@nevo/ai-semantic-search';
 import type { DocsIndexActivity, DocsSearchReason } from '@nevo/specflow-contracts/docs';
 
 import type { EmbeddingProviders } from '../embeddings/embedding-providers';
@@ -12,6 +17,7 @@ import { pendingChunks } from './freshness';
 import {
   busyEndpointReason,
   catchUpReason,
+  deadlineReason,
   identityChangedReason,
   overLimitReason,
   refreshReason,
@@ -35,6 +41,12 @@ export interface IndexVectors {
   /** The index's write admission, asked before a catch-up is started too. */
   readonly writes: IndexWrites;
   readonly providers: EmbeddingProviders;
+  /**
+   * The document provider of `providers` with its requests also aborted by `signal`: the read-time
+   * refresh of a search with an answer budget embeds through it, so its deadline stops the requests
+   * instead of leaving them to run (`EmbeddingProviders` from `createEmbeddingProviders`).
+   */
+  readonly documentsAbortedBy: (signal: AbortSignal) => EmbeddingProvider;
   /**
    * Runs a full refresh in the background for a gap above `READ_REFRESH_MAX_CHUNKS`. Absent: the
    * `index-building` reason asks for `semantic index` instead.
@@ -74,12 +86,20 @@ export async function endpointFailureReason(
  * a gap above `READ_REFRESH_MAX_CHUNKS`, or any gap with `refresh` off, is not embedded. A larger
  * gap with `refresh` on has the catch-up run (when the host supplies one): a refresh that already
  * runs is only described, otherwise one is started after the probe succeeds.
+ *
+ * With a `deadline` (a search's answer budget, `DocsSearchRequest.answerBudgetMs`), the small gap is
+ * embedded only until it aborts: the document requests are aborted through it, the refresh is awaited
+ * until it has settled (it releases the writer; a bounded refresh writes its one slice only after
+ * embedding it, so an aborted one has written nothing) and the gap is handed to the catch-up without
+ * another probe, answering `index-building`. The abort is recognised by `deadline.aborted`, never by
+ * the failure, so it is never reported as `endpoint-unreachable`.
  */
 export async function refreshForRead(
   vectors: IndexVectors,
   chunks: readonly DocsChunk[],
   refresh: boolean,
   indexCommand: string,
+  deadline?: AbortSignal,
 ): Promise<DocsSearchReason | undefined> {
   const { store, providers } = vectors;
   const manifest = await store.readManifest();
@@ -111,14 +131,23 @@ export async function refreshForRead(
     return endpointFailureReason(vectors, probe.failure);
   }
 
+  if (deadline?.aborted) {
+    return deadlineGapReason(vectors, missing, indexCommand);
+  }
+
   // The bound holds under the lock too: a re-probe that observes another dimension, or a manifest
   // gone since the read above, turns this into a full rebuild, which the search must not run.
+  // Awaited also once the deadline has aborted it, so its writer is closed before the answer.
   const outcome = await refreshIndex({
     chunks,
-    provider: providers.documents,
+    provider: deadline === undefined ? providers.documents : vectors.documentsAbortedBy(deadline),
     store,
     maxEmbed: READ_REFRESH_MAX_CHUNKS,
   });
+  if (outcome.status === 'embedding-failed' && deadline?.aborted) {
+    return deadlineGapReason(vectors, missing, indexCommand);
+  }
+
   if (outcome.status === 'write-failed') {
     return vectors.writes.refusal() ?? refreshReason(outcome);
   }
@@ -158,23 +187,55 @@ export async function identityChangedForRead(
 
 /** A gap the search does not embed: caught up in the background, or left to `semantic index`. */
 async function largeGapReason(
-  { providers, catchUp, writes }: IndexVectors,
+  vectors: IndexVectors,
   missing: number,
   indexCommand: string,
 ): Promise<DocsSearchReason> {
-  if (catchUp === undefined) {
+  if (vectors.catchUp === undefined) {
     return overLimitReason(missing, READ_REFRESH_MAX_CHUNKS, indexCommand);
   }
 
-  const running = await catchUp.running();
-  if (running !== undefined) {
-    return catchUpReason(missing, READ_REFRESH_MAX_CHUNKS, running);
+  return caughtUp(vectors, vectors.catchUp, 'probe', (clause) =>
+    catchUpReason(missing, READ_REFRESH_MAX_CHUNKS, clause),
+  );
+}
+
+/**
+ * A small gap the read-time refresh did not embed before its deadline: caught up like a large gap,
+ * but without a probe, since the endpoint has just answered one.
+ */
+async function deadlineGapReason(
+  vectors: IndexVectors,
+  missing: number,
+  indexCommand: string,
+): Promise<DocsSearchReason> {
+  if (vectors.catchUp === undefined) {
+    return deadlineReason(missing, `run \`${indexCommand}\``);
   }
 
-  // A catch-up against an unreachable endpoint would only fail; the search says why instead.
-  const probe = await providers.query.probe();
-  if (!probe.ok) {
-    return embeddingFailureReason(probe.failure);
+  return caughtUp(vectors, vectors.catchUp, 'probed', (clause) => deadlineReason(missing, clause));
+}
+
+/**
+ * The catch-up's running refresh, or one started now (`probe`: after a probe, which a catch-up
+ * against an unreachable endpoint would only fail), described by `describe`.
+ */
+async function caughtUp(
+  { providers, writes }: IndexVectors,
+  catchUp: IndexCatchUp,
+  endpoint: 'probe' | 'probed',
+  describe: (clause: string) => DocsSearchReason,
+): Promise<DocsSearchReason> {
+  const running = await catchUp.running();
+  if (running !== undefined) {
+    return describe(running);
+  }
+
+  if (endpoint === 'probe') {
+    const probe = await providers.query.probe();
+    if (!probe.ok) {
+      return embeddingFailureReason(probe.failure);
+    }
   }
 
   // Starting it writes the index directory (the CLI's marker and log).
@@ -183,5 +244,5 @@ async function largeGapReason(
     return refusal;
   }
 
-  return catchUpReason(missing, READ_REFRESH_MAX_CHUNKS, await catchUp.start());
+  return describe(await catchUp.start());
 }

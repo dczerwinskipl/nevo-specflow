@@ -155,7 +155,9 @@ timestamp-preserving copy, is seen), re-chunks only documents whose content hash
 embeds only new or changed sections. A current index costs no endpoint call besides the
 query. When the index needs work, a short reachability probe runs first, so an unreachable endpoint
 falls back to lexical within the query timeout (at most 3000 ms) instead of the document timeout.
-A search embeds at most 16 sections (one request at the default batch size). When more lack
+A search embeds at most 16 sections (one request at the default batch size) and waits for them
+however long the endpoint takes (up to its document timeout): the CLI sets no answer budget, unlike
+the Runtime's HTTP search (`reference.api.workspace-docs`, "Index freshness"). When more lack
 vectors, for example before the first build, after a model change or after editing many documents,
 it embeds nothing and answers lexically with `index-building` at once, and the index is caught up
 in the background: unless a writer already holds the index or a catch-up was started less than a

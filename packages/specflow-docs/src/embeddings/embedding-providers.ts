@@ -57,7 +57,15 @@ export function createEmbeddingProviders(
   settings: EmbeddingsSettings,
   { env, createProvider = createDefaultProvider, signal }: EmbeddingProviderEnvironment,
 ):
-  | { readonly ok: true; readonly providers: EmbeddingProviders }
+  | {
+      readonly ok: true;
+      readonly providers: EmbeddingProviders;
+      /**
+       * Another document provider for the same endpoint whose requests `signal` also aborts (as well
+       * as the environment's `signal`), for one refresh with its own deadline.
+       */
+      readonly documentsAbortedBy: (signal: AbortSignal) => EmbeddingProvider;
+    }
   | {
       readonly ok: false;
       readonly reason: DocsSearchReason;
@@ -82,6 +90,11 @@ export function createEmbeddingProviders(
     ...(settings.batchSize === undefined ? {} : { batchSize: settings.batchSize }),
   };
   const documentTimeoutMs = settings.timeoutMs ?? DEFAULT_EMBEDDING_TIMEOUT_MS;
+  const documents = (aborted: AbortSignal | undefined) =>
+    createProvider(
+      { ...resolved, timeoutMs: documentTimeoutMs },
+      { ...(aborted === undefined ? {} : { signal: aborted }) },
+    );
 
   return {
     ok: true,
@@ -90,10 +103,9 @@ export function createEmbeddingProviders(
         { ...resolved, timeoutMs: Math.min(documentTimeoutMs, QUERY_TIMEOUT_MS) },
         { ...(signal === undefined ? {} : { signal }) },
       ),
-      documents: createProvider(
-        { ...resolved, timeoutMs: documentTimeoutMs },
-        { ...(signal === undefined ? {} : { signal }) },
-      ),
+      documents: documents(signal),
     },
+    documentsAbortedBy: (deadline) =>
+      documents(signal === undefined ? deadline : AbortSignal.any([signal, deadline])),
   };
 }

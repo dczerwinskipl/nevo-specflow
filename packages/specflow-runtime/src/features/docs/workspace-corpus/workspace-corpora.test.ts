@@ -2,7 +2,11 @@ import { mkdirSync, mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } 
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { PROBE_TEXT, inspectFileStoreWriter } from '@nevo/ai-semantic-search';
+import {
+  DEFAULT_EMBEDDING_TIMEOUT_MS,
+  PROBE_TEXT,
+  inspectFileStoreWriter,
+} from '@nevo/ai-semantic-search';
 import { createFakeEmbeddingProvider } from '@nevo/ai-semantic-search/testing';
 import { seedIndexIfMissing, type CreateEmbeddingProvider } from '@nevo/specflow-docs';
 import type { FastifyBaseLogger } from 'fastify';
@@ -62,16 +66,24 @@ const tick = () => new Promise<void>((resolve) => setImmediate(resolve));
 
 const silent = { warn: vi.fn(), debug: vi.fn() } as unknown as FastifyBaseLogger;
 
-/** Workspaces by id; the refresh's document requests (they carry a signal) wait for `gate`. */
+/** Workspaces by id; the background refresh's document requests wait for `gate`. */
 function harness(workspaces: Map<string, WorkspaceResolution>, home: string) {
   const baseUrls: string[] = [];
   const searchEmbeds: string[] = [];
   const gate = deferred();
   const embedding = deferred();
+  // A background refresh creates its query provider (the shorter timeout), then its document
+  // provider, with the refresh's signal. A search's providers have none, except the document
+  // provider of its read-time refresh, which carries the search's deadline.
+  const background = new WeakSet<AbortSignal>();
   const createProvider: CreateEmbeddingProvider = (settings, { signal }) => {
     baseUrls.push(settings.baseUrl);
     const provider = createFakeEmbeddingProvider();
-    if (signal === undefined) {
+    if (signal !== undefined && (settings.timeoutMs ?? 0) < DEFAULT_EMBEDDING_TIMEOUT_MS) {
+      background.add(signal);
+    }
+
+    if (signal === undefined || !background.has(signal)) {
       // A search's own provider: the query and the read-time refresh.
       return {
         ...provider,

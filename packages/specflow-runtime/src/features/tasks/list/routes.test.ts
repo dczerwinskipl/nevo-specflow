@@ -18,7 +18,7 @@ afterEach(async () => {
 const empty: TaskListResponse = {
   specId: 'spec-1',
   groups: [],
-  progress: { completed: 0, total: 0, cancelled: 0, onHold: 0 },
+  progress: { completed: 0, total: 0, cancelled: 0, ended: 0, onHold: 0 },
   attention: [],
 };
 

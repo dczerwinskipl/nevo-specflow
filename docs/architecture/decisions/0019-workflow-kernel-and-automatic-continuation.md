@@ -33,13 +33,16 @@ local attention file exists. The reasons were extended (the full list is in
 `architecture.workflow.workflow-kernel`). Decisions 8 and 9 below are written in their amended form.
 
 **Amended (owner decisions 2026-11-13, 1A/2A/5A).** An attention item also carries the required
-actor, the one action it offers and a display message. A broken Task, a run pinned to a missing or
-changed workflow, and the start blockers of an approved Task that has not started that a person
-fixes (an unresolved required context entry, a dependency that can never complete, a type no
-longer allowed or not defined, an unmet entry gate) are attention; waiting for dependencies that
-can still complete, an awaited process artifact, being ready to start and being a draft are not.
-`tasks-stuck` names the Tasks to resolve, each with why it blocks. The Engine exposes neutral Task
-facts instead of presentation lanes; grouping is a surface's declarative configuration.
+actor, a primary and an optional secondary action, and a display message. Also attention: a broken
+Task; a run that has not ended whose pinned workflow is missing or changed (for a Task only while it
+is `ready`); and, for an approved Task that has not started, a start blocker a person fixes: an
+unresolved required context entry, a dependency that can never complete, a type no longer allowed
+or not defined, and an unmet entry gate once no dependency it waits for can still complete. Not
+attention: waiting for dependencies that can still complete, an awaited process artifact, being
+ready to start and being a draft or on hold (the Specification's `tasks-stuck` covers those when
+nothing else can progress). `tasks-stuck` names the Tasks to resolve, each with why it blocks. One
+list holds every item (`inspectExecution`). The Engine exposes neutral Task facts instead of
+presentation lanes; grouping is a surface's declarative configuration.
 
 ## Context
 

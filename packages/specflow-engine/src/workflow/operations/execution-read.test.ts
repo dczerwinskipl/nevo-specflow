@@ -2,7 +2,14 @@ import { beforeAll, describe, expect, it } from 'vitest';
 
 import type { ExecutionCatalogue } from '../definitions/catalogue';
 import { readExecution } from './execution-read';
-import { memoryDependencies, owner, seedExecutionCatalogue, SPEC } from './operations.test-support';
+import { inspectExecution } from './inspect';
+import {
+  memoryDependencies,
+  owner,
+  seedExecutionCatalogue,
+  SPEC,
+  specificationWithTasks,
+} from './operations.test-support';
 import { createTask, editTask } from './task-resource';
 import { setTaskStatus } from './task-status';
 
@@ -34,9 +41,9 @@ describe('readExecution', () => {
     const { dependencies, create, decide } = scenario();
 
     expect(await readExecution(dependencies, SPEC, { tasks: 'all' })).toMatchObject({
-      progress: { completed: 0, total: 0, cancelled: 0, onHold: 0 },
+      progress: { completed: 0, total: 0, cancelled: 0, ended: 0, onHold: 0 },
       preparation: 'empty',
-      attention: [],
+      inspection: { attention: [] },
     });
 
     await create('base');
@@ -96,11 +103,24 @@ describe('readExecution', () => {
     expect(facts('context')?.attention?.message).toContain(
       '1 required context entry does not resolve',
     );
-    expect(reading.attention.map((item) => item.reason)).toEqual([
+    expect(reading.inspection.attention.map((item) => item.reason)).toEqual([
       'context-unresolved',
       'dependency-unsatisfiable',
     ]);
-    expect(reading.progress).toEqual({ completed: 0, total: 6, cancelled: 1, onHold: 1 });
+    // One source: the inspection alone, and a read of no Task, carry the same items.
+    expect((await inspectExecution(dependencies, SPEC)).attention).toEqual(
+      reading.inspection.attention,
+    );
+    expect((await readExecution(dependencies, SPEC, { tasks: [] })).inspection.attention).toEqual(
+      reading.inspection.attention,
+    );
+    expect(reading.progress).toEqual({
+      completed: 0,
+      total: 6,
+      cancelled: 1,
+      ended: 0,
+      onHold: 1,
+    });
     expect(reading.preparation).toBe('preparing');
     expect(reading.actions.get('base')?.position.kind).toBe('not-started');
 
@@ -123,7 +143,7 @@ describe('readExecution', () => {
     dependencies.references.paths.add('src/gone.ts');
     const fixed = await readExecution(dependencies, SPEC, { tasks: 'all' });
     expect(fixed.facts.get('context')).toMatchObject({ startable: true, startBlockers: [] });
-    expect(fixed.attention).toEqual([]);
+    expect(fixed.inspection.attention).toEqual([]);
 
     // Removing the entry fixes it too.
     dependencies.references.paths.delete('src/gone.ts');
@@ -136,11 +156,37 @@ describe('readExecution', () => {
       context: [],
       actor: owner,
     });
-    expect((await readExecution(dependencies, SPEC, { tasks: 'all' })).attention).toEqual([]);
+    expect(
+      (await readExecution(dependencies, SPEC, { tasks: 'all' })).inspection.attention,
+    ).toEqual([]);
 
     await decide('context', 'on-hold');
     expect(
       (await readExecution(dependencies, SPEC, { tasks: 'all' })).facts.get('context'),
     ).toMatchObject({ preparation: 'on-hold', startable: false });
+  });
+
+  it('names the blocking Task of a stuck wait and clears it once the Task is resumed', async () => {
+    const { dependencies, decide } = scenario();
+    await specificationWithTasks(dependencies);
+    await decide('api', 'on-hold');
+
+    const stuck = await readExecution(dependencies, SPEC, { tasks: 'all' });
+    expect(stuck.inspection.attention).toEqual([
+      expect.objectContaining({
+        subject: { kind: 'specification', specId: SPEC },
+        reason: 'tasks-stuck',
+        action: 'review-tasks',
+        taskIds: ['api'],
+        blocking: [{ taskId: 'api', cause: 'on-hold' }],
+      }),
+    ]);
+    // Waiting for the held Task is not attention of its own.
+    expect(stuck.facts.get('screen')?.attention).toBeUndefined();
+
+    await decide('api', 'ready');
+    expect(
+      (await readExecution(dependencies, SPEC, { tasks: 'all' })).inspection.attention,
+    ).toEqual([]);
   });
 });

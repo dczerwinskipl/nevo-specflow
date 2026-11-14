@@ -200,6 +200,7 @@ describe('setTaskStatus', () => {
     });
     expect((await inspectExecution(dependencies, SPEC)).attention).toMatchObject([
       { subject: specification, reason: 'tasks-stuck' },
+      { subject: task('screen'), reason: 'dependency-unsatisfiable' },
     ]);
   });
 

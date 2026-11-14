@@ -71,6 +71,11 @@ export const WorkspaceSessionSchema = Type.Object(
   },
   { additionalProperties: false },
 );
+/**
+ * The actions of workspace attention items: the workflow's, and `answer-session` for a Session that
+ * waits for the person's input (the Session owner's item).
+ */
+export const WORKSPACE_ATTENTION_ACTIONS = [...ATTENTION_ACTIONS, 'answer-session'] as const;
 export const WorkspaceAttentionSchema = Type.Object({
   id: IdSchema,
   kind: Type.Union([
@@ -93,8 +98,13 @@ export const WorkspaceAttentionSchema = Type.Object({
   code: Type.Optional(Type.String({ minLength: 1, maxLength: 64 })),
   actor: Type.Optional(Type.Union([Type.Literal('owner'), Type.Literal('agent')])),
   action: Type.Optional(
-    Type.Unsafe<(typeof ATTENTION_ACTIONS)[number]>(
-      Type.Union(ATTENTION_ACTIONS.map((action) => Type.Literal(action))),
+    Type.Unsafe<(typeof WORKSPACE_ATTENTION_ACTIONS)[number]>(
+      Type.Union(WORKSPACE_ATTENTION_ACTIONS.map((action) => Type.Literal(action))),
+    ),
+  ),
+  secondaryAction: Type.Optional(
+    Type.Unsafe<(typeof WORKSPACE_ATTENTION_ACTIONS)[number]>(
+      Type.Union(WORKSPACE_ATTENTION_ACTIONS.map((action) => Type.Literal(action))),
     ),
   ),
   taskIds: Type.Optional(Type.Array(TaskIdSchema)),
@@ -139,8 +149,10 @@ const TaskCollectionSchema = Type.Object({
   groups: Type.Array(WorkspaceTaskGroupSchema),
   completed: Type.Integer({ minimum: 0 }),
   total: Type.Integer({ minimum: 0 }),
-  /** Cancelled and on hold Tasks, named apart from the progress; absent when not known (demo). */
+  /** Cancelled, ended and on hold Tasks, named apart from the progress; absent in the demo. */
   cancelled: Type.Optional(Type.Integer({ minimum: 0 })),
+  /** Ended without completing by their own workflow (abandoned, not cancelled). */
+  ended: Type.Optional(Type.Integer({ minimum: 0 })),
   onHold: Type.Optional(Type.Integer({ minimum: 0 })),
   attention: Type.Array(WorkspaceAttentionSchema),
   /** The Overview's compact summary of the groups and Now's explanation when stuck. */

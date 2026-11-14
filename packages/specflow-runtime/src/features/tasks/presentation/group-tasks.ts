@@ -1,21 +1,29 @@
 import type { TaskOverview } from '@nevo/specflow-contracts/tasks';
 
-import type { DashboardGrouping, GroupDefinition } from './default-grouping';
+import type { DashboardGrouping, GroupDefinition, GroupPredicate } from './default-grouping';
 import type { GroupingFacts } from './grouping-facts';
 
 type Presented = Pick<GroupDefinition, 'id' | 'name' | 'summary' | 'collapsed'>;
 
-function matches(group: GroupDefinition, facts: GroupingFacts): boolean {
-  const { preparation, position, outcome, startable, startBlocked, waiting } = group.when;
+function holds(predicate: GroupPredicate, facts: GroupingFacts): boolean {
+  const { broken, preparation, position, outcome, startable, startBlocked, waiting } = predicate;
 
   return (
-    (!preparation || preparation.includes(facts.preparation)) &&
-    (!position || position.includes(facts.position)) &&
+    (broken === undefined || broken === facts.broken) &&
+    (!preparation ||
+      (facts.preparation !== undefined && preparation.includes(facts.preparation))) &&
+    (!position || (facts.position !== undefined && position.includes(facts.position))) &&
     (!outcome || (facts.outcome !== undefined && outcome.includes(facts.outcome))) &&
     (startable === undefined || startable === facts.startable) &&
     (startBlocked === undefined || startBlocked === facts.startBlocked) &&
     (waiting === undefined || waiting === facts.waiting)
   );
+}
+
+function matches(group: GroupDefinition, facts: GroupingFacts): boolean {
+  const predicates = Array.isArray(group.when) ? group.when : [group.when];
+
+  return predicates.some((predicate) => holds(predicate, facts));
 }
 
 /** The group a Task falls into: the first matching one, else the grouping's `other`. */

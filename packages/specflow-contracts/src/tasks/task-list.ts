@@ -1,8 +1,15 @@
 import { Type, type Static } from 'typebox';
 
 import { SpecIdSchema, TaskIdSchema } from '../identifiers';
-import { BlockingTaskSchema, WorkflowAttentionItemSchema } from '../workflow/projection';
+import {
+  BlockingTaskSchema,
+  BROKEN_REASONS,
+  WorkflowAttentionItemSchema,
+} from '../workflow/projection';
 import { TaskFactsSchema } from './task-resource';
+
+const literals = <const T extends readonly string[]>(values: T) =>
+  Type.Unsafe<T[number]>(Type.Union(values.map((value) => Type.Literal(value))));
 
 /**
  * The Tasks page (`GET /api/specs/:specId/tasks`) and the Tasks part of the Specification
@@ -28,12 +35,21 @@ const GroupIdSchema = Type.String({ minLength: 1, maxLength: 64, pattern: '^[a-z
 /** How the Overview summary shows a group: its own row, or one compact line with the others. */
 export const TaskGroupSummarySchema = Type.Union([Type.Literal('row'), Type.Literal('compact')]);
 
-/** Progress, one definition: done of the Tasks meant to be done, with cancelled and on hold apart. */
+/**
+ * Progress, one definition: done of the Tasks meant to be done, with cancelled, ended and on hold
+ * named apart ("1 of 6 done · 1 cancelled · 1 ended · 1 on hold").
+ */
 export const TaskProgressSchema = Type.Object({
   completed: Type.Integer({ minimum: 0 }),
-  /** Every Task except cancelled ones (and those ended by an abandon); on hold counts. */
+  /**
+   * Every Task except cancelled ones and those ended without completing; a broken Task and one on
+   * hold count (unfinished).
+   */
   total: Type.Integer({ minimum: 0 }),
+  /** Cancelled Tasks, also those an abandon of the Specification cancelled. */
   cancelled: Type.Integer({ minimum: 0 }),
+  /** Tasks their own workflow ended without completing (abandoned, not cancelled). */
+  ended: Type.Integer({ minimum: 0 }),
   onHold: Type.Integer({ minimum: 0 }),
 });
 
@@ -44,6 +60,12 @@ export const TaskListQuerySchema = Type.Object(
 );
 export type TaskListQuery = Static<typeof TaskListQuerySchema>;
 
+/** The Specification's `tasks-stuck` names this Task: why it keeps the Specification waiting. */
+const BlocksSpecification = Type.Optional(
+  Type.Object({ cause: BlockingTaskSchema.properties.cause }),
+);
+
+/** A readable Task: its neutral facts and the status line derived from them. */
 export const TaskListRowSchema = Type.Object({
   id: TaskIdSchema,
   title: Type.String(),
@@ -51,10 +73,27 @@ export const TaskListRowSchema = Type.Object({
   dependsOn: Type.Array(TaskIdSchema),
   status: TaskStatusLineSchema,
   facts: TaskFactsSchema,
-  /** The Specification's `tasks-stuck` names this Task: why it keeps the Specification waiting. */
-  blocksSpecification: Type.Optional(Type.Object({ cause: BlockingTaskSchema.properties.cause })),
+  blocksSpecification: BlocksSpecification,
 });
 export type TaskListRow = Static<typeof TaskListRowSchema>;
+
+/**
+ * A broken Task (its files are inconsistent): only what is readable of it, so it is listed and
+ * reachable (for example by `?blocking=specification`) until its files are restored.
+ */
+export const BrokenTaskListRowSchema = Type.Object({
+  id: TaskIdSchema,
+  /** Absent when its manifest cannot be read. */
+  title: Type.Optional(Type.String()),
+  status: TaskStatusLineSchema,
+  broken: Type.Object({ reason: literals(BROKEN_REASONS) }),
+  blocksSpecification: BlocksSpecification,
+});
+export type BrokenTaskListRow = Static<typeof BrokenTaskListRowSchema>;
+
+/** A row of a group: a readable Task, or a broken one (`broken` present). */
+export const TaskListEntrySchema = Type.Union([TaskListRowSchema, BrokenTaskListRowSchema]);
+export type TaskListEntry = Static<typeof TaskListEntrySchema>;
 
 export const TaskListGroupSchema = Type.Object({
   id: GroupIdSchema,
@@ -62,7 +101,7 @@ export const TaskListGroupSchema = Type.Object({
   summary: TaskGroupSummarySchema,
   /** The Tasks page collapses it by default. */
   collapsed: Type.Boolean(),
-  tasks: Type.Array(TaskListRowSchema),
+  tasks: Type.Array(TaskListEntrySchema),
 });
 
 export const TaskListResponseSchema = Type.Object({
@@ -72,7 +111,7 @@ export const TaskListResponseSchema = Type.Object({
   progress: TaskProgressSchema,
   /** The attention projection (broken Tasks, the Specification, then Tasks in id order). */
   attention: Type.Array(WorkflowAttentionItemSchema),
-  /** Present with `?blocking=specification`: how many Tasks match out of all readable ones. */
+  /** Present with `?blocking=specification`: how many Tasks match out of all listed (broken too). */
   filter: Type.Optional(
     Type.Object({
       blocking: Type.Literal('specification'),

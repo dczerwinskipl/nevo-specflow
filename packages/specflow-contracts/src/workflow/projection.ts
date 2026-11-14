@@ -295,13 +295,15 @@ export const ATTENTION_ITEM_REASONS = [
 /** The one action an item offers; a client maps it to its command or page. */
 export const ATTENTION_ACTIONS = [
   'start-step',
+  'return-to-step',
   'configure-archetype',
   'review-tasks',
   'restore-task',
   'confirm-definition',
   'edit-context',
   'edit-dependencies',
-  'remove-or-cancel',
+  'open-project-settings',
+  'cancel-task',
   'satisfy-gate',
 ] as const;
 
@@ -317,6 +319,8 @@ export const WorkflowAttentionItemSchema = Type.Object({
   reason: literals(ATTENTION_ITEM_REASONS),
   actor: literals(['owner', 'agent'] as const),
   action: literals(ATTENTION_ACTIONS),
+  /** An alternative to `action` (for example `cancel-task`). */
+  secondaryAction: Type.Optional(literals(ATTENTION_ACTIONS)),
   message: text(4000),
   /** `task-escalated`, `tasks-stuck` (the Tasks to resolve), `dependency-unsatisfiable`. */
   taskIds: Type.Optional(array(TaskIdSchema)),

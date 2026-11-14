@@ -245,14 +245,16 @@ Specification's Task inventory from one Engine read (`readExecution`, every Task
   (the Tasks page collapses it by default) and its rows. A row is `id`, `title`, `type`
   (`{id, title}`), `dependsOn`, `status` (the status line), `facts` (the neutral facts above) and
   `blocksSpecification: {cause}` when the Specification's current `tasks-stuck` names it. A broken
-  Task has no row; it is an attention item.
-- `progress`: `completed`, `total` (every Task except cancelled ones and those ended by an
-  abandon; on hold counts), `cancelled` and `onHold`.
+  Task has a row of what is readable of it: `id`, `title` (when its manifest is readable),
+  `status` (`broken`), `broken: {reason}` and `blocksSpecification`; it is also an attention item.
+- `progress`: `completed`, `total` (every Task except cancelled ones and those ended without
+  completing; broken and on hold ones count), `cancelled` (also those an abandon cancelled),
+  `ended` (abandoned by its own workflow, not cancelled) and `onHold`.
 - `attention`: every attention item of the read, broken Tasks first, then the Specification, then
   Tasks in id order.
 - `?blocking=specification` (the only search value; anything else is `400`) keeps only the Tasks
   the current `tasks-stuck` item names, in their normal groups, and adds `filter: {blocking,
-matched, total}`. The Tasks are resolved from the read, never from ids in the URL, so a stale
+matched, total}` (`total`: every row, broken ones too). The Tasks are resolved from the read, never from ids in the URL, so a stale
   link never shows stale Tasks: when nothing blocks any more, `groups` is empty and `matched` 0.
 
 An unknown Specification is `404 specification_not_found`; an execution the Engine cannot read is
@@ -264,13 +266,15 @@ has no Tasks page (503).
 The grouping is declarative presentation data of the Runtime
 (`features/tasks/presentation/default-grouping.ts`), validated at load against its schema; no
 group, label or order lives in the Engine. Each group has a predicate over facts derived from the
-neutral facts: `preparation`, `position`, `outcome`, `startable`, `startBlocked` (a start blocker
-other than the status and an expected wait) and `waiting` (it waits only for dependencies that can
-all still complete or for an awaited process artifact). Every listed fact must match; the first
-matching group wins and a Task matching none falls into `other`. Attention is not a grouping fact.
+neutral facts: `broken`, `preparation`, `position`, `outcome`, `startable`, `startBlocked` (a
+start blocker other than the status and an expected wait; a broken Task too) and `waiting` (it
+waits only for dependencies that can all still complete or for an awaited process artifact). Every
+listed fact of a predicate must match, and a group with a list of predicates matches when one of
+them does; the first matching group wins and a Task matching none falls into `other`. Attention is
+not a grouping fact.
 The default, in order: Needs approval (`draft`), In progress (`ready`, run active or between
 steps), Ready to start (`ready`, not started, `startable`), Cannot start (`ready`, not started,
-`startBlocked`), Waiting (`ready`, not started, `waiting`), On hold, Done (completed; compact),
+`startBlocked`; or broken), Waiting (`ready`, not started, `waiting`), On hold, Done (completed; compact),
 Cancelled (compact, collapsed), Ended (abandoned by its own workflow; compact, collapsed). A
 per-project or per-user grouping can replace it later as a value of the same schema.
 
@@ -278,9 +282,10 @@ per-project or per-user grouping can replace it later as a value of the same sch
 
 An attention item (`WorkflowAttentionItem`) is derived on every read and never stored: `subject`,
 `step` and `stepTitle` (absent when no step resolves), `reason` (a stable code), `actor` (`owner`;
-`agent` is reserved), `action` (the one action it offers: `start-step`, `configure-archetype`,
-`review-tasks`, `restore-task`, `confirm-definition`, `edit-context`, `edit-dependencies`,
-`remove-or-cancel`, `satisfy-gate`), a display-only English `message`, and for `task-escalated`,
+`agent` is reserved), `action` (the primary action: `start-step`, `return-to-step`,
+`configure-archetype`, `review-tasks`, `restore-task`, `confirm-definition`, `edit-context`,
+`edit-dependencies`, `open-project-settings`, `cancel-task`, `satisfy-gate`), `secondaryAction`
+(an alternative, for example `cancel-task`), a display-only English `message`, and for `task-escalated`,
 `tasks-stuck` and `dependency-unsatisfiable` the Tasks it names (`taskIds`; `tasks-stuck` also
 `blocking: [{taskId, cause}]` with `cause` `draft`, `on-hold`, `broken` or
 `dependency-unsatisfiable`). The rules are the

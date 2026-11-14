@@ -3,7 +3,8 @@ import { Value } from 'typebox/value';
 
 /**
  * The dashboard grouping: declarative presentation data, not Engine code. Each group names a
- * predicate over the grouping facts (`grouping-facts.ts`; every listed fact must match), how the
+ * predicate over the grouping facts (`grouping-facts.ts`; every listed fact must match, and a list
+ * of predicates matches when one of them does), how the
  * Overview summary shows it and whether the Tasks page collapses it. Display order is the array
  * order, the first matching group wins and a Task matching none falls into `other`. The default
  * below is internal data for now; a per-project or per-user grouping can replace it later as a
@@ -14,33 +15,37 @@ const literals = <const T extends readonly string[]>(values: T) =>
   Type.Unsafe<T[number]>(Type.Union(values.map((value) => Type.Literal(value))));
 const GroupId = Type.String({ minLength: 1, maxLength: 64, pattern: '^[a-z0-9][a-z0-9-]*$' });
 
+const PredicateSchema = Type.Object(
+  {
+    broken: Type.Optional(Type.Boolean()),
+    preparation: Type.Optional(
+      Type.Array(literals(['draft', 'ready', 'on-hold', 'cancelled'] as const), {
+        minItems: 1,
+      }),
+    ),
+    position: Type.Optional(
+      Type.Array(literals(['not-started', 'active', 'ready', 'terminal'] as const), {
+        minItems: 1,
+      }),
+    ),
+    outcome: Type.Optional(
+      Type.Array(literals(['completed', 'abandoned'] as const), { minItems: 1 }),
+    ),
+    startable: Type.Optional(Type.Boolean()),
+    startBlocked: Type.Optional(Type.Boolean()),
+    waiting: Type.Optional(Type.Boolean()),
+  },
+  { additionalProperties: false },
+);
+export type GroupPredicate = Static<typeof PredicateSchema>;
+
 const GroupSchema = Type.Object(
   {
     id: GroupId,
     name: Type.String({ minLength: 1, maxLength: 80 }),
     summary: literals(['row', 'compact'] as const),
     collapsed: Type.Boolean(),
-    when: Type.Object(
-      {
-        preparation: Type.Optional(
-          Type.Array(literals(['draft', 'ready', 'on-hold', 'cancelled'] as const), {
-            minItems: 1,
-          }),
-        ),
-        position: Type.Optional(
-          Type.Array(literals(['not-started', 'active', 'ready', 'terminal'] as const), {
-            minItems: 1,
-          }),
-        ),
-        outcome: Type.Optional(
-          Type.Array(literals(['completed', 'abandoned'] as const), { minItems: 1 }),
-        ),
-        startable: Type.Optional(Type.Boolean()),
-        startBlocked: Type.Optional(Type.Boolean()),
-        waiting: Type.Optional(Type.Boolean()),
-      },
-      { additionalProperties: false },
-    ),
+    when: Type.Union([PredicateSchema, Type.Array(PredicateSchema, { minItems: 1, maxItems: 8 })]),
   },
   { additionalProperties: false },
 );
@@ -112,7 +117,11 @@ export const DEFAULT_DASHBOARD_GROUPING: DashboardGrouping = parseDashboardGroup
       name: 'Cannot start',
       summary: 'row',
       collapsed: false,
-      when: { preparation: ['ready'], position: ['not-started'], startBlocked: true },
+      // A broken Task cannot start either: it is listed here until its files are restored.
+      when: [
+        { preparation: ['ready'], position: ['not-started'], startBlocked: true },
+        { broken: true },
+      ],
     },
     {
       id: 'waiting',

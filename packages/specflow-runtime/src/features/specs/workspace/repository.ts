@@ -46,6 +46,7 @@ export interface WorkspaceAttentionRecord {
   readonly code?: string;
   readonly actor?: 'owner' | 'agent';
   readonly action?: WorkspaceAttention['action'];
+  readonly secondaryAction?: WorkspaceAttention['secondaryAction'];
   readonly taskIds?: string[];
   readonly blocking?: WorkspaceAttention['blocking'];
 }
@@ -87,6 +88,7 @@ export interface WorkspaceReadModel {
       readonly completed: number;
       readonly total: number;
       readonly cancelled?: number;
+      readonly ended?: number;
       readonly onHold?: number;
       readonly attention: WorkspaceAttentionRecord[];
       readonly overview: TaskOverview;

@@ -27,22 +27,25 @@ export const ATTENTION_ITEM_REASONS = [
 ] as const;
 export type AttentionItemReason = (typeof ATTENTION_ITEM_REASONS)[number];
 
-/** The one action an item offers; a surface maps it to its own command or page. */
+/** An action an item offers; a surface maps it to its own command or page. */
 export const ATTENTION_ACTIONS = [
   /** Start (or resume) the step the item names. */
   'start-step',
+  /** Return the run to an earlier step (the workflow menu). */
+  'return-to-step',
   /** Choose a provider or model, or fix the agent archetype, of the step. */
   'configure-archetype',
   /** Open the Specification's Tasks the item names (`taskIds`) and decide them. */
   'review-tasks',
-  /** Restore the Task's files from Git. */
+  /** Restore the files of the broken Task (the item's own, or the dependencies it names) from Git. */
   'restore-task',
   /** Review the workflow revision the run is pinned to (re-pinning is not supported yet). */
   'confirm-definition',
   'edit-context',
   'edit-dependencies',
-  /** The Task cannot run with its type any more: remove it (or cancel it) and create another. */
-  'remove-or-cancel',
+  /** The task types and workflows are project definitions: open the project settings. */
+  'open-project-settings',
+  'cancel-task',
   /** Make an entry gate of the step hold (for example write the document it names). */
   'satisfy-gate',
 ] as const;
@@ -66,12 +69,16 @@ export interface AttentionItem {
   readonly stepTitle?: string;
   readonly reason: AttentionItemReason;
   readonly actor: AttentionActor;
+  /** The one primary action. */
   readonly action: AttentionAction;
+  /** An alternative when the primary one is not wanted (for example `cancel-task`). */
+  readonly secondaryAction?: AttentionAction;
   /** One English sentence for surfaces without their own copy (CLI, MCP); display only. */
   readonly message: string;
   /**
    * `task-escalated`: every escalated Task; `tasks-stuck`: the Tasks to resolve (`blocking`);
-   * `dependency-unsatisfiable`: the dependencies that can no longer complete. In id order.
+   * `dependency-unsatisfiable`: the dependencies that can no longer complete (`restore-task`: the
+   * broken ones among them). In id order.
    */
   readonly taskIds?: readonly string[];
   /** `tasks-stuck`: each Task of `taskIds` with why it blocks (always set, possibly empty). */

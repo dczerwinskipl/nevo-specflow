@@ -1,5 +1,6 @@
 import type {
   AttentionItem,
+  BrokenTaskFacts,
   ExecutionCatalogue,
   ExecutionInspection,
   ExecutionReading,
@@ -52,7 +53,11 @@ const stuckItem: AttentionItem = {
 };
 
 /** The control-center scenario: one Task per default group, a context blocker and a stuck wait. */
-function scenario(overrides: Record<string, TaskFacts> = {}, attention = [stuckItem, contextItem]) {
+function scenario(
+  overrides: Record<string, TaskFacts> = {},
+  attention: AttentionItem[] = [stuckItem, contextItem],
+  broken: BrokenTaskFacts[] = [],
+) {
   const all: Record<string, TaskFacts> = {
     't-04': blocked([{ kind: 'status', status: 'draft' }], { preparation: 'draft' }),
     build: facts({
@@ -78,13 +83,14 @@ function scenario(overrides: Record<string, TaskFacts> = {}, attention = [stuckI
     tasks: Object.keys(all).map((taskId) => ({
       record: { taskId, title: `Title ${taskId}`, type: 'implementation', dependsOn: [] },
     })),
-    brokenTasks: [],
+    brokenTasks: broken.map((task) => task.taskId),
+    attention,
   } as unknown as ExecutionInspection;
   const reading = {
     inspection,
     facts: new Map(Object.entries(all)),
-    attention,
-    progress: { completed: 1, total: 8, cancelled: 1, onHold: 1 },
+    broken,
+    progress: { completed: 1, total: 8, cancelled: 1, ended: 0, onHold: 1 },
     preparation: 'preparing',
   } as unknown as ExecutionReading;
 
@@ -197,7 +203,7 @@ describe('the Overview tasks section', () => {
       { taskId: 't-04', title: 'Title t-04', cause: 'draft' },
       { taskId: 't-05', title: 'Title t-05', cause: 'on-hold' },
     ]);
-    expect(data).toMatchObject({ completed: 1, total: 8, cancelled: 1, onHold: 1 });
+    expect(data).toMatchObject({ completed: 1, total: 8, cancelled: 1, ended: 0, onHold: 1 });
     expect(data.attention).toEqual([
       {
         id: 'specification-attention',
@@ -236,6 +242,50 @@ describe('the blocking filter', () => {
     expect(groupIds(list.groups)).toEqual({ 'needs-approval': ['t-04'], 'on-hold': ['t-05'] });
     expect(list.filter).toEqual({ blocking: 'specification', matched: 2, total: 9 });
     expect(list.groups[0]!.tasks[0]).toMatchObject({ blocksSpecification: { cause: 'draft' } });
+  });
+
+  it('lists a broken blocking Task as a Cannot start row, so the filter never opens empty', () => {
+    const brokenStuck: AttentionItem = {
+      ...stuckItem,
+      taskIds: ['gone'],
+      blocking: [{ taskId: 'gone', cause: 'broken' }],
+    };
+    const brokenItem: AttentionItem = {
+      subject: { kind: 'task', specId: SPEC, taskId: 'gone' },
+      reason: 'task-broken',
+      actor: 'owner',
+      action: 'restore-task',
+      message: 'The files of the task are inconsistent: restore them from Git.',
+    };
+    const list = taskListOf(
+      scenario({}, [brokenItem, brokenStuck], [{ taskId: 'gone', reason: 'missing-folder' }]),
+      { blocking: 'specification' },
+    );
+
+    expect(list.groups).toEqual([
+      expect.objectContaining({
+        id: 'cannot-start',
+        tasks: [
+          {
+            id: 'gone',
+            status: { id: 'broken', label: 'Broken', lifecycle: 'blocked' },
+            broken: { reason: 'missing-folder' },
+            blocksSpecification: { cause: 'broken' },
+          },
+        ],
+      }),
+    ]);
+    expect(list.filter).toEqual({ blocking: 'specification', matched: 1, total: 10 });
+
+    const section = workspaceTasksOf(
+      scenario({}, [brokenItem, brokenStuck], [{ taskId: 'gone', reason: 'missing-folder' }]),
+    ).section;
+    expect(section).toMatchObject({
+      data: {
+        overview: { stuck: [{ taskId: 'gone', cause: 'broken' }] },
+        attention: [{ id: 'task-broken.gone', title: 'gone', priority: 'high' }, {}],
+      },
+    });
   });
 
   it('shows nothing once nothing blocks the specification any more', () => {

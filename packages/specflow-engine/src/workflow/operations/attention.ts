@@ -97,13 +97,17 @@ export function deriveAttention(
  * The attention a Task that has not started needs for its start blockers, from its action
  * projection (owner decision 2A): only a `ready` (approved) Task, and only a blocker a person has
  * to fix. A draft or a Task on hold (`status`), dependencies that can all still complete and an
- * awaited process artifact are not attention, and neither is a Task that can start. One item: the
- * most fundamental blocker wins (type, then dependencies, then context, then entry gates).
+ * awaited process artifact are not attention, and neither is a Task that can start. An unmet entry
+ * gate is attention only once no dependency it waits for can still complete: a dependency may
+ * deliver the document. One item: the most fundamental blocker wins (type, then dependencies, then
+ * context, then entry gates). `broken` are the broken Tasks of the Specification: a dependency on
+ * one is fixed by restoring it.
  */
 export function startBlockerAttention(
   subject: Extract<WorkflowSubject, { kind: 'task' }>,
   blockers: readonly StartBlocker[],
-  next?: { readonly step: { readonly id: string; readonly title: string } },
+  next: { readonly step: { readonly id: string; readonly title: string } } | undefined,
+  broken: readonly string[],
 ): AttentionItem | undefined {
   if (blockers.some((blocker) => blocker.kind === 'status' || blocker.kind === 'broken')) {
     return undefined;
@@ -118,10 +122,18 @@ export function startBlockerAttention(
 
   for (const blocker of blockers) {
     if (blocker.kind === 'dependencies' && blocker.unsatisfiable.length > 0) {
-      return item(subject, 'dependency-unsatisfiable', {
-        ...step,
-        taskIds: [...blocker.unsatisfiable].sort(),
-      });
+      const taskIds = [...blocker.unsatisfiable].sort();
+      const restorable = taskIds.filter((taskId) => broken.includes(taskId));
+
+      return restorable.length > 0
+        ? item(subject, 'dependency-unsatisfiable', {
+            ...step,
+            taskIds,
+            action: 'restore-task',
+            secondaryAction: 'edit-dependencies',
+            message: `It depends on broken tasks: ${restorable.join(', ')}. Restore their files from Git, or edit its dependencies.`,
+          })
+        : item(subject, 'dependency-unsatisfiable', { ...step, taskIds });
     }
   }
 
@@ -134,8 +146,11 @@ export function startBlockerAttention(
     }
   }
 
+  const waiting = blockers.some(
+    (blocker) => blocker.kind === 'dependencies' && blocker.unsatisfiable.length === 0,
+  );
   for (const blocker of blockers) {
-    if (blocker.kind === 'gates-unsatisfied') {
+    if (blocker.kind === 'gates-unsatisfied' && !waiting) {
       return item(subject, 'entry-gate-unsatisfied', {
         ...step,
         message: `${quoted(next?.step.title)}cannot start until ${blocker.gates.map((gate) => gate.label).join('; ')}.`,
@@ -146,40 +161,48 @@ export function startBlockerAttention(
   return undefined;
 }
 
-const ACTION_OF: Readonly<Record<AttentionItemReason, AttentionAction>> = {
-  'owner-action': 'start-step',
-  'human-step': 'start-step',
-  'session-unavailable': 'start-step',
-  'archetype-missing': 'configure-archetype',
-  'provider-not-chosen': 'configure-archetype',
-  'model-missing': 'configure-archetype',
-  'tasks-stuck': 'review-tasks',
-  'task-escalated': 'review-tasks',
-  'task-broken': 'restore-task',
-  'definition-changed': 'confirm-definition',
-  'context-unresolved': 'edit-context',
-  'dependency-unsatisfiable': 'edit-dependencies',
-  'type-not-allowed': 'remove-or-cancel',
-  'definition-missing': 'remove-or-cancel',
-  'entry-gate-unsatisfied': 'satisfy-gate',
+/** The primary and the alternative action of each reason. */
+const ACTIONS_OF: Readonly<
+  Record<AttentionItemReason, readonly [AttentionAction, AttentionAction?]>
+> = {
+  'owner-action': ['start-step'],
+  'human-step': ['start-step'],
+  'session-unavailable': ['start-step'],
+  'archetype-missing': ['configure-archetype'],
+  'provider-not-chosen': ['configure-archetype'],
+  'model-missing': ['configure-archetype'],
+  'tasks-stuck': ['review-tasks'],
+  'task-escalated': ['review-tasks'],
+  'task-broken': ['restore-task'],
+  'definition-changed': ['confirm-definition'],
+  'context-unresolved': ['edit-context'],
+  'dependency-unsatisfiable': ['edit-dependencies', 'cancel-task'],
+  'type-not-allowed': ['open-project-settings', 'cancel-task'],
+  'definition-missing': ['open-project-settings', 'cancel-task'],
+  'entry-gate-unsatisfied': ['satisfy-gate'],
 };
 
-type ItemFields = Partial<Omit<AttentionItem, 'subject' | 'reason' | 'actor' | 'action'>>;
+type ItemFields = Partial<Omit<AttentionItem, 'subject' | 'reason' | 'actor'>>;
 
 function item(
   subject: WorkflowSubject,
   reason: AttentionItemReason,
   fields: ItemFields,
 ): AttentionItem {
-  const { message, ...rest } = fields;
+  const { message, action, secondaryAction, ...rest } = fields;
+  // An item that names its own action names its alternative too (or none).
+  const [primary, secondary] =
+    action !== undefined ? [action, secondaryAction] : ACTIONS_OF[reason];
 
   return {
     subject,
     ...rest,
     reason,
-    // Every item the Engine derives today waits for the owner.
+    // Every item the Engine derives today waits for the owner: the gates and the steps it derives
+    // them from name no other actor.
     actor: 'owner',
-    action: ACTION_OF[reason],
+    action: primary,
+    ...(secondary !== undefined ? { secondaryAction: secondary } : {}),
     message: message ?? messageOf(reason, rest),
   };
 }
@@ -191,8 +214,14 @@ function fromDecision(
 ): AttentionItem {
   const { kind: _kind, reason, ...fields } = decision;
   const title = findStep(definition, decision.step)?.title;
+  // Every Task is closed but the wait did not end: there is no Task to review, only a return.
+  const closed = reason === 'tasks-stuck' && (decision.blocking ?? []).length === 0;
 
-  return item(subject, reason, { ...fields, ...(title !== undefined ? { stepTitle: title } : {}) });
+  return item(subject, reason, {
+    ...fields,
+    ...(title !== undefined ? { stepTitle: title } : {}),
+    ...(closed ? { action: 'return-to-step' as const } : {}),
+  });
 }
 
 function definitionChangedItem(subject: WorkflowSubject, run: WorkflowRun): AttentionItem {

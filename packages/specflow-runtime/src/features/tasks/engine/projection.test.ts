@@ -117,8 +117,8 @@ function basis(tasks: unknown[]): InspectionBasis {
     inspection,
     actions: new Map(),
     facts: new Map(),
-    attention: [],
-    progress: { completed: 0, total: tasks.length, cancelled: 0, onHold: 0 },
+    broken: [],
+    progress: { completed: 0, total: tasks.length, cancelled: 0, ended: 0, onHold: 0 },
     preparation: 'prepared',
   };
 

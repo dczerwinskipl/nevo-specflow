@@ -5,6 +5,13 @@ import { groupingFactsOf } from './grouping-facts';
 
 export type TaskStatusLine = TaskListRow['status'];
 
+/** The status line of a broken Task. */
+export const BROKEN_STATUS: TaskStatusLine = {
+  id: 'broken',
+  label: 'Broken',
+  lifecycle: 'blocked',
+};
+
 /**
  * The status line of a Task, derived from its neutral facts (never from a group): preparation
  * first, then the run, then whether it can start.

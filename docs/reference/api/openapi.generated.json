@@ -8192,6 +8192,12 @@
                   {
                     "type": "string",
                     "enum": [
+                      "return-to-step"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
                       "configure-archetype"
                     ]
                   },
@@ -8228,7 +8234,83 @@
                   {
                     "type": "string",
                     "enum": [
-                      "remove-or-cancel"
+                      "open-project-settings"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "cancel-task"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "satisfy-gate"
+                    ]
+                  }
+                ]
+              },
+              "secondaryAction": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "start-step"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "return-to-step"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "configure-archetype"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "review-tasks"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "restore-task"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "confirm-definition"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "edit-context"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "edit-dependencies"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "open-project-settings"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "cancel-task"
                     ]
                   },
                   {
@@ -28884,882 +28966,1244 @@
                           "tasks": {
                             "type": "array",
                             "items": {
-                              "type": "object",
-                              "required": [
-                                "id",
-                                "title",
-                                "type",
-                                "dependsOn",
-                                "status",
-                                "facts"
-                              ],
-                              "properties": {
-                                "id": {
-                                  "$ref": "#/components/schemas/TaskId"
-                                },
-                                "title": {
-                                  "type": "string"
-                                },
-                                "type": {
+                              "anyOf": [
+                                {
                                   "type": "object",
                                   "required": [
                                     "id",
-                                    "title"
+                                    "title",
+                                    "type",
+                                    "dependsOn",
+                                    "status",
+                                    "facts"
                                   ],
                                   "properties": {
                                     "id": {
-                                      "type": "string"
+                                      "$ref": "#/components/schemas/TaskId"
                                     },
                                     "title": {
                                       "type": "string"
-                                    }
-                                  }
-                                },
-                                "dependsOn": {
-                                  "type": "array",
-                                  "items": {
-                                    "$ref": "#/components/schemas/TaskId"
-                                  }
-                                },
-                                "status": {
-                                  "type": "object",
-                                  "required": [
-                                    "id",
-                                    "label",
-                                    "lifecycle"
-                                  ],
-                                  "properties": {
-                                    "id": {
-                                      "type": "string"
                                     },
-                                    "label": {
-                                      "type": "string"
-                                    },
-                                    "lifecycle": {
-                                      "anyOf": [
-                                        {
-                                          "type": "string",
-                                          "enum": [
-                                            "pending"
-                                          ]
+                                    "type": {
+                                      "type": "object",
+                                      "required": [
+                                        "id",
+                                        "title"
+                                      ],
+                                      "properties": {
+                                        "id": {
+                                          "type": "string"
                                         },
-                                        {
-                                          "type": "string",
-                                          "enum": [
-                                            "in_progress"
-                                          ]
-                                        },
-                                        {
-                                          "type": "string",
-                                          "enum": [
-                                            "completed"
-                                          ]
-                                        },
-                                        {
-                                          "type": "string",
-                                          "enum": [
-                                            "blocked"
-                                          ]
+                                        "title": {
+                                          "type": "string"
                                         }
-                                      ]
-                                    }
-                                  }
-                                },
-                                "facts": {
-                                  "type": "object",
-                                  "required": [
-                                    "preparation",
-                                    "escalated",
-                                    "position",
-                                    "startable",
-                                    "startBlockers",
-                                    "definitionChanged"
-                                  ],
-                                  "properties": {
-                                    "preparation": {
-                                      "anyOf": [
-                                        {
-                                          "type": "string",
-                                          "enum": [
-                                            "draft"
-                                          ]
-                                        },
-                                        {
-                                          "type": "string",
-                                          "enum": [
-                                            "ready"
-                                          ]
-                                        },
-                                        {
-                                          "type": "string",
-                                          "enum": [
-                                            "on-hold"
-                                          ]
-                                        },
-                                        {
-                                          "type": "string",
-                                          "enum": [
-                                            "cancelled"
-                                          ]
-                                        }
-                                      ]
+                                      }
                                     },
-                                    "escalated": {
-                                      "type": "boolean"
+                                    "dependsOn": {
+                                      "type": "array",
+                                      "items": {
+                                        "$ref": "#/components/schemas/TaskId"
+                                      }
                                     },
-                                    "position": {
-                                      "anyOf": [
-                                        {
-                                          "type": "object",
-                                          "required": [
-                                            "state"
-                                          ],
-                                          "properties": {
-                                            "state": {
+                                    "status": {
+                                      "type": "object",
+                                      "required": [
+                                        "id",
+                                        "label",
+                                        "lifecycle"
+                                      ],
+                                      "properties": {
+                                        "id": {
+                                          "type": "string"
+                                        },
+                                        "label": {
+                                          "type": "string"
+                                        },
+                                        "lifecycle": {
+                                          "anyOf": [
+                                            {
                                               "type": "string",
                                               "enum": [
-                                                "not-started"
+                                                "pending"
                                               ]
-                                            }
-                                          }
-                                        },
-                                        {
-                                          "type": "object",
-                                          "required": [
-                                            "state",
-                                            "step",
-                                            "attempt"
-                                          ],
-                                          "properties": {
-                                            "state": {
+                                            },
+                                            {
                                               "type": "string",
                                               "enum": [
-                                                "active"
+                                                "in_progress"
                                               ]
                                             },
-                                            "step": {
-                                              "type": "string"
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "completed"
+                                              ]
                                             },
-                                            "attempt": {
-                                              "type": "integer",
-                                              "minimum": 1
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "blocked"
+                                              ]
                                             }
-                                          }
-                                        },
-                                        {
-                                          "type": "object",
-                                          "required": [
-                                            "state",
-                                            "step"
-                                          ],
-                                          "properties": {
-                                            "state": {
+                                          ]
+                                        }
+                                      }
+                                    },
+                                    "facts": {
+                                      "type": "object",
+                                      "required": [
+                                        "preparation",
+                                        "escalated",
+                                        "position",
+                                        "startable",
+                                        "startBlockers",
+                                        "definitionChanged"
+                                      ],
+                                      "properties": {
+                                        "preparation": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "draft"
+                                              ]
+                                            },
+                                            {
                                               "type": "string",
                                               "enum": [
                                                 "ready"
                                               ]
                                             },
-                                            "step": {
-                                              "type": "string"
-                                            }
-                                          }
-                                        },
-                                        {
-                                          "type": "object",
-                                          "required": [
-                                            "state",
-                                            "outcome"
-                                          ],
-                                          "properties": {
-                                            "state": {
+                                            {
                                               "type": "string",
                                               "enum": [
-                                                "terminal"
+                                                "on-hold"
                                               ]
                                             },
-                                            "outcome": {
-                                              "anyOf": [
-                                                {
-                                                  "type": "string",
-                                                  "enum": [
-                                                    "completed"
-                                                  ]
-                                                },
-                                                {
-                                                  "type": "string",
-                                                  "enum": [
-                                                    "abandoned"
-                                                  ]
-                                                }
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "cancelled"
                                               ]
                                             }
-                                          }
-                                        }
-                                      ]
-                                    },
-                                    "startable": {
-                                      "type": "boolean"
-                                    },
-                                    "startBlockers": {
-                                      "type": "array",
-                                      "items": {
-                                        "anyOf": [
-                                          {
-                                            "type": "object",
-                                            "required": [
-                                              "kind",
-                                              "status"
-                                            ],
-                                            "properties": {
-                                              "kind": {
-                                                "type": "string",
-                                                "enum": [
-                                                  "status"
-                                                ]
-                                              },
-                                              "status": {
-                                                "anyOf": [
-                                                  {
-                                                    "type": "string",
-                                                    "enum": [
-                                                      "draft"
-                                                    ]
-                                                  },
-                                                  {
-                                                    "type": "string",
-                                                    "enum": [
-                                                      "on-hold"
-                                                    ]
-                                                  },
-                                                  {
-                                                    "type": "string",
-                                                    "enum": [
-                                                      "cancelled"
-                                                    ]
-                                                  }
-                                                ]
-                                              }
-                                            }
-                                          },
-                                          {
-                                            "type": "object",
-                                            "required": [
-                                              "kind",
-                                              "waitingFor",
-                                              "unsatisfiable"
-                                            ],
-                                            "properties": {
-                                              "kind": {
-                                                "type": "string",
-                                                "enum": [
-                                                  "dependencies"
-                                                ]
-                                              },
-                                              "waitingFor": {
-                                                "type": "array",
-                                                "items": {
-                                                  "$ref": "#/components/schemas/TaskId"
-                                                },
-                                                "maxItems": 1000
-                                              },
-                                              "unsatisfiable": {
-                                                "type": "array",
-                                                "items": {
-                                                  "$ref": "#/components/schemas/TaskId"
-                                                },
-                                                "maxItems": 1000
-                                              }
-                                            }
-                                          },
-                                          {
-                                            "type": "object",
-                                            "required": [
-                                              "kind",
-                                              "reason"
-                                            ],
-                                            "properties": {
-                                              "kind": {
-                                                "type": "string",
-                                                "enum": [
-                                                  "broken"
-                                                ]
-                                              },
-                                              "reason": {
-                                                "anyOf": [
-                                                  {
-                                                    "type": "string",
-                                                    "enum": [
-                                                      "missing-folder"
-                                                    ]
-                                                  },
-                                                  {
-                                                    "type": "string",
-                                                    "enum": [
-                                                      "missing-manifest"
-                                                    ]
-                                                  },
-                                                  {
-                                                    "type": "string",
-                                                    "enum": [
-                                                      "unregistered-run"
-                                                    ]
-                                                  },
-                                                  {
-                                                    "type": "string",
-                                                    "enum": [
-                                                      "draft-with-run"
-                                                    ]
-                                                  },
-                                                  {
-                                                    "type": "string",
-                                                    "enum": [
-                                                      "cancelled-while-active"
-                                                    ]
-                                                  },
-                                                  {
-                                                    "type": "string",
-                                                    "enum": [
-                                                      "position"
-                                                    ]
-                                                  }
-                                                ]
-                                              }
-                                            }
-                                          },
-                                          {
-                                            "type": "object",
-                                            "required": [
-                                              "kind",
-                                              "pinned"
-                                            ],
-                                            "properties": {
-                                              "kind": {
-                                                "type": "string",
-                                                "enum": [
-                                                  "definition-changed"
-                                                ]
-                                              },
-                                              "pinned": {
-                                                "type": "object",
-                                                "required": [
-                                                  "id",
-                                                  "version",
-                                                  "revision"
-                                                ],
-                                                "properties": {
-                                                  "id": {
-                                                    "type": "string"
-                                                  },
-                                                  "version": {
-                                                    "type": "integer"
-                                                  },
-                                                  "revision": {
-                                                    "type": "string"
-                                                  }
-                                                }
-                                              }
-                                            }
-                                          },
-                                          {
-                                            "type": "object",
-                                            "required": [
-                                              "kind",
-                                              "message"
-                                            ],
-                                            "properties": {
-                                              "kind": {
-                                                "type": "string",
-                                                "enum": [
-                                                  "type-not-allowed"
-                                                ]
-                                              },
-                                              "message": {
-                                                "type": "string",
-                                                "maxLength": 20000
-                                              }
-                                            }
-                                          },
-                                          {
-                                            "type": "object",
-                                            "required": [
-                                              "kind",
-                                              "message"
-                                            ],
-                                            "properties": {
-                                              "kind": {
-                                                "type": "string",
-                                                "enum": [
-                                                  "definition-missing"
-                                                ]
-                                              },
-                                              "message": {
-                                                "type": "string",
-                                                "maxLength": 20000
-                                              }
-                                            }
-                                          },
-                                          {
-                                            "type": "object",
-                                            "required": [
-                                              "kind",
-                                              "message"
-                                            ],
-                                            "properties": {
-                                              "kind": {
-                                                "type": "string",
-                                                "enum": [
-                                                  "not-configured"
-                                                ]
-                                              },
-                                              "message": {
-                                                "type": "string",
-                                                "maxLength": 20000
-                                              }
-                                            }
-                                          },
-                                          {
-                                            "type": "object",
-                                            "required": [
-                                              "kind",
-                                              "entries"
-                                            ],
-                                            "properties": {
-                                              "kind": {
-                                                "type": "string",
-                                                "enum": [
-                                                  "context-unresolved"
-                                                ]
-                                              },
-                                              "entries": {
-                                                "type": "array",
-                                                "items": {
-                                                  "type": "object",
-                                                  "required": [
-                                                    "index",
-                                                    "kind",
-                                                    "reason"
-                                                  ],
-                                                  "properties": {
-                                                    "index": {
-                                                      "type": "integer",
-                                                      "minimum": 0
-                                                    },
-                                                    "kind": {
-                                                      "anyOf": [
-                                                        {
-                                                          "type": "string",
-                                                          "enum": [
-                                                            "task-document"
-                                                          ]
-                                                        },
-                                                        {
-                                                          "type": "string",
-                                                          "enum": [
-                                                            "specification-document"
-                                                          ]
-                                                        },
-                                                        {
-                                                          "type": "string",
-                                                          "enum": [
-                                                            "project-document"
-                                                          ]
-                                                        },
-                                                        {
-                                                          "type": "string",
-                                                          "enum": [
-                                                            "path"
-                                                          ]
-                                                        },
-                                                        {
-                                                          "type": "string",
-                                                          "enum": [
-                                                            "instructions"
-                                                          ]
-                                                        }
-                                                      ]
-                                                    },
-                                                    "reason": {
-                                                      "anyOf": [
-                                                        {
-                                                          "type": "string",
-                                                          "enum": [
-                                                            "not-registered"
-                                                          ]
-                                                        },
-                                                        {
-                                                          "type": "string",
-                                                          "enum": [
-                                                            "not-found"
-                                                          ]
-                                                        }
-                                                      ]
-                                                    }
-                                                  }
-                                                },
-                                                "maxItems": 1000
-                                              }
-                                            }
-                                          },
-                                          {
-                                            "type": "object",
-                                            "required": [
-                                              "kind",
-                                              "entries"
-                                            ],
-                                            "properties": {
-                                              "kind": {
-                                                "type": "string",
-                                                "enum": [
-                                                  "context-awaited"
-                                                ]
-                                              },
-                                              "entries": {
-                                                "type": "array",
-                                                "items": {
-                                                  "type": "object",
-                                                  "required": [
-                                                    "index",
-                                                    "kind"
-                                                  ],
-                                                  "properties": {
-                                                    "index": {
-                                                      "type": "integer",
-                                                      "minimum": 0
-                                                    },
-                                                    "kind": {
-                                                      "anyOf": [
-                                                        {
-                                                          "type": "string",
-                                                          "enum": [
-                                                            "task-document"
-                                                          ]
-                                                        },
-                                                        {
-                                                          "type": "string",
-                                                          "enum": [
-                                                            "specification-document"
-                                                          ]
-                                                        },
-                                                        {
-                                                          "type": "string",
-                                                          "enum": [
-                                                            "project-document"
-                                                          ]
-                                                        },
-                                                        {
-                                                          "type": "string",
-                                                          "enum": [
-                                                            "path"
-                                                          ]
-                                                        }
-                                                      ]
-                                                    }
-                                                  }
-                                                },
-                                                "maxItems": 1000
-                                              }
-                                            }
-                                          },
-                                          {
-                                            "type": "object",
-                                            "required": [
-                                              "kind",
-                                              "gates"
-                                            ],
-                                            "properties": {
-                                              "kind": {
-                                                "type": "string",
-                                                "enum": [
-                                                  "gates-unsatisfied"
-                                                ]
-                                              },
-                                              "gates": {
-                                                "type": "array",
-                                                "items": {
-                                                  "type": "object",
-                                                  "required": [
-                                                    "id",
-                                                    "type",
-                                                    "label",
-                                                    "documentType",
-                                                    "scope",
-                                                    "status"
-                                                  ],
-                                                  "properties": {
-                                                    "id": {
-                                                      "type": "string"
-                                                    },
-                                                    "type": {
-                                                      "type": "string",
-                                                      "enum": [
-                                                        "document"
-                                                      ]
-                                                    },
-                                                    "label": {
-                                                      "type": "string"
-                                                    },
-                                                    "documentType": {
-                                                      "type": "string"
-                                                    },
-                                                    "scope": {
-                                                      "anyOf": [
-                                                        {
-                                                          "type": "object",
-                                                          "required": [
-                                                            "kind",
-                                                            "specId"
-                                                          ],
-                                                          "properties": {
-                                                            "kind": {
-                                                              "type": "string",
-                                                              "enum": [
-                                                                "specification"
-                                                              ]
-                                                            },
-                                                            "specId": {
-                                                              "$ref": "#/components/schemas/SpecId"
-                                                            }
-                                                          }
-                                                        },
-                                                        {
-                                                          "type": "object",
-                                                          "required": [
-                                                            "kind",
-                                                            "specId",
-                                                            "taskId"
-                                                          ],
-                                                          "properties": {
-                                                            "kind": {
-                                                              "type": "string",
-                                                              "enum": [
-                                                                "task"
-                                                              ]
-                                                            },
-                                                            "specId": {
-                                                              "$ref": "#/components/schemas/SpecId"
-                                                            },
-                                                            "taskId": {
-                                                              "$ref": "#/components/schemas/TaskId"
-                                                            }
-                                                          }
-                                                        }
-                                                      ]
-                                                    },
-                                                    "status": {
-                                                      "anyOf": [
-                                                        {
-                                                          "type": "string",
-                                                          "enum": [
-                                                            "satisfied"
-                                                          ]
-                                                        },
-                                                        {
-                                                          "type": "string",
-                                                          "enum": [
-                                                            "unsatisfied"
-                                                          ]
-                                                        }
-                                                      ]
-                                                    },
-                                                    "documentId": {
-                                                      "type": "string"
-                                                    },
-                                                    "reason": {
-                                                      "anyOf": [
-                                                        {
-                                                          "type": "string",
-                                                          "enum": [
-                                                            "no-document"
-                                                          ]
-                                                        },
-                                                        {
-                                                          "type": "string",
-                                                          "enum": [
-                                                            "file-missing"
-                                                          ]
-                                                        },
-                                                        {
-                                                          "type": "string",
-                                                          "enum": [
-                                                            "sections-missing"
-                                                          ]
-                                                        },
-                                                        {
-                                                          "type": "string",
-                                                          "enum": [
-                                                            "unreadable"
-                                                          ]
-                                                        }
-                                                      ]
-                                                    },
-                                                    "missingSections": {
-                                                      "type": "array",
-                                                      "items": {
-                                                        "type": "string"
-                                                      },
-                                                      "maxItems": 1000
-                                                    }
-                                                  }
-                                                },
-                                                "maxItems": 1000
-                                              }
-                                            }
-                                          }
-                                        ]
-                                      }
-                                    },
-                                    "dependencyWait": {
-                                      "type": "object",
-                                      "required": [
-                                        "waitingFor",
-                                        "unsatisfiable"
-                                      ],
-                                      "properties": {
-                                        "waitingFor": {
-                                          "type": "array",
-                                          "items": {
-                                            "$ref": "#/components/schemas/TaskId"
-                                          }
+                                          ]
                                         },
-                                        "unsatisfiable": {
-                                          "type": "array",
-                                          "items": {
-                                            "$ref": "#/components/schemas/TaskId"
-                                          }
-                                        }
-                                      }
-                                    },
-                                    "definitionChanged": {
-                                      "type": "boolean"
-                                    },
-                                    "attention": {
-                                      "type": "object",
-                                      "required": [
-                                        "subject",
-                                        "reason",
-                                        "actor",
-                                        "action",
-                                        "message"
-                                      ],
-                                      "properties": {
-                                        "subject": {
+                                        "escalated": {
+                                          "type": "boolean"
+                                        },
+                                        "position": {
                                           "anyOf": [
                                             {
                                               "type": "object",
                                               "required": [
-                                                "kind",
-                                                "specId"
+                                                "state"
                                               ],
                                               "properties": {
-                                                "kind": {
+                                                "state": {
                                                   "type": "string",
                                                   "enum": [
-                                                    "specification"
+                                                    "not-started"
                                                   ]
-                                                },
-                                                "specId": {
-                                                  "$ref": "#/components/schemas/SpecId"
                                                 }
                                               }
                                             },
                                             {
                                               "type": "object",
                                               "required": [
-                                                "kind",
-                                                "specId",
-                                                "taskId"
+                                                "state",
+                                                "step",
+                                                "attempt"
                                               ],
                                               "properties": {
-                                                "kind": {
+                                                "state": {
                                                   "type": "string",
                                                   "enum": [
-                                                    "task"
+                                                    "active"
                                                   ]
                                                 },
-                                                "specId": {
-                                                  "$ref": "#/components/schemas/SpecId"
+                                                "step": {
+                                                  "type": "string"
                                                 },
-                                                "taskId": {
-                                                  "$ref": "#/components/schemas/TaskId"
+                                                "attempt": {
+                                                  "type": "integer",
+                                                  "minimum": 1
+                                                }
+                                              }
+                                            },
+                                            {
+                                              "type": "object",
+                                              "required": [
+                                                "state",
+                                                "step"
+                                              ],
+                                              "properties": {
+                                                "state": {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "ready"
+                                                  ]
+                                                },
+                                                "step": {
+                                                  "type": "string"
+                                                }
+                                              }
+                                            },
+                                            {
+                                              "type": "object",
+                                              "required": [
+                                                "state",
+                                                "outcome"
+                                              ],
+                                              "properties": {
+                                                "state": {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "terminal"
+                                                  ]
+                                                },
+                                                "outcome": {
+                                                  "anyOf": [
+                                                    {
+                                                      "type": "string",
+                                                      "enum": [
+                                                        "completed"
+                                                      ]
+                                                    },
+                                                    {
+                                                      "type": "string",
+                                                      "enum": [
+                                                        "abandoned"
+                                                      ]
+                                                    }
+                                                  ]
                                                 }
                                               }
                                             }
                                           ]
                                         },
-                                        "step": {
-                                          "type": "string",
-                                          "minLength": 1,
-                                          "maxLength": 200
+                                        "startable": {
+                                          "type": "boolean"
                                         },
-                                        "stepTitle": {
-                                          "type": "string"
+                                        "startBlockers": {
+                                          "type": "array",
+                                          "items": {
+                                            "anyOf": [
+                                              {
+                                                "type": "object",
+                                                "required": [
+                                                  "kind",
+                                                  "status"
+                                                ],
+                                                "properties": {
+                                                  "kind": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "status"
+                                                    ]
+                                                  },
+                                                  "status": {
+                                                    "anyOf": [
+                                                      {
+                                                        "type": "string",
+                                                        "enum": [
+                                                          "draft"
+                                                        ]
+                                                      },
+                                                      {
+                                                        "type": "string",
+                                                        "enum": [
+                                                          "on-hold"
+                                                        ]
+                                                      },
+                                                      {
+                                                        "type": "string",
+                                                        "enum": [
+                                                          "cancelled"
+                                                        ]
+                                                      }
+                                                    ]
+                                                  }
+                                                }
+                                              },
+                                              {
+                                                "type": "object",
+                                                "required": [
+                                                  "kind",
+                                                  "waitingFor",
+                                                  "unsatisfiable"
+                                                ],
+                                                "properties": {
+                                                  "kind": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "dependencies"
+                                                    ]
+                                                  },
+                                                  "waitingFor": {
+                                                    "type": "array",
+                                                    "items": {
+                                                      "$ref": "#/components/schemas/TaskId"
+                                                    },
+                                                    "maxItems": 1000
+                                                  },
+                                                  "unsatisfiable": {
+                                                    "type": "array",
+                                                    "items": {
+                                                      "$ref": "#/components/schemas/TaskId"
+                                                    },
+                                                    "maxItems": 1000
+                                                  }
+                                                }
+                                              },
+                                              {
+                                                "type": "object",
+                                                "required": [
+                                                  "kind",
+                                                  "reason"
+                                                ],
+                                                "properties": {
+                                                  "kind": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "broken"
+                                                    ]
+                                                  },
+                                                  "reason": {
+                                                    "anyOf": [
+                                                      {
+                                                        "type": "string",
+                                                        "enum": [
+                                                          "missing-folder"
+                                                        ]
+                                                      },
+                                                      {
+                                                        "type": "string",
+                                                        "enum": [
+                                                          "missing-manifest"
+                                                        ]
+                                                      },
+                                                      {
+                                                        "type": "string",
+                                                        "enum": [
+                                                          "unregistered-run"
+                                                        ]
+                                                      },
+                                                      {
+                                                        "type": "string",
+                                                        "enum": [
+                                                          "draft-with-run"
+                                                        ]
+                                                      },
+                                                      {
+                                                        "type": "string",
+                                                        "enum": [
+                                                          "cancelled-while-active"
+                                                        ]
+                                                      },
+                                                      {
+                                                        "type": "string",
+                                                        "enum": [
+                                                          "position"
+                                                        ]
+                                                      }
+                                                    ]
+                                                  }
+                                                }
+                                              },
+                                              {
+                                                "type": "object",
+                                                "required": [
+                                                  "kind",
+                                                  "pinned"
+                                                ],
+                                                "properties": {
+                                                  "kind": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "definition-changed"
+                                                    ]
+                                                  },
+                                                  "pinned": {
+                                                    "type": "object",
+                                                    "required": [
+                                                      "id",
+                                                      "version",
+                                                      "revision"
+                                                    ],
+                                                    "properties": {
+                                                      "id": {
+                                                        "type": "string"
+                                                      },
+                                                      "version": {
+                                                        "type": "integer"
+                                                      },
+                                                      "revision": {
+                                                        "type": "string"
+                                                      }
+                                                    }
+                                                  }
+                                                }
+                                              },
+                                              {
+                                                "type": "object",
+                                                "required": [
+                                                  "kind",
+                                                  "message"
+                                                ],
+                                                "properties": {
+                                                  "kind": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "type-not-allowed"
+                                                    ]
+                                                  },
+                                                  "message": {
+                                                    "type": "string",
+                                                    "maxLength": 20000
+                                                  }
+                                                }
+                                              },
+                                              {
+                                                "type": "object",
+                                                "required": [
+                                                  "kind",
+                                                  "message"
+                                                ],
+                                                "properties": {
+                                                  "kind": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "definition-missing"
+                                                    ]
+                                                  },
+                                                  "message": {
+                                                    "type": "string",
+                                                    "maxLength": 20000
+                                                  }
+                                                }
+                                              },
+                                              {
+                                                "type": "object",
+                                                "required": [
+                                                  "kind",
+                                                  "message"
+                                                ],
+                                                "properties": {
+                                                  "kind": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "not-configured"
+                                                    ]
+                                                  },
+                                                  "message": {
+                                                    "type": "string",
+                                                    "maxLength": 20000
+                                                  }
+                                                }
+                                              },
+                                              {
+                                                "type": "object",
+                                                "required": [
+                                                  "kind",
+                                                  "entries"
+                                                ],
+                                                "properties": {
+                                                  "kind": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "context-unresolved"
+                                                    ]
+                                                  },
+                                                  "entries": {
+                                                    "type": "array",
+                                                    "items": {
+                                                      "type": "object",
+                                                      "required": [
+                                                        "index",
+                                                        "kind",
+                                                        "reason"
+                                                      ],
+                                                      "properties": {
+                                                        "index": {
+                                                          "type": "integer",
+                                                          "minimum": 0
+                                                        },
+                                                        "kind": {
+                                                          "anyOf": [
+                                                            {
+                                                              "type": "string",
+                                                              "enum": [
+                                                                "task-document"
+                                                              ]
+                                                            },
+                                                            {
+                                                              "type": "string",
+                                                              "enum": [
+                                                                "specification-document"
+                                                              ]
+                                                            },
+                                                            {
+                                                              "type": "string",
+                                                              "enum": [
+                                                                "project-document"
+                                                              ]
+                                                            },
+                                                            {
+                                                              "type": "string",
+                                                              "enum": [
+                                                                "path"
+                                                              ]
+                                                            },
+                                                            {
+                                                              "type": "string",
+                                                              "enum": [
+                                                                "instructions"
+                                                              ]
+                                                            }
+                                                          ]
+                                                        },
+                                                        "reason": {
+                                                          "anyOf": [
+                                                            {
+                                                              "type": "string",
+                                                              "enum": [
+                                                                "not-registered"
+                                                              ]
+                                                            },
+                                                            {
+                                                              "type": "string",
+                                                              "enum": [
+                                                                "not-found"
+                                                              ]
+                                                            }
+                                                          ]
+                                                        }
+                                                      }
+                                                    },
+                                                    "maxItems": 1000
+                                                  }
+                                                }
+                                              },
+                                              {
+                                                "type": "object",
+                                                "required": [
+                                                  "kind",
+                                                  "entries"
+                                                ],
+                                                "properties": {
+                                                  "kind": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "context-awaited"
+                                                    ]
+                                                  },
+                                                  "entries": {
+                                                    "type": "array",
+                                                    "items": {
+                                                      "type": "object",
+                                                      "required": [
+                                                        "index",
+                                                        "kind"
+                                                      ],
+                                                      "properties": {
+                                                        "index": {
+                                                          "type": "integer",
+                                                          "minimum": 0
+                                                        },
+                                                        "kind": {
+                                                          "anyOf": [
+                                                            {
+                                                              "type": "string",
+                                                              "enum": [
+                                                                "task-document"
+                                                              ]
+                                                            },
+                                                            {
+                                                              "type": "string",
+                                                              "enum": [
+                                                                "specification-document"
+                                                              ]
+                                                            },
+                                                            {
+                                                              "type": "string",
+                                                              "enum": [
+                                                                "project-document"
+                                                              ]
+                                                            },
+                                                            {
+                                                              "type": "string",
+                                                              "enum": [
+                                                                "path"
+                                                              ]
+                                                            }
+                                                          ]
+                                                        }
+                                                      }
+                                                    },
+                                                    "maxItems": 1000
+                                                  }
+                                                }
+                                              },
+                                              {
+                                                "type": "object",
+                                                "required": [
+                                                  "kind",
+                                                  "gates"
+                                                ],
+                                                "properties": {
+                                                  "kind": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "gates-unsatisfied"
+                                                    ]
+                                                  },
+                                                  "gates": {
+                                                    "type": "array",
+                                                    "items": {
+                                                      "type": "object",
+                                                      "required": [
+                                                        "id",
+                                                        "type",
+                                                        "label",
+                                                        "documentType",
+                                                        "scope",
+                                                        "status"
+                                                      ],
+                                                      "properties": {
+                                                        "id": {
+                                                          "type": "string"
+                                                        },
+                                                        "type": {
+                                                          "type": "string",
+                                                          "enum": [
+                                                            "document"
+                                                          ]
+                                                        },
+                                                        "label": {
+                                                          "type": "string"
+                                                        },
+                                                        "documentType": {
+                                                          "type": "string"
+                                                        },
+                                                        "scope": {
+                                                          "anyOf": [
+                                                            {
+                                                              "type": "object",
+                                                              "required": [
+                                                                "kind",
+                                                                "specId"
+                                                              ],
+                                                              "properties": {
+                                                                "kind": {
+                                                                  "type": "string",
+                                                                  "enum": [
+                                                                    "specification"
+                                                                  ]
+                                                                },
+                                                                "specId": {
+                                                                  "$ref": "#/components/schemas/SpecId"
+                                                                }
+                                                              }
+                                                            },
+                                                            {
+                                                              "type": "object",
+                                                              "required": [
+                                                                "kind",
+                                                                "specId",
+                                                                "taskId"
+                                                              ],
+                                                              "properties": {
+                                                                "kind": {
+                                                                  "type": "string",
+                                                                  "enum": [
+                                                                    "task"
+                                                                  ]
+                                                                },
+                                                                "specId": {
+                                                                  "$ref": "#/components/schemas/SpecId"
+                                                                },
+                                                                "taskId": {
+                                                                  "$ref": "#/components/schemas/TaskId"
+                                                                }
+                                                              }
+                                                            }
+                                                          ]
+                                                        },
+                                                        "status": {
+                                                          "anyOf": [
+                                                            {
+                                                              "type": "string",
+                                                              "enum": [
+                                                                "satisfied"
+                                                              ]
+                                                            },
+                                                            {
+                                                              "type": "string",
+                                                              "enum": [
+                                                                "unsatisfied"
+                                                              ]
+                                                            }
+                                                          ]
+                                                        },
+                                                        "documentId": {
+                                                          "type": "string"
+                                                        },
+                                                        "reason": {
+                                                          "anyOf": [
+                                                            {
+                                                              "type": "string",
+                                                              "enum": [
+                                                                "no-document"
+                                                              ]
+                                                            },
+                                                            {
+                                                              "type": "string",
+                                                              "enum": [
+                                                                "file-missing"
+                                                              ]
+                                                            },
+                                                            {
+                                                              "type": "string",
+                                                              "enum": [
+                                                                "sections-missing"
+                                                              ]
+                                                            },
+                                                            {
+                                                              "type": "string",
+                                                              "enum": [
+                                                                "unreadable"
+                                                              ]
+                                                            }
+                                                          ]
+                                                        },
+                                                        "missingSections": {
+                                                          "type": "array",
+                                                          "items": {
+                                                            "type": "string"
+                                                          },
+                                                          "maxItems": 1000
+                                                        }
+                                                      }
+                                                    },
+                                                    "maxItems": 1000
+                                                  }
+                                                }
+                                              }
+                                            ]
+                                          }
                                         },
-                                        "reason": {
+                                        "dependencyWait": {
+                                          "type": "object",
+                                          "required": [
+                                            "waitingFor",
+                                            "unsatisfiable"
+                                          ],
+                                          "properties": {
+                                            "waitingFor": {
+                                              "type": "array",
+                                              "items": {
+                                                "$ref": "#/components/schemas/TaskId"
+                                              }
+                                            },
+                                            "unsatisfiable": {
+                                              "type": "array",
+                                              "items": {
+                                                "$ref": "#/components/schemas/TaskId"
+                                              }
+                                            }
+                                          }
+                                        },
+                                        "definitionChanged": {
+                                          "type": "boolean"
+                                        },
+                                        "attention": {
+                                          "type": "object",
+                                          "required": [
+                                            "subject",
+                                            "reason",
+                                            "actor",
+                                            "action",
+                                            "message"
+                                          ],
+                                          "properties": {
+                                            "subject": {
+                                              "anyOf": [
+                                                {
+                                                  "type": "object",
+                                                  "required": [
+                                                    "kind",
+                                                    "specId"
+                                                  ],
+                                                  "properties": {
+                                                    "kind": {
+                                                      "type": "string",
+                                                      "enum": [
+                                                        "specification"
+                                                      ]
+                                                    },
+                                                    "specId": {
+                                                      "$ref": "#/components/schemas/SpecId"
+                                                    }
+                                                  }
+                                                },
+                                                {
+                                                  "type": "object",
+                                                  "required": [
+                                                    "kind",
+                                                    "specId",
+                                                    "taskId"
+                                                  ],
+                                                  "properties": {
+                                                    "kind": {
+                                                      "type": "string",
+                                                      "enum": [
+                                                        "task"
+                                                      ]
+                                                    },
+                                                    "specId": {
+                                                      "$ref": "#/components/schemas/SpecId"
+                                                    },
+                                                    "taskId": {
+                                                      "$ref": "#/components/schemas/TaskId"
+                                                    }
+                                                  }
+                                                }
+                                              ]
+                                            },
+                                            "step": {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "maxLength": 200
+                                            },
+                                            "stepTitle": {
+                                              "type": "string"
+                                            },
+                                            "reason": {
+                                              "anyOf": [
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "owner-action"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "human-step"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "archetype-missing"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "provider-not-chosen"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "model-missing"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "session-unavailable"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "tasks-stuck"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "task-escalated"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "task-broken"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "definition-changed"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "context-unresolved"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "dependency-unsatisfiable"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "type-not-allowed"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "definition-missing"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "entry-gate-unsatisfied"
+                                                  ]
+                                                }
+                                              ]
+                                            },
+                                            "actor": {
+                                              "anyOf": [
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "owner"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "agent"
+                                                  ]
+                                                }
+                                              ]
+                                            },
+                                            "action": {
+                                              "anyOf": [
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "start-step"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "return-to-step"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "configure-archetype"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "review-tasks"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "restore-task"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "confirm-definition"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "edit-context"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "edit-dependencies"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "open-project-settings"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "cancel-task"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "satisfy-gate"
+                                                  ]
+                                                }
+                                              ]
+                                            },
+                                            "secondaryAction": {
+                                              "anyOf": [
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "start-step"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "return-to-step"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "configure-archetype"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "review-tasks"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "restore-task"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "confirm-definition"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "edit-context"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "edit-dependencies"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "open-project-settings"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "cancel-task"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "satisfy-gate"
+                                                  ]
+                                                }
+                                              ]
+                                            },
+                                            "message": {
+                                              "type": "string",
+                                              "maxLength": 4000
+                                            },
+                                            "taskIds": {
+                                              "type": "array",
+                                              "items": {
+                                                "$ref": "#/components/schemas/TaskId"
+                                              },
+                                              "maxItems": 1000
+                                            },
+                                            "blocking": {
+                                              "type": "array",
+                                              "items": {
+                                                "type": "object",
+                                                "required": [
+                                                  "taskId",
+                                                  "cause"
+                                                ],
+                                                "properties": {
+                                                  "taskId": {
+                                                    "$ref": "#/components/schemas/TaskId"
+                                                  },
+                                                  "cause": {
+                                                    "anyOf": [
+                                                      {
+                                                        "type": "string",
+                                                        "enum": [
+                                                          "draft"
+                                                        ]
+                                                      },
+                                                      {
+                                                        "type": "string",
+                                                        "enum": [
+                                                          "on-hold"
+                                                        ]
+                                                      },
+                                                      {
+                                                        "type": "string",
+                                                        "enum": [
+                                                          "broken"
+                                                        ]
+                                                      },
+                                                      {
+                                                        "type": "string",
+                                                        "enum": [
+                                                          "dependency-unsatisfiable"
+                                                        ]
+                                                      }
+                                                    ]
+                                                  }
+                                                }
+                                              },
+                                              "maxItems": 1000
+                                            },
+                                            "archetype": {
+                                              "type": "string"
+                                            },
+                                            "provider": {
+                                              "type": "string"
+                                            },
+                                            "blocker": {
+                                              "anyOf": [
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "archetype-missing"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "provider-not-chosen"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "model-missing"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "session-unavailable"
+                                                  ]
+                                                }
+                                              ]
+                                            },
+                                            "suggestion": {
+                                              "type": "object",
+                                              "required": [
+                                                "archetype",
+                                                "provider",
+                                                "model",
+                                                "session"
+                                              ],
+                                              "properties": {
+                                                "archetype": {
+                                                  "type": "string"
+                                                },
+                                                "provider": {
+                                                  "type": "string"
+                                                },
+                                                "model": {
+                                                  "type": "string"
+                                                },
+                                                "effort": {
+                                                  "type": "string"
+                                                },
+                                                "session": {
+                                                  "anyOf": [
+                                                    {
+                                                      "type": "object",
+                                                      "required": [
+                                                        "mode"
+                                                      ],
+                                                      "properties": {
+                                                        "mode": {
+                                                          "type": "string",
+                                                          "enum": [
+                                                            "fresh"
+                                                          ]
+                                                        }
+                                                      }
+                                                    },
+                                                    {
+                                                      "type": "object",
+                                                      "required": [
+                                                        "mode",
+                                                        "sessionId"
+                                                      ],
+                                                      "properties": {
+                                                        "mode": {
+                                                          "type": "string",
+                                                          "enum": [
+                                                            "reuse"
+                                                          ]
+                                                        },
+                                                        "sessionId": {
+                                                          "type": "string"
+                                                        }
+                                                      }
+                                                    }
+                                                  ]
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    },
+                                    "blocksSpecification": {
+                                      "type": "object",
+                                      "required": [
+                                        "cause"
+                                      ],
+                                      "properties": {
+                                        "cause": {
                                           "anyOf": [
                                             {
                                               "type": "string",
                                               "enum": [
-                                                "owner-action"
+                                                "draft"
                                               ]
                                             },
                                             {
                                               "type": "string",
                                               "enum": [
-                                                "human-step"
+                                                "on-hold"
                                               ]
                                             },
                                             {
                                               "type": "string",
                                               "enum": [
-                                                "archetype-missing"
-                                              ]
-                                            },
-                                            {
-                                              "type": "string",
-                                              "enum": [
-                                                "provider-not-chosen"
-                                              ]
-                                            },
-                                            {
-                                              "type": "string",
-                                              "enum": [
-                                                "model-missing"
-                                              ]
-                                            },
-                                            {
-                                              "type": "string",
-                                              "enum": [
-                                                "session-unavailable"
-                                              ]
-                                            },
-                                            {
-                                              "type": "string",
-                                              "enum": [
-                                                "tasks-stuck"
-                                              ]
-                                            },
-                                            {
-                                              "type": "string",
-                                              "enum": [
-                                                "task-escalated"
-                                              ]
-                                            },
-                                            {
-                                              "type": "string",
-                                              "enum": [
-                                                "task-broken"
-                                              ]
-                                            },
-                                            {
-                                              "type": "string",
-                                              "enum": [
-                                                "definition-changed"
-                                              ]
-                                            },
-                                            {
-                                              "type": "string",
-                                              "enum": [
-                                                "context-unresolved"
+                                                "broken"
                                               ]
                                             },
                                             {
@@ -29767,290 +30211,158 @@
                                               "enum": [
                                                 "dependency-unsatisfiable"
                                               ]
-                                            },
-                                            {
-                                              "type": "string",
-                                              "enum": [
-                                                "type-not-allowed"
-                                              ]
-                                            },
-                                            {
-                                              "type": "string",
-                                              "enum": [
-                                                "definition-missing"
-                                              ]
-                                            },
-                                            {
-                                              "type": "string",
-                                              "enum": [
-                                                "entry-gate-unsatisfied"
-                                              ]
                                             }
                                           ]
-                                        },
-                                        "actor": {
-                                          "anyOf": [
-                                            {
-                                              "type": "string",
-                                              "enum": [
-                                                "owner"
-                                              ]
-                                            },
-                                            {
-                                              "type": "string",
-                                              "enum": [
-                                                "agent"
-                                              ]
-                                            }
-                                          ]
-                                        },
-                                        "action": {
-                                          "anyOf": [
-                                            {
-                                              "type": "string",
-                                              "enum": [
-                                                "start-step"
-                                              ]
-                                            },
-                                            {
-                                              "type": "string",
-                                              "enum": [
-                                                "configure-archetype"
-                                              ]
-                                            },
-                                            {
-                                              "type": "string",
-                                              "enum": [
-                                                "review-tasks"
-                                              ]
-                                            },
-                                            {
-                                              "type": "string",
-                                              "enum": [
-                                                "restore-task"
-                                              ]
-                                            },
-                                            {
-                                              "type": "string",
-                                              "enum": [
-                                                "confirm-definition"
-                                              ]
-                                            },
-                                            {
-                                              "type": "string",
-                                              "enum": [
-                                                "edit-context"
-                                              ]
-                                            },
-                                            {
-                                              "type": "string",
-                                              "enum": [
-                                                "edit-dependencies"
-                                              ]
-                                            },
-                                            {
-                                              "type": "string",
-                                              "enum": [
-                                                "remove-or-cancel"
-                                              ]
-                                            },
-                                            {
-                                              "type": "string",
-                                              "enum": [
-                                                "satisfy-gate"
-                                              ]
-                                            }
-                                          ]
-                                        },
-                                        "message": {
-                                          "type": "string",
-                                          "maxLength": 4000
-                                        },
-                                        "taskIds": {
-                                          "type": "array",
-                                          "items": {
-                                            "$ref": "#/components/schemas/TaskId"
-                                          },
-                                          "maxItems": 1000
-                                        },
-                                        "blocking": {
-                                          "type": "array",
-                                          "items": {
-                                            "type": "object",
-                                            "required": [
-                                              "taskId",
-                                              "cause"
-                                            ],
-                                            "properties": {
-                                              "taskId": {
-                                                "$ref": "#/components/schemas/TaskId"
-                                              },
-                                              "cause": {
-                                                "anyOf": [
-                                                  {
-                                                    "type": "string",
-                                                    "enum": [
-                                                      "draft"
-                                                    ]
-                                                  },
-                                                  {
-                                                    "type": "string",
-                                                    "enum": [
-                                                      "on-hold"
-                                                    ]
-                                                  },
-                                                  {
-                                                    "type": "string",
-                                                    "enum": [
-                                                      "broken"
-                                                    ]
-                                                  },
-                                                  {
-                                                    "type": "string",
-                                                    "enum": [
-                                                      "dependency-unsatisfiable"
-                                                    ]
-                                                  }
-                                                ]
-                                              }
-                                            }
-                                          },
-                                          "maxItems": 1000
-                                        },
-                                        "archetype": {
-                                          "type": "string"
-                                        },
-                                        "provider": {
-                                          "type": "string"
-                                        },
-                                        "blocker": {
-                                          "anyOf": [
-                                            {
-                                              "type": "string",
-                                              "enum": [
-                                                "archetype-missing"
-                                              ]
-                                            },
-                                            {
-                                              "type": "string",
-                                              "enum": [
-                                                "provider-not-chosen"
-                                              ]
-                                            },
-                                            {
-                                              "type": "string",
-                                              "enum": [
-                                                "model-missing"
-                                              ]
-                                            },
-                                            {
-                                              "type": "string",
-                                              "enum": [
-                                                "session-unavailable"
-                                              ]
-                                            }
-                                          ]
-                                        },
-                                        "suggestion": {
-                                          "type": "object",
-                                          "required": [
-                                            "archetype",
-                                            "provider",
-                                            "model",
-                                            "session"
-                                          ],
-                                          "properties": {
-                                            "archetype": {
-                                              "type": "string"
-                                            },
-                                            "provider": {
-                                              "type": "string"
-                                            },
-                                            "model": {
-                                              "type": "string"
-                                            },
-                                            "effort": {
-                                              "type": "string"
-                                            },
-                                            "session": {
-                                              "anyOf": [
-                                                {
-                                                  "type": "object",
-                                                  "required": [
-                                                    "mode"
-                                                  ],
-                                                  "properties": {
-                                                    "mode": {
-                                                      "type": "string",
-                                                      "enum": [
-                                                        "fresh"
-                                                      ]
-                                                    }
-                                                  }
-                                                },
-                                                {
-                                                  "type": "object",
-                                                  "required": [
-                                                    "mode",
-                                                    "sessionId"
-                                                  ],
-                                                  "properties": {
-                                                    "mode": {
-                                                      "type": "string",
-                                                      "enum": [
-                                                        "reuse"
-                                                      ]
-                                                    },
-                                                    "sessionId": {
-                                                      "type": "string"
-                                                    }
-                                                  }
-                                                }
-                                              ]
-                                            }
-                                          }
                                         }
                                       }
                                     }
                                   }
                                 },
-                                "blocksSpecification": {
+                                {
                                   "type": "object",
                                   "required": [
-                                    "cause"
+                                    "id",
+                                    "status",
+                                    "broken"
                                   ],
                                   "properties": {
-                                    "cause": {
-                                      "anyOf": [
-                                        {
-                                          "type": "string",
-                                          "enum": [
-                                            "draft"
-                                          ]
+                                    "id": {
+                                      "$ref": "#/components/schemas/TaskId"
+                                    },
+                                    "title": {
+                                      "type": "string"
+                                    },
+                                    "status": {
+                                      "type": "object",
+                                      "required": [
+                                        "id",
+                                        "label",
+                                        "lifecycle"
+                                      ],
+                                      "properties": {
+                                        "id": {
+                                          "type": "string"
                                         },
-                                        {
-                                          "type": "string",
-                                          "enum": [
-                                            "on-hold"
-                                          ]
+                                        "label": {
+                                          "type": "string"
                                         },
-                                        {
-                                          "type": "string",
-                                          "enum": [
-                                            "broken"
-                                          ]
-                                        },
-                                        {
-                                          "type": "string",
-                                          "enum": [
-                                            "dependency-unsatisfiable"
+                                        "lifecycle": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "pending"
+                                              ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "in_progress"
+                                              ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "completed"
+                                              ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "blocked"
+                                              ]
+                                            }
                                           ]
                                         }
-                                      ]
+                                      }
+                                    },
+                                    "broken": {
+                                      "type": "object",
+                                      "required": [
+                                        "reason"
+                                      ],
+                                      "properties": {
+                                        "reason": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "missing-folder"
+                                              ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "missing-manifest"
+                                              ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "unregistered-run"
+                                              ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "draft-with-run"
+                                              ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "cancelled-while-active"
+                                              ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "position"
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      }
+                                    },
+                                    "blocksSpecification": {
+                                      "type": "object",
+                                      "required": [
+                                        "cause"
+                                      ],
+                                      "properties": {
+                                        "cause": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "draft"
+                                              ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "on-hold"
+                                              ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "broken"
+                                              ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "dependency-unsatisfiable"
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      }
                                     }
                                   }
                                 }
-                              }
+                              ]
                             }
                           }
                         }
@@ -30062,6 +30374,7 @@
                         "completed",
                         "total",
                         "cancelled",
+                        "ended",
                         "onHold"
                       ],
                       "properties": {
@@ -30074,6 +30387,10 @@
                           "minimum": 0
                         },
                         "cancelled": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "ended": {
                           "type": "integer",
                           "minimum": 0
                         },
@@ -30268,6 +30585,12 @@
                               {
                                 "type": "string",
                                 "enum": [
+                                  "return-to-step"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
                                   "configure-archetype"
                                 ]
                               },
@@ -30304,7 +30627,83 @@
                               {
                                 "type": "string",
                                 "enum": [
-                                  "remove-or-cancel"
+                                  "open-project-settings"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "cancel-task"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "satisfy-gate"
+                                ]
+                              }
+                            ]
+                          },
+                          "secondaryAction": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "start-step"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "return-to-step"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "configure-archetype"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "review-tasks"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "restore-task"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "confirm-definition"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "edit-context"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "edit-dependencies"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "open-project-settings"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "cancel-task"
                                 ]
                               },
                               {
@@ -32357,6 +32756,12 @@
                                     {
                                       "type": "string",
                                       "enum": [
+                                        "return-to-step"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
                                         "configure-archetype"
                                       ]
                                     },
@@ -32393,7 +32798,83 @@
                                     {
                                       "type": "string",
                                       "enum": [
-                                        "remove-or-cancel"
+                                        "open-project-settings"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "cancel-task"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "satisfy-gate"
+                                      ]
+                                    }
+                                  ]
+                                },
+                                "secondaryAction": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "start-step"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "return-to-step"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "configure-archetype"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "review-tasks"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "restore-task"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "confirm-definition"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "edit-context"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "edit-dependencies"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "open-project-settings"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "cancel-task"
                                       ]
                                     },
                                     {
@@ -45235,6 +45716,12 @@
                                   {
                                     "type": "string",
                                     "enum": [
+                                      "return-to-step"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
                                       "configure-archetype"
                                     ]
                                   },
@@ -45271,13 +45758,101 @@
                                   {
                                     "type": "string",
                                     "enum": [
-                                      "remove-or-cancel"
+                                      "open-project-settings"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "cancel-task"
                                     ]
                                   },
                                   {
                                     "type": "string",
                                     "enum": [
                                       "satisfy-gate"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "answer-session"
+                                    ]
+                                  }
+                                ]
+                              },
+                              "secondaryAction": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "start-step"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "return-to-step"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "configure-archetype"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "review-tasks"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "restore-task"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "confirm-definition"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "edit-context"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "edit-dependencies"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "open-project-settings"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "cancel-task"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "satisfy-gate"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "answer-session"
                                     ]
                                   }
                                 ]
@@ -45517,6 +46092,10 @@
                                       "type": "integer",
                                       "minimum": 0
                                     },
+                                    "ended": {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
                                     "onHold": {
                                       "type": "integer",
                                       "minimum": 0
@@ -45632,6 +46211,12 @@
                                               {
                                                 "type": "string",
                                                 "enum": [
+                                                  "return-to-step"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
                                                   "configure-archetype"
                                                 ]
                                               },
@@ -45668,13 +46253,101 @@
                                               {
                                                 "type": "string",
                                                 "enum": [
-                                                  "remove-or-cancel"
+                                                  "open-project-settings"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "cancel-task"
                                                 ]
                                               },
                                               {
                                                 "type": "string",
                                                 "enum": [
                                                   "satisfy-gate"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "answer-session"
+                                                ]
+                                              }
+                                            ]
+                                          },
+                                          "secondaryAction": {
+                                            "anyOf": [
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "start-step"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "return-to-step"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "configure-archetype"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "review-tasks"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "restore-task"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "confirm-definition"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "edit-context"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "edit-dependencies"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "open-project-settings"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "cancel-task"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "satisfy-gate"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "answer-session"
                                                 ]
                                               }
                                             ]
@@ -46257,6 +46930,12 @@
                                               {
                                                 "type": "string",
                                                 "enum": [
+                                                  "return-to-step"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
                                                   "configure-archetype"
                                                 ]
                                               },
@@ -46293,13 +46972,101 @@
                                               {
                                                 "type": "string",
                                                 "enum": [
-                                                  "remove-or-cancel"
+                                                  "open-project-settings"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "cancel-task"
                                                 ]
                                               },
                                               {
                                                 "type": "string",
                                                 "enum": [
                                                   "satisfy-gate"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "answer-session"
+                                                ]
+                                              }
+                                            ]
+                                          },
+                                          "secondaryAction": {
+                                            "anyOf": [
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "start-step"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "return-to-step"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "configure-archetype"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "review-tasks"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "restore-task"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "confirm-definition"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "edit-context"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "edit-dependencies"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "open-project-settings"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "cancel-task"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "satisfy-gate"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "answer-session"
                                                 ]
                                               }
                                             ]
@@ -46707,6 +47474,12 @@
                                               {
                                                 "type": "string",
                                                 "enum": [
+                                                  "return-to-step"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
                                                   "configure-archetype"
                                                 ]
                                               },
@@ -46743,13 +47516,101 @@
                                               {
                                                 "type": "string",
                                                 "enum": [
-                                                  "remove-or-cancel"
+                                                  "open-project-settings"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "cancel-task"
                                                 ]
                                               },
                                               {
                                                 "type": "string",
                                                 "enum": [
                                                   "satisfy-gate"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "answer-session"
+                                                ]
+                                              }
+                                            ]
+                                          },
+                                          "secondaryAction": {
+                                            "anyOf": [
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "start-step"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "return-to-step"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "configure-archetype"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "review-tasks"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "restore-task"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "confirm-definition"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "edit-context"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "edit-dependencies"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "open-project-settings"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "cancel-task"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "satisfy-gate"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "answer-session"
                                                 ]
                                               }
                                             ]

@@ -11,7 +11,7 @@ import {
   type TaskEngine,
 } from '../engine/sources';
 import type { InspectionBasis } from '../engine/projection';
-import { namedTaskIds, taskBoardOf } from '../presentation/board';
+import { isReadable, namedTaskIds, taskBoardOf } from '../presentation/board';
 import {
   DEFAULT_DASHBOARD_GROUPING,
   type DashboardGrouping,
@@ -27,6 +27,7 @@ export type WorkspaceTasksSection =
         readonly completed: number;
         readonly total: number;
         readonly cancelled: number;
+        readonly ended: number;
         readonly onHold: number;
         readonly attention: WorkspaceAttention[];
         readonly overview: TaskOverview;
@@ -55,6 +56,7 @@ export function workspaceAttentionOf(
     code: item.reason,
     actor: item.actor,
     action: item.action,
+    ...(item.secondaryAction ? { secondaryAction: item.secondaryAction } : {}),
     ...(item.taskIds ? { taskIds: [...item.taskIds] } : {}),
     ...(item.blocking ? { blocking: item.blocking.map((task) => ({ ...task })) } : {}),
   };
@@ -64,7 +66,7 @@ export function workspaceAttentionOf(
     return {
       id: `${item.reason === 'task-broken' ? 'task-broken' : 'task-attention'}.${taskId}`,
       kind: 'task',
-      // A broken Task has no readable title; its id stands in.
+      // A broken Task may have no readable title; its id stands in.
       title: titles.get(taskId) ?? taskId,
       targetId: taskId,
       priority: item.reason === 'task-broken' ? 'high' : 'normal',
@@ -92,9 +94,16 @@ export function workspaceTasksOf(
   grouping: DashboardGrouping = DEFAULT_DASHBOARD_GROUPING,
 ): WorkspaceTasksContribution {
   const board = taskBoardOf(basis, grouping);
-  const titles = new Map(board.rows.map((row) => [row.id, row.title] as const));
+  const titles = new Map(
+    board.rows.flatMap((row) => (row.title !== undefined ? [[row.id, row.title] as const] : [])),
+  );
   const named = namedTaskIds(board.attention);
-  const groups: WorkspaceTaskGroup[] = board.groups.map((group) => ({
+  // A broken Task without a readable title shows its id.
+  const titled = board.groups.map((group) => ({
+    ...group,
+    tasks: group.tasks.map((row) => ({ ...row, title: row.title ?? row.id })),
+  }));
+  const groups: WorkspaceTaskGroup[] = titled.map((group) => ({
     id: group.id,
     name: group.name,
     summary: group.summary,
@@ -103,8 +112,7 @@ export function workspaceTasksOf(
       id: row.id,
       title: row.title,
       status: row.status,
-      type: row.type,
-      dependsOn: row.dependsOn,
+      ...(isReadable(row) ? { type: row.type, dependsOn: row.dependsOn } : {}),
       ...(named.has(row.id) ? { attention: true } : {}),
     })),
   }));
@@ -121,7 +129,7 @@ export function workspaceTasksOf(
         groups,
         ...board.progress,
         attention: board.attention.map((item) => workspaceAttentionOf(item, titles)),
-        overview: { ...overviewSummary(board.groups, named), ...(stuck ? { stuck } : {}) },
+        overview: { ...overviewSummary(titled, named), ...(stuck ? { stuck } : {}) },
       },
     },
     preparationState: basis.reading.preparation,

@@ -116,14 +116,10 @@ export function createTasksCommand(context: TasksCommandContext): Command {
   ).action(async (specId: string, options: CommonOptions) => {
     await run(options, async ({ workflow }) => {
       const reading = await readExecution(workflow, specId, { tasks: 'all' });
-      // The inspection with every attention item (start blockers included) and the neutral facts.
+      // The inspection (with every attention item) and the neutral facts.
       emit(
         options,
-        {
-          ...reading.inspection,
-          attention: reading.attention,
-          facts: Object.fromEntries(reading.facts),
-        },
+        { ...reading.inspection, facts: Object.fromEntries(reading.facts) },
         listLines(reading),
       );
     });

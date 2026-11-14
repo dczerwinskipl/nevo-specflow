@@ -158,8 +158,8 @@ in the preparation block's place; one reading column (`content-standard`) at the
   marks as summary rows (default: Needs approval, In progress, Ready to start, Cannot start,
   Waiting, On hold) get one row each when non-empty: the group name, then "1 task · T-04 Return
   users to where they were" (count, up to two Tasks, "N more"), opening the Tasks page
-  at that group. Groups marked compact (default: Done, Cancelled) share one quiet line of links
-  ("Done 4 · Cancelled 1"). **On hold is a summary row**: it is not terminal and keeps the
+  at that group. Groups marked compact (default: Done, Cancelled, Ended) share one quiet line of
+  links ("Done 4 · Cancelled 1 · Ended 1"). **On hold is a summary row**: it is not terminal and keeps the
   Specification from finishing. **All tasks** in the header opens the full page. A Task already
   referred to by Requires attention (its own item, or a Task a Specification item covers) or by
   Now appears in its group row by id only ("1 task · T-04"), never as a second full row. Omitted
@@ -177,13 +177,17 @@ in the preparation block's place; one reading column (`content-standard`) at the
   and Documents in the context column. The 1408 px threshold stays.
 
 **Progress, one definition** (Now and the Tasks page): done = Tasks whose workflow
-completed; total = all Tasks except cancelled ones; cancelled and on hold are named separately, zero
-parts omitted: `1 of 6 done · 1 cancelled · 1 on hold`. On hold counts in the total (unfinished).
+completed; total = all Tasks except cancelled ones and ended ones (their own workflow ended them
+without completing); cancelled, ended and on hold are named separately, zero parts omitted:
+`1 of 6 done · 1 cancelled · 1 ended · 1 on hold`. On hold and broken Tasks count in the total
+(unfinished).
 
 ## Tasks page (`/specs/:specId/tasks`)
 
 The full inventory in the configured grouping (default: Needs approval, In progress, Ready to start,
-Cannot start, Waiting, On hold, Done, Cancelled — Cancelled collapsed), the existing row, the row `⋯` lifecycle
+Cannot start, Waiting, On hold, Done, Cancelled, Ended — Cancelled and Ended collapsed; a broken
+Task is a row of Cannot start with what is readable of it, so a blocking filter that names it never
+opens an empty list), the existing row, the row `⋯` lifecycle
 menu, **New task** in the section header, the progress text as the section count, and a filter (id
 or title). A Task in the attention projection keeps its group and shows "Requires attention ·
 <reason>" on its row; a Task named by the `tasks-stuck` item shows "Requires attention · the
@@ -235,7 +239,7 @@ actor and action.
 | `dependencies` with `unsatisfiable` (cancelled, abandoned, broken) | Yes                                                                                              | owner            | Edit dependencies (or Cancel task)     |
 | `context-unresolved`                                               | Yes                                                                                              | owner            | Edit context                           |
 | `context-awaited` (an earlier step will produce it)                | No: expected                                                                                     | —                | —                                      |
-| `gates-unsatisfied` (entry gate)                                   | Yes, when a person satisfies it                                                                  | the gate's actor | the gate's action                      |
+| `gates-unsatisfied` (entry gate)                                   | Yes, once no dependency it waits for can still complete (a dependency may deliver the document)  | the gate's actor | the gate's action                      |
 | `definition-changed`                                               | Yes                                                                                              | owner            | Review the new workflow revision       |
 | `type-not-allowed`, `definition-missing`                           | Yes                                                                                              | owner            | Open project settings (or Cancel task) |
 | `broken`                                                           | Yes (already)                                                                                    | owner            | Open task (restore from Git)           |
@@ -261,7 +265,9 @@ groups, and groups are only an optional presentation of those facts.
 not-started Tasks with no start blocker other than dependencies (fact `startBlocked`, from the
 projection's start blockers) and adds **Cannot start** for approved, not-started Tasks the
 projection reports blocked (context, entry gate, definition, broken). Waiting for dependencies stays
-in **Waiting**. Recommended over renaming the group "Not started": the name stays true to what the
+in **Waiting**, and so does a Task that only awaits a process artifact an earlier step produces
+(decided 2026-11-14). A Task its own workflow ended without completing is in the compact **Ended**
+group (decided 2026-11-14), apart from Cancelled. Recommended over renaming the group "Not started": the name stays true to what the
 person can do, and the blocked case becomes visible as its own row. Config only; the Engine is
 unchanged.
 

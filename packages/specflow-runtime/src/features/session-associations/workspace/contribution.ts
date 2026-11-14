@@ -43,6 +43,25 @@ export function workspaceSessionStatus(readiness: SessionInfo['readiness']): Sta
   }
 }
 
+/** The attention item of each Session that waits for the person's input, in row order. */
+export function sessionAttentionOf(
+  items: readonly Pick<WorkspaceSessionItem, 'id' | 'title' | 'status'>[],
+) {
+  return items
+    .filter((item) => item.status === 'attention')
+    .map((item) => ({
+      id: `session-attention.${item.id}`,
+      kind: 'session' as const,
+      title: item.title ?? 'Session',
+      reason: 'The session waits for your input.',
+      targetId: item.id,
+      priority: 'high' as const,
+      code: 'session-input',
+      actor: 'owner' as const,
+      action: 'answer-session' as const,
+    }));
+}
+
 /** Attention first, then active, then the most recently updated Session. */
 export function recommendSessions(
   rows: readonly { id: string; status: Status; updatedAt: string }[],
@@ -139,8 +158,9 @@ export function createWorkspaceSessionContribution(options: {
           data: {
             items,
             ...(scan.rows.length > WORKSPACE_SESSION_LIMIT ? { hasMore: true } : {}),
-            // Session attention is Session readiness; Engine attention is composed by Specs.
-            attention: [],
+            // A Session that waits for the person's input is Requires attention; its row keeps only
+            // its `attention` status as a marker. Engine attention is the Tasks owner's.
+            attention: sessionAttentionOf(items),
           },
         },
         // Store-derived identities: the workspace read authorizes the rows without resolving them.

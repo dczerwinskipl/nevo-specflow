@@ -20,6 +20,7 @@ import { symlinksAvailable } from '../../../test/support/platform';
 
 import { sha256Hex } from '../../hash';
 import { finishStep, type FinishStepInput } from '../operations/finish';
+import { readExecution } from '../operations/execution-read';
 import { inspectExecution } from '../operations/inspect';
 import type { WorkflowDependencies } from '../operations/loaded-execution';
 import {
@@ -687,6 +688,35 @@ describe('filesystem workflow store: publication re-checks each target', () => {
   });
 });
 
+describe('filesystem workflow store: attention over a pending journal', () => {
+  it('derives the attention of the change a crashed publication left in the journal', async () => {
+    const base = memoryDependencies(await seedExecutionCatalogue());
+    let armed = false;
+    const crashing = {
+      ...base,
+      store: storeWithPublishHook(() =>
+        armed ? Promise.reject(new Error('Crash before publishing.')) : Promise.resolve(),
+      ),
+    };
+    await specificationWithTasks(crashing);
+    armed = true;
+    await expect(
+      setTaskStatus(crashing, { specId: SPEC, taskId: 'api', status: 'on-hold', actor: owner }),
+    ).rejects.toThrow('Crash');
+    expect(await readFile(journalPath(), 'utf8')).toContain(SPEC);
+
+    // A read overlays the pending journal: the hold is there, and with it the stuck wait.
+    const reading = await readExecution({ ...base, store: store() }, SPEC, { tasks: 'all' });
+    expect(reading.facts.get('api')).toMatchObject({ preparation: 'on-hold' });
+    expect(reading.inspection.attention).toEqual([
+      expect.objectContaining({
+        reason: 'tasks-stuck',
+        blocking: [{ taskId: 'api', cause: 'on-hold' }],
+      }),
+    ]);
+  });
+});
+
 describe('filesystem workflow store: a finish retried after a crash (F16)', () => {
   it('returns the recorded result when the publication of the finish crashed midway', async () => {
     const base = memoryDependencies(await seedExecutionCatalogue());
@@ -906,6 +936,8 @@ describe('filesystem workflow store: the Task set is the one the index lists', (
       { reason: 'task-broken' },
       // The broken Task is the one to resolve; its dependent only waits for it.
       { reason: 'tasks-stuck', taskIds: ['api'] },
+      // Its dependent points to restoring the broken Task.
+      { reason: 'dependency-unsatisfiable', action: 'restore-task', taskIds: ['api'] },
     ]);
     await expect(
       startTaskExecution(dependencies, { specId: SPEC, taskId: 'screen', actor: claude }),

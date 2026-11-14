@@ -314,7 +314,11 @@ describe('waiting for Tasks', () => {
       { kind: 'ready' },
       { kind: 'dependencies', waitingFor: ['api'] },
     ]);
-    expect(inspection.attention).toMatchObject([{ subject: specification, reason: 'tasks-stuck' }]);
+    expect(inspection.attention).toMatchObject([
+      { subject: specification, reason: 'tasks-stuck' },
+      // The dependent itself has to be fixed: its dependency can never complete.
+      { subject: task('screen'), reason: 'dependency-unsatisfiable', action: 'edit-dependencies' },
+    ]);
     await expect(
       startTaskExecution(dependencies, { specId: SPEC, taskId: 'screen', actor: claude }),
     ).rejects.toMatchObject({
@@ -326,6 +330,7 @@ describe('waiting for Tasks', () => {
     });
     expect((await inspectExecution(dependencies, SPEC)).attention).toMatchObject([
       { subject: specification, reason: 'tasks-stuck' },
+      { subject: task('screen'), reason: 'dependency-unsatisfiable' },
     ]);
 
     await returnToStep(dependencies, {
@@ -336,6 +341,8 @@ describe('waiting for Tasks', () => {
     });
     expect((await inspectExecution(dependencies, SPEC)).attention).toMatchObject([
       { subject: specification, reason: 'owner-action' },
+      // A return changes no Task: the dependent still needs its dependencies fixed.
+      { subject: task('screen'), reason: 'dependency-unsatisfiable' },
     ]);
   });
 

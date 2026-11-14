@@ -132,7 +132,9 @@ function positionLines(position: ActionPosition): string[] {
 
 /** One attention item: who acts, the action it offers and its message. */
 export function attentionLine(item: AttentionItem): string {
-  return `Attention (${item.reason}; ${item.actor}: ${item.action}): ${item.message}`;
+  const actions = item.secondaryAction ? `${item.action} or ${item.secondaryAction}` : item.action;
+
+  return `Attention (${item.reason}; ${item.actor}: ${actions}): ${item.message}`;
 }
 
 /** The action projection as the owner reads it; only what is allowed is listed as an action. */

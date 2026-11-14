@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { recommendSessions, workspaceSessionStatus } from './contribution';
+import { recommendSessions, sessionAttentionOf, workspaceSessionStatus } from './contribution';
 
 describe('workspace Session section policy', () => {
   it('maps Session readiness, and only readiness, to the row status', () => {
@@ -28,6 +28,29 @@ describe('workspace Session section policy', () => {
       'unknown-newest',
       'quiet-new',
       'quiet-old',
+    ]);
+  });
+
+  it('lifts each Session waiting for input into Requires attention, once, with its action', () => {
+    expect(
+      sessionAttentionOf([
+        { id: 'waiting', title: 'Login flow', status: 'attention' },
+        { id: 'working', status: 'active' },
+        { id: 'untitled', status: 'attention' },
+      ]),
+    ).toEqual([
+      {
+        id: 'session-attention.waiting',
+        kind: 'session',
+        title: 'Login flow',
+        reason: 'The session waits for your input.',
+        targetId: 'waiting',
+        priority: 'high',
+        code: 'session-input',
+        actor: 'owner',
+        action: 'answer-session',
+      },
+      expect.objectContaining({ targetId: 'untitled', title: 'Session' }),
     ]);
   });
 });

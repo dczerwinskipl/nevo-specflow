@@ -57,7 +57,9 @@ export function listLines(reading: ExecutionReading): string[] {
 
   return [
     ...lines,
-    ...reading.attention.map((item) => `${subjectLabel(item.subject)}: ${attentionLine(item)}`),
+    ...reading.inspection.attention.map(
+      (item) => `${subjectLabel(item.subject)}: ${attentionLine(item)}`,
+    ),
   ];
 }
 

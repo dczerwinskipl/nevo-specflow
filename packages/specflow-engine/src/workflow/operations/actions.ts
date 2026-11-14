@@ -979,7 +979,7 @@ export async function taskProjection(
 
     const blockers = [...readinessBlockers(), ...typeBlockers, ...(await contextBlockers())];
     if (!workflow) {
-      const attention = startBlockerAttention(subject, blockers);
+      const attention = startBlockerAttention(subject, blockers, undefined, tasks.broken);
 
       return {
         subject,
@@ -994,7 +994,7 @@ export async function taskProjection(
     const first = await firstStart(workflow, catalogue, gates, blockers, true);
     const attention =
       first.position.kind === 'blocked'
-        ? startBlockerAttention(subject, first.position.blockers, first.position.next)
+        ? startBlockerAttention(subject, first.position.blockers, first.position.next, tasks.broken)
         : undefined;
 
     return {

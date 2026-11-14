@@ -90,9 +90,9 @@ Availability and action states describe only what actually exists.
   and `collapsed`. Each row carries `type` (`{id, title}`, the title from the catalogue, the id
   when the type is not defined), `dependsOn` (Task ids) and `attention: true` when an attention item
   names the Task (its own, or the Specification's). `completed` and `total` are the Engine's
-  `TaskProgress`: `total` counts the Tasks that are neither cancelled nor ended by an abandon (a
-  broken Task included; on hold counts), `completed` those whose run completed; `cancelled` and
-  `onHold` count those apart (absent in the demo Runtime). `attention` is the Engine's attention
+  `TaskProgress`: `total` counts the Tasks that are neither cancelled nor ended without completing (a
+  broken Task included; on hold counts), `completed` those whose run completed; `cancelled`,
+  `ended` and `onHold` count those apart (absent in the demo Runtime). `attention` is the Engine's attention
   projection ([Attention items](task-reads.md#attention-items)): `reason` is the item's message,
   `code` its reason, with `actor`, `action`, `taskIds` and, for `tasks-stuck`, `blocking`; at most
   one Specification-level `tasks-stuck` item, never one per draft. `overview` is the Overview's
@@ -135,6 +135,12 @@ Availability and action states describe only what actually exists.
   `requiresAttention` -> `attention`, `ready` -> `quiet`, `authenticationRequired` ->
   `authenticationRequired`, `unavailable` -> `unknown`. `taskIds` come from the association.
   `title` is optional; the server never invents one (the UI shows its untitled label).
+- `sections.sessions.data.attention` lifts every row whose status is `attention` (the Session waits
+  for the person's input) into Requires attention: `id` `session-attention.<sessionId>`, `kind`
+  `session`, `targetId` the Session, `priority` `high`, `code` `session-input`, `actor` `owner` and
+  `action` `answer-session`. The row keeps only its `attention` status as a marker; clients show the
+  Session once in Requires attention, not again as a second item. Like every Session reference, an
+  item is omitted when the caller may not view the Session.
 - Each row also carries `providerId`, `modelId?`, `updatedAt` and the catalogue titles
   `providerTitle?` / `modelTitle?` (absent when not listed), as in the Session list, so Continue
   session names the agent and its age without a provider catalogue read.

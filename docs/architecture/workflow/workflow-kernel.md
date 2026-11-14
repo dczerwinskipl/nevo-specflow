@@ -519,7 +519,8 @@ The reasons are:
 `ready` Task with a direct dependency that was cancelled or ended without completing. A Task that
 only waits for other open Tasks is not named, nor one whose only unsatisfiable dependencies are
 broken (the broken Task is named). The list is resolved from the current state on every read and
-is empty when every Task is closed but the wait is still active.
+is empty when every Task is closed but the wait is still active; that item then offers
+`return-to-step` instead of `review-tasks`.
 
 Attention is never a question to the agent. The agent's finish succeeds, and the finish (or return)
 returns its `ContinuationDecision`.
@@ -527,21 +528,26 @@ returns its `ContinuationDecision`.
 **Attention items.** Besides the continuation reasons, an attention item (`AttentionItem`,
 `attention/model.ts`) can come from the state of a subject:
 
-| Reason                     | When                                                                      |
-| -------------------------- | ------------------------------------------------------------------------- |
-| `task-broken`              | A broken Task (see "The Task set").                                       |
-| `definition-changed`       | A run that has not ended is pinned to a missing or changed workflow.      |
-| `context-unresolved`       | An approved Task that has not started has a required entry that is stale. |
-| `dependency-unsatisfiable` | It depends on a Task that was cancelled, ended otherwise or is broken.    |
-| `type-not-allowed`         | Its task type is not allowed by the effective policy any more.            |
-| `definition-missing`       | Its task type or that type's workflow is not defined.                     |
-| `entry-gate-unsatisfied`   | An entry gate of its first step does not hold.                            |
+| Reason                     | When                                                                                               |
+| -------------------------- | -------------------------------------------------------------------------------------------------- |
+| `task-broken`              | A broken Task (see "The Task set").                                                                |
+| `definition-changed`       | A run that has not ended (a Task's only while `ready`) is pinned to a missing or changed workflow. |
+| `context-unresolved`       | An approved Task that has not started has a required entry that is stale.                          |
+| `dependency-unsatisfiable` | It depends on a Task that was cancelled, ended otherwise or is broken.                             |
+| `type-not-allowed`         | Its task type is not allowed by the effective policy any more.                                     |
+| `definition-missing`       | Its task type or that type's workflow is not defined.                                              |
+| `entry-gate-unsatisfied`   | An entry gate of its first step does not hold, and no dependency it waits for can still complete.  |
 
-Every item carries the required `actor` (`owner`; every item the Engine derives today waits for
-the owner, `agent` is reserved), the one `action` it offers (`start-step`, `configure-archetype`,
-`review-tasks`, `restore-task`, `confirm-definition`, `edit-context`, `edit-dependencies`,
-`remove-or-cancel`, `satisfy-gate`), the step and its title where one resolves, and a display-only
-English `message`. The start blockers that are **not** attention (owner decision 2A): a draft or a
+Every item carries the required `actor` (`owner`: neither the steps nor the gates the Engine
+derives items from name another actor; `agent` is reserved), the primary `action` it offers and an
+optional `secondaryAction` (`start-step`, `return-to-step`, `configure-archetype`, `review-tasks`,
+`restore-task`, `confirm-definition`, `edit-context`, `edit-dependencies`,
+`open-project-settings`, `cancel-task`, `satisfy-gate`), the step and its title where one
+resolves, and a display-only English `message`. A type no longer allowed or not defined offers
+`open-project-settings` or `cancel-task`; an unsatisfiable dependency `edit-dependencies` or
+`cancel-task`, and `restore-task` (or `edit-dependencies`) when a dependency is broken. An unmet
+entry gate is attention only once no dependency the Task waits for can still complete, since a
+dependency may deliver the document. The start blockers that are **not** attention (owner decision 2A): a draft or a
 Task on hold (`status`; the Specification's `tasks-stuck` covers them when nothing else can
 progress), dependencies that can all still complete, an awaited process artifact
 (`context-awaited`), and a Task that can start. Attention is never inferred from a status name.
@@ -565,9 +571,10 @@ the current archetypes, with the same functions the operations use for their res
   for a Task that is not `ready`.
 
 The start blockers of a Task that has not started are read with the documents (context, gates), so
-the action projection classifies them (`startBlockerAttention`): `inspectActions` carries the
-subject's item as `attention`, and `readExecution` returns every item (the derived ones and the
-start-blocker items of the Tasks it projects) as `attention`, complete for `tasks: 'all'`.
+the action projection classifies them (`startBlockerAttention`). There is one list:
+`inspectExecution` (and `readExecution`'s inspection, whichever Tasks it projects) projects every
+approved Task that has not started and returns the derived items with those start-blocker items as
+`attention`; `inspectActions` carries the subject's own item as `attention`.
 
 **Neutral Task facts.** `readExecution` also returns the `TaskFacts` of each projected Task:
 `preparation`, `escalated`, the run `position`, `startable` (the projection finds no start
@@ -575,8 +582,10 @@ blocker), `startBlockers`, `dependencyWait` (`waitingFor`, `unsatisfiable`), `de
 and `attention`. They hold no presentation concept (no group, label, order or lane): a dashboard
 grouping is a presentation of these facts owned by a surface (the Runtime's is described in
 [Task reads](../../reference/api/task-reads.md#dashboard-grouping)), and the CLI and MCP read them
-without any grouping. `TaskProgress` counts `completed` of `total` (cancelled Tasks and those ended
-by an abandon left out, on hold counted) and names `cancelled` and `onHold` apart.
+without any grouping. A broken Task has `BrokenTaskFacts` (`broken`: its id, its manifest's title
+when readable, the broken reason). `TaskProgress` counts `completed` of `total` (cancelled Tasks
+and those ended without completing left out; broken and on hold ones counted) and names
+`cancelled`, `ended` (abandoned by its own workflow, not cancelled) and `onHold` apart.
 
 So there is at most one item per subject, and **any start removes it** by construction, whether the
 start comes from a quick screen, a manual start or an automatic continuation. Whatever changes the

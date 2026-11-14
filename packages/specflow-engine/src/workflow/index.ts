@@ -123,6 +123,7 @@ export {
   type ExecutionReading,
   type ReadExecutionOptions,
   taskFactsOf,
+  type BrokenTaskFacts,
   type TaskFacts,
   type TaskPreparation,
   type TaskProgress,

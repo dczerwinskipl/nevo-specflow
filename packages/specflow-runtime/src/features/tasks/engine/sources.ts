@@ -62,9 +62,9 @@ function workflowErrorCode(error: unknown): string | undefined {
 }
 
 /**
- * ONE Engine read of a Specification's execution (`readExecution`: the inspection, the action
- * projections of the requested Tasks and their lanes, from one snapshot read under the project
- * control lock) with the Specification it belongs to. `null`: the Specification does not exist. Any
+ * ONE Engine read of a Specification's execution (`readExecution`: the inspection with every
+ * attention item, the action projections and neutral facts of the requested Tasks, from one
+ * snapshot read under the project control lock) with the Specification it belongs to. `null`: the Specification does not exist. Any
  * other failure is an outage.
  */
 export async function inspectSpecification(

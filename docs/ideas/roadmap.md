@@ -30,18 +30,18 @@ related:
 
 ## Release status and next action
 
-| Release | Status | Progress |
+| Release | State | Evidence-based progress |
 | --- | --- | --- |
-| **1.0.0 · First usable release** | 🚧 Integration not started | **10 Done / 21 tracked** in the working scope; **11 not Done**. Not approved release coverage. End-to-end acceptance **0/1 verified**. |
-| **1.1.0 · Automated execution** | ⬜ Proposed | No percentage until feature scope is approved |
-| **Later 1.x · Compatible improvements** | 💡 Backlog | No fixed scope or percentage |
-| **2.0.0 · Multi-project hosting** | 🔎 Exploration | No fixed scope or percentage |
+| **1.0.0 · First usable release** | 🛠 Code on implementation branch | **10** scopes merged into `main`; **6** more have code on #137 (unverified); **2** agent-specific items lack E6 proof; **3** release-readiness items are separate. **No approved completion percentage.** |
+| **1.1.0 · Automated execution** | ⬜ Proposed | Scope not approved; no percentage |
+| **Later 1.x · Compatible improvements** | 💡 Backlog | Candidate scope; no percentage |
+| **2.0.0 · Multi-project hosting** | 🔎 Exploration | Architecture direction; no percentage |
 
-**Current milestone: E0 · Boundary audit and accepted design.** **Next implementation-enabling action:** review and approve D01/D02/D09, the neutral Workflow boundary, deterministic pins/replay and Run identity; promote decisions into an authoritative ADR before implementing E1. The source is the [draft E0–E6 delivery plan](https://github.com/dczerwinskipl/nevo-specflow/blob/docs/idea-reusable-workflow-manual-execution/docs/ideas/specflow-engine/reusable-workflow-manual-execution/delivery-plan.md). No approved E0 completion evidence or implementation PR was verified.
+**Current implementation milestone: audit and validate E0–E4 already written on [#137](https://github.com/dczerwinskipl/nevo-specflow/pull/137). Next concrete action:** reconcile E0 architecture decisions with the existing E1–E4 code and tests, confirm acceptance gaps, and close or split the implementation only after it is reviewed. Do **not** restart E1 from scratch because #137's stale description calls itself a proposal.
 
-**What a user can do today:** create and close Specifications, edit Specification documents, inspect Tasks, use managed agent Sessions and the Workbench, and read/search project documentation. **What they cannot yet do end to end:** author Tasks, execute a complete manual Specification/Task Workflow in the UI, or delegate a Workflow step to a managed agent.
+**Usable on `main`:** Specification Create/Close, Specification document editing, Task inspection, managed agent Sessions, Workbench UI and workspace documentation search. **Code only on #137:** standalone Task authoring and manual Workflow through Engine, CLI, Runtime and UI. **Not yet demonstrated:** the full manual acceptance journey, agent step dispatch/finish/stop (E6) and installed end-to-end acceptance.
 
-**Release progress is not a PR count.** The **10/21** figure counts completed capabilities against the **21-item working inventory below**, including already delivered foundations. It is *not a percentage of work, not an agreed release metric, and not release readiness*. Once the 1.0 requirements are approved, report `Done / approved criteria` and track overall end-to-end acceptance independently. Product-wide acceptance remains **not verified**, regardless of how many foundations have merged.
+**Progress policy:** the 21 rows below are a **working inventory**, not a percentage of work or an approved release denominator. The overall installed end-to-end acceptance case is **not verified (0/1)**. Report official `completed/approved acceptance criteria` only after scope sign-off. Implementation on a branch, verified acceptance, merge to `main` and release remain separate facts.
 
 ## 1.0.0 · Full capability scope (working proposal)
 
@@ -59,23 +59,35 @@ related:
 | D100            | Workspace documentation reader/search     | User-facing          | ✅ Done                     | Browse/search docs in the relevant checkout                                               | [#138](https://github.com/dczerwinskipl/nevo-specflow/pull/138), [#143](https://github.com/dczerwinskipl/nevo-specflow/pull/143) |
 | C008            | Authentication, permissions and OpenAPI   | Foundation           | ✅ Done                     | Server authorization and generated API contract; new Workflow actions still need coverage | [#14](https://github.com/dczerwinskipl/nevo-specflow/pull/14), [#31](https://github.com/dczerwinskipl/nevo-specflow/pull/31), [#136](https://github.com/dczerwinskipl/nevo-specflow/pull/136) |
 | C009            | Packaging and quality checks              | Foundation           | ✅ Done                     | Product packaging, packaged smoke and CI exist; user onboarding not yet accepted          | [#10](https://github.com/dczerwinskipl/nevo-specflow/pull/10), [#77](https://github.com/dczerwinskipl/nevo-specflow/pull/77), [#81](https://github.com/dczerwinskipl/nevo-specflow/pull/81), [#144](https://github.com/dczerwinskipl/nevo-specflow/pull/144) |
-| P100            | Task Resource and authoring               | User outcome         | ⬜ Not started              | E2 + E3: independent Task files, editing, type binding and dependencies                   | [#137](https://github.com/dczerwinskipl/nevo-specflow/pull/137) |
-| P101            | Manual Specification/Task Workflow        | User outcome         | ⬜ Not started              | E4b: start/finish/return, review-fail/rework, wait and history                            | [#137](https://github.com/dczerwinskipl/nevo-specflow/pull/137) |
-| P102            | Delegate one Workflow step to an agent    | User outcome         | ⬜ Not started              | E6: verified Session claim, writes, finish/stop and owner handoff                         | [#137](https://github.com/dczerwinskipl/nevo-specflow/pull/137) |
-| P106            | Owner acceptance and Workflow-safe Close  | User outcome         | ⬜ Not started              | E2 minimal Close guard; E4 complete sign-off; existing Engine Close stays                 | [#137](https://github.com/dczerwinskipl/nevo-specflow/pull/137) |
-| T100            | Manual Workflow CLI/HTTP/UI commands      | Product interface    | ⬜ Not started              | E3/E4: shared Engine operations and authenticated action projections                      | [#137](https://github.com/dczerwinskipl/nevo-specflow/pull/137) |
-| D101            | Pinned context for agent steps            | Product integration  | ⬜ Not started              | E6: Task/Spec definitions and authorized docs in the agent step                           | [#137](https://github.com/dczerwinskipl/nevo-specflow/pull/137), [Task context](specflow-engine/task-resource-and-context.md) |
-| I101            | Recover interrupted delegated steps       | Product integration  | ⬜ Not started              | E6: correct reconciliation across stop, retry and partial writes                          | [#137](https://github.com/dczerwinskipl/nevo-specflow/pull/137), [Recovery](specflow-engine/execution-scopes-and-recovery.md) |
-| I102            | Permissions for new Workflow actions      | Product integration  | ⬜ Not started              | E4/E6: project/Task actor validation and refusal reasons                                  | [#137](https://github.com/dczerwinskipl/nevo-specflow/pull/137), [Auth](authorization/README.md) |
-| T103            | Installed user onboarding                 | User outcome         | ⬜ Not verified             | Install one project, configure a provider and run outside the dev repo                    | [Packaging](../engineering/repository/product-packaging.md) |
-| I103            | End-to-end release acceptance             | Release verification | ⬜ Not verified             | Manual flow + one delegated step + restart + legal Close in a real project                | [E0–E6 draft plan](https://github.com/dczerwinskipl/nevo-specflow/blob/docs/idea-reusable-workflow-manual-execution/docs/ideas/specflow-engine/reusable-workflow-manual-execution/delivery-plan.md) |
-| I104            | Supported native-agent platforms          | Release decision     | 🔎 Open                     | Publish the actual supported OS/provider matrix                                           | [Provider backlog](specflow-runtime/provider-migration-plan.md) |
+| P100 | Task Resource and authoring | User outcome | 🛠 Code on #137 | E2/E3 Task Resource schema, Engine, HTTP/CLI and authoring UI exist on the branch; verify create/edit/type/dependency E2E. | [#137](https://github.com/dczerwinskipl/nevo-specflow/pull/137) |
+| P101 | Manual Specification/Task Workflow | User outcome | 🛠 Code on #137 | E4 commands, action projection, Runtime HTTP and UI exist on the branch; verify a full manual review/fail/rework path. | [#137](https://github.com/dczerwinskipl/nevo-specflow/pull/137) |
+| P102 | Delegate one Workflow step to an agent | User outcome | ⬜ E6 unverified | Owner-delegated Session dispatch, claim, writes, finish, native stop and recovery not verified end to end. | [#137](https://github.com/dczerwinskipl/nevo-specflow/pull/137) |
+| P106 | Owner acceptance and Workflow-safe Close | User outcome | 🛠 Code on #137 | E2/E4 Close blockers and owner actions exist on branch; verify approvals, waivers and safe Close. | [#137](https://github.com/dczerwinskipl/nevo-specflow/pull/137) |
+| T100 | Manual Workflow CLI/HTTP/UI commands | Product interface | 🛠 Code on #137 | Task/Workflow CLI, authenticated Runtime routes and UI actions exist; check shared Engine semantics. | [#137](https://github.com/dczerwinskipl/nevo-specflow/pull/137) |
+| D101 | Pinned context for agent steps | Product integration | 🟡 Branch partial | E2 Task context and documents are implemented on branch; pinned E6 agent context remains to integrate. | [#137](https://github.com/dczerwinskipl/nevo-specflow/pull/137), [Task context](specflow-engine/task-resource-and-context.md) |
+| I101 | Recover interrupted delegated steps | Product integration | ⬜ E6 unverified | General Engine recovery exists; E6 Session claim, stop/retry and partial writes need completion proof. | [#137](https://github.com/dczerwinskipl/nevo-specflow/pull/137), [Recovery](specflow-engine/execution-scopes-and-recovery.md) |
+| I102 | Permissions for new Workflow actions | Product integration | 🟡 Branch partial | Manual Workflow permissions and refusal routes exist on branch; verify actor identity and E6 claims. | [#137](https://github.com/dczerwinskipl/nevo-specflow/pull/137), [Auth](authorization/README.md) |
+| T103 | Installed user onboarding | User outcome | ⬜ Outside #137 | Release readiness: independent end-user installation, provider configuration and onboarding proof. | [Packaging](../engineering/repository/product-packaging.md) |
+| I103 | End-to-end release acceptance | Release verification | ⬜ Outside #137 | Release readiness: installed UI + agent + restart + Close acceptance test; HTTP tests are insufficient. | [E0–E6 draft plan](https://github.com/dczerwinskipl/nevo-specflow/blob/docs/idea-reusable-workflow-manual-execution/docs/ideas/specflow-engine/reusable-workflow-manual-execution/delivery-plan.md) |
+| I104 | Supported native-agent platforms | Release decision | 🔎 Outside #137 | Release readiness: decide and certify the native platform/provider matrix. | [Provider backlog](specflow-runtime/provider-migration-plan.md) |
 
-**Dependency and next-milestone path:** **E0** approve boundary/design → **E1** extract reusable neutral Workflow coordinator → **E2** implement standalone Task Resource and minimum Close protection → **E3** Task authoring/editing in UI and CLI → **E4a/E4b** shared action contracts and complete manual Workflow → **E6** owner-delegated single-step agent execution → **installed-product acceptance**. E5 typed forms are deferred to later 1.x. The entire E0–E6 sequence is **planned in PR #137**, not implemented merely because the dossier exists.
+**#137 audit snapshot (head `ccf8d070`, 481 changed files, unmerged):**
 
-**1.0 end-to-end release acceptance (separate from capability coverage):** create a Specification and Task Types; edit Tasks; run a manual review/fail/rework; have an agent perform one eligible step; inspect and approve its result; recover after restart; refuse unsafe Close and complete valid Close in an installed, real Git project. **Not verified (0/1).** The [#137 acceptance scenario](https://github.com/dczerwinskipl/nevo-specflow/blob/docs/idea-reusable-workflow-manual-execution/docs/ideas/specflow-engine/reusable-workflow-manual-execution/delivery-plan.md#full-user-acceptance-scenario) is a proposal, not a passing test.
+| Stage | Evidence on branch | Missing verification |
+| --- | --- | --- |
+| **E0 · Boundary decisions** | Architecture changes and new Workflow package | D01–D13 need review, reconciliation with the code and promotion into accepted docs |
+| **E1 · Reusable Workflow** | `packages/workflow` coordinator, replay/host contracts and tests | Verify separate host, determinism, replay and package boundaries |
+| **E2 · Task Resource** | Task manifests, Engine operations, Close blockers and tests | Verify atomic Task changes, type pinning, recovery and refusal |
+| **E3 · Task authoring** | CLI commands, Runtime Task routes, UI dialogs and tests | Verify real-project Task create/edit/lifecycle across transports |
+| **E4 · Manual Workflow** | Start/finish/return, action projections, UI and real Git/HTTP tests | Verify full Spec + Task review/rework, restart, human sign-off and Close |
+| **E5 · Typed forms** | Deferred proposal | Not needed for 1.0; target later 1.x |
+| **E6 · Agent delegation** | Protocol proposal; existing Managed Sessions are a foundation | Build/prove Session dispatch, scoped writes, finish, stop, reconciliation and agent Task proposals |
 
-**Relationships, not false equivalences:** C004 Workflow Kernel ✅ enables P101 manual Workflow ⬜. C005/C006 managed Sessions ✅ enable P102 delegated Workflow execution ⬜. C003 Task Workbench ✅ is not P100 Task authoring ⬜. C008 authorization ✅ is a prerequisite for I102's new Workflow action permissions ⬜. C009 packaging ✅ does not prove T103 onboarding or I103 release acceptance.
+**Immediate task: audit the existing #137 E0–E4 implementation and test it against the [E0–E6 delivery plan](https://github.com/dczerwinskipl/nevo-specflow/blob/docs/idea-reusable-workflow-manual-execution/docs/ideas/specflow-engine/reusable-workflow-manual-execution/delivery-plan.md).** Passing isolated tests or having a UI does not automatically close a milestone. E6 then integrates the same Workflow contract rather than inventing another execution path.
+
+**Separate release acceptance:** run a real installed-product scenario with Task editing, manual review/rework, an agent-managed step, restart/duplicate-finish recovery and authorized Close. **0/1 verified.**
+
+**Dependencies:** C004 Kernel ✅ enables P101 manual Workflow 🛠; C005/C006 Sessions ✅ enable P102 agent delegation ⬜; C003 Task reads ✅ enable P100 Task authoring 🛠. The completed foundation and integrated user outcome remain different capability IDs.
 
 ## 1.1.0 and later compatible 1.x releases
 

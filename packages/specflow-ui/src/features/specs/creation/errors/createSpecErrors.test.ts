@@ -162,6 +162,7 @@ describe('toOperationFailure (a failure the inspection endpoint reported)', () =
   it.each<[string, CreateFailure['kind']]>([
     ['BRANCH_ALREADY_EXISTS', 'branch-exists'],
     ['BASE_REF_NOT_FOUND', 'stale'],
+    ['GIT_BASE_CONFIG_MISSING', 'base-config-missing'],
     ['CONTROL_LOCK_BUSY', 'uncertain'],
     ['REGISTRY_CONFLICT', 'uncertain'],
     ['GIT_POLICY_INVALID', 'uncertain'],

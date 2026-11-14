@@ -346,42 +346,6 @@
       ]
     },
     {
-      "id": "ideas.roadmap-delivered",
-      "type": "hub",
-      "title": "Nevo SpecFlow roadmap — delivered PR evidence",
-      "status": "draft",
-      "file": "docs/ideas/roadmap-delivered.md",
-      "read_when": [
-        "checking delivery evidence for completed roadmap foundations",
-        "reconciling roadmap status with the full GitHub pull-request history",
-        "tracing a merged PR to an implemented area of Nevo SpecFlow"
-      ],
-      "summary": "Complete categorized snapshot of merged PRs supporting the SpecFlow roadmap, with separate lists of closed-unmerged and open PRs so attempted work is not mislabeled as delivered.",
-      "related": [
-        "ideas.roadmap",
-        "ideas.readme"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "workflow",
-        "ai",
-        "runtime",
-        "server",
-        "ui",
-        "cli",
-        "docs",
-        "release",
-        "security"
-      ],
-      "tags": [
-        "roadmap",
-        "delivery",
-        "pull-requests",
-        "shipped",
-        "evidence"
-      ]
-    },
-    {
       "id": "ideas.semantic-docs",
       "type": "hub",
       "title": "Semantic documentation search follow-ups",

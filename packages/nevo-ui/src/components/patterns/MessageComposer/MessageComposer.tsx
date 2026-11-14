@@ -29,7 +29,9 @@ export const messageComposerVariants = tv({
   variants: {
     state: {
       default: '',
-      disabled: 'opacity-60',
+      // The surface stays opaque so a docked Composer never shows content through it; only its
+      // controls dim (the embedded editor mutes its text, disabled actions their own opacity).
+      disabled: '',
     },
     presentation: {
       standalone: 'rounded-composite border border-solid',
@@ -45,7 +47,7 @@ export const messageComposerVariants = tv({
     {
       state: 'disabled',
       presentation: 'standalone',
-      class: 'border-border-subtle bg-surface-subtle',
+      class: 'border-border-subtle bg-surface-raised',
     },
   ],
   defaultVariants: messageComposerDefaults,

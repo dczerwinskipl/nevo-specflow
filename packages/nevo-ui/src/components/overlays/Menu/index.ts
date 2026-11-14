@@ -1,4 +1,11 @@
 export {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from './ContextMenu';
+export type { ContextMenuContentProps, ContextMenuItemProps } from './ContextMenu';
+export {
   Menu,
   MenuContent,
   MenuGroup,

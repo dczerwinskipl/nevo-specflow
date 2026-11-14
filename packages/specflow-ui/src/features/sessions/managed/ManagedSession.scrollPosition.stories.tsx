@@ -331,7 +331,8 @@ function layoutSwitchWhileReading(
       await expect(
         offset,
         `"${anchor.id}" (read before the switch) is still on screen near the top`,
-      ).toBeGreaterThanOrEqual(-40);
+        // Relative to where it was read: the first visible entry may already start above the top.
+      ).toBeGreaterThanOrEqual(Math.min(anchor.offset, 0) - 40);
       await expect(offset).toBeLessThan(next.clientHeight / 2);
       await expect(distanceFromBottom(next), 'still reading, not at the latest').toBeGreaterThan(
         300,

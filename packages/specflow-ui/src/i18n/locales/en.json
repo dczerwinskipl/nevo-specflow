@@ -1851,6 +1851,7 @@
     "older": "Load older messages",
     "loadingOlder": "Loading older messages…",
     "latest": "Return to latest messages",
+    "messageActions": "Message actions",
     "copy": {
       "action": "Copy message",
       "copied": "Copied",

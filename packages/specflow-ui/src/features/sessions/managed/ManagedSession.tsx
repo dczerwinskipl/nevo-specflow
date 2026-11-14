@@ -9,7 +9,7 @@ import {
 } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Check, Copy, Plus, Send, Square, X } from 'lucide-react';
+import { Plus, Send, Square, X } from 'lucide-react';
 import {
   Alert,
   InlineNote,
@@ -41,6 +41,7 @@ import {
 import type { ConversationEntry, ProviderDescriptor } from '@nevo/specflow-contracts/sessions';
 import { createSessionFeed, type SessionFeed } from './feed';
 import { ReadableText, type ReadableTextHandle } from './MessageText';
+import { AnswerMessageActions, RequestMessageActions } from './conversation/MessageActions';
 import { ModelEffortPicker } from './ModelEffortPicker';
 import {
   createConversationScrollPosition,
@@ -89,66 +90,6 @@ function browserStorage() {
 }
 
 /**
- * Copy action for a specific authored message (full-session.md "Conversation": Copy
- * belongs to its authored message). Desktop reveals it only on hover/focus of the
- * message (the `group/message` on its `EntryRow` article below); coarse pointers always show it,
- * since hover does not exist on touch — the same `pointer-fine:opacity-0` /
- * `pointer-fine:group-hover/<name>:opacity-100` convention `treeRowActionClassName` already
- * establishes for a trailing row action in this Design System (`treeRecipes.ts`).
- *
- * Quote (quoting a message into the composer draft) is deferred (session-chat-v10-design.md §2):
- * V10 only says Copy and Quote "belong to" the message, without deciding whether Quote replaces or
- * appends to an existing draft, its exact quoted format, or focus handling afterward — material
- * product decisions, not implementation detail, so they are left to a follow-up rather than guessed
- * here.
- */
-function MessageCopyAction({ onCopy }: { onCopy: () => Promise<boolean> }) {
-  const { t } = useTranslation();
-  const [status, setStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
-  const resetTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  useEffect(() => () => clearTimeout(resetTimer.current), []);
-
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <TooltipProvider delayDuration={400}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <IconButton
-              aria-label={t('managedSession.copy.action')}
-              className={cn(
-                'shrink-0',
-                'pointer-fine:opacity-0',
-                'pointer-fine:group-hover/message:opacity-100',
-                'pointer-fine:group-focus-within/message:opacity-100',
-                'pointer-fine:focus-visible:opacity-100',
-              )}
-              icon={status === 'copied' ? Check : Copy}
-              size="xs"
-              variant="ghost"
-              onClick={() => {
-                clearTimeout(resetTimer.current);
-                void onCopy().then((ok) => {
-                  setStatus(ok ? 'copied' : 'failed');
-                  resetTimer.current = setTimeout(() => setStatus('idle'), 2000);
-                });
-              }}
-            />
-          </TooltipTrigger>
-          <TooltipContent>{t('managedSession.copy.action')}</TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-      <span role="status" aria-live="polite" className="sr-only">
-        {status === 'copied'
-          ? t('managedSession.copy.copied')
-          : status === 'failed'
-            ? t('managedSession.copy.failed')
-            : ''}
-      </span>
-    </span>
-  );
-}
-
-/**
  * One conversation entry, rendered per its semantic role (full-session.md "Conversation").
  * V10 rule: do not prefix every entry with a repeated "Ty"/"Asystent" speaker label — the kind
  * stays available to assistive tech (`sr-only`) but visual role comes from alignment/surface/
@@ -177,36 +118,33 @@ function EntryRow({
 
   if (entry.kind === 'request') {
     return (
-      <article data-entry-id={entry.id} className="group/message grid justify-end gap-1">
+      <article data-entry-id={entry.id} className="group/message relative grid justify-end">
         {srLabel}
         {/* `bg-surface-primary` — a brand-derived token (`brandEnvironment.ts`'s own
             `surfacePrimary`, mixed 55% toward black) rather than the brand's full-saturation
             `--color-action-primary`, which reads as a loud button fill rather than a quiet "this
             one is mine" message surface. A neutral `bg-surface-subtle` would give the user's own
             messages no visual identity distinct from the rest of the conversation. */}
-        <div className="max-w-content-standard rounded-composite bg-surface-primary px-4 py-3">
-          <ReadableText
-            ref={textRef}
-            api={api}
-            sessionId={sessionId}
-            value={entry.text}
-            onGrow={onGrow}
-          />
-        </div>
-        {/* In normal flow, directly under the bubble. An `absolute` copy row reserved no space,
-            so on touch screens (where it is always visible) it sat inside the list gap and touched
-            the next message. The list gap is kept small instead (`gap-4`), so the copy row plus
-            that gap reads as one clear break between messages. */}
-        <div className="flex justify-end">
-          <MessageCopyAction onCopy={handleCopy} />
-        </div>
+        {/* No row of its own under the bubble: its actions are a hover toolbar or a long-press
+            menu (`RequestMessageActions`). */}
+        <RequestMessageActions onCopy={handleCopy}>
+          <div className="max-w-content-standard rounded-composite bg-surface-primary px-4 py-3">
+            <ReadableText
+              ref={textRef}
+              api={api}
+              sessionId={sessionId}
+              value={entry.text}
+              onGrow={onGrow}
+            />
+          </div>
+        </RequestMessageActions>
       </article>
     );
   }
 
   if (entry.kind === 'answer') {
     return (
-      <article data-entry-id={entry.id} className="group/message grid min-w-0 gap-1">
+      <article data-entry-id={entry.id} className="grid min-w-0 gap-1">
         {srLabel}
         <ReadableText
           ref={textRef}
@@ -216,10 +154,8 @@ function EntryRow({
           markdown
           onGrow={onGrow}
         />
-        {/* In flow, same as the request bubble above. */}
-        <div className="flex">
-          <MessageCopyAction onCopy={handleCopy} />
-        </div>
+        {/* Always visible, in flow: the answer is the one message followed by its actions. */}
+        <AnswerMessageActions onCopy={handleCopy} />
       </article>
     );
   }
@@ -670,9 +606,14 @@ function ManagedSessionConversation({
                 <div
                   ref={setEntriesNode}
                   className={cn(
-                    'mx-auto grid w-full max-w-content-standard gap-4 px-5 py-5',
-                    // Empty: the ready empty state centres in the free height above the Composer.
-                    !snapshot.entries.length && 'flex-1 grid-rows-[1fr]',
+                    // `flex-1` always fills the free height above the Composer, so a short
+                    // conversation keeps the split layout's `sticky` Composer at the bottom
+                    // instead of right after the last message (sticky only pins once content
+                    // overflows; stacked/mobile's `fixed` Composer is pinned regardless).
+                    'mx-auto grid w-full max-w-content-standard flex-1 gap-4 px-5 py-5',
+                    // Empty: the ready empty state centres in that height; otherwise messages
+                    // stack from the top instead of stretching their rows across it.
+                    snapshot.entries.length ? 'content-start' : 'grid-rows-[1fr]',
                   )}
                 >
                   {/* Auto-loads on scroll near the top instead of a manual button
@@ -742,11 +683,7 @@ function ManagedSessionConversation({
                         ? 'sticky self-center'
                         : 'fixed inset-x-0 flex justify-center px-4',
                     )}
-                    style={{
-                      bottom: localScroll
-                        ? `calc(var(--workspace-overlay-bottom, 0.75rem) + ${composerHeight}px + 0.5rem)`
-                        : `calc(${composerHeight}px + 0.5rem)`,
-                    }}
+                    style={{ bottom: `calc(${composerHeight}px + 0.5rem)` }}
                   >
                     {/* `variant="secondary"`'s own background token (`--color-action-secondary`)
                         is deliberately translucent — it is meant for a control sitting on an
@@ -803,20 +740,22 @@ function ManagedSessionConversation({
                   // to the true bottom, so the Composer sits transparently on top of that single
                   // real surface rather than painting a second, copied one of its own — the two
                   // would otherwise be color-matched separately (an illusion that a structural DOM
-                  // check reveals as two boxes), so there genuinely is only one. Split/desktop keeps the
-                  // unchanged floating-above-the-edge treatment: it is a `sticky` child of its own
-                  // local scroll container, which already shares that container's opaque
-                  // background, so there is no transparent zone for content to show through
-                  // underneath it either way.
+                  // check reveals as two boxes), so there genuinely is only one. Split/desktop pins
+                  // the same way (`bottom: 0`, the edge clearance moved into its padding), but its
+                  // conversation scrolls underneath the bar inside the same surface, so the bar
+                  // paints that surface's own material (`workspace-docked-bar`): nothing scrolled
+                  // behind it shows through the space around the Composer.
                   className={cn(
                     'z-10 flex flex-col items-center gap-2 px-4 pt-3 sm:px-5',
                     localScroll
-                      ? 'sticky pb-4 sm:pb-5'
+                      ? 'workspace-docked-bar sticky bottom-0'
                       : 'scrollbar-subtle fixed inset-x-0 bottom-0 z-20 overflow-y-auto',
                   )}
                   style={
                     localScroll
-                      ? { bottom: 'var(--workspace-overlay-bottom, 0.75rem)' }
+                      ? {
+                          paddingBottom: 'calc(1.25rem + var(--workspace-overlay-bottom, 0.75rem))',
+                        }
                       : {
                           // The same breathing room `pb-4` gave before, now stacked on top of the
                           // safe-area clearance instead of replacing it — see the className comment
@@ -934,15 +873,10 @@ function ManagedSessionConversation({
                             // floating-navigation row's shadow (`AppWorkspace.css`), so all three read as
                             // one coherent elevation rather than three different weights.
                             //
-                            // `workspace-floating-pill` (`AppWorkspace.css`), not the DS `standalone`
-                            // variant's own default `bg-surface-raised` (a flat, solid `#121212`): this is
-                            // the same lighter, translucent "floating surface" material the jump-to-latest pill
-                            // and the mobile floating-navigation row already use, declared un-layered so
-                            // it reliably wins over the component's own `@layer`-declared utility
-                            // regardless of Tailwind's internal ordering (see that class's own doc
-                            // comment). Keeps this bar visually consistent with this screen's other
-                            // floating surfaces instead of reading as a separate, darker material.
-                            className="shadow-lg workspace-floating-pill"
+                            // The DS `standalone` surface (`bg-surface-raised`) is opaque on purpose:
+                            // the conversation scrolls underneath the docked Composer and must never
+                            // show through it (not the translucent `workspace-floating-pill`).
+                            className="shadow-lg"
                             // Platform-specific Enter handling. Desktop
                             // keeps the DS default (`'submit'`): a physical keyboard reliably reports
                             // `shiftKey`, so Shift+Enter already inserts a newline there
@@ -1077,12 +1011,20 @@ function ManagedSessionConversation({
                                         icon={canCancel ? Square : Send}
                                         size="sm"
                                         type={canCancel ? 'button' : 'submit'}
-                                        // Bold `primary` only while Send is actually actionable: the
-                                        // disabled `opacity-50` treatment alone reads too close to
-                                        // "primary" at full saturation (the composer's disabled textarea
-                                        // visibly mutes, so the Send icon button must too), so the disabled Send case falls back to the same muted
-                                        // `secondary` treatment Stop/Cancel already uses.
-                                        variant={canCancel || !canSend ? 'secondary' : 'primary'}
+                                        // Stop interrupts the agent's work: the semantic `destructive`
+                                        // action with a filled stop glyph (an outline square read as
+                                        // an icon that failed to load). Bold `primary` only while Send
+                                        // is actually actionable: the disabled `opacity-50` treatment
+                                        // alone reads too close to "primary" at full saturation, so a
+                                        // disabled Send falls back to the muted `secondary`.
+                                        className={canCancel ? '[&_svg]:fill-current' : undefined}
+                                        variant={
+                                          canCancel
+                                            ? 'destructive'
+                                            : canSend
+                                              ? 'primary'
+                                              : 'secondary'
+                                        }
                                         onClick={canCancel ? () => void feed.cancel() : undefined}
                                       />
                                     </TooltipTrigger>

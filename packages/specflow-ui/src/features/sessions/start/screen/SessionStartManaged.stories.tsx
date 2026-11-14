@@ -77,7 +77,17 @@ export const ManagedInSpecification: Story = {
     await expect(canvas.getByRole('combobox', { name: 'Effort' })).toBeDisabled();
     await expect(startButton(canvas)).toBeDisabled();
     await expect(canvas.getByText('Wybierz model.')).toBeVisible();
-    await expect(composer(canvas)).toBeDisabled();
+  },
+};
+
+/** The inactive Composer is docked only while the form and the Composer fit the column together. */
+export const ComposerOnlyWhenTheFormFits: Story = {
+  play: async ({ canvas }) => {
+    await settle(1280, 655);
+    await canvas.findByRole('heading', { level: 2, name: 'Rozpocznij sesję' });
+    await waitFor(() => expect(canvas.queryByRole('textbox', { name: 'Wiadomość' })).toBeNull());
+    await settle(1920, 1080);
+    await expect(await canvas.findByRole('textbox', { name: 'Wiadomość' })).toBeDisabled();
   },
 };
 
@@ -248,7 +258,6 @@ export const ManagedStarting: Story = {
     await expect(await canvas.findByRole('button', { name: 'Rozpoczynanie…' })).toBeDisabled();
     await expect(canvas.getByRole('combobox', { name: 'Model' })).toBeDisabled();
     await expect(canvas.getByRole('radio', { name: /Claude/ })).toBeDisabled();
-    await expect(composer(canvas)).toBeDisabled();
   },
 };
 

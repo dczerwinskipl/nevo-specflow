@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppContent, cn, useWorkspaceLayout } from '@nevo/ui';
 
@@ -9,14 +9,18 @@ import { AppContent, cn, useWorkspaceLayout } from '@nevo/ui';
  * Session and the started Session share one geometry and nothing moves between them.
  *
  * `composer` is the Composer itself; omitted, no Composer is docked (a phone before Start, where it
- * would only take space from the form).
+ * would only take space from the form). With `composerOnlyIfFits` the split layout docks it only
+ * while the content and the Composer fit the column together: an inactive Composer is there for
+ * the look of a tall screen and must not cover a form that needs the whole height.
  */
 export function SessionStartConversation({
   children,
   composer,
+  composerOnlyIfFits = false,
 }: {
   children: ReactNode;
   composer?: ReactNode;
+  composerOnlyIfFits?: boolean;
 }) {
   const { t } = useTranslation();
   const layout = useWorkspaceLayout();
@@ -24,7 +28,51 @@ export function SessionStartConversation({
   const localScroll = layout.primaryScrollOwner === 'local';
   const [overlay, setOverlay] = useState<HTMLDivElement | null>(null);
   const [composerHeight, setComposerHeight] = useState(0);
-  const docked = composer !== undefined && composer !== false;
+  const [content, setContent] = useState<HTMLDivElement | null>(null);
+  const [fits, setFits] = useState(true);
+  const measureFit = composerOnlyIfFits && localScroll;
+  const docked = composer !== undefined && composer !== false && (!measureFit || fits);
+
+  // Whether the content's natural height and the Composer's last measured height fit the scroller.
+  // Neither depends on whether the Composer is shown (the content is measured to its last child, not
+  // to its stretched box, and the height is kept while hidden), so hiding it never flips the result.
+  useLayoutEffect(() => {
+    const scroller = content?.parentElement;
+    if (!measureFit || !content || !scroller || typeof ResizeObserver === 'undefined') {
+      setFits(true);
+
+      return undefined;
+    }
+
+    const measure = () => {
+      const top = content.getBoundingClientRect().top;
+      const bottom = content.lastElementChild?.getBoundingClientRect().bottom ?? top;
+      const natural = bottom - top + parseFloat(getComputedStyle(content).paddingBottom);
+      setFits(natural + composerHeight <= scroller.clientHeight);
+    };
+
+    const resize = new ResizeObserver(measure);
+    const observeAll = () => {
+      resize.disconnect();
+      resize.observe(scroller);
+      for (const child of content.children) {
+        resize.observe(child);
+      }
+    };
+
+    const mutation = new MutationObserver(() => {
+      observeAll();
+      measure();
+    });
+    observeAll();
+    mutation.observe(content, { childList: true });
+    measure();
+
+    return () => {
+      resize.disconnect();
+      mutation.disconnect();
+    };
+  }, [composerHeight, content, measureFit]);
 
   // The fixed Composer of the stacked layout takes no space of its own: reserve it.
   useEffect(() => {
@@ -40,16 +88,20 @@ export function SessionStartConversation({
 
   // Content sits directly on the conversation, from the top (centred in the free
   // height looks odd); an empty state centres itself in the same column.
-  const content = (
+  const body = (
     <>
-      <div className="mx-auto flex w-full max-w-content-standard flex-1 flex-col px-5 py-5">
+      <div
+        ref={setContent}
+        className="mx-auto flex w-full max-w-content-standard flex-1 flex-col px-5 py-5"
+      >
         {children}
       </div>
       {docked && !localScroll && <div aria-hidden="true" style={{ height: composerHeight }} />}
     </>
   );
   // Split layout: the Composer is the last child of the scroller and sticks to its bottom, as in
-  // `ManagedSession`, so the content scrolls fully clear of it. Stacked layout: fixed to the
+  // `ManagedSession`, on an opaque bar of the surface's own material, so the content scrolls
+  // underneath without showing through. Stacked layout: fixed to the
   // viewport, with the space reserved above.
   const composerBar = docked && (
     <div
@@ -58,12 +110,12 @@ export function SessionStartConversation({
       className={cn(
         'z-10 flex flex-col items-center gap-2 px-4 pt-3 sm:px-5',
         localScroll
-          ? 'sticky pb-4 sm:pb-5'
+          ? 'workspace-docked-bar sticky bottom-0'
           : 'scrollbar-subtle fixed inset-x-0 bottom-0 z-20 overflow-y-auto',
       )}
       style={
         localScroll
-          ? { bottom: 'var(--workspace-overlay-bottom, 0.75rem)' }
+          ? { paddingBottom: 'calc(1.25rem + var(--workspace-overlay-bottom, 0.75rem))' }
           : {
               paddingBottom: 'calc(1rem + var(--workspace-overlay-bottom, 0.75rem))',
               maxHeight:
@@ -93,12 +145,12 @@ export function SessionStartConversation({
           tabIndex={0}
           className="scrollbar-subtle flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain"
         >
-          {content}
+          {body}
           {composerBar}
         </div>
       ) : (
         <>
-          {content}
+          {body}
           {composerBar}
         </>
       )}

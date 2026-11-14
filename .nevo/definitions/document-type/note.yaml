@@ -1,0 +1,8 @@
+kind: document-type
+schemaVersion: 1
+id: note
+title: Note
+description: Supporting free-form material that fits no other type.
+useWhen: A file belongs to the Specification but has no more specific type.
+instructions: Use for supporting material that fits no other type. Start with one sentence saying why the note belongs to this Specification.
+defaultFilename: note.md

@@ -1,0 +1,7 @@
+kind: task-type
+schemaVersion: 1
+id: ui-implementation
+title: UI implementation
+description: A scoped UI or design-system change built from an established UX contract, with an independent review.
+useWhen: The Task changes screens, components or styles.
+workflow: task-ui

@@ -29,9 +29,10 @@ const sameView = (a: DiagramView, b: DiagramView) =>
   Math.abs(a.scale - b.scale) < 1e-4 && Math.abs(a.x - b.x) < 0.5 && Math.abs(a.y - b.y) < 0.5;
 
 /**
- * Zoom and pan of one drawing in its viewport. The view is the fitted one until the user zooms
- * or pans (so it follows a resize); reset returns to it. Plain wheel and one-finger touch are left
- * to the page; Ctrl/Cmd + wheel and pinch zoom; a pointer drag or two fingers pan.
+ * Zoom and pan of one drawing in its viewport. The view is the opening one until the user zooms
+ * or pans (so it follows a resize); Fit returns to it. Ctrl/Cmd + wheel and pinch zoom; a pointer
+ * drag or two fingers pan. Inline, plain wheel and one-finger touch are left to the page; full
+ * screen (`window`), where there is no page to scroll, one finger pans the drawing too.
  */
 export function useDiagramView(content: Size, mode: 'inline' | 'window') {
   const [viewport, setViewport] = useState<HTMLDivElement | null>(null);
@@ -121,6 +122,12 @@ export function useDiagramView(content: Size, mode: 'inline' | 'window') {
     };
 
     let pinch: { distance: number; middle: Point } | undefined;
+    /** Full screen only: the last point of a one-finger pan. */
+    let finger: Point | undefined;
+    const oneFinger = (touches: TouchList) =>
+      mode === 'window' && touches.length === 1
+        ? local(touches[0]!.clientX, touches[0]!.clientY)
+        : undefined;
     const twoFingers = (touches: TouchList) => {
       const [a, b] = [touches[0]!, touches[1]!];
 
@@ -132,9 +139,20 @@ export function useDiagramView(content: Size, mode: 'inline' | 'window') {
 
     const onTouchStart = (event: TouchEvent) => {
       pinch = event.touches.length === 2 ? twoFingers(event.touches) : undefined;
+      finger = oneFinger(event.touches);
     };
 
     const onTouchMove = (event: TouchEvent) => {
+      const from = finger;
+      if (from && event.touches.length === 1) {
+        event.preventDefault();
+        const to = oneFinger(event.touches)!;
+        finger = to;
+        update((current, g) => panBy(current, to.x - from.x, to.y - from.y, g));
+
+        return;
+      }
+
       if (event.touches.length !== 2 || !pinch) {
         return;
       }
@@ -154,8 +172,10 @@ export function useDiagramView(content: Size, mode: 'inline' | 'window') {
       );
     };
 
+    // Lifting one of two fingers continues as a one-finger pan from where that finger is.
     const onTouchEnd = (event: TouchEvent) => {
       pinch = event.touches.length === 2 ? twoFingers(event.touches) : undefined;
+      finger = oneFinger(event.touches);
     };
 
     viewport.addEventListener('wheel', onWheel, { passive: false });
@@ -171,9 +191,9 @@ export function useDiagramView(content: Size, mode: 'inline' | 'window') {
       viewport.removeEventListener('touchend', onTouchEnd);
       viewport.removeEventListener('touchcancel', onTouchEnd);
     };
-  }, [viewport, update]);
+  }, [viewport, update, mode]);
 
-  // A mouse or pen drag pans; touch is left to the page (one finger) and the pinch (two).
+  // A mouse or pen drag pans; touch has its own listeners above.
   const drag = useRef<{ id: number; x: number; y: number } | undefined>(undefined);
   const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
     if (event.pointerType === 'touch' || event.button !== 0) {
@@ -224,6 +244,7 @@ export function useDiagramView(content: Size, mode: 'inline' | 'window') {
 
   return {
     view,
+    mode,
     /** The box height inline (the fitted drawing plus the inset); full screen it fills. */
     height: mode === 'inline' ? geometry.box.height + 2 * diagramInset : undefined,
     pannable:

@@ -20,8 +20,8 @@ export interface Point {
   readonly y: number;
 }
 
-/** Inline text never shrinks below 10 px: the drawing's labels are 14 px at natural size. */
-export const minimumInlineScale = 10 / 14;
+/** Opening text never shrinks below 10 px: the drawing's labels are 14 px at natural size. */
+export const minimumReadableScale = 10 / 14;
 /** The largest zoom, as a multiple of the natural size. */
 export const maximumScale = 4;
 /** One zoom step (buttons, `+`/`-`). */
@@ -30,10 +30,11 @@ export const zoomStep = 1.25;
 export const panStep = 48;
 
 /**
- * The scale a diagram opens at.
+ * The scale a diagram opens at (and returns to on Fit): readable first, then as much as fits.
  * - `inline` (in the document): its natural size when it fits the column (never larger), else
- *   fitted to the column but never below `minimumInlineScale` (the rest pans).
- * - `window` (full screen): the whole drawing fitted to the box, never larger than natural size.
+ *   fitted to the column but never below `minimumReadableScale` (the rest pans).
+ * - `window` (full screen): the whole drawing fitted to the box, never larger than natural size
+ *   and never below `minimumReadableScale` either (a large diagram pans instead of shrinking).
  */
 export function fitScale(content: Size, box: Size, mode: 'inline' | 'window'): number {
   if (content.width <= 0 || content.height <= 0 || box.width <= 0) {
@@ -41,12 +42,17 @@ export function fitScale(content: Size, box: Size, mode: 'inline' | 'window'): n
   }
 
   if (mode === 'inline') {
-    return content.width <= box.width ? 1 : Math.max(box.width / content.width, minimumInlineScale);
+    return content.width <= box.width
+      ? 1
+      : Math.max(box.width / content.width, minimumReadableScale);
   }
 
-  return box.height <= 0
-    ? Math.min(1, box.width / content.width)
-    : Math.min(1, box.width / content.width, box.height / content.height);
+  const whole =
+    box.height <= 0
+      ? Math.min(1, box.width / content.width)
+      : Math.min(1, box.width / content.width, box.height / content.height);
+
+  return Math.max(whole, minimumReadableScale);
 }
 
 export interface DiagramGeometry {

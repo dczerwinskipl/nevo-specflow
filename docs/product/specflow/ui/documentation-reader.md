@@ -176,7 +176,8 @@ Wide / Compact                                   Narrow
   at the right of the header, just before the `···` menu (as in the Documents preview), that opens
   the Contents sheet. Fenced `mermaid` blocks are drawn as diagrams, as in the Documents preview:
   fitted to the column down to 10 px text (a small one at its natural size), with zoom, pan and full
-  screen (see the design-system note "MarkdownDocument diagrams"). Header: the document title; overflow **Copy link**
+  screen; full screen keeps the same 10 px minimum and one finger pans the diagram there (see the
+  design-system note "MarkdownDocument diagrams"). Header: the document title; overflow **Copy link**
   (workstation-local, it contains the workspace id) and **Copy path** (portable). A proposal starts
   with a quiet note: "This is a proposal, not a current rule. Search leaves proposals out unless
   you include them."

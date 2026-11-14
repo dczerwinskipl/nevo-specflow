@@ -8,11 +8,9 @@ import {
   DialogTrigger,
 } from '../../overlays/Dialog';
 import { cn } from '../../../lib';
-import { Spinner } from '../../feedback/Spinner';
-import { Typography } from '../../foundations/Typography';
 import { hitAreaClassName } from '../../../design-system/interactionRecipes';
 import { naturalSize } from './diagramView';
-import { useDiagram } from './mermaidDiagram';
+import { withFreshIds } from './mermaidDiagram';
 import { diagramInset, useDiagramView } from './useDiagramView';
 
 export interface DiagramViewerLabels {
@@ -23,8 +21,6 @@ export interface DiagramViewerLabels {
   diagramReset: string;
   diagramFullScreen: string;
   diagramClose: string;
-  /** Quiet note when a diagram cannot be drawn. */
-  diagramFailed: string;
 }
 
 /** Mermaid's shapes carry drop-shadow filters (sequence actors); the document's blocks have none. */
@@ -104,7 +100,10 @@ function DiagramViewport({
       aria-label={label}
       className={cn(
         // The focus ring is drawn by `::after`, above the drawing (whose shapes would cover an outline).
-        "relative overflow-hidden outline-none [touch-action:pan-x_pan-y] after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:content-[''] focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus-ring",
+        "relative overflow-hidden outline-none after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:content-[''] focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus-ring",
+        // Inline, one finger scrolls the page (the browser keeps it, and no page pinch-zoom over the
+        // drawing); full screen, every touch belongs to the drawing.
+        zoom.mode === 'window' ? 'touch-none' : '[touch-action:pan-x_pan-y]',
         zoom.pannable && 'cursor-grab active:cursor-grabbing',
         className,
       )}
@@ -129,12 +128,14 @@ function DiagramViewport({
 }
 
 /** Full screen: a second drawing (its own SVG ids), fitted to the window, same zoom and pan. */
-const frameClassName = 'rounded-composite border border-border-default bg-canvas';
-
-function FullScreenDiagram({ source, labels }: { source: string; labels: DiagramViewerLabels }) {
-  const diagram = useDiagram(source);
-  const svg = diagram.status === 'ready' ? diagram.svg : '';
-  const zoom = useDiagramView(naturalSize(svg), 'window');
+/**
+ * Full screen: a copy of the drawing under fresh SVG ids (no id is on the page twice, and nothing
+ * is drawn again), opening readable (text never below 10 px), with the same zoom and pan.
+ */
+function FullScreenDiagram({ svg, labels }: { svg: string; labels: DiagramViewerLabels }) {
+  // One copy per opening: the dialog mounts this when it opens.
+  const [copy] = useState(() => withFreshIds(svg));
+  const zoom = useDiagramView(naturalSize(copy), 'window');
 
   return (
     <DialogContent
@@ -146,28 +147,12 @@ function FullScreenDiagram({ source, labels }: { source: string; labels: Diagram
         <DialogTitle className="pl-2">{labels.diagram}</DialogTitle>
         <DiagramControls labels={labels} zoom={zoom} />
       </DialogHeader>
-      {diagram.status === 'ready' ? (
-        <DiagramViewport
-          className={`${frameClassName} min-h-0 flex-1`}
-          label={labels.diagram}
-          svg={svg}
-          zoom={zoom}
-        />
-      ) : (
-        // Its own drawing is still being made (or could not be made): say so, never a blank frame.
-        <div
-          aria-busy={diagram.status === 'loading'}
-          className={`${frameClassName} flex min-h-0 flex-1 items-center justify-center`}
-        >
-          {diagram.status === 'loading' ? (
-            <Spinner />
-          ) : (
-            <Typography as="p" className="text-content-muted" variant="body-sm">
-              {labels.diagramFailed}
-            </Typography>
-          )}
-        </div>
-      )}
+      <DiagramViewport
+        className="min-h-0 flex-1 rounded-composite border border-border-default bg-canvas"
+        label={labels.diagram}
+        svg={copy}
+        zoom={zoom}
+      />
     </DialogContent>
   );
 }
@@ -178,12 +163,10 @@ function FullScreenDiagram({ source, labels }: { source: string; labels: Diagram
  */
 export function DiagramViewer({
   svg,
-  source,
   labels,
   sourceLine,
 }: {
   svg: string;
-  source: string;
   labels: DiagramViewerLabels;
   sourceLine: { 'data-source-line'?: number };
 }) {
@@ -210,7 +193,7 @@ export function DiagramViewer({
                 variant="ghost"
               />
             </DialogTrigger>
-            {fullScreen ? <FullScreenDiagram labels={labels} source={source} /> : null}
+            {fullScreen ? <FullScreenDiagram labels={labels} svg={svg} /> : null}
           </Dialog>
         </DiagramControls>
       </div>

@@ -2,6 +2,7 @@
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MarkdownDocument } from './MarkdownDocument';
+import { withFreshIds } from './mermaidDiagram';
 
 const mermaid = vi.hoisted(() => ({
   initialize: vi.fn(),
@@ -95,7 +96,7 @@ describe('MarkdownDocument diagrams', () => {
     expect(document.body.textContent).not.toContain('Parse error');
   });
 
-  it('zooms with the keyboard and the controls, resets, and opens a second drawing full screen', async () => {
+  it('zooms with the keyboard and the controls, resets, and opens a copy full screen', async () => {
     render(<MarkdownDocument diagrams source={fence('flowchart LR\n  a --> b')} />);
     await screen.findByRole('img', { name: 'Diagram' });
     const region = screen.getByRole('group', { name: 'Diagram' });
@@ -125,10 +126,31 @@ describe('MarkdownDocument diagrams', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open diagram full screen' }));
     const dialog = await screen.findByRole('dialog', { name: 'Diagram' });
     await within(dialog).findByRole('img', { name: 'Diagram' });
-    const ids = mermaid.render.mock.calls.map(([id]) => id);
-    // Full screen draws its own copy, so no SVG id is on the page twice.
-    expect(new Set(ids).size).toBe(2);
-    expect(document.querySelectorAll(`[id="${ids[0]}"]`)).toHaveLength(1);
+    // Full screen shows a copy under fresh ids without drawing again: no id is on the page twice.
+    expect(mermaid.render).toHaveBeenCalledTimes(1);
+    const ids = [...document.querySelectorAll('[id]')].map((element) => element.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(dialog.querySelector('svg')?.id).not.toBe(region.querySelector('svg')?.id);
+    // Its own zoom; Fit returns to the start view.
+    const full = within(dialog).getByRole('group', { name: 'Diagram' });
+    const startScale = full.getAttribute('data-diagram-scale');
+    fireEvent.keyDown(full, { key: '+' });
+    expect(full.getAttribute('data-diagram-scale')).not.toBe(startScale);
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Fit diagram' }));
+    expect(full.getAttribute('data-diagram-scale')).toBe(startScale);
+  });
+
+  it('renames every id of a copied drawing, and only its own prefix', () => {
+    const svg =
+      '<svg id="nevo-markdown-diagram-1"><style>#nevo-markdown-diagram-1 .a{}</style>' +
+      '<g id="nevo-markdown-diagram-1-node"/><g id="nevo-markdown-diagram-12"/></svg>';
+    const copy = withFreshIds(svg);
+    const fresh = /<svg id="([^"]+)"/.exec(copy)![1]!;
+
+    expect(fresh).not.toBe('nevo-markdown-diagram-1');
+    expect(copy).toContain(`#${fresh} .a`);
+    expect(copy).toContain(`id="${fresh}-node"`);
+    expect(copy).toContain('id="nevo-markdown-diagram-12"');
   });
 
   it('draws a changed source only after it has been still for 500 ms, without flashing the note', async () => {

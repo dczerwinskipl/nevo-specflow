@@ -320,7 +320,7 @@ export const Diagrams: Story = {
     assert(overflowOf(frameOf(canvasElement)) <= 0, 'The page must not overflow.');
     const open = canvas.getAllByRole('button', { name: 'Open diagram full screen' })[0]!;
     await userEvent.click(open);
-    // The dialog is portalled out of the canvas; it draws its own copy of the diagram.
+    // The dialog is portalled out of the canvas; it shows its own copy of the diagram.
     await until(() => document.querySelector('[role="dialog"] [role="img"] svg'));
     await userEvent.keyboard('{Escape}');
     await until(

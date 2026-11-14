@@ -3,7 +3,9 @@ import { Typography } from '../../foundations/Typography';
 import { DiagramViewer, type DiagramViewerLabels } from './DiagramViewer';
 import { useDiagram } from './mermaidDiagram';
 
-export type MarkdownDiagramLabels = DiagramViewerLabels;
+export interface MarkdownDiagramLabels extends DiagramViewerLabels {
+  diagramFailed: string;
+}
 
 /** A changed source is drawn once it has been still this long (a live preview while typing). */
 export const diagramSettleDelay = 500;
@@ -50,9 +52,7 @@ export function MarkdownDiagram({
   const changing = settled !== source;
 
   if (diagram.status === 'ready' && !changing) {
-    return (
-      <DiagramViewer labels={labels} source={source} sourceLine={sourceLine} svg={diagram.svg} />
-    );
+    return <DiagramViewer labels={labels} sourceLine={sourceLine} svg={diagram.svg} />;
   }
 
   return (

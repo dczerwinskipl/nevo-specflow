@@ -27,7 +27,31 @@ const naturalWidthDiagrams = [
 ] as const;
 
 let mermaidModule: Promise<Mermaid> | undefined;
-let renderCount = 0;
+let diagramCount = 0;
+
+/** A fresh id per drawing: Mermaid removes any element that already carries the id it is given. */
+function nextDiagramId(): string {
+  diagramCount += 1;
+
+  return `nevo-markdown-diagram-${diagramCount}`;
+}
+
+/**
+ * The same drawing under a fresh id, for a second copy on the page (full screen). Mermaid derives
+ * every id and style selector of a drawing from its root id, so renaming that prefix keeps the copy
+ * self-contained without drawing it again (which takes about half a second on a slow phone).
+ */
+export function withFreshIds(svg: string): string {
+  const id = /<svg[^>]*\sid="([^"]+)"/.exec(svg)?.[1];
+  if (!id) {
+    return svg;
+  }
+
+  const escaped = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  // The prefix only: `-1` must not also rename `-12`.
+  return svg.replace(new RegExp(`${escaped}(?![0-9])`, 'g'), nextDiagramId());
+}
 
 /** Loads Mermaid on first use only, so pages without a diagram never download it. */
 function loadMermaid(): Promise<Mermaid> {
@@ -111,9 +135,7 @@ function diagramConfig(): MermaidConfig {
 async function renderDiagram(source: string): Promise<string> {
   const mermaid = await loadMermaid();
   mermaid.initialize(diagramConfig());
-  // A fresh id per drawing: Mermaid removes any element that already carries the id it is given.
-  renderCount += 1;
-  const { svg } = await mermaid.render(`nevo-markdown-diagram-${renderCount}`, source);
+  const { svg } = await mermaid.render(nextDiagramId(), source);
 
   return svg;
 }

@@ -434,22 +434,16 @@
     {
       "id": "ideas.specflow-engine.reusable-workflow",
       "type": "hub",
-      "title": "Reusable Workflow, Task resources and manual/agent execution",
-      "status": "draft",
+      "title": "Reusable Workflow, Task resources and manual/agent execution (superseded)",
+      "status": "superseded",
       "file": "docs/ideas/specflow-engine/reusable-workflow-manual-execution/README.md",
-      "read_when": [
-        "planning a reusable Workflow capability independent of Specification and Task",
-        "adding Task authoring and manual Specification or Task execution through the UI",
-        "reviewing the gates and sequencing of the next workflow implementation slices",
-        "adding owner-delegated single-step agent execution to Specification and Task"
-      ],
-      "summary": "Non-authoritative proposal to separate neutral Workflow progression from SpecFlow resource and storage ownership, add standalone Task creation and documents, support fully manual UI execution and optional owner-delegated agent steps, and later render typed transition inputs.",
+      "read_when": [],
+      "summary": "Superseded planning dossier of PR #137. The neutral coordinator, executors and actors, attention and gates are ADR 0022; Tasks as resources are ADR 0023; the UI is the manual workflow execution product document. Still open: agent delegation (E6) and typed transition inputs (E5).",
       "related": [
-        "ideas.specflow-engine",
-        "ideas.specflow-engine.task-resource-and-context",
-        "ideas.specflow-engine.workflow-api-requirements",
-        "architecture.workflow.workflow-kernel",
-        "adr.0019-workflow-kernel-and-automatic-continuation"
+        "adr.0023-tasks-are-resources",
+        "adr.0022-neutral-workflow-coordinator-and-manual-execution",
+        "ideas.specflow-engine.reusable-workflow.agent-execution",
+        "ideas.specflow-engine.reusable-workflow.typed-inputs"
       ],
       "scope": "specflow",
       "areas": [
@@ -460,12 +454,10 @@
         "docs"
       ],
       "tags": [
-        "proposal",
+        "superseded",
         "workflow",
         "task-resource",
-        "manual-execution",
-        "agent-execution",
-        "implementation-plan"
+        "manual-execution"
       ]
     },
     {
@@ -1103,10 +1095,13 @@
         "wiring the Runtime, CLI or UI to Specification or Task execution",
         "adding a step kind, an effect, an attention reason or a new subject"
       ],
-      "summary": "One deterministic workflow core drives both a Specification and each of its Tasks. Entry points only select the subject. Workflows, agent archetypes (preferred provider and a model per provider) and task types are project definitions. Each Task has its own type, workflow and preparation status (draft, ready, on-hold, cancelled), changed only by explicit decisions, a declared approval effect or its own escalation to the Specification. The Engine decides continuations; anything it cannot carry out is attention for the owner, derived from the state on every inspection and never stored. Canonical state lives in the Specification's `.execution/` folder, which lists the Task set; only the change journal is local. Its writes are committed like the Specification's documents (the document commit policy, queue and ledger); with auto-commit off a step's finish commits them, and a Close takes what is left.",
+      "summary": "One deterministic workflow core (the neutral @nevo/workflow coordinator, with the SpecFlow adapter in the Engine) drives both a Specification and each of its Tasks. Entry points only select the subject. Workflows, agent archetypes (preferred provider and a model per provider) and task types are project definitions. A step declares which executor classes may do it, and every attempt records its actor. A Task is a resource (tasks/index.yaml, task.yaml, task.md) with its own type, workflow and preparation status (draft, ready, on-hold, cancelled), changed only by explicit decisions, a declared approval effect or its own escalation; its run is created at its first start. The Engine decides continuations; anything it cannot carry out is attention for the owner, derived from the state on every inspection and never stored. Runs live in the Specification's `.execution/` folder; only the change journal is local. The writes are committed like the Specification's documents (the document commit policy, queue and ledger); with auto-commit off a step's finish commits them, and a Close takes what is left.",
       "related": [
         "architecture.workflow.deterministic-workflow",
         "adr.0019-workflow-kernel-and-automatic-continuation",
+        "adr.0023-tasks-are-resources",
+        "adr.0022-neutral-workflow-coordinator-and-manual-execution",
+        "reference.api.specification-workflow",
         "adr.0017-definitions-as-project-data",
         "architecture.runtime.specflow-engine",
         "ideas.specflow-engine.plan-06"
@@ -1563,43 +1558,6 @@
       ]
     },
     {
-      "id": "ideas.specflow-engine.reusable-workflow.boundaries",
-      "type": "architecture",
-      "title": "Reusable Workflow boundaries and unresolved design decisions",
-      "status": "draft",
-      "file": "docs/ideas/specflow-engine/reusable-workflow-manual-execution/boundaries-and-decisions.md",
-      "read_when": [
-        "defining the reusable Workflow package boundary or API",
-        "designing Task CRUD without a running Specification workflow",
-        "deciding human execution, transition inputs, or close eligibility"
-      ],
-      "summary": "Candidate responsibility map and phased design decisions for reusable Workflow, independent Task resources, manual execution and agent delegation.",
-      "related": [
-        "ideas.specflow-engine.reusable-workflow",
-        "ideas.specflow-engine.task-resource-and-context",
-        "ideas.specflow-engine.decisions",
-        "architecture.workflow.workflow-kernel",
-        "adr.0012-product-package-topology-and-dependency-direction"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "workflow",
-        "runtime",
-        "ui",
-        "cli",
-        "testing",
-        "security"
-      ],
-      "tags": [
-        "proposal",
-        "architecture",
-        "ownership",
-        "atomicity",
-        "manual-execution",
-        "decisions"
-      ]
-    },
-    {
       "id": "ideas.specflow-engine.workspace-binding-lifecycle",
       "type": "architecture",
       "title": "Workspace relocate, repair and rebind under active execution",
@@ -1935,11 +1893,12 @@
       "status": "current",
       "file": "docs/architecture/decisions/0012-product-package-topology-and-dependency-direction.md",
       "read_when": [],
-      "summary": "Nevo SpecFlow is one npm-distributed local product composed from source packages. Product capabilities, including Runtime and UI, live under packages; apps is reserved for a future independently deployed or independently operated host. Package dependencies flow toward shared contracts and neutral foundations, with @nevo/specflow as the product composition root.",
+      "summary": "Nevo SpecFlow is one npm-distributed local product composed from source packages. Product capabilities, including Runtime and UI, live under packages; apps is reserved for a future independently deployed or independently operated host. Package dependencies flow toward shared contracts and neutral foundations, with @nevo/specflow as the product composition root; the Engine builds on the internal, pure workflow kernel @nevo/workflow.",
       "related": [
         "architecture.repository-structure",
         "adr.0020-documentation-discovery-is-a-product-capability",
         "adr.0021-product-neutral-ai-semantic-search-engine",
+        "adr.0022-neutral-workflow-coordinator-and-manual-execution",
         "adr.0005-repository-tooling-is-separate-from-the-product-api",
         "adr.0011-product-artifact-packaging-and-pnpm-compatibility",
         "design-system.principles.system-boundary"
@@ -1992,7 +1951,8 @@
         "adr.0017-definitions-as-project-data",
         "adr.0013-engine-owned-commits-and-protected-branches",
         "architecture.runtime.specflow-engine",
-        "product.specflow.specification-documents"
+        "product.specflow.specification-documents",
+        "adr.0023-tasks-are-resources"
       ]
     },
     {
@@ -2055,8 +2015,10 @@
       "status": "current",
       "file": "docs/architecture/decisions/0019-workflow-kernel-and-automatic-continuation.md",
       "read_when": [],
-      "summary": "Specifications and Tasks run through one deterministic workflow core and differ only in their entry points. Every Task has its own type and workflow, and the Specification archetype only restricts the types. Each step names a preferred agent archetype, which holds a preferred provider and a model per provider. A transition may continue automatically. When the Engine cannot resolve the next launch, the owner gets an attention item, derived from the state and never stored, instead of asking the agent. Canonical execution state belongs in Git in the Specification's .execution/ folder (written today, committed once follow-up F04 lands); only the change journal is local.",
+      "summary": "Specifications and Tasks run through one deterministic workflow core and differ only in their entry points. Every Task has its own type and workflow, and the Specification archetype only restricts the types. Each step names a preferred agent archetype, which holds a preferred provider and a model per provider. A transition may continue automatically. When the Engine cannot resolve the next launch, the owner gets an attention item, derived from the state and never stored, instead of asking the agent. Canonical execution state belongs in Git in the Specification's .execution/ folder and is committed; only the change journal is local. Amended by ADR 0023 (Tasks are resources) and ADR 0022 (neutral coordinator, executors and actors, attention with actions).",
       "related": [
+        "adr.0023-tasks-are-resources",
+        "adr.0022-neutral-workflow-coordinator-and-manual-execution",
         "architecture.workflow.workflow-kernel",
         "architecture.workflow.deterministic-workflow",
         "adr.0017-definitions-as-project-data",
@@ -2097,6 +2059,44 @@
         "adr.0012-product-package-topology-and-dependency-direction",
         "architecture.runtime.configuration",
         "architecture.repository-structure"
+      ]
+    },
+    {
+      "id": "adr.0022-neutral-workflow-coordinator-and-manual-execution",
+      "type": "adr",
+      "title": "Neutral workflow coordinator, SpecFlow adapter and manual execution by a person",
+      "status": "current",
+      "file": "docs/architecture/decisions/0022-neutral-workflow-coordinator-and-manual-execution.md",
+      "read_when": [],
+      "summary": "The workflow kernel is split into a product-neutral coordinator (@nevo/workflow) and the SpecFlow adapter in the Engine, which owns Run identity, storage, Task effects, continuation, gates and attention. A step declares the executor classes it allows (executors: [agent, human]); every attempt records its actor, and owner commands take a trusted OwnerActor from the Runtime or CLI. A repeated finish is idempotent. Attention is a projection with an actor and actions; dashboard grouping is presentation owned by the Runtime. Gates are SpecFlow annotations evaluated by the Engine.",
+      "related": [
+        "adr.0019-workflow-kernel-and-automatic-continuation",
+        "adr.0012-product-package-topology-and-dependency-direction",
+        "adr.0023-tasks-are-resources",
+        "architecture.workflow.workflow-kernel",
+        "reference.api.specification-workflow",
+        "reference.api.task-reads",
+        "product.specflow.ui.workflow-execution",
+        "product.specflow.ui.specification-overview"
+      ]
+    },
+    {
+      "id": "adr.0023-tasks-are-resources",
+      "type": "adr",
+      "title": "Tasks are resources of their Specification, with their own manifest, documents and context",
+      "status": "current",
+      "file": "docs/architecture/decisions/0023-tasks-are-resources.md",
+      "read_when": [],
+      "summary": "A Task is a resource of its Specification: a folder under the reserved tasks/ folder with a manifest (task.yaml), a main document (task.md) and optional documents, listed in tasks/index.yaml, which alone says which Tasks exist. A Task exists before any workflow runs; its slim run record is created at its first start, which validates the live type and workflow and pins it. The Task Type is immutable. One Specification execution store owns every Task resource write; Task documents use the Documents capability, mutually exclusive with it. Context lists a Task's inputs. Close refuses unfinished work and Abandon ends it for good. Workflow state is committed like documents.",
+      "related": [
+        "adr.0015-specification-manifest-as-document-registry",
+        "adr.0018-engine-commit-policy-and-manual-commit",
+        "adr.0019-workflow-kernel-and-automatic-continuation",
+        "adr.0022-neutral-workflow-coordinator-and-manual-execution",
+        "architecture.workflow.workflow-kernel",
+        "architecture.runtime.specification-documents",
+        "architecture.runtime.specflow-lifecycle",
+        "reference.api.task-reads"
       ]
     },
     {
@@ -3454,7 +3454,9 @@
         "ideas.specflow-engine.plan-05",
         "architecture.runtime.workspace-execution-claims",
         "ideas.specflow-engine.workflow-api-requirements",
-        "ideas.specflow-engine.task-resource-and-context"
+        "adr.0023-tasks-are-resources",
+        "adr.0022-neutral-workflow-coordinator-and-manual-execution",
+        "ideas.specflow-engine.reusable-workflow.agent-execution"
       ],
       "scope": "specflow",
       "areas": [
@@ -3483,10 +3485,9 @@
       ],
       "summary": "Owner-delegated execution of one declared Workflow step by an agent, including Specification authoring, Task descriptions, dependencies and context, with durable Session and attempt correlation and shared Engine validation.",
       "related": [
-        "ideas.specflow-engine.reusable-workflow",
-        "ideas.specflow-engine.reusable-workflow.delivery",
-        "ideas.specflow-engine.reusable-workflow.boundaries",
-        "ideas.specflow-engine.task-resource-and-context",
+        "adr.0023-tasks-are-resources",
+        "adr.0022-neutral-workflow-coordinator-and-manual-execution",
+        "product.specflow.ui.workflow-execution",
         "ideas.specflow-engine.plan-06",
         "architecture.workflow.workflow-kernel",
         "architecture.runtime.workspace-execution-claims",
@@ -3511,60 +3512,50 @@
       ]
     },
     {
-      "id": "ideas.specflow-engine.reusable-workflow.delivery",
+      "id": "ideas.specflow-engine.reusable-workflow.typed-inputs",
       "type": "engineering",
-      "title": "Reusable Workflow and manual/agent execution delivery plan",
+      "title": "Definition-driven, bounded transition input forms (E5)",
       "status": "draft",
-      "file": "docs/ideas/specflow-engine/reusable-workflow-manual-execution/delivery-plan.md",
+      "file": "docs/ideas/specflow-engine/reusable-workflow-manual-execution/typed-transition-inputs.md",
       "read_when": [
-        "scoping implementation slices for reusable Workflow and Task resources",
-        "selecting review checkpoints before Task authoring and manual execution",
-        "checking manual end-to-end execution and optional owner-delegated Managed Sessions"
+        "adding typed inputs (enum, number, Markdown, ...) to a workflow transition",
+        "rendering a generic finish form from a workflow definition",
+        "bounding run history (plan 06 F19)"
       ],
-      "summary": "Proposed E0-E6 delivery sequence with isolated reviewable vertical slices, behavioral regression and recovery tests, a complete manual UI proof and single-step agent delegation.",
+      "summary": "Open idea: a workflow transition declares typed inputs that the Engine validates, stores within a bounded run history and hands to the next step, and a generic UI form renders them. Requires F19 (bounded run history) first.",
       "related": [
-        "ideas.specflow-engine.reusable-workflow",
-        "ideas.specflow-engine.reusable-workflow.boundaries",
-        "ideas.specflow-engine.task-resource-and-context",
+        "adr.0022-neutral-workflow-coordinator-and-manual-execution",
+        "architecture.workflow.workflow-kernel",
         "ideas.specflow-engine.plan-06",
-        "architecture.workflow.workflow-kernel"
+        "product.specflow.ui.workflow-execution"
       ],
       "scope": "specflow",
       "areas": [
         "workflow",
-        "runtime",
         "ui",
-        "cli",
         "testing"
       ],
       "tags": [
         "proposal",
-        "delivery-plan",
-        "slices",
-        "task-resource",
-        "manual-ui"
+        "typed-inputs",
+        "forms",
+        "run-history"
       ]
     },
     {
       "id": "ideas.specflow-engine.task-resource-and-context",
       "type": "engineering",
-      "title": "Tasks as workflow-managed resources and context building (draft)",
-      "status": "draft",
+      "title": "Tasks as workflow-managed resources and context building (superseded)",
+      "status": "superseded",
       "file": "docs/ideas/specflow-engine/task-resource-and-context.md",
       "read_when": [
-        "replacing the provisional Task record of the workflow kernel",
-        "designing Task folders, the Task index or Task documents",
-        "designing how the context of a Specification or Task step is built",
-        "writing the ADR that makes Tasks a resource with their own documents"
+        "following an old link to the F20 Task resource dossier"
       ],
-      "summary": "Owner decisions (2026-11-05), not yet an ADR, for the open part of plan 06 F20: one workflow-managed subject contract for Specifications and Tasks, one folder per Task with a manifest, a main document and the Task index as registry, and an explicit typed context list per subject. The Task lifecycle (status, decisions, approval, escalation, guard) is implemented and lives in the workflow kernel document. Options, decisions and the remaining implementation slices.",
+      "summary": "Superseded F20 decision dossier (owner decisions 2026-11-05). Tasks as resources are ADR 0023 and the workflow kernel document; context resolution for agents is part of the agent-assisted execution idea.",
       "related": [
+        "adr.0023-tasks-are-resources",
         "architecture.workflow.workflow-kernel",
-        "adr.0015-specification-manifest-as-document-registry",
-        "adr.0017-definitions-as-project-data",
-        "adr.0019-workflow-kernel-and-automatic-continuation",
-        "ideas.specflow-engine.plan-06",
-        "ideas.specflow-engine.workflow-api-requirements"
+        "ideas.specflow-engine.reusable-workflow.agent-execution"
       ],
       "scope": "specflow",
       "areas": [
@@ -3573,12 +3564,9 @@
         "ai"
       ],
       "tags": [
-        "draft",
+        "superseded",
         "tasks",
-        "lifecycle",
-        "context",
-        "escalation",
-        "manifest"
+        "context"
       ]
     },
     {
@@ -3992,23 +3980,16 @@
     {
       "id": "ideas.specflow-engine.reusable-workflow.ux-contract",
       "type": "product",
-      "title": "Manual Specification and Task workflow execution — UX contract (mock)",
-      "status": "draft",
+      "title": "Manual Specification and Task workflow execution — UX contract (superseded)",
+      "status": "superseded",
       "file": "docs/ideas/specflow-engine/reusable-workflow-manual-execution/ux-contract.md",
       "read_when": [
-        "designing or implementing the E3/E4 manual Specification and Task UI",
-        "reviewing the manual workflow execution Storybook mock",
-        "adding Ask agent to a workflow step (E6) without redesigning the step panel"
+        "following an old link to the manual execution UX contract"
       ],
-      "summary": "Draft screen contract, for owner acceptance, of manual Specification and Task workflow execution in the UI: Tasks on the Overview, Task creation and authoring, lifecycle actions, one generic workflow step panel driven by a read-only action projection, first-start binding confirmation and refusals, review-failed rework, wait-for-tasks and Close blockers.",
+      "summary": "Superseded working UX contract of the manual execution mock. The accepted behaviour is the manual workflow execution product document and the Specification Overview document.",
       "related": [
-        "ideas.specflow-engine.reusable-workflow",
-        "ideas.specflow-engine.reusable-workflow.delivery",
-        "ideas.specflow-engine.reusable-workflow.boundaries",
-        "ideas.specflow-engine.reusable-workflow.agent-execution",
-        "ideas.specflow-engine.task-resource-and-context",
-        "product.specflow.ui.specification-overview",
-        "product.specflow.ui.interaction-model"
+        "product.specflow.ui.workflow-execution",
+        "product.specflow.ui.specification-overview"
       ],
       "scope": "specflow",
       "areas": [
@@ -4016,12 +3997,9 @@
         "workflow"
       ],
       "tags": [
-        "proposal",
+        "superseded",
         "ux-contract",
-        "manual-execution",
-        "task-authoring",
-        "workflow-step-panel",
-        "close"
+        "manual-execution"
       ]
     },
     {
@@ -4858,7 +4836,8 @@
         "product.specflow.specification-creation",
         "reference.api.specification-workspace",
         "reference.api.task-reads",
-        "product.specflow.ui.specification-sessions"
+        "product.specflow.ui.specification-sessions",
+        "product.specflow.ui.workflow-execution"
       ],
       "scope": "specflow",
       "areas": [
@@ -4938,6 +4917,43 @@
         "readiness",
         "search",
         "archive"
+      ]
+    },
+    {
+      "id": "product.specflow.ui.workflow-execution",
+      "type": "product",
+      "title": "Manual workflow execution and Task authoring",
+      "status": "current",
+      "file": "docs/product/specflow/ui/workflow-execution.md",
+      "read_when": [
+        "changing the Now block of a Task or of the Specification Overview, or its dialogs",
+        "changing Task authoring on the Full Task page (documents, context, dependencies, details)",
+        "changing the first-start confirmation, Finish or Return dialogs, or exit gates in the UI",
+        "changing Close specification or Abandon specification",
+        "adding Ask agent to a workflow step (E6) without redesigning the step panel"
+      ],
+      "summary": "How a person runs a Specification and its Tasks entirely in the UI, without any Session: the projection-driven Now block with one main action, the Finish, Return and first-start dialogs, exit gates, Task authoring on the Full Task page (documents in the Secondary, context, dependencies, details), the lifecycle actions, and Close and Abandon with grouped blockers.",
+      "related": [
+        "product.specflow.ui.specification-overview",
+        "product.specflow.ui.interaction-model",
+        "product.specflow.ui.shell-geometry",
+        "reference.api.specification-workflow",
+        "reference.api.task-reads",
+        "adr.0023-tasks-are-resources",
+        "adr.0022-neutral-workflow-coordinator-and-manual-execution"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "workflow"
+      ],
+      "tags": [
+        "workflow",
+        "manual-execution",
+        "task-authoring",
+        "now-block",
+        "close",
+        "abandon"
       ]
     },
     {

@@ -26,6 +26,7 @@ related:
   - reference.api.specification-workspace
   - reference.api.task-reads
   - product.specflow.ui.specification-sessions
+  - product.specflow.ui.workflow-execution
 ---
 
 # Specification Overview
@@ -38,9 +39,9 @@ contributions of their owning features ([application architecture](application-a
 the read is the [Specification Workspace API](../../../reference/api/specification-workspace.md),
 the Tasks page reads [Task reads, Tasks page](../../../reference/api/task-reads.md#tasks-page).
 
-The detailed interaction contract (Now block, attention classification, grouping ownership) is the
-[manual execution UX contract](../../../ideas/specflow-engine/reusable-workflow-manual-execution/ux-contract.md#specification-overview-as-control-center-direction-accepted-refinements-decided-2026-11-13);
-this document states what the product does.
+The Now block, its dialogs, Task authoring, Close and Abandon are described in
+[Manual workflow execution](workflow-execution.md); the separation of workflow state, attention and
+grouping is [ADR 0022](../../../architecture/decisions/0022-neutral-workflow-coordinator-and-manual-execution.md).
 
 ## Sections and order
 
@@ -85,7 +86,8 @@ dashboard configuration). The Overview renders what the reads deliver.
   configuration marks as a summary row gets one row: its name, then "1 task · T-04 Return users to
   where they were" (count, up to two Tasks, "N more"), opening the Tasks page at that group. A Task
   already named by Requires attention or Now appears by id only. Compact groups (Done, Cancelled,
-  Ended) share one line of links that open the Tasks page with that group expanded. **All tasks**
+  Ended) share one line of links that open the Tasks page with that group expanded (owner decision at the
+  final Overview approval, 2026-11-14). **All tasks**
   in the header opens the page. No checkboxes and no bulk actions.
 - **Sessions** — the recommended Session first, then the Specification's other Sessions, at most
   three; the same row as in the [Specification Sessions list](specification-sessions.md#rows). A

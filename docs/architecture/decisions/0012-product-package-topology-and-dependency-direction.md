@@ -8,11 +8,13 @@ summary: >
   Nevo SpecFlow is one npm-distributed local product composed from source packages. Product
   capabilities, including Runtime and UI, live under packages; apps is reserved for a future
   independently deployed or independently operated host. Package dependencies flow toward shared
-  contracts and neutral foundations, with @nevo/specflow as the product composition root.
+  contracts and neutral foundations, with @nevo/specflow as the product composition root; the Engine
+  builds on the internal, pure workflow kernel @nevo/workflow.
 related:
   - architecture.repository-structure
   - adr.0020-documentation-discovery-is-a-product-capability
   - adr.0021-product-neutral-ai-semantic-search-engine
+  - adr.0022-neutral-workflow-coordinator-and-manual-execution
   - adr.0005-repository-tooling-is-separate-from-the-product-api
   - adr.0011-product-artifact-packaging-and-pnpm-compatibility
   - design-system.principles.system-boundary
@@ -25,6 +27,10 @@ related:
 Current. Amended: Runtime depends on the Engine (`@nevo/specflow-runtime -> @nevo/specflow-engine`),
 because its HTTP features and managed Sessions call Engine operations instead of owning mutation
 logic (`architecture.runtime.specflow-engine`). The diagram and rules below include that edge.
+
+Amended 2026-11-14 ([ADR 0022](0022-neutral-workflow-coordinator-and-manual-execution.md)): the
+Engine depends on the internal, product-neutral workflow kernel `@nevo/workflow`
+(`@nevo/specflow-engine -> @nevo/workflow`); its rules are under "Dependency direction".
 
 ## Context
 
@@ -66,6 +72,7 @@ Arrows point from a consumer to a dependency:
 ```text
 @nevo/specflow
   |-> @nevo/specflow-engine --> @nevo/specflow-contracts/documents (neutral vocabulary and schemas only)
+  |                         \-> @nevo/workflow (neutral workflow kernel, Node only)
   |-> @nevo/specflow-runtime -> @nevo/specflow-engine (application API, never ./testing)
   |                            \-> @nevo/specflow-contracts -> @nevo/authorization
   |                            \-> neutral foundations as needed
@@ -89,6 +96,15 @@ package reachable below it.
   `@nevo/specflow-contracts/documents` (archetype and template definitions, document ids, limits and
   error codes) and nothing else from that package. It MUST NOT import Runtime, UI, the product
   composition root or the authorization policy, and no other contracts entry point.
+- `@nevo/workflow` is an internal, product-neutral, Node-only source package (private, bundled into
+  `@nevo/specflow`, never published on its own). It is a pure decision library over values: it MUST
+  NOT import any workspace package, the file system, the network, a process API or a UI, HTTP or CLI
+  framework. Its imports are an allowlist: its own relative modules, `node:crypto` and `node:util`
+  (and `vitest` in tests), enforced by `workflowBoundaries` (`tools/eslint/boundaries.mjs`). Ambient
+  time, randomness and process globals (`Date`, `Math.random`, timers, `process`, `Buffer`, ...) are
+  refused by lint; the host supplies them. Its modules stay acyclic, and so do the folders of the
+  Engine's `workflow/` capability (`tools/eslint/check-import-cycles.mjs`). Only the Engine depends
+  on it; Runtime, CLI and UI reach workflow behaviour through the Engine.
 - Runtime MAY consume the Engine's application API, shared contracts and neutral foundations. It
   MUST NOT import `@nevo/specflow-engine/testing` in production code, and MUST NOT depend on UI or
   `@nevo/specflow`.

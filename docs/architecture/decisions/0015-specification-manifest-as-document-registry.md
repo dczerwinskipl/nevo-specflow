@@ -16,6 +16,7 @@ related:
   - adr.0013-engine-owned-commits-and-protected-branches
   - architecture.runtime.specflow-engine
   - product.specflow.specification-documents
+  - adr.0023-tasks-are-resources
 ---
 
 # 0015 — The Specification manifest is the document registry
@@ -96,6 +97,9 @@ evolve this later (project-defined archetypes, template overrides) without redef
   moves to 2; file contents live in hash-addressed payload files, not in the journal. A journal file that is not JSON or has no
   numeric `version` is ignored and swept by retention; any other file that does not validate is a corrupt journal.
 - Reviews and Tasks remain separate resources; they are not documents and are not registered here.
+  (Amended 2026-11-14 by [ADR 0023](0023-tasks-are-resources.md): a Task is a resource under the
+  reserved `tasks/` folder with its own manifest and document registry; the Specification's registry
+  still does not list it.)
 
 ## Rejected
 

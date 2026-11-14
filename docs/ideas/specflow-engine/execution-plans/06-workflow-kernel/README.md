@@ -22,13 +22,17 @@ related:
   - ideas.specflow-engine.plan-05
   - architecture.runtime.workspace-execution-claims
   - ideas.specflow-engine.workflow-api-requirements
-  - ideas.specflow-engine.task-resource-and-context
+  - adr.0023-tasks-are-resources
+  - adr.0022-neutral-workflow-coordinator-and-manual-execution
+  - ideas.specflow-engine.reusable-workflow.agent-execution
 ---
 
 # Plan 06 — Workflow kernel
 
 Normative behaviour is in [Workflow kernel](../../../../architecture/workflow/workflow-kernel.md), and
-the decisions are in [ADR 0019](../../../../architecture/decisions/0019-workflow-kernel-and-automatic-continuation.md).
+the decisions are in [ADR 0019](../../../../architecture/decisions/0019-workflow-kernel-and-automatic-continuation.md),
+[ADR 0023](../../../../architecture/decisions/0023-tasks-are-resources.md) and
+[ADR 0022](../../../../architecture/decisions/0022-neutral-workflow-coordinator-and-manual-execution.md).
 This plan records the legacy analysis and the open follow-ups.
 
 ## 1. Legacy analysis: what was taken over and what was written anew
@@ -59,12 +63,19 @@ code was copied: the language and the infrastructure differ. Models and rules we
 
 ## 2. Implemented
 
-The kernel is implemented in the Engine (`packages/specflow-engine/src/workflow/`): the definition
-kinds and seeds, the progression state machine, Tasks with their lifecycle (status, decisions,
-approval, escalation, the draft and escalation guard, wait-step triggers), the continuation
-resolver with derived attention, the operations, and the filesystem store with its journal. Its
-current behaviour is documented in `architecture.workflow.workflow-kernel`; the decisions are in
-ADR 0019. No Runtime, CLI or UI surface calls it yet (F01, F02, F09).
+The neutral core is `@nevo/workflow` (`packages/workflow/`); the SpecFlow adapter is in the Engine
+(`packages/specflow-engine/src/workflow/`) with the Task resource in `src/tasks/resource/`: definition
+kinds and seeds, the coordinator, Tasks as resources with their lifecycle, the continuation resolver
+with derived attention, document gates, the operations and the filesystem store with its journal and
+commits. PR #137 added manual execution end to end: Task and workflow commands over HTTP (Runtime
+`features/tasks`, `features/workflow`) and the offline CLI (`tasks`, `workflow`), and the UI (Task
+authoring, the Now block, the Overview control center and the Tasks page). Behaviour:
+`architecture.workflow.workflow-kernel`.
+
+Status of the follow-ups below: **done** F04 (commits; the agent push is E6), F16, F18, F20 (storage
+and context authoring; context resolution for agents is E6); **partly done** F02 (CLI; MCP open), F03
+(`document` gates; `command` and `human` open), F06, F09 (manual commands and UI; the quick screen and
+"remember" are open); **deferred** F12; **open** F01, F05, F07, F08, F11, F13, F14, F15, F17, F19.
 
 ## 3. Follow-ups
 
@@ -91,6 +102,9 @@ a second progression algorithm.
 
 ### F02 — Agent completion signal (CLI + MCP)
 
+**Partly done.** The offline CLI `nevo-specflow workflow actions|start|finish|return` exists (owner
+actor `local:<os-user>`); the MCP tool and an agent actor from a Session binding are open (E6).
+
 - **CLI:** `nevo-specflow workflow inspect|start|finish --input-file result.json --json`, offline, over
   the same operations (see `ideas.specflow-engine.offline-cli-and-external-agents`).
 - **MCP:** a product MCP tool `workflow_finish` for managed Sessions. Today Claude and Codex start with
@@ -101,6 +115,9 @@ a second progression algorithm.
 
 ### F03 — Gates
 
+**Partly done.** Step-level `entryGates` / `exitGates` with `when` and the gate type `document` are
+implemented (workflow kernel, "Gates"). Open: the `command` and `human` gate types on the same model.
+
 - **Gate kinds:** command gates (tests, build, Task verification commands) and a human verification
   gate.
 - **Model:** port the legacy `inspect()` / `verify()` split. Gate failure taxonomy: `failed` is
@@ -110,10 +127,10 @@ a second progression algorithm.
 
 ### F04 — Commits of execution state and finalize actions
 
-- Commit `.execution/**` with the Engine-owned commit queue (ADR 0013/0016/0018). An optional
-  per-step `finalize: [commit, push]` follows the legacy semantics.
-- The finish journal gains stages after the record writes, for example commit and push with stored
-  intent. This replaces the legacy staged saga.
+**Done** (owner decision 2026-11-12): store writes are committed through the document commit policy,
+queue and ledger; with auto-commit off a finish runs the post action `commit-execution-state`; Close
+and Abandon take what is left. Open: the push of an agent step's work through the same post-action
+seam (E6).
 
 ### F05 — Workspace admission for writable steps
 
@@ -136,9 +153,8 @@ the check and the write. Writer admission closes it.
 
 ### F06 — Revising and cancelling Tasks
 
-- Revising draft Tasks and cancelling Tasks are done. Still open: revising a `ready` Task that
-  never started (today it is cancelled and replaced by a new Task), and editing the dependencies of
-  Tasks that are not drafts.
+- Done: revising drafts, cancelling, and editing title, summary, context and (until the first start)
+  dependencies of any Task (`editTask`). The Task Type is immutable by owner decision.
 - A wait step that has only abandoned or cancelled Tasks still completes. Define the acceptance semantics when
   Tasks were abandoned: whether acceptance warns, lists them, or requires an owner confirmation
   (review R12 of PR #120).
@@ -160,6 +176,10 @@ the check and the write. Writer admission closes it.
 
 ### F09 — Runtime projection, API and UI
 
+**Partly done.** Reads, attention, the manual commands (start, finish, return, Task commands,
+abandon) and the UI exist. Open: the quick start screen with `suggestion` / `blocker` and the
+"remember" checkbox (`rememberArchetypeModel`).
+
 - Read projection: Task reads stop returning `not_implemented`, and attention feeds the overview and
   workspace attention.
 - Commands: start, finish (human), return and remember-model.
@@ -174,6 +194,8 @@ the check and the write. Writer admission closes it.
 - Check `definitions list/show/validate` output and messages for the new kinds.
 
 ### F12 — Run selected Tasks
+
+**Deferred** (owner decision 6A, 2026-11-13): the Tasks page has no selection or bulk actions.
 
 - **Goal:** the owner selects Tasks and presses "run". The Runtime orchestrator (F01) runs that
   selection with agents in dependency order, through `startTaskExecution` and the same continuation
@@ -202,6 +224,10 @@ model becomes attention reason `model-unavailable`, and a disabled provider beco
 
 ### F16 — Idempotent finish retry
 
+**Done:** the attempt stores the request digest; a repeated finish of the last finished attempt with the
+same digest and actor returns the recorded result and completes a pending journal
+(`architecture.workflow.workflow-kernel`, "Executors and actors"). The analysis below is history.
+
 When a finish was planned but the store failed while publishing it (an I/O error after the journal
 was written), the caller does not know whether the finish happened. A retry of the same finish then
 fails with `WORKFLOW_POSITION_INVALID` or `WORKFLOW_ATTEMPT_MISMATCH`, because the journal replay
@@ -218,7 +244,8 @@ different input for a finished attempt stays a mismatch.
 
 ### F17 — Owner takeover of an agent step (explicit operation)
 
-Today only an executor of the step's kind can start or finish it, and an active agent attempt started
+**Open.** Today a step allows a person when its `executors` include `human`, but an active attempt is
+continued only by the class that started it, and an active agent attempt started
 in a Session is resumed and finished only by that Session (`WORKFLOW_EXECUTOR_NOT_ALLOWED`). If the owner should be
 able to take over an agent step (for example after the Session died), that is an explicit operation
 that records the takeover, ends or transfers the agent attempt, and lets the Runtime stop the Session
@@ -226,12 +253,18 @@ that records the takeover, ends or transfers the agent attempt, and lets the Run
 
 ### F18 — Register workflow definition kinds from a composition root
 
+**Done:** the shipped registry (`src/definitions/shipped-registry.ts`) registers the workflow kinds, so `specs/definitions` no longer imports the workflow capability; the cycle gate (`tools/eslint/check-import-cycles.mjs`) forbids that edge and checks the folders of
+`workflow/`.
+
 `specs/definitions/kinds/index.ts` imports `workflow/definitions/kinds` to register `workflow`,
 `agent-archetype` and `task-type` in the default registry, so the generic definitions module depends
 on the workflow module. Register the workflow kinds from a composition root instead, keeping the
 definitions module independent of the workflow capability.
 
 ### F19 — Bound run history so a long run cannot reach the record byte budget
+
+**Open.** A prerequisite of typed transition inputs
+([E5 idea](../../reusable-workflow-manual-execution/typed-transition-inputs.md)).
 
 A run's attempts and returns are stored in its record, which is bounded to `RECORD_BYTES_MAX`. Each
 attempt may carry up to 16 384 characters of feedback and 100 artifacts, so a long run with many
@@ -247,29 +280,18 @@ that no sequence of valid operations reaches the budget.
 
 ### F20 — Task resource, lifecycle and context
 
-The Task record of this kernel is provisional. `.execution/tasks/<id>.yaml` holds the Task's metadata
-(title, summary, type, dependencies, status) together with its run, and a Task has no document to work
-on. The Task lifecycle (status, explicit decisions, approval, escalation) is done in this storage;
-F20 now covers only the storage and the context.
-
-- **Goal:** one workflow-managed subject contract for Specifications and Tasks; one folder per Task
-  (`tasks/<id>/task.yaml`, `task.md`, extra files) with an ordered Task index (`tasks/index.yaml`);
-  an explicit typed context list per subject.
-- The Task execution record then keeps only the run, the status and the Task metadata move to
-  `task.yaml`, and `materializeTasks` writes Task folders and index entries. A follow-up ADR amends
-  ADR 0015 and ADR 0019.
-- The owner decided every open question (2026-11-05). The preparation status stays Task-only, the
-  Specification reports only completed / ready to merge from its run (F14). A started Task whose
-  folder is deleted by hand breaks only that Task.
-- Options, decisions and slices:
-  [Tasks as workflow-managed resources, and context building](../../task-resource-and-context.md).
+**Done** ([ADR 0023](../../../../architecture/decisions/0023-tasks-are-resources.md)): Task folders,
+the index, `task.md` and Task-scoped documents, the slim run record created at the first start, typed
+context authoring with process artifacts, and broken-Task isolation. Open: resolving the context for an
+agent (references with digests, budgets, per-attempt evidence) and path hints, part of
+[agent-assisted execution](../../reusable-workflow-manual-execution/agent-assisted-execution.md).
 
 ## 4. What is missing (summary)
 
-Runtime orchestration (F01), the agent completion transport (F02), gates (F03), commits (F04),
-writer admission (F05), revising ready Tasks and acceptance after cancelled Tasks (F06), re-pinning (F07), parallel worktrees (F08),
-API and UI (F09), caching (F11), running selected Tasks (F12), Session cancel on
-return (F13), status projection (F14), model availability (F15), idempotent finish retries (F16), owner
-takeover of an agent step (F17), kind registration from a composition root (F18), a bounded run
-history (F19), and the Task resource (folders, index, `task.md`) and context, which replaces the
-provisional Task record (F20).
+Runtime orchestration (F01), the MCP completion transport (F02), `command` and `human` gates (F03),
+writer admission (F05), acceptance after cancelled Tasks (F06), re-pinning (F07), parallel worktrees
+(F08), the quick start screen (F09), caching (F11), running selected Tasks (F12, deferred), Session
+cancel on return (F13), status projection (F14), model availability (F15), owner takeover of an agent
+step (F17) and a bounded run history (F19). Agent delegation of single steps and typed inputs are the
+open ideas [E6](../../reusable-workflow-manual-execution/agent-assisted-execution.md) and
+[E5](../../reusable-workflow-manual-execution/typed-transition-inputs.md).

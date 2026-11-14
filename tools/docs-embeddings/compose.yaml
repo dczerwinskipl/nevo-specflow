@@ -5,6 +5,7 @@
 #   pnpm docs:embeddings:up          # CPU (works everywhere); pulls the model once
 #   pnpm docs:embeddings:up --gpu    # NVIDIA GPU (adds compose.gpu.yaml)
 #   pnpm docs:embeddings:down        # stops it and keeps the model volume
+#   pnpm docs:embeddings:status      # the containers and the pulled models
 #
 # On a Mac, Docker cannot use the Apple GPU: the native Ollama app (Metal) is the fast option and
 # this container is the CPU fallback. Setup: docs/engineering/repository/local-setup.md

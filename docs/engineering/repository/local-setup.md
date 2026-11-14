@@ -81,6 +81,7 @@ model (Ollama on `127.0.0.1:11434` with a one-shot pull of `qwen3-embedding:0.6b
 pnpm docs:embeddings:up         # CPU, works everywhere; the first run downloads the image and model
 pnpm docs:embeddings:up --gpu   # NVIDIA GPU (Windows or Linux)
 pnpm docs:embeddings:down       # stops the model and keeps the volume
+pnpm docs:embeddings:status     # the containers and the models pulled into the volume
 ```
 
 - CPU works on every machine with Docker; indexing this repository takes a while (below).
@@ -92,8 +93,16 @@ pnpm docs:embeddings:down       # stops the model and keeps the volume
 - On a Mac, Docker cannot use the Apple GPU. The fast option is the native Ollama app (Metal):
   install it, run `ollama pull qwen3-embedding:0.6b` and use the same `baseUrl` and `model` below;
   the container is the CPU fallback. Run only one of the two, both listen on port 11434.
-- If the former root compose project (`nevo-specflow`) still runs, stop it first with
-  `docker compose -p nevo-specflow down`: it holds port 11434. Its model volume is reused as is.
+- If the former root compose project (`nevo-specflow`) still runs, stop it first, because it holds
+  port 11434:
+  `docker compose -p nevo-specflow -f tools/docs-embeddings/compose.yaml down` (the old project
+  name with the current service definitions; without `-v` it keeps the volume, which is reused as
+  is).
+- `up` returns once the server is healthy, not once the model is pulled; the first run downloads it
+  in the background. `pnpm docs:embeddings:status` lists `qwen3-embedding:0.6b` once it is there
+  (the pull's progress: `docker compose -f tools/docs-embeddings/compose.yaml logs ollama-pull`).
+  With the endpoint configured (below), `pnpm docs:semantic status` reports `reachable: yes` once the
+  model answers, and `reachable: no` with `model '…' not found` while the pull still runs.
 
 Then add the endpoint to the git-ignored `.nevo/local/config.yaml` (create the file if needed):
 

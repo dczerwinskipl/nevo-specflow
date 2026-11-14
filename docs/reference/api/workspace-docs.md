@@ -200,9 +200,11 @@ run in that checkout.
   until then the reason says `the Runtime's last background update failed; it retries within a
 minute`.
 - **While a refresh runs:** while any background job of the Runtime runs (a refresh or seed of
-  any workspace's index; they all use the Runtime's one endpoint), a search embeds nothing, neither
-  changed sections nor the query, so it does not wait behind the job's requests to the endpoint.
-  It answers `lexical` at once with `index-building`:
+  any workspace's index; they all use the Runtime's one endpoint), a search of a workspace with
+  semantic search on embeds nothing, neither changed sections nor the query, so it does not wait
+  behind the job's requests to the endpoint. A workspace that answers lexically anyway keeps its own
+  reason (`semantic-disabled`, `no-endpoint`, a refused write admission). Otherwise it answers
+  `lexical` at once with `index-building`:
   - in a linked worktree whose seed has not run yet (also while no job runs): `The
 documentation index is being prepared from Project Home; searches are lexical until then.`;
   - while this workspace's job runs: `The Runtime is updating the documentation index in the
@@ -213,6 +215,12 @@ index; searches are lexical until it has finished.`
 
   Once the job has ended, searches are hybrid again. A job that starts while a search is already
   embedding its query can still delay that one query, up to the query timeout.
+
+  This is a deliberate, temporary endpoint-concurrency policy, separate from the one-job-at-a-time
+  rule below: a running job counts as occupying the endpoint. It suits single-queue local endpoints
+  such as Ollama; an endpoint that serves requests concurrently loses hybrid ranking during a
+  refresh. A configurable endpoint concurrency (an `ai.embeddings` setting) is the planned
+  follow-up.
 
 - **One refresh at a time:** the Runtime runs at most one background job across all workspaces;
   searches meanwhile answer as above and start nothing, and a search after it has ended starts this

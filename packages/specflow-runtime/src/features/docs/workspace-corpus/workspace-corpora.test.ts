@@ -355,6 +355,30 @@ describe('workspace documentation instances', () => {
     }
   });
 
+  it("keeps a lexical checkout's own reason while another checkout's index refreshes", async () => {
+    const home = checkout('home7', { large: true });
+    const off = checkout('off7');
+    writeFileSync(join(off, '.nevo', 'config.yaml'), 'docs:\n  search:\n    semantic: false\n');
+    const h = harness(
+      new Map<string, WorkspaceResolution>([
+        ['home', { status: 'available', root: home, projectHome: true }],
+        ['off', linked(off)],
+      ]),
+      home,
+    );
+    const request = { query: 'widget', limit: 5, includeProposals: false, snippets: false };
+    try {
+      await h.corpora.startRefresh('home');
+      await h.embedding();
+      expect(await h.docs.search('off', request)).toMatchObject({
+        value: { result: { mode: 'lexical', reason: { code: 'semantic-disabled' } } },
+      });
+    } finally {
+      h.open();
+      await h.corpora.close();
+    }
+  });
+
   it('evicts the least recently used instance only after its refresh has ended', async () => {
     const home = checkout('home3');
     const workspaces = new Map<string, WorkspaceResolution>();

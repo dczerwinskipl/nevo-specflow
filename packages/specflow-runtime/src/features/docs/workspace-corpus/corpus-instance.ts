@@ -87,10 +87,21 @@ const SEEDING = {
 } as const;
 
 /**
- * While a background job holds the Runtime-wide slot (this index's, or `'other'`: another
- * checkout's), a search embeds nothing (neither the read-time refresh nor the query): the shared
- * endpoint is busy with the job's batches, so a query would wait behind them up to the query
- * timeout and then report the endpoint as failed. The search answers lexically at once.
+ * The endpoint-concurrency policy, separate from what the slot itself is for (no two index jobs at
+ * once): while any background job holds the slot, the Runtime's one embedding endpoint counts as
+ * unable to serve a query beside the job's batches, so a query would wait behind them up to the
+ * query timeout and then report the endpoint as failed. Deliberate and temporary: it suits
+ * single-queue local endpoints such as Ollama, while an endpoint that serves requests concurrently
+ * loses hybrid ranking during a refresh. A configurable endpoint concurrency (an `ai.embeddings`
+ * setting) is the planned follow-up.
+ */
+function endpointBusy(slot: RefreshSlot): boolean {
+  return slot.held();
+}
+
+/**
+ * Why a search embeds nothing (neither the read-time refresh nor the query) while the endpoint is
+ * busy (`endpointBusy`) with this index's job, or `'other'`: another checkout's.
  */
 function refreshingReason(
   running: { readonly progress: IndexProgress | undefined } | 'other',
@@ -223,6 +234,25 @@ export async function openCorpusInstance(options: CorpusInstanceOptions): Promis
     return refreshRequested ? refreshRun(signal, onProgress) : {};
   };
 
+  // The vectors a search uses now. Only a search that would embed degrades to lexical; any reason it
+  // already has (semantic search off, no endpoint, …) stays, and so does its write admission.
+  const searchVectors = (): DocsSearch['vectors'] => {
+    const { vectors } = search;
+    if (!('providers' in vectors)) {
+      return vectors;
+    }
+
+    if (!seeded) {
+      return { reason: SEEDING, writes: vectors.writes };
+    }
+
+    if (endpointBusy(options.slot)) {
+      return { reason: refreshingReason(refresh.current() ?? 'other'), writes: vectors.writes };
+    }
+
+    return vectors;
+  };
+
   const reads: CorpusReads = {
     corpus,
     index,
@@ -235,18 +265,8 @@ export async function openCorpusInstance(options: CorpusInstanceOptions): Promis
         refreshRequested = true;
       }
 
-      // The endpoint is the Runtime's, so another checkout's job keeps it busy too.
-      const running = refresh.current() ?? (options.slot.held() ? 'other' : undefined);
-
       return searchDocumentationWithLeftOut(
-        {
-          chunks: { load: () => Promise.resolve(snapshot) },
-          vectors: !seeded
-            ? { reason: SEEDING }
-            : running !== undefined
-              ? { reason: refreshingReason(running) }
-              : search.vectors,
-        },
+        { chunks: { load: () => Promise.resolve(snapshot) }, vectors: searchVectors() },
         request,
       );
     },

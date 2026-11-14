@@ -15,7 +15,9 @@ describe('validateRoadmapTables', () => {
   it('accepts matching GitHub-flavoured Markdown table widths', () => {
     expect(
       validateRoadmapTables([
-        roadmap('| ID | Capability | State |\n| --- | --- | --- |\n| P100 | Task authoring | Done |'),
+        roadmap(
+          '| ID | Capability | State |\n| --- | --- | --- |\n| P100 | Task authoring | Done |',
+        ),
       ]),
     ).toEqual([]);
   });
@@ -37,9 +39,7 @@ describe('validateRoadmapTables', () => {
 
   it('does not split escaped pipes or pipes inside inline code', () => {
     expect(
-      validateRoadmapTables([
-        roadmap('| ID | State |\n| --- | --- |\n| a\\|b | `x|y` |'),
-      ]),
+      validateRoadmapTables([roadmap('| ID | State |\n| --- | --- |\n| a\\|b | `x|y` |')]),
     ).toEqual([]);
   });
 

@@ -10,9 +10,12 @@ summary: >
   types. Each step names a preferred agent archetype, which holds a preferred provider and a model per
   provider. A transition may continue automatically. When the Engine cannot resolve the next launch, the
   owner gets an attention item, derived from the state and never stored, instead of asking the agent.
-  Canonical execution state belongs in Git in the Specification's .execution/ folder (written today,
-  committed once follow-up F04 lands); only the change journal is local.
+  Canonical execution state belongs in Git in the Specification's .execution/ folder and is committed;
+  only the change journal is local. Amended by ADR 0022 (Tasks are resources) and ADR 0023 (neutral
+  coordinator, executors and actors, attention with actions).
 related:
+  - adr.0022-tasks-are-resources
+  - adr.0023-neutral-workflow-coordinator-and-manual-execution
   - architecture.workflow.workflow-kernel
   - architecture.workflow.deterministic-workflow
   - adr.0017-definitions-as-project-data
@@ -32,17 +35,13 @@ the pinned definitions and the current archetypes on every inspection and is nev
 local attention file exists. The reasons were extended (the full list is in
 `architecture.workflow.workflow-kernel`). Decisions 8 and 9 below are written in their amended form.
 
-**Amended (owner decisions 2026-11-13, 1A/2A/5A).** An attention item also carries the required
-actor, a primary and an optional secondary action, and a display message. Also attention: a broken
-Task; a run that has not ended whose pinned workflow is missing or changed (for a Task only while it
-is `ready`); and, for an approved Task that has not started, a start blocker a person fixes: an
-unresolved required context entry, a dependency that can never complete, a type no longer allowed
-or not defined, and an unmet entry gate once no dependency it waits for can still complete. Not
-attention: waiting for dependencies that can still complete, an awaited process artifact, being
-ready to start and being a draft or on hold (the Specification's `tasks-stuck` covers those when
-nothing else can progress). `tasks-stuck` names the Tasks to resolve, each with why it blocks. One
-list holds every item (`inspectExecution`). The Engine exposes neutral Task facts instead of
-presentation lanes; grouping is a surface's declarative configuration.
+**Amended by [ADR 0022](0022-tasks-are-resources.md) and [ADR 0023](0023-neutral-workflow-coordinator-and-manual-execution.md)
+(2026-11-14).** The one core is the neutral `@nevo/workflow` coordinator with a SpecFlow adapter in the
+Engine; a step declares the executor classes it allows and every attempt records its actor; attention
+items carry an actor and actions and also cover broken Tasks and start blockers; grouping is the
+Runtime's presentation (ADR 0023). A Task is a resource under `tasks/`, its run record is created at
+its first start, and the execution state is committed (ADR 0022). Decision 9 below is written in its
+amended form.
 
 ## Context
 
@@ -97,13 +96,13 @@ presentation lanes; grouping is a surface's declarative configuration.
    current position on every inspection, never stored, so every start of that subject removes it and
    a quick screen, a manual start and an automatic continuation behave the same. A "remember" choice
    writes the model into the agent archetype file.
-9. **Canonical state belongs in Git next to the Specification.** Implementation status: the kernel
-   writes these files in the Specification's checkout; committing them is follow-up
-   [F04](../../ideas/specflow-engine/execution-plans/06-workflow-kernel/README.md#f04--commits-of-execution-state-and-finalize-actions), so until then they are uncommitted working-tree changes.
+9. **Canonical state belongs in Git next to the Specification.**
    - `.execution/specification.yaml` holds the Specification run, and
-     `.execution/tasks/<taskId>.yaml` holds one Task each.
+     `.execution/tasks/<taskId>.yaml` holds the run of one Task, created at its first start. What a Task
+     is lives in its resource, `tasks/<taskId>/task.yaml` ([ADR 0022](0022-tasks-are-resources.md)).
    - These files store only position, attempts and returns. They are not named `change.yaml`, and they
      are not a change log.
+   - They are committed like the Specification's documents (ADR 0022, decision 11).
    - Only the change journal is local state
      (`<stateRoot>/engine/operations/workflow/<specId>.json`). Attention is derived, not stored.
    - A run is pinned to its definition revision.
@@ -117,7 +116,6 @@ presentation lanes; grouping is a surface's declarative configuration.
   dependency order, recording attention only when the run cannot proceed (plan 06, F12).
 - **Specification archetypes now refer to workflows and task types.** Installing an archetype also
   installs its workflow and that workflow's agent archetypes. The shipped catalogue revision changed.
-- **The `.execution/` files are working-tree changes** until a commit integration exists (plan 06, F04).
 - **Editing a workflow affects only new runs.** A run pinned to the old revision fails closed until it
   is re-pinned (plan 06, F07).
 

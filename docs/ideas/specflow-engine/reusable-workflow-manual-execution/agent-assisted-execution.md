@@ -15,10 +15,9 @@ summary: >
   Specification authoring, Task descriptions, dependencies and context, with
   durable Session and attempt correlation and shared Engine validation.
 related:
-  - ideas.specflow-engine.reusable-workflow
-  - ideas.specflow-engine.reusable-workflow.delivery
-  - ideas.specflow-engine.reusable-workflow.boundaries
-  - ideas.specflow-engine.task-resource-and-context
+  - adr.0022-tasks-are-resources
+  - adr.0023-neutral-workflow-coordinator-and-manual-execution
+  - product.specflow.ui.workflow-execution
   - ideas.specflow-engine.plan-06
   - architecture.workflow.workflow-kernel
   - architecture.runtime.workspace-execution-claims
@@ -28,10 +27,19 @@ related:
 
 # E6 — Agent-assisted deterministic Workflow (proposal)
 
+**Open idea.** Manual execution, the neutral coordinator, executors and actors, Tasks as resources and
+the Ask agent attachment point are implemented
+([ADR 0022](../../../architecture/decisions/0022-tasks-are-resources.md),
+[ADR 0023](../../../architecture/decisions/0023-neutral-workflow-coordinator-and-manual-execution.md),
+[Manual workflow execution](../../../product/specflow/ui/workflow-execution.md#later-ask-agent-e6-not-implemented)).
+What follows is still open. Decided already: `session: reuse` after a manual step is
+`session-unavailable`, with no fresh-Session override (D10); the post action that commits a step's
+execution state is the seam for the agent push (ADR 0022, decision 11).
+
 ## Product path
 
 For an eligible step the owner chooses **Do it myself** or **Ask agent**. The two choices share
-one canonical Engine state machine, attempt history and allowed-action projection (E4a).
+one canonical Engine state machine, attempt history and allowed-action projection (`inspectActions`).
 Tasks have their own Task Type workflows; agent-written Task drafts are real resources with
 editable `task.md`, type, dependency graph, typed context and owner approval.
 
@@ -47,12 +55,8 @@ successful Turn authorizes a new Managed Session. Unattended F01 and F12 batchin
 - Native providers can write directly to the filesystem under their OS permissions. Engine
   command authorization is not filesystem containment. Treat use of the Engine writer as a
   cooperative agent protocol until a sandbox actually enforces it. Validate real output.
-- Existing `isPositionJustified` rejects any attempt whose executor kind disagrees with the
-  pinned step executor. E4a/D05 must supply a versioned effective policy before a person can
-  execute an agent-oriented step. Existing Run histories preserve their strict replay rule.
-- The shipped Specification flow uses `session: reuse` from requirements to specification.
-  Manual completion yields no prior Session. D10 requires an explicitly recorded fresh override,
-  if permitted, or a predictable refusal. Never silently change the definition.
+- The agent actor (`{class: agent, details: {provider, model?, sessionId?}}`) must come from a
+  trusted Session binding (F02), never from tool arguments.
 - A terminal Session Turn, an accepted finish _submission_ and a committed Workflow transition
   are different records, with separate crash windows.
 - Incremental Document writes are **durable when their own Engine mutation commits**. They are
@@ -70,9 +74,19 @@ successful Turn authorizes a new Managed Session. Unattended F01 and F12 batchin
 The preferred provider/model and `session: fresh | reuse` resolution belong to the SpecFlow
 adapter; Runtime implements a dispatch decision but never chooses Workflow transitions.
 
-## Candidate invocation and finish protocol, gated by D10–D12
+## Open decisions
 
-1. Runtime authenticates a one-step owner request and calls E4a's canonical read/command API.
+- **D11 claim-owned Engine writes.** A trusted broker admits a Document or Task write under the
+  agent's own `project-write` claim after checking the exact invocation, Session/Turn, workspace
+  incarnation, subject and capability; no caller-supplied claim id and no `ignoreClaims` flag.
+- **D12 durable finish and native stop.** A finish submission is recorded as pending, finalized only
+  after positive native-stop evidence, under the still-held reservation, without a gap for another
+  writer.
+- **D13 agent Task authoring and Workspace-bound context** (below).
+
+## Candidate invocation and finish protocol, gated by D11–D12
+
+1. Runtime authenticates a one-step owner request and calls the canonical action projection and commands.
    Engine verifies the subject, pinned definition, step, allowed executor and revision.
 2. Runtime and Engine durably associate **one** invocation with the exact
    `(Run, step, attempt, Session, Turn, workspace)`, including retry/fencing identity, before
@@ -155,7 +169,20 @@ path; search alone conveys no write permission.
 a branch forces re-resolution/refusal of stale references. Specification `overview.md` and
 Task `task.md` always come from the registered resource, never project docs search.
 
-## Task creation and editing after F20
+## Context resolution for agents
+
+Task context is authored and validated today (ADR 0022); resolving it for an agent is open:
+
+- the step context carries each resolved entry as a reference `{kind, ref, path?, sha256, bytes}`
+  (only `instructions` inline), in deterministic order (workflow-provided parts, then the entries in
+  declared order, glob matches by path);
+- budgets in `workflow/limits.ts` for entries, glob matches, inline characters and total bytes;
+- per attempt, a digest of the resolved list in the run record and the full list as local evidence
+  (owner decision Q12);
+- `path-hint` entries (`allowed[]`, `forbidden[]`), passed as hints and never enforced (owner decision
+  Q9); not implemented.
+
+## Task creation and editing
 
 For a metadata-declared Task-producing step, the agent uses the **same** Task Resource create/edit
 operations as UI, under the invocation-bound claim. Each draft has a stable id, title, summary,

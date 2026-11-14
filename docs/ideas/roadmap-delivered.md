@@ -210,5 +210,5 @@ These branches were **not** merged and are not evidence of shipped functionality
 ## Maintenance
 
 - Refresh the counts and states from GitHub when preparing a release or updating the roadmap; never infer a PR's merge from its title or a closed state.
-- Keep completed *capabilities* in the concise [roadmap](roadmap.md). This inventory preserves the individual PR-level provenance, including test fixes, CI, tooling and dependency updates.
+- Keep completed _capabilities_ in the concise [roadmap](roadmap.md). This inventory preserves the individual PR-level provenance, including test fixes, CI, tooling and dependency updates.
 - Add links to Specifications and authoritative product/architecture docs in the roadmap as they become available. Merged PRs alone cannot prove the complete acceptance scenario.

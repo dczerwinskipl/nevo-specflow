@@ -130,6 +130,53 @@ related:
 | P201            | Cross-project initiatives         | 💡 Optional     | Plan work spanning repositories |
 | P202            | Full Ideas/Specification planning | 💡 Optional     | Link concepts and deliveries across projects |
 
+## Later / not assigned to a release
+
+These are **explicitly tracked ideas, not promised features**. Assign an owner and target release only after analysis. Each has a separate ID rather than disappearing inside a generic "provider improvements" or "UI polish" label.
+
+| ID | Independent candidate | Planning | Source |
+| --- | --- | --- | --- |
+| **L100** | Task decision and evidence drill-down | Later, scope not approved | [Task evidence UI](specflow-ui/components/task-decision-evidence-ui-spec.md) |
+| **L101** | Floating Session | Later, scope not approved | [Floating Session UX](specflow-ui/screens/floating-session-ui-spec.md) |
+| **L102** | Composer attachments and repo references | Later, scope not approved | [Session Composer](specflow-ui/components/session-composer-design.md) |
+| **L103** | Workflow events inside Session conversation | Later, scope not approved | [Chat V10 follow-ups](specflow-ui/components/session-chat-v10-design.md) |
+| **L104** | Quote and origin-aware chat navigation | Later, scope not approved | [Chat V10 follow-ups](specflow-ui/components/session-chat-v10-design.md) |
+| **L105** | Server-side Work history search and filtering | Later, scope not approved | [Runtime search proposal](specflow-runtime/work-history-server-filter.md) |
+| **L106** | Per-tool Work Inspector presentation | Later, scope not approved | [Work Inspector UX](specflow-ui/components/session-work-inspector-ui-spec.md) |
+| **L107** | Full IDE integration | Later, scope not approved | [Developer workspace](developer-workspace/code-inspection-and-editing.md) |
+| **L108** | Independent multiple executions of one step | Later, scope not approved | [Multi-instance plan](specflow-engine/multi-instance-execution.md) |
+| **L109** | Scheduled/recurring workflows | Later, scope not approved | [Engine managed integration](specflow-engine/managed-session-integration.md) |
+| **L110** | Workspace relocation and repair | Later, scope not approved | [Workspace lifecycle](specflow-engine/workspace-binding-lifecycle.md) |
+| **L111** | Provider liveness watchdog | Later, scope not approved | [Adapter liveness](specflow-runtime/ai-adapters/liveness-watchdog.md) |
+| **L112** | Quota vs transient rate-limit classification | Later, scope not approved | [Provider classification](specflow-runtime/ai-adapters/error-classification.md) |
+| **L113** | Capacity-aware admission | Later, scope not approved | [Provider capacity](specflow-runtime/ai-adapters/provider-capacity-and-admission.md) |
+| **L114** | Provider diagnose and protocol replay | Later, scope not approved | [Diagnose/replay](specflow-runtime/ai-adapters/diagnostics-and-replay.md) |
+| **L115** | Native Session resume and positive reconciliation | Later, scope not approved | [Provider resume](specflow-runtime/ai-adapters/session-resume-and-recovery.md) |
+| **L116** | Authorization persistence filters and capability projections | Later, scope not approved | [Authorization follow-ups](authorization/README.md) |
+| **L117** | UI prefetch, refresh and eventing | Later, scope not approved | [UI data loading](specflow-ui/data-loading-refresh-and-eventing.md) |
+| **L118** | Automated Storybook policy and coverage checks | Later, scope not approved | [Storybook follow-ups](specflow-ui/storybook-rework.md) |
+| **L119** | Settings catalogue rendering | Later, scope not approved | [Settings renderer](specflow-ui/components/settings-catalog-renderer-ui-spec.md) |
+| **L120** | Semantic search scale, quality and evaluation | Later, scope not approved | [Search quality](semantic-docs/search-quality.md) |
+| **L121** | Contextual documentation help and additional corpora | Later, scope not approved | [Search surfaces](semantic-docs/surfaces-and-setup.md) |
+| **L122** | Workflow definition catalogue/caching tools | Later, scope not approved | [Plan 06 F11](specflow-engine/execution-plans/06-workflow-kernel/README.md) |
+
+### Ideas coverage audit
+
+The repository has **80 Markdown files under `docs/ideas/**`** in the audited `main` tree, including umbrella indexes and detailed implementation tasks. The mapping below is a **file-level reconciliation**, not a claim that every independently deliverable feature has an accepted release target.
+
+| Source group | Files | Mapped product destinations |
+| --- | ---: | --- |
+| Engine | 40 | 1.0 P100–P102/P106/T100, 1.x P103–P105/P113/T102, Later L108–L110/L122; some historic execution plans refer to delivered C004 |
+| Runtime | 13 | 1.0 C005/C006 and E6 prerequisites, 1.x T110/I110–I111, Later L105/L111–L115 |
+| UI | 19 | 1.0 C007 and E3/E4, 1.x P110/I112, Later L100–L104/L106/L117–L119 |
+| Semantic search | 3 | 1.0 D100, 1.x T111, Later L120–L121 |
+| Developer workspace | 2 | 1.x P111, Later L107 |
+| Authorization | 1 | 1.0 C008/I102, Later L116 |
+| Multi-project | 1 | 2.0 P200–P202/I200–I203 |
+| Ideas hub | 1 | Navigation only; not an independently deliverable capability |
+
+**Known gaps before calling the roadmap exhaustive:** the [provider capability backlog](specflow-runtime/provider-migration-plan.md) has independently prioritizable F01–F19 proposals, and [Workflow plan 06](specflow-engine/execution-plans/06-workflow-kernel/README.md) has F01–F20 follow-ups. Several are grouped under T110 or implemented prerequisites and still need **item-level disposition** (1.x / 2.0 / Later / Superseded) before the scope inventory can be signed off. A document may describe several capabilities; mapping its file path alone is insufficient proof of complete planning coverage.
+
 ## Open decisions and status rules
 
 1. **Approve 1.0 scope and acceptance criteria.** The 21-item inventory is a working proposal; its 10/21 completion count must not become an official release percentage without sign-off. Keep the end-to-end scenario separately verified.

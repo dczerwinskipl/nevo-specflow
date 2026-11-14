@@ -237,7 +237,7 @@ function workspaceAttentionOf(entry: WorkflowAttentionItem): WorkspaceAttention 
       title:
         [T01, T02, T03, T04, T05, T06, T07].find((task) => task.id === taskId)?.title ?? taskId,
       targetId: taskId,
-      priority: broken ? 'high' : 'normal',
+      priority: broken ? 'critical' : 'normal',
       ...common,
     };
   }

@@ -72,6 +72,11 @@ export function classifyDemoCreateFailure(error: unknown, sent: SentCreate = {})
     return protectedBranchFailure(sent);
   }
 
+  // The chosen start commit has no committed SpecFlow configuration (422): nothing was created.
+  if (code === 'GIT_BASE_CONFIG_MISSING') {
+    return { kind: 'base-config-missing' };
+  }
+
   if (code === 'COMMIT_BLOCKED') {
     return { kind: 'commit-blocked' };
   }

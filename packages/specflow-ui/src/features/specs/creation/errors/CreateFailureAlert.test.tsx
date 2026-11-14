@@ -32,6 +32,18 @@ describe('CreateFailureAlert copy', () => {
     expect(render(failure, 'en')).toContain('The selected starting branch is no longer available.');
   });
 
+  it('explains a start commit without committed configuration, not a stale option', () => {
+    const failure: CreateFailure = { kind: 'base-config-missing' };
+    const pl = render(failure, 'pl');
+    expect(pl).toContain('Gałąź początkowa nie ma konfiguracji SpecFlow');
+    expect(pl).toContain('Zacznij od');
+    expect(pl).not.toContain('Stan środowiska pracy zmienił się');
+    const en = render(failure, 'en');
+    expect(en).toContain('The start branch has no SpecFlow configuration');
+    expect(en).toContain('Start from');
+    expect(en).not.toContain('changed since the form was opened');
+  });
+
   it('falls back to the generic explanation for an unknown code and never shows server text', () => {
     const html = render({ kind: 'stale', code: 'SOMETHING_NEW' }, 'en');
     expect(html).toContain('One of the selected options is no longer valid or available.');

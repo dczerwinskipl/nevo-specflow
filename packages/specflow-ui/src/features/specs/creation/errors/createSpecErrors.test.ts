@@ -33,7 +33,7 @@ describe('Create error codes', () => {
     [409, 'REGISTRY_CONFLICT', 'uncertain'],
     [422, 'GIT_DISABLED', 'stale'],
     [422, 'BASE_REF_NOT_FOUND', 'stale'],
-    [422, 'GIT_BASE_CONFIG_MISSING', 'stale'],
+    [422, 'GIT_BASE_CONFIG_MISSING', 'base-config-missing'],
     [503, 'GIT_POLICY_INVALID', 'uncertain'],
     [422, 'BRANCH_PROTECTED', 'branch-protected'],
     [409, 'COMMIT_BLOCKED', 'commit-blocked'],
@@ -162,6 +162,7 @@ describe('toOperationFailure (a failure the inspection endpoint reported)', () =
   it.each<[string, CreateFailure['kind']]>([
     ['BRANCH_ALREADY_EXISTS', 'branch-exists'],
     ['BASE_REF_NOT_FOUND', 'stale'],
+    ['GIT_BASE_CONFIG_MISSING', 'base-config-missing'],
     ['CONTROL_LOCK_BUSY', 'uncertain'],
     ['REGISTRY_CONFLICT', 'uncertain'],
     ['GIT_POLICY_INVALID', 'uncertain'],

@@ -687,6 +687,10 @@
         "DEMO_WORKSPACE_UNAVAILABLE": "Wybrane środowisko pracy nie jest już dostępne.",
         "BASE_REF_NOT_FOUND": "Wybrana gałąź początkowa nie jest już dostępna."
       },
+      "baseConfigMissing": {
+        "title": "Gałąź początkowa nie ma konfiguracji SpecFlow",
+        "body": "Specyfikacja nie została utworzona. Commit wybrany w polu „Zacznij od” nie ma zapisanej w repozytorium, poprawnej konfiguracji SpecFlow (.nevo/config.yaml z sekcją runtime). Nowe środowisko pracy startuje z tego commita, więc niezapisane zmiany się nie liczą. Wybierz inną gałąź początkową albo najpierw zapisz konfigurację w commicie na tej gałęzi. Nazwa i wybory zostały zachowane."
+      },
       "conflict": {
         "title": "Ta operacja została już użyta z innym żądaniem",
         "body": "Specyfikacja nie została utworzona. Przy następnej próbie użyjemy nowego identyfikatora operacji."

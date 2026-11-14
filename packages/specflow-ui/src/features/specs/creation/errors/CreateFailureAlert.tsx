@@ -35,6 +35,8 @@ export function createFailureTitleKey(failure: CreateFailure): MessageKey {
         : 'create.errors.branchExists.title';
     case 'branch-invalid':
       return 'create.errors.branchInvalid.title';
+    case 'base-config-missing':
+      return 'create.errors.baseConfigMissing.title';
     case 'stale':
       return 'create.errors.stale.title';
     case 'operation-conflict':
@@ -76,6 +78,8 @@ function bodyKey(failure: CreateFailure): MessageKey {
         : 'create.errors.branchExists.body';
     case 'branch-invalid':
       return 'create.errors.branchInvalid.body';
+    case 'base-config-missing':
+      return 'create.errors.baseConfigMissing.body';
     case 'stale':
       return 'create.errors.stale.body';
     case 'operation-conflict':

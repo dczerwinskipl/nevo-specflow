@@ -32,6 +32,7 @@ export type CreateBehavior =
   | 'stale-workspace'
   | 'integration-target-unavailable'
   | 'base-ref-unavailable'
+  | 'base-config-missing'
   | 'operation-conflict'
   | 'forbidden'
   | 'timeout'
@@ -53,6 +54,7 @@ const createFailures: Partial<Record<CreateBehavior, HttpClientError>> = {
   // The Engine reports an unusable integration target as plain CREATE_OPERATION_INVALID (400).
   'integration-target-unavailable': failure(400, 'CREATE_OPERATION_INVALID'),
   'base-ref-unavailable': failure(422, 'BASE_REF_NOT_FOUND'),
+  'base-config-missing': failure(422, 'GIT_BASE_CONFIG_MISSING'),
   // Authorization answers carry no `code`.
   forbidden: new HttpClientError('forbidden', {
     kind: 'http',
@@ -315,6 +317,7 @@ export const Default: Story = {
         'stale-workspace',
         'integration-target-unavailable',
         'base-ref-unavailable',
+        'base-config-missing',
         'operation-conflict',
         'forbidden',
         'timeout',
@@ -1476,6 +1479,22 @@ export const BaseRefUnavailableKeepsTheFormAndOffersARefresh: Story = {
     // The explanation is mapped from the error code; the server text is never shown.
     await expect(alert).toHaveTextContent('Wybrana gałąź początkowa nie jest już dostępna.');
     await expect(canvas.getByRole('button', { name: 'Odśwież opcje' })).toBeVisible();
+    await expect(canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' })).toHaveValue(
+      'Nowa obsługa płatności',
+    );
+  },
+};
+
+export const BaseConfigMissingNamesTheStartFieldAndKeepsTheForm: Story = {
+  render: () => <Fixture createBehavior="base-config-missing" optionsVariants={['commits']} />,
+  parameters: { a11y: { test: 'off' } },
+  play: async ({ canvas, userEvent }) => {
+    await openManualForm(canvas, userEvent);
+    await userEvent.click(submit(canvas));
+    const alert = await canvas.findByRole('alert');
+    await expect(alert).toHaveTextContent('Gałąź początkowa nie ma konfiguracji SpecFlow');
+    await expect(alert).toHaveTextContent('Zacznij od');
+    await expect(alert).not.toHaveTextContent('Stan środowiska pracy zmienił się');
     await expect(canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' })).toHaveValue(
       'Nowa obsługa płatności',
     );

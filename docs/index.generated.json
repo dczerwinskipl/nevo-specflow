@@ -4847,16 +4847,17 @@
         "changing the Specification Overview at /specs/:specId, its sections or their order",
         "changing the one/two-column arrangement, its threshold or focus behaviour",
         "changing Activity history placement or its open/closed default",
-        "changing Task selection on the Overview",
-        "changing what the Overview shows on a project Runtime (Tasks source, Activity events, description)"
+        "changing the Overview Tasks summary or the Tasks page (/specs/:specId/tasks)",
+        "changing what the Overview shows on a project Runtime (Now, Requires attention, Activity events, description)"
       ],
-      "summary": "Specification Overview: priority order of its sections, the measured two-column arrangement from 1408 px of content width with 16 px hysteresis, focus restore across a crossing, Activity history as an on-demand Secondary whose explicit choice holds per Specification for the visit, the preparation block and empty Tasks, what project mode shows today (temporary Tasks source, partial Activity history), and Task multi-selection.",
+      "summary": "Specification Overview as the control center of one Specification: summary, Now, Requires attention, the Tasks summary of the configured grouping, Sessions and Documents; the measured two-column arrangement from 1408 px of content width with 16 px hysteresis, focus restore across a crossing, Activity history as an on-demand Secondary, the preparation block, and the Tasks page (/specs/:specId/tasks) with its validated blocking filter.",
       "related": [
         "product.specflow.ui.shell-geometry",
         "product.specflow.ui.interaction-model",
         "product.specflow.ui.application-architecture",
         "product.specflow.specification-creation",
         "reference.api.specification-workspace",
+        "reference.api.task-reads",
         "product.specflow.ui.specification-sessions"
       ],
       "scope": "specflow",

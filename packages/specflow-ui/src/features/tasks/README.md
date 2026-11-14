@@ -1,28 +1,24 @@
 # Tasks UI feature
 
-**Owner:** Tasks. Specification Work is a consumer, not the owner.
+**Owner:** Tasks. The Specification Overview is a consumer, not the owner.
 
 - `pages/` — Full Task screen with independent Task-detail identity and loading.
+- `list/` — the Tasks page (`/specs/:specId/tasks`): the Runtime's configured grouping rendered as
+  delivered, the validated `?blocking=specification` and `?group=` search, New task. No selection
+  and no bulk actions.
+- `overview/` — the Overview flows Requires attention opens (first-start confirmation, Cancel, a
+  direct start, the Specification's Return), the progress text, and the control-center stories.
+- `execution/` — the Now block, its dialogs and the Specification's Now on the Overview.
+- `contributions/specification-overview/` — the Overview's Tasks summary and the mapping of
+  attention actions to those flows (composition: it may import the Specs extension points).
 - `inspectors/` — short Task Preview presentation used by the Specification Secondary host.
-- `contributions/specification-work/` — Task group, row, selection, and execution UI for Work.
-- `model.ts`, `status.ts`, `api.ts`, `queries.ts` and `useSpecificationTask.ts` — Task-owned
-  models, status presentation and remote-data access. The Work contribution receives explicit
-  callbacks from its host rather than accessing the Workspace runtime context.
+- `api.ts`, `queries.ts`, `useSpecificationTask.ts`, `read-model/` — Task-owned models and
+  remote-data access.
 
-The Specification host owns the layout, Secondary navigation, routing composition and aggregate
-Workspace projection. The feature owns its own content and domain-specific behavior. Both
-production and integration surfaces use typed Runtime APIs; do not add fixture fallbacks.
+The UI computes no grouping, attention or legality: groups, attention items and their actions,
+progress and the Overview summary come from the Runtime. Both production and integration surfaces
+use typed Runtime APIs; do not add fixture fallbacks. Per-project or per-user grouping is a Runtime
+setting of the same shape; the UI needs no change for it.
 
-Future feature settings (e.g., lane/status rules) are **not implemented**. When introduced,
-backend validation/configuration belongs to the feature's Runtime ownership, and UI contributes
-to a Project Settings extension point rather than becoming a hardcoded part of Work.
-
-The canonical `/specs/:specId/tasks/:taskId` route is declared by `tasks/routes.tsx` and
-registered by the application router. Task detail uses `TaskApi` and `taskKeys` through
-the shared services/QueryClient composition; `specs` does not own its endpoint.
-
-The `tasksUiModule` registers the `specification.work.sections` contribution.
-Its adapter translates the temporary Specification Workspace projection into Task-owned
-props; `TasksSection` itself does not import `WorkspaceRuntime` or the aggregate
-Specification model. No additional endpoint, global QueryClient or production fixture
-is introduced by the contribution system.
+The `tasksUiModule` registers the `specification.work.sections` Tasks summary (slot `main`) and the
+Tasks `specification.attention.items`.

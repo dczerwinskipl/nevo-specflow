@@ -17,6 +17,7 @@ import {
   type EvalReport,
 } from '../app/run-eval.js';
 import { validateAdrs } from '../domain/adr.js';
+import { validateRoadmapTables } from '../domain/markdown-tables.js';
 import { createAdrFiles } from '../infra/adr-files.js';
 import { readEvalQuestions } from '../infra/eval-questions.js';
 
@@ -32,7 +33,9 @@ export type LauncherContext = Pick<
 >;
 
 /** Repository-only checks on top of the product contract (ADR 0020). */
-export const REPOSITORY_CORPUS_RULES: DocsCorpusRules = { validate: validateAdrs };
+export const REPOSITORY_CORPUS_RULES: DocsCorpusRules = {
+  validate: (docs) => [...validateAdrs(docs), ...validateRoadmapTables(docs)],
+};
 
 /** Build the `nevo-docs` program. Pure wiring — no argv parsing here. */
 export function createProgram(ctx: LauncherContext): Command {

@@ -313,6 +313,48 @@ describe('workspace documentation instances', () => {
     }
   });
 
+  it("answers a search lexically without embedding while another checkout's index refreshes", async () => {
+    const home = checkout('home6');
+    const x = checkout('x6', { large: true });
+    const h = harness(
+      new Map<string, WorkspaceResolution>([
+        ['home', { status: 'available', root: home, projectHome: true }],
+        ['x', linked(x)],
+      ]),
+      home,
+    );
+    const request = { query: 'widget', limit: 5, includeProposals: false, snippets: false };
+    try {
+      // X's gap is larger than a search embeds: its refresh takes the Runtime-wide slot and blocks.
+      await h.docs.search('x', request);
+      await h.embedding();
+      expect(await h.docs.search('home', request)).toMatchObject({
+        value: {
+          result: {
+            mode: 'lexical',
+            reason: {
+              code: 'index-building',
+              message: expect.stringContaining("another checkout's") as unknown,
+            },
+          },
+        },
+      });
+      expect(h.searchEmbeds).toEqual([]);
+
+      h.open();
+      let search = await h.docs.search('home', request);
+      while (search.kind === 'ok' && search.value.result.mode === 'lexical') {
+        await tick();
+        search = await h.docs.search('home', request);
+      }
+
+      expect(search).toMatchObject({ value: { result: { mode: 'hybrid' } } });
+    } finally {
+      h.open();
+      await h.corpora.close();
+    }
+  });
+
   it('evicts the least recently used instance only after its refresh has ended', async () => {
     const home = checkout('home3');
     const workspaces = new Map<string, WorkspaceResolution>();

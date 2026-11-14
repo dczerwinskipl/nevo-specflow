@@ -32,4 +32,8 @@ if (result.error !== undefined) {
   process.exit(1);
 }
 
+if (gpu && result.status !== 0) {
+  console.error('GPU start failed; `pnpm docs:embeddings:up` runs on CPU.');
+}
+
 process.exit(result.status ?? 1);

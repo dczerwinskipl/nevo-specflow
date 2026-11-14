@@ -87,11 +87,24 @@ const SEEDING = {
 } as const;
 
 /**
- * While a background job of this index runs, a search embeds nothing (neither the read-time refresh
- * nor the query): the endpoint is busy with the job's batches, so a query would wait behind them up
- * to the query timeout and then report the endpoint as failed. The search answers lexically at once.
+ * While a background job holds the Runtime-wide slot (this index's, or `'other'`: another
+ * checkout's), a search embeds nothing (neither the read-time refresh nor the query): the shared
+ * endpoint is busy with the job's batches, so a query would wait behind them up to the query
+ * timeout and then report the endpoint as failed. The search answers lexically at once.
  */
-function refreshingReason(progress: IndexProgress | undefined): DocsSearchReason {
+function refreshingReason(
+  running: { readonly progress: IndexProgress | undefined } | 'other',
+): DocsSearchReason {
+  if (running === 'other') {
+    return {
+      code: 'index-building',
+      message:
+        "The Runtime is updating another checkout's documentation index; searches are lexical until it has finished.",
+    };
+  }
+
+  const { progress } = running;
+
   return {
     code: 'index-building',
     message: `The Runtime is updating the documentation index in the background${
@@ -222,7 +235,8 @@ export async function openCorpusInstance(options: CorpusInstanceOptions): Promis
         refreshRequested = true;
       }
 
-      const running = refresh.current();
+      // The endpoint is the Runtime's, so another checkout's job keeps it busy too.
+      const running = refresh.current() ?? (options.slot.held() ? 'other' : undefined);
 
       return searchDocumentationWithLeftOut(
         {
@@ -230,7 +244,7 @@ export async function openCorpusInstance(options: CorpusInstanceOptions): Promis
           vectors: !seeded
             ? { reason: SEEDING }
             : running !== undefined
-              ? { reason: refreshingReason(running.progress) }
+              ? { reason: refreshingReason(running) }
               : search.vectors,
         },
         request,

@@ -92,6 +92,8 @@ pnpm docs:embeddings:down       # stops the model and keeps the volume
 - On a Mac, Docker cannot use the Apple GPU. The fast option is the native Ollama app (Metal):
   install it, run `ollama pull qwen3-embedding:0.6b` and use the same `baseUrl` and `model` below;
   the container is the CPU fallback. Run only one of the two, both listen on port 11434.
+- If the former root compose project (`nevo-specflow`) still runs, stop it first with
+  `docker compose -p nevo-specflow down`: it holds port 11434. Its model volume is reused as is.
 
 Then add the endpoint to the git-ignored `.nevo/local/config.yaml` (create the file if needed):
 

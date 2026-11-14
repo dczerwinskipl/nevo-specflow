@@ -199,16 +199,26 @@ run in that checkout.
   (for example an index that cannot be written), the next one starts no sooner than 60 s later;
   until then the reason says `the Runtime's last background update failed; it retries within a
 minute`.
-- **While a refresh runs:** while the Runtime's background refresh (or seed) of a workspace's
-  index runs, a search of that workspace embeds nothing, neither changed sections nor the query, so
-  it never waits behind the refresh's requests to the endpoint. It answers `lexical` at once with
-  `index-building` (`The Runtime is updating the documentation index in the background (<n>/<total>
-chunks); …`, and `indexProgress`); once the refresh has ended, searches are hybrid again.
-- **One refresh at a time:** the Runtime runs at most one background refresh across all
-  workspaces; while another workspace's runs, the reason says so and a later search starts this
-  one. It keeps at most four workspace corpora open (the least recently used one is stopped and
-  closed), and closing a workspace or Specification releases its workspace's corpus before its
-  worktree is deleted.
+- **While a refresh runs:** while any background job of the Runtime runs (a refresh or seed of
+  any workspace's index; they all use the Runtime's one endpoint), a search embeds nothing, neither
+  changed sections nor the query, so it does not wait behind the job's requests to the endpoint.
+  It answers `lexical` at once with `index-building`:
+  - in a linked worktree whose seed has not run yet (also while no job runs): `The
+documentation index is being prepared from Project Home; searches are lexical until then.`;
+  - while this workspace's job runs: `The Runtime is updating the documentation index in the
+background (<n>/<total> chunks); searches are lexical until it has finished.` (the count, and
+    `indexProgress`, once it embeds);
+  - while another workspace's job runs: `The Runtime is updating another checkout's documentation
+index; searches are lexical until it has finished.`
+
+  Once the job has ended, searches are hybrid again. A job that starts while a search is already
+  embedding its query can still delay that one query, up to the query timeout.
+
+- **One refresh at a time:** the Runtime runs at most one background job across all workspaces;
+  searches meanwhile answer as above and start nothing, and a search after it has ended starts this
+  workspace's catch-up when its gap needs one. It keeps at most four workspace corpora open (the
+  least recently used one is stopped and closed), and closing a workspace or Specification releases
+  its workspace's corpus before its worktree is deleted.
 - **Seeding:** a linked worktree without an index is first seeded with a copy of Project Home's
   index when their identity matches (embedding model, dimensions, probe and documentation
   settings); searches meanwhile answer `lexical` with `index-building`. Then the normal refresh

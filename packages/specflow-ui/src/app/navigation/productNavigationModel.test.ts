@@ -71,5 +71,8 @@ describe('product navigation model', () => {
     expect(showsNoSpecificationHint('/')).toBe(true);
     expect(showsNoSpecificationHint('/specs')).toBe(true);
     expect(showsNoSpecificationHint('/specs/newton')).toBe(true);
+    expect(showsNoSpecificationHint('/docs')).toBe(false);
+    expect(showsNoSpecificationHint('/workspaces/w/docs/a.b')).toBe(false);
+    expect(showsNoSpecificationHint('/workspaces/w/docsx')).toBe(true);
   });
 });

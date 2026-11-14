@@ -198,8 +198,9 @@ export function useWorkspacePrimarySheet(): HTMLElement | null {
 export interface AppWorkspaceLabels {
   backToPrimary: string;
   /**
-   * Accessible name of the split Secondary breadcrumb row's leading one-level Back, given the title
-   * of the level it returns to. Optional: defaults to `"<backToPrimary>: <title>"`.
+   * Accessible name of a Back that returns one level to a named parent, given that level's title:
+   * the split Secondary breadcrumb row's leading Back and the stacked header Back at stack depth
+   * >= 2 (depth 1 uses `backToPrimary`). Optional: defaults to `"<backToPrimary>: <title>"`.
    */
   backToParent?: (parentTitle: string) => string;
   /**
@@ -1239,23 +1240,33 @@ function AppWorkspaceRoot({
   const splitRailHeader =
     splitWithStrip ||
     (state.mode === 'split' && secondaryPresentation?.headerVariant === 'tab-rail');
+  // The trail and parent label are read here because the stacked header Back names its target too.
+  const secondaryTrail = workspace?.trail ?? [];
+  const secondaryParentTitle = secondaryTrail.at(-2)?.title;
+  const backToParentLabel = (parentTitle: string) =>
+    labels.backToParent?.(parentTitle) ?? `${labels.backToPrimary}: ${parentTitle}`;
   const secondaryBackAction =
     secondaryPresentation?.onBack &&
     !splitWithStrip &&
     (state.mode === 'stacked' ||
       workspace?.canGoBack ||
       (state.mode === 'split' && secondaryPresentation.canStack)) ? (
-      <BackAction label={labels.backToPrimary} onBack={secondaryPresentation.onBack} />
+      // Stacked at depth >= 2 the Back pops to the previous screen, so it names that screen; at
+      // depth 1 it returns to Primary.
+      <BackAction
+        label={
+          state.mode === 'stacked' && secondaryParentTitle !== undefined
+            ? backToParentLabel(secondaryParentTitle)
+            : labels.backToPrimary
+        }
+        onBack={secondaryPresentation.onBack}
+      />
     ) : undefined;
   // Split + tab strip: local depth is one row at the top of the tab panel, never a header Back —
   // the tab keeps its root's name in the rail, whose height never changes with depth. By default
   // it is the detail header row (`SecondaryDetailHeaderRow`: `←` Back to the parent, then the
   // screen's declared header); a stack whose levels are each worth jumping to opts into the full trail (`localNavigation: 'breadcrumbs'`, `SecondaryBreadcrumbRow`). Never on a
   // stacked layout, which keeps its header Back (mobile has its own navigation).
-  const secondaryTrail = workspace?.trail ?? [];
-  const secondaryParentTitle = secondaryTrail.at(-2)?.title;
-  const backToParentLabel = (parentTitle: string) =>
-    labels.backToParent?.(parentTitle) ?? `${labels.backToPrimary}: ${parentTitle}`;
   const secondaryOnBack = secondaryPresentation?.onBack;
   let secondaryLocalNavigationRow: ReactNode;
   let detailHeaderHosted = false;
@@ -1308,6 +1319,7 @@ function AppWorkspaceRoot({
           onPress: () => void secondaryPresentation.onClose?.(),
         }
       : undefined;
+  // The outgoing layer is inert and aria-hidden, so its Back label is decorative.
   const outgoingBackAction = outgoingSecondaryPresentation ? (
     <BackAction label={labels.backToPrimary} onBack={() => undefined} />
   ) : undefined;

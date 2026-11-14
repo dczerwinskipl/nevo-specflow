@@ -77,6 +77,7 @@ describe('composeWorkspaceActivity', () => {
 
     const response = {
       revision: 'r',
+      workspaceId: '0b8f1c1e-0a11-4c6e-9a01-000000000001',
       specification: { id: 's', title: 'S', summary: '', preparationState: 'empty', attention: [] },
       sections: {
         tasks: { state: 'unavailable', reason: 'not_implemented' },

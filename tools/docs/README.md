@@ -8,7 +8,7 @@ Documentation discovery is a product capability
 `@nevo/specflow-docs` owns the frontmatter contract, `list`, `find`, `get`, `context`, `check`,
 `search`, `semantic` and the generated index. This package is a thin launcher that mounts the same
 `createDocsCommand` adapter `nevo-specflow docs` mounts, with this repository as the project
-(`docs/docs.yaml` declares the taxonomy, `ideas/` as non-authoritative and `templates/` as
+(`docs/docs.yaml` declares the taxonomy, `ideas/` as proposals and `templates/` as
 excluded; `.nevo/config.yaml` holds only the semantic search opt-in). It adds only what is not product behavior:
 
 - `adr new` — create the next-numbered ADR as a draft and regenerate the index;
@@ -27,7 +27,7 @@ this launcher (Turbo, cached; build output goes to stderr), never the bundled pr
 pnpm docs:search "how are document commits owned by the engine"  # natural-language question
 pnpm docs:find git react testing       # known terms; lexical OR, ranked deterministically
 pnpm docs:get engineering.shared.testing # exact stable-id lookup
-pnpm docs:context "react tailwind"     # active, authoritative matches only
+pnpm docs:context "react tailwind"     # active matches only, no proposals
 pnpm docs:list                         # every indexed document (all statuses)
 pnpm docs:check                        # validate corpus, links and ADR rules; verify the index
 pnpm docs:check --write                # also regenerate docs/index.generated.{md,json}
@@ -66,11 +66,11 @@ similarity of the best stored section to the question (straight from the vector 
 diagnostic: a search always returns its best candidates, so the similarity of a question nothing
 answers shows how far apart the two cases are, if at all), then per variant and per language
 (all, `en`, `pl`) Recall@5, Recall@10 and MRR (mean of 1 / rank of the first expected document in
-the top 10, 0 when none) over the answerable questions. Finally it counts the non-authoritative
-documents in the hybrid top-10 lists (the default search excludes them, so this only checks the
+the top 10, 0 when none) over the answerable questions. Finally it counts the proposals in
+the hybrid top-10 lists (the default search excludes them, so this only checks the
 filter: expected 0) and, from a second hybrid search per question with them included, how many rank
 above the first expected document (how much they would compete if included). Expected ids must be
-active, authoritative documents. Questions answered lexically in the hybrid variant are flagged;
+active documents that are not proposals. Questions answered lexically in the hybrid variant are flagged;
 build the index first (`pnpm docs:semantic index`). `--json` emits the full report,
 `--questions <file>` another set. It is a manual measurement for chunking and ranking changes, not
 a CI check: results depend on the local embedding model.

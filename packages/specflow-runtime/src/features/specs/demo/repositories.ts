@@ -7,6 +7,7 @@ import { buildDemoTaskContribution } from '../../tasks';
 import { createDemoSessions, type DemoSessions } from '../../sessions';
 import { createDemoDocuments, type DemoDocuments } from '../../documents';
 import type { DemoCatalogue, DemoSpecification } from '../../demo-catalogue';
+import { seededSpecWorkspace } from './seed';
 import { createDemoState, type DemoState } from '../../../demo/state';
 
 type DemoSpec = DemoSpecification;
@@ -50,7 +51,9 @@ function buildSpecification(record: DemoSpec): SpecificationReadModel {
     : [];
 
   return {
+    // Seeded Specifications are bound by the seed; created ones override it with their own.
     revision: 'demo-workspace-1',
+    workspaceId: seededSpecWorkspace(record.id),
     specification: {
       id: record.id,
       ...(record.key ? { key: record.key } : {}),
@@ -135,6 +138,7 @@ export function createDemoSpecsRepositories(deps?: DemoSpecsRepositoriesDeps): {
 
         return {
           ...specification,
+          ...(created ? { workspaceId: created.workspaceId } : {}),
           specification: {
             ...specification.specification,
             preparationState: created

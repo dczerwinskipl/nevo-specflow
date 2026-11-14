@@ -100,6 +100,31 @@ describe('file vector store', () => {
     expect(reset.status === 'ok' && reset.manifest.probe).toBeUndefined();
   });
 
+  it('reads every entry of the current generation with its manifest', async () => {
+    const store = createFileVectorStore({ directory });
+    expect(await store.readEntries()).toEqual({ status: 'missing' });
+
+    const probe = Float32Array.of(0.6, 0.8);
+    await write(
+      store,
+      change(undefined, { reset: true, upsert: [entry('a', [1, 0]), entry('b', [0, 1])], probe }),
+    );
+    await write(store, change(1, { delete: ['a'], upsert: [entry('c', [1, 1])] }));
+
+    const read = await createFileVectorStore({ directory }).readEntries();
+    expect(read.status === 'ok' && read.manifest).toMatchObject({ identity, generation: 2 });
+    expect(read.status === 'ok' && [...read.manifest.probe!]).toEqual([...probe]);
+    expect(
+      read.status === 'ok' &&
+        read.entries
+          .map(({ chunkId, contentHash, vector }) => [chunkId, contentHash, [...vector]])
+          .sort(),
+    ).toEqual([
+      ['b', 'h-b', [0, 1]],
+      ['c', 'h-c', [1, 1]],
+    ]);
+  });
+
   it('writes pairs another instance reads while a reader holds the current manifest open', async () => {
     const store = createFileVectorStore({ directory });
     expect(await store.readManifest()).toEqual({ status: 'missing' });

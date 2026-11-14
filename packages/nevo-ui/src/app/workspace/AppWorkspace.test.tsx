@@ -795,18 +795,29 @@ describe('AppWorkspace stacked Secondary header (unchanged by the split breadcru
       await Promise.resolve();
     });
 
+    const secondary = document.querySelector('[data-workspace-surface="secondary"]');
+    expect(secondary).not.toBeNull();
+    // Depth 1 returns to Primary; depth 2 names the previous screen.
+    expect(
+      within(secondary as HTMLElement).getAllByRole('button', { name: 'Back', hidden: true })[0],
+    ).toBeTruthy();
+
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'push detail', hidden: true }));
       await Promise.resolve();
     });
 
-    const secondary = document.querySelector('[data-workspace-surface="secondary"]');
-    expect(secondary).not.toBeNull();
+    // The push replaces the layer: re-query the live (interactive) one, not the detached original.
+    const live = document.querySelector<HTMLElement>(
+      '[data-workspace-surface="secondary"]:not([inert])',
+    );
+    expect(live).not.toBeNull();
     expect(
-      within(secondary as HTMLElement).getAllByRole('button', { name: 'Back', hidden: true })[0],
-    ).toBeTruthy();
+      within(live!).getAllByRole('button', { name: 'Back: Item', hidden: true }),
+    ).not.toHaveLength(0);
+    expect(within(live!).queryByRole('button', { name: 'Back', hidden: true })).toBeNull();
     expect(
-      within(secondary as HTMLElement).getByRole('button', {
+      within(live!).getByRole('button', {
         name: 'Close secondary content',
         hidden: true,
       }),

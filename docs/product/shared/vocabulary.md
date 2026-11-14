@@ -116,3 +116,9 @@ defer to these definitions instead of redefining the word.
 | **Uncommitted**        | Changes not recorded in any commit yet.                                                                                                         | **niezapisane w commicie** ("zmiany niezapisane w commicie").                                                       |
 | **Protected branch**   | A branch on which the Engine never commits (committed project configuration).                                                                   | **chroniona gałąź**; the effect reads "Nevo nie tworzy tam commitów".                                               |
 | **Merge target**       | The workspace (and its branch) the changes return to later.                                                                                     | **cel scalenia** / "scal do środowiska".                                                                            |
+
+## Documentation vocabulary
+
+| Term         | Meaning                                                                                                                           | Polish rendering                                                     |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| **Proposal** | A document under a `proposals` path prefix of `docs.yaml` (for example `ideas/`): an idea or plan, not a current rule (ADR 0022). | **propozycja** (plural **propozycje**); never "nieobowiązujący" etc. |

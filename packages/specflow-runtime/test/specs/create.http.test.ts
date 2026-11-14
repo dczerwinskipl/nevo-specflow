@@ -556,12 +556,16 @@ describe('E2.I01 — authorized read-only Create options', () => {
             state: 'available',
           }),
         ]);
+        // The registry facts are served by `GET /api/workspaces`.
+        for (const key of ['kind', 'name', 'path']) {
+          expect(result.workspaces[0], key).not.toHaveProperty(key);
+        }
+
         expect(result.newWorktree).toEqual({ status: 'disabled', reason: 'git-disabled' });
         expect(result.defaultBaseRef).toBe('HEAD');
         // Git disabled: answered from registry and filesystem only; no Git facts (refs, branches).
         expect(result.baseRefs).toEqual([]);
-        // Options expose registered display paths (workspace path, worktreesRoot) by contract,
-        // but no Git facts: no commits policy, no branches or refs.
+        // Options expose the worktreesRoot display path by contract, but no Git facts: no commits policy, no branches or refs.
         expect(response.json<Record<string, unknown>>()).not.toHaveProperty('commits');
         expect(response.body).not.toContain('refs/heads/');
         expect(await readFile(workspaceRegistryPath(engine.context), 'utf8')).toBe(registryBefore);

@@ -34,7 +34,7 @@ export function SpecsOverviewEmpty({
       actions={
         searching ? (
           <Button variant="secondary" onClick={onClearSearch}>
-            {t('specifications.clearSearch')}
+            {t('common.clearSearch')}
           </Button>
         ) : onCreate && collection === 'current' ? (
           <Button leadingIcon="plus" disabled={createDisabled} onClick={onCreate}>

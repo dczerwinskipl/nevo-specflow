@@ -16,8 +16,8 @@ export interface DocsTaxonomy {
 
 export interface DocsFileSettings {
   readonly taxonomy: DocsTaxonomy;
-  /** Non-authoritative path prefixes relative to `docs.root`, `/`-separated, no trailing slash. */
-  readonly nonAuthoritative: readonly string[];
+  /** Proposal path prefixes relative to `docs.root`, `/`-separated, no trailing slash. */
+  readonly proposals: readonly string[];
   /**
    * Excluded path prefixes relative to `docs.root`, `/`-separated, without a trailing slash: files
    * below them are not part of the corpus and are not scanned. Links into them still resolve.
@@ -34,11 +34,11 @@ export interface CorpusSettings extends DocsFileSettings {
 /** The defaults when `docs.yaml` or one of its keys is absent (ADR 0020 defaults table). */
 export const DEFAULT_DOCS_FILE_SETTINGS: DocsFileSettings = {
   taxonomy: {},
-  nonAuthoritative: [],
+  proposals: [],
   exclude: [],
 };
 
-const FILE_KEYS = new Set(['taxonomy', 'nonAuthoritative', 'exclude']);
+const FILE_KEYS = new Set(['taxonomy', 'proposals', 'exclude']);
 const TAXONOMY_KEYS = new Set(['scopes', 'areas']);
 
 function vocabulary(value: unknown, path: string): readonly string[] {
@@ -106,16 +106,16 @@ export function parseDocsFile(value: unknown): DocsFileSettings {
 
   return {
     taxonomy,
-    nonAuthoritative: prefixList(file.nonAuthoritative, 'nonAuthoritative'),
+    proposals: prefixList(file.proposals, 'proposals'),
     exclude: prefixList(file.exclude, 'exclude'),
   };
 }
 
 /**
- * Whether a project-root-relative document path lies under one of the non-authoritative prefixes.
+ * Whether a project-root-relative document path lies under one of the proposal prefixes.
  * Prefixes name directories, so `ideas` matches `docs/ideas/x.md` but not `docs/ideas-x.md`.
  */
-export function isNonAuthoritative(settings: CorpusSettings, file: string): boolean {
+export function isProposal(settings: CorpusSettings, file: string): boolean {
   const rootPrefix = `${settings.root}/`;
   if (!file.startsWith(rootPrefix)) {
     return false;
@@ -123,5 +123,5 @@ export function isNonAuthoritative(settings: CorpusSettings, file: string): bool
 
   const underRoot = file.slice(rootPrefix.length);
 
-  return settings.nonAuthoritative.some((prefix) => underRoot.startsWith(`${prefix}/`));
+  return settings.proposals.some((prefix) => underRoot.startsWith(`${prefix}/`));
 }

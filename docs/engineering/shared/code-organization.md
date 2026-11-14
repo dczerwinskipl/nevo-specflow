@@ -336,7 +336,14 @@ have two adapters. Production fixture-based adapters remain forbidden.
 - `src/shared/` holds only code that several features genuinely use (generic controls, the
   retained-request mechanism, the keyed store, notifications, `operations/`, and the product presentational
   pieces `operational-list/` (`OperationalRow`, `OperationalGroupHeader`) and `workspace-section/`
-  (`WorkspaceSection`) that Documents, Sessions, Tasks, Git and Specs all render). It imports no
+  (`WorkspaceSection`) that Documents, Sessions, Tasks, Git and Specs all render, and
+  `document-tree/`: the folder and document rows, levels, search field and roving keyboard that the
+  Documents explorer and the documentation reader both render through; `document-reading/`: the
+  reading columns, heading navigation, Contents column, sheet and button and Properties of a
+  rendered document that the Documents preview and the documentation reader both render through;
+  `context-switcher/`: the trigger, options and listbox keys of the Specification switcher and the
+  workspace picker; `clipboard/`: `copyText`, the one clipboard write, which reports whether it
+  happened). It imports no
   feature and no composition root. A purely presentational piece used by several features lives
   here instead of in the feature that happened to create it; features do not re-export it.
 - Features reach other features only through the target's public entries. A feature has up to

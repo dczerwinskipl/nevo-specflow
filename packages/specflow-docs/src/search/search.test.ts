@@ -22,8 +22,14 @@ import { openFileSystemCorpus } from '../corpus/corpus';
 import { contextualHeader, createDocsChunkSource } from '../semantic-index/chunk-source';
 import { openDocsIndex, openProjectIndex } from '../semantic-index/index-store';
 import { READ_REFRESH_MAX_CHUNKS } from '../semantic-index/refresh-policy';
+import { createIndexWrites } from '../semantic-index/write-admission';
 import { toHit } from './result';
-import { openDocsSearch, searchDocumentation, type DocsSearch } from './search';
+import {
+  openDocsSearch,
+  searchDocumentation,
+  searchDocumentationWithLeftOut,
+  type DocsSearch,
+} from './search';
 
 const root = mkdtempSync(join(tmpdir(), 'specflow-docs-search-'));
 mkdirSync(join(root, 'docs', 'ideas'), { recursive: true });
@@ -51,19 +57,23 @@ writeFileSync(
   '---\nid: engine\ntype: hub\ntitle: Engine\nstatus: current\nsummary: Tasks are handled by the engine.\nread_when: [changing work items]\n---\n\n# Engine\n\nWork items move through states.\n',
 );
 
-writeFileSync(join(root, 'docs', 'docs.yaml'), 'nonAuthoritative: [ideas]\n');
+writeFileSync(join(root, 'docs', 'docs.yaml'), 'proposals: [ideas]\n');
 
 afterAll(() => rmSync(root, { recursive: true, force: true }));
 
 const settings = parseDocsConfig({ search: { semantic: true } });
 const corpus = openFileSystemCorpus(root, settings);
+// An index held in memory: every write is admitted.
+const admitted = () => createIndexWrites(() => Promise.resolve(undefined));
+const cachedSource = (file: string) =>
+  createDocsChunkSource({ corpus, cache: { file, admitWrite: () => Promise.resolve(true) } });
 
 function semanticSearch() {
   const provider = createFakeEmbeddingProvider();
   const store = createInMemoryVectorStore();
   const search: DocsSearch = {
     chunks: createDocsChunkSource({ corpus }),
-    vectors: { store, providers: { query: provider, documents: provider } },
+    vectors: { store, writes: admitted(), providers: { query: provider, documents: provider } },
   };
 
   return { provider, store, search };
@@ -72,10 +82,40 @@ function semanticSearch() {
 const request = {
   query: 'install widget',
   limit: 5,
-  includeNonAuthoritative: false,
+  includeProposals: false,
   snippets: false,
   refresh: true,
 };
+
+describe('searchDocumentationWithLeftOut', () => {
+  it('counts the proposals the same query would add, embedding the query once', async () => {
+    const { provider, search } = semanticSearch();
+    const source = createDocsChunkSource({ corpus });
+    const before = (await source.load()).revision;
+    await searchDocumentation(search, request);
+    const calls = provider.calls.length;
+
+    const result = await searchDocumentationWithLeftOut(search, request);
+    expect(result.results.map((hit) => hit.id)).toEqual(['guide']);
+    expect(result.proposalsLeftOut).toBe(1);
+    expect(provider.calls.slice(calls).map((call) => call.purpose)).toEqual(['query']);
+    // Building the vector index does not change the corpus revision.
+    expect((await source.load()).revision).toBe(before);
+
+    expect(
+      await searchDocumentationWithLeftOut(search, { ...request, includeProposals: true }),
+    ).toMatchObject({ proposalsLeftOut: 0 });
+  });
+
+  it('counts on the lexical path too', async () => {
+    const search: DocsSearch = {
+      chunks: createDocsChunkSource({ corpus }),
+      vectors: { reason: { code: 'semantic-disabled', message: 'off' } },
+    };
+    const result = await searchDocumentationWithLeftOut(search, request);
+    expect(result).toMatchObject({ mode: 'lexical', proposalsLeftOut: 1 });
+  });
+});
 
 describe('searchDocumentation', () => {
   it('builds the index on read, answers hybrid and then embeds only the query', async () => {
@@ -132,9 +172,9 @@ describe('searchDocumentation', () => {
     }
   });
 
-  it('includes non-authoritative documents only with the switch; inactive ones never', async () => {
+  it('includes proposals only with the switch; inactive ones never', async () => {
     const { search } = semanticSearch();
-    const result = await searchDocumentation(search, { ...request, includeNonAuthoritative: true });
+    const result = await searchDocumentation(search, { ...request, includeProposals: true });
     expect(result.results.map((hit) => hit.id).sort()).toEqual(['draft', 'guide']);
   });
 
@@ -167,7 +207,8 @@ describe('searchDocumentation', () => {
 
   it('does not build a large gap on read: lexical index-building until the index is complete', async () => {
     const { provider, store } = semanticSearch();
-    const { chunks: base, documents } = await createDocsChunkSource({ corpus }).load();
+    const loaded = await createDocsChunkSource({ corpus }).load();
+    const { chunks: base } = loaded;
     const many = Array.from({ length: 2 * READ_REFRESH_MAX_CHUNKS + 2 }, (_, index) => ({
       ...base[index % base.length]!,
       id: `${base[index % base.length]!.id}/${String(index)}`,
@@ -176,13 +217,12 @@ describe('searchDocumentation', () => {
       chunks: {
         load: () =>
           Promise.resolve({
+            ...loaded,
             chunks: many,
-            documents,
-            reparsed: 0,
             searchEngine: () => createSearchEngine(many),
           }),
       },
-      vectors: { store, providers: { query: provider, documents: provider } },
+      vectors: { store, writes: admitted(), providers: { query: provider, documents: provider } },
     };
 
     const empty = await searchDocumentation(search, request);
@@ -213,6 +253,7 @@ describe('searchDocumentation', () => {
       chunks,
       vectors: {
         store,
+        writes: admitted(),
         providers: { query: after, documents: after },
         catchUp: {
           running: () => Promise.resolve(undefined),
@@ -280,7 +321,7 @@ describe('openDocsSearch', () => {
       root,
       corpus,
       { docs: settings, embeddings: endpoint },
-      () => Promise.resolve(false),
+      () => Promise.resolve({ status: 'not-ignored' }),
     );
     const search = openDocsSearch({
       corpus,
@@ -301,7 +342,11 @@ describe('openDocsSearch', () => {
   });
 
   it('reuses an index the process already holds instead of opening another store', () => {
-    const index = { chunks: createDocsChunkSource({ corpus }), store: createInMemoryVectorStore() };
+    const index = {
+      chunks: createDocsChunkSource({ corpus }),
+      store: createInMemoryVectorStore(),
+      writes: admitted(),
+    };
     const search = openDocsSearch({
       corpus,
       configuration: { docs: settings, embeddings: endpoint },
@@ -385,7 +430,7 @@ describe('docs chunk source', () => {
 
   it('re-chunks only changed content, also when size and mtime stay, across instances', async () => {
     const cacheFile = join(root, 'cache', 'units.json');
-    const source = createDocsChunkSource({ corpus, cacheFile });
+    const source = cachedSource(cacheFile);
     const first = await source.load();
     expect(first.reparsed).toBe(4);
     const second = await source.load();
@@ -407,7 +452,7 @@ describe('docs chunk source', () => {
     const third = await source.load();
     expect(third.reparsed).toBe(1);
     expect(third.searchEngine()).not.toBe(first.searchEngine());
-    expect((await createDocsChunkSource({ corpus, cacheFile }).load()).reparsed).toBe(0);
+    expect((await cachedSource(cacheFile).load()).reparsed).toBe(0);
   });
 
   it('shares a pending load between concurrent calls and skips a file that vanished', async () => {
@@ -442,6 +487,6 @@ describe('docs chunk source', () => {
     const cacheFile = join(root, 'cache', 'null.json');
     mkdirSync(join(root, 'cache'), { recursive: true });
     writeFileSync(cacheFile, 'null');
-    expect((await createDocsChunkSource({ corpus, cacheFile }).load()).reparsed).toBe(4);
+    expect((await cachedSource(cacheFile).load()).reparsed).toBe(4);
   });
 });

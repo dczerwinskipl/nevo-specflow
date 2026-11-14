@@ -58,6 +58,10 @@
       "types": "./dist/docs/index.d.ts",
       "default": "./dist/docs/index.js"
     },
+    "./workspaces": {
+      "types": "./dist/workspaces/index.d.ts",
+      "default": "./dist/workspaces/index.js"
+    },
     "./operations": {
       "types": "./dist/operations/index.d.ts",
       "default": "./dist/operations/index.js"

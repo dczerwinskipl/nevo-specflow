@@ -37,6 +37,7 @@ export async function runDocs(
       | 'semanticStatusCommand'
       | 'backgroundIndex'
       | 'spawnDetached'
+      | 'isIgnoredByGit'
       | 'now'
     >
   > = {},

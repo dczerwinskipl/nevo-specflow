@@ -79,7 +79,20 @@ describe('compact tree geometry', () => {
 
   it('keeps the DS hit area on the item instead of tall padding', () => {
     expect(treeItemClassName).toContain('after:h-[max(100%,var(--target-size))]');
-    expect(treeItemClassName).not.toMatch(/(^|\s)py-/);
+    // The only block padding is the first-line inset, derived from the row and icon tokens.
+    expect(treeItemClassName.match(/(^|\s)py-\S+/g)?.map((match) => match.trim())).toEqual([
+      'py-tree-line-inset',
+    ]);
+  });
+
+  it('puts the glyph, the icon and the first line of a wrapping name on one centre', async () => {
+    const css = (await readFile('src/design-system.css', 'utf8')).replace(/\s+/g, ' ');
+    expect(css).toMatch(
+      /--spacing-tree-line-inset: calc\( \(var\(--spacing-tree-row-height\) - var\(--spacing-icon-md\)\) \/ 2 - 1px \);/,
+    );
+    expect(treeItemClassName).toContain('items-start');
+    expect(treeItemClassName).not.toContain('items-center');
+    expect(treeItemLabelClassName).toContain('leading-(--spacing-icon-md)');
   });
 });
 
@@ -141,6 +154,20 @@ describe('tree row actions and labels', () => {
     expect(treeAttentionStateLabelClassName).toContain('text-status-attention');
     // Important: the selected row recolours its first icon; the warning glyph keeps its tone.
     expect(treeAttentionGlyphClassName).toContain('text-status-attention!');
+  });
+
+  it('puts trailing labels and markers on the first line, as the icon', () => {
+    for (const label of [
+      treeStateLabelClassName,
+      treeAttentionStateLabelClassName,
+      treeRequiredLabelClassName,
+      treeRequiredMarkerClassName,
+    ]) {
+      expect(label).toContain('self-start');
+      expect(label).toContain('h-icon-md');
+      expect(label).toContain('items-center');
+      expect(label).not.toContain('self-center');
+    }
   });
 
   it('renders the required marker as quiet muted text that swaps with an icon on narrow rows', () => {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Button, InlineNote, MarkdownDocument, ScrollArea, Typography } from '@nevo/ui';
 import { useMessage } from '../../../i18n/message';
@@ -27,17 +27,22 @@ import {
   trackUserScroll,
   type ScrollAnchor,
 } from './documentScrollAnchor';
-import { DocumentOutline } from '../outline/DocumentOutline';
-import type { DocumentOutlineData, OutlineNavigator } from '../outline/outlineData';
+import { DocumentOutline } from '../../../shared/document-reading/DocumentOutline';
+import type {
+  DocumentOutlineData,
+  OutlineNavigator,
+} from '../../../shared/document-reading/outlineData';
 import {
   guidanceColumnMinWidth,
   guidanceColumnWidth,
   outlineColumnMinWidth,
-  outlineColumnWidth,
-} from '../outline/markdownOutline';
+} from '../../../shared/document-reading/markdownOutline';
+import { DocumentReadingColumns } from '../../../shared/document-reading/DocumentReadingColumns';
+import { useHeadingNavigation } from '../../../shared/document-reading/useHeadingNavigation';
+import { usePanelSize } from '../../../shared/document-reading/usePanelSize';
 import type { DocumentGuidance } from '../catalogue/documentTypePolicy';
 import { DocumentGuidanceColumn } from '../guidance/DocumentGuidance';
-import { DocumentProperties } from '../frontmatter/DocumentProperties';
+import { DocumentProperties } from '../../../shared/document-reading/DocumentProperties';
 import { useMarkdownLabels } from '../../../i18n/useMarkdownLabels';
 import { applyPreviewAnchor, readPreviewAnchor } from './previewScroll';
 
@@ -153,25 +158,6 @@ function SaveRefusal({ session }: { session: DocumentEditorSession }) {
   );
 }
 
-/** Measures the width of an element (0 until it is mounted). */
-function useWidth(element: HTMLElement | null) {
-  const [width, setWidth] = useState(0);
-  useLayoutEffect(() => {
-    if (!element) {
-      return;
-    }
-
-    const measure = () => setWidth(element.clientWidth);
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(element);
-
-    return () => observer.disconnect();
-  }, [element]);
-
-  return width;
-}
-
 /** Document content (preview, source, image or file). Identity and actions live in the workspace header. */
 export function DocumentEditor() {
   const session = useDocumentEditor();
@@ -197,7 +183,7 @@ function DocumentContentView({ session }: { session: DocumentEditorSession }) {
     },
     [editorRoot],
   );
-  const width = useWidth(root);
+  const { width } = usePanelSize(root);
   const catalogue = useDocumentCatalogue();
   // The source editor keeps at least 960 px beside the guidance column, so it is a column there only
   // from the two-column threshold; otherwise the guidance opens as a sheet. The preview reports its
@@ -357,16 +343,13 @@ function PreviewScroller({
   guidance?: DocumentGuidance;
 }) {
   const markdownLabels = useMarkdownLabels();
-  const { t } = useTranslation();
   // Preview only: the raw `---` block is hidden and shown as read-only properties (`outline.body`).
   // Edit mode never reaches this view, so the source stays unchanged there.
   const { headings, properties, body } = outline;
   const viewport = useRef<HTMLDivElement | null>(null);
   // The panel decides the layout (measured), so the same document reads right in any pane width.
   const [panel, setPanel] = useState<HTMLDivElement | null>(null);
-  const [panelWidth, setPanelWidth] = useState(0);
-  const [panelHeight, setPanelHeight] = useState(0);
-  const [activeLine, setActiveLine] = useState<number>();
+  const { width: panelWidth, height: panelHeight } = usePanelSize(panel);
   const wide = panelWidth >= outlineColumnMinWidth;
   const hasAside = headings.length > 0 || properties !== undefined;
   // From the contents threshold the preview has a right-hand slot; from the two-column threshold
@@ -410,22 +393,6 @@ function PreviewScroller({
     node?.setAttribute('data-document-preview', '');
     setPanel(node);
   }, []);
-  useLayoutEffect(() => {
-    if (!panel) {
-      return;
-    }
-
-    const measure = () => {
-      setPanelWidth(panel.clientWidth);
-      setPanelHeight(panel.clientHeight);
-    };
-
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(panel);
-
-    return () => observer.disconnect();
-  }, [panel]);
   // The panel tells the header whether the contents are already a column (then no sheet is offered).
   useLayoutEffect(() => {
     reportColumnShown(wide);
@@ -441,143 +408,13 @@ function PreviewScroller({
 
     return () => reportGuidanceRoom(undefined);
   }, [panelWidth, room, reportGuidanceRoom]);
-  const headingElement = useCallback(
-    (line: number) =>
-      viewport.current?.querySelector<HTMLElement>(
-        `:is(h1, h2, h3, h4)[data-source-line="${line}"]`,
-      ) ?? null,
-    [],
-  );
-  const pinned = useRef<number | undefined>(undefined);
-  useEffect(() => {
-    if (!panel) {
-      return;
-    }
-
-    const release = () => {
-      pinned.current = undefined;
-    };
-
-    // Reading on by hand ends the choice; scrolling done by the choice itself does not.
-    const events = ['wheel', 'touchmove', 'keydown'] as const;
-    for (const name of events) {
-      panel.addEventListener(name, release, { passive: true });
-    }
-
-    return () => {
-      for (const name of events) {
-        panel.removeEventListener(name, release);
-      }
-    };
-  }, [panel]);
-  // The heading the reader is at: the last one that has reached the top of the panel.
-  const measureActive = useCallback(() => {
-    const scroller = viewport.current;
-    if (!scroller) {
-      return undefined;
-    }
-
-    // At the very end the last section is the one being read, even if its heading never reaches the top.
-    // A heading the reader chose stays current until the next manual scroll, even when a short last
-    // section cannot be scrolled up to the top and the end of the document wins otherwise.
-    if (pinned.current !== undefined) {
-      return pinned.current;
-    }
-
-    const scrollable = scroller.scrollHeight - scroller.clientHeight > 2;
-    if (scrollable && scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 2) {
-      return headings.at(-1)?.line;
-    }
-
-    const top = scroller.getBoundingClientRect().top + 48;
-    let current: number | undefined;
-    for (const heading of headings) {
-      const element = headingElement(heading.line);
-      if (element && element.getBoundingClientRect().top <= top) {
-        current = heading.line;
-      }
-    }
-
-    return current ?? headings[0]?.line;
-  }, [headings, headingElement]);
-  // A wide panel keeps the column current while reading; a narrow one measures once, when the sheet opens.
-  useEffect(() => {
-    if (!panel || !wide || headings.length === 0) {
-      return;
-    }
-
-    let frame = 0;
-    const update = () => {
-      frame = 0;
-      setActiveLine(measureActive());
-    };
-
-    const schedule = () => {
-      if (!frame) {
-        frame = requestAnimationFrame(update);
-      }
-    };
-
-    update();
-    panel.addEventListener('scroll', schedule, { passive: true });
-
-    return () => {
-      panel.removeEventListener('scroll', schedule);
-      if (frame) {
-        cancelAnimationFrame(frame);
-      }
-    };
-  }, [panel, wide, headings, measureActive]);
-  const goToHeading = useCallback(
-    (line: number, pointer = false) => {
-      const scroller = viewport.current;
-      const element = headingElement(line);
-      if (!scroller || !element) {
-        return;
-      }
-
-      // A deliberate move: the shared reading position follows it like a user scroll.
-      scroller.dispatchEvent(new Event('wheel'));
-      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      // Smooth unless motion is reduced; the chosen heading is current at once (`pinned`), so the
-      // marker does not walk through the sections the scroll passes.
-      scroller.scrollTo({
-        top:
-          scroller.scrollTop +
-          element.getBoundingClientRect().top -
-          scroller.getBoundingClientRect().top -
-          16,
-        behavior: reduced ? 'auto' : 'smooth',
-      });
-      scroller.dispatchEvent(new Event('scroll'));
-      element.tabIndex = -1;
-      // A marker for the heading just reached: after a pointer its ring is dropped (a class of the
-      // preview), after the keyboard the browser's own focus ring stays.
-      viewport.current?.querySelector('[data-quiet-focus]')?.removeAttribute('data-quiet-focus');
-      element.setAttribute('data-quiet-focus', pointer ? 'pointer' : 'keyboard');
-      // The tint fades by itself (Web Animations, no timer to clean up) unless motion is reduced.
-      if (!reduced) {
-        element.animate?.(
-          [
-            { backgroundColor: 'var(--color-surface-selected)' },
-            { backgroundColor: 'transparent' },
-          ],
-          { duration: 600, easing: 'ease-out' },
-        );
-      }
-
-      element.addEventListener('blur', () => element.removeAttribute('data-quiet-focus'), {
-        once: true,
-      });
-      element.focus({ preventScroll: true });
-      pinned.current = line;
-      setActiveLine(line);
-    },
-    [headingElement],
-  );
+  const { activeLine, goTo, measureActive } = useHeadingNavigation(panel, headings, { live: wide });
   // The session offers these to the header icon, the menu item and the sheet.
   useLayoutEffect(() => {
-    const navigator = { goTo: goToHeading, activeLine: measureActive };
+    const navigator: OutlineNavigator = {
+      goTo: (line, pointer) => void goTo(line, { pointer }),
+      activeLine: measureActive,
+    };
     navigatorRef.current = navigator;
 
     return () => {
@@ -585,51 +422,47 @@ function PreviewScroller({
         navigatorRef.current = null;
       }
     };
-  }, [navigatorRef, goToHeading, measureActive]);
+  }, [navigatorRef, goTo, measureActive]);
   const text = <MarkdownDocument labels={markdownLabels} source={body} sourceLines />;
-  // The columns beside the text, each with the 32 px gap before it.
-  const asideWidth =
-    (contents ? outlineColumnWidth(panelWidth) + 32 : 0) +
-    (guidance ? guidanceColumnWidth(panelWidth) + 32 : 0);
+  const columns = wide && (contents || guidance);
 
   return (
     <ScrollArea
       direction="both"
       className="min-h-0 flex-1"
-      // The ring of a heading reached with a pointer is dropped (the browser would draw it).
-      contentClassName="p-6 [&_[data-quiet-focus=pointer]]:outline-none"
+      contentClassName="p-6"
       // The focusable scroll viewport is the preview region the editor provider refocuses.
       viewportRef={viewportRef}
     >
-      {wide && (contents || guidance) ? (
-        // The text keeps its readable measure and the contents (and the guidance) stay in view
-        // beside it. The group is centred in a panel wider than itself, so the spare width becomes
-        // two equal outer gutters instead of one empty band on the right.
-        <div
-          className="mx-auto flex items-start gap-8"
-          style={{ maxWidth: `calc(var(--spacing-content-narrow) + ${asideWidth}px)` }}
-        >
-          <div className="min-w-0 max-w-content-narrow flex-1">
-            {lead && <div className="mb-4">{lead}</div>}
-            {text}
-          </div>
-          {contents && (
-            <aside
-              aria-label={t('documents.outline.columnLabel')}
-              className="sticky top-0 grid shrink-0 grid-cols-1 gap-4"
-              style={{ width: outlineColumnWidth(panelWidth) }}
-            >
+      <DocumentReadingColumns
+        panelWidth={panelWidth}
+        lead={lead}
+        text={
+          columns ? (
+            text
+          ) : (
+            <>
+              {properties && <DocumentProperties properties={properties} />}
+              {text}
+            </>
+          )
+        }
+        aside={
+          columns && contents ? (
+            <>
               {properties && <DocumentProperties properties={properties} anchored={false} />}
               {headings.length > 0 && (
                 <DocumentOutline
                   headings={headings}
                   activeLine={activeLine}
-                  onSelect={goToHeading}
+                  onSelect={(line, pointer) => goTo(line, { pointer })}
                 />
               )}
-            </aside>
-          )}
-          {guidance && (
+            </>
+          ) : undefined
+        }
+        extraColumn={
+          columns && guidance ? (
             <DocumentGuidanceColumn
               guidance={guidance}
               width={guidanceColumnWidth(panelWidth)}
@@ -637,17 +470,9 @@ function PreviewScroller({
               maxHeight={Math.max(0, panelHeight - 48)}
               className="sticky top-0 shrink-0"
             />
-          )}
-        </div>
-      ) : (
-        // A readable measure (about 80 characters), centred in a pane wider than it so the spare
-        // width becomes two equal gutters; the editor keeps the full width.
-        <div className="mx-auto max-w-content-narrow">
-          {lead && <div className="mb-4">{lead}</div>}
-          {properties && <DocumentProperties properties={properties} />}
-          {text}
-        </div>
-      )}
+          ) : undefined
+        }
+      />
     </ScrollArea>
   );
 }

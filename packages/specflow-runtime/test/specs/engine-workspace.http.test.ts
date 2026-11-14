@@ -113,6 +113,7 @@ describe('Engine-backed specification workspace read', () => {
         expect(response.headers['cache-control']).toBe('no-store');
         const body = response.json<SpecificationWorkspaceResponse>();
         expect(Value.Check(SpecificationWorkspaceResponseSchema, body)).toBe(true);
+        expect(body.workspaceId).toBe(engine.workspace.workspaceId);
         expect(body.specification).toEqual({
           id: created.specId,
           title: 'Actual canonical Spec',
@@ -266,6 +267,11 @@ describe('Engine-backed specification workspace read', () => {
         expect(workspace.statusCode, workspace.body).toBe(200);
         const body = workspace.json<SpecificationWorkspaceResponse>();
         expect(Value.Check(SpecificationWorkspaceResponseSchema, body)).toBe(true);
+        // The binding is the linked worktree's registry id, not the Runtime's primary workspace.
+        expect(body.workspaceId).not.toBe(engine.workspace.workspaceId);
+        expect(body.workspaceId).toBe(
+          (await engine.readRegistry()).specBindings.find((b) => b.specId === specId)?.workspaceId,
+        );
         expect(body.specification).toMatchObject({
           id: specId,
           title: 'From the new workspace',

@@ -18,16 +18,19 @@ import {
   type SearchEngine,
 } from '@nevo/ai-semantic-search';
 
-import { isNonAuthoritative } from '../config/docs-file';
-import { collectCorpusProblems, type DocsCorpus } from '../corpus/corpus';
+import { isProposal } from '../config/docs-file';
+import { corpusSettingsFingerprint } from '../config/settings-fingerprint';
+import type { DocsCorpus } from '../corpus/corpus';
+import { selectReadableDocs, type SkippedDocument } from '../corpus/readable';
 import {
   asString,
   isInactiveStatus,
   parseFrontmatter,
   type DocRecord,
 } from '../frontmatter/contract';
-import { DocsCorpusInvalidError } from '../errors';
+import { DocsError } from '../errors';
 import { readCache, writeCache, type CachedFile } from './chunk-cache';
+import type { AdmitWrite } from './write-admission';
 
 /** What every docs chunk carries for filtering and presentation. */
 export interface DocsChunkMetadata {
@@ -35,7 +38,7 @@ export interface DocsChunkMetadata {
   readonly file: string;
   readonly title: string;
   readonly status: string;
-  readonly nonAuthoritative: boolean;
+  readonly proposal: boolean;
 }
 
 /** A chunk of a document; its `startLine` is the line in the file, frontmatter included. */
@@ -46,14 +49,28 @@ export interface DocsChunk extends Chunk {
 /** An active document's frontmatter (with `file` and an empty `body`), for frontmatter ranking. */
 export interface DocsDocument {
   readonly record: DocRecord;
-  readonly nonAuthoritative: boolean;
+  readonly proposal: boolean;
 }
 
-/** The validated corpus as chunks: active documents only (inactive ones are never searched). */
+/** The readable corpus as chunks: active documents only (inactive ones are never searched). */
 export interface DocsChunks {
   readonly chunks: readonly DocsChunk[];
   /** Every active document, also those without chunks (an empty body), in id order. */
   readonly documents: readonly DocsDocument[];
+  /** Documents left out because their frontmatter is invalid or their id is duplicated. */
+  readonly skipped: SkippedDocument[];
+  /** The skipped documents that declare an id, by id (to tell a skipped id from an unknown one). */
+  readonly skippedById: ReadonlyMap<string, readonly SkippedDocument[]>;
+  /** Readable documents with an inactive status (`deprecated`, `superseded`), in id order. */
+  readonly inactive: readonly DocRecord[];
+  /**
+   * Opaque, versioned digest of the corpus as read: the settings fingerprint and the sorted
+   * `(path, contentHash)` of every scanned file, frontmatter included. It changes with a dirty
+   * edit or a settings change and does not depend on the vector index.
+   */
+  readonly revision: string;
+  /** SHA-256 (hex) of every scanned file's content by path, as read by this load. */
+  readonly contentHashes: ReadonlyMap<string, string>;
   /** Number of documents that were re-chunked by this load (the rest came from cache). */
   readonly reparsed: number;
   /** The search engine over `chunks`, built on first use and shared until the corpus changes. */
@@ -62,8 +79,8 @@ export interface DocsChunks {
 
 export interface DocsChunkSource {
   /**
-   * Bring the cached files up to date with the corpus, validate the corpus like `context` does
-   * (rejects with `DocsCorpusInvalidError`) and return the chunks of its active documents. Loads
+   * Bring the cached files up to date with the corpus, skip the documents `context` skips (the
+   * result names them) and return the chunks of the active documents left. Loads
    * run one at a time: a call while one runs waits for it and then starts the next one, which every
    * further call made before it starts shares (at most one load in progress and one pending), so
    * each answer reflects the files as they were after the call.
@@ -73,29 +90,25 @@ export interface DocsChunkSource {
 
 export interface DocsChunkSourceOptions {
   readonly corpus: DocsCorpus;
-  /** Where the cache persists across processes; `undefined` keeps it in memory only. */
-  readonly cacheFile?: string;
+  /**
+   * Where the cache persists across processes, written only when `admitWrite` admits it (asked
+   * before each write); `undefined` keeps it in memory only.
+   */
+  readonly cache?: { readonly file: string; readonly admitWrite: AdmitWrite };
 }
 
 /** Files read at the same time by a load. */
 const READ_CONCURRENCY = 16;
 
-type CorpusVersion =
-  | { readonly ok: true; readonly value: Omit<DocsChunks, 'reparsed'> }
-  | { readonly ok: false; readonly error: unknown };
-
-export function createDocsChunkSource({
-  corpus,
-  cacheFile,
-}: DocsChunkSourceOptions): DocsChunkSource {
+export function createDocsChunkSource({ corpus, cache }: DocsChunkSourceOptions): DocsChunkSource {
   let cached: Map<string, CachedFile> | undefined;
-  // The validated corpus of `cached`, or why it is invalid; recomputed only when a file changed.
-  let version: CorpusVersion | undefined;
+  // The readable corpus of `cached`; recomputed only when a file changed.
+  let version: Omit<DocsChunks, 'reparsed'> | undefined;
   let running: Promise<DocsChunks> | undefined;
   let pending: Promise<DocsChunks> | undefined;
 
   const refresh = async (): Promise<DocsChunks> => {
-    cached ??= cacheFile === undefined ? new Map() : await readCache(cacheFile);
+    cached ??= cache === undefined ? new Map() : await readCache(cache.file);
     const previous = cached;
     let reparsed = 0;
     const files = await corpus.repo.listMarkdownFiles();
@@ -121,18 +134,18 @@ export function createDocsChunkSource({
     const changed = !sameFiles(previous, next);
     if (changed || version === undefined) {
       cached = next;
-      version = validate(corpus, [...next.values()]);
+      version = withSearchEngine({
+        ...validatedChunks(corpus, [...next.values()]),
+        revision: corpusRevision(corpus, next),
+        contentHashes: new Map([...next].map(([file, entry]) => [file, entry.contentHash])),
+      });
     }
 
-    if (changed && cacheFile !== undefined) {
-      await writeCache(cacheFile, next);
+    if (changed && cache !== undefined && (await cache.admitWrite())) {
+      await writeCache(cache.file, next);
     }
 
-    if (!version.ok) {
-      throw version.error;
-    }
-
-    return { ...version.value, reparsed };
+    return { ...version, reparsed };
   };
 
   const start = (): Promise<DocsChunks> => {
@@ -189,20 +202,12 @@ async function readUnlessGone(corpus: DocsCorpus, file: string): Promise<string 
   }
 }
 
-function validate(corpus: DocsCorpus, files: readonly CachedFile[]): CorpusVersion {
-  let value: Omit<DocsChunks, 'reparsed' | 'searchEngine'>;
-  try {
-    value = validatedChunks(corpus, files);
-  } catch (error) {
-    return { ok: false, error };
-  }
-
+function withSearchEngine(
+  value: Omit<DocsChunks, 'reparsed' | 'searchEngine'>,
+): Omit<DocsChunks, 'reparsed'> {
   let engine: SearchEngine | undefined;
 
-  return {
-    ok: true,
-    value: { ...value, searchEngine: () => (engine ??= createSearchEngine(value.chunks)) },
-  };
+  return { ...value, searchEngine: () => (engine ??= createSearchEngine(value.chunks)) };
 }
 
 /** `items.map(map)` with at most `limit` calls pending at a time, results in input order. */
@@ -227,7 +232,17 @@ async function mapConcurrently<T, R>(
 }
 
 function parseFile(file: string, content: string, contentHash: string): CachedFile {
-  const parsed = parseFrontmatter(content, file);
+  let parsed: ReturnType<typeof parseFrontmatter>;
+  try {
+    parsed = parseFrontmatter(content, file);
+  } catch (error) {
+    if (!(error instanceof DocsError)) {
+      throw error;
+    }
+
+    return { file, contentHash, frontmatter: null, invalidFrontmatter: error.message, chunks: [] };
+  }
+
   if (parsed === null) {
     return { file, contentHash, frontmatter: null, chunks: [] };
   }
@@ -286,11 +301,14 @@ function oneLine(value: string): string {
 function validatedChunks(
   corpus: DocsCorpus,
   files: readonly CachedFile[],
-): Omit<DocsChunks, 'reparsed' | 'searchEngine'> {
+): Omit<DocsChunks, 'reparsed' | 'searchEngine' | 'revision' | 'contentHashes'> {
   const docs: DocRecord[] = [];
   const missingFrontmatter: string[] = [];
+  const invalidFrontmatter: { file: string; error: string }[] = [];
   for (const entry of files) {
-    if (entry.frontmatter === null) {
+    if (entry.invalidFrontmatter !== undefined) {
+      invalidFrontmatter.push({ file: entry.file, error: entry.invalidFrontmatter });
+    } else if (entry.frontmatter === null) {
       missingFrontmatter.push(entry.file);
     } else {
       // Validation reads frontmatter only; the body is not kept.
@@ -300,37 +318,52 @@ function validatedChunks(
 
   docs.sort((a, b) => String(a.id).localeCompare(String(b.id)));
   missingFrontmatter.sort();
-  const problems = collectCorpusProblems(
-    { docs, missingFrontmatter },
-    corpus.settings,
-    corpus.validate,
+  const readable = selectReadableDocs(
+    { docs, missingFrontmatter, invalidFrontmatter },
+    corpus.settings.taxonomy,
   );
-  if (problems.length > 0) {
-    throw new DocsCorpusInvalidError(problems);
-  }
 
   const byFile = new Map(files.map((entry) => [entry.file, entry]));
   const chunks: DocsChunk[] = [];
   const documents: DocsDocument[] = [];
-  for (const record of docs) {
+  const inactive: DocRecord[] = [];
+  for (const record of readable.docs) {
     if (isInactiveStatus(record.status)) {
+      inactive.push(record);
       continue;
     }
 
-    const nonAuthoritative = isNonAuthoritative(corpus.settings, record.file);
-    documents.push({ record, nonAuthoritative });
+    const proposal = isProposal(corpus.settings, record.file);
+    documents.push({ record, proposal });
     const metadata: DocsChunkMetadata = {
       file: record.file,
       title: asString(record.title),
       status: asString(record.status),
-      nonAuthoritative,
+      proposal,
     };
     for (const chunk of byFile.get(record.file)!.chunks) {
       chunks.push({ ...chunk, unitId: asString(record.id), metadata });
     }
   }
 
-  return { chunks, documents };
+  return {
+    chunks,
+    documents,
+    inactive,
+    skipped: readable.skipped,
+    skippedById: readable.skippedById,
+  };
+}
+
+/** `revision` of a load: see `DocsChunks.revision`. */
+function corpusRevision(corpus: DocsCorpus, files: ReadonlyMap<string, CachedFile>): string {
+  const hash = createHash('sha256');
+  hash.update(corpusSettingsFingerprint(corpus.settings));
+  for (const file of [...files.keys()].sort()) {
+    hash.update(JSON.stringify([file, files.get(file)!.contentHash]));
+  }
+
+  return `r1-${hash.digest('hex').slice(0, 32)}`;
 }
 
 function sameFiles(
@@ -350,6 +383,6 @@ function sameFiles(
   return true;
 }
 
-function sha256(content: string): string {
+export function sha256(content: string): string {
   return createHash('sha256').update(content).digest('hex');
 }

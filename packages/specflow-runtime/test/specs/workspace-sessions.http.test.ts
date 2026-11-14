@@ -45,6 +45,7 @@ const workspaceRepository: SpecificationWorkspaceRepository = {
       specId === 'S' || specId === 'T'
         ? {
             revision: 'revision-1',
+            workspaceId: '0b8f1c1e-0a11-4c6e-9a01-000000000001',
             specification: {
               id: specId,
               title: 'Specification ' + specId,

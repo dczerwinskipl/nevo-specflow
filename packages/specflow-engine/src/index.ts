@@ -39,6 +39,15 @@ export {
   type WorkspaceRegistryErrorCode,
 } from './project/workspace/registry/registry';
 
+export {
+  inspectWorkspaceForRead,
+  inspectWorkspaces,
+  type InspectedWorkspace,
+  type WorkspaceGitFacts,
+  type WorkspaceReadInspection,
+  type WorkspaceUnavailableReason,
+} from './specs/workspaces/inspection';
+
 export { ProjectControlLockError, type ProjectControlLockErrorCode } from './project/control-lock';
 
 export { openSpecFlowEngine, readRegistrySnapshot, type SpecFlowEngine } from './application';
@@ -273,6 +282,7 @@ export {
   type PublicCreateOperation,
   type PublicCloseOperation,
   type PublicClosePreview,
+  type PublicCloseSourceWorkspace,
   type PublicCloseStatus,
   type PublicWorkspaceClosePreview,
   type PublicWorkspaceCloseOperation,

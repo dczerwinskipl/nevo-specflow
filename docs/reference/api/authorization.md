@@ -51,6 +51,7 @@ spec
 session
 settings
 docs
+workspace
 ```
 
 `scope` is optional. Omitting it means `{}`, the global required scope.

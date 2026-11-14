@@ -82,6 +82,7 @@ export function mapWorkspaceResponse(
 
   return {
     id: specification.id,
+    workspaceId: dto.workspaceId,
     ...(specification.key ? { key: specification.key } : {}),
     title: specification.title,
     intro: specification.summary,

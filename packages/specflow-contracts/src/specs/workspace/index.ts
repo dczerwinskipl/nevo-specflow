@@ -1,7 +1,7 @@
 import { Type, type Static } from 'typebox';
 import { WorkspaceTaskSchema } from '../../tasks';
 import { SessionIdSchema } from '../../sessions/model';
-import { SpecIdSchema, TaskIdSchema } from '../../identifiers';
+import { SpecIdSchema, TaskIdSchema, WorkspaceIdSchema } from '../../identifiers';
 export * from '../../tasks';
 export * from '../../documents';
 
@@ -152,6 +152,8 @@ const StartSessionActionSchema = Type.Object({
 });
 export const SpecificationWorkspaceResponseSchema = Type.Object({
   revision: Type.String(),
+  /** The registered workspace (UUID) the Specification is bound to; its documentation corpus is read there. */
+  workspaceId: WorkspaceIdSchema,
   recommendedSessionId: Type.Optional(SessionIdSchema),
   specification: Type.Object({
     id: IdSchema,

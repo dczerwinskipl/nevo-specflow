@@ -11,8 +11,12 @@ import {
 import { Link, useMatch, useRouterState } from '@tanstack/react-router';
 import { StandaloneLink } from './LocationLink';
 import { useTranslation } from 'react-i18next';
-import { FileText } from 'lucide-react';
-import { productNavigationItems, showsNoSpecificationHint } from './productNavigationModel';
+import { BookOpen, FileText } from 'lucide-react';
+import {
+  isDocumentationPath,
+  productNavigationItems,
+  showsNoSpecificationHint,
+} from './productNavigationModel';
 import { useSessionDisclosure, type SessionDisclosurePreferences } from './useSessionDisclosure';
 import { useNavigationFocus } from './useNavigationFocus';
 import { focusHashSection, useHashSectionFocus } from './useHashSectionFocus';
@@ -140,6 +144,17 @@ export function ProductNavigation({
                     }
                   }}
                 >
+                  {children}
+                </Link>
+              )}
+            />
+            <NavigationRow
+              selectionTreatment="surface"
+              label={t('navigation.documentation')}
+              icon={BookOpen}
+              active={!specId && isDocumentationPath(location.pathname)}
+              renderLink={(children, className) => (
+                <Link to="/docs" className={className}>
                   {children}
                 </Link>
               )}

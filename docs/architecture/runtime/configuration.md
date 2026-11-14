@@ -128,7 +128,7 @@ project configuration without `runtime` and name `nevo-specflow init`, which com
 Initialization).
 
 **Documentation settings file.** What describes the documentation itself — the `scope`/`areas`
-taxonomy, non-authoritative and excluded path prefixes — is not in `.nevo/config.yaml` but in the
+taxonomy, the proposal and excluded path prefixes — is not in `.nevo/config.yaml` but in the
 optional `<docs.root>/docs.yaml`, committed next to the documents. The documentation capability owns
 and validates it whenever it opens the corpus (the `docs` commands, and the Runtime when it first
 uses the corpus); it is not part of the corpus. The keys are in the

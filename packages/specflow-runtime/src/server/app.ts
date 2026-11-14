@@ -27,6 +27,7 @@ import {
 } from '../features/documents';
 import { createDocsFeature, type DocsFeatureDependencies } from '../features/docs';
 import { createSettingsFeature } from '../features/settings';
+import { createWorkspacesFeature } from '../features/workspaces';
 import {
   createEngineAssociationTargets,
   createSessionAssociationsFeature,
@@ -239,6 +240,14 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
             }
           : {}),
       };
+  const docsFeature = createDocsFeature({
+    ...(config.docs ? { configuration: config.docs } : {}),
+    // Demo data serves no project documentation.
+    ...(dependencies.docs && !demo ? { dependencies: dependencies.docs } : {}),
+    // `docs.view` is checked at the Engine's project; without an Engine the docs routes answer 503.
+    projectId: () => engine?.context.project.projectId,
+    ...(engine && !demo ? { engine } : {}),
+  });
   const productFeatures: readonly RuntimeFeature[] = [
     createSpecsFeature({
       ...(config.specs ? { config: config.specs } : {}),
@@ -249,6 +258,8 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
         contributions,
         sessions: sessionReferences,
         projectId,
+        // Close deletes a checkout only after the documentation index there is released (E9).
+        releaseWorkspace: docsFeature.releaseWorkspaceDocs,
         // The demo Runtime serves its own Create routes (and events route) below.
         ...(demo
           ? {}
@@ -293,11 +304,13 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
       ...(demo ? {} : { sessions: sessionsFeature.runtime }),
     }),
     createSettingsFeature(),
-    createDocsFeature({
-      ...(config.docs ? { configuration: config.docs } : {}),
-      // Demo data serves no project documentation.
-      ...(dependencies.docs && !demo ? { dependencies: dependencies.docs } : {}),
+    createWorkspacesFeature({
+      ...(engine ? { engine } : {}),
+      // Demo data lists the demo workspace registry over the same route.
+      ...(demo ? { source: demo.workspaceList } : {}),
+      projectId,
     }),
+    docsFeature,
   ];
 
   const authFeature = createAuthFeature({

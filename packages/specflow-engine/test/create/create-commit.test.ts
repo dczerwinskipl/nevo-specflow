@@ -1,6 +1,6 @@
 import { channel } from 'node:diagnostics_channel';
-import { randomUUID } from 'node:crypto';
-import { readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { createHash, randomUUID } from 'node:crypto';
+import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
@@ -141,9 +141,21 @@ describe('Create commits the scaffold when Git is enabled', () => {
   it('commits the new-worktree scaffold on the new branch, one commit on top of the base', async () => {
     const { root, engine } = await project();
     const base = git(root, 'rev-parse', 'HEAD');
+    await mkdir(join(root, '.nevo/local'), { recursive: true });
+    await writeFile(join(root, '.nevo/local/config.yaml'), 'ai: {}\n');
     const input = linked();
     const created = await createSpecification(engine, input);
     roots.push(dirname(created.workspaceRoot));
+    // The Git-ignored workstation-local configuration follows Project Home into the new worktree.
+    expect(await readFile(join(created.workspaceRoot, '.nevo/local/config.yaml'), 'utf8')).toBe(
+      'ai: {}\n',
+    );
+    // Create records the hash of the copied bytes, so Close can tell its copy from a user edit.
+    const record = join(created.workspaceRoot, '.nevo/local/state/local-config-copy.json');
+    expect(JSON.parse(await readFile(record, 'utf8'))).toEqual({
+      version: 1,
+      sha256: createHash('sha256').update('ai: {}\n').digest('hex'),
+    });
 
     // The default pattern feature/{key}-{slug} carries the Specification key.
     expect(git(created.workspaceRoot, 'rev-parse', '--abbrev-ref', 'HEAD')).toBe(

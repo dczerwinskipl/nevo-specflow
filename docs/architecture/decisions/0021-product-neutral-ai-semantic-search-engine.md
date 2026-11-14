@@ -102,7 +102,7 @@ With vectors, ranking is hybrid:
 2. cosine similarity against the query embedding, bounded to a number of candidates;
 3. reciprocal rank fusion of both lists, then grouping by parent unit.
 
-Consumer filters (for example "no non-authoritative documents") apply before any candidate cut:
+Consumer filters (for example "no proposals") apply before any candidate cut:
 rejected chunks are left out of the BM25 list and of the vector query, so they neither take a
 candidate place nor shift the ranks that are fused.
 

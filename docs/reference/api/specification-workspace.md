@@ -42,6 +42,11 @@ groups and document manifest ordering are authoritative.
 
 ## Data source
 
+`workspaceId` is the registered workspace UUID the Specification is bound to (the primary workspace unless
+the registry binds it to a linked one). It is part of the `spec.view` response; clients use it as the
+documentation workspace when entering the Specification. It comes from the registry binding, not from
+the manifest.
+
 Normal `nevo-specflow start` uses project mode. The workspace identity (id, title, revision of the
 canonical manifest, `preparationState`) is read from the Engine-verified manifest. The `documents`
 section is `available` and lists the registered documents of the manifest whose file exists

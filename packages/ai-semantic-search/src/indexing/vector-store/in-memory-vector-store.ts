@@ -4,6 +4,7 @@ import {
   sameIdentity,
   validateChange,
   type ApplyOutcome,
+  type EntriesOutcome,
   type IndexManifest,
   type ManifestOutcome,
   type OpenWriterOutcome,
@@ -77,6 +78,22 @@ export function createInMemoryVectorStore(): VectorStore {
       return Promise.resolve(
         snapshot ? { status: 'ok', manifest: snapshot.manifest } : { status: 'missing' },
       );
+    },
+
+    readEntries(): Promise<EntriesOutcome> {
+      if (!snapshot) {
+        return Promise.resolve({ status: 'missing' });
+      }
+
+      return Promise.resolve({
+        status: 'ok',
+        manifest: snapshot.manifest,
+        entries: [...snapshot.vectors.values()].map(({ chunkId, contentHash, vector }) => ({
+          chunkId,
+          contentHash,
+          vector: Float32Array.from(vector),
+        })),
+      });
     },
 
     openWriter(): Promise<OpenWriterOutcome> {

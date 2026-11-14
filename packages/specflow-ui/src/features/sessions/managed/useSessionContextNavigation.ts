@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useApplicationCollection } from '../../../app/navigation/ApplicationLocation';
+import { currentDocsWorkspace } from '../../docs';
 import { useRememberSessionReturn } from '../SessionStateProvider';
 import type { ContextSpecification } from './context/sessionContextTypes';
 
@@ -47,5 +48,20 @@ export function useSessionContextNavigation(sessionId: string) {
     [navigate, collectionOf, rememberSessionReturn, sessionId],
   );
 
-  return { onOpenSpecification, onOpenDocuments };
+  const onOpenDocumentation = useCallback(
+    (sessionTitle?: string) => {
+      // The Session's workspace is the Runtime's own checkout; it becomes the tab's current one
+      // before the reader resolves `/docs`, and the Session (by its title) is the way back.
+      currentDocsWorkspace.enterSession();
+      void navigate({
+        to: '/docs',
+        state: {
+          docsReader: { source: 'session', sessionId, ...(sessionTitle ? { sessionTitle } : {}) },
+        },
+      });
+    },
+    [navigate, sessionId],
+  );
+
+  return { onOpenSpecification, onOpenDocuments, onOpenDocumentation };
 }

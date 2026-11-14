@@ -7,6 +7,7 @@ import { useNotify } from '../../../../shared/notifications/notifications';
 import { retainRequest, type RequestAttempt } from '../../../../shared/operations/retainedRequest';
 import { useRequestSessionRecovery } from '../../../sessions';
 import { specsOverviewKeys } from '../../overview/data/queries';
+import { workspaceKeys } from '../../../workspaces/read-model';
 import { specificationKeys } from '../../read-model/queries';
 import {
   continueDemoCreation,
@@ -170,6 +171,7 @@ export function useCreateDemoSpecification(
 
             const created = await demoCreationApi.create(input);
             await cache.invalidateQueries({ queryKey: specsOverviewKeys.all });
+            void cache.invalidateQueries({ queryKey: workspaceKeys.list });
 
             return created;
           },

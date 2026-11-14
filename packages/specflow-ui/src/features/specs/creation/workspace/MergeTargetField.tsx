@@ -1,7 +1,7 @@
 import type { MutableRefObject } from 'react';
 import { Field } from '@nevo/ui';
 import { Trans, useTranslation } from 'react-i18next';
-import type { CreateOptions } from '@nevo/specflow-contracts/specs';
+import type { CreateOptionsView } from './model/createOptionsView';
 import { FormattedList } from '../../../../i18n/formatList';
 import { useMessage, type Message } from '../../../../i18n/message';
 import { LocalizedOptionPicker } from '../../../../shared/controls/LocalizedOptionPicker';
@@ -26,7 +26,7 @@ export function MergeTargetField({
   update,
   controlRef,
 }: {
-  options: CreateOptions;
+  options: CreateOptionsView;
   choice: WorkspaceChoice;
   error: Message | undefined;
   update: SettingsUpdate;

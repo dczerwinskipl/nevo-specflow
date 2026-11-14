@@ -71,7 +71,7 @@ rationale whose premise no longer holds is marked superseded or removed.
 
 ## Current packages
 
-**Product planning:** [Roadmap for 1.0, 1.1 and 2.0](roadmap.md) tracks future work and ✅ delivered capabilities. The [complete PR evidence register](roadmap-delivered.md) links all 121 merged PRs and separates open and closed-without-merge work. Its release targets are not implementation contracts. An idea stays on the roadmap after Specification creation, and completed items retain links to their implementation and release evidence.
+**Product planning:** [Product roadmap](roadmap.md) tracks release horizons, capability status, gaps and completed product outcomes with linked PR evidence. For the full implementation history, consult [GitHub pull requests](https://github.com/dczerwinskipl/nevo-specflow/pulls?q=is%3Apr+is%3Amerged), not a manually maintained PR inventory. Release targets are proposals; ideas remain linked after a Specification is created and after delivery.
 
 - [Offline Engine, CLI/Runtime boundaries, and Git worktrees](specflow-engine/README.md)
 - [Multi-project hosting, Docker, and future cross-project work](multi-project-hosting.md)

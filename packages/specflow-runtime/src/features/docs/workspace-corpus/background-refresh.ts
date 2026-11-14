@@ -18,6 +18,8 @@ export type RunRefresh = (
  */
 export interface RefreshSlot {
   claim(): (() => void) | undefined;
+  /** Whether a job of any index holds the slot now (the shared endpoint is busy with it). */
+  held(): boolean;
 }
 
 export function createRefreshSlot(): RefreshSlot {
@@ -39,6 +41,7 @@ export function createRefreshSlot(): RefreshSlot {
         }
       };
     },
+    held: () => held,
   };
 }
 

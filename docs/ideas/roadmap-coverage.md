@@ -133,7 +133,7 @@ Each ID represents a distinct possible outcome. **Untriaged means no release dec
 
 ## Source-by-source Ideas audit
 
-All **80 Ideas source Markdown files** present at this snapshot, excluding `roadmap.md` and this coverage register, have been classified below (paths relative to [the Ideas tree](https://github.com/dczerwinskipl/nevo-specflow/tree/docs/product-roadmap-1x-2x-20261114/docs/ideas)): **61 primary documents/hubs and 19 phase-task files**. This register maps *distinct product outcomes*, not one ID per file or subsection. Hubs, decision rationales, fixtures and old task plans reuse the owning outcome. A proposed contract is not proof that an implementation works.
+All **80 Ideas source Markdown files** present at this snapshot, excluding `roadmap.md` and this coverage register, have been classified below (paths relative to [the Ideas tree](https://github.com/dczerwinskipl/nevo-specflow/tree/docs/product-roadmap-1x-2x-20261114/docs/ideas)): **61 primary documents/hubs and 19 phase-task files**. This register maps _distinct product outcomes_, not one ID per file or subsection. Hubs, decision rationales, fixtures and old task plans reuse the owning outcome. A proposed contract is not proof that an implementation works.
 
 ### Product, authorization, developer workspace and docs (8 sources)
 

@@ -194,12 +194,16 @@ run in that checkout.
   The HTTP search always refreshes (the CLI's `--no-refresh` has no HTTP counterpart).
 - **Catch-up:** a larger gap answers `lexical` with `index-building` at once and, after a
   successful endpoint probe, starts the Runtime's background refresh of the whole index unless it
-  already runs (`the Runtime started updating it in the background`, later `the Runtime is
-updating it in the background (<n>/<total> chunks)`, and `indexProgress`). Another process
+  already runs (`the Runtime started updating it in the background`). Another process
   holding the index (a CLI `semantic index`) is reported, not raced. After a refresh that failed
   (for example an index that cannot be written), the next one starts no sooner than 60 s later;
   until then the reason says `the Runtime's last background update failed; it retries within a
 minute`.
+- **While a refresh runs:** while the Runtime's background refresh (or seed) of a workspace's
+  index runs, a search of that workspace embeds nothing, neither changed sections nor the query, so
+  it never waits behind the refresh's requests to the endpoint. It answers `lexical` at once with
+  `index-building` (`The Runtime is updating the documentation index in the background (<n>/<total>
+chunks); …`, and `indexProgress`); once the refresh has ended, searches are hybrid again.
 - **One refresh at a time:** the Runtime runs at most one background refresh across all
   workspaces; while another workspace's runs, the reason says so and a later search starts this
   one. It keeps at most four workspace corpora open (the least recently used one is stopped and
@@ -215,8 +219,9 @@ minute`.
 - **Start refresh:** when the Runtime's own checkout has semantic search on and the Runtime has an
   embedding endpoint, the Runtime starts the same background refresh of that checkout's index once
   it is ready. Start and readiness do not wait for it; searches meanwhile answer `lexical` with
-  `index-building`. While any process updates the index, an endpoint that times out or refuses the
-  connection is reported as `index-building`, not as `endpoint-unreachable`. Other workspaces
+  `index-building`. While another process (a CLI `semantic index`) updates the index, an endpoint
+  that times out or refuses the connection is reported as `index-building`, not as
+  `endpoint-unreachable`. Other workspaces
   refresh on search only.
 - Closing the Runtime stops every running refresh and waits for it to release its index; sections
   embedded so far stay stored. A refresh that cannot run is logged as a warning; one that finds

@@ -65,13 +65,22 @@ const silent = { warn: vi.fn(), debug: vi.fn() } as unknown as FastifyBaseLogger
 /** Workspaces by id; the refresh's document requests (they carry a signal) wait for `gate`. */
 function harness(workspaces: Map<string, WorkspaceResolution>, home: string) {
   const baseUrls: string[] = [];
+  const searchEmbeds: string[] = [];
   const gate = deferred();
   const embedding = deferred();
   const createProvider: CreateEmbeddingProvider = (settings, { signal }) => {
     baseUrls.push(settings.baseUrl);
     const provider = createFakeEmbeddingProvider();
     if (signal === undefined) {
-      return provider;
+      // A search's own provider: the query and the read-time refresh.
+      return {
+        ...provider,
+        embed: (texts, purpose) => {
+          searchEmbeds.push(purpose);
+
+          return provider.embed(texts, purpose);
+        },
+      };
     }
 
     return {
@@ -106,6 +115,7 @@ function harness(workspaces: Map<string, WorkspaceResolution>, home: string) {
     corpora,
     docs: createWorkspaceDocsOperations(corpora),
     baseUrls,
+    searchEmbeds,
     resolved,
     /** Resolves once a refresh is blocked on a document request. */
     embedding: () => embedding.promise,
@@ -258,6 +268,45 @@ describe('workspace documentation instances', () => {
       while (!seededIndexes().includes(join(b, ...INDEX))) {
         await tick();
       }
+    } finally {
+      h.open();
+      await h.corpora.close();
+    }
+  });
+
+  it('answers a search lexically without embedding while its index refreshes, hybrid after', async () => {
+    const home = checkout('home5');
+    const h = harness(
+      new Map([['home', { status: 'available', root: home, projectHome: true } as const]]),
+      home,
+    );
+    const request = { query: 'widget', limit: 5, includeProposals: false, snippets: false };
+    try {
+      // The start refresh holds the endpoint; the gap (one section) is within the read-time bound.
+      await h.corpora.startRefresh('home');
+      await h.embedding();
+      expect(await h.docs.search('home', request)).toMatchObject({
+        value: {
+          result: {
+            mode: 'lexical',
+            reason: {
+              code: 'index-building',
+              message: expect.stringContaining('updating the documentation index') as unknown,
+            },
+          },
+        },
+      });
+      expect(h.searchEmbeds).toEqual([]);
+
+      h.open();
+      let search = await h.docs.search('home', request);
+      while (search.kind === 'ok' && search.value.result.mode === 'lexical') {
+        await tick();
+        search = await h.docs.search('home', request);
+      }
+
+      expect(search).toMatchObject({ value: { result: { mode: 'hybrid' } } });
+      expect(h.searchEmbeds).toContain('query');
     } finally {
       h.open();
       await h.corpora.close();

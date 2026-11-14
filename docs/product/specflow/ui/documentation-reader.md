@@ -405,7 +405,7 @@ reason line sits under the status row, in `content-secondary`, and is announced 
 | Reason                 | Line                                                                                                                                                                        |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `index-building`       | the existing "Word matches only for now: the search index is being built (n%)." ("Na razie tylko dopasowania słów: indeks wyszukiwania jest budowany (n%).")                |
-| `endpoint-unreachable` | "Word matches only for now: search by meaning is unavailable right now." ("Na razie tylko dopasowania słów: wyszukiwanie znaczeniowe jest teraz niedostępne.")              |
+| `endpoint-unreachable` | "Word matches only: search by meaning is unavailable." ("Tylko dopasowania słów: wyszukiwanie znaczeniowe jest niedostępne.")                                               |
 | `index-unavailable`    | "Word matches only: the search index is unavailable." ("Tylko dopasowania słów: indeks wyszukiwania jest niedostępny.") This is the real index problem of owner decision 2. |
 | `semantic-disabled`    | silent (configuration)                                                                                                                                                      |
 | `no-endpoint`          | silent (configuration)                                                                                                                                                      |

@@ -528,7 +528,7 @@ function reasonLine(reason: MockReason | undefined): string | undefined {
     case 'index-building':
       return 'Na razie tylko dopasowania słów: indeks wyszukiwania jest budowany (62%).';
     case 'endpoint-unreachable':
-      return 'Na razie tylko dopasowania słów: wyszukiwanie znaczeniowe jest teraz niedostępne.';
+      return 'Tylko dopasowania słów: wyszukiwanie znaczeniowe jest niedostępne.';
     case 'index-unavailable':
       return 'Tylko dopasowania słów: indeks wyszukiwania jest niedostępny.';
     default:

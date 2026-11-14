@@ -387,22 +387,31 @@ Verified in the code and with a controlled live experiment on the dogfood projec
 Reading (tree and article) and word search read the working tree on every request. Hybrid search
 pairs each section with its vector by content hash and never ranks a stale vector:
 
-- a search that finds up to 16 sections without a vector embeds them before it answers (the first
-  search after the edit took about 16 s; later ones 0.2–1.6 s);
+- when at most 16 sections of the corpus lack a vector (the gap is counted corpus-wide), the
+  search embeds them before it answers (the first search after the edit took about 16 s; later
+  ones 0.2–1.6 s);
 - a larger gap answers with word matches only (`lexical`, reason `index-building`) while a
   background refresh catches up.
 
 So **uncommitted changes are always reflected** in reading and search. Local changes are therefore
-an informational status, never a warning. The only state where search does not reflect meaning is
-word-only search, reported by the search's mode and reason:
+an informational status, never a warning.
 
-- `index-building`: the existing line "Word matches only for now: the search index is being built
-  (n%)";
-- `endpoint-unreachable`, seen once in the experiment when the embedding endpoint answered too
-  slowly: currently silent; a quiet line is recommended as a separate change.
+A **detached checkout** has no `dirty` flag in the workspace list, so no status shows for it, even
+though reading and search still use its working tree.
 
-The UI never says the index may be out of date because files are uncommitted, and it does not use
-that phrase at all: the search never serves stale vectors.
+**Word-only answers by reason** (this feature; the shipped UI shows only `index-building`). The
+reason line sits under the status row, in `content-secondary`, and is announced with the count:
+
+| Reason                 | Line                                                                                                                                                                        |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `index-building`       | the existing "Word matches only for now: the search index is being built (n%)." ("Na razie tylko dopasowania słów: indeks wyszukiwania jest budowany (n%).")                |
+| `endpoint-unreachable` | "Word matches only for now: search by meaning is unavailable right now." ("Na razie tylko dopasowania słów: wyszukiwanie znaczeniowe jest teraz niedostępne.")              |
+| `index-unavailable`    | "Word matches only: the search index is unavailable." ("Tylko dopasowania słów: indeks wyszukiwania jest niedostępny.") This is the real index problem of owner decision 2. |
+| `semantic-disabled`    | silent (configuration)                                                                                                                                                      |
+| `no-endpoint`          | silent (configuration)                                                                                                                                                      |
+
+The UI never says the index may be out of date because files are uncommitted: the search never
+serves stale vectors.
 
 ### First scan of a result
 
@@ -478,19 +487,26 @@ true whether or not the limit capped the list, so the API needs no "truncated" f
 ### When no result contains the query's words
 
 Hybrid search always returns its best candidates, so a query that matches nothing (`zzzqqq`) still
-lists 10 documents. **Without any cutoff**, the UI tells this case apart with the match ranges:
+lists 10 documents. **Without any cutoff**, the UI tells this case apart with a server fact, not
+with the marks (a word can match only in a heading, which the excerpt drops, or only in the
+frontmatter, where a hit has no sections):
 
-- when no excerpt has a mark, one quiet line under the status row says "No result contains the
-  words you searched for; these documents are related by meaning." ("Żaden wynik nie zawiera
-  szukanych słów; to dokumenty o podobnym znaczeniu.");
-- the rows stay, without marks.
+- only in `hybrid` mode, and only when **no result has `wordMatch`** (the document was in neither
+  the word (BM25) section ranking nor the frontmatter ranking), one quiet line under the status row
+  says "No result contains the words you searched for; these documents are related by meaning."
+  ("Żaden wynik nie zawiera szukanych słów; to dokumenty o podobnym znaczeniu.");
+- in word-only (`lexical`) mode every result matched words, so the line never shows;
+- the rows stay; an excerpt may have no marks while its document still matched words elsewhere.
 
 **Empty states** apply when the answer has no results (word-only search, or a future cutoff):
 
 - **No match:** "No matching documents", the hint "Try other words, or browse the tree.", and Clear
   search.
 - **Only proposals match:** "Nothing in the current documentation matches. N proposals do." The
-  checkbox stays on the status row, aligned to the start of the row.
+  checkbox stays on the status row, aligned to the start of the row. PL uses plural keys: "Pasuje 1
+  propozycja", "Pasują 2 propozycje", "Pasuje 5 propozycji".
+- With no match and no proposals the checkbox is hidden (it shows only while proposals are included
+  or some are left out).
 - Neither empty state has a decorative icon.
 
 ### Workspace picker and Specification switcher (shared context switcher)
@@ -507,7 +523,7 @@ geometry, but each passes only the facts of its own kind:
 
 **Name:** one line with an ellipsis. The full name is reachable:
 
-- in a tooltip on hover and keyboard focus;
+- in a tooltip on hover and keyboard focus, **only when the name is truncated**;
 - in full, wrapping, in the popover's options, which is the touch path;
 - for a Specification, also on the Overview's page title, which wraps.
 
@@ -516,7 +532,10 @@ geometry, but each passes only the facts of its own kind:
 - a small status dot and short text after the name, which never truncates (the name truncates
   first);
 - **local changes:** an amber (`attention`) dot and "Local changes" ("Zmiany lokalne") in
-  `content-secondary`. Informational only: the picker is not styled as a warning;
+  `content-secondary`. Informational only: the picker is not styled as a warning. This amber for an
+  informational state is an **owner decision** (2026-11-14) that overrides the general rule of
+  `design-system.principles.ui-ux-guidelines` (colour carries a semantic state tone) for this
+  status. Amber means only local changes here: unavailability uses `danger` everywhere;
 - **unavailable** (an explicit pick): a `danger` dot and the reason, for example "Folder
   unavailable" ("Katalog niedostępny").
 
@@ -539,10 +558,11 @@ key) and 56 px without one. Today the picker is 88 px for the project folder wit
 
 - the name wraps in full;
 - the detail line wraps;
-- local changes add a muted line explaining the verified behaviour: "Local changes: reading and
-  search include uncommitted files" ("Zmiany lokalne: czytanie i wyszukiwanie uwzględniają
-  niezatwierdzone pliki"). A tooltip does not exist on touch;
-- the unavailable reason goes on its own attention line;
+- the same status slot as the trigger, on its own line: local changes show the amber dot with the
+  verified behaviour, "Local changes: reading and search include uncommitted changes, new files too"
+  ("Zmiany lokalne: czytanie i wyszukiwanie uwzględniają niezatwierdzone zmiany, także nowe
+  pliki"), because a tooltip does not exist on touch;
+- unavailable shows the `danger` dot and its reason, as in the trigger;
 - the folder is in the tooltip;
 - Selected with a check, as today.
 
@@ -577,7 +597,8 @@ Remaining space for results at 390x844 (app header 57 px; sticky field 53 px):
 - **Touch targets:** the checkbox, its info button and the field's clear button use the design
   system's hit area (`hitAreaClassName`, `--target-size`: 24 px on fine pointers, 44 px on coarse).
   The status row is at least one target tall (`min-h-(--target-size)`), so no target reaches into
-  the field. Mock: the coarse-pointer render with the hit areas outlined.
+  the field, and the checkbox and its info button are 12 px apart, so their hit areas do not
+  overlap. Mock: the coarse-pointer render with the hit areas outlined.
 - **Focus order:**
   1. the way back to a Session, when present;
   2. the picker;
@@ -586,13 +607,14 @@ Remaining space for results at 390x844 (app header 57 px; sticky field 53 px):
   5. the proposals checkbox;
   6. the hint;
   7. the results.
-- **Live region:** it announces once per settled answer, debounced like the search: the count, or
-  "No matching documents", or the word-only line. It never announces per keystroke or while the
-  answer loads (the loading text is set once when a search starts).
+- **Live region:** one `role="status"` announces once per settled answer, debounced like the
+  search: the count (or "No matching documents") **together with** the reason line and the "no word
+  match" line, in one message. It never announces per keystroke or while the answer loads (the
+  loading text is set once when a search starts).
 
-### Navigation, Back and the address (recommendation awaiting the owner; owner accepted the direction)
+### Navigation, Back and the address (decided, owner 2026-11-14)
 
-The reader's address holds the search as `?q=<text>&proposals=1`:
+The reader's address MUST hold the search as `?q=<text>&proposals=1`:
 
 - written with replace, debounced like the search, so typing adds no history entries;
 - opening a result is a push that keeps `q` on the entry it leaves, so Back and Forward restore the
@@ -603,15 +625,15 @@ The reader's address holds the search as `?q=<text>&proposals=1`:
 
 ### Component and ownership map
 
-| Region           | Decision                                                                                                                                                                                                                                                                                                                            |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Switcher trigger | **Change the shared `ContextSwitcherTrigger`**, used by both switchers: a one-line name with the tooltip, an optional trailing `status` (tone `attention` or `danger`, text), and `segments` (one line joined by " · ") replacing the multi-line `details`. The Specification switcher's stories are updated in the same PR.        |
-| Switcher option  | `ContextSwitcherOption` unchanged: full name, detail lines.                                                                                                                                                                                                                                                                         |
-| Status dot       | the existing `StatusIndicator`.                                                                                                                                                                                                                                                                                                     |
-| Result row       | an **extension of the feature's `DocsSearchResults`**: the section-path rule, the excerpt with marks, the `Badge`, divider rows.                                                                                                                                                                                                    |
-| Match mark style | **feature-local** (`content-primary`, medium weight). It is not a design-system recipe until another surface needs one.                                                                                                                                                                                                             |
-| Sticky field     | product composition: the existing `TreeSearchField` in a sticky block with a plain bottom border (`border-divider`) on an opaque pane surface. No shadow and no stuck detection. The design system has no opaque token equal to the translucent workspace material; the implementation picks the closest surface token or adds one. |
-| Empty state      | the existing `EmptyState` (inline), without an icon.                                                                                                                                                                                                                                                                                |
+| Region           | Decision                                                                                                                                                                                                                                                                                                                                                     |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Switcher trigger | **Change the shared `ContextSwitcherTrigger`**, used by both switchers: a one-line name with the tooltip only when the name is truncated, an optional trailing `status` (tone `attention` or `danger`, text), and `segments` (one line joined by " · ") replacing the multi-line `details`. The Specification switcher's stories are updated in the same PR. |
+| Switcher option  | **Change the shared `ContextSwitcherOption`** the same way: an optional `status` slot (dot and text, or an explanation) under the detail line; the name still wraps in full.                                                                                                                                                                                 |
+| Status dot       | the existing `StatusIndicator`.                                                                                                                                                                                                                                                                                                                              |
+| Result row       | an **extension of the feature's `DocsSearchResults`**: the section-path rule, the excerpt with marks, the `Badge`, divider rows.                                                                                                                                                                                                                             |
+| Match mark style | **feature-local** (`content-primary`, medium weight). It is not a design-system recipe until another surface needs one.                                                                                                                                                                                                                                      |
+| Sticky field     | product composition: the existing `TreeSearchField` in a sticky block with a plain bottom border (`border-divider`) on the existing `surface-raised`. No shadow and no stuck detection.                                                                                                                                                                      |
+| Empty state      | the existing `EmptyState` (inline), without an icon.                                                                                                                                                                                                                                                                                                         |
 
 Approximations in the mock:
 
@@ -628,21 +650,28 @@ Approximations in the mock:
 - the count wording;
 - the Proposal badge (from the tree's proposal flags, as today);
 - the trigger layout and status (the workspace list already has `dirty` and availability);
+- the reason lines (the search already returns `mode` and `reason`);
 - the sticky field;
 - the search in the address.
 
 **Contract changes needed by this change** (the excerpt slice). They go in the same feature PR: one
-commit for the excerpt slice, with the reference document and OpenAPI updated together. The exact
-shape belongs to the [workspace documentation search](../../../reference/api/workspace-docs.md):
+commit for the slice, with the reference document and OpenAPI updated together. The exact shape
+belongs to the [workspace documentation search](../../../reference/api/workspace-docs.md):
 
 1. **Plain-text excerpt:** one contiguous fragment as above (a sentence run of one paragraph, one
    list item, or one table row in readable form, with header names when they are known), with no
-   Markdown syntax.
+   Markdown syntax. **Behaviour change:** with no matched word, the excerpt is the section's longest
+   prose fragment; today it is the first pieces after the heading.
 2. **Match ranges:** character ranges in the plain excerpt for the first occurrence of each query
-   term (at most three), using the ranking's own normalisation (prefix matches included), and empty
-   for a match by meaning only. The UI does not tokenise the query itself.
+   term (at most three), using the **excerpt's own matching** (the shared `tokenize` plus the
+   four-letter prefix rule of the excerpt), not the ranking's: BM25 matches exact tokens only, with
+   no stemming. Empty when no word of the excerpt matches. The UI does not tokenise the query
+   itself.
 3. **Window near the match:** the excerpt starts at most 40 characters before its first match. The
    280-character maximum stays.
+4. **`wordMatch` per result:** `true` when the document was in the word (BM25) section ranking or the
+   frontmatter ranking (a word can match in a heading or the frontmatter, which the excerpt does not
+   show). It drives the "no word match" line in hybrid mode.
 
 **Separate decision (proposed, not part of this change):** a relevance cutoff (a minimum vector
 similarity for hybrid results, also applied to `proposalsLeftOut`), or any ranking change, needs its
@@ -650,8 +679,17 @@ own product rationale, calibration and tests. This proposal works without it: th
 line covers the nonsense-query case. Tuning risk: a cutoff calibrated on this corpus may hide valid
 matches by meaning in other corpora or models.
 
-Integration readiness: **dependent** on items 1–3 for the marks, the excerpts and the "no word
-match" line. Everything else can ship on today's API.
+Integration readiness: **dependent** on items 1–4 for the excerpts, the marks and the "no word match"
+line. Everything else can ship on today's API.
+
+### Recommendations awaiting the owner (from the independent review)
+
+1. **Count:** keep "10 results" ("10 wyników"): it fits beside the checkbox at 390 px and claims no
+   total.
+2. **Reason lines:** ship the `endpoint-unreachable` and `index-unavailable` lines in this feature
+   (table above), not as a separate change.
+3. **Sticky surface:** add no new token now. The sticky field uses the existing `surface-raised`; add
+   a design-system token only if the real pane shows a seam during implementation.
 
 ### Open (noted, no work in this proposal)
 
@@ -660,8 +698,6 @@ match" line. Everything else can ship on today's API.
   field stays above the keyboard.
 - **Light theme:** the palette is dark only; the amber status dot and the marks need checking once a
   light theme exists.
-- **Endpoint-unreachable line:** a quiet word-only line for the `endpoint-unreachable` reason, as a
-  separate change.
 
 Rejected while designing:
 
@@ -672,4 +708,6 @@ Rejected while designing:
 - "Proposals (N)" without a verb;
 - "Top 10 documents" (implies a ranking claim the UI cannot back);
 - local changes as a segment of the description line;
-- a sticky status row.
+- a sticky status row;
+- deciding the "no word match" line from the marks (a heading-only or frontmatter-only match has no
+  marks).

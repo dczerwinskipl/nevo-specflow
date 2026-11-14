@@ -76,7 +76,16 @@ export const AfterKeyboard390: Story = {
 
 /* 4. No word match: works without a relevance cutoff (hybrid), and the empty states (lexical) */
 export const AfterMeaningOnly390: Story = { tags: ['capture'], args: { answer: repoNonsense } };
-export const AfterNoMatches390: Story = { tags: ['capture'], args: { empty: 'no-match' } };
+/** A word-only answer (the index is being built) with no match: no count, no proposals. */
+export const AfterNoMatches390: Story = {
+  tags: ['capture'],
+  args: { empty: 'no-match', query: 'zzzqqq', reason: 'index-building' },
+};
+/** A word-only answer because the embedding endpoint did not answer: the quiet reason line. */
+export const AfterEndpointUnreachable390: Story = {
+  tags: ['capture'],
+  args: { answer: repoErrorsOff, reason: 'endpoint-unreachable' },
+};
 export const AfterOnlyProposals390: Story = {
   tags: ['capture'],
   args: { empty: 'only-proposals' },

@@ -13,17 +13,21 @@ export interface MockHit {
   readonly snippet: string;
   readonly text: string;
   readonly matches: readonly (readonly [number, number])[];
+  /** Approximates the proposed server fact: the document was in the word (BM25) or frontmatter ranking. */
+  readonly wordMatch: boolean;
 }
 
 export interface MockAnswer {
   readonly query: string;
   readonly includeProposals: boolean;
   readonly proposalsLeftOut: number;
+  readonly mode: 'hybrid' | 'lexical';
   readonly results: readonly MockHit[];
 }
 
 export const repoAiOff: MockAnswer = {
   query: 'Ai session provider',
+  mode: 'hybrid',
   includeProposals: false,
   proposalsLeftOut: 1,
   results: [
@@ -40,6 +44,7 @@ export const repoAiOff: MockAnswer = {
         [0, 8],
         [9, 16],
       ],
+      wordMatch: true,
     },
     {
       id: 'architecture.ai.canonical-session-turn-work',
@@ -54,6 +59,7 @@ export const repoAiOff: MockAnswer = {
         [2, 9],
         [23, 31],
       ],
+      wordMatch: true,
     },
     {
       id: 'docs.architecture-ai-readme',
@@ -68,6 +74,7 @@ export const repoAiOff: MockAnswer = {
         [35, 37],
         [38, 45],
       ],
+      wordMatch: true,
     },
     {
       id: 'reference.providers.claude',
@@ -82,6 +89,7 @@ export const repoAiOff: MockAnswer = {
         [15, 23],
         [24, 33],
       ],
+      wordMatch: true,
     },
     {
       id: 'product.specflow.ui.specification-sessions',
@@ -100,6 +108,7 @@ export const repoAiOff: MockAnswer = {
         [42, 44],
         [45, 52],
       ],
+      wordMatch: true,
     },
     {
       id: 'product.specflow.ui.ai-session-ux',
@@ -118,6 +127,7 @@ export const repoAiOff: MockAnswer = {
         [31, 39],
         [92, 99],
       ],
+      wordMatch: true,
     },
     {
       id: 'reference.providers.antigravity',
@@ -132,6 +142,7 @@ export const repoAiOff: MockAnswer = {
         [15, 23],
         [24, 33],
       ],
+      wordMatch: true,
     },
     {
       id: 'reference.protocols.session-provider-driver',
@@ -146,6 +157,7 @@ export const repoAiOff: MockAnswer = {
         [17, 25],
         [180, 188],
       ],
+      wordMatch: true,
     },
     {
       id: 'reference.providers.codex',
@@ -157,6 +169,7 @@ export const repoAiOff: MockAnswer = {
         'Cumulative tokens, latest native context occupancy/capacity and read-only account-limit refresh (no thread or Turn start or resume); see [Session telemetry](../api/session-telemetry.md).',
       text: '…(no thread or Turn start or resume); see Session telemetry.',
       matches: [[42, 49]],
+      wordMatch: true,
     },
     {
       id: 'reference.api.session-telemetry',
@@ -168,12 +181,14 @@ export const repoAiOff: MockAnswer = {
         '…No test uses real subscriptions, credentials or paid inference. Opening a store created before telemetry adds the telemetry tables atomically with the rest of the [schema migration](../../architecture/ai/session-storage-and-lifecycle.md#schema-migration).…',
       text: '…Opening a store created before telemetry adds the telemetry tables atomically with the rest of the schema migration.',
       matches: [],
+      wordMatch: true,
     },
   ],
 };
 
 export const repoAiOn: MockAnswer = {
   query: 'Ai session provider',
+  mode: 'hybrid',
   includeProposals: true,
   proposalsLeftOut: 0,
   results: [
@@ -194,6 +209,7 @@ export const repoAiOn: MockAnswer = {
         [42, 44],
         [45, 52],
       ],
+      wordMatch: true,
     },
     {
       id: 'reference.providers.claude',
@@ -208,6 +224,7 @@ export const repoAiOn: MockAnswer = {
         [15, 23],
         [24, 33],
       ],
+      wordMatch: true,
     },
     {
       id: 'reference.providers.codex',
@@ -219,6 +236,7 @@ export const repoAiOn: MockAnswer = {
         'Cumulative tokens, latest native context occupancy/capacity and read-only account-limit refresh (no thread or Turn start or resume); see [Session telemetry](../api/session-telemetry.md).',
       text: '…(no thread or Turn start or resume); see Session telemetry.',
       matches: [[42, 49]],
+      wordMatch: true,
     },
     {
       id: 'docs.reference-providers-readme',
@@ -233,6 +251,7 @@ export const repoAiOn: MockAnswer = {
         [27, 34],
         [35, 43],
       ],
+      wordMatch: true,
     },
     {
       id: 'ideas.specflow-runtime.ai-adapters.session-resume-recovery',
@@ -244,6 +263,7 @@ export const repoAiOn: MockAnswer = {
         '…fallback, and recovery follows [positive evidence](../../../architecture/ai/session-storage-and-lifecycle.md#positive-evidence-and-operator-recovery).',
       text: '…fallback, and recovery follows positive evidence.',
       matches: [],
+      wordMatch: true,
     },
     {
       id: 'architecture.ai.provider-boundary',
@@ -258,6 +278,7 @@ export const repoAiOn: MockAnswer = {
         [0, 8],
         [9, 16],
       ],
+      wordMatch: true,
     },
     {
       id: 'reference.providers.antigravity',
@@ -269,6 +290,7 @@ export const repoAiOn: MockAnswer = {
         'The invocation-private Streamable HTTP MCP server (`ask_user`) binds to loopback on an OS-assigned port with a random bearer credential, bounded requests and waiters and one initialized MCP session per invocation. Runtime and CLI must share the network namespace.…',
       text: '…requests and waiters and one initialized MCP session per invocation.',
       matches: [[46, 53]],
+      wordMatch: true,
     },
     {
       id: 'architecture.ai.canonical-session-turn-work',
@@ -283,6 +305,7 @@ export const repoAiOn: MockAnswer = {
         [2, 9],
         [23, 31],
       ],
+      wordMatch: true,
     },
     {
       id: 'docs.architecture-ai-readme',
@@ -297,6 +320,7 @@ export const repoAiOn: MockAnswer = {
         [35, 37],
         [38, 45],
       ],
+      wordMatch: true,
     },
     {
       id: 'reference.api.session-telemetry',
@@ -308,12 +332,14 @@ export const repoAiOn: MockAnswer = {
         '…No test uses real subscriptions, credentials or paid inference. Opening a store created before telemetry adds the telemetry tables atomically with the rest of the [schema migration](../../architecture/ai/session-storage-and-lifecycle.md#schema-migration).…',
       text: '…Opening a store created before telemetry adds the telemetry tables atomically with the rest of the schema migration.',
       matches: [],
+      wordMatch: true,
     },
   ],
 };
 
 export const repoErrorsOn: MockAnswer = {
   query: 'provider error limit',
+  mode: 'hybrid',
   includeProposals: true,
   proposalsLeftOut: 0,
   results: [
@@ -330,6 +356,7 @@ export const repoErrorsOn: MockAnswer = {
         [46, 51],
         [63, 71],
       ],
+      wordMatch: true,
     },
     {
       id: 'ideas.specflow-runtime.ai-adapters.error-classification',
@@ -344,6 +371,7 @@ export const repoErrorsOn: MockAnswer = {
         [51, 57],
         [149, 157],
       ],
+      wordMatch: true,
     },
     {
       id: 'ideas.specflow-runtime.ai-adapters.provider-capacity-admission',
@@ -358,6 +386,7 @@ export const repoErrorsOn: MockAnswer = {
         [19, 27],
         [28, 33],
       ],
+      wordMatch: true,
     },
     {
       id: 'reference.providers.antigravity',
@@ -372,6 +401,7 @@ export const repoErrorsOn: MockAnswer = {
         [15, 20],
         [27, 32],
       ],
+      wordMatch: true,
     },
     {
       id: 'reference.providers.codex',
@@ -383,6 +413,7 @@ export const repoErrorsOn: MockAnswer = {
         'Cumulative tokens, latest native context occupancy/capacity and read-only account-limit refresh (no thread or Turn start or resume); see [Session telemetry](../api/session-telemetry.md).',
       text: '…occupancy/capacity and read-only account-limit refresh (no thread or Turn start or resume); see Session telemetry.',
       matches: [[42, 47]],
+      wordMatch: true,
     },
     {
       id: 'architecture.ai.provider-boundary',
@@ -397,6 +428,7 @@ export const repoErrorsOn: MockAnswer = {
         [0, 8],
         [75, 80],
       ],
+      wordMatch: true,
     },
     {
       id: 'reference.providers.claude',
@@ -408,6 +440,7 @@ export const repoErrorsOn: MockAnswer = {
         '…A writer outcome is published only after Engine settles the receipt. Native `api_error` results (including HTTP 429) become safe structured failures; native error prose is excluded. Loss without an authoritative outcome stays unknown.…',
       text: '…Native api_error results (including HTTP 429) become safe structured failures; native error prose is excluded. Loss without an authoritative outcome stays unknown.',
       matches: [[12, 17]],
+      wordMatch: true,
     },
     {
       id: 'reference.api.session-telemetry',
@@ -422,6 +455,7 @@ export const repoErrorsOn: MockAnswer = {
         [35, 43],
         [44, 50],
       ],
+      wordMatch: true,
     },
     {
       id: 'ideas.specflow-runtime.ai-adapters',
@@ -437,6 +471,7 @@ export const repoErrorsOn: MockAnswer = {
         [9, 14],
         [19, 24],
       ],
+      wordMatch: true,
     },
     {
       id: 'ideas.specflow-runtime.provider-migration-plan',
@@ -452,12 +487,14 @@ export const repoErrorsOn: MockAnswer = {
         '…Unqualified Antigravity cost, missing context breakdowns and unproven limit-bucket meanings remain unavailable; API-equivalent cost is not subscription billing. **Impact/direction:** Some UI gauges cannot be populated.…',
       text: '…missing context breakdowns and unproven limit-bucket meanings remain unavailable; API-equivalent cost is not subscription billing.',
       matches: [[41, 46]],
+      wordMatch: true,
     },
   ],
 };
 
 export const repoErrorsOff: MockAnswer = {
   query: 'provider error limit',
+  mode: 'hybrid',
   includeProposals: false,
   proposalsLeftOut: 5,
   results: [
@@ -474,6 +511,7 @@ export const repoErrorsOff: MockAnswer = {
         [15, 20],
         [27, 32],
       ],
+      wordMatch: true,
     },
     {
       id: 'reference.providers.codex',
@@ -485,6 +523,7 @@ export const repoErrorsOff: MockAnswer = {
         'Cumulative tokens, latest native context occupancy/capacity and read-only account-limit refresh (no thread or Turn start or resume); see [Session telemetry](../api/session-telemetry.md).',
       text: '…occupancy/capacity and read-only account-limit refresh (no thread or Turn start or resume); see Session telemetry.',
       matches: [[42, 47]],
+      wordMatch: true,
     },
     {
       id: 'reference.providers.claude',
@@ -496,6 +535,7 @@ export const repoErrorsOff: MockAnswer = {
         '…A writer outcome is published only after Engine settles the receipt. Native `api_error` results (including HTTP 429) become safe structured failures; native error prose is excluded. Loss without an authoritative outcome stays unknown.…',
       text: '…Native api_error results (including HTTP 429) become safe structured failures; native error prose is excluded. Loss without an authoritative outcome stays unknown.',
       matches: [[12, 17]],
+      wordMatch: true,
     },
     {
       id: 'architecture.ai.provider-boundary',
@@ -510,6 +550,7 @@ export const repoErrorsOff: MockAnswer = {
         [0, 8],
         [75, 80],
       ],
+      wordMatch: true,
     },
     {
       id: 'reference.api.session-telemetry',
@@ -524,6 +565,7 @@ export const repoErrorsOff: MockAnswer = {
         [35, 43],
         [44, 50],
       ],
+      wordMatch: true,
     },
     {
       id: 'architecture.ai.provider-process-ownership',
@@ -535,6 +577,7 @@ export const repoErrorsOff: MockAnswer = {
         '…- The frame limit defaults to 1 MiB and is configurable up to 8 MiB at the adapter boundary. There is no transcript-sized residual buffer or queue of asynchronous per-line handlers. Protocol bytes are never dropped because diagnostic retention is full.…',
       text: 'The frame limit defaults to 1 MiB and is configurable up to 8 MiB at the adapter boundary. There is no transcript-sized residual buffer or queue of asynchronous per-line handlers.',
       matches: [[10, 15]],
+      wordMatch: true,
     },
     {
       id: 'architecture.runtime.endpoint-policy',
@@ -549,6 +592,7 @@ export const repoErrorsOff: MockAnswer = {
         [33, 38],
         [45, 52],
       ],
+      wordMatch: true,
     },
     {
       id: 'reference.protocols.session-provider-driver',
@@ -563,6 +607,7 @@ export const repoErrorsOff: MockAnswer = {
         [23, 28],
         [83, 91],
       ],
+      wordMatch: true,
     },
     {
       id: 'reference.api.specification-documents',
@@ -574,6 +619,7 @@ export const repoErrorsOff: MockAnswer = {
         '| `DOCUMENT_UNCOMMITTED_LIMIT` | 409 | Writing would add more than 200 distinct uncommitted paths; commit the pending changes first |',
       text: '…DOCUMENT_UNCOMMITTED_LIMIT — 409 — Writing would add more than 200 distinct uncommitted paths; commit the pending changes first',
       matches: [[22, 27]],
+      wordMatch: true,
     },
     {
       id: 'docs.reference-providers-readme',
@@ -585,12 +631,14 @@ export const repoErrorsOff: MockAnswer = {
         'All adapters implement the [Session provider driver](../protocols/session-provider-driver.md) and run under [provider process ownership](../../architecture/ai/provider-process-ownership.md).…',
       text: 'All adapters implement the Session provider driver and run under provider process ownership.',
       matches: [[35, 43]],
+      wordMatch: true,
     },
   ],
 };
 
 export const worktreeAiOff: MockAnswer = {
   query: 'Ai session provider',
+  mode: 'hybrid',
   includeProposals: false,
   proposalsLeftOut: 1,
   results: [
@@ -607,6 +655,7 @@ export const worktreeAiOff: MockAnswer = {
         [0, 8],
         [9, 16],
       ],
+      wordMatch: true,
     },
     {
       id: 'architecture.ai.canonical-session-turn-work',
@@ -621,6 +670,7 @@ export const worktreeAiOff: MockAnswer = {
         [2, 9],
         [23, 31],
       ],
+      wordMatch: true,
     },
     {
       id: 'docs.architecture-ai-readme',
@@ -635,6 +685,7 @@ export const worktreeAiOff: MockAnswer = {
         [35, 37],
         [38, 45],
       ],
+      wordMatch: true,
     },
     {
       id: 'reference.providers.claude',
@@ -649,6 +700,7 @@ export const worktreeAiOff: MockAnswer = {
         [15, 23],
         [24, 33],
       ],
+      wordMatch: true,
     },
     {
       id: 'product.specflow.ui.specification-sessions',
@@ -667,6 +719,7 @@ export const worktreeAiOff: MockAnswer = {
         [42, 44],
         [45, 52],
       ],
+      wordMatch: true,
     },
     {
       id: 'product.specflow.ui.ai-session-ux',
@@ -685,6 +738,7 @@ export const worktreeAiOff: MockAnswer = {
         [31, 39],
         [92, 99],
       ],
+      wordMatch: true,
     },
     {
       id: 'reference.providers.antigravity',
@@ -699,6 +753,7 @@ export const worktreeAiOff: MockAnswer = {
         [15, 23],
         [24, 33],
       ],
+      wordMatch: true,
     },
     {
       id: 'reference.protocols.session-provider-driver',
@@ -713,6 +768,7 @@ export const worktreeAiOff: MockAnswer = {
         [17, 25],
         [180, 188],
       ],
+      wordMatch: true,
     },
     {
       id: 'reference.providers.codex',
@@ -724,6 +780,7 @@ export const worktreeAiOff: MockAnswer = {
         'Cumulative tokens, latest native context occupancy/capacity and read-only account-limit refresh (no thread or Turn start or resume); see [Session telemetry](../api/session-telemetry.md).',
       text: '…(no thread or Turn start or resume); see Session telemetry.',
       matches: [[42, 49]],
+      wordMatch: true,
     },
     {
       id: 'reference.api.session-telemetry',
@@ -735,12 +792,14 @@ export const worktreeAiOff: MockAnswer = {
         '…No test uses real subscriptions, credentials or paid inference. Opening a store created before telemetry adds the telemetry tables atomically with the rest of the [schema migration](../../architecture/ai/session-storage-and-lifecycle.md#schema-migration).…',
       text: '…Opening a store created before telemetry adds the telemetry tables atomically with the rest of the schema migration.',
       matches: [],
+      wordMatch: true,
     },
   ],
 };
 
 export const repoNonsense: MockAnswer = {
   query: 'zzzqqq',
+  mode: 'hybrid',
   includeProposals: false,
   proposalsLeftOut: 1,
   results: [
@@ -754,6 +813,7 @@ export const repoNonsense: MockAnswer = {
         'The invocation-private Streamable HTTP MCP server (`ask_user`) binds to loopback on an OS-assigned port with a random bearer credential, bounded requests and waiters and one initialized MCP session per invocation. Runtime and CLI must share the network namespace.…',
       text: 'The invocation-private Streamable HTTP MCP server (ask_user) binds to loopback on an OS-assigned port with a random bearer credential, bounded requests and waiters and one initialized MCP session per invocation.',
       matches: [],
+      wordMatch: false,
     },
     {
       id: 'reference.api.specs-overview',
@@ -765,6 +825,7 @@ export const repoNonsense: MockAnswer = {
         'Requires attention, Active and Ready are therefore not reachable in project mode until such sources exist.',
       text: 'Requires attention, Active and Ready are therefore not reachable in project mode until such sources exist.',
       matches: [],
+      wordMatch: false,
     },
     {
       id: 'reference.api.sessions',
@@ -776,6 +837,7 @@ export const repoNonsense: MockAnswer = {
         'Respond answer text <=16 KiB, option IDs must be declared, duplicate option IDs invalid; text only when allowText; an optional maxSelections (1 to 20) limits selected option IDs (absent means 1, single-select) and is checked before durable response admission.…',
       text: 'Respond answer text <=16 KiB, option IDs must be declared, duplicate option IDs invalid; text only when allowText; an optional maxSelections (1 to 20) limits selected option IDs (absent means 1, single-select) and is checked before durable response admission.',
       matches: [],
+      wordMatch: false,
     },
     {
       id: 'reference.api.specs-operations-list',
@@ -787,6 +849,7 @@ export const repoNonsense: MockAnswer = {
         '| Journal | Registry (this process) | Row | | `completed` | any | `completed`, `finishedAt` = registry or file time; listed for 10 min, at most 5 rows | | `recovery-required` | any | `recovery-required` |…',
       text: '…completed — any — completed, finishedAt = registry or file time; listed for 10 min, at most 5 rows',
       matches: [],
+      wordMatch: false,
     },
     {
       id: 'reference.providers.claude',
@@ -798,6 +861,7 @@ export const repoNonsense: MockAnswer = {
         'Terminal facts are held until the process owner has stopped the tree; a protocol outcome with unverified settlement stays unknown. Abort with positive settlement becomes cancelled or interrupted.…',
       text: 'Terminal facts are held until the process owner has stopped the tree; a protocol outcome with unverified settlement stays unknown. Abort with positive settlement becomes cancelled or interrupted.',
       matches: [],
+      wordMatch: false,
     },
     {
       id: 'product.specflow.ui.ai-session-ux',
@@ -809,6 +873,7 @@ export const repoNonsense: MockAnswer = {
         '`status: draft` — working guidance, expanded as the code it governs lands. The concrete, implemented Session screen rules are the [Full Session](full-session.md) contract.',
       text: '…The concrete, implemented Session screen rules are the Full Session contract.',
       matches: [],
+      wordMatch: false,
     },
     {
       id: 'reference.cli.nevo-specflow-docs',
@@ -820,6 +885,7 @@ export const repoNonsense: MockAnswer = {
         '| `reason.code` | When | | `semantic-disabled` | `docs.search.semantic` is absent or `false` | | `no-endpoint` | semantic search is enabled but `ai.embeddings` is not configured |…',
       text: '…no-endpoint — semantic search is enabled but ai.embeddings is not configured',
       matches: [],
+      wordMatch: false,
     },
     {
       id: 'reference.api.workspace-docs',
@@ -834,6 +900,7 @@ export const repoNonsense: MockAnswer = {
         'A section is opened by its `sectionId`. Search `line`s count in the file (frontmatter included); article `sections[].line` counts in `body`. The document refusals: | Status | Code | When |…',
       text: '…Search lines count in the file (frontmatter included); article sections[].line counts in body. The document refusals:',
       matches: [],
+      wordMatch: false,
     },
     {
       id: 'adr.0021-product-neutral-ai-semantic-search-engine',
@@ -849,6 +916,7 @@ export const repoNonsense: MockAnswer = {
         '- Content freshness and the embedding identity are checked separately. The freshness check compares chunk ids and content hashes with the manifest and calls no endpoint; without configured dimensions it takes the stored dimension as given.…',
       text: '…The freshness check compares chunk ids and content hashes with the manifest and calls no endpoint; without configured dimensions it takes the stored dimension as given.',
       matches: [],
+      wordMatch: false,
     },
     {
       id: 'reference.providers.codex',
@@ -860,6 +928,7 @@ export const repoNonsense: MockAnswer = {
         "- Supported login: the installed CLI's ChatGPT file login. API-key and machine-managed authentication are unavailable. - **Only the original CLI owns refresh authority.** The private home receives current access/ID…",
       text: 'Only the original CLI owns refresh authority. The private home receives current access/ID…',
       matches: [],
+      wordMatch: false,
     },
   ],
 };

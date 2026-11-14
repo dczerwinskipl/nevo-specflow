@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   AppContent,
@@ -33,7 +33,7 @@ import type { WorkspaceList, WorkspaceListItem } from '@nevo/specflow-contracts/
 import type { AppLocale } from '../../i18n/i18n';
 import { StoryLocalization } from '../../i18n/StoryLocalization';
 import { useMessage } from '../../i18n/message';
-import { ContextSwitcherOption, ContextSwitcherTrigger } from '../../shared/context-switcher';
+import { ContextSwitcherTrigger } from '../../shared/context-switcher';
 import { TreeSearchField } from '../../shared/document-tree';
 import { WorkspacePicker } from '../../features/docs/workspace-picker';
 import { displayPath } from '../../features/docs/workspace-picker/workspacePickerModel';
@@ -62,7 +62,8 @@ import type { MockAnswer, MockHit } from './searchAnswers.stories-support';
 const copy = {
   pl: {
     dirty: 'Zmiany lokalne',
-    dirtyExplained: 'Zmiany lokalne: czytanie i wyszukiwanie uwzględniają niezatwierdzone pliki',
+    dirtyExplained:
+      'Zmiany lokalne: czytanie i wyszukiwanie uwzględniają niezatwierdzone zmiany, także nowe pliki',
     count: (n: number) =>
       n === 1
         ? '1 wynik'
@@ -75,16 +76,17 @@ const copy = {
       'Propozycje to pomysły i plany z folderów oznaczonych jako propozycje, a nie obowiązujące zasady. Liczba mówi, ile propozycji jest wśród najlepszych wyników.',
     proposal: 'Propozycja',
     meaningOnly: 'Żaden wynik nie zawiera szukanych słów; to dokumenty o podobnym znaczeniu.',
-    noMatches: 'Brak pasujących dokumentów',
+    noMatches: 'Brak pasujących dokumentów.',
   },
   en: {
     dirty: 'Local changes',
-    dirtyExplained: 'Local changes: reading and search include uncommitted files',
+    dirtyExplained: 'Local changes: reading and search include uncommitted changes, new files too',
   },
 };
 
 export type MockVariant = 'before' | 'after';
 export type MockEmpty = 'none' | 'no-match' | 'only-proposals';
+export type MockReason = 'index-building' | 'endpoint-unreachable' | 'index-unavailable';
 
 export interface DocsSearchMockProps {
   variant: MockVariant;
@@ -102,6 +104,10 @@ export interface DocsSearchMockProps {
   /** The on-screen keyboard is open: the visible viewport is this many pixels shorter. */
   keyboard?: number;
   pickerOpen?: boolean;
+  /** A word-only answer and its reason (the shipped UI shows only index-building). */
+  reason?: MockReason;
+  /** The field text when it differs from the answer's query (a no-match search). */
+  query?: string;
 }
 
 /* ------------------------------------------------------------------ the proposed trigger */
@@ -119,7 +125,8 @@ export interface TriggerStatus {
 
 /**
  * Proposed shared `ContextSwitcherTrigger` (approximation): the quiet label; the name on ONE line
- * (ellipsis; the full name in a tooltip on hover and keyboard focus, and in full in the popover)
+ * (ellipsis; the full name in a tooltip on hover and keyboard focus ONLY when it is truncated, and
+ * in full in the popover)
  * with an optional trailing STATUS that never truncates; ONE detail line of kind-specific segments
  * joined by " · ". The Specification switcher passes its key as the detail and no status.
  */
@@ -135,8 +142,16 @@ export function CompactSwitcherTrigger({
   segments: readonly TriggerSegment[];
   status?: TriggerStatus;
 } & Omit<React.ComponentPropsWithRef<'button'>, 'children' | 'name' | 'className'>) {
+  const nameRef = useRef<HTMLSpanElement>(null);
+  const [truncated, setTruncated] = useState(false);
+  useLayoutEffect(() => {
+    const el = nameRef.current;
+    setTruncated(el !== null && el.scrollWidth > el.clientWidth);
+  }, [name]);
+
   return (
-    <Tooltip>
+    // No tooltip for a name shown whole.
+    <Tooltip open={truncated ? undefined : false}>
       <TooltipTrigger asChild>
         <button
           type="button"
@@ -149,6 +164,7 @@ export function CompactSwitcherTrigger({
           </Typography>
           <span className="flex min-w-0 items-baseline gap-2">
             <Typography
+              ref={nameRef}
               as="span"
               variant="title-sm"
               className="min-w-0 flex-1 truncate text-content-primary"
@@ -213,6 +229,72 @@ function useWorkspaceFacts(locale: AppLocale = 'pl') {
   };
 }
 
+/**
+ * Proposed ContextSwitcherOption with the same status slot as the trigger (approximation of a
+ * shared change): the name wrapping in full with the status dot and text, the detail line, an
+ * optional muted explanation, and Selected with a check. Unavailable keeps the danger dot here too,
+ * so amber means only local changes.
+ */
+function MockOption({
+  name,
+  title,
+  selected,
+  unavailable,
+  status,
+  detail,
+  explanation,
+}: {
+  name: string;
+  title: string;
+  selected: boolean;
+  unavailable: boolean;
+  status?: TriggerStatus;
+  detail: string;
+  explanation?: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="option"
+      aria-selected={selected}
+      aria-disabled={unavailable || undefined}
+      title={title}
+      className={cn(
+        'flex min-h-11 items-start gap-2 rounded-control px-2 py-2 text-left outline-none focus-visible:outline-2 focus-visible:outline-focus-ring aria-selected:bg-surface-selected',
+        unavailable ? 'cursor-not-allowed' : 'hover:bg-surface-hover',
+      )}
+    >
+      <span className="min-w-0 flex-1">
+        <Typography
+          as="span"
+          variant="title-sm"
+          className={cn(
+            'block whitespace-normal [overflow-wrap:anywhere]',
+            unavailable ? 'text-content-muted' : 'text-content-primary',
+          )}
+        >
+          {name}
+        </Typography>
+        <Typography as="span" variant="body-sm" className="block text-content-secondary">
+          {detail}
+        </Typography>
+        {status && (
+          <span className="flex items-start gap-1.5 text-body-sm text-content-secondary">
+            <StatusIndicator tone={status.tone} className="mt-1.5 shrink-0" />
+            {explanation ?? status.text}
+          </span>
+        )}
+        {selected && (
+          <Typography as="span" variant="body-sm" className="block text-content-secondary">
+            Wybrano
+          </Typography>
+        )}
+      </span>
+      {selected ? <Icon name="check" size="sm" /> : null}
+    </button>
+  );
+}
+
 /** The proposed workspace picker: the compact trigger; the popover keeps every detail. */
 export function ProposedWorkspacePicker({
   workspaces,
@@ -254,20 +336,15 @@ export function ProposedWorkspacePicker({
               const { segments, status } = factsOf(workspace);
 
               return (
-                <ContextSwitcherOption
+                <MockOption
                   key={workspace.workspaceId}
                   name={workspace.name}
                   title={displayPath(workspace.path, projectFolderPath)}
                   selected={workspace.workspaceId === current.workspaceId}
                   unavailable={!workspace.available}
-                  details={[
-                    { text: segments.map((segment) => segment.text).join(' · ') },
-                    ...(status?.tone === 'danger'
-                      ? [{ text: status.text, tone: 'attention' as const }]
-                      : status
-                        ? [{ text: copy.pl.dirtyExplained, tone: 'muted' as const }]
-                        : []),
-                  ]}
+                  status={status}
+                  detail={segments.map((segment) => segment.text).join(' · ')}
+                  explanation={status?.tone === 'attention' ? copy.pl.dirtyExplained : undefined}
                 />
               );
             })}
@@ -387,61 +464,99 @@ export function ProposedResults({
   );
 }
 
+/**
+ * The status row: the visible count and the proposals checkbox. The quiet lines (the word-only
+ * reason, the "no word match" line) follow it. One visually hidden live region announces the count
+ * and those lines together, once per settled answer.
+ */
 function ProposedStatusRow({
   count,
+  lines,
   proposals,
   includeProposals,
 }: {
   count: string | undefined;
+  lines: readonly string[];
   proposals: number;
   includeProposals: boolean;
 }) {
   const shown = includeProposals || proposals > 0;
 
   return (
-    // The row is at least one target tall, so the 44 px touch targets never reach the field.
-    <div className="flex min-h-(--target-size) min-w-0 flex-wrap items-center justify-between gap-x-2 gap-y-1 px-2">
-      {/* The live region stays mounted; without a count it is read out, not shown. */}
-      <Typography
-        as="p"
-        variant="body-sm"
-        role="status"
-        className={count ? 'text-content-muted' : 'sr-only'}
-      >
-        {count ?? copy.pl.noMatches}
-      </Typography>
-      {shown && (
-        <div className="flex min-w-0 items-center gap-1">
-          <CheckboxField checked={includeProposals} label={copy.pl.proposals(proposals)} />
-          <Popover>
-            <PopoverTrigger asChild>
-              <IconButton icon="info" size="xs" variant="ghost" aria-label="Czym są propozycje?" />
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-72 p-3">
-              <Typography as="p" variant="body-sm" className="text-content-secondary">
-                {copy.pl.proposalsHint}
-              </Typography>
-            </PopoverContent>
-          </Popover>
+    <>
+      <span role="status" className="sr-only">
+        {[count ?? copy.pl.noMatches, ...lines].join(' ')}
+      </span>
+      {/* The row is at least one target tall, so the 44 px touch targets never reach the field. */}
+      {(count !== undefined || shown) && (
+        <div className="flex min-h-(--target-size) min-w-0 flex-wrap items-center justify-between gap-x-2 gap-y-1 px-2">
+          {count && (
+            <Typography as="p" variant="body-sm" aria-hidden className="text-content-muted">
+              {count}
+            </Typography>
+          )}
+          {shown && (
+            // gap-3: the info button's 44 px hit area does not overlap the label's.
+            <div className="flex min-w-0 items-center gap-3">
+              <CheckboxField checked={includeProposals} label={copy.pl.proposals(proposals)} />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <IconButton
+                    icon="info"
+                    size="xs"
+                    variant="ghost"
+                    aria-label="Czym są propozycje?"
+                  />
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-72 p-3">
+                  <Typography as="p" variant="body-sm" className="text-content-secondary">
+                    {copy.pl.proposalsHint}
+                  </Typography>
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
         </div>
       )}
-    </div>
+    </>
   );
+}
+
+/** The quiet line of a word-only answer, by reason; configuration reasons stay silent. */
+function reasonLine(reason: MockReason | undefined): string | undefined {
+  switch (reason) {
+    case 'index-building':
+      return 'Na razie tylko dopasowania słów: indeks wyszukiwania jest budowany (62%).';
+    case 'endpoint-unreachable':
+      return 'Na razie tylko dopasowania słów: wyszukiwanie znaczeniowe jest teraz niedostępne.';
+    case 'index-unavailable':
+      return 'Tylko dopasowania słów: indeks wyszukiwania jest niedostępny.';
+    default:
+      return undefined;
+  }
 }
 
 function ProposedPane(props: DocsSearchMockProps) {
   const { t } = useTranslation();
-  const { answer, empty = 'none' } = props;
+  const { answer, empty = 'none', reason } = props;
   const results = empty === 'none' ? answer.results : [];
   const proposals =
     empty === 'only-proposals'
       ? 2
-      : answer.includeProposals
-        ? answer.results.filter((hit) => hit.proposal).length
-        : answer.proposalsLeftOut;
+      : empty === 'no-match'
+        ? 0
+        : answer.includeProposals
+          ? answer.results.filter((hit) => hit.proposal).length
+          : answer.proposalsLeftOut;
+  const mode = reason ? 'lexical' : answer.mode;
   // The count of the list, never a total: the search has no total (the limit caps the list).
   const count = results.length === 0 ? undefined : copy.pl.count(results.length);
-  const meaningOnly = results.length > 0 && results.every((hit) => hit.matches.length === 0);
+  // A server fact (`wordMatch`), only in hybrid mode: in word-only mode every result matched words.
+  const meaningOnly =
+    mode === 'hybrid' && results.length > 0 && results.every((hit) => !hit.wordMatch);
+  const lines = [reasonLine(reason), meaningOnly ? copy.pl.meaningOnly : undefined].filter(
+    (line): line is string => line !== undefined,
+  );
 
   return (
     <PaneScroller scrolled={props.scrolled}>
@@ -458,7 +573,7 @@ function ProposedPane(props: DocsSearchMockProps) {
       >
         <TreeSearchField
           label={t('docs.search.label')}
-          value={answer.query}
+          value={props.query ?? answer.query}
           onChange={() => undefined}
           onClear={() => undefined}
         />
@@ -467,19 +582,22 @@ function ProposedPane(props: DocsSearchMockProps) {
       <div className="-mb-2 grid gap-1">
         <ProposedStatusRow
           count={count}
+          lines={lines}
           proposals={proposals}
-          includeProposals={answer.includeProposals && empty !== 'only-proposals'}
+          includeProposals={answer.includeProposals && empty === 'none'}
         />
-        {meaningOnly && (
+        {lines.map((line) => (
           <Typography
+            key={line}
             as="p"
             variant="body-sm"
+            aria-hidden
             className="px-2 text-content-secondary"
-            data-mock-meaning-only
+            data-mock-quiet-line
           >
-            {copy.pl.meaningOnly}
+            {line}
           </Typography>
-        )}
+        ))}
       </div>
       {results.length > 0 ? (
         <ProposedResults results={results} activeId={props.activeId} />

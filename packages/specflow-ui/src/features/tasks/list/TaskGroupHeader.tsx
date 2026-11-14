@@ -22,7 +22,7 @@ export function TaskGroupHeader({
 
   return (
     <OperationalGroupHeader
-      headingTag="h4"
+      headingTag="h3"
       label={name}
       count={count}
       tone={tone}

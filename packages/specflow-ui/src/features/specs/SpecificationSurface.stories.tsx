@@ -33,20 +33,27 @@ export const Default: Story = {};
 
 export const Working: Story = {
   tags: ['integration'],
-  play: async ({ canvas, userEvent }) => {
+  play: async ({ canvas, canvasElement }) => {
     await canvas.findByRole('heading', {
       name: 'Deterministic admission and execution boundaries',
       level: 1,
     });
-    const checkboxes = await canvas.findAllByRole('checkbox');
-    const firstCheckbox = checkboxes[0];
-    if (firstCheckbox) {
-      await userEvent.click(firstCheckbox);
-      await canvas.findByText('1 selected', {}, { timeout: 2000 });
-      await userEvent.click(firstCheckbox);
+    // The Overview previews the Tasks by group; the inventory is the Tasks page. No selection and
+    // no bulk Execute (plan 06 F12 is deferred).
+    await canvas.findByRole('button', { name: 'All tasks' });
+    if (canvasElement.querySelector('[role="checkbox"], input[type="checkbox"]')) {
+      throw new Error('The Overview offers no Task selection');
     }
   },
 };
+
+/** The Task Preview opens from a Task's Requires attention item (the Overview lists no Tasks). */
+async function openTaskPreview(
+  canvas: Parameters<NonNullable<Story['play']>>[0]['canvas'],
+  userEvent: Parameters<NonNullable<Story['play']>>[0]['userEvent'],
+) {
+  await userEvent.click(await canvas.findByRole('button', { name: 'View task' }));
+}
 
 export const TaskPreviewFlow: Story = {
   tags: ['integration'],
@@ -57,10 +64,7 @@ export const TaskPreviewFlow: Story = {
       level: 1,
     });
 
-    const taskElement = await canvas.findByText(
-      /Obsługa odświeżania uprawnień w długotrwałej sesji użytkownika/i,
-    );
-    await userEvent.click(taskElement);
+    await openTaskPreview(canvas, userEvent);
 
     await canvas.findByText('TASK-03 · admission', {}, { timeout: 5000 });
 
@@ -111,10 +115,7 @@ export const FullTaskPromotionFlow: Story = {
       level: 1,
     });
 
-    const taskElement = await canvas.findByText(
-      /Obsługa odświeżania uprawnień w długotrwałej sesji użytkownika/i,
-    );
-    await userEvent.click(taskElement);
+    await openTaskPreview(canvas, userEvent);
 
     const heading = await canvas.findByRole('heading', { name: /Task preview/i });
     const trigger = heading
@@ -341,10 +342,7 @@ export const MobileTaskPreviewFlow: Story = {
       level: 1,
     });
 
-    const taskElement = await canvas.findByText(
-      /Obsługa odświeżania uprawnień w długotrwałej sesji użytkownika/i,
-    );
-    await userEvent.click(taskElement);
+    await openTaskPreview(canvas, userEvent);
 
     // In mobile stacked layout, secondary transitions in and provides Back action
     await canvas.findByRole('heading', { name: /Task preview/i }, { timeout: 5000 });

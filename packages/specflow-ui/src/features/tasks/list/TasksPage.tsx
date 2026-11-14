@@ -154,6 +154,7 @@ export function TasksPage({
       <WorkspaceSection aria-labelledby="tasks-heading">
         <WorkspaceSection.Header
           id="tasks-heading"
+          headingTag="h2"
           title={t('specification.tasksHeading')}
           icon="list-checks"
           count={count}

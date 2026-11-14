@@ -308,7 +308,7 @@ const hintsContract: NonNullable<Story['play']> = async ({
   args,
 }) => {
   if (args.preview) {
-    await userEvent.click(await canvas.findByRole('button', { name: /Preserve .*session/ }));
+    await userEvent.click(await canvas.findByRole('button', { name: 'View task' }));
   }
 
   if (args.emptyHistoryHints) {
@@ -463,11 +463,7 @@ const previewScrollContract: NonNullable<Story['play']> = async ({
   canvasElement,
   userEvent,
 }) => {
-  await userEvent.click(
-    await canvas.findByRole('button', {
-      name: /Preserve user context across a long running session/,
-    }),
-  );
+  await userEvent.click(await canvas.findByRole('button', { name: 'View task' }));
   const preview = canvasElement.querySelector<HTMLElement>('[data-task-details="preview"]');
   if (!preview) {
     throw new Error('Expected Task preview');
@@ -558,11 +554,7 @@ const evidenceContract: NonNullable<Story['play']> = async ({
   args,
 }) => {
   if (args.preview) {
-    await userEvent.click(
-      await canvas.findByRole('button', {
-        name: 'Preserve session and navigation context',
-      }),
-    );
+    await userEvent.click(await canvas.findByRole('button', { name: 'View task' }));
   }
 
   await userEvent.click(await canvas.findByRole('button', { name: 'Verify session behaviour' }));
@@ -603,11 +595,7 @@ const flowContract: NonNullable<Story['play']> = async ({
   args,
 }) => {
   if (args.preview) {
-    await userEvent.click(
-      await canvas.findByRole('button', {
-        name: 'Preserve session and navigation context',
-      }),
-    );
+    await userEvent.click(await canvas.findByRole('button', { name: 'View task' }));
   }
 
   await userEvent.click(await canvas.findByRole('button', { name: 'Work actions' }));
@@ -644,9 +632,7 @@ export const FlowFullNarrow: Story = {
 
 const rowCompositionContract: NonNullable<Story['play']> = async ({ canvas, userEvent, args }) => {
   if (args.preview) {
-    await userEvent.click(
-      await canvas.findByRole('button', { name: 'Preserve session and navigation context' }),
-    );
+    await userEvent.click(await canvas.findByRole('button', { name: 'View task' }));
   }
 
   const gate = await canvas.findByRole('button', { name: 'Independent verification 1' });
@@ -714,9 +700,7 @@ const richContextContract: NonNullable<Story['play']> = async ({
   args,
 }) => {
   if (args.preview) {
-    await userEvent.click(
-      await canvas.findByRole('button', { name: 'Preserve session and navigation context' }),
-    );
+    await userEvent.click(await canvas.findByRole('button', { name: 'View task' }));
   }
 
   const opener = await canvas.findByRole('button', { name: 'Details' });
@@ -783,9 +767,7 @@ const historyContextContract: NonNullable<Story['play']> = async ({
   args,
 }) => {
   if (args.preview) {
-    await userEvent.click(
-      await canvas.findByRole('button', { name: 'Preserve session and navigation context' }),
-    );
+    await userEvent.click(await canvas.findByRole('button', { name: 'View task' }));
     await userEvent.click(await canvas.findByRole('button', { name: 'More actions' }));
     await userEvent.click(
       await within(canvasElement.ownerDocument.body).findByRole('menuitem', {

@@ -71,7 +71,7 @@ rationale whose premise no longer holds is marked superseded or removed.
 
 ## Current packages
 
-**Product planning:** [Product roadmap](roadmap.md) tracks release horizons, capability status, gaps and completed product outcomes with linked PR evidence. For the full implementation history, consult [GitHub pull requests](https://github.com/dczerwinskipl/nevo-specflow/pulls?q=is%3Apr+is%3Amerged), not a manually maintained PR inventory. Release targets are proposals; ideas remain linked after a Specification is created and after delivery.
+**Product planning:** [Product roadmap](roadmap.md) (current release status) and [coverage audit](roadmap-coverage.md) (numbered source follow-ups and unscheduled outcomes) tracks release horizons, capability status, gaps and completed product outcomes with linked PR evidence. For the full implementation history, consult [GitHub pull requests](https://github.com/dczerwinskipl/nevo-specflow/pulls?q=is%3Apr+is%3Amerged), not a manually maintained PR inventory. Release targets are proposals; ideas remain linked after a Specification is created and after delivery.
 
 - [Offline Engine, CLI/Runtime boundaries, and Git worktrees](specflow-engine/README.md)
 - [Multi-project hosting, Docker, and future cross-project work](multi-project-hosting.md)

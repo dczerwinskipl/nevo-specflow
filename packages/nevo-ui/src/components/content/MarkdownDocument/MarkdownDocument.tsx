@@ -5,6 +5,7 @@ import { cn } from '../../../lib';
 import { Link } from '../../actions/Link';
 import { Typography } from '../../foundations/Typography';
 import { ScrollArea } from '../../layout/ScrollArea';
+import { MarkdownDiagram } from './MarkdownDiagram';
 
 export interface MarkdownDocumentLinkProps {
   children: ReactNode;
@@ -45,6 +46,15 @@ export interface MarkdownDocumentProps {
    * markup and classes are otherwise identical.
    */
   sourceLines?: boolean;
+  /**
+   * Opt-in: a fenced block whose language is `mermaid` is drawn as a diagram. Mermaid loads on the
+   * first diagram only; while it draws, and when the source cannot be drawn, the ordinary code
+   * block shows (with `labels.diagramFailed` beneath it on failure). A changed source (a live
+   * preview while typing) is drawn only once it has been still for 500 ms; meanwhile its code
+   * shows without the failure note. Leave it off for streamed text (an agent message), whose
+   * fences are not edits a person pauses on.
+   */
+  diagrams?: boolean;
 }
 
 export interface MarkdownDocumentLabels {
@@ -54,6 +64,17 @@ export interface MarkdownDocumentLabels {
   table: string;
   /** Accessible name of a horizontally scrollable code block region. */
   codeBlock: string;
+  /** Accessible name of a drawn diagram (its zoomable region and its picture); full-screen title. */
+  diagram: string;
+  /** Quiet note under a diagram's code when the diagram cannot be drawn. */
+  diagramFailed: string;
+  diagramZoomIn: string;
+  diagramZoomOut: string;
+  /** Returns the diagram to its opening (fitted) view. */
+  diagramReset: string;
+  diagramFullScreen: string;
+  /** Closes the full-screen diagram. */
+  diagramClose: string;
 }
 
 const defaultMarkdownDocumentLabels: MarkdownDocumentLabels = {
@@ -61,6 +82,13 @@ const defaultMarkdownDocumentLabels: MarkdownDocumentLabels = {
   incompleteTask: 'Incomplete task',
   table: 'Table',
   codeBlock: 'Code block',
+  diagram: 'Diagram',
+  diagramFailed: 'Diagram could not be rendered',
+  diagramZoomIn: 'Zoom in',
+  diagramZoomOut: 'Zoom out',
+  diagramReset: 'Fit diagram',
+  diagramFullScreen: 'Open diagram full screen',
+  diagramClose: 'Close diagram',
 };
 
 function DefaultMarkdownLink({ children, href, title }: MarkdownDocumentLinkProps) {
@@ -137,6 +165,51 @@ function remarkDropHtmlComments() {
   return walk;
 }
 
+/** The source of a fenced `mermaid` block (the `pre` element's only child is its `code`), else undefined. */
+function mermaidSource(node: SourceNode | undefined): string | undefined {
+  const code = node?.children?.[0];
+  const className = code?.properties?.className;
+  if (
+    code?.tagName !== 'code' ||
+    !Array.isArray(className) ||
+    !className.includes('language-mermaid')
+  ) {
+    return undefined;
+  }
+
+  const text = (code.children ?? []).map((child) => (child as { value?: string }).value ?? '');
+
+  return text.join('').replace(/\n$/, '');
+}
+
+/** A fenced block: it scrolls horizontally in its own keyboard-focusable region; lines never wrap. */
+function CodeBlock({
+  children,
+  label,
+  className = 'my-3 first:mt-0 last:mb-0',
+  ...rest
+}: {
+  children: ReactNode;
+  label: string;
+  className?: string;
+  'data-source-line'?: number;
+}) {
+  return (
+    <ScrollArea
+      {...rest}
+      aria-label={label}
+      className={cn('rounded-composite border border-border-default bg-canvas', className)}
+      direction="horizontal"
+      labelRole="group"
+      viewportClassName="rounded-composite"
+    >
+      <pre className="w-max min-w-full px-4 py-3 text-content-secondary [&_code]:border-0 [&_code]:bg-transparent [&_code]:p-0">
+        {children}
+      </pre>
+    </ScrollArea>
+  );
+}
+
 /** react-markdown forwards hast properties as props; keep the source line on the rendered block. */
 function sourceLine(props: object): { 'data-source-line'?: number } {
   const line = (props as { 'data-source-line'?: number })['data-source-line'];
@@ -149,6 +222,7 @@ function markdownComponents(
   renderLink?: (props: MarkdownDocumentLinkProps) => ReactNode,
   headingOffset = 0,
   renderImage?: (props: MarkdownDocumentImageProps) => ReactNode,
+  diagrams = false,
 ): Components {
   const heading = (level: number) =>
     `h${Math.min(6, level + headingOffset)}` as 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
@@ -281,21 +355,26 @@ function markdownComponents(
         {children}
       </Typography>
     ),
-    pre: ({ children, ...rest }) => (
-      // The block scrolls horizontally in its own keyboard-focusable region; lines never wrap.
-      <ScrollArea
-        {...sourceLine(rest)}
-        aria-label={labels.codeBlock}
-        className="my-3 rounded-composite border border-border-default bg-canvas first:mt-0 last:mb-0"
-        direction="horizontal"
-        labelRole="group"
-        viewportClassName="rounded-composite"
-      >
-        <pre className="w-max min-w-full px-4 py-3 text-content-secondary [&_code]:border-0 [&_code]:bg-transparent [&_code]:p-0">
+    pre: ({ children, node, ...rest }) => {
+      const diagram = diagrams ? mermaidSource(node) : undefined;
+
+      return diagram === undefined ? (
+        <CodeBlock {...sourceLine(rest)} label={labels.codeBlock}>
           {children}
-        </pre>
-      </ScrollArea>
-    ),
+        </CodeBlock>
+      ) : (
+        <MarkdownDiagram
+          codeBlock={
+            <CodeBlock className="" label={labels.codeBlock}>
+              {children}
+            </CodeBlock>
+          }
+          labels={labels}
+          source={diagram}
+          sourceLine={sourceLine(rest)}
+        />
+      );
+    },
     hr: (props) => <hr {...sourceLine(props)} className="my-6 border-0 border-t border-divider" />,
     input: ({ node: _node, type, ...props }) => (
       <input
@@ -358,8 +437,21 @@ export function MarkdownDocument({
   source,
   sourceLines = false,
   headingOffset = 0,
+  diagrams = false,
 }: MarkdownDocumentProps) {
-  const { completedTask, incompleteTask, table, codeBlock } = {
+  const {
+    completedTask,
+    incompleteTask,
+    table,
+    codeBlock,
+    diagram,
+    diagramFailed,
+    diagramZoomIn,
+    diagramZoomOut,
+    diagramReset,
+    diagramFullScreen,
+    diagramClose,
+  } = {
     ...defaultMarkdownDocumentLabels,
     ...labelsProp,
   };
@@ -367,12 +459,41 @@ export function MarkdownDocument({
   const components = useMemo(
     () =>
       markdownComponents(
-        { completedTask, incompleteTask, table, codeBlock },
+        {
+          completedTask,
+          incompleteTask,
+          table,
+          codeBlock,
+          diagram,
+          diagramFailed,
+          diagramZoomIn,
+          diagramZoomOut,
+          diagramReset,
+          diagramFullScreen,
+          diagramClose,
+        },
         renderLink,
         headingOffset,
         renderImage,
+        diagrams,
       ),
-    [completedTask, incompleteTask, table, codeBlock, renderLink, headingOffset, renderImage],
+    [
+      completedTask,
+      incompleteTask,
+      table,
+      codeBlock,
+      diagram,
+      diagramFailed,
+      diagramZoomIn,
+      diagramZoomOut,
+      diagramReset,
+      diagramFullScreen,
+      diagramClose,
+      renderLink,
+      headingOffset,
+      renderImage,
+      diagrams,
+    ],
   );
 
   return (

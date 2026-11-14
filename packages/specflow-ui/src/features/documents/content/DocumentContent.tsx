@@ -102,6 +102,7 @@ export function DocumentContent({
         <MarkdownDocument
           labels={markdownLabels}
           headingOffset={headingOffset}
+          diagrams
           source={
             omitTitle
               ? markdownIntro(query.data.content ?? '', omitTitle).source

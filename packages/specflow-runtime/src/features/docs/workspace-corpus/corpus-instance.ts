@@ -16,6 +16,7 @@ import {
   type IndexCatchUp,
   type IndexProgress,
 } from '@nevo/specflow-docs';
+import type { DocsSearchReason } from '@nevo/specflow-contracts/docs';
 import type { FastifyBaseLogger } from 'fastify';
 
 import {
@@ -84,6 +85,46 @@ const SEEDING = {
   message:
     'The documentation index is being prepared from Project Home; searches are lexical until then.',
 } as const;
+
+/**
+ * The endpoint-concurrency policy, separate from what the slot itself is for (no two index jobs at
+ * once): while any background job holds the slot, the Runtime's one embedding endpoint counts as
+ * unable to serve a query beside the job's batches, so a query would wait behind them up to the
+ * query timeout and then report the endpoint as failed. Deliberate and temporary: it suits
+ * single-queue local endpoints such as Ollama, while an endpoint that serves requests concurrently
+ * loses hybrid ranking during a refresh. A configurable endpoint concurrency (an `ai.embeddings`
+ * setting) is the planned follow-up.
+ */
+function endpointBusy(slot: RefreshSlot): boolean {
+  return slot.held();
+}
+
+/**
+ * Why a search embeds nothing (neither the read-time refresh nor the query) while the endpoint is
+ * busy (`endpointBusy`) with this index's job, or `'other'`: another checkout's.
+ */
+function refreshingReason(
+  running: { readonly progress: IndexProgress | undefined } | 'other',
+): DocsSearchReason {
+  if (running === 'other') {
+    return {
+      code: 'index-building',
+      message:
+        "The Runtime is updating another checkout's documentation index; searches are lexical until it has finished.",
+    };
+  }
+
+  const { progress } = running;
+
+  return {
+    code: 'index-building',
+    message: `The Runtime is updating the documentation index in the background${
+      progress === undefined
+        ? ''
+        : ` (${String(progress.embedded)}/${String(progress.total)} chunks)`
+    }; searches are lexical until it has finished.`,
+  };
+}
 
 /** Opens the index (the uncached write admission, its Git check once now) and the search. */
 export async function openCorpusInstance(options: CorpusInstanceOptions): Promise<CorpusInstance> {
@@ -193,6 +234,25 @@ export async function openCorpusInstance(options: CorpusInstanceOptions): Promis
     return refreshRequested ? refreshRun(signal, onProgress) : {};
   };
 
+  // The vectors a search uses now. Only a search that would embed degrades to lexical; any reason it
+  // already has (semantic search off, no endpoint, …) stays, and so does its write admission.
+  const searchVectors = (): DocsSearch['vectors'] => {
+    const { vectors } = search;
+    if (!('providers' in vectors)) {
+      return vectors;
+    }
+
+    if (!seeded) {
+      return { reason: SEEDING, writes: vectors.writes };
+    }
+
+    if (endpointBusy(options.slot)) {
+      return { reason: refreshingReason(refresh.current() ?? 'other'), writes: vectors.writes };
+    }
+
+    return vectors;
+  };
+
   const reads: CorpusReads = {
     corpus,
     index,
@@ -206,10 +266,7 @@ export async function openCorpusInstance(options: CorpusInstanceOptions): Promis
       }
 
       return searchDocumentationWithLeftOut(
-        {
-          chunks: { load: () => Promise.resolve(snapshot) },
-          vectors: seeded ? search.vectors : { reason: SEEDING },
-        },
+        { chunks: { load: () => Promise.resolve(snapshot) }, vectors: searchVectors() },
         request,
       );
     },

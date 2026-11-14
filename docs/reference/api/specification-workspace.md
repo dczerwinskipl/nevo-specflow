@@ -52,8 +52,8 @@ Specification cannot be read, only that section degrades to `unavailable` with r
 `source_unavailable`. The `sessions` section and the `startSession` action come from the Session
 association registry ([Project Sessions section](#project-sessions-section)). The `tasks` and
 `activity` sections and `specification.summary` are described below. The repository and change
-sections are `unavailable` with reason `not_implemented` and `executeTasks` is unavailable, because
-the Engine owns no verified projection of them yet. A bound specification whose canonical source cannot be read (unavailable workspace,
+sections are `unavailable` with reason `not_implemented`, because the Engine owns no verified
+projection of them yet. A bound specification whose canonical source cannot be read (unavailable workspace,
 missing or invalid manifest, registry or Git failure) and a Runtime without any source return
 `503 { "error": "specification_source_unavailable" }`; both cases share this body, so the UI cannot tell
 an outage from a missing adapter. Demonstration data is never substituted. The explicit `nevo-specflow start --demo`
@@ -94,8 +94,9 @@ Availability and action states describe only what actually exists.
   broken Task included; on hold counts), `completed` those whose run completed; `cancelled`,
   `ended` and `onHold` count those apart (absent in the demo Runtime). `attention` is the Engine's attention
   projection ([Attention items](task-reads.md#attention-items)): `reason` is the item's message,
-  `code` its reason, with `actor`, `action`, `taskIds` and, for `tasks-stuck`, `blocking`; at most
-  one Specification-level `tasks-stuck` item, never one per draft. `overview` is the Overview's
+  `code` its reason, with `stepTitle` (when a step resolves), `actor`, `action`, `taskIds` and, for
+  `tasks-stuck`, `blocking`; at most one Specification-level `tasks-stuck` item, never one per
+  draft. A broken Task's item has `priority` `critical`, so it comes before every other item. `overview` is the Overview's
   summary: `rows` (each `row` group with its `count`, up to two `tasks` and `more`; a Task already
   named by an attention item carries no `title`), `compact` (each `compact` group's `count`, for
   example Done and Cancelled) and `stuck` (only while the Specification's wait cannot progress: each

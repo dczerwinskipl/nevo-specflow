@@ -54,7 +54,6 @@ const workspaceRepository: SpecificationWorkspaceRepository = {
             },
             sections: { repository: unavailable, changes: unavailable },
             actions: {
-              executeTasks: { available: false, reason: 'not_implemented' },
               startSession: { available: false, reason: 'sessions_disabled' },
             },
           }

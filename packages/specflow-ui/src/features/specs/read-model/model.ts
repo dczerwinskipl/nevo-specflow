@@ -73,6 +73,8 @@ export interface AttentionItem {
    * Tasks it names (`tasks-stuck`: with why each blocks). Absent on other items.
    */
   readonly code?: string;
+  /** The step the item is about (its action names it). */
+  readonly stepTitle?: string;
   readonly actor?: WorkspaceAttention['actor'];
   readonly action?: WorkspaceAttention['action'];
   readonly secondaryAction?: WorkspaceAttention['secondaryAction'];

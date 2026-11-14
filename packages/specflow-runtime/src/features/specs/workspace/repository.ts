@@ -124,7 +124,6 @@ export interface WorkspaceReadModel {
     }>;
   };
   readonly actions: {
-    readonly executeTasks: { readonly available: boolean; readonly reason?: string };
     readonly startSession: {
       readonly available: boolean;
       readonly reason?: string;

@@ -211,7 +211,6 @@ describe('Engine-backed specification workspace read', () => {
         }
 
         expect(body.actions).toEqual({
-          executeTasks: { available: false, reason: 'not_implemented' },
           startSession: { available: false, reason: 'sessions_disabled' },
         });
 

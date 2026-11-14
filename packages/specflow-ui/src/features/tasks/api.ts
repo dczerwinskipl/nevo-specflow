@@ -13,7 +13,7 @@ export interface TaskApi {
    * The Tasks page read (`GET /api/specs/:specId/tasks`): the configured grouping, progress and
    * attention; `blocking` keeps only the Tasks blocking the Specification. Project Runtime only.
    */
-  getTaskList?(
+  getTaskList(
     specId: string,
     query: TaskListQuery,
     signal?: AbortSignal,

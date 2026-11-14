@@ -109,6 +109,7 @@ function services(scenario: WorkflowStoryScenario) {
     specsOverviewApi: createFixtureSpecsOverviewApi(),
     specificationApi: { getSpecificationWorkspace: () => specificationWorkspace(scenario) },
     taskApi: {
+      getTaskList: never,
       getTask: () => {
         const response = taskResponse('started');
 

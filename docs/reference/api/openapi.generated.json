@@ -45689,6 +45689,11 @@
                                 "minLength": 1,
                                 "maxLength": 64
                               },
+                              "stepTitle": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
                               "actor": {
                                 "anyOf": [
                                   {
@@ -46183,6 +46188,11 @@
                                             "type": "string",
                                             "minLength": 1,
                                             "maxLength": 64
+                                          },
+                                          "stepTitle": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                            "maxLength": 200
                                           },
                                           "actor": {
                                             "anyOf": [
@@ -46903,6 +46913,11 @@
                                             "minLength": 1,
                                             "maxLength": 64
                                           },
+                                          "stepTitle": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                            "maxLength": 200
+                                          },
                                           "actor": {
                                             "anyOf": [
                                               {
@@ -47447,6 +47462,11 @@
                                             "minLength": 1,
                                             "maxLength": 64
                                           },
+                                          "stepTitle": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                            "maxLength": 200
+                                          },
                                           "actor": {
                                             "anyOf": [
                                               {
@@ -47815,24 +47835,9 @@
                     "actions": {
                       "type": "object",
                       "required": [
-                        "executeTasks",
                         "startSession"
                       ],
                       "properties": {
-                        "executeTasks": {
-                          "type": "object",
-                          "required": [
-                            "available"
-                          ],
-                          "properties": {
-                            "available": {
-                              "type": "boolean"
-                            },
-                            "reason": {
-                              "type": "string"
-                            }
-                          }
-                        },
                         "startSession": {
                           "type": "object",
                           "required": [

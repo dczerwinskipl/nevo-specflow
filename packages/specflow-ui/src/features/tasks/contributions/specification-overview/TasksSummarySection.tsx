@@ -56,6 +56,7 @@ export function TasksSummarySection({ specId, data, actions }: SpecificationWork
     <WorkspaceSection aria-labelledby="tasks-summary-heading" data-tasks-summary="">
       <WorkspaceSection.Header
         id="tasks-summary-heading"
+        headingTag="h2"
         title={t('specification.tasksHeading')}
         icon="list-checks"
         actions={

@@ -29,7 +29,7 @@ function workspace() {
       repository: { state: 'available', data: { attention: [] } },
       changes: { state: 'unavailable', reason: 'not_implemented' },
     },
-    actions: { executeTasks: { available: false }, startSession: { available: false } },
+    actions: { startSession: { available: false } },
   };
 }
 

@@ -69,7 +69,6 @@ function buildSpecification(record: DemoSpec): SpecificationReadModel {
       changes: { state: 'unavailable', reason: 'not_implemented' },
     },
     actions: {
-      executeTasks: { available: false, reason: 'not_implemented' },
       startSession: { available: false, reason: 'not_implemented' },
     },
   };

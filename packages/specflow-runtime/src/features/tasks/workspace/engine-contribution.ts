@@ -45,7 +45,8 @@ export interface WorkspaceTasksContribution {
 /**
  * One item of the Engine's attention projection as a workspace attention record: its message is
  * the display reason, its code, actor, action and Tasks are passed on for clients with their own
- * copy. A broken Task comes first (`high`), as the projection orders it.
+ * copy. A broken Task comes first (`critical`, above a Session waiting for input), as the
+ * projection orders it.
  */
 export function workspaceAttentionOf(
   item: AttentionItem,
@@ -54,6 +55,7 @@ export function workspaceAttentionOf(
   const common = {
     reason: item.message,
     code: item.reason,
+    ...(item.stepTitle ? { stepTitle: item.stepTitle } : {}),
     actor: item.actor,
     action: item.action,
     ...(item.secondaryAction ? { secondaryAction: item.secondaryAction } : {}),
@@ -69,7 +71,7 @@ export function workspaceAttentionOf(
       // A broken Task may have no readable title; its id stands in.
       title: titles.get(taskId) ?? taskId,
       targetId: taskId,
-      priority: item.reason === 'task-broken' ? 'high' : 'normal',
+      priority: item.reason === 'task-broken' ? 'critical' : 'normal',
       ...common,
     };
   }

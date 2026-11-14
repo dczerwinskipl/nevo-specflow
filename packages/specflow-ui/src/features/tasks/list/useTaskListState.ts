@@ -19,11 +19,11 @@ export function useTaskListState(
     | { readonly kind: 'workspace'; readonly data?: SpecificationWorkspaceData },
 ): TaskListState {
   const { taskApi } = useAppServices();
-  const project = source.kind === 'project' && taskApi.getTaskList !== undefined;
+  const project = source.kind === 'project';
   const query = useQuery({
     queryKey: taskKeys.list(specId, blocking ? 'specification' : undefined),
     queryFn: ({ signal }) =>
-      taskApi.getTaskList!(specId, blocking ? { blocking: 'specification' } : {}, signal),
+      taskApi.getTaskList(specId, blocking ? { blocking: 'specification' } : {}, signal),
     enabled: project,
     select: taskListViewOf,
   });

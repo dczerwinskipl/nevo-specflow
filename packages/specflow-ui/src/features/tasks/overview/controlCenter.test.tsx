@@ -182,9 +182,11 @@ describe('Specification control center', () => {
     });
     await renderAt(`/specs/${SPEC}`, 'waiting', workspace, start);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Start step' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Start Implementation' }));
     await waitFor(() => expect(start).toHaveBeenCalledWith({ specId: SPEC, taskId: 'T-02' }, {}));
-    await waitFor(() => expect(screen.queryByRole('button', { name: 'Start step' })).toBeNull());
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Start Implementation' })).toBeNull(),
+    );
     expect(document.querySelector('[data-summary-group="in-progress"]')?.textContent).toContain(
       'T-02 Token exchange endpoint and session cookie',
     );

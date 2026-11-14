@@ -45,6 +45,7 @@ export function TaskAuthoringFixture({ screen, scenario }: FixtureProps) {
       specsOverviewApi: createFixtureSpecsOverviewApi(),
       specificationApi: { getSpecificationWorkspace: () => workspaceResponse(scenario) },
       taskApi: {
+        getTaskList: () => new Promise(() => undefined),
         getTask: () => Promise.resolve(taskResponse(scenario)),
         // A Task that has not started has an empty history (no attempts yet).
         getHistory: (_spec, _task, token) =>

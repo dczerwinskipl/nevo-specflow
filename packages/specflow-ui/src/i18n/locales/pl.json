@@ -223,7 +223,8 @@
     "attentionShowMore_other": "Pokaż {{count}} więcej",
     "attentionSession": "Sesja",
     "answerSessionAction": "Odpowiedz",
-    "sessionsHeading": "Sesje"
+    "sessionsHeading": "Sesje",
+    "requiresAttentionHeading": "Wymaga uwagi"
   },
   "playground": {
     "title": "UI Playground",
@@ -2436,8 +2437,6 @@
         "edit-context": "Edytuj kontekst",
         "edit-dependencies": "Edytuj zależności",
         "confirm-definition": "Przejrzyj nową wersję",
-        "open-project-settings": "Otwórz ustawienia projektu",
-        "configure-archetype": "Skonfiguruj archetyp",
         "cancel-task": "Anuluj zadanie",
         "restore-task": "Otwórz zadanie",
         "satisfy-gate": "Otwórz zadanie",
@@ -2450,7 +2449,8 @@
       "stuckTitle_many": "Rozwiąż {{count}} blokujących zadań",
       "stuckTitle_other": "Rozwiąż {{count}} blokujących zadań",
       "stuckReason": "Zatwierdź, wznów lub anuluj je, aby specyfikacja mogła się zakończyć",
-      "startFailed": "Nie udało się rozpocząć kroku. Otwórz zadanie, aby zobaczyć, co można zrobić teraz."
+      "startFailed": "Nie udało się rozpocząć kroku. Otwórz zadanie, aby zobaczyć, co można zrobić teraz.",
+      "startNamed": "Rozpocznij: {{step}}"
     },
     "summary": {
       "allTasks": "Wszystkie zadania",

@@ -1007,36 +1007,42 @@ export const CreateCtaWrapsAt320: Story = {
     await expect(submit.scrollHeight).toBeLessThanOrEqual(submit.clientHeight);
   },
 };
-/** K1: a hash target (Zadania) lands below the floating navigation row on a phone. */
-export const HashAnchorClearsTheFloatingRow: Story = {
+/**
+ * K1: the navigator's Zadania opens the Tasks page on a phone, and the page title it focuses lands
+ * below the floating navigation row. (A hash target inside a page clearing the row is the Nevo UI
+ * `AppWorkspaceScroll` contract.)
+ */
+export const TasksPageClearsTheFloatingRow: Story = {
   args: { path: '/specs/api-integration?collection=current' },
-  // The overview section headings (h3 under the page h1) are a known open item, not this story's subject.
-  parameters: { a11y: { config: { rules: [{ id: 'heading-order', enabled: false }] } } },
   play: async ({ canvas, userEvent }) => {
     await viewport(390, 844);
     await userEvent.click(await canvas.findByRole('button', { name: /Otwórz nawigację/ }));
     await userEvent.click(await within(document.body).findByRole('link', { name: /^Zadania/ }));
-    const heading = await waitFor(
+    await waitFor(
       () => {
-        const element = document.getElementById('tasks-heading');
-        if (!element) {
-          throw new Error('Tasks section missing');
+        if (!document.querySelector('[data-tasks-page]')) {
+          throw new Error('The Tasks page is not open');
         }
-
-        return element;
       },
       { timeout: 5000 },
     );
     await waitFor(
       () => {
-        const floating = document.querySelector('.mobile-floating-navigation');
-        const bottom = floating ? floating.getBoundingClientRect().bottom : 0;
-        if (heading.getBoundingClientRect().top < bottom - 1) {
-          throw new Error('Tasks heading is under the floating row');
+        const title = document.querySelector<HTMLElement>(
+          '[data-workspace-active="true"] [data-page-title]',
+        );
+        if (!title?.textContent?.includes('Zadania')) {
+          throw new Error('The Tasks page title is missing');
         }
 
-        if (document.activeElement !== heading) {
-          throw new Error('Focus has not reached the section');
+        const floating = document.querySelector('.mobile-floating-navigation');
+        const bottom = floating ? floating.getBoundingClientRect().bottom : 0;
+        if (title.getBoundingClientRect().top < bottom - 1) {
+          throw new Error('The page title is under the floating row');
+        }
+
+        if (document.activeElement !== title) {
+          throw new Error('Focus has not reached the page title');
         }
       },
       { timeout: 5000 },

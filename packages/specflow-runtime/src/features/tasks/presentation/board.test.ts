@@ -212,6 +212,8 @@ describe('the Overview tasks section', () => {
         priority: 'normal',
         reason: stuckItem.message,
         code: 'tasks-stuck',
+        // The item's step, so a client's action can name it.
+        stepTitle: 'Implementation',
         actor: 'owner',
         action: 'review-tasks',
         taskIds: ['t-04', 't-05'],
@@ -283,7 +285,7 @@ describe('the blocking filter', () => {
     expect(section).toMatchObject({
       data: {
         overview: { stuck: [{ taskId: 'gone', cause: 'broken' }] },
-        attention: [{ id: 'task-broken.gone', title: 'gone', priority: 'high' }, {}],
+        attention: [{ id: 'task-broken.gone', title: 'gone', priority: 'critical' }, {}],
       },
     });
   });

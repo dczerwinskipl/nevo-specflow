@@ -53,7 +53,7 @@ describe('SpecificationWorkspace', () => {
     expect(markup).not.toContain('ID specyfikacji: UI-1234');
 
     // Attention section
-    expect(markup).toContain('Wymaga Twojej uwagi');
+    expect(markup).toContain('Wymaga uwagi');
     expect(markup).toContain('TASK-03 · Rozstrzygnij zachowanie po cofnięciu uprawnień');
 
     // Resume session
@@ -217,7 +217,7 @@ describe('SpecificationWorkspace', () => {
 
   it('renders Specification Overview independently of the previous tab-view selection model', () => {
     const markup = renderWorkspaceMarkup();
-    expect(markup).toContain('Wymaga Twojej uwagi');
+    expect(markup).toContain('Wymaga uwagi');
     expect(markup).toContain('Zadania');
   });
 

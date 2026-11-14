@@ -114,18 +114,43 @@ describe('Requires attention: a workflow item maps its action to the existing fl
     expect(task.actions.openTask).toHaveBeenCalledWith('TASK-03');
   });
 
-  it('project settings has no UI yet: shown unavailable, with Cancel task beside it', () => {
-    const { entry } = entryOf({
+  it('project settings has no UI yet: no button, its alternative Cancel task is the action', () => {
+    const withCancel = entryOf({
       code: 'type-not-allowed',
       action: 'open-project-settings',
       secondaryAction: 'cancel-task',
     });
+    withCancel.entry.action!.onClick();
 
-    expect(entry.action).toMatchObject({
-      disabled: true,
-      disabledTitleKey: 'common.notImplemented',
+    expect(withCancel.entry.action?.label).toEqual({
+      key: 'taskOverview.attention.action.cancel-task',
     });
-    expect(entry.secondaryAction?.disabled).toBeUndefined();
+    expect(withCancel.entry.secondaryAction).toBeUndefined();
+    expect(withCancel.requests).toContainEqual({ kind: 'cancel-task', taskId: 'TASK-03' });
+    // Archetype configuration alone: the reason says what is needed, without a button.
+    expect(
+      entryOf({ kind: 'specification', targetId: undefined, action: 'configure-archetype' }).entry
+        .action,
+    ).toBeUndefined();
+  });
+
+  it('names the step it starts, when the item carries it', () => {
+    expect(
+      entryOf({ code: 'owner-action', action: 'start-step', stepTitle: 'Implementation' }).entry
+        .action?.label,
+    ).toEqual({ key: 'taskOverview.attention.startNamed', values: { step: 'Implementation' } });
+  });
+
+  it('opens the Task when no Overview flow takes the request yet (never a dead click)', () => {
+    const actions = createFakeWorkspaceRuntime({ openTask: vi.fn() });
+    const entry = taskAttentionEntry(item({ code: 'owner-action', action: 'start-step' }), {
+      specId: 'nobody-listens',
+      data,
+      actions,
+    });
+    entry.action!.onClick();
+
+    expect(actions.openTask).toHaveBeenCalledWith('TASK-03');
   });
 
   it('names the Task by id and type, never from a status', () => {

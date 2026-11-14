@@ -98,7 +98,7 @@ function columns(container: HTMLElement) {
 function headingOrder(container: HTMLElement) {
   return [...container.querySelectorAll('h2, h3')]
     .map((heading) => heading.textContent ?? '')
-    .filter((text) => /Requires your attention|Sessions|Tasks|Documents/.test(text))
+    .filter((text) => /Requires attention|Sessions|Tasks|Documents/.test(text))
     .map((text) => text.replace(/\d.*$/, '').trim());
 }
 
@@ -128,7 +128,7 @@ describe('Specification Overview columns', () => {
 
   it('reads in priority order in one column and work column first in two columns', () => {
     const { container } = renderWorkView(1200);
-    const order = ['Requires your attention', 'Tasks', 'Sessions', 'Documents'];
+    const order = ['Requires attention', 'Tasks', 'Sessions', 'Documents'];
     expect(headingOrder(container)).toEqual(order);
 
     resizeTo(1600);
@@ -194,7 +194,7 @@ describe('Specification Overview columns', () => {
 
     expect(context?.firstElementChild?.querySelector('#resume-heading')).not.toBeNull();
     const sections = [...(context?.children ?? [])].map(
-      (section) => section.querySelector('h3')?.textContent ?? '',
+      (section) => section.querySelector('h2, h3')?.textContent ?? '',
     );
     expect(sections[0]).toMatch(/^Sessions/);
     expect(sections[1]).toMatch(/^Documents/);

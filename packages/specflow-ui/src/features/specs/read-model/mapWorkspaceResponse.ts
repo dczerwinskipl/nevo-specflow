@@ -22,6 +22,7 @@ function mapAttention(items: readonly WorkspaceAttention[]): AttentionItem[] {
     targetId: item.targetId,
     priority: item.priority,
     ...(item.code ? { code: item.code } : {}),
+    ...(item.stepTitle ? { stepTitle: item.stepTitle } : {}),
     ...(item.actor ? { actor: item.actor } : {}),
     ...(item.action ? { action: item.action } : {}),
     ...(item.secondaryAction ? { secondaryAction: item.secondaryAction } : {}),

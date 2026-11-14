@@ -221,7 +221,8 @@
     "attentionShowMore_other": "Show {{count}} more",
     "attentionSession": "Session",
     "answerSessionAction": "Answer",
-    "sessionsHeading": "Sessions"
+    "sessionsHeading": "Sessions",
+    "requiresAttentionHeading": "Requires attention"
   },
   "playground": {
     "title": "UI Playground",
@@ -2434,8 +2435,6 @@
         "edit-context": "Edit context",
         "edit-dependencies": "Edit dependencies",
         "confirm-definition": "Review new revision",
-        "open-project-settings": "Open project settings",
-        "configure-archetype": "Configure archetype",
         "cancel-task": "Cancel task",
         "restore-task": "Open task",
         "satisfy-gate": "Open task",
@@ -2446,7 +2445,8 @@
       "stuckTitle_one": "Resolve {{count}} blocking task",
       "stuckTitle_other": "Resolve {{count}} blocking tasks",
       "stuckReason": "Approve, resume or cancel them so the specification can finish",
-      "startFailed": "The step could not be started. Open the task to see what you can do now."
+      "startFailed": "The step could not be started. Open the task to see what you can do now.",
+      "startNamed": "Start {{step}}"
     },
     "summary": {
       "allTasks": "All tasks",

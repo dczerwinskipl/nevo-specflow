@@ -63,7 +63,6 @@ export function createEngineWorkspaceRepository(
           changes: notImplemented,
         },
         actions: {
-          executeTasks: { available: false, reason: 'not_implemented' },
           // The Session association contribution decides; without one there are no Sessions.
           startSession: { available: false, reason: 'sessions_disabled' },
         },

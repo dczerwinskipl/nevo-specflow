@@ -87,7 +87,6 @@ describe('composeWorkspaceActivity', () => {
         changes: { state: 'unavailable', reason: 'not_implemented' },
       },
       actions: {
-        executeTasks: { available: false },
         startSession: { available: false },
       },
     } satisfies SpecificationWorkspaceResponse;

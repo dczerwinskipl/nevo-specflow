@@ -86,6 +86,18 @@ describe('Tasks page', () => {
     expect(onClearBlocking).toHaveBeenCalledTimes(1);
   });
 
+  it('holds the empty state and New task of a Specification without Tasks', () => {
+    const onNewTask = vi.fn();
+    renderPage({
+      state: { status: 'ready', view: taskListViewOf(controlCenterTaskList('empty')) },
+      onNewTask,
+    });
+
+    expect(screen.getByText('No tasks yet')).not.toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'New task' }));
+    expect(onNewTask).toHaveBeenCalledTimes(1);
+  });
+
   it('says so when nothing blocks the Specification any more', () => {
     renderPage({
       blocking: true,

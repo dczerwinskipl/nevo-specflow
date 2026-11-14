@@ -221,6 +221,7 @@ function workspaceAttentionOf(entry: WorkflowAttentionItem): WorkspaceAttention 
   const common = {
     reason: entry.message,
     code: entry.reason,
+    ...(entry.stepTitle ? { stepTitle: entry.stepTitle } : {}),
     actor: entry.actor,
     action: entry.action,
     ...(entry.taskIds ? { taskIds: [...entry.taskIds] } : {}),

@@ -96,6 +96,8 @@ export const WorkspaceAttentionSchema = Type.Object({
    * (`tasks-stuck`: the Tasks to resolve, with why each blocks). Absent on other items.
    */
   code: Type.Optional(Type.String({ minLength: 1, maxLength: 64 })),
+  /** The title of the step the item is about (its action names it: "Start Implementation"). */
+  stepTitle: Type.Optional(Type.String({ minLength: 1, maxLength: 200 })),
   actor: Type.Optional(Type.Union([Type.Literal('owner'), Type.Literal('agent')])),
   action: Type.Optional(
     Type.Unsafe<(typeof WORKSPACE_ATTENTION_ACTIONS)[number]>(
@@ -212,7 +214,6 @@ export const SpecificationWorkspaceResponseSchema = Type.Object({
     changes: ReadSectionSchema(ChangesSchema),
   }),
   actions: Type.Object({
-    executeTasks: ActionSchema,
     startSession: StartSessionActionSchema,
   }),
 });

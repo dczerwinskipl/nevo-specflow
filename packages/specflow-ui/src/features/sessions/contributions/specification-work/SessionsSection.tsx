@@ -88,6 +88,7 @@ export function SessionsSection({
     <WorkspaceSection aria-labelledby="resume-heading">
       <WorkspaceSection.Header
         id="resume-heading"
+        headingTag="h2"
         title={t('specification.sessionsHeading')}
         icon="chat"
         actions={

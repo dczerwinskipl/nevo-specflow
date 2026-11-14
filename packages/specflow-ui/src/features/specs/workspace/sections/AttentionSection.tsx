@@ -79,7 +79,8 @@ export function AttentionSection({ items }: AttentionSectionProps) {
     <WorkspaceSection aria-labelledby={`${id}-heading`} data-requires-attention="">
       <WorkspaceSection.Header
         id={`${id}-heading`}
-        title={t('specification.requiresAttention')}
+        headingTag="h2"
+        title={t('specification.requiresAttentionHeading')}
         icon="triangle-alert"
         count={items.length}
       />

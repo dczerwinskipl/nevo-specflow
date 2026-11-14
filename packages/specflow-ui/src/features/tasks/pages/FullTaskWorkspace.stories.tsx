@@ -72,6 +72,7 @@ export function TaskWorkbenchFixture({
 
     const services = createSpecFlowAppServices({
       taskApi: {
+        getTaskList: () => new Promise(() => undefined),
         getTask: () => Promise.resolve(expired ? fresh : fixture.response),
         getResources: () => {
           if (pageState === 'expired' && !expired) {

@@ -61,7 +61,10 @@ function PendingPreview() {
     () => ({
       query: createSpecFlowQueryClient(),
       services: createSpecFlowAppServices({
-        taskApi: { getTask: () => new Promise(() => undefined) },
+        taskApi: {
+          getTask: () => new Promise(() => undefined),
+          getTaskList: () => new Promise(() => undefined),
+        },
       }),
     }),
     [],

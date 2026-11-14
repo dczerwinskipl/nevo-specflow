@@ -59,6 +59,8 @@ rationale whose premise no longer holds is marked superseded or removed.
 
 ## Current packages
 
+**Product planning:** [Roadmap for 1.0, 1.1 and 2.0](roadmap.md) tracks proposed release horizons, open ideas, completed capabilities, Specifications and PR evidence. Its release targets are not implementation contracts. An idea stays on the roadmap after Specification creation, and shipped items retain links to their delivery evidence.
+
 - [Offline Engine, CLI/Runtime boundaries, and Git worktrees](specflow-engine/README.md)
 - [Multi-project hosting, Docker, and future cross-project work](multi-project-hosting.md)
 - [Authorization follow-ups](authorization/README.md)

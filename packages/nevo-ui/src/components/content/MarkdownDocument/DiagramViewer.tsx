@@ -8,6 +8,8 @@ import {
   DialogTrigger,
 } from '../../overlays/Dialog';
 import { cn } from '../../../lib';
+import { Spinner } from '../../feedback/Spinner';
+import { Typography } from '../../foundations/Typography';
 import { hitAreaClassName } from '../../../design-system/interactionRecipes';
 import { naturalSize } from './diagramView';
 import { useDiagram } from './mermaidDiagram';
@@ -21,6 +23,8 @@ export interface DiagramViewerLabels {
   diagramReset: string;
   diagramFullScreen: string;
   diagramClose: string;
+  /** Quiet note when a diagram cannot be drawn. */
+  diagramFailed: string;
 }
 
 /** Mermaid's shapes carry drop-shadow filters (sequence actors); the document's blocks have none. */
@@ -125,6 +129,8 @@ function DiagramViewport({
 }
 
 /** Full screen: a second drawing (its own SVG ids), fitted to the window, same zoom and pan. */
+const frameClassName = 'rounded-composite border border-border-default bg-canvas';
+
 function FullScreenDiagram({ source, labels }: { source: string; labels: DiagramViewerLabels }) {
   const diagram = useDiagram(source);
   const svg = diagram.status === 'ready' ? diagram.svg : '';
@@ -140,12 +146,28 @@ function FullScreenDiagram({ source, labels }: { source: string; labels: Diagram
         <DialogTitle className="pl-2">{labels.diagram}</DialogTitle>
         <DiagramControls labels={labels} zoom={zoom} />
       </DialogHeader>
-      <DiagramViewport
-        className="min-h-0 flex-1 rounded-composite border border-border-default bg-canvas"
-        label={labels.diagram}
-        svg={svg}
-        zoom={zoom}
-      />
+      {diagram.status === 'ready' ? (
+        <DiagramViewport
+          className={`${frameClassName} min-h-0 flex-1`}
+          label={labels.diagram}
+          svg={svg}
+          zoom={zoom}
+        />
+      ) : (
+        // Its own drawing is still being made (or could not be made): say so, never a blank frame.
+        <div
+          aria-busy={diagram.status === 'loading'}
+          className={`${frameClassName} flex min-h-0 flex-1 items-center justify-center`}
+        >
+          {diagram.status === 'loading' ? (
+            <Spinner />
+          ) : (
+            <Typography as="p" className="text-content-muted" variant="body-sm">
+              {labels.diagramFailed}
+            </Typography>
+          )}
+        </div>
+      )}
     </DialogContent>
   );
 }

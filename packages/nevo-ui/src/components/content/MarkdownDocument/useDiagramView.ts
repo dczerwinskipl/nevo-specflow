@@ -143,9 +143,10 @@ export function useDiagramView(content: Size, mode: 'inline' | 'window') {
       const start = pinch;
       const now = twoFingers(event.touches);
       pinch = now;
+      // Zoom about where the fingers were, then follow them: the content under them stays put.
       update((current, g) =>
         panBy(
-          zoomAt(current, now.distance / start.distance, now.middle, g),
+          zoomAt(current, now.distance / start.distance, start.middle, g),
           now.middle.x - start.middle.x,
           now.middle.y - start.middle.y,
           g,
@@ -205,7 +206,11 @@ export function useDiagramView(content: Size, mode: 'inline' | 'window') {
     }
 
     const next = viewForKey(event.key, view, geometry);
-    if (next === undefined) {
+    // An arrow that cannot move the view (the fitted drawing) keeps scrolling the page.
+    if (
+      next === undefined ||
+      (event.key.startsWith('Arrow') && next !== 'reset' && sameView(next, view))
+    ) {
       return;
     }
 

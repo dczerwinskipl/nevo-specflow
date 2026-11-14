@@ -595,7 +595,8 @@ Size: a diagram opens fitted to the column but never below 10 px text (scale `10
 14 px); a diagram that fits keeps its natural size and is never enlarged. What does not fit pans inside the
 block, which never widens the page. Zoom and pan are always available: the block's viewport is one keyboard
 stop (`role="group"` named by `labels.diagram`; the picture inside is `role="img"` with the same name) where
-`+`/`-` zoom, the arrows pan and `0` returns to the fitted view; Ctrl/Cmd + wheel and pinch zoom about the
+`+`/`-` zoom, the arrows pan (an arrow that cannot move the drawing scrolls the page) and `0`
+returns to the fitted view; Ctrl/Cmd + wheel and pinch zoom about the
 pointer; a mouse or pen drag and two fingers pan. Plain wheel and one-finger touch scroll the page. The zoom
 runs from the fitted scale to 4x the natural size and the drawing never leaves its pan bounds. A quiet
 control strip above the drawing (so it never covers it) holds Zoom out, Zoom in, Fit and Full screen
@@ -607,9 +608,11 @@ geometry (fit, clamp, zoom about a point, keys) lives in `diagramView.ts`.
 While a diagram is drawn the ordinary code block shows; when the source cannot be drawn the code block stays
 with a quiet `labels.diagramFailed` note beneath it, never Mermaid's error graphic. Products pass localized
 `diagram`, `diagramFailed`, `diagramZoomIn`, `diagramZoomOut`, `diagramReset`, `diagramFullScreen` and
-`diagramClose` labels; `data-source-line` sits on the block. Leave `diagrams` off for text that is still
-being written (a streamed message), where a half-written diagram would flash the failure note. The
-Documents preview and the documentation reader turn it on.
+`diagramClose` labels; `data-source-line` sits on the block. A changed source (the Documents live preview
+while typing) is drawn only after it has been still for 500 ms; meanwhile its code shows without the
+failure note, so typing neither redraws on every keystroke nor flashes the note. The full-screen dialog
+shows a spinner while its own drawing is made and the failure note if it cannot be. Leave `diagrams` off
+for streamed text (an agent message). The Documents preview and the documentation reader turn it on.
 
 ## Scrolling regions
 

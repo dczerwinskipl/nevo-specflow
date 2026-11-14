@@ -1,10 +1,31 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Typography } from '../../foundations/Typography';
 import { DiagramViewer, type DiagramViewerLabels } from './DiagramViewer';
 import { useDiagram } from './mermaidDiagram';
 
-export interface MarkdownDiagramLabels extends DiagramViewerLabels {
-  diagramFailed: string;
+export type MarkdownDiagramLabels = DiagramViewerLabels;
+
+/** A changed source is drawn once it has been still this long (a live preview while typing). */
+export const diagramSettleDelay = 500;
+
+/**
+ * The source to draw: the first one at once, a later one only after it stopped changing for
+ * `diagramSettleDelay`, so typing neither draws on every keystroke nor flashes the failure note.
+ */
+function useSettledSource(source: string): string {
+  const [settled, setSettled] = useState(source);
+
+  useEffect(() => {
+    if (settled === source) {
+      return undefined;
+    }
+
+    const timer = setTimeout(() => setSettled(source), diagramSettleDelay);
+
+    return () => clearTimeout(timer);
+  }, [source, settled]);
+
+  return settled;
 }
 
 /**
@@ -23,9 +44,12 @@ export function MarkdownDiagram({
   codeBlock: ReactNode;
   sourceLine: { 'data-source-line'?: number };
 }) {
-  const diagram = useDiagram(source);
+  const settled = useSettledSource(source);
+  const diagram = useDiagram(settled);
+  // While the source changes, its code shows as it is, without a verdict on a half-written fence.
+  const changing = settled !== source;
 
-  if (diagram.status === 'ready') {
+  if (diagram.status === 'ready' && !changing) {
     return (
       <DiagramViewer labels={labels} source={source} sourceLine={sourceLine} svg={diagram.svg} />
     );
@@ -35,10 +59,10 @@ export function MarkdownDiagram({
     <div
       {...sourceLine}
       className="my-3 first:mt-0 last:mb-0"
-      data-markdown-diagram={diagram.status}
+      data-markdown-diagram={changing ? 'changing' : diagram.status}
     >
       {codeBlock}
-      {diagram.status === 'failed' ? (
+      {diagram.status === 'failed' && !changing ? (
         <Typography as="p" className="mt-1.5 text-content-muted" variant="body-sm">
           {labels.diagramFailed}
         </Typography>

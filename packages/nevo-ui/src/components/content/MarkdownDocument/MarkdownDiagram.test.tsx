@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MarkdownDocument } from './MarkdownDocument';
 
@@ -116,6 +116,11 @@ describe('MarkdownDocument diagrams', () => {
     // Ctrl+key and plain letters are left to the browser.
     fireEvent.keyDown(region, { key: '+', ctrlKey: true });
     expect(scale()).toBe(1);
+    // At the fitted view an arrow moves nothing, so it is left to scroll the page.
+    expect(fireEvent.keyDown(region, { key: 'ArrowDown' })).toBe(true);
+    fireEvent.keyDown(region, { key: '+' });
+    expect(fireEvent.keyDown(region, { key: 'ArrowRight' })).toBe(false);
+    fireEvent.keyDown(region, { key: '0' });
 
     fireEvent.click(screen.getByRole('button', { name: 'Open diagram full screen' }));
     const dialog = await screen.findByRole('dialog', { name: 'Diagram' });
@@ -124,5 +129,35 @@ describe('MarkdownDocument diagrams', () => {
     // Full screen draws its own copy, so no SVG id is on the page twice.
     expect(new Set(ids).size).toBe(2);
     expect(document.querySelectorAll(`[id="${ids[0]}"]`)).toHaveLength(1);
+  });
+
+  it('draws a changed source only after it has been still for 500 ms, without flashing the note', async () => {
+    vi.useFakeTimers();
+    const flush = () => act(async () => Promise.resolve());
+    const typed = (body: string) => (
+      <MarkdownDocument diagrams source={fence(`flowchart LR\n  ${body}`)} />
+    );
+    const { rerender } = render(typed('a --> b'));
+    await flush();
+    await flush();
+    expect(screen.getByRole('img', { name: 'Diagram' })).toBeTruthy();
+
+    // Typing: a half-written fence shows as code, with no failure note and no new drawing yet.
+    rerender(typed('a -->'));
+    rerender(typed('a --> c'));
+    expect(screen.queryByRole('img')).toBeNull();
+    expect(screen.getByRole('group', { name: 'Code block' }).textContent).toContain('a --> c');
+    expect(screen.queryByText('Diagram could not be rendered')).toBeNull();
+    await act(async () => vi.advanceTimersByTime(499));
+    expect(mermaid.render).toHaveBeenCalledTimes(1);
+
+    // Still for 500 ms: only the latest source is drawn, once.
+    await act(async () => vi.advanceTimersByTime(1));
+    await flush();
+    await flush();
+    expect(mermaid.render).toHaveBeenCalledTimes(2);
+    expect(mermaid.render).toHaveBeenLastCalledWith(expect.any(String), 'flowchart LR\n  a --> c');
+    expect(screen.getByRole('img', { name: 'Diagram' })).toBeTruthy();
+    vi.useRealTimers();
   });
 });

@@ -62,30 +62,32 @@ export function validateRoadmapTables(docs: readonly DocRecord[]): string[] {
     let fence: { char: string; min: number } | undefined;
 
     for (let i = 0; i < lines.length; ) {
-      const line = lines[i].trim();
+      const line = (lines[i] ?? '').trim();
       const code = /^(\x60{3,}|~{3,})/.exec(line);
-      if (code) {
+      if (code?.[1]) {
         const marker = code[1];
-        if (!fence) fence = { char: marker[0], min: marker.length };
-        else if (marker[0] === fence.char && marker.length >= fence.min) fence = undefined;
+        if (!fence) fence = { char: marker.charAt(0), min: marker.length };
+        else if (marker.charAt(0) === fence.char && marker.length >= fence.min)
+          fence = undefined;
         i++;
         continue;
       }
-      if (fence || !isTableLine(lines[i])) {
+      if (fence || !isTableLine(lines[i] ?? '')) {
         i++;
         continue;
       }
 
       const start = i;
-      while (i < lines.length && isTableLine(lines[i])) i++;
+      while (i < lines.length && isTableLine(lines[i] ?? '')) i++;
       const rows = lines.slice(start, i).map(cells);
-      if (rows.length < 2 || !rows[1].every(isRule)) continue;
+      if (rows.length < 2 || !rows[1]?.every(isRule)) continue;
 
-      const width = rows[0].length;
+      const width = rows[0]?.length ?? 0;
       for (let j = 1; j < rows.length; j++) {
-        if (rows[j].length !== width) {
+        const actual = rows[j]?.length ?? 0;
+        if (actual !== width) {
           issues.push(
-            `${doc.file}:${start + j + 1}: Markdown table has ${rows[j].length} cells, header has ${width}`,
+            `${doc.file}:${start + j + 1}: Markdown table has ${actual} cells, header has ${width}`,
           );
         }
       }

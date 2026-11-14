@@ -135,11 +135,13 @@ Availability and action states describe only what actually exists.
   `requiresAttention` -> `attention`, `ready` -> `quiet`, `authenticationRequired` ->
   `authenticationRequired`, `unavailable` -> `unknown`. `taskIds` come from the association.
   `title` is optional; the server never invents one (the UI shows its untitled label).
-- `sections.sessions.data.attention` lifts every row whose status is `attention` (the Session waits
-  for the person's input) into Requires attention: `id` `session-attention.<sessionId>`, `kind`
+- `sections.sessions.data.attention` lifts every non-archived Session of the Specification that
+  waits for the person's input (effective readiness `requiresAttention`), also one beyond the
+  bounded rows, into Requires attention: `id` `session-attention.<sessionId>`, `kind`
   `session`, `targetId` the Session, `priority` `high`, `code` `session-input`, `actor` `owner` and
-  `action` `answer-session`. The row keeps only its `attention` status as a marker; clients show the
-  Session once in Requires attention, not again as a second item. Like every Session reference, an
+  `action` `answer-session`. A shown row of such a Session has status `attention`, from the same
+  readiness, and clients skip it in the Sessions section: the Session appears once, in Requires
+  attention, instead. Like every Session reference, an
   item is omitted when the caller may not view the Session.
 - Each row also carries `providerId`, `modelId?`, `updatedAt` and the catalogue titles
   `providerTitle?` / `modelTitle?` (absent when not listed), as in the Session list, so Continue

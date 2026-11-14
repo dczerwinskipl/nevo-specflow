@@ -1,10 +1,11 @@
 import type { RunPosition } from '@nevo/workflow';
 
 import type { AttentionItem } from '../attention/model';
-import { taskPosition, type TaskStatus } from '../state/model';
+import { taskPosition, type ExecutionTask, type TaskStatus } from '../state/model';
 import type { ExecutionSnapshot } from '../state/store';
 import type { ActionDependencies, ActionProjection } from './actions';
 import { inspectSnapshot, type ExecutionInspection } from './inspect';
+import { executionTasks } from './loaded-execution';
 import type { StartBlocker } from './start-blockers';
 
 /**
@@ -147,14 +148,31 @@ export function readExecution(
       actions,
       facts,
       broken: brokenFactsOf(snapshot, inspection),
-      progress: progressOf(inspection),
-      preparation:
-        inspection.tasks.length + inspection.brokenTasks.length === 0
-          ? 'empty'
-          : inspection.tasks.some((entry) => entry.record.status === 'draft')
-            ? 'preparing'
-            : 'prepared',
+      ...progressAndPreparation(
+        inspection.tasks.map((entry) => entry.record),
+        inspection.brokenTasks.length,
+      ),
     };
+  });
+}
+
+/**
+ * The progress and preparation of a Specification's Tasks alone (the Specs list): the same values
+ * as {@link readExecution}, from one snapshot read under `serialize`, but without the inspection,
+ * so no action projection is made and no document is read (context and gates are not evaluated).
+ * It needs no document references at all.
+ */
+export function readTaskProgress(
+  dependencies: Pick<ActionDependencies, 'store' | 'serialize' | 'catalogue'>,
+  specId: string,
+): Promise<Pick<ExecutionReading, 'progress' | 'preparation'>> {
+  return dependencies.serialize(async () => {
+    const { tasks, broken } = executionTasks(
+      dependencies.catalogue,
+      await dependencies.store.read(specId),
+    );
+
+    return progressAndPreparation(tasks, broken.length);
   });
 }
 
@@ -181,14 +199,17 @@ function brokenFactsOf(
   });
 }
 
-/** {@link TaskProgress} of an inspection: it needs no action projection. */
-function progressOf(inspection: ExecutionInspection): TaskProgress {
+/** {@link TaskProgress} and {@link TaskPreparation} of the readable Tasks and the broken count. */
+function progressAndPreparation(
+  tasks: readonly ExecutionTask[],
+  brokenCount: number,
+): Pick<ExecutionReading, 'progress' | 'preparation'> {
   let completed = 0;
   let cancelled = 0;
   let ended = 0;
   let onHold = 0;
-  let total = inspection.brokenTasks.length;
-  for (const { record } of inspection.tasks) {
+  let total = brokenCount;
+  for (const record of tasks) {
     const outcome =
       record.run?.position.state === 'terminal' ? record.run.position.outcome : undefined;
     if (record.status === 'cancelled') {
@@ -206,5 +227,13 @@ function progressOf(inspection: ExecutionInspection): TaskProgress {
     onHold += record.status === 'on-hold' ? 1 : 0;
   }
 
-  return { completed, total, cancelled, ended, onHold };
+  return {
+    progress: { completed, total, cancelled, ended, onHold },
+    preparation:
+      tasks.length + brokenCount === 0
+        ? 'empty'
+        : tasks.some((record) => record.status === 'draft')
+          ? 'preparing'
+          : 'prepared',
+  };
 }

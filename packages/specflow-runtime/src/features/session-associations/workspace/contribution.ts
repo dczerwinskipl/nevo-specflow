@@ -1,10 +1,12 @@
-import type { SessionInfo } from '@nevo/specflow-contracts/sessions';
+import { SessionListLimits, type SessionInfo } from '@nevo/specflow-contracts/sessions';
 import type { RequestAuthorization } from '../../auth';
 import {
   SessionError,
   canStartSession,
   listedSession,
+  type SessionListRow,
   type SessionListScan,
+  type SessionCoordinator,
   type StoredListSummary,
   type SessionsRuntime,
 } from '../../sessions';
@@ -60,6 +62,59 @@ export function sessionAttentionOf(
       actor: 'owner' as const,
       action: 'answer-session' as const,
     }));
+}
+
+/**
+ * Every non-archived Session of the Specification that waits for the person's input, also those
+ * beyond the section's rows: the index is scanned page by page, pre-filtered by its stored
+ * readiness (an effective `requiresAttention` is always the stored one), then each candidate's
+ * effective readiness is read from its summary, like a row's. In index order (newest first).
+ */
+async function waitingSessions(
+  coordinator: SessionCoordinator,
+  specId: string,
+): Promise<{ readonly row: SessionListRow; readonly title?: string }[]> {
+  const candidates: SessionListRow[] = [];
+  let after: number | undefined;
+  for (;;) {
+    const page = await coordinator.store.call<SessionListScan>({
+      op: 'list',
+      filter: { specId, archived: 'exclude' },
+      ...(after !== undefined ? { after } : {}),
+      scanBudget: SessionListLimits.scanBudget,
+    });
+    candidates.push(...page.rows.filter((row) => row.readiness === 'requiresAttention'));
+    const last = page.rows.at(-1);
+    if (!page.hasMore || !last) {
+      break;
+    }
+
+    after = last.createdSeq;
+  }
+
+  const waiting = new Map<string, string | undefined>();
+  for (let start = 0; start < candidates.length; start += SessionListLimits.maxLimit) {
+    const batch = candidates.slice(start, start + SessionListLimits.maxLimit);
+    for (const summary of await coordinator.store.call<StoredListSummary[]>({
+      op: 'summaries',
+      sessionIds: batch.map((row) => row.sessionId),
+    })) {
+      const listed = listedSession(summary, coordinator.provider);
+      if (workspaceSessionStatus(listed.readiness) === 'attention') {
+        waiting.set(summary.sessionId, listed.title);
+      }
+    }
+  }
+
+  return candidates.flatMap((row) => {
+    if (!waiting.has(row.sessionId)) {
+      return [];
+    }
+
+    const title = waiting.get(row.sessionId);
+
+    return [{ row, ...(title ? { title } : {}) }];
+  });
 }
 
 /** Attention first, then active, then the most recently updated Session. */
@@ -136,6 +191,7 @@ export function createWorkspaceSessionContribution(options: {
       );
       // A Session deleted between the scan and the decode is simply absent.
       const rows = scanned.filter((row) => byId.has(row.sessionId));
+      const more = scan.rows.length > WORKSPACE_SESSION_LIMIT;
       const items: WorkspaceSessionItem[] = rows.map((row) => {
         const summary = byId.get(row.sessionId)!;
 
@@ -151,20 +207,40 @@ export function createWorkspaceSessionContribution(options: {
           updatedAt: summary.updatedAt,
         };
       });
+      // Every Session that waits for input, also one beyond the rows (only scanned when more exist).
+      const waiting = more
+        ? await waitingSessions(coordinator, specId)
+        : rows.flatMap((row, index) =>
+            items[index]!.status === 'attention'
+              ? [{ row, ...(items[index]!.title ? { title: items[index]!.title } : {}) }]
+              : [],
+          );
+      const shown = new Set(rows.map((row) => row.sessionId));
 
       return {
         section: {
           state: 'available' as const,
           data: {
             items,
-            ...(scan.rows.length > WORKSPACE_SESSION_LIMIT ? { hasMore: true } : {}),
-            // A Session that waits for the person's input is Requires attention; its row keeps only
-            // its `attention` status as a marker. Engine attention is the Tasks owner's.
-            attention: sessionAttentionOf(items),
+            ...(more ? { hasMore: true } : {}),
+            // A Session that waits for the person's input is Requires attention instead: clients
+            // show it there, and its row (status `attention`, from the same readiness) is skipped.
+            // Engine attention is the Tasks owner's.
+            attention: sessionAttentionOf(
+              waiting.map(({ row, title }) => ({
+                id: row.sessionId,
+                status: 'attention' as const,
+                ...(title ? { title } : {}),
+              })),
+            ),
           },
         },
-        // Store-derived identities: the workspace read authorizes the rows without resolving them.
-        sessionIdentities: rows.map((row) => ({
+        // Store-derived identities of the rows and of the waiting Sessions beyond them: the
+        // workspace read authorizes every reference without resolving it again.
+        sessionIdentities: [
+          ...rows,
+          ...waiting.map(({ row }) => row).filter((row) => !shown.has(row.sessionId)),
+        ].map((row) => ({
           projectId: row.projectId,
           sessionId: row.sessionId,
           ...(row.specId !== undefined ? { specId: row.specId } : {}),

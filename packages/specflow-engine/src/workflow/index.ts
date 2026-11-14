@@ -4,6 +4,7 @@ export {
   inspectActionsForRead,
   openWorkflow,
   readExecutionForRead,
+  readTaskProgressForRead,
   type OpenWorkflowOptions,
 } from './composition';
 export {
@@ -120,6 +121,7 @@ export {
 export { inspectExecution, type ExecutionInspection } from './operations/inspect';
 export {
   readExecution,
+  readTaskProgress,
   type ExecutionReading,
   type ReadExecutionOptions,
   taskFactsOf,

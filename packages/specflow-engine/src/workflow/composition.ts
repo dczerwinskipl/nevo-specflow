@@ -42,7 +42,7 @@ import {
   type PendingTaskDocumentChange,
 } from './state/task-document-guard';
 import { checkoutPathExists } from './checkout-paths';
-import { readExecution } from './operations/execution-read';
+import { readExecution, readTaskProgress } from './operations/execution-read';
 import { guardCloseReservations } from './state/close-guard';
 import { listCloseJournals } from '../specs/lifecycle';
 
@@ -213,8 +213,11 @@ function asReadRequest<Args extends unknown[], Result>(
   return (...args) => runReadRequest(() => operation(...args));
 }
 
-/** {@link readExecution} without Git (Overview progress, Workspace and Task reads). */
+/** {@link readExecution} without Git (Workspace and Task reads). */
 export const readExecutionForRead = asReadRequest(readExecution);
+
+/** {@link readTaskProgress} without Git (the Specs list progress). */
+export const readTaskProgressForRead = asReadRequest(readTaskProgress);
 
 /** {@link inspectActions} without Git (the workflow `actions` read). */
 export const inspectActionsForRead = asReadRequest(inspectActions);

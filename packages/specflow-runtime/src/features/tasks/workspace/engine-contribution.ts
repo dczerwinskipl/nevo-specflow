@@ -1,4 +1,4 @@
-import { readExecutionForRead, type AttentionItem } from '@nevo/specflow-engine';
+import { readTaskProgressForRead, type AttentionItem } from '@nevo/specflow-engine';
 import type { TaskOverview } from '@nevo/specflow-contracts/tasks';
 import type {
   WorkspaceAttention,
@@ -167,8 +167,9 @@ export type TaskProgressSource = (
 ) => Promise<ReadonlyMap<string, { completed: number; total: number } | null>>;
 
 /**
- * The Specs Overview `progress` of the listed Specifications, the Engine's `TaskProgress`: the
- * definitions are loaded once, each Specification is read on its own. One whose execution cannot be
+ * The Specs Overview `progress` of the listed Specifications, the Engine's `TaskProgress`
+ * (`readTaskProgress`: no action projection, no document read): the definitions are loaded once,
+ * each Specification is read on its own. One whose execution cannot be
  * read has `null` (not projected), never a guessed count; the other rows are unaffected.
  */
 export function createEngineTaskProgress(source: TaskEngine): TaskProgressSource {
@@ -187,8 +188,7 @@ export function createEngineTaskProgress(source: TaskEngine): TaskProgressSource
 
     for (const specId of specIds) {
       try {
-        const { completed, total } = (await readExecutionForRead(workflow, specId, { tasks: [] }))
-          .progress;
+        const { completed, total } = (await readTaskProgressForRead(workflow, specId)).progress;
         progress.set(specId, { completed, total });
       } catch {
         progress.set(specId, null);

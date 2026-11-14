@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import type { ExecutionCatalogue } from '../definitions/catalogue';
-import { readExecution } from './execution-read';
+import { readExecution, readTaskProgress } from './execution-read';
 import { inspectExecution } from './inspect';
 import {
   memoryDependencies,
@@ -188,5 +188,24 @@ describe('readExecution', () => {
     expect(
       (await readExecution(dependencies, SPEC, { tasks: 'all' })).inspection.attention,
     ).toEqual([]);
+  });
+
+  it('reads the progress alone without any document read', async () => {
+    const { dependencies, create, decide } = scenario();
+    dependencies.references.paths.add('src/gone.ts');
+    await create('context', { context: [{ kind: 'path', path: 'src/gone.ts', required: true }] });
+    await decide('context', 'ready');
+    await create('draft');
+    const full = await readExecution(dependencies, SPEC, { tasks: 'all' });
+
+    // Every document reference fails: the progress-only read must not need one.
+    const references = new Proxy(dependencies.references, {
+      get: () => () => {
+        throw new Error('A document was read.');
+      },
+    });
+    const withoutDocuments = { ...dependencies, references };
+    const progress = await readTaskProgress(withoutDocuments, SPEC);
+    expect(progress).toEqual({ progress: full.progress, preparation: full.preparation });
   });
 });

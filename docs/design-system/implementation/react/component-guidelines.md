@@ -582,6 +582,20 @@ cells have a minimum width (so many columns scroll instead of crushing), a quiet
 GFM column alignment; ordinary prose, inline code and bare URLs wrap; images are capped to the column.
 Products pass localized `labels` (the defaults are English).
 
+## MarkdownDocument diagrams
+
+`<MarkdownDocument diagrams />` (opt-in, default off) draws a fenced block whose language is `mermaid` as a
+diagram. Mermaid is loaded with a dynamic `import()` on the first diagram, so a page without one never
+downloads it. It runs with `securityLevel: 'strict'`, no HTML labels, `startOnLoad: false` and suppressed
+error rendering, and each drawing gets a fresh id. The `base` theme takes its colours and font from the
+design-system tokens read when the diagram is drawn (`color-scheme` decides dark mode); shapes have no
+shadows. The diagram keeps its natural size and scrolls horizontally in its own `ScrollArea` (named by
+`labels.diagram`, `labelRole="group"`, `data-source-line` on that wrapper); the SVG is `role="img"` with the
+same name. While it is drawn the ordinary code block shows; when the source cannot be drawn the code block
+stays with a quiet `labels.diagramFailed` note beneath it, never Mermaid's error graphic. Leave `diagrams`
+off for text that is still being written (a streamed message), where a half-written diagram would flash
+the failure note. The Documents preview and the documentation reader turn it on.
+
 ## Scrolling regions
 
 Every scrolling region uses the DS `ScrollArea` (thin scrollbar, edge indicators); never hide scrollbars and

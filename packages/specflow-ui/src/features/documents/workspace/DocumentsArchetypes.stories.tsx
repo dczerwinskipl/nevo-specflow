@@ -26,6 +26,7 @@ import { createAuthStore } from '../../../auth/store';
 import { createWorkspaceIntegrationApi } from '../../../../test-support/specs/workspace/api';
 import { createFixtureSpecsOverviewApi } from '../../../../test-support/specs/overview/api';
 import { browserPage } from '../../../test-support/browserPage';
+import { diagramFixture } from '../../../test-support/mermaidDiagram.stories-support';
 import { expectToast } from '../../../test-support/toast.stories-support';
 import { settleViewport } from '../../../test-support/viewportSettle.stories-support';
 
@@ -234,7 +235,10 @@ function record(tree: DocumentTree, id: string): DocumentContent {
             // ux.md has sections, so its preview has a contents column beside the text.
             id === 'ux'
               ? `# ${document.path}\n\nText of ${document.path}.\n\n## Goal\n\nWhat the screen is for.\n\n## Flow\n\nThe steps.\n`
-              : `# ${document.path}\n\nText of ${document.path}.\n`,
+              : // overview.md draws a diagram, as the documentation reader does (`Diagram` story).
+                id === 'overview'
+                ? `# ${document.path}\n\nText of ${document.path}.\n\n${diagramFixture}\n`
+                : `# ${document.path}\n\nText of ${document.path}.\n`,
         }
       : { content: undefined }),
   });
@@ -867,6 +871,15 @@ export const PreviewWithoutContentsCentredOnWideScreens: Story = {
     });
     await expect(measure.getBoundingClientRect().width).toBeLessThanOrEqual(760);
     await viewport(1440);
+  },
+};
+
+/** A Mermaid fence in the preview is drawn as a diagram, the same as in the documentation reader. */
+export const Diagram: Story = {
+  args: { path: `/specs/${SPEC}/documents/overview` },
+  play: async () => {
+    await wide();
+    await body().findByRole('img', { name: 'Diagram' }, { timeout: 10000 });
   },
 };
 

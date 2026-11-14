@@ -237,3 +237,65 @@ export const LocalizedRegionLabels: Story = {
     assert(canvas.getByRole('group', { name: 'Blok kodu' }), 'Code label should be localized.');
   },
 };
+
+const diagrams = `## Runtime
+
+\`\`\`mermaid
+flowchart LR
+  person([Person])
+  subgraph host["Long-lived host"]
+    http["HTTP server<br/>/api + built UI"] --> features["Runtime features"]
+    features --> engine["Engine (library)"]
+    features --> store[("Session store<br/>SQLite, worker thread")]
+  end
+  browser["Browser: UI"]
+  providers["Provider CLIs<br/>(child processes)"]
+  git[("Git repository<br/>Project Home + worktrees")]
+  person --> browser
+  browser -- "HTTP JSON + SSE" --> http
+  features -- "spawn, stdio, process tree" --> providers
+  engine --> git
+  providers -- "work in the bound workspace" --> git
+\`\`\`
+
+## Saving a document
+
+\`\`\`mermaid
+sequenceDiagram
+  participant UI
+  participant Runtime
+  participant Git
+  UI->>Runtime: Save (expected revision)
+  Runtime->>Git: Commit
+  Git-->>Runtime: New revision
+  Runtime-->>UI: Saved
+\`\`\`
+
+## A diagram with a mistake
+
+\`\`\`mermaid
+flowchart LR
+  a -->
+\`\`\`
+`;
+
+/**
+ * Fenced `mermaid` blocks drawn as diagrams (`diagrams`): Mermaid loads on the first one, themed
+ * from the design tokens. A wide diagram scrolls in its block; one that cannot be drawn keeps its
+ * code with a quiet note.
+ */
+export const Diagrams: Story = {
+  args: { source: diagrams, diagrams: true },
+  render: (args) => frame(args, '40rem'),
+  play: async ({ canvas, canvasElement }) => {
+    const drawn = await canvas.findAllByRole('img', { name: 'Diagram' }, { timeout: 10000 });
+    assert(drawn.length === 2, 'Both valid diagrams should be drawn.');
+    await canvas.findByText('Diagram could not be rendered', undefined, { timeout: 10000 });
+    assert(canvas.getByRole('group', { name: 'Code block' }), 'The broken diagram keeps its code.');
+    assert(!/syntax error/i.test(canvasElement.textContent ?? ''), 'No Mermaid error graphic.');
+    assert(!document.querySelector('[id^="dnevo-markdown-diagram"]'), 'No leftover render node.');
+    const [flowchart] = canvas.getAllByRole('group', { name: 'Diagram' });
+    assert(flowchart && overflowOf(flowchart) > 0, 'The wide diagram scrolls inside its block.');
+    assert(overflowOf(frameOf(canvasElement)) <= 0, 'The page must not overflow.');
+  },
+};

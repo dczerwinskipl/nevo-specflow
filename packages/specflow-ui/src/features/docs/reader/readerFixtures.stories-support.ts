@@ -5,6 +5,8 @@
  * (`createFixtureDocsApi`, `fixtureWorkspaceList` below), never to production code.
  */
 
+import { diagramFixture } from '../../../test-support/mermaidDiagram.stories-support';
+
 export interface MockWorkspace {
   workspaceId: string;
   /** Registry name (the folder name); no Git branch on the read path. */
@@ -236,7 +238,15 @@ export const mainDocs: MockDoc[] = [
     'architecture/README.md',
     'Architecture',
     'Principles, runtime architecture and decision records.',
-    { type: 'hub' },
+    {
+      type: 'hub',
+      // A Mermaid diagram, drawn in the article (the `Diagram` story).
+      body: body('Architecture', [
+        ['Purpose', 'Principles, runtime architecture and decision records.'],
+        ['Runtime overview', diagramFixture],
+        ['Rules', `${lorem}\n\n- One owner per rule.\n- Link instead of copying.`],
+      ]),
+    },
   ),
   doc(
     'architecture.principles.normative-language',

@@ -132,6 +132,8 @@
     "markdownCodeBlock": "Blok kodu",
     "markdownTaskDone": "Zadanie ukończone",
     "markdownTaskOpen": "Zadanie nieukończone",
+    "markdownDiagram": "Diagram",
+    "markdownDiagramFailed": "Nie udało się wyświetlić diagramu",
     "thisSpecification": "Ta specyfikacja",
     "backFromHistory": "Wróć z historii",
     "previewTaskAria": "Podgląd zadania: {{title}}",

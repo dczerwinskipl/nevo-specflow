@@ -37,12 +37,24 @@ When an idea uses words such as "must", "should", "expected", or "target", read 
 language unless the sentence explicitly cites an existing authoritative rule. Current architecture,
 product, engineering, and reference documents always win on conflict.
 
+An **exploration document** and a **roadmap record** have different lifecycles. An exploration
+document proposes a design or preserves evidence; it may become obsolete when the design is
+approved. A roadmap record tracks the product outcome, its target release and its relationship to
+Specifications and PRs, even after delivery. Retiring the former never removes the latter.
+
 When an idea is accepted for implementation:
 
-1. reconcile it with current code and current provider versions;
-2. promote durable rules into their authoritative architecture/engineering/reference home;
-3. create an implementation-ready specification or task plan as appropriate;
-4. remove or mark the idea as superseded rather than leaving competing active guidance.
+1. reconcile it with current code and provider versions;
+2. promote accepted technical rules into their authoritative product/architecture/reference home;
+3. link the approved Specification or task plan to the stable roadmap ID when one exists;
+4. mark obsolete exploration text as implemented or superseded, or retire it after its useful
+   evidence and links have been preserved;
+5. keep the roadmap record and link its Specifications, PRs and current contracts through delivery
+   and release, with implementation and release statuses recorded separately.
+
+During **Specification planning**, intentionally retrieve [the product roadmap](roadmap.md) and only
+the relevant idea documents. Ordinary implementation context still excludes `docs/ideas/**`,
+so a speculative idea cannot override an approved contract.
 
 A merged implementation PR does not by itself prove that a whole idea is delivered. Before any part
 of an idea is removed, give each part exactly one disposition:
@@ -58,6 +70,8 @@ behaviour next to it is marked as such and linked to its open idea. Decision rec
 rationale whose premise no longer holds is marked superseded or removed.
 
 ## Current packages
+
+**Product planning:** [Product roadmap](roadmap.md) (current release status) and [coverage audit](roadmap-coverage.md) (numbered source follow-ups and unscheduled outcomes) tracks release horizons, capability status, gaps and completed product outcomes with linked PR evidence. For the full implementation history, consult [GitHub pull requests](https://github.com/dczerwinskipl/nevo-specflow/pulls?q=is%3Apr+is%3Amerged), not a manually maintained PR inventory. Release targets are proposals; ideas remain linked after a Specification is created and after delivery.
 
 - [Offline Engine, CLI/Runtime boundaries, and Git worktrees](specflow-engine/README.md)
 - [Multi-project hosting, Docker, and future cross-project work](multi-project-hosting.md)

@@ -305,6 +305,47 @@
       ]
     },
     {
+      "id": "ideas.roadmap",
+      "type": "hub",
+      "title": "Nevo SpecFlow product roadmap — 1.0, 1.1 and 2.0",
+      "status": "draft",
+      "file": "docs/ideas/roadmap.md",
+      "read_when": [
+        "deciding what to design or implement next",
+        "writing a Specification that must leave room for later product capabilities",
+        "evaluating whether an idea belongs in 1.0, 1.1 or a larger 2.0 architecture change",
+        "linking completed Specifications and pull requests back to product direction"
+      ],
+      "summary": "Proposed product roadmap for a usable single-project 1.0, incremental 1.1 improvements, and a possible multi-project, externally hosted 2.0. Tracks conceptual maturity separately from implementation and preserves links to ideas, Specifications and PRs after completion.",
+      "related": [
+        "ideas.readme",
+        "ideas.specflow-engine",
+        "ideas.specflow-runtime.provider-migration-plan",
+        "ideas.multi-project-hosting",
+        "ideas.specflow-ui",
+        "ideas.semantic-docs"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "workflow",
+        "ai",
+        "runtime",
+        "server",
+        "ui",
+        "cli",
+        "docs",
+        "release",
+        "security"
+      ],
+      "tags": [
+        "roadmap",
+        "product-direction",
+        "pre-specification",
+        "releases",
+        "planning"
+      ]
+    },
+    {
       "id": "ideas.semantic-docs",
       "type": "hub",
       "title": "Semantic documentation search follow-ups",
@@ -2655,6 +2696,38 @@
         "server",
         "ui",
         "security"
+      ]
+    },
+    {
+      "id": "ideas.roadmap-coverage",
+      "type": "engineering",
+      "title": "Roadmap source coverage and unscheduled capabilities",
+      "status": "draft",
+      "file": "docs/ideas/roadmap-coverage.md",
+      "read_when": [
+        "verifying that workflow and provider follow-ups are accounted for in product planning",
+        "classifying previously unscheduled Ideas before the next release"
+      ],
+      "summary": "Source-level mapping of numbered Workflow and provider follow-ups to stable product roadmap outcomes, plus unscheduled product candidates. Release scope and status remain owned by ideas.roadmap.",
+      "related": [
+        "ideas.roadmap",
+        "ideas.specflow-engine.plan-06",
+        "ideas.specflow-runtime.provider-migration-plan"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "workflow",
+        "ai",
+        "runtime",
+        "ui",
+        "docs",
+        "release"
+      ],
+      "tags": [
+        "roadmap",
+        "planning",
+        "coverage",
+        "follow-ups"
       ]
     },
     {

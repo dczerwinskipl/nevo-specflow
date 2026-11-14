@@ -77,56 +77,59 @@ Source: [Provider migration plan](specflow-runtime/provider-migration-plan.md). 
 
 Each ID represents a distinct possible outcome. **Untriaged means no release decision has been made**; it must not be mistaken for a rejected or deliberately deferred feature. Some remain prerequisites of planned work, so dependencies may change their priority. See the source before drafting a Specification.
 
-| ID   | Candidate outcome                                     | Source                                                                      |
-| ---- | ----------------------------------------------------- | --------------------------------------------------------------------------- |
-| L100 | Task decision and evidence drill-down                 | [Task evidence](specflow-ui/components/task-decision-evidence-ui-spec.md)   |
-| L101 | Floating Session                                      | [UI proposal](specflow-ui/screens/floating-session-ui-spec.md)              |
-| L102 | Composer attachments and repository references        | [Composer](specflow-ui/components/session-composer-design.md)               |
-| L103 | Workflow events in Session conversation               | [Chat V10](specflow-ui/components/session-chat-v10-design.md)               |
-| L104 | Quote/origin-aware conversation navigation            | [Chat V10](specflow-ui/components/session-chat-v10-design.md)               |
-| L105 | Server-side Work history filtering                    | [Work history](specflow-runtime/work-history-server-filter.md)              |
-| L106 | Per-tool Work Inspector rendering                     | [Work Inspector](specflow-ui/components/session-work-inspector-ui-spec.md)  |
-| L107 | Full IDE integration                                  | [Developer workspace](developer-workspace/code-inspection-and-editing.md)   |
-| L108 | Multiple independent executions of one step           | [Multi-instance](specflow-engine/multi-instance-execution.md)               |
-| L109 | Scheduled/recurring Workflow runs                     | [Managed integration](specflow-engine/managed-session-integration.md)       |
-| L110 | Workspace relocate and repair                         | [Binding lifecycle](specflow-engine/workspace-binding-lifecycle.md)         |
-| L111 | Provider liveness/watchdog                            | [Watchdogs](specflow-runtime/ai-adapters/liveness-watchdog.md)              |
-| L112 | Quota vs transient error classification               | [Error taxonomy](specflow-runtime/ai-adapters/error-classification.md)      |
-| L113 | Capacity-aware provider admission                     | [Capacity](specflow-runtime/ai-adapters/provider-capacity-and-admission.md) |
-| L114 | Provider diagnose and protocol replay                 | [Diagnostics](specflow-runtime/ai-adapters/diagnostics-and-replay.md)       |
-| L115 | Native Session recovery improvements                  | [Resume](specflow-runtime/ai-adapters/session-resume-and-recovery.md)       |
-| L116 | Authorization filtering and capability projection     | [Auth follow-ups](authorization/README.md)                                  |
-| L117 | UI data prefetch, refresh and events                  | [UI events](specflow-ui/data-loading-refresh-and-eventing.md)               |
-| L118 | Automated Storybook policy/coverage                   | [Storybook](specflow-ui/storybook-rework.md)                                |
-| L119 | Settings catalogue renderer                           | [Settings](specflow-ui/components/settings-catalog-renderer-ui-spec.md)     |
-| L120 | Semantic search quality and evaluation                | [Search quality](semantic-docs/search-quality.md)                           |
-| L121 | Contextual docs help and additional corpora           | [Docs surfaces](semantic-docs/surfaces-and-setup.md)                        |
-| L122 | Workflow definition tooling/caching                   | [Plan 06](specflow-engine/execution-plans/06-workflow-kernel/README.md)     |
-| L123 | Ready Task revisions and abandoned-task policy        | [Plan 06 F06](specflow-engine/execution-plans/06-workflow-kernel/README.md) |
-| L124 | Workflow re-pin and definition snapshots              | [Plan 06 F07](specflow-engine/execution-plans/06-workflow-kernel/README.md) |
-| L125 | Bounded Workflow Run history                          | [Plan 06 F19](specflow-engine/execution-plans/06-workflow-kernel/README.md) |
-| L126 | Active-Turn steering                                  | [Provider F03](specflow-runtime/provider-migration-plan.md)                 |
-| L127 | ACP agent transport                                   | [Provider F06](specflow-runtime/provider-migration-plan.md)                 |
-| L128 | In-flight provider authentication renewal             | [Provider F09](specflow-runtime/provider-migration-plan.md)                 |
-| L129 | Native Session import                                 | [Provider F11](specflow-runtime/provider-migration-plan.md)                 |
-| L130 | Strong OS isolation research                          | [Provider F18](specflow-runtime/provider-migration-plan.md)                 |
-| L131 | Agent-assisted Specification creation in project mode | [UI inventory](specflow-ui/README.md)                                       |
-| L132 | Bounded Work-by-ID lookup and deep links              | [Session backend](specflow-runtime/session-v10-backend-readiness.md)        |
-| L133 | Session execution Context and event linkage           | [Session backend](specflow-runtime/session-v10-backend-readiness.md)        |
-| L134 | Session artifacts, file changes and handovers         | [Session backend](specflow-runtime/session-v10-backend-readiness.md)        |
-| L135 | Verified Composer mode/approval selection             | [Composer](specflow-ui/components/session-composer-design.md)               |
-| L136 | Complete Specification Activity history               | [Overview decisions](specflow-runtime/project-mode-spec-overview/README.md) |
-| L137 | Editing project/provider settings and secrets         | [Project Settings](specflow-ui/screens/project-settings-ui-spec.md)         |
-| L138 | Protected-target Close policy                         | [Durable operations](specflow-engine/durable-operations-and-recovery.md)    |
-| L139 | Assisted/manual post-Close conflict resolution        | [Durable operations](specflow-engine/durable-operations-and-recovery.md)    |
-| L140 | Offline external-agent Workflow execution and claims  | [External agents](specflow-engine/offline-cli-and-external-agents.md)       |
-| L141 | Work digest and stable Commentary-phase anchors       | [Backend readiness](specflow-runtime/session-v10-backend-readiness.md)      |
-| L142 | Project Repository/Changes inspection surface         | [Overview decisions](specflow-runtime/project-mode-spec-overview/README.md) |
-| L143 | Additional documentation corpora                      | [Docs surfaces](semantic-docs/surfaces-and-setup.md)                        |
-| L144 | Assisted documentation/embedding setup                | [Docs surfaces](semantic-docs/surfaces-and-setup.md)                        |
-| L145 | Explicit worktree cleanup user controls               | [Engine acceptance](specflow-engine/acceptance-criteria.md)                 |
-| L146 | Specification Task filtering                          | [Specification UI](specflow-ui/screens/specification-workspace-ui-spec.md)  |
-| L147 | Task-origin ad hoc Session start/list                 | [Session UX](specflow-ui/session-association-ux/README.md)                  |
+| ID   | Candidate outcome                                 | Source                                                                      |
+| ---- | ------------------------------------------------- | --------------------------------------------------------------------------- |
+| L100 | Task decision and evidence drill-down             | [Task evidence](specflow-ui/components/task-decision-evidence-ui-spec.md)   |
+| L101 | Floating Session                                  | [UI proposal](specflow-ui/screens/floating-session-ui-spec.md)              |
+| L102 | Composer attachments and repository references    | [Composer](specflow-ui/components/session-composer-design.md)               |
+| L103 | Workflow events in Session conversation           | [Chat V10](specflow-ui/components/session-chat-v10-design.md)               |
+| L104 | Quote/origin-aware conversation navigation        | [Chat V10](specflow-ui/components/session-chat-v10-design.md)               |
+| L105 | Server-side Work history filtering                | [Work history](specflow-runtime/work-history-server-filter.md)              |
+| L106 | Per-tool Work Inspector rendering                 | [Work Inspector](specflow-ui/components/session-work-inspector-ui-spec.md)  |
+| L107 | Full IDE integration                              | [Developer workspace](developer-workspace/code-inspection-and-editing.md)   |
+| L108 | Multiple independent executions of one step       | [Multi-instance](specflow-engine/multi-instance-execution.md)               |
+| L109 | Scheduled/recurring Workflow runs                 | [Managed integration](specflow-engine/managed-session-integration.md)       |
+| L110 | Workspace relocate and repair                     | [Binding lifecycle](specflow-engine/workspace-binding-lifecycle.md)         |
+| L111 | Provider liveness/watchdog                        | [Watchdogs](specflow-runtime/ai-adapters/liveness-watchdog.md)              |
+| L112 | Quota vs transient error classification           | [Error taxonomy](specflow-runtime/ai-adapters/error-classification.md)      |
+| L113 | Capacity-aware provider admission                 | [Capacity](specflow-runtime/ai-adapters/provider-capacity-and-admission.md) |
+| L114 | Provider diagnose and protocol replay             | [Diagnostics](specflow-runtime/ai-adapters/diagnostics-and-replay.md)       |
+| L115 | Native Session recovery improvements              | [Resume](specflow-runtime/ai-adapters/session-resume-and-recovery.md)       |
+| L116 | Authorization filtering and capability projection | [Auth follow-ups](authorization/README.md)                                  |
+| L117 | UI data prefetch, refresh and events              | [UI events](specflow-ui/data-loading-refresh-and-eventing.md)               |
+| L118 | Automated Storybook policy/coverage               | [Storybook](specflow-ui/storybook-rework.md)                                |
+| L119 | Settings catalogue renderer                       | [Settings](specflow-ui/components/settings-catalog-renderer-ui-spec.md)     |
+| L120 | Semantic search quality and evaluation            | [Search quality](semantic-docs/search-quality.md)                           |
+| L121 | Contextual docs help and additional corpora       | [Docs surfaces](semantic-docs/surfaces-and-setup.md)                        |
+| L122 | Workflow definition tooling/caching               | [Plan 06](specflow-engine/execution-plans/06-workflow-kernel/README.md)     |
+| L123 | Ready Task revisions and abandoned-task policy    | [Plan 06 F06](specflow-engine/execution-plans/06-workflow-kernel/README.md) |
+| L124 | Workflow re-pin and definition snapshots          | [Plan 06 F07](specflow-engine/execution-plans/06-workflow-kernel/README.md) |
+| L125 | Bounded Workflow Run history                      | [Plan 06 F19](specflow-engine/execution-plans/06-workflow-kernel/README.md) |
+| L126 | Active-Turn steering                              | [Provider F03](specflow-runtime/provider-migration-plan.md)                 |
+| L127 | ACP agent transport                               | [Provider F06](specflow-runtime/provider-migration-plan.md)                 |
+| L128 | In-flight provider authentication renewal         | [Provider F09](specflow-runtime/provider-migration-plan.md)                 |
+| L129 | Native Session import                             | [Provider F11](specflow-runtime/provider-migration-plan.md)                 |
+| L130 | Strong OS isolation research                      | [Provider F18](specflow-runtime/provider-migration-plan.md)                 |
+
+### Additional untriaged outcomes (L131–L147)
+
+- **L131** · Agent-assisted Specification creation in project mode ([source](specflow-ui/README.md)).
+- **L132** · Bounded Work-by-ID lookup and deep links ([source](specflow-runtime/session-v10-backend-readiness.md)).
+- **L133** · Session execution Context and event linkage ([source](specflow-runtime/session-v10-backend-readiness.md)).
+- **L134** · Session artifacts, file changes and handovers ([source](specflow-runtime/session-v10-backend-readiness.md)).
+- **L135** · Verified Composer mode/approval selection ([source](specflow-ui/components/session-composer-design.md)).
+- **L136** · Complete Specification Activity history ([source](specflow-runtime/project-mode-spec-overview/README.md)).
+- **L137** · Editing project/provider settings and secrets ([source](specflow-ui/screens/project-settings-ui-spec.md)).
+- **L138** · Protected-target Close policy ([source](specflow-engine/durable-operations-and-recovery.md)).
+- **L139** · Assisted/manual post-Close conflict resolution ([source](specflow-engine/durable-operations-and-recovery.md)).
+- **L140** · Offline external-agent Workflow execution and claims ([source](specflow-engine/offline-cli-and-external-agents.md)).
+- **L141** · Work digest and stable Commentary-phase anchors ([source](specflow-runtime/session-v10-backend-readiness.md)).
+- **L142** · Project Repository/Changes inspection surface ([source](specflow-runtime/project-mode-spec-overview/README.md)).
+- **L143** · Additional documentation corpora ([source](semantic-docs/surfaces-and-setup.md)).
+- **L144** · Assisted documentation/embedding setup ([source](semantic-docs/surfaces-and-setup.md)).
+- **L145** · Explicit worktree cleanup user controls ([source](specflow-engine/acceptance-criteria.md)).
+- **L146** · Specification Task filtering ([source](specflow-ui/screens/specification-workspace-ui-spec.md)).
+- **L147** · Task-origin ad hoc Session start/list ([source](specflow-ui/session-association-ux/README.md)).
 
 ## Source-by-source Ideas audit
 

@@ -20,4 +20,5 @@ export type {
   SpecificationSectionState,
   SpecificationWorkspaceData,
   StartSessionAction,
+  TaskProgressData,
 } from './model';

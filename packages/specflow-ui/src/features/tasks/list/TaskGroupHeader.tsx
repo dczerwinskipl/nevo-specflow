@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { OperationalGroupHeader } from '../../../../shared/operational-list';
+import { OperationalGroupHeader } from '../../../shared/operational-list';
 
 export interface TaskGroupHeaderProps {
   readonly name: string;
@@ -33,7 +33,6 @@ export function TaskGroupHeader({
         { label: name },
       )}
       onToggle={onToggle}
-      selectable
     />
   );
 }

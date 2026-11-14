@@ -15,7 +15,7 @@ import { FileText } from 'lucide-react';
 import { productNavigationItems, showsNoSpecificationHint } from './productNavigationModel';
 import { useSessionDisclosure, type SessionDisclosurePreferences } from './useSessionDisclosure';
 import { useNavigationFocus } from './useNavigationFocus';
-import { focusHashSection, useHashSectionFocus } from './useHashSectionFocus';
+import { useHashSectionFocus } from './useHashSectionFocus';
 import { designLayerMetadata } from '@nevo/figma-capture/metadata';
 import type { AuthStore } from '../../auth/store';
 import { AccountMenu } from '../AccountMenu';
@@ -93,7 +93,6 @@ export function ProductNavigation({
     specId,
     location.pathname,
     identity?.hasGit,
-    location.hash,
     navigation.status !== 'loading',
     // A Session of the Specification: **Sesje** is the active view.
     sessionHome ? 'sessions' : undefined,
@@ -208,25 +207,8 @@ export function ProductNavigation({
                           search={
                             view.id === 'changes' ? { collection, source: 'base' } : { collection }
                           }
-                          hash={'hash' in view ? view.hash : undefined}
                           className={className}
-                          // Overview and Tasks share a route and differ only by #hash: compare the
-                          // hash too so exactly one link reports aria-current="page".
-                          activeOptions={{
-                            exact: view.id === 'overview' || view.id === 'tasks',
-                            includeHash: view.id === 'overview' || view.id === 'tasks',
-                          }}
-                          onClick={
-                            view.id === 'tasks'
-                              ? () => {
-                                  // Re-selecting the already active section does not change the
-                                  // URL; still bring the section into view and focus.
-                                  if (location.hash === view.hash) {
-                                    focusHashSection(view.hash);
-                                  }
-                                }
-                              : undefined
-                          }
+                          activeOptions={{ exact: view.id === 'overview' }}
                         >
                           {children}
                         </Link>

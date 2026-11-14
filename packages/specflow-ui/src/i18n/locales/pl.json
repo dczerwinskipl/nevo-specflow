@@ -215,7 +215,15 @@
     "sessionStatusActive": "Aktywna",
     "sessionStatusAttention": "Wymaga uwagi",
     "attentionViewTask": "Zobacz zadanie",
-    "viewTasks": "Zadania"
+    "viewTasks": "Zadania",
+    "attentionNeedsAgent": "Wymaga agenta",
+    "attentionShowMore_one": "Pokaż {{count}} więcej",
+    "attentionShowMore_few": "Pokaż {{count}} więcej",
+    "attentionShowMore_many": "Pokaż {{count}} więcej",
+    "attentionShowMore_other": "Pokaż {{count}} więcej",
+    "attentionSession": "Sesja",
+    "answerSessionAction": "Odpowiedz",
+    "sessionsHeading": "Sesje"
   },
   "playground": {
     "title": "UI Playground",
@@ -2205,7 +2213,15 @@
       "finishKept": "Twoje zakończenie jest zachowane: wynik, uwagi i artefakty zostają bez zmian. Zakończ krok wraca do niego.",
       "postActionFailed": "Zakończono. Zatwierdzenie stanu przepływu nie powiodło się ({{code}}); zmiany pozostają niezatwierdzone, a Zamknięcie je obejmie.",
       "lastPrefix": "Ostatnio: {{step}} · ",
-      "alreadyFinished": "Ten krok został już zakończony. Poniżej widać, co można zrobić teraz."
+      "alreadyFinished": "Ten krok został już zakończony. Poniżej widać, co można zrobić teraz.",
+      "startWorkflow": "Rozpocznij przepływ",
+      "operations": "Operacje przepływu",
+      "history": "Historia przepływu",
+      "returnTo": "Wróć do: {{step}}",
+      "finishAfterGate": "Zakończenie kroku będzie dostępne, gdy ten warunek zostanie spełniony.",
+      "technicalStep": "Krok {{step}} · {{title}} wersja {{version}}",
+      "technical": "{{title}} wersja {{version}}",
+      "openDocument": "Otwórz {{name}}"
     },
     "blocker": {
       "dependencies_one": "Czeka na {{count}} zależność",
@@ -2411,6 +2427,105 @@
       "removed": "Usuwa krok {{step}}",
       "renamed": "Zmienia nazwę kroku {{from}} na {{to}}",
       "transitions": "Zmienia, dokąd prowadzi krok {{step}}"
+    }
+  },
+  "taskOverview": {
+    "attention": {
+      "action": {
+        "review-tasks": "Przejrzyj zadania",
+        "edit-context": "Edytuj kontekst",
+        "edit-dependencies": "Edytuj zależności",
+        "confirm-definition": "Przejrzyj nową wersję",
+        "open-project-settings": "Otwórz ustawienia projektu",
+        "configure-archetype": "Skonfiguruj archetyp",
+        "cancel-task": "Anuluj zadanie",
+        "restore-task": "Otwórz zadanie",
+        "satisfy-gate": "Otwórz zadanie",
+        "start-step": "Rozpocznij krok",
+        "return-to-step": "Wróć do wcześniejszego kroku"
+      },
+      "specification": "Specyfikacja",
+      "stuckTitle_one": "Rozwiąż {{count}} blokujące zadanie",
+      "stuckTitle_few": "Rozwiąż {{count}} blokujące zadania",
+      "stuckTitle_many": "Rozwiąż {{count}} blokujących zadań",
+      "stuckTitle_other": "Rozwiąż {{count}} blokujących zadań",
+      "stuckReason": "Zatwierdź, wznów lub anuluj je, aby specyfikacja mogła się zakończyć",
+      "startFailed": "Nie udało się rozpocząć kroku. Otwórz zadanie, aby zobaczyć, co można zrobić teraz."
+    },
+    "summary": {
+      "allTasks": "Wszystkie zadania",
+      "count_one": "{{count}} zadanie",
+      "count_few": "{{count}} zadania",
+      "count_many": "{{count}} zadań",
+      "count_other": "{{count}} zadań",
+      "more_one": "jeszcze {{count}}",
+      "more_few": "jeszcze {{count}}",
+      "more_many": "jeszcze {{count}}",
+      "more_other": "jeszcze {{count}}",
+      "openGroup": "{{group}}: otwórz na stronie Zadania",
+      "compact": "{{group}} {{count}}"
+    },
+    "progress": {
+      "label": "Zadania {{progress}}",
+      "done": "ukończone {{completed}} z {{total}}",
+      "cancelled_one": "{{count}} anulowane",
+      "cancelled_few": "{{count}} anulowane",
+      "cancelled_many": "{{count}} anulowanych",
+      "cancelled_other": "{{count}} anulowanych",
+      "ended_one": "{{count}} zakończone",
+      "ended_few": "{{count}} zakończone",
+      "ended_many": "{{count}} zakończonych",
+      "ended_other": "{{count}} zakończonych",
+      "onHold_one": "{{count}} wstrzymane",
+      "onHold_few": "{{count}} wstrzymane",
+      "onHold_many": "{{count}} wstrzymanych",
+      "onHold_other": "{{count}} wstrzymanych",
+      "barNote": "Pasek liczy wszystkie zadania oprócz anulowanych.",
+      "barNoteEnded": "Pasek liczy wszystkie zadania oprócz anulowanych i zakończonych."
+    },
+    "terminal": {
+      "allDone_one": "Zadanie ukończone",
+      "allDone_few": "Wszystkie {{count}} zadania ukończone",
+      "allDone_many": "Wszystkie {{count}} zadań ukończone",
+      "allDone_other": "Wszystkie {{count}} zadań ukończone",
+      "cancelled_one": "{{count}} zadanie anulowane",
+      "cancelled_few": "{{count}} zadania anulowane",
+      "cancelled_many": "{{count}} zadań anulowanych",
+      "cancelled_other": "{{count}} zadań anulowanych",
+      "done_one": "{{count}} ukończone",
+      "done_few": "{{count}} ukończone",
+      "done_many": "{{count}} ukończonych",
+      "done_other": "{{count}} ukończonych"
+    },
+    "stuck": {
+      "before": "Nie może teraz kontynuować:",
+      "after": "i żadne inne zadanie nie jest otwarte.",
+      "cause": {
+        "draft": "jest szkicem",
+        "on-hold": "jest wstrzymane",
+        "broken": "jest uszkodzone",
+        "dependency-unsatisfiable": "zależy od anulowanego lub zakończonego zadania"
+      }
+    },
+    "row": {
+      "attention": "Wymaga uwagi · {{reason}}",
+      "attentionOnly": "Wymaga uwagi",
+      "blocksSpecification": "specyfikacja nie może kontynuować, dopóki się nie ruszy",
+      "waitingFor": "Czeka na {{ids}}"
+    },
+    "page": {
+      "loading": "Wczytywanie zadań",
+      "failed": "Nie udało się wczytać zadań.",
+      "filterLabel": "Filtruj zadania",
+      "filterPlaceholder": "Filtruj po identyfikatorze lub tytule",
+      "blocking_one": "Blokujące specyfikację · {{count}} zadanie",
+      "blocking_few": "Blokujące specyfikację · {{count}} zadania",
+      "blocking_many": "Blokujące specyfikację · {{count}} zadań",
+      "blocking_other": "Blokujące specyfikację · {{count}} zadań",
+      "nothingBlocks": "Nic teraz nie blokuje specyfikacji",
+      "clearBlocking": "Wyczyść filtr: blokujące specyfikację",
+      "shown": "Widoczne: {{matched}} z {{total}}",
+      "noMatch": "Żadne zadanie nie pasuje do filtra."
     }
   }
 }

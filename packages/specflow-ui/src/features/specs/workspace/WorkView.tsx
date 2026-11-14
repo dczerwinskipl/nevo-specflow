@@ -24,11 +24,12 @@ export const OVERVIEW_TWO_COLUMN_MIN_WIDTH = 1408;
  */
 export const OVERVIEW_TWO_COLUMN_HYSTERESIS = 16;
 
-/** A column's opening section starts like the Requires attention block: 12 px, no divider. */
+/** The first section of a column starts 12 px under the summary, without a divider. */
+const opening = 'pt-3 pb-4 @min-[40rem]/work:pb-5';
+/** Every later section is divided from the one above it. */
+const following = 'border-t border-border-default py-4 @min-[40rem]/work:py-5';
+/** A slot outlet's first section opens its column (its own wrapper carries the divider). */
 const opensColumn = '[&>*:first-child]:border-t-0 [&>*:first-child]:pt-3';
-/** The same, for the work column's next section when Requires attention renders nothing. */
-const opensColumnAfterEmptyPeer =
-  'peer-empty:[&>*:first-child]:border-t-0 peer-empty:[&>*:first-child]:pt-3';
 
 const noSubscription = () => () => undefined;
 
@@ -47,26 +48,24 @@ export interface WorkViewProps {
 }
 
 /**
- * Specification Workspace work view composition root.
- * Coordinates section layout without monolithic state management.
+ * Specification Overview composition root: the control center of one Specification.
  *
  * Below `OVERVIEW_TWO_COLUMN_MIN_WIDTH` of content width the sections form one reading column in
- * their priority order: Requires attention, Continue session, other context, preparation, Tasks,
- * Documents. From that width they form two columns that fill the pane: the work column (Requires
- * attention, preparation, Tasks) and the context column (Continue session, Documents, other
- * context), with the summary above both. Each column stacks on its own, so a missing section
+ * their priority order: summary, Now (or the preparation block), Requires attention, Tasks,
+ * Sessions, Documents, other context. From that width they form two columns that fill the pane:
+ * the work column (Now, Requires attention, Tasks) and the context column (Sessions, Documents,
+ * other context), with the summary above both. Each column stacks on its own, so a missing section
  * leaves no gap and both columns start on one line. Two columns need a section on each side;
  * otherwise Overview stays one column at any width.
  *
  * The width is measured (`useContainerMinWidth`, on a zero-height sentinel) rather than queried in
  * CSS because the DOM order changes with it: keyboard and reading order follow the visible order
- * in both arrangements, and independent columns need their own containers. The summary, Requires
- * attention, preparation and Tasks stay keyed children of one parent, so a crossing moves them
- * without remounting (a Task selection survives it). The context sections change parent and do
- * remount: their view state lives outside them (Documents' "show all" in the Specification store),
- * and focus inside them is restored by `usePreserveFocusAcrossLayout`. They are not mounted
- * before the first measurement, so an Overview opening wide does not mount them in one column
- * first.
+ * in both arrangements, and independent columns need their own containers. The summary, Now,
+ * Requires attention and Tasks stay keyed children of one parent, so a crossing moves them without
+ * remounting. The context sections change parent and do remount: their view state lives outside
+ * them (Documents' "show all" in the Specification store), and focus inside them is restored by
+ * `usePreserveFocusAcrossLayout`. They are not mounted before the first measurement, so an
+ * Overview opening wide does not mount them in one column first.
  */
 export function WorkView({ specId, data }: WorkViewProps) {
   const modules = useUiModules();
@@ -83,15 +82,14 @@ export function WorkView({ specId, data }: WorkViewProps) {
   const id = specId ?? data.id;
   const context: SpecificationWorkSectionContext = { specId: id, data, actions: runtime };
   // No Tasks and no Session to continue: the preparation block explains (and, when the start is
-  // offered, opens) the way to Tasks. Continue session owns the next step once a Session exists.
+  // offered, opens) the way to Tasks.
   const preparationShown = data.isEmpty === true && !data.resumeSession;
   const nowShown = useSpecificationNowVisible();
+  const nowBlock = nowShown || preparationShown;
+  const attentionShown = hasSpecificationAttention(modules, context);
+  const mainShown = hasVisibleWorkSections(modules, ['main'], context);
   const hasContextSide = hasVisibleWorkSections(modules, ['resume', 'context', 'related'], context);
-  const hasWorkSide =
-    preparationShown ||
-    nowShown ||
-    hasVisibleWorkSections(modules, ['main'], context) ||
-    hasSpecificationAttention(modules, context);
+  const hasWorkSide = nowBlock || mainShown || attentionShown;
   const twoColumns = wide && hasContextSide && hasWorkSide;
   // In the browser the context sections wait for the first measurement (it runs before paint).
   const contextReady = measured || !client;
@@ -107,45 +105,49 @@ export function WorkView({ specId, data }: WorkViewProps) {
       />
     </div>
   );
-  // `peer`: when Requires attention renders nothing, the next work section opens the column.
-  const attention = (
-    <div key="attention" className={cn(twoColumns && 'peer col-start-1 min-w-0')}>
+  // With a workflow (project Runtime) the Now block opens the work; without one it renders the
+  // preparation block in its place.
+  const now = nowBlock ? (
+    <div key="now" className={cn(opening, 'empty:hidden', twoColumns && 'col-start-1 min-w-0')}>
+      <SpecificationNow
+        documents={data.documents.map((document) => ({
+          value: document.filename ?? document.id,
+          label: document.title,
+        }))}
+        documentName={(documentId) => {
+          const document = data.documents.find((candidate) => candidate.id === documentId);
+
+          return document ? (document.filename ?? document.title) : undefined;
+        }}
+        progress={data.taskProgress}
+        stuck={data.taskOverview?.stuck}
+        fullTaskHref={runtime.fullTaskHref}
+        onOpenTask={(taskId) => runtime.openTask(taskId)}
+        onOpenDocument={(documentId) => runtime.openDoc(documentId)}
+        onOpenHistory={runtime.openHistory}
+        fallback={preparationShown ? <PreparationSection startSession={data.startSession} /> : null}
+      />
+    </div>
+  ) : null;
+  const attention = attentionShown ? (
+    <div
+      key="attention"
+      className={cn(nowBlock ? following : opening, twoColumns && 'col-start-1 min-w-0')}
+    >
       <SpecificationAttentionOutlet specId={id} data={data} />
     </div>
-  );
-  // With a workflow (project Runtime), the Now block takes the preparation block's place, above
-  // the Tasks; it renders the preparation block itself when the Specification has no workflow.
-  const preparation =
-    nowShown || preparationShown ? (
-      <div
-        key="preparation"
-        className={cn(
-          'border-t border-border-default py-4 empty:hidden @min-[40rem]/work:py-5',
-          twoColumns && 'col-start-1 min-w-0 peer-empty:border-t-0 peer-empty:pt-3',
-        )}
-      >
-        <SpecificationNow
-          documents={data.documents.map((document) => ({
-            value: document.filename ?? document.id,
-            label: document.title,
-          }))}
-          fallback={
-            preparationShown ? <PreparationSection startSession={data.startSession} /> : null
-          }
-        />
-      </div>
-    ) : null;
-  const main = (
+  ) : null;
+  const main = mainShown ? (
     <div
       key="main"
       className={cn(
         twoColumns && 'col-start-1 min-w-0',
-        twoColumns && !preparation && opensColumnAfterEmptyPeer,
+        !nowBlock && !attentionShown && opensColumn,
       )}
     >
       <SpecificationWorkSectionOutlet slot="main" specId={id} data={data} modules={modules} />
     </div>
-  );
+  ) : null;
   const outlet = (slot: 'resume' | 'context' | 'related') =>
     contextReady ? (
       <SpecificationWorkSectionOutlet slot={slot} specId={id} data={data} modules={modules} />
@@ -164,8 +166,8 @@ export function WorkView({ specId, data }: WorkViewProps) {
         // never stretches the rows of the work column: Tasks follow Requires attention directly.
         <div className="grid grid-cols-[minmax(0,1fr)_minmax(22rem,30rem)] grid-rows-[auto_auto_auto_1fr] gap-x-12">
           {summary}
+          {now}
           {attention}
-          {preparation}
           {main}
           <div
             key="side"
@@ -180,12 +182,12 @@ export function WorkView({ specId, data }: WorkViewProps) {
       ) : (
         <div className="max-w-content-standard">
           {summary}
+          {now}
           {attention}
-          <Fragment key="resume">{outlet('resume')}</Fragment>
-          <Fragment key="context">{outlet('context')}</Fragment>
-          {preparation}
           {main}
+          <Fragment key="resume">{outlet('resume')}</Fragment>
           <Fragment key="related">{outlet('related')}</Fragment>
+          <Fragment key="context">{outlet('context')}</Fragment>
         </div>
       )}
     </div>

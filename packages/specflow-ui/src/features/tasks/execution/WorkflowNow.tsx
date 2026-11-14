@@ -1,6 +1,8 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, InlineNote } from '@nevo/ui';
+import { Button, InlineNote, Typography } from '@nevo/ui';
+import { subscribeTaskAttention } from '../overview/attentionRequests';
+import { NowOperationsMenu } from './NowOperationsMenu';
 import type {
   FinishWorkflowResult,
   GateStatus,
@@ -46,6 +48,18 @@ export interface WorkflowNowProps {
   readonly gateAction?: (gate: GateStatus) => GateAction | undefined;
   /** Names the document that meets a gate (`findings.md`). */
   readonly gateDocument?: (gate: GateStatus) => string | undefined;
+  /**
+   * The Specification Overview's layout: only the main action is a button (an unmet gate's action
+   * when every result needs it); Return, an unavailable Finish step, Workflow history and the step
+   * id and revision are in the ⋯ menu. A Requires attention "return" opens the same Return dialog.
+   */
+  readonly overview?: {
+    readonly specId: string;
+    readonly onOpenHistory?: () => void;
+    readonly waitingContent?: ReactNode;
+    readonly titleNote?: ReactNode;
+    readonly summary?: ReactNode;
+  };
 }
 
 const emptyDraft = (attemptKey: string): FinishDraft => ({
@@ -77,6 +91,7 @@ export function WorkflowNow({
   artifactOptions,
   gateAction,
   gateDocument,
+  overview,
 }: WorkflowNowProps) {
   const { t } = useTranslation();
   const commands = useWorkflowCommands(subject);
@@ -194,13 +209,58 @@ export function WorkflowNow({
       : undefined;
   };
 
+  const openReturn = () => {
+    commands.returnTo.reset();
+    setDialog('return');
+  };
+
+  const startLabel =
+    overview && position.kind === 'not-started'
+      ? t('workflowExecution.now.startWorkflow')
+      : next
+        ? t('workflowExecution.now.start', { step: next.step.title || next.step.id })
+        : undefined;
+  // Overview: when every result of the active step needs an unmet gate, the gate's action is the
+  // main action and Finish step waits in the menu, unavailable.
+  const gateBlocksFinish =
+    overview !== undefined &&
+    finish !== undefined &&
+    finish.transitions.length > 0 &&
+    finish.transitions.every((transition) =>
+      (transition.gates ?? []).some((gate) => gate.status === 'unsatisfied'),
+    );
+  const mainGateAction = gateBlocksFinish
+    ? finish.transitions
+        .flatMap((transition) => transition.gates ?? [])
+        .filter((gate) => gate.status === 'unsatisfied')
+        .map(finishGateAction)
+        .find((action) => action !== undefined)
+    : undefined;
+
   const workflowActions =
     primaryAction ??
-    (actions.start || finish || actions.return ? (
+    (overview ? (
+      actions.start && startLabel ? (
+        <Button onClick={startNow} disabled={busy}>
+          {startLabel}
+        </Button>
+      ) : finish && !gateBlocksFinish ? (
+        <Button onClick={openFinish} disabled={busy}>
+          {t('workflowExecution.now.finish')}
+        </Button>
+      ) : mainGateAction ? (
+        <>
+          <Button onClick={mainGateAction.onSelect}>{mainGateAction.label}</Button>
+          <Typography as="p" variant="body-sm" className="self-center text-content-secondary">
+            {t('workflowExecution.now.finishAfterGate')}
+          </Typography>
+        </>
+      ) : undefined
+    ) : actions.start || finish || actions.return ? (
       <>
-        {actions.start && next ? (
+        {actions.start && startLabel ? (
           <Button onClick={startNow} disabled={busy}>
-            {t('workflowExecution.now.start', { step: next.step.title || next.step.id })}
+            {startLabel}
           </Button>
         ) : null}
         {finish ? (
@@ -209,19 +269,88 @@ export function WorkflowNow({
           </Button>
         ) : null}
         {actions.return ? (
-          <Button
-            variant="secondary"
-            disabled={busy}
-            onClick={() => {
-              commands.returnTo.reset();
-              setDialog('return');
-            }}
-          >
+          <Button variant="secondary" disabled={busy} onClick={openReturn}>
             {t('workflowExecution.now.return')}
           </Button>
         ) : null}
       </>
     ) : undefined);
+
+  const returnTargets = actions.return?.targets ?? [];
+  const technicalStep =
+    position.kind === 'active' || position.kind === 'waiting'
+      ? position.step.id
+      : position.kind === 'ready'
+        ? position.next.step.id
+        : undefined;
+  const menu = overview ? (
+    <NowOperationsMenu
+      operations={[
+        ...(actions.return
+          ? [
+              {
+                id: 'return',
+                label:
+                  returnTargets.length === 1
+                    ? t('workflowExecution.now.returnTo', { step: returnTargets[0]!.title })
+                    : t('workflowExecution.now.return'),
+                onSelect: openReturn,
+                disabled: busy,
+              },
+            ]
+          : []),
+        ...(gateBlocksFinish
+          ? [
+              {
+                id: 'finish',
+                label: t('workflowExecution.now.finish'),
+                onSelect: openFinish,
+                disabled: true,
+              },
+            ]
+          : []),
+      ]}
+      {...(overview.onOpenHistory ? { onOpenHistory: overview.onOpenHistory } : {})}
+      note={[
+        ...(gateBlocksFinish ? [t('workflowExecution.now.finishAfterGate')] : []),
+        ...(projection.workflow
+          ? [
+              t(
+                technicalStep
+                  ? 'workflowExecution.now.technicalStep'
+                  : 'workflowExecution.now.technical',
+                {
+                  step: technicalStep,
+                  title: projection.workflow.title,
+                  version: projection.workflow.version,
+                },
+              ),
+            ]
+          : []),
+      ]}
+    />
+  ) : undefined;
+
+  // The Overview's Return also opens from Requires attention (a "return to an earlier step" item).
+  const canReturn = actions.return !== undefined;
+  const resetReturn = commands.returnTo.reset;
+  const overviewSpecId = overview?.specId;
+  useEffect(() => {
+    if (!overviewSpecId) {
+      return undefined;
+    }
+
+    return subscribeTaskAttention(overviewSpecId, (request) => {
+      if (request.kind !== 'return-to-step' || !canReturn) {
+        return false;
+      }
+
+      resetReturn();
+      setDialog('return');
+
+      return true;
+    });
+  }, [overviewSpecId, canReturn, resetReturn]);
 
   const note = (
     <>
@@ -251,10 +380,21 @@ export function WorkflowNow({
         headingId={headingId}
         status={status}
         links={links}
-        gateActionFor={gateAction ? finishGateAction : undefined}
+        // The gate's action is not repeated in the list when it is the main action.
+        gateActionFor={gateAction && !mainGateAction ? finishGateAction : undefined}
         {...(gateDocument ? { gateDocument } : {})}
         note={note}
         actions={workflowActions}
+        menu={menu}
+        {...(overview
+          ? {
+              compactDetail: true,
+              showHandoff: false,
+              waitingContent: overview.waitingContent,
+              titleNote: overview.titleNote,
+              summary: overview.summary,
+            }
+          : {})}
       />
       {firstStart && preview ? (
         <StartTaskDialog

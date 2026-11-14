@@ -7,7 +7,6 @@ export { getTaskStatePresentation, mapFullTaskResponse } from './model';
 export type {
   FullTaskData,
   TaskEvidence,
-  TaskExecutionReadiness,
   TaskGroup,
   TaskItem,
   TaskLifecycle,

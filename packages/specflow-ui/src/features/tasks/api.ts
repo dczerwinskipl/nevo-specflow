@@ -3,10 +3,21 @@ import type {
   SpecificationTaskResponse,
   TaskResourcePage,
   TaskHistoryPage,
+  TaskListQuery,
+  TaskListResponse,
 } from '@nevo/specflow-contracts/specs/workspace';
 
 /** Task detail reads are owned by the Tasks feature, even under a Specification URL. */
 export interface TaskApi {
+  /**
+   * The Tasks page read (`GET /api/specs/:specId/tasks`): the configured grouping, progress and
+   * attention; `blocking` keeps only the Tasks blocking the Specification. Project Runtime only.
+   */
+  getTaskList?(
+    specId: string,
+    query: TaskListQuery,
+    signal?: AbortSignal,
+  ): Promise<TaskListResponse>;
   getTask(specId: string, taskId: string, signal?: AbortSignal): Promise<SpecificationTaskResponse>;
   getResources?(
     specId: string,
@@ -26,6 +37,11 @@ export interface TaskApi {
 
 export function createRuntimeTaskApi(client: HttpRequestClient): TaskApi {
   return {
+    getTaskList: (specId, query, signal) =>
+      client.get<TaskListResponse>(
+        `/api/specs/${encodeURIComponent(specId)}/tasks${query.blocking ? `?blocking=${query.blocking}` : ''}`,
+        { signal },
+      ),
     getResources: (specId, taskId, token, cursor, signal) =>
       client.get<TaskResourcePage>(taskPageUrl(specId, taskId, 'resources', token, cursor), {
         signal,

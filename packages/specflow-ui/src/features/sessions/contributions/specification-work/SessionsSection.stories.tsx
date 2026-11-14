@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn } from 'storybook/test';
 import { withLocale } from '../../../../i18n/StoryLocalization';
 import type { SessionSummary } from '../../../specs/read-model';
-import { ResumeSessionSection } from './ResumeSessionSection';
+import { SessionsSection } from './SessionsSection';
 
 const minutesAgo = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString();
 
@@ -46,12 +46,12 @@ async function expectMarkCentred(root: HTMLElement) {
  */
 const meta = {
   title: 'SpecFlow/Screens/Specification Workspace',
-  component: ResumeSessionSection,
+  component: SessionsSection,
   decorators: [withLocale('pl')],
   tags: ['contract'],
   parameters: { layout: 'fullscreen' },
   args: {
-    session: attention,
+    sessions: [attention],
     onOpenSession: fn(),
     onOpenSessionsView: fn(),
     onStartSession: fn(),
@@ -60,10 +60,10 @@ const meta = {
   },
   render: (args) => (
     <div className="max-w-content-standard p-6">
-      <ResumeSessionSection {...args} />
+      <SessionsSection {...args} />
     </div>
   ),
-} satisfies Meta<typeof ResumeSessionSection>;
+} satisfies Meta<typeof SessionsSection>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 
@@ -86,13 +86,15 @@ export const ContinueSessionRow: Story = {
 /** A provider sign-in: named and muted, the same as the list row. */
 export const ContinueSessionSignInRequired: Story = {
   args: {
-    session: {
-      ...attention,
-      navigationStatus: 'authenticationRequired',
-      activityCode: undefined,
-      activity: undefined,
-      taskCount: 0,
-    },
+    sessions: [
+      {
+        ...attention,
+        navigationStatus: 'authenticationRequired',
+        activityCode: undefined,
+        activity: undefined,
+        taskCount: 0,
+      },
+    ],
   },
   play: async ({ canvasElement, canvas }) => {
     const status = await canvas.findByText('Claude: wymagane ponowne logowanie');

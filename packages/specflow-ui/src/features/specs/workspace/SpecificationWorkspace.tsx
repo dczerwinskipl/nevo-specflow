@@ -22,8 +22,12 @@ import type { SpecificationWorkspaceData } from '../read-model/model';
 import { WorkView } from './WorkView';
 import { ActivityHistory } from './ActivityHistory';
 import { isSpecificationCreatedEvent } from './activity/presentActivity';
-import { ExecuteModal } from './ExecuteModal';
-import { WorkspaceProvider, type WorkspaceRuntime } from './WorkspaceContext';
+import {
+  WorkspaceProvider,
+  type TaskSection,
+  type TasksPageTarget,
+  type WorkspaceRuntime,
+} from './WorkspaceContext';
 import {
   SpecificationSecondaryDataContext,
   taskPreviewStack,
@@ -31,7 +35,6 @@ import {
   historyStack,
   type SpecificationSecondaryContextValue,
 } from './specificationSecondaryStack';
-import { useSpecificationDialogs } from './useSpecificationDialogs';
 import { useActivityHistoryPanel } from './useActivityHistoryPanel';
 import { EnsureSpecificationState } from '../SpecificationStateProvider';
 import {
@@ -46,6 +49,20 @@ function fullTaskHref(specId: string, taskId: string, collection: 'current' | 'a
   return `/specs/${encodeURIComponent(specId)}/tasks/${encodeURIComponent(taskId)}${search}`;
 }
 
+function tasksHref(
+  specId: string,
+  collection: 'current' | 'archive',
+  target: TasksPageTarget = {},
+): string {
+  const search = new URLSearchParams({
+    collection,
+    ...(target.blocking ? { blocking: target.blocking } : {}),
+    ...(target.group ? { group: target.group } : {}),
+  });
+
+  return `/specs/${encodeURIComponent(specId)}/tasks?${search}`;
+}
+
 export interface SpecificationWorkspaceProps {
   readonly specId: string;
   readonly collection?: 'current' | 'archive';
@@ -57,10 +74,10 @@ export interface SpecificationWorkspaceProps {
   readonly onOpenSessions?: () => void;
   readonly onOpenRepository?: () => void;
   readonly onOpenChanges?: (source?: 'base' | 'uncommitted' | 'mr') => void;
-  readonly onOpenTask?: (taskId: string) => void;
+  readonly onOpenTask?: (taskId: string, section?: TaskSection) => void;
+  readonly onOpenTasks?: (target?: TasksPageTarget) => void;
   readonly onOpenFullDocument?: (documentId: string) => void;
   readonly onRefresh?: () => void | Promise<void>;
-  readonly onExecute?: (agent: string, tasks: readonly string[]) => void | Promise<void>;
   readonly onOpenSession?: (sessionId: string) => void;
   /** Opens the Specification's New Session (`/specs/$specId/sessions/new`). */
   readonly onNewSession?: () => void;
@@ -95,9 +112,9 @@ function SpecificationWorkspaceInner({
   onOpenRepository,
   onOpenChanges,
   onOpenTask,
+  onOpenTasks,
   onOpenFullDocument,
   onRefresh,
-  onExecute,
   onOpenSession,
   onNewSession,
   refreshFailed,
@@ -115,16 +132,6 @@ function SpecificationWorkspaceInner({
     data.activityEvents.some((event) => !isSpecificationCreatedEvent(event)),
   );
 
-  const {
-    executeDialogOpen,
-    tasksToExecute,
-    openExecuteDialog,
-    closeExecuteDialog,
-    handleConfirmExecute,
-  } = useSpecificationDialogs({
-    onExecute,
-  });
-
   const handlePreviewTask = useCallback(
     (taskId: string) => {
       void secondaryNavigation.open(taskPreviewStack, { specId, taskId });
@@ -137,10 +144,10 @@ function SpecificationWorkspaceInner({
   }, [secondaryNavigation, specId]);
 
   const handleOpenFullTask = useCallback(
-    (taskId: string) => {
+    (taskId: string, section?: TaskSection) => {
       void secondaryNavigation.close();
       if (onOpenTask) {
-        onOpenTask(taskId);
+        onOpenTask(taskId, section);
 
         return;
       }
@@ -191,6 +198,10 @@ function SpecificationWorkspaceInner({
     () => ({
       previewTask: handlePreviewTask,
       openTask: handleOpenFullTask,
+      openTasks: (target) => {
+        void secondaryNavigation.close();
+        onOpenTasks?.(target);
+      },
       openSession: (id) => onOpenSession?.(id),
       openSessionsView: () => onOpenSessions?.(),
       openDoc: (docId, origin = 'work') => handleOpenDoc(docId, origin),
@@ -199,15 +210,14 @@ function SpecificationWorkspaceInner({
       openChanges: (source) => onOpenChanges?.(source),
       openHistory: handleOpenHistory,
       openNewSession: () => onNewSession?.(),
-      executeTasks: (taskIds, _agent) => openExecuteDialog(taskIds),
       refresh: () => {
         if (!refreshing) {
           return onRefresh?.();
         }
       },
-      canExecute: Boolean(onExecute),
       canOpenSession: Boolean(onOpenSession),
       fullTaskHref: (taskId) => fullTaskHref(specId, taskId, collection),
+      tasksHref: (target) => tasksHref(specId, collection, target),
     }),
     [
       handlePreviewTask,
@@ -219,10 +229,10 @@ function SpecificationWorkspaceInner({
       onOpenChanges,
       handleOpenDoc,
       handleOpenHistory,
-      openExecuteDialog,
+      onOpenTasks,
+      secondaryNavigation,
       onRefresh,
       refreshing,
-      onExecute,
       onNewSession,
       collection,
       specId,
@@ -355,15 +365,6 @@ function SpecificationWorkspaceInner({
             </AppContent>
           </AppWorkspace.Secondary>
         </AppWorkspace>
-
-        {/* Explicit Dialogs */}
-        <ExecuteModal
-          open={executeDialogOpen}
-          selectedTasks={Array.from(tasksToExecute)}
-          executionReadiness={data.executionReadiness}
-          onClose={closeExecuteDialog}
-          onExecute={onExecute ? handleConfirmExecute : undefined}
-        />
       </WorkspaceProvider>
     </SpecificationSecondaryDataContext.Provider>
   );

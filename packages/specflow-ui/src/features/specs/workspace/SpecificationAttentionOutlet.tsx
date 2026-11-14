@@ -104,7 +104,7 @@ export function SpecificationAttentionOutlet({
   }
 
   return (
-    <div className="pt-3 pb-4 @min-[40rem]/work:pb-5">
+    <div className="grid gap-3">
       {items.length > 0 ? <AttentionSection items={items} /> : null}
       {failures.length > 0 ? (
         <Alert role="alert" tone="attention" title={t('specification.attentionSourceFailedTitle')}>

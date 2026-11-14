@@ -37,6 +37,18 @@ export interface NowBlockProps {
    * Ask agent) on the start action; nothing else in the block changes for it.
    */
   readonly actions?: ReactNode;
+  /** The block's ⋯ menu beside its heading (other workflow operations, technical detail). */
+  readonly menu?: ReactNode;
+  /** Keep the step id and workflow revision off the detail line (they are in `menu`). */
+  readonly compactDetail?: boolean;
+  /** Show the latest hand-off (default); the Specification Overview leaves it to the history. */
+  readonly showHandoff?: boolean;
+  /** Replaces the default waiting lines (the Overview's progress and its explanation). */
+  readonly waitingContent?: ReactNode;
+  /** A line under the position's title (an abandonment's reason). */
+  readonly titleNote?: ReactNode;
+  /** A summary under the position (a terminal Specification's Tasks). */
+  readonly summary?: ReactNode;
 }
 
 /**
@@ -53,6 +65,12 @@ export function NowBlock({
   gateDocument,
   note,
   actions,
+  menu,
+  compactDetail = false,
+  showHandoff = true,
+  waitingContent,
+  titleNote,
+  summary,
 }: NowBlockProps) {
   const { t, i18n } = useTranslation();
   const { position, workflow, handoff } = projection;
@@ -88,7 +106,7 @@ export function NowBlock({
       current = <StepTitle step={position.step} />;
       facts = t('workflowExecution.now.waitingNote');
       stepId = position.step.id;
-      supporting = (
+      supporting = waitingContent ?? (
         <>
           <InlineNote tone="attention" icon="clock">
             <span className="font-medium text-content-primary">
@@ -146,6 +164,11 @@ export function NowBlock({
       break;
   }
 
+  if (compactDetail) {
+    stepId = undefined;
+  }
+
+  const detailLine = compactDetail ? undefined : workflowLine;
   // The exit gates of the active step that are not met yet, per result ("To finish with Done:").
   const unmet =
     position.kind === 'active'
@@ -159,9 +182,12 @@ export function NowBlock({
   return (
     <AccentBlock aria-labelledby={headingId} role="region" data-workflow-now="">
       <div className="grid gap-3">
-        <Typography as="h2" variant="section-label" id={headingId} tabIndex={-1}>
-          {t('workflowExecution.now.heading')}
-        </Typography>
+        <div className="flex min-h-6 items-center justify-between gap-2">
+          <Typography as="h2" variant="section-label" id={headingId} tabIndex={-1}>
+            {t('workflowExecution.now.heading')}
+          </Typography>
+          {menu}
+        </div>
         {status}
         {/* A polite live region: a refresh after an action announces the new position. */}
         <div className="grid gap-0.5" aria-live="polite">
@@ -177,25 +203,28 @@ export function NowBlock({
           >
             {current}
           </Typography>
+          {titleNote}
           <Typography
             as="p"
             variant="body-sm"
-            className="text-content-muted [overflow-wrap:anywhere]"
+            className="text-content-muted [overflow-wrap:anywhere] empty:hidden"
           >
-            {[facts, stepId, workflowLine].filter(Boolean).length > 0 ? (
+            {[facts, stepId, detailLine].filter(Boolean).length > 0 ? (
               <>
-                {facts ? `${facts} · ` : null}
+                {facts}
+                {facts && (stepId || detailLine) ? ' · ' : null}
                 {stepId ? (
                   <>
                     <span className="font-mono">{stepId}</span>
-                    {workflowLine ? ' · ' : null}
+                    {detailLine ? ' · ' : null}
                   </>
                 ) : null}
-                {workflowLine}
+                {detailLine}
               </>
             ) : null}
           </Typography>
         </div>
+        {summary}
         {supporting}
         {unmet.map(({ transition, gates }) => {
           const result = transition.label ?? transition.result ?? transition.id;
@@ -214,7 +243,7 @@ export function NowBlock({
             </div>
           );
         })}
-        {handoff && position.kind !== 'terminal' ? (
+        {showHandoff && handoff && position.kind !== 'terminal' ? (
           <div className="grid gap-1 border-l-2 border-border-default pl-3">
             <Typography as="p" variant="body-sm" className="text-content-secondary">
               {/* A neutral icon with the result: the projection gives no tone for results. */}

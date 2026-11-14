@@ -26,6 +26,7 @@ export async function invalidateAfterTaskChange(queryClient: QueryClient, specId
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: taskAuthoringKeys.all(specId) }),
     queryClient.invalidateQueries({ queryKey: ['specifications', specId, 'task'] }),
+    queryClient.invalidateQueries({ queryKey: ['specifications', specId, 'task-list'] }),
     queryClient.invalidateQueries({
       queryKey: taskAuthoringKeys.specificationActions(specId),
       exact: true,

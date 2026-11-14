@@ -35,7 +35,7 @@ import { OperationalRow } from '../../shared/operational-list';
 import type { SemanticSupporting } from '../../shared/operational-list/OperationalRow.types';
 import { WorkspaceSection } from '../../shared/workspace-section';
 import { defaultGrouping, groupTasks } from './dashboard-grouping.stories-support';
-import { TaskGroupHeader } from '../../features/tasks/contributions/specification-work/TaskGroupHeader';
+import { TaskGroupHeader } from '../../features/tasks/list/TaskGroupHeader';
 import { MockNavigation } from '../editor-mode/MockNavigation.stories-support';
 import {
   specification,

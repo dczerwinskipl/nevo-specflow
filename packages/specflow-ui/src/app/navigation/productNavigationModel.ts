@@ -10,11 +10,8 @@ const specificationViews = [
   },
   {
     id: 'tasks',
-    // Tasks has no standalone route; it is the "main" Work section already rendered on the
-    // Specification Overview route, identified by #tasks-heading. Navigating here focuses that
-    // section instead of inventing a separate Tasks page.
-    to: '/specs/$specId',
-    hash: 'tasks-heading',
+    // The Tasks page; a Full Task under it keeps Tasks active.
+    to: '/specs/$specId/tasks',
     labelKey: 'specification.viewTasks',
     icon: ListChecks,
   },
@@ -44,7 +41,6 @@ export function productNavigationItems(
   specId: string | null,
   pathname: string,
   hasGit?: boolean,
-  hash = '',
   /**
    * Whether the navigation metadata read has settled. Until then capability-dependent
    * destinations (Git) are not rendered, so a cold load never shows items the settled
@@ -58,25 +54,9 @@ export function productNavigationItems(
   const views = specificationViews.filter(
     (view) => !('requiresGit' in view && (!metadataSettled || hasGit === false)),
   );
-  // A view that points at the same route as another (e.g. Tasks shares the Overview route and
-  // is distinguished only by an in-page #hash anchor) is only "active" for its own hash; the
-  // plain route owner is active once no sibling's hash claims it.
-  const hashesByPath = new Map<string, string[]>();
-  for (const view of views) {
-    if (!('hash' in view)) {
-      continue;
-    }
-
-    const list = hashesByPath.get(view.to) ?? [];
-    list.push(view.hash);
-    hashesByPath.set(view.to, list);
-  }
 
   return views.map((view) => {
     const path = specId && view.to?.replace('$specId', encodeURIComponent(specId));
-    const siblingHashes = hashesByPath.get(view.to) ?? [];
-    const ownHash = 'hash' in view ? view.hash : undefined;
-    const hashMatches = ownHash ? hash === ownHash : !siblingHashes.includes(hash);
 
     return {
       ...view,
@@ -85,7 +65,6 @@ export function productNavigationItems(
           ? view.id === activeViewId
           : Boolean(
               path &&
-              hashMatches &&
               (pathname === path || (view.id !== 'overview' && pathname.startsWith(`${path}/`))),
             ),
     };

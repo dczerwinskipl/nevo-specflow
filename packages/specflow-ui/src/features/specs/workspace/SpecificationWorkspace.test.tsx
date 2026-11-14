@@ -96,11 +96,11 @@ describe('SpecificationWorkspace', () => {
     expect(markup).toContain('Repozytorium');
     expect(markup).toContain('Zadania');
 
-    // h4 for task groups
-    expect(markup).toContain('<h4');
+    // The Tasks summary names the configured groups as rows, not headings.
+    expect(markup).not.toContain('<h4');
     expect(markup).toContain('Implementacja');
 
-    // Task items use span, not forced to h5
+    // Rows use span, not forced to h5
     expect(markup).not.toContain('<h5');
   });
 
@@ -127,14 +127,16 @@ describe('SpecificationWorkspace', () => {
     expect(markup).not.toContain('2 / 7 ukończone');
   });
 
-  it('renders preparing scenario with notice and tasks in preparation', () => {
+  it('renders the Tasks summary rows the Runtime sends, opening the Tasks page', () => {
     const markup = renderWorkspaceMarkup({
       data: createSpecificationWorkspaceFixture('preparing', 'UI-1234'),
     });
 
-    expect(markup).toContain('Zadania są jeszcze w przygotowaniu');
     expect(markup).toContain('Przygotowanie do review');
-    expect(markup).toContain('w przygotowaniu');
+    expect(markup).toContain('7 zadań');
+    expect(markup).toContain('Wszystkie zadania');
+    // No checkboxes and no Execute on the Overview.
+    expect(markup).not.toContain('role="checkbox"');
   });
 
   it('sorts feature-owned Attention by priority without deriving it from the kind', () => {
@@ -188,12 +190,13 @@ describe('SpecificationWorkspace', () => {
       'Critical Git attention',
       'High priority session attention',
       'Normal specification attention',
+      'Normal task attention',
     ];
     const positions = names.map((title) => markup.indexOf(title));
     expect(positions.every((position) => position > 0)).toBe(true);
     expect(positions).toEqual([...positions].sort((a, b) => a - b));
-    expect(markup).not.toContain('Normal task attention');
-    expect(markup).toContain('aria-expanded="false"');
+    // At most five before "Show N more"; four need none.
+    expect(markup).not.toContain('Pokaż 1 więcej');
   });
 
   it('renders git-conflict scenario with conflict attention item', () => {
@@ -259,7 +262,8 @@ describe('SpecificationWorkspace', () => {
       },
     });
 
-    expect(markup).toContain('Nie ma jeszcze zadań');
+    // No Tasks: no Tasks summary (the Tasks page holds the empty state).
+    expect(markup).not.toContain('Wszystkie zadania');
     expect(markup).toContain('Sesje są wyłączone na tym serwerze.');
     expect(markup).not.toContain('Rozpocznij sesję');
     expect(markup).not.toContain('Niedostępne na tym serwerze');

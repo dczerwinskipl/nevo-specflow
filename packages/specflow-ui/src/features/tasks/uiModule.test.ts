@@ -5,7 +5,7 @@ import type { SpecificationWorkspaceData } from '../specs/read-model';
 import { tasksUiModule } from './uiModule';
 
 const section = tasksUiModule.contributions.find(
-  (registration) => registration.contribution.id === 'specflow.tasks.task-groups',
+  (registration) => registration.contribution.id === 'specflow.tasks.summary',
 )!.contribution as {
   readonly isVisible?: (context: SpecificationWorkSectionContext) => boolean;
 };
@@ -17,20 +17,17 @@ function visible(data: SpecificationWorkspaceData): boolean {
   return section.isVisible?.(context) ?? true;
 }
 
-describe('Tasks work section visibility', () => {
+describe('Overview Tasks summary visibility', () => {
   const empty = createSpecificationWorkspaceFixture('empty');
 
-  it('shows an available section without Tasks, so its empty state and #tasks-heading render', () => {
-    expect(visible({ ...empty, sectionAvailability: { tasks: 'available' } })).toBe(true);
+  it('is omitted without Tasks: the Tasks page holds New task and the empty state', () => {
+    expect(visible({ ...empty, sectionAvailability: { tasks: 'available' } })).toBe(false);
+    expect(visible(empty)).toBe(false);
   });
 
-  it('shows an unavailable or forbidden section and any Specification with Tasks', () => {
+  it('shows an unavailable or forbidden Tasks read and any Specification with Tasks', () => {
     expect(visible({ ...empty, sectionAvailability: { tasks: 'unavailable' } })).toBe(true);
     expect(visible({ ...empty, sectionAvailability: { tasks: 'forbidden' } })).toBe(true);
     expect(visible(createSpecificationWorkspaceFixture('working'))).toBe(true);
-  });
-
-  it('hides an empty Specification whose Tasks availability is unknown', () => {
-    expect(visible(empty)).toBe(false);
   });
 });

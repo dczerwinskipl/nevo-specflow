@@ -98,7 +98,7 @@ function columns(container: HTMLElement) {
 function headingOrder(container: HTMLElement) {
   return [...container.querySelectorAll('h2, h3')]
     .map((heading) => heading.textContent ?? '')
-    .filter((text) => /Requires your attention|Continue session|Tasks|Documents/.test(text))
+    .filter((text) => /Requires your attention|Sessions|Tasks|Documents/.test(text))
     .map((text) => text.replace(/\d.*$/, '').trim());
 }
 
@@ -128,24 +128,15 @@ describe('Specification Overview columns', () => {
 
   it('reads in priority order in one column and work column first in two columns', () => {
     const { container } = renderWorkView(1200);
-    expect(headingOrder(container)).toEqual([
-      'Requires your attention',
-      'Continue session',
-      'Tasks',
-      'Documents',
-    ]);
+    const order = ['Requires your attention', 'Tasks', 'Sessions', 'Documents'];
+    expect(headingOrder(container)).toEqual(order);
 
     resizeTo(1600);
-    expect(headingOrder(container)).toEqual([
-      'Requires your attention',
-      'Tasks',
-      'Continue session',
-      'Documents',
-    ]);
+    expect(headingOrder(container)).toEqual(order);
     const context = container.querySelector('[data-overview-column="context"]');
     expect(context?.querySelector('#resume-heading')).not.toBeNull();
     expect(context?.querySelector('#documents-summary-heading')).not.toBeNull();
-    expect(context?.querySelector('#tasks-heading')).toBeNull();
+    expect(context?.querySelector('#tasks-summary-heading')).toBeNull();
   });
 
   it('lets Tasks open the work column when nothing requires attention', () => {
@@ -155,32 +146,30 @@ describe('Specification Overview columns', () => {
     );
 
     expect(headingOrder(container)[0]).toBe('Tasks');
-    // The empty attention slot is the `peer` that hands the column start to the next section.
-    const tasks = container.querySelector('#tasks-heading')?.closest('[class*="col-start-1"]');
-    expect(tasks?.previousElementSibling?.classList.contains('peer')).toBe(true);
-    expect(tasks?.previousElementSibling?.childElementCount).toBe(0);
+    const tasks = container
+      .querySelector('#tasks-summary-heading')
+      ?.closest<HTMLElement>('[class*="col-start-1"]');
+    // The slot's first section drops its divider: it opens the column.
+    expect(tasks?.className).toContain('[&>*:first-child]:border-t-0');
   });
 
   it('shows Documents first in the context column without a Session', () => {
     const data = createSpecificationWorkspaceFixture('no-git');
-    const { container } = renderWorkView(1600, { ...data, resumeSession: undefined });
+    const { container } = renderWorkView(1600, { ...data, resumeSession: undefined, sessions: [] });
     const context = container.querySelector('[data-overview-column="context"]');
 
     expect(context?.firstElementChild?.querySelector('#documents-summary-heading')).not.toBeNull();
     expect(container.querySelector('#resume-heading')).toBeNull();
   });
 
-  it('keeps the Task selection when the Overview crosses the breakpoint', () => {
+  it('moves the work sections across the breakpoint without remounting them', () => {
     const { container } = renderWorkView(1600);
-    const checkbox = screen.getAllByRole('checkbox')[0]!;
-    fireEvent.click(checkbox);
-    expect(checkbox.getAttribute('aria-checked')).toBe('true');
+    const tasks = container.querySelector('#tasks-summary-heading');
+    expect(tasks).not.toBeNull();
 
     resizeTo(1000);
     expect(columns(container)).toBe('1');
-    // The same element, moved rather than remounted, still checked.
-    expect(screen.getAllByRole('checkbox')[0]).toBe(checkbox);
-    expect(checkbox.getAttribute('aria-checked')).toBe('true');
+    expect(container.querySelector('#tasks-summary-heading')).toBe(tasks);
   });
 
   it('stays one column at any width when no context section shows', () => {
@@ -188,15 +177,16 @@ describe('Specification Overview columns', () => {
     const { container } = renderWorkView(2400, {
       ...data,
       resumeSession: undefined,
+      sessions: [],
       sectionAvailability: { documents: 'unavailable' },
     });
 
     expect(columns(container)).toBe('1');
     expect(container.querySelector('[data-overview-column="context"]')).toBeNull();
-    expect(container.querySelector('#tasks-heading')).not.toBeNull();
+    expect(container.querySelector('#tasks-summary-heading')).not.toBeNull();
   });
 
-  it('opens the context column with Continue session, then Documents, in a Specification with Git', () => {
+  it('opens the context column with Sessions, then Documents, in a Specification with Git', () => {
     const data = createSpecificationWorkspaceFixture('working');
     expect(data.hasGit && data.repoContext).toBeTruthy();
     const { container } = renderWorkView(1600, data);
@@ -206,20 +196,22 @@ describe('Specification Overview columns', () => {
     const sections = [...(context?.children ?? [])].map(
       (section) => section.querySelector('h3')?.textContent ?? '',
     );
-    expect(sections[0]).toMatch(/^Continue session/);
+    expect(sections[0]).toMatch(/^Sessions/);
     expect(sections[1]).toMatch(/^Documents/);
     expect(sections.slice(2).join(' ')).toMatch(/Repository/);
   });
 
   it('stays one column at any width when no work section shows', () => {
-    // An empty Specification with a Session to continue and no Tasks source: no attention, no
-    // preparation (Continue session owns the next step), no Tasks; only context sections.
+    // An empty Specification with a Session and no Tasks: no attention, no preparation (a
+    // Session owns the next step), no Tasks summary; only context sections.
     const working = withoutAttention(createSpecificationWorkspaceFixture('working'));
     const { container } = render(
       <TestProviders>
         <LocalizationProvider instance={createSpecFlowI18n('en')}>
           <WorkspaceProvider runtime={createFakeWorkspaceRuntime()}>
-            <WorkView data={{ ...working, isEmpty: true }} />
+            <WorkView
+              data={{ ...working, isEmpty: true, taskOverview: { rows: [], compact: [] } }}
+            />
           </WorkspaceProvider>
         </LocalizationProvider>
       </TestProviders>,
@@ -227,7 +219,7 @@ describe('Specification Overview columns', () => {
     contentWidth = 2400;
     resizeTo(2400);
 
-    expect(container.querySelector('#tasks-heading')).toBeNull();
+    expect(container.querySelector('#tasks-summary-heading')).toBeNull();
     expect(container.querySelector('#preparation-heading')).toBeNull();
     // The context side alone would fill a column: the repository is there.
     expect([...container.querySelectorAll('h3')].map((h) => h.textContent)).toContain('Repository');
@@ -267,20 +259,16 @@ describe('Specification Overview without Tasks', () => {
     return { ...view, openNewSession };
   }
 
-  it('shows the description, the preparation block opening New Session, empty Tasks and Documents', () => {
+  it('shows the description, the preparation block opening New Session and Documents', () => {
     const { container, openNewSession } = renderEmpty(emptySpecification());
 
     expect(screen.getByText(/Utrzymać kontekst pracy/u)).not.toBeNull();
     expect(container.querySelector('#preparation-heading')).not.toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Start session' }));
     expect(openNewSession).toHaveBeenCalledTimes(1);
-    // Tasks keep their header (the navigator's target) with the inline empty state, no count.
-    const tasks = container.querySelector('#tasks-heading');
-    expect(tasks?.textContent).toBe('Tasks');
-    const empty = container.querySelector('[data-empty-state]');
-    expect(empty?.getAttribute('data-empty-state')).toBe('inline');
-    expect(empty?.textContent).toContain('No tasks yet');
-    expect(headingOrder(container)).toEqual(['Tasks', 'Documents']);
+    // Without Tasks there is no Tasks summary: the Tasks page holds New task and its empty state.
+    expect(container.querySelector('#tasks-summary-heading')).toBeNull();
+    expect(headingOrder(container)).toEqual(['Documents']);
   });
 
   it.each([
@@ -296,12 +284,13 @@ describe('Specification Overview without Tasks', () => {
     expect(screen.queryByRole('button', { name: 'Start session' })).toBeNull();
   });
 
-  it('shows Continue session instead of the preparation block once a Session exists', () => {
+  it('shows the Sessions instead of the preparation block once a Session exists', () => {
     const working = createSpecificationWorkspaceFixture('working');
-    const { container } = renderEmpty(emptySpecification({ resumeSession: working.resumeSession }));
+    const { container } = renderEmpty(
+      emptySpecification({ resumeSession: working.resumeSession, sessions: working.sessions }),
+    );
 
     expect(container.querySelector('#preparation-heading')).toBeNull();
     expect(container.querySelector('#resume-heading')).not.toBeNull();
-    expect(container.querySelector('#tasks-heading')).not.toBeNull();
   });
 });

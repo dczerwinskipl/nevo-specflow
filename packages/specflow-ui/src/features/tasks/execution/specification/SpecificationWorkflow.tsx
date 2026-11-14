@@ -11,6 +11,7 @@ import { goToHeading } from '../InlineAction';
 import { AbandonSpecificationDialog } from './AbandonSpecificationDialog';
 import type { BlockerTask } from './BlockerGroups';
 import { CloseSpecificationDialog } from './CloseSpecificationDialog';
+import { TaskAttentionHost } from '../../overview/TaskAttentionHost';
 
 type ExitDialog = 'close' | 'abandon';
 
@@ -18,6 +19,8 @@ interface SpecificationWorkflowValue {
   readonly specId: string;
   readonly projection: WorkflowActionProjection | undefined;
   readonly openExit: (dialog: ExitDialog) => void;
+  /** Opens the Tasks page (`/specs/:specId/tasks`). */
+  readonly openTasks: () => void;
 }
 
 const SpecificationWorkflowContext = createContext<SpecificationWorkflowValue | null>(null);
@@ -77,11 +80,19 @@ function ProjectSpecificationWorkflow({
       search: { collection },
     });
   const close = () => setDialog(undefined);
+  const openTasks = () =>
+    void navigate({ to: '/specs/$specId/tasks', params: { specId }, search: { collection } });
   const specTitle = workspace?.title ?? specId;
 
   return (
-    <SpecificationWorkflowContext.Provider value={{ specId, projection, openExit: setDialog }}>
+    <SpecificationWorkflowContext.Provider
+      value={{ specId, projection, openExit: setDialog, openTasks }}
+    >
       {children}
+      <TaskAttentionHost
+        specId={specId}
+        typeTitle={(taskId) => all.find((task) => task.id === taskId)?.typeTitle}
+      />
       {projection ? (
         <>
           <CloseSpecificationDialog
@@ -97,7 +108,10 @@ function ProjectSpecificationWorkflow({
               ? { onAbandonInstead: () => setDialog('abandon') }
               : {})}
             onSeeWorkflow={() => goToHeading(SPECIFICATION_NOW_HEADING)}
-            onSeeTasks={() => goToHeading('tasks-heading')}
+            onSeeTasks={() => {
+              close();
+              openTasks();
+            }}
             onOpenTask={openTask}
             onClosed={() => void navigate({ to: '/', search: { collection: 'archive' } })}
           />

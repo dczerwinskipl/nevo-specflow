@@ -1,10 +1,10 @@
 import type { IconName } from '@nevo/ui';
-import { type TaskExecutionReadiness, type TaskGroup } from '../../tasks/read-model';
+import type { TaskOverview, WorkspaceAttention } from '@nevo/specflow-contracts/specs/workspace';
+import { type TaskGroup } from '../../tasks/read-model';
 
 export {
   getTaskStatePresentation,
   type TaskLifecycle,
-  type TaskExecutionReadiness,
   type TaskEvidence,
   type TaskRelatedSession,
   type TaskItem,
@@ -67,6 +67,29 @@ export interface AttentionItem {
   readonly actionCode?: 'task' | 'session' | 'git' | 'specification';
   readonly targetId?: string;
   readonly priority?: 'critical' | 'high' | 'normal';
+  /**
+   * Workflow and Session items (the attention projection): the stable reason code (`reason` is
+   * then the server's display text), who has to act, the one action and its alternative, and the
+   * Tasks it names (`tasks-stuck`: with why each blocks). Absent on other items.
+   */
+  readonly code?: string;
+  readonly actor?: WorkspaceAttention['actor'];
+  readonly action?: WorkspaceAttention['action'];
+  readonly secondaryAction?: WorkspaceAttention['secondaryAction'];
+  readonly taskIds?: readonly string[];
+  readonly blocking?: WorkspaceAttention['blocking'];
+}
+
+/**
+ * The Specification's Task progress, one definition: done of the Tasks meant to be done, with
+ * cancelled, ended and on hold named apart (absent in the demo Runtime).
+ */
+export interface TaskProgressData {
+  readonly completed: number;
+  readonly total: number;
+  readonly cancelled?: number;
+  readonly ended?: number;
+  readonly onHold?: number;
 }
 
 /** A missing domain read is not an empty Attention list. */
@@ -187,6 +210,9 @@ export interface SpecificationWorkspaceData {
   readonly activityEvents: readonly ActivityEvent[];
   readonly completedTasksCount?: number;
   readonly totalTasksCount?: number;
-  readonly executionReadiness?: TaskExecutionReadiness;
+  /** The Task progress with its named parts; absent when the Tasks could not be read. */
+  readonly taskProgress?: TaskProgressData;
+  /** The Runtime's Overview summary of the configured grouping, and Now's explanation when stuck. */
+  readonly taskOverview?: TaskOverview;
   readonly changes?: SpecificationChangesData;
 }

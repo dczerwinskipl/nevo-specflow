@@ -215,7 +215,13 @@
     "sessionStatusActive": "Active",
     "sessionStatusAttention": "Requires attention",
     "attentionViewTask": "View task",
-    "viewTasks": "Tasks"
+    "viewTasks": "Tasks",
+    "attentionNeedsAgent": "Needs an agent",
+    "attentionShowMore_one": "Show {{count}} more",
+    "attentionShowMore_other": "Show {{count}} more",
+    "attentionSession": "Session",
+    "answerSessionAction": "Answer",
+    "sessionsHeading": "Sessions"
   },
   "playground": {
     "title": "UI Playground",
@@ -2205,7 +2211,15 @@
       "finishKept": "Your finish is kept: result, feedback and artifacts stay as you left them. Finish step continues it.",
       "postActionFailed": "Finished. Committing the workflow state failed ({{code}}); the changes stay uncommitted and Close includes them.",
       "lastPrefix": "Last: {{step}} · ",
-      "alreadyFinished": "This step was already finished. What you can do now is shown below."
+      "alreadyFinished": "This step was already finished. What you can do now is shown below.",
+      "startWorkflow": "Start workflow",
+      "operations": "Workflow operations",
+      "history": "Workflow history",
+      "returnTo": "Return to {{step}}",
+      "finishAfterGate": "Finish step becomes available once this is met.",
+      "technicalStep": "Step {{step}} · {{title}} rev {{version}}",
+      "technical": "{{title}} rev {{version}}",
+      "openDocument": "Open {{name}}"
     },
     "blocker": {
       "dependencies_one": "Waiting for {{count}} dependency",
@@ -2411,6 +2425,85 @@
       "removed": "Removes step {{step}}",
       "renamed": "Renames step {{from}} to {{to}}",
       "transitions": "Changes where {{step}} leads"
+    }
+  },
+  "taskOverview": {
+    "attention": {
+      "action": {
+        "review-tasks": "Review tasks",
+        "edit-context": "Edit context",
+        "edit-dependencies": "Edit dependencies",
+        "confirm-definition": "Review new revision",
+        "open-project-settings": "Open project settings",
+        "configure-archetype": "Configure archetype",
+        "cancel-task": "Cancel task",
+        "restore-task": "Open task",
+        "satisfy-gate": "Open task",
+        "start-step": "Start step",
+        "return-to-step": "Return to earlier step"
+      },
+      "specification": "Specification",
+      "stuckTitle_one": "Resolve {{count}} blocking task",
+      "stuckTitle_other": "Resolve {{count}} blocking tasks",
+      "stuckReason": "Approve, resume or cancel them so the specification can finish",
+      "startFailed": "The step could not be started. Open the task to see what you can do now."
+    },
+    "summary": {
+      "allTasks": "All tasks",
+      "count_one": "{{count}} task",
+      "count_other": "{{count}} tasks",
+      "more_one": "{{count}} more",
+      "more_other": "{{count}} more",
+      "openGroup": "{{group}}: open on the Tasks page",
+      "compact": "{{group}} {{count}}"
+    },
+    "progress": {
+      "label": "Tasks {{progress}}",
+      "done": "{{completed}} of {{total}} done",
+      "cancelled_one": "{{count}} cancelled",
+      "cancelled_other": "{{count}} cancelled",
+      "ended_one": "{{count}} ended",
+      "ended_other": "{{count}} ended",
+      "onHold_one": "{{count}} on hold",
+      "onHold_other": "{{count}} on hold",
+      "barNote": "The bar counts every task except cancelled ones.",
+      "barNoteEnded": "The bar counts every task except cancelled and ended ones."
+    },
+    "terminal": {
+      "allDone_one": "The task is done",
+      "allDone_other": "All {{count}} tasks done",
+      "cancelled_one": "{{count}} task cancelled",
+      "cancelled_other": "{{count}} tasks cancelled",
+      "done_one": "{{count}} done",
+      "done_other": "{{count}} done"
+    },
+    "stuck": {
+      "before": "It cannot continue now:",
+      "after": "and no other task is open.",
+      "cause": {
+        "draft": "is a draft",
+        "on-hold": "is on hold",
+        "broken": "is broken",
+        "dependency-unsatisfiable": "depends on a cancelled or ended task"
+      }
+    },
+    "row": {
+      "attention": "Requires attention · {{reason}}",
+      "attentionOnly": "Requires attention",
+      "blocksSpecification": "the specification cannot continue until it moves",
+      "waitingFor": "Waiting for {{ids}}"
+    },
+    "page": {
+      "loading": "Loading tasks",
+      "failed": "The tasks could not be loaded.",
+      "filterLabel": "Filter tasks",
+      "filterPlaceholder": "Filter by id or title",
+      "blocking_one": "Blocking specification · {{count}} task",
+      "blocking_other": "Blocking specification · {{count}} tasks",
+      "nothingBlocks": "Nothing blocks the specification now",
+      "clearBlocking": "Clear filter: blocking specification",
+      "shown": "{{matched}} of {{total}} shown",
+      "noMatch": "No task matches the filter."
     }
   }
 }

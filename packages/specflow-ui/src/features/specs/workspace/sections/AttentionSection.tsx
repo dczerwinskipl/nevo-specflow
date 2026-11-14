@@ -1,102 +1,155 @@
-import { useId, useState } from 'react';
-import { AccentBlock, Button, Icon, Typography } from '@nevo/ui';
-import type { SpecificationAttentionEntry } from '../../extensions/specificationAttentionItems';
+import { useId, useState, type ReactNode } from 'react';
+import { Button, Icon, InformationList, useContainerMinWidth, type IconName } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
+import { translateMessage } from '../../../../i18n/message';
+import { OperationalRow, type CompactFactItem } from '../../../../shared/operational-list';
+import { WorkspaceSection } from '../../../../shared/workspace-section';
+import type {
+  SpecificationAttentionAction,
+  SpecificationAttentionEntry,
+} from '../../extensions/specificationAttentionItems';
+
+/** Items shown before **Show N more** (UX contract: at most five). */
+const SHOWN = 5;
+/** Row width from which the action sits at the row's end instead of under the reason. */
+const ACTION_BESIDE_MIN_WIDTH = 576;
 
 export interface AttentionSectionProps {
   readonly items: readonly (SpecificationAttentionEntry & { readonly renderKey: string })[];
 }
 
+const toneClass = {
+  attention: 'font-medium text-status-attention',
+  danger: 'font-medium text-status-danger',
+  neutral: 'text-content-secondary',
+} as const;
+
+/** The reason: its icon on the first text line, inside the running text. */
+function Reason({
+  text,
+  tone,
+  icon,
+}: {
+  text: string;
+  tone: keyof typeof toneClass;
+  icon?: IconName;
+}) {
+  return (
+    <span className={toneClass[tone]}>
+      {icon ? (
+        <span className="mr-1.5 inline-flex h-[1lh] items-center align-top">
+          <Icon name={icon} size="sm" aria-hidden="true" />
+        </span>
+      ) : null}
+      {text}
+    </span>
+  );
+}
+
+/**
+ * Requires attention: what needs a person now, from the owners' attention items, each with the one
+ * action its owner maps (and an alternative where the item carries one). The actor shows only when
+ * it is not the viewer. On a narrow row the actions follow the title and reason.
+ */
 export function AttentionSection({ items }: AttentionSectionProps) {
   const { t } = useTranslation();
   const id = useId();
   const [expanded, setExpanded] = useState(false);
+  const { matches: beside, setElement } = useContainerMinWidth(ACTION_BESIDE_MIN_WIDTH);
 
   if (items.length === 0) {
     return null;
   }
 
+  const text = (value: Parameters<typeof translateMessage>[1]) => translateMessage(t, value);
+  const button = (action: SpecificationAttentionAction, variant: 'secondary' | 'ghost') => (
+    <Button
+      variant={variant}
+      size="sm"
+      disabled={action.disabled}
+      title={action.disabledTitleKey ? t(action.disabledTitleKey) : undefined}
+      onClick={action.onClick}
+    >
+      {text(action.label)}
+    </Button>
+  );
+  const shown = expanded ? items : items.slice(0, SHOWN);
+
   return (
-    <section aria-labelledby={`${id}-heading`}>
-      <AccentBlock className="@container/attention">
-        <div className="flex items-center gap-2">
-          <span className="flex size-4 shrink-0 items-center justify-center text-content-muted">
-            <Icon name="clock" size="sm" />
-          </span>
-          <Typography
-            as="h2"
-            variant="section-label"
-            id={`${id}-heading`}
-            className="font-semibold text-content-primary"
-          >
-            {t('specification.requiresAttention')}{' '}
-            <span className="text-body-sm font-normal normal-case tracking-normal text-content-muted">
-              {items.length}
-            </span>
-          </Typography>
-        </div>
+    <WorkspaceSection aria-labelledby={`${id}-heading`} data-requires-attention="">
+      <WorkspaceSection.Header
+        id={`${id}-heading`}
+        title={t('specification.requiresAttention')}
+        icon="triangle-alert"
+        count={items.length}
+      />
+      <div ref={setElement}>
+        <InformationList id={`${id}-list`}>
+          {shown.map((entry) => {
+            const { item } = entry;
+            const facts: CompactFactItem[] = [
+              ...(entry.facts ?? []).map(text),
+              ...(item.actor === 'agent' ? [t('specification.attentionNeedsAgent')] : []),
+            ];
+            const actions: ReactNode =
+              entry.action || entry.secondaryAction ? (
+                <span className="pointer-events-auto flex flex-wrap gap-2">
+                  {entry.action ? button(entry.action, 'secondary') : null}
+                  {entry.secondaryAction ? button(entry.secondaryAction, 'ghost') : null}
+                </span>
+              ) : null;
+            const reason = (
+              <Reason
+                text={entry.reason ? text(entry.reason) : item.reason}
+                tone={entry.tone ?? 'neutral'}
+                icon={entry.reasonIcon}
+              />
+            );
 
-        <ul id={`${id}-list`} className="mt-2.5 list-none p-0 divide-y divide-border-subtle">
-          {(expanded ? items : items.slice(0, 3)).map(({ item, icon, action, renderKey }) => {
             return (
-              <li
-                key={renderKey}
-                className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 @min-[36rem]/attention:flex-row @min-[36rem]/attention:items-center @min-[36rem]/attention:justify-between"
-              >
-                <div className="flex items-start gap-2.5 min-w-0">
-                  {/* The icon slot is one title line tall (title-sm: 20px), so the glyph centres on the first line. */}
-                  <span className="flex h-5 w-4 shrink-0 items-center justify-center text-content-secondary">
-                    <Icon name={icon} size="sm" aria-hidden="true" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <Typography
-                      as="span"
-                      variant="title-sm"
-                      className="block min-w-0 font-medium text-content-primary [overflow-wrap:anywhere]"
-                    >
-                      {item.title}
-                    </Typography>
-                    <Typography
-                      as="div"
-                      variant="body-sm"
-                      className="mt-0.5 flex min-w-0 flex-wrap items-baseline gap-x-2 text-content-secondary"
-                    >
-                      <span>{item.reason}</span>
-                    </Typography>
-                  </div>
-                </div>
-
-                {action ? (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="ml-6 self-start shrink-0 @min-[36rem]/attention:ml-0 @min-[36rem]/attention:self-center"
-                    disabled={action.disabled}
-                    title={action.disabledTitleKey ? t(action.disabledTitleKey) : undefined}
-                    onClick={action.onClick}
-                  >
-                    {action.labelKey ? t(action.labelKey) : action.label}
-                  </Button>
-                ) : null}
-              </li>
+              <OperationalRow
+                key={entry.renderKey}
+                primary={entry.title ? text(entry.title) : item.title}
+                factsLayout="inline"
+                compactFacts={facts.slice(0, 3) as [CompactFactItem]}
+                supporting={
+                  beside ? (
+                    reason
+                  ) : (
+                    <span className="grid justify-items-start gap-2">
+                      {reason}
+                      {actions}
+                    </span>
+                  )
+                }
+                leading={
+                  entry.leading ?? (
+                    <span className="flex items-center justify-center text-content-muted">
+                      <Icon name={entry.icon} size="sm" aria-hidden="true" />
+                    </span>
+                  )
+                }
+                trailing={beside ? actions : undefined}
+                dataAttributes={{ 'data-attention-item': item.id }}
+              />
             );
           })}
-        </ul>
-        {items.length > 3 ? (
-          <Button
-            variant="secondary"
-            size="sm"
-            className="mt-2.5"
-            aria-expanded={expanded}
-            aria-controls={`${id}-list`}
-            onClick={() => setExpanded(!expanded)}
-          >
-            {expanded
-              ? t('taskDetails.showLess')
-              : t('taskDetails.showAll', { count: items.length })}
-          </Button>
-        ) : null}
-      </AccentBlock>
-    </section>
+        </InformationList>
+      </div>
+      {items.length > SHOWN ? (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-fit"
+          aria-expanded={expanded}
+          aria-controls={`${id}-list`}
+          onClick={() => setExpanded(!expanded)}
+        >
+          {expanded
+            ? t('taskDetails.showLess')
+            : t('specification.attentionShowMore', { count: items.length - SHOWN })}
+        </Button>
+      ) : null}
+    </WorkspaceSection>
   );
 }

@@ -13,8 +13,9 @@ import {
   type SessionRowReadiness,
 } from '../../shared/sessionRow';
 
-export interface ResumeSessionSectionProps {
-  readonly session: SessionSummary;
+export interface SessionsSectionProps {
+  /** The Sessions to show, the recommended one first. */
+  readonly sessions: readonly SessionSummary[];
   readonly onOpenSession: (sessionId: string) => void;
   readonly onOpenSessionsView: () => void;
   /** Opens the Specification's New Session (`/specs/$specId/sessions/new`). */
@@ -68,18 +69,18 @@ function sessionStatus(session: SessionSummary, t: TFunction): SemanticSupportin
 }
 
 /**
- * Continue session: one row that opens the recent Session. The whole row is the target and shows
- * the same content as the Session's row in the Specification Sessions list (age, agent, Tasks and
- * its effective status). "All sessions" is a quiet header action, so it never outweighs the row.
+ * Sessions on the Overview: the recommended Session first, then other Sessions of the
+ * Specification, each the same row as in the Specification Sessions list (age, agent, Tasks and
+ * its effective status). "All sessions" is a quiet header action, so it never outweighs the rows.
  */
-export function ResumeSessionSection({
-  session,
+export function SessionsSection({
+  sessions,
   onOpenSession,
   onOpenSessionsView,
   onStartSession,
   canStartSession,
   canOpenSession,
-}: ResumeSessionSectionProps) {
+}: SessionsSectionProps) {
   const { t, i18n } = useTranslation();
   const now = useNow();
 
@@ -87,7 +88,7 @@ export function ResumeSessionSection({
     <WorkspaceSection aria-labelledby="resume-heading">
       <WorkspaceSection.Header
         id="resume-heading"
-        title={t('specification.continueSessionHeading')}
+        title={t('specification.sessionsHeading')}
         icon="chat"
         actions={
           <>
@@ -96,7 +97,7 @@ export function ResumeSessionSection({
             </Button>
             {canStartSession ? (
               <OverflowMenu
-                label={t('specification.continueSessionHeading')}
+                label={t('specification.sessionsHeading')}
                 triggerLabel={t('specification.sessionActions')}
               >
                 <MenuItem leadingIcon="plus" onSelect={() => onStartSession()}>
@@ -109,26 +110,29 @@ export function ResumeSessionSection({
       />
 
       <InformationList>
-        <OperationalRow
-          titleAs="span"
-          leading={<SessionProviderIcon providerId={session.providerId} />}
-          primary={session.title}
-          onPrimaryClick={canOpenSession ? () => onOpenSession(session.id) : undefined}
-          dataAttributes={{ 'data-focus-key': `session:${session.id}` }}
-          // The same row as the Session's row in the Specification Sessions list.
-          factsLayout="inline"
-          compactFacts={sessionRowFacts(
-            {
-              ...(session.updatedAt ? { updatedAt: session.updatedAt } : {}),
-              agent: agentOf(session),
-              taskCount: session.taskCount ?? 0,
-            },
-            t,
-            now,
-            i18n.language,
-          )}
-          supporting={sessionStatus(session, t)}
-        />
+        {sessions.map((session) => (
+          <OperationalRow
+            key={session.id}
+            titleAs="span"
+            leading={<SessionProviderIcon providerId={session.providerId} />}
+            primary={session.title}
+            onPrimaryClick={canOpenSession ? () => onOpenSession(session.id) : undefined}
+            dataAttributes={{ 'data-focus-key': `session:${session.id}` }}
+            // The same row as the Session's row in the Specification Sessions list.
+            factsLayout="inline"
+            compactFacts={sessionRowFacts(
+              {
+                ...(session.updatedAt ? { updatedAt: session.updatedAt } : {}),
+                agent: agentOf(session),
+                taskCount: session.taskCount ?? 0,
+              },
+              t,
+              now,
+              i18n.language,
+            )}
+            supporting={sessionStatus(session, t)}
+          />
+        ))}
       </InformationList>
     </WorkspaceSection>
   );

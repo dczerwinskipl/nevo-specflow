@@ -641,6 +641,52 @@ export const SearchFlow: Story = {
   },
 };
 
+/**
+ * The search is in the address (`?q=&proposals=1`): typing and the checkbox replace the entry,
+ * opening a result is a push that carries the search on, and Back returns the list, the filter and
+ * the pane's scroll. Narrow, where the tree pane is the screen the article is pushed over.
+ */
+export const SearchInAddress: Story = {
+  args: { path: main },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ userEvent }) => {
+    // Short, so the results scroll in the pane.
+    await settleViewport(375, 600);
+    const body = screen();
+    const entries = router().history.length;
+    await searchFor(userEvent, 'search', () =>
+      expect(liveSearchStatus().textContent).toMatch(/^\d+ results$/),
+    );
+    await userEvent.click(body.getByRole('checkbox', { name: /^Include proposals \(\d+\)$/ }));
+    await waitFor(() =>
+      expect(router().state.location.search).toEqual({ q: 'search', proposals: 1 }),
+    );
+    await expect(router().history.length).toBe(entries);
+
+    const field = body.getByRole('searchbox', { name: 'Search documentation' });
+    const pane = field.closest<HTMLElement>('.scroll-area-viewport')!;
+    await waitFor(() => expect(pane.scrollHeight).toBeGreaterThan(pane.clientHeight + 120));
+    pane.scrollTop = 120;
+    const results = body.getByRole('region', { name: 'Search results' });
+    const result = within(results).getAllByRole('button')[2]!;
+    await userEvent.click(result);
+    await body.findByRole('heading', { level: 1 });
+    await expect(router().history.length).toBe(entries + 1);
+    await expect(router().state.location.search).toEqual({ q: 'search', proposals: 1 });
+
+    await userEvent.click(body.getByRole('button', { name: 'Back to documentation' }));
+    const back = await body.findByRole('searchbox', { name: 'Search documentation' });
+    await expect((back as HTMLInputElement).value).toBe('search');
+    await expect(
+      body.getByRole('checkbox', { name: /^Include proposals/ }).getAttribute('aria-checked'),
+    ).toBe('true');
+    await waitFor(() =>
+      expect(back.closest<HTMLElement>('.scroll-area-viewport')!.scrollTop).toBe(120),
+    );
+    await expect(router().history.length).toBe(entries + 1);
+  },
+};
+
 /** The search's hidden live region (one per tree pane). */
 const liveSearchStatus = () => {
   const region = document.querySelector<HTMLElement>('[data-search-status]');

@@ -308,6 +308,13 @@ Integration readiness: **ready** — the shared workspace list (`GET /api/worksp
   stack: a stacked screen's leave guard turns the header Back into browser Back below the first
   screen and, on the first screen, into a step back to the tree's entry when that is the previous
   entry, else a replace with the tree's address.
+- **Search in the address.** The reader's layout route validates `?q=&proposals=1` (a trimmed
+  text of at most 500 characters, `proposals` only as `1`, anything else dropped), and every
+  navigation inside the reader passes it on. The field writes its text once typing pauses, and the
+  checkbox at once, as a replace that keeps the entry's identity (its reading position and stack
+  screen stay); the address answering the field's own write never resets what was typed since.
+  Back, Forward, a link and a reload set the field from the address. The tree pane's scroll is
+  kept in memory per history entry, like reading positions. Copy link carries the search.
 - **Leaving the reader.** The reader decides nothing (no redirect, no consumed entry) once the
   location names another screen, so navigation and browser Back leave it for good.
 - **Specification entry (D-A).** A compact Documentation row with the bound workspace's name, in the

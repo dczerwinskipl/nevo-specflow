@@ -12,6 +12,7 @@ import {
   withoutSource,
   type DocsReaderLocationState,
 } from './readerLocation';
+import { readerSearchOf } from './readerSearch';
 
 /**
  * Layout of the reader's routes. It resolves the workspace the reader shows (the address, else the
@@ -37,6 +38,8 @@ export function DocsReaderLayout() {
   const settled = !onReader || current.redirectTo === undefined ? current.workspaceId : undefined;
   const tree = useDocsTree(settled);
   const hash = stripHash(location.hash);
+  // Every replace below keeps the search (a navigation without `search` drops it).
+  const search = readerSearchOf(location);
 
   // The address names the workspace shown: `/docs` and a fallback are replaced, the document,
   // the section and the entry kept.
@@ -54,6 +57,7 @@ export function DocsReaderLayout() {
         ? {
             to: '/workspaces/$workspaceId/docs',
             params: { workspaceId: redirectTo },
+            search,
             state: { docsReader: redirectEntry },
             replace: true,
           }
@@ -61,6 +65,7 @@ export function DocsReaderLayout() {
             to: '/workspaces/$workspaceId/docs/$documentId',
             params: { workspaceId: redirectTo, documentId },
             hash,
+            search,
             state: { docsReader: redirectEntry },
             replace: true,
           },
@@ -98,6 +103,7 @@ export function DocsReaderLayout() {
         ? {
             to: '/workspaces/$workspaceId/docs',
             params: { workspaceId: settled },
+            search,
             state: { docsReader: next },
             replace: true,
           }
@@ -105,6 +111,7 @@ export function DocsReaderLayout() {
             to: '/workspaces/$workspaceId/docs/$documentId',
             params: { workspaceId: settled, documentId },
             hash,
+            search,
             state: { docsReader: next },
             replace: true,
           },
@@ -122,6 +129,7 @@ export function DocsReaderLayout() {
         workspaceId={settled}
         documentId={settled !== undefined && !pickedMissing ? documentId : undefined}
         hash={hash}
+        search={search}
         entry={entry}
         historyEntry={historyEntryOf(location.state)}
         tree={tree}

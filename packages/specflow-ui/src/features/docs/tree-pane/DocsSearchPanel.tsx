@@ -4,14 +4,17 @@ import { Typography } from '@nevo/ui';
 import type { WorkspaceDocsSearch } from '@nevo/specflow-contracts/docs';
 import { useDocsSearch } from '../read-model';
 import { TreeSearchField } from '../../../shared/document-tree';
+import {
+  docsReaderSearch,
+  readerSearchMaxLength,
+  type DocsReaderSearch,
+} from '../reader/readerSearch';
 import { DocsProposalsFilter } from './DocsProposalsFilter';
 import { DocsSearchResults } from './DocsSearchResults';
 import { answerAnnouncement, answerLines } from './searchStatusModel';
 import { useSearchWaiting } from './useSearchWaiting';
 
 const searchDelayMs = 250;
-/** The route's limit of a search text; longer text is not typed in at all. */
-const searchMaxLength = 500;
 
 /** An answer as it was asked for: its workspace and whether it included proposals. */
 interface HeldAnswer {
@@ -39,9 +42,17 @@ function proposalCount(answer: HeldAnswer, proposals: ReadonlySet<string>): numb
  *
  * One hidden live region reads each settled answer once (the count or that nothing matches, with
  * its lines), the failure, and once the 2 s line; never a keystroke or the first 2 s of a wait.
+ *
+ * The search is in the address (`search`). The field is the source while typing: its text is
+ * written once typing pauses, as a replace, so typing adds no history entry, and the search runs
+ * for what the address holds. The address is the source on navigation: Back, Forward, a link or
+ * another history entry set the field, except the address's answer to the field's own write.
  */
 export function DocsSearchPanel({
   workspaceId,
+  historyEntry,
+  search: address,
+  onSearchChange,
   proposals,
   activeDocumentId,
   onOpen,
@@ -54,6 +65,12 @@ export function DocsSearchPanel({
    */
   hidden?: boolean;
   workspaceId: string | undefined;
+  /** The history entry of the address: a new one (Back, Forward, a push) takes its search. */
+  historyEntry: string;
+  /** The search the address holds. */
+  search: DocsReaderSearch;
+  /** Writes the search into the address (a replace). */
+  onSearchChange: (search: DocsReaderSearch) => void;
   proposals: ReadonlySet<string>;
   activeDocumentId?: string;
   onOpen: (documentId: string, sectionId?: string) => void;
@@ -61,19 +78,45 @@ export function DocsSearchPanel({
 }) {
   const { t } = useTranslation();
   const field = useRef<HTMLInputElement>(null);
-  const [text, setText] = useState('');
-  const [query, setQuery] = useState('');
-  const [includeProposals, setIncludeProposals] = useState(false);
+  // What the address holds is what is searched for.
+  const query = address.q ?? '';
+  const includeProposals = address.proposals === 1;
+  const [text, setText] = useState(query);
   const [filterUsed, setFilterUsed] = useState(false);
-
-  // The search runs once typing pauses (a timer is the external system here).
-  useEffect(() => {
-    const timer = setTimeout(() => setQuery(text.trim()), searchDelayMs);
-
-    return () => clearTimeout(timer);
-  }, [text]);
+  // The text this field last wrote: the address coming back with it is the field's own write, not
+  // a navigation, and must not overwrite what was typed since.
+  const [written, setWritten] = useState<string>();
+  const [seen, setSeen] = useState({ historyEntry, query });
+  if (seen.historyEntry !== historyEntry || seen.query !== query) {
+    const ownWrite = seen.historyEntry === historyEntry && written === query;
+    setSeen({ historyEntry, query });
+    setWritten(undefined);
+    if (!ownWrite && text.trim() !== query) {
+      setText(query);
+    }
+  }
 
   const typed = text.trim();
+  const write = (q: string, proposals: boolean) => {
+    setWritten(q);
+    onSearchChange(docsReaderSearch(q, proposals));
+  };
+
+  // The text is written once typing pauses (a timer is the external system here). A navigation
+  // sets the field to its address, which ends a pending write.
+  useEffect(() => {
+    if (typed === query) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setWritten(typed);
+      onSearchChange(docsReaderSearch(typed, includeProposals));
+    }, searchDelayMs);
+
+    return () => clearTimeout(timer);
+  }, [typed, query, includeProposals, historyEntry, onSearchChange]);
+
   const searching = typed.length > 0;
   const search = useDocsSearch(searching && !hidden ? workspaceId : undefined, {
     q: query,
@@ -132,7 +175,7 @@ export function DocsSearchPanel({
 
   const clear = () => {
     setText('');
-    setQuery('');
+    write('', includeProposals);
     field.current?.focus();
   };
 
@@ -147,7 +190,7 @@ export function DocsSearchPanel({
         <TreeSearchField
           inputRef={field}
           label={t('docs.search.label')}
-          maxLength={searchMaxLength}
+          maxLength={readerSearchMaxLength}
           value={text}
           onChange={setText}
           onClear={clear}
@@ -171,7 +214,7 @@ export function DocsSearchPanel({
                     pending={waiting}
                     onCheckedChange={(checked) => {
                       setFilterUsed(true);
-                      setIncludeProposals(checked);
+                      write(typed, checked);
                     }}
                   />
                 )}

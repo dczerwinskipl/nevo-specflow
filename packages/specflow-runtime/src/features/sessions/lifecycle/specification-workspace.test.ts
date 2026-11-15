@@ -23,6 +23,7 @@ async function fixture(
   options: {
     resolve?: (specId: string) => Promise<string>;
     supportsSessionWorkspaces?: boolean;
+    mode?: 'read-only' | 'workspace-write';
   } = {},
 ) {
   root = await mkdtemp(join(tmpdir(), 'session-spec-workspace-'));

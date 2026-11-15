@@ -93,6 +93,10 @@ export function toCreateFailure(error: ApiError, sent: SentCreate = {}): CreateF
     return protectedBranchFailure(sent);
   }
 
+  if (code === 'GIT_BASE_CONFIG_MISSING') {
+    return { kind: 'base-config-missing' };
+  }
+
   if (code === 'COMMIT_BLOCKED') {
     return { kind: 'commit-blocked' };
   }

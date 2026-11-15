@@ -240,10 +240,13 @@ collection, and the documentation's workspace, search and reading positions (the
 rules). A Back to a routed parent moves in one of two ways:
 
 - when the previous history entry is the parent's own visit (a document opened from the Overview
-  records that entry's index), Back steps back in history: the Overview returns at the scroll it
-  was left at (it remembers its scroll per history entry, Narrow) and its title takes the focus;
-- otherwise (a deep link, a reload, or a document tab opened since, which pushed an entry) Back
-  navigates to the parent, which opens at its top with its title focused.
+  records that entry's index), Back steps back in history, also after a reload of the document
+  (the history entries survive it): the Overview returns at the scroll it was left at, through the
+  router's own scroll restoration (per history entry, kept in `sessionStorage` across a reload,
+  enabled for the Overview only), and its title takes the focus;
+- otherwise (a deep link, or a document tab opened since, which pushed an entry) Back navigates to
+  the parent, which opens at its top with its title focused. (Rare: if that Overview entry was
+  replaced meanwhile, Back still steps to the entry at its index.)
 
 The Narrow header names the screen with the Specification's key ("Overview · KEY") and shows a
 context notice (stale, or the Specification's information could not be read) in full under the

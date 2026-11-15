@@ -64,8 +64,9 @@ export function documentBackParent({
 /**
  * How a Back to the routed parent moves: when the previous history entry is the parent's own visit
  * (its index was recorded when the screen was opened from it), Back steps there, so that visit
- * returns as it was left (its scroll); otherwise (a deep link, a reload, a later push such as a
- * new document tab) it navigates to the parent.
+ * returns as it was left (its scroll), also after a reload (the history entries and their state
+ * survive it); otherwise (a deep link, a later push such as a new document tab) it navigates to the
+ * parent.
  */
 export function backByHistory({
   parentIndex,

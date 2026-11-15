@@ -1,117 +1,75 @@
-import { useEffect } from 'react';
-import { useRouterState } from '@tanstack/react-router';
+import { useEffect, useLayoutEffect } from 'react';
+import { useElementScrollRestoration, useRouterState } from '@tanstack/react-router';
 import { useWorkspacePrimaryScroll } from '@nevo/ui';
 
-/** How many Overview visits keep a scroll position; the oldest is forgotten first. */
-const limit = 50;
+/** The Overview's scroller as the router's scroll restoration knows it (`router.tsx`). */
+export const overviewScrollRestorationId = 'specification-overview';
 
-/**
- * The Overview's scroll position by history entry, for this tab. The Overview unmounts when a
- * document is opened from it; a Back that steps back to that visit (`backByHistory`) remounts it
- * here, so it returns where it was left. A new push is a new entry and starts at the top.
- */
-const positions = new Map<string, number>();
-
-function remember(entry: string, top: number) {
-  positions.delete(entry);
-  positions.set(entry, top);
-  if (positions.size > limit) {
-    const oldest = positions.keys().next().value;
-    if (oldest !== undefined) {
-      positions.delete(oldest);
-    }
-  }
-}
-
-/** The reader's own input ends a restore. */
+/** The reader's own input ends the re-apply below. */
 const readerInput = ['wheel', 'touchstart', 'keydown', 'pointerdown'] as const;
 
-/** Test seam: forget every remembered visit. */
-export function forgetOverviewVisits() {
-  positions.clear();
-}
-
 /**
- * Narrow (the workspace owns Primary's scroll): restores the scroll of a returning Overview visit
- * and keeps it while reading. A visit reached by a Back (a returning entry, or a navigation marked
- * `specflowFocusTitle`) puts the focus on the page title, so it does not drop to the document body.
+ * Narrow (the workspace owns Primary's scroll): names the Overview's scroller for the router's
+ * scroll restoration, which remembers it per history entry (also across a reload). The router
+ * restores on render; sections that load a moment later grow the page, so the remembered position
+ * is applied again while the content grows, until the reader scrolls or presses a key. A visit
+ * reached by a Back (a returning entry, or a navigation marked `specflowFocusTitle`) puts the focus
+ * on the page title, so it does not drop to the document body.
  */
 export function OverviewVisitScroll() {
   const scroller = useWorkspacePrimaryScroll();
-  const entry = useRouterState({ select: (state) => state.location.state.__TSR_key });
+  const remembered = useElementScrollRestoration({ id: overviewScrollRestorationId });
   const focusTitle = useRouterState({
     select: (state) => state.location.state.specflowFocusTitle === true,
   });
+  const top = remembered?.scrollY;
+
+  useLayoutEffect(() => {
+    scroller?.setAttribute('data-scroll-restoration-id', overviewScrollRestorationId);
+  }, [scroller]);
 
   useEffect(() => {
-    if (!scroller || !entry) {
+    if (!scroller) {
       return;
     }
 
-    const remembered = positions.get(entry);
-    // Restoring: the Overview's sections may still be growing (a cached read renders at once, a
-    // section's own read a moment later), so the position is applied each frame until it holds on
-    // two frames, the reader scrolls or presses a key, or about two seconds pass.
-    let restoring = remembered !== undefined;
-    let frame = 0;
-    const stopRestoring = () => {
-      restoring = false;
-    };
+    let observer: ResizeObserver | undefined;
+    const stop = () => observer?.disconnect();
+    if (top !== undefined) {
+      const apply = () => {
+        scroller.scrollTop = top;
+      };
 
-    for (const name of readerInput) {
-      scroller.addEventListener(name, stopRestoring, { passive: true, once: true });
-    }
-
-    const restore = (remaining: number, stable: number) => {
-      frame = requestAnimationFrame(() => {
-        if (!restoring || remembered === undefined) {
-          return;
-        }
-
-        scroller.scrollTop = remembered;
-        const next = Math.abs(scroller.scrollTop - remembered) < 1 ? stable + 1 : 0;
-        if (next < 2 && remaining > 1) {
-          restore(remaining - 1, next);
-        } else {
-          restoring = false;
-        }
-      });
-    };
-
-    if (remembered !== undefined) {
-      scroller.scrollTop = remembered;
-      restore(120, 0);
-    }
-
-    let focusFrame = 0;
-    if (remembered !== undefined || focusTitle) {
-      focusFrame = requestAnimationFrame(() =>
-        scroller.querySelector<HTMLElement>('[data-page-title]')?.focus({ preventScroll: true }),
-      );
-    }
-
-    // Only the reader's own scrolling counts: not the restore above, and not while a stacked
-    // Secondary covers the Overview (it is inert then) and the workspace may move its scroll.
-    const save = () => {
-      if (!restoring && !scroller.closest('[inert], [aria-hidden="true"]')) {
-        remember(entry, scroller.scrollTop);
+      apply();
+      observer = new ResizeObserver(apply);
+      for (const child of scroller.children) {
+        observer.observe(child);
       }
-    };
 
-    scroller.addEventListener('scroll', save, { passive: true });
+      for (const name of readerInput) {
+        scroller.addEventListener(name, stop, { passive: true, once: true });
+      }
+    }
+
+    const frame =
+      top !== undefined || focusTitle
+        ? requestAnimationFrame(() =>
+            scroller
+              .querySelector<HTMLElement>('[data-page-title]')
+              ?.focus({ preventScroll: true }),
+          )
+        : 0;
 
     return () => {
-      restoring = false;
       cancelAnimationFrame(frame);
-      cancelAnimationFrame(focusFrame);
-      scroller.removeEventListener('scroll', save);
+      stop();
       for (const name of readerInput) {
-        scroller.removeEventListener(name, stopRestoring);
+        scroller.removeEventListener(name, stop);
       }
     };
-    // Only a new visit (entry) or scroller restores; the focus flag belongs to that visit.
+    // Only a new visit's remembered position or scroller re-applies; the focus flag belongs to it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scroller, entry]);
+  }, [scroller, top]);
 
   return null;
 }

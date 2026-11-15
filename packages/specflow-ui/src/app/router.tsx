@@ -34,6 +34,7 @@ import { UiPlaygroundScreen } from './screens';
 import { NotFoundView } from './errors/NotFoundView';
 import { RouteErrorView } from './errors/RouteErrorView';
 import { rootRoute, appRoute, type SpecFlowRouterContext } from './router/root';
+import { isSpecificationOverviewPath } from './navigation/routeScope';
 
 export {
   rootRoute,
@@ -96,6 +97,9 @@ export function createSpecFlowRouter(
     defaultNotFoundComponent: NotFoundView,
     // Defects reach the console (no remote telemetry in a local product); the boundary shows a generic screen.
     defaultOnCatch: (error) => console.error('Route render failed', error),
+    // Only the Overview: a Back to it returns at its scroll (per history entry, kept across a
+    // reload). Not app-wide, where it would set the scroll of screens that restore their own.
+    scrollRestoration: ({ location }) => isSpecificationOverviewPath(location.pathname),
     ...(history ? { history } : {}),
   });
 }

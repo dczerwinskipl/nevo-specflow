@@ -28,7 +28,7 @@ describe('Back parent resolution', () => {
   it('steps back in history only when the previous entry is the parent visit', () => {
     // Opened from the Overview at index 4, now at 5: Back is a history step (scroll kept).
     expect(backByHistory({ parentIndex: 4, currentIndex: 5 })).toBe(true);
-    // A document tab pushed since, a deep link or a reload: navigate to the parent instead.
+    // A document tab pushed since, or a deep link (no index): navigate to the parent instead.
     expect(backByHistory({ parentIndex: 4, currentIndex: 6 })).toBe(false);
     expect(backByHistory({ parentIndex: undefined, currentIndex: 5 })).toBe(false);
     expect(backByHistory({ parentIndex: 4, currentIndex: undefined })).toBe(false);

@@ -1187,7 +1187,7 @@ const peerAreaHasNoBodyBack: Story['play'] = async ({ canvas, canvasElement }) =
  * second line, never cut off), since the body of a peer area has no context line.
  */
 const narrowNoticeInFull =
-  (notice: string, key?: string): Story['play'] =>
+  (notice: string, { key, lines = 1 }: { key?: string; lines?: 1 | 2 } = {}): Story['play'] =>
   async ({ canvas, canvasElement }) => {
     const status = await waitFor(
       () =>
@@ -1203,6 +1203,28 @@ const narrowNoticeInFull =
       throw new Error('The context notice must not be cut off.');
     }
 
+    // body-sm is 16 px per line; the 56 px header holds the 20 px title and two such lines.
+    const shownLines = Math.round(status.getBoundingClientRect().height / 16);
+    if (shownLines !== lines) {
+      throw new Error(`The notice must take ${lines} line(s), not ${shownLines}.`);
+    }
+
+    const identity = status.closest<HTMLElement>('[data-narrow-identity]')!;
+    if (identity.getBoundingClientRect().height > 56) {
+      throw new Error('The header identity must fit the 56 px header.');
+    }
+
+    let box = identity.parentElement;
+    while (box && getComputedStyle(box).overflow === 'visible') {
+      box = box.parentElement;
+    }
+
+    const clipped = box?.getBoundingClientRect();
+    const own = identity.getBoundingClientRect();
+    if (clipped && (own.top < clipped.top - 0.5 || own.bottom > clipped.bottom + 0.5)) {
+      throw new Error('The header box must not clip the identity.');
+    }
+
     if (key) {
       await canvas.findByText(`· ${key}`);
     }
@@ -1216,17 +1238,18 @@ export const NavigationStaleNarrow: Story = {
     navigationScenario: 'stale-keyed',
     locale: 'pl',
   },
-  play: narrowNoticeInFull('Kontekst może być nieaktualny', 'ADM-7'),
+  play: narrowNoticeInFull('Kontekst może być nieaktualny', { key: 'ADM-7' }),
 };
+/** The longer notice next to header actions (Documents): it wraps to a second line, in full. */
 export const NavigationUnavailableNarrow: Story = {
   tags: ['contract'],
   globals: { viewport: { value: 'mobile1', isRotated: false } },
   args: {
-    path: '/specs/admission/sessions?collection=current',
+    path: '/specs/admission/documents?collection=current',
     navigationScenario: 'context-failed',
-    locale: 'pl',
+    locale: 'en',
   },
-  play: narrowNoticeInFull('Nie udało się wczytać informacji o specyfikacji.'),
+  play: narrowNoticeInFull("Couldn't load information about this specification.", { lines: 2 }),
 };
 
 export const PeerAreaSessionsNarrow: Story = {

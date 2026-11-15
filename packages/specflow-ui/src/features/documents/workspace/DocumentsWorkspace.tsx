@@ -95,8 +95,8 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
   });
   const backParent = documentBackParent({ returnTo, sessionReturn: Boolean(sessionReturn) });
   // Back to the Overview: a step back in history when the previous entry is that Overview visit
-  // (it returns as it was left, at its scroll), else a navigation (a deep link, a reload, or a
-  // document tab opened since, which pushed an entry) whose Overview focuses its title.
+  // (it returns as it was left, at its scroll, also after a reload), else a navigation (a deep
+  // link, or a document tab opened since, which pushed an entry) whose Overview focuses its title.
   const backToOverview = () => {
     const state = router.state.location.state;
     if (

@@ -252,12 +252,15 @@ export function WorkflowNow({
   const workflowActions =
     primaryAction ??
     (overview ? (
+      // Distinct keys: the button that opened Finish must never become Start. When a finish whose
+      // answer was lost closes its dialog, the dialog returns focus to its opener; a reused element
+      // would then be the next step's Start, and one Enter or Space would start a step nobody chose.
       actions.start && startLabel ? (
-        <Button onClick={startNow} disabled={busy}>
+        <Button key="start" onClick={startNow} disabled={busy}>
           {startLabel}
         </Button>
       ) : finish && !finishBlocked ? (
-        <Button onClick={openFinish} disabled={busy}>
+        <Button key="finish" onClick={openFinish} disabled={busy}>
           {t('workflowExecution.now.finish')}
         </Button>
       ) : mainGateAction ? (

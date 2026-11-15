@@ -29,6 +29,35 @@ describe('createHttpClient', () => {
     expect(client.axios.defaults.allowAbsoluteUrls).toBe(false);
   });
 
+  it('gives mutations their own longer deadline unless the request sets one', async () => {
+    const seen: [string | undefined, number | undefined][] = [];
+    const client = createHttpClient({ timeoutMs: 1_000, mutationTimeoutMs: 60_000 });
+    client.axios.defaults.adapter = jsonAdapter((config) => {
+      seen.push([config.method, config.timeout]);
+    });
+
+    await client.get('/read');
+    await client.post('/write', {});
+    await client.put('/write', {});
+    await client.patch('/write', {});
+    await client.delete('/write');
+    await client.request({ method: 'post', url: '/write' });
+    await client.request({ method: 'get', url: '/read' });
+    await client.post('/write', {}, { timeoutMs: 5 });
+
+    expect(seen).toEqual([
+      ['get', 1_000],
+      ['post', 60_000],
+      ['put', 60_000],
+      ['patch', 60_000],
+      ['delete', 60_000],
+      ['post', 60_000],
+      ['get', 1_000],
+      ['post', 5],
+    ]);
+    expect(createHttpClient().axios.defaults.timeout).toBe(10_000);
+  });
+
   it('applies resolved credentials to each request', async () => {
     const client = createHttpClient({
       credentials: customCredentials(({ method, url }) => ({

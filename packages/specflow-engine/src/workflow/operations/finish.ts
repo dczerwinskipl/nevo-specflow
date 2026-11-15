@@ -112,16 +112,20 @@ export async function finishStep(
   dependencies: WorkflowDependencies,
   request: FinishStepInput,
 ): Promise<FinishStepResult> {
-  const result = await recordFinish(dependencies, request);
-  const postActions = await (dependencies.postActions ?? NO_POST_ACTIONS).afterStepFinished({
-    subject: request.subject,
-    step: request.step,
-    attempt: request.attempt,
-    actor: request.actor,
-    replayed: result.replayed === true,
-  });
+  const operation = dependencies.operation ?? ((work) => work());
 
-  return postActions.length > 0 ? { ...result, postActions } : result;
+  return operation(async () => {
+    const result = await recordFinish(dependencies, request);
+    const postActions = await (dependencies.postActions ?? NO_POST_ACTIONS).afterStepFinished({
+      subject: request.subject,
+      step: request.step,
+      attempt: request.attempt,
+      actor: request.actor,
+      replayed: result.replayed === true,
+    });
+
+    return postActions.length > 0 ? { ...result, postActions } : result;
+  });
 }
 
 function recordFinish(

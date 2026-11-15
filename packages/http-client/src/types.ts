@@ -20,7 +20,14 @@ export interface CredentialProvider {
 
 export interface HttpClientOptions {
   readonly baseURL?: string;
+  /** Deadline of a read (`get`, `head`, `options`), default 10 s. */
   readonly timeoutMs?: number;
+  /**
+   * Deadline of a mutation (`post`, `put`, `patch`, `delete`), default 120 s. A mutation the client
+   * gives up on still runs on the server, so its outcome is unknown: keep this well above the time a
+   * mutation can legitimately take rather than reuse the short read deadline.
+   */
+  readonly mutationTimeoutMs?: number;
   readonly headers?: Readonly<Record<string, string>>;
   readonly credentials?: CredentialProvider;
   readonly allowAbsoluteUrls?: boolean;

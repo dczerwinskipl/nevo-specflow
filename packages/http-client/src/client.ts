@@ -6,6 +6,7 @@ import { createSseStream } from './sse';
 import type {
   HttpClient,
   HttpClientOptions,
+  HttpMethod,
   HttpRequestConfig,
   HttpRequestOptions,
   HttpResponse,
@@ -24,6 +25,8 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
   });
 
   const credentials = options.credentials ?? anonymousCredentials();
+  const mutationTimeoutMs = options.mutationTimeoutMs ?? 120_000;
+  const mutation = { timeoutMs: mutationTimeoutMs };
 
   instance.interceptors.request.use(async (config) => {
     const resolved = await credentials.resolve({
@@ -67,7 +70,7 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
           method: config.method,
           url: config.url,
           data: config.body,
-          ...toAxiosConfig<TBody, TParams>(config),
+          ...toAxiosConfig<TBody, TParams>(config, isRead(config.method) ? {} : mutation),
         });
 
         return response.data;
@@ -130,7 +133,7 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
           AxiosResponse<TResponse, unknown, unknown, TParams>,
           unknown,
           TParams
-        >(url, toAxiosConfig<unknown, TParams>(config));
+        >(url, toAxiosConfig<unknown, TParams>(config, mutation));
 
         return response.data;
       });
@@ -147,7 +150,7 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
           AxiosResponse<TResponse, TBody, unknown, TParams>,
           TBody,
           TParams
-        >(url, body, toAxiosConfig<TBody, TParams>(config));
+        >(url, body, toAxiosConfig<TBody, TParams>(config, mutation));
 
         return response.data;
       });
@@ -164,7 +167,7 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
           AxiosResponse<TResponse, TBody, unknown, TParams>,
           TBody,
           TParams
-        >(url, body, toAxiosConfig<TBody, TParams>(config));
+        >(url, body, toAxiosConfig<TBody, TParams>(config, mutation));
 
         return response.data;
       });
@@ -181,7 +184,7 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
           AxiosResponse<TResponse, TBody, unknown, TParams>,
           TBody,
           TParams
-        >(url, body, toAxiosConfig<TBody, TParams>(config));
+        >(url, body, toAxiosConfig<TBody, TParams>(config, mutation));
 
         return response.data;
       });
@@ -207,18 +210,25 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
   };
 }
 
+function isRead(method: HttpMethod): boolean {
+  return method === 'get' || method === 'head' || method === 'options';
+}
+
+/** `defaults.timeoutMs` (a mutation's deadline) applies unless the request sets its own. */
 function toAxiosConfig<TBody, TParams>(
   config: HttpRequestOptions<TParams> | undefined,
+  defaults: { readonly timeoutMs?: number } = {},
 ): AxiosRequestConfig<TBody, TParams> {
+  const timeout = config?.timeoutMs ?? defaults.timeoutMs;
   if (!config) {
-    return {};
+    return timeout === undefined ? {} : { timeout };
   }
 
   return {
     headers: config.headers,
     params: config.params,
     signal: config.signal,
-    timeout: config.timeoutMs,
+    timeout,
   };
 }
 

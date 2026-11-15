@@ -93,7 +93,7 @@ Availability and action states describe only what actually exists.
 - `sections.documents.data.items[].templateOnly` (project mode) is `true` while the file is still
   only the template of the Specification's archetype that has its type and file name, rendered with
   the Specification's title, slug and creation date; the goal, which the Specification does not
-  keep, may hold any text, and line endings and trailing spaces do not count. It is `false` once the
+  keep, may hold any text but a heading line, and line endings and trailing spaces do not count. It is `false` once the
   file differs, and when the archetype or such a template is not in the current catalogue. The demo
   Runtime omits it.
 - `sections.tasks` is one Engine read (`readExecution`) of the Specification's Task resources

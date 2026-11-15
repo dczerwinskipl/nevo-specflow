@@ -63,10 +63,13 @@ finished it), `actions` (`start`, `finish` with its
 transitions, `return` with its targets) and, per subject, `task` (the Task lifecycle actions, each
 `allowed` or `unavailable` with a stable reason) or `specification` (`createTask`, and `exit`).
 A Specification whose workflow resolves also has `outline`: `stepCount`, the `current` step (absent
-before the first start and once the run ended), the `next` step (the step declared after `current`,
-or the entry step before the first start) and `tasksStep` (the first step that declares
-`produces: tasks`, absent when none does), each `{step, title, position}` with a 1-based position in
-declared order. These are display facts ("Step 2 of 7"): a workflow may loop or branch, so declared
+before the first start and once the run ended), the `next` step and `tasksStep`, each
+`{step, title, position}` with a 1-based position in declared order. `next` is the step declared
+after `current` when one of its transitions leads there, else the only step its transitions lead
+to, and absent when they lead to several other steps or none; before the first start it is the
+entry step. `tasksStep` is the first step that declares `produces: tasks` while the run can still
+reach it through transitions (from `current`, itself included, or from the entry step); absent
+otherwise. These are display facts ("Step 2 of 7"): a workflow may loop or branch, so declared
 order is no execution order.
 Once the Specification run ended (completed or abandoned), `createTask` and a Task's edit and `remove`
 actions are `unavailable` with reason `specification-ended`, as the commands refuse them with

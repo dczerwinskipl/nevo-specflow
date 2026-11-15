@@ -51,12 +51,22 @@ export function matchesTemplateShape(text: string, shape: readonly string[]): bo
 
   for (const part of shape.slice(1, -1)) {
     const found = document.indexOf(part, from);
-    if (found < 0 || found + part.length > end) {
+    if (found < 0 || found + part.length > end || !isGoalText(document.slice(from, found))) {
       return false;
     }
 
     from = found + part.length;
   }
 
-  return true;
+  return isGoalText(document.slice(from, end));
+}
+
+const HEADING_LINE = /^ {0,3}#{1,6}(?:\s|$)/mu;
+
+/**
+ * What may stand in a goal's place: prose, never a heading (a section of its own, for example one
+ * added under the Goal or a document written between two template headings, is written content).
+ */
+function isGoalText(text: string): boolean {
+  return !HEADING_LINE.test(text);
 }

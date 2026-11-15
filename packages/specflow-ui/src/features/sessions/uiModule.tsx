@@ -51,7 +51,11 @@ export function overviewSessionsVisible(data: SpecificationWorkspaceData): boole
   return (availability === undefined || availability === 'available') && !sessionsDisabled(data);
 }
 
-function SpecificationSessions({ data, actions }: SpecificationWorkSectionContext) {
+function SpecificationSessions({
+  data,
+  actions,
+  preparationShown,
+}: SpecificationWorkSectionContext) {
   const sessions = overviewSessions(data);
 
   return (
@@ -60,7 +64,8 @@ function SpecificationSessions({ data, actions }: SpecificationWorkSectionContex
       onOpenSession={actions.openSession}
       onOpenSessionsView={actions.openSessionsView}
       onStartSession={actions.openNewSession}
-      canStartSession={startSessionOffered(data.startSession)}
+      // The preparation block's Start session is the one start while it shows.
+      canStartSession={startSessionOffered(data.startSession) && !preparationShown}
       canOpenSession={actions.canOpenSession !== false}
     />
   );

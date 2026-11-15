@@ -148,6 +148,8 @@ export const ProjectModeNoSession: Story = {
     await expect(canvasElement.querySelector('#tasks-summary-heading')).not.toBeNull();
     await expect(canvas.getByText('No tasks yet')).toBeVisible();
     await expect(canvas.getByText('This specification has no sessions yet.')).toBeVisible();
+    // One start only: the preparation block's, never a second New session under Sessions.
+    await expect(canvas.queryByRole('button', { name: 'New session' })).toBeNull();
     await expect(canvas.getByText(/Utrzymać kontekst pracy/u)).toBeVisible();
     await expect(canvas.getByRole('heading', { name: /Documents/u })).toBeVisible();
     await expectNothingUnavailable(canvasElement);

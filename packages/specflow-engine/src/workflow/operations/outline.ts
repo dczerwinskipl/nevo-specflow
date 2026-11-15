@@ -13,9 +13,12 @@ export interface OutlineStep {
  * - `stepCount`: how many steps the workflow declares;
  * - `current`: the step the run is at (active, waiting or ready); absent before the first start and
  *   once the run ended;
- * - `next`: the step declared after `current`, or the entry step before the first start; absent
- *   after the last step and once the run ended;
- * - `tasksStep`: the first step that declares `produces: tasks`; absent when no step does.
+ * - `next`: the step a finish of `current` leads to: the step declared after it when one of its
+ *   transitions targets that step, else the only step its transitions target; absent when its
+ *   transitions lead to several other steps or none. Before the first start, the entry step.
+ * - `tasksStep`: the first step that declares `produces: tasks`, when the run can still reach it
+ *   through transitions (from `current`, itself included, or from the entry step before the first
+ *   start); absent otherwise and once the run ended.
  */
 export interface WorkflowOutline {
   readonly stepCount: number;
@@ -34,6 +37,37 @@ function producesTasks(step: WorkflowStep): boolean {
   return step.kind === 'work' && step.annotations.produces === 'tasks';
 }
 
+/** The distinct steps the transitions of `step` lead to, in declared order. */
+function stepTargets(step: WorkflowStep): string[] {
+  const targets = step.transitions.flatMap((transition) =>
+    transition.target.kind === 'step' ? [transition.target.step] : [],
+  );
+
+  return [...new Set(targets)];
+}
+
+/** Whether `goal` can be reached from `from` through transitions (`from` itself counts). */
+function reaches(definition: WorkflowDefinition, from: string, goal: string): boolean {
+  const seen = new Set<string>();
+  const queue = [from];
+  while (queue.length > 0) {
+    const id = queue.shift()!;
+    if (id === goal) {
+      return true;
+    }
+
+    if (seen.has(id)) {
+      continue;
+    }
+
+    seen.add(id);
+    const step = definition.steps.find((candidate) => candidate.id === id);
+    queue.push(...(step ? stepTargets(step) : []));
+  }
+
+  return false;
+}
+
 /** The outline of `definition` for a run at `position`. Generic: no step id is special. */
 export function outlineOf(
   definition: WorkflowDefinition,
@@ -46,17 +80,37 @@ export function outlineOf(
     return step ? { step: step.id, title: step.title, position: index + 1 } : undefined;
   };
 
-  const producing = steps.findIndex(producesTasks);
-  const tasksStep = producing >= 0 ? at(producing) : undefined;
+  const indexOf = (id: string) => steps.findIndex((step) => step.id === id);
+
   let current: OutlineStep | undefined;
   let next: OutlineStep | undefined;
+  let from: string | undefined;
   if (position.kind === 'not-started') {
-    next = at(steps.findIndex((step) => step.id === definition.entryStep));
+    next = at(indexOf(definition.entryStep));
+    from = definition.entryStep;
   } else if (position.kind === 'at') {
-    const index = steps.findIndex((step) => step.id === position.step);
-    current = index >= 0 ? at(index) : undefined;
-    next = index >= 0 ? at(index + 1) : undefined;
+    const index = indexOf(position.step);
+    const step = steps[index];
+    if (step) {
+      current = at(index);
+      from = step.id;
+      const targets = stepTargets(step);
+      const successor = steps[index + 1];
+      const target =
+        successor && targets.includes(successor.id)
+          ? successor.id
+          : targets.length === 1
+            ? targets[0]
+            : undefined;
+      next = target === undefined ? undefined : at(indexOf(target));
+    }
   }
+
+  const producing = steps.find(producesTasks);
+  const tasksStep =
+    producing && from !== undefined && reaches(definition, from, producing.id)
+      ? at(indexOf(producing.id))
+      : undefined;
 
   return {
     stepCount: steps.length,

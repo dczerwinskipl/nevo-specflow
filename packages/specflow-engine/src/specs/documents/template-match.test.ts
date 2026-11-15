@@ -32,6 +32,20 @@ describe('template shape', () => {
     expect(matchesTemplateShape('# Renamed\n\n## Goal\n\nx\n\n## Non-goals\n', shape)).toBe(false);
   });
 
+  it('does not take a section added in the goal slot for the goal', () => {
+    const shape = templateShape(overview, values);
+
+    expect(
+      matchesTemplateShape(
+        '# Search cutoff\n\n## Goal\n\nDrop weak hits.\n\n## Design\n\nA cutoff per mode.\n\n## Non-goals\n',
+        shape,
+      ),
+    ).toBe(false);
+    expect(
+      matchesTemplateShape('# Search cutoff\n\n## Goal\n\n### Detail\n\n## Non-goals\n', shape),
+    ).toBe(false);
+  });
+
   it('compares a template without a goal exactly', () => {
     const shape = templateShape('# Behaviour\n\n## Scenarios\n', values);
 

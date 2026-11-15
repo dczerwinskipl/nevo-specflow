@@ -89,6 +89,8 @@ export interface SpecificationWorkSectionOutletProps {
   readonly specId: string;
   readonly data: SpecificationWorkspaceData;
   readonly modules: UiRegistry;
+  /** The preparation block shows in Now's place (`SpecificationWorkSectionContext`). */
+  readonly preparationShown?: boolean;
 }
 
 /** The Work host provides placement, not knowledge of the registered feature. */
@@ -97,10 +99,11 @@ export function SpecificationWorkSectionOutlet({
   specId,
   data,
   modules,
+  preparationShown = false,
 }: SpecificationWorkSectionOutletProps) {
   const { t } = useTranslation();
   const actions = useWorkspaceRuntime();
-  const context: SpecificationWorkSectionContext = { specId, data, actions };
+  const context: SpecificationWorkSectionContext = { specId, data, actions, preparationShown };
   const sections = modules
     .get(specificationWorkSections)
     .filter((contribution) => contribution.slot === slot);

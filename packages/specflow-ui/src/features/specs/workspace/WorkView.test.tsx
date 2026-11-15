@@ -290,6 +290,8 @@ describe('Specification Overview without Tasks', () => {
     // Tasks, Sessions and Documents keep their places, each with its empty state where empty.
     expect(screen.getByText('No tasks yet')).not.toBeNull();
     expect(screen.getByText('This specification has no sessions yet.')).not.toBeNull();
+    // The preparation block's Start session is the only start: Sessions offers no second one.
+    expect(screen.queryByRole('button', { name: 'New session' })).toBeNull();
     expect(headingOrder(container)).toEqual(['Tasks', 'Sessions', 'Documents']);
   });
 

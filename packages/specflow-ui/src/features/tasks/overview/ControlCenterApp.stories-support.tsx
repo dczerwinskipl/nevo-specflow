@@ -5,6 +5,7 @@ import type {
   SpecificationWorkspaceResponse,
   TaskListResponse,
 } from '@nevo/specflow-contracts/specs/workspace';
+import type { ArchetypeCatalogue } from '@nevo/specflow-contracts/documents';
 import type { WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
 import { createFixtureSpecsOverviewApi } from '../../../../test-support/specs/overview/api';
 import { createAuthStore } from '../../../auth/store';
@@ -37,6 +38,8 @@ export interface ControlCenterSource {
   readonly projection: () => WorkflowActionProjection;
   readonly taskList: (blocking: boolean) => TaskListResponse;
   readonly documents?: DocumentApi;
+  /** The document type catalogue (type titles and icons of the rows). */
+  readonly catalogue?: ArchetypeCatalogue;
 }
 
 const never = () => new Promise<never>(() => undefined);
@@ -80,6 +83,14 @@ function services(source: ControlCenterSource) {
       close: never,
     },
     documentApi: source.documents ?? taskDocumentApi,
+    ...(source.catalogue
+      ? {
+          projectDocumentsApi: {
+            ...defaults.projectDocumentsApi,
+            catalogue: () => Promise.resolve(source.catalogue!),
+          },
+        }
+      : {}),
   });
 }
 

@@ -10,6 +10,7 @@ import type {
 } from '@nevo/specflow-contracts/workflow';
 import { createWorkspaceIntegrationApi } from '../../../../test-support/specs/workspace/api';
 import { documentContentFixture } from '../../../../test-support/documents/fixtures';
+import type { ArchetypeCatalogue } from '@nevo/specflow-contracts/documents';
 import type { DocumentApi } from '../../documents/api';
 import { SPEC } from '../execution/projections.stories-support';
 
@@ -335,6 +336,28 @@ export function earlyTaskList(scenario: EarlyScenario): TaskListResponse {
     attention: [],
   };
 }
+
+/** The document types of the `feature` archetype with their icons (.nevo/definitions). */
+export const earlyCatalogue: ArchetypeCatalogue = {
+  revision: 'catalogue-early',
+  documentTypes: (
+    [
+      ['overview', 'Overview', 'book-open'],
+      ['behaviour', 'Behaviour', 'list-ordered'],
+      ['ux', 'UX', 'panels-top-left'],
+      ['backend', 'Backend', 'server'],
+      ['decisions', 'Decisions', 'file-check'],
+    ] as const
+  ).map(([id, typeTitle, icon]) => ({
+    id,
+    title: typeTitle,
+    description: `${typeTitle} of the change.`,
+    useWhen: 'Always.',
+    instructions: 'Fill every section.',
+    icon,
+  })),
+  archetypes: [],
+};
 
 /** The overview document as the Secondary preview reads it. */
 export const earlyDocumentApi: DocumentApi = {

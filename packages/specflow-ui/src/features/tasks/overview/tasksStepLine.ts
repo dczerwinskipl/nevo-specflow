@@ -3,9 +3,11 @@ import type { WorkflowOutline } from '@nevo/specflow-contracts/workflow';
 
 /**
  * When the first Tasks appear, from the workflow's step that produces them (the Specification
- * projection's `outline.tasksStep`): "Tasks appear when the workflow reaches Break the solution
- * down (step 4 of 7)." before that step, "… finishes." while the run is at it. Nothing without such
- * a step, once the run passed it or ended, or while the projection is unknown.
+ * projection's `outline.tasksStep`, present only while the run can still reach that step through
+ * transitions): "Tasks appear when the workflow reaches Break the solution down (step 4 of 7)."
+ * before the first start and while the run is at an earlier step, "… finishes." while it is at that
+ * step. Nothing without a reachable producing step, at a later step (a loop back is no promise) or
+ * while the projection is unknown.
  */
 export function tasksStepLine(
   t: TFunction,
@@ -18,12 +20,7 @@ export function tasksStepLine(
 
   const values = { step: producing.title, position: producing.position, total: outline.stepCount };
   const current = outline.current;
-  if (!current) {
-    // Before the first start `next` is the entry step; once the run ended there is neither.
-    return outline.next ? t('specification.tasksAppearAt', values) : undefined;
-  }
-
-  if (current.position < producing.position) {
+  if (!current || current.position < producing.position) {
     return t('specification.tasksAppearAt', values);
   }
 

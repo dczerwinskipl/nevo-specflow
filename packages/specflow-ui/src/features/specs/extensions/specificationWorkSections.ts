@@ -8,6 +8,11 @@ export interface SpecificationWorkSectionContext {
   readonly specId: string;
   readonly data: SpecificationWorkspaceData;
   readonly actions: WorkspaceRuntime;
+  /**
+   * The preparation block shows in Now's place (no workflow, no Tasks, no Session) and owns the
+   * start of a Session there: a section does not offer the same start again.
+   */
+  readonly preparationShown?: boolean;
 }
 
 /**

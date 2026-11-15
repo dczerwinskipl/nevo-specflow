@@ -167,11 +167,11 @@ export function TasksPage({
           <EmptyState
             variant="inline"
             title={t('specification.tasksEmptyTitle')}
+            // When the workflow's Tasks appear, and that New task creates them sooner when offered.
             description={
-              emptyLine ??
-              (onNewTask
-                ? t('taskAuthoring.tasks.emptyDescription')
-                : t('specification.tasksEmptyDescription'))
+              onNewTask
+                ? [emptyLine, t('taskAuthoring.tasks.emptyDescription')].filter(Boolean).join(' ')
+                : (emptyLine ?? t('specification.tasksEmptyDescription'))
             }
           />
         ) : groups.length === 0 && needle ? (

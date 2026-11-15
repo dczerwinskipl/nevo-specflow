@@ -2,7 +2,7 @@ import { RefreshStatus } from '../../../app/loading/RefreshStatus';
 import { ApplicationLocationIdentity } from '../../../app/navigation/ApplicationLocation';
 import { WorkspaceRouteLeaveGuard } from '../../../app/navigation/WorkspaceRouteLeaveGuard';
 import { useWorkspaceLabels } from '../../../app/navigation/useWorkspaceLabels';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   AppContent,
@@ -127,21 +127,30 @@ function SpecificationWorkspaceInner({
 
   // The flow the Overview last opened is a document preview: it takes half of the workspace (the
   // Overview reads in one column beside it); every other Secondary keeps the Overview's share.
+  // Recorded only once the open succeeded (a leave guard can refuse it), and only by the latest
+  // open: an earlier one that settles late never decides the split.
   const [documentOpened, setDocumentOpened] = useState(false);
+  const latestOpen = useRef(0);
   const split = documentOpened && secondaryNavigation.isOpen ? 'balanced' : 'primary';
+  const recordOpen = useCallback((opening: Promise<boolean>, document: boolean) => {
+    const request = ++latestOpen.current;
+    void opening.then((opened) => {
+      if (opened && request === latestOpen.current) {
+        setDocumentOpened(document);
+      }
+    });
+  }, []);
 
   const handlePreviewTask = useCallback(
     (taskId: string) => {
-      setDocumentOpened(false);
-      void secondaryNavigation.open(taskPreviewStack, { specId, taskId });
+      recordOpen(secondaryNavigation.open(taskPreviewStack, { specId, taskId }), false);
     },
-    [secondaryNavigation, specId],
+    [secondaryNavigation, specId, recordOpen],
   );
 
   const handleOpenHistory = useCallback(() => {
-    setDocumentOpened(false);
-    void secondaryNavigation.open(historyStack, { specId });
-  }, [secondaryNavigation, specId]);
+    recordOpen(secondaryNavigation.open(historyStack, { specId }), false);
+  }, [secondaryNavigation, specId, recordOpen]);
 
   const handleOpenFullTask = useCallback(
     (taskId: string, section?: TaskSection) => {
@@ -160,10 +169,12 @@ function SpecificationWorkspaceInner({
 
   const handleOpenDoc = useCallback(
     (docId: string, _origin: 'work' | 'documents' = 'work') => {
-      setDocumentOpened(true);
-      void secondaryNavigation.open(documentPreviewStack, { specId, documentId: docId });
+      recordOpen(
+        secondaryNavigation.open(documentPreviewStack, { specId, documentId: docId }),
+        true,
+      );
     },
-    [secondaryNavigation, specId],
+    [secondaryNavigation, specId, recordOpen],
   );
 
   const secondaryContextValue: SpecificationSecondaryContextValue = useMemo(

@@ -17,10 +17,9 @@ describe('tasksStepLine', () => {
     );
   });
 
-  it('says nothing without a producing step, after it, once ended or unknown', () => {
+  it('says nothing without a reachable producing step, after it or while unknown', () => {
     expect(tasksStepLine(t, { stepCount: 7, current: step(2) })).toBeUndefined();
     expect(tasksStepLine(t, at(5))).toBeUndefined();
-    expect(tasksStepLine(t, { stepCount: 7, tasksStep: step(4) })).toBeUndefined();
     expect(tasksStepLine(t, undefined)).toBeUndefined();
   });
 });

@@ -649,8 +649,9 @@ const OutlineStepSchema = Type.Object({
 /**
  * Where a run stands among its workflow's steps, in declared order (display facts; a workflow may
  * loop or branch, so this is no execution order). `current`: the step the run is at (absent before
- * the first start and once it ended); `next`: the step declared after it, or the entry step before
- * the first start; `tasksStep`: the first step that declares `produces: tasks`.
+ * the first start and once it ended); `next`: the declared successor when a transition of `current`
+ * leads there, else its only target step, else absent (the entry step before the first start);
+ * `tasksStep`: the first step that declares `produces: tasks`, while the run can still reach it.
  */
 export const WorkflowOutlineSchema = Type.Object({
   stepCount: Type.Integer({ minimum: 0 }),

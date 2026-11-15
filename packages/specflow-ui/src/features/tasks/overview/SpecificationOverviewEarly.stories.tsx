@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, within } from 'storybook/test';
 import { RoutedSpecificationApp, type ControlCenterPage } from './ControlCenterApp.stories-support';
 import {
+  earlyCatalogue,
   earlyDocumentApi,
   earlyProjection,
   earlyTaskList,
@@ -24,6 +25,7 @@ function EarlyOverviewApp({
       projection: () => earlyProjection(scenario),
       taskList: () => earlyTaskList(scenario),
       documents: earlyDocumentApi,
+      catalogue: earlyCatalogue,
     }),
     [scenario],
   );
@@ -126,7 +128,7 @@ export const DocumentOpen: Story = {
   },
 };
 
-/** The empty Tasks page names the same step as the Overview. */
+/** The empty Tasks page names the same step as the Overview, and keeps the New task hint. */
 export const TasksPageEmpty: Story = {
   tags: ['contract'],
   args: { scenario: 'not-started', page: 'tasks' },
@@ -134,7 +136,7 @@ export const TasksPageEmpty: Story = {
     const canvas = within(canvasElement);
     await expect(
       await canvas.findByText(
-        'Tasks appear when the workflow reaches Break the solution down (step 4 of 7).',
+        'Tasks appear when the workflow reaches Break the solution down (step 4 of 7). Create tasks with New task, also before the workflow starts.',
       ),
     ).toBeVisible();
   },

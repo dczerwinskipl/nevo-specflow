@@ -19,6 +19,7 @@ import { rankByContent } from '../frontmatter/frontmatter-search';
 import { asString } from '../frontmatter/contract';
 import {
   createEmbeddingProviders,
+  QUERY_TIMEOUT_MS,
   type CreateEmbeddingProvider,
 } from '../embeddings/embedding-providers';
 import {
@@ -103,6 +104,7 @@ export function openDocsSearch(options: OpenDocsSearchOptions): DocsSearch {
       store: index.store,
       writes: index.writes,
       providers: created.providers,
+      providersAbortedBy: created.providersAbortedBy,
       ...(options.catchUp ? { catchUp: options.catchUp } : {}),
       ...(index.directory === undefined
         ? {}
@@ -126,6 +128,15 @@ export interface DocsSearchRequest {
    */
   readonly refresh: boolean;
   /**
+   * Milliseconds the search may take to answer once the corpus is loaded, more than `QUERY_TIMEOUT_MS`
+   * (`embeddings/embedding-providers`), for a host whose caller waits a bounded time (the Runtime:
+   * `DOCS_SEARCH_ANSWER_BUDGET_MS`). The read-time refresh must end `QUERY_TIMEOUT_MS` before it,
+   * so the query embedding fits as well; a refresh still embedding then is aborted, the gap goes to
+   * the catch-up and the search answers lexically with `index-building` (`refreshForRead`). Absent
+   * (the CLI): the search waits for its read-time refresh.
+   */
+  readonly answerBudgetMs?: number;
+  /**
    * The command line that builds the index as the caller's host invokes it, named in
    * `index-building` messages. Default `SEMANTIC_INDEX_COMMAND` (the product command).
    */
@@ -141,18 +152,17 @@ export interface DocsSearchRequest {
  *   folding over title, id, scope, areas, tags, read_when and summary, ignoring query terms common
  *   to many documents), which finds a document by what it says it is about even when no section
  *   repeats the words.
- * A document with no section among the section ranking's candidates has no sections.
+ * A document with no section among the section ranking's candidates has no sections. A document
+ * has `wordMatch` when its words matched: the frontmatter ranking holds it, or a section of it was in
+ * the section ranking's word (BM25) ranking (`UnitHit.lexical`).
  */
 export async function searchDocumentation(
   search: DocsSearch,
   request: DocsSearchRequest,
 ): Promise<DocsSearchResult> {
   const loaded = await search.chunks.load();
-  const vectors = await vectorsFor(
-    search.vectors,
-    loaded.chunks,
-    request.refresh,
-    request.semanticIndexCommand ?? SEMANTIC_INDEX_COMMAND,
+  const vectors = await withRefreshDeadline(request, (deadline) =>
+    vectorsFor(search.vectors, loaded.chunks, request, deadline),
   );
 
   return rank(search, request, loaded, vectors);
@@ -178,11 +188,8 @@ export async function searchDocumentationWithLeftOut(
   request: DocsSearchRequest,
 ): Promise<DocsSearchWithLeftOut> {
   const loaded = await search.chunks.load();
-  const prepared = await vectorsFor(
-    search.vectors,
-    loaded.chunks,
-    request.refresh,
-    request.semanticIndexCommand ?? SEMANTIC_INDEX_COMMAND,
+  const prepared = await withRefreshDeadline(request, (deadline) =>
+    vectorsFor(search.vectors, loaded.chunks, request, deadline),
   );
   const vectors = 'reason' in prepared ? prepared : withQueryEmbeddedOnce(prepared);
   const result = await rank(search, request, loaded, vectors);
@@ -255,19 +262,21 @@ async function rank(
 
   const records = new Map(searched.map((record) => [asString(record.id), record]));
   const sectionsById = new Map<string, UnitHit>(sections.hits.map((hit) => [hit.unitId, hit]));
-  const results = reciprocalRankFusion([
-    sections.hits.map((hit) => hit.unitId),
-    byFrontmatter.map((record) => asString(record.id)),
-  ])
+  const frontmatterIds = byFrontmatter.map((record) => asString(record.id));
+  const byWords = new Set(frontmatterIds);
+  const results = reciprocalRankFusion([sections.hits.map((hit) => hit.unitId), frontmatterIds])
     .slice(0, request.limit)
-    .map(({ id, score }) =>
-      toHit(
+    .map(({ id, score }) => {
+      const documentSections = sectionsById.get(id);
+
+      return toHit(
         records.get(id)!,
-        sectionsById.get(id),
+        documentSections,
         score,
+        byWords.has(id) || documentSections?.lexical === true,
         request.snippets ? request.query : undefined,
-      ),
-    );
+      );
+    });
 
   return sections.mode === 'hybrid'
     ? { mode: 'hybrid', results, skipped }
@@ -305,11 +314,38 @@ async function lexicalReason(
     : searchReason(engine);
 }
 
+/**
+ * Runs `prepare` with the read-time refresh's deadline: `answerBudgetMs - QUERY_TIMEOUT_MS` after
+ * now, so the query embedding that follows still fits the budget. Without a budget there is none.
+ */
+async function withRefreshDeadline<T>(
+  { answerBudgetMs }: DocsSearchRequest,
+  prepare: (deadline: AbortSignal | undefined) => Promise<T>,
+): Promise<T> {
+  if (answerBudgetMs === undefined) {
+    return prepare(undefined);
+  }
+
+  if (!Number.isInteger(answerBudgetMs) || answerBudgetMs <= QUERY_TIMEOUT_MS) {
+    throw new RangeError(
+      `answerBudgetMs must be an integer above ${String(QUERY_TIMEOUT_MS)}, got ${String(answerBudgetMs)}.`,
+    );
+  }
+
+  const deadline = new AbortController();
+  const timer = setTimeout(() => deadline.abort(), answerBudgetMs - QUERY_TIMEOUT_MS);
+  try {
+    return await prepare(deadline.signal);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function vectorsFor(
   vectors: DocsSearchVectors,
   chunks: readonly DocsChunk[],
-  refresh: boolean,
-  indexCommand: string,
+  request: DocsSearchRequest,
+  deadline: AbortSignal | undefined,
 ): Promise<SearchVectors> {
   // While the index must not be written (a refused write admission), the search is lexical, also
   // when the endpoint is unusable: the index is reported first, as `semantic index` does.
@@ -322,7 +358,13 @@ async function vectorsFor(
     return { reason: vectors.reason };
   }
 
-  const notReady = await refreshForRead(vectors, chunks, refresh, indexCommand);
+  const notReady = await refreshForRead(
+    vectors,
+    chunks,
+    request.refresh,
+    request.semanticIndexCommand ?? SEMANTIC_INDEX_COMMAND,
+    deadline,
+  );
   if (notReady !== undefined) {
     return { reason: notReady };
   }

@@ -114,6 +114,35 @@ describe('createSearchEngine', () => {
     expect(again).toEqual(all);
   });
 
+  it('marks the units the lexical ranking contained, in both modes', async () => {
+    // Every text embeds alike, so the vector ranking holds every unit and only `colors` has the word.
+    const fake = createFakeEmbeddingProvider();
+    const provider: typeof fake = {
+      ...fake,
+      embed: (texts, purpose) =>
+        fake.embed(
+          texts.map(() => 'same'),
+          purpose,
+        ),
+    };
+    const vectors = { provider, store: await indexedStore(provider) };
+
+    const hybrid = await engine.search({ query: 'palette', limit: 5, vectors });
+    expect(hybrid.mode).toBe('hybrid');
+    expect(Object.fromEntries(hybrid.hits.map((hit) => [hit.unitId, hit.lexical]))).toEqual({
+      colors: true,
+      locks: false,
+      rename: false,
+    });
+
+    const lexical = await engine.search({
+      query: 'palette',
+      limit: 5,
+      vectors: { reason: { code: 'off', message: 'off' } },
+    });
+    expect(lexical.hits.map((hit) => [hit.unitId, hit.lexical])).toEqual([['colors', true]]);
+  });
+
   it('applies the filter before the vector candidate cut', async () => {
     // Twelve rejected units closer to the query than any accepted one would fill all ten vector
     // candidates of a one-unit search if the filter ran after the cut.

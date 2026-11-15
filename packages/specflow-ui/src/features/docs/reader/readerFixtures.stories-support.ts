@@ -405,7 +405,26 @@ export const mainDocs: MockDoc[] = [
     'product/specflow/ui/ai-session-ux.md',
     'AI-session UX',
     'Turn state, Work information levels, commentary, live versus historical.',
-    { status: 'draft' },
+    {
+      status: 'draft',
+      // Nested headings: the parent shows beside its long leaf only where the pane fits both.
+      body: [
+        '# AI-session UX',
+        '',
+        '## Turn state',
+        '',
+        '### Session status ownership (accepted 2026-11-08)',
+        '',
+        "Muted because the condition is provider-wide and resolved in the provider's CLI, not in the Session; the copy names the provider and how to resolve the limit.",
+        '',
+        '## Work information',
+        '',
+        '### Levels',
+        '',
+        'A Session shows its Work on three levels: the summary of a Turn, its steps, and the raw output of each tool call.',
+        '',
+      ].join('\n'),
+    },
   ),
   doc(
     'product.specflow.ui.full-session',
@@ -586,6 +605,19 @@ export interface MockResult {
   doc: MockDoc;
   section?: MockSection;
   snippet: string;
+  /** The first occurrence of each query word in `snippet`, at most three, in order. */
+  snippetMatches: { start: number; end: number }[];
+}
+
+function matchesIn(text: string, words: readonly string[]): { start: number; end: number }[] {
+  const lower = text.toLowerCase();
+
+  return words
+    .map((word) => ({ start: lower.indexOf(word), end: lower.indexOf(word) + word.length }))
+    .filter(({ start }) => start >= 0)
+    .sort((a, b) => a.start - b.start)
+    .filter((range, index, all) => index === 0 || range.start >= all[index - 1]!.end)
+    .slice(0, 3);
 }
 
 export function search(
@@ -619,13 +651,16 @@ export function search(
       .replace(/[*`#|]/g, '')
       .replace(/\s+/g, ' ')
       .trim();
-    const at = Math.max(0, plain.toLowerCase().indexOf(words[0] ?? '') - 40);
-    const snippet = `${at > 0 ? '…' : ''}${plain.slice(at, at + 180)}${plain.length > at + 180 ? '…' : ''}`;
+    const cut = Math.max(0, plain.toLowerCase().indexOf(words[0] ?? '') - 40);
+    // A cut start begins at a whole word, as the Runtime's excerpt does.
+    const at = cut === 0 ? 0 : plain.indexOf(' ', cut) + 1;
+    const snippet = `${at > 0 ? '… ' : ''}${plain.slice(at, at + 180)}${plain.length > at + 180 ? '…' : ''}`;
     scored.push({
       result: {
         doc: d,
         section: best.section?.headingPath.length ? best.section : undefined,
         snippet,
+        snippetMatches: matchesIn(snippet, words),
       },
       score,
       proposal: isProposal(d.path),

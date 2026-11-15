@@ -155,7 +155,9 @@ timestamp-preserving copy, is seen), re-chunks only documents whose content hash
 embeds only new or changed sections. A current index costs no endpoint call besides the
 query. When the index needs work, a short reachability probe runs first, so an unreachable endpoint
 falls back to lexical within the query timeout (at most 3000 ms) instead of the document timeout.
-A search embeds at most 16 sections (one request at the default batch size). When more lack
+A search embeds at most 16 sections (one request at the default batch size) and waits for them
+however long the endpoint takes (up to its document timeout): the CLI sets no answer budget, unlike
+the Runtime's HTTP search (`reference.api.workspace-docs`, "Index freshness"). When more lack
 vectors, for example before the first build, after a model change or after editing many documents,
 it embeds nothing and answers lexically with `index-building` at once, and the index is caught up
 in the background: unless a writer already holds the index or a catch-up was started less than a
@@ -192,15 +194,34 @@ for a later part of a long section that part's first line. `get --content <id>#<
 the section with its subsections.
 
 **Excerpts.** Under each section, `search` shows a short excerpt (`snippet`, one line, at most
-280 characters) taken from the section's own text, never generated: the section body is split
-into pieces (the sentences of each paragraph, and every line of a list, table, quote or code block
-on its own) and the piece with the most query words wins, each word weighted by how few pieces of
-the section contain it (words of at least four letters also match by a long common prefix, so
-`taski` matches `taskami` and `session` matches `sessions`); the following and then the
-preceding pieces are added while they fit, and `…` marks text left out. When no piece contains a
-query word (a section found by its meaning only), the excerpt is the first sentences after the
-heading, which may not be the part that matched: the excerpt says what the section is about, not
-why it was chosen, so read the section before relying on it. `--no-snippets` leaves them out.
+280 characters, ellipses included) taken from the section's own text, never generated, as plain
+text: links show their text, code spans their content and images their alt text; emphasis, list,
+quote and table markers and HTML are removed. The section is read as fragments: the paragraphs
+(split into sentences), the list items, the table rows and the lines of code blocks; the header row
+of a table is dropped and a row reads as `first cell — cell; cell`. The sentence with the most
+query words wins, each word weighted by how few sentences of the section contain it (words of at
+least four letters also match by a long common prefix, so `taski` matches `taskami` and `session`
+matches `sessions`). Prose wins over code: a sentence that is mainly code spans, paths or
+identifiers, or a code line, is chosen only when no prose sentence matches. The excerpt is one
+contiguous part of that sentence's paragraph, list item or row, never glued to another one: it
+starts at the sentence's start when that is at most 40 characters before its first matching word,
+otherwise at `… ` and a whole word, at most 40 characters before it; it runs to the fragment's
+end, or to the last sentence end that fits, or else ends at a word with `…`. When no sentence
+contains a query word (a section found by its meaning, or by its heading only), the excerpt is the
+section's longest prose fragment from its start, which may not be the part that matched: read the
+section before relying on it. `snippetMatches` locates the matched words in `snippet`: the first
+occurrence of each query word, at most three, as `{ "start", "end" }` UTF-16 offsets (`end`
+excluded) over the original characters, also when the query was typed without diacritics
+(`platnosci` marks `płatności`); empty when no word of the excerpt matches. It is always empty for
+a result whose `wordMatch` is `false`: the excerpt's prefix rule is looser than the exact words of
+the rankings, so it would otherwise mark words in a result that matched by meaning only.
+`--no-snippets` leaves both out.
+
+**Word match.** Every result has `wordMatch`: `true` when the query's words matched the document,
+in the BM25 ranking of its sections (heading path or text) or in the frontmatter ranking; `false`
+for a document found only by its meaning (hybrid mode). Lexical results always have it `true`. A
+word may match only a heading or the frontmatter, so a result with `wordMatch` can have excerpts
+with empty `snippetMatches`. It does not change the ranking.
 
 Text output: one block per document with its id, title, type and status, the `summary` (cut at a
 word boundary after 200 characters; `--json` has all of it), the `read_when` situations and the
@@ -244,7 +265,7 @@ Text output, lexical: the first line names the reason, for example
 mode: lexical (semantic-disabled: Semantic search is not enabled (docs.search.semantic is not true).)
 ```
 
-JSON output (`--json`), hybrid:
+JSON output (`--json`), hybrid, for the question `install widget`:
 
 ```json
 {
@@ -262,20 +283,26 @@ JSON output (`--json`), hybrid:
       "readWhen": ["installing the widget", "pointing it at a local model"],
       "file": "docs/guide.md",
       "score": 0.0328,
+      "wordMatch": true,
       "sections": [
         {
           "headingPath": ["Guide", "Install"],
           "sectionId": "guide/install",
           "line": 10,
           "score": 0.0325,
-          "snippet": "Install the widget with pnpm."
+          "snippet": "Install the widget with pnpm.",
+          "snippetMatches": [
+            { "start": 0, "end": 7 },
+            { "start": 12, "end": 18 }
+          ]
         },
         {
           "headingPath": ["Guide", "Configure"],
           "sectionId": "guide/configure",
           "line": 14,
           "score": 0.0159,
-          "snippet": "Point the embedding endpoint at a local model."
+          "snippet": "Point the embedding endpoint at a local model.",
+          "snippetMatches": []
         }
       ]
     }
@@ -302,6 +329,7 @@ JSON output, lexical with `--no-snippets`:
       "readWhen": ["installing the widget"],
       "file": "docs/guide.md",
       "score": 0.0328,
+      "wordMatch": true,
       "sections": [
         {
           "headingPath": ["Guide", "Install"],
@@ -316,7 +344,7 @@ JSON output, lexical with `--no-snippets`:
 ```
 
 `scope`, `areas`, `tags`, `summary` and `readWhen` are present only when the frontmatter has a
-non-empty value; `snippet` is left out with `--no-snippets`. A document's `score` is its fused rank
+non-empty value; `snippet` and `snippetMatches` are left out with `--no-snippets`. A document's `score` is its fused rank
 score; a section's `score` is BM25 in lexical mode and the section-level reciprocal-rank-fusion
 score in hybrid mode. Scores only order the results of one search: they are not a confidence or a
 probability, do not compare across searches, and a high score does not mean the document answers

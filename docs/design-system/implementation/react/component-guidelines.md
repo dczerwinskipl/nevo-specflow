@@ -385,10 +385,16 @@ positions; no screen passes geometry of its own.
 
 A control that switches the context a screen works in (the current Specification in the
 navigation, the workspace the documentation reader reads) uses `src/shared/context-switcher`:
-`ContextSwitcherTrigger` (quiet label, wrapping name, detail lines, up-down glyph),
-`ContextSwitcherOption` (name, detail lines, "Selected" with a check, `unavailable` options
-focusable but not chosen), `useListboxKeys` (ArrowUp/ArrowDown wrapping, Home, End) and
-`contextSwitcherPopoverClassName` with `motion="navigation"` and `inert`/`aria-hidden` while closed.
+`ContextSwitcherTrigger` (quiet label; the name on one line, identifier-like names cut in the
+middle by measurement so their distinguishing end stays, prose cut at the end, with a tooltip only
+when it is cut; an optional trailing `status`; one line of `segments` joined by " · "; up-down
+glyph; 72 px with segments, 56 px without), `ContextSwitcherOption` (the name and segments
+wrapping in full, the same `status` on its own line, "Selected" with a check, `unavailable` options
+focusable but not chosen), `ContextSwitcherStatus` (a `StatusIndicator` dot and short text, tone
+`attention` or `danger`; never a segment), `useListboxKeys` (ArrowUp/ArrowDown wrapping, Home, End)
+and `contextSwitcherPopoverClassName` with `motion="navigation"` and `inert`/`aria-hidden` while
+closed. Each switcher passes only the facts of its kind (see
+[Documentation reader](../../../product/specflow/ui/documentation-reader.md#workspace-picker-and-specification-switcher)).
 The screens differ only in what they add around the list (the switcher's search, states and footer).
 
 ## Dialog footers

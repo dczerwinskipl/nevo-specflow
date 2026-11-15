@@ -65,7 +65,7 @@ export function SpecificationSwitcher({
           aria-description={t('applicationNavigation.changeSpecification')}
           label={t('applicationNavigation.currentSpecification')}
           name={title}
-          details={displayKey ? [{ text: displayKey }] : []}
+          segments={displayKey ? [displayKey] : []}
           loading={loading}
         />
       </PopoverTrigger>
@@ -141,7 +141,7 @@ export function SpecificationSwitcher({
               <ContextSwitcherOption
                 key={item.id}
                 name={item.title}
-                details={item.key ? [{ text: item.key }] : []}
+                segments={item.key ? [item.key] : []}
                 selected={item.id === specId}
                 disabled={pending}
                 tabIndex={index === 0 ? 0 : -1}

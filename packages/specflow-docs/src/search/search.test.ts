@@ -10,18 +10,21 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { createSearchEngine, refreshIndex } from '@nevo/ai-semantic-search';
+import { createSearchEngine, refreshIndex, type EmbeddingProvider } from '@nevo/ai-semantic-search';
 import {
   createFakeEmbeddingProvider,
   createInMemoryVectorStore,
 } from '@nevo/ai-semantic-search/testing';
-import { afterAll, describe, expect, it } from 'vitest';
+import { DOCS_SEARCH_ANSWER_BUDGET_MS } from '@nevo/specflow-contracts/docs';
+import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 
 import { DEFAULT_DOCS_SETTINGS, parseDocsConfig } from '../config/docs-settings';
+import { QUERY_TIMEOUT_MS } from '../embeddings/embedding-providers';
 import { openFileSystemCorpus } from '../corpus/corpus';
 import { contextualHeader, createDocsChunkSource } from '../semantic-index/chunk-source';
 import { openDocsIndex, openProjectIndex } from '../semantic-index/index-store';
 import { READ_REFRESH_MAX_CHUNKS } from '../semantic-index/refresh-policy';
+import { cacheNotIgnoredReason } from '../semantic-index/reasons';
 import { createIndexWrites } from '../semantic-index/write-admission';
 import { toHit } from './result';
 import {
@@ -73,7 +76,12 @@ function semanticSearch() {
   const store = createInMemoryVectorStore();
   const search: DocsSearch = {
     chunks: createDocsChunkSource({ corpus }),
-    vectors: { store, writes: admitted(), providers: { query: provider, documents: provider } },
+    vectors: {
+      store,
+      writes: admitted(),
+      providers: { query: provider, documents: provider },
+      providersAbortedBy: () => ({ query: provider, documents: provider }),
+    },
   };
 
   return { provider, store, search };
@@ -130,6 +138,7 @@ describe('searchDocumentation', () => {
       status: 'current',
       file: 'docs/guide.md',
       score: expect.any(Number) as unknown,
+      wordMatch: true,
       sections: [
         {
           headingPath: ['Guide', 'Install'],
@@ -148,6 +157,10 @@ describe('searchDocumentation', () => {
     expect(withSnippets.results[0]!.sections[0]).toMatchObject({
       headingPath: ['Guide', 'Install'],
       snippet: 'Install the widget with pnpm.',
+      snippetMatches: [
+        { start: 0, end: 7 },
+        { start: 12, end: 18 },
+      ],
     });
   });
 
@@ -170,6 +183,59 @@ describe('searchDocumentation', () => {
         }),
       ]);
     }
+  });
+
+  it('says which documents matched words: by a heading or the frontmatter, not by meaning only', async () => {
+    // Every text embeds alike, so the vector ranking holds every section.
+    const fake = createFakeEmbeddingProvider();
+    const provider: EmbeddingProvider = {
+      ...fake,
+      embed: (texts, purpose) =>
+        fake.embed(
+          texts.map(() => 'same'),
+          purpose,
+        ),
+    };
+    const search: DocsSearch = {
+      chunks: createDocsChunkSource({ corpus }),
+      vectors: {
+        store: createInMemoryVectorStore(),
+        writes: admitted(),
+        providers: { query: provider, documents: provider },
+        providersAbortedBy: () => ({ query: provider, documents: provider }),
+      },
+    };
+    const wordMatches = async (query: string) => {
+      const result = await searchDocumentation(search, { ...request, query, snippets: true });
+      expect(result.mode).toBe('hybrid');
+
+      return result.results;
+    };
+
+    // Only the heading "Configure" has the word; the excerpt shows the body, unmarked.
+    const byHeading = await wordMatches('configure');
+    expect(byHeading.filter((hit) => hit.wordMatch).map((hit) => hit.id)).toEqual(['guide']);
+    expect(byHeading.find((hit) => hit.id === 'guide')!.sections[0]).toMatchObject({
+      headingPath: ['Guide', 'Configure'],
+      snippet: 'Point the embedding endpoint at a local model.',
+      snippetMatches: [],
+    });
+    expect(byHeading.length).toBeGreaterThan(1);
+
+    // Only the frontmatter of `engine` names tasks.
+    const byFrontmatter = await wordMatches('tasks');
+    expect(byFrontmatter.filter((hit) => hit.wordMatch).map((hit) => hit.id)).toEqual(['engine']);
+    expect(byFrontmatter.length).toBeGreaterThan(1);
+
+    // `installing` is in no ranking's exact tokens; the excerpt's prefix rule still finds
+    // "Install", but a hit found by meaning only has no marks.
+    const byMeaning = await wordMatches('installing');
+    expect(byMeaning.some((hit) => hit.wordMatch)).toBe(false);
+    const sections = byMeaning.flatMap((hit) => hit.sections);
+    expect(sections).toContainEqual(
+      expect.objectContaining({ snippet: 'Install the widget with pnpm.' }),
+    );
+    expect(sections.every((section) => section.snippetMatches?.length === 0)).toBe(true);
   });
 
   it('includes proposals only with the switch; inactive ones never', async () => {
@@ -222,7 +288,12 @@ describe('searchDocumentation', () => {
             searchEngine: () => createSearchEngine(many),
           }),
       },
-      vectors: { store, writes: admitted(), providers: { query: provider, documents: provider } },
+      vectors: {
+        store,
+        writes: admitted(),
+        providers: { query: provider, documents: provider },
+        providersAbortedBy: () => ({ query: provider, documents: provider }),
+      },
     };
 
     const empty = await searchDocumentation(search, request);
@@ -255,6 +326,7 @@ describe('searchDocumentation', () => {
         store,
         writes: admitted(),
         providers: { query: after, documents: after },
+        providersAbortedBy: () => ({ query: after, documents: after }),
         catchUp: {
           running: () => Promise.resolve(undefined),
           start: () => {
@@ -393,8 +465,10 @@ describe('toHit', () => {
           part('a/2', ['Guide', 'A'], 2),
           part('b', ['Guide', 'B'], 1),
         ],
+        lexical: true,
       },
       0.5,
+      true,
       undefined,
     );
     expect(hit.sections).toEqual([
@@ -488,5 +562,107 @@ describe('docs chunk source', () => {
     mkdirSync(join(root, 'cache'), { recursive: true });
     writeFileSync(cacheFile, 'null');
     expect((await cachedSource(cacheFile).load()).reparsed).toBe(4);
+  });
+});
+
+describe('answer budget', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  /** Document embeddings that answer only once their signal aborts (a slow endpoint). */
+  function slowSearch() {
+    const provider = createFakeEmbeddingProvider();
+    let reached!: () => void;
+    const embedding = new Promise<void>((resolve) => (reached = resolve));
+    const documents = (signal: AbortSignal): EmbeddingProvider => ({
+      ...provider,
+      probe: () => provider.probe(),
+      embed: () => {
+        reached();
+
+        return new Promise((resolve) =>
+          signal.addEventListener(
+            'abort',
+            () => resolve({ ok: false, failure: { code: 'timeout', message: 'aborted' } }),
+            { once: true },
+          ),
+        );
+      },
+    });
+    let starts = 0;
+    const search: DocsSearch = {
+      chunks: createDocsChunkSource({ corpus }),
+      vectors: {
+        store: createInMemoryVectorStore(),
+        writes: admitted(),
+        providers: { query: provider, documents: provider },
+        providersAbortedBy: (signal) => ({ query: provider, documents: documents(signal) }),
+        catchUp: {
+          running: () => Promise.resolve(undefined),
+          start: () => {
+            starts += 1;
+
+            return Promise.resolve('the Runtime started updating it in the background');
+          },
+        },
+      },
+    };
+
+    return { provider, search, embedding, starts: () => starts };
+  }
+
+  it('answers lexically with index-building at the refresh deadline and leaves the gap to the catch-up', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const { provider, search, embedding, starts } = slowSearch();
+    let settled = false;
+    const pending = searchDocumentation(search, {
+      ...request,
+      answerBudgetMs: DOCS_SEARCH_ANSWER_BUDGET_MS,
+    }).finally(() => (settled = true));
+
+    await embedding;
+    // The query embedding keeps its own time inside the budget.
+    await vi.advanceTimersByTimeAsync(DOCS_SEARCH_ANSWER_BUDGET_MS - QUERY_TIMEOUT_MS - 1);
+    expect(settled).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+
+    const result = await pending;
+    expect(result).toMatchObject({ mode: 'lexical', reason: { code: 'index-building' } });
+    expect(result.mode === 'lexical' && result.reason.message).toMatch(/time budget/);
+    expect(result.results.map((hit) => hit.id)).toEqual(['guide']);
+    expect(starts()).toBe(1);
+    // One probe, no query embedding: the answer is lexical.
+    expect(provider.calls).toHaveLength(1);
+  });
+
+  it('answers hybrid when the inline embedding finishes within the budget', async () => {
+    const { search } = semanticSearch();
+    const result = await searchDocumentation(search, {
+      ...request,
+      answerBudgetMs: DOCS_SEARCH_ANSWER_BUDGET_MS,
+    });
+
+    expect(result.mode).toBe('hybrid');
+  });
+
+  it('keeps the refused write admission first, also with a budget', async () => {
+    const { provider, search } = slowSearch();
+    const refusal = cacheNotIgnoredReason('.nevo/local/cache/docs-index');
+    const writes = createIndexWrites(() => Promise.resolve(refusal), refusal);
+    const result = await searchDocumentation(
+      { ...search, vectors: { ...search.vectors, writes } },
+      { ...request, answerBudgetMs: DOCS_SEARCH_ANSWER_BUDGET_MS },
+    );
+
+    expect(result).toMatchObject({ mode: 'lexical', reason: refusal });
+    expect(provider.calls).toEqual([]);
+  });
+
+  it('refuses a budget that leaves no time for the query embedding', async () => {
+    const { search } = semanticSearch();
+    await expect(
+      searchDocumentation(search, { ...request, answerBudgetMs: QUERY_TIMEOUT_MS }),
+    ).rejects.toThrow(RangeError);
   });
 });

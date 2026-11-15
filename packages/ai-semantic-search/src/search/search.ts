@@ -62,6 +62,12 @@ export interface UnitHit {
   readonly score: number;
   /** Matching chunks of the unit, best first. */
   readonly chunks: readonly ChunkHit[];
+  /**
+   * Whether a chunk of the unit was in the lexical (BM25) ranking, so the query's words matched its
+   * heading path or text; `false` for a unit only the vector ranking found. Always `true` in lexical
+   * mode.
+   */
+  readonly lexical: boolean;
 }
 
 export type SearchResult =
@@ -109,12 +115,13 @@ export function createSearchEngine(chunks: readonly Chunk[]): SearchEngine {
       const lexicalRanking = lexical
         .search(request.query)
         .filter(({ id }) => accepted(byId.get(id)!));
+      const lexicalIds = new Set(lexicalRanking.map((entry) => entry.id));
       const vectorRanking = await rankByVectors(request, byId, accepted);
       if ('reason' in vectorRanking) {
         return {
           mode: 'lexical',
           reason: vectorRanking.reason,
-          hits: group(lexicalRanking, byId, request.limit),
+          hits: group(lexicalRanking, byId, lexicalIds, request.limit),
         };
       }
 
@@ -123,7 +130,7 @@ export function createSearchEngine(chunks: readonly Chunk[]): SearchEngine {
         vectorRanking.ids,
       ]);
 
-      return { mode: 'hybrid', hits: group(fused, byId, request.limit) };
+      return { mode: 'hybrid', hits: group(fused, byId, lexicalIds, request.limit) };
     },
   };
 }
@@ -207,19 +214,23 @@ function describeMismatch(stored: IndexIdentity, expected: IndexIdentity): strin
   return 'The index identity differs from the current one.';
 }
 
+/** Chunks of the ranking per unit; `lexicalIds` are the chunks of the lexical ranking. */
 function group(
   ranking: readonly { readonly id: string; readonly score: number }[],
   byId: ReadonlyMap<string, Chunk>,
+  lexicalIds: ReadonlySet<string>,
   limit: number,
 ): UnitHit[] {
-  const units = new Map<string, { metadata: UnitMetadata; chunks: ChunkHit[] }>();
+  const units = new Map<string, { metadata: UnitMetadata; chunks: ChunkHit[]; lexical: boolean }>();
   for (const { id, score } of ranking) {
     const chunk = byId.get(id)!;
+    const lexical = lexicalIds.has(id);
     const unit = units.get(chunk.unitId);
     if (unit) {
       unit.chunks.push({ chunk, score });
+      unit.lexical ||= lexical;
     } else {
-      units.set(chunk.unitId, { metadata: chunk.metadata, chunks: [{ chunk, score }] });
+      units.set(chunk.unitId, { metadata: chunk.metadata, chunks: [{ chunk, score }], lexical });
     }
   }
 
@@ -230,6 +241,7 @@ function group(
       metadata: unit.metadata,
       score: unit.chunks[0]!.score,
       chunks: unit.chunks,
+      lexical: unit.lexical,
     }))
     .sort((a, b) => b.score - a.score || compareIds(a.unitId, b.unitId))
     .slice(0, limit);

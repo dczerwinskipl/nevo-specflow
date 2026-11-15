@@ -2,21 +2,27 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppContent, ScrollArea, TooltipProvider, Typography } from '@nevo/ui';
 import type { WorkspaceDocsTree } from '@nevo/specflow-contracts/docs';
+import type { DocsReaderSearch } from '../reader/readerSearch';
 import { DocsSearchPanel } from './DocsSearchPanel';
 import { DocsTree } from './DocsTree';
 import { SkippedDocuments } from './SkippedDocuments';
 import { TreeSkeleton } from './TreeSkeleton';
 import { ancestorFolders, buildDocsTree } from './docsTreeModel';
+import { usePaneScrollMemory } from './usePaneScrollMemory';
 
 /**
  * The Primary pane of the reader: the way back to a Session, the workspace picker, the quiet
  * lines (fallback, a document missing after a pick, skipped documents), then the search and the
  * tree or the results. A problem of the whole documentation replaces the search and the tree.
- * The search text and the tree's expansion live here, so they survive opening documents and
- * picking another workspace (where both are looked up again).
+ * The tree's expansion lives here and the search is in the address, so both survive opening
+ * documents and picking another workspace (where both are looked up again). The pane's scroll is
+ * kept per history entry: Back and Forward return the list where it was.
  */
 export function DocsTreePane({
   workspaceId,
+  historyEntry,
+  search,
+  onSearchChange,
   sessionBack,
   picker,
   notices,
@@ -27,6 +33,12 @@ export function DocsTreePane({
   onOpen,
 }: {
   workspaceId: string | undefined;
+  /** The history entry of the address: it keys the pane's scroll. */
+  historyEntry: string;
+  /** The search the address holds. */
+  search: DocsReaderSearch;
+  /** Writes the search into the address (a replace). */
+  onSearchChange: (search: DocsReaderSearch) => void;
   sessionBack?: ReactNode;
   picker?: ReactNode;
   /** Quiet status lines under the picker (fallback, a document missing after a pick). */
@@ -42,6 +54,7 @@ export function DocsTreePane({
   onOpen: (documentId: string, sectionId?: string) => void;
 }) {
   const { t } = useTranslation();
+  const viewportRef = usePaneScrollMemory(historyEntry);
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set());
   const root = useMemo(() => (tree ? buildDocsTree(tree.documents) : undefined), [tree]);
   const proposals = useMemo(
@@ -85,11 +98,15 @@ export function DocsTreePane({
     // The pane's tooltips (the tree rows' paths) share one provider, as in the Documents explorer.
     <TooltipProvider delayDuration={300}>
       <AppContent className="h-full w-full">
-        {/* The pane's rows are focusable themselves: the scroller adds no Tab stop of its own. */}
+        {/*
+          The pane's rows are focusable themselves: the scroller adds no Tab stop of its own. The
+          content's inset is one variable, which the sticky search block reads to cover it.
+        */}
         <ScrollArea
           direction="vertical"
           className="min-h-0 flex-1"
-          contentClassName="grid content-start gap-3 p-2"
+          contentClassName="grid content-start gap-3 p-(--tree-pane-inset) [--tree-pane-inset:--spacing(2)]"
+          viewportRef={viewportRef}
           tabIndex={-1}
         >
           {sessionBack && <div className="px-2">{sessionBack}</div>}
@@ -111,6 +128,9 @@ export function DocsTreePane({
           <DocsSearchPanel
             hidden={problem !== undefined}
             workspaceId={workspaceId}
+            historyEntry={historyEntry}
+            search={search}
+            onSearchChange={onSearchChange}
             proposals={proposals}
             activeDocumentId={activeDocumentId}
             onOpen={onOpen}

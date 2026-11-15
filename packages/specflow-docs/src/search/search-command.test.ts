@@ -72,6 +72,7 @@ describe('docs search and semantic status', () => {
       status: 'current',
       file: `docs/${id}.md`,
       score: 1,
+      wordMatch: true,
       sections: sectionIds.map((sectionId) => ({
         headingPath: sectionId.split('/'),
         sectionId,

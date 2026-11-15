@@ -107,6 +107,17 @@ export function catchUpReason(pending: number, limit: number, catchUp: string): 
 }
 
 /**
+ * A search with an answer budget did not embed its small gap of `pending` chunks before its deadline
+ * (a slow endpoint, or one busy with other requests); `next` says who brings the index up to date
+ * (`IndexCatchUp`) or names the command.
+ */
+export function deadlineReason(pending: number, next: string): DocsSearchReason {
+  return indexIncompleteReason(
+    `The index lacks vectors for ${String(pending)} changed chunks, which this search could not embed within its time budget; ${next}.`,
+  );
+}
+
+/**
  * The query vector does not fit an index the content check found complete (`mismatch` is the
  * engine's description): the endpoint now embeds under another identity, so every chunk is
  * re-embedded; `next` says by whom (`IndexCatchUp`) or names the command.

@@ -16,11 +16,26 @@ import {
   type WorkspaceResolution,
 } from './workspace-corpora';
 
+// The signals of the background refreshes (`buildDocsIndex`), which tell their providers apart from
+// a search's, whose read-time refresh carries the search's deadline signal.
+const backgroundSignals = vi.hoisted(() => new WeakSet<AbortSignal>());
+
 // The seed copy itself is specflow-docs' (seed.test.ts); here only who asks for it matters.
-vi.mock('@nevo/specflow-docs', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@nevo/specflow-docs')>()),
-  seedIndexIfMissing: vi.fn(() => Promise.resolve({ status: 'not-seeded', reason: 'no-source' })),
-}));
+vi.mock('@nevo/specflow-docs', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@nevo/specflow-docs')>();
+
+  return {
+    ...original,
+    seedIndexIfMissing: vi.fn(() => Promise.resolve({ status: 'not-seeded', reason: 'no-source' })),
+    buildDocsIndex: ((index, configuration, environment, ...rest) => {
+      if (environment.signal !== undefined) {
+        backgroundSignals.add(environment.signal);
+      }
+
+      return original.buildDocsIndex(index, configuration, environment, ...rest);
+    }) satisfies typeof original.buildDocsIndex,
+  };
+});
 
 const TRUSTED = 'http://trusted.test/v1';
 const INDEX = ['.nevo', 'local', 'cache', 'docs-index'];
@@ -62,7 +77,7 @@ const tick = () => new Promise<void>((resolve) => setImmediate(resolve));
 
 const silent = { warn: vi.fn(), debug: vi.fn() } as unknown as FastifyBaseLogger;
 
-/** Workspaces by id; the refresh's document requests (they carry a signal) wait for `gate`. */
+/** Workspaces by id; the background refresh's document requests wait for `gate`. */
 function harness(workspaces: Map<string, WorkspaceResolution>, home: string) {
   const baseUrls: string[] = [];
   const searchEmbeds: string[] = [];
@@ -71,7 +86,7 @@ function harness(workspaces: Map<string, WorkspaceResolution>, home: string) {
   const createProvider: CreateEmbeddingProvider = (settings, { signal }) => {
     baseUrls.push(settings.baseUrl);
     const provider = createFakeEmbeddingProvider();
-    if (signal === undefined) {
+    if (signal === undefined || !backgroundSignals.has(signal)) {
       // A search's own provider: the query and the read-time refresh.
       return {
         ...provider,

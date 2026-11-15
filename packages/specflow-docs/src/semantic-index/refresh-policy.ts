@@ -12,6 +12,7 @@ import { pendingChunks } from './freshness';
 import {
   busyEndpointReason,
   catchUpReason,
+  deadlineReason,
   identityChangedReason,
   overLimitReason,
   refreshReason,
@@ -35,6 +36,12 @@ export interface IndexVectors {
   /** The index's write admission, asked before a catch-up is started too. */
   readonly writes: IndexWrites;
   readonly providers: EmbeddingProviders;
+  /**
+   * `providers` with their requests also aborted by `signal`: the read-time refresh of a search with
+   * an answer budget probes and embeds through them, so its deadline stops the requests instead of
+   * leaving them to run (`createEmbeddingProviders`).
+   */
+  readonly providersAbortedBy: (signal: AbortSignal) => EmbeddingProviders;
   /**
    * Runs a full refresh in the background for a gap above `READ_REFRESH_MAX_CHUNKS`. Absent: the
    * `index-building` reason asks for `semantic index` instead.
@@ -74,12 +81,21 @@ export async function endpointFailureReason(
  * a gap above `READ_REFRESH_MAX_CHUNKS`, or any gap with `refresh` off, is not embedded. A larger
  * gap with `refresh` on has the catch-up run (when the host supplies one): a refresh that already
  * runs is only described, otherwise one is started after the probe succeeds.
+ *
+ * With a `deadline` (a search's answer budget, `DocsSearchRequest.answerBudgetMs`), the probe and
+ * the small gap's embedding run only until it aborts: their requests are aborted through it, the
+ * refresh is awaited until it has settled (it releases the writer; a bounded refresh writes its one
+ * slice only after embedding it, so an aborted one has written nothing) and the gap is handed to the
+ * catch-up without another probe, answering `index-building`. A probe the deadline cut is not
+ * proof of an unreachable endpoint; the catch-up's own refresh reports one. The abort is recognised
+ * by `deadline.aborted`, never by the failure, so it is never reported as `endpoint-unreachable`.
  */
 export async function refreshForRead(
   vectors: IndexVectors,
   chunks: readonly DocsChunk[],
   refresh: boolean,
   indexCommand: string,
+  deadline?: AbortSignal,
 ): Promise<DocsSearchReason | undefined> {
   const { store, providers } = vectors;
   const manifest = await store.readManifest();
@@ -106,19 +122,30 @@ export async function refreshForRead(
     return largeGapReason(vectors, missing, indexCommand);
   }
 
-  const probe = await providers.query.probe();
+  // With a deadline, the probe and the refresh go through providers it aborts.
+  const bounded = deadline === undefined ? providers : vectors.providersAbortedBy(deadline);
+  const probe = await bounded.query.probe();
+  if (deadline?.aborted) {
+    return deadlineGapReason(vectors, missing, indexCommand);
+  }
+
   if (!probe.ok) {
     return endpointFailureReason(vectors, probe.failure);
   }
 
   // The bound holds under the lock too: a re-probe that observes another dimension, or a manifest
   // gone since the read above, turns this into a full rebuild, which the search must not run.
+  // Awaited also once the deadline has aborted it, so its writer is closed before the answer.
   const outcome = await refreshIndex({
     chunks,
-    provider: providers.documents,
+    provider: bounded.documents,
     store,
     maxEmbed: READ_REFRESH_MAX_CHUNKS,
   });
+  if (outcome.status === 'embedding-failed' && deadline?.aborted) {
+    return deadlineGapReason(vectors, missing, indexCommand);
+  }
+
   if (outcome.status === 'write-failed') {
     return vectors.writes.refusal() ?? refreshReason(outcome);
   }
@@ -158,23 +185,55 @@ export async function identityChangedForRead(
 
 /** A gap the search does not embed: caught up in the background, or left to `semantic index`. */
 async function largeGapReason(
-  { providers, catchUp, writes }: IndexVectors,
+  vectors: IndexVectors,
   missing: number,
   indexCommand: string,
 ): Promise<DocsSearchReason> {
-  if (catchUp === undefined) {
+  if (vectors.catchUp === undefined) {
     return overLimitReason(missing, READ_REFRESH_MAX_CHUNKS, indexCommand);
   }
 
-  const running = await catchUp.running();
-  if (running !== undefined) {
-    return catchUpReason(missing, READ_REFRESH_MAX_CHUNKS, running);
+  return caughtUp(vectors, vectors.catchUp, 'probe', (clause) =>
+    catchUpReason(missing, READ_REFRESH_MAX_CHUNKS, clause),
+  );
+}
+
+/**
+ * A small gap the read-time refresh did not embed before its deadline: caught up like a large gap,
+ * but without a probe, since the search has just probed (and another would exceed the budget).
+ */
+async function deadlineGapReason(
+  vectors: IndexVectors,
+  missing: number,
+  indexCommand: string,
+): Promise<DocsSearchReason> {
+  if (vectors.catchUp === undefined) {
+    return deadlineReason(missing, `run \`${indexCommand}\``);
   }
 
-  // A catch-up against an unreachable endpoint would only fail; the search says why instead.
-  const probe = await providers.query.probe();
-  if (!probe.ok) {
-    return embeddingFailureReason(probe.failure);
+  return caughtUp(vectors, vectors.catchUp, 'probed', (clause) => deadlineReason(missing, clause));
+}
+
+/**
+ * The catch-up's running refresh, or one started now (`probe`: after a probe, which a catch-up
+ * against an unreachable endpoint would only fail), described by `describe`.
+ */
+async function caughtUp(
+  { providers, writes }: IndexVectors,
+  catchUp: IndexCatchUp,
+  endpoint: 'probe' | 'probed',
+  describe: (clause: string) => DocsSearchReason,
+): Promise<DocsSearchReason> {
+  const running = await catchUp.running();
+  if (running !== undefined) {
+    return describe(running);
+  }
+
+  if (endpoint === 'probe') {
+    const probe = await providers.query.probe();
+    if (!probe.ok) {
+      return embeddingFailureReason(probe.failure);
+    }
   }
 
   // Starting it writes the index directory (the CLI's marker and log).
@@ -183,5 +242,5 @@ async function largeGapReason(
     return refusal;
   }
 
-  return catchUpReason(missing, READ_REFRESH_MAX_CHUNKS, await catchUp.start());
+  return describe(await catchUp.start());
 }

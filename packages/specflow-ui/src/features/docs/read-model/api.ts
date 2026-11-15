@@ -1,16 +1,24 @@
-import type {
-  DocsDocumentInactiveError,
-  DocsDocumentNotFoundError,
-  DocsDocumentSkippedError,
-  WorkspaceDocsArticle,
-  WorkspaceDocsSearch,
-  WorkspaceDocsTree,
+import {
+  DOCS_SEARCH_ANSWER_BUDGET_MS,
+  type DocsDocumentInactiveError,
+  type DocsDocumentNotFoundError,
+  type DocsDocumentSkippedError,
+  type WorkspaceDocsArticle,
+  type WorkspaceDocsSearch,
+  type WorkspaceDocsTree,
 } from '@nevo/specflow-contracts/docs';
 import { isHttpClientError } from '@nevo/http-client';
 import { ApiError, isApiError, type ApiTransport, type ErrorCodeTable } from '../../../api';
 
 /** Operation name of the documentation reads (error classification, diagnostics). */
 export const docsReadOperation = 'docs.read';
+
+/**
+ * How long the reader waits for a search, instead of the shared 10 s client default: the Runtime
+ * answers within `DOCS_SEARCH_ANSWER_BUDGET_MS`, and the margin covers the corpus load, the
+ * transport and a busy Runtime, so a slow answer is never shown as "Search unavailable".
+ */
+export const docsSearchTimeoutMs = DOCS_SEARCH_ANSWER_BUDGET_MS + 5_000;
 
 /**
  * The documentation codes (`WorkspaceDocsError` and the document refusals). A `409` workspace that
@@ -179,6 +187,7 @@ export function createRuntimeDocsApi(api: ApiTransport): DocsApi {
       api.get<WorkspaceDocsSearch>(`${workspacePath(workspaceId)}/search`, {
         operation: 'docs.search',
         signal,
+        timeoutMs: docsSearchTimeoutMs,
         params: docsSearchParams(query),
         isValid: (data) =>
           isEnvelopeOf(workspaceId, data) &&

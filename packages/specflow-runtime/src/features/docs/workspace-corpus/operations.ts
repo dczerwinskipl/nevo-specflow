@@ -10,10 +10,14 @@ import {
   skippedUnderDocsRoot,
   underDocsRoot,
 } from '@nevo/specflow-docs';
+import { DOCS_SEARCH_ANSWER_BUDGET_MS } from '@nevo/specflow-contracts/docs';
 
 import type { WorkspaceCorpora, WorkspaceDocsResult } from './workspace-corpora';
 
-export type WorkspaceSearchRequest = Omit<DocsSearchRequest, 'refresh' | 'semanticIndexCommand'>;
+export type WorkspaceSearchRequest = Omit<
+  DocsSearchRequest,
+  'refresh' | 'semanticIndexCommand' | 'answerBudgetMs'
+>;
 
 export interface WorkspaceSearch {
   /** The corpus revision of the snapshot the search ranked. */
@@ -38,7 +42,10 @@ export interface WorkspaceArticle {
 export interface WorkspaceDocsOperations {
   tree(workspaceId: string): Promise<WorkspaceDocsResult<DocsTree>>;
   article(workspaceId: string, documentId: string): Promise<WorkspaceDocsResult<WorkspaceArticle>>;
-  /** Runs the bounded read-time refresh; a larger gap starts the background catch-up. */
+  /**
+   * Runs the bounded read-time refresh within `DOCS_SEARCH_ANSWER_BUDGET_MS`; a larger gap, or one
+   * the budget does not cover, starts the background catch-up.
+   */
   search(
     workspaceId: string,
     request: WorkspaceSearchRequest,
@@ -61,7 +68,11 @@ export function createWorkspaceDocsOperations(corpora: WorkspaceCorpora): Worksp
     search: (workspaceId, request) =>
       corpora.use(workspaceId, async (reads, docsRoot) => {
         const snapshot = await reads.load();
-        const result = await reads.searchWithLeftOut(snapshot, { ...request, refresh: true });
+        const result = await reads.searchWithLeftOut(snapshot, {
+          ...request,
+          refresh: true,
+          answerBudgetMs: DOCS_SEARCH_ANSWER_BUDGET_MS,
+        });
         const indexProgress = reads.progress();
 
         return {

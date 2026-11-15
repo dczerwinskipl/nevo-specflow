@@ -49,3 +49,11 @@ export const WorkspaceDocsSearchSchema = Type.Union([
   ),
 ]);
 export type WorkspaceDocsSearch = Static<typeof WorkspaceDocsSearchSchema>;
+
+/**
+ * The longest the Runtime takes to answer a search, in milliseconds, once it runs: a read-time
+ * refresh that would take longer is aborted and the search answers lexically with `index-building`
+ * while a background refresh embeds the rest. A client waits longer than this (with a margin for
+ * the corpus load, the transport and a busy event loop) before it treats the search as failed.
+ */
+export const DOCS_SEARCH_ANSWER_BUDGET_MS = 7_000;

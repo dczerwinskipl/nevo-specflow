@@ -30484,6 +30484,7 @@
                               "status",
                               "file",
                               "score",
+                              "wordMatch",
                               "sections"
                             ],
                             "properties": {
@@ -30533,6 +30534,9 @@
                               "score": {
                                 "type": "number"
                               },
+                              "wordMatch": {
+                                "type": "boolean"
+                              },
                               "sections": {
                                 "type": "array",
                                 "items": {
@@ -30563,6 +30567,28 @@
                                     },
                                     "snippet": {
                                       "type": "string"
+                                    },
+                                    "snippetMatches": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "required": [
+                                          "start",
+                                          "end"
+                                        ],
+                                        "properties": {
+                                          "start": {
+                                            "type": "integer",
+                                            "minimum": 0
+                                          },
+                                          "end": {
+                                            "type": "integer",
+                                            "minimum": 1
+                                          }
+                                        },
+                                        "additionalProperties": false
+                                      },
+                                      "maxItems": 3
                                     }
                                   },
                                   "additionalProperties": false
@@ -30701,6 +30727,7 @@
                               "status",
                               "file",
                               "score",
+                              "wordMatch",
                               "sections"
                             ],
                             "properties": {
@@ -30750,6 +30777,9 @@
                               "score": {
                                 "type": "number"
                               },
+                              "wordMatch": {
+                                "type": "boolean"
+                              },
                               "sections": {
                                 "type": "array",
                                 "items": {
@@ -30780,6 +30810,28 @@
                                     },
                                     "snippet": {
                                       "type": "string"
+                                    },
+                                    "snippetMatches": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "required": [
+                                          "start",
+                                          "end"
+                                        ],
+                                        "properties": {
+                                          "start": {
+                                            "type": "integer",
+                                            "minimum": 0
+                                          },
+                                          "end": {
+                                            "type": "integer",
+                                            "minimum": 1
+                                          }
+                                        },
+                                        "additionalProperties": false
+                                      },
+                                      "maxItems": 3
                                     }
                                   },
                                   "additionalProperties": false

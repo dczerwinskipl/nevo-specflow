@@ -61,7 +61,8 @@ const createProvider: CreateEmbeddingProvider = (settings, { signal }) => {
     return provider;
   }
 
-  // Only the refresh's providers carry a signal.
+  // The background refresh's providers carry a signal, and so does the document provider of a
+  // search's read-time refresh (its deadline); `hold` is set only around a gap no search embeds.
   return {
     ...provider,
     embed: async (texts, purpose) => {
@@ -324,6 +325,13 @@ describe('workspace documentation over HTTP', () => {
       const body = response.json<WorkspaceDocsSearch>();
       expect(Value.Check(WorkspaceDocsSearchSchema, body)).toBe(true);
       expect(body.workspaceId).toBe(id);
+      // The plain excerpt's matched words and the word match cross the wire.
+      const [hit] = body.results;
+      const [section] = hit!.sections;
+      expect(hit!.wordMatch).toBe(true);
+      expect(
+        section!.snippetMatches!.map(({ start, end }) => section!.snippet!.slice(start, end)),
+      ).toContainEqual(expect.stringMatching(/^install/iu));
 
       return response.body;
     };

@@ -20,6 +20,7 @@ import { createSpecFlowRouter } from '../../../app/router';
 import { UiModulesProvider } from '../../../app/ui-modules/UiModulesProvider';
 import { builtInUiModuleRegistry } from '../../../app/ui-modules/builtInUiModules';
 import { StoryLocalization } from '../../../i18n/StoryLocalization';
+import type { AppLocale } from '../../../i18n/i18n';
 import { createSpecFlowAppServices } from '../../../services';
 import type { DocumentsApi } from '../api';
 import { createAuthStore } from '../../../auth/store';
@@ -93,11 +94,25 @@ const catalogue: ArchetypeCatalogue = {
 const available = { available: true };
 const protectedAction = { available: false, reason: 'protected' } as const;
 /** `project`: the same Specification served by a project Runtime (the project adapter). */
-type Scenario = 'states' | 'read-only' | 'conflict' | 'project';
+/** `plain`: the states tree without Close refusals or missing expected types (the usual tree). */
+type Scenario = 'states' | 'read-only' | 'conflict' | 'project' | 'plain';
 
 function treeFor(scenario: Scenario): DocumentTree {
   if (scenario === 'project') {
     return treeFor('states');
+  }
+
+  if (scenario === 'plain') {
+    const tree = treeFor('states');
+
+    return {
+      ...tree,
+      issues: [],
+      completeness: {
+        ...tree.completeness,
+        requirements: tree.completeness.requirements.map((item) => ({ ...item, satisfied: true })),
+      },
+    };
   }
 
   const readOnly = { available: false, reason: 'branch-protected' } as const;
@@ -244,8 +259,11 @@ function Workspace({
   scenario,
   path,
   saveRefusal,
+  locale = 'en',
 }: {
   scenario: Scenario;
+  /** The interface language (English unless a review needs another). */
+  locale?: AppLocale;
   path: string;
   /** The code every save is refused with (the conflict scenario uses the revision conflict). */
   saveRefusal?: string;
@@ -434,7 +452,7 @@ function Workspace({
   return (
     <QueryClientProvider client={setup.query}>
       <UiModulesProvider modules={builtInUiModuleRegistry}>
-        <StoryLocalization locale="en">
+        <StoryLocalization locale={locale}>
           <RouterProvider router={setup.router} />
         </StoryLocalization>
       </UiModulesProvider>
@@ -448,13 +466,17 @@ const meta = {
   tags: ['contract'],
   parameters: { layout: 'fullscreen' },
   args: { scenario: 'states', path: `/specs/${SPEC}/documents` },
+  argTypes: { locale: { control: 'inline-radio', options: ['en', 'pl'] } },
 } satisfies Meta<typeof Workspace>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   tags: ['!contract'],
   argTypes: {
-    scenario: { control: 'inline-radio', options: ['states', 'read-only', 'conflict', 'project'] },
+    scenario: {
+      control: 'inline-radio',
+      options: ['states', 'plain', 'read-only', 'conflict', 'project'],
+    },
     path: {
       control: 'select',
       options: [`/specs/${SPEC}/documents`, `/specs/${SPEC}/documents/ux`],

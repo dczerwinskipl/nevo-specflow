@@ -10,6 +10,7 @@ import { createSpecFlowRouter } from '../../../app/router';
 import { UiModulesProvider } from '../../../app/ui-modules/UiModulesProvider';
 import { builtInUiModuleRegistry } from '../../../app/ui-modules/builtInUiModules';
 import { createAuthStore } from '../../../auth/store';
+import type { AppLocale } from '../../../i18n/i18n';
 import { StoryLocalization } from '../../../i18n/StoryLocalization';
 import { createSpecFlowAppServices } from '../../../services';
 import { settleViewport } from '../../../test-support/viewportSettle.stories-support';
@@ -47,6 +48,8 @@ interface ReaderStoryArgs {
   removeOnRead?: string;
   /** This document's article answers a newer corpus than the first tree (see the fixture). */
   newerArticle?: string;
+  /** The interface language (English unless a review needs another). */
+  locale?: AppLocale;
 }
 
 /** The router of the story on screen, so a play function can step browser history. */
@@ -86,6 +89,7 @@ function ReaderScreen({
   openedFrom,
   removeOnRead,
   newerArticle,
+  locale = 'en',
 }: ReaderStoryArgs) {
   const setup = useMemo(() => {
     const query = createSpecFlowQueryClient();
@@ -141,7 +145,7 @@ function ReaderScreen({
   return (
     <QueryClientProvider client={setup.query}>
       <UiModulesProvider modules={builtInUiModuleRegistry}>
-        <StoryLocalization locale="en">
+        <StoryLocalization locale={locale}>
           <RouterProvider router={setup.router} />
         </StoryLocalization>
       </UiModulesProvider>
@@ -156,6 +160,7 @@ const meta = {
   tags: ['contract'],
   parameters: { layout: 'fullscreen', chromatic: { disableSnapshot: true } },
   args: { path: '/docs', scenario: 'reader' },
+  argTypes: { locale: { control: 'inline-radio', options: ['en', 'pl'] } },
 } satisfies Meta<typeof ReaderScreen>;
 export default meta;
 type Story = StoryObj<typeof meta>;

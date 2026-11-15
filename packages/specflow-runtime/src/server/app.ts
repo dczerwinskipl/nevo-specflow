@@ -1,3 +1,4 @@
+import compress from '@fastify/compress';
 import cookie from '@fastify/cookie';
 import { join } from 'node:path';
 import { RuntimeInfoResponseSchema } from '@nevo/specflow-contracts/runtime';
@@ -144,6 +145,8 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
   dependencies: RuntimeAppDependencies = {},
 ): Promise<void> {
   await app.register(cookie);
+  // Only the built UI is compressed. API, including SSE, keeps its existing behavior.
+  await app.register(compress, { global: false, encodings: ['br', 'gzip'] });
   registerRuntimeErrorHandler(app);
   await registerEndpointPolicy(app, config.server.rateLimit);
   // Before any route: OpenAPI generation captures only routes registered after it.

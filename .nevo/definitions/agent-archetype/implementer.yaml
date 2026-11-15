@@ -1,0 +1,12 @@
+kind: agent-archetype
+schemaVersion: 1
+id: implementer
+title: Implementer
+description: Implements a scoped change following the repository architecture, documentation and verification rules.
+profile: nevo-agents:implementer
+preferredProvider: claude
+providers:
+  - provider: claude
+    model: claude-sonnet-5-5
+  - provider: codex
+  - provider: antigravity

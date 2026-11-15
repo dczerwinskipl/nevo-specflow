@@ -64,6 +64,7 @@ const nothingCreatedKinds: ReadonlySet<CreateFailure['kind']> = new Set([
   'branch-exists',
   'branch-invalid',
   'stale',
+  'base-config-missing',
   'name-conflict',
   'name-invalid',
   'offline',

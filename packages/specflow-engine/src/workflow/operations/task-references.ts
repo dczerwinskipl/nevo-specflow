@@ -16,8 +16,11 @@ export interface TaskReferences extends GateDocuments {
   archetype(specId: string): Promise<string>;
   /** A document id registered in the Specification's manifest. */
   specificationDocument(specId: string, id: string): Promise<boolean>;
-  /** A stable id of the project documentation index (`pnpm docs:get <id>`). */
-  projectDocument(id: string): Promise<boolean>;
+  /**
+   * A stable id of an active document in the documentation of the Specification's checkout (its
+   * workspace or worktree; `docs get <id>` there).
+   */
+  projectDocument(specId: string, id: string): Promise<boolean>;
   /**
    * A repository-relative file or folder exists in the Specification's checkout, or a glob matches at
    * least one file there.
@@ -48,7 +51,7 @@ export async function contextLookupFor(
         specification.add(entry.id);
       }
     } else if (entry.kind === 'project-document') {
-      if (await references.projectDocument(entry.id)) {
+      if (await references.projectDocument(specId, entry.id)) {
         project.add(entry.id);
       }
     } else if (entry.kind === 'path' && (await references.path(specId, entry.path))) {

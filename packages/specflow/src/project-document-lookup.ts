@@ -1,36 +1,55 @@
-import { join } from 'node:path';
-
 import {
   asString,
-  inspectCorpus,
+  DocsError,
   isInactiveStatus,
-  loadDocsSettings,
-  openFileSystemCorpus,
+  loadReadableDocs,
+  openCorpus,
+  readCheckoutDocsSettings,
 } from '@nevo/specflow-docs';
-
-import { LOCAL_CONFIG_RELATIVE_PATH, PROJECT_CONFIG_RELATIVE_PATH } from './project/layout';
+import type { SpecificationCheckout } from '@nevo/specflow-engine';
 
 /**
- * Whether the project documentation has an active document with this stable id, for the
- * `project-document` context entries of a Task. Same rule as `docs get`: a deprecated or superseded
- * document does not resolve. The corpus (frontmatter only) is read once, on the first lookup, so a
- * command without a project-document reference never scans it.
+ * Whether the documentation of a Specification's checkout (its workspace or worktree, as the Engine
+ * resolves it for `path` references) has an active document with this stable id, for the
+ * `project-document` context entries of a Task. Same rule as the reader commands run there: the
+ * checkout's own `docs` settings, a deprecated, superseded or unreadable document does not
+ * resolve. Each checkout is read once, on its first lookup, so a command without a
+ * project-document reference never scans it. Invalid documentation settings resolve nothing.
  */
-export function projectDocumentLookup(projectRoot: string): (id: string) => Promise<boolean> {
-  let active: Set<string> | undefined;
+export function projectDocumentLookup(): (
+  checkout: SpecificationCheckout,
+  id: string,
+) => Promise<boolean> {
+  const byRoot = new Map<string, ReadonlySet<string>>();
 
-  return (id) => {
+  return (checkout, id) => {
+    let active = byRoot.get(checkout.root);
     if (active === undefined) {
-      const configuration = loadDocsSettings({
-        projectConfigPath: join(projectRoot, ...PROJECT_CONFIG_RELATIVE_PATH.split('/')),
-        localConfigPath: join(projectRoot, ...LOCAL_CONFIG_RELATIVE_PATH.split('/')),
-      });
-      const { docs } = inspectCorpus(openFileSystemCorpus(projectRoot, configuration.docs));
-      active = new Set(
-        docs.filter((doc) => !isInactiveStatus(doc.status)).map((doc) => asString(doc.id)),
-      );
+      active = activeDocumentIds(checkout.root);
+      byRoot.set(checkout.root, active);
     }
 
     return Promise.resolve(active.has(id));
   };
+}
+
+function activeDocumentIds(root: string): ReadonlySet<string> {
+  try {
+    const settings = readCheckoutDocsSettings(root, { rejectLinks: true });
+    if (settings.status === 'not-configured') {
+      return new Set();
+    }
+
+    return new Set(
+      loadReadableDocs(openCorpus(root, settings.corpus))
+        .docs.filter((doc) => !isInactiveStatus(doc.status))
+        .map((doc) => asString(doc.id)),
+    );
+  } catch (error) {
+    if (error instanceof DocsError) {
+      return new Set();
+    }
+
+    throw error;
+  }
 }

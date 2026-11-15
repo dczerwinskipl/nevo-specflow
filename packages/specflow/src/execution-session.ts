@@ -35,7 +35,7 @@ export async function openExecution(cwd: string, projectRoot?: string): Promise<
   return {
     engine,
     workflow: await openWorkflow(engine, {
-      projectDocument: projectDocumentLookup(engine.context.project.homeRoot),
+      projectDocument: projectDocumentLookup(),
     }),
   };
 }

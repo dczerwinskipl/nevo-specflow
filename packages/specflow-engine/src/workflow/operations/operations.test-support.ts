@@ -81,7 +81,8 @@ export function fakeReferences(): TaskReferences & {
     archetype: () => Promise.resolve(references.archetypeId),
     specificationDocument: (_specId: string, id: string) =>
       Promise.resolve(references.specificationDocuments.has(id)),
-    projectDocument: (id: string) => Promise.resolve(references.projectDocuments.has(id)),
+    projectDocument: (_specId: string, id: string) =>
+      Promise.resolve(references.projectDocuments.has(id)),
     path: (_specId: string, path: string) => Promise.resolve(references.paths.has(path)),
     pendingDocumentChange: (_specId: string, taskId: string) =>
       Promise.resolve(references.pendingDocuments.has(taskId)),

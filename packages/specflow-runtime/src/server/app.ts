@@ -186,10 +186,18 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
       : {}),
   };
   const engine = dependencies.specs?.engine;
+  const docsFeature = createDocsFeature({
+    ...(config.docs ? { configuration: config.docs } : {}),
+    // Demo data serves no project documentation.
+    ...(dependencies.docs && !demo ? { dependencies: dependencies.docs } : {}),
+    // `docs.view` is checked at the Engine's project; without an Engine the docs routes answer 503.
+    projectId: () => engine?.context.project.projectId,
+    ...(engine && !demo ? { engine } : {}),
+  });
   // Project mode: the Engine's workflow operations, opened per request with the definitions and
-  // the documentation of the Runtime's own checkout (for `project-document` context references)
-  // as they are now.
-  const projectDocument = openProjectDocumentLookup(() => engine?.workspace.root);
+  // the documentation of each Specification's checkout (for `project-document` context
+  // references) as they are now.
+  const projectDocument = openProjectDocumentLookup(docsFeature.activeDocumentIds);
   const taskEngine =
     engine && !demo
       ? {
@@ -270,14 +278,6 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
             }
           : {}),
       };
-  const docsFeature = createDocsFeature({
-    ...(config.docs ? { configuration: config.docs } : {}),
-    // Demo data serves no project documentation.
-    ...(dependencies.docs && !demo ? { dependencies: dependencies.docs } : {}),
-    // `docs.view` is checked at the Engine's project; without an Engine the docs routes answer 503.
-    projectId: () => engine?.context.project.projectId,
-    ...(engine && !demo ? { engine } : {}),
-  });
   const productFeatures: readonly RuntimeFeature[] = [
     createSpecsFeature({
       ...(config.specs ? { config: config.specs } : {}),

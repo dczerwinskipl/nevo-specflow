@@ -6,6 +6,7 @@ export {
   readExecutionForRead,
   readTaskProgressForRead,
   type OpenWorkflowOptions,
+  type SpecificationCheckout,
 } from './composition';
 export {
   createExecutionCatalogue,

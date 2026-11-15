@@ -77,13 +77,20 @@ async function specificationDirectory(engine: SpecFlowEngine, specId: string): P
   );
 }
 
+/** The registered checkout that owns a Specification (its workspace or worktree). */
+export interface SpecificationCheckout {
+  readonly workspaceId: string;
+  readonly root: string;
+}
+
 export interface OpenWorkflowOptions {
   /**
-   * Whether the project documentation index has a document of this stable id, for `project-document`
-   * context references. The index belongs to the caller (the Runtime); without it no project
-   * document resolves, so such a reference is refused.
+   * Whether the documentation of the Specification's checkout has an active document of this
+   * stable id, for `project-document` context references. The Engine resolves the checkout as for
+   * `path` references; reading its documentation belongs to the caller (the Runtime, the CLI).
+   * Without it no project document resolves, so such a reference is refused.
    */
-  readonly projectDocument?: (id: string) => Promise<boolean>;
+  readonly projectDocument?: (checkout: SpecificationCheckout, id: string) => Promise<boolean>;
 }
 
 /**
@@ -99,7 +106,18 @@ function engineReferences(engine: SpecFlowEngine, options: OpenWorkflowOptions):
       (await availableSpecification(engine, specId)).specification.documents.some(
         (document) => document.id === id,
       ),
-    projectDocument: options.projectDocument ?? (() => Promise.resolve(false)),
+    projectDocument: async (specId, id) => {
+      if (!options.projectDocument) {
+        return false;
+      }
+
+      const found = await availableSpecification(engine, specId);
+
+      return options.projectDocument(
+        { workspaceId: found.workspaceId, root: found.workspaceRoot },
+        id,
+      );
+    },
     path: async (specId, path) =>
       checkoutPathExists((await availableSpecification(engine, specId)).workspaceRoot, path),
     pendingDocumentChange: pendingTaskDocuments(engine),

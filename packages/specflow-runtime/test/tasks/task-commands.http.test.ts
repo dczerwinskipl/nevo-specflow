@@ -7,10 +7,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import {
+  addWorkspace,
   bootstrapProjectHome,
   createSpecificationFromRequestForTesting as createSpecificationFromRequest,
   installDefinitionsForTesting,
+  provisionLinkedWorkspaceIdentity,
+  updateWorkspaceRegistry,
 } from '@nevo/specflow-engine/testing';
+import type { SpecFlowEngine } from '@nevo/specflow-engine';
 import {
   SpecificationTaskResponseSchema,
   TaskDocumentTreeSchema,
@@ -61,6 +65,31 @@ async function project() {
   await installDefinitionsForTesting(engine);
 
   return engine;
+}
+
+async function writeDocument(root: string, id: string): Promise<void> {
+  await mkdir(join(root, 'docs'), { recursive: true });
+  await writeFile(
+    join(root, 'docs', `${id}.md`),
+    `---\nid: ${id}\ntype: hub\ntitle: ${id}\nstatus: current\n---\n\n# ${id}\n`,
+  );
+}
+
+/** A registered linked worktree of the Project Home, on its own branch. */
+async function linkedWorktree(engine: SpecFlowEngine): Promise<{ root: string; id: string }> {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'specflow-task-linked-')));
+  roots.push(root);
+  await rm(root, { recursive: true });
+  git(engine.context.project.homeRoot, 'worktree', 'add', '-q', '-b', 'test/linked', root, 'HEAD');
+  const registration = await provisionLinkedWorkspaceIdentity(
+    engine.context,
+    root,
+    randomUUID(),
+    true,
+  );
+  await updateWorkspaceRegistry(engine.context, (registry) => addWorkspace(registry, registration));
+
+  return { root, id: registration.workspaceId };
 }
 
 describe('Task commands and reads against the real Engine', () => {
@@ -229,6 +258,52 @@ describe('Task commands and reads against the real Engine', () => {
         expect(removed.statusCode, removed.body).toBe(409);
         expect(removed.json()).toMatchObject({ code: 'WORKFLOW_SPECIFICATION_ENDED' });
         expect((await app.inject(`/api/specs/${specId}/tasks/draft`)).statusCode).toBe(200);
+      } finally {
+        await app.close();
+      }
+    },
+    timeoutMs,
+  );
+
+  it(
+    "resolves a project-document context entry in the Specification's own worktree",
+    async () => {
+      const engine = await project();
+      const linked = await linkedWorktree(engine);
+      await writeDocument(engine.context.project.homeRoot, 'home.only');
+      await writeDocument(linked.root, 'worktree.only');
+      const { specId } = await createSpecificationFromRequest(engine, {
+        archetype: { id: 'minimal', version: 1 },
+        operationId: randomUUID(),
+        title: 'Linked work',
+        target: { kind: 'existing', workspaceId: linked.id },
+      });
+      const app = await createRuntimeApp(
+        {
+          ...noAuthConfig(),
+          authorization: { assignments: [{ userId: 'demo-user', role: 'developer', scope: {} }] },
+        },
+        { specs: { engine }, docs: { startRefresh: false } },
+      );
+      const create = (taskId: string, id: string) =>
+        app.inject({
+          method: 'POST',
+          url: `/api/specs/${specId}/tasks`,
+          payload: {
+            taskId,
+            title: taskId,
+            type: 'implementation',
+            context: [{ kind: 'project-document', id, required: true }],
+          },
+        });
+      try {
+        const resolved = await create('in-worktree', 'worktree.only');
+        expect(resolved.statusCode, resolved.body).toBe(201);
+
+        // A document only in the Project Home is not the Specification's documentation.
+        const refused = await create('in-home', 'home.only');
+        expect(refused.statusCode, refused.body).toBe(422);
+        expect(refused.json()).toMatchObject({ code: 'WORKFLOW_TASK_CONTEXT_UNRESOLVED' });
       } finally {
         await app.close();
       }

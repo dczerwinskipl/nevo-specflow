@@ -157,9 +157,10 @@ Wide / Compact                                   Narrow
 ```
 
 - **Tree pane:** workspace picker (more than one workspace), the sticky search field (Documents
-  tree filter field, see [Sticky field and the software keyboard](#sticky-field-and-the-software-keyboard)),
-  then the tree or the results. Folders first, then documents; a folder's hub (README) leads its documents, the rest by
-  title. A document row shows its **title** (wrapping, not truncated; full path in the tooltip and in
+  tree filter field, see
+  [Sticky field and the software keyboard](#sticky-field-and-the-software-keyboard)), then the
+  tree or the results. Folders first, then documents; a folder's hub (README) leads its documents,
+  the rest by title. A document row shows its **title** (wrapping, not truncated; full path in the tooltip and in
   Properties); folders show their folder name. The opened document is `aria-current`; its ancestors
   open on entry. A proposals prefix is labelled once, on the folder that owns it
   ("Proposals", tree state label), not on every row. Draft status is not shown in the tree.
@@ -205,8 +206,8 @@ Wide / Compact                                   Narrow
 
 ## Search
 
-Search finds documents of the workspace being read. Routes, ranking, the tree and the article do
-not depend on it.
+Search finds documents of the workspace being read. The ranking is the Runtime's
+([`search`](../../../reference/cli/nevo-specflow-docs.md#search)); the reader only presents it.
 
 ### What uncommitted changes mean for reading and search
 

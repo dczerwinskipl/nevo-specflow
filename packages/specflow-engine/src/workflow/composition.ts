@@ -2,7 +2,7 @@ import { dirname, join } from 'node:path';
 
 import type { SpecFlowEngine } from '../application';
 import { withProjectControlLock } from '../project/control-lock';
-import { runReadRequest } from '../project/request-verification-memo';
+import { runReadRequest, runVerifiedMutation } from '../project/request-verification-memo';
 import { resolveSpecification } from '../specs/discovery';
 import { createDefaultDefinitionRegistry } from '../definitions/shipped-registry';
 import { loadDefinitions } from '../specs/definitions/loader';
@@ -216,7 +216,11 @@ export async function openWorkflow(
     references: engineReferences(engine, options),
     holds: engineHolds(engine),
     now: () => new Date(),
-    serialize: (operation) => withProjectControlLock(engine.context, operation),
+    // One Git-backed verification per operation (the lock admission proves the Project Home; the
+    // Specification lookups and later lock sections of the same operation reuse it), not one per lookup.
+    serialize: (operation) =>
+      runVerifiedMutation(() => withProjectControlLock(engine.context, operation)),
+    operation: runVerifiedMutation,
     postActions: enginePostActions(engine),
   };
 

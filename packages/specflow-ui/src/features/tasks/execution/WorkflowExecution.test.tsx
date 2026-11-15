@@ -687,6 +687,64 @@ describe('manual workflow execution', () => {
     ).toBeTruthy();
   });
 
+  it('never hands the focus of a lost finish to the next step’s Start on the Overview', async () => {
+    let finished = false;
+    const finish = vi.fn(() => {
+      finished = true;
+
+      return Promise.reject(
+        new ApiError({
+          kind: 'timeout',
+          operation: 'workflow',
+          outcome: 'unknown',
+          retryable: false,
+        }),
+      );
+    });
+    const review = taskWorkflowProjection('review');
+    const ready: WorkflowActionProjection = {
+      ...review,
+      position: {
+        kind: 'ready',
+        next: { step: { id: 'rework', title: 'Rework', kind: 'work', purpose: '' }, human: true },
+      } as unknown as WorkflowActionProjection['position'],
+      actions: { start: { step: 'rework', firstStart: false } },
+    };
+    function OverviewHarness() {
+      const projection = useTaskActions(SPEC, TASK).data;
+
+      return projection ? (
+        <WorkflowNow
+          subject={{ specId: SPEC, taskId: TASK }}
+          projection={projection}
+          headingId="now"
+          links={{}}
+          artifactOptions={[]}
+          overview={{ specId: SPEC }}
+        />
+      ) : null;
+    }
+
+    const execution = fakeExecutionApi({ finish });
+    renderWith(<OverviewHarness />, {
+      execution,
+      taskActions: () => Promise.resolve(finished ? ready : review),
+    });
+    const open = await screen.findByRole('button', { name: 'Finish step' });
+    open.focus();
+    fireEvent.click(open);
+    fireEvent.click(screen.getByRole('radio', { name: /^Approved/ }));
+    fireEvent.click(finishButton());
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    const start = await screen.findByRole('button', { name: 'Start Rework' });
+    // The button that opened Finish is not the one that now starts the next step: a key press
+    // meant for the Finish (Enter, Space) cannot start a step the owner never chose.
+    expect(start).not.toBe(open);
+    expect(document.activeElement).not.toBe(start);
+    expect(execution.start).not.toHaveBeenCalled();
+  });
+
   it('closes after its own finish without saying the step was already finished', async () => {
     let finished = false;
     const finish = vi.fn(() => {

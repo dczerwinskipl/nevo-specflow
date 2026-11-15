@@ -41,6 +41,15 @@ Reads must be fast and must not spawn Git. Verification is split by what an oper
 | Each mutation (create with a new-worktree target or with Git enabled, close/integrate, archive, registry writes, control-lock admission) | Full resolution again, ignore-rule audit of the linked identity marker, and the REGISTRY_CONFLICT revision checks.                                                                                                                                                                                                                                                                                                                          | yes |
 | Create into an existing workspace of a project with `git.enabled: false`                                                                 | The disk checks of a read, re-run at every admission step (not memoised); no Git is involved in the operation.                                                                                                                                                                                                                                                                                                                              | no  |
 
+A workflow mutation (a step start, finish, return or abandon, a Task change, together with the
+post actions of a finish) proves this **once per operation**: its first control-lock admission
+resolves the Project Home with Git, and the Specification lookups of the same operation reuse those
+Git answers instead of resolving the Project Home again for every lookup. A later lock section of
+the same operation (each stage of the finish's manual commit takes the lock) skips the Git check only
+when the physical evidence it pins (`home/lock-proof.ts`) is exactly what the operation last proved;
+any difference, including the stale proof of a lock retry, is proved with Git again. Such an
+operation changes neither the registry nor a checkout's Git identity.
+
 A stale open-time identity can only cause the following on a read, never a write: a deleted or
 moved workspace is reported `workspace_unavailable` by the filesystem check; a replaced or
 foreign checkout fails the `.git` link or identity-marker check and the read is refused; a repository

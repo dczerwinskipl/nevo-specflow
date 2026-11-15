@@ -21,6 +21,12 @@ export interface DocsReaderLocationState {
   readonly openedFrom?: DocsReaderOpener;
   /** After a pick: the title of the document the new workspace does not have. */
   readonly notInWorkspace?: string;
+  /**
+   * The identity of this history entry once the reader has replaced it only to write its search: a
+   * replace gets a new router key, but the entry is the same visit (its reading position, its
+   * Narrow stack screen and the pane's scroll stay with it).
+   */
+  readonly entry?: string;
 }
 
 export interface DocsReaderOpener {
@@ -63,9 +69,15 @@ export function readerAddress(
   return match ? { workspaceId: segment(match[1]), documentId: segment(match[2]) } : undefined;
 }
 
-/** The identity of a history entry: kept by Back, Forward and a reload, new for every push. */
-export const historyEntryOf = (state: { readonly __TSR_key?: string; readonly key?: string }) =>
-  state.__TSR_key ?? state.key ?? '';
+/**
+ * The identity of a history entry: kept by Back, Forward, a reload and a write of the search, new
+ * for every push and for every other replace.
+ */
+export const historyEntryOf = (state: {
+  readonly __TSR_key?: string;
+  readonly key?: string;
+  readonly docsReader?: DocsReaderLocationState;
+}) => state.docsReader?.entry ?? state.__TSR_key ?? state.key ?? '';
 
 /** The location's hash without `#`; `undefined` when empty. */
 export const stripHash = (hash: string) =>

@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
+import { useState } from 'react';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { WorkspaceDocsSearch } from '@nevo/specflow-contracts/docs';
 import { appI18n } from '../../../i18n';
+import type { DocsReaderSearch } from '../reader/readerSearch';
 import { DocsSearchPanel } from './DocsSearchPanel';
 
 /** The answers the mocked read hands out, by workspace and text; a missing one is still loading. */
@@ -49,9 +51,19 @@ const answer = (workspaceId: string, titles: string[]): WorkspaceDocsSearch => (
   skipped: [],
 });
 
+/** The panel over an address of its own (the router's part is `readerSearchHistory.test.tsx`). */
 function Panel({ workspaceId }: { workspaceId: string }) {
+  const [search, setSearch] = useState<DocsReaderSearch>({});
+
   return (
-    <DocsSearchPanel workspaceId={workspaceId} proposals={new Set()} onOpen={() => undefined}>
+    <DocsSearchPanel
+      workspaceId={workspaceId}
+      historyEntry="entry"
+      search={search}
+      onSearchChange={setSearch}
+      proposals={new Set()}
+      onOpen={() => undefined}
+    >
       <p>tree</p>
     </DocsSearchPanel>
   );

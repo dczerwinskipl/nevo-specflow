@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Popover, PopoverTrigger, PopoverContent, ScrollArea, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import type { WorkspaceList } from '@nevo/specflow-contracts/workspaces';
@@ -27,8 +27,8 @@ export interface WorkspacePickerProps {
  * shared context switcher): a subtle trigger (quiet label, one-line name, local changes or
  * unavailability in the status slot, kind line) opening a listbox of every workspace, focus on the
  * selected one; an unavailable workspace is listed with its reason and cannot be chosen. What local
- * changes mean is said once, under the list. Presentational: the list comes from the shared workspaces read
- * model. Renders nothing with a single workspace (there is nothing to tell apart).
+ * changes mean is said once, under the list. Presentational: the list comes from the shared
+ * workspaces read model. Renders nothing with a single workspace (there is nothing to tell apart).
  */
 export function WorkspacePicker({
   workspaces,
@@ -42,6 +42,18 @@ export function WorkspacePicker({
   const trigger = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
   const { options, onOptionKeyDown } = useListboxKeys(panel);
+  // A long selected name can sit below the list's fold, and the list only settles its height after
+  // opening (the popover is fitted to the space left): keep the focused option whole. The list
+  // mounts with the portalled popover, so it is observed from its ref, not from an effect.
+  const listObserver = useRef<ResizeObserver | null>(null);
+  const observeList = useCallback((viewport: HTMLDivElement | null) => {
+    listObserver.current?.disconnect();
+    listObserver.current = null;
+    if (viewport && typeof ResizeObserver !== 'undefined') {
+      listObserver.current = new ResizeObserver(() => revealFocusedOption(viewport));
+      listObserver.current.observe(viewport);
+    }
+  }, []);
   const list = workspaces.workspaces;
   if (list.length < 2) {
     return null;
@@ -102,9 +114,8 @@ export function WorkspacePicker({
           onOpenAutoFocus={(event) => {
             event.preventDefault();
             const all = options();
-            (all.find((o) => o.getAttribute('aria-selected') === 'true') ?? all[0])?.focus({
-              preventScroll: true,
-            });
+            const option = all.find((o) => o.getAttribute('aria-selected') === 'true') ?? all[0];
+            option?.focus({ preventScroll: true });
           }}
           onCloseAutoFocus={(event) => {
             event.preventDefault();
@@ -113,10 +124,15 @@ export function WorkspacePicker({
         >
           <ScrollArea
             className="flex min-h-0 max-h-72 flex-col"
+            viewportRef={observeList}
             tabIndex={-1}
             contentClassName="grid gap-1"
           >
-            <div role="listbox" aria-label={t('workspacePicker.list')} className="grid gap-1">
+            <div
+              role="listbox"
+              aria-label={t('workspacePicker.list')}
+              className="relative grid gap-1"
+            >
               {listed.map(({ workspace, facts }) => {
                 const selected = workspace.workspaceId === current.workspaceId;
 
@@ -155,4 +171,22 @@ export function WorkspacePicker({
       </Popover>
     </div>
   );
+}
+
+/**
+ * Scrolls the list (only) so its focused option shows whole. Layout offsets, not boxes: the popover
+ * may still be animating in (scaled); the options' offset parent is the listbox at the list's top.
+ */
+function revealFocusedOption(viewport: HTMLElement) {
+  const option = document.activeElement;
+  if (!(option instanceof HTMLElement) || !viewport.contains(option)) {
+    return;
+  }
+
+  const bottom = option.offsetTop + option.offsetHeight;
+  if (bottom > viewport.scrollTop + viewport.clientHeight) {
+    viewport.scrollTop = Math.min(option.offsetTop, bottom - viewport.clientHeight);
+  } else if (option.offsetTop < viewport.scrollTop) {
+    viewport.scrollTop = option.offsetTop;
+  }
 }

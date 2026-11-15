@@ -59,6 +59,31 @@ describe('context switcher name truncation', () => {
     expect(fitMiddle('averyveryverylongworkspacename', 200, measure)).toBe('ave…ongworkspacename');
   });
 
+  it('never splits an emoji (a surrogate pair) at a cut', () => {
+    const rocket = '\u{1F680}';
+    const name = `${rocket.repeat(10)}-release-${rocket.repeat(17)}`;
+    // The 16-character cap counts the emoji as one character each.
+    expect(distinguishingTail(name)).toBe(rocket.repeat(16));
+    // Each emoji is two UTF-16 units, so 20 px wide here.
+    const fitted = fitMiddle(name, 400, measure);
+    expect(fitted).not.toMatch(/[\uD800-\uDFFF]/u);
+    expect(fitted).toBe(`${rocket.repeat(3)}…${rocket.repeat(16)}`);
+    // Too narrow for any head: the kept end loses whole emoji from its start.
+    expect(fitMiddle(name, 200, measure)).toBe(`…${rocket.repeat(9)}`);
+  });
+
+  it('keeps a combining mark with its base letter at a cut', () => {
+    // "é" written as "e" + U+0301: every cut must keep the pair together.
+    const e = 'é';
+    const name = `caf${e}-${e.repeat(20)}-r${e}sum${e}s`;
+    const fitted = fitMiddle(name, 120, measure);
+    const [head, tail] = fitted.split('…');
+    expect(head?.startsWith('́')).toBe(false);
+    expect(head?.endsWith('e')).toBe(false);
+    expect(tail?.startsWith('́')).toBe(false);
+    expect(fitMiddle(name, 40, measure).startsWith('…́')).toBe(false);
+  });
+
   it('shortens the kept end from its start when nothing else fits', () => {
     expect(fitMiddle('feature-review-desktop', 60, measure)).toBe('…sktop');
     expect(fitMiddle('feature-review-desktop', 5, measure)).toBe('…');

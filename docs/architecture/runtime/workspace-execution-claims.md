@@ -45,7 +45,7 @@ There is no separate reservation store. One JSON record per execution is the cla
 | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `intent {operationId, ownerId, binding}`     | `operationId` is the Runtime invocation id (a UUID, also the file name); `ownerId` the Session id; `binding` a sha256 of the Session, request, provider selection and workspace identity. |
 | `projectId`, `gitInstanceId`                 | The Project Home the claim belongs to. A record of another project is corrupt.                                                                                                            |
-| `workspace {workspaceId, root, instanceId?}` | The workspace incarnation the execution runs in.                                                                                                                                          |
+| `workspace {workspaceId, root, instanceId?}` | The workspace incarnation the execution runs in: the Engine's own checkout, or a registered workspace named at admission (a Specification's worktree).                                    |
 | `registryRevision`                           | The workspace registry revision at admission.                                                                                                                                             |
 | `resources`                                  | Exactly one: `project-write:<projectId>`.                                                                                                                                                 |
 | `phase`                                      | `admitted`, `dispatched`, `unknown` or `settled`.                                                                                                                                         |
@@ -66,8 +66,11 @@ admit ─▶ admitted ──mark dispatched──▶ dispatched ──settle(nat
             └──abandon──▶ settled(not-dispatched)
 ```
 
-- **Admit** (`admitWorkspaceExecution`) runs under the project control lock. It checks that the
-  workspace incarnation in the registry is still the Engine's, that the registry revision did not
+- **Admit** (`admitWorkspaceExecution`) runs under the project control lock. The claimed workspace
+  is the Engine's own checkout, or the registered workspace named by `{workspaceId}` (a
+  Specification's worktree, verified on disk and in Git first); every later transition names the same
+  workspace. It checks that the workspace incarnation in the registry is still the claimed one, that
+  the registry revision did not
   change since it was read, and that no other claim conflicts (below), then publishes `admitted`. A
   retry with the same `operationId` returns the existing record when intent and workspace are equal,
   and fails with `EXECUTION_CONFLICT` otherwise.
@@ -110,7 +113,9 @@ execution claim as a conflict for every requested resource. So, in both directio
 - an execution is not admitted while an unfinished Create, Close, document change or manual commit
   holds any resource.
 
-At most one native agent execution therefore runs per project at a time. Per-Task or per-worktree
+Claiming a Specification's worktree changes only where the agent runs (`cwd`), not this resource:
+the claim still excludes every other writer of the project. At most one native agent execution
+therefore runs per project at a time. Per-Task or per-worktree
 claims are future work and need real containment of the agent first (plan 06 F08,
 [execution scopes](../../ideas/specflow-engine/execution-scopes-and-recovery.md)).
 

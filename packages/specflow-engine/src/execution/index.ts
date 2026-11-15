@@ -13,3 +13,4 @@ export {
   abandonWorkspaceExecutionAdmission,
   settleWorkspaceExecution,
 } from './operations';
+export type { WorkspaceExecutionTarget } from './operations';

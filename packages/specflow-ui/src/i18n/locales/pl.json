@@ -907,6 +907,7 @@
         "branchLabel": "Nazwa nowej gałęzi",
         "branchPlaceholder": "feature/new-api",
         "branchHelp": "Katalog worktree Nevo przygotuje samodzielnie. Jeśli nazwa jest zajęta, podasz inną.",
+        "branchUntouched": "Dopóki jej nie zmienisz, gałąź nazywa się {{branch}} (… zostanie uzupełnione przy tworzeniu specyfikacji). Zmień nazwę, aby użyć własnej.",
         "nameSlug": "slug",
         "unavailableReason": "– {{reason}}",
         "slugDescription": "Slug nazywa katalog specyfikacji, katalog worktree i nową gałąź. Podąża za nazwą specyfikacji, dopóki go nie zmienisz.",
@@ -1937,7 +1938,8 @@
       "placeholder": "Wybierz agenta i rozpocznij sesję"
     },
     "executor": {
-      "notChosen": "nie wybrano"
+      "notChosen": "nie wybrano",
+      "modelNotChosen": "nie wybrano modelu"
     },
     "provider": {
       "noMode": "Brak dostępnego trybu pracy"
@@ -2165,6 +2167,9 @@
     }
   },
   "workflowExecution": {
+    "actor": {
+      "you": "ciebie"
+    },
     "now": {
       "heading": "Teraz",
       "workflow": "{{title}} · wersja {{version}}",
@@ -2188,7 +2193,7 @@
         "completed": "Ukończono",
         "abandoned": "Porzucono"
       },
-      "abandonedBy": "{{at}}, porzucił(a) {{actor}}",
+      "abandonedBy": "{{at}}, porzucone przez {{actor}}",
       "toFinishWith": "Aby zakończyć z wynikiem {{result}}:",
       "returned": "Zawrócono do tego kroku",
       "start": "Rozpocznij: {{step}}",
@@ -2247,6 +2252,12 @@
       "openDocument": "Otwórz dokument"
     },
     "finish": {
+      "blocked": {
+        "noResult": "Wybierz wynik, aby zakończyć.",
+        "feedback": "Ten wynik wymaga informacji zwrotnej.",
+        "gates": "Nie wszystko, co potrzebne dla tego wyniku, jest jeszcze gotowe.",
+        "unavailable": "Tego wyniku nie można jeszcze wybrać; szczegóły powyżej."
+      },
       "title": "Zakończ: {{step}}",
       "description": "Próba {{attempt}}. Zostaniesz zapisany jako osoba, która ją zakończyła.",
       "result": "Wynik",
@@ -2316,6 +2327,7 @@
       },
       "explanation": {
         "workflow": "Przepływ specyfikacji się nie zakończył. Oczekiwanie na zadania kończy się samo, gdy każde zadanie zostanie ukończone lub anulowane.",
+        "workflowAtStep": "Przepływ specyfikacji się nie zakończył: jest na kroku „{{step}}”. Doprowadź jego kroki do końca.",
         "tasks": "Ukończ, anuluj lub usuń każde z nich.",
         "broken": "Ich pliki nie zgadzają się z zapisem przepływu. Napraw je lub usuń.",
         "writes": "Zapis lub inna zmiana jeszcze trwa; za chwilę zakończy się sama.",
@@ -2358,6 +2370,7 @@
         "waiting_many": "jej przepływ czeka na {{count}} nieukończonych zadań",
         "waiting_other": "jej przepływ czeka na {{count}} nieukończonych zadań",
         "workflow": "jej przepływ się nie zakończył",
+        "atStep": "jej przepływ jest wciąż na kroku „{{step}}”",
         "unfinished_one": "{{count}} zadanie jest nieukończone",
         "unfinished_few": "{{count}} zadania są nieukończone",
         "unfinished_many": "{{count}} zadań jest nieukończonych",

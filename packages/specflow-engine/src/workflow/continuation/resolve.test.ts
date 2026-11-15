@@ -80,8 +80,8 @@ describe('resolveContinuation', () => {
       { reason: 'model-missing', provider: 'antigravity' },
     ],
     [
-      'there is no Session to continue',
-      { transition: transition({ session: 'reuse' as const }) },
+      'the finishing agent reported no Session to continue',
+      { transition: transition({ session: 'reuse' as const }), finishing: { provider: 'claude' } },
       { reason: 'session-unavailable' },
     ],
   ])('asks for attention when %s', (_name, input, expected) => {
@@ -95,11 +95,13 @@ describe('resolveContinuation', () => {
   it('asks for attention when the preferred provider has no model, or none is preferred', () => {
     const withoutModel: AgentArchetype = { ...reviewer, providers: [{ provider: 'codex' }] };
     const withoutPreference: AgentArchetype = { ...reviewer, preferredProvider: undefined };
+    const finishing = { provider: 'claude', sessionId: 's-1' };
     expect(
       resolveContinuation({
         transition: transition(),
         next: review,
         archetypes: () => withoutModel,
+        finishing,
       }),
     ).toMatchObject({ kind: 'attention', reason: 'model-missing', provider: 'codex' });
     expect(
@@ -107,12 +109,47 @@ describe('resolveContinuation', () => {
         transition: transition(),
         next: review,
         archetypes: () => withoutPreference,
+        finishing,
       }),
     ).toMatchObject({ kind: 'attention', reason: 'provider-not-chosen' });
     expect(
-      resolveContinuation({ transition: transition(), next: review, archetypes: () => undefined }),
+      resolveContinuation({
+        transition: transition(),
+        next: review,
+        archetypes: () => undefined,
+        finishing,
+      }),
     ).toMatchObject({ kind: 'attention', reason: 'archetype-missing', archetype: 'reviewer' });
   });
+
+  it.each([
+    [
+      'a fresh Session has no model',
+      transition(),
+      { ...reviewer, providers: [{ provider: 'codex' }] },
+      'model-missing',
+    ],
+    [
+      'there is no Session to continue',
+      transition({ session: 'reuse' }),
+      reviewer,
+      'session-unavailable',
+    ],
+  ] as const)(
+    'after a person finished, waits for the owner instead of asking to configure agents when %s',
+    (_name, input, archetype, blocker) => {
+      expect(
+        resolveContinuation({ transition: input, next: review, archetypes: () => archetype }),
+      ).toEqual({
+        kind: 'attention',
+        step: 'review',
+        reason: 'owner-action',
+        blocker,
+        archetype: 'reviewer',
+        ...(blocker === 'model-missing' ? { provider: 'codex' } : {}),
+      });
+    },
+  );
 
   it('waits for the owner on an owner-action transition and prefills what would start', () => {
     expect(

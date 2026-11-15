@@ -16,7 +16,8 @@ export function workspaceExecutionIdentity(engine: SpecFlowEngine) {
   return recordedIdentity(engine, engine.workspace);
 }
 
-function recordedIdentity(
+/** The identity a claim records for a registered workspace (the Engine's own or a worktree). */
+export function recordedIdentity(
   engine: SpecFlowEngine,
   workspace: { workspaceId: string; root: string; instanceId?: string },
 ) {
@@ -42,6 +43,27 @@ export function createEngineSessionEffects(engine: SpecFlowEngine): SessionEffec
     };
   }
 
+  /**
+   * The registered workspace an execution runs in, by its root, when its recorded identity is the
+   * one the Session was admitted with: the Engine's own checkout or a Specification's worktree.
+   */
+  async function claimTarget(identity: SessionEffectIdentity) {
+    if (
+      identity.workspace === engine.workspace.root &&
+      identity.workspaceIdentity === workspaceExecutionIdentity(engine)
+    ) {
+      return {};
+    }
+
+    const registry = await guarded(() => engine.readRegistry());
+    const registered = registry.workspaces.find((item) => item.root === identity.workspace);
+    if (!registered || recordedIdentity(engine, registered) !== identity.workspaceIdentity) {
+      return undefined;
+    }
+
+    return { workspaceId: registered.workspaceId };
+  }
+
   async function guarded<T>(run: () => Promise<T>): Promise<T> {
     try {
       return await run();
@@ -62,10 +84,8 @@ export function createEngineSessionEffects(engine: SpecFlowEngine): SessionEffec
 
   return {
     async admit(identity) {
-      if (
-        identity.workspace !== engine.workspace.root ||
-        identity.workspaceIdentity !== workspaceExecutionIdentity(engine)
-      ) {
+      const target = await claimTarget(identity);
+      if (!target) {
         throw new SessionError(
           'SESSION_RECOVERY_REQUIRED',
           'Execution workspace identity is not verified.',
@@ -73,7 +93,7 @@ export function createEngineSessionEffects(engine: SpecFlowEngine): SessionEffec
       }
 
       const request = intent(identity);
-      const record = await guarded(() => admitWorkspaceExecution(engine, request));
+      const record = await guarded(() => admitWorkspaceExecution(engine, request, target));
       if (record.phase !== 'admitted') {
         throw new SessionError(
           'SESSION_RECOVERY_REQUIRED',
@@ -84,38 +104,36 @@ export function createEngineSessionEffects(engine: SpecFlowEngine): SessionEffec
       return {
         dispatch: () =>
           guarded(async () => {
-            await markWorkspaceExecutionDispatched(engine, request);
+            await markWorkspaceExecutionDispatched(engine, request, target);
           }),
         abandon: () =>
           guarded(async () => {
-            await abandonWorkspaceExecutionAdmission(engine, request);
+            await abandonWorkspaceExecutionAdmission(engine, request, target);
           }),
         unknown: () =>
           guarded(async () => {
-            await markWorkspaceExecutionUnknown(engine, request);
+            await markWorkspaceExecutionUnknown(engine, request, target);
           }),
         settle: (evidence) =>
           guarded(async () => {
-            await settleWorkspaceExecution(engine, request, {
-              ...evidence,
-              invocationId: identity.invocationId,
-            });
+            await settleWorkspaceExecution(
+              engine,
+              request,
+              { ...evidence, invocationId: identity.invocationId },
+              target,
+            );
           }),
       };
     },
     async reconcile(identity) {
       let record = await guarded(() => inspectWorkspaceExecution(engine, identity.invocationId));
-      if (
-        !record &&
-        !identity.nativeDispatched &&
-        identity.workspace === engine.workspace.root &&
-        identity.workspaceIdentity === workspaceExecutionIdentity(engine)
-      ) {
+      const target = await claimTarget(identity);
+      if (!record && !identity.nativeDispatched && target) {
         // SQLite may commit before Engine admission. Establish the SAME intent
         // durably under Engine's writer lock before retiring it as not dispatched.
         // Admission revalidates the current incarnation and conflicts; missing
         // journal data alone never authorizes a canonical terminal transition.
-        record = await guarded(() => admitWorkspaceExecution(engine, intent(identity)));
+        record = await guarded(() => admitWorkspaceExecution(engine, intent(identity), target));
       }
 
       if (
@@ -133,7 +151,13 @@ export function createEngineSessionEffects(engine: SpecFlowEngine): SessionEffec
       }
 
       if (record.phase === 'admitted' && !identity.nativeDispatched) {
-        record = await guarded(() => abandonWorkspaceExecutionAdmission(engine, intent(identity)));
+        if (!target) {
+          return undefined;
+        }
+
+        record = await guarded(() =>
+          abandonWorkspaceExecutionAdmission(engine, intent(identity), target),
+        );
       }
 
       if (record.phase !== 'settled') {

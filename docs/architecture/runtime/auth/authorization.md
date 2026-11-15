@@ -184,11 +184,12 @@ and Task projections of Session references all use it.
 | `session.execute-write` (create in write mode)                                     | `{projectId}`            | `{projectId}`                    |
 | `session.execute-write` (Turn start/respond in write mode)                         | `{projectId, sessionId}` | `{projectId, sessionId}`         |
 
-**Execute-write exception.** `session.execute-write` never carries `specId`. Every provider runs
-with the Runtime's whole verified project workspace as `cwd`, not the Specification's worktree, so a
-grant scoped to one Specification must never admit writes that reach every Specification and the
-project's own files. The dimension is added only when the managed execution handshake confines a
-Specification's Session to that Specification's worktree.
+**Execute-write exception.** `session.execute-write` never carries `specId`. A Turn of a
+Specification's Session runs in that Specification's workspace (its worktree, or the primary
+checkout) as `cwd`, but a native agent is not contained to its `cwd`: it can reach every
+Specification and the project's own files, and its write claim is project-wide. A grant scoped to one
+Specification must therefore never admit writes. The dimension is added only when an agent is really
+confined to a Specification's worktree.
 
 **What the two provider capabilities admit.** `session.execute-write` is required to create a
 `workspace-write` Session and to start a Turn or deliver an interaction response in write mode.

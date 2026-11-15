@@ -13,6 +13,7 @@ export type {
   WorkspaceExecutionIntent,
   WorkspaceExecutionReceipt,
   WorkspaceExecutionJournal,
+  WorkspaceExecutionTarget,
 } from './execution';
 export {
   isGitIgnored,

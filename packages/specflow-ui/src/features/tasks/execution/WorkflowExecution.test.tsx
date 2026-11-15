@@ -116,6 +116,12 @@ describe('manual workflow execution', () => {
       taskActions: () => Promise.resolve(taskWorkflowProjection('review')),
     });
     fireEvent.click(await screen.findByRole('button', { name: 'Finish step' }));
+    // Disabled Finish says why, next to it.
+    expect(finishButton().disabled).toBe(true);
+    expect(finishButton().getAttribute('aria-describedby')).toBeTruthy();
+    expect(
+      document.getElementById(finishButton().getAttribute('aria-describedby')!)?.textContent,
+    ).toBe('Choose a result to finish.');
     fireEvent.click(screen.getByRole('radio', { name: /Changes requested/ }));
 
     expect(screen.getByRole('alert').textContent).toBe(
@@ -156,9 +162,36 @@ describe('manual workflow execution', () => {
       'A findings document · none registered yet',
     );
     expect(finishButton().disabled).toBe(true);
+    expect(
+      within(screen.getByRole('dialog')).getByText(
+        'Not everything needed for this result is done yet.',
+      ),
+    ).toBeTruthy();
     fireEvent.click(screen.getByRole('radio', { name: /Not worth pursuing/ }));
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Too slow.' } });
     expect(finishButton().disabled).toBe(false);
+  });
+
+  it('chooses the only result already and names a result without a label by its readable id', async () => {
+    const review = taskWorkflowProjection('review');
+    const only = { ...review.actions.finish!.transitions[0]!, id: 'ready-for-merge' };
+    delete (only as { label?: string }).label;
+    delete (only as { result?: string }).result;
+    renderWith(<TaskNowHarness />, {
+      taskActions: () =>
+        Promise.resolve({
+          ...review,
+          actions: {
+            ...review.actions,
+            finish: { ...review.actions.finish!, transitions: [only] },
+          },
+        }),
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Finish step' }));
+
+    const radio = screen.getByRole<HTMLInputElement>('radio', { name: /Ready for merge/ });
+    expect(radio.getAttribute('aria-checked') ?? String(radio.checked)).toBe('true');
+    expect(finishButton().disabled).toBe(only.feedback === 'required');
   });
 
   it('re-opens the first start on the new revision when the workflow changed meanwhile', async () => {
@@ -337,7 +370,8 @@ describe('manual workflow execution', () => {
 
     await waitFor(() => expect(close).toHaveBeenCalledWith(SPEC, 'op-1'));
     expect((await screen.findByText(/cannot close yet/)).textContent).toBe(
-      'Single sign-on cannot close yet: its workflow is waiting for 1 unfinished task and 1 task document is still being saved.',
+      // The projection is not on a wait step: no "waiting for tasks".
+      'Single sign-on cannot close yet: its workflow has not ended, 1 task is unfinished, and 1 task document is still being saved.',
     );
     expect(screen.getByRole('heading', { name: 'Pending writes · 1' })).toBeTruthy();
   });

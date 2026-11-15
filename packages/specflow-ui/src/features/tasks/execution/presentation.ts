@@ -1,16 +1,47 @@
 import type { TFunction } from 'i18next';
 import type { GateStatus, OpenTask, WorkflowActor } from '@nevo/specflow-contracts/workflow';
 
+/** The recorded identity of the trusted local person (no authentication configured). */
+const TRUSTED_LOCAL_ACTOR = 'runtime:trusted-local';
+
 /**
- * Who acted, as recorded: a person by the id the Runtime recorded (without the `local:` or `user:`
- * prefix of the identity source; the id itself is shown as it is), an agent by provider and model.
+ * A person as recorded (`user:ann`, `local:ann`): "you" for the viewer or the trusted local person,
+ * else the id without its identity-source prefix (the id itself is shown as it is).
  */
-export function actorLabel(actor: WorkflowActor): string {
+export function personLabel(t: TFunction, actorId: string, viewerId?: string): string {
+  if (
+    actorId === TRUSTED_LOCAL_ACTOR ||
+    (viewerId !== undefined && actorId === `user:${viewerId}`)
+  ) {
+    return t('workflowExecution.actor.you');
+  }
+
+  return actorId.replace(/^(local|user):/, '');
+}
+
+/** Who acted, as recorded: a person by {@link personLabel}, an agent by provider and model. */
+export function actorLabel(t: TFunction, actor: WorkflowActor, viewerId?: string): string {
   if (actor.class === 'human') {
-    return actor.details.actorId.replace(/^(local|user):/, '');
+    return personLabel(t, actor.details.actorId, viewerId);
   }
 
   return [actor.details.provider, actor.details.model].filter(Boolean).join(' · ');
+}
+
+/** `needs-changes` -> `Needs changes`: the fallback for an id that has no label. */
+export function humanizeId(id: string): string {
+  const words = id.replace(/[-_.]+/g, ' ').trim();
+
+  return words ? words[0]!.toUpperCase() + words.slice(1) : id;
+}
+
+/** A transition as people read it: its label, its result, else its id made readable. */
+export function transitionLabel(transition: {
+  readonly id: string;
+  readonly label?: string;
+  readonly result?: string;
+}): string {
+  return transition.label ?? transition.result ?? humanizeId(transition.id);
 }
 
 const sameDay = (a: Date, b: Date) =>

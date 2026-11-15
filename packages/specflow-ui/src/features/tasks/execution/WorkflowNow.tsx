@@ -64,8 +64,13 @@ export interface WorkflowNowProps {
   };
 }
 
-const emptyDraft = (attemptKey: string): FinishDraft => ({
+/** A new draft; the only result of a step is chosen already (there is nothing to choose). */
+const emptyDraft = (
+  attemptKey: string,
+  transitions: readonly { readonly id: string }[] = [],
+): FinishDraft => ({
   attemptKey,
+  ...(transitions.length === 1 ? { transitionId: transitions[0]!.id } : {}),
   feedback: '',
   artifacts: [],
   droppedDrafts: [],
@@ -111,7 +116,10 @@ export function WorkflowNow({
     dialog === 'finish' && finishFor !== attemptKey && !commands.finish.isSuccess;
   const [storedDraft, setDraft] = useState<FinishDraft>();
   // A draft of another attempt (the run moved on) is not this attempt's draft.
-  const draft = storedDraft?.attemptKey === attemptKey ? storedDraft : emptyDraft(attemptKey);
+  const draft =
+    storedDraft?.attemptKey === attemptKey
+      ? storedDraft
+      : emptyDraft(attemptKey, finish?.transitions);
   const [kept, setKept] = useState(false);
   const [confirmed, setConfirmed] = useState<PinPreview>();
   const [failedPostActions, setFailedPostActions] = useState<readonly FailedPostAction[]>([]);

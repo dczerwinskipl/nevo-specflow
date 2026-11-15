@@ -126,6 +126,8 @@ On a project Runtime (not `--demo`) the Overview shows what the Engine and the S
 
 - **Description** — the overview document's first paragraph as plain text (at most 320 graphemes),
   rendered as delivered, never parsed as Markdown again; empty when there is no readable overview.
+  **Show more** (expanding the overview document) appears only when the description was cut (it
+  ends with `…`) or there is none; a whole description has no Show more.
 - **Now, Requires attention and Tasks** — the Engine's workflow projection and one execution read
   presented in the Runtime's dashboard grouping; an execution the Engine cannot read makes the
   Tasks summary say the Tasks are unavailable.

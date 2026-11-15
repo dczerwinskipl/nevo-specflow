@@ -134,7 +134,8 @@ state). The Background operations panel sits above the list when the host provid
 
 Wide and Compact keep the same hierarchy in one Primary surface; navigation may be persistent or a
 Drawer. Narrow keeps the same sections, summary and order with stacked rows; the whole row stays the
-target and no critical state is hidden behind hover.
+target and no critical state is hidden behind hover. On Narrow the header already names the screen,
+so the page title under it is kept for assistive technology and focus only and is not shown again.
 
 ## States
 

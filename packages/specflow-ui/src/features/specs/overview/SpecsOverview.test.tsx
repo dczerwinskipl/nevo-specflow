@@ -134,6 +134,27 @@ describe('SpecsOverview states', () => {
   });
 });
 
+describe('SpecsOverview page title', () => {
+  const pageTitle = () => screen.getByRole('heading', { level: 1, name: 'Specifications' });
+  const shellWidth = (width: number) =>
+    vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockReturnValue({ width, height: 900, x: 0, y: 0, top: 0, left: 0, right: 0 } as DOMRect);
+  afterEach(() => vi.restoreAllMocks());
+
+  it('shows the page title under the header in a split layout', () => {
+    shellWidth(1600);
+    renderOverview(loaded());
+    expect(pageTitle().classList.contains('sr-only')).toBe(false);
+  });
+
+  it('keeps the title for assistive technology only on Narrow, where the header names the screen', () => {
+    shellWidth(390);
+    renderOverview(loaded());
+    expect(pageTitle().classList.contains('sr-only')).toBe(true);
+  });
+});
+
 describe('SpecsOverview create', () => {
   const createButtons = () => screen.getAllByRole('button', { name: 'New specification' });
 

@@ -216,7 +216,8 @@ Inside the frame the content keeps its own widths instead of stretching with it:
 Detail workspaces whose screens share one context, for example a Specification with its Overview,
 Documents and Sessions, use `fit="available"` so the whole context keeps one geometry; do not bound
 them. Narrow and drawer layouts fill the workspace, and so does a Focused page while it shows a
-Secondary.
+Secondary. On Narrow the workspace sheet is edge-to-edge whichever `scroll` mode the page uses: the
+workspace reserves no scrollbar gutter beside it.
 
 **A reading column inside a wider pane.** A form or a detail page's sections sit in a reading
 column, left-aligned inside a scroller that fills the pane, in a Focused frame and in a full-width
